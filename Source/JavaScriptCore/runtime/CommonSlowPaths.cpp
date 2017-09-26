@@ -986,7 +986,7 @@ SLOW_PATH_DECL(slow_path_define_data_property)
     auto propertyName = property.toPropertyKey(exec);
     CHECK_EXCEPTION();
     PropertyDescriptor descriptor = toPropertyDescriptor(value, jsUndefined(), jsUndefined(), DefinePropertyAttributes(attributes.asInt32()));
-    ASSERT((descriptor.attributes() & Accessor) || (!descriptor.isAccessorDescriptor()));
+    ASSERT((descriptor.attributes() & PropertyAttribute::Accessor) || (!descriptor.isAccessorDescriptor()));
     base->methodTable(vm)->defineOwnProperty(base, exec, propertyName, descriptor, true);
     END();
 }
@@ -1004,7 +1004,7 @@ SLOW_PATH_DECL(slow_path_define_accessor_property)
     auto propertyName = property.toPropertyKey(exec);
     CHECK_EXCEPTION();
     PropertyDescriptor descriptor = toPropertyDescriptor(jsUndefined(), getter, setter, DefinePropertyAttributes(attributes.asInt32()));
-    ASSERT((descriptor.attributes() & Accessor) || (!descriptor.isAccessorDescriptor()));
+    ASSERT((descriptor.attributes() & PropertyAttribute::Accessor) || (!descriptor.isAccessorDescriptor()));
     base->methodTable(vm)->defineOwnProperty(base, exec, propertyName, descriptor, true);
     END();
 }

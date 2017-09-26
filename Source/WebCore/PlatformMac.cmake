@@ -75,6 +75,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/mac"
     "${WEBCORE_DIR}/bridge/objc"
     "${WEBCORE_DIR}/editing/cocoa"
+    "${WEBCORE_DIR}/editing/ios"
     "${WEBCORE_DIR}/editing/mac"
     "${WEBCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}/ForwardingHeaders/bindings"
@@ -207,7 +208,11 @@ list(APPEND WebCore_SOURCES
     editing/cocoa/DataDetection.mm
     editing/cocoa/EditorCocoa.mm
     editing/cocoa/HTMLConverter.mm
+    editing/cocoa/WebArchiveResourceFromNSAttributedString.mm
+    editing/cocoa/WebArchiveResourceWebResourceHandler.mm
     editing/cocoa/WebContentReaderCocoa.mm
+
+    editing/ios/AutofillElements.cpp
 
     editing/mac/AlternativeTextUIController.mm
     editing/mac/DictionaryLookup.mm
@@ -342,7 +347,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/avfoundation/MediaPlaybackTargetMac.mm
     platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp
     platform/graphics/avfoundation/MediaSelectionGroupAVFObjC.mm
-    platform/graphics/avfoundation/MediaTimeAVFoundation.cpp
 
     platform/graphics/avfoundation/objc/AVAssetTrackUtilities.mm
     platform/graphics/avfoundation/objc/AVFoundationMIMETypeCache.mm
@@ -352,6 +356,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/avfoundation/objc/CDMSessionAVFoundationObjC.mm
     platform/graphics/avfoundation/objc/CDMSessionAVStreamSession.mm
     platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.mm
+    platform/graphics/avfoundation/objc/ImageDecoderAVFObjC.mm
     platform/graphics/avfoundation/objc/InbandTextTrackPrivateAVFObjC.mm
     platform/graphics/avfoundation/objc/InbandTextTrackPrivateLegacyAVFObjC.mm
     platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm
@@ -631,6 +636,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     editing/cocoa
     editing/mac
+    editing/ios
 
     html/canvas
     html/forms

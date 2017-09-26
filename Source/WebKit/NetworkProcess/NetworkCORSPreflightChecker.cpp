@@ -89,7 +89,7 @@ void NetworkCORSPreflightChecker::didReceiveResponseNetworkSession(WebCore::Reso
 {
     RELEASE_LOG_IF_ALLOWED("didReceiveResponseNetworkSession");
     m_response = WTFMove(response);
-    completionHandler(PolicyAction::PolicyUse);
+    completionHandler(PolicyAction::Use);
 }
 
 void NetworkCORSPreflightChecker::didReceiveData(Ref<WebCore::SharedBuffer>&&)
@@ -108,7 +108,7 @@ void NetworkCORSPreflightChecker::didCompleteWithError(const WebCore::ResourceEr
     RELEASE_LOG_IF_ALLOWED("didComplete http_status_code: %d", m_response.httpStatusCode());
 
     String errorDescription;
-    if (!validatePreflightResponse(m_parameters.originalRequest, m_response, m_parameters.allowStoredCredentials, m_parameters.sourceOrigin, errorDescription)) {
+    if (!validatePreflightResponse(m_parameters.originalRequest, m_response, m_parameters.storedCredentialsPolicy, m_parameters.sourceOrigin, errorDescription)) {
         RELEASE_LOG_IF_ALLOWED("didComplete, AccessControl error: %s", errorDescription.utf8().data());
         m_completionCallback(Result::Failure);
         return;

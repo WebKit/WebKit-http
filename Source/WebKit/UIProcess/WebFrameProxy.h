@@ -49,7 +49,6 @@ class Decoder;
 
 namespace WebKit {
 class WebCertificateInfo;
-class WebFormSubmissionListenerProxy;
 class WebFramePolicyListenerProxy;
 class WebPageProxy;
 struct WebsitePolicies;
@@ -90,7 +89,6 @@ public:
     bool containsPluginDocument() const { return m_containsPluginDocument; }
 
     const String& title() const { return m_title; }
-    Vector<WebCore::URL>&& takeProvisionalLoadRedirectChain() { return WTFMove(m_provisionalLoadRedirectChain); }
 
     WebCertificateInfo* certificateInfo() const { return m_certificateInfo.get(); }
 
@@ -118,7 +116,6 @@ public:
     // Policy operations.
     void receivedPolicyDecision(WebCore::PolicyAction, uint64_t listenerID, API::Navigation*, const WebsitePolicies&);
     WebFramePolicyListenerProxy& setUpPolicyListenerProxy(uint64_t listenerID);
-    WebFormSubmissionListenerProxy& setUpFormSubmissionListenerProxy(uint64_t listenerID);
 
 #if ENABLE(CONTENT_FILTERING)
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler contentFilterUnblockHandler) { m_contentFilterUnblockHandler = WTFMove(contentFilterUnblockHandler); }
@@ -143,7 +140,6 @@ private:
     RefPtr<WebCertificateInfo> m_certificateInfo;
     RefPtr<WebFrameListenerProxy> m_activeListener;
     uint64_t m_frameID;
-    Vector<WebCore::URL> m_provisionalLoadRedirectChain;
 #if ENABLE(CONTENT_FILTERING)
     WebCore::ContentFilterUnblockHandler m_contentFilterUnblockHandler;
 #endif

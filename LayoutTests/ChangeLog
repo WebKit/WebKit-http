@@ -1,3 +1,163 @@
+2017-09-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        [EME] Add ClearKey support for persistent session data load and removal
+        https://bugs.webkit.org/show_bug.cgi?id=177442
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update WPE baselines for EME tests affected by the addition of persistent
+        session data load and removal in the ClearKey implementation.
+
+        All the affected tests progress, but most of them still don't pass
+        entirely due to missing functionality in the GStreamer pipeline.
+
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-destroy-persistent-license-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-persistent-license-events-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-destroy-persistent-license-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-persistent-license-expected.txt:
+
+2017-09-25  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: move Console.addInspectedNode to DOM.setInspectedNode
+        https://bugs.webkit.org/show_bug.cgi?id=176827
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/dom/cross-domain-inspected-node-access-expected.txt: Renamed from LayoutTests/http/tests/inspector/console/cross-domain-inspected-node-access-expected.txt.
+        * http/tests/inspector/dom/cross-domain-inspected-node-access.html: Renamed from LayoutTests/http/tests/inspector/console/cross-domain-inspected-node-access.html.
+        * inspector/console/command-line-api.html:
+        * inspector/dom/setInspectedNode-expected.txt: Renamed from LayoutTests/inspector/console/addInspectedNode-expected.txt.
+        * inspector/dom/setInspectedNode.html: Renamed from LayoutTests/inspector/console/addInspectedNode.html.
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-09-25  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Add autocompletion suggestions for CSS attr based on the selected element's attributes
+        https://bugs.webkit.org/show_bug.cgi?id=177346
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/model/dom-node-expected.txt: Added.
+        * inspector/model/dom-node.html: Added.
+
+2017-09-25  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC video does not resume receiving when switching back to Safari 11 on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=175472
+        <rdar://problem/33860863>
+
+        Reviewed by Darin Adler.
+
+        * webrtc/video-interruption-expected.txt: Added.
+        * webrtc/video-interruption.html: Added.
+
+2017-09-25  Per Arne Vollan  <pvollan@apple.com>
+
+        Crash in WebCore::TreeScope::documentScope
+        https://bugs.webkit.org/show_bug.cgi?id=176159
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/crash-moving-subtree-between-documents-expected.txt: Added.
+        * fast/dom/crash-moving-subtree-between-documents.html: Added.
+
+2017-09-25  Youenn Fablet  <youenn@apple.com>
+
+        MediaStreamTrack.getSettings should compute its deviceId/groupId like enumerateDevices
+        https://bugs.webkit.org/show_bug.cgi?id=177433
+
+        Reviewed by Jer Noble.
+
+        * fast/mediastream/get-user-media-device-id.html:
+
+2017-09-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK test gardening
+
+        * platform/gtk/TestExpectations:
+
+2017-09-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/loader/form-submission-after-beforeunload-cancel.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=177445
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-09-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub.html as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=177323
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-09-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/cache-storage/cache-representation.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=177438
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-09-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for WPT LayoutTests that crash.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-09-25  Youenn Fablet  <youenn@apple.com>
+
+        webrtc/peer-connection-audio-mute.html is sometimes flaky
+        https://bugs.webkit.org/show_bug.cgi?id=172649
+
+        Reviewed by Darin Adler.
+
+        Iterating until getting the expected result to make test more stable.
+
+        * webrtc/peer-connection-audio-mute.html:
+        * webrtc/peer-connection-remote-audio-mute.html:
+
+2017-09-25  Youenn Fablet  <youenn@apple.com>
+
+        Make captureCanvas-webrtc.html more robust
+        https://bugs.webkit.org/show_bug.cgi?id=177334
+
+        Reviewed by Darin Adler.
+
+        Making test more robust by printing synchronously the canvas and increasing.
+        the threshold for pixel comparison.
+        Minor refactoring for improving the readability.
+
+        * webrtc/captureCanvas-webrtc.html:
+
+2017-09-25  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest webrtc/video-mute.html is very often failing
+        https://bugs.webkit.org/show_bug.cgi?id=177331
+
+        Reviewed by Darin Adler.
+
+        * webrtc/video-mute.html: using getStats instead of internals to check whether black frames are received.
+
+2017-09-25  Ms2ger  <Ms2ger@igalia.com>
+
+        Update waitSync and the TIMEOUT_IGNORED constant to use signed integers.
+        https://bugs.webkit.org/show_bug.cgi?id=177239
+
+        Reviewed by Žan Doberšek.
+
+        This matches the specification.
+
+        * fast/canvas/webgl/webgl2/constants-expected.txt: Added.
+        * fast/canvas/webgl/webgl2/constants.html: Added.
+
 2017-09-25  Manuel Rego Casasnovas  <rego@igalia.com>
 
         [css-grid] fit-content() tracks shouldn't stretch

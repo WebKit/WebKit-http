@@ -58,7 +58,7 @@ void DownloadManager::startDownload(NetworkConnectionToWebProcess* connection, P
     parameters.clientCredentialPolicy = ClientCredentialPolicy::MayAskClientForCredentials;
     if (request.url().protocolIsBlob() && connection)
         parameters.blobFileReferences = NetworkBlobRegistry::singleton().filesInBlob(*connection, request.url());
-    parameters.allowStoredCredentials = sessionID.isEphemeral() ? DoNotAllowStoredCredentials : AllowStoredCredentials;
+    parameters.storedCredentialsPolicy = sessionID.isEphemeral() ? StoredCredentialsPolicy::DoNotUse : StoredCredentialsPolicy::Use;
 
     m_pendingDownloads.add(downloadID, std::make_unique<PendingDownload>(WTFMove(parameters), downloadID, *networkSession, suggestedName));
 #else
@@ -144,7 +144,7 @@ void DownloadManager::continueDecidePendingDownloadDestination(DownloadID downlo
         ASSERT(m_pendingDownloads.contains(downloadID));
 
         networkDataTask->setPendingDownloadLocation(destination, sandboxExtensionHandle, allowOverwrite);
-        completionHandler(PolicyDownload);
+        completionHandler(PolicyAction::Download);
         if (networkDataTask->state() == NetworkDataTask::State::Canceling || networkDataTask->state() == NetworkDataTask::State::Completed)
             return;
 
@@ -196,7 +196,7 @@ void DownloadManager::cancelDownload(DownloadID downloadID)
         ASSERT(completionHandler);
 
         networkDataTask->cancel();
-        completionHandler(PolicyIgnore);
+        completionHandler(PolicyAction::Ignore);
         m_client.pendingDownloadCanceled(downloadID);
         return;
     }

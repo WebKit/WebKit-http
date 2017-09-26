@@ -220,6 +220,19 @@ uint64_t WebFrame::setUpPolicyListener(WebCore::FramePolicyFunction&& policyFunc
     return m_policyListenerID;
 }
 
+uint64_t WebFrame::setUpWillSubmitFormListener(WTF::Function<void(void)>&& completionHandler)
+{
+    uint64_t identifier = generateListenerID();
+    m_willSubmitFormCompletionHandlers.set(identifier, WTFMove(completionHandler));
+    return identifier;
+}
+
+void WebFrame::continueWillSubmitForm(uint64_t listenerID)
+{
+    if (auto completionHandler = m_willSubmitFormCompletionHandlers.take(listenerID))
+        completionHandler();
+}
+
 void WebFrame::invalidatePolicyListener()
 {
     if (!m_policyListenerID)
@@ -227,7 +240,8 @@ void WebFrame::invalidatePolicyListener()
 
     m_policyDownloadID = { };
     m_policyListenerID = 0;
-    m_policyFunction = nullptr;
+    if (auto function = std::exchange(m_policyFunction, nullptr))
+        function(PolicyAction::Ignore);
 }
 
 void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, DownloadID downloadID)
@@ -241,7 +255,8 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
     if (listenerID != m_policyListenerID)
         return;
 
-    ASSERT(m_policyFunction);
+    if (!m_policyFunction)
+        return;
 
     FramePolicyFunction function = WTFMove(m_policyFunction);
 
@@ -795,7 +810,8 @@ void WebFrame::setTextDirection(const String& direction)
 
 void WebFrame::documentLoaderDetached(uint64_t navigationID)
 {
-    page()->send(Messages::WebPageProxy::DidDestroyNavigation(navigationID));
+    if (auto * page = this->page())
+        page->send(Messages::WebPageProxy::DidDestroyNavigation(navigationID));
 }
 
 #if PLATFORM(COCOA)

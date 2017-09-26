@@ -2122,7 +2122,6 @@ set(WebCore_SOURCES
     loader/NavigationScheduler.cpp
     loader/NetscapePlugInStreamLoader.cpp
     loader/PingLoader.cpp
-    loader/PolicyCallback.cpp
     loader/PolicyChecker.cpp
     loader/ProgressTracker.cpp
     loader/ResourceCryptographicDigest.cpp

@@ -937,16 +937,16 @@ void WebFrameLoaderClient::dispatchWillSendSubmitEvent(Ref<WebCore::FormState>&&
     CallFormDelegate(getWebView(m_webFrame.get()), @selector(willSendSubmitEventToForm:inFrame:withValues:), formElement, m_webFrame.get(), values);
 }
 
-void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, WTF::Function<void(void)>&& function)
 {
     id <WebFormDelegate> formDelegate = [getWebView(m_webFrame.get()) _formDelegate];
     if (!formDelegate) {
-        function(PolicyUse);
+        function();
         return;
     }
 
     NSDictionary *values = makeFormFieldValuesDictionary(formState);
-    CallFormDelegate(getWebView(m_webFrame.get()), @selector(frame:sourceFrame:willSubmitForm:withValues:submissionListener:), m_webFrame.get(), kit(formState.sourceDocument().frame()), kit(&formState.form()), values, setUpPolicyListener(WTFMove(function)).get());
+    CallFormDelegate(getWebView(m_webFrame.get()), @selector(frame:sourceFrame:willSubmitForm:withValues:submissionListener:), m_webFrame.get(), kit(formState.sourceDocument().frame()), kit(&formState.form()), values, setUpPolicyListener([function = WTFMove(function)](PolicyAction) { function(); }).get());
 }
 
 void WebFrameLoaderClient::revertToProvisionalState(DocumentLoader* loader)
@@ -2409,6 +2409,8 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
 - (void)invalidate
 {
     _frame = nullptr;
+    if (auto policyFunction = std::exchange(_policyFunction, nullptr))
+        policyFunction(PolicyAction::Ignore);
 }
 
 - (void)dealloc
@@ -2425,21 +2427,18 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
     if (!frame)
         return;
 
-    FramePolicyFunction policyFunction = WTFMove(_policyFunction);
-    _policyFunction = nullptr;
-
-    ASSERT(policyFunction);
-    policyFunction(action);
+    if (auto policyFunction = std::exchange(_policyFunction, nullptr))
+        policyFunction(action);
 }
 
 - (void)ignore
 {
-    [self receivedPolicyDecision:PolicyIgnore];
+    [self receivedPolicyDecision:PolicyAction::Ignore];
 }
 
 - (void)download
 {
-    [self receivedPolicyDecision:PolicyDownload];
+    [self receivedPolicyDecision:PolicyAction::Download];
 }
 
 - (void)use
@@ -2449,21 +2448,21 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
         [LSAppLink openWithURL:_appLinkURL.get() completionHandler:^(BOOL success, NSError *) {
             WebThreadRun(^{
                 if (success)
-                    [self receivedPolicyDecision:PolicyIgnore];
+                    [self receivedPolicyDecision:PolicyAction::Ignore];
                 else
-                    [self receivedPolicyDecision:PolicyUse];
+                    [self receivedPolicyDecision:PolicyAction::Use];
             });
         }];
         return;
     }
 #endif
 
-    [self receivedPolicyDecision:PolicyUse];
+    [self receivedPolicyDecision:PolicyAction::Use];
 }
 
 - (void)continue
 {
-    [self receivedPolicyDecision:PolicyUse];
+    [self receivedPolicyDecision:PolicyAction::Use];
 }
 
 @end

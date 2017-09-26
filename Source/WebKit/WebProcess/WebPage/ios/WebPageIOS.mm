@@ -53,6 +53,7 @@
 #import "WebProcess.h"
 #import <CoreText/CTFont.h>
 #import <WebCore/Autofill.h>
+#import <WebCore/AutofillElements.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/DiagnosticLoggingClient.h>
@@ -86,6 +87,7 @@
 #import <WebCore/HistoryItem.h>
 #import <WebCore/HitTestResult.h>
 #import <WebCore/KeyboardEvent.h>
+#import <WebCore/LibWebRTCProvider.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/MediaSessionManagerIOS.h>
 #import <WebCore/Node.h>
@@ -2749,6 +2751,8 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         HTMLFormElement* form = element.form();
         if (form)
             information.formAction = form->getURLAttribute(WebCore::HTMLNames::actionAttr);
+        information.acceptsAutofilledLoginCredentials = !!WebCore::AutofillElements::computeAutofillElements(element);
+        information.representingPageURL = element.document().urlForBindings();
         information.autocapitalizeType = element.autocapitalizeType();
         information.isAutocorrect = element.shouldAutocorrect();
         if (element.isPasswordField())
@@ -2803,6 +2807,14 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             information.autocapitalizeType = AutocapitalizeTypeDefault;
         }
         information.isReadOnly = false;
+    }
+}
+
+void WebPage::autofillLoginCredentials(const String& username, const String& password)
+{
+    if (is<HTMLInputElement>(*m_assistedNode)) {
+        if (auto autofillElements = AutofillElements::computeAutofillElements(downcast<HTMLInputElement>(*m_assistedNode)))
+            autofillElements->autofill(username, password);
     }
 }
 
@@ -3109,6 +3121,8 @@ void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 
     m_isSuspendedUnderLock = isSuspendedUnderLock;
     setLayerTreeStateIsFrozen(true);
+
+    m_page->libWebRTCProvider().setActive(false);
 }
 
 void WebPage::applicationDidFinishSnapshottingAfterEnteringBackground()
@@ -3123,6 +3137,8 @@ void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
     setLayerTreeStateIsFrozen(false);
 
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillEnterForegroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": @(isSuspendedUnderLock)}];
+
+    m_page->libWebRTCProvider().setActive(true);
 }
 
 void WebPage::applicationDidBecomeActive()

@@ -27,7 +27,6 @@
 #include "WebFrameProxy.h"
 
 #include "WebCertificateInfo.h"
-#include "WebFormSubmissionListenerProxy.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebPageMessages.h"
 #include "WebPageProxy.h"
@@ -132,23 +131,16 @@ bool WebFrameProxy::isDisplayingPDFDocument() const
 
 void WebFrameProxy::didStartProvisionalLoad(const URL& url)
 {
-    m_provisionalLoadRedirectChain = { url };
-
     m_frameLoadState.didStartProvisionalLoad(url);
 }
 
 void WebFrameProxy::didReceiveServerRedirectForProvisionalLoad(const URL& url)
 {
-    // didReceiveServerRedirectForProvisionalLoad() often gets called twice for the same redirect.
-    if (m_provisionalLoadRedirectChain.isEmpty() || m_provisionalLoadRedirectChain.last() != url)
-        m_provisionalLoadRedirectChain.append(url);
-
     m_frameLoadState.didReceiveServerRedirectForProvisionalLoad(url);
 }
 
 void WebFrameProxy::didFailProvisionalLoad()
 {
-    m_provisionalLoadRedirectChain.clear();
     m_frameLoadState.didFailProvisionalLoad();
 }
 
@@ -165,13 +157,11 @@ void WebFrameProxy::didCommitLoad(const String& contentType, WebCertificateInfo&
 
 void WebFrameProxy::didFinishLoad()
 {
-    m_provisionalLoadRedirectChain.clear();
     m_frameLoadState.didFinishLoad();
 }
 
 void WebFrameProxy::didFailLoad()
 {
-    m_provisionalLoadRedirectChain.clear();
     m_frameLoadState.didFailLoad();
 }
 
@@ -201,14 +191,6 @@ WebFramePolicyListenerProxy& WebFrameProxy::setUpPolicyListenerProxy(uint64_t li
         m_activeListener->invalidate();
     m_activeListener = WebFramePolicyListenerProxy::create(this, listenerID);
     return *static_cast<WebFramePolicyListenerProxy*>(m_activeListener.get());
-}
-
-WebFormSubmissionListenerProxy& WebFrameProxy::setUpFormSubmissionListenerProxy(uint64_t listenerID)
-{
-    if (m_activeListener)
-        m_activeListener->invalidate();
-    m_activeListener = WebFormSubmissionListenerProxy::create(this, listenerID);
-    return *static_cast<WebFormSubmissionListenerProxy*>(m_activeListener.get());
 }
 
 void WebFrameProxy::getWebArchive(Function<void (API::Data*, CallbackBase::Error)>&& callbackFunction)

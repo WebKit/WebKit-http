@@ -57,11 +57,11 @@ using namespace WebKit;
 static NSURLSessionResponseDisposition toNSURLSessionResponseDisposition(WebCore::PolicyAction disposition)
 {
     switch (disposition) {
-    case WebCore::PolicyAction::PolicyIgnore:
+    case WebCore::PolicyAction::Ignore:
         return NSURLSessionResponseCancel;
-    case WebCore::PolicyAction::PolicyUse:
+    case WebCore::PolicyAction::Use:
         return NSURLSessionResponseAllow;
-    case WebCore::PolicyAction::PolicyDownload:
+    case WebCore::PolicyAction::Download:
         return NSURLSessionResponseBecomeDownload;
     }
 }
@@ -126,8 +126,8 @@ static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
     if (!task)
         return nullptr;
 
-    auto allowStoredCredentials = _withCredentials ? WebCore::StoredCredentials::AllowStoredCredentials : WebCore::StoredCredentials::DoNotAllowStoredCredentials;
-    return _session->dataTaskForIdentifier(task.taskIdentifier, allowStoredCredentials);
+    auto storedCredentialsPolicy = _withCredentials ? WebCore::StoredCredentialsPolicy::Use : WebCore::StoredCredentialsPolicy::DoNotUse;
+    return _session->dataTaskForIdentifier(task.taskIdentifier, storedCredentialsPolicy);
 }
 
 - (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(nullable NSError *)error
@@ -635,10 +635,10 @@ void NetworkSessionCocoa::clearCredentials()
 #endif
 }
 
-NetworkDataTaskCocoa* NetworkSessionCocoa::dataTaskForIdentifier(NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, WebCore::StoredCredentials storedCredentials)
+NetworkDataTaskCocoa* NetworkSessionCocoa::dataTaskForIdentifier(NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, WebCore::StoredCredentialsPolicy storedCredentialsPolicy)
 {
     ASSERT(RunLoop::isMain());
-    if (storedCredentials == WebCore::StoredCredentials::AllowStoredCredentials)
+    if (storedCredentialsPolicy == WebCore::StoredCredentialsPolicy::Use)
         return m_dataTaskMapWithCredentials.get(taskIdentifier);
     return m_dataTaskMapWithoutState.get(taskIdentifier);
 }

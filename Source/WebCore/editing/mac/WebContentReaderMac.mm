@@ -30,6 +30,9 @@
 #import "Document.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
+#import "Editing.h"
+#import "Editor.h"
+#import "EditorClient.h"
 #import "File.h"
 #import "FragmentScriptingPermission.h"
 #import "FrameLoader.h"
@@ -42,6 +45,7 @@
 #import "RuntimeEnabledFeatures.h"
 #import "Settings.h"
 #import "Text.h"
+#import "WebCoreNSURLExtras.h"
 #import "markup.h"
 
 namespace WebCore {
@@ -67,7 +71,7 @@ bool WebContentReader::readFilenames(const Vector<String>& paths)
         }
 #else
         auto paragraph = createDefaultParagraphElement(document);
-        paragraph->appendChild(document.createTextNode(frame.editor().client()->userVisibleString([NSURL fileURLWithPath:text])));
+        paragraph->appendChild(document.createTextNode(userVisibleString([NSURL fileURLWithPath:text])));
         fragment->appendChild(paragraph);
 #endif
     }

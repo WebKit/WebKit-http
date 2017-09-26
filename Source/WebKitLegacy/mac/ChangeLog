@@ -1,3 +1,94 @@
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Make PolicyAction an encodable enum class
+        https://bugs.webkit.org/show_bug.cgi?id=177480
+
+        Reviewed by Antti Koivisto.
+
+        * Plugins/WebPluginContainerCheck.mm:
+        (-[WebPluginContainerCheck _continueWithPolicy:]):
+        (-[WebPluginContainerCheck _isForbiddenFileLoad]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener invalidate]):
+        (-[WebFramePolicyListener ignore]):
+        (-[WebFramePolicyListener download]):
+        (-[WebFramePolicyListener use]):
+        (-[WebFramePolicyListener continue]):
+        * WebView/WebPolicyDelegate.mm:
+        (-[WebPolicyDecisionListener use]):
+        (-[WebPolicyDecisionListener ignore]):
+        (-[WebPolicyDecisionListener download]):
+
+2017-09-25  Frederik Riedel  <riedel@apple.com>
+
+        Expose way to set values of classified form controls as {Legacy WebKit, WebKit} SPI
+        https://bugs.webkit.org/show_bug.cgi?id=174394
+        <rdar://problem/33183504>
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/DOMHTMLInputElement.h:
+        * DOM/DOMHTMLInputElement.mm:
+        (-[DOMHTMLInputElement acceptsAutofilledLoginCredentials]):
+        Determines if this HTMLInputElement is part of a login screen.
+        (-[DOMHTMLInputElement representingPageUrl]):
+        Returns the webpage's URL that is currently displayed in the Web View.
+        (-[DOMHTMLInputElement insertTextSuggestion:]):
+        Inserts login credentials into the Web View.
+
+2017-09-25  Sam Weinig  <sam@webkit.org>
+
+        Remove unused EditorClient functions
+        https://bugs.webkit.org/show_bug.cgi?id=177463
+
+        Reviewed by Alex Christensen.
+
+        Remove unused EditorClient functions.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::canonicalizeURL): Deleted.
+        (WebEditorClient::canonicalizeURLString): Deleted.
+        (WebEditorClient::writeDataToPasteboard): Deleted.
+        (WebEditorClient::supportedPasteboardTypesForCurrentSelection): Deleted.
+        (WebEditorClient::readDataFromPasteboard): Deleted.
+        (WebEditorClient::pasteboardChangeCount): Deleted.
+
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using PolicyCallback
+        https://bugs.webkit.org/show_bug.cgi?id=176088
+
+        Reviewed by Andy Estes.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener invalidate]):
+        (-[WebFramePolicyListener receivedPolicyDecision:]):
+
+2017-09-25  Sam Weinig  <sam@webkit.org>
+
+        Remove unnecessary userVisibleString EditorClient function
+        https://bugs.webkit.org/show_bug.cgi?id=177456
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::userVisibleString): Deleted.
+
+            Remove userVisibleString client function.
+
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Separate form submission from PolicyChecker infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=177396
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+
 2017-09-22  Zalan Bujtas  <zalan@apple.com>
 
         WeakPtrFactory should populate m_ref lazily.
