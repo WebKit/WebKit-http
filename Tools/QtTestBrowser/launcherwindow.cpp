@@ -1172,9 +1172,13 @@ void LauncherWindow::downloadRequest(const QNetworkRequest &request)
 
 void LauncherWindow::fileDownloadFinished()
 {
-    QFileInfo fileInf(m_reply->request().url().toString());
-    QString requestFileName = QDir::homePath() + "/" + fileInf.fileName();
-    QString fileName = QFileDialog::getSaveFileName(this, "Save as...", requestFileName, "All Files (*)");
+    QString suggestedFileName;
+    if (m_reply->request().url().scheme().toLower() != QLatin1String("data")) {
+        QFileInfo fileInf(m_reply->request().url().toString());
+        suggestedFileName = QDir::homePath() + "/" + fileInf.fileName();
+    } else
+        suggestedFileName = QStringLiteral("data");
+    QString fileName = QFileDialog::getSaveFileName(this, "Save as...", suggestedFileName, "All Files (*)");
 
     if (fileName.isEmpty())
         return;
