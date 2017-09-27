@@ -204,7 +204,7 @@ private:
             if (m_node->isBinaryUseKind(DoubleRepUse)
                 && m_node->child2()->isNumberConstant()) {
 
-                if (Optional<double> reciprocal = safeReciprocalForDivByConst(m_node->child2()->asNumber())) {
+                if (std::optional<double> reciprocal = safeReciprocalForDivByConst(m_node->child2()->asNumber())) {
                     Node* reciprocalNode = m_insertionSet.insertConstant(m_nodeIndex, m_node->origin, jsDoubleNumber(*reciprocal), DoubleConstant);
                     m_node->setOp(ArithMul);
                     m_node->child2() = Edge(reciprocalNode, DoubleRepUse);
@@ -215,11 +215,8 @@ private:
             break;
 
         case ValueRep:
-        case Int52Rep:
-        case DoubleRep: {
-            // This short-circuits circuitous conversions, like ValueRep(DoubleRep(value)) or
-            // even more complicated things. Like, it can handle a beast like
-            // ValueRep(DoubleRep(Int52Rep(value))).
+        case Int52Rep: {
+            // This short-circuits circuitous conversions, like ValueRep(Int52Rep(value)).
             
             // The only speculation that we would do beyond validating that we have a type that
             // can be represented a certain way is an Int32 check that would appear on Int52Rep
@@ -258,7 +255,6 @@ private:
                     hadInt32Check = true;
                     continue;
                     
-                case DoubleRep:
                 case ValueRep:
                     continue;
                     
@@ -272,18 +268,27 @@ private:
             
         case Flush: {
             ASSERT(m_graph.m_form != SSA);
+
+            if (m_graph.willCatchExceptionInMachineFrame(m_node->origin.semantic)) {
+                // FIXME: We should be able to relax this:
+                // https://bugs.webkit.org/show_bug.cgi?id=150824
+                break;
+            }
             
             Node* setLocal = nullptr;
             VirtualRegister local = m_node->local();
             
             for (unsigned i = m_nodeIndex; i--;) {
                 Node* node = m_block->at(i);
+
                 if (node->op() == SetLocal && node->local() == local) {
                     setLocal = node;
                     break;
                 }
+
                 if (accessesOverlap(m_graph, node, AbstractHeap(Stack, local)))
                     break;
+
             }
             
             if (!setLocal)
@@ -390,6 +395,50 @@ private:
             break;
         }
 
+        case ToString:
+        case CallStringConstructor: {
+            Edge& child1 = m_node->child1();
+            switch (child1.useKind()) {
+            case Int32Use:
+            case Int52RepUse:
+            case DoubleRepUse: {
+                if (child1->hasConstant()) {
+                    JSValue value = child1->constant()->value();
+                    if (value) {
+                        String result;
+                        if (value.isInt32())
+                            result = String::number(value.asInt32());
+                        else if (value.isNumber())
+                            result = String::numberToStringECMAScript(value.asNumber());
+
+                        if (!result.isNull()) {
+                            m_node->convertToLazyJSConstant(m_graph, LazyJSValue::newString(m_graph, result));
+                            m_changed = true;
+                        }
+                    }
+                }
+                break;
+            }
+
+            default:
+                break;
+            }
+            break;
+        }
+
+        case NumberToStringWithValidRadixConstant: {
+            Edge& child1 = m_node->child1();
+            if (child1->hasConstant()) {
+                JSValue value = child1->constant()->value();
+                if (value && value.isNumber()) {
+                    String result = toStringWithRadix(value.asNumber(), m_node->validRadixConstant());
+                    m_node->convertToLazyJSConstant(m_graph, LazyJSValue::newString(m_graph, result));
+                    m_changed = true;
+                }
+            }
+            break;
+        }
+
         case GetArrayLength: {
             if (m_node->arrayMode().type() == Array::Generic
                 || m_node->arrayMode().type() == Array::String) {
@@ -404,7 +453,7 @@ private:
         }
 
         case GetGlobalObject: {
-            if (JSObject* object = m_node->child1()->dynamicCastConstant<JSObject*>()) {
+            if (JSObject* object = m_node->child1()->dynamicCastConstant<JSObject*>(vm())) {
                 m_graph.convertToConstant(m_node, object->globalObject());
                 m_changed = true;
                 break;
@@ -414,7 +463,7 @@ private:
 
         case RegExpExec:
         case RegExpTest: {
-            JSGlobalObject* globalObject = m_node->child1()->dynamicCastConstant<JSGlobalObject*>();
+            JSGlobalObject* globalObject = m_node->child1()->dynamicCastConstant<JSGlobalObject*>(vm());
             if (!globalObject) {
                 if (verbose)
                     dataLog("Giving up because no global object.\n");
@@ -429,7 +478,7 @@ private:
 
             Node* regExpObjectNode = m_node->child2().node();
             RegExp* regExp;
-            if (RegExpObject* regExpObject = regExpObjectNode->dynamicCastConstant<RegExpObject*>())
+            if (RegExpObject* regExpObject = regExpObjectNode->dynamicCastConstant<RegExpObject*>(vm()))
                 regExp = regExpObject->regExp();
             else if (regExpObjectNode->op() == NewRegexp)
                 regExp = regExpObjectNode->castOperand<RegExp*>();
@@ -461,7 +510,15 @@ private:
                     dataLog("Giving up because of pattern limit.\n");
                 break;
             }
-            
+
+            if (m_node->op() == RegExpExec && regExp->hasNamedCaptures()) {
+                // FIXME: https://bugs.webkit.org/show_bug.cgi?id=176464
+                // Implement strength reduction optimization for named capture groups.
+                if (verbose)
+                    dataLog("Giving up because of named capture groups.\n");
+                break;
+            }
+
             unsigned lastIndex;
             if (regExp->globalOrSticky()) {
                 // This will only work if we can prove what the value of lastIndex is. To do this
@@ -496,7 +553,12 @@ private:
 
             m_graph.watchpoints().addLazily(globalObject->havingABadTimeWatchpoint());
             
-            Structure* structure = globalObject->regExpMatchesArrayStructure();
+            Structure* structure;
+            if (m_node->op() == RegExpExec && regExp->hasNamedCaptures())
+                structure = globalObject->regExpMatchesArrayWithGroupsStructure();
+            else
+                structure = globalObject->regExpMatchesArrayStructure();
+
             if (structure->indexingType() != ArrayWithContiguous) {
                 // This is further protection against a race with haveABadTime.
                 if (verbose)
@@ -540,7 +602,7 @@ private:
 
             if (m_node->op() == RegExpExec) {
                 if (result) {
-                    StructureSet* structureSet = m_graph.addStructureSet(structure);
+                    RegisteredStructureSet* structureSet = m_graph.addStructureSet(structure);
 
                     // Create an array modeling the JS array that we will try to allocate. This is
                     // basically createRegExpMatchesArray but over C++ strings instead of JSStrings.
@@ -670,7 +732,7 @@ private:
             
             Node* regExpObjectNode = m_node->child2().node();
             RegExp* regExp;
-            if (RegExpObject* regExpObject = regExpObjectNode->dynamicCastConstant<RegExpObject*>())
+            if (RegExpObject* regExpObject = regExpObjectNode->dynamicCastConstant<RegExpObject*>(vm()))
                 regExp = regExpObject->regExp();
             else if (regExpObjectNode->op() == NewRegexp)
                 regExp = regExpObjectNode->castOperand<RegExp*>();
@@ -767,7 +829,7 @@ private:
         case TailCall: {
             ExecutableBase* executable = nullptr;
             Edge callee = m_graph.varArgChild(m_node, 0);
-            if (JSFunction* function = callee->dynamicCastConstant<JSFunction*>())
+            if (JSFunction* function = callee->dynamicCastConstant<JSFunction*>(vm()))
                 executable = function->executable();
             else if (callee->isFunctionAllocation())
                 executable = callee->castOperand<FunctionExecutable*>();
@@ -775,7 +837,7 @@ private:
             if (!executable)
                 break;
             
-            if (FunctionExecutable* functionExecutable = jsDynamicCast<FunctionExecutable*>(executable)) {
+            if (FunctionExecutable* functionExecutable = jsDynamicCast<FunctionExecutable*>(vm(), executable)) {
                 // We need to update m_parameterSlots before we get to the backend, but we don't
                 // want to do too much of this.
                 unsigned numAllocatedArgs =

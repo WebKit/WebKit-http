@@ -25,7 +25,8 @@
 
 #include "config.h"
 #include "FontGenericFamilies.h"
-#include "Language.h"
+
+#include <wtf/Language.h>
 
 namespace WebCore {
 
@@ -84,7 +85,7 @@ static const AtomicString& genericFontFamilyForScript(const ScriptFontFamilyMap&
     }
     if (script != USCRIPT_COMMON)
         return genericFontFamilyForScript(fontMap, USCRIPT_COMMON);
-    return emptyAtom;
+    return emptyAtom();
 }
 
 FontGenericFamilies::FontGenericFamilies()

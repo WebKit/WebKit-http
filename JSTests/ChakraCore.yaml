@@ -75,8 +75,14 @@
   cmd: runChakra :pass, "NoException", "shift_unshift.baseline", []
 - path: ChakraCore/test/Array/toString.js
   cmd: runChakra :baseline, "NoException", "toString.baseline", []
+  # FIXME: unskip the following test on Windows when INTL is reenabled (https://bugs.webkit.org/show_bug.cgi?id=159084).
 - path: ChakraCore/test/Array/toLocaleString.js
-  cmd: runChakra :baseline, "NoException", "toLocaleString.baseline-jsc", []
+  cmd: |
+      if ($hostOS == "windows")
+          skip
+      else
+          runChakra :baseline, "NoException", "toLocaleString.baseline-jsc", []
+      end
 - path: ChakraCore/test/Array/array_slice.js
   cmd: runChakra :baseline, "NoException", "array_slice.baseline", []
 - path: ChakraCore/test/Array/array_slice2.js
@@ -487,8 +493,14 @@
   cmd: runChakra :baseline, "NoException", "dateutc.baseline", []
 - path: ChakraCore/test/Date/MillisecondTruncationCheckAfterCopyConstructor.js
   cmd: runChakra :baseline, "NoException", "MillisecondTruncationCheckAfterCopyConstructor.es6.baseline", []
+  # FIXME: unskip the following test on Windows when https://bugs.webkit.org/show_bug.cgi?id=165193 is fixed.
 - path: ChakraCore/test/Date/date_cache_bug.js
-  cmd: runChakra :baseline, "NoException", "date_cache_bug.baseline", []
+  cmd: |
+      if ($hostOS == "windows")
+          skip
+      else
+          runChakra :baseline, "NoException", "date_cache_bug.baseline", []
+      end
 - path: ChakraCore/test/EH/capture.js
   cmd: runChakra :baseline, "NoException", "capture.baseline", []
 - path: ChakraCore/test/EH/oos2.js
@@ -622,8 +634,7 @@
   # Difference in Object.getOwnPropertyDescriptor(functiong.__proto__, 'caller').
   cmd: runChakra :skip, "NoException", "typeErrorAccessor.baseline", []
 - path: ChakraCore/test/Function/FuncBody.js
-  # This crashes in JSC.
-  cmd: runChakra :skip, "NoException", "FuncBodyES5.baseline", []
+  cmd: runChakra :baseline, "NoException", "FuncBodyES5.baseline-jsc", []
 - path: ChakraCore/test/Function/FuncBody.bug227901.js
   cmd: runChakra :baseline, "NoException", "FuncBody.bug227901.baseline-jsc", []
 - path: ChakraCore/test/Function/FuncBody.bug232281.js
@@ -673,8 +684,14 @@
   cmd: runChakra :baseline, "NoException", "parseInt.baseline", []
 - path: ChakraCore/test/GlobalFunctions/parseShortCut.js
   cmd: runChakra :baseline, "NoException", "parseShortCut.baseline", []
+  # FIXME: unskip the following test on Windows when https://bugs.webkit.org/show_bug.cgi?id=176538 is fixed.
 - path: ChakraCore/test/GlobalFunctions/InternalToString.js
-  cmd: runChakra :baseline, "NoException", "InternalToString.baseline", []
+  cmd: |
+      if ($hostOS == "windows")
+          skip
+      else
+          runChakra :baseline, "NoException", "InternalToString.baseline", []
+      end
 - path: ChakraCore/test/GlobalFunctions/ParseInt1.js
   cmd: runChakra :baseline, "NoException", "ParseInt1.baseline", []
 - path: ChakraCore/test/GlobalFunctions/toString.js
@@ -798,14 +815,11 @@
 - path: ChakraCore/test/LetConst/defer5.js
   cmd: runChakra :baseline, "ReferenceError", "defer5.baseline-jsc", []
 - path: ChakraCore/test/LetConst/delete.js
-  # Differences in Object.seal().
-  cmd: runChakra :skip, "NoException", "delete.baseline", []
+  cmd: runChakra :baseline, "NoException", "delete.baseline", []
 - path: ChakraCore/test/LetConst/dop.js
-  # Differences in Object.seal().
-  cmd: runChakra :skip, "NoException", "dop.baseline", []
+  cmd: runChakra :baseline, "NoException", "dop.baseline-jsc", []
 - path: ChakraCore/test/LetConst/dop1.js
-  # Differences in Object.seal().
-  cmd: runChakra :skip, "NoException", "dop1.baseline", []
+  cmd: runChakra :baseline, "NoException", "dop1.baseline-jsc", []
 - path: ChakraCore/test/LetConst/eval_fncdecl.js
   # Seems like a bug.  We try to define a function in a false "then" block.
   cmd: runChakra :skip, "NoException", "eval_fncdecl.baseline", []
@@ -868,7 +882,7 @@
 - path: ChakraCore/test/Lib/uri.js
   cmd: runChakra :baseline, "NoException", "uri.baseline-jsc", []
 - path: ChakraCore/test/Lib/error.js
-  cmd: runChakra :baseline, "NoException", "error.baseline", []
+  cmd: runChakra :baseline, "NoException", "error.baseline-jsc", []
 - path: ChakraCore/test/Lib/workingset.js
   # WScript.GetWorkingSet is not implemented in jsc-lib.js polyfill.
   cmd: runChakra :skip, "NoException", "", []
@@ -960,8 +974,14 @@
 - path: ChakraCore/test/Object/toLocaleString2.js
   # Bad test, checks hard coded exceptions.
   cmd: runChakra :skip, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
+  # FIXME: unskip the following test on Windows when INTL is reenabled (https://bugs.webkit.org/show_bug.cgi?id=159084).
 - path: ChakraCore/test/Object/toLocaleStringBasics.js
-  cmd: runChakra :baseline, "NoException", "toLocaleStringBasics.baseline", []
+  cmd: |
+      if ($hostOS == "windows")
+          skip
+      else
+          runChakra :baseline, "NoException", "toLocaleStringBasics.baseline", []
+      end
 - path: ChakraCore/test/Object/toString1.js
   cmd: runChakra :baseline, "NoException", "toString3.baseline", []
 - path: ChakraCore/test/Object/toString2.js
@@ -1059,8 +1079,14 @@
   cmd: runChakra :baseline, "NoException", "delete3.baseline", []
 - path: ChakraCore/test/Operators/div.js
   cmd: runChakra :baseline, "NoException", "div.baseline-jsc", []
+  # FIXME: unskip the following test on Windows when https://bugs.webkit.org/show_bug.cgi?id=176538 is fixed.
 - path: ChakraCore/test/Operators/equals.js
-  cmd: runChakra :baseline, "NoException", "equals.baseline", []
+  cmd: |
+      if ($hostOS == "windows")
+          skip
+      else
+          runChakra :baseline, "NoException", "equals.baseline", []
+      end
 - path: ChakraCore/test/Operators/instanceof.js
   cmd: runChakra :baseline, "NoException", "instanceof.baseline-jsc", []
 - path: ChakraCore/test/Operators/inst_bug.js
@@ -1219,7 +1245,8 @@
 - path: ChakraCore/test/StackTrace/ErrorPrototype.js
   cmd: runChakra :baseline, "NoException", "ErrorPrototype.baseline-jsc", ["TrimStackTracePath.js"]
 - path: ChakraCore/test/StackTrace/ErrorDotStackAlreadyExists.js
-  cmd: runChakra :baseline, "NoException", "ErrorDotStackAlreadyExists.baseline-jsc", []
+  # Tests non-standard behavior.
+  cmd: runChakra :skip, "NoException", "ErrorDotStackAlreadyExists.baseline-jsc", []
 - path: ChakraCore/test/StackTrace/FunctionName.js
   cmd: runChakra :baseline, "NoException", "FunctionName.js.baseline-jsc", ["TrimStackTracePath.js"]
 - path: ChakraCore/test/StackTrace/x64StackWalk.js
@@ -1428,8 +1455,7 @@
 - path: ChakraCore/test/es5/defineProperty.js
   cmd: runChakra :baseline, "NoException", "defineProperty.baseline", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es5/defineIndexProperty.js
-  # Differences in Obj.seal, Obj.frozen and sort.
-  cmd: runChakra :skip, "NoException", "defineIndexProperty.baseline", []
+  cmd: runChakra :baseline, "NoException", "defineIndexProperty.baseline-jsc", []
 - path: ChakraCore/test/es5/enumerable.js
   cmd: runChakra :baseline, "NoException", "enumerable.baseline-jsc", []
 - path: ChakraCore/test/es5/hasItem.js
@@ -1562,7 +1588,7 @@
 - path: ChakraCore/test/es6/letconst_global_shadow_builtins.js
   cmd: runChakra :baseline, "NoException", "letconst_global_shadow_builtins.baseline-jsc", []
 - path: ChakraCore/test/es6/letconst_global_shadow_builtins_nonconfigurable.js
-  cmd: runChakra :baseline, "ReferenceError", "letconst_global_shadow_builtins_nonconfigurable.baseline-jsc", []
+  cmd: runChakra :baseline, "SyntaxError", "letconst_global_shadow_builtins_nonconfigurable.baseline-jsc", []
 - path: ChakraCore/test/es6/letconst_global_shadow_deleted.js
   cmd: runChakra :baseline, "NoException", "letconst_global_shadow_deleted.baseline", ["letconst_global_shadow_deleted_2.js"]
 - path: ChakraCore/test/es6/letconst_global_shadow_accessor.js
@@ -1705,7 +1731,7 @@
 - path: ChakraCore/test/es6/proxybug.js
   cmd: runChakra :pass, "NoException", "", []
 - path: ChakraCore/test/es6/proxyenumbug.js
-  cmd: runChakra :pass, "NoException", "", []
+  cmd: runChakra :skipDueToOutdatedOrBadTest, "NoException", "", []
 - path: ChakraCore/test/es6/proxy-issue884.js
   # Different behavior.
   cmd: runChakra :skip, "NoException", "proxy-issue884.baseline", []
@@ -1820,8 +1846,7 @@
   # Different behavior.
   cmd: runChakra :skip, "NoException", "proxytest9.baseline", []
 - path: ChakraCore/test/es6/ES6Function_bugs.js
-  # Different behavior with Object.seal().
-  cmd: runChakra :skip, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
+  cmd: runChakra :pass, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es6/OS_2700778.js
   cmd: runChakra :pass, "NoException", "", []
 - path: ChakraCore/test/es6/bug_OS_2184795.js
@@ -1844,7 +1869,7 @@
   # On line 254, JSC throws error during parsing while Chakra throws at runtime.
   cmd: runChakra :skip, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es6/globalLambdaNewTargetSyntaxError.js
-  cmd: runChakra :baseline, "ReferenceError", "globalLambdaNewTargetSyntaxError.baseline-jsc", []
+  cmd: runChakra :baseline, "SyntaxError", "globalLambdaNewTargetSyntaxError.baseline-jsc", []
 - path: ChakraCore/test/es6/globalNewTargetSyntaxError.js
   cmd: runChakra :baseline, "SyntaxError", "globalNewTargetSyntaxError.baseline-jsc", []
 - path: ChakraCore/test/es6/globalCatchNewTargetSyntaxError.js
@@ -2029,10 +2054,17 @@
   cmd: runChakra :baseline, "NoException", "objtypespec-add-4.baseline", []
 - path: ChakraCore/test/fieldopts/objtypespec-newobj.1.js
   cmd: runChakra :baseline, "NoException", "objtypespec-newobj.1.baseline", []
+  # FIXME: unskip the following test on Windows when https://bugs.webkit.org/show_bug.cgi?id=176538 is fixed.
 - path: ChakraCore/test/fieldopts/objtypespec-newobj.2.js
-  cmd: runChakra :baseline, "NoException", "objtypespec-newobj.2.baseline", []
+  cmd: |
+      if ($hostOS == "windows")
+          skip
+      else
+          runChakra :baseline, "NoException", "objtypespec-newobj.2.baseline", []
+      end
 - path: ChakraCore/test/fieldopts/objtypespec-newobj-invalidation.1.js
-  cmd: runChakra :baseline, "NoException", "objtypespec-newobj-invalidation.1.baseline", []
+  # FIXME: Re-enable once flakiness is resolved <webkit.org/b/175544>.
+  cmd: runChakra :skip, "NoException", "objtypespec-newobj-invalidation.1.baseline", []
 - path: ChakraCore/test/fieldopts/objtypespec-newobj-invalidation.2.js
   # Different behavior when run on 32 bit JSC.
   cmd: runChakra :skip, "NoException", "objtypespec-newobj-invalidation.2.baseline", []

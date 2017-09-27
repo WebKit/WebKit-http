@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,8 +31,10 @@
 #include "HTMLNames.h"
 #include "JSCustomElementInterface.h"
 #include "JSDOMBinding.h"
-#include "JSDOMConvert.h"
-#include "JSDOMPromise.h"
+#include "JSDOMConvertSequences.h"
+#include "JSDOMConvertStrings.h"
+#include "JSDOMPromiseDeferred.h"
+#include <wtf/SetForScope.h>
 
 using namespace JSC;
 
@@ -57,18 +59,23 @@ static JSObject* getCustomElementCallback(ExecState& state, JSObject& prototype,
 static bool validateCustomElementNameAndThrowIfNeeded(ExecState& state, const AtomicString& name)
 {
     auto scope = DECLARE_THROW_SCOPE(state.vm());
-
     switch (Document::validateCustomElementName(name)) {
     case CustomElementNameValidationStatus::Valid:
         return true;
-    case CustomElementNameValidationStatus::ConflictsWithBuiltinNames:
-        throwSyntaxError(&state, scope, ASCIILiteral("Custom element name cannot be same as one of the builtin elements"));
+    case CustomElementNameValidationStatus::FirstCharacterIsNotLowercaseASCIILetter:
+        throwSyntaxError(&state, scope, ASCIILiteral("Custom element name must have a lowercase ASCII letter as its first character"));
         return false;
-    case CustomElementNameValidationStatus::NoHyphen:
+    case CustomElementNameValidationStatus::ContainsUppercaseASCIILetter:
+        throwSyntaxError(&state, scope, ASCIILiteral("Custom element name cannot contain an uppercase ASCII letter"));
+        return false;
+    case CustomElementNameValidationStatus::ContainsNoHyphen:
         throwSyntaxError(&state, scope, ASCIILiteral("Custom element name must contain a hyphen"));
         return false;
-    case CustomElementNameValidationStatus::ContainsUpperCase:
-        throwSyntaxError(&state, scope, ASCIILiteral("Custom element name cannot contain an upper case letter"));
+    case CustomElementNameValidationStatus::ContainsDisallowedCharacter:
+        throwSyntaxError(&state, scope, ASCIILiteral("Custom element name contains a character that is not allowed"));
+        return false;
+    case CustomElementNameValidationStatus::ConflictsWithStandardElementName:
+        throwSyntaxError(&state, scope, ASCIILiteral("Custom element name cannot be same as one of the standard elements"));
         return false;
     }
     ASSERT_NOT_REACHED();
@@ -101,7 +108,7 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
         throwNotSupportedError(state, scope, ASCIILiteral("Cannot define a custom element while defining another custom element"));
         return jsUndefined();
     }
-    TemporaryChange<bool> change(registry.elementDefinitionIsRunning(), true);
+    SetForScope<bool> change(registry.elementDefinitionIsRunning(), true);
 
     if (registry.findInterface(localName)) {
         throwNotSupportedError(state, scope, ASCIILiteral("Cannot define multiple custom elements with the same tag name"));
@@ -119,18 +126,21 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
         return throwTypeError(&state, scope, ASCIILiteral("Custom element constructor's prototype must be an object"));
     JSObject& prototypeObject = *asObject(prototypeValue);
 
-    QualifiedName name(nullAtom, localName, HTMLNames::xhtmlNamespaceURI);
+    QualifiedName name(nullAtom(), localName, HTMLNames::xhtmlNamespaceURI);
     auto elementInterface = JSCustomElementInterface::create(name, constructor, globalObject());
 
-    if (auto* connectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "connectedCallback")))
+    auto* connectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "connectedCallback"));
+    if (connectedCallback)
         elementInterface->setConnectedCallback(connectedCallback);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
-    if (auto* disconnectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "disconnectedCallback")))
+    auto* disconnectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "disconnectedCallback"));
+    if (disconnectedCallback)
         elementInterface->setDisconnectedCallback(disconnectedCallback);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
-    if (auto* adoptedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "adoptedCallback")))
+    auto* adoptedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "adoptedCallback"));
+    if (adoptedCallback)
         elementInterface->setAdoptedCallback(adoptedCallback);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
@@ -146,8 +156,18 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
         }
     }
 
-    PrivateName uniquePrivateName;
-    globalObject()->putDirect(vm, uniquePrivateName, constructor);
+    auto addToGlobalObjectWithPrivateName = [&] (JSObject* objectToAdd) {
+        if (objectToAdd) {
+            PrivateName uniquePrivateName;
+            globalObject()->putDirect(vm, uniquePrivateName, objectToAdd);
+        }
+    };
+
+    addToGlobalObjectWithPrivateName(constructor);
+    addToGlobalObjectWithPrivateName(connectedCallback);
+    addToGlobalObjectWithPrivateName(disconnectedCallback);
+    addToGlobalObjectWithPrivateName(adoptedCallback);
+    addToGlobalObjectWithPrivateName(attributeChangedCallback);
 
     registry.addElementDefinition(WTFMove(elementInterface));
 
@@ -166,12 +186,12 @@ static JSValue whenDefinedPromise(ExecState& state, JSDOMGlobalObject& globalObj
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     if (!validateCustomElementNameAndThrowIfNeeded(state, localName)) {
-        ASSERT(scope.exception());
+        EXCEPTION_ASSERT(scope.exception());
         return jsUndefined();
     }
 
     if (registry.findInterface(localName)) {
-        DeferredPromise::create(globalObject, promiseDeferred)->resolve(nullptr);
+        DeferredPromise::create(globalObject, promiseDeferred)->resolve();
         return promiseDeferred.promise();
     }
 
@@ -193,7 +213,7 @@ JSValue JSCustomElementRegistry::whenDefined(ExecState& state)
 
     if (UNLIKELY(scope.exception())) {
         rejectPromiseWithExceptionIfAny(state, *globalObject(), *promiseDeferred);
-        ASSERT(!scope.exception());
+        scope.assertNoException();
         return promiseDeferred->promise();
     }
 

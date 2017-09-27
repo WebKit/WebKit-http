@@ -27,7 +27,7 @@
 #include "config.h"
 #include "CSSSelectorList.h"
 
-#include "CSSParserValues.h"
+#include "CSSParserSelector.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -171,9 +171,9 @@ class SelectorNeedsNamespaceResolutionFunctor {
 public:
     bool operator()(const CSSSelector* selector)
     {
-        if (selector->match() == CSSSelector::Tag && !selector->tagQName().prefix().isEmpty() && selector->tagQName().prefix() != starAtom)
+        if (selector->match() == CSSSelector::Tag && !selector->tagQName().prefix().isEmpty() && selector->tagQName().prefix() != starAtom())
             return true;
-        if (selector->isAttributeSelector() && !selector->attribute().prefix().isEmpty() && selector->attribute().prefix() != starAtom)
+        if (selector->isAttributeSelector() && !selector->attribute().prefix().isEmpty() && selector->attribute().prefix() != starAtom())
             return true;
         return false;
     }

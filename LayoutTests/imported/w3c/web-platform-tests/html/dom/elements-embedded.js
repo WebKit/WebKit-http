@@ -1,5 +1,5 @@
-// Up-to-date as of 2013-04-06.
 var embeddedElements = {
+  picture: {},
   img: {
     // Conforming
     alt: "string",
@@ -10,6 +10,7 @@ var embeddedElements = {
     isMap: "boolean",
     width: {type: "unsigned long", customGetter: true},
     height: {type: "unsigned long", customGetter: true},
+    referrerPolicy: {type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"]},
 
     // Obsolete
     name: "string",
@@ -27,8 +28,11 @@ var embeddedElements = {
     name: "string",
     sandbox: "settable tokenlist",
     allowFullscreen: "boolean",
+    allowUserMedia: "boolean",
+    allowPaymentRequest: "boolean",
     width: "string",
     height: "string",
+    referrerPolicy: {type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"]},
 
     // Obsolete
     align: "string",
@@ -88,7 +92,6 @@ var embeddedElements = {
     preload: {type: "enum", keywords: ["none", "metadata", "auto"], nonCanon: {"": "auto"}, defaultVal: null},
     autoplay: "boolean",
     loop: "boolean",
-    mediaGroup: "string",
     controls: "boolean",
     defaultMuted: {type: "boolean", domAttrName: "muted"},
 
@@ -104,13 +107,14 @@ var embeddedElements = {
     preload: {type: "enum", keywords: ["none", "metadata", "auto"], nonCanon: {"": "auto"}, defaultVal: null},
     autoplay: "boolean",
     loop: "boolean",
-    mediaGroup: "string",
     controls: "boolean",
     defaultMuted: {type: "boolean", domAttrName: "muted"}
   },
   source: {
     src: "url",
     type: "string",
+    srcset: "string",
+    sizes: "string",
     media: "string"
   },
   track: {
@@ -137,6 +141,7 @@ var embeddedElements = {
     ping: "string",
     rel: "string",
     relList: {type: "tokenlist", domAttrName: "rel"},
+    referrerPolicy: {type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"]},
 
     // HTMLHyperlinkElementUtils
     href: "url",

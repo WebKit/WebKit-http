@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple, Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,39 +26,21 @@
 #include "config.h"
 #include "SetIteratorPrototype.h"
 
-#include "IteratorOperations.h"
+#include "JSCBuiltins.h"
 #include "JSCInlines.h"
-#include "JSSetIterator.h"
 
 namespace JSC {
 
-const ClassInfo SetIteratorPrototype::s_info = { "Set Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(SetIteratorPrototype) };
-
-static EncodedJSValue JSC_HOST_CALL SetIteratorPrototypeFuncNext(ExecState*);
+const ClassInfo SetIteratorPrototype::s_info = { "Set Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(SetIteratorPrototype) };
 
 void SetIteratorPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     vm.prototypeMap.addPrototype(this);
 
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, SetIteratorPrototypeFuncNext, DontEnum, 0);
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Set Iterator"), DontEnum | ReadOnly);
-}
-
-EncodedJSValue JSC_HOST_CALL SetIteratorPrototypeFuncNext(CallFrame* callFrame)
-{
-    VM& vm = callFrame->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSValue result;
-    JSSetIterator* iterator = jsDynamicCast<JSSetIterator*>(callFrame->thisValue());
-    if (!iterator)
-        return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot call SetIterator.next() on a non-SetIterator object")));
-
-    if (iterator->next(callFrame, result))
-        return JSValue::encode(createIteratorResultObject(callFrame, result, false));
-    return JSValue::encode(createIteratorResultObject(callFrame, jsUndefined(), true));
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("next", setIteratorPrototypeNextCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Set Iterator"), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
 }
 
 }

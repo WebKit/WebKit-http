@@ -28,6 +28,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBKey.h"
+#include <set>
 #include <wtf/Variant.h>
 #include <wtf/text/StringHash.h>
 
@@ -79,12 +80,13 @@ public:
     WEBCORE_EXPORT int compare(const IDBKeyData& other) const;
 
     void setArrayValue(const Vector<IDBKeyData>&);
+    void setBinaryValue(const ThreadSafeDataBuffer&);
     void setStringValue(const String&);
     void setDateValue(double);
     WEBCORE_EXPORT void setNumberValue(double);
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static bool decode(Decoder&, IDBKeyData&);
+    template<class Decoder> static std::optional<IDBKeyData> decode(Decoder&);
     
 #if !LOG_DISABLED
     WEBCORE_EXPORT String loggingString() const;
@@ -172,6 +174,12 @@ public:
         return WTF::get<double>(m_value);
     }
 
+    const ThreadSafeDataBuffer& binary() const
+    {
+        ASSERT(m_type == KeyType::Binary);
+        return WTF::get<ThreadSafeDataBuffer>(m_value);
+    }
+
     const Vector<IDBKeyData>& array() const
     {
         ASSERT(m_type == KeyType::Array);
@@ -250,16 +258,17 @@ void IDBKeyData::encode(Encoder& encoder) const
 }
 
 template<class Decoder>
-bool IDBKeyData::decode(Decoder& decoder, IDBKeyData& keyData)
+std::optional<IDBKeyData> IDBKeyData::decode(Decoder& decoder)
 {
+    IDBKeyData keyData;
     if (!decoder.decode(keyData.m_isNull))
-        return false;
+        return std::nullopt;
 
     if (keyData.m_isNull)
-        return true;
+        return WTFMove(keyData);
 
     if (!decoder.decodeEnum(keyData.m_type))
-        return false;
+        return std::nullopt;
 
     switch (keyData.m_type) {
     case KeyType::Invalid:
@@ -269,28 +278,30 @@ bool IDBKeyData::decode(Decoder& decoder, IDBKeyData& keyData)
     case KeyType::Array:
         keyData.m_value = Vector<IDBKeyData>();
         if (!decoder.decode(WTF::get<Vector<IDBKeyData>>(keyData.m_value)))
-            return false;
+            return std::nullopt;
         break;
     case KeyType::Binary:
         keyData.m_value = ThreadSafeDataBuffer();
         if (!decoder.decode(WTF::get<ThreadSafeDataBuffer>(keyData.m_value)))
-            return false;
+            return std::nullopt;
         break;
     case KeyType::String:
         keyData.m_value = String();
         if (!decoder.decode(WTF::get<String>(keyData.m_value)))
-            return false;
+            return std::nullopt;
         break;
     case KeyType::Date:
     case KeyType::Number:
         keyData.m_value = 0.0;
         if (!decoder.decode(WTF::get<double>(keyData.m_value)))
-            return false;
+            return std::nullopt;
         break;
     }
 
-    return true;
+    return WTFMove(keyData);
 }
+
+using IDBKeyDataSet = std::set<IDBKeyData, std::less<IDBKeyData>, FastAllocator<IDBKeyData>>;
 
 } // namespace WebCore
 

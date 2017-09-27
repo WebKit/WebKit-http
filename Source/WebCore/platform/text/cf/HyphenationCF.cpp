@@ -26,7 +26,7 @@
 #include "config.h"
 #include "Hyphenation.h"
 
-#include "Language.h"
+#include <wtf/Language.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/TinyLRUCache.h>
 #include <wtf/text/StringView.h>
@@ -53,7 +53,7 @@ public:
     {
         // CF hyphenation functions use locale (regional formats) language, which doesn't necessarily match primary UI language,
         // so we can't use default locale here. See <rdar://problem/14897664>.
-        RetainPtr<CFLocaleRef> locale = adoptCF(CFLocaleCreate(kCFAllocatorDefault, WebCore::defaultLanguage().createCFString().get()));
+        RetainPtr<CFLocaleRef> locale = adoptCF(CFLocaleCreate(kCFAllocatorDefault, defaultLanguage().createCFString().get()));
         return CFStringIsHyphenationAvailableForLocale(locale.get()) ? locale : nullptr;
     }
 
@@ -76,10 +76,9 @@ bool canHyphenate(const AtomicString& localeIdentifier)
 size_t lastHyphenLocation(StringView text, size_t beforeIndex, const AtomicString& localeIdentifier)
 {
     RetainPtr<CFLocaleRef> locale = TinyLRUCachePolicy<AtomicString, RetainPtr<CFLocaleRef>>::cache().get(localeIdentifier);
-    ASSERT(locale);
 
     CFOptionFlags searchAcrossWordBoundaries = 1;
-    CFIndex result = CFStringGetHyphenationLocationBeforeIndex(text.createCFStringWithoutCopying().get(), beforeIndex, CFRangeMake(0, text.length()), searchAcrossWordBoundaries, locale.get(), 0);
+    CFIndex result = CFStringGetHyphenationLocationBeforeIndex(text.createCFStringWithoutCopying().get(), beforeIndex, CFRangeMake(0, text.length()), searchAcrossWordBoundaries, locale.get(), nullptr);
     return result == kCFNotFound ? 0 : result;
 }
 

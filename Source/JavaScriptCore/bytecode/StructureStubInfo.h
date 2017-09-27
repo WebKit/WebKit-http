@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,11 +25,11 @@
 
 #pragma once
 
+#include "CodeBlock.h"
 #include "CodeOrigin.h"
 #include "Instruction.h"
 #include "JITStubRoutine.h"
 #include "MacroAssembler.h"
-#include "ObjectPropertyConditionSet.h"
 #include "Options.h"
 #include "RegisterSet.h"
 #include "Structure.h"
@@ -46,7 +46,8 @@ class PolymorphicAccess;
 
 enum class AccessType : int8_t {
     Get,
-    GetPure,
+    GetWithThis,
+    TryGet,
     Put,
     In
 };
@@ -69,9 +70,8 @@ public:
     void initGetByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
     void initArrayLength();
     void initPutByIdReplace(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
-    void initStub(CodeBlock*, std::unique_ptr<PolymorphicAccess>);
 
-    AccessGenerationResult addAccessCase(CodeBlock*, const Identifier&, std::unique_ptr<AccessCase>);
+    AccessGenerationResult addAccessCase(const GCSafeConcurrentJSLocker&, CodeBlock*, const Identifier&, std::unique_ptr<AccessCase>);
 
     void reset(CodeBlock*);
 
@@ -85,7 +85,7 @@ public:
     // This returns true if it has marked everything that it will ever mark.
     bool propagateTransitions(SlotVisitor&);
         
-    ALWAYS_INLINE bool considerCaching(Structure* structure)
+    ALWAYS_INLINE bool considerCaching(CodeBlock* codeBlock, Structure* structure)
     {
         // We never cache non-cells.
         if (!structure)
@@ -137,7 +137,12 @@ public:
             // we don't already have a case buffered for. Note that if this returns true but the
             // bufferingCountdown is not zero then we will buffer the access case for later without
             // immediately generating code for it.
-            return bufferedStructures.add(structure);
+            bool isNewlyAdded = bufferedStructures.add(structure);
+            if (isNewlyAdded) {
+                VM& vm = *codeBlock->vm();
+                vm.heap.writeBarrier(codeBlock);
+            }
+            return isNewlyAdded;
         }
         countdown--;
         return false;
@@ -171,9 +176,11 @@ public:
 
         int8_t baseGPR;
         int8_t valueGPR;
+        int8_t thisGPR;
 #if USE(JSVALUE32_64)
         int8_t valueTagGPR;
         int8_t baseTagGPR;
+        int8_t thisTagGPR;
 #endif
     } patch;
 

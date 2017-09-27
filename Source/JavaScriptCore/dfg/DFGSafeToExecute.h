@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,12 +36,13 @@ class SafeToExecuteEdge {
 public:
     SafeToExecuteEdge(AbstractStateType& state)
         : m_state(state)
-        , m_result(true)
     {
     }
     
     void operator()(Node*, Edge edge)
     {
+        m_maySeeEmptyChild |= !!(m_state.forNode(edge).m_type & SpecEmpty);
+
         switch (edge.useKind()) {
         case UntypedUse:
         case Int32Use:
@@ -62,6 +63,8 @@ public:
         case DerivedArrayUse:
         case MapObjectUse:
         case SetObjectUse:
+        case WeakMapObjectUse:
+        case WeakSetObjectUse:
         case ObjectOrOtherUse:
         case StringIdentUse:
         case StringUse:
@@ -110,9 +113,11 @@ public:
     }
     
     bool result() const { return m_result; }
+    bool maySeeEmptyChild() const { return m_maySeeEmptyChild; }
 private:
     AbstractStateType& m_state;
-    bool m_result;
+    bool m_result { true };
+    bool m_maySeeEmptyChild { false };
 };
 
 // Determines if it's safe to execute a node within the given abstract state. This may
@@ -134,6 +139,24 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     if (!safeToExecuteEdge.result())
         return false;
 
+    if (safeToExecuteEdge.maySeeEmptyChild()) {
+        // We conservatively assume if the empty value flows into a node,
+        // it might not be able to handle it (e.g, crash). In general, the bytecode generator
+        // emits code in such a way that most node types don't need to worry about the empty value
+        // because they will never see it. However, code motion has to consider the empty
+        // value so it does not insert/move nodes to a place where they will crash. E.g, the
+        // type check hoisting phase needs to insert CheckStructureOrEmpty instead of CheckStructure
+        // for hoisted structure checks because it can not guarantee that a particular local is not
+        // the empty value.
+        switch (node->op()) {
+        case CheckNotEmpty:
+        case CheckStructureOrEmpty:
+            break;
+        default:
+            return false;
+        }
+    }
+
     // NOTE: This tends to lie when it comes to effectful nodes, because it knows that they aren't going to
     // get hoisted anyway.
 
@@ -143,6 +166,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Int52Constant:
     case LazyJSConstant:
     case Identity:
+    case IdentityWithProfile:
     case ToThis:
     case CreateThis:
     case GetCallee:
@@ -191,10 +215,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithFloor:
     case ArithCeil:
     case ArithTrunc:
-    case ArithSin:
-    case ArithCos:
-    case ArithTan:
-    case ArithLog:
+    case ArithUnary:
     case ValueAdd:
     case TryGetById:
     case DeleteById:
@@ -216,17 +237,20 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case DefineDataProperty:
     case DefineAccessorProperty:
     case CheckStructure:
+    case CheckStructureOrEmpty:
     case GetExecutable:
     case GetButterfly:
+    case GetButterflyWithoutCaging:
     case CallDOMGetter:
     case CallDOM:
-    case CheckDOM:
+    case CheckSubClass:
     case CheckArray:
     case Arrayify:
     case ArrayifyToStructure:
     case GetScope:
     case SkipScope:
     case GetGlobalObject:
+    case GetGlobalThis:
     case GetClosureVar:
     case PutClosureVar:
     case GetGlobalVar:
@@ -269,6 +293,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ProfileType:
     case ProfileControlFlow:
     case CheckTypeInfoFlags:
+    case ParseInt:
     case OverridesHasInstance:
     case InstanceOf:
     case InstanceOfCustom:
@@ -287,6 +312,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ToPrimitive:
     case ToString:
     case ToNumber:
+    case NumberToStringWithRadix:
+    case NumberToStringWithValidRadixConstant:
     case SetFunctionName:
     case StrCat:
     case CallStringConstructor:
@@ -294,6 +321,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case MakeRope:
     case In:
     case HasOwnProperty:
+    case PushWithScope:
     case CreateActivation:
     case CreateDirectArguments:
     case CreateScopedArguments:
@@ -303,9 +331,12 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutToArguments:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncGeneratorFunction:
+    case NewAsyncFunction:
     case Jump:
     case Branch:
     case Switch:
+    case EntrySwitch:
     case Return:
     case TailCall:
     case DirectTailCall:
@@ -315,13 +346,14 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ThrowStaticError:
     case CountExecution:
     case ForceOSRExit:
-    case CheckWatchdogTimer:
+    case CheckTraps:
     case LogShadowChickenPrologue:
     case LogShadowChickenTail:
     case StringFromCharCode:
     case NewTypedArray:
     case Unreachable:
     case ExtractOSREntryLocal:
+    case ExtractCatchLocal:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
@@ -351,6 +383,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:
@@ -358,6 +392,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case MaterializeCreateActivation:
     case PhantomDirectArguments:
     case PhantomCreateRest:
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
@@ -370,13 +406,36 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case RecordRegExpCachedResult:
     case GetDynamicVar:
     case PutDynamicVar:
+    case ResolveScopeForHoistingFuncDeclInEval:
     case ResolveScope:
     case MapHash:
     case ToLowerCase:
     case GetMapBucket:
-    case LoadFromJSMapBucket:
-    case IsNonEmptyMapBucket:
+    case GetMapBucketHead:
+    case GetMapBucketNext:
+    case LoadKeyFromMapBucket:
+    case LoadValueFromMapBucket:
+    case WeakMapGet:
+    case AtomicsAdd:
+    case AtomicsAnd:
+    case AtomicsCompareExchange:
+    case AtomicsExchange:
+    case AtomicsLoad:
+    case AtomicsOr:
+    case AtomicsStore:
+    case AtomicsSub:
+    case AtomicsXor:
+    case AtomicsIsLockFree:
+    case InitializeEntrypointArguments:
         return true;
+
+    case ArraySlice:
+    case ArrayIndexOf: {
+        // You could plausibly move this code around as long as you proved the
+        // incoming array base structure is an original array at the hoisted location.
+        // Instead of doing that extra work, we just conservatively return false.
+        return false;
+    }
 
     case BottomValue:
         // If in doubt, assume that this isn't safe to execute, just because we have no way of
@@ -385,6 +444,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
 
     case StoreBarrier:
     case FencedStoreBarrier:
+    case PutStructure:
+    case NukeStructureAndSetButterfly:
         // We conservatively assume that these cannot be put anywhere, which forces the compiler to
         // keep them exactly where they were. This is sort of overkill since the clobberize effects
         // already force these things to be ordered precisely. I'm just not confident enough in my
@@ -394,6 +455,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetByVal:
     case GetIndexedPropertyStorage:
     case GetArrayLength:
+    case GetVectorLength:
     case ArrayPush:
     case ArrayPop:
     case StringCharAt:
@@ -409,11 +471,10 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
         return node->arrayMode().modeForPut().alreadyChecked(
             graph, node, state.forNode(graph.varArgChild(node, 0)));
 
-    case PutStructure:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
         return state.forNode(node->child1()).m_structure.isSubsetOf(
-            StructureSet(node->transition()->previous));
+            RegisteredStructureSet(node->transition()->previous));
         
     case GetByOffset:
     case GetGetterSetterByOffset:
@@ -421,7 +482,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
         PropertyOffset offset = node->storageAccessData().offset;
 
         if (state.structureClobberState() == StructuresAreWatched) {
-            if (JSObject* knownBase = node->child1()->dynamicCastConstant<JSObject*>()) {
+            if (JSObject* knownBase = node->child1()->dynamicCastConstant<JSObject*>(graph.m_vm)) {
                 if (graph.isSafeToLoad(knownBase, offset))
                     return true;
             }

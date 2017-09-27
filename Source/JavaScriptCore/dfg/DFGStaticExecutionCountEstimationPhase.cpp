@@ -45,7 +45,7 @@ public:
     
     bool run()
     {
-        m_graph.ensureNaturalLoops();
+        m_graph.ensureCPSNaturalLoops();
         
         // Estimate basic block execution counts based on loop depth.
         for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
@@ -53,7 +53,7 @@ public:
             if (!block)
                 continue;
 
-            block->executionCount = pow(10, m_graph.m_naturalLoops->loopDepth(block));
+            block->executionCount = pow(10, m_graph.m_cpsNaturalLoops->loopDepth(block));
         }
         
         // Estimate branch weights based on execution counts. This isn't quite correct. It'll
@@ -80,7 +80,12 @@ public:
                 applyCounts(data->fallThrough);
                 break;
             }
-                
+            
+            case EntrySwitch: {
+                DFG_CRASH(m_graph, terminal, "Unexpected EntrySwitch in CPS form.");
+                break;
+            }
+
             default:
                 break;
             }

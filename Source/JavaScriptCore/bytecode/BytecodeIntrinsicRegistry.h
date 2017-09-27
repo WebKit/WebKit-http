@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@ class Identifier;
     macro(argument) \
     macro(argumentCount) \
     macro(assert) \
+    macro(idWithProfile) \
     macro(isObject) \
     macro(isJSArray) \
     macro(isProxyObject) \
@@ -57,6 +58,7 @@ class Identifier;
     macro(toNumber) \
     macro(toString) \
     macro(newArrayWithSize) \
+    macro(defineEnumerableWritableConfigurableDataProperty) \
 
 #define JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
     macro(undefined) \
@@ -64,6 +66,7 @@ class Identifier;
     macro(iterationKindKey) \
     macro(iterationKindValue) \
     macro(iterationKindKeyValue) \
+    macro(MAX_ARRAY_INDEX) \
     macro(MAX_STRING_LENGTH) \
     macro(MAX_SAFE_INTEGER) \
     macro(ModuleFetch) \
@@ -72,15 +75,26 @@ class Identifier;
     macro(ModuleSatisfy) \
     macro(ModuleLink) \
     macro(ModuleReady) \
+    macro(promiseRejectionReject) \
+    macro(promiseRejectionHandle) \
     macro(promiseStatePending) \
     macro(promiseStateFulfilled) \
     macro(promiseStateRejected) \
+    macro(sentinelMapBucket) \
+    macro(sentinelSetBucket) \
     macro(GeneratorResumeModeNormal) \
     macro(GeneratorResumeModeThrow) \
     macro(GeneratorResumeModeReturn) \
     macro(GeneratorStateCompleted) \
     macro(GeneratorStateExecuting) \
-
+    macro(AsyncGeneratorStateCompleted) \
+    macro(AsyncGeneratorStateExecuting) \
+    macro(AsyncGeneratorStateAwaitingReturn) \
+    macro(AsyncGeneratorStateSuspendedStart) \
+    macro(AsyncGeneratorStateSuspendedYield) \
+    macro(AsyncGeneratorSuspendReasonYield) \
+    macro(AsyncGeneratorSuspendReasonAwait) \
+    macro(AsyncGeneratorSuspendReasonNone) \
 
 class BytecodeIntrinsicRegistry {
     WTF_MAKE_NONCOPYABLE(BytecodeIntrinsicRegistry);

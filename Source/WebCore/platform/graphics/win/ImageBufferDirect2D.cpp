@@ -215,7 +215,7 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& des
     }
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     if (context().isAcceleratedContext())
         flushContext();
@@ -223,11 +223,14 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& r
     IntRect srcRect = rect;
     if (coordinateSystem == LogicalCoordinateSystem)
         srcRect.scale(m_resolutionScale);
+
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = srcRect.size();
 
     return m_data.getData(srcRect, internalSize(), context().isAcceleratedContext(), true, 1);
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     if (context().isAcceleratedContext())
         flushContext();
@@ -235,6 +238,9 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& 
     IntRect srcRect = rect;
     if (coordinateSystem == LogicalCoordinateSystem)
         srcRect.scale(m_resolutionScale);
+
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = srcRect.size();
 
     return m_data.getData(srcRect, internalSize(), context().isAcceleratedContext(), false, 1);
 }
@@ -254,10 +260,16 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
     m_data.putData(source, scaledSourceSize, scaledSourceRect, destPoint, internalSize(), context().isAcceleratedContext(), multiplied == Unmultiplied, 1);
 }
 
-String ImageBuffer::toDataURL(const String&, Optional<double>, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String&, std::optional<double>, CoordinateSystem) const
 {
     notImplemented();
     return ASCIILiteral("data:,");
+}
+
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
+{
+    notImplemented();
+    return { };
 }
 
 String ImageDataToDataURL(const ImageData& source, const String& mimeType, const double* quality)

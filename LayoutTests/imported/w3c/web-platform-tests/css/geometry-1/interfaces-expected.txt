@@ -1,0 +1,4 @@
+CONSOLE MESSAGE: line 7: TypeError: null is not an object (evaluating 'document.getElementById('log').getClientRects')
+
+FAIL Geometry APIs interface IDL tests TypeError: null is not an object (evaluating 'document.getElementById('log').getClientRects')
+

@@ -500,10 +500,10 @@ static JSObjectRef objCCallbackFunctionCallAsConstructor(JSContextRef callerCont
         *exception = toRef(JSC::createTypeError(toJS(contextRef), ASCIILiteral("Objective-C blocks called as constructors must return an object.")));
         return nullptr;
     }
-    return (JSObjectRef)result;
+    return const_cast<JSObjectRef>(result);
 }
 
-const JSC::ClassInfo ObjCCallbackFunction::s_info = { "CallbackFunction", &Base::s_info, 0, CREATE_METHOD_TABLE(ObjCCallbackFunction) };
+const JSC::ClassInfo ObjCCallbackFunction::s_info = { "CallbackFunction", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ObjCCallbackFunction) };
 
 ObjCCallbackFunction::ObjCCallbackFunction(JSC::VM& vm, JSC::Structure* structure, JSObjectCallAsFunctionCallback functionCallback, JSObjectCallAsConstructorCallback constructCallback, std::unique_ptr<ObjCCallbackFunctionImpl> impl)
     : Base(vm, structure)
@@ -523,7 +523,7 @@ ObjCCallbackFunction* ObjCCallbackFunction::create(JSC::VM& vm, JSC::JSGlobalObj
 
 void ObjCCallbackFunction::destroy(JSCell* cell)
 {
-    ObjCCallbackFunction& function = *jsCast<ObjCCallbackFunction*>(cell);
+    ObjCCallbackFunction& function = *static_cast<ObjCCallbackFunction*>(cell);
     function.impl()->destroy(*Heap::heap(cell));
     function.~ObjCCallbackFunction();
 }
@@ -675,10 +675,11 @@ static JSObjectRef objCCallbackFunctionForInvocation(JSContext *context, NSInvoc
     }
 
     JSC::ExecState* exec = toJS([context JSGlobalContextRef]);
-    JSC::JSLockHolder locker(exec);
+    JSC::VM& vm = exec->vm();
+    JSC::JSLockHolder locker(vm);
     auto impl = std::make_unique<JSC::ObjCCallbackFunctionImpl>(invocation, type, instanceClass, WTFMove(arguments), WTFMove(result));
     const String& name = impl->name();
-    return toRef(JSC::ObjCCallbackFunction::create(exec->vm(), exec->lexicalGlobalObject(), name, WTFMove(impl)));
+    return toRef(JSC::ObjCCallbackFunction::create(vm, exec->lexicalGlobalObject(), name, WTFMove(impl)));
 }
 
 JSObjectRef objCCallbackFunctionForInit(JSContext *context, Class cls, Protocol *protocol, SEL sel, const char* types)
@@ -715,9 +716,9 @@ JSObjectRef objCCallbackFunctionForBlock(JSContext *context, id target)
     return objCCallbackFunctionForInvocation(context, invocation, CallbackBlock, nil, signature);
 }
 
-id tryUnwrapConstructor(JSObjectRef object)
+id tryUnwrapConstructor(JSC::VM* vm, JSObjectRef object)
 {
-    if (!toJS(object)->inherits(JSC::ObjCCallbackFunction::info()))
+    if (!toJS(object)->inherits(*vm, JSC::ObjCCallbackFunction::info()))
         return nil;
     JSC::ObjCCallbackFunctionImpl* impl = static_cast<JSC::ObjCCallbackFunction*>(toJS(object))->impl();
     if (!impl->isConstructible())

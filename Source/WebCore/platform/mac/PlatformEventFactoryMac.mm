@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,14 +28,18 @@
 
 #import "KeyEventCocoa.h"
 #import "Logging.h"
-#import "NSMenuSPI.h"
 #import "PlatformScreen.h"
 #import "Scrollbar.h"
 #import "WebCoreSystemInterface.h"
 #import "WindowsKeyboardCodes.h"
+#import <HIToolbox/CarbonEvents.h>
 #import <HIToolbox/Events.h>
 #import <mach/mach_time.h>
+#import <pal/spi/mac/HIToolboxSPI.h>
+#import <pal/spi/mac/NSEventSPI.h>
+#import <pal/spi/mac/NSMenuSPI.h>
 #import <wtf/ASCIICType.h>
+#import <wtf/WallTime.h>
 
 namespace WebCore {
 
@@ -614,9 +618,9 @@ static CFTimeInterval cachedStartupTimeIntervalSince1970()
     return systemStartupTime;
 }
 
-double eventTimeStampSince1970(NSEvent* event)
+WallTime eventTimeStampSince1970(NSEvent* event)
 {
-    return static_cast<double>(cachedStartupTimeIntervalSince1970() + [event timestamp]);
+    return WallTime::fromRawSeconds(static_cast<double>(cachedStartupTimeIntervalSince1970() + [event timestamp]));
 }
 
 static inline bool isKeyUpEvent(NSEvent *event)
@@ -671,18 +675,42 @@ static inline OptionSet<PlatformEvent::Modifier> modifiersForEvent(NSEvent *even
 
 static int typeForEvent(NSEvent *event)
 {
-    if ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)])
-        return static_cast<int>([NSMenu menuTypeForEvent:event]);
-
-    if (mouseButtonForEvent(event) == RightButton)
-        return static_cast<int>(NSMenuTypeContextMenu);
-
-    if (mouseButtonForEvent(event) == LeftButton && modifiersForEvent(event).contains(PlatformEvent::Modifier::CtrlKey))
-        return static_cast<int>(NSMenuTypeContextMenu);
-
-    return static_cast<int>(NSMenuTypeNone);
+    return static_cast<int>([NSMenu menuTypeForEvent:event]);
 }
+
+void getWheelEventDeltas(NSEvent *event, float& deltaX, float& deltaY, BOOL& continuous)
+{
+    ASSERT(event);
+    if (event.hasPreciseScrollingDeltas) {
+        deltaX = event.scrollingDeltaX;
+        deltaY = event.scrollingDeltaY;
+        continuous = YES;
+    } else {
+        deltaX = event.deltaX;
+        deltaY = event.deltaY;
+        continuous = NO;
+    }
+}
+
+UInt8 keyCharForEvent(NSEvent *event)
+{
+    EventRef eventRef = (EventRef)[event _eventRef];
+    if (!eventRef)
+        return 0;
+
+    ByteCount keyCharCount = 0;
+    if (GetEventParameter(eventRef, kEventParamKeyMacCharCodes, typeChar, 0, 0, &keyCharCount, 0) != noErr)
+        return 0;
+    if (keyCharCount != 1)
+        return 0;
+
+    UInt8 keyChar = 0;
+    if (GetEventParameter(eventRef, kEventParamKeyMacCharCodes, typeChar, 0, sizeof(keyChar), &keyCharCount, &keyChar) != noErr)
+        return 0;
     
+    return keyChar;
+}
+
 class PlatformMouseEventBuilder : public PlatformMouseEvent {
 public:
     PlatformMouseEventBuilder(NSEvent *event, NSEvent *correspondingPressureEvent, NSView *windowView)
@@ -714,6 +742,9 @@ public:
         m_globalPosition = IntPoint(globalPointForEvent(event));
         m_button = mouseButtonForEvent(event);
         m_clickCount = clickCountForEvent(event);
+#if ENABLE(POINTER_LOCK)
+        m_movementDelta = IntPoint(event.deltaX, event.deltaY);
+#endif
 
         m_force = 0;
 #if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
@@ -750,7 +781,7 @@ public:
         m_granularity = ScrollByPixelWheelEvent;
 
         BOOL continuous;
-        wkGetWheelEventDeltas(event, &m_deltaX, &m_deltaY, &continuous);
+        getWheelEventDeltas(event, m_deltaX, m_deltaY, continuous);
         if (continuous) {
             m_wheelTicksX = m_deltaX / static_cast<float>(Scrollbar::pixelsPerLineStep());
             m_wheelTicksY = m_deltaY / static_cast<float>(Scrollbar::pixelsPerLineStep());

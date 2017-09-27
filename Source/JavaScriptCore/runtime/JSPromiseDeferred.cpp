@@ -33,10 +33,11 @@
 #include "JSObjectInlines.h"
 #include "JSPromise.h"
 #include "JSPromiseConstructor.h"
+#include "PromiseDeferredTimer.h"
 
 namespace JSC {
 
-const ClassInfo JSPromiseDeferred::s_info = { "JSPromiseDeferred", 0, 0, CREATE_METHOD_TABLE(JSPromiseDeferred) };
+const ClassInfo JSPromiseDeferred::s_info = { "JSPromiseDeferred", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(JSPromiseDeferred) };
 
 JSValue newPromiseCapability(ExecState* exec, JSGlobalObject* globalObject, JSPromiseConstructor* promiseConstructor)
 {
@@ -60,9 +61,12 @@ JSPromiseDeferred* JSPromiseDeferred::create(ExecState* exec, JSGlobalObject* gl
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     JSValue promise = deferred.get(exec, vm.propertyNames->builtinNames().promisePrivateName());
-    ASSERT(promise.inherits(JSPromise::info()));
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    ASSERT(promise.inherits(vm, JSPromise::info()));
     JSValue resolve = deferred.get(exec, vm.propertyNames->builtinNames().resolvePrivateName());
+    RETURN_IF_EXCEPTION(scope, nullptr);
     JSValue reject = deferred.get(exec, vm.propertyNames->builtinNames().rejectPrivateName());
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     return JSPromiseDeferred::create(vm, jsCast<JSPromise*>(promise), resolve, reject);
 }
@@ -99,11 +103,20 @@ static inline void callFunction(ExecState* exec, JSValue function, JSValue value
 void JSPromiseDeferred::resolve(ExecState* exec, JSValue value)
 {
     callFunction(exec, m_resolve.get(), value);
+    bool wasPending = exec->vm().promiseDeferredTimer->cancelPendingPromise(this);
+    ASSERT_UNUSED(wasPending, wasPending == m_promiseIsAsyncPending);
 }
 
 void JSPromiseDeferred::reject(ExecState* exec, JSValue reason)
 {
     callFunction(exec, m_reject.get(), reason);
+    bool wasPending = exec->vm().promiseDeferredTimer->cancelPendingPromise(this);
+    ASSERT_UNUSED(wasPending, wasPending == m_promiseIsAsyncPending);
+}
+
+void JSPromiseDeferred::reject(ExecState* exec, Exception* reason)
+{
+    reject(exec, reason->value());
 }
 
 void JSPromiseDeferred::finishCreation(VM& vm, JSObject* promise, JSValue resolve, JSValue reject)
@@ -121,9 +134,9 @@ void JSPromiseDeferred::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_promise);
-    visitor.append(&thisObject->m_resolve);
-    visitor.append(&thisObject->m_reject);
+    visitor.append(thisObject->m_promise);
+    visitor.append(thisObject->m_resolve);
+    visitor.append(thisObject->m_reject);
 }
 
 } // namespace JSC

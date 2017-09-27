@@ -34,6 +34,7 @@ my $supplementalDependencyFile;
 my $windowConstructorsFile;
 my $workerGlobalScopeConstructorsFile;
 my $dedicatedWorkerGlobalScopeConstructorsFile;
+my $serviceWorkerGlobalScopeConstructorsFile;
 my $supplementalMakefileDeps;
 
 GetOptions('defines=s' => \$defines,
@@ -43,6 +44,7 @@ GetOptions('defines=s' => \$defines,
            'windowConstructorsFile=s' => \$windowConstructorsFile,
            'workerGlobalScopeConstructorsFile=s' => \$workerGlobalScopeConstructorsFile,
            'dedicatedWorkerGlobalScopeConstructorsFile=s' => \$dedicatedWorkerGlobalScopeConstructorsFile,
+           'serviceWorkerGlobalScopeConstructorsFile=s' => \$serviceWorkerGlobalScopeConstructorsFile,
            'supplementalMakefileDeps=s' => \$supplementalMakefileDeps);
 
 die('Must specify #define macros using --defines.') unless defined($defines);
@@ -50,12 +52,14 @@ die('Must specify an output file using --supplementalDependencyFile.') unless de
 die('Must specify an output file using --windowConstructorsFile.') unless defined($windowConstructorsFile);
 die('Must specify an output file using --workerGlobalScopeConstructorsFile.') unless defined($workerGlobalScopeConstructorsFile);
 die('Must specify an output file using --dedicatedWorkerGlobalScopeConstructorsFile.') unless defined($dedicatedWorkerGlobalScopeConstructorsFile);
+die('Must specify an output file using --serviceWorkerGlobalScopeConstructorsFile.') unless defined($serviceWorkerGlobalScopeConstructorsFile);
 die('Must specify the file listing all IDLs using --idlFilesList.') unless defined($idlFilesList);
 
 $supplementalDependencyFile = CygwinPathIfNeeded($supplementalDependencyFile);
 $windowConstructorsFile = CygwinPathIfNeeded($windowConstructorsFile);
 $workerGlobalScopeConstructorsFile = CygwinPathIfNeeded($workerGlobalScopeConstructorsFile);
 $dedicatedWorkerGlobalScopeConstructorsFile = CygwinPathIfNeeded($dedicatedWorkerGlobalScopeConstructorsFile);
+$serviceWorkerGlobalScopeConstructorsFile = CygwinPathIfNeeded($serviceWorkerGlobalScopeConstructorsFile);
 $supplementalMakefileDeps = CygwinPathIfNeeded($supplementalMakefileDeps);
 
 open FH, "< $idlFilesList" or die "Cannot open $idlFilesList\n";
@@ -74,6 +78,7 @@ my %supplementals;
 my $windowConstructorsCode = "";
 my $workerGlobalScopeConstructorsCode = "";
 my $dedicatedWorkerGlobalScopeConstructorsCode = "";
+my $serviceWorkerGlobalScopeConstructorsCode = "";
 
 # Get rid of duplicates in idlFiles array.
 my %idlFileHash = map { $_, 1 } @idlFiles;
@@ -127,7 +132,7 @@ foreach my $idlFile (sort keys %idlFileHash) {
             my $exposedAttribute = $extendedAttributes->{"Exposed"} || "Window";
             $exposedAttribute = substr($exposedAttribute, 1, -1) if substr($exposedAttribute, 0, 1) eq "(";
             my @globalContexts = split(",", $exposedAttribute);
-            my $attributeCode = GenerateConstructorAttribute($interfaceName, $extendedAttributes);
+            my ($attributeCode, $windowAliases) = GenerateConstructorAttributes($interfaceName, $extendedAttributes);
             foreach my $globalContext (@globalContexts) {
                 if ($globalContext eq "Window") {
                     $windowConstructorsCode .= $attributeCode;
@@ -135,10 +140,13 @@ foreach my $idlFile (sort keys %idlFileHash) {
                     $workerGlobalScopeConstructorsCode .= $attributeCode;
                 } elsif ($globalContext eq "DedicatedWorker") {
                     $dedicatedWorkerGlobalScopeConstructorsCode .= $attributeCode;
+                } elsif ($globalContext eq "ServiceWorker") {
+                    $serviceWorkerGlobalScopeConstructorsCode .= $attributeCode;
                 } else {
                     die "Unsupported global context '$globalContext' used in [Exposed] at $idlFile";
                 }
             }
+            $windowConstructorsCode .= $windowAliases if $windowAliases;
         }
     }
 }
@@ -147,6 +155,7 @@ foreach my $idlFile (sort keys %idlFileHash) {
 GeneratePartialInterface("DOMWindow", $windowConstructorsCode, $windowConstructorsFile);
 GeneratePartialInterface("WorkerGlobalScope", $workerGlobalScopeConstructorsCode, $workerGlobalScopeConstructorsFile);
 GeneratePartialInterface("DedicatedWorkerGlobalScope", $dedicatedWorkerGlobalScopeConstructorsCode, $dedicatedWorkerGlobalScopeConstructorsFile);
+GeneratePartialInterface("ServiceWorker", $serviceWorkerGlobalScopeConstructorsCode, $serviceWorkerGlobalScopeConstructorsFile);
 
 # Resolves partial interfaces and implements dependencies.
 foreach my $idlFile (sort keys %supplementalDependencies) {
@@ -238,7 +247,7 @@ sub GeneratePartialInterface
     $supplementalDependencies{$fullPath} = [$interfaceName] if $interfaceNameToIdlFile{$interfaceName};
 }
 
-sub GenerateConstructorAttribute
+sub GenerateConstructorAttributes
 {
     my $interfaceName = shift;
     my $extendedAttributes = shift;
@@ -246,7 +255,9 @@ sub GenerateConstructorAttribute
     my $code = "    ";
     my @extendedAttributesList;
     foreach my $attributeName (sort keys %{$extendedAttributes}) {
-      next unless ($attributeName eq "Conditional" || $attributeName eq "EnabledAtRuntime" || $attributeName eq "EnabledBySetting" || $attributeName eq "PrivateIdentifier" || $attributeName eq "PublicIdentifier");
+      next unless ($attributeName eq "Conditional" || $attributeName eq "EnabledAtRuntime" || $attributeName eq "EnabledForWorld"
+        || $attributeName eq "EnabledBySetting" || $attributeName eq "SecureContext" || $attributeName eq "PrivateIdentifier"
+        || $attributeName eq "PublicIdentifier");
       my $extendedAttribute = $attributeName;
       $extendedAttribute .= "=" . $extendedAttributes->{$attributeName} unless $extendedAttributes->{$attributeName} eq "VALUE_IS_MISSING";
       push(@extendedAttributesList, $extendedAttribute);
@@ -266,7 +277,20 @@ sub GenerateConstructorAttribute
         $code .= "[" . join(', ', @extendedAttributesList) . "] " if @extendedAttributesList;
         $code .= "attribute " . $originalInterfaceName . "NamedConstructor $constructorName;\n";
     }
-    return $code;
+    
+    my $windowAliasesCode;
+    if ($extendedAttributes->{"LegacyWindowAlias"}) {
+        my $attributeValue = $extendedAttributes->{"LegacyWindowAlias"};
+        $attributeValue = substr($attributeValue, 1, -1) if substr($attributeValue, 0, 1) eq "(";
+        my @windowAliases = split(",", $attributeValue);
+        foreach my $windowAlias (@windowAliases) {
+            $windowAliasesCode .= "    ";
+            $windowAliasesCode .= "[" . join(', ', @extendedAttributesList) . "] " if @extendedAttributesList;
+            $windowAliasesCode .= "attribute " . $originalInterfaceName . "Constructor $windowAlias; // Legacy Window alias.\n";
+        }
+    }
+    
+    return ($code, $windowAliasesCode);
 }
 
 sub getFileContents

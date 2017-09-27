@@ -22,16 +22,19 @@
 #include "GLContext.h"
 #include <wtf/ThreadSpecific.h>
 
-#if PLATFORM(WPE)
-#include "GLContextWPE.h"
-#include "PlatformDisplayWPE.h"
-#else
 #if USE(EGL)
 #include "GLContextEGL.h"
 #endif
+
+#if USE(LIBEPOXY)
+#include <epoxy/gl.h>
+#elif USE(OPENGL_ES_2)
+#define GL_GLEXT_PROTOTYPES 1
+#include <GLES2/gl2.h>
+#endif
+
 #if USE(GLX)
 #include "GLContextGLX.h"
-#endif
 #endif
 
 using WTF::ThreadSpecific;
@@ -46,7 +49,7 @@ public:
     GLContext* context() { return m_context; }
 
 private:
-    GLContext* m_context;
+    GLContext* m_context { nullptr };
 };
 
 ThreadSpecific<ThreadGlobalGLContext>* ThreadGlobalGLContext::staticGLContext;
@@ -60,7 +63,7 @@ inline ThreadGlobalGLContext* currentContext()
 
 static bool initializeOpenGLShimsIfNeeded()
 {
-#if USE(OPENGL_ES_2)
+#if USE(OPENGL_ES_2) || USE(LIBEPOXY)
     return true;
 #else
     static bool initialized = false;
@@ -78,14 +81,7 @@ std::unique_ptr<GLContext> GLContext::createContextForWindow(GLNativeWindowType 
     if (!initializeOpenGLShimsIfNeeded())
         return nullptr;
 
-#if PLATFORM(WPE)
-    UNUSED_PARAM(windowHandle);
-    UNUSED_PARAM(platformDisplay);
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr;
-#else
     PlatformDisplay& display = platformDisplay ? *platformDisplay : PlatformDisplay::sharedDisplay();
-
 #if PLATFORM(WAYLAND)
     if (display.type() == PlatformDisplay::Type::Wayland) {
         if (auto eglContext = GLContextEGL::createContext(windowHandle, display))
@@ -103,7 +99,6 @@ std::unique_ptr<GLContext> GLContext::createContextForWindow(GLNativeWindowType 
         return WTFMove(eglContext);
 #endif
     return nullptr;
-#endif
 }
 
 std::unique_ptr<GLContext> GLContext::createOffscreenContext(PlatformDisplay* platformDisplay)
@@ -111,13 +106,7 @@ std::unique_ptr<GLContext> GLContext::createOffscreenContext(PlatformDisplay* pl
     if (!initializeOpenGLShimsIfNeeded())
         return nullptr;
 
-#if PLATFORM(WPE)
-    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
-    RELEASE_ASSERT(platformDisplay == &PlatformDisplay::sharedDisplay());
-    return GLContextWPE::createOffscreenContext(PlatformDisplay::sharedDisplay());
-#else
     return createContextForWindow(0, platformDisplay ? platformDisplay : &PlatformDisplay::sharedDisplay());
-#endif
 }
 
 std::unique_ptr<GLContext> GLContext::createSharingContext(PlatformDisplay& display)
@@ -125,11 +114,6 @@ std::unique_ptr<GLContext> GLContext::createSharingContext(PlatformDisplay& disp
     if (!initializeOpenGLShimsIfNeeded())
         return nullptr;
 
-#if PLATFORM(WPE)
-    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
-    RELEASE_ASSERT(&display == &PlatformDisplay::sharedDisplay());
-    return GLContextWPE::createSharingContext(PlatformDisplay::sharedDisplay());
-#else
 #if USE(GLX)
     if (display.type() == PlatformDisplay::Type::X11) {
         if (auto glxContext = GLContextGLX::createSharingContext(display))
@@ -137,13 +121,12 @@ std::unique_ptr<GLContext> GLContext::createSharingContext(PlatformDisplay& disp
     }
 #endif
 
-#if USE(EGL) || PLATFORM(WAYLAND)
+#if USE(EGL) || PLATFORM(WAYLAND) || PLATFORM(WPE)
     if (auto eglContext = GLContextEGL::createSharingContext(display))
         return WTFMove(eglContext);
 #endif
 
     return nullptr;
-#endif
 }
 
 GLContext::GLContext(PlatformDisplay& display)
@@ -182,6 +165,32 @@ bool GLContext::isExtensionSupported(const char* extensionList, const char* exte
         extensionListPtr += extensionLen;
     }
     return false;
+}
+
+unsigned GLContext::version()
+{
+    if (!m_version) {
+        // Version string can start with the version number (all versions except GLES 1 and 2) or with
+        // "OpenGL". Different fields inside the version string are separated by spaces.
+        String versionString = String(reinterpret_cast<const char*>(::glGetString(GL_VERSION)));
+        Vector<String> versionStringComponents;
+        versionString.split(' ', versionStringComponents);
+
+        Vector<String> versionDigits;
+        if (versionStringComponents[0] == "OpenGL") {
+            // If the version string starts with "OpenGL" it can be GLES 1 or 2. In GLES1 version string starts
+            // with "OpenGL ES-<profile> major.minor" and in GLES2 with "OpenGL ES major.minor". Version is the
+            // third component in both cases.
+            versionStringComponents[2].split('.', versionDigits);
+        } else {
+            // Version is the first component. The version number is always "major.minor" or
+            // "major.minor.release". Ignore the release number.
+            versionStringComponents[0].split('.', versionDigits);
+        }
+
+        m_version = versionDigits[0].toUInt() * 100 + versionDigits[1].toUInt() * 10;
+    }
+    return m_version;
 }
 
 } // namespace WebCore

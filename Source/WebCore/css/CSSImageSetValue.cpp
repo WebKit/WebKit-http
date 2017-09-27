@@ -32,7 +32,6 @@
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "CachedResourceRequestInitiators.h"
-#include "CrossOriginAccessControl.h"
 #include "Document.h"
 #include "Page.h"
 #include <wtf/text/StringBuilder.h>
@@ -54,7 +53,7 @@ void CSSImageSetValue::fillImageSet()
     size_t i = 0;
     while (i < length) {
         CSSValue* imageValue = item(i);
-        String imageURL = downcast<CSSImageValue>(*imageValue).url();
+        URL imageURL = downcast<CSSImageValue>(*imageValue).url();
 
         ++i;
         ASSERT_WITH_SECURITY_IMPLICATION(i < length);
@@ -106,7 +105,7 @@ std::pair<CachedImage*, float> CSSImageSetValue::loadBestFitImage(CachedResource
         if (options.mode == FetchOptions::Mode::Cors)
             request.updateForAccessControl(*document);
 
-        m_cachedImage = loader.requestImage(WTFMove(request));
+        m_cachedImage = loader.requestImage(WTFMove(request)).valueOr(nullptr);
         m_bestFitImageScaleFactor = image.scaleFactor;
     }
     return { m_cachedImage.get(), m_bestFitImageScaleFactor };
@@ -152,22 +151,11 @@ String CSSImageSetValue::customCSSText() const
     return result.toString();
 }
 
-bool CSSImageSetValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSImageSetValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     if (!m_cachedImage)
         return false;
     return handler(*m_cachedImage);
-}
-
-CSSImageSetValue::CSSImageSetValue(const CSSImageSetValue& cloneFrom)
-    : CSSValueList(cloneFrom)
-{
-    // Non-CSSValueList data is not accessible through CSS OM, no need to clone.
-}
-
-Ref<CSSImageSetValue> CSSImageSetValue::cloneForCSSOM() const
-{
-    return adoptRef(*new CSSImageSetValue(*this));
 }
 
 } // namespace WebCore

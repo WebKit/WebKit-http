@@ -33,13 +33,14 @@
 #import "AudioSourceProviderClient.h"
 #import "CARingBuffer.h"
 #import "Logging.h"
-#import "MediaTimeAVFoundation.h"
 #import <AVFoundation/AVAssetTrack.h>
 #import <AVFoundation/AVAudioMix.h>
 #import <AVFoundation/AVMediaFormat.h>
 #import <AVFoundation/AVPlayerItem.h>
 #import <mutex>
 #import <objc/runtime.h>
+#import <pal/avfoundation/MediaTimeAVFoundation.h>
+#import <wtf/Lock.h>
 #import <wtf/MainThread.h>
 
 #if !LOG_DISABLED
@@ -70,6 +71,12 @@ namespace WebCore {
 
 static const double kRingBufferDuration = 1;
 
+struct AudioSourceProviderAVFObjC::TapStorage {
+    TapStorage(AudioSourceProviderAVFObjC* _this) : _this(_this) { }
+    AudioSourceProviderAVFObjC* _this;
+    Lock mutex;
+};
+
 RefPtr<AudioSourceProviderAVFObjC> AudioSourceProviderAVFObjC::create(AVPlayerItem *item)
 {
     if (!canLoadMTAudioProcessingTapCreate())
@@ -85,6 +92,11 @@ AudioSourceProviderAVFObjC::AudioSourceProviderAVFObjC(AVPlayerItem *item)
 AudioSourceProviderAVFObjC::~AudioSourceProviderAVFObjC()
 {
     setClient(nullptr);
+    if (m_tapStorage) {
+        std::lock_guard<Lock> lock(m_tapStorage->mutex);
+        m_tapStorage->_this = nullptr;
+        m_tapStorage = nullptr;
+    }
 }
 
 void AudioSourceProviderAVFObjC::provideInput(AudioBus* bus, size_t framesToProcess)
@@ -92,7 +104,12 @@ void AudioSourceProviderAVFObjC::provideInput(AudioBus* bus, size_t framesToProc
     // Protect access to m_ringBuffer by try_locking the mutex. If we failed
     // to aquire, a re-configure is underway, and m_ringBuffer is unsafe to access.
     // Emit silence.
-    std::unique_lock<Lock> lock(m_mutex, std::try_to_lock);
+    if (!m_tapStorage) {
+        bus->zero();
+        return;
+    }
+
+    std::unique_lock<Lock> lock(m_tapStorage->mutex, std::try_to_lock);
     if (!lock.owns_lock() || !m_ringBuffer) {
         bus->zero();
         return;
@@ -220,37 +237,57 @@ void AudioSourceProviderAVFObjC::createMix()
 
 void AudioSourceProviderAVFObjC::initCallback(MTAudioProcessingTapRef tap, void* clientInfo, void** tapStorageOut)
 {
+    ASSERT(tap);
     AudioSourceProviderAVFObjC* _this = static_cast<AudioSourceProviderAVFObjC*>(clientInfo);
     _this->m_tap = tap;
+    _this->m_tapStorage = new TapStorage(_this);
     _this->init(clientInfo, tapStorageOut);
+    *tapStorageOut = _this->m_tapStorage;
 }
 
 void AudioSourceProviderAVFObjC::finalizeCallback(MTAudioProcessingTapRef tap)
 {
     ASSERT(tap);
-    AudioSourceProviderAVFObjC* _this = static_cast<AudioSourceProviderAVFObjC*>(MTAudioProcessingTapGetStorage(tap));
-    _this->finalize();
+    TapStorage* tapStorage = static_cast<TapStorage*>(MTAudioProcessingTapGetStorage(tap));
+
+    std::lock_guard<Lock> lock(tapStorage->mutex);
+
+    if (tapStorage->_this)
+        tapStorage->_this->finalize();
+    delete tapStorage;
 }
 
 void AudioSourceProviderAVFObjC::prepareCallback(MTAudioProcessingTapRef tap, CMItemCount maxFrames, const AudioStreamBasicDescription *processingFormat)
 {
     ASSERT(tap);
-    AudioSourceProviderAVFObjC* _this = static_cast<AudioSourceProviderAVFObjC*>(MTAudioProcessingTapGetStorage(tap));
-    _this->prepare(maxFrames, processingFormat);
+    TapStorage* tapStorage = static_cast<TapStorage*>(MTAudioProcessingTapGetStorage(tap));
+
+    std::lock_guard<Lock> lock(tapStorage->mutex);
+
+    if (tapStorage->_this)
+        tapStorage->_this->prepare(maxFrames, processingFormat);
 }
 
 void AudioSourceProviderAVFObjC::unprepareCallback(MTAudioProcessingTapRef tap)
 {
     ASSERT(tap);
-    AudioSourceProviderAVFObjC* _this = static_cast<AudioSourceProviderAVFObjC*>(MTAudioProcessingTapGetStorage(tap));
-    _this->unprepare();
+    TapStorage* tapStorage = static_cast<TapStorage*>(MTAudioProcessingTapGetStorage(tap));
+
+    std::lock_guard<Lock> lock(tapStorage->mutex);
+
+    if (tapStorage->_this)
+        tapStorage->_this->unprepare();
 }
 
 void AudioSourceProviderAVFObjC::processCallback(MTAudioProcessingTapRef tap, CMItemCount numberFrames, MTAudioProcessingTapFlags flags, AudioBufferList *bufferListInOut, CMItemCount *numberFramesOut, MTAudioProcessingTapFlags *flagsOut)
 {
     ASSERT(tap);
-    AudioSourceProviderAVFObjC* _this = static_cast<AudioSourceProviderAVFObjC*>(MTAudioProcessingTapGetStorage(tap));
-    _this->process(numberFrames, flags, bufferListInOut, numberFramesOut, flagsOut);
+    TapStorage* tapStorage = static_cast<TapStorage*>(MTAudioProcessingTapGetStorage(tap));
+
+    std::lock_guard<Lock> lock(tapStorage->mutex);
+
+    if (tapStorage->_this)
+        tapStorage->_this->process(tap, numberFrames, flags, bufferListInOut, numberFramesOut, flagsOut);
 }
 
 void AudioSourceProviderAVFObjC::init(void* clientInfo, void** tapStorageOut)
@@ -262,34 +299,18 @@ void AudioSourceProviderAVFObjC::init(void* clientInfo, void** tapStorageOut)
 
 void AudioSourceProviderAVFObjC::finalize()
 {
-}
-
-static bool operator==(const AudioStreamBasicDescription& a, const AudioStreamBasicDescription& b)
-{
-    return a.mSampleRate == b.mSampleRate
-        && a.mFormatID == b.mFormatID
-        && a.mFormatFlags == b.mFormatFlags
-        && a.mBytesPerPacket == b.mBytesPerPacket
-        && a.mFramesPerPacket == b.mFramesPerPacket
-        && a.mBytesPerFrame == b.mBytesPerFrame
-        && a.mChannelsPerFrame == b.mChannelsPerFrame
-        && a.mBitsPerChannel == b.mBitsPerChannel;
-}
-
-static bool operator!=(const AudioStreamBasicDescription& a, const AudioStreamBasicDescription& b)
-{
-    return !(a == b);
+    if (m_tapStorage) {
+        m_tapStorage->_this = nullptr;
+        m_tapStorage = nullptr;
+    }
 }
 
 void AudioSourceProviderAVFObjC::prepare(CMItemCount maxFrames, const AudioStreamBasicDescription *processingFormat)
 {
     ASSERT(maxFrames >= 0);
 
-    std::lock_guard<Lock> lock(m_mutex);
-
     m_tapDescription = std::make_unique<AudioStreamBasicDescription>(*processingFormat);
     int numberOfChannels = processingFormat->mChannelsPerFrame;
-    size_t bytesPerFrame = processingFormat->mBytesPerFrame;
     double sampleRate = processingFormat->mSampleRate;
     ASSERT(sampleRate >= 0);
 
@@ -314,7 +335,7 @@ void AudioSourceProviderAVFObjC::prepare(CMItemCount maxFrames, const AudioStrea
     size_t capacity = std::max(static_cast<size_t>(2 * maxFrames), static_cast<size_t>(kRingBufferDuration * sampleRate));
 
     m_ringBuffer = std::make_unique<CARingBuffer>();
-    m_ringBuffer->allocate(numberOfChannels, bytesPerFrame, capacity);
+    m_ringBuffer->allocate(CAAudioStreamDescription(*processingFormat), capacity);
 
     // AudioBufferList is a variable-length struct, so create on the heap with a generic new() operator
     // with a custom size, and initialize the struct manually.
@@ -330,31 +351,29 @@ void AudioSourceProviderAVFObjC::prepare(CMItemCount maxFrames, const AudioStrea
 
 void AudioSourceProviderAVFObjC::unprepare()
 {
-    std::lock_guard<Lock> lock(m_mutex);
-
     m_tapDescription = nullptr;
     m_outputDescription = nullptr;
     m_ringBuffer = nullptr;
     m_list = nullptr;
 }
 
-void AudioSourceProviderAVFObjC::process(CMItemCount numberOfFrames, MTAudioProcessingTapFlags flags, AudioBufferList* bufferListInOut, CMItemCount* numberFramesOut, MTAudioProcessingTapFlags* flagsOut)
+void AudioSourceProviderAVFObjC::process(MTAudioProcessingTapRef tap, CMItemCount numberOfFrames, MTAudioProcessingTapFlags flags, AudioBufferList* bufferListInOut, CMItemCount* numberFramesOut, MTAudioProcessingTapFlags* flagsOut)
 {
     UNUSED_PARAM(flags);
-
+    
     CMItemCount itemCount = 0;
     CMTimeRange rangeOut;
-    OSStatus status = MTAudioProcessingTapGetSourceAudio(m_tap.get(), numberOfFrames, bufferListInOut, flagsOut, &rangeOut, &itemCount);
+    OSStatus status = MTAudioProcessingTapGetSourceAudio(tap, numberOfFrames, bufferListInOut, flagsOut, &rangeOut, &itemCount);
     if (status != noErr || !itemCount)
         return;
 
-    MediaTime rangeStart = toMediaTime(rangeOut.start);
-    MediaTime rangeDuration = toMediaTime(rangeOut.duration);
+    MediaTime rangeStart = PAL::toMediaTime(rangeOut.start);
+    MediaTime rangeDuration = PAL::toMediaTime(rangeOut.duration);
 
     if (rangeStart.isInvalid())
         return;
 
-    MediaTime currentTime = toMediaTime(CMTimebaseGetTime([m_avPlayerItem timebase]));
+    MediaTime currentTime = PAL::toMediaTime(CMTimebaseGetTime([m_avPlayerItem timebase]));
     if (currentTime.isInvalid())
         return;
 

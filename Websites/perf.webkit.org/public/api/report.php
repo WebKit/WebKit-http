@@ -1,7 +1,7 @@
 <?php
 
 require_once('../include/json-header.php');
-require_once('../include/manifest.php');
+require_once('../include/manifest-generator.php');
 require_once('../include/report-processor.php');
 
 function main($post_data) {
@@ -50,6 +50,6 @@ function main($post_data) {
     exit_with_success();
 }
 
-main($HTTP_RAW_POST_DATA);
+main(file_get_contents('php://input'));
 
 ?>

@@ -32,11 +32,17 @@
 #include "InbandTextTrackPrivateAVF.h"
 #include "MediaPlayerPrivate.h"
 #include "Timer.h"
-#include <functional>
+#include <pal/LoggerHelper.h>
+#include <wtf/Deque.h>
+#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/Lock.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
+
+namespace PAL {
+class Logger;
+}
 
 namespace WebCore {
 
@@ -45,6 +51,9 @@ class InbandTextTrackPrivateAVF;
 class GenericCueData;
 
 class MediaPlayerPrivateAVFoundation : public MediaPlayerPrivateInterface, public AVFInbandTrackParent
+#if !RELEASE_LOG_DISABLED
+    , private PAL::LoggerHelper
+#endif
 {
 public:
     virtual void repaint();
@@ -113,10 +122,10 @@ public:
         {
         }
 
-        Notification(std::function<void ()> function)
+        Notification(WTF::Function<void ()>&& function)
             : m_type(FunctionType)
             , m_finished(false)
-            , m_function(function)
+            , m_function(WTFMove(function))
         {
         }
         
@@ -124,16 +133,16 @@ public:
         bool isValid() { return m_type != None; }
         MediaTime time() { return m_time; }
         bool finished() { return m_finished; }
-        std::function<void ()>& function() { return m_function; }
+        WTF::Function<void ()>& function() { return m_function; }
         
     private:
         Type m_type;
         MediaTime m_time;
         bool m_finished;
-        std::function<void ()> m_function;
+        WTF::Function<void ()> m_function;
     };
 
-    void scheduleMainThreadNotification(Notification);
+    void scheduleMainThreadNotification(Notification&&);
     void scheduleMainThreadNotification(Notification::Type, const MediaTime& = MediaTime::zeroTime());
     void scheduleMainThreadNotification(Notification::Type, bool completed);
     void dispatchNotification();
@@ -143,11 +152,18 @@ public:
     static bool extractKeyURIKeyIDAndCertificateFromInitData(Uint8Array* initData, String& keyURI, String& keyID, RefPtr<Uint8Array>& certificate);
 #endif
 
+#if !RELEASE_LOG_DISABLED
+    const PAL::Logger& logger() const final { return m_logger.get(); }
+    const char* logClassName() const override { return "MediaPlayerPrivateAVFoundation"; }
+    const void* logIdentifier() const final { return reinterpret_cast<const void*>(m_logIdentifier); }
+    WTFLogChannel& logChannel() const final;
+#endif
+
 protected:
     explicit MediaPlayerPrivateAVFoundation(MediaPlayer*);
     virtual ~MediaPlayerPrivateAVFoundation();
 
-    WeakPtr<MediaPlayerPrivateAVFoundation> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<MediaPlayerPrivateAVFoundation> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
     // MediaPlayerPrivatePrivateInterface overrides.
     void load(const String& url) override;
@@ -198,6 +214,7 @@ protected:
     MediaPlayer::MovieLoadType movieLoadType() const override;
     void prepareForRendering() override;
 
+    bool supportsPictureInPicture() const override { return true; }
     bool supportsFullscreen() const override;
     bool supportsScanning() const override { return true; }
     unsigned long long fileSize() const override { return totalBytes(); }
@@ -295,6 +312,7 @@ protected:
     const String& assetURL() const { return m_assetURL; }
 
     MediaPlayer* player() { return m_player; }
+    const MediaPlayer* player() const { return m_player; }
 
     String engineDescription() const override { return "AVFoundation"; }
     long platformErrorCode() const override { return assetErrorCode(); }
@@ -315,9 +333,9 @@ private:
 
     WeakPtrFactory<MediaPlayerPrivateAVFoundation> m_weakPtrFactory;
 
-    std::function<void()> m_pendingSeek;
+    WTF::Function<void()> m_pendingSeek;
 
-    Vector<Notification> m_queuedNotifications;
+    Deque<Notification> m_queuedNotifications;
     mutable Lock m_queueMutex;
 
     mutable std::unique_ptr<PlatformTimeRanges> m_cachedLoadedTimeRanges;
@@ -327,6 +345,11 @@ private:
 
     String m_assetURL;
     MediaPlayer::Preload m_preload;
+
+#if !RELEASE_LOG_DISABLED
+    Ref<const PAL::Logger> m_logger;
+    const void* m_logIdentifier;
+#endif
 
     FloatSize m_cachedNaturalSize;
     mutable MediaTime m_cachedMaxTimeLoaded;

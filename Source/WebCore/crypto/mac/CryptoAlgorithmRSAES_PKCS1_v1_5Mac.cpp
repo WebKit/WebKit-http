@@ -33,34 +33,35 @@
 
 namespace WebCore {
 
-ExceptionOr<void> CryptoAlgorithmRSAES_PKCS1_v1_5::platformEncrypt(const CryptoKeyRSA& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
+static ExceptionOr<Vector<uint8_t>> encryptRSAES_PKCS1_v1_5(const PlatformRSAKey key, size_t keyLength, const Vector<uint8_t>& data)
 {
-    Vector<uint8_t> cipherText(1024);
+    Vector<uint8_t> cipherText(keyLength / 8); // Per Step 3.c of https://tools.ietf.org/html/rfc3447#section-7.2.1
     size_t cipherTextLength = cipherText.size();
-    CCCryptorStatus status = CCRSACryptorEncrypt(key.platformKey(), ccPKCS1Padding, data.first, data.second, cipherText.data(), &cipherTextLength, 0, 0, kCCDigestNone);
-    if (status) {
-        failureCallback();
-        return { };
-    }
+    if (CCRSACryptorEncrypt(key, ccPKCS1Padding, data.data(), data.size(), cipherText.data(), &cipherTextLength, 0, 0, kCCDigestNone))
+        return Exception { OperationError };
 
-    cipherText.resize(cipherTextLength);
-    callback(cipherText);
-    return { };
+    return WTFMove(cipherText);
 }
 
-ExceptionOr<void> CryptoAlgorithmRSAES_PKCS1_v1_5::platformDecrypt(const CryptoKeyRSA& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
+static ExceptionOr<Vector<uint8_t>> decryptRSAES_PKCS1_v1_5(const PlatformRSAKey key, size_t keyLength, const Vector<uint8_t>& data)
 {
-    Vector<uint8_t> plainText(1024);
+    Vector<uint8_t> plainText(keyLength / 8); // Per Step 1 of https://tools.ietf.org/html/rfc3447#section-7.2.1
     size_t plainTextLength = plainText.size();
-    CCCryptorStatus status = CCRSACryptorDecrypt(key.platformKey(), ccPKCS1Padding, data.first, data.second, plainText.data(), &plainTextLength, 0, 0, kCCDigestNone);
-    if (status) {
-        failureCallback();
-        return { };
-    }
+    if (CCRSACryptorDecrypt(key, ccPKCS1Padding, data.data(), data.size(), plainText.data(), &plainTextLength, 0, 0, kCCDigestNone))
+        return Exception { OperationError };
 
     plainText.resize(plainTextLength);
-    callback(plainText);
-    return { };
+    return WTFMove(plainText);
+}
+
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmRSAES_PKCS1_v1_5::platformEncrypt(const CryptoKeyRSA& key, const Vector<uint8_t>& plainText)
+{
+    return encryptRSAES_PKCS1_v1_5(key.platformKey(), key.keySizeInBits(), plainText);
+}
+
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmRSAES_PKCS1_v1_5::platformDecrypt(const CryptoKeyRSA& key, const Vector<uint8_t>& cipherText)
+{
+    return decryptRSAES_PKCS1_v1_5(key.platformKey(), key.keySizeInBits(), cipherText);
 }
 
 } // namespace WebCore

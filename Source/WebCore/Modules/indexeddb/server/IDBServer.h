@@ -98,12 +98,12 @@ public:
     void registerTransaction(UniqueIDBDatabaseTransaction&);
     void unregisterTransaction(UniqueIDBDatabaseTransaction&);
 
-    void closeUniqueIDBDatabase(UniqueIDBDatabase&);
+    std::unique_ptr<UniqueIDBDatabase> closeAndTakeUniqueIDBDatabase(UniqueIDBDatabase&);
 
     std::unique_ptr<IDBBackingStore> createBackingStore(const IDBDatabaseIdentifier&);
 
-    WEBCORE_EXPORT void closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::time_point, std::function<void ()> completionHandler);
-    WEBCORE_EXPORT void closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>&, std::function<void ()> completionHandler);
+    WEBCORE_EXPORT void closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::time_point, Function<void ()>&& completionHandler);
+    WEBCORE_EXPORT void closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>&, Function<void ()>&& completionHandler);
 
 private:
     IDBServer(IDBBackingStoreTemporaryFileHandler&);
@@ -118,14 +118,13 @@ private:
     void performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>&, uint64_t callbackID);
     void didPerformCloseAndDeleteDatabases(uint64_t callbackID);
 
-    static void databaseThreadEntry(void*);
     void databaseRunLoop();
     void handleTaskRepliesOnMainThread();
 
     HashMap<uint64_t, RefPtr<IDBConnectionToClient>> m_connectionMap;
-    HashMap<IDBDatabaseIdentifier, RefPtr<UniqueIDBDatabase>> m_uniqueIDBDatabaseMap;
+    HashMap<IDBDatabaseIdentifier, std::unique_ptr<UniqueIDBDatabase>> m_uniqueIDBDatabaseMap;
 
-    ThreadIdentifier m_threadID { 0 };
+    RefPtr<Thread> m_thread { nullptr };
     Lock m_databaseThreadCreationLock;
     Lock m_mainThreadReplyLock;
     bool m_mainThreadReplyScheduled { false };
@@ -136,7 +135,7 @@ private:
     HashMap<uint64_t, UniqueIDBDatabaseConnection*> m_databaseConnections;
     HashMap<IDBResourceIdentifier, UniqueIDBDatabaseTransaction*> m_transactions;
 
-    HashMap<uint64_t, std::function<void ()>> m_deleteDatabaseCompletionHandlers;
+    HashMap<uint64_t, Function<void ()>> m_deleteDatabaseCompletionHandlers;
 
     String m_databaseDirectoryPath;
     IDBBackingStoreTemporaryFileHandler& m_backingStoreTemporaryFileHandler;

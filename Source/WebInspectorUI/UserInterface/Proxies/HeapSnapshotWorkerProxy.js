@@ -23,7 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.HeapSnapshotWorkerProxy = class HeapSnapshotWorkerProxy extends WebInspector.Object
+// Events dispatched on this class: "HeapSnapshot.CollectionEvent"
+
+WI.HeapSnapshotWorkerProxy = class HeapSnapshotWorkerProxy extends WI.Object
 {
     constructor()
     {
@@ -35,7 +37,7 @@ WebInspector.HeapSnapshotWorkerProxy = class HeapSnapshotWorkerProxy extends Web
         this._nextCallId = 1;
         this._callbacks = new Map;
 
-        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
+        WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
     }
 
     // Static
@@ -101,7 +103,7 @@ WebInspector.HeapSnapshotWorkerProxy = class HeapSnapshotWorkerProxy extends Web
             return;
 
         this.clearSnapshots(() => {
-            WebInspector.HeapSnapshotProxy.invalidateSnapshotProxies();
+            WI.HeapSnapshotProxy.invalidateSnapshotProxies();
         });
     }
 

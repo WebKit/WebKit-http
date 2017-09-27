@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,13 @@
 #include "config.h"
 #include "VMEntryScope.h"
 
+#include "DisallowVMReentry.h"
 #include "Options.h"
 #include "SamplingProfiler.h"
 #include "VM.h"
 #include "Watchdog.h"
 #include <wtf/StackBounds.h>
+#include <wtf/SystemTracing.h>
 
 namespace JSC {
 
@@ -38,7 +40,8 @@ VMEntryScope::VMEntryScope(VM& vm, JSGlobalObject* globalObject)
     : m_vm(vm)
     , m_globalObject(globalObject)
 {
-    ASSERT(wtfThreadData().stack().isGrowingDownward());
+    ASSERT(!DisallowVMReentry::isInEffectOnCurrentThread());
+    ASSERT(Thread::current().stack().isGrowingDownward());
     if (!vm.entryScope) {
         vm.entryScope = this;
 
@@ -53,6 +56,7 @@ VMEntryScope::VMEntryScope(VM& vm, JSGlobalObject* globalObject)
         if (SamplingProfiler* samplingProfiler = vm.samplingProfiler())
             samplingProfiler->noticeVMEntry();
 #endif
+        TracePoint(VMEntryScopeStart);
     }
 
     vm.clearLastException();
@@ -67,6 +71,8 @@ VMEntryScope::~VMEntryScope()
 {
     if (m_vm.entryScope != this)
         return;
+
+    TracePoint(VMEntryScopeEnd);
 
     if (m_vm.watchdog())
         m_vm.watchdog()->exitedVM();

@@ -37,15 +37,11 @@ static inline SVGDocumentExtensions& svgExtensionsFromElement(SVGElement& elemen
 RenderSVGResourceContainer::RenderSVGResourceContainer(SVGElement& element, RenderStyle&& style)
     : RenderSVGHiddenContainer(element, WTFMove(style))
     , m_id(element.getIdAttribute())
-    , m_registered(false)
-    , m_isInvalidating(false)
 {
 }
 
 RenderSVGResourceContainer::~RenderSVGResourceContainer()
 {
-    if (m_registered)
-        svgExtensionsFromElement(element()).removeResource(m_id);
 }
 
 void RenderSVGResourceContainer::layout()
@@ -61,6 +57,12 @@ void RenderSVGResourceContainer::layout()
 void RenderSVGResourceContainer::willBeDestroyed()
 {
     SVGResourcesCache::resourceDestroyed(*this);
+
+    if (m_registered) {
+        svgExtensionsFromElement(element()).removeResource(m_id);
+        m_registered = false;
+    }
+
     RenderSVGHiddenContainer::willBeDestroyed();
 }
 
@@ -133,7 +135,7 @@ void RenderSVGResourceContainer::markClientForInvalidation(RenderObject& client,
         client.setNeedsBoundariesUpdate();
         break;
     case RepaintInvalidation:
-        if (!client.documentBeingDestroyed())
+        if (!client.renderTreeBeingDestroyed())
             client.repaint();
         break;
     case ParentOnlyInvalidation:

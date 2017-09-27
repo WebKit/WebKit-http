@@ -45,11 +45,6 @@ typedef struct _GdkEventKey GdkEventKey;
 #include "CompositionResults.h"
 #endif
 
-#if PLATFORM(EFL)
-typedef struct _Evas_Event_Key_Down Evas_Event_Key_Down;
-typedef struct _Evas_Event_Key_Up Evas_Event_Key_Up;
-#endif
-
 namespace WebCore {
 
     class PlatformKeyboardEvent : public PlatformEvent {
@@ -77,7 +72,7 @@ namespace WebCore {
 #if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
         const String& code,
 #endif
-        const String& keyIdentifier, int windowsVirtualKeyCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, OptionSet<Modifier> modifiers, double timestamp)
+        const String& keyIdentifier, int windowsVirtualKeyCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, OptionSet<Modifier> modifiers, WallTime timestamp)
             : PlatformEvent(type, modifiers, timestamp)
             , m_text(text)
             , m_unmodifiedText(unmodifiedText)
@@ -161,14 +156,12 @@ namespace WebCore {
         const CompositionResults& compositionResults() const { return m_compositionResults; }
 
         // Used by WebKit2
+        static String keyValueForGdkKeyCode(unsigned);
+        static String keyCodeForHardwareKeyCode(unsigned);
         static String keyIdentifierForGdkKeyCode(unsigned);
         static int windowsKeyCodeForGdkKeyCode(unsigned);
         static String singleCharacterString(unsigned);
-#endif
-
-#if PLATFORM(EFL)
-        explicit PlatformKeyboardEvent(const Evas_Event_Key_Down*);
-        explicit PlatformKeyboardEvent(const Evas_Event_Key_Up*);
+        static bool modifiersContainCapsLock(unsigned);
 #endif
 
     protected:

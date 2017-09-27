@@ -55,9 +55,6 @@ public:
 
     EventInterface eventInterface() const override;
 
-    virtual int keyCode() const;
-    virtual int charCode() const;
-
     virtual int layerX();
     virtual int layerY();
 
@@ -69,7 +66,7 @@ public:
 protected:
     UIEvent();
     UIEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow*, int detail);
-    UIEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, DOMWindow*, int detail);
+    UIEvent(const AtomicString& type, bool canBubble, bool cancelable, MonotonicTime timestamp, DOMWindow*, int detail);
     UIEvent(const AtomicString&, const UIEventInit&, IsTrusted);
 
 private:

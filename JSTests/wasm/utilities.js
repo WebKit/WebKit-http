@@ -66,5 +66,31 @@ const _json = filename => {
     }
 }
 
+const _dump = (what, name, pad = '    ') => {
+    const value = v => {
+        try { return `"${v}"`; }
+        catch (e) { return `Error: "${e.message}"`; }
+    };
+    let s = `${pad}${name} ${typeof what}: ${value(what)}`;
+    for (let p in what) {
+        s += `\n${pad}${pad}${p}: ${value(what[p])} ${typeof v}`;
+        s += '\n' + _dump(what[p], p, pad + pad);
+    }
+    return s;
+};
+
+export const toJavaScriptName = name => {
+    const camelCase = name.replace(/([^a-z0-9].)/g, c => c[1].toUpperCase());
+    const CamelCase = camelCase.charAt(0).toUpperCase() + camelCase.slice(1);
+    return CamelCase;
+};
+
 // Use underscore names to avoid clashing with builtin names.
-export { _eval as eval, _read as read, _load as load, _json as json, _global as global };
+export {
+    _dump as dump,
+    _eval as eval,
+    _read as read,
+    _load as load,
+    _json as json,
+    _global as global
+};

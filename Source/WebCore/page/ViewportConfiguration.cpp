@@ -26,10 +26,10 @@
 #include "config.h"
 #include "ViewportConfiguration.h"
 
-#include "TextStream.h"
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/TextStream.h>
 
 #if PLATFORM(IOS)
 #include "PlatformScreen.h"
@@ -336,6 +336,8 @@ void ViewportConfiguration::updateConfiguration()
 
     if (booleanViewportArgumentIsSet(m_viewportArguments.shrinkToFit))
         m_configuration.allowsShrinkToFit = m_viewportArguments.shrinkToFit != 0.;
+
+    m_configuration.avoidsUnsafeArea = m_viewportArguments.viewportFit != ViewportFit::Cover;
 }
 
 double ViewportConfiguration::viewportArgumentsLength(double length) const
@@ -439,6 +441,7 @@ TextStream& operator<<(TextStream& ts, const ViewportConfiguration::Parameters& 
     ts.dumpProperty("maximumScale", parameters.maximumScale);
     ts.dumpProperty("allowsUserScaling", parameters.allowsUserScaling);
     ts.dumpProperty("allowsShrinkToFit", parameters.allowsShrinkToFit);
+    ts.dumpProperty("avoidsUnsafeArea", parameters.avoidsUnsafeArea);
 
     return ts;
 }
@@ -472,6 +475,7 @@ CString ViewportConfiguration::description() const
     ts.dumpProperty("computed layout size", layoutSize());
     ts.dumpProperty("ignoring horizontal scaling constraints", shouldIgnoreHorizontalScalingConstraints() ? "true" : "false");
     ts.dumpProperty("ignoring vertical scaling constraints", shouldIgnoreVerticalScalingConstraints() ? "true" : "false");
+    ts.dumpProperty("avoids unsafe area", avoidsUnsafeArea() ? "true" : "false");
     
     ts.endGroup();
 

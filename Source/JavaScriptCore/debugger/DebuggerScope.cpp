@@ -34,7 +34,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DebuggerScope);
 
-const ClassInfo DebuggerScope::s_info = { "DebuggerScope", &Base::s_info, 0, CREATE_METHOD_TABLE(DebuggerScope) };
+const ClassInfo DebuggerScope::s_info = { "DebuggerScope", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(DebuggerScope) };
 
 DebuggerScope* DebuggerScope::create(VM& vm, JSScope* scope)
 {
@@ -61,8 +61,8 @@ void DebuggerScope::visitChildren(JSCell* cell, SlotVisitor& visitor)
     DebuggerScope* thisObject = jsCast<DebuggerScope*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     JSObject::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_scope);
-    visitor.append(&thisObject->m_next);
+    visitor.append(thisObject->m_scope);
+    visitor.append(thisObject->m_next);
 }
 
 String DebuggerScope::className(const JSObject* object)
@@ -100,7 +100,7 @@ bool DebuggerScope::getOwnPropertySlot(JSObject* object, ExecState* exec, Proper
         // Currently, we just lie to the inspector and claim that this property is undefined.
         // This is not ideal and we should fix it.
         // https://bugs.webkit.org/show_bug.cgi?id=144977
-        slot.setValue(slot.slotBase(), DontEnum, jsUndefined());
+        slot.setValue(slot.slotBase(), static_cast<unsigned>(PropertyAttribute::DontEnum), jsUndefined());
         return true;
     }
     return result;
@@ -212,7 +212,7 @@ bool DebuggerScope::isNestedLexicalScope() const
 
 String DebuggerScope::name() const
 {
-    SymbolTable* symbolTable = m_scope->symbolTable();
+    SymbolTable* symbolTable = m_scope->symbolTable(*vm());
     if (!symbolTable)
         return String();
 
@@ -225,7 +225,7 @@ String DebuggerScope::name() const
 
 DebuggerLocation DebuggerScope::location() const
 {
-    SymbolTable* symbolTable = m_scope->symbolTable();
+    SymbolTable* symbolTable = m_scope->symbolTable(*vm());
     if (!symbolTable)
         return DebuggerLocation();
 

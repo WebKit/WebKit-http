@@ -31,9 +31,9 @@
 
 #include "DOMWindow.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "NavigationScheduler.h"
 #include "URL.h"
 #include "SecurityOrigin.h"
 
@@ -86,8 +86,7 @@ String Location::host() const
 
     // Note: this is the IE spec. The NS spec swaps the two, it says
     // "The hostname property is the concatenation of the host and port properties, separated by a colon."
-    const URL& url = this->url();
-    return url.port() ? url.host() + ":" + String::number(url.port().value()) : url.host();
+    return url().hostAndPort();
 }
 
 String Location::hostname() const
@@ -132,13 +131,13 @@ String Location::origin() const
     return SecurityOrigin::create(url())->toString();
 }
 
-Vector<String> Location::ancestorOrigins() const
+Ref<DOMStringList> Location::ancestorOrigins() const
 {
-    Vector<String> origins;
+    auto origins = DOMStringList::create();
     if (!m_frame)
         return origins;
     for (Frame* frame = m_frame->tree().parent(); frame; frame = frame->tree().parent())
-        origins.append(frame->document()->securityOrigin()->toString());
+        origins->append(frame->document()->securityOrigin().toString());
     return origins;
 }
 
@@ -151,11 +150,11 @@ String Location::hash() const
     return fragmentIdentifier.isEmpty() ? emptyString() : "#" + fragmentIdentifier;
 }
 
-void Location::setHref(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
+ExceptionOr<void> Location::setHref(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
 {
     if (!m_frame)
-        return;
-    setLocation(activeWindow, firstWindow, url);
+        return { };
+    return setLocation(activeWindow, firstWindow, url);
 }
 
 ExceptionOr<void> Location::setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& protocol)
@@ -164,67 +163,67 @@ ExceptionOr<void> Location::setProtocol(DOMWindow& activeWindow, DOMWindow& firs
         return { };
     URL url = m_frame->document()->url();
     if (!url.setProtocol(protocol))
-        return Exception { SYNTAX_ERR };
-    setLocation(activeWindow, firstWindow, url.string());
-    return { };
+        return Exception { SyntaxError };
+    return setLocation(activeWindow, firstWindow, url.string());
 }
 
-void Location::setHost(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& host)
+ExceptionOr<void> Location::setHost(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& host)
 {
     if (!m_frame)
-        return;
+        return { };
     URL url = m_frame->document()->url();
     url.setHostAndPort(host);
-    setLocation(activeWindow, firstWindow, url.string());
+    return setLocation(activeWindow, firstWindow, url.string());
 }
 
-void Location::setHostname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& hostname)
+ExceptionOr<void> Location::setHostname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& hostname)
 {
     if (!m_frame)
-        return;
+        return { };
     URL url = m_frame->document()->url();
     url.setHost(hostname);
-    setLocation(activeWindow, firstWindow, url.string());
+    return setLocation(activeWindow, firstWindow, url.string());
 }
 
-void Location::setPort(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& portString)
+ExceptionOr<void> Location::setPort(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& portString)
 {
     if (!m_frame)
-        return;
+        return { };
     URL url = m_frame->document()->url();
     int port = portString.toInt();
     if (port < 0 || port > 0xFFFF || portString.isEmpty())
         url.removePort();
     else
         url.setPort(port);
-    setLocation(activeWindow, firstWindow, url.string());
+    return setLocation(activeWindow, firstWindow, url.string());
 }
 
-void Location::setPathname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& pathname)
+ExceptionOr<void> Location::setPathname(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& pathname)
 {
     if (!m_frame)
-        return;
+        return { };
     URL url = m_frame->document()->url();
     url.setPath(pathname);
-    setLocation(activeWindow, firstWindow, url.string());
+    return setLocation(activeWindow, firstWindow, url.string());
 }
 
-void Location::setSearch(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& search)
+ExceptionOr<void> Location::setSearch(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& search)
 {
     if (!m_frame)
-        return;
+        return { };
     URL url = m_frame->document()->url();
     url.setQuery(search);
-    setLocation(activeWindow, firstWindow, url.string());
+    return setLocation(activeWindow, firstWindow, url.string());
 }
 
-void Location::setHash(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& hash)
+ExceptionOr<void> Location::setHash(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& hash)
 {
     if (!m_frame)
-        return;
-    URL url = m_frame->document()->url();
-    String oldFragmentIdentifier = url.fragmentIdentifier();
-    String newFragmentIdentifier = hash;
+        return { };
+    ASSERT(m_frame->document());
+    auto url = m_frame->document()->url();
+    auto oldFragmentIdentifier = url.fragmentIdentifier();
+    auto newFragmentIdentifier = hash;
     if (hash[0] == '#')
         newFragmentIdentifier = hash.substring(1);
     url.setFragmentIdentifier(newFragmentIdentifier);
@@ -232,22 +231,24 @@ void Location::setHash(DOMWindow& activeWindow, DOMWindow& firstWindow, const St
     // comparing fragments post-canonicalization, and so this handles the 
     // cases where fragment identifiers are ignored or invalid. 
     if (equalIgnoringNullity(oldFragmentIdentifier, url.fragmentIdentifier()))
-        return;
-    setLocation(activeWindow, firstWindow, url.string());
+        return { };
+    return setLocation(activeWindow, firstWindow, url.string());
 }
 
-void Location::assign(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
+ExceptionOr<void> Location::assign(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
 {
     if (!m_frame)
-        return;
-    setLocation(activeWindow, firstWindow, url);
+        return { };
+    return setLocation(activeWindow, firstWindow, url);
 }
 
 void Location::replace(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
 {
     if (!m_frame)
         return;
-    // Note: We call DOMWindow::setLocation directly here because replace() always operates on the current frame.
+    ASSERT(m_frame->document());
+    ASSERT(m_frame->document()->domWindow());
+    // We call DOMWindow::setLocation directly here because replace() always operates on the current frame.
     m_frame->document()->domWindow()->setLocation(activeWindow, firstWindow, url, LockHistoryAndBackForwardList);
 }
 
@@ -255,26 +256,38 @@ void Location::reload(DOMWindow& activeWindow)
 {
     if (!m_frame)
         return;
+
+    ASSERT(activeWindow.document());
+    ASSERT(m_frame->document());
+    ASSERT(m_frame->document()->domWindow());
+
+    auto& activeDocument = *activeWindow.document();
+    auto& targetDocument = *m_frame->document();
+
     // FIXME: It's not clear this cross-origin security check is valuable.
     // We allow one page to change the location of another. Why block attempts to reload?
     // Other location operations simply block use of JavaScript URLs cross origin.
-    DOMWindow* targetWindow = m_frame->document()->domWindow();
-    if (!activeWindow.document()->securityOrigin()->canAccess(m_frame->document()->securityOrigin())) {
-        targetWindow->printErrorMessage(targetWindow->crossDomainAccessErrorMessage(activeWindow));
+    if (!activeDocument.securityOrigin().canAccess(targetDocument.securityOrigin())) {
+        auto& targetWindow = *targetDocument.domWindow();
+        targetWindow.printErrorMessage(targetWindow.crossDomainAccessErrorMessage(activeWindow));
         return;
     }
-    if (protocolIsJavaScript(m_frame->document()->url()))
+
+    if (protocolIsJavaScript(targetDocument.url()))
         return;
-    m_frame->navigationScheduler().scheduleRefresh(activeWindow.document());
+
+    m_frame->navigationScheduler().scheduleRefresh(activeDocument);
 }
 
-void Location::setLocation(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
+ExceptionOr<void> Location::setLocation(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url)
 {
     ASSERT(m_frame);
-    Frame* frame = m_frame->loader().findFrameForNavigation(String(), activeWindow.document());
-    if (!frame)
-        return;
-    frame->document()->domWindow()->setLocation(activeWindow, firstWindow, url);
+    if (!activeWindow.document()->canNavigate(m_frame))
+        return Exception { SecurityError };
+    ASSERT(m_frame->document());
+    ASSERT(m_frame->document()->domWindow());
+    m_frame->document()->domWindow()->setLocation(activeWindow, firstWindow, url);
+    return { };
 }
 
 } // namespace WebCore

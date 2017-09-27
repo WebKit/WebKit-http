@@ -26,8 +26,12 @@
 #import "config.h"
 #import "TestController.h"
 
+#import "HIDEventGenerator.h"
+#import "IOSLayoutTestCommunication.h"
 #import "PlatformWebView.h"
 #import "TestInvocation.h"
+#import "TestRunnerWKWebView.h"
+#import "UIKitTestSPI.h"
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <WebKit/WKPreferencesRefPrivate.h>
@@ -46,21 +50,16 @@ void TestController::notifyDone()
 
 void TestController::platformInitialize()
 {
-    const char* identifier = getenv("IPC_IDENTIFIER");
-    const char *stdinPath = [[NSString stringWithFormat:@"/tmp/%s_IN", identifier] UTF8String];
-    const char *stdoutPath = [[NSString stringWithFormat:@"/tmp/%s_OUT", identifier] UTF8String];
-    const char *stderrPath = [[NSString stringWithFormat:@"/tmp/%s_ERROR", identifier] UTF8String];
+    setUpIOSLayoutTestCommunication();
+    cocoaPlatformInitialize();
 
-    int infd = open(stdinPath, O_RDWR);
-    dup2(infd, STDIN_FILENO);
-    int outfd = open(stdoutPath, O_RDWR);
-    dup2(outfd, STDOUT_FILENO);
-    int errfd = open(stderrPath, O_RDWR | O_NONBLOCK);
-    dup2(errfd, STDERR_FILENO);
+    [UIApplication sharedApplication].idleTimerDisabled = YES;
+    [[UIScreen mainScreen] _setScale:2.0];
 }
 
 void TestController::platformDestroy()
 {
+    tearDownIOSLayoutTestCommunication();
 }
 
 void TestController::initializeInjectedBundlePath()
@@ -83,16 +82,49 @@ void TestController::platformResetPreferencesToConsistentValues()
 void TestController::platformResetStateToConsistentValues()
 {
     cocoaResetStateToConsistentValues();
+
+    [[UIDevice currentDevice] setOrientation:UIDeviceOrientationPortrait animated:NO];
+    
+    if (PlatformWebView* platformWebView = mainWebView()) {
+        TestRunnerWKWebView *webView = platformWebView->platformView();
+        webView._stableStateOverride = nil;
+        webView.usesSafariLikeRotation = NO;
+        webView.overrideSafeAreaInsets = UIEdgeInsetsZero;
+        [webView _clearOverrideLayoutParameters];
+        [webView _clearInterfaceOrientationOverride];
+
+        UIScrollView *scrollView = webView.scrollView;
+        [scrollView _removeAllAnimations:YES];
+        [scrollView setZoomScale:1 animated:NO];
+        [scrollView setContentOffset:CGPointZero];
+    }
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation& test)
 {
-    if (test.options().useFlexibleViewport) {
-        CGRect screenBounds = [UIScreen mainScreen].bounds;
-        mainWebView()->resizeTo(screenBounds.size.width, screenBounds.size.height);
-        // We also pass data to InjectedBundle::beginTesting() to have it call
-        // WKBundlePageSetUseTestingViewportConfiguration(false).
+    if (!test.options().useFlexibleViewport)
+        return;
+        
+    TestRunnerWKWebView *webView = mainWebView()->platformView();
+    CGRect screenBounds = [UIScreen mainScreen].bounds;
+    
+    CGSize oldSize = webView.bounds.size;
+    mainWebView()->resizeTo(screenBounds.size.width, screenBounds.size.height, PlatformWebView::WebViewSizingMode::HeightRespectsStatusBar);
+    CGSize newSize = webView.bounds.size;
+    
+    if (!CGSizeEqualToSize(oldSize, newSize)) {
+        __block bool doneResizing = false;
+        [webView _doAfterNextVisibleContentRectUpdate: ^{
+            doneResizing = true;
+        }];
+
+        platformRunUntil(doneResizing, 10);
+        if (!doneResizing)
+            WTFLogAlways("Timed out waiting for view resize to complete in platformConfigureViewForTest()");
     }
+    
+    // We also pass data to InjectedBundle::beginTesting() to have it call
+    // WKBundlePageSetUseTestingViewportConfiguration(false).
 }
 
 void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions&, const std::string&) const

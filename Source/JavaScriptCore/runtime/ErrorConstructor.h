@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include "ErrorInstance.h"
 #include "InternalFunction.h"
 
 namespace JSC {
@@ -46,13 +45,20 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info()); 
     }
 
+    std::optional<unsigned> stackTraceLimit() const { return m_stackTraceLimit; }
+
 protected:
     void finishCreation(VM&, ErrorPrototype*);
-        
+
+    static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
+    static bool deleteProperty(JSCell*, ExecState*, PropertyName);
+
 private:
     ErrorConstructor(VM&, Structure*);
     static ConstructType getConstructData(JSCell*, ConstructData&);
     static CallType getCallData(JSCell*, CallData&);
+
+    std::optional<unsigned> m_stackTraceLimit;
 };
 
 } // namespace JSC

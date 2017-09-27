@@ -22,19 +22,10 @@
 
 #include "GraphicsContext3D.h"
 #include "PlatformDisplay.h"
-#include <memory>
 #include <wtf/Noncopyable.h>
 
-#if USE(EGL)
-#if !PLATFORM(GTK) && !PLATFORM(WPE)
+#if USE(EGL) && !PLATFORM(GTK) && !PLATFORM(WPE)
 #include "eglplatform.h"
-#else
-#if PLATFORM(WPE)
-// FIXME: Find some way to deduce this.
-#define __GBM__ 1
-#endif
-#include <EGL/eglplatform.h>
-#endif
 typedef EGLNativeWindowType GLNativeWindowType;
 #else
 typedef uint64_t GLNativeWindowType;
@@ -56,6 +47,7 @@ public:
     static bool isExtensionSupported(const char* extensionList, const char* extension);
 
     PlatformDisplay& display() const { return m_display; }
+    unsigned version();
 
     virtual ~GLContext();
     virtual bool makeContextCurrent();
@@ -75,11 +67,6 @@ public:
     virtual PlatformGraphicsContext3D platformContext() = 0;
 #endif
 
-    class Data {
-    public:
-        virtual ~Data() = default;
-    };
-
 #if PLATFORM(X11)
 private:
     static void addActiveContext(GLContext*);
@@ -91,7 +78,7 @@ protected:
     GLContext(PlatformDisplay&);
 
     PlatformDisplay& m_display;
-    std::unique_ptr<Data> m_contextData;
+    unsigned m_version { 0 };
 };
 
 } // namespace WebCore

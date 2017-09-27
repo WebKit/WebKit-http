@@ -30,9 +30,14 @@
 
 #include "CSSFontSelector.h"
 #include "Document.h"
+#include "FontCascade.h"
 #include "Logging.h"
+#include "RenderBlock.h"
 #include "RenderListMarker.h"
 #include "RenderText.h"
+#include "RenderTextFragment.h"
+#include "RenderTreeUpdaterFirstLetter.h"
+#include "RenderTreeUpdaterListItem.h"
 #include "StyleResolver.h"
 
 namespace WebCore {
@@ -133,7 +138,7 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
 
         // Resize the line height of the parent.
         auto& parentStyle = parentRenderer->style();
-        Length lineHeightLength = parentStyle.specifiedLineHeight();
+        auto& lineHeightLength = parentStyle.specifiedLineHeight();
 
         int specifiedLineHeight;
         if (lineHeightLength.isPercent())
@@ -141,16 +146,31 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
         else
             specifiedLineHeight = lineHeightLength.value();
 
+        // This calculation matches the line-height computed size calculation in StyleBuilderCustom::applyValueLineHeight().
         int lineHeight = specifiedLineHeight * scaleChange;
         if (lineHeightLength.isFixed() && lineHeightLength.value() == lineHeight)
             continue;
 
         auto newParentStyle = cloneRenderStyleWithState(parentStyle);
         newParentStyle.setLineHeight(Length(lineHeight, Fixed));
-        newParentStyle.setSpecifiedLineHeight(lineHeightLength);
+        newParentStyle.setSpecifiedLineHeight(Length { lineHeightLength });
         newParentStyle.setFontDescription(fontDescription);
         newParentStyle.fontCascade().update(&node->document().fontSelector());
         parentRenderer->setStyle(WTFMove(newParentStyle));
+
+        if (is<RenderListItem>(*parentRenderer))
+            RenderTreeUpdater::ListItem::updateMarker(downcast<RenderListItem>(*parentRenderer));
+    }
+
+    for (auto& node : m_autoSizedNodes) {
+        auto& textRenderer = *node->renderer();
+        if (!is<RenderTextFragment>(textRenderer))
+            continue;
+        auto* block = downcast<RenderTextFragment>(textRenderer).blockForAccompanyingFirstLetter();
+        if (!block)
+            continue;
+        // FIXME: All render tree mutations should be done by RenderTreeUpdater commit.
+        RenderTreeUpdater::FirstLetter::update(*block);
     }
 
     return stillHasNodes;
@@ -188,16 +208,37 @@ void TextAutoSizingValue::reset()
             parentRenderer = parentRenderer->parent();
 
         auto& parentStyle = parentRenderer->style();
-        Length originalLineHeight = parentStyle.specifiedLineHeight();
+        auto& originalLineHeight = parentStyle.specifiedLineHeight();
         if (originalLineHeight == parentStyle.lineHeight())
             continue;
 
         auto newParentStyle = cloneRenderStyleWithState(parentStyle);
-        newParentStyle.setLineHeight(originalLineHeight);
+        newParentStyle.setLineHeight(Length { originalLineHeight });
         newParentStyle.setFontDescription(fontDescription);
         newParentStyle.fontCascade().update(&node->document().fontSelector());
         parentRenderer->setStyle(WTFMove(newParentStyle));
     }
+}
+
+void TextAutoSizing::addTextNode(Text& node, float candidateSize)
+{
+    LOG(TextAutosizing, " addAutoSizedNode %p candidateSize=%f", &node, candidateSize);
+    auto addResult = m_textNodes.add<TextAutoSizingHashTranslator>(node.renderer()->style(), nullptr);
+    if (addResult.isNewEntry)
+        addResult.iterator->value = std::make_unique<TextAutoSizingValue>();
+    addResult.iterator->value->addTextNode(node, candidateSize);
+}
+
+void TextAutoSizing::updateRenderTree()
+{
+    m_textNodes.removeIf([](auto& keyAndValue) {
+        return keyAndValue.value->adjustTextNodeSizes() == TextAutoSizingValue::StillHasNodes::No;
+    });
+}
+
+void TextAutoSizing::reset()
+{
+    m_textNodes.clear();
 }
 
 } // namespace WebCore

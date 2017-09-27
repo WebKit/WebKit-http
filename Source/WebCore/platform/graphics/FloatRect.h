@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FloatRect_h
-#define FloatRect_h
+#pragma once
 
 #include "FloatPoint.h"
 
@@ -50,11 +49,14 @@ struct D2D_RECT_F;
 typedef D2D_RECT_F D2D1_RECT_F;
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class IntRect;
 class IntPoint;
-class TextStream;
 
 class FloatRect {
 public:
@@ -96,7 +98,7 @@ public:
     bool isZero() const { return m_size.isZero(); }
     bool isExpressibleAsIntRect() const;
 
-    FloatPoint center() const { return FloatPoint(x() + width() / 2, y() + height() / 2); }
+    FloatPoint center() const { return location() + size() / 2; }
 
     void move(const FloatSize& delta) { m_location += delta; } 
     void moveBy(const FloatPoint& delta) { m_location.move(delta.x(), delta.y()); }
@@ -164,6 +166,7 @@ public:
     void inflate(float d) { inflateX(d); inflateY(d); }
     void scale(float s) { scale(s, s); }
     WEBCORE_EXPORT void scale(float sx, float sy);
+    void scale(FloatSize size) { scale(size.width(), size.height()); }
 
     FloatRect transposedRect() const { return FloatRect(m_location.transposedPoint(), m_size.transposedSize()); }
 
@@ -261,8 +264,7 @@ WEBCORE_EXPORT FloatRect encloseRectToDevicePixels(const FloatRect&, float devic
 WEBCORE_EXPORT IntRect enclosingIntRect(const FloatRect&);
 WEBCORE_EXPORT IntRect roundedIntRect(const FloatRect&);
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const FloatRect&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const FloatRect&);
 
 }
 
-#endif

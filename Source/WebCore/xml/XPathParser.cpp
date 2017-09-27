@@ -28,9 +28,7 @@
 #include "config.h"
 #include "XPathParser.h"
 
-#include "ExceptionCode.h"
 #include "XPathEvaluator.h"
-#include "XPathException.h"
 #include "XPathNSResolver.h"
 #include "XPathPath.h"
 #include "XPathStep.h"
@@ -79,7 +77,7 @@ static XMLCat charCat(UChar character)
     return NotPartOfName;
 }
 
-static void populateAxisNamesMap(HashMap<String, Step::Axis>& axisNames)
+static HashMap<String, Step::Axis> createAxisNamesMap()
 {
     struct AxisName {
         const char* name;
@@ -100,16 +98,15 @@ static void populateAxisNamesMap(HashMap<String, Step::Axis>& axisNames)
         { "preceding-sibling", Step::PrecedingSiblingAxis },
         { "self", Step::SelfAxis }
     };
+    HashMap<String, Step::Axis> map;
     for (auto& axisName : axisNameList)
-        axisNames.add(axisName.name, axisName.axis);
+        map.add(axisName.name, axisName.axis);
+    return map;
 }
 
 static bool parseAxisName(const String& name, Step::Axis& type)
 {
-    static NeverDestroyed<HashMap<String, Step::Axis>> axisNames;
-    if (axisNames.get().isEmpty())
-        populateAxisNamesMap(axisNames);
-
+    static const auto axisNames = makeNeverDestroyed(createAxisNamesMap());
     auto it = axisNames.get().find(name);
     if (it == axisNames.get().end())
         return false;
@@ -209,7 +206,7 @@ Parser::Token Parser::lexNumber()
         UChar aChar = m_data[m_nextPos];
         if (aChar >= 0xff) break;
 
-        if (aChar < '0' || aChar > '9') {
+        if (!isASCIIDigit(aChar)) {
             if (aChar == '.' && !seenDot)
                 seenDot = true;
             else
@@ -283,7 +280,7 @@ inline Parser::Token Parser::nextTokenInternal()
         char next = peekAheadHelper();
         if (next == '.')
             return makeTokenAndAdvance(DOTDOT, 2);
-        if (next >= '0' && next <= '9')
+        if (isASCIIDigit(next))
             return lexNumber();
         return makeTokenAndAdvance('.');
     }
@@ -382,7 +379,7 @@ inline Parser::Token Parser::nextTokenInternal()
         if (name == "node")
             return Token(NODE);
         if (name == "text")
-            return Token(TEXT);
+            return Token(TEXT_);
         if (name == "comment")
             return Token(COMMENT);
 
@@ -460,10 +457,10 @@ ExceptionOr<std::unique_ptr<Expression>> Parser::parseStatement(const String& st
     int parseError = xpathyyparse(parser);
 
     if (parser.m_sawNamespaceError)
-        return Exception { NAMESPACE_ERR };
+        return Exception { NamespaceError };
 
     if (parseError)
-        return Exception { XPathException::INVALID_EXPRESSION_ERR };
+        return Exception { SyntaxError };
 
     return WTFMove(parser.m_result);
 }

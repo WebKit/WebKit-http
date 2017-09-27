@@ -54,16 +54,16 @@
 #import "HTMLTableCellElement.h"
 #import "HTMLTextAreaElement.h"
 #import "LoaderNSURLExtras.h"
-#import "NSAttributedStringSPI.h"
 #import "RGBColor.h"
 #import "RenderImage.h"
 #import "RenderText.h"
-#import "SoftLinking.h"
 #import "StyleProperties.h"
 #import "StyledElement.h"
 #import "TextIterator.h"
 #import <objc/runtime.h>
+#import <pal/spi/cocoa/NSAttributedStringSPI.h>
 #import <wtf/ASCIICType.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS)
@@ -338,8 +338,8 @@ public:
     bool isBlockElement(Element&);
     bool elementHasOwnBackgroundColor(Element&);
 
-    PassRefPtr<CSSValue> computedStylePropertyForElement(Element&, CSSPropertyID);
-    PassRefPtr<CSSValue> inlineStylePropertyForElement(Element&, CSSPropertyID);
+    RefPtr<CSSValue> computedStylePropertyForElement(Element&, CSSPropertyID);
+    RefPtr<CSSValue> inlineStylePropertyForElement(Element&, CSSPropertyID);
 
     Node* cacheAncestorsOfStartToBeConverted(const Range&);
     bool isAncestorsOfStartToBeConverted(Node& node) const { return m_ancestorsUnderCommonAncestor.contains(&node); }
@@ -619,7 +619,7 @@ static NSParagraphStyle *defaultParagraphStyle()
     return defaultParagraphStyle;
 }
 
-PassRefPtr<CSSValue> HTMLConverterCaches::computedStylePropertyForElement(Element& element, CSSPropertyID propertyId)
+RefPtr<CSSValue> HTMLConverterCaches::computedStylePropertyForElement(Element& element, CSSPropertyID propertyId)
 {
     if (propertyId == CSSPropertyInvalid)
         return nullptr;
@@ -631,7 +631,7 @@ PassRefPtr<CSSValue> HTMLConverterCaches::computedStylePropertyForElement(Elemen
     return computedStyle.propertyValue(propertyId);
 }
 
-PassRefPtr<CSSValue> HTMLConverterCaches::inlineStylePropertyForElement(Element& element, CSSPropertyID propertyId)
+RefPtr<CSSValue> HTMLConverterCaches::inlineStylePropertyForElement(Element& element, CSSPropertyID propertyId)
 {
     if (propertyId == CSSPropertyInvalid || !is<StyledElement>(element))
         return nullptr;
@@ -2236,6 +2236,7 @@ void HTMLConverter::_processText(CharacterData& characterData)
         unsigned count = originalString.length();
         bool wasLeading = true;
         StringBuilder builder;
+        LChar noBreakSpaceRepresentation = 0;
         for (unsigned i = 0; i < count; i++) {
             UChar c = originalString.at(i);
             bool isWhitespace = c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == 0xc || c == 0x200b;
@@ -2244,7 +2245,13 @@ void HTMLConverter::_processText(CharacterData& characterData)
             else {
                 if (wasSpace)
                     builder.append(' ');
-                builder.append(c);
+                if (c != noBreakSpace)
+                    builder.append(c);
+                else {
+                    if (!noBreakSpaceRepresentation)
+                        noBreakSpaceRepresentation = _caches->propertyValueForNode(characterData, CSSPropertyWebkitNbspMode) == "space" ? ' ' : noBreakSpace;
+                    builder.append(noBreakSpaceRepresentation);
+                }
                 wasSpace = false;
                 wasLeading = false;
             }
@@ -2519,7 +2526,13 @@ NSAttributedString *editingAttributedStringFromRange(Range& range, IncludeImages
         else
             [attrs.get() removeObjectForKey:NSBackgroundColorAttributeName];
 
-        [string replaceCharactersInRange:NSMakeRange(stringLength, 0) withString:it.text().createNSStringWithoutCopying().get()];
+        RetainPtr<NSString> text;
+        if (style.nbspMode() == NBNORMAL)
+            text = it.text().createNSStringWithoutCopying();
+        else
+            text = it.text().toString().replace(noBreakSpace, ' ');
+
+        [string replaceCharactersInRange:NSMakeRange(stringLength, 0) withString:text.get()];
         [string setAttributes:attrs.get() range:NSMakeRange(stringLength, currentTextLength)];
         stringLength += currentTextLength;
     }

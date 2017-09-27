@@ -40,7 +40,7 @@
 #include "ScriptValue.h"
 #include "SourceProvider.h"
 #include <wtf/NeverDestroyed.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 
 using namespace JSC;
 
@@ -89,29 +89,29 @@ void ScriptDebugServer::clearBreakpointActions()
 
 bool ScriptDebugServer::evaluateBreakpointAction(const ScriptBreakpointAction& breakpointAction)
 {
-    DebuggerCallFrame* debuggerCallFrame = currentDebuggerCallFrame();
+    DebuggerCallFrame& debuggerCallFrame = currentDebuggerCallFrame();
 
     switch (breakpointAction.type) {
     case ScriptBreakpointActionTypeLog: {
-        dispatchBreakpointActionLog(debuggerCallFrame->globalExec(), breakpointAction.data);
+        dispatchBreakpointActionLog(debuggerCallFrame.globalExec(), breakpointAction.data);
         break;
     }
     case ScriptBreakpointActionTypeEvaluate: {
         NakedPtr<Exception> exception;
         JSObject* scopeExtensionObject = nullptr;
-        debuggerCallFrame->evaluateWithScopeExtension(breakpointAction.data, scopeExtensionObject, exception);
+        debuggerCallFrame.evaluateWithScopeExtension(breakpointAction.data, scopeExtensionObject, exception);
         if (exception)
-            reportException(debuggerCallFrame->globalExec(), exception);
+            reportException(debuggerCallFrame.globalExec(), exception);
         break;
     }
     case ScriptBreakpointActionTypeSound:
-        dispatchBreakpointActionSound(debuggerCallFrame->globalExec(), breakpointAction.identifier);
+        dispatchBreakpointActionSound(debuggerCallFrame.globalExec(), breakpointAction.identifier);
         break;
     case ScriptBreakpointActionTypeProbe: {
         NakedPtr<Exception> exception;
         JSObject* scopeExtensionObject = nullptr;
-        JSValue result = debuggerCallFrame->evaluateWithScopeExtension(breakpointAction.data, scopeExtensionObject, exception);
-        JSC::ExecState* exec = debuggerCallFrame->globalExec();
+        JSValue result = debuggerCallFrame.evaluateWithScopeExtension(breakpointAction.data, scopeExtensionObject, exception);
+        JSC::ExecState* exec = debuggerCallFrame.globalExec();
         if (exception)
             reportException(exec, exception);
 
@@ -128,8 +128,8 @@ bool ScriptDebugServer::evaluateBreakpointAction(const ScriptBreakpointAction& b
 void ScriptDebugServer::dispatchDidPause(ScriptDebugListener* listener)
 {
     ASSERT(isPaused());
-    DebuggerCallFrame* debuggerCallFrame = currentDebuggerCallFrame();
-    JSGlobalObject* globalObject = debuggerCallFrame->scope()->globalObject();
+    DebuggerCallFrame& debuggerCallFrame = currentDebuggerCallFrame();
+    JSGlobalObject* globalObject = debuggerCallFrame.scope()->globalObject();
     JSC::ExecState& state = *globalObject->globalExec();
     JSValue jsCallFrame = toJS(&state, globalObject, JavaScriptCallFrame::create(debuggerCallFrame).ptr());
     listener->didPause(state, jsCallFrame, exceptionOrCaughtValue(&state));
@@ -143,7 +143,7 @@ void ScriptDebugServer::dispatchBreakpointActionLog(ExecState* exec, const Strin
     if (m_listeners.isEmpty())
         return;
 
-    TemporaryChange<bool> change(m_callingListeners, true);
+    SetForScope<bool> change(m_callingListeners, true);
 
     Vector<ScriptDebugListener*> listenersCopy;
     copyToVector(m_listeners, listenersCopy);
@@ -159,7 +159,7 @@ void ScriptDebugServer::dispatchBreakpointActionSound(ExecState*, int breakpoint
     if (m_listeners.isEmpty())
         return;
 
-    TemporaryChange<bool> change(m_callingListeners, true);
+    SetForScope<bool> change(m_callingListeners, true);
 
     Vector<ScriptDebugListener*> listenersCopy;
     copyToVector(m_listeners, listenersCopy);
@@ -175,7 +175,7 @@ void ScriptDebugServer::dispatchBreakpointActionProbe(ExecState* exec, const Scr
     if (m_listeners.isEmpty())
         return;
 
-    TemporaryChange<bool> change(m_callingListeners, true);
+    SetForScope<bool> change(m_callingListeners, true);
 
     unsigned sampleId = m_nextProbeSampleId++;
 
@@ -247,7 +247,7 @@ void ScriptDebugServer::sourceParsed(ExecState* exec, SourceProvider* sourceProv
     if (m_listeners.isEmpty())
         return;
 
-    TemporaryChange<bool> change(m_callingListeners, true);
+    SetForScope<bool> change(m_callingListeners, true);
 
     bool isError = errorLine != -1;
     if (isError)
@@ -264,7 +264,7 @@ void ScriptDebugServer::dispatchFunctionToListeners(JavaScriptExecutionCallback 
     if (m_listeners.isEmpty())
         return;
 
-    TemporaryChange<bool> change(m_callingListeners, true);
+    SetForScope<bool> change(m_callingListeners, true);
 
     dispatchFunctionToListeners(m_listeners, callback);
 }
@@ -345,7 +345,7 @@ JSC::JSValue ScriptDebugServer::exceptionOrCaughtValue(JSC::ExecState* state)
     if (reasonForPause() == PausedForException)
         return currentException();
 
-    for (RefPtr<DebuggerCallFrame> frame = currentDebuggerCallFrame(); frame; frame = frame->callerFrame()) {
+    for (RefPtr<DebuggerCallFrame> frame = &currentDebuggerCallFrame(); frame; frame = frame->callerFrame()) {
         DebuggerScope& scope = *frame->scope();
         if (scope.isCatchScope())
             return scope.caughtValue(state);

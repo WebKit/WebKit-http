@@ -42,9 +42,17 @@ public:
 
     bool isInside() const;
 
+    LayoutUnit lineOffsetForListItem() const { return m_lineOffsetForListItem; }
+
     void updateMarginsAndContent();
 
+#if !ASSERT_DISABLED
+    RenderListItem& listItem() const { return m_listItem; }
+#endif
+
 private:
+    void willBeDestroyed() override;
+
     void element() const = delete;
 
     const char* renderName() const override { return "RenderListMarker"; }
@@ -82,6 +90,7 @@ private:
     String m_text;
     RefPtr<StyleImage> m_image;
     RenderListItem& m_listItem;
+    LayoutUnit m_lineOffsetForListItem;
 };
 
 } // namespace WebCore

@@ -30,9 +30,6 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
-#include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
 struct z_stream_s;
@@ -85,5 +82,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

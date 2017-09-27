@@ -43,6 +43,10 @@ struct D2D_MATRIX_3X2_F;
 typedef D2D_MATRIX_3X2_F D2D1_MATRIX_3X2_F;
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class FloatPoint;
@@ -52,7 +56,6 @@ class FloatSize;
 class IntPoint;
 class IntSize;
 class IntRect;
-class TextStream;
 class TransformationMatrix;
 
 class AffineTransform {
@@ -109,12 +112,13 @@ public:
     WEBCORE_EXPORT AffineTransform& multiply(const AffineTransform& other);
     WEBCORE_EXPORT AffineTransform& scale(double);
     AffineTransform& scale(double sx, double sy); 
-    WEBCORE_EXPORT AffineTransform& scaleNonUniform(double sx, double sy);
+    WEBCORE_EXPORT AffineTransform& scaleNonUniform(double sx, double sy); // Same as scale(sx, sy).
     WEBCORE_EXPORT AffineTransform& scale(const FloatSize&);
     WEBCORE_EXPORT AffineTransform& rotate(double);
     AffineTransform& rotateFromVector(double x, double y);
     WEBCORE_EXPORT AffineTransform& translate(double tx, double ty);
     WEBCORE_EXPORT AffineTransform& translate(const FloatPoint&);
+    WEBCORE_EXPORT AffineTransform& translate(const FloatSize&);
     WEBCORE_EXPORT AffineTransform& shear(double sx, double sy);
     WEBCORE_EXPORT AffineTransform& flipX();
     WEBCORE_EXPORT AffineTransform& flipY();
@@ -128,7 +132,7 @@ public:
     WEBCORE_EXPORT double yScale() const;
 
     bool isInvertible() const; // If you call this this, you're probably doing it wrong.
-    WEBCORE_EXPORT Optional<AffineTransform> inverse() const;
+    WEBCORE_EXPORT std::optional<AffineTransform> inverse() const;
 
     WEBCORE_EXPORT void blend(const AffineTransform& from, double progress);
 
@@ -207,7 +211,7 @@ private:
 
 WEBCORE_EXPORT AffineTransform makeMapBetweenRects(const FloatRect& source, const FloatRect& dest);
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const AffineTransform&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const AffineTransform&);
 
 }
 

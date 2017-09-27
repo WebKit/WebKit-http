@@ -26,6 +26,7 @@
 .navigation-bar {
     display: flex;
     justify-content: center;
+    align-items: center;
     flex-wrap: wrap;
 
     border-bottom: 1px solid var(--border-color);
@@ -45,4 +46,8 @@
 
     height: auto;
     outline: none;
+}
+
+.navigation-bar .item.force-hidden {
+    display: none;
 }

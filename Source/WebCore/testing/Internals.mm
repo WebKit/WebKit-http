@@ -27,11 +27,8 @@
 #include "Internals.h"
 
 #include "DOMURL.h"
-#include "Document.h"
-#include "Editor.h"
-#include "EditorClient.h"
-#include "Frame.h"
-#include "SoftLinking.h"
+#include "WebCoreNSURLExtras.h"
+#include <wtf/SoftLinking.h>
 
 #if PLATFORM(IOS)
 SOFT_LINK_FRAMEWORK(UIKit)
@@ -42,7 +39,7 @@ namespace WebCore {
 
 String Internals::userVisibleString(const DOMURL& url)
 {
-    return contextDocument()->frame()->editor().client()->userVisibleString(url.href());
+    return WebCore::userVisibleString(url.href());
 }
 
 #if PLATFORM(COCOA)

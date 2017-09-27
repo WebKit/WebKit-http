@@ -63,7 +63,7 @@ public:
 
     void addChild(RenderObject* child, RenderObject* beforeChild = 0) override;
 
-    Optional<int> firstLineBaseline() const override;
+    std::optional<int> firstLineBaseline() const override;
 
     void addCell(RenderTableCell*, RenderTableRow* row);
 
@@ -184,6 +184,8 @@ private:
 
     void ensureRows(unsigned);
 
+    void relayoutCellIfFlexed(RenderTableCell&, int rowIndex, int rowHeight);
+    
     void distributeExtraLogicalHeightToPercentRows(LayoutUnit& extraLogicalHeight, int totalPercent);
     void distributeExtraLogicalHeightToAutoRows(LayoutUnit& extraLogicalHeight, unsigned autoRowsCount);
     void distributeRemainingExtraLogicalHeight(LayoutUnit& extraLogicalHeight);

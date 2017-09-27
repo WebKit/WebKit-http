@@ -33,6 +33,7 @@
 #include "ScriptCallStack.h"
 
 #include "InspectorValues.h"
+#include <wtf/DataLog.h>
 
 namespace Inspector {
 
@@ -75,9 +76,8 @@ const ScriptCallFrame* ScriptCallStack::firstNonNativeCallFrame() const
     if (!m_frames.size())
         return nullptr;
 
-    for (size_t i = 0; i < m_frames.size(); ++i) {
-        const ScriptCallFrame& frame = m_frames[i];
-        if (frame.sourceURL() != "[native code]")
+    for (const auto& frame : m_frames) {
+        if (!frame.isNative())
             return &frame;
     }
 
@@ -106,9 +106,9 @@ bool ScriptCallStack::isEqual(ScriptCallStack* o) const
     return true;
 }
 
-Ref<Inspector::Protocol::Console::StackTrace> ScriptCallStack::buildInspectorArray() const
+Ref<Inspector::Protocol::Array<Inspector::Protocol::Console::CallFrame>> ScriptCallStack::buildInspectorArray() const
 {
-    auto frames = Inspector::Protocol::Console::StackTrace::create();
+    auto frames = Inspector::Protocol::Array<Inspector::Protocol::Console::CallFrame>::create();
     for (size_t i = 0; i < m_frames.size(); i++)
         frames->addItem(m_frames.at(i).buildInspectorObject());
     return frames;

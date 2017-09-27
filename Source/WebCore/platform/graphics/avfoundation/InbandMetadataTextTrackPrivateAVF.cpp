@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,12 +24,13 @@
  */
 
 #include "config.h"
+#include "InbandMetadataTextTrackPrivateAVF.h"
 
 #if ENABLE(VIDEO) && ENABLE(DATACUE_VALUE) && (USE(AVFOUNDATION) || PLATFORM(IOS))
-#include "InbandMetadataTextTrackPrivateAVF.h"
 
 #include "InbandTextTrackPrivateClient.h"
 #include "Logging.h"
+#include "MediaPlayer.h"
 #include <CoreMedia/CoreMedia.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -37,9 +38,9 @@
 
 namespace WebCore {
 
-PassRefPtr<InbandMetadataTextTrackPrivateAVF> InbandMetadataTextTrackPrivateAVF::create(InbandTextTrackPrivate::Kind kind, InbandTextTrackPrivate::CueFormat cueFormat, const AtomicString& id)
+Ref<InbandMetadataTextTrackPrivateAVF> InbandMetadataTextTrackPrivateAVF::create(InbandTextTrackPrivate::Kind kind, InbandTextTrackPrivate::CueFormat cueFormat, const AtomicString& id)
 {
-    return adoptRef(new InbandMetadataTextTrackPrivateAVF(kind, cueFormat, id));
+    return adoptRef(*new InbandMetadataTextTrackPrivateAVF(kind, cueFormat, id));
 }
 
 InbandMetadataTextTrackPrivateAVF::InbandMetadataTextTrackPrivateAVF(InbandTextTrackPrivate::Kind kind, InbandTextTrackPrivate::CueFormat cueFormat, const AtomicString& id)
@@ -54,7 +55,8 @@ InbandMetadataTextTrackPrivateAVF::~InbandMetadataTextTrackPrivateAVF()
 }
 
 #if ENABLE(DATACUE_VALUE)
-void InbandMetadataTextTrackPrivateAVF::addDataCue(const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation> prpCueData, const String& type)
+
+void InbandMetadataTextTrackPrivateAVF::addDataCue(const MediaTime& start, const MediaTime& end, Ref<SerializedPlatformRepresentation>&& cueData, const String& type)
 {
     ASSERT(cueFormat() == Data);
     ASSERT(start >= MediaTime::zeroTime());
@@ -62,11 +64,10 @@ void InbandMetadataTextTrackPrivateAVF::addDataCue(const MediaTime& start, const
     if (!client())
         return;
 
-    RefPtr<SerializedPlatformRepresentation> cueData = prpCueData;
     m_currentCueStartTime = start;
     if (end.isPositiveInfinite())
-        m_incompleteCues.append(IncompleteMetaDataCue { cueData.get(), start });
-    client()->addDataCue(this, start, end, cueData, type);
+        m_incompleteCues.append(IncompleteMetaDataCue { cueData.ptr(), start });
+    client()->addDataCue(start, end, WTFMove(cueData), type);
 }
 
 void InbandMetadataTextTrackPrivateAVF::updatePendingCueEndTimes(const MediaTime& time)
@@ -76,29 +77,30 @@ void InbandMetadataTextTrackPrivateAVF::updatePendingCueEndTimes(const MediaTime
     if (time >= m_currentCueStartTime) {
         if (client()) {
             for (auto& partialCue : m_incompleteCues) {
-                LOG(Media, "InbandMetadataTextTrackPrivateAVF::updatePendingCueEndTimes(%p) - updating cue: start=%s, end=%s", this, toString(partialCue.startTime).utf8().data(), toString(time).utf8().data());
-                client()->updateDataCue(this, partialCue.startTime, time, partialCue.cueData);
+                INFO_LOG(LOGIDENTIFIER, "updating cue: start = ", partialCue.startTime, ", end = ", time);
+                client()->updateDataCue(partialCue.startTime, time, *partialCue.cueData);
             }
         }
     } else
-        LOG(Media, "InbandMetadataTextTrackPrivateAVF::updatePendingCueEndTimes negative length cue(s) ignored: start=%s, end=%s\n", toString(m_currentCueStartTime).utf8().data(), toString(time).utf8().data());
+        WARNING_LOG(LOGIDENTIFIER, "negative length cue(s) ignored: start = ", m_currentCueStartTime, ", end = ", time);
 
-    m_incompleteCues.resize(0);
+    m_incompleteCues.shrink(0);
     m_currentCueStartTime = MediaTime::zeroTime();
 }
+
 #endif
 
 void InbandMetadataTextTrackPrivateAVF::flushPartialCues()
 {
     if (m_currentCueStartTime && m_incompleteCues.size())
-        LOG(Media, "InbandMetadataTextTrackPrivateAVF::resetCueValues flushing incomplete data for cues: start=%s\n", toString(m_currentCueStartTime).utf8().data());
+        INFO_LOG(LOGIDENTIFIER, "flushing incomplete data for cues: start = ", m_currentCueStartTime);
 
     if (client()) {
         for (auto& partialCue : m_incompleteCues)
-            client()->removeDataCue(this, partialCue.startTime, MediaTime::positiveInfiniteTime(), partialCue.cueData);
+            client()->removeDataCue(partialCue.startTime, MediaTime::positiveInfiniteTime(), *partialCue.cueData);
     }
 
-    m_incompleteCues.resize(0);
+    m_incompleteCues.shrink(0);
     m_currentCueStartTime = MediaTime::zeroTime();
 }
 

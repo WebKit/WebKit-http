@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  * Copyright (C) 2009 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,36 +34,33 @@
 #include "DedicatedWorkerThread.h"
 #include "Document.h"
 #include "ErrorEvent.h"
-#include "Event.h"
 #include "EventNames.h"
 #include "MessageEvent.h"
-#include "PageGroup.h"
 #include "ScriptExecutionContext.h"
 #include "Worker.h"
 #include "WorkerInspectorProxy.h"
 #include <inspector/ScriptCallStack.h>
 #include <runtime/ConsoleTypes.h>
 #include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
 
 namespace WebCore {
 
-WorkerGlobalScopeProxy* WorkerGlobalScopeProxy::create(Worker* worker)
+WorkerGlobalScopeProxy& WorkerGlobalScopeProxy::create(Worker& worker)
 {
-    return new WorkerMessagingProxy(worker);
+    return *new WorkerMessagingProxy(worker);
 }
 
-WorkerMessagingProxy::WorkerMessagingProxy(Worker* workerObject)
-    : m_scriptExecutionContext(workerObject->scriptExecutionContext())
-    , m_inspectorProxy(std::make_unique<WorkerInspectorProxy>(workerObject->identifier()))
-    , m_workerObject(workerObject)
-    , m_mayBeDestroyed(false)
-    , m_unconfirmedMessageCount(0)
-    , m_workerThreadHadPendingActivity(false)
-    , m_askedToTerminate(false)
+WorkerMessagingProxy::WorkerMessagingProxy(Worker& workerObject)
+    : m_scriptExecutionContext(workerObject.scriptExecutionContext())
+    , m_inspectorProxy(std::make_unique<WorkerInspectorProxy>(workerObject.identifier()))
+    , m_workerObject(&workerObject)
 {
-    ASSERT(m_workerObject);
     ASSERT((is<Document>(*m_scriptExecutionContext) && isMainThread())
         || (is<WorkerGlobalScope>(*m_scriptExecutionContext) && currentThread() == downcast<WorkerGlobalScope>(*m_scriptExecutionContext).thread().threadID()));
+
+    // Nobody outside this class ref counts this object. The original ref
+    // is balanced by the deref in workerGlobalScopeDestroyedInternal.
 }
 
 WorkerMessagingProxy::~WorkerMessagingProxy()
@@ -73,7 +70,7 @@ WorkerMessagingProxy::~WorkerMessagingProxy()
         || (is<WorkerGlobalScope>(*m_scriptExecutionContext) && currentThread() == downcast<WorkerGlobalScope>(*m_scriptExecutionContext).thread().threadID()));
 }
 
-void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, JSC::RuntimeFlags runtimeFlags)
+void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, MonotonicTime timeOrigin, JSC::RuntimeFlags runtimeFlags, PAL::SessionID sessionID)
 {
     // FIXME: This need to be revisited when we support nested worker one day
     ASSERT(m_scriptExecutionContext);
@@ -87,18 +84,14 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     IDBClient::IDBConnectionProxy* proxy = nullptr;
 #endif
 
-#if ENABLE(WEB_SOCKETS)
     SocketProvider* socketProvider = document.socketProvider();
-#else
-    SocketProvider* socketProvider = nullptr;
-#endif
 
-    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, identifier, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), proxy, socketProvider, runtimeFlags);
+    auto thread = DedicatedWorkerThread::create(scriptURL, identifier, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), timeOrigin, proxy, socketProvider, runtimeFlags, sessionID);
 
-    workerThreadCreated(thread);
+    workerThreadCreated(thread.get());
     thread->start();
 
-    m_inspectorProxy->workerStarted(m_scriptExecutionContext.get(), thread.get(), scriptURL);
+    m_inspectorProxy->workerStarted(m_scriptExecutionContext.get(), thread.ptr(), scriptURL);
 }
 
 void WorkerMessagingProxy::postMessageToWorkerObject(RefPtr<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
@@ -160,7 +153,7 @@ void WorkerMessagingProxy::postExceptionToWorkerObject(const String& errorMessag
         // We don't bother checking the askedToTerminate() flag here, because exceptions should *always* be reported even if the thread is terminated.
         // This is intentionally different than the behavior in MessageWorkerTask, because terminated workers no longer deliver messages (section 4.6 of the WebWorker spec), but they do report exceptions.
 
-        bool errorHandled = !workerObject->dispatchEvent(ErrorEvent::create(errorMessage, sourceURL, lineNumber, columnNumber, Deprecated::ScriptValue()));
+        bool errorHandled = !workerObject->dispatchEvent(ErrorEvent::create(errorMessage, sourceURL, lineNumber, columnNumber, { }));
         if (!errorHandled)
             context.reportException(errorMessage, lineNumber, columnNumber, sourceURL, nullptr, nullptr);
     });
@@ -168,14 +161,15 @@ void WorkerMessagingProxy::postExceptionToWorkerObject(const String& errorMessag
 
 void WorkerMessagingProxy::postMessageToPageInspector(const String& message)
 {
-    m_scriptExecutionContext->postTask([this, message = message.isolatedCopy()] (ScriptExecutionContext&) {
-        m_inspectorProxy->sendMessageFromWorkerToFrontend(message);
+    RunLoop::main().dispatch([this, protectedThis = makeRef(*this), message = message.isolatedCopy()] {
+        if (!m_mayBeDestroyed)
+            m_inspectorProxy->sendMessageFromWorkerToFrontend(message);
     });
 }
 
-void WorkerMessagingProxy::workerThreadCreated(PassRefPtr<DedicatedWorkerThread> workerThread)
+void WorkerMessagingProxy::workerThreadCreated(DedicatedWorkerThread& workerThread)
 {
-    m_workerThread = workerThread;
+    m_workerThread = &workerThread;
 
     if (m_askedToTerminate) {
         // Worker.terminate() could be called from JS before the thread was created.
@@ -239,8 +233,9 @@ void WorkerMessagingProxy::workerGlobalScopeDestroyedInternal()
 
     m_inspectorProxy->workerTerminated();
 
+    // This balances the original ref in construction.
     if (m_mayBeDestroyed)
-        delete this;
+        deref();
 }
 
 void WorkerMessagingProxy::terminateWorkerGlobalScope()

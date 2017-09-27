@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,15 +24,20 @@
  */
 
 interface TestRunner {
+    readonly attribute boolean isWebKit2;
+
     // The basics.
     void dumpAsText(boolean dumpPixels);
     void dumpChildFramesAsText();
     void waitForPolicyDelegate();
     void waitUntilDone();
-    void waitUntilDownloadFinished();
     void notifyDone();
     double preciseTime();
     readonly attribute double timeout;
+
+    // Downloads.
+    void waitUntilDownloadFinished();
+    void setShouldLogDownloadCallbacks(boolean value);
 
     // Other dumping.
     void dumpBackForwardList();
@@ -97,6 +102,10 @@ interface TestRunner {
     void testRepaint();
     void repaintSweepHorizontally();
     void display();
+    void displayAndTrackRepaints();
+
+    // Failed load condition testing
+    void forceImmediateCompletion();
 
     // Printing
     boolean isPageBoxVisible(long pageIndex);
@@ -161,6 +170,7 @@ interface TestRunner {
 
     // Cookies testing
     void setAlwaysAcceptCookies(boolean accept);
+    void setCookieStoragePartitioningEnabled(boolean enabled);
 
     void overridePreference(DOMString preference, DOMString value);
 
@@ -185,7 +195,10 @@ interface TestRunner {
 
     // MediaStream
     void setUserMediaPermission(boolean value);
-    void setUserMediaPermissionForOrigin(boolean permission, DOMString origin, DOMString parentOrigin);
+    void resetUserMediaPermission();
+    void setUserMediaPersistentPermissionForOrigin(boolean permission, DOMString origin, DOMString parentOrigin);
+    unsigned long userMediaPermissionRequestCountForOrigin(DOMString origin, DOMString parentOrigin);
+    void resetUserMediaPermissionRequestCountForOrigin(DOMString origin, DOMString parentOrigin);
 
     // Audio testing.
     [PassContext] void setAudioResult(object data);
@@ -242,4 +255,45 @@ interface TestRunner {
     void setMockGamepadButtonValue(unsigned long index, unsigned long buttonIndex, double value);
     void connectMockGamepad(unsigned long index);
     void disconnectMockGamepad(unsigned long index);
+
+    // Resource Load Statistics
+    void installStatisticsDidModifyDataRecordsCallback(object callback);
+    void installStatisticsDidScanDataRecordsCallback(object callback);
+    void installStatisticsDidRunTelemetryCallback(object callback);
+    void setStatisticsLastSeen(DOMString hostName, double seconds);
+    void setStatisticsPrevalentResource(DOMString hostName, boolean value);
+    boolean isStatisticsPrevalentResource(DOMString hostName);
+    void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value);
+    boolean isStatisticsHasHadUserInteraction(DOMString hostName);
+    void setStatisticsGrandfathered(DOMString hostName, boolean value);
+    boolean isStatisticsGrandfathered(DOMString hostName);
+    void setStatisticsSubframeUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
+    void setStatisticsSubresourceUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
+    void setStatisticsSubresourceUniqueRedirectTo(DOMString hostName, DOMString hostNameRedirectedTo);
+    void setStatisticsTimeToLiveUserInteraction(double seconds);
+    void setStatisticsTimeToLiveCookiePartitionFree(double seconds);
+    void statisticsProcessStatisticsAndDataRecords();
+    void statisticsUpdateCookiePartitioning();
+    void statisticsSetShouldPartitionCookiesForHost(DOMString hostName, boolean value);
+    void statisticsSubmitTelemetry();
+    void setStatisticsNotifyPagesWhenDataRecordsWereScanned(boolean value);
+    void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(boolean value);
+    void setStatisticsNotifyPagesWhenTelemetryWasCaptured(boolean value);
+    void setStatisticsMinimumTimeBetweenDataRecordsRemoval(double seconds);
+    void setStatisticsGrandfatheringTime(double seconds);
+    void setStatisticsMaxStatisticsEntries(unsigned long entries);
+    void setStatisticsPruneEntriesDownTo(unsigned long entries);
+    void statisticsClearInMemoryAndPersistentStore();
+    void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned long hours);
+    void statisticsClearThroughWebsiteDataRemoval(object callback);
+    void statisticsResetToConsistentState();
+
+    // Open panel
+    void setOpenPanelFiles(object filesArray);
+
+    void setWebRTCLegacyAPIEnabled(boolean value);
+
+    void terminateNetworkProcess();
+
+    void removeAllSessionCredentials(object callback);
 };

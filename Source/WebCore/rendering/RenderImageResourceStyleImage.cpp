@@ -39,42 +39,33 @@ RenderImageResourceStyleImage::RenderImageResourceStyleImage(StyleImage& styleIm
 {
 }
 
-RenderImageResourceStyleImage::~RenderImageResourceStyleImage()
+void RenderImageResourceStyleImage::initialize(RenderElement& renderer)
 {
-}
-
-void RenderImageResourceStyleImage::initialize(RenderElement* renderer)
-{
-    RenderImageResource::initialize(renderer);
-
-    if (m_styleImage->isCachedImage())
-        m_cachedImage = m_styleImage.get().cachedImage();
-
-    m_styleImage->addClient(m_renderer);
+    RenderImageResource::initialize(renderer, m_styleImage->isCachedImage() ? m_styleImage.get().cachedImage() : nullptr);
+    m_styleImage->addClient(this->renderer());
 }
 
 void RenderImageResourceStyleImage::shutdown()
 {
-    ASSERT(m_renderer);
-    m_styleImage->removeClient(m_renderer);
-    if (m_cachedImage) {
-        image()->stopAnimation();
-        m_cachedImage = nullptr;
-    }
+    ASSERT(renderer());
+    RenderImageResource::shutdown();
+    m_styleImage->removeClient(renderer());
 }
 
-RefPtr<Image> RenderImageResourceStyleImage::image(int width, int height) const
+RefPtr<Image> RenderImageResourceStyleImage::image(const IntSize& size) const
 {
     // Generated content may trigger calls to image() while we're still pending, don't assert but gracefully exit.
     if (m_styleImage->isPending())
-        return nullptr;
-    return m_styleImage->image(m_renderer, IntSize(width, height));
+        return &Image::nullImage();
+    if (auto image = m_styleImage->image(renderer(), size))
+        return image;
+    return &Image::nullImage();
 }
 
-void RenderImageResourceStyleImage::setContainerSizeForRenderer(const IntSize& size)
+void RenderImageResourceStyleImage::setContainerContext(const IntSize& size, const URL&)
 {
-    ASSERT(m_renderer);
-    m_styleImage->setContainerSizeForRenderer(m_renderer, size, m_renderer->style().effectiveZoom());
+    ASSERT(renderer());
+    m_styleImage->setContainerContextForRenderer(*renderer(), size, renderer()->style().effectiveZoom());
 }
 
 } // namespace WebCore

@@ -10,7 +10,7 @@ var isMonotonicClock = false;
 
 function checkTimestamp(previousTimestamp) { 
     currentTimestamp = performance.now();
-    isMonotonicClock = previousTimestamp < currentTimestamp;
+    isMonotonicClock = previousTimestamp <= currentTimestamp;
     if (isMonotonicClock)
         setTimeout('checkTimestamp(currentTimestamp)', 0);
 }
@@ -26,7 +26,7 @@ function start() {
         finishJSTest(); }
         , 100);
 
-    window.testRunner.display();
+    window.testRunner.displayAndTrackRepaints();
 }
 
 onload = start();

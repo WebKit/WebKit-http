@@ -29,6 +29,7 @@
 #include "FrameView.h"
 #include "HitTestResult.h"
 #include "PaintInfo.h"
+#include "RenderBoxRegionInfo.h"
 #include "RenderLayer.h"
 #include "RenderMultiColumnFlowThread.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
@@ -73,8 +74,9 @@ RenderObject* RenderMultiColumnSet::firstRendererInFlowThread() const
         // Adjacent sets should not occur. Currently we would have no way of figuring out what each
         // of them contains then.
         ASSERT(!sibling->isRenderMultiColumnSet());
-        RenderMultiColumnSpannerPlaceholder* placeholder = multiColumnFlowThread()->findColumnSpannerPlaceholder(sibling);
-        return placeholder->nextInPreOrderAfterChildren();
+        if (RenderMultiColumnSpannerPlaceholder* placeholder = multiColumnFlowThread()->findColumnSpannerPlaceholder(sibling))
+            return placeholder->nextInPreOrderAfterChildren();
+        ASSERT_NOT_REACHED();
     }
     return flowThread()->firstChild();
 }
@@ -85,8 +87,9 @@ RenderObject* RenderMultiColumnSet::lastRendererInFlowThread() const
         // Adjacent sets should not occur. Currently we would have no way of figuring out what each
         // of them contains then.
         ASSERT(!sibling->isRenderMultiColumnSet());
-        RenderMultiColumnSpannerPlaceholder* placeholder = multiColumnFlowThread()->findColumnSpannerPlaceholder(sibling);
-        return placeholder->previousInPreOrder();
+        if (RenderMultiColumnSpannerPlaceholder* placeholder = multiColumnFlowThread()->findColumnSpannerPlaceholder(sibling))
+            return placeholder->previousInPreOrder();
+        ASSERT_NOT_REACHED();
     }
     return flowThread()->lastLeafChild();
 }
@@ -234,7 +237,7 @@ LayoutUnit RenderMultiColumnSet::calculateBalancedHeight(bool initial) const
         return m_computedColumnHeight;
     }
 
-    if (forcedBreaksCount() > 1 && forcedBreaksCount() >= computedColumnCount()) {
+    if (forcedBreaksCount() >= computedColumnCount()) {
         // Too many forced breaks to allow any implicit breaks. Initial balancing should already
         // have set a good height. There's nothing more we should do.
         return m_computedColumnHeight;
@@ -319,7 +322,7 @@ bool RenderMultiColumnSet::requiresBalancing() const
         return false;
 
     if (RenderBox* next = RenderMultiColumnFlowThread::nextColumnSetOrSpannerSiblingOf(this)) {
-        if (!next->isRenderMultiColumnSet()) {
+        if (!next->isRenderMultiColumnSet() && !next->isLegend()) {
             // If we're followed by a spanner, we need to balance.
             ASSERT(multiColumnFlowThread()->findColumnSpannerPlaceholder(next));
             return true;
@@ -402,10 +405,9 @@ void RenderMultiColumnSet::layout()
     }
 }
 
-void RenderMultiColumnSet::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop, LogicalExtentComputedValues& computedValues) const
+RenderBox::LogicalExtentComputedValues RenderMultiColumnSet::computeLogicalHeight(LayoutUnit, LayoutUnit logicalTop) const
 {
-    computedValues.m_extent = m_availableColumnHeight;
-    computedValues.m_position = logicalTop;
+    return { m_availableColumnHeight, logicalTop, ComputedMarginValues() };
 }
 
 LayoutUnit RenderMultiColumnSet::calculateMaxColumnHeight() const
@@ -415,7 +417,7 @@ LayoutUnit RenderMultiColumnSet::calculateMaxColumnHeight() const
     LayoutUnit availableHeight = multiColumnFlowThread()->columnHeightAvailable();
     LayoutUnit maxColumnHeight = availableHeight ? availableHeight : RenderFlowThread::maxLogicalHeight();
     if (!multicolStyle.logicalMaxHeight().isUndefined())
-        maxColumnHeight = std::min(maxColumnHeight, multicolBlock->computeContentLogicalHeight(MaxSize, multicolStyle.logicalMaxHeight(), Nullopt).valueOr(maxColumnHeight));
+        maxColumnHeight = std::min(maxColumnHeight, multicolBlock->computeContentLogicalHeight(MaxSize, multicolStyle.logicalMaxHeight(), std::nullopt).value_or(maxColumnHeight));
     return heightAdjustedForSetOffset(maxColumnHeight);
 }
 
@@ -552,18 +554,19 @@ LayoutRect RenderMultiColumnSet::flowThreadPortionOverflowRect(const LayoutRect&
     // top/bottom unless it's the first/last column.
     LayoutRect overflowRect = overflowRectForFlowThreadPortion(portionRect, isFirstColumn && isFirstRegion(), isLastColumn && isLastRegion(), VisualOverflow);
 
-    // Avoid overflowing into neighboring columns, by clipping in the middle of adjacent column
-    // gaps. Also make sure that we avoid rounding errors.
-    if (isHorizontalWritingMode()) {
-        if (!isLeftmostColumn)
-            overflowRect.shiftXEdgeTo(portionRect.x() - colGap / 2);
-        if (!isRightmostColumn)
-            overflowRect.shiftMaxXEdgeTo(portionRect.maxX() + colGap - colGap / 2);
-    } else {
-        if (!isLeftmostColumn)
-            overflowRect.shiftYEdgeTo(portionRect.y() - colGap / 2);
-        if (!isRightmostColumn)
-            overflowRect.shiftMaxYEdgeTo(portionRect.maxY() + colGap - colGap / 2);
+    // For RenderViews only (i.e., iBooks), avoid overflowing into neighboring columns, by clipping in the middle of adjacent column gaps. Also make sure that we avoid rounding errors.
+    if (&view() == parent()) {
+        if (isHorizontalWritingMode()) {
+            if (!isLeftmostColumn)
+                overflowRect.shiftXEdgeTo(portionRect.x() - colGap / 2);
+            if (!isRightmostColumn)
+                overflowRect.shiftMaxXEdgeTo(portionRect.maxX() + colGap - colGap / 2);
+        } else {
+            if (!isLeftmostColumn)
+                overflowRect.shiftYEdgeTo(portionRect.y() - colGap / 2);
+            if (!isRightmostColumn)
+                overflowRect.shiftMaxYEdgeTo(portionRect.maxY() + colGap - colGap / 2);
+        }
     }
     return overflowRect;
 }

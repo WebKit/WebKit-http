@@ -42,7 +42,8 @@ public:
     static const URLSchemesMap& localSchemes();
 
     WEBCORE_EXPORT static bool shouldTreatURLSchemeAsLocal(const String&);
-
+    WEBCORE_EXPORT static bool isBuiltinScheme(const String&);
+    
     // Secure schemes do not trigger mixed content warnings. For example,
     // https and data are secure schemes because they cannot be corrupted by
     // active network attackers.
@@ -94,11 +95,11 @@ public:
     WEBCORE_EXPORT static void registerURLSchemeAsAlwaysRevalidated(const String&);
     static bool shouldAlwaysRevalidateURLScheme(const String&);
 
-#if ENABLE(CACHE_PARTITIONING)
     // Schemes whose requests should be partitioned in the cache
     WEBCORE_EXPORT static void registerURLSchemeAsCachePartitioned(const String& scheme);
     static bool shouldPartitionCacheForURLScheme(const String& scheme);
-#endif
+
+    static bool isUserExtensionScheme(const String& scheme);
 };
 
 } // namespace WebCore

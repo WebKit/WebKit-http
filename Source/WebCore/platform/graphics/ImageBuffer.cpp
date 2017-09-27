@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2009 Dirk Schulze <krit@webkit.org>
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,6 @@
 #include "GraphicsContext.h"
 #include "IntRect.h"
 #include <wtf/MathExtras.h>
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -91,7 +90,7 @@ FloatSize ImageBuffer::clampedSize(const FloatSize& size, FloatSize& scale)
         return size;
 
     FloatSize clampedSize = ImageBuffer::clampedSize(size);
-    scale = FloatSize(clampedSize.width() / size.width(), clampedSize.height() / size.height());
+    scale = clampedSize / size;
     ASSERT(!sizeNeedsClamping(clampedSize));
     ASSERT(!sizeNeedsClamping(size, scale));
     return clampedSize;
@@ -102,7 +101,20 @@ FloatRect ImageBuffer::clampedRect(const FloatRect& rect)
     return FloatRect(rect.location(), clampedSize(rect.size()));
 }
 
+Vector<uint8_t> ImageBuffer::toBGRAData() const
+{
+#if USE(CG)
+    if (context().isAcceleratedContext())
+        flushContext();
+    return m_data.toBGRAData(context().isAcceleratedContext(), m_size.width(), m_size.height());
+#else
+    // FIXME: Implement this for other backends.
+    return { };
+#endif
+}
+
 #if !(USE(CG) || USE(DIRECT2D))
+
 FloatSize ImageBuffer::sizeForDestinationSize(FloatSize size) const
 {
     return size;
@@ -110,9 +122,6 @@ FloatSize ImageBuffer::sizeForDestinationSize(FloatSize size) const
 
 void ImageBuffer::transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstColorSpace)
 {
-    static NeverDestroyed<Vector<int>> deviceRgbLUT;
-    static NeverDestroyed<Vector<int>> linearRgbLUT;
-
     if (srcColorSpace == dstColorSpace)
         return;
 
@@ -122,29 +131,34 @@ void ImageBuffer::transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstCo
         return;
 
     if (dstColorSpace == ColorSpaceLinearRGB) {
-        if (linearRgbLUT.get().isEmpty()) {
+        static const std::array<uint8_t, 256> linearRgbLUT = [] {
+            std::array<uint8_t, 256> array;
             for (unsigned i = 0; i < 256; i++) {
-                float color = i  / 255.0f;
+                float color = i / 255.0f;
                 color = (color <= 0.04045f ? color / 12.92f : pow((color + 0.055f) / 1.055f, 2.4f));
                 color = std::max(0.0f, color);
                 color = std::min(1.0f, color);
-                linearRgbLUT.get().append(static_cast<int>(round(color * 255)));
+                array[i] = static_cast<uint8_t>(round(color * 255));
             }
-        }
-        platformTransformColorSpace(linearRgbLUT.get());
+            return array;
+        }();
+        platformTransformColorSpace(linearRgbLUT);
     } else if (dstColorSpace == ColorSpaceDeviceRGB) {
-        if (deviceRgbLUT.get().isEmpty()) {
+        static const std::array<uint8_t, 256> deviceRgbLUT= [] {
+            std::array<uint8_t, 256> array;
             for (unsigned i = 0; i < 256; i++) {
                 float color = i / 255.0f;
                 color = (powf(color, 1.0f / 2.4f) * 1.055f) - 0.055f;
                 color = std::max(0.0f, color);
                 color = std::min(1.0f, color);
-                deviceRgbLUT.get().append(static_cast<int>(round(color * 255)));
+                array[i] = static_cast<uint8_t>(round(color * 255));
             }
-        }
-        platformTransformColorSpace(deviceRgbLUT.get());
+            return array;
+        }();
+        platformTransformColorSpace(deviceRgbLUT);
     }
 }
+
 #endif // USE(CG)
 
 inline void ImageBuffer::genericConvertToLuminanceMask()
@@ -197,7 +211,7 @@ std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize
         return nullptr;
 
     // Set up a corresponding scale factor on the graphics context.
-    buffer->context().scale(FloatSize(scaledSize.width() / size.width(), scaledSize.height() / size.height()));
+    buffer->context().scale(scaledSize / size);
     return buffer;
 }
 
@@ -221,6 +235,8 @@ bool ImageBuffer::isCompatibleWithContext(const GraphicsContext& context) const
 #if !USE(IOSURFACE_CANVAS_BACKING_STORE)
 size_t ImageBuffer::memoryCost() const
 {
+    // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful about what data we access here and how.
+    // It's safe to access internalSize() because it doesn't do any pointer chasing.
     return 4 * internalSize().width() * internalSize().height();
 }
 

@@ -23,16 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollAnimationSmooth_h
-#define ScrollAnimationSmooth_h
+#pragma once
 
 #include "ScrollAnimation.h"
 
 #if ENABLE(SMOOTH_SCROLLING)
-
-#if !ENABLE(REQUEST_ANIMATION_FRAME)
-#error "SMOOTH_SCROLLING requires REQUEST_ANIMATION_FRAME to be enabled."
-#endif
 
 #include "Timer.h"
 
@@ -43,7 +38,7 @@ class ScrollableArea;
 
 class ScrollAnimationSmooth final: public ScrollAnimation {
 public:
-    ScrollAnimationSmooth(ScrollableArea&, const FloatPoint&, std::function<void (FloatPoint&&)>&& notifyPositionChangedFunction);
+    ScrollAnimationSmooth(ScrollableArea&, const FloatPoint&, WTF::Function<void (FloatPoint&&)>&& notifyPositionChangedFunction);
     virtual ~ScrollAnimationSmooth();
 
     enum class Curve {
@@ -59,9 +54,6 @@ private:
     void stop() override;
     void updateVisibleLengths() override;
     void setCurrentPosition(const FloatPoint&) override;
-#if !USE(REQUEST_ANIMATION_FRAME_TIMER)
-    void serviceAnimation() override;
-#endif
 
     struct PerAxisData {
         PerAxisData() = delete;
@@ -80,50 +72,40 @@ private:
         double desiredVelocity { 0 };
 
         double startPosition { 0 };
-        double startTime { 0 };
+        MonotonicTime startTime;
         double startVelocity { 0 };
 
-        double animationTime { 0 };
-        double lastAnimationTime { 0 };
+        Seconds animationTime;
+        MonotonicTime lastAnimationTime;
 
         double attackPosition { 0 };
-        double attackTime { 0 };
+        Seconds attackTime;
         Curve attackCurve { Curve::Quadratic };
 
         double releasePosition { 0 };
-        double releaseTime { 0 };
+        Seconds releaseTime;
         Curve releaseCurve { Curve::Quadratic };
 
         int visibleLength { 0 };
     };
 
     bool updatePerAxisData(PerAxisData&, ScrollGranularity, float delta, float minScrollPosition, float maxScrollPosition);
-    bool animateScroll(PerAxisData&, double currentTime);
+    bool animateScroll(PerAxisData&, MonotonicTime currentTime);
 
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
     void requestAnimationTimerFired();
-    void startNextTimer(double delay);
-#else
-    void startNextTimer();
-#endif
+    void startNextTimer(Seconds delay);
     void animationTimerFired();
     bool animationTimerActive() const;
 
-    std::function<void (FloatPoint&&)> m_notifyPositionChangedFunction;
+    WTF::Function<void (FloatPoint&&)> m_notifyPositionChangedFunction;
 
     PerAxisData m_horizontalData;
     PerAxisData m_verticalData;
 
-    double m_startTime { 0 };
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
+    MonotonicTime m_startTime;
     Timer m_animationTimer;
-#else
-    bool m_animationActive { false };
-#endif
-
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(SMOOTH_SCROLLING)
-#endif // ScrollAnimationSmooth_h

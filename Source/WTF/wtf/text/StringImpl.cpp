@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller ( mueller@kde.org )
- * Copyright (C) 2003-2009, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Andrew Wellington (proton@wiretapped.net)
  *
  * This library is free software; you can redistribute it and/or
@@ -28,9 +28,11 @@
 #include "AtomicString.h"
 #include "StringBuffer.h"
 #include "StringHash.h"
+#include <wtf/Gigacage.h>
 #include <wtf/ProcessID.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringMalloc.h>
 #include <wtf/text/StringView.h>
 #include <wtf/text/SymbolImpl.h>
 #include <wtf/text/SymbolRegistry.h>
@@ -101,6 +103,7 @@ void StringStats::printStats()
 }
 #endif
 
+StringImpl::StaticStringImpl StringImpl::s_atomicEmptyString("", StringImpl::StringAtomic);
 
 StringImpl::~StringImpl()
 {
@@ -110,11 +113,16 @@ StringImpl::~StringImpl()
 
     STRING_STATS_REMOVE_STRING(*this);
 
-    if (isAtomic() && length() && !isSymbol())
-        AtomicStringImpl::remove(static_cast<AtomicStringImpl*>(this));
-
-    if (isSymbol() && symbolRegistry())
-        symbolRegistry()->remove(static_cast<SymbolImpl&>(*this));
+    if (isAtomic()) {
+        ASSERT(!isSymbol());
+        if (length())
+            AtomicStringImpl::remove(static_cast<AtomicStringImpl*>(this));
+    } else if (isSymbol()) {
+        auto& symbol = static_cast<SymbolImpl&>(*this);
+        auto* symbolRegistry = symbol.symbolRegistry();
+        if (symbolRegistry)
+            symbolRegistry->remove(*symbol.asRegisteredSymbolImpl());
+    }
 
     BufferOwnership ownership = bufferOwnership();
 
@@ -123,7 +131,7 @@ StringImpl::~StringImpl()
     if (ownership == BufferOwned) {
         // We use m_data8, but since it is a union with m_data16 this works either way.
         ASSERT(m_data8);
-        fastFree(const_cast<LChar*>(m_data8));
+        stringFree(const_cast<LChar*>(m_data8));
         return;
     }
 
@@ -135,7 +143,7 @@ StringImpl::~StringImpl()
 void StringImpl::destroy(StringImpl* stringImpl)
 {
     stringImpl->~StringImpl();
-    fastFree(stringImpl);
+    stringFree(stringImpl);
 }
 
 Ref<StringImpl> StringImpl::createFromLiteral(const char* characters, unsigned length)
@@ -186,7 +194,7 @@ inline Ref<StringImpl> StringImpl::createUninitializedInternalNonEmpty(unsigned 
     // heap allocation from this call.
     if (length > ((std::numeric_limits<unsigned>::max() - sizeof(StringImpl)) / sizeof(CharType)))
         CRASH();
-    StringImpl* string = static_cast<StringImpl*>(fastMalloc(allocationSize<CharType>(length)));
+    StringImpl* string = static_cast<StringImpl*>(stringMalloc(allocationSize<CharType>(length)));
 
     data = string->tailPointer<CharType>();
     return constructInternal<CharType>(string, length);
@@ -213,12 +221,12 @@ inline Ref<StringImpl> StringImpl::reallocateInternal(Ref<StringImpl>&& original
         return *empty();
     }
 
-    // Same as createUninitialized() except here we use fastRealloc.
+    // Same as createUninitialized() except here we use stringRealloc.
     if (length > ((std::numeric_limits<unsigned>::max() - sizeof(StringImpl)) / sizeof(CharType)))
         CRASH();
 
     originalString->~StringImpl();
-    auto* string = static_cast<StringImpl*>(fastRealloc(&originalString.leakRef(), allocationSize<CharType>(length)));
+    auto* string = static_cast<StringImpl*>(stringRealloc(&originalString.leakRef(), allocationSize<CharType>(length)));
 
     data = string->tailPointer<CharType>();
     return constructInternal<CharType>(string, length);
@@ -288,26 +296,6 @@ Ref<StringImpl> StringImpl::create(const LChar* string)
     if (length > std::numeric_limits<unsigned>::max())
         CRASH();
     return create(string, length);
-}
-
-Ref<SymbolImpl> StringImpl::createSymbol(StringImpl& rep)
-{
-    auto* ownerRep = (rep.bufferOwnership() == BufferSubstring) ? rep.substringBuffer() : &rep;
-
-    // We allocate a buffer that contains
-    // 1. the StringImpl struct
-    // 2. the pointer to the owner string
-    // 3. the pointer to the symbol registry
-    // 4. the placeholder for symbol aware hash value (allocated size is pointer size, but only 4 bytes are used)
-    auto* stringImpl = static_cast<StringImpl*>(fastMalloc(allocationSize<StringImpl*>(3)));
-    if (rep.is8Bit())
-        return adoptRef(static_cast<SymbolImpl&>(*new (NotNull, stringImpl) StringImpl(CreateSymbol, rep.m_data8, rep.length(), *ownerRep)));
-    return adoptRef(static_cast<SymbolImpl&>(*new (NotNull, stringImpl) StringImpl(CreateSymbol, rep.m_data16, rep.length(), *ownerRep)));
-}
-
-Ref<SymbolImpl> StringImpl::createNullSymbol()
-{
-    return createSymbol(*null());
 }
 
 bool StringImpl::containsOnlyWhitespace()
@@ -466,14 +454,7 @@ Ref<StringImpl> StringImpl::convertToUppercaseWithoutLocale()
         for (int i = 0; i < length; ++i) {
             LChar c = m_data8[i];
             ored |= c;
-#if CPU(X86) && defined(_MSC_VER) && _MSC_VER >=1700
-            // Workaround for an MSVC 2012 x86 optimizer bug. Remove once the bug is fixed.
-            // See https://connect.microsoft.com/VisualStudio/feedback/details/780362/optimization-bug-of-range-comparison
-            // for more details.
-            data8[i] = c >= 'a' && c <= 'z' ? c & ~0x20 : c;
-#else
             data8[i] = toASCIIUpper(c);
-#endif
         }
         if (!(ored & ~0x7F))
             return newImpl;
@@ -2161,6 +2142,26 @@ CString StringImpl::utf8(ConversionMode mode) const
     return utf8ForRange(0, length(), mode);
 }
 
+NEVER_INLINE unsigned StringImpl::hashSlowCase() const
+{
+    if (is8Bit())
+        setHash(StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length));
+    else
+        setHash(StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length));
+    return existingHash();
+}
+
+unsigned StringImpl::concurrentHash() const
+{
+    unsigned hash;
+    if (is8Bit())
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length);
+    else
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length);
+    ASSERT(((hash << s_flagCount) >> s_flagCount) == hash);
+    return hash;
+}
+
 bool equalIgnoringNullity(const UChar* a, size_t aLength, StringImpl* b)
 {
     if (!b)
@@ -2176,6 +2177,16 @@ bool equalIgnoringNullity(const UChar* a, size_t aLength, StringImpl* b)
         return true;
     }
     return !memcmp(a, b->characters16(), b->length() * sizeof(UChar));
+}
+
+void StringImpl::releaseAssertCaged() const
+{
+    if (isStatic())
+        return;
+    RELEASE_ASSERT(!GIGACAGE_ENABLED || Gigacage::isCaged(Gigacage::String, this));
+    if (bufferOwnership() != BufferOwned)
+        return;
+    RELEASE_ASSERT(!GIGACAGE_ENABLED || Gigacage::isCaged(Gigacage::String, m_data8));
 }
 
 } // namespace WTF

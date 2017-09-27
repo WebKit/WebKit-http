@@ -242,7 +242,7 @@ bool IDBKeyData::decode(KeyedDecoder& decoder, IDBKeyData& result)
         if (!decoder.decodeBytes("binary", bytes))
             return false;
 
-        result.m_value = ThreadSafeDataBuffer::adoptVector(bytes);
+        result.m_value = ThreadSafeDataBuffer::create(WTFMove(bytes));
         return true;
     }
 
@@ -383,6 +383,14 @@ void IDBKeyData::setArrayValue(const Vector<IDBKeyData>& value)
     *this = IDBKeyData();
     m_value = value;
     m_type = KeyType::Array;
+    m_isNull = false;
+}
+
+void IDBKeyData::setBinaryValue(const ThreadSafeDataBuffer& value)
+{
+    *this = IDBKeyData();
+    m_value = value;
+    m_type = KeyType::Binary;
     m_isNull = false;
 }
 

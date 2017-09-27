@@ -20,22 +20,22 @@
 
 #pragma once
 
+#include "DOMAnnotation.h"
 #include "JSCJSValue.h"
 #include "PropertyName.h"
 #include "PropertyOffset.h"
+#include "ScopeOffset.h"
 #include <wtf/Assertions.h>
 
 namespace JSC {
-namespace DOMJIT {
-class GetterSetter;
-}
 class ExecState;
 class GetterSetter;
 class JSObject;
+class JSModuleEnvironment;
 
 // ECMA 262-3 8.6.1
 // Property attributes
-enum Attribute {
+enum class PropertyAttribute : unsigned {
     None              = 0,
     ReadOnly          = 1 << 1,  // property can be only read, not written
     DontEnum          = 1 << 2,  // property doesn't appear in (for .. in ..)
@@ -50,13 +50,23 @@ enum Attribute {
     CellProperty      = 1 << 11, // property is a lazy property - only used by static hashtables
     ClassStructure    = 1 << 12, // property is a lazy class structure - only used by static hashtables
     PropertyCallback  = 1 << 13, // property that is a lazy property callback - only used by static hashtables
-    DOMJITAttribute   = 1 << 14, // property is a DOM JIT attribute - only used by static hashtables
-    DOMJITFunction    = 1 << 15, // property is a DOM JIT function - only used by static hashtables
+    DOMAttribute      = 1 << 14, // property is a simple DOM attribute - only used by static hashtables
+    DOMJITAttribute   = 1 << 15, // property is a DOM JIT attribute - only used by static hashtables
+    DOMJITFunction    = 1 << 16, // property is a DOM JIT function - only used by static hashtables
     BuiltinOrFunction = Builtin | Function, // helper only used by static hashtables
     BuiltinOrFunctionOrLazyProperty = Builtin | Function | CellProperty | ClassStructure | PropertyCallback, // helper only used by static hashtables
     BuiltinOrFunctionOrAccessorOrLazyProperty = Builtin | Function | Accessor | CellProperty | ClassStructure | PropertyCallback, // helper only used by static hashtables
     BuiltinOrFunctionOrAccessorOrLazyPropertyOrConstant = Builtin | Function | Accessor | CellProperty | ClassStructure | PropertyCallback | ConstantInteger // helper only used by static hashtables
 };
+
+static constexpr unsigned operator| (PropertyAttribute a, PropertyAttribute b) { return static_cast<unsigned>(a) | static_cast<unsigned>(b); }
+static constexpr unsigned operator| (unsigned a, PropertyAttribute b) { return a | static_cast<unsigned>(b); }
+static constexpr unsigned operator| (PropertyAttribute a, unsigned b) { return static_cast<unsigned>(a) | b; }
+static constexpr unsigned operator&(unsigned a, PropertyAttribute b) { return a & static_cast<unsigned>(b); }
+static constexpr bool operator<(PropertyAttribute a, PropertyAttribute b) { return static_cast<unsigned>(a) < static_cast<unsigned>(b); }
+static constexpr unsigned operator~(PropertyAttribute a) { return ~static_cast<unsigned>(a); }
+static constexpr bool operator<(PropertyAttribute a, unsigned b) { return static_cast<unsigned>(a) < b; }
+static inline unsigned& operator|=(unsigned& a, PropertyAttribute b) { return a |= static_cast<unsigned>(b); }
 
 enum CacheabilityType : uint8_t {
     CachingDisallowed,
@@ -86,6 +96,12 @@ public:
         VMInquiry, // Our VM is just poking around. When this is the InternalMethodType, getOwnPropertySlot is not allowed to do user observable actions.
     };
 
+    enum class AdditionalDataType : uint8_t {
+        None,
+        DOMAttribute, // Annotated with DOMAttribute information.
+        ModuleNamespace, // ModuleNamespaceObject's environment access.
+    };
+
     explicit PropertySlot(const JSValue thisValue, InternalMethodType internalMethodType)
         : m_offset(invalidOffset)
         , m_thisValue(thisValue)
@@ -94,6 +110,7 @@ public:
         , m_cacheability(CachingAllowed)
         , m_propertyType(TypeUnset)
         , m_internalMethodType(internalMethodType)
+        , m_additionalDataType(AdditionalDataType::None)
         , m_isTaintedByOpaqueObject(false)
     {
     }
@@ -161,9 +178,23 @@ public:
         return m_watchpointSet;
     }
 
-    DOMJIT::GetterSetter* domJIT() const
+    std::optional<DOMAttributeAnnotation> domAttribute() const
     {
-        return m_domJIT;
+        if (m_additionalDataType == AdditionalDataType::DOMAttribute)
+            return m_additionalData.domAttribute;
+        return std::nullopt;
+    }
+
+    struct ModuleNamespaceSlot {
+        JSModuleEnvironment* environment;
+        unsigned scopeOffset;
+    };
+
+    std::optional<ModuleNamespaceSlot> moduleNamespaceSlot() const
+    {
+        if (m_additionalDataType == AdditionalDataType::ModuleNamespace)
+            return m_additionalData.moduleNamespaceSlot;
+        return std::nullopt;
     }
 
     void setValue(JSObject* slotBase, unsigned attributes, JSValue value)
@@ -206,6 +237,14 @@ public:
         m_offset = invalidOffset;
     }
 
+    void setValueModuleNamespace(JSObject* slotBase, unsigned attributes, JSValue value, JSModuleEnvironment* environment, ScopeOffset scopeOffset)
+    {
+        setValue(slotBase, attributes, value);
+        m_additionalDataType = AdditionalDataType::ModuleNamespace;
+        m_additionalData.moduleNamespaceSlot.environment = environment;
+        m_additionalData.moduleNamespaceSlot.scopeOffset = scopeOffset.offset();
+    }
+
     void setCustom(JSObject* slotBase, unsigned attributes, GetValueFunc getValue)
     {
         ASSERT(attributes == attributesForStructure(attributes));
@@ -219,8 +258,15 @@ public:
         m_propertyType = TypeCustom;
         m_offset = invalidOffset;
     }
+
+    void setCustom(JSObject* slotBase, unsigned attributes, GetValueFunc getValue, DOMAttributeAnnotation domAttribute)
+    {
+        setCustom(slotBase, attributes, getValue);
+        m_additionalDataType = AdditionalDataType::DOMAttribute;
+        m_additionalData.domAttribute = domAttribute;
+    }
     
-    void setCacheableCustom(JSObject* slotBase, unsigned attributes, GetValueFunc getValue, DOMJIT::GetterSetter* domJIT = nullptr)
+    void setCacheableCustom(JSObject* slotBase, unsigned attributes, GetValueFunc getValue)
     {
         ASSERT(attributes == attributesForStructure(attributes));
         
@@ -232,7 +278,13 @@ public:
         m_slotBase = slotBase;
         m_propertyType = TypeCustom;
         m_offset = !invalidOffset;
-        m_domJIT = domJIT;
+    }
+
+    void setCacheableCustom(JSObject* slotBase, unsigned attributes, GetValueFunc getValue, DOMAttributeAnnotation domAttribute)
+    {
+        setCacheableCustom(slotBase, attributes, getValue);
+        m_additionalDataType = AdditionalDataType::DOMAttribute;
+        m_additionalData.domAttribute = domAttribute;
     }
 
     void setCustomGetterSetter(JSObject* slotBase, unsigned attributes, CustomGetterSetter* getterSetter)
@@ -290,7 +342,7 @@ public:
     void setUndefined()
     {
         m_data.value = JSValue::encode(jsUndefined());
-        m_attributes = ReadOnly | DontDelete | DontEnum;
+        m_attributes = PropertyAttribute::ReadOnly | PropertyAttribute::DontDelete | PropertyAttribute::DontEnum;
 
         m_slotBase = 0;
         m_propertyType = TypeValue;
@@ -328,7 +380,11 @@ private:
     CacheabilityType m_cacheability;
     PropertyType m_propertyType;
     InternalMethodType m_internalMethodType;
-    DOMJIT::GetterSetter* m_domJIT { nullptr };
+    AdditionalDataType m_additionalDataType;
+    union {
+        DOMAttributeAnnotation domAttribute;
+        ModuleNamespaceSlot moduleNamespaceSlot;
+    } m_additionalData;
     bool m_isTaintedByOpaqueObject;
 };
 
@@ -349,6 +405,8 @@ ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, unsigned propertyN
         return JSValue::decode(m_data.value);
     if (m_propertyType == TypeGetter)
         return functionGetter(exec);
+    if (m_propertyType == TypeCustomAccessor)
+        return customAccessorGetter(exec, Identifier::from(exec, propertyName));
     return customGetter(exec, Identifier::from(exec, propertyName));
 }
 

@@ -332,7 +332,7 @@ class MockFileSystem(object):
         self.files[path] = contents
         self.written_files[path] = contents
 
-    def open_text_file_for_reading(self, path):
+    def open_text_file_for_reading(self, path, errors='strict'):
         if self.files[path] is None:
             self._raise_not_found(path)
         return ReadableTextFileObject(self, path, self.files[path])
@@ -340,11 +340,11 @@ class MockFileSystem(object):
     def open_text_file_for_writing(self, path, should_append=False):
         return WritableTextFileObject(self, path)
 
-    def read_text_file(self, path):
-        return self.read_binary_file(path).decode('utf-8')
+    def read_text_file(self, path, errors='strict'):
+        return self.read_binary_file(path).decode('utf-8', errors=errors)
 
-    def write_text_file(self, path, contents):
-        return self.write_binary_file(path, contents.encode('utf-8'))
+    def write_text_file(self, path, contents, errors='strict'):
+        return self.write_binary_file(path, contents.encode('utf-8', errors=errors))
 
     def sha1(self, path):
         contents = self.read_binary_file(path)
@@ -419,6 +419,21 @@ class MockFileSystem(object):
 
     def compare(self, path1, path2):
         return self.read_binary_file(path1) == self.read_binary_file(path2)
+
+    def map_base_host_path(self, path):
+        return path
+
+    def move_to_base_host(self, source, destination):
+        self.move(source, destination)
+
+    def move_from_base_host(self, source, destination):
+        self.move(source, destination)
+
+    def copy_to_base_host(self, source, destination):
+        self.move(source, destination)
+
+    def copy_from_base_host(self, source, destination):
+        self.move(source, destination)
 
 
 class WritableBinaryFileObject(object):

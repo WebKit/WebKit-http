@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2015, 2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  * Copyright (C) 2012 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
 
 #include <debugger/Debugger.h>
 #include <heap/Strong.h>
+#include <runtime/JSRunLoopTimer.h>
 #include <wtf/Forward.h>
 #include <wtf/Lock.h>
 #include <wtf/NakedPtr.h>
@@ -74,11 +75,15 @@ namespace WebCore {
         bool isExecutionForbidden() const;
 
         void disableEval(const String& errorMessage);
+        void disableWebAssembly(const String& errorMessage);
 
         JSC::VM& vm() { return *m_vm; }
         
         void releaseHeapAccess();
         void acquireHeapAccess();
+
+        void addTimerSetNotification(JSC::JSRunLoopTimer::TimerNotificationCallback);
+        void removeTimerSetNotification(JSC::JSRunLoopTimer::TimerNotificationCallback);
 
         void attachDebugger(JSC::Debugger*);
         void detachDebugger(JSC::Debugger*);

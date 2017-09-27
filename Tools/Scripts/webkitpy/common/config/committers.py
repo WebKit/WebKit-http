@@ -37,6 +37,7 @@ from webkitpy.common.editdistance import edit_distance
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system.filesystem import FileSystem
 
+
 class Contributor(object):
     def __init__(self, name, email_or_emails, irc_nickname_or_nicknames=None, alias_or_aliases=None, expertise=None):
         assert(name)
@@ -171,6 +172,7 @@ class Bot(Contributor):
         Contributor.__init__(self, name, email_or_emails, irc_nickname, alias_or_aliases, expertise)
         self.is_bot = True
 
+
 class CommitterList(object):
 
     # Committers and reviewers are passed in to allow easy testing
@@ -259,9 +261,14 @@ class CommitterList(object):
     def _name_to_contributor_map(self):
         if not len(self._contributors_by_name):
             for contributor in self._contributors:
-                assert(contributor.full_name)
-                assert(contributor.full_name.lower() not in self._contributors_by_name)  # We should never have duplicate names.
+                assert contributor.full_name
+                assert contributor.full_name.lower() not in self._contributors_by_name  # We should never have duplicate names.
                 self._contributors_by_name[contributor.full_name.lower()] = contributor
+                if contributor.aliases is None:
+                    continue
+                for alias in contributor.aliases:
+                    assert alias.lower() not in self._contributors_by_name
+                    self._contributors_by_name[alias.lower()] = contributor
         return self._contributors_by_name
 
     def _email_to_account_map(self):

@@ -20,10 +20,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import time
+
 from webkitpy.port import port_testcase
-from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.tool.mocktool import MockOptions
+from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.executive_mock import MockExecutive, MockExecutive2, MockProcess, ScriptError
 from webkitpy.common.system.systemhost_mock import MockSystemHost
 
@@ -87,15 +89,26 @@ class DarwinTest(port_testcase.PortTestCase):
         port.stop_helper()
         oc.restore_output()
 
+    def test_crashlog_path(self):
+        port = self.make_port()
+        self.assertEqual(port.path_to_crash_logs(), '/Users/mock/Library/Logs/CrashReporter')
+
+        host = MockSystemHost(filesystem=MockFileSystem(files=['/Users/mock/Library/Logs/DiagnosticReports/crashlog.crash']))
+        port = self.make_port(host)
+        self.assertEqual(port.path_to_crash_logs(), '/Users/mock/Library/Logs/DiagnosticReports')
+
     def test_spindump(self):
 
         def logging_run_command(args):
             print args
 
         port = self.make_port()
-        port._executive = MockExecutive2(run_command_fn=logging_run_command)
-        expected_stdout = "['/usr/bin/sudo', '-n', '/usr/sbin/spindump', 42, 10, 10, '-file', '/mock-build/layout-test-results/test-42-spindump.txt']\n"
+        port.host.filesystem.files['/__im_tmp/tmp_0_/test-42-spindump.txt'] = 'Spindump file'
+        port.host.executive = MockExecutive2(run_command_fn=logging_run_command)
+        expected_stdout = "['/usr/bin/sudo', '-n', '/usr/sbin/spindump', 42, 10, 10, '-file', '/__im_tmp/tmp_0_/test-42-spindump.txt']\n"
         OutputCapture().assert_outputs(self, port.sample_process, args=['test', 42], expected_stdout=expected_stdout)
+        self.assertEqual(port.host.filesystem.files['/mock-build/layout-test-results/test-42-spindump.txt'], 'Spindump file')
+        self.assertIsNone(port.host.filesystem.files['/__im_tmp/tmp_0_/test-42-spindump.txt'])
 
     def test_sample_process(self):
 
@@ -106,9 +119,12 @@ class DarwinTest(port_testcase.PortTestCase):
             return 0
 
         port = self.make_port()
-        port._executive = MockExecutive2(run_command_fn=logging_run_command)
-        expected_stdout = "['/usr/bin/sample', 42, 10, 10, '-file', '/mock-build/layout-test-results/test-42-sample.txt']\n"
+        port.host.filesystem.files['/__im_tmp/tmp_0_/test-42-sample.txt'] = 'Sample file'
+        port.host.executive = MockExecutive2(run_command_fn=logging_run_command)
+        expected_stdout = "['/usr/bin/sample', 42, 10, 10, '-file', '/__im_tmp/tmp_0_/test-42-sample.txt']\n"
         OutputCapture().assert_outputs(self, port.sample_process, args=['test', 42], expected_stdout=expected_stdout)
+        self.assertEqual(port.host.filesystem.files['/mock-build/layout-test-results/test-42-sample.txt'], 'Sample file')
+        self.assertIsNone(port.host.filesystem.files['/__im_tmp/tmp_0_/test-42-sample.txt'])
 
     def test_sample_process_exception(self):
         def throwing_run_command(args):
@@ -117,5 +133,9 @@ class DarwinTest(port_testcase.PortTestCase):
             raise ScriptError("MOCK script error")
 
         port = self.make_port()
-        port._executive = MockExecutive2(run_command_fn=throwing_run_command)
+        port.host.executive = MockExecutive2(run_command_fn=throwing_run_command)
         OutputCapture().assert_outputs(self, port.sample_process, args=['test', 42])
+
+    def test_get_crash_log(self):
+        port = self.make_port(port_name=self.port_name)
+        port._get_crash_log('DumpRenderTree', 1234, None, None, time.time(), wait_for_log=False)

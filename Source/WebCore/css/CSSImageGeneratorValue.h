@@ -26,9 +26,7 @@
 #pragma once
 
 #include "CSSValue.h"
-#include "FloatSize.h"
 #include "FloatSizeHash.h"
-#include "Timer.h"
 #include <wtf/HashCountedSet.h>
 
 namespace WebCore {
@@ -38,23 +36,24 @@ class CachedResourceLoader;
 class GeneratedImage;
 class Image;
 class RenderElement;
-class StyleResolver;
+
 struct ResourceLoaderOptions;
 
 class CSSImageGeneratorValue : public CSSValue {
 public:
     ~CSSImageGeneratorValue();
 
-    void addClient(RenderElement*);
-    void removeClient(RenderElement*);
+    void addClient(RenderElement&);
+    void removeClient(RenderElement&);
+    const HashCountedSet<RenderElement*>& clients() const { return m_clients; }
 
-    RefPtr<Image> image(RenderElement*, const FloatSize&);
+    RefPtr<Image> image(RenderElement&, const FloatSize&);
 
     bool isFixedSize() const;
-    FloatSize fixedSize(const RenderElement*);
+    FloatSize fixedSize(const RenderElement&);
 
     bool isPending() const;
-    bool knownToBeOpaque(const RenderElement*) const;
+    bool knownToBeOpaque(const RenderElement&) const;
 
     void loadSubimages(CachedResourceLoader&, const ResourceLoaderOptions&);
 
@@ -62,31 +61,15 @@ protected:
     CSSImageGeneratorValue(ClassType);
 
     GeneratedImage* cachedImageForSize(FloatSize);
-    void saveCachedImageForSize(FloatSize, PassRefPtr<GeneratedImage>);
-    const HashCountedSet<RenderElement*>& clients() const { return m_clients; }
+    void saveCachedImageForSize(FloatSize, GeneratedImage&);
 
     // Helper functions for Crossfade and Filter.
     static CachedImage* cachedImageForCSSValue(CSSValue&, CachedResourceLoader&, const ResourceLoaderOptions&);
     static bool subimageIsPending(const CSSValue&);
 
 private:
-    class CachedGeneratedImage {
-        WTF_MAKE_FAST_ALLOCATED;
-    public:
-        CachedGeneratedImage(CSSImageGeneratorValue&, FloatSize, PassRefPtr<GeneratedImage>);
-        GeneratedImage* image() { return m_image.get(); }
-        void puntEvictionTimer() { m_evictionTimer.restart(); }
+    class CachedGeneratedImage;
 
-    private:
-        void evictionTimerFired();
-
-        CSSImageGeneratorValue& m_owner;
-        FloatSize m_size;
-        RefPtr<GeneratedImage> m_image;
-        DeferrableOneShotTimer m_evictionTimer;
-    };
-
-    friend class CachedGeneratedImage;
     void evictCachedGeneratedImage(FloatSize);
 
     HashCountedSet<RenderElement*> m_clients;

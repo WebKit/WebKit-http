@@ -20,13 +20,13 @@
 
 #pragma once
 
+#include <wtf/Forward.h>
 #include <wtf/Optional.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class IntSize;
 
-bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize&, Vector<char>& jpegData, Optional<double> quality = Nullopt);
+bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize&, Vector<uint8_t>& jpegData, std::optional<double> quality = std::nullopt);
 
 }

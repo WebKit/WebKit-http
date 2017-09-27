@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,17 +27,36 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "B3Common.h"
 #include "B3Compilation.h"
-#include "VM.h"
-#include "WasmFormat.h"
+#include "B3OpaqueByproducts.h"
+#include "CCallHelpers.h"
+#include "WasmMemory.h"
+#include "WasmModuleInformation.h"
+#include "WasmTierUpCount.h"
+#include <wtf/Expected.h>
 
 extern "C" void dumpProcedure(void*);
 
 namespace JSC { namespace Wasm {
 
-class Memory;
+class MemoryInformation;
 
-std::unique_ptr<FunctionCompilation> parseAndCompile(VM&, const uint8_t*, size_t, Memory*, const Signature*, const Vector<FunctionInformation>&, unsigned optLevel = 1);
+enum class CompilationMode {
+    BBQMode,
+    OMGMode,
+};
+
+struct CompilationContext {
+    std::unique_ptr<CCallHelpers> jsEntrypointJIT;
+    std::unique_ptr<B3::OpaqueByproducts> jsEntrypointByproducts;
+    std::unique_ptr<CCallHelpers> wasmEntrypointJIT;
+    std::unique_ptr<B3::OpaqueByproducts> wasmEntrypointByproducts;
+};
+
+Expected<std::unique_ptr<InternalFunction>, String> parseAndCompile(CompilationContext&, const uint8_t*, size_t, const Signature&, Vector<UnlinkedWasmToWasmCall>&, const ModuleInformation&, MemoryMode, CompilationMode, uint32_t functionIndex, TierUpCount* = nullptr);
+
+std::unique_ptr<InternalFunction> createJSToWasmWrapper(CompilationContext&, const Signature&, Vector<UnlinkedWasmToWasmCall>*, const ModuleInformation&, MemoryMode, uint32_t functionIndex);
 
 } } // namespace JSC::Wasm
 

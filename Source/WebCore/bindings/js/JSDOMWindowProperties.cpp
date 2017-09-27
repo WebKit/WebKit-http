@@ -29,6 +29,8 @@
 #include "Frame.h"
 #include "HTMLDocument.h"
 #include "JSDOMBinding.h"
+#include "JSDOMBindingSecurity.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDOMWindowBase.h"
 #include "JSElement.h"
 #include "JSHTMLCollection.h"
@@ -37,7 +39,7 @@ namespace WebCore {
 
 using namespace JSC;
 
-const ClassInfo JSDOMWindowProperties::s_info = { "WindowProperties", &Base::s_info, 0, CREATE_METHOD_TABLE(JSDOMWindowProperties) };
+const ClassInfo JSDOMWindowProperties::s_info = { "WindowProperties", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSDOMWindowProperties) };
 
 static bool jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(JSDOMWindowProperties* thisObject, Frame& frame, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
@@ -46,9 +48,12 @@ static bool jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(JSDOMWindowPr
     // properties that are in Moz but not IE. Since we have some of these, we have to do it
     // the Moz way.
     if (auto* scopedChild = frame.tree().scopedChild(propertyNameToAtomicString(propertyName))) {
-        slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, toJS(exec, scopedChild->document()->domWindow()));
+        slot.setValue(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::DontEnum, toJS(exec, scopedChild->document()->domWindow()));
         return true;
     }
+
+    if (!BindingSecurity::shouldAllowAccessToFrame(exec, &frame, ThrowSecurityError))
+        return false;
 
     // FIXME: Search the whole frame hierarchy somewhere around here.
     // We need to test the correct priority order.
@@ -66,7 +71,7 @@ static bool jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(JSDOMWindowPr
                 namedItem = toJS(exec, thisObject->globalObject(), collection);
             } else
                 namedItem = toJS(exec, thisObject->globalObject(), htmlDocument.windowNamedItem(*atomicPropertyName));
-            slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, namedItem);
+            slot.setValue(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::DontEnum, namedItem);
             return true;
         }
     }

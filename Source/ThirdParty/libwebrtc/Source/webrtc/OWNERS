@@ -1,0 +1,13 @@
+henrika@webrtc.org
+kwiberg@webrtc.org
+mflodman@webrtc.org
+niklas.enbom@webrtc.org
+stefan@webrtc.org
+tina.legrand@webrtc.org
+tommi@webrtc.org
+
+per-file *.gn=kjellander@webrtc.org
+per-file *.gni=kjellander@webrtc.org
+
+per-file *video*.h=pbos@webrtc.org
+per-file DEPS=kjellander@webrtc.org

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2013, 2015-2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@
 
 namespace JSC {
 
-const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", 0, 0, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
+const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
 
 UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
     : Base(*vm, structure)
@@ -70,7 +70,6 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_constructorKind(static_cast<unsigned>(info.constructorKind()))
     , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
     , m_evalContextType(static_cast<unsigned>(info.evalContextType()))
-    , m_firstLine(0)
     , m_lineCount(0)
     , m_endColumn(UINT_MAX)
     , m_didOptimize(MixedTriState)
@@ -93,16 +92,17 @@ void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
     UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
+    auto locker = holdLock(*thisObject);
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionDecls.begin(), end = thisObject->m_functionDecls.end(); ptr != end; ++ptr)
-        visitor.append(ptr);
+        visitor.append(*ptr);
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionExprs.begin(), end = thisObject->m_functionExprs.end(); ptr != end; ++ptr)
-        visitor.append(ptr);
+        visitor.append(*ptr);
     visitor.appendValues(thisObject->m_constantRegisters.data(), thisObject->m_constantRegisters.size());
     if (thisObject->m_unlinkedInstructions)
         visitor.reportExtraMemoryVisited(thisObject->m_unlinkedInstructions->sizeInBytes());
     if (thisObject->m_rareData) {
         for (size_t i = 0, end = thisObject->m_rareData->m_regexps.size(); i != end; i++)
-            visitor.append(&thisObject->m_rareData->m_regexps[i]);
+            visitor.append(thisObject->m_rareData->m_regexps[i]);
     }
 }
 
@@ -314,7 +314,10 @@ UnlinkedCodeBlock::~UnlinkedCodeBlock()
 void UnlinkedCodeBlock::setInstructions(std::unique_ptr<UnlinkedInstructionStream> instructions)
 {
     ASSERT(instructions);
-    m_unlinkedInstructions = WTFMove(instructions);
+    {
+        auto locker = holdLock(*this);
+        m_unlinkedInstructions = WTFMove(instructions);
+    }
     Heap::heap(this)->reportExtraMemoryAllocated(m_unlinkedInstructions->sizeInBytes());
 }
 
@@ -347,7 +350,7 @@ void UnlinkedCodeBlock::applyModification(BytecodeRewriter& rewriter)
     for (int bytecodeOffset = 0, instructionCount = graph.instructions().size(); bytecodeOffset < instructionCount;) {
         UnlinkedInstruction* current = instructionsBegin + bytecodeOffset;
         OpcodeID opcodeID = current[0].u.opcode;
-        extractStoredJumpTargetsForBytecodeOffset(this, vm()->interpreter, instructionsBegin, bytecodeOffset, [&](int32_t& relativeOffset) {
+        extractStoredJumpTargetsForBytecodeOffset(this, instructionsBegin, bytecodeOffset, [&](int32_t& relativeOffset) {
             relativeOffset = rewriter.adjustJumpTarget(bytecodeOffset, bytecodeOffset + relativeOffset);
         });
         bytecodeOffset += opcodeLength(opcodeID);
@@ -386,4 +389,33 @@ void UnlinkedCodeBlock::applyModification(BytecodeRewriter& rewriter)
     recomputePreciseJumpTargets(this, graph.instructions().begin(), graph.instructions().size(), m_jumpTargets);
 }
 
+void UnlinkedCodeBlock::shrinkToFit()
+{
+    auto locker = holdLock(*this);
+    
+    m_jumpTargets.shrinkToFit();
+    m_identifiers.shrinkToFit();
+    m_bitVectors.shrinkToFit();
+    m_constantRegisters.shrinkToFit();
+    m_constantsSourceCodeRepresentation.shrinkToFit();
+    m_functionDecls.shrinkToFit();
+    m_functionExprs.shrinkToFit();
+    m_propertyAccessInstructions.shrinkToFit();
+    m_expressionInfo.shrinkToFit();
+
+    if (m_rareData) {
+        m_rareData->m_exceptionHandlers.shrinkToFit();
+        m_rareData->m_regexps.shrinkToFit();
+        m_rareData->m_constantBuffers.shrinkToFit();
+        m_rareData->m_switchJumpTables.shrinkToFit();
+        m_rareData->m_stringSwitchJumpTables.shrinkToFit();
+        m_rareData->m_expressionInfoFatPositions.shrinkToFit();
+        m_rareData->m_opProfileControlFlowBytecodeOffsets.shrinkToFit();
+    }
 }
+
+void UnlinkedCodeBlock::dump(PrintStream&) const
+{
+}
+
+} // namespace JSC

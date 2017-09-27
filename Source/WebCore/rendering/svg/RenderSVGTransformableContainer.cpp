@@ -23,7 +23,6 @@
 #include "RenderSVGTransformableContainer.h"
 
 #include "SVGGElement.h"
-#include "SVGNames.h"
 #include "SVGUseElement.h"
 
 namespace WebCore {
@@ -64,7 +63,7 @@ bool RenderSVGTransformableContainer::calculateLocalTransform()
         return false;
 
     m_localTransform = element.animatedLocalTransform();
-    m_localTransform.translate(m_lastTranslation.width(), m_lastTranslation.height());
+    m_localTransform.translate(m_lastTranslation);
     m_needsTransformUpdate = false;
     return true;
 }

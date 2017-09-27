@@ -35,6 +35,7 @@ class Element;
 class Document;
 class Page;
 class PlatformMouseEvent;
+class PlatformWheelEvent;
 class VoidCallback;
 
 class PointerLockController {
@@ -43,25 +44,32 @@ class PointerLockController {
 public:
     explicit PointerLockController(Page&);
     void requestPointerLock(Element* target);
+
     void requestPointerUnlock();
-    void elementRemoved(Element*);
-    void documentDetached(Document*);
-    bool lockPending() const;
-    Element* element() const;
+    void requestPointerUnlockAndForceCursorVisible();
+    void elementRemoved(Element&);
+    void documentDetached(Document&);
+    bool isLocked() const;
+    WEBCORE_EXPORT bool lockPending() const;
+    WEBCORE_EXPORT Element* element() const;
 
     WEBCORE_EXPORT void didAcquirePointerLock();
     WEBCORE_EXPORT void didNotAcquirePointerLock();
     WEBCORE_EXPORT void didLosePointerLock();
     void dispatchLockedMouseEvent(const PlatformMouseEvent&, const AtomicString& eventType);
+    void dispatchLockedWheelEvent(const PlatformWheelEvent&);
 
 private:
     void clearElement();
     void enqueueEvent(const AtomicString& type, Element*);
     void enqueueEvent(const AtomicString& type, Document*);
     Page& m_page;
-    bool m_lockPending;
+    bool m_lockPending { false };
+    bool m_unlockPending { false };
+    bool m_forceCursorVisibleUponUnlock { false };
     RefPtr<Element> m_element;
     RefPtr<Document> m_documentOfRemovedElementWhileWaitingForUnlock;
+    RefPtr<Document> m_documentAllowedToRelockWithoutUserGesture;
 };
 
 } // namespace WebCore

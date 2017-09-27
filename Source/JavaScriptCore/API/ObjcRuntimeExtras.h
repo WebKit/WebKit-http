@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,39 +23,47 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#import <memory>
 #import <objc/Protocol.h>
 #import <objc/runtime.h>
 #import <wtf/HashSet.h>
+#import <wtf/SystemFree.h>
 #import <wtf/Vector.h>
+#import <wtf/text/CString.h>
+
+template<typename T, typename U>
+inline std::unique_ptr<T, WTF::SystemFree<T>> adoptSystem(U value)
+{
+    return std::unique_ptr<T, WTF::SystemFree<T>>(value);
+}
 
 inline bool protocolImplementsProtocol(Protocol *candidate, Protocol *target)
 {
     unsigned protocolProtocolsCount;
-    Protocol ** protocolProtocols = protocol_copyProtocolList(candidate, &protocolProtocolsCount);
+    auto protocolProtocols = adoptSystem<Protocol*[]>(protocol_copyProtocolList(candidate, &protocolProtocolsCount));
     for (unsigned i = 0; i < protocolProtocolsCount; ++i) {
-        if (protocol_isEqual(protocolProtocols[i], target)) {
-            free(protocolProtocols);
+        if (protocol_isEqual(protocolProtocols[i], target))
             return true;
-        }
     }
-    free(protocolProtocols);
     return false;
 }
 
-inline void forEachProtocolImplementingProtocol(Class cls, Protocol *target, void (^callback)(Protocol *))
+inline void forEachProtocolImplementingProtocol(Class cls, Protocol *target, void (^callback)(Protocol *, bool& stop))
 {
     ASSERT(cls);
     ASSERT(target);
 
-    Vector<Protocol *> worklist;
+    Vector<Protocol*> worklist;
     HashSet<void*> visited;
 
     // Initially fill the worklist with the Class's protocols.
-    unsigned protocolsCount;
-    Protocol ** protocols = class_copyProtocolList(cls, &protocolsCount);
-    worklist.append(protocols, protocolsCount);
-    free(protocols);
+    {
+        unsigned protocolsCount;
+        auto protocols = adoptSystem<Protocol*[]>(class_copyProtocolList(cls, &protocolsCount));
+        worklist.append(protocols.get(), protocolsCount);
+    }
 
+    bool stop = false;
     while (!worklist.isEmpty()) {
         Protocol *protocol = worklist.last();
         worklist.removeLast();
@@ -65,41 +73,43 @@ inline void forEachProtocolImplementingProtocol(Class cls, Protocol *target, voi
             continue;
 
         // If it implements the protocol, make the callback.
-        if (protocolImplementsProtocol(protocol, target))
-            callback(protocol);
+        if (protocolImplementsProtocol(protocol, target)) {
+            callback(protocol, stop);
+            if (stop)
+                break;
+        }
 
         // Add incorporated protocols to the worklist.
-        protocols = protocol_copyProtocolList(protocol, &protocolsCount);
-        worklist.append(protocols, protocolsCount);
-        free(protocols);
+        {
+            unsigned protocolsCount;
+            auto protocols = adoptSystem<Protocol*[]>(protocol_copyProtocolList(protocol, &protocolsCount));
+            worklist.append(protocols.get(), protocolsCount);
+        }
     }
 }
 
 inline void forEachMethodInClass(Class cls, void (^callback)(Method))
 {
     unsigned count;
-    Method* methods = class_copyMethodList(cls, &count);
+    auto methods = adoptSystem<Method[]>(class_copyMethodList(cls, &count));
     for (unsigned i = 0; i < count; ++i)
         callback(methods[i]);
-    free(methods);
 }
 
 inline void forEachMethodInProtocol(Protocol *protocol, BOOL isRequiredMethod, BOOL isInstanceMethod, void (^callback)(SEL, const char*))
 {
     unsigned count;
-    struct objc_method_description* methods = protocol_copyMethodDescriptionList(protocol, isRequiredMethod, isInstanceMethod, &count);
+    auto methods = adoptSystem<objc_method_description[]>(protocol_copyMethodDescriptionList(protocol, isRequiredMethod, isInstanceMethod, &count));
     for (unsigned i = 0; i < count; ++i)
         callback(methods[i].name, methods[i].types);
-    free(methods);
 }
 
 inline void forEachPropertyInProtocol(Protocol *protocol, void (^callback)(objc_property_t))
 {
     unsigned count;
-    objc_property_t* properties = protocol_copyPropertyList(protocol, &count);
+    auto properties = adoptSystem<objc_property_t[]>(protocol_copyPropertyList(protocol, &count));
     for (unsigned i = 0; i < count; ++i)
         callback(properties[i]);
-    free(properties);
 }
 
 template<char open, char close>
@@ -120,13 +130,14 @@ void skipPair(const char*& position)
 class StringRange {
     WTF_MAKE_NONCOPYABLE(StringRange);
 public:
-    StringRange(const char* begin, const char* end) : m_ptr(strndup(begin, end - begin)) { }
-    ~StringRange() { free(m_ptr); }
-    operator const char*() const { return m_ptr; }
-    const char* get() const { return m_ptr; }
+    StringRange(const char* begin, const char* end)
+        : m_string(begin, end - begin)
+    { }
+    operator const char*() const { return m_string.data(); }
+    const char* get() const { return m_string.data(); }
 
 private:
-    char* m_ptr;
+    CString m_string;
 };
 
 class StructBuffer {
@@ -136,16 +147,13 @@ public:
     {
         NSUInteger size, alignment;
         NSGetSizeAndAlignment(encodedType, &size, &alignment);
-        --alignment;
-        m_allocation = static_cast<char*>(malloc(size + alignment));
-        m_buffer = reinterpret_cast<char*>((reinterpret_cast<intptr_t>(m_allocation) + alignment) & ~alignment);
+        m_buffer = fastAlignedMalloc(alignment, size);
     }
 
-    ~StructBuffer() { free(m_allocation); }
+    ~StructBuffer() { fastAlignedFree(m_buffer); }
     operator void*() const { return m_buffer; }
 
 private:
-    void* m_allocation;
     void* m_buffer;
 };
 

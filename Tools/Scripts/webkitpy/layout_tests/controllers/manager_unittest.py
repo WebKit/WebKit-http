@@ -65,6 +65,9 @@ class ManagerTest(unittest.TestCase):
         self.assertTrue(manager.needs_servers(['imported/w3c/wpt/test']))
 
         manager = get_manager()
+        self.assertTrue(manager.needs_servers(['http/wpt/funky']))
+
+        manager = get_manager()
         self.assertFalse(manager.needs_servers(['imported/w3c']))
 
     def integration_test_needs_servers(self):
@@ -104,7 +107,8 @@ class ManagerTest(unittest.TestCase):
 
     def test_uses_custom_device(self):
         class MockCustomDevicePort(TestPort):
-            CUSTOM_DEVICE_CLASSES = ['starship']            
+            CUSTOM_DEVICE_CLASSES = ['starship']
+
             def __init__(self, host):
                 super(MockCustomDevicePort, self).__init__(host)
 
@@ -116,4 +120,3 @@ class ManagerTest(unittest.TestCase):
 
         manager = get_manager()
         self.assertTrue(manager._custom_device_for_test('fast/test-starship/lasers.html') == 'starship')
-        

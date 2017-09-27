@@ -66,7 +66,7 @@ static void convertFormat(GraphicsContext3D* context, Texture::Format format, un
         *glType = GraphicsContext3D::UNSIGNED_BYTE;
         break;
     case Texture::BGRA8:
-        if (context->getExtensions()->supports("GL_EXT_texture_format_BGRA8888")) {
+        if (context->getExtensions().supports("GL_EXT_texture_format_BGRA8888")) {
             *glFormat = Extensions3D::BGRA_EXT;
             *glType = GraphicsContext3D::UNSIGNED_BYTE;
         } else {
@@ -81,7 +81,7 @@ static void convertFormat(GraphicsContext3D* context, Texture::Format format, un
     }
 }
 
-PassRefPtr<Texture> Texture::create(GraphicsContext3D* context, Format format, int width, int height)
+RefPtr<Texture> Texture::create(GraphicsContext3D* context, Format format, int width, int height)
 {
     int maxTextureSize = 0;
     context->getIntegerv(GraphicsContext3D::MAX_TEXTURE_SIZE, &maxTextureSize);
@@ -102,7 +102,7 @@ PassRefPtr<Texture> Texture::create(GraphicsContext3D* context, Format format, i
         if (!textureId) {
             for (int i = 0; i < numTiles; i++)
                 context->deleteTexture(textureIds->at(i));
-            return 0;
+            return nullptr;
         }
         textureIds->at(i) = textureId;
 

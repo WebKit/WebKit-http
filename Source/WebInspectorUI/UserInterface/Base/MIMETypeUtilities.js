@@ -23,20 +23,23 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.fileExtensionForURL = function(url)
+WI.fileExtensionForURL = function(url)
 {
-    var lastPathComponent = parseURL(url).lastPathComponent;
+    let lastPathComponent = parseURL(url).lastPathComponent;
     if (!lastPathComponent)
-        return "";
+        return null;
 
-    var index = lastPathComponent.indexOf(".");
+    let index = lastPathComponent.lastIndexOf(".");
     if (index === -1)
-        return "";
+        return null;
+
+    if (index === lastPathComponent.length - 1)
+        return null;
 
     return lastPathComponent.substr(index + 1);
 };
 
-WebInspector.mimeTypeForFileExtension = function(extension)
+WI.mimeTypeForFileExtension = function(extension)
 {
     const extensionToMIMEType = {
         // Document types.
@@ -79,7 +82,7 @@ WebInspector.mimeTypeForFileExtension = function(extension)
     return extensionToMIMEType[extension] || null;
 };
 
-WebInspector.fileExtensionForMIMEType = function(mimeType)
+WI.fileExtensionForMIMEType = function(mimeType)
 {
     const mimeTypeToExtension = {
         // Document types.
@@ -118,5 +121,13 @@ WebInspector.fileExtensionForMIMEType = function(mimeType)
     };
 
     let extension = mimeTypeToExtension[mimeType];
-    return extension ? `.${extension}` : null;
+    if (extension)
+        return extension;
+
+    if (mimeType.endsWith("+json"))
+        return "json";
+    if (mimeType.endsWith("+xml"))
+        return "xml";
+
+    return null;
 };

@@ -9,15 +9,20 @@ var MockModels = {
             Metric.clearStaticMap();
             Platform.clearStaticMap();
             Repository.clearStaticMap();
-            RootSet.clearStaticMap();
+            CommitSet.clearStaticMap();
             Test.clearStaticMap();
             TestGroup.clearStaticMap();
             BuildRequest.clearStaticMap();
+            Triggerable.clearStaticMap();
 
             MockModels.osx = Repository.ensureSingleton(9, {name: 'OS X'});
             MockModels.ios = Repository.ensureSingleton(22, {name: 'iOS'});
             MockModels.webkit = Repository.ensureSingleton(11, {name: 'WebKit', url: 'http://trac.webkit.org/changeset/$1'});
+            MockModels.ownedWebkit = Repository.ensureSingleton(191, {name: 'WebKit', url: 'http://trac.webkit.org/changeset/$1', owner: 9});
             MockModels.sharedRepository = Repository.ensureSingleton(16, {name: 'Shared'});
+            MockModels.ownerRepository = Repository.ensureSingleton(111, {name: 'Owner Repository'});
+            MockModels.ownedRepository = Repository.ensureSingleton(112, {name: 'Owned Repository', owner: 111});
+            MockModels.webkitGit = Repository.ensureSingleton(17, {name: 'WebKit-Git'});
             MockModels.builder = new Builder(176, {name: 'WebKit Perf Builder', buildUrl: 'http://build.webkit.org/builders/$builderName/$buildNumber'});
 
             MockModels.someTest = Test.ensureSingleton(1, {name: 'Some test'});
@@ -38,6 +43,24 @@ var MockModels = {
             MockModels.iPhonePLT = Test.ensureSingleton(1500, {name: 'PLT-iPhone'});
             MockModels.pltMean = Metric.ensureSingleton(1158, {name: 'Time', aggregator: 'Arithmetic', test: MockModels.plt});
             MockModels.elCapitan = Platform.ensureSingleton(31, {name: 'El Capitan', metrics: [MockModels.pltMean]});
+
+            MockModels.osRepositoryGroup = new TriggerableRepositoryGroup(31, {
+                name: 'ios',
+                repositories: [{repository: MockModels.ios}]
+            });
+            MockModels.svnRepositoryGroup = new TriggerableRepositoryGroup(32, {
+                name: 'ios-svn-webkit',
+                repositories: [{repository: MockModels.ios}, {repository: MockModels.webkit, acceptsPatch: true}, {repository: MockModels.sharedRepository}],
+                acceptsCustomRoots: true,
+            });
+            MockModels.gitRepositoryGroup = new TriggerableRepositoryGroup(33, {
+                name: 'ios-git-webkit',
+                repositories: [{repository: MockModels.ios}, {repository: MockModels.webkitGit}, {repository: MockModels.sharedRepository}]
+            });
+            MockModels.triggerable = new Triggerable(3, {name: 'build-webkit',
+                repositoryGroups: [MockModels.osRepositoryGroup, MockModels.svnRepositoryGroup, MockModels.gitRepositoryGroup],
+                configurations: [{test: MockModels.iPhonePLT, platform: MockModels.iphone}]});
+
         });
     }
 }

@@ -1,7 +1,6 @@
 set(MiniBrowser_INCLUDE_DIRECTORIES
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit"
-    "${WTF_DIR}"
+    "${FORWARDING_HEADERS_DIR}"
+    "${FORWARDING_HEADERS_DIR}/WebKitLegacy"
     "${CMAKE_SOURCE_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
 )
@@ -23,21 +22,17 @@ set(MiniBrowser_SOURCES
 set(MiniBrowser_LIBRARIES
     DbgHelp
     WTF
-    WebKit
-    WebKitGUID
+    WebKitLegacy
+    WebKitLegacyGUID
     comctl32
     comsupp
     comsuppw
     shlwapi
 )
 
-if (WTF_PLATFORM_WIN_CAIRO)
+if (USE_CF)
     list(APPEND MiniBrowser_LIBRARIES
-        CFLite
-    )
-else ()
-    list(APPEND MiniBrowser_LIBRARIES
-        CoreFoundation
+        ${COREFOUNDATION_LIBRARY}
     )
 endif ()
 

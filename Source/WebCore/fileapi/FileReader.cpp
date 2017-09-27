@@ -32,7 +32,6 @@
 #include "FileReader.h"
 
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "File.h"
 #include "Logging.h"
 #include "ProgressEvent.h"
@@ -42,6 +41,8 @@
 #include <wtf/text/CString.h>
 
 namespace WebCore {
+
+using namespace std::literals::chrono_literals;
 
 // Fire the progress event at least every 50ms.
 static const auto progressNotificationInterval = 50ms;
@@ -127,9 +128,9 @@ ExceptionOr<void> FileReader::readAsDataURL(Blob* blob)
 
 ExceptionOr<void> FileReader::readInternal(Blob& blob, FileReaderLoader::ReadType type)
 {
-    // If multiple concurrent read methods are called on the same FileReader, INVALID_STATE_ERR should be thrown when the state is LOADING.
+    // If multiple concurrent read methods are called on the same FileReader, InvalidStateError should be thrown when the state is LOADING.
     if (m_state == LOADING)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     setPendingActivity(this);
 
@@ -228,18 +229,20 @@ void FileReader::fireEvent(const AtomicString& type)
     dispatchEvent(ProgressEvent::create(type, true, m_loader ? m_loader->bytesLoaded() : 0, m_loader ? m_loader->totalBytes() : 0));
 }
 
-RefPtr<ArrayBuffer> FileReader::arrayBufferResult() const
+std::optional<Variant<String, RefPtr<JSC::ArrayBuffer>>> FileReader::result() const
 {
     if (!m_loader || m_error)
-        return nullptr;
-    return m_loader->arrayBufferResult();
-}
-
-String FileReader::stringResult()
-{
-    if (!m_loader || m_error)
-        return String();
-    return m_loader->stringResult();
+        return std::nullopt;
+    if (m_readType == FileReaderLoader::ReadAsArrayBuffer) {
+        auto result = m_loader->arrayBufferResult();
+        if (!result)
+            return std::nullopt;
+        return { result };
+    }
+    String result = m_loader->stringResult();
+    if (result.isNull())
+        return std::nullopt;
+    return { WTFMove(result) };
 }
 
 } // namespace WebCore

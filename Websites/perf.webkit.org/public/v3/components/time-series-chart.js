@@ -2,9 +2,7 @@
 class TimeSeriesChart extends ComponentBase {
     constructor(sourceList, options)
     {
-        super('time-series-chart');
-        this.element().style.display = 'block';
-        this.element().style.position = 'relative';
+        super();
         this._canvas = null;
         this._sourceList = sourceList;
         this._trendLines = null;
@@ -22,12 +20,6 @@ class TimeSeriesChart extends ComponentBase {
         this._contextScaleX = 1;
         this._contextScaleY = 1;
         this._rem = null;
-
-        if (!TimeSeriesChart._chartList) {
-            TimeSeriesChart._chartList = [];
-            window.addEventListener('resize', TimeSeriesChart._updateAllCharts.bind(TimeSeriesChart));
-        }
-        TimeSeriesChart._chartList.push(this);
     }
 
     _ensureCanvas()
@@ -38,39 +30,28 @@ class TimeSeriesChart extends ComponentBase {
             this._canvas.style.position = 'absolute';
             this._canvas.style.left = '0px';
             this._canvas.style.top = '0px';
-            this._canvas.style.width = '100%';
-            this._canvas.style.height = '100%';
             this.content().appendChild(this._canvas);
         }
         return this._canvas;
     }
 
-    static cssTemplate() { return ''; }
+    static cssTemplate()
+    {
+        return `
+
+        :host {
+            display: block !important;
+            position: relative !important;
+        }
+
+        `;
+    }
+
+    static get enqueueToRenderOnResize() { return true; }
 
     _createCanvas()
     {
         return document.createElement('canvas');
-    }
-
-    static _updateAllCharts()
-    {
-        TimeSeriesChart._chartList.map(function (chart) { chart.render(); });
-    }
-
-    enqueueToRender()
-    {
-        if (!TimeSeriesChart._chartQueue) {
-            TimeSeriesChart._chartQueue = new Set;
-            window.requestAnimationFrame(TimeSeriesChart._renderEnqueuedCharts.bind(TimeSeriesChart));
-        }
-        TimeSeriesChart._chartQueue.add(this);
-    }
-
-    static _renderEnqueuedCharts()
-    {
-        for (var chart of TimeSeriesChart._chartQueue)
-            chart.render();
-        TimeSeriesChart._chartQueue = null;
     }
 
     setDomain(startTime, endTime)
@@ -150,26 +131,23 @@ class TimeSeriesChart extends ComponentBase {
         return null;
     }
 
-    sampledDataBetween(type, startTime, endTime)
+    referencePoints(type)
     {
-        var data = this.sampledTimeSeriesData(type);
-        if (!data)
+        const view = this.sampledTimeSeriesData(type);
+        if (!view || !this._startTime || !this._endTime)
             return null;
-        return data.filter(function (point) { return startTime <= point.time && point.time <= endTime; });
-    }
-
-    firstSampledPointBetweenTime(type, startTime, endTime)
-    {
-        var data = this.sampledTimeSeriesData(type);
-        if (!data)
+        const point = view.lastPointInTimeRange(this._startTime, this._endTime);
+        if (!point)
             return null;
-        return data.find(function (point) { return startTime <= point.time && point.time <= endTime; });
+        return {view, currentPoint: point, previousPoint: null};
     }
 
     setAnnotations(annotations)
     {
         this._annotations = annotations;
         this._annotationRows = null;
+
+        this.enqueueToRender();
     }
 
     render()
@@ -177,7 +155,6 @@ class TimeSeriesChart extends ComponentBase {
         if (!this._startTime || !this._endTime)
             return;
 
-        // FIXME: Also detect horizontal scrolling.
         var canvas = this._ensureCanvas();
 
         var metrics = this._layout();
@@ -192,12 +169,13 @@ class TimeSeriesChart extends ComponentBase {
         context.clearRect(0, 0, this._width, this._height);
 
         context.font = metrics.fontSize + 'px sans-serif';
-        context.fillStyle = this._options.axis.fillStyle;
-        context.strokeStyle = this._options.axis.gridStyle;
-        context.lineWidth = 1 / this._contextScaleY;
-
-        this._renderXAxis(context, metrics, this._startTime, this._endTime);
-        this._renderYAxis(context, metrics, this._valueRangeCache[0], this._valueRangeCache[1]);
+        const axis = this._options.axis;
+        if (axis) {
+            context.strokeStyle = axis.gridStyle;
+            context.lineWidth = 1 / this._contextScaleY;
+            this._renderXAxis(context, metrics, this._startTime, this._endTime);
+            this._renderYAxis(context, metrics, this._valueRangeCache[0], this._valueRangeCache[1]);
+        }
 
         context.save();
 
@@ -238,14 +216,15 @@ class TimeSeriesChart extends ComponentBase {
         var timeDiff = this._endTime - this._startTime;
         var startTime = this._startTime;
 
-        var fontSize = this._options.axis.fontSize * this._rem;
-        var chartX = this._options.axis.yAxisWidth * fontSize;
+        const axis = this._options.axis || {};
+        const fontSize = (axis.fontSize || 1) * this._rem;
+        const chartX = (axis.yAxisWidth || 0) * fontSize;
         var chartY = 0;
         var chartWidth = this._width - chartX;
-        var chartHeight = this._height - this._options.axis.xAxisHeight * fontSize;
+        var chartHeight = this._height - (axis.xAxisHeight || 0) * fontSize;
 
-        if (this._options.axis.xAxisEndPadding)
-            timeDiff += this._options.axis.xAxisEndPadding / (chartWidth / timeDiff);
+        if (axis.xAxisEndPadding)
+            timeDiff += axis.xAxisEndPadding / (chartWidth / timeDiff);
 
         return {
             xToTime: function (x)
@@ -377,12 +356,12 @@ class TimeSeriesChart extends ComponentBase {
 
     _renderYAxis(context, metrics, minValue, maxValue)
     {
-        var maxYAxisLabels = Math.floor(metrics.chartHeight / metrics.fontSize / 2);
-        var yAxisGrid = TimeSeriesChart.computeValueGrid(minValue, maxValue, maxYAxisLabels);
+        const maxYAxisLabels = Math.floor(metrics.chartHeight / metrics.fontSize / 2);
+        const yAxisGrid = TimeSeriesChart.computeValueGrid(minValue, maxValue, maxYAxisLabels, this._options.axis.valueFormatter);
 
-        for (var value of yAxisGrid) {
+        for (let item of yAxisGrid) {
             context.beginPath();
-            var y = metrics.valueToY(value);
+            const y = metrics.valueToY(item.value);
             context.moveTo(metrics.chartX, y);
             context.lineTo(metrics.chartX + metrics.chartWidth, y);
             context.stroke();
@@ -391,15 +370,14 @@ class TimeSeriesChart extends ComponentBase {
         if (!this._options.axis.yAxisWidth)
             return;
 
-        for (var value of yAxisGrid) {
-            var label = this._options.axis.valueFormatter(value);
-            var x = (metrics.chartX - context.measureText(label).width) / 2;
+        for (let item of yAxisGrid) {
+            const x = (metrics.chartX - context.measureText(item.label).width) / 2;
 
-            var y = metrics.valueToY(value) + metrics.fontSize / 2.5;
+            let y = metrics.valueToY(item.value) + metrics.fontSize / 2.5;
             if (y < metrics.fontSize)
                 y = metrics.fontSize;
 
-            context.fillText(label, x, y);
+            context.fillText(item.label, x, y);
         }
     }
 
@@ -440,27 +418,29 @@ class TimeSeriesChart extends ComponentBase {
             point.y = metrics.valueToY(point.value);
         }
 
-        context.strokeStyle = source.intervalStyle;
-        context.fillStyle = source.intervalStyle;
-        context.lineWidth = source.intervalWidth;
+        if (source.intervalStyle) {
+            context.strokeStyle = source.intervalStyle;
+            context.fillStyle = source.intervalStyle;
+            context.lineWidth = source.intervalWidth;
 
-        context.beginPath();
-        var width = 1;
-        for (var i = 0; i < series.length; i++) {
-            var point = series[i];
-            var interval = point.interval;
-            var value = interval ? interval[0] : point.value;
-            context.lineTo(point.x - width, metrics.valueToY(value));
-            context.lineTo(point.x + width, metrics.valueToY(value));
+            context.beginPath();
+            var width = 1;
+            for (var i = 0; i < series.length; i++) {
+                var point = series[i];
+                var interval = point.interval;
+                var value = interval ? interval[0] : point.value;
+                context.lineTo(point.x - width, metrics.valueToY(value));
+                context.lineTo(point.x + width, metrics.valueToY(value));
+            }
+            for (var i = series.length - 1; i >= 0; i--) {
+                var point = series[i];
+                var interval = point.interval;
+                var value = interval ? interval[1] : point.value;
+                context.lineTo(point.x + width, metrics.valueToY(value));
+                context.lineTo(point.x - width, metrics.valueToY(value));
+            }
+            context.fill();
         }
-        for (var i = series.length - 1; i >= 0; i--) {
-            var point = series[i];
-            var interval = point.interval;
-            var value = interval ? interval[1] : point.value;
-            context.lineTo(point.x + width, metrics.valueToY(value));
-            context.lineTo(point.x - width, metrics.valueToY(value));
-        }
-        context.fill();
 
         context.strokeStyle = this._sourceOptionWithFallback(source, layerName + 'LineStyle', 'lineStyle');
         context.lineWidth = this._sourceOptionWithFallback(source, layerName + 'LineWidth', 'lineWidth');
@@ -514,82 +494,64 @@ class TimeSeriesChart extends ComponentBase {
 
         Instrumentation.startMeasuringTime('TimeSeriesChart', 'ensureSampledTimeSeries');
 
-        var self = this;
-        var startTime = this._startTime;
-        var endTime = this._endTime;
-        this._sampledTimeSeriesData = this._sourceList.map(function (source, sourceIndex) {
-            var timeSeries = self._fetchedTimeSeries[sourceIndex];
+        const startTime = this._startTime;
+        const endTime = this._endTime;
+        this._sampledTimeSeriesData = this._sourceList.map((source, sourceIndex) => {
+            const timeSeries = this._fetchedTimeSeries[sourceIndex];
             if (!timeSeries)
                 return null;
 
-            // A chart with X px width shouldn't have more than 2X / <radius-of-points> data points.
-            var maximumNumberOfPoints = 2 * metrics.chartWidth / (source.pointRadius || 2);
-
-            var pointAfterStart = timeSeries.findPointAfterTime(startTime);
-            var pointBeforeStart = (pointAfterStart ? timeSeries.previousPoint(pointAfterStart) : null) || timeSeries.firstPoint();
-            var pointAfterEnd = timeSeries.findPointAfterTime(endTime) || timeSeries.lastPoint();
+            const pointAfterStart = timeSeries.findPointAfterTime(startTime);
+            const pointBeforeStart = (pointAfterStart ? timeSeries.previousPoint(pointAfterStart) : null) || timeSeries.firstPoint();
+            const pointAfterEnd = timeSeries.findPointAfterTime(endTime) || timeSeries.lastPoint();
             if (!pointBeforeStart || !pointAfterEnd)
                 return null;
 
             // FIXME: Move this to TimeSeries.prototype.
-            var filteredData = timeSeries.dataBetweenPoints(pointBeforeStart, pointAfterEnd);
+            const view = timeSeries.viewBetweenPoints(pointBeforeStart, pointAfterEnd);
             if (!source.sampleData)
-                return filteredData;
-            else
-                return self._sampleTimeSeries(filteredData, maximumNumberOfPoints, filteredData.slice(-1).map(function (point) { return point.id; }));
+                return view;
+
+            // A chart with X px width shouldn't have more than 2X / <radius-of-points> data points.
+            const viewWidth = Math.min(metrics.chartWidth, metrics.timeToX(pointAfterEnd.time) - metrics.timeToX(pointBeforeStart.time));
+            const maximumNumberOfPoints = 2 * viewWidth / (source.pointRadius || 2);
+
+            return this._sampleTimeSeries(view, maximumNumberOfPoints, new Set);
         });
 
         Instrumentation.endMeasuringTime('TimeSeriesChart', 'ensureSampledTimeSeries');
 
-        if (this._options.ondata)
-            this._options.ondata();
+        this.dispatchAction('dataChange');
 
         return true;
     }
 
-    _sampleTimeSeries(data, maximumNumberOfPoints, excludedPoints)
+    _sampleTimeSeries(view, maximumNumberOfPoints, excludedPoints)
     {
+
+        if (view.length() < 2 || maximumNumberOfPoints >= view.length() || maximumNumberOfPoints < 1)
+            return view;
+
         Instrumentation.startMeasuringTime('TimeSeriesChart', 'sampleTimeSeries');
 
-        // FIXME: Do this in O(n) using quickselect: https://en.wikipedia.org/wiki/Quickselect
-        function findMedian(list, startIndex, indexAfterEnd)
-        {
-            var sortedList = list.slice(startIndex, indexAfterEnd).sort(function (a, b) { return a.value - b.value; });
-            return sortedList[Math.floor(sortedList.length / 2)];
+        let ranks = new Array(view.length());
+        let i = 0;
+        for (let point of view) {
+            let previousPoint = view.previousPoint(point) || point;
+            let nextPoint = view.nextPoint(point) || point;
+            ranks[i] = nextPoint.time - previousPoint.time;
+            i++;
         }
 
-        var samplingSize = Math.ceil(data.length / maximumNumberOfPoints);
-
-        var totalTimeDiff = data[data.length - 1].time - data[0].time;
-        var timePerSample = totalTimeDiff / maximumNumberOfPoints;
-
-        var sampledData = [];
-        var lastIndex = data.length - 1;
-        var i = 0;
-        while (i <= lastIndex) {
-            var startPoint = data[i];
-            var j;
-            for (j = i; j <= lastIndex; j++) {
-                var endPoint = data[j];
-                if (excludedPoints.includes(endPoint.id)) {
-                    j--;
-                    break;
-                }
-                if (endPoint.time - startPoint.time >= timePerSample)
-                    break;
-            }
-            if (i < j - 1) {
-                sampledData.push(findMedian(data, i, j));
-                i = j;
-            } else {
-                sampledData.push(startPoint);
-                i++;
-            }
-        }
+        const sortedRanks = ranks.slice(0).sort((a, b) => b - a);
+        const minimumRank = sortedRanks[Math.floor(maximumNumberOfPoints)];
+        const sampledData = view.filter((point, i) => {
+            return excludedPoints.has(point.id) || ranks[i] >= minimumRank;
+        });
 
         Instrumentation.endMeasuringTime('TimeSeriesChart', 'sampleTimeSeries');
 
-        Instrumentation.reportMeasurement('TimeSeriesChart', 'samplingRatio', '%', sampledData.length / data.length * 100);
+        Instrumentation.reportMeasurement('TimeSeriesChart', 'samplingRatio', '%', sampledData.length() / view.length() * 100);
 
         return sampledData;
     }
@@ -642,6 +604,8 @@ class TimeSeriesChart extends ComponentBase {
         var scale = window.devicePixelRatio;
         canvas.width = newWidth * scale;
         canvas.height = newHeight * scale;
+        canvas.style.width = newWidth + 'px';
+        canvas.style.height = newHeight + 'px';
         this._contextScaleX = scale;
         this._contextScaleY = scale;
         this._width = newWidth;
@@ -654,41 +618,43 @@ class TimeSeriesChart extends ComponentBase {
 
     static computeTimeGrid(min, max, maxLabels)
     {
-        var diffPerLabel = (max - min) / maxLabels;
+        const diffPerLabel = (max - min) / maxLabels;
 
-        var iterator;
+        let iterator;
         for (iterator of this._timeIterators()) {
-            if (iterator.diff > diffPerLabel)
+            if (iterator.diff >= diffPerLabel)
                 break;
         }
         console.assert(iterator);
 
-        var currentTime = new Date(min);
+        const currentTime = new Date(min);
         currentTime.setUTCMilliseconds(0);
         currentTime.setUTCSeconds(0);
         currentTime.setUTCMinutes(0);
         iterator.next(currentTime);
 
-        var result = [];
+        const fitsInOneDay = max - min < 24 * 3600 * 1000;
 
-        var previousDate = null;
-        var previousMonth = null;
-        var previousHour = null;
-        while (currentTime <= max) {
-            var time = new Date(currentTime);
-            var month = (time.getUTCMonth() + 1);
-            var date = time.getUTCDate();
-            var hour = time.getUTCHours();
-            var hourLabel = (hour > 12 ? hour - 12 : hour) + (hour >= 12 ? 'PM' : 'AM');
+        let result = [];
+
+        let previousDate = null;
+        let previousMonth = null;
+        while (currentTime <= max && result.length < maxLabels) {
+            const time = new Date(currentTime);
+            const month = time.getUTCMonth() + 1;
+            const date = time.getUTCDate();
+            const hour = time.getUTCHours();
+            const hourLabel = ((hour % 12) || 12) + (hour >= 12 ? 'PM' : 'AM');
 
             iterator.next(currentTime);
 
-            var label;
-            if (date == previousDate && month == previousMonth)
+            let label;
+            const isMidnight = !hour;
+            if ((date == previousDate && month == previousMonth) || ((!isMidnight || previousDate == null) && fitsInOneDay))
                 label = hourLabel;
             else {
                 label = `${month}/${date}`;
-                if (hour && currentTime.getUTCDate() != date)
+                if (!isMidnight && currentTime.getUTCDate() != date)
                     label += ' ' + hourLabel;
             }
 
@@ -696,9 +662,8 @@ class TimeSeriesChart extends ComponentBase {
 
             previousDate = date;
             previousMonth = month;
-            previousHour = hour;
         }
-        
+
         console.assert(result.length <= maxLabels);
 
         return result;
@@ -768,39 +733,83 @@ class TimeSeriesChart extends ComponentBase {
                 diff: 31 * DAY,
                 next: function (date) {
                     date.setUTCHours(0);
-                    date.setUTCMonth(date.getUTCMonth() + 1);
+                    const dayOfMonth = date.getUTCDate();
+                    if (dayOfMonth > 1 && dayOfMonth < 15)
+                        date.setUTCDate(15);
+                    else {
+                        if (dayOfMonth != 15)
+                            date.setUTCDate(1);
+                        date.setUTCMonth(date.getUTCMonth() + 1);
+                    }
+                }
+            },
+            {
+                diff: 60 * DAY,
+                next: function (date) {
+                    date.setUTCHours(0);
+                    date.setUTCDate(1);
+                    date.setUTCMonth(date.getUTCMonth() + 2);
+                }
+            },
+            {
+                diff: 90 * DAY,
+                next: function (date) {
+                    date.setUTCHours(0);
+                    date.setUTCDate(1);
+                    date.setUTCMonth(date.getUTCMonth() + 3);
+                }
+            },
+            {
+                diff: 120 * DAY,
+                next: function (date) {
+                    date.setUTCHours(0);
+                    date.setUTCDate(1);
+                    date.setUTCMonth(date.getUTCMonth() + 4);
                 }
             },
         ];
     }
 
-    static computeValueGrid(min, max, maxLabels)
+    static computeValueGrid(min, max, maxLabels, formatter)
     {
-        var diff = max - min;
-        var scalingFactor = 1;
-        var diffPerLabel = diff / maxLabels;
-        if (diffPerLabel < 1) {
-            scalingFactor = Math.pow(10, Math.ceil(-Math.log(diffPerLabel) / Math.log(10)));
-            min *= scalingFactor;
-            max *= scalingFactor;
-            diff *= scalingFactor;
-            diffPerLabel *= scalingFactor;
-        }
-        diffPerLabel = Math.ceil(diffPerLabel);
-        var numberOfDigitsToIgnore = Math.ceil(Math.log(diffPerLabel) / Math.log(10));
-        var step = Math.pow(10, numberOfDigitsToIgnore);
+        const diff = max - min;
+        if (!diff)
+            return [];
 
-        if (diff / (step / 5) < maxLabels) // 0.2, 0.4, etc...
-            step /= 5;
-        else if (diff / (step / 2) < maxLabels) // 0.5, 1, 1.5, etc...
-            step /= 2;
+        const diffPerLabel = diff / maxLabels;
 
-        var gridValues = [];
-        var currentValue = Math.ceil(min / step) * step;
+        // First, reduce the diff between 1 and 1000 using a power of 1000 or 1024.
+        // FIXME: Share this code with Metric.makeFormatter.
+        const maxAbsValue = Math.max(Math.abs(min), Math.abs(max));
+        let scalingFactor = 1;
+        const divisor = formatter.divisor;
+        while (maxAbsValue * scalingFactor < 1)
+            scalingFactor *= formatter.divisor;
+        while (maxAbsValue * scalingFactor > divisor)
+            scalingFactor /= formatter.divisor;
+        const scaledDiff = diffPerLabel * scalingFactor;
+
+        // Second, compute the smallest number greater than the scaled diff
+        // which is a product of a power of 10, 2, and 5.
+        // These numbers are all factors of the decimal numeral system, 10.
+        const digitsInScaledDiff = Math.ceil(Math.log(scaledDiff) / Math.log(10));
+        let step = Math.pow(10, digitsInScaledDiff);
+        if (step / 5 >= scaledDiff)
+            step /= 5; // The most significant digit is 2
+        else if (step / 2 >= scaledDiff)
+            step /= 2 // The most significant digit is 5
+        step /= scalingFactor;
+
+        const gridValues = [];
+        let currentValue = Math.ceil(min / step) * step;
         while (currentValue <= max) {
-            gridValues.push(currentValue / scalingFactor);
+            let unscaledValue = currentValue;
+            gridValues.push({value: unscaledValue, label: formatter(unscaledValue, maxAbsValue)});
             currentValue += step;
         }
+
         return gridValues;
     }
 }
+
+ComponentBase.defineElement('time-series-chart', TimeSeriesChart);

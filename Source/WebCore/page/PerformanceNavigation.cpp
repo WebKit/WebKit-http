@@ -31,10 +31,9 @@
 #include "config.h"
 #include "PerformanceNavigation.h"
 
-#if ENABLE(WEB_TIMING)
-
 #include "DocumentLoader.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameLoaderTypes.h"
 
 namespace WebCore {
@@ -81,5 +80,3 @@ unsigned short PerformanceNavigation::redirectCount() const
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_TIMING)

@@ -21,7 +21,6 @@
 
 #include "RenderBlockFlow.h"
 #include "SVGGraphicsElement.h"
-#include "SVGRenderSupport.h"
 
 namespace WebCore {
 
@@ -50,3 +49,5 @@ private:
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGBlock, isRenderSVGBlock())

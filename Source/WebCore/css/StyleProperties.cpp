@@ -25,12 +25,13 @@
 
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSCustomPropertyValue.h"
+#include "CSSDeferredParser.h"
 #include "CSSParser.h"
 #include "CSSPendingSubstitutionValue.h"
 #include "CSSValueKeywords.h"
 #include "CSSValueList.h"
 #include "CSSValuePool.h"
-#include "CSSVariableDependentValue.h"
+#include "Color.h"
 #include "Document.h"
 #include "PropertySetCSSStyleDeclaration.h"
 #include "StylePropertyShorthand.h"
@@ -41,7 +42,6 @@
 
 #ifndef NDEBUG
 #include <stdio.h>
-#include <wtf/ASCIICType.h>
 #include <wtf/text/CString.h>
 #endif
 
@@ -72,12 +72,12 @@ Ref<ImmutableStyleProperties> StyleProperties::immutableCopyIfNeeded() const
 }
 
 MutableStyleProperties::MutableStyleProperties(CSSParserMode cssParserMode)
-    : StyleProperties(cssParserMode)
+    : StyleProperties(cssParserMode, MutablePropertiesType)
 {
 }
 
 MutableStyleProperties::MutableStyleProperties(const CSSProperty* properties, unsigned length)
-    : StyleProperties(HTMLStandardMode)
+    : StyleProperties(HTMLStandardMode, MutablePropertiesType)
 {
     m_propertyVector.reserveInitialCapacity(length);
     for (unsigned i = 0; i < length; ++i)
@@ -108,8 +108,9 @@ ImmutableStyleProperties::~ImmutableStyleProperties()
 }
 
 MutableStyleProperties::MutableStyleProperties(const StyleProperties& other)
-    : StyleProperties(other.cssParserMode())
+    : StyleProperties(other.cssParserMode(), MutablePropertiesType)
 {
+    ASSERT(other.type() != DeferredPropertiesType);
     if (is<MutableStyleProperties>(other))
         m_propertyVector = downcast<MutableStyleProperties>(other).m_propertyVector;
     else {
@@ -130,12 +131,8 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
     const StylePropertyShorthand& shorthand = shorthandForProperty(propertyID);
     if (shorthand.length()) {
         RefPtr<CSSValue> value = getPropertyCSSValueInternal(shorthand.properties()[0]);
-        if (!value)
+        if (!value || value->isPendingSubstitutionValue())
             return String();
-        if (value->isVariableDependentValue())
-            return value->cssText();
-        if (value->isPendingSubstitutionValue())
-            return downcast<CSSPendingSubstitutionValue>(*value).shorthandValue()->cssText();
     }
 
     // Shorthand and 4-values properties
@@ -178,7 +175,6 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
         return getShorthandValue(flexShorthand());
     case CSSPropertyFlexFlow:
         return getShorthandValue(flexFlowShorthand());
-#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyGridArea:
         return getShorthandValue(gridAreaShorthand());
     case CSSPropertyGridTemplate:
@@ -189,7 +185,12 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
         return getShorthandValue(gridColumnShorthand());
     case CSSPropertyGridRow:
         return getShorthandValue(gridRowShorthand());
-#endif
+    case CSSPropertyPlaceContent:
+        return getAlignmentShorthandValue(placeContentShorthand());
+    case CSSPropertyPlaceItems:
+        return getAlignmentShorthandValue(placeItemsShorthand());
+    case CSSPropertyPlaceSelf:
+        return getAlignmentShorthandValue(placeSelfShorthand());
     case CSSPropertyFont:
         return fontValue();
     case CSSPropertyMargin:
@@ -228,9 +229,31 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
     }
     case CSSPropertyBorderRadius:
         return get4Values(borderRadiusShorthand());
+#if ENABLE(CSS_SCROLL_SNAP)
+    case CSSPropertyScrollSnapMargin:
+        return get4Values(scrollSnapMarginShorthand());
+    case CSSPropertyScrollPadding:
+        return get4Values(scrollPaddingShorthand());
+#endif
     default:
         return String();
     }
+}
+
+std::optional<Color> StyleProperties::propertyAsColor(CSSPropertyID property) const
+{
+    auto colorValue = getPropertyCSSValue(property);
+    if (!is<CSSPrimitiveValue>(colorValue.get()))
+        return std::nullopt;
+
+    auto& primitiveColor = downcast<CSSPrimitiveValue>(*colorValue);
+    return primitiveColor.isRGBColor() ? primitiveColor.color() : CSSParser::parseColor(colorValue->cssText());
+}
+
+CSSValueID StyleProperties::propertyAsValueID(CSSPropertyID property) const
+{
+    auto cssValue = getPropertyCSSValue(property);
+    return is<CSSPrimitiveValue>(cssValue.get()) ? downcast<CSSPrimitiveValue>(*cssValue).valueID() : CSSValueInvalid;
 }
 
 String StyleProperties::getCustomPropertyValue(const String& propertyName) const
@@ -277,6 +300,7 @@ void StyleProperties::appendFontLonghandValueIfExplicit(CSSPropertyID propertyID
     case CSSPropertyFontFamily:
     case CSSPropertyFontVariantCaps:
     case CSSPropertyFontWeight:
+    case CSSPropertyFontStretch:
         prefix = ' ';
         break;
     case CSSPropertyLineHeight:
@@ -311,6 +335,7 @@ String StyleProperties::fontValue() const
     appendFontLonghandValueIfExplicit(CSSPropertyFontStyle, result, commonValue);
     appendFontLonghandValueIfExplicit(CSSPropertyFontVariantCaps, result, commonValue);
     appendFontLonghandValueIfExplicit(CSSPropertyFontWeight, result, commonValue);
+    appendFontLonghandValueIfExplicit(CSSPropertyFontStretch, result, commonValue);
     if (!result.isEmpty())
         result.append(' ');
     result.append(fontSizeProperty.value()->cssText());
@@ -578,6 +603,14 @@ String StyleProperties::getCommonValue(const StylePropertyShorthand& shorthand) 
     return res;
 }
 
+String StyleProperties::getAlignmentShorthandValue(const StylePropertyShorthand& shorthand) const
+{
+    String value = getCommonValue(shorthand);
+    if (value.isNull() || value.isEmpty())
+        return getShorthandValue(shorthand);
+    return value;
+}
+
 String StyleProperties::borderPropertyValue(CommonValueMode valueMode) const
 {
     const StylePropertyShorthand properties[3] = { borderWidthShorthand(), borderStyleShorthand(), borderColorShorthand() };
@@ -608,14 +641,7 @@ String StyleProperties::borderPropertyValue(CommonValueMode valueMode) const
 
 RefPtr<CSSValue> StyleProperties::getPropertyCSSValue(CSSPropertyID propertyID) const
 {
-    RefPtr<CSSValue> value = getPropertyCSSValueInternal(propertyID);
-    if (value && value->isVariableDependentValue()) {
-        auto& dependentValue = downcast<CSSVariableDependentValue>(*value);
-        if (dependentValue.propertyID() != propertyID)
-            return CSSCustomPropertyValue::createInvalid(); // Have to return special "pending-substitution" value.
-    }
-
-    return value;
+    return getPropertyCSSValueInternal(propertyID);
 }
 
 RefPtr<CSSValue> StyleProperties::getPropertyCSSValueInternal(CSSPropertyID propertyID) const
@@ -729,7 +755,7 @@ bool StyleProperties::isPropertyImplicit(CSSPropertyID propertyID) const
     return propertyAt(foundPropertyIndex).isImplicit();
 }
 
-bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String& value, bool important, CSSParserContext parserContext, StyleSheetContents* contextStyleSheet)
+bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String& value, bool important, CSSParserContext parserContext)
 {
     // Setting the value to an empty string just removes the property in both IE and Gecko.
     // Setting it to null seems to produce less consistent results, but we treat it just the same.
@@ -740,7 +766,7 @@ bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String&
 
     // When replacing an existing property value, this moves the property to the end of the list.
     // Firefox preserves the position, and MSIE moves the property to the beginning.
-    return CSSParser::parseValue(*this, propertyID, value, important, parserContext, contextStyleSheet) == CSSParser::ParseResult::Changed;
+    return CSSParser::parseValue(*this, propertyID, value, important, parserContext) == CSSParser::ParseResult::Changed;
 }
 
 bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String& value, bool important)
@@ -749,7 +775,7 @@ bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String&
     return setProperty(propertyID, value, important, parserContext);
 }
 
-bool MutableStyleProperties::setCustomProperty(const String& propertyName, const String& value, bool important, CSSParserContext parserContext, StyleSheetContents* contextStyleSheet)
+bool MutableStyleProperties::setCustomProperty(const String& propertyName, const String& value, bool important, CSSParserContext parserContext)
 {
     // Setting the value to an empty string just removes the property in both IE and Gecko.
     // Setting it to null seems to produce less consistent results, but we treat it just the same.
@@ -759,7 +785,7 @@ bool MutableStyleProperties::setCustomProperty(const String& propertyName, const
     parserContext.mode = cssParserMode();
     // When replacing an existing property value, this moves the property to the end of the list.
     // Firefox preserves the position, and MSIE moves the property to the beginning.
-    return CSSParser::parseCustomPropertyValue(*this, propertyName, value, important, parserContext, contextStyleSheet) == CSSParser::ParseResult::Changed;
+    return CSSParser::parseCustomPropertyValue(*this, propertyName, value, important, parserContext) == CSSParser::ParseResult::Changed;
 }
 
 void MutableStyleProperties::setProperty(CSSPropertyID propertyID, RefPtr<CSSValue>&& value, bool important)
@@ -811,7 +837,7 @@ bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, CSSPropertyID
     return setProperty(CSSProperty(propertyID, CSSValuePool::singleton().createIdentifierValue(identifier), important));
 }
 
-bool MutableStyleProperties::parseDeclaration(const String& styleDeclaration, CSSParserContext context, StyleSheetContents* contextStyleSheet)
+bool MutableStyleProperties::parseDeclaration(const String& styleDeclaration, CSSParserContext context)
 {
     auto oldProperties = WTFMove(m_propertyVector);
     m_propertyVector.clear();
@@ -819,7 +845,7 @@ bool MutableStyleProperties::parseDeclaration(const String& styleDeclaration, CS
     context.mode = cssParserMode();
 
     CSSParser parser(context);
-    parser.parseDeclaration(*this, styleDeclaration, 0, contextStyleSheet);
+    parser.parseDeclaration(*this, styleDeclaration);
 
     // We could do better. Just changing property order does not require style invalidation.
     return oldProperties != m_propertyVector;
@@ -868,11 +894,7 @@ String StyleProperties::asText() const
         CSSPropertyID borderFallbackShorthandProperty = CSSPropertyInvalid;
         String value;
         
-        if (property.value() && property.value()->isVariableDependentValue()) {
-            auto& dependentValue = downcast<CSSVariableDependentValue>(*property.value());
-            if (dependentValue.propertyID() != propertyID)
-                shorthandPropertyID = dependentValue.propertyID();
-        } else if (property.value() && property.value()->isPendingSubstitutionValue()) {
+        if (property.value() && property.value()->isPendingSubstitutionValue()) {
             auto& substitutionValue = downcast<CSSPendingSubstitutionValue>(*property.value());
             shorthandPropertyID = substitutionValue.shorthandPropertyId();
             value = substitutionValue.shorthandValue()->cssText();
@@ -972,6 +994,20 @@ String StyleProperties::asText() const
             case CSSPropertyPaddingLeft:
                 shorthandPropertyID = CSSPropertyPadding;
                 break;
+#if ENABLE(CSS_SCROLL_SNAP)
+            case CSSPropertyScrollPaddingTop:
+            case CSSPropertyScrollPaddingRight:
+            case CSSPropertyScrollPaddingBottom:
+            case CSSPropertyScrollPaddingLeft:
+                shorthandPropertyID = CSSPropertyScrollPadding;
+                break;
+            case CSSPropertyScrollSnapMarginTop:
+            case CSSPropertyScrollSnapMarginRight:
+            case CSSPropertyScrollSnapMarginBottom:
+            case CSSPropertyScrollSnapMarginLeft:
+                shorthandPropertyID = CSSPropertyScrollSnapMargin;
+                break;
+#endif
             case CSSPropertyTransitionProperty:
             case CSSPropertyTransitionDuration:
             case CSSPropertyTransitionTimingFunction:
@@ -1127,7 +1163,7 @@ void MutableStyleProperties::mergeAndOverrideOnConflict(const StyleProperties& o
         addParsedProperty(other.propertyAt(i).toCSSProperty());
 }
 
-bool StyleProperties::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool StyleProperties::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     unsigned size = propertyCount();
     for (unsigned i = 0; i < size; ++i) {
@@ -1155,11 +1191,6 @@ static const CSSPropertyID blockProperties[] = {
     CSSPropertyPageBreakAfter,
     CSSPropertyPageBreakBefore,
     CSSPropertyPageBreakInside,
-#if ENABLE(CSS_REGIONS)
-    CSSPropertyWebkitRegionBreakAfter,
-    CSSPropertyWebkitRegionBreakBefore,
-    CSSPropertyWebkitRegionBreakInside,
-#endif
     CSSPropertyTextAlign,
 #if ENABLE(CSS3_TEXT)
     CSSPropertyWebkitTextAlignLast,
@@ -1296,9 +1327,8 @@ Ref<MutableStyleProperties> StyleProperties::copyPropertiesInSet(const CSSProper
     Vector<CSSProperty, 256> list;
     list.reserveInitialCapacity(length);
     for (unsigned i = 0; i < length; ++i) {
-        auto value = getPropertyCSSValueInternal(set[i]);
-        if (value)
-            list.append(CSSProperty(set[i], WTFMove(value), false));
+        if (auto value = getPropertyCSSValueInternal(set[i]))
+            list.uncheckedAppend(CSSProperty(set[i], WTFMove(value), false));
     }
     return MutableStyleProperties::create(list.data(), list.size());
 }
@@ -1308,25 +1338,25 @@ PropertySetCSSStyleDeclaration* MutableStyleProperties::cssStyleDeclaration()
     return m_cssomWrapper.get();
 }
 
-CSSStyleDeclaration* MutableStyleProperties::ensureCSSStyleDeclaration()
+CSSStyleDeclaration& MutableStyleProperties::ensureCSSStyleDeclaration()
 {
     if (m_cssomWrapper) {
         ASSERT(!static_cast<CSSStyleDeclaration*>(m_cssomWrapper.get())->parentRule());
         ASSERT(!m_cssomWrapper->parentElement());
-        return m_cssomWrapper.get();
+        return *m_cssomWrapper;
     }
-    m_cssomWrapper = std::make_unique<PropertySetCSSStyleDeclaration>(this);
-    return m_cssomWrapper.get();
+    m_cssomWrapper = std::make_unique<PropertySetCSSStyleDeclaration>(*this);
+    return *m_cssomWrapper;
 }
 
-CSSStyleDeclaration* MutableStyleProperties::ensureInlineCSSStyleDeclaration(StyledElement* parentElement)
+CSSStyleDeclaration& MutableStyleProperties::ensureInlineCSSStyleDeclaration(StyledElement& parentElement)
 {
     if (m_cssomWrapper) {
-        ASSERT(m_cssomWrapper->parentElement() == parentElement);
-        return m_cssomWrapper.get();
+        ASSERT(m_cssomWrapper->parentElement() == &parentElement);
+        return *m_cssomWrapper;
     }
-    m_cssomWrapper = std::make_unique<InlineCSSStyleDeclaration>(this, parentElement);
-    return m_cssomWrapper.get();
+    m_cssomWrapper = std::make_unique<InlineCSSStyleDeclaration>(*this, parentElement);
+    return *m_cssomWrapper;
 }
 
 unsigned StyleProperties::averageSizeInBytes()
@@ -1376,6 +1406,28 @@ String StyleProperties::PropertyReference::cssText() const
     result.append(';');
     return result.toString();
 }
+    
+Ref<DeferredStyleProperties> DeferredStyleProperties::create(const CSSParserTokenRange& tokenRange, CSSDeferredParser& parser)
+{
+    return adoptRef(*new DeferredStyleProperties(tokenRange, parser));
+}
 
+DeferredStyleProperties::DeferredStyleProperties(const CSSParserTokenRange& range, CSSDeferredParser& parser)
+    : StylePropertiesBase(parser.mode(), DeferredPropertiesType)
+    , m_parser(parser)
+{
+    size_t length = range.end() - range.begin();
+    m_tokens.reserveCapacity(length);
+    m_tokens.append(range.begin(), length);
+}
+    
+DeferredStyleProperties::~DeferredStyleProperties()
+{
+}
+
+Ref<ImmutableStyleProperties> DeferredStyleProperties::parseDeferredProperties()
+{
+    return m_parser->parseDeclaration(m_tokens);
+}
 
 } // namespace WebCore

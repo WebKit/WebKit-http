@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "ContainerNode.h"
+#include "Node.h"
 #include "QualifiedName.h"
 
 namespace WebCore {
@@ -33,13 +33,7 @@ class Attribute;
 class CSSStyleDeclaration;
 class MutableStyleProperties;
 
-// Attr can have Text children
-// therefore it has to be a fullblown Node. The plan
-// is to dynamically allocate a textchild and store the
-// resulting nodevalue in the attribute upon
-// destruction. however, this is not yet implemented.
-
-class Attr final : public ContainerNode {
+class Attr final : public Node {
 public:
     static Ref<Attr> create(Element&, const QualifiedName&);
     static Ref<Attr> create(Document&, const QualifiedName&, const AtomicString& value);
@@ -50,13 +44,9 @@ public:
     Element* ownerElement() const { return m_element; }
 
     WEBCORE_EXPORT const AtomicString& value() const;
-    void setValue(const AtomicString&);
-    const AtomicString& valueForBindings() const { return value(); }
-    WEBCORE_EXPORT void setValueForBindings(const AtomicString&);
+    WEBCORE_EXPORT void setValue(const AtomicString&);
 
     const QualifiedName& qualifiedName() const { return m_name; }
-
-    WEBCORE_EXPORT bool isId() const;
 
     WEBCORE_EXPORT CSSStyleDeclaration* style();
 
@@ -71,8 +61,6 @@ private:
     Attr(Element&, const QualifiedName&);
     Attr(Document&, const QualifiedName&, const AtomicString& value);
 
-    void createTextChild();
-
     String nodeName() const final { return name(); }
     NodeType nodeType() const final { return ATTRIBUTE_NODE; }
 
@@ -84,9 +72,6 @@ private:
     Ref<Node> cloneNodeInternal(Document&, CloningOperation) final;
 
     bool isAttributeNode() const final { return true; }
-    bool childTypeAllowed(NodeType) const final;
-
-    void childrenChanged(const ChildChange&) final;
 
     Attribute& elementAttribute();
 
@@ -97,7 +82,6 @@ private:
     AtomicString m_standaloneValue;
 
     RefPtr<MutableStyleProperties> m_style;
-    unsigned m_ignoreChildrenChanged { 0 };
 };
 
 } // namespace WebCore

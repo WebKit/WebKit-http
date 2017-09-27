@@ -7,13 +7,13 @@
                 height: 600vh;
                 margin: 0;
                 padding: 0;
-                -webkit-scroll-snap-points-y: repeat(100vh);
-                -webkit-scroll-snap-type: mandatory;
+                scroll-snap-type: y mandatory;
             }
             .colorBox {
                 height: 100vh;
                 width: 100vw;
                 float: left;
+                scroll-snap-align: start;
             }
             #item0 { background-color: red; background-image: url('../../resources/green-blue.png'); background-attachment: fixed;}
             #item1 { background-color: green; }
@@ -33,7 +33,7 @@
         function checkForScrollSnap() {
             // The div should have snapped back to the previous position
             if (divTarget.scrollTop != divScrollPositionBeforeSnap)
-                testFailed("div did not snap back to proper location.");
+                testFailed(`div did not snap back to proper location. (${divTarget.scrollTop} vs. ${divScrollPositionBeforeSnap})`);
             else
                 testPassed("div honored snap points.");
 
@@ -63,7 +63,7 @@
             if (divTarget.scrollTop == window.innerHeight)
                 testPassed("div scrolled to next window.");
             else
-                testFailed("div did not honor snap points.");
+                testFailed(`div did not honor snap points. (${divTarget.scrollTop} vs. ${window.innerHeight})`);
 
             setTimeout(scrollSnapTest, 0);
         }
@@ -88,9 +88,9 @@
         }
 
         function onLoad() {
-
             if (window.eventSender) {
                 eventSender.monitorWheelEvents();
+                internals.setPlatformMomentumScrollingPredictionEnabled(false);
                 setTimeout(scrollGlideTest, 0);
             } else {
                 var messageLocation = document.getElementById('item0');

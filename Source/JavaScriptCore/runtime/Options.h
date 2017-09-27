@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -100,12 +100,20 @@ private:
 typedef OptionRange optionRange;
 typedef const char* optionString;
 
+#if PLATFORM(IOS)
+#define MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS 2
+#else
+#define MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS 8
+#endif
+
 #define JSC_OPTIONS(v) \
     v(bool, validateOptions, false, Normal, "crashes if mis-typed JSC options were passed to the VM") \
     v(unsigned, dumpOptions, 0, Normal, "dumps JSC options (0 = None, 1 = Overridden only, 2 = All, 3 = Verbose)") \
+    v(optionString, configFile, nullptr, Normal, "file to configure JSC options and logging location") \
     \
     v(bool, useLLInt,  true, Normal, "allows the LLINT to be used if true") \
-    v(bool, useJIT,    true, Normal, "allows the baseline JIT to be used if true") \
+    v(bool, useJIT,    true, Normal, "allows the executable pages to be allocated for JIT and thunks if true") \
+    v(bool, useBaselineJIT, true, Normal, "allows the baseline JIT to be used if true") \
     v(bool, useDFGJIT, true, Normal, "allows the DFG JIT to be used if true") \
     v(bool, useRegExpJIT, true, Normal, "allows the RegExp JIT to be used if true") \
     v(bool, useDOMJIT, true, Normal, "allows the DOMJIT to be used if true") \
@@ -131,6 +139,7 @@ typedef const char* optionString;
     v(bool, dumpBytecodeLivenessResults, false, Normal, nullptr) \
     v(bool, validateBytecode, false, Normal, nullptr) \
     v(bool, forceDebuggerBytecodeGeneration, false, Normal, nullptr) \
+    v(bool, dumpBytecodesBeforeGeneratorification, false, Normal, nullptr) \
     \
     v(bool, useFunctionDotArguments, true, Normal, nullptr) \
     v(bool, useTailCalls, true, Normal, nullptr) \
@@ -149,6 +158,7 @@ typedef const char* optionString;
     v(optionRange, bytecodeRangeToFTLCompile, 0, Normal, "bytecode size range to allow FTL compilation on, e.g. 1:100") \
     v(optionString, jitWhitelist, nullptr, Normal, "file with list of function signatures to allow compilation on") \
     v(optionString, dfgWhitelist, nullptr, Normal, "file with list of function signatures to allow DFG compilation on") \
+    v(optionString, ftlWhitelist, nullptr, Normal, "file with list of function signatures to allow FTL compilation on") \
     v(bool, dumpSourceAtDFGTime, false, Normal, "dumps source code of JS function being DFG compiled") \
     v(bool, dumpBytecodeAtDFGTime, false, Normal, "dumps bytecode of JS function being DFG compiled") \
     v(bool, dumpGraphAfterParsing, false, Normal, nullptr) \
@@ -158,6 +168,7 @@ typedef const char* optionString;
     v(bool, dumpB3GraphAtEachPhase, false, Normal, "dumps the B3 graph at each phase of compilation") \
     v(bool, dumpAirGraphAtEachPhase, false, Normal, "dumps the Air graph at each phase of compilation") \
     v(bool, verboseDFGByteCodeParsing, false, Normal, nullptr) \
+    v(bool, safepointBeforeEachPhase, true, Normal, nullptr) \
     v(bool, verboseCompilation, false, Normal, nullptr) \
     v(bool, verboseFTLCompilation, false, Normal, nullptr) \
     v(bool, logCompilationChanges, false, Normal, nullptr) \
@@ -166,6 +177,7 @@ typedef const char* optionString;
     v(bool, validateGraphAtEachPhase, false, Normal, nullptr) \
     v(bool, verboseValidationFailure, false, Normal, nullptr) \
     v(bool, verboseOSR, false, Normal, nullptr) \
+    v(bool, verboseDFGOSRExit, false, Normal, nullptr) \
     v(bool, verboseFTLOSRExit, false, Normal, nullptr) \
     v(bool, verboseCallLink, false, Normal, nullptr) \
     v(bool, verboseCompilationQueue, false, Normal, nullptr) \
@@ -177,6 +189,7 @@ typedef const char* optionString;
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
     v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
+    v(bool, verboseDFGFailure, false, Normal, nullptr) \
     v(bool, verboseFTLToJSThunk, false, Normal, nullptr) \
     v(bool, verboseFTLFailure, false, Normal, nullptr) \
     v(bool, alwaysComputeHash, false, Normal, nullptr) \
@@ -184,7 +197,31 @@ typedef const char* optionString;
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
     v(bool, useConcurrentBarriers, true, Normal, nullptr) \
+    v(bool, useConcurrentGC, true, Normal, nullptr) \
+    v(bool, collectContinuously, false, Normal, nullptr) \
+    v(double, collectContinuouslyPeriodMS, 1, Normal, nullptr) \
     v(bool, forceFencedBarrier, false, Normal, nullptr) \
+    v(bool, verboseVisitRace, false, Normal, nullptr) \
+    v(bool, optimizeParallelSlotVisitorsForStoppedMutator, false, Normal, nullptr) \
+    v(unsigned, largeHeapSize, 32 * 1024 * 1024, Normal, nullptr) \
+    v(unsigned, smallHeapSize, 1 * 1024 * 1024, Normal, nullptr) \
+    v(double, smallHeapRAMFraction, 0.25, Normal, nullptr) \
+    v(double, smallHeapGrowthFactor, 2, Normal, nullptr) \
+    v(double, mediumHeapRAMFraction, 0.5, Normal, nullptr) \
+    v(double, mediumHeapGrowthFactor, 1.5, Normal, nullptr) \
+    v(double, largeHeapGrowthFactor, 1.24, Normal, nullptr) \
+    v(double, criticalGCMemoryThreshold, 0.80, Normal, "percent memory in use the GC considers critical.  The collector is much more aggressive above this threshold") \
+    v(double, minimumMutatorUtilization, 0, Normal, nullptr) \
+    v(double, maximumMutatorUtilization, 0.7, Normal, nullptr) \
+    v(double, epsilonMutatorUtilization, 0.01, Normal, nullptr) \
+    v(double, concurrentGCMaxHeadroom, 1.5, Normal, nullptr) \
+    v(double, concurrentGCPeriodMS, 2, Normal, nullptr) \
+    v(bool, useStochasticMutatorScheduler, true, Normal, nullptr) \
+    v(double, minimumGCPauseMS, 0.3, Normal, nullptr) \
+    v(double, gcPauseScale, 0.3, Normal, nullptr) \
+    v(double, gcIncrementBytes, 10000, Normal, nullptr) \
+    v(double, gcIncrementMaxBytes, 100000, Normal, nullptr) \
+    v(double, gcIncrementScale, 0, Normal, nullptr) \
     v(bool, scribbleFreeCells, false, Normal, nullptr) \
     v(double, sizeClassProgression, 1.4, Normal, nullptr) \
     v(unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
@@ -199,19 +236,20 @@ typedef const char* optionString;
     v(bool, useFTLJIT, true, Normal, "allows the FTL JIT to be used if true") \
     v(bool, useFTLTBAA, true, Normal, nullptr) \
     v(bool, validateFTLOSRExitLiveness, false, Normal, nullptr) \
+    v(unsigned, defaultB3OptLevel, 2, Normal, nullptr) \
     v(bool, b3AlwaysFailsBeforeCompile, false, Normal, nullptr) \
     v(bool, b3AlwaysFailsBeforeLink, false, Normal, nullptr) \
     v(bool, ftlCrashes, false, Normal, nullptr) /* fool-proof way of checking that you ended up in the FTL. ;-) */\
     v(bool, clobberAllRegsInFTLICSlowPath, !ASSERT_DISABLED, Normal, nullptr) \
     v(bool, useAccessInlining, true, Normal, nullptr) \
     v(unsigned, maxAccessVariantListSize, 8, Normal, nullptr) \
-    v(unsigned, megamorphicLoadCost, 999, Normal, nullptr) /* This used to be 10, but we're temporarily testing what happens when the feature is disabled. */\
     v(bool, usePolyvariantDevirtualization, true, Normal, nullptr) \
     v(bool, usePolymorphicAccessInlining, true, Normal, nullptr) \
     v(bool, usePolymorphicCallInlining, true, Normal, nullptr) \
     v(bool, usePolymorphicCallInliningForNonStubStatus, false, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSize, 15, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSizeForTopTier, 5, Normal, nullptr) \
+    v(unsigned, maxPolymorphicCallVariantListSizeForWebAssemblyToJS, 5, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantsForInlining, 5, Normal, nullptr) \
     v(unsigned, frequentCallThreshold, 2, Normal, nullptr) \
     v(double, minimumCallToKnownRate, 0.51, Normal, nullptr) \
@@ -219,13 +257,15 @@ typedef const char* optionString;
     v(bool, useMovHintRemoval, true, Normal, nullptr) \
     v(bool, usePutStackSinking, true, Normal, nullptr) \
     v(bool, useObjectAllocationSinking, true, Normal, nullptr) \
+    v(bool, useArityFixupInlining, true, Normal, nullptr) \
     v(bool, logExecutableAllocation, false, Normal, nullptr) \
     \
     v(bool, useConcurrentJIT, true, Normal, "allows the DFG / FTL compilation in threads other than the executing JS thread") \
-    v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1, Normal, nullptr) \
-    v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(8, 2) - 1, Normal, nullptr) \
+    v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(3, 2) - 1, Normal, nullptr) \
+    v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS, 2) - 1, Normal, nullptr) \
     v(int32, priorityDeltaOfDFGCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     v(int32, priorityDeltaOfFTLCompilerThreads, computePriorityDeltaOfWorkerThreads(-2, 0), Normal, nullptr) \
+    v(int32, priorityDeltaOfWasmCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     \
     v(bool, useProfiler, false, Normal, nullptr) \
     v(bool, disassembleBaselineForProfiler, true, Normal, nullptr) \
@@ -305,13 +345,11 @@ typedef const char* optionString;
     v(unsigned, maximumDirectCallStackSize, 200, Normal, nullptr) \
     \
     v(unsigned, minimumNumberOfScansBetweenRebalance, 100, Normal, nullptr) \
-    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7), Normal, nullptr) \
+    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(8), Normal, nullptr) \
     v(unsigned, opaqueRootMergeThreshold, 1000, Normal, nullptr) \
     v(double, minHeapUtilization, 0.8, Normal, nullptr) \
     v(double, minMarkedBlockUtilization, 0.9, Normal, nullptr) \
     v(unsigned, slowPathAllocsBetweenGCs, 0, Normal, "force a GC on every Nth slow path alloc, where N is specified by this option") \
-    v(bool, deferGCShouldCollectWithProbability, false, Normal, "If true, we perform a collection based on flipping a coin according the probability in the 'deferGCProbability' option when DeferGC is destructed.") \
-    v(double, deferGCProbability, 1.0, Normal, "Should be a number between 0 and 1. 1 means DeferGC always GCs when it's destructed and GCing is safe. 0.7 means we force GC 70% the time on DeferGC destruction.") \
     \
     v(double, percentCPUPerMBForFullTimer, 0.0003125, Normal, nullptr) \
     v(double, percentCPUPerMBForEdenTimer, 0.0025, Normal, nullptr) \
@@ -321,16 +359,16 @@ typedef const char* optionString;
     v(bool, forceWeakRandomSeed, false, Normal, nullptr) \
     v(unsigned, forcedWeakRandomSeed, 0, Normal, nullptr) \
     \
-    v(bool, useZombieMode, false, Normal, "debugging option to scribble over dead objects with 0xdeadbeef") \
+    v(bool, useZombieMode, false, Normal, "debugging option to scribble over dead objects with 0xbadbeef0") \
     v(bool, useImmortalObjects, false, Normal, "debugging option to keep all objects alive forever") \
-    v(bool, dumpObjectStatistics, false, Normal, nullptr) \
+    v(bool, sweepSynchronously, false, Normal, "debugging option to sweep all dead objects synchronously at GC end before resuming mutator") \
     v(unsigned, maxSingleAllocationSize, 0, Configurable, "debugging option to limit individual allocations to a max size (0 = limit not set, N = limit size in bytes)") \
     v(bool, showAllocationBacktraces, false, Normal, nullptr) \
     \
     v(gcLogLevel, logGC, GCLogging::None, Normal, "debugging option to log GC activity (0 = None, 1 = Basic, 2 = Verbose)") \
     v(bool, useGC, true, Normal, nullptr) \
     v(bool, gcAtEnd, false, Normal, "If true, the jsc CLI will do a GC before exiting") \
-    v(bool, forceGCSlowPaths, false, Normal, "If true, we will force all JIT fast allocations down their slow paths.")\
+    v(bool, forceGCSlowPaths, false, Normal, "If true, we will force all JIT fast allocations down their slow paths.") \
     v(unsigned, gcMaxHeapSize, 0, Normal, nullptr) \
     v(unsigned, forceRAMSize, 0, Normal, nullptr) \
     v(bool, recordGCPauseTimes, false, Normal, nullptr) \
@@ -344,18 +382,24 @@ typedef const char* optionString;
     v(bool, useSamplingProfiler, false, Normal, nullptr) \
     v(unsigned, sampleInterval, 1000, Normal, "Time between stack traces in microseconds.") \
     v(bool, collectSamplingProfilerDataForJSCShell, false, Normal, "This corresponds to the JSC shell's --sample option.") \
+    v(unsigned, samplingProfilerTopFunctionsCount, 12, Normal, "Number of top functions to report when using the command line interface.") \
+    v(unsigned, samplingProfilerTopBytecodesCount, 40, Normal, "Number of top bytecodes to report when using the command line interface.") \
     v(optionString, samplingProfilerPath, nullptr, Normal, "The path to the directory to write sampiling profiler output to. This probably will not work with WK2 unless the path is in the whitelist.") \
+    v(bool, sampleCCode, false, Normal, "Causes the sampling profiler to record profiling data for C frames.") \
     \
     v(bool, alwaysGeneratePCToCodeOriginMap, false, Normal, "This will make sure we always generate a PCToCodeOriginMap for JITed code.") \
     \
     v(bool, verifyHeap, false, Normal, nullptr) \
     v(unsigned, numberOfGCCyclesToRecordForVerification, 3, Normal, nullptr) \
     \
+    v(unsigned, exceptionStackTraceLimit, 100, Normal, "Stack trace limit for internal Exception object") \
+    v(unsigned, defaultErrorStackTraceLimit, 100, Normal, "The default value for Error.stackTraceLimit") \
     v(bool, useExceptionFuzz, false, Normal, nullptr) \
     v(unsigned, fireExceptionFuzzAt, 0, Normal, nullptr) \
     v(bool, validateDFGExceptionHandling, false, Normal, "Causes the DFG to emit code validating exception handling for each node that can exit") /* This is true by default on Debug builds */\
-    v(bool, dumpSimulatedThrows, false, Normal, "Dumps the call stack at each simulated throw for exception scope verification") \
+    v(bool, dumpSimulatedThrows, false, Normal, "Dumps the call stack of the last simulated throw if exception scope verification fails") \
     v(bool, validateExceptionChecks, false, Normal, "Verifies that needed exception checks are performed.") \
+    v(unsigned, unexpectedExceptionStackTraceLimit, 100, Normal, "Stack trace limit for debugging unexpected exceptions observed in the VM") \
     \
     v(bool, useExecutableAllocationFuzz, false, Normal, nullptr) \
     v(unsigned, fireExecutableAllocationFuzzAt, 0, Normal, nullptr) \
@@ -369,26 +413,33 @@ typedef const char* optionString;
     \
     v(bool, logB3PhaseTimes, false, Normal, nullptr) \
     v(double, rareBlockPenalty, 0.001, Normal, nullptr) \
-    v(bool, airSpillsEverything, false, Normal, nullptr) \
+    v(bool, airLinearScanVerbose, false, Normal, nullptr) \
+    v(bool, airLinearScanSpillsEverything, false, Normal, nullptr) \
+    v(bool, airForceBriggsAllocator, false, Normal, nullptr) \
+    v(bool, airForceIRCAllocator, false, Normal, nullptr) \
+    v(bool, coalesceSpillSlots, true, Normal, nullptr) \
     v(bool, logAirRegisterPressure, false, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSize, 3, Normal, nullptr) \
     v(unsigned, maxB3TailDupBlockSuccessors, 3, Normal, nullptr) \
     \
     v(bool, useDollarVM, false, Restricted, "installs the $vm debugging tool in global objects") \
     v(optionString, functionOverrides, nullptr, Restricted, "file with debugging overrides for function bodies") \
+    v(bool, useSigillCrashAnalyzer, false, Configurable, "logs data about SIGILL crashes") \
     \
     v(unsigned, watchdog, 0, Normal, "watchdog timeout (0 = Disabled, N = a timeout period of N milliseconds)") \
+    v(bool, usePollingTraps, false, Normal, "use polling (instead of signalling) VM traps") \
+    \
+    v(bool, useMachForExceptions, true, Normal, "Use mach exceptions rather than signals to handle faults and pass thread messages. (This does nothing on platforms without mach)") \
     \
     v(bool, useICStats, false, Normal, nullptr) \
     \
     v(unsigned, prototypeHitCountForLLIntCaching, 2, Normal, "Number of prototype property hits before caching a prototype in the LLInt. A count of 0 means never cache.") \
     \
+    v(bool, dumpCompiledRegExpPatterns, false, Normal, nullptr) \
+    \
     v(bool, dumpModuleRecord, false, Normal, nullptr) \
     v(bool, dumpModuleLoadingState, false, Normal, nullptr) \
     v(bool, exposeInternalModuleLoader, false, Normal, "expose the internal module loader object to the global space for debugging") \
-    \
-    v(bool, dumpAirAsJSBeforeAllocateStack, false, Normal, nullptr) \
-    v(bool, dumpAirAfterAllocateStack, false, Normal, nullptr) \
     \
     v(bool, useSuperSampler, false, Normal, nullptr) \
     \
@@ -398,7 +449,32 @@ typedef const char* optionString;
     v(bool, useSourceProviderCache, true, Normal, "If false, the parser will not use the source provider cache. It's good to verify everything works when this is false. Because the cache is so successful, it can mask bugs.") \
     v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
     \
-    v(bool, useWebAssembly, false, Normal, "Expose the WebAssembly global object.") \
+    v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
+    \
+    v(bool, useAsyncIterator, true, Normal, "Allow to use Async Iterator in JS.") \
+    \
+    v(bool, failToCompileWebAssemblyCode, false, Normal, "If true, no Wasm::Plan will sucessfully compile a function.") \
+    v(size, webAssemblyPartialCompileLimit, 5000, Normal, "Limit on the number of bytes a Wasm::Plan::compile should attempt before checking for other work.") \
+    v(unsigned, webAssemblyBBQOptimizationLevel, 1, Normal, "B3 Optimization level for BBQ Web Assembly module compilations.") \
+    v(unsigned, webAssemblyOMGOptimizationLevel, Options::defaultB3OptLevel(), Normal, "B3 Optimization level for OMG Web Assembly module compilations.") \
+    \
+    v(bool, useBBQTierUpChecks, true, Normal, "Enables tier up checks for our BBQ code.") \
+    v(unsigned, webAssemblyOMGTierUpCount, 5000, Normal, "The countdown before we tier up a function to OMG.") \
+    v(unsigned, webAssemblyLoopDecrement, 15, Normal, "The amount the tier up countdown is decremented on each loop backedge.") \
+    v(unsigned, webAssemblyFunctionEntryDecrement, 1, Normal, "The amount the tier up countdown is decremented on each function entry.") \
+    \
+    /* FIXME: enable fast memories on iOS and pre-allocate them. https://bugs.webkit.org/show_bug.cgi?id=170774 */ \
+    v(bool, useWebAssemblyFastMemory, !isIOS(), Normal, "If true, we will try to use a 32-bit address space with a signal handler to bounds check wasm memory.") \
+    v(bool, logWebAssemblyMemory, false, Normal, nullptr) \
+    v(unsigned, webAssemblyFastMemoryRedzonePages, 128, Normal, "WebAssembly fast memories use 4GiB virtual allocations, plus a redzone (counted as multiple of 64KiB WebAssembly pages) at the end to catch reg+imm accesses which exceed 32-bit, anything beyond the redzone is explicitly bounds-checked") \
+    v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
+    v(unsigned, maxNumWebAssemblyFastMemories, 4, Normal, nullptr) \
+    v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.") \
+    v(bool, useFastTLSForWasmContext, true, Normal, "If true (and fast TLS is enabled), we will store context in fast TLS. If false, we will pin it to a register.") \
+    v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.") \
+    v(bool, useObjectRestSpread, true, Normal, "If true, we will enable Object Rest/Spread feature.") \
+    v(bool, useArrayAllocationProfiling, true, Normal, "If true, we will use our normal array allocation profiling. If false, the allocation profile will always claim to be undecided.")
+
 
 enum OptionEquivalence {
     SameOption,
@@ -437,6 +513,8 @@ enum OptionEquivalence {
     v(enableOSRExitFuzz, useOSRExitFuzz, SameOption) \
     v(enableDollarVM, useDollarVM, SameOption) \
     v(enableWebAssembly, useWebAssembly, SameOption) \
+    v(enableAsyncIterator, useAsyncIterator, SameOption) \
+
 
 class Options {
 public:
@@ -456,6 +534,7 @@ public:
     // This typedef is to allow us to eliminate the '_' in the field name in
     // union inside Entry. This is needed to keep the style checker happy.
     typedef int32_t int32;
+    typedef size_t size;
 
     // Declare the option IDs:
     enum ID {
@@ -471,6 +550,7 @@ public:
         unsignedType,
         doubleType,
         int32Type,
+        sizeType,
         optionRangeType,
         optionStringType,
         gcLogLevelType,
@@ -491,6 +571,8 @@ public:
 
     JS_EXPORT_PRIVATE static void ensureOptionsAreCoherent();
 
+    JS_EXPORT_PRIVATE static void enableRestrictedOptions(bool enableOrNot);
+
     // Declare accessors for each option:
 #define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \
     ALWAYS_INLINE static type_& name_() { return s_options[name_##ID].type_##Val; } \
@@ -508,6 +590,7 @@ private:
         unsigned unsignedVal;
         double doubleVal;
         int32 int32Val;
+        size sizeVal;
         OptionRange optionRangeVal;
         const char* optionStringVal;
         GCLogging::Level gcLogLevelVal;

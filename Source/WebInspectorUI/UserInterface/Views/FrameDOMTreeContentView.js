@@ -23,16 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.FrameDOMTreeContentView = class FrameDOMTreeContentView extends WebInspector.DOMTreeContentView
+WI.FrameDOMTreeContentView = class FrameDOMTreeContentView extends WI.DOMTreeContentView
 {
     constructor(domTree)
     {
-        console.assert(domTree instanceof WebInspector.DOMTree, domTree);
+        console.assert(domTree instanceof WI.DOMTree, domTree);
 
         super(domTree);
 
         this._domTree = domTree;
-        this._domTree.addEventListener(WebInspector.DOMTree.Event.RootDOMNodeInvalidated, this._rootDOMNodeInvalidated, this);
+        this._domTree.addEventListener(WI.DOMTree.Event.RootDOMNodeInvalidated, this._rootDOMNodeInvalidated, this);
 
         this._requestRootDOMNode();
     }
@@ -69,6 +69,7 @@ WebInspector.FrameDOMTreeContentView = class FrameDOMTreeContentView extends Web
             return;
         }
 
+        this._restoreBreakpointsAfterUpdate();
         this._restoreSelectedNodeAfterUpdate(this._domTree.frame.url, rootDOMNode.body || rootDOMNode.documentElement || rootDOMNode.firstChild);
     }
 

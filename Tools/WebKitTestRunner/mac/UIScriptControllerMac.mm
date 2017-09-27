@@ -26,6 +26,10 @@
 #import "config.h"
 #import "UIScriptController.h"
 
+#import "EventSerializerMac.h"
+#import "PlatformWebView.h"
+#import "SharedEventStreamsMac.h"
+#import "TestController.h"
 #import "PlatformWebView.h"
 #import "StringFunctions.h"
 #import "TestController.h"
@@ -56,7 +60,22 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
     });
 }
 
-void UIScriptController::insertText(JSStringRef text, int location, int length)
+void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
+{
+    return doAsyncTask(callback);
+}
+
+void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
+void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
+void UIScriptController::replaceTextAtRange(JSStringRef text, int location, int length)
 {
 #if WK_API_ENABLED
     if (location == -1)
@@ -90,6 +109,25 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
 #endif
 }
 
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef callback)
+{
+#if WK_API_ENABLED
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* webView = TestController::singleton().mainWebView()->platformView();
+    NSNotificationCenter *center = [[NSWorkspace sharedWorkspace] notificationCenter];
+    [center postNotificationName:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification object:webView];
+
+    [webView _doAfterNextPresentationUpdate: ^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+#else
+    UNUSED_PARAM(callback);
+#endif
+}
+
 JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
 {
 #if WK_API_ENABLED
@@ -100,6 +138,101 @@ JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfac
     UNUSED_PARAM(interfaceItem);
     return nullptr;
 #endif
+}
+
+void UIScriptController::overridePreference(JSStringRef preferenceRef, JSStringRef valueRef)
+{
+#if WK_API_ENABLED
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    WKPreferences *preferences = webView.configuration.preferences;
+
+    String preference = toWTFString(toWK(preferenceRef));
+    String value = toWTFString(toWK(valueRef));
+    if (preference == "WebKitMinimumFontSize")
+        preferences.minimumFontSize = value.toDouble();
+#else
+    UNUSED_PARAM(preferenceRef);
+    UNUSED_PARAM(valueRef);
+#endif
+}
+
+void UIScriptController::simulateRotation(DeviceOrientation*, JSValueRef)
+{
+}
+
+void UIScriptController::simulateRotationLikeSafari(DeviceOrientation*, JSValueRef)
+{
+}
+
+void UIScriptController::removeViewFromWindow(JSValueRef callback)
+{
+#if WK_API_ENABLED
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* mainWebView = TestController::singleton().mainWebView();
+    mainWebView->removeFromWindow();
+
+    [mainWebView->platformView() _doAfterNextPresentationUpdate: ^ {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+#else
+    UNUSED_PARAM(callback);
+#endif
+}
+
+void UIScriptController::addViewToWindow(JSValueRef callback)
+{
+#if WK_API_ENABLED
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* mainWebView = TestController::singleton().mainWebView();
+    mainWebView->addToWindow();
+
+    [mainWebView->platformView() _doAfterNextPresentationUpdate: ^ {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+#else
+    UNUSED_PARAM(callback);
+#endif
+}
+
+static void playBackEvents(UIScriptContext *context, NSString *eventStream, JSValueRef callback)
+{
+    NSError *error = nil;
+    NSArray *eventDicts = [NSJSONSerialization JSONObjectWithData:[eventStream dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&error];
+
+    if (error) {
+        NSLog(@"ERROR: %@", error);
+        return;
+    }
+
+    unsigned callbackID = context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    NSWindow *window = [TestController::singleton().mainWebView()->platformView() window];
+
+    [EventStreamPlayer playStream:eventDicts window:window completionHandler:^ {
+        context->asyncTaskComplete(callbackID);
+    }];
+}
+
+void UIScriptController::beginBackSwipe(JSValueRef callback)
+{
+    playBackEvents(m_context, beginSwipeBackEventStream(), callback);
+}
+
+void UIScriptController::completeBackSwipe(JSValueRef callback)
+{
+    playBackEvents(m_context, completeSwipeBackEventStream(), callback);
+}
+
+void UIScriptController::platformPlayBackEventStream(JSStringRef eventStream, JSValueRef callback)
+{
+    RetainPtr<CFStringRef> stream = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, eventStream));
+    playBackEvents(m_context, (NSString *)stream.get(), callback);
 }
 
 } // namespace WTR

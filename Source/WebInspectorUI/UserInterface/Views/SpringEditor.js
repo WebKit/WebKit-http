@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
+ * Copyright (C) 2016 Devin Rousso <webkit@devinrousso.com>. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
+WI.SpringEditor = class SpringEditor extends WI.Object
 {
     constructor()
     {
@@ -33,7 +33,7 @@ WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
         this._element.classList.add("spring-editor");
 
         this._previewContainer = this._element.createChild("div", "spring-preview");
-        this._previewContainer.title = WebInspector.UIString("Click to restart the animation");
+        this._previewContainer.title = WI.UIString("Restart animation");
         this._previewContainer.addEventListener("mousedown", this._resetPreviewAnimation.bind(this));
 
         this._previewElement = this._previewContainer.createChild("div");
@@ -65,18 +65,18 @@ WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
             this[inputKey].addEventListener("keydown", this._handleNumberInputKeydown.bind(this));
         }
 
-        createInputsForParameter.call(this, "mass", WebInspector.UIString("Mass"));
+        createInputsForParameter.call(this, "mass", WI.UIString("Mass"));
         this._massInput.min = this._massSlider.min = 1;
 
-        createInputsForParameter.call(this, "stiffness", WebInspector.UIString("Stiffness"));
+        createInputsForParameter.call(this, "stiffness", WI.UIString("Stiffness"));
         this._stiffnessInput.min = this._stiffnessSlider.min = 1;
 
-        createInputsForParameter.call(this, "damping", WebInspector.UIString("Damping"));
+        createInputsForParameter.call(this, "damping", WI.UIString("Damping"));
         this._dampingInput.min = this._dampingSlider.min = 0;
 
-        createInputsForParameter.call(this, "initialVelocity", WebInspector.UIString("Initial Velocity"));
+        createInputsForParameter.call(this, "initialVelocity", WI.UIString("Initial Velocity"));
 
-        this._spring = new WebInspector.Spring(1, 100, 10, 0);
+        this._spring = new WI.Spring(1, 100, 10, 0);
     }
 
     // Public
@@ -96,7 +96,7 @@ WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
         if (!spring)
             return;
 
-        let isSpring = spring instanceof WebInspector.Spring;
+        let isSpring = spring instanceof WI.Spring;
         console.assert(isSpring);
         if (!isSpring)
             return;
@@ -132,8 +132,10 @@ WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
         else if (event.altKey)
             shift /= 10;
 
+        let value = parseFloat(event.target.value) || 0;
+        this._changeSpringForInput(event.target, value + shift);
+
         event.preventDefault();
-        this._changeSpringForInput(event.target, parseFloat(event.target.value) + shift);
     }
 
     _handleNumberSliderInput(event)
@@ -153,34 +155,47 @@ WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
 
     _changeSpringForInput(target, value)
     {
-        value = parseFloat(value);
+        value = parseFloat(value) || 0;
 
         switch (target) {
         case this._massInput:
         case this._massSlider:
+            if (this._spring.mass === value)
+                return;
+
             this._spring.mass = Math.max(1, value);
             this._massInput.value = this._massSlider.value = this._spring.mass.maxDecimals(3);
             break;
         case this._stiffnessInput:
         case this._stiffnessSlider:
+            if (this._spring.stiffness === value)
+                return;
+
             this._spring.stiffness = Math.max(1, value);
             this._stiffnessInput.value = this._stiffnessSlider.value = this._spring.stiffness.maxDecimals(3);
             break;
         case this._dampingInput:
         case this._dampingSlider:
+            if (this._spring.damping === value)
+                return;
+
             this._spring.damping = Math.max(0, value);
             this._dampingInput.value = this._dampingSlider.value = this._spring.damping.maxDecimals(3);
             break;
         case this._initialVelocityInput:
         case this._initialVelocitySlider:
+            if (this._spring.initialVelocity === value)
+                return;
+
             this._spring.initialVelocity = value;
             this._initialVelocityInput.value = this._initialVelocitySlider.value = this._spring.initialVelocity.maxDecimals(3);
             break;
         default:
+            WI.reportInternalError("Input event fired for unrecognized element");
             return;
         }
 
-        this.dispatchEventToListeners(WebInspector.SpringEditor.Event.SpringChanged, {spring: this._spring});
+        this.dispatchEventToListeners(WI.SpringEditor.Event.SpringChanged, {spring: this._spring});
 
         this._resetPreviewAnimation();
     }
@@ -204,11 +219,17 @@ WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
     _updatePreviewAnimation(event)
     {
         this._previewContainer.classList.add("animate");
-        this._previewElement.style.transform = "translateX(85px)";
         this._previewElement.style.transitionTimingFunction = this._spring.toString();
 
         this._timingContainer.classList.add("animate");
-        this._timingElement.style.transform = "translateX(170px)";
+
+        if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL) {
+            this._previewElement.style.transform = "translateX(-85px)";
+            this._timingElement.style.transform = "translateX(-170px)";
+        } else {
+            this._previewElement.style.transform = "translateX(85px)";
+            this._timingElement.style.transform = "translateX(170px)";
+        }
 
         // Only calculate the duration when a spring parameter is changed.
         if (!event) {
@@ -222,6 +243,6 @@ WebInspector.SpringEditor = class SpringEditor extends WebInspector.Object
     }
 };
 
-WebInspector.SpringEditor.Event = {
+WI.SpringEditor.Event = {
     SpringChanged: "spring-editor-spring-changed"
 };

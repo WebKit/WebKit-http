@@ -22,15 +22,15 @@
 
 #if ENABLE(CONDITION)
 
-#include "JSDOMConvert.h"
+#include "JSDOMConvertEnumeration.h"
 #include "TestStandaloneEnumeration.h"
 
 namespace WebCore {
 
+String convertEnumerationToString(TestStandaloneEnumeration);
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestStandaloneEnumeration);
 
-template<> Optional<TestStandaloneEnumeration> parseEnumeration<TestStandaloneEnumeration>(JSC::ExecState&, JSC::JSValue);
-template<> TestStandaloneEnumeration convertEnumeration<TestStandaloneEnumeration>(JSC::ExecState&, JSC::JSValue);
+template<> std::optional<TestStandaloneEnumeration> parseEnumeration<TestStandaloneEnumeration>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestStandaloneEnumeration>();
 
 } // namespace WebCore

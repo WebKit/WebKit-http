@@ -23,13 +23,57 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+let mediaControlsHost;
+
 // This is called from HTMLMediaElement::ensureMediaControlsInjectedScript().
 function createControls(shadowRoot, media, host)
 {
     if (host) {
+        mediaControlsHost = host;
         iconService.mediaControlsHost = host;
         shadowRoot.appendChild(document.createElement("style")).textContent = host.shadowRootCSSText;
     }
 
     return new MediaController(shadowRoot, media, host);
+}
+
+function UIString(string)
+{
+    let localizedStrings = {};
+    try {
+        localizedStrings = UIStrings;
+    } catch (error) {}
+
+    if (localizedStrings[string])
+        return localizedStrings[string];
+
+    return string;
+}
+
+function formatTimeByUnit(value)
+{
+    const time = value || 0;
+    const absTime = Math.abs(time);
+    return {
+        seconds: Math.floor(absTime % 60).toFixed(0),
+        minutes: Math.floor((absTime / 60) % 60).toFixed(0),
+        hours: Math.floor(absTime / (60 * 60)).toFixed(0)
+    };
+}
+
+function unitizeTime(value, unit)
+{
+    let returnedUnit = UIString(unit);
+    if (value > 1)
+        returnedUnit = UIString(`${unit}s`);
+
+    return `${value} ${returnedUnit}`;
+}
+
+function formattedStringForDuration(timeInSeconds)
+{
+    if (mediaControlsHost)
+        return mediaControlsHost.formattedStringForDuration(Math.abs(timeInSeconds));
+    else
+        return "";
 }

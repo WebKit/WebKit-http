@@ -23,14 +23,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+const MinusSignWidthsForDigits = {
+    3: 6,
+    4: 5,
+    5: 6,
+    6: 5
+};
+
+const WidthsForDigits = {
+    3: 27,
+    4: 35,
+    5: 46,
+    6: 54
+}
+
 class TimeLabel extends LayoutNode
 {
 
-    constructor()
+    constructor(type)
     {
-        super(`<div class="time-label">`);
+        super(`<div role="text" class="time-label"></div>`);
 
-        this.value = 0;
+        this._type = type;
+        this.setValueWithNumberOfDigits(0, 4);
     }
 
     // Public
@@ -40,12 +55,11 @@ class TimeLabel extends LayoutNode
         return this._value;
     }
 
-    set value(value)
+    setValueWithNumberOfDigits(value, numberOfDigits)
     {
-        if (value === this._value)
-            return;
-
         this._value = value;
+        this._numberOfDigits = numberOfDigits;
+        this.width = WidthsForDigits[this._numberOfDigits] + (this._type === TimeLabel.Types.Remaining && !isNaN(this._value) ? MinusSignWidthsForDigits[this._numberOfDigits] : 0);
         this.markDirtyProperty("value");
     }
 
@@ -53,8 +67,14 @@ class TimeLabel extends LayoutNode
 
     commitProperty(propertyName)
     {
-        if (propertyName === "value")
+        if (propertyName === "value") {
             this.element.textContent = this._formattedTime();
+            const timeAsString = formattedStringForDuration(this.value);
+            const ariaLabel = (this._type === TimeLabel.Types.Remaining) ? UIString("Remaining") : UIString("Elapsed");
+            this.element.setAttribute("aria-label", `${ariaLabel}: ${timeAsString}`);
+            if (this.parent instanceof TimeControl)
+                this.parent.updateScrubberLabel();
+        }
         else
             super.commitProperty(propertyName);
     }
@@ -63,18 +83,34 @@ class TimeLabel extends LayoutNode
 
     _formattedTime()
     {
-        const time = this._value || 0;
-        const absTime = Math.abs(time);
-        const intSeconds = Math.floor(absTime % 60).toFixed(0);
-        const intMinutes = Math.floor((absTime / 60) % 60).toFixed(0);
-        const intHours = Math.floor(absTime / (60 * 60)).toFixed(0);
+        if (isNaN(this._value))
+            return "--:--";
+        
+        const time = formatTimeByUnit(this._value);
 
-        const timeStrings = [intMinutes, intSeconds];
-        if (intHours > 0)
-            timeStrings.unshift(intHours);
+        let timeComponents;
+        if (this._numberOfDigits == 3)
+            timeComponents = [time.minutes, doubleDigits(time.seconds)];
+        else if (this._numberOfDigits == 4)
+            timeComponents = [doubleDigits(time.minutes), doubleDigits(time.seconds)];
+        else if (this._numberOfDigits == 5)
+            timeComponents = [time.hours, doubleDigits(time.minutes), doubleDigits(time.seconds)];
+        else if (this._numberOfDigits == 6)
+            timeComponents = [doubleDigits(time.hours), doubleDigits(time.minutes), doubleDigits(time.seconds)];
 
-        const sign = time < 0 ? "-" : "";
-        return sign + timeStrings.map(x => `00${x}`.slice(-2)).join(":");
+        return (this._type === TimeLabel.Types.Remaining ? "-" : "") + timeComponents.join(":");
     }
 
 }
+
+function doubleDigits(x)
+{
+    if (x < 10)
+        return `0${x}`;
+    return `${x}`;
+}
+
+TimeLabel.Types = {
+    Elapsed: 0,
+    Remaining: 1
+};

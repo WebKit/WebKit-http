@@ -89,8 +89,8 @@ class ObjCGenerator(Generator):
     OBJC_SHARED_PREFIX = 'Protocol'
     OBJC_STATIC_PREFIX = '%s%s' % (OBJC_HELPER_PREFIX, OBJC_SHARED_PREFIX)
 
-    def __init__(self, model, input_filepath):
-        Generator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        Generator.__init__(self, *args, **kwargs)
 
     # The 'protocol name' is used to prefix filenames for a protocol group (a set of domains generated together).
     def protocol_name(self):
@@ -120,34 +120,37 @@ class ObjCGenerator(Generator):
 
     DOMAINS_TO_GENERATE = ['CSS', 'DOM', 'DOMStorage', 'Network', 'Page', 'Automation', 'GenericTypes']
 
-    @staticmethod
-    def should_generate_domain_types_filter(model):
-        def should_generate_domain_types(domain):
-            if model.framework is Frameworks.Test:
-                return True
-            whitelist = set(ObjCGenerator.DOMAINS_TO_GENERATE)
-            whitelist.update(set(['Console', 'Debugger', 'Runtime']))
-            return domain.domain_name in whitelist
-        return should_generate_domain_types
+    def should_generate_types_for_domain(self, domain):
+        if not len(self.type_declarations_for_domain(domain)):
+            return False
 
-    @staticmethod
-    def should_generate_domain_command_handler_filter(model):
-        def should_generate_domain_command_handler(domain):
-            if model.framework is Frameworks.Test:
-                return True
-            whitelist = set(ObjCGenerator.DOMAINS_TO_GENERATE)
-            return domain.domain_name in whitelist
-        return should_generate_domain_command_handler
+        if self.model().framework is Frameworks.Test:
+            return True
 
-    @staticmethod
-    def should_generate_domain_event_dispatcher_filter(model):
-        def should_generate_domain_event_dispatcher(domain):
-            if model.framework is Frameworks.Test:
-                return True
-            whitelist = set(ObjCGenerator.DOMAINS_TO_GENERATE)
-            whitelist.add('Console')
-            return domain.domain_name in whitelist
-        return should_generate_domain_event_dispatcher
+        whitelist = set(ObjCGenerator.DOMAINS_TO_GENERATE)
+        whitelist.update(set(['Console', 'Debugger', 'Runtime']))
+        return domain.domain_name in whitelist
+
+    def should_generate_commands_for_domain(self, domain):
+        if not len(self.commands_for_domain(domain)):
+            return False
+
+        if self.model().framework is Frameworks.Test:
+            return True
+
+        whitelist = set(ObjCGenerator.DOMAINS_TO_GENERATE)
+        return domain.domain_name in whitelist
+
+    def should_generate_events_for_domain(self, domain):
+        if not len(self.events_for_domain(domain)):
+            return False
+
+        if self.model().framework is Frameworks.Test:
+            return True
+
+        whitelist = set(ObjCGenerator.DOMAINS_TO_GENERATE)
+        whitelist.add('Console')
+        return domain.domain_name in whitelist
 
     # ObjC enum and type names.
 
@@ -439,12 +442,11 @@ class ObjCGenerator(Generator):
         if category in [ObjCTypeCategory.Simple, ObjCTypeCategory.String]:
             if isinstance(member.type, EnumType):
                 if member.type.is_anonymous:
-                    return 'fromProtocolString<%s>(%s)' % (self.objc_enum_name_for_anonymous_enum_member(declaration, member), sub_expression)
-                return 'fromProtocolString<%s>(%s)' % (self.objc_enum_name_for_non_anonymous_enum(member.type), sub_expression)
+                    return 'fromProtocolString<%s>(%s).value()' % (self.objc_enum_name_for_anonymous_enum_member(declaration, member), sub_expression)
+                return 'fromProtocolString<%s>(%s).value()' % (self.objc_enum_name_for_non_anonymous_enum(member.type), sub_expression)
             return sub_expression
         if category is ObjCTypeCategory.Object:
-            objc_class = self.objc_class_for_type(member.type)
-            return '[[%s alloc] initWithInspectorObject:[%s toInspectorObject].get()]' % (objc_class, sub_expression)
+            raise Exception("protocol_to_objc_expression_for_member does not support an Object type. See: protocol_to_objc_code_block_for_object_member")
         if category is ObjCTypeCategory.Array:
             protocol_type = ObjCGenerator.protocol_type_for_type(member.type.element_type)
             objc_class = self.objc_class_for_type(member.type.element_type)
@@ -456,6 +458,15 @@ class ObjCGenerator(Generator):
                     return 'objcDoubleArray(%s)' % sub_expression
                 return 'objcIntegerArray(%s)' % sub_expression
             return 'objcArray<%s>(%s)' % (objc_class, sub_expression)
+
+    def protocol_to_objc_code_block_for_object_member(self, declaration, member, sub_expression):
+        objc_class = self.objc_class_for_type(member.type)
+        lines = []
+        lines.append('    %sJSONObject *object = %s;' % (ObjCGenerator.OBJC_STATIC_PREFIX, sub_expression))
+        lines.append('    if (!object)')
+        lines.append('        return nil;')
+        lines.append('    return [[%s alloc] initWithInspectorObject:[%s toInspectorObject].get()];' % (objc_class, sub_expression))
+        return '\n'.join(lines)
 
     def payload_to_objc_expression_for_member(self, declaration, member):
         _type = member.type
@@ -483,8 +494,16 @@ class ObjCGenerator(Generator):
             objc_class = self.objc_class_for_type(member.type)
             return '[[%s alloc] initWithPayload:payload[@"%s"]]' % (objc_class, member.member_name)
         if isinstance(_type, ArrayType):
-            objc_class = self.objc_class_for_type(member.type.element_type)
-            return 'objcArrayFromPayload<%s>(payload[@"%s"])' % (objc_class, member.member_name)
+            element_type = member.type.element_type
+            if isinstance(element_type, EnumType):
+                element_type = element_type.primitive_type
+
+            # In this case, there is no conversion that needs to be done, the array already contains an ObjC type.
+            if isinstance(element_type, PrimitiveType):
+                return 'payload[@"%s"]' % member.member_name
+            else:
+                objc_class = self.objc_class_for_type(element_type)
+                return 'objcArrayFromPayload<%s>(payload[@"%s"])' % (objc_class, member.member_name)
 
     # JSON object setter/getter selectors for types.
 

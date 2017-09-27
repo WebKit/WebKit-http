@@ -37,13 +37,13 @@ InspectorBackendClass = class InspectorBackendClass
         this._agents = {};
 
         this._customTracer = null;
-        this._defaultTracer = new WebInspector.LoggingProtocolTracer;
+        this._defaultTracer = new WI.LoggingProtocolTracer;
         this._activeTracers = [this._defaultTracer];
 
-        this._dumpInspectorTimeStats = false;
+        this._workerSupportedDomains = [];
 
-        let setting = WebInspector.autoLogProtocolMessagesSetting = new WebInspector.Setting("auto-collect-protocol-messages", false);
-        setting.addEventListener(WebInspector.Setting.Event.Changed, this._startOrStopAutomaticTracing.bind(this));
+        WI.settings.autoLogProtocolMessages.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
+        WI.settings.autoLogTimeStats.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
         this._startOrStopAutomaticTracing();
 
         this.currentDispatchState = {
@@ -55,26 +55,27 @@ InspectorBackendClass = class InspectorBackendClass
 
     // Public
 
+    get workerSupportedDomains() { return this._workerSupportedDomains; }
+
     // It's still possible to set this flag on InspectorBackend to just
     // dump protocol traffic as it happens. For more complex uses of
-    // protocol data, install a subclass of WebInspector.ProtocolTracer.
+    // protocol data, install a subclass of WI.ProtocolTracer.
     set dumpInspectorProtocolMessages(value)
     {
         // Implicitly cause automatic logging to start if it's allowed.
-        let setting = WebInspector.autoLogProtocolMessagesSetting;
-        setting.value = value;
+        WI.settings.autoLogProtocolMessages.value = value;
 
         this._defaultTracer.dumpMessagesToConsole = value;
     }
 
     get dumpInspectorProtocolMessages()
     {
-        return WebInspector.autoLogProtocolMessagesSetting.value;
+        return WI.settings.autoLogProtocolMessages.value;
     }
 
     set dumpInspectorTimeStats(value)
     {
-        this._dumpInspectorTimeStats = !!value;
+        WI.settings.autoLogTimeStats.value = value;
 
         if (!this.dumpInspectorProtocolMessages)
             this.dumpInspectorProtocolMessages = true;
@@ -84,12 +85,12 @@ InspectorBackendClass = class InspectorBackendClass
 
     get dumpInspectorTimeStats()
     {
-        return this._dumpInspectorTimeStats;
+        return WI.settings.autoLogTimeStats.value;
     }
 
     set customTracer(tracer)
     {
-        console.assert(!tracer || tracer instanceof WebInspector.ProtocolTracer, tracer);
+        console.assert(!tracer || tracer instanceof WI.ProtocolTracer, tracer);
         console.assert(!tracer || tracer !== this._defaultTracer, tracer);
 
         // Bail early if no state change is to be made.
@@ -166,6 +167,11 @@ InspectorBackendClass = class InspectorBackendClass
         }
 
         return null;
+    }
+
+    workerSupportedDomain(domainName)
+    {
+        this._workerSupportedDomains.push(domainName);
     }
 
     // Private
@@ -279,8 +285,13 @@ InspectorBackend.Agent = class InspectorBackendAgent
 
     dispatchEvent(eventName, eventArguments)
     {
+        if (!this._dispatcher) {
+            console.error(`No domain dispatcher registered for domain '${this._domainName}', for event '${this._domainName}.${eventName}'`);
+            return false;
+        }
+
         if (!(eventName in this._dispatcher)) {
-            console.error("Protocol Error: Attempted to dispatch an unimplemented method '" + this._domainName + "." + eventName + "'");
+            console.error(`Protocol Error: Attempted to dispatch an unimplemented method '${this._domainName}.${eventName}'`);
             return false;
         }
 

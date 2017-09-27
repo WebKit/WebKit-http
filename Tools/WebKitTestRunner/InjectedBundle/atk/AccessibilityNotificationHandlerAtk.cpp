@@ -54,7 +54,7 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
     if (!accessible || !ATK_IS_OBJECT(accessible))
         return true;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
@@ -73,6 +73,10 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
             notificationName = "CheckedStateChanged";
         else if (!g_strcmp0(g_value_get_string(&paramValues[1]), "invalid-entry"))
             notificationName = "AXInvalidStatusChanged";
+        else if (!g_strcmp0(g_value_get_string(&paramValues[1]), "active"))
+            notificationName = "ActiveStateChanged";
+        else if (!g_strcmp0(g_value_get_string(&paramValues[1]), "busy"))
+            notificationName = "AXElementBusyChanged";
     } else if (!g_strcmp0(signalQuery.signal_name, "focus-event")) {
         if (g_value_get_boolean(&paramValues[1]))
             notificationName = "AXFocusedUIElementChanged";
@@ -108,7 +112,7 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
         arguments[0] = toJS(jsContext, WTF::getPtr(WTR::AccessibilityUIElement::create(accessible)));
         arguments[1] = notificationNameArgument;
         size_t numOfExtraArgs = extraArgs.size();
-        for (int i = 0; i < numOfExtraArgs; i++)
+        for (size_t i = 0; i < numOfExtraArgs; i++)
             arguments[i + 2] = extraArgs[i];
         if (elementNotificationHandler != notificationHandlers.end()) {
             // Listener for one element. As arguments, it gets the notification name
@@ -153,7 +157,7 @@ void AccessibilityNotificationHandler::setNotificationFunctionCallback(JSValueRe
 
     m_notificationFunctionCallback = notificationFunctionCallback;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
@@ -184,7 +188,7 @@ void AccessibilityNotificationHandler::setNotificationFunctionCallback(JSValueRe
 
 void AccessibilityNotificationHandler::removeAccessibilityNotificationHandler()
 {
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
@@ -252,7 +256,7 @@ bool AccessibilityNotificationHandler::disconnectAccessibilityCallbacks()
         return false;
 
     // AtkObject signals.
-    for (int i = 0; i < listenerIds.size(); i++) {
+    for (size_t i = 0; i < listenerIds.size(); i++) {
         ASSERT(listenerIds[i]);
         atk_remove_global_event_listener(listenerIds[i]);
     }

@@ -28,7 +28,6 @@
 #if ENABLE(DFG_JIT)
 
 #include "ArrayProfile.h"
-#include "DFGNodeFlags.h"
 #include "SpeculatedType.h"
 
 namespace JSC {
@@ -168,7 +167,7 @@ public:
         return ArrayMode(word);
     }
     
-    static ArrayMode fromObserved(const ConcurrentJITLocker&, ArrayProfile*, Array::Action, bool makeSafe);
+    static ArrayMode fromObserved(const ConcurrentJSLocker&, ArrayProfile*, Array::Action, bool makeSafe);
     
     ArrayMode withSpeculation(Array::Speculation speculation) const
     {
@@ -180,7 +179,7 @@ public:
         return ArrayMode(type(), arrayClass, speculation(), conversion());
     }
     
-    ArrayMode withSpeculationFromProfile(const ConcurrentJITLocker& locker, ArrayProfile* profile, bool makeSafe) const
+    ArrayMode withSpeculationFromProfile(const ConcurrentJSLocker& locker, ArrayProfile* profile, bool makeSafe) const
     {
         Array::Speculation mySpeculation;
 
@@ -194,7 +193,7 @@ public:
         return withSpeculation(mySpeculation);
     }
     
-    ArrayMode withProfile(const ConcurrentJITLocker& locker, ArrayProfile* profile, bool makeSafe) const
+    ArrayMode withProfile(const ConcurrentJSLocker& locker, ArrayProfile* profile, bool makeSafe) const
     {
         Array::Class myArrayClass;
 

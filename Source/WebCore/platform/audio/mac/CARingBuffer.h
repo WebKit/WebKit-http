@@ -23,37 +23,69 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CARingBuffer_h
-#define CARingBuffer_h
+#pragma once
 
 #if ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
 
+#include "AudioStreamDescription.h"
+#include "CAAudioStreamDescription.h"
 #include <runtime/ArrayBuffer.h>
 #include <wtf/Lock.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
 
 typedef struct AudioBufferList AudioBufferList;
 
 namespace WebCore {
 
+class CARingBufferStorage {
+public:
+    virtual ~CARingBufferStorage() = default;
+    virtual void allocate(size_t) = 0;
+    virtual void deallocate() = 0;
+    virtual void* data() = 0;
+};
+
+class CARingBufferStorageVector : public CARingBufferStorage {
+public:
+    ~CARingBufferStorageVector() = default;
+
+private:
+    void allocate(size_t byteCount) final { m_buffer.grow(byteCount); }
+    void deallocate() final { m_buffer.clear(); }
+    void* data() final { return m_buffer.data(); }
+    Vector<uint8_t> m_buffer;
+};
+
 class CARingBuffer {
 public:
-    CARingBuffer();
-    ~CARingBuffer();
+    WEBCORE_EXPORT CARingBuffer();
+    WEBCORE_EXPORT CARingBuffer(UniqueRef<CARingBufferStorage>&&);
+    WEBCORE_EXPORT ~CARingBuffer()
+    {
+        deallocate();
+    }
 
     enum Error {
         Ok,
         TooMuch, // fetch start time is earlier than buffer start time and fetch end time is later than buffer end time
-        CPUOverload, // the reader is unable to get enough CPU cycles to capture a consistent snapshot of the time bounds
     };
 
-    void allocate(uint32_t m_channelCount, size_t bytesPerFrame, size_t frameCount);
-    void deallocate();
-    Error store(const AudioBufferList*, size_t frameCount, uint64_t startFrame);
-    Error fetch(AudioBufferList*, size_t frameCount, uint64_t startFrame);
-    void getCurrentFrameBounds(uint64_t &startTime, uint64_t &endTime);
+    WEBCORE_EXPORT void allocate(const CAAudioStreamDescription&, size_t);
+    WEBCORE_EXPORT void deallocate();
+
+    WEBCORE_EXPORT Error store(const AudioBufferList*, size_t frameCount, uint64_t startFrame);
+
+    enum FetchMode { Copy, Mix };
+    WEBCORE_EXPORT Error fetch(AudioBufferList*, size_t frameCount, uint64_t startFrame, FetchMode mode = Copy);
+
+    WEBCORE_EXPORT void flush();
+
+    WEBCORE_EXPORT void getCurrentFrameBounds(uint64_t &startTime, uint64_t &endTime);
+    WEBCORE_EXPORT void setCurrentFrameBounds(uint64_t startFrame, uint64_t endFrame);
 
     uint32_t channelCount() const { return m_channelCount; }
+    CARingBufferStorage& storage() { return m_buffers; }
 
 private:
     size_t frameOffset(uint64_t frameNumber) { return (frameNumber & m_frameCountMask) * m_bytesPerFrame; }
@@ -62,14 +94,14 @@ private:
 
     uint64_t currentStartFrame() const;
     uint64_t currentEndFrame() const;
-    void setCurrentFrameBounds(uint64_t startFrame, uint64_t endFrame);
 
-    RefPtr<ArrayBuffer> m_buffers;
-    uint32_t m_channelCount;
-    size_t m_bytesPerFrame;
-    uint32_t m_frameCount;
-    uint32_t m_frameCountMask;
-    size_t m_capacityBytes;
+    UniqueRef<CARingBufferStorage> m_buffers;
+    Vector<Byte*> m_pointers;
+    uint32_t m_channelCount { 0 };
+    size_t m_bytesPerFrame { 0 };
+    uint32_t m_frameCount { 0 };
+    uint32_t m_frameCountMask { 0 };
+    size_t m_capacityBytes { 0 };
 
     struct TimeBounds {
         TimeBounds()
@@ -82,14 +114,13 @@ private:
         volatile uint64_t m_endFrame;
         volatile uint32_t m_updateCounter;
     };
-    
+
+    CAAudioStreamDescription m_description;
     Vector<TimeBounds> m_timeBoundsQueue;
     Lock m_currentFrameBoundsLock;
-    std::atomic<int32_t> m_timeBoundsQueuePtr;
+    std::atomic<int32_t> m_timeBoundsQueuePtr { 0 };
 };
 
 }
 
 #endif // ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
-
-#endif // CARingBuffer_h

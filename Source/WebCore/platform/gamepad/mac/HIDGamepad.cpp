@@ -79,13 +79,16 @@ void HIDGamepad::initElements()
     });
 
     m_axisValues.resize(m_axes.size());
-    m_buttonValues.resize(m_buttons.size());
+    m_buttonValues.resize(m_buttons.size() + (m_dPads.size() * 4));
 
     for (auto& button : m_buttons)
-        getCurrentValueForElement(*button);
+        getCurrentValueForElement(button.get());
+
+    for (auto& dPad : m_dPads)
+        getCurrentValueForElement(dPad.get());
 
     for (auto& axis : m_axes)
-        getCurrentValueForElement(*axis);
+        getCurrentValueForElement(axis.get());
 }
 
 void HIDGamepad::initElementsFromArray(CFArrayRef elements)
@@ -104,8 +107,12 @@ void HIDGamepad::initElementsFromArray(CFArrayRef elements)
 
         IOHIDElementType type = IOHIDElementGetType(element);
 
-        if ((type == kIOHIDElementTypeInput_Misc || type == kIOHIDElementTypeInput_Button) && maybeAddButton(element))
-            continue;
+        if ((type == kIOHIDElementTypeInput_Misc || type == kIOHIDElementTypeInput_Button)) {
+            if (maybeAddButton(element))
+                continue;
+            if (maybeAddDPad(element))
+                continue;
+        }
 
         if ((type == kIOHIDElementTypeInput_Misc || type == kIOHIDElementTypeInput_Axis) && maybeAddAxis(element))
             continue;
@@ -118,20 +125,46 @@ void HIDGamepad::initElementsFromArray(CFArrayRef elements)
 bool HIDGamepad::maybeAddButton(IOHIDElementRef element)
 {
     uint32_t usagePage = IOHIDElementGetUsagePage(element);
-    if (usagePage != kHIDPage_Button)
+    if (usagePage != kHIDPage_Button && usagePage != kHIDPage_GenericDesktop)
         return false;
 
     uint32_t usage = IOHIDElementGetUsage(element);
-    if (!usage)
+
+    if (usagePage == kHIDPage_GenericDesktop) {
+        if (usage < kHIDUsage_GD_DPadUp || usage > kHIDUsage_GD_DPadLeft)
+            return false;
+        usage = std::numeric_limits<uint32_t>::max();
+    } else if (!usage)
         return false;
 
     CFIndex min = IOHIDElementGetLogicalMin(element);
     CFIndex max = IOHIDElementGetLogicalMax(element);
 
-    m_buttons.append(std::make_unique<HIDGamepadButton>(usage, min, max, element));
+    m_buttons.append(makeUniqueRef<HIDGamepadButton>(usage, min, max, element));
 
     IOHIDElementCookie cookie = IOHIDElementGetCookie(element);
-    m_elementMap.set(cookie, m_buttons.last().get());
+    m_elementMap.set(cookie, &m_buttons.last().get());
+
+    return true;
+}
+
+bool HIDGamepad::maybeAddDPad(IOHIDElementRef element)
+{
+    uint32_t usagePage = IOHIDElementGetUsagePage(element);
+    if (usagePage != kHIDPage_GenericDesktop)
+        return false;
+
+    uint32_t usage = IOHIDElementGetUsage(element);
+    if (!usage || usage != kHIDUsage_GD_Hatswitch)
+        return false;
+
+    CFIndex min = IOHIDElementGetLogicalMin(element);
+    CFIndex max = IOHIDElementGetLogicalMax(element);
+
+    m_dPads.append(makeUniqueRef<HIDGamepadDPad>(min, max, element));
+
+    IOHIDElementCookie cookie = IOHIDElementGetCookie(element);
+    m_elementMap.set(cookie, &m_dPads.last().get());
 
     return true;
 }
@@ -150,39 +183,90 @@ bool HIDGamepad::maybeAddAxis(IOHIDElementRef element)
     CFIndex min = IOHIDElementGetPhysicalMin(element);
     CFIndex max = IOHIDElementGetPhysicalMax(element);
 
-    m_axes.append(std::make_unique<HIDGamepadAxis>(min, max, element));
+    m_axes.append(makeUniqueRef<HIDGamepadAxis>(min, max, element));
 
     IOHIDElementCookie cookie = IOHIDElementGetCookie(element);
-    m_elementMap.set(cookie, m_axes.last().get());
+    m_elementMap.set(cookie, &m_axes.last().get());
 
     return true;
 }
 
-void HIDGamepad::valueChanged(IOHIDValueRef value)
+static void fillInButtonValues(int value, double& button0, double& button1, double& button2, double& button3)
+{
+    // Standard DPads have 8 possible position values, moving around a circle:
+    // 0 - Up
+    // 1 - Up + right
+    // 2 - Right
+    // 3 - Down + right
+    // 4 - Down
+    // 5 - Down + left
+    // 6 - Left
+    // 7 - Up and Left
+    // These 8 positions are mapped on to 4 button positions:
+    // 0 - Up
+    // 1 - Down
+    // 2 - Left
+    // 3 - Right
+
+    if (value < 0 || value > 7) {
+        // Handle an invalid input value that we don't know how to interpret.
+        button0 = 0.0;
+        button1 = 0.0;
+        button2 = 0.0;
+        button3 = 0.0;
+        return;
+    }
+
+    button0 = value < 2 || value == 7 ? 1.0 : 0.0;
+    button1 = value > 2 && value < 6 ? 1.0 : 0.0;
+    button2 = value > 4 ? 1.0 : 0.0;
+    button3 = value > 0 && value < 4 ? 1.0 : 0.0;
+}
+
+HIDInputType HIDGamepad::valueChanged(IOHIDValueRef value)
 {
     IOHIDElementCookie cookie = IOHIDElementGetCookie(IOHIDValueGetElement(value));
     HIDGamepadElement* element = m_elementMap.get(cookie);
 
     // This might be an element we don't currently handle as input so we can skip it.
     if (!element)
-        return;
+        return HIDInputType::NotAButtonPress;
 
     element->rawValue = IOHIDValueGetScaledValue(value, kIOHIDValueScaleTypePhysical);
 
     if (element->isButton()) {
         for (unsigned i = 0; i < m_buttons.size(); ++i) {
-            if (m_buttons[i].get() == element)
+            if (&m_buttons[i].get() == element) {
                 m_buttonValues[i] = element->normalizedValue();
+                break;
+            }
         }
     } else if (element->isAxis()) {
         for (unsigned i = 0; i < m_axes.size(); ++i) {
-            if (m_axes[i].get() == element)
+            if (&m_axes[i].get() == element) {
                 m_axisValues[i] = element->normalizedValue();
+                break;
+            }
+        }
+    } else if (element->isDPad()) {
+        int intValue = IOHIDValueGetIntegerValue(value) - element->min;
+        for (unsigned i = 0; i < m_dPads.size(); ++i) {
+            if (&m_dPads[i].get() != element)
+                continue;
+
+            // Each DPad represents 4 button values which are tacked on to the end of the values from non-DPad buttons.
+            unsigned firstButtonValue = m_buttons.size() + i * 4;
+
+            ASSERT(m_buttonValues.size() > firstButtonValue + 3);
+
+            fillInButtonValues(intValue, m_buttonValues[firstButtonValue], m_buttonValues[firstButtonValue + 1], m_buttonValues[firstButtonValue + 2], m_buttonValues[firstButtonValue + 3]);
         }
     } else
         ASSERT_NOT_REACHED();
 
     m_lastUpdateTime = monotonicallyIncreasingTime();
+
+    return element->isButton() ? HIDInputType::ButtonPress : HIDInputType::NotAButtonPress;
 }
 
 } // namespace WebCore

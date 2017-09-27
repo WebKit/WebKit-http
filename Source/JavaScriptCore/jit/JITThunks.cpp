@@ -31,6 +31,7 @@
 #include "JIT.h"
 #include "JSCInlines.h"
 #include "LLIntData.h"
+#include "ThunkGenerators.h"
 #include "VM.h"
 
 namespace JSC {
@@ -82,9 +83,18 @@ MacroAssemblerCodeRef JITThunks::ctiStub(VM* vm, ThunkGenerator generator)
     return entry.iterator->value;
 }
 
+MacroAssemblerCodeRef JITThunks::existingCTIStub(ThunkGenerator generator)
+{
+    LockHolder locker(m_lock);
+    CTIStubMap::iterator entry = m_ctiStubMap.find(generator);
+    if (entry == m_ctiStubMap.end())
+        return MacroAssemblerCodeRef();
+    return entry->value;
+}
+
 void JITThunks::finalize(Handle<Unknown> handle, void*)
 {
-    auto* nativeExecutable = jsCast<NativeExecutable*>(handle.get().asCell());
+    auto* nativeExecutable = static_cast<NativeExecutable*>(handle.get().asCell());
     weakRemove(*m_hostFunctionStubMap, std::make_tuple(nativeExecutable->function(), nativeExecutable->constructor(), nativeExecutable->name()), nativeExecutable);
 }
 
@@ -108,9 +118,9 @@ NativeExecutable* JITThunks::hostFunctionStub(VM* vm, NativeFunction function, N
     } else
         forCall = adoptRef(new NativeJITCode(JIT::compileCTINativeCall(vm, function), JITCode::HostCallThunk));
     
-    RefPtr<JITCode> forConstruct = adoptRef(new NativeJITCode(MacroAssemblerCodeRef::createSelfManagedCodeRef(ctiNativeConstruct(vm)), JITCode::HostCallThunk));
+    Ref<JITCode> forConstruct = adoptRef(*new NativeJITCode(MacroAssemblerCodeRef::createSelfManagedCodeRef(ctiNativeConstruct(vm)), JITCode::HostCallThunk));
     
-    NativeExecutable* nativeExecutable = NativeExecutable::create(*vm, forCall, function, forConstruct, constructor, intrinsic, signature, name);
+    NativeExecutable* nativeExecutable = NativeExecutable::create(*vm, forCall.releaseNonNull(), function, WTFMove(forConstruct), constructor, intrinsic, signature, name);
     weakAdd(*m_hostFunctionStubMap, std::make_tuple(function, constructor, name), Weak<NativeExecutable>(nativeExecutable, this));
     return nativeExecutable;
 }

@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(WRITABLE_STREAM_API)
+// @conditional=ENABLE(STREAMS_API)
 
 function initializeWritableStream(underlyingSink, strategy)
 {
@@ -145,6 +145,7 @@ function write(chunk)
     return promiseCapability.@promise;
 }
 
+@getter
 function closed()
 {
     "use strict";
@@ -155,6 +156,7 @@ function closed()
     return this.@closedPromiseCapability.@promise;
 }
 
+@getter
 function ready()
 {
     "use strict";
@@ -165,6 +167,7 @@ function ready()
     return this.@readyPromiseCapability.@promise;
 }
 
+@getter
 function state()
 {
     "use strict";

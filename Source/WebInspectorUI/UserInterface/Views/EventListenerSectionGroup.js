@@ -23,19 +23,35 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends WebInspector.DetailsSectionGroup
+WI.EventListenerSectionGroup = class EventListenerSectionGroup extends WI.DetailsSectionGroup
 {
-    constructor(eventListener, nodeId)
+    constructor(eventListener, options = {})
     {
         super();
 
         this._eventListener = eventListener;
-        this._nodeId = nodeId;
 
         var rows = [];
-        rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Node"), this._nodeTextOrLink()));
-        rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Function"), this._functionTextOrLink()));
-        rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Type"), this._type()));
+        if (!options.hideType)
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Event"), this._eventListener.type));
+        if (!options.hideNode)
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Node"), this._nodeTextOrLink()));
+        rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Function"), this._functionTextOrLink()));
+
+        if (this._eventListener.useCapture)
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Capturing"), WI.UIString("Yes")));
+        else
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Bubbling"), WI.UIString("Yes")));
+
+        if (this._eventListener.isAttribute)
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Attribute"), WI.UIString("Yes")));
+
+        if (this._eventListener.passive)
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Passive"), WI.UIString("Yes")));
+
+        if (this._eventListener.once)
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Once"), WI.UIString("Yes")));
+
         this.rows = rows;
     }
 
@@ -51,18 +67,7 @@ WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends
         if (node.nodeType() === Node.DOCUMENT_NODE)
             return "document";
 
-        return WebInspector.linkifyNodeReference(node);
-    }
-
-    _type()
-    {
-        if (this._eventListener.useCapture)
-            return WebInspector.UIString("Capturing");
-
-        if (this._eventListener.isAttribute)
-            return WebInspector.UIString("Attribute");
-
-        return WebInspector.UIString("Bubbling");
+        return WI.linkifyNodeReference(node);
     }
 
     _functionTextOrLink()
@@ -73,18 +78,25 @@ WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends
             var functionName = match[1];
         } else {
             var anonymous = true;
-            var functionName = WebInspector.UIString("(anonymous function)");
+            var functionName = WI.UIString("(anonymous function)");
         }
 
         if (!this._eventListener.location)
             return functionName;
 
-        var sourceCode = WebInspector.debuggerManager.scriptForIdentifier(this._eventListener.location.scriptId, WebInspector.mainTarget);
+        var sourceCode = WI.debuggerManager.scriptForIdentifier(this._eventListener.location.scriptId, WI.mainTarget);
         if (!sourceCode)
             return functionName;
 
         var sourceCodeLocation = sourceCode.createSourceCodeLocation(this._eventListener.location.lineNumber, this._eventListener.location.columnNumber || 0);
-        var linkElement = WebInspector.createSourceCodeLocationLink(sourceCodeLocation, anonymous);
+
+        const options = {
+            dontFloat: anonymous,
+            ignoreNetworkTab: true,
+            ignoreSearchTab: true,
+        };
+        let linkElement = WI.createSourceCodeLocationLink(sourceCodeLocation, options);
+
         if (anonymous)
             return linkElement;
 

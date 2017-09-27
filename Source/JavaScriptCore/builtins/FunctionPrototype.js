@@ -42,7 +42,7 @@ function apply(thisValue, argumentValues)
     return this.@apply(thisValue, argumentValues);
 }
 
-// FIXME: this should have a different name: https://bugs.webkit.org/show_bug.cgi?id=151363
+@overriddenName="[Symbol.hasInstance]"
 function symbolHasInstance(value)
 {
     "use strict";
@@ -72,7 +72,7 @@ function bind(thisValue)
         numBoundArgs = argumentCount - 1;
         boundArgs = @newArrayWithSize(numBoundArgs);
         for (let i = 0; i < numBoundArgs; i++)
-            boundArgs[i] = arguments[i + 1];
+            @putByValDirect(boundArgs, i, arguments[i + 1]);
     }
 
     let length = 0;

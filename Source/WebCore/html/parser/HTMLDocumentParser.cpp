@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc. All Rights Reserved.
- * Copyright (C) 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,8 +27,8 @@
 #include "config.h"
 #include "HTMLDocumentParser.h"
 
-#include "CachedScript.h"
 #include "DocumentFragment.h"
+#include "DocumentLoader.h"
 #include "Frame.h"
 #include "HTMLDocument.h"
 #include "HTMLParserScheduler.h"
@@ -37,6 +37,9 @@
 #include "HTMLTreeBuilder.h"
 #include "HTMLUnknownElement.h"
 #include "JSCustomElementInterface.h"
+#include "LinkLoader.h"
+#include "NavigationScheduler.h"
+#include "ScriptElement.h"
 
 namespace WebCore {
 
@@ -87,7 +90,7 @@ HTMLDocumentParser::~HTMLDocumentParser()
 
 void HTMLDocumentParser::detach()
 {
-    DocumentParser::detach();
+    ScriptableDocumentParser::detach();
 
     if (m_scriptRunner)
         m_scriptRunner->detach();
@@ -206,7 +209,7 @@ void HTMLDocumentParser::runScriptsForPausedTreeBuilder()
         ASSERT(!m_treeBuilder->hasParserBlockingScriptWork());
         // We will not have a scriptRunner when parsing a DocumentFragment.
         if (m_scriptRunner)
-            m_scriptRunner->execute(WTFMove(scriptElement), scriptStartPosition);
+            m_scriptRunner->execute(scriptElement.releaseNonNull(), scriptStartPosition);
     }
 }
 
@@ -295,6 +298,9 @@ void HTMLDocumentParser::pumpTokenizer(SynchronousMode mode)
         }
         m_preloadScanner->scan(*m_preloader, *document());
     }
+    // The viewport definition is known here, so we can load link preloads with media attributes.
+    if (document()->loader())
+        LinkLoader::loadLinksFromHeader(document()->loader()->response().httpHeaderField(HTTPHeaderName::Link), document()->url(), *document(), LinkLoader::MediaAttributeCheck::MediaAttributeNotEmpty);
 }
 
 void HTMLDocumentParser::constructTreeFromHTMLToken(HTMLTokenizer::TokenPtr& rawToken)
@@ -317,7 +323,7 @@ void HTMLDocumentParser::constructTreeFromHTMLToken(HTMLTokenizer::TokenPtr& raw
         rawToken.clear();
     }
 
-    m_treeBuilder->constructTree(token);
+    m_treeBuilder->constructTree(WTFMove(token));
 }
 
 bool HTMLDocumentParser::hasInsertionPoint()
@@ -329,7 +335,7 @@ bool HTMLDocumentParser::hasInsertionPoint()
     return m_input.hasInsertionPoint() || (wasCreatedByScript() && !m_input.haveSeenEndOfFile());
 }
 
-void HTMLDocumentParser::insert(const SegmentedString& source)
+void HTMLDocumentParser::insert(SegmentedString&& source)
 {
     if (isStopped())
         return;
@@ -338,9 +344,8 @@ void HTMLDocumentParser::insert(const SegmentedString& source)
     // but we need to ensure it isn't deleted yet.
     Ref<HTMLDocumentParser> protectedThis(*this);
 
-    SegmentedString excludedLineNumberSource(source);
-    excludedLineNumberSource.setExcludeLineNumbers();
-    m_input.insertAtCurrentInsertionPoint(excludedLineNumberSource);
+    source.setExcludeLineNumbers();
+    m_input.insertAtCurrentInsertionPoint(WTFMove(source));
     pumpTokenizerIfPossible(ForceSynchronous);
 
     if (isWaitingForScripts()) {
@@ -364,7 +369,7 @@ void HTMLDocumentParser::append(RefPtr<StringImpl>&& inputSource)
     // but we need to ensure it isn't deleted yet.
     Ref<HTMLDocumentParser> protectedThis(*this);
 
-    String source(WTFMove(inputSource));
+    String source { WTFMove(inputSource) };
 
     if (m_preloadScanner) {
         if (m_input.current().isEmpty() && !isWaitingForScripts()) {
@@ -502,7 +507,7 @@ void HTMLDocumentParser::watchForLoad(PendingScript& pendingScript)
     // setClient would call notifyFinished if the load were complete.
     // Callers do not expect to be re-entered from this call, so they should
     // not an already-loaded PendingScript.
-    pendingScript.setClient(this);
+    pendingScript.setClient(*this);
 }
 
 void HTMLDocumentParser::stopWatchingForLoad(PendingScript& pendingScript)
@@ -523,6 +528,10 @@ void HTMLDocumentParser::notifyFinished(PendingScript& pendingScript)
     // but we need to ensure it isn't deleted yet.
     Ref<HTMLDocumentParser> protectedThis(*this);
 
+    // After Document parser is stopped or detached, the parser-inserted deferred script execution should be ignored.
+    if (isStopped())
+        return;
+
     ASSERT(m_scriptRunner);
     ASSERT(!isExecutingScript());
     if (isStopping()) {
@@ -533,6 +542,11 @@ void HTMLDocumentParser::notifyFinished(PendingScript& pendingScript)
     m_scriptRunner->executeScriptsWaitingForLoad(pendingScript);
     if (!isWaitingForScripts())
         resumeParsingAfterScriptExecution();
+}
+
+bool HTMLDocumentParser::hasScriptsWaitingForStylesheets() const
+{
+    return m_scriptRunner && m_scriptRunner->hasScriptsWaitingForStylesheets();
 }
 
 void HTMLDocumentParser::executeScriptsWaitingForStylesheets()

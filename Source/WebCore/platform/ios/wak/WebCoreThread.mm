@@ -28,20 +28,21 @@
 
 #if PLATFORM(IOS)
 
+#import "CommonVM.h"
 #import "FloatingPointEnvironment.h"
-#import "JSDOMWindowBase.h"
 #import "RuntimeApplicationChecks.h"
 #import "ThreadGlobalData.h"
+#import "WAKWindow.h"
 #import "WebCoreThreadInternal.h"
 #import "WebCoreThreadMessage.h"
 #import "WebCoreThreadRun.h"
-#import "WebCoreThreadSafe.h"
 #import "WKUtilities.h"
 
 #import <runtime/InitializeThreading.h>
 #import <runtime/JSLock.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 #import <wtf/Threading.h>
 #import <wtf/text/AtomicString.h>
 
@@ -126,8 +127,8 @@ static BOOL sendingDelegateMessage;
 
 static CFRunLoopObserverRef mainRunLoopAutoUnlockObserver;
 
-static pthread_mutex_t startupLock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t startupCondition = PTHREAD_COND_INITIALIZER;
+static StaticLock startupLock;
+static StaticCondition startupCondition;
 
 static WebThreadContext *webThreadContext;
 static pthread_key_t threadContextKey;
@@ -139,11 +140,10 @@ WEBCORE_EXPORT volatile bool webThreadShouldYield;
 
 static pthread_mutex_t WebCoreReleaseLock;
 static void WebCoreObjCDeallocOnWebThreadImpl(id self, SEL _cmd);
+static void WebCoreObjCDeallocWithWebThreadLock(Class cls);
 static void WebCoreObjCDeallocWithWebThreadLockImpl(id self, SEL _cmd);
 
 static NSMutableArray *sAsyncDelegates = nil;
-
-static CFStringRef delegateSourceRunLoopMode;
 
 static inline void SendMessage(NSInvocation *invocation)
 {
@@ -210,7 +210,7 @@ static void SendDelegateMessage(NSInvocation *invocation)
 
         {
             // Code block created to scope JSC::JSLock::DropAllLocks outside of WebThreadLock()
-            JSC::JSLock::DropAllLocks dropAllLocks(WebCore::JSDOMWindowBase::commonVM());
+            JSC::JSLock::DropAllLocks dropAllLocks(WebCore::commonVM());
             _WebThreadUnlock();
 
             CFRunLoopSourceSignal(delegateSource);
@@ -248,7 +248,7 @@ void WebThreadRunOnMainThread(void(^delegateBlock)())
         return;
     }
 
-    JSC::JSLock::DropAllLocks dropAllLocks(WebCore::JSDOMWindowBase::commonVM());
+    JSC::JSLock::DropAllLocks dropAllLocks(WebCore::commonVM());
     _WebThreadUnlock();
 
     void (^delegateBlockCopy)() = Block_copy(delegateBlock);
@@ -620,7 +620,9 @@ static void FreeThreadContext(void *threadContext)
 
 static void InitThreadContextKey()
 {
-    pthread_key_create(&threadContextKey, FreeThreadContext);
+    int error = pthread_key_create(&threadContextKey, FreeThreadContext);
+    if (error)
+        CRASH();
 }
 
 static WebThreadContext *CurrentThreadContext(void)
@@ -679,14 +681,10 @@ void *RunWebThread(void *arg)
     WebThreadReleaseSource = CFRunLoopSourceCreate(NULL, -1, &ReleaseSourceContext);
     CFRunLoopAddSource(webThreadRunLoop, WebThreadReleaseSource, kCFRunLoopDefaultMode);
 
-    int result = pthread_mutex_lock(&startupLock);
-    ASSERT_WITH_MESSAGE(result == 0, "startup lock failed with code:%d", result);
-
-    result = pthread_cond_signal(&startupCondition);
-    ASSERT_WITH_MESSAGE(result == 0, "startup signal failed with code:%d", result);
-
-    result = pthread_mutex_unlock(&startupLock);
-    ASSERT_WITH_MESSAGE(result == 0, "startup unlock failed with code:%d", result);
+    {
+        LockHolder locker(startupLock);
+        startupCondition.notifyOne();
+    }
 
     while (1)
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, DistantFuture, true);
@@ -700,13 +698,18 @@ static void StartWebThread()
 {
     webThreadStarted = TRUE;
 
+    // ThreadGlobalData touches AtomicString, which requires Threading initialization.
+    WTF::initializeThreading();
+
+    // Initialize AtomicString on the main thread.
+    WTF::AtomicString::init();
+
     // Initialize ThreadGlobalData on the main UI thread so that the WebCore thread
     // can later set it's thread-specific data to point to the same objects.
     WebCore::ThreadGlobalData& unused = WebCore::threadGlobalData();
     (void)unused;
 
-    // Initialize AtomicString on the main thread.
-    WTF::AtomicString::init();
+    RunLoop::initializeMainRunLoop();
 
     // register class for WebThread deallocation
     WebCoreObjCDeallocOnWebThread([WAKWindow class]);
@@ -727,12 +730,11 @@ static void StartWebThread()
     CFRunLoopRef runLoop = CFRunLoopGetCurrent();
     CFRunLoopSourceContext delegateSourceContext = {0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, HandleDelegateSource};
     delegateSource = CFRunLoopSourceCreate(NULL, 0, &delegateSourceContext);
+
     // We shouldn't get delegate callbacks while scrolling, but there might be
     // one outstanding when we start.  Add the source for all common run loop
     // modes so we don't block the web thread while scrolling.
-    if (!delegateSourceRunLoopMode)
-        delegateSourceRunLoopMode = kCFRunLoopCommonModes;
-    CFRunLoopAddSource(runLoop, delegateSource, delegateSourceRunLoopMode);
+    CFRunLoopAddSource(runLoop, delegateSource, kCFRunLoopCommonModes);
 
     sAsyncDelegates = [[NSMutableArray alloc] init];
 
@@ -752,20 +754,17 @@ static void StartWebThread()
     pthread_attr_setschedparam(&tattr, &param);
 
     // Wait for the web thread to startup completely before we continue.
-    int result = pthread_mutex_lock(&startupLock);
-    ASSERT_WITH_MESSAGE(result == 0, "startup lock failed with code:%d", result);
+    {
+        LockHolder locker(startupLock);
 
-    // Propagate the mainThread's fenv to workers & the web thread.
-    FloatingPointEnvironment::singleton().saveMainThreadEnvironment();
+        // Propagate the mainThread's fenv to workers & the web thread.
+        FloatingPointEnvironment::singleton().saveMainThreadEnvironment();
 
-    pthread_create(&webThread, &tattr, RunWebThread, NULL);
-    pthread_attr_destroy(&tattr);
+        pthread_create(&webThread, &tattr, RunWebThread, NULL);
+        pthread_attr_destroy(&tattr);
 
-    result = pthread_cond_wait(&startupCondition, &startupLock);
-    ASSERT_WITH_MESSAGE(result == 0, "startup wait failed with code:%d", result);
-
-    result = pthread_mutex_unlock(&startupLock);
-    ASSERT_WITH_MESSAGE(result == 0, "startup unlock failed with code:%d", result);
+        startupCondition.wait(startupLock);
+    }
 
     initializeApplicationUIThreadIdentifier();
 }
@@ -984,17 +983,6 @@ NSRunLoop* WebThreadNSRunLoop(void)
 WebThreadContext *WebThreadCurrentContext(void)
 {
     return CurrentThreadContext();
-}
-
-bool WebThreadContextIsCurrent(void)
-{   
-    return WebThreadCurrentContext() == webThreadContext;
-}
-
-void WebThreadSetDelegateSourceRunLoopMode(CFStringRef mode)
-{
-    ASSERT(!webThreadStarted);
-    delegateSourceRunLoopMode = mode;
 }
 
 void WebThreadEnable(void)

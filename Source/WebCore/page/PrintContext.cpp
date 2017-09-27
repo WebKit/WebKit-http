@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
- * Copyright (C) 2007 Apple Inc.
+ * Copyright (C) 2007, 2016 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,7 +25,6 @@
 #include "GraphicsContext.h"
 #include "Frame.h"
 #include "FrameView.h"
-#include "HTMLNames.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
 #include "StyleResolver.h"
@@ -274,8 +273,8 @@ void PrintContext::outputLinkedDestinations(GraphicsContext& graphicsContext, Do
         if (!renderer)
             continue;
 
-        FloatPoint point = renderer->anchorRect().minXMinYCorner();
-        point.expandedTo(FloatPoint());
+        FloatPoint point = renderer->absoluteAnchorRect().minXMinYCorner();
+        point = point.expandedTo(FloatPoint());
 
         if (!pageRect.contains(roundedIntPoint(point)))
             continue;
@@ -286,16 +285,19 @@ void PrintContext::outputLinkedDestinations(GraphicsContext& graphicsContext, Do
 
 String PrintContext::pageProperty(Frame* frame, const char* propertyName, int pageNumber)
 {
-    Document* document = frame->document();
+    ASSERT(frame);
+    ASSERT(frame->document());
+
+    auto& document = *frame->document();
     PrintContext printContext(frame);
     printContext.begin(800); // Any width is OK here.
-    document->updateLayout();
-    std::unique_ptr<RenderStyle> style = document->styleScope().resolver().styleForPage(pageNumber);
+    document.updateLayout();
+    auto style = document.styleScope().resolver().styleForPage(pageNumber);
 
     // Implement formatters for properties we care about.
     if (!strcmp(propertyName, "margin-left")) {
         if (style->marginLeft().isAuto())
-            return String("auto");
+            return ASCIILiteral { "auto" };
         return String::number(style->marginLeft().value());
     }
     if (!strcmp(propertyName, "line-height"))
@@ -305,9 +307,9 @@ String PrintContext::pageProperty(Frame* frame, const char* propertyName, int pa
     if (!strcmp(propertyName, "font-family"))
         return style->fontDescription().firstFamily();
     if (!strcmp(propertyName, "size"))
-        return String::number(style->pageSize().width().value()) + ' ' + String::number(style->pageSize().height().value());
+        return String::number(style->pageSize().width.value()) + ' ' + String::number(style->pageSize().height.value());
 
-    return String("pageProperty() unimplemented for: ") + propertyName;
+    return makeString("pageProperty() unimplemented for: ", propertyName);
 }
 
 bool PrintContext::isPageBoxVisible(Frame* frame, int pageNumber)

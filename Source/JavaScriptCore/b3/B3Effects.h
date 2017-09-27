@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -71,6 +71,13 @@ struct Effects {
     // https://bugs.webkit.org/show_bug.cgi?id=163173
     bool readsPinned { false };
     bool writesPinned { false };
+    
+    // Memory fences cannot be reordered around each other regardless of their effects. This is flagged
+    // if the operation is a memory fence.
+    bool fence { false };
+    
+    // WARNING: The B3::hoistLoopInvariantValues() phase thinks that it understands this exhaustively. If you
+    // add any new kinds of things that can be read or written, you should check that phase.
 
     HeapRange writes;
     HeapRange reads;
@@ -89,6 +96,7 @@ struct Effects {
         result.reads = HeapRange::top();
         result.readsPinned = true;
         result.writesPinned = true;
+        result.fence = true;
         return result;
     }
 
@@ -103,7 +111,7 @@ struct Effects {
 
     bool mustExecute() const
     {
-        return terminal || exitsSideways || writesLocalState || writes || writesPinned;
+        return terminal || exitsSideways || writesLocalState || writes || writesPinned || fence;
     }
 
     // Returns true if reordering instructions with these respective effects would change program

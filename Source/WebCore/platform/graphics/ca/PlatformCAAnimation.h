@@ -30,9 +30,9 @@
 #include "FilterOperation.h"
 #include "FloatPoint3D.h"
 #include "TransformationMatrix.h"
+#include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -51,7 +51,7 @@ public:
     virtual bool isPlatformCAAnimationWin() const { return false; }
     virtual bool isPlatformCAAnimationRemote() const { return false; }
     
-    virtual PassRefPtr<PlatformCAAnimation> copy() const = 0;
+    virtual Ref<PlatformCAAnimation> copy() const = 0;
     
     AnimationType animationType() const { return m_type; }
     virtual String keyPath() const = 0;
@@ -138,9 +138,9 @@ private:
     AnimationType m_type;
 };
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, PlatformCAAnimation::AnimationType);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, PlatformCAAnimation::FillModeType);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, PlatformCAAnimation::ValueFunctionType);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, PlatformCAAnimation::AnimationType);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, PlatformCAAnimation::FillModeType);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, PlatformCAAnimation::ValueFunctionType);
 
 } // namespace WebCore
 

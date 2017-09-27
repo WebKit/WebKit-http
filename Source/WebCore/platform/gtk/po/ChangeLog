@@ -1,3 +1,217 @@
+2017-08-30  Rafael Fontenelle  <rafaelff@gnome.org>
+
+        [l10n] [pt_BR] Updated Brazilian Portuguese translation
+        https://bugs.webkit.org/show_bug.cgi?id=176107
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * pt_BR.po:
+
+2017-08-24  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [l10n] Updated Polish translation of WebKitGTK+ for 2.18
+        https://bugs.webkit.org/show_bug.cgi?id=175720
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * pl.po:
+
+2017-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Implement JavaScript dialog methods of API::AutomationSessionClient
+        https://bugs.webkit.org/show_bug.cgi?id=175259
+
+        Reviewed by Michael Catanzaro.
+
+        * POTFILES.in: Add WebKitScriptDialogGtk.cpp.
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Fix the cMake builds (GTK and WPE.)
+        https://bugs.webkit.org/show_bug.cgi?id=174164
+        rdar://problem/33137595
+
+        Reviewed by Dan Bernstein.
+
+        * POTFILES.in:
+
+2017-06-25  Yuri Chornoivan  <yurchor@ukr.net>
+
+        [GTK] [l10n] Updated Ukrainian translation of WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=173823
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * uk.po:
+
+2017-06-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Add initial implementation of glib API
+        https://bugs.webkit.org/show_bug.cgi?id=173546
+
+        Reviewed by Žan Doberšek.
+
+        Add WebKitWebViewGtk.cpp to the list of files with translatable strings.
+
+        * POTFILES.in:
+
+2017-06-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move GTK+ API files that could be shared to glib dirs
+        https://bugs.webkit.org/show_bug.cgi?id=173545
+
+        Reviewed by Žan Doberšek.
+
+        Update paths on files with translatable string.
+
+        * POTFILES.in:
+
+2017-06-16  Daniel Mustieles  <daniel.mustieles@gmail.com>
+
+        Updated Spanish translation for WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=173465
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * es.po:
+
+2017-05-15  Alexandre Franke  <afranke@gnome.org>
+
+        [GTK] [l10n] Updated French translation for Webkit/GTK
+        https://bugs.webkit.org/show_bug.cgi?id=172093
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * fr.po:
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add automation session API
+        https://bugs.webkit.org/show_bug.cgi?id=171428
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * POTFILES.in: Add WebKitAutomationSession.cpp.
+
+2017-04-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add WebKitInspectorWindow to create inspector windows from local and remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=171261
+
+        Reviewed by Michael Catanzaro.
+
+        Remove WebInspectorProxyGtk.cpp and RemoteWebInspectorProxyGtk.cpp from POTFILES.in and add WebKitInspectorWindow.cpp.
+
+        * POTFILES.in:
+
+2017-04-25  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [GTK] Add po/Makevars
+        https://bugs.webkit.org/show_bug.cgi?id=170012
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Makevars: Added so we can switch https://l10n.gnome.org/module/webkit/ from intltool to pure gettext and get WEB_UI_STRING* strings extracted.
+
+2017-04-24  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [GTK] Fix extraction of translator comments
+        https://bugs.webkit.org/show_bug.cgi?id=170012
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt: Remove “TRANSLATORS:” header, as it’s not used and might block extraction of translator comments.
+
+2017-04-24  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [GTK] Update POTFILES.in
+
+        It’s missing some files with translatable strings.
+        https://bugs.webkit.org/show_bug.cgi?id=171232
+
+        Reviewed by Michael Catanzaro.
+
+        * POTFILES.in: Update POTFILES.in.
+
+2017-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use ENABLE_REMOTE_INSPECTOR instead of ENABLE_INSPECTOR_SERVER for the remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=166680
+
+        Reviewed by Michael Catanzaro.
+
+        * POTFILES.in: Add RemoteWebInspectorProxyGtk.cpp.
+
+2017-04-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move WebErrors from WebProcess to Shared and get rid of ErrorsGtk in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=156974
+
+        Reviewed by Sam Weinig.
+
+        * POTFILES.in: Add new paths with translatable strings.
+
+2017-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Make it possible to use WEB_UI_STRING macros to mark translatable strings in glib based ports
+        https://bugs.webkit.org/show_bug.cgi?id=169672
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt: Add keyword parameters for WEB_UI_STRING macros.
+        * POTFILES.in: Add LocalizedStrings.cpp to the list.
+
+2017-03-18  Yuri Chornoivan  <yurchor@ukr.net>
+
+        Update Ukrainian translation
+        https://bugs.webkit.org/show_bug.cgi?id=169812
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * uk.po:
+
+2017-03-13  Josef Andersson  <l10nl18nsweja@gmail.com>
+
+        Updated Swedish translation
+        https://bugs.webkit.org/show_bug.cgi?id=169549
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * sv.po:
+
+2017-03-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, restore inadvertently-removed non-breaking spaces in Polish translation
+
+        * pl.po:
+
+2017-03-02  Piotr Drąg  <piotrdrag@gmail.com>
+
+        [l10n] Updated Polish translation of WebKitGTK+ for 2.16
+        https://bugs.webkit.org/show_bug.cgi?id=169072
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * pl.po:
+
+2017-02-14  Rafael Fontenelle  <rafaelff@gnome.org>
+
+        [GTK] [l10n] Updated Brazilian Portuguese translation of WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=168303
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * pt_BR.po:
+
+2016-12-30  Bernd Homuth  <dev@hmt.im>
+
+        [GTK] German translation update
+        https://bugs.webkit.org/show_bug.cgi?id=152228
+
+        Rubber-stamped by Michael Catanzaro.
+
+        * de.po:
+
 2016-11-04  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         NetworkSession: Add NetworkDataTask implementation for blobs

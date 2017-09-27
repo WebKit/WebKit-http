@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IOSurfacePool_h
-#define IOSurfacePool_h
+#pragma once
 
 #if USE(IOSURFACE)
 
@@ -53,8 +52,6 @@ public:
 
     WEBCORE_EXPORT void setPoolSize(size_t);
 
-    void showPoolStatistics();
-
 private:
     IOSurfacePool();
 
@@ -63,9 +60,9 @@ private:
             : hasMarkedPurgeable(false)
         { }
 
-        void resetLastUseTime() { lastUseTime = std::chrono::steady_clock::now(); }
+        void resetLastUseTime() { lastUseTime = MonotonicTime::now(); }
 
-        std::chrono::steady_clock::time_point lastUseTime;
+        MonotonicTime lastUseTime;
         bool hasMarkedPurgeable;
     };
 
@@ -92,6 +89,8 @@ private:
 
     void platformGarbageCollectNow();
 
+    void showPoolStatistics(const char*);
+
     Timer m_collectionTimer;
     CachedSurfaceMap m_cachedSurfaces;
     CachedSurfaceQueue m_inUseSurfaces;
@@ -105,5 +104,3 @@ private:
 
 }
 #endif // USE(IOSURFACE)
-
-#endif // IOSurfacePool_h

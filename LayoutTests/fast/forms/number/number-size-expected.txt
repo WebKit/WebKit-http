@@ -8,15 +8,15 @@ The content area of the number input without min/max/step attribute should have 
 PASS number.offsetWidth is text.offsetWidth
 
 The number whose width is specified should respect the setting
-PASS numberWithWidth.offsetWidth is 100
-PASS numberWithWidth.min = 0; numberWithWidth.max = 100; numberWithWidth.offsetWidth is 100
+PASS numberWithWidth.offsetWidth is widthSpecified(100)
+PASS numberWithWidth.min = 0; numberWithWidth.max = 100; numberWithWidth.offsetWidth is widthSpecified(100)
 
 The number input should ignore size attribute for layout
 PASS number.size = 10; number.offsetWidth is text.offsetWidth
 PASS number.size is 10
 PASS number.size = 100; number.offsetWidth is text.offsetWidth
 PASS number.size is 100
-PASS number.size = null threw exception IndexSizeError (DOM Exception 1): The index is not in the allowed range..
+PASS number.size = null threw exception IndexSizeError: The index is not in the allowed range..
 
 If min or max is absent, the number input has the same width as input[type=text]
 PASS numberWidth(0, null, null) is text.offsetWidth

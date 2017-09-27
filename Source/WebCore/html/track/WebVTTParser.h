@@ -39,7 +39,6 @@
 #include "HTMLNames.h"
 #include "TextResourceDecoder.h"
 #include "VTTRegion.h"
-#include "WebVTTTokenizer.h"
 #include <memory>
 #include <wtf/MediaTime.h>
 #include <wtf/text/StringBuilder.h>
@@ -133,7 +132,7 @@ public:
 
     // Input data to the parser to parse.
     void parseBytes(const char*, unsigned);
-    void parseFileHeader(const String&);
+    void parseFileHeader(String&&);
     void parseCueData(const ISOWebVTTCue&);
     void flush();
     void fileFinished();

@@ -27,9 +27,9 @@
 #include "config.h"
 #include "PlatformMouseEvent.h"
 
-#include <wtf/Assertions.h>
-
+#include "PlatformKeyboardEvent.h"
 #include <gdk/gdk.h>
+#include <wtf/Assertions.h>
 
 namespace WebCore {
 
@@ -38,9 +38,12 @@ namespace WebCore {
 // Keep this in sync with the other platform event constructors
 PlatformMouseEvent::PlatformMouseEvent(GdkEventButton* event)
 {
-    m_timestamp = event->time;
+    m_timestamp = WallTime::fromRawSeconds(event->time);
     m_position = IntPoint((int)event->x, (int)event->y);
     m_globalPosition = IntPoint((int)event->x_root, (int)event->y_root);
+    m_button = NoButton;
+    m_clickCount = 0;
+    m_modifierFlags = 0;
 
     if (event->state & GDK_SHIFT_MASK)
         m_modifiers |= PlatformEvent::Modifier::ShiftKey;
@@ -50,6 +53,8 @@ PlatformMouseEvent::PlatformMouseEvent(GdkEventButton* event)
         m_modifiers |= PlatformEvent::Modifier::AltKey;
     if (event->state & GDK_META_MASK)
         m_modifiers |= PlatformEvent::Modifier::MetaKey;
+    if (PlatformKeyboardEvent::modifiersContainCapsLock(event->state))
+        m_modifiers |= PlatformEvent::Modifier::CapsLockKey;
 
     switch (event->type) {
     case GDK_BUTTON_PRESS:
@@ -82,9 +87,12 @@ PlatformMouseEvent::PlatformMouseEvent(GdkEventButton* event)
 
 PlatformMouseEvent::PlatformMouseEvent(GdkEventMotion* motion)
 {
-    m_timestamp = motion->time;
+    m_timestamp = WallTime::fromRawSeconds(motion->time);
     m_position = IntPoint((int)motion->x, (int)motion->y);
     m_globalPosition = IntPoint((int)motion->x_root, (int)motion->y_root);
+    m_button = NoButton;
+    m_clickCount = 0;
+    m_modifierFlags = 0;
 
     if (motion->state & GDK_SHIFT_MASK)
         m_modifiers |= PlatformEvent::Modifier::ShiftKey;
@@ -94,6 +102,8 @@ PlatformMouseEvent::PlatformMouseEvent(GdkEventMotion* motion)
         m_modifiers |= PlatformEvent::Modifier::AltKey;
     if (motion->state & GDK_META_MASK)
         m_modifiers |= PlatformEvent::Modifier::MetaKey;
+    if (PlatformKeyboardEvent::modifiersContainCapsLock(motion->state))
+        m_modifiers |= PlatformEvent::Modifier::CapsLockKey;
 
     switch (motion->type) {
     case GDK_MOTION_NOTIFY:

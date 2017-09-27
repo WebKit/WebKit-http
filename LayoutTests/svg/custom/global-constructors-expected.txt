@@ -3,7 +3,6 @@ Test to make sure we expose all the global constructor objects requested by http
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
 
-PASS SVGException.toString() is "function SVGException() {\n    [native code]\n}"
 PASS SVGElement.toString() is "function SVGElement() {\n    [native code]\n}"
 PASS SVGAnimatedBoolean.toString() is "function SVGAnimatedBoolean() {\n    [native code]\n}"
 PASS SVGAnimatedString.toString() is "function SVGAnimatedString() {\n    [native code]\n}"
@@ -20,7 +19,6 @@ PASS SVGLengthList.toString() is "function SVGLengthList() {\n    [native code]\
 PASS SVGAnimatedLengthList.toString() is "function SVGAnimatedLengthList() {\n    [native code]\n}"
 PASS SVGAngle.toString() is "function SVGAngle() {\n    [native code]\n}"
 PASS SVGAnimatedAngle.toString() is "function SVGAnimatedAngle() {\n    [native code]\n}"
-PASS SVGColor.toString() is "function SVGColor() {\n    [native code]\n}"
 FAIL SVGICCColor.toString() should be function SVGICCColor() {
     [native code]
 }. Threw exception ReferenceError: Can't find variable: SVGICCColor
@@ -110,7 +108,6 @@ PASS SVGAltGlyphElement.toString() is "function SVGAltGlyphElement() {\n    [nat
 PASS SVGAltGlyphDefElement.toString() is "function SVGAltGlyphDefElement() {\n    [native code]\n}"
 PASS SVGAltGlyphItemElement.toString() is "function SVGAltGlyphItemElement() {\n    [native code]\n}"
 PASS SVGGlyphRefElement.toString() is "function SVGGlyphRefElement() {\n    [native code]\n}"
-PASS SVGPaint.toString() is "function SVGPaint() {\n    [native code]\n}"
 PASS SVGMarkerElement.toString() is "function SVGMarkerElement() {\n    [native code]\n}"
 FAIL SVGColorProfileElement.toString() should be function SVGColorProfileElement() {
     [native code]

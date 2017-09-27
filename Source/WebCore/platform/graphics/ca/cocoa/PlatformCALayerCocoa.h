@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformCALayerCocoa_h
-#define PlatformCALayerCocoa_h
+#pragma once
 
 #include "PlatformCALayer.h"
 
@@ -34,11 +33,11 @@ namespace WebCore {
 
 class PlatformCALayerCocoa final : public PlatformCALayer {
 public:
-    static PassRefPtr<PlatformCALayer> create(LayerType, PlatformCALayerClient*);
+    static Ref<PlatformCALayer> create(LayerType, PlatformCALayerClient*);
     
     // This function passes the layer as a void* rather than a PlatformLayer because PlatformLayer
     // is defined differently for Obj C and C++. This allows callers from both languages.
-    static PassRefPtr<PlatformCALayer> create(void* platformLayer, PlatformCALayerClient*);
+    static Ref<PlatformCALayer> create(void* platformLayer, PlatformCALayerClient*);
 
     WEBCORE_EXPORT static LayerType layerTypeForPlatformLayer(PlatformLayer*);
 
@@ -63,7 +62,7 @@ public:
 
     void addAnimationForKey(const String& key, PlatformCAAnimation&) override;
     void removeAnimationForKey(const String& key) override;
-    PassRefPtr<PlatformCAAnimation> animationForKey(const String& key) override;
+    RefPtr<PlatformCAAnimation> animationForKey(const String& key) override;
     void animationStarted(const String& key, CFTimeInterval beginTime) override;
     void animationEnded(const String& key) override;
 
@@ -110,6 +109,12 @@ public:
 
     bool acceleratesDrawing() const override;
     void setAcceleratesDrawing(bool) override;
+
+    bool wantsDeepColorBackingStore() const override;
+    void setWantsDeepColorBackingStore(bool) override;
+
+    bool supportsSubpixelAntialiasedText() const override;
+    void setSupportsSubpixelAntialiasedText(bool) override;
 
     CFTypeRef contents() const override;
     void setContents(CFTypeRef) override;
@@ -164,11 +169,13 @@ public:
 
     TiledBacking* tiledBacking() override;
 
-    PassRefPtr<PlatformCALayer> clone(PlatformCALayerClient* owner) const override;
+    Ref<PlatformCALayer> clone(PlatformCALayerClient* owner) const override;
 
-    PassRefPtr<PlatformCALayer> createCompatibleLayer(PlatformCALayer::LayerType, PlatformCALayerClient*) const override;
+    Ref<PlatformCALayer> createCompatibleLayer(PlatformCALayer::LayerType, PlatformCALayerClient*) const override;
 
     void enumerateRectsBeingDrawn(CGContextRef, void (^block)(CGRect)) override;
+
+    unsigned backingStoreBytesPerPixel() const override;
 
 private:
     PlatformCALayerCocoa(LayerType, PlatformCALayerClient* owner);
@@ -180,16 +187,19 @@ private:
 
     bool requiresCustomAppearanceUpdateOnBoundsChange() const;
 
+    void updateContentsFormat();
+
     AVPlayerLayer *avPlayerLayer() const;
 
     RetainPtr<NSObject> m_delegate;
     std::unique_ptr<PlatformCALayerList> m_customSublayers;
     GraphicsLayer::CustomAppearance m_customAppearance;
     std::unique_ptr<FloatRoundedRect> m_shapeRoundedRect;
+    bool m_wantsDeepColorBackingStore { false };
+    bool m_supportsSubpixelAntialiasedText { false };
+    bool m_backingStoreAttached { true };
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_PLATFORM_CALAYER(WebCore::PlatformCALayerCocoa, isPlatformCALayerCocoa())
-
-#endif // PlatformCALayerCocoa_h

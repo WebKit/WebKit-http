@@ -144,13 +144,13 @@
 
     WindowSurfaceCGL::WindowSurfaceCGL(const egl::SurfaceState &state,
                                        RendererGL *renderer,
-                                       CALayer *layer,
+                                       EGLNativeWindowType layer,
                                        const FunctionsGL *functions,
                                        CGLContextObj context)
         : SurfaceGL(state, renderer),
           mSwapLayer(nil),
           mCurrentSwapId(0),
-          mLayer(layer),
+          mLayer(reinterpret_cast<CALayer *>(layer)),
           mContext(context),
           mFunctions(functions),
           mStateManager(renderer->getStateManager()),
@@ -194,7 +194,7 @@ WindowSurfaceCGL::~WindowSurfaceCGL()
     }
 }
 
-egl::Error WindowSurfaceCGL::initialize()
+egl::Error WindowSurfaceCGL::initialize(const DisplayImpl *displayImpl)
 {
     unsigned width  = getWidth();
     unsigned height = getHeight();
@@ -237,7 +237,7 @@ egl::Error WindowSurfaceCGL::makeCurrent()
     return egl::Error(EGL_SUCCESS);
 }
 
-egl::Error WindowSurfaceCGL::swap()
+egl::Error WindowSurfaceCGL::swap(const DisplayImpl *displayImpl)
 {
     mFunctions->flush();
     mSwapState.beingRendered->swapId = ++mCurrentSwapId;
@@ -329,4 +329,4 @@ FramebufferImpl *WindowSurfaceCGL::createDefaultFramebuffer(const gl::Framebuffe
                              mStateManager);
 }
 
-}
+}  // namespace rx

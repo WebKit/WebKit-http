@@ -277,7 +277,7 @@ static Vector<FloatPointGraph::Polygon> polygonsForRect(const Vector<FloatRect>&
         }
 
         if (!isContained)
-            rectPolygons.append(edgesForRect(rect, graph));
+            rectPolygons.uncheckedAppend(edgesForRect(rect, graph));
     }
     return unitePolygons(rectPolygons, graph);
 }
@@ -462,13 +462,13 @@ static FloatRoundedRect::Radii adjustedtRadiiForHuggingCurve(const FloatSize& to
     return radii;
 }
     
-static Optional<FloatRect> rectFromPolygon(const FloatPointGraph::Polygon& poly)
+static std::optional<FloatRect> rectFromPolygon(const FloatPointGraph::Polygon& poly)
 {
     if (poly.size() != 4)
-        return Optional<FloatRect>();
+        return std::optional<FloatRect>();
 
-    Optional<FloatPoint> topLeft;
-    Optional<FloatPoint> bottomRight;
+    std::optional<FloatPoint> topLeft;
+    std::optional<FloatPoint> bottomRight;
     for (unsigned i = 0; i < poly.size(); ++i) {
         const auto& toEdge = poly[i];
         const auto& fromEdge = (i > 0) ? poly[i - 1] : poly[poly.size() - 1];
@@ -482,18 +482,19 @@ static Optional<FloatRect> rectFromPolygon(const FloatPointGraph::Polygon& poly)
         }
     }
     if (!topLeft || !bottomRight)
-        return Optional<FloatRect>();
+        return std::optional<FloatRect>();
     return FloatRect(topLeft.value(), bottomRight.value());
 }
 
-Path PathUtilities::pathWithShrinkWrappedRectsForOutline(const Vector<FloatRect>& rects, const BorderData& borderData, float outlineOffset, TextDirection direction,
-    WritingMode writingMode, float deviceScaleFactor)
+Path PathUtilities::pathWithShrinkWrappedRectsForOutline(const Vector<FloatRect>& rects, const BorderData& borderData,
+    float outlineOffset, TextDirection direction, WritingMode writingMode, float deviceScaleFactor)
 {
     ASSERT(borderData.hasBorderRadius());
-    FloatSize topLeftRadius = FloatSize(borderData.topLeft().width().value(), borderData.topLeft().height().value());
-    FloatSize topRightRadius = FloatSize(borderData.topRight().width().value(), borderData.topRight().height().value());
-    FloatSize bottomRightRadius = FloatSize(borderData.bottomRight().width().value(), borderData.bottomRight().height().value());
-    FloatSize bottomLeftRadius = FloatSize(borderData.bottomLeft().width().value(), borderData.bottomLeft().height().value());
+
+    FloatSize topLeftRadius { borderData.topLeft().width.value(), borderData.topLeft().height.value() };
+    FloatSize topRightRadius { borderData.topRight().width.value(), borderData.topRight().height.value() };
+    FloatSize bottomRightRadius { borderData.bottomRight().width.value(), borderData.bottomRight().height.value() };
+    FloatSize bottomLeftRadius { borderData.bottomLeft().width.value(), borderData.bottomLeft().height.value() };
 
     auto roundedRect = [topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius, outlineOffset, deviceScaleFactor] (const FloatRect& rect)
     {
@@ -516,7 +517,7 @@ Path PathUtilities::pathWithShrinkWrappedRectsForOutline(const Vector<FloatRect>
         return Path();
     const auto& poly = polys.at(0);
     // Fast path when poly has one rect only.
-    Optional<FloatRect> rect = rectFromPolygon(poly);
+    std::optional<FloatRect> rect = rectFromPolygon(poly);
     if (rect)
         return roundedRect(rect.value());
 

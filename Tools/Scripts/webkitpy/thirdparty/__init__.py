@@ -26,14 +26,22 @@
 
 
 import codecs
+import json
 import os
+import re
 import sys
+import urllib2
 
+from collections import namedtuple
+from distutils import spawn
 from webkitpy.common.system.autoinstall import AutoInstaller
 from webkitpy.common.system.filesystem import FileSystem
 
 _THIRDPARTY_DIR = os.path.dirname(__file__)
 _AUTOINSTALLED_DIR = os.path.join(_THIRDPARTY_DIR, "autoinstalled")
+
+CHROME_DRIVER_URL = "http://chromedriver.storage.googleapis.com/"
+FIREFOX_RELEASES_URL = "https://api.github.com/repos/mozilla/geckodriver/releases"
 
 # Putting the autoinstall code into webkitpy/thirdparty/__init__.py
 # ensures that no autoinstalling occurs until a caller imports from
@@ -46,6 +54,7 @@ _AUTOINSTALLED_DIR = os.path.join(_THIRDPARTY_DIR, "autoinstalled")
 # We put auto-installed third-party modules in this directory--
 #
 #     webkitpy/thirdparty/autoinstalled
+
 fs = FileSystem()
 fs.maybe_make_directory(_AUTOINSTALLED_DIR)
 
@@ -85,14 +94,18 @@ class AutoinstallImportHook(object):
             self._install_pylint()
         elif '.coverage' in fullname:
             self._install_coverage()
-        elif '.eliza' in fullname:
-            self._install_eliza()
         elif '.buildbot' in fullname:
             self._install_buildbot()
         elif '.keyring' in fullname:
             self._install_keyring()
         elif '.twisted_15_5_0' in fullname:
             self._install_twisted_15_5_0()
+        elif '.selenium' in fullname:
+            self._install_selenium()
+        elif '.chromedriver' in fullname:
+            self.install_chromedriver()
+        elif '.geckodriver' in fullname:
+            self.install_geckodriver()
 
     def _install_mechanize(self):
         self._install("http://pypi.python.org/packages/source/m/mechanize/mechanize-0.2.5.tar.gz",
@@ -147,18 +160,72 @@ class AutoinstallImportHook(object):
         self._ensure_autoinstalled_dir_is_in_sys_path()
         self._install(url="http://pypi.python.org/packages/source/c/coverage/coverage-3.5.1.tar.gz#md5=410d4c8155a4dab222f2bc51212d4a24", url_subpath="coverage-3.5.1/coverage")
 
-    def _install_eliza(self):
-        self._install(url="http://www.adambarth.com/webkit/eliza", target_name="eliza.py")
-
     def _install_twisted_15_5_0(self):
         twisted_dir = self._fs.join(_AUTOINSTALLED_DIR, "twisted_15_5_0")
         installer = AutoInstaller(prepend_to_search_path=True, target_dir=twisted_dir)
         installer.install(url="https://pypi.python.org/packages/source/T/Twisted/Twisted-15.5.0.tar.bz2#md5=0831d7c90d0020062de0f7287530a285", url_subpath="Twisted-15.5.0/twisted")
         installer.install(url="https://pypi.python.org/packages/source/z/zope.interface/zope.interface-4.1.3.tar.gz#md5=9ae3d24c0c7415deb249dd1a132f0f79", url_subpath="zope.interface-4.1.3/src/zope")
 
+    @staticmethod
+    def greater_than_equal_to_version(minimum, version):
+        for i in xrange(len(minimum.split('.'))):
+            if int(version.split('.')[i]) > int(minimum.split('.')[i]):
+                return True
+            if int(version.split('.')[i]) < int(minimum.split('.')[i]):
+                return False
+        return True
+
+    def _install_selenium(self):
+        self._ensure_autoinstalled_dir_is_in_sys_path()
+        try:
+            url, url_subpath = self.get_latest_pypi_url('selenium')
+        except urllib2.URLError:
+            minimum_version = '3.5.0'
+            if os.path.isfile(os.path.join(_AUTOINSTALLED_DIR, 'selenium', '__init__.py')):
+                import selenium.webdriver
+                if AutoinstallImportHook.greater_than_equal_to_version(minimum_version, selenium.webdriver.__version__):
+                    sys.stderr.write('\nFailed to find latest selenium, falling back to existing {} version\n'.format(selenium.webdriver.__version__))
+                    return
+
+            # URL for installing the minimum required version.
+            url = 'https://pypi.python.org/packages/ac/d7/1928416439d066c60f26c87a8d1b78a8edd64c7d05a0aa917fa97a8ee02d/selenium-3.5.0.tar.gz#986702fdd0e2aec6a4eda134678b8b3f'
+            url_subpath = 'selenium-{}/selenium'.format(minimum_version)
+            sys.stderr.write('\nFailed to find latest selenium, falling back to minimum {} version\n'.format(minimum_version))
+        self._install(url=url, url_subpath=url_subpath)
+
+    def install_chromedriver(self):
+        filename_postfix = get_driver_filename().chrome
+        if filename_postfix != "unsupported":
+            version = urllib2.urlopen(CHROME_DRIVER_URL + 'LATEST_RELEASE').read().strip()
+            full_chrome_url = "{base_url}{version}/chromedriver_{os}.zip".format(base_url=CHROME_DRIVER_URL, version=version, os=filename_postfix)
+            self.install_binary(full_chrome_url, 'chromedriver')
+
+    def install_geckodriver(self):
+        filename_postfix = get_driver_filename().firefox
+        if filename_postfix != "unsupported":
+            firefox_releases_blob = urllib2.urlopen(FIREFOX_RELEASES_URL)
+            firefox_releases_line_separated = json.dumps(json.load(firefox_releases_blob), indent=0).strip()
+            all_firefox_release_urls = "\n".join(re.findall(r'.*browser_download_url.*', firefox_releases_line_separated))
+            full_firefox_url = re.findall(r'.*%s.*' % filename_postfix, all_firefox_release_urls)[0].split('"')[3]
+            self.install_binary(full_firefox_url, 'geckodriver')
+
     def _install(self, url, url_subpath=None, target_name=None):
         installer = AutoInstaller(target_dir=_AUTOINSTALLED_DIR)
         installer.install(url=url, url_subpath=url_subpath, target_name=target_name)
+
+    def get_latest_pypi_url(self, package_name, url_subpath_format='{name}-{version}/{lname}'):
+        json_url = "https://pypi.python.org/pypi/%s/json" % package_name
+        response = urllib2.urlopen(json_url)
+        data = json.load(response)
+        url = data['urls'][1]['url']
+        subpath = url_subpath_format.format(name=package_name, version=data['info']['version'], lname=package_name.lower())
+        return (url, subpath)
+
+    def install_binary(self, url, name):
+        self._install(url=url, target_name=name)
+        directory = os.path.join(_AUTOINSTALLED_DIR, name)
+        os.chmod(os.path.join(directory, name), 0755)
+        open(os.path.join(directory, '__init__.py'), 'w+').close()
 
 
 _hook = AutoinstallImportHook()
@@ -169,3 +236,21 @@ def autoinstall_everything():
     install_methods = [method for method in dir(_hook.__class__) if method.startswith('_install_')]
     for method in install_methods:
         getattr(_hook, method)()
+
+def get_driver_filename():
+    os_name, os_type = get_os_info()
+    chrome_os, filefox_os = 'unsupported', 'unsupported'
+    if os_name == 'Linux' and os_type == '64':
+        chrome_os, firefox_os = 'linux64', 'linux64'
+    elif os_name == 'Linux':
+        chrome_os, firefox_os = 'linux32', 'linux32'
+    elif os_name == 'Darwin':
+        chrome_os, firefox_os = 'mac64', 'macos'
+    DriverFilenameForBrowser = namedtuple('DriverFilenameForBrowser', ['chrome', 'firefox'])
+    return DriverFilenameForBrowser(chrome_os, firefox_os)
+
+def get_os_info():
+    import platform
+    os_name = platform.system()
+    os_type = platform.machine()[-2:]
+    return (os_name, os_type)

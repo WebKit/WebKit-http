@@ -95,7 +95,7 @@ KeyboardEvent::KeyboardEvent() = default;
 
 KeyboardEvent::KeyboardEvent(const PlatformKeyboardEvent& key, DOMWindow* view)
     : UIEventWithKeyState(eventTypeForKeyboardEventType(key.type())
-        , true, true, key.timestamp(), view, 0, key.ctrlKey(), key.altKey(), key.shiftKey()
+        , true, true, key.timestamp().approximateMonotonicTime(), view, 0, key.ctrlKey(), key.altKey(), key.shiftKey()
         , key.metaKey(), false, key.modifiers().contains(PlatformEvent::Modifier::CapsLockKey))
     , m_keyEvent(std::make_unique<PlatformKeyboardEvent>(key))
 #if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
@@ -137,6 +137,9 @@ KeyboardEvent::KeyboardEvent(const AtomicString& eventType, const Init& initiali
     , m_location(initializer.keyLocation ? *initializer.keyLocation : initializer.location)
     , m_repeat(initializer.repeat)
     , m_isComposing(initializer.isComposing)
+    , m_charCode(initializer.charCode)
+    , m_keyCode(initializer.keyCode)
+    , m_which(initializer.which)
 #if PLATFORM(COCOA)
     , m_handledByInputMethod(false)
 #endif
@@ -185,6 +188,9 @@ bool KeyboardEvent::getModifierState(const String& keyIdentifier) const
 
 int KeyboardEvent::keyCode() const
 {
+    if (m_keyCode)
+        return m_keyCode.value();
+
     // IE: virtual key code for keyup/keydown, character code for keypress
     // Firefox: virtual key code for keyup/keydown, zero for keypress
     // We match IE.
@@ -198,6 +204,9 @@ int KeyboardEvent::keyCode() const
 
 int KeyboardEvent::charCode() const
 {
+    if (m_charCode)
+        return m_charCode.value();
+
     // IE: not supported
     // Firefox: 0 for keydown/keyup events, character code for keypress
     // We match Firefox, unless in backward compatibility mode, where we always return the character code.
@@ -225,6 +234,8 @@ int KeyboardEvent::which() const
 {
     // Netscape's "which" returns a virtual key code for keydown and keyup, and a character code for keypress.
     // That's exactly what IE's "keyCode" returns. So they are the same for keyboard events.
+    if (m_which)
+        return m_which.value();
     return keyCode();
 }
 

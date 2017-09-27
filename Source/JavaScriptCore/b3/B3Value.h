@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
 
 #if ENABLE(B3_JIT)
 
-#include "AirArg.h"
+#include "B3Bank.h"
 #include "B3Effects.h"
 #include "B3FrequentedBlock.h"
 #include "B3Kind.h"
@@ -35,9 +35,12 @@
 #include "B3SparseCollection.h"
 #include "B3Type.h"
 #include "B3ValueKey.h"
+#include "B3Width.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/StdLibExtras.h>
+#include <wtf/TriState.h>
 
 namespace JSC { namespace B3 {
 
@@ -66,6 +69,11 @@ public:
     
     Opcode opcode() const { return kind().opcode(); }
     
+    // Note that the kind is meant to be immutable. Do this when you know that this is safe. It's not
+    // usually safe.
+    void setKindUnsafely(Kind kind) { m_kind = kind; }
+    void setOpcodeUnsafely(Opcode opcode) { m_kind.setOpcode(opcode); }
+    
     // It's good practice to mirror Kind methods here, so you can say value->isBlah()
     // instead of value->kind().isBlah().
     bool isChill() const { return kind().isChill(); }
@@ -86,8 +94,8 @@ public:
     void setType(Type type) { m_type = type; }
 
     // This is useful when lowering. Note that this is only valid for non-void values.
-    Air::Arg::Type airType() const { return Air::Arg::typeForB3Type(type()); }
-    Air::Arg::Width airWidth() const { return Air::Arg::widthForB3Type(type()); }
+    Bank resultBank() const { return bankForType(type()); }
+    Width resultWidth() const { return widthForType(type()); }
 
     AdjacencyList& children() { return m_children; } 
     const AdjacencyList& children() const { return m_children; }
@@ -105,6 +113,8 @@ public:
     // values with Identities on bottom constants. For this reason, this takes a callback that is
     // responsible for creating bottoms. There's a utility for this, see B3BottomProvider.h. You
     // can also access that utility using replaceWithBottom(InsertionSet&, size_t).
+    //
+    // You're guaranteed that bottom is zero.
     template<typename BottomProvider>
     void replaceWithBottom(const BottomProvider&);
     
@@ -166,13 +176,17 @@ public:
     virtual Value* checkMulConstant(Procedure&, const Value* other) const;
     virtual Value* checkNegConstant(Procedure&) const;
     virtual Value* divConstant(Procedure&, const Value* other) const; // This chooses Div<Chill> semantics for integers.
+    virtual Value* uDivConstant(Procedure&, const Value* other) const;
     virtual Value* modConstant(Procedure&, const Value* other) const; // This chooses Mod<Chill> semantics.
+    virtual Value* uModConstant(Procedure&, const Value* other) const;
     virtual Value* bitAndConstant(Procedure&, const Value* other) const;
     virtual Value* bitOrConstant(Procedure&, const Value* other) const;
     virtual Value* bitXorConstant(Procedure&, const Value* other) const;
     virtual Value* shlConstant(Procedure&, const Value* other) const;
     virtual Value* sShrConstant(Procedure&, const Value* other) const;
     virtual Value* zShrConstant(Procedure&, const Value* other) const;
+    virtual Value* rotRConstant(Procedure&, const Value* other) const;
+    virtual Value* rotLConstant(Procedure&, const Value* other) const;
     virtual Value* bitwiseCastConstant(Procedure&) const;
     virtual Value* iToDConstant(Procedure&) const;
     virtual Value* iToFConstant(Procedure&) const;
@@ -250,7 +264,7 @@ public:
     // Makes sure that none of the children are Identity's. If a child points to Identity, this will
     // repoint it at the Identity's child. For simplicity, this will follow arbitrarily long chains
     // of Identity's.
-    void performSubstitution();
+    bool performSubstitution();
     
     // Free values are those whose presence is guaranteed not to hurt code. We consider constants,
     // Identities, and Nops to be free. Constants are free because we hoist them to an optimal place.
@@ -269,6 +283,22 @@ public:
     };
     template<typename Functor>
     void walk(const Functor& functor, PhiChildren* = nullptr);
+
+    // B3 purposefully only represents signed 32-bit offsets because that's what x86 can encode, and
+    // ARM64 cannot encode anything bigger. The IsLegalOffset type trait is then used on B3 Value
+    // methods to prevent implicit conversions by C++ from invalid offset types: these cause compilation
+    // to fail, instead of causing implementation-defined behavior (which often turns to exploit).
+    // OffsetType isn't sufficient to determine offset validity! Each Value opcode further has an
+    // isLegalOffset runtime method used to determine value legality at runtime. This is exposed to users
+    // of B3 to force them to reason about the target's offset.
+    typedef int32_t OffsetType;
+    template<typename Int>
+    struct IsLegalOffset : std::conjunction<
+        typename std::enable_if<std::is_integral<Int>::value>::type,
+        typename std::enable_if<std::is_signed<Int>::value>::type,
+        typename std::enable_if<sizeof(Int) <= sizeof(OffsetType)>::type
+    > { };
+
 
 protected:
     virtual Value* cloneImpl() const;
@@ -298,6 +328,7 @@ private:
                 badKind(kind, numArgs);
             break;
         case Identity:
+        case Opaque:
         case Neg:
         case Clz:
         case Abs:
@@ -315,6 +346,7 @@ private:
         case IToF:
         case BitwiseCast:
         case Branch:
+        case Depend:
             if (UNLIKELY(numArgs != 1))
                 badKind(kind, numArgs);
             break;
@@ -322,13 +354,17 @@ private:
         case Sub:
         case Mul:
         case Div:
+        case UDiv:
         case Mod:
+        case UMod:
         case BitAnd:
         case BitOr:
         case BitXor:
         case Shl:
         case SShr:
         case ZShr:
+        case RotR:
+        case RotL:
         case Equal:
         case NotEqual:
         case LessThan:
@@ -466,7 +502,7 @@ private:
     Origin m_origin;
     AdjacencyList m_children;
 
-    JS_EXPORT_PRIVATE NO_RETURN_DUE_TO_CRASH static void badKind(Kind, unsigned);
+    NO_RETURN_DUE_TO_CRASH static void badKind(Kind, unsigned);
 
 public:
     BasicBlock* owner { nullptr }; // computed by Procedure::resetValueOwners().

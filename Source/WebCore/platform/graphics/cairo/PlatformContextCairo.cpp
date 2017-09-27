@@ -68,9 +68,9 @@ public:
     {
     }
 
-    State(const State& state)
-        : m_globalAlpha(state.m_globalAlpha)
-        , m_imageInterpolationQuality(state.m_imageInterpolationQuality)
+    State(float globalAlpha, InterpolationQuality imageInterpolationQuality)
+        : m_globalAlpha(globalAlpha)
+        , m_imageInterpolationQuality(imageInterpolationQuality)
     {
         // We do not copy m_imageMaskInformation because otherwise it would be applied
         // more than once during subsequent calls to restore().
@@ -110,7 +110,7 @@ PlatformContextCairo::~PlatformContextCairo()
 
 void PlatformContextCairo::save()
 {
-    m_stateStack.append(State(*m_state));
+    m_stateStack.append(State(m_state->m_globalAlpha, m_state->m_imageInterpolationQuality));
     m_state = &m_stateStack.last();
 
     cairo_save(m_cr.get());
@@ -137,9 +137,13 @@ void PlatformContextCairo::pushImageMask(cairo_surface_t* surface, const FloatRe
     cairo_push_group(m_cr.get());
     cairo_set_operator(m_cr.get(), CAIRO_OPERATOR_SOURCE);
 
-    cairo_set_source_surface(m_cr.get(), currentTarget, 0, 0);
-    cairo_rectangle(m_cr.get(), rect.x(), rect.y(), rect.width(), rect.height());
+    // To avoid the limit of Pixman backend, we need to reduce the size of pattern matrix
+    // See https://bugs.webkit.org/show_bug.cgi?id=154283
+    cairo_set_source_surface(m_cr.get(), currentTarget, rect.x(), rect.y());
+    cairo_translate(m_cr.get(), rect.x(), rect.y());
+    cairo_rectangle(m_cr.get(), 0, 0, rect.width(), rect.height());
     cairo_fill(m_cr.get());
+    cairo_translate(m_cr.get(), -rect.x(), -rect.y());
 }
 
 static void drawPatternToCairoContext(cairo_t* cr, cairo_pattern_t* pattern, const FloatRect& destRect, float alpha)
@@ -314,10 +318,9 @@ void PlatformContextCairo::clipForPatternFilling(const GraphicsContextState& sta
     cairo_clip_extents(m_cr.get(), &x1, &y1, &x2, &y2);
     FloatRect clipRect(x1, y1, x2 - x1, y2 - y1);
 
-    Image* patternImage = state.fillPattern->tileImage();
-    ASSERT(patternImage);
+    auto& patternImage = state.fillPattern->tileImage();
     const AffineTransform& patternTransform = state.fillPattern->getPatternSpaceTransform();
-    FloatRect patternRect = patternTransform.mapRect(FloatRect(0, 0, patternImage->width(), patternImage->height()));
+    FloatRect patternRect = patternTransform.mapRect(FloatRect(0, 0, patternImage.width(), patternImage.height()));
 
     bool repeatX = state.fillPattern->repeatX();
     bool repeatY = state.fillPattern->repeatY();

@@ -25,10 +25,10 @@
 
 #include "ClipStack.h"
 #include "FilterOperation.h"
-#include "FloatQuad.h"
 #include "GraphicsContext3D.h"
 #include "IntSize.h"
 #include "TextureMapper.h"
+#include "TextureMapperContextAttributes.h"
 #include "TransformationMatrix.h"
 
 namespace WebCore {
@@ -44,14 +44,16 @@ public:
     virtual ~TextureMapperGL();
 
     enum Flag {
-        ShouldBlend = 1 << 0,
-        ShouldFlipTexture = 1 << 1,
-        ShouldUseARBTextureRect = 1 << 2,
-        ShouldAntialias = 1 << 3,
-        ShouldRotateTexture90 = 1 << 4,
-        ShouldRotateTexture180 = 1 << 5,
-        ShouldRotateTexture270 = 1 << 6,
-        ShouldOverwriteRect = 1 << 7
+        ShouldBlend = 0x01,
+        ShouldFlipTexture = 0x02,
+        ShouldUseARBTextureRect = 0x04,
+        ShouldAntialias = 0x08,
+        ShouldRotateTexture90 = 0x10,
+        ShouldRotateTexture180 = 0x20,
+        ShouldRotateTexture270 = 0x40,
+        ShouldConvertTextureBGRAToRGBA = 0x80,
+        ShouldConvertTextureARGBToRGBA = 0x100,
+        ShouldOverwriteRect = 0x200
     };
 
     typedef int Flags;
@@ -62,6 +64,7 @@ public:
     void drawTexture(const BitmapTexture&, const FloatRect&, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
     virtual void drawTexture(Platform3DObject texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, unsigned exposedEdges = AllEdges);
     void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&, bool) override;
+    void clearColor(const Color&) override;
 
     void bindSurface(BitmapTexture* surface) override;
     BitmapTexture* currentSurface();
@@ -71,9 +74,8 @@ public:
     void endClip() override;
     IntRect clipBounds() override;
     IntSize maxTextureSize() const override { return IntSize(2000, 2000); }
-    PassRefPtr<BitmapTexture> createTexture() override;
-    PassRefPtr<BitmapTexture> createTexture(GC3Dint internalFormat);
-    inline GraphicsContext3D* graphicsContext3D() const { return m_context3D.get(); }
+    Ref<BitmapTexture> createTexture() override { return createTexture(GraphicsContext3D::DONT_CARE); }
+    Ref<BitmapTexture> createTexture(GC3Dint internalFormat) override;
 
     void drawFiltered(const BitmapTexture& sourceTexture, const BitmapTexture* contentTexture, const FilterOperation&, int pass);
 
@@ -90,6 +92,8 @@ private:
     void bindDefaultSurface();
     ClipStack& clipStack();
     inline TextureMapperGLData& data() { return *m_data; }
+
+    TextureMapperContextAttributes m_contextAttributes;
     RefPtr<GraphicsContext3D> m_context3D;
     TextureMapperGLData* m_data;
     ClipStack m_clipStack;

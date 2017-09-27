@@ -43,14 +43,14 @@ def add_newline(lines):
 
 
 class ObjCProtocolTypeConversionsImplementationGenerator(ObjCGenerator):
-    def __init__(self, model, input_filepath):
-        ObjCGenerator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        ObjCGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
         return '%sTypeConversions.mm' % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(ObjCGenerator.should_generate_domain_types_filter(self.model()), Generator.domains_to_generate(self))
+        return filter(self.should_generate_types_for_domain, Generator.domains_to_generate(self))
 
     def generate_output(self):
         secondary_headers = [
@@ -80,7 +80,7 @@ class ObjCProtocolTypeConversionsImplementationGenerator(ObjCGenerator):
             lines.append('@interface %sTypeConversions (%sDomain)' % (self.protocol_name(), domain.domain_name))
             lines.append('')
 
-            for declaration in domain.type_declarations:
+            for declaration in self.type_declarations_for_domain(domain):
                 lines.append(self._generate_type_factory_method_declaration(domain, declaration))
 
             add_newline(lines)
@@ -104,7 +104,7 @@ class ObjCProtocolTypeConversionsImplementationGenerator(ObjCGenerator):
             lines.append('@implementation %sTypeConversions (%sDomain)' % (self.protocol_name(), domain.domain_name))
             lines.append('')
 
-            for declaration in domain.type_declarations:
+            for declaration in self.type_declarations_for_domain(domain):
                 lines.append(self._generate_type_factory_method_implementation(domain, declaration))
                 add_newline(lines)
             lines.append('@end')
@@ -125,7 +125,9 @@ class ObjCProtocolTypeConversionsImplementationGenerator(ObjCGenerator):
         lines.append('{')
         if isinstance(resolved_type, EnumType):
             lines.append('    THROW_EXCEPTION_FOR_BAD_TYPE(payload, [NSString class]);')
-            lines.append('    *outValue = @(Inspector::fromProtocolString<%s>(payload));' % self.objc_name_for_type(resolved_type))
+            lines.append('    std::optional<%(type)s> result = Inspector::fromProtocolString<%(type)s>(payload);' % {'type': self.objc_name_for_type(resolved_type)})
+            lines.append('    THROW_EXCEPTION_FOR_BAD_ENUM_VALUE(result, @"%s");' % declaration.type.raw_name())
+            lines.append('    *outValue = @(result.value());')
         elif isinstance(resolved_type, (ArrayType, PrimitiveType)):
             lines.append('    THROW_EXCEPTION_FOR_BAD_TYPE(payload, [%s class]);' % objc_class)
             lines.append('    *outValue = (%s *)payload;' % objc_class)

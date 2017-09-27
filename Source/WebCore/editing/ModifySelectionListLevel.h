@@ -41,16 +41,16 @@ protected:
     void insertSiblingNodeRangeAfter(Node* startNode, Node* endNode, Node* refNode);
 
 private:
-    virtual bool preservesTypingStyle() const;    
+    bool preservesTypingStyle() const override;
 };
 
 // IncreaseSelectionListLevelCommand moves the selected list items one level deeper.
 class IncreaseSelectionListLevelCommand : public ModifySelectionListLevelCommand {
 public:
     static bool canIncreaseSelectionListLevel(Document*);
-    static PassRefPtr<Node> increaseSelectionListLevel(Document*);
-    static PassRefPtr<Node> increaseSelectionListLevelOrdered(Document*);
-    static PassRefPtr<Node> increaseSelectionListLevelUnordered(Document*);
+    static RefPtr<Node> increaseSelectionListLevel(Document*);
+    static RefPtr<Node> increaseSelectionListLevelOrdered(Document*);
+    static RefPtr<Node> increaseSelectionListLevelUnordered(Document*);
 
 private:
     enum Type { InheritedListType, OrderedList, UnorderedList };
@@ -63,7 +63,7 @@ private:
     
     IncreaseSelectionListLevelCommand(Document&, Type);
 
-    virtual void doApply();
+    void doApply() override;
 
     Type m_listType;
     RefPtr<Node> m_listElement;
@@ -83,7 +83,7 @@ private:
 
     explicit DecreaseSelectionListLevelCommand(Document&);
 
-    virtual void doApply();
+    void doApply() override;
 };
 
 } // namespace WebCore

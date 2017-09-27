@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Canon Inc.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted, provided that the following conditions
@@ -28,9 +29,9 @@
 
 #pragma once
 
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
 
-#include "JSDOMBinding.h"
+#include "JSDOMConvertBufferSource.h"
 #include "JSReadableStreamDefaultController.h"
 #include <runtime/JSCJSValue.h>
 #include <runtime/JSCJSValueInlines.h>
@@ -52,8 +53,6 @@ public:
     void error(const ResolveResultType&);
 
     void close() { invoke(*globalObject().globalExec(), jsController(), "close", JSC::jsUndefined()); }
-
-    bool isControlledReadableStreamLocked() const;
 
 private:
     void error(JSC::ExecState& state, JSC::JSValue value) { invoke(state, jsController(), "error", value); }
@@ -102,7 +101,7 @@ inline bool ReadableStreamDefaultController::enqueue(RefPtr<JSC::ArrayBuffer>&& 
     auto chunk = JSC::Uint8Array::create(WTFMove(buffer), 0, length);
     ASSERT(chunk);
     enqueue(state, toJS(&state, &globalObject, chunk.get()));
-    ASSERT_UNUSED(scope, !scope.exception());
+    scope.assertNoException();
     return true;
 }
 
@@ -116,4 +115,4 @@ inline void ReadableStreamDefaultController::error<String>(const String& errorMe
 
 } // namespace WebCore
 
-#endif // ENABLE(READABLE_STREAM_API)
+#endif // ENABLE(STREAMS_API)

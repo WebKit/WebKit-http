@@ -29,96 +29,13 @@
 #include "config.h"
 #include "FetchRequest.h"
 
-#if ENABLE(FETCH_API)
-
-#include "Dictionary.h"
-#include "ExceptionCode.h"
 #include "HTTPParsers.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 
 namespace WebCore {
 
-static Optional<Exception> setReferrerPolicy(FetchOptions& options, const String& referrerPolicy)
-{
-    if (referrerPolicy.isEmpty())
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::EmptyString;
-    else if (referrerPolicy == "no-referrer")
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::NoReferrer;
-    else if (referrerPolicy == "no-referrer-when-downgrade")
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::NoReferrerWhenDowngrade;
-    else if (referrerPolicy == "origin")
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::Origin;
-    else if (referrerPolicy == "origin-when-cross-origin")
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::OriginWhenCrossOrigin;
-    else if (referrerPolicy == "unsafe-url")
-        options.referrerPolicy = FetchOptions::ReferrerPolicy::UnsafeUrl;
-    else
-        return Exception { TypeError, ASCIILiteral("Bad referrer policy value.") };
-    return Nullopt;
-}
-
-static Optional<Exception> setMode(FetchOptions& options, const String& mode)
-{
-    if (mode == "navigate")
-        options.mode = FetchOptions::Mode::Navigate;
-    else if (mode == "same-origin")
-        options.mode = FetchOptions::Mode::SameOrigin;
-    else if (mode == "no-cors")
-        options.mode = FetchOptions::Mode::NoCors;
-    else if (mode == "cors")
-        options.mode = FetchOptions::Mode::Cors;
-    else
-        return Exception { TypeError, ASCIILiteral("Bad fetch mode value.") };
-    return Nullopt;
-}
-
-static Optional<Exception> setCredentials(FetchOptions& options, const String& credentials)
-{
-    if (credentials == "omit")
-        options.credentials = FetchOptions::Credentials::Omit;
-    else if (credentials == "same-origin")
-        options.credentials = FetchOptions::Credentials::SameOrigin;
-    else if (credentials == "include")
-        options.credentials = FetchOptions::Credentials::Include;
-    else
-        return Exception { TypeError, ASCIILiteral("Bad credentials mode value.") };
-    return Nullopt;
-}
-
-static Optional<Exception> setCache(FetchOptions& options, const String& cache)
-{
-    if (cache == "default")
-        options.cache = FetchOptions::Cache::Default;
-    else if (cache == "no-store")
-        options.cache = FetchOptions::Cache::NoStore;
-    else if (cache == "reload")
-        options.cache = FetchOptions::Cache::Reload;
-    else if (cache == "no-cache")
-        options.cache = FetchOptions::Cache::NoCache;
-    else if (cache == "force-cache")
-        options.cache = FetchOptions::Cache::ForceCache;
-    else if (cache == "only-if-cached")
-        options.cache = FetchOptions::Cache::OnlyIfCached;
-    else
-        return Exception { TypeError, ASCIILiteral("Bad cache mode value.") };
-    return Nullopt;
-}
-
-static Optional<Exception> setRedirect(FetchOptions& options, const String& redirect)
-{
-    if (redirect == "follow")
-        options.redirect = FetchOptions::Redirect::Follow;
-    else if (redirect == "error")
-        options.redirect = FetchOptions::Redirect::Error;
-    else if (redirect == "manual")
-        options.redirect = FetchOptions::Redirect::Manual;
-    else
-        return Exception { TypeError, ASCIILiteral("Bad redirect mode value.") };
-    return Nullopt;
-}
-
-static Optional<Exception> setMethod(ResourceRequest& request, const String& initMethod)
+static std::optional<Exception> setMethod(ResourceRequest& request, const String& initMethod)
 {
     if (!isValidHTTPToken(initMethod))
         return Exception { TypeError, ASCIILiteral("Method is not a valid HTTP token.") };
@@ -129,118 +46,99 @@ static Optional<Exception> setMethod(ResourceRequest& request, const String& ini
 
     request.setHTTPMethod((method == "DELETE" || method == "GET" || method == "HEAD" || method == "OPTIONS" || method == "POST" || method == "PUT") ? method : initMethod);
 
-    return Nullopt;
+    return std::nullopt;
 }
 
-static Optional<Exception> setReferrer(FetchRequest::InternalRequest& request, ScriptExecutionContext& context, const Dictionary& init)
+static ExceptionOr<String> computeReferrer(ScriptExecutionContext& context, const String& referrer)
 {
-    String referrer;
-    if (!init.get("referrer", referrer))
-        return Nullopt;
-    if (referrer.isEmpty()) {
-        request.referrer = ASCIILiteral("no-referrer");
-        return Nullopt;
-    }
+    if (referrer.isEmpty())
+        return String { "no-referrer" };
+
     // FIXME: Tighten the URL parsing algorithm according https://url.spec.whatwg.org/#concept-url-parser.
     URL referrerURL = context.completeURL(referrer);
     if (!referrerURL.isValid())
         return Exception { TypeError, ASCIILiteral("Referrer is not a valid URL.") };
 
-    if (referrerURL.protocolIs("about") && referrerURL.path() == "client") {
-        request.referrer = ASCIILiteral("client");
-        return Nullopt;
-    }
+    if (referrerURL.protocolIs("about") && referrerURL.path() == "client")
+        return String { "client" };
 
     if (!(context.securityOrigin() && context.securityOrigin()->canRequest(referrerURL)))
         return Exception { TypeError, ASCIILiteral("Referrer is not same-origin.") };
 
-    request.referrer = referrerURL.string();
-    return Nullopt;
+    return String { referrerURL.string() };
 }
 
-static Optional<Exception> buildOptions(FetchRequest::InternalRequest& request, ScriptExecutionContext& context, const Dictionary& init)
+static std::optional<Exception> buildOptions(FetchOptions& options, ResourceRequest& request, String& referrer, ScriptExecutionContext& context, const FetchRequest::Init& init)
 {
-    JSC::JSValue window;
-    if (init.get("window", window)) {
-        if (!window.isNull())
-            return Exception { TypeError, ASCIILiteral("Window can only be null.") };
+    if (!init.window.isUndefinedOrNull() && !init.window.isEmpty())
+        return Exception { TypeError, ASCIILiteral("Window can only be null.") };
+
+    if (!init.referrer.isNull()) {
+        auto result = computeReferrer(context, init.referrer);
+        if (result.hasException())
+            return result.releaseException();
+        referrer = result.releaseReturnValue();
     }
 
-    auto exception = setReferrer(request, context, init);
-    if (exception)
-        return exception;
+    if (init.referrerPolicy)
+        options.referrerPolicy = init.referrerPolicy.value();
 
-    String value;
-    if (init.get("referrerPolicy", value)) {
-        exception = setReferrerPolicy(request.options, value);
-        if (exception)
-            return exception;
-    }
-
-    if (init.get("mode", value)) {
-        exception = setMode(request.options, value);
-        if (exception)
-            return exception;
-    }
-    if (request.options.mode == FetchOptions::Mode::Navigate)
+    if (init.mode)
+        options.mode = init.mode.value();
+    if (options.mode == FetchOptions::Mode::Navigate)
         return Exception { TypeError, ASCIILiteral("Request constructor does not accept navigate fetch mode.") };
 
-    if (init.get("credentials", value)) {
-        exception = setCredentials(request.options, value);
-        if (exception)
-            return exception;
-    }
+    if (init.credentials)
+        options.credentials = init.credentials.value();
 
-    if (init.get("cache", value)) {
-        exception = setCache(request.options, value);
-        if (exception)
-            return exception;
-    }
-
-    if (request.options.cache == FetchOptions::Cache::OnlyIfCached && request.options.mode != FetchOptions::Mode::SameOrigin)
+    if (init.cache)
+        options.cache = init.cache.value();
+    if (options.cache == FetchOptions::Cache::OnlyIfCached && options.mode != FetchOptions::Mode::SameOrigin)
         return Exception { TypeError, ASCIILiteral("only-if-cached cache option requires fetch mode to be same-origin.")  };
 
-    if (init.get("redirect", value)) {
-        exception = setRedirect(request.options, value);
-        if (exception)
+    if (init.redirect)
+        options.redirect = init.redirect.value();
+
+    if (!init.integrity.isNull())
+        options.integrity = init.integrity;
+
+    if (init.keepalive && init.keepalive.value())
+        options.keepAlive = true;
+
+    if (!init.method.isNull()) {
+        if (auto exception = setMethod(request, init.method))
             return exception;
     }
 
-    init.get("integrity", request.integrity);
-
-    if (init.get("method", value)) {
-        exception = setMethod(request.request, value);
-        if (exception)
-            return exception;
-    }
-    return Nullopt;
+    return std::nullopt;
 }
 
-static bool methodCanHaveBody(const FetchRequest::InternalRequest& internalRequest)
+static bool methodCanHaveBody(const ResourceRequest& request)
 {
-    return internalRequest.request.httpMethod() != "GET" && internalRequest.request.httpMethod() != "HEAD";
+    return request.httpMethod() != "GET" && request.httpMethod() != "HEAD";
 }
 
-ExceptionOr<FetchHeaders&> FetchRequest::initializeOptions(const Dictionary& init)
+ExceptionOr<void> FetchRequest::initializeOptions(const Init& init)
 {
     ASSERT(scriptExecutionContext());
 
-    auto exception = buildOptions(m_internalRequest, *scriptExecutionContext(), init);
+    auto exception = buildOptions(m_options, m_request, m_referrer, *scriptExecutionContext(), init);
     if (exception)
         return WTFMove(exception.value());
 
-    if (m_internalRequest.options.mode == FetchOptions::Mode::NoCors) {
-        const String& method = m_internalRequest.request.httpMethod();
+    if (m_options.mode == FetchOptions::Mode::NoCors) {
+        const String& method = m_request.httpMethod();
         if (method != "GET" && method != "POST" && method != "HEAD")
             return Exception { TypeError, ASCIILiteral("Method must be GET, POST or HEAD in no-cors mode.") };
-        if (!m_internalRequest.integrity.isEmpty())
+        if (!m_options.integrity.isEmpty())
             return Exception { TypeError, ASCIILiteral("There cannot be an integrity in no-cors mode.") };
         m_headers->setGuard(FetchHeaders::Guard::RequestNoCors);
     }
-    return m_headers.get();
+    
+    return { };
 }
 
-ExceptionOr<FetchHeaders&> FetchRequest::initializeWith(const String& url, const Dictionary& init)
+ExceptionOr<void> FetchRequest::initializeWith(const String& url, Init&& init)
 {
     ASSERT(scriptExecutionContext());
     // FIXME: Tighten the URL parsing algorithm according https://url.spec.whatwg.org/#concept-url-parser.
@@ -248,69 +146,140 @@ ExceptionOr<FetchHeaders&> FetchRequest::initializeWith(const String& url, const
     if (!requestURL.isValid() || !requestURL.user().isEmpty() || !requestURL.pass().isEmpty())
         return Exception { TypeError, ASCIILiteral("URL is not valid or contains user credentials.") };
 
-    m_internalRequest.options.mode = Mode::Cors;
-    m_internalRequest.options.credentials = Credentials::Omit;
-    m_internalRequest.referrer = ASCIILiteral("client");
-    m_internalRequest.request.setURL(requestURL);
-    m_internalRequest.request.setInitiatorIdentifier(scriptExecutionContext()->resourceRequestIdentifier());
+    m_options.mode = Mode::Cors;
+    m_options.credentials = Credentials::Omit;
+    m_referrer = ASCIILiteral("client");
+    m_request.setURL(requestURL);
+    m_request.setRequester(ResourceRequest::Requester::Fetch);
+    m_request.setInitiatorIdentifier(scriptExecutionContext()->resourceRequestIdentifier());
 
-    return initializeOptions(init);
-}
+    auto optionsResult = initializeOptions(init);
+    if (optionsResult.hasException())
+        return optionsResult.releaseException();
 
-ExceptionOr<FetchHeaders&> FetchRequest::initializeWith(FetchRequest& input, const Dictionary& init)
-{
-    if (input.isDisturbedOrLocked())
-        return Exception {TypeError, ASCIILiteral("Request input is disturbed or locked.") };
-
-    m_internalRequest = input.m_internalRequest;
-
-    return initializeOptions(init);
-}
-
-ExceptionOr<void> FetchRequest::setBody(JSC::ExecState& execState, JSC::JSValue body, FetchRequest* request)
-{
-    if (!body.isNull()) {
-        if (!methodCanHaveBody(m_internalRequest))
-            return Exception { TypeError };
-        ASSERT(scriptExecutionContext());
-        extractBody(*scriptExecutionContext(), execState, body);
-        if (isBodyNull())
-            return Exception { TypeError };
-    } else if (request && !request->isBodyNull()) {
-        if (!methodCanHaveBody(m_internalRequest))
-            return Exception { TypeError };
-        m_body = WTFMove(request->m_body);
-        request->setDisturbed();
+    if (init.headers) {
+        auto fillResult = m_headers->fill(*init.headers);
+        if (fillResult.hasException())
+            return fillResult.releaseException();
     }
+
+    if (init.body) {
+        auto setBodyResult = setBody(WTFMove(*init.body));
+        if (setBodyResult.hasException())
+            return setBodyResult.releaseException();
+    }
+
     updateContentType();
     return { };
 }
 
-String FetchRequest::referrer() const
+ExceptionOr<void> FetchRequest::initializeWith(FetchRequest& input, Init&& init)
 {
-    if (m_internalRequest.referrer == "no-referrer")
-        return String();
-    if (m_internalRequest.referrer == "client")
-        return ASCIILiteral("about:client");
-    return m_internalRequest.referrer;
+    if (input.isDisturbedOrLocked())
+        return Exception {TypeError, ASCIILiteral("Request input is disturbed or locked.") };
+
+    m_request = input.m_request;
+    m_options = input.m_options;
+    m_referrer = input.m_referrer;
+
+    auto optionsResult = initializeOptions(init);
+    if (optionsResult.hasException())
+        return optionsResult.releaseException();
+
+    if (init.headers) {
+        auto fillResult = m_headers->fill(*init.headers);
+        if (fillResult.hasException())
+            return fillResult.releaseException();
+    } else {
+        auto fillResult = m_headers->fill(input.headers());
+        if (fillResult.hasException())
+            return fillResult.releaseException();
+    }
+
+    if (init.body) {
+        auto setBodyResult = setBody(WTFMove(*init.body));
+        if (setBodyResult.hasException())
+            return setBodyResult.releaseException();
+    } else {
+        auto setBodyResult = setBody(input);
+        if (setBodyResult.hasException())
+            return setBodyResult.releaseException();
+    }
+
+    updateContentType();
+    return { };
 }
 
-const String& FetchRequest::url() const
+ExceptionOr<void> FetchRequest::setBody(FetchBody::Init&& body)
+{
+    if (!methodCanHaveBody(m_request))
+        return Exception { TypeError };
+
+    ASSERT(scriptExecutionContext());
+    extractBody(*scriptExecutionContext(), WTFMove(body));
+
+    if (m_options.keepAlive && hasReadableStreamBody())
+        return Exception { TypeError, ASCIILiteral("Request cannot have a ReadableStream body and keepalive set to true") };
+    return { };
+}
+
+ExceptionOr<void> FetchRequest::setBody(FetchRequest& request)
+{
+    if (!request.isBodyNull()) {
+        if (!methodCanHaveBody(m_request))
+            return Exception { TypeError };
+        // FIXME: If body has a readable stream, we should pipe it to this new body stream.
+        m_body = WTFMove(request.m_body);
+        request.setDisturbed();
+    }
+
+    if (m_options.keepAlive && hasReadableStreamBody())
+        return Exception { TypeError, ASCIILiteral("Request cannot have a ReadableStream body and keepalive set to true") };
+    return { };
+}
+
+ExceptionOr<Ref<FetchRequest>> FetchRequest::create(ScriptExecutionContext& context, Info&& input, Init&& init)
+{
+    auto request = adoptRef(*new FetchRequest(context, std::nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { }, { }, { }));
+
+    if (WTF::holds_alternative<String>(input)) {
+        auto result = request->initializeWith(WTF::get<String>(input), WTFMove(init));
+        if (result.hasException())
+            return result.releaseException();
+    } else {
+        auto result = request->initializeWith(*WTF::get<RefPtr<FetchRequest>>(input), WTFMove(init));
+        if (result.hasException())
+            return result.releaseException();
+    }
+
+    return WTFMove(request);
+}
+
+String FetchRequest::referrer() const
+{
+    if (m_referrer == "no-referrer")
+        return String();
+    if (m_referrer == "client")
+        return ASCIILiteral("about:client");
+    return m_referrer;
+}
+
+const String& FetchRequest::urlString() const
 {
     if (m_requestURL.isNull())
-        m_requestURL = m_internalRequest.request.url().serialize();
+        m_requestURL = m_request.url().serialize();
     return m_requestURL;
 }
 
-ResourceRequest FetchRequest::internalRequest() const
+ResourceRequest FetchRequest::resourceRequest() const
 {
     ASSERT(scriptExecutionContext());
 
-    ResourceRequest request = m_internalRequest.request;
+    ResourceRequest request = m_request;
     request.setHTTPHeaderFields(m_headers->internalHeaders());
 
     if (!isBodyNull())
-        request.setHTTPBody(body().bodyForInternalRequest(*scriptExecutionContext()));
+        request.setHTTPBody(body().bodyAsFormData(*scriptExecutionContext()));
 
     return request;
 }
@@ -320,7 +289,7 @@ ExceptionOr<Ref<FetchRequest>> FetchRequest::clone(ScriptExecutionContext& conte
     if (isDisturbedOrLocked())
         return Exception { TypeError };
 
-    auto clone = adoptRef(*new FetchRequest(context, Nullopt, FetchHeaders::create(m_headers.get()), FetchRequest::InternalRequest(m_internalRequest)));
+    auto clone = adoptRef(*new FetchRequest(context, std::nullopt, FetchHeaders::create(m_headers.get()), ResourceRequest { m_request }, FetchOptions { m_options}, String { m_referrer }));
     clone->cloneBody(*this);
     return WTFMove(clone);
 }
@@ -338,4 +307,3 @@ bool FetchRequest::canSuspendForDocumentSuspension() const
 
 } // namespace WebCore
 
-#endif // ENABLE(FETCH_API)

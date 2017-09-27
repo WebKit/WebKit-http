@@ -33,13 +33,13 @@
 
 #include "DateComponents.h"
 #include "DateTimeFormat.h"
-#include "Language.h"
 #include "LocalizedStrings.h"
 #include <limits>
 #include <windows.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/DateMath.h>
 #include <wtf/HashMap.h>
+#include <wtf/Language.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
 
@@ -98,7 +98,7 @@ String LocaleWin::getLocaleInfoString(LCTYPE type)
     int bufferSizeWithNUL = ::GetLocaleInfo(m_lcid, type, 0, 0);
     if (bufferSizeWithNUL <= 0)
         return String();
-    Vector<UChar> buffer(bufferSizeWithNUL);
+    StringVector<UChar> buffer(bufferSizeWithNUL);
     ::GetLocaleInfo(m_lcid, type, buffer.data(), bufferSizeWithNUL);
     buffer.shrink(bufferSizeWithNUL - 1);
     return String::adopt(WTFMove(buffer));

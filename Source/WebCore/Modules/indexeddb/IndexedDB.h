@@ -40,10 +40,10 @@ enum class TransactionState {
 };
 
 enum class CursorDirection {
-    Next = 0,
-    NextNoDuplicate = 1,
-    Prev = 2,
-    PrevNoDuplicate = 3,
+    Next,
+    Nextunique,
+    Prev,
+    Prevunique,
 };
 const unsigned CursorDirectionMaximum = 3;
 
@@ -72,6 +72,11 @@ enum class ObjectStoreOverwriteMode {
 enum class IndexRecordType {
     Key,
     Value,
+};
+
+enum class ObjectStoreRecordType {
+    ValueOnly,
+    KeyOnly,
 };
 
 // In order of the least to the highest precedent in terms of sort order.

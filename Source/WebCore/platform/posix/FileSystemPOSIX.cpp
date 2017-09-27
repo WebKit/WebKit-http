@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -83,6 +84,11 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
         platformFlag |= O_RDONLY;
     else if (mode == OpenForWrite)
         platformFlag |= (O_WRONLY | O_CREAT | O_TRUNC);
+#if OS(DARWIN)
+    else if (mode == OpenForEventsOnly)
+        platformFlag |= O_EVTONLY;
+#endif
+
     return open(fsRep.data(), platformFlag, 0666);
 }
 
@@ -233,21 +239,57 @@ bool getFileModificationTime(const String& path, time_t& result)
     return true;
 }
 
-bool getFileMetadata(const String& path, FileMetadata& metadata)
+static FileMetadata::Type toFileMetataType(struct stat fileInfo)
+{
+    if (S_ISDIR(fileInfo.st_mode))
+        return FileMetadata::Type::Directory;
+    if (S_ISLNK(fileInfo.st_mode))
+        return FileMetadata::Type::SymbolicLink;
+    return FileMetadata::Type::File;
+}
+
+static std::optional<FileMetadata> fileMetadataUsingFunction(const String& path, int (*statFunc)(const char*, struct stat*))
 {
     CString fsRep = fileSystemRepresentation(path);
 
     if (!fsRep.data() || fsRep.data()[0] == '\0')
-        return false;
+        return std::nullopt;
 
     struct stat fileInfo;
-    if (stat(fsRep.data(), &fileInfo))
+    if (statFunc(fsRep.data(), &fileInfo))
+        return std::nullopt;
+
+    String filename = pathGetFileName(path);
+    bool isHidden = !filename.isEmpty() && filename[0] == '.';
+    return FileMetadata {
+        static_cast<double>(fileInfo.st_mtime),
+        fileInfo.st_size,
+        isHidden,
+        toFileMetataType(fileInfo)
+    };
+}
+
+std::optional<FileMetadata> fileMetadata(const String& path)
+{
+    return fileMetadataUsingFunction(path, &lstat);
+}
+
+std::optional<FileMetadata> fileMetadataFollowingSymlinks(const String& path)
+{
+    return fileMetadataUsingFunction(path, &stat);
+}
+
+bool createSymbolicLink(const String& targetPath, const String& symbolicLinkPath)
+{
+    CString targetPathFSRep = fileSystemRepresentation(targetPath);
+    if (!targetPathFSRep.data() || targetPathFSRep.data()[0] == '\0')
         return false;
 
-    metadata.modificationTime = fileInfo.st_mtime;
-    metadata.length = fileInfo.st_size;
-    metadata.type = S_ISDIR(fileInfo.st_mode) ? FileMetadata::TypeDirectory : FileMetadata::TypeFile;
-    return true;
+    CString symbolicLinkPathFSRep = fileSystemRepresentation(symbolicLinkPath);
+    if (!symbolicLinkPathFSRep.data() || symbolicLinkPathFSRep.data()[0] == '\0')
+        return false;
+
+    return !symlink(targetPathFSRep.data(), symbolicLinkPathFSRep.data());
 }
 
 String pathByAppendingComponent(const String& path, const String& component)
@@ -255,6 +297,17 @@ String pathByAppendingComponent(const String& path, const String& component)
     if (path.endsWith('/'))
         return path + component;
     return path + "/" + component;
+}
+
+String pathByAppendingComponents(StringView path, const Vector<StringView>& components)
+{
+    StringBuilder builder;
+    builder.append(path);
+    for (auto& component : components) {
+        builder.append('/');
+        builder.append(component);
+    }
+    return builder.toString();
 }
 
 bool makeAllDirectories(const String& path)
@@ -328,7 +381,7 @@ Vector<String> listDirectory(const String& path, const String& filter)
     return entries;
 }
 
-#if !OS(DARWIN) || PLATFORM(EFL) || PLATFORM(GTK)
+#if !OS(DARWIN) || PLATFORM(GTK)
 String openTemporaryFile(const String& prefix, PlatformFileHandle& handle)
 {
     char buffer[PATH_MAX];
@@ -381,6 +434,15 @@ bool hardLinkOrCopyFile(const String& source, const String& destination)
         unlink(fsDestination.data());
 
     return appendResult;
+}
+
+std::optional<int32_t> getFileDeviceId(const CString& fsFile)
+{
+    struct stat fileStat;
+    if (stat(fsFile.data(), &fileStat) == -1)
+        return std::nullopt;
+
+    return fileStat.st_dev;
 }
 
 } // namespace WebCore

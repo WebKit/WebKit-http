@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 
 namespace JSC {
 
-inline void CodeBlockSet::mark(const LockHolder& locker, void* candidateCodeBlock)
+inline void CodeBlockSet::mark(const AbstractLocker& locker, void* candidateCodeBlock)
 {
     ASSERT(m_lock.isLocked());
     // We have to check for 0 and -1 because those are used by the HashMap as markers.
@@ -52,12 +52,43 @@ inline void CodeBlockSet::mark(const LockHolder& locker, void* candidateCodeBloc
     mark(locker, codeBlock);
 }
 
-inline void CodeBlockSet::mark(const LockHolder&, CodeBlock* codeBlock)
+inline void CodeBlockSet::mark(const AbstractLocker&, CodeBlock* codeBlock)
 {
     if (!codeBlock)
         return;
 
     m_currentlyExecuting.add(codeBlock);
+}
+
+template<typename Functor>
+void CodeBlockSet::iterate(const Functor& functor)
+{
+    auto locker = holdLock(m_lock);
+    iterate(locker, functor);
+}
+
+template<typename Functor>
+void CodeBlockSet::iterate(const AbstractLocker&, const Functor& functor)
+{
+    for (auto& codeBlock : m_oldCodeBlocks) {
+        bool done = functor(codeBlock);
+        if (done)
+            return;
+    }
+    
+    for (auto& codeBlock : m_newCodeBlocks) {
+        bool done = functor(codeBlock);
+        if (done)
+            return;
+    }
+}
+
+template<typename Functor>
+void CodeBlockSet::iterateCurrentlyExecuting(const Functor& functor)
+{
+    LockHolder locker(&m_lock);
+    for (CodeBlock* codeBlock : m_currentlyExecuting)
+        functor(codeBlock);
 }
 
 } // namespace JSC

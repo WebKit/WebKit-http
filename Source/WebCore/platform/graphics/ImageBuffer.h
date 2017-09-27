@@ -104,26 +104,25 @@ public:
 
     enum CoordinateSystem { LogicalCoordinateSystem, BackingStoreCoordinateSystem };
 
-    RefPtr<Uint8ClampedArray> getUnmultipliedImageData(const IntRect&, CoordinateSystem = LogicalCoordinateSystem) const;
-    RefPtr<Uint8ClampedArray> getPremultipliedImageData(const IntRect&, CoordinateSystem = LogicalCoordinateSystem) const;
+    RefPtr<Uint8ClampedArray> getUnmultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
+    RefPtr<Uint8ClampedArray> getPremultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
 
     void putByteArray(Multiply multiplied, Uint8ClampedArray*, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem = LogicalCoordinateSystem);
     
     void convertToLuminanceMask();
     
-    String toDataURL(const String& mimeType, Optional<double> quality = Nullopt, CoordinateSystem = LogicalCoordinateSystem) const;
+    String toDataURL(const String& mimeType, std::optional<double> quality = std::nullopt, CoordinateSystem = LogicalCoordinateSystem) const;
+    Vector<uint8_t> toData(const String& mimeType, std::optional<double> quality = std::nullopt) const;
+    Vector<uint8_t> toBGRAData() const;
+
 #if !USE(CG)
     AffineTransform baseTransform() const { return AffineTransform(); }
     void transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstColorSpace);
-    void platformTransformColorSpace(const Vector<int>&);
+    void platformTransformColorSpace(const std::array<uint8_t, 256>&);
 #else
     AffineTransform baseTransform() const { return AffineTransform(1, 0, 0, -1, 0, m_data.backingStoreSize.height()); }
 #endif
     PlatformLayer* platformLayer() const;
-
-#if USE(CAIRO)
-    NativeImagePtr nativeImage() const;
-#endif
 
     size_t memoryCost() const;
     size_t externalMemoryCost() const;
@@ -178,13 +177,15 @@ private:
     WEBCORE_EXPORT ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, bool& success);
 #if USE(CG)
     ImageBuffer(const FloatSize&, float resolutionScale, CGColorSpaceRef, RenderingMode, bool& success);
+    RetainPtr<CFDataRef> toCFData(const String& mimeType, std::optional<double> quality) const;
 #elif USE(DIRECT2D)
     ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, const GraphicsContext*, bool& success);
 #endif
 };
 
 #if USE(CG)
-String dataURL(const ImageData&, const String& mimeType, Optional<double> quality);
+String dataURL(const ImageData&, const String& mimeType, std::optional<double> quality);
+Vector<uint8_t> data(const ImageData&, const String& mimeType, std::optional<double> quality);
 #endif
 
 } // namespace WebCore

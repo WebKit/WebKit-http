@@ -30,7 +30,7 @@
 #include <cstring>
 #include <string>
 
-#ifdef XP_UNIX
+#if defined(MOZ_X11)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #endif
@@ -40,18 +40,6 @@ extern "C" void GlobalToLocal(Point*);
 #endif
 
 using namespace std;
-
-#if defined(__GNUC__)
-#define CRASH() do { \
-    *(int *)(uintptr_t)0xbbadbeef = 0; \
-    __builtin_trap(); /* More reliable, but doesn't say BBADBEEF. */ \
-} while (false)
-#else
-#define CRASH() do { \
-    *(int *)(uintptr_t)0xbbadbeef = 0; \
-    ((void(*)())0)(); /* More reliable, but doesn't say BBADBEEF */ \
-} while (false)
-#endif
 
 static bool getEntryPointsWasCalled;
 static bool initializeWasCalled;
@@ -75,7 +63,7 @@ NPError STDCALL NP_GetEntryPoints(NPPluginFuncs *pluginFuncs);
 // Entry points
 extern "C"
 NPError STDCALL NP_Initialize(NPNetscapeFuncs *browserFuncs
-#ifdef XP_UNIX
+#if defined(XP_UNIX)
                               , NPPluginFuncs *pluginFuncs
 #endif
                               )
@@ -90,7 +78,7 @@ NPError STDCALL NP_Initialize(NPNetscapeFuncs *browserFuncs
 
     browser = browserFuncs;
 
-#ifdef XP_UNIX
+#if defined(XP_UNIX)
     return NP_GetEntryPoints(pluginFuncs);
 #else
     return NPERR_NO_ERROR;
@@ -264,6 +252,8 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode, int16_t argc
 #endif
         } else if (!strcasecmp(argn[i], "src") && strstr(argv[i], "plugin-document-has-focus.pl"))
             obj->testKeyboardFocusForPlugins = TRUE;
+        else if (!strcasecmp(argn[i], "src") && strstr(argv[i], "plugin-document-alert-and-notify-done.pl"))
+            executeScript(obj, "alert('Plugin Loaded!'); testRunner.notifyDone();");
         else if (!strcasecmp(argn[i], "evaluatescript")) {
             char* script = argv[i];
             if (script == strstr(script, "mouse::")) {
@@ -651,8 +641,7 @@ static int16_t handleEventCocoa(NPP instance, PluginObject* obj, NPCocoaEvent* e
 
 #endif // XP_MACOSX
 
-#ifdef XP_UNIX
-
+#if defined(MOZ_X11)
 static char keyEventToChar(XKeyEvent* event)
 {
     char c = ' ';
@@ -717,7 +706,7 @@ static int16_t handleEventX11(NPP instance, PluginObject* obj, XEvent* event)
     fflush(stdout);
     return 0;
 }
-#endif // XP_UNIX
+#endif // MOZ_X11
 
 #ifdef XP_WIN
 static int16_t handleEventWin(NPP instance, PluginObject* obj, NPEvent* event)
@@ -786,7 +775,7 @@ int16_t NPP_HandleEvent(NPP instance, void *event)
 
     assert(obj->eventModel == NPEventModelCocoa);
     return handleEventCocoa(instance, obj, static_cast<NPCocoaEvent*>(event));
-#elif defined(XP_UNIX)
+#elif defined(MOZ_X11)
     return handleEventX11(instance, obj, static_cast<XEvent*>(event));
 #elif defined(XP_WIN)
     return handleEventWin(instance, obj, static_cast<NPEvent*>(event));
@@ -816,7 +805,7 @@ void NPP_URLRedirectNotify(NPP instance, const char *url, int32_t status, void *
 
 NPError NPP_GetValue(NPP instance, NPPVariable variable, void *value)
 {
-#ifdef XP_UNIX
+#if defined(XP_UNIX)
     if (variable == NPPVpluginNameString) {
         *((char **)value) = const_cast<char*>("WebKit Test PlugIn");
         return NPERR_NO_ERROR;
@@ -825,6 +814,9 @@ NPError NPP_GetValue(NPP instance, NPPVariable variable, void *value)
         *((char **)value) = const_cast<char*>("Simple Netscape® plug-in that handles test content for WebKit");
         return NPERR_NO_ERROR;
     }
+#endif
+
+#if defined(MOZ_X11)
     if (variable == NPPVpluginNeedsXEmbed) {
         *((NPBool *)value) = TRUE;
         return NPERR_NO_ERROR;
@@ -867,7 +859,7 @@ NPError NPP_SetValue(NPP instance, NPNVariable variable, void *value)
     return obj->pluginTest->NPP_SetValue(variable, value);
 }
 
-#ifdef XP_UNIX
+#if defined(XP_UNIX)
 extern "C"
 const char* NP_GetMIMEDescription(void)
 {

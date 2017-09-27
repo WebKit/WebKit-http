@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,10 +28,11 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirArg.h"
 #include "B3BasicBlockInlines.h"
 #include "B3Dominators.h"
 #include "B3InsertionSetInlines.h"
-#include "B3MemoryValue.h"
+#include "B3MemoryValueInlines.h"
 #include "B3PhaseScope.h"
 #include "B3ProcedureInlines.h"
 #include "B3ValueInlines.h"
@@ -72,7 +73,7 @@ private:
     {
         Dominators& dominators = m_proc.dominators();
         HashMap<ValueKey, Value*> valueForConstant;
-        IndexMap<BasicBlock, Vector<Value*>> materializations(m_proc.size());
+        IndexMap<BasicBlock*, Vector<Value*>> materializations(m_proc.size());
 
         // We determine where things get materialized based on where they are used.
         for (BasicBlock* block : m_proc) {
@@ -202,17 +203,13 @@ private:
                                 if (!candidatePointer->hasIntPtr())
                                     return false;
                                 
-                                intptr_t offset = desiredOffset(candidatePointer);
-                                if (!B3::isRepresentableAs<int32_t>(static_cast<int64_t>(offset)))
-                                    return false;
-                                return Air::Arg::isValidAddrForm(
-                                    static_cast<int32_t>(offset),
-                                    Air::Arg::widthForBytes(memoryValue->accessByteSize()));
+                                int64_t offset = desiredOffset(candidatePointer);
+                                return memoryValue->isLegalOffset(offset);
                             });
                         
                         if (bestPointer) {
                             memoryValue->lastChild() = bestPointer;
-                            memoryValue->setOffset(desiredOffset(bestPointer));
+                            memoryValue->setOffset(static_cast<int32_t>(desiredOffset(bestPointer)));
                         }
                     }
                 } else {
@@ -277,7 +274,7 @@ private:
         for (auto& entry : m_constTable)
             m_dataSection[entry.value] = entry.key.value();
 
-        IndexSet<Value> offLimits;
+        IndexSet<Value*> offLimits;
         for (BasicBlock* block : m_proc) {
             for (unsigned valueIndex = 0; valueIndex < block->size(); ++valueIndex) {
                 StackmapValue* value = block->at(valueIndex)->as<StackmapValue>();
@@ -311,12 +308,16 @@ private:
                 if (offLimits.contains(value))
                     continue;
 
+                auto offset = sizeof(int64_t) * m_constTable.get(key);
+                if (!isRepresentableAs<Value::OffsetType>(offset))
+                    continue;
+
                 Value* tableBase = m_insertionSet.insertIntConstant(
                     valueIndex, value->origin(), pointerType(),
                     bitwise_cast<intptr_t>(m_dataSection));
                 Value* result = m_insertionSet.insert<MemoryValue>(
                     valueIndex, Load, value->type(), value->origin(), tableBase,
-                    sizeof(int64_t) * m_constTable.get(key));
+                    static_cast<Value::OffsetType>(offset));
                 value->replaceWithIdentity(result);
             }
 
@@ -337,7 +338,7 @@ private:
 
     static ValueKey floatZero()
     {
-        return ValueKey(ConstFloat, Double, 0.0);
+        return ValueKey(ConstFloat, Float, 0.0);
     }
 
     Procedure& m_proc;

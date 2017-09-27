@@ -31,15 +31,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RealtimeMediaSourceCenterOwr_h
-#define RealtimeMediaSourceCenterOwr_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)
 
+#include "CaptureDeviceManager.h"
 #include "RealtimeMediaSourceCenter.h"
-
 #include "RealtimeMediaSourceOwr.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -54,24 +53,49 @@ public:
     RealtimeMediaSourceCenterOwr();
     ~RealtimeMediaSourceCenterOwr();
 
-    void validateRequestConstraints(ValidConstraintsHandler validHandler, InvalidConstraintsHandler invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints) final;
+    void validateRequestConstraints(ValidConstraintsHandler&& validHandler, InvalidConstraintsHandler&& invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints, String&&) final;
 
-    void createMediaStream(NewMediaStreamHandler, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* videoConstraints, const MediaConstraints* audioConstraints) final;
+    void createMediaStream(NewMediaStreamHandler&&, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* videoConstraints, const MediaConstraints* audioConstraints) final;
 
     Vector<CaptureDevice> getMediaStreamDevices() final;
 
     void mediaSourcesAvailable(GList* sources);
 
 private:
-    PassRefPtr<RealtimeMediaSource> firstSource(RealtimeMediaSource::Type);
+    RealtimeMediaSource::AudioCaptureFactory& defaultAudioFactory() final { return m_defaultAudioFactory; }
+    RealtimeMediaSource::VideoCaptureFactory& defaultVideoFactory() final { return m_defaultVideoFactory; }
+    CaptureDeviceManager& defaultAudioCaptureDeviceManager() final { return m_defaultAudioCaptureDeviceManager; }
+    CaptureDeviceManager& defaultVideoCaptureDeviceManager() final { return m_defaultVideoCaptureDeviceManager; }
+
+    RealtimeMediaSource* firstSource(RealtimeMediaSource::Type);
     RealtimeMediaSourceOwrMap m_sourceMap;
     ValidConstraintsHandler m_validConstraintsHandler;
     InvalidConstraintsHandler m_invalidConstraintsHandler;
     NewMediaStreamHandler m_completionHandler;
+
+    class AudioCaptureFactoryOwr : public RealtimeMediaSource::AudioCaptureFactory {
+    private:
+        CaptureSourceOrError createAudioCaptureSource(const String&, const MediaConstraints*) final { return { }; }
+    };
+
+    class VideoCaptureFactoryOwr : public RealtimeMediaSource::VideoCaptureFactory {
+    private:
+        CaptureSourceOrError createVideoCaptureSource(const String&, const MediaConstraints*) final { return { }; }
+    };
+
+    class CaptureDeviceManagerOwr : public CaptureDeviceManager {
+    private:
+        Vector<CaptureDevice>& captureDevices() final { return m_devices; }
+
+        Vector<CaptureDevice> m_devices;
+    };
+
+    AudioCaptureFactoryOwr m_defaultAudioFactory;
+    VideoCaptureFactoryOwr m_defaultVideoFactory;
+    CaptureDeviceManagerOwr m_defaultAudioCaptureDeviceManager;
+    CaptureDeviceManagerOwr m_defaultVideoCaptureDeviceManager;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM) && USE(OPENWEBRTC)
-
-#endif // RealtimeMediaSourceCenterOwr_h

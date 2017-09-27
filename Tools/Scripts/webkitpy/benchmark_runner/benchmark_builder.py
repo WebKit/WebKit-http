@@ -8,17 +8,18 @@ import shutil
 import subprocess
 import tarfile
 
-from zipfile import ZipFile
 from webkitpy.benchmark_runner.utils import get_path_from_project_root, force_remove
+from zipfile import ZipFile
 
 
 _log = logging.getLogger(__name__)
 
 
 class BenchmarkBuilder(object):
-    def __init__(self, name, plan):
+    def __init__(self, name, plan, driver):
         self._name = name
         self._plan = plan
+        self._driver = driver
 
     def __enter__(self):
         self._web_root = tempfile.mkdtemp()
@@ -36,8 +37,9 @@ class BenchmarkBuilder(object):
         try:
             if 'create_script' in self._plan:
                 self._run_create_script(self._plan['create_script'])
-            if 'benchmark_patch' in self._plan:
-                self._apply_patch(self._plan['benchmark_patch'])
+            patch_file_key = "{driver}_benchmark_patch".format(driver=self._driver)
+            if patch_file_key in self._plan:
+                self._apply_patch(self._plan[patch_file_key])
             return self._web_root
         except Exception:
             self._clean()

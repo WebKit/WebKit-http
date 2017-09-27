@@ -37,10 +37,9 @@
 #include "SecurityOrigin.h"
 #include "SecurityOriginData.h"
 #include "URL.h"
-#include "UUID.h"
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
+#include <wtf/UUID.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -126,36 +125,32 @@ ApplicationCacheGroup* ApplicationCacheStorage::loadCacheGroup(const URL& manife
     if (!cache)
         return nullptr;
         
-    ApplicationCacheGroup* group = new ApplicationCacheGroup(*this, manifestURL);
-      
-    group->setStorageID(static_cast<unsigned>(statement.getColumnInt64(0)));
-    group->setNewestCache(WTFMove(cache));
-
-    return group;
+    auto& group = *new ApplicationCacheGroup(*this, manifestURL);
+    group.setStorageID(static_cast<unsigned>(statement.getColumnInt64(0)));
+    group.setNewestCache(cache.releaseNonNull());
+    return &group;
 }    
 
 ApplicationCacheGroup* ApplicationCacheStorage::findOrCreateCacheGroup(const URL& manifestURL)
 {
     ASSERT(!manifestURL.hasFragmentIdentifier());
 
-    CacheGroupMap::AddResult result = m_cachesInMemory.add(manifestURL, nullptr);
-    
+    auto result = m_cachesInMemory.add(manifestURL, nullptr);
     if (!result.isNewEntry) {
         ASSERT(result.iterator->value);
         return result.iterator->value;
     }
 
     // Look up the group in the database
-    ApplicationCacheGroup* group = loadCacheGroup(manifestURL);
+    auto* group = loadCacheGroup(manifestURL);
     
     // If the group was not found we need to create it
     if (!group) {
         group = new ApplicationCacheGroup(*this, manifestURL);
         m_cacheHostSet.add(urlHostHash(manifestURL));
     }
-    
+
     result.iterator->value = group;
-    
     return group;
 }
 
@@ -244,20 +239,18 @@ ApplicationCacheGroup* ApplicationCacheStorage::cacheGroupForURL(const URL& url)
         if (!cache)
             continue;
 
-        ApplicationCacheResource* resource = cache->resourceForURL(url);
+        auto* resource = cache->resourceForURL(url);
         if (!resource)
             continue;
         if (resource->type() & ApplicationCacheResource::Foreign)
             continue;
 
-        ApplicationCacheGroup* group = new ApplicationCacheGroup(*this, manifestURL);
-        
-        group->setStorageID(static_cast<unsigned>(statement.getColumnInt64(0)));
-        group->setNewestCache(WTFMove(cache));
-        
-        m_cachesInMemory.set(group->manifestURL(), group);
-        
-        return group;
+        auto& group = *new ApplicationCacheGroup(*this, manifestURL);
+        group.setStorageID(static_cast<unsigned>(statement.getColumnInt64(0)));
+        group.setNewestCache(cache.releaseNonNull());
+        m_cachesInMemory.set(group.manifestURL(), &group);
+
+        return &group;
     }
 
     if (result != SQLITE_DONE)
@@ -320,14 +313,13 @@ ApplicationCacheGroup* ApplicationCacheStorage::fallbackCacheGroupForURL(const U
         if (cache->resourceForURL(fallbackURL)->type() & ApplicationCacheResource::Foreign)
             continue;
 
-        ApplicationCacheGroup* group = new ApplicationCacheGroup(*this, manifestURL);
-        
-        group->setStorageID(static_cast<unsigned>(statement.getColumnInt64(0)));
-        group->setNewestCache(WTFMove(cache));
-        
-        m_cachesInMemory.set(group->manifestURL(), group);
-        
-        return group;
+        auto& group = *new ApplicationCacheGroup(*this, manifestURL);
+        group.setStorageID(static_cast<unsigned>(statement.getColumnInt64(0)));
+        group.setNewestCache(cache.releaseNonNull());
+
+        m_cachesInMemory.set(group.manifestURL(), &group);
+
+        return &group;
     }
 
     if (result != SQLITE_DONE)
@@ -336,33 +328,33 @@ ApplicationCacheGroup* ApplicationCacheStorage::fallbackCacheGroupForURL(const U
     return nullptr;
 }
 
-void ApplicationCacheStorage::cacheGroupDestroyed(ApplicationCacheGroup* group)
+void ApplicationCacheStorage::cacheGroupDestroyed(ApplicationCacheGroup& group)
 {
-    if (group->isObsolete()) {
-        ASSERT(!group->storageID());
-        ASSERT(m_cachesInMemory.get(group->manifestURL()) != group);
+    if (group.isObsolete()) {
+        ASSERT(!group.storageID());
+        ASSERT(m_cachesInMemory.get(group.manifestURL()) != &group);
         return;
     }
 
-    ASSERT(m_cachesInMemory.get(group->manifestURL()) == group);
+    ASSERT(m_cachesInMemory.get(group.manifestURL()) == &group);
 
-    m_cachesInMemory.remove(group->manifestURL());
+    m_cachesInMemory.remove(group.manifestURL());
     
     // If the cache group is half-created, we don't want it in the saved set (as it is not stored in database).
-    if (!group->storageID())
-        m_cacheHostSet.remove(urlHostHash(group->manifestURL()));
+    if (!group.storageID())
+        m_cacheHostSet.remove(urlHostHash(group.manifestURL()));
 }
 
-void ApplicationCacheStorage::cacheGroupMadeObsolete(ApplicationCacheGroup* group)
+void ApplicationCacheStorage::cacheGroupMadeObsolete(ApplicationCacheGroup& group)
 {
-    ASSERT(m_cachesInMemory.get(group->manifestURL()) == group);
-    ASSERT(m_cacheHostSet.contains(urlHostHash(group->manifestURL())));
+    ASSERT(m_cachesInMemory.get(group.manifestURL()) == &group);
+    ASSERT(m_cacheHostSet.contains(urlHostHash(group.manifestURL())));
 
-    if (ApplicationCache* newestCache = group->newestCache())
+    if (auto* newestCache = group.newestCache())
         remove(newestCache);
 
-    m_cachesInMemory.remove(group->manifestURL());
-    m_cacheHostSet.remove(urlHostHash(group->manifestURL()));
+    m_cachesInMemory.remove(group.manifestURL());
+    m_cacheHostSet.remove(urlHostHash(group.manifestURL()));
 }
 
 const String& ApplicationCacheStorage::cacheDirectory() const
@@ -428,7 +420,7 @@ void ApplicationCacheStorage::setDefaultOriginQuota(int64_t quota)
     m_defaultOriginQuota = quota;
 }
 
-bool ApplicationCacheStorage::calculateQuotaForOrigin(const SecurityOrigin* origin, int64_t& quota)
+bool ApplicationCacheStorage::calculateQuotaForOrigin(const SecurityOrigin& origin, int64_t& quota)
 {
     SQLiteTransactionInProgressAutoCounter transactionCounter;
 
@@ -439,7 +431,7 @@ bool ApplicationCacheStorage::calculateQuotaForOrigin(const SecurityOrigin* orig
     if (statement.prepare() != SQLITE_OK)
         return false;
 
-    statement.bindText(1, SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
+    statement.bindText(1, SecurityOriginData::fromSecurityOrigin(origin).databaseIdentifier());
     int result = statement.step();
 
     // Return the quota, or if it was null the default.
@@ -479,7 +471,7 @@ bool ApplicationCacheStorage::calculateUsageForOrigin(const SecurityOrigin* orig
     return false;
 }
 
-bool ApplicationCacheStorage::calculateRemainingSizeForOriginExcludingCache(const SecurityOrigin* origin, ApplicationCache* cache, int64_t& remainingSize)
+bool ApplicationCacheStorage::calculateRemainingSizeForOriginExcludingCache(const SecurityOrigin& origin, ApplicationCache* cache, int64_t& remainingSize)
 {
     SQLiteTransactionInProgressAutoCounter transactionCounter;
 
@@ -510,7 +502,7 @@ bool ApplicationCacheStorage::calculateRemainingSizeForOriginExcludingCache(cons
     if (statement.prepare() != SQLITE_OK)
         return false;
 
-    statement.bindText(1, SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
+    statement.bindText(1, SecurityOriginData::fromSecurityOrigin(origin).databaseIdentifier());
     if (excludingCacheIdentifier != 0)
         statement.bindInt64(2, excludingCacheIdentifier);
     int result = statement.step();
@@ -695,14 +687,14 @@ bool ApplicationCacheStorage::store(ApplicationCacheGroup* group, GroupStorageID
 
     statement.bindInt64(1, urlHostHash(group->manifestURL()));
     statement.bindText(2, group->manifestURL());
-    statement.bindText(3, SecurityOriginData::fromSecurityOrigin(*group->origin()).databaseIdentifier());
+    statement.bindText(3, SecurityOriginData::fromSecurityOrigin(group->origin()).databaseIdentifier());
 
     if (!executeStatement(statement))
         return false;
 
     unsigned groupStorageID = static_cast<unsigned>(m_database.lastInsertRowID());
 
-    if (!ensureOriginRecord(group->origin()))
+    if (!ensureOriginRecord(&group->origin()))
         return false;
 
     group->setStorageID(groupStorageID);
@@ -811,7 +803,7 @@ bool ApplicationCacheStorage::store(ApplicationCacheResource* resource, unsigned
     else if (shouldStoreResourceAsFlatFile(resource)) {
         // First, check to see if creating the flat file would violate the maximum total quota. We don't need
         // to check the per-origin quota here, as it was already checked in storeNewestCache().
-        if (m_database.totalSize() + flatFileAreaSize() + resource->data().size() > m_maximumSize) {
+        if (m_database.totalSize() + flatFileAreaSize() + static_cast<int64_t>(resource->data().size()) > m_maximumSize) {
             m_isMaximumSizeReached = true;
             return false;
         }
@@ -978,7 +970,7 @@ bool ApplicationCacheStorage::checkOriginQuota(ApplicationCacheGroup* group, App
 {
     // Check if the oldCache with the newCache would reach the per-origin quota.
     int64_t remainingSpaceInOrigin;
-    const SecurityOrigin* origin = group->origin();
+    auto& origin = group->origin();
     if (calculateRemainingSizeForOriginExcludingCache(origin, oldCache, remainingSpaceInOrigin)) {
         if (remainingSpaceInOrigin < newCache->estimatedSizeInStorage()) {
             int64_t quota;
@@ -996,7 +988,7 @@ bool ApplicationCacheStorage::checkOriginQuota(ApplicationCacheGroup* group, App
     return true;
 }
 
-bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup* group, ApplicationCache* oldCache, FailureReason& failureReason)
+bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup& group, ApplicationCache* oldCache, FailureReason& failureReason)
 {
     openDatabase(true);
 
@@ -1012,24 +1004,24 @@ bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup* group, App
 
     // Check if this would reach the per-origin quota.
     int64_t totalSpaceNeededIgnored;
-    if (!checkOriginQuota(group, oldCache, group->newestCache(), totalSpaceNeededIgnored)) {
+    if (!checkOriginQuota(&group, oldCache, group.newestCache(), totalSpaceNeededIgnored)) {
         failureReason = OriginQuotaReached;
         return false;
     }
 
     GroupStorageIDJournal groupStorageIDJournal;
-    if (!group->storageID()) {
+    if (!group.storageID()) {
         // Store the group
-        if (!store(group, &groupStorageIDJournal)) {
+        if (!store(&group, &groupStorageIDJournal)) {
             checkForMaxSizeReached();
             failureReason = isMaximumSizeReached() ? TotalQuotaReached : DiskOrOperationFailure;
             return false;
         }
     }
     
-    ASSERT(group->newestCache());
-    ASSERT(!group->isObsolete());
-    ASSERT(!group->newestCache()->storageID());
+    ASSERT(group.newestCache());
+    ASSERT(!group.isObsolete());
+    ASSERT(!group.newestCache()->storageID());
     
     // Log the storageID changes to the in-memory resource objects. The journal
     // object will roll them back automatically in case a database operation
@@ -1037,7 +1029,7 @@ bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup* group, App
     ResourceStorageIDJournal resourceStorageIDJournal;
 
     // Store the newest cache
-    if (!store(group->newestCache(), &resourceStorageIDJournal)) {
+    if (!store(group.newestCache(), &resourceStorageIDJournal)) {
         checkForMaxSizeReached();
         failureReason = isMaximumSizeReached() ? TotalQuotaReached : DiskOrOperationFailure;
         return false;
@@ -1051,8 +1043,8 @@ bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup* group, App
         return false;
     }
     
-    statement.bindInt64(1, group->newestCache()->storageID());
-    statement.bindInt64(2, group->storageID());
+    statement.bindInt64(1, group.newestCache()->storageID());
+    statement.bindInt64(2, group.storageID());
     
     if (!executeStatement(statement)) {
         failureReason = DiskOrOperationFailure;
@@ -1065,22 +1057,24 @@ bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup* group, App
     return true;
 }
 
-bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup* group)
+bool ApplicationCacheStorage::storeNewestCache(ApplicationCacheGroup& group)
 {
     // Ignore the reason for failing, just attempt the store.
     FailureReason ignoredFailureReason;
-    return storeNewestCache(group, 0, ignoredFailureReason);
+    return storeNewestCache(group, nullptr, ignoredFailureReason);
 }
 
-template <typename CharacterType>
-static inline void parseHeader(const CharacterType* header, size_t headerLength, ResourceResponse& response)
+template<typename CharacterType>
+static inline void parseHeader(const CharacterType* header, unsigned headerLength, ResourceResponse& response)
 {
-    size_t pos = find(header, headerLength, ':');
-    ASSERT(pos != notFound);
-    
-    String headerName = AtomicString(header, pos);
-    String headerValue = String(header + pos + 1, headerLength - pos - 1);
-    
+    ASSERT(find(header, headerLength, ':') != notFound);
+    unsigned colonPosition = find(header, headerLength, ':');
+
+    // Save memory by putting the header names into atomic strings so each is stored only once,
+    // even though the setHTTPHeaderField function does not require an atomic string.
+    AtomicString headerName { header, colonPosition };
+    String headerValue { header + colonPosition + 1, headerLength - colonPosition - 1 };
+
     response.setHTTPHeaderField(headerName, headerValue);
 }
 
@@ -1107,7 +1101,7 @@ static inline void parseHeaders(const String& headers, ResourceResponse& respons
     }
 }
     
-PassRefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storageID)
+RefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storageID)
 {
     ASSERT(SQLiteDatabaseTracker::hasTransactionInProgress());
     SQLiteStatement cacheStatement(m_database,
@@ -1135,7 +1129,7 @@ PassRefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storage
         Vector<char> blob;
         cacheStatement.getColumnBlobAsVector(6, blob);
         
-        auto data = SharedBuffer::adoptVector(blob);
+        auto data = SharedBuffer::create(WTFMove(blob));
         
         String path = cacheStatement.getColumnText(7);
         long long size = 0;
@@ -1408,10 +1402,11 @@ bool ApplicationCacheStorage::deleteCacheGroup(const String& manifestURL)
     SQLiteTransactionInProgressAutoCounter transactionCounter;
 
     SQLiteTransaction deleteTransaction(m_database);
+
     // Check to see if the group is in memory.
-    ApplicationCacheGroup* group = m_cachesInMemory.get(manifestURL);
+    auto* group = m_cachesInMemory.get(manifestURL);
     if (group)
-        cacheGroupMadeObsolete(group);
+        cacheGroupMadeObsolete(*group);
     else {
         // The cache group is not in memory, so remove it from the disk.
         openDatabase(false);
@@ -1424,9 +1419,9 @@ bool ApplicationCacheStorage::deleteCacheGroup(const String& manifestURL)
     }
 
     deleteTransaction.commit();
-    
+
     checkForDeletedResources();
-    
+
     return true;
 }
 

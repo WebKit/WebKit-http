@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,25 +25,59 @@
 
 #pragma once
 
-#include "Strong.h"
+#include "WasmIndexOrName.h"
+#include "WriteBarrier.h"
+#include <limits.h>
 
 namespace JSC {
 
 class CodeBlock;
 class JSObject;
+class SlotVisitor;
 
-struct StackFrame {
-    Strong<JSObject> callee;
-    Strong<CodeBlock> codeBlock;
-    unsigned bytecodeOffset;
-    
-    bool isNative() const { return !codeBlock; }
+class StackFrame {
+public:
+    StackFrame()
+        : m_bytecodeOffset(UINT_MAX)
+    { }
+
+    StackFrame(VM&, JSCell* owner, JSCell* callee);
+
+    StackFrame(VM&, JSCell* owner, JSCell* callee, CodeBlock*, unsigned bytecodeOffset);
+
+    static StackFrame wasm(Wasm::IndexOrName indexOrName)
+    {
+        StackFrame result;
+        result.m_isWasmFrame = true;
+        result.m_wasmFunctionIndexOrName = indexOrName;
+        return result;
+    }
+
+    bool hasLineAndColumnInfo() const { return !!m_codeBlock; }
     
     void computeLineAndColumn(unsigned& line, unsigned& column) const;
     String functionName(VM&) const;
     intptr_t sourceID() const;
     String sourceURL() const;
     String toString(VM&) const;
+
+    bool hasBytecodeOffset() const { return m_bytecodeOffset != UINT_MAX && !m_isWasmFrame; }
+    unsigned bytecodeOffset()
+    {
+        ASSERT(hasBytecodeOffset());
+        return m_bytecodeOffset;
+    }
+    
+    void visitChildren(SlotVisitor&);
+
+private:
+    WriteBarrier<JSCell> m_callee { };
+    WriteBarrier<CodeBlock> m_codeBlock { };
+    union {
+        unsigned m_bytecodeOffset;
+        Wasm::IndexOrName m_wasmFunctionIndexOrName;
+    };
+    bool m_isWasmFrame { false };
 };
 
 } // namespace JSC

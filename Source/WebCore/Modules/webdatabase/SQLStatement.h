@@ -45,7 +45,7 @@ class SQLTransactionBackend;
 
 class SQLStatement {
 public:
-    SQLStatement(Database&, const String&, const Vector<SQLValue>&, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&, int permissions);
+    SQLStatement(Database&, const String&, Vector<SQLValue>&&, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&, int permissions);
     ~SQLStatement();
 
     bool execute(Database&);
@@ -53,7 +53,7 @@ public:
 
     bool hasStatementCallback() const { return m_statementCallbackWrapper.hasCallback(); }
     bool hasStatementErrorCallback() const { return m_statementErrorCallbackWrapper.hasCallback(); }
-    bool performCallback(SQLTransaction*);
+    bool performCallback(SQLTransaction&);
 
     void setDatabaseDeletedError();
     void setVersionMismatchedError();

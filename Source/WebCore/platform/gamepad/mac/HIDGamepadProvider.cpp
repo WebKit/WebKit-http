@@ -28,14 +28,15 @@
 
 #if ENABLE(GAMEPAD) && PLATFORM(MAC)
 
-#include "GamepadProviderClient.h"
-#include "Logging.h"
-#include "PlatformGamepad.h"
+#import "GamepadProviderClient.h"
+#import "Logging.h"
+#import "PlatformGamepad.h"
+#import <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-static const double ConnectionDelayInterval = 0.5;
-static const double InputNotificationDelay = 0.05;
+static const Seconds connectionDelayInterval { 500_ms };
+static const Seconds inputNotificationDelay { 50_ms };
 
 static RetainPtr<CFDictionaryRef> deviceMatchingDictionary(uint32_t usagePage, uint32_t usage)
 {
@@ -142,9 +143,9 @@ void HIDGamepadProvider::openAndScheduleManager()
     IOHIDManagerScheduleWithRunLoop(m_manager.get(), CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     IOHIDManagerOpen(m_manager.get(), kIOHIDOptionsTypeNone);
 
-    // Any connections we are notified of within the ConnectionDelayInterval of listening likely represent
+    // Any connections we are notified of within the connectionDelayInterval of listening likely represent
     // devices that were already connected, so we suppress notifying clients of these.
-    m_connectionDelayTimer.startOneShot(ConnectionDelayInterval);
+    m_connectionDelayTimer.startOneShot(connectionDelayInterval);
 }
 
 void HIDGamepadProvider::closeAndUnscheduleManager()
@@ -190,7 +191,7 @@ void HIDGamepadProvider::deviceAdded(IOHIDDeviceRef device)
     std::unique_ptr<HIDGamepad> gamepad = std::make_unique<HIDGamepad>(device, index);
 
     if (m_gamepadVector.size() <= index)
-        m_gamepadVector.resize(index + 1);
+        m_gamepadVector.grow(index + 1);
 
     m_gamepadVector[index] = gamepad.get();
     m_gamepadMap.set(device, WTFMove(gamepad));
@@ -201,7 +202,7 @@ void HIDGamepadProvider::deviceAdded(IOHIDDeviceRef device)
         // and we don't want to tell the client about any of them.
         // The m_connectionDelayTimer fires in a subsequent spin of the runloop after which
         // any connection events are actual new devices.
-        m_connectionDelayTimer.startOneShot(0);
+        m_connectionDelayTimer.startOneShot(0_s);
 
         LOG(Gamepad, "Device %p was added while suppressing callbacks, so this should be an 'already connected' event", device);
 
@@ -237,12 +238,13 @@ void HIDGamepadProvider::valuesChanged(IOHIDValueRef value)
     if (!gamepad)
         return;
 
-    gamepad->valueChanged(value);
+    if (gamepad->valueChanged(value) == HIDInputType::ButtonPress)
+        setShouldMakeGamepadsVisibile();
 
     // This isActive check is necessary as we want to delay input notifications from the time of the first input,
     // and not push the notification out on every subsequent input.
     if (!m_inputNotificationTimer.isActive())
-        m_inputNotificationTimer.startOneShot(InputNotificationDelay);
+        m_inputNotificationTimer.startOneShot(inputNotificationDelay);
 }
 
 void HIDGamepadProvider::inputNotificationTimerFired()
@@ -250,8 +252,7 @@ void HIDGamepadProvider::inputNotificationTimerFired()
     if (!m_shouldDispatchCallbacks)
         return;
 
-    for (auto& client : m_clients)
-        client->platformGamepadInputActivity();
+    dispatchPlatformGamepadInputActivity();
 }
 
 std::unique_ptr<HIDGamepad> HIDGamepadProvider::removeGamepadForDevice(IOHIDDeviceRef device)

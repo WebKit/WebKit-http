@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  * Copyright (C) 2013 Patrick Gansterer <paroga@paroga.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,9 @@
 #ifndef WTF_StdLibExtras_h
 #define WTF_StdLibExtras_h
 
-#include <chrono>
 #include <cstring>
 #include <memory>
-#include <functional>
+#include <type_traits>
 #include <wtf/Assertions.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/Compiler.h>
@@ -79,11 +78,6 @@
 #define WTF_CONCAT_INTERNAL_DONT_USE(a, b) a ## b
 #define WTF_CONCAT(a, b) WTF_CONCAT_INTERNAL_DONT_USE(a, b)
 
-
-// Make "PRId64" format specifier work for Visual C++ on Windows.
-#if OS(WINDOWS) && !defined(PRId64)
-#define PRId64 "lld"
-#endif
 
 /*
  * The reinterpret_cast<Type1*>([pointer to Type2]) expressions - where
@@ -187,18 +181,33 @@ template<typename T> char (&ArrayLengthHelperFunction(T (&)[0]))[0];
 #endif
 #define WTF_ARRAY_LENGTH(array) sizeof(::WTF::ArrayLengthHelperFunction(array))
 
+ALWAYS_INLINE constexpr size_t roundUpToMultipleOfImpl0(size_t remainderMask, size_t x)
+{
+    return (x + remainderMask) & ~remainderMask;
+}
+
+ALWAYS_INLINE constexpr size_t roundUpToMultipleOfImpl(size_t divisor, size_t x)
+{
+    return roundUpToMultipleOfImpl0(divisor - 1, x);
+}
+
 // Efficient implementation that takes advantage of powers of two.
 inline size_t roundUpToMultipleOf(size_t divisor, size_t x)
 {
     ASSERT(divisor && !(divisor & (divisor - 1)));
-    size_t remainderMask = divisor - 1;
-    return (x + remainderMask) & ~remainderMask;
+    return roundUpToMultipleOfImpl(divisor, x);
 }
 
-template<size_t divisor> inline size_t roundUpToMultipleOf(size_t x)
+template<size_t divisor> inline constexpr size_t roundUpToMultipleOf(size_t x)
 {
     static_assert(divisor && !(divisor & (divisor - 1)), "divisor must be a power of two!");
-    return roundUpToMultipleOf(divisor, x);
+    return roundUpToMultipleOfImpl(divisor, x);
+}
+
+template<size_t divisor, typename T> inline T* roundUpToMultipleOf(T* x)
+{
+    static_assert(sizeof(T*) == sizeof(size_t), "");
+    return reinterpret_cast<T*>(roundUpToMultipleOf<divisor>(reinterpret_cast<size_t>(x)));
 }
 
 enum BinarySearchMode {
@@ -405,6 +414,45 @@ struct RemoveCVAndReference  {
     typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
 };
 
+template<typename IteratorTypeLeft, typename IteratorTypeRight, typename IteratorTypeDst>
+IteratorTypeDst mergeDeduplicatedSorted(IteratorTypeLeft leftBegin, IteratorTypeLeft leftEnd, IteratorTypeRight rightBegin, IteratorTypeRight rightEnd, IteratorTypeDst dstBegin)
+{
+    IteratorTypeLeft leftIter = leftBegin;
+    IteratorTypeRight rightIter = rightBegin;
+    IteratorTypeDst dstIter = dstBegin;
+    
+    if (leftIter < leftEnd && rightIter < rightEnd) {
+        for (;;) {
+            auto left = *leftIter;
+            auto right = *rightIter;
+            if (left < right) {
+                *dstIter++ = left;
+                leftIter++;
+                if (leftIter >= leftEnd)
+                    break;
+            } else if (left == right) {
+                *dstIter++ = left;
+                leftIter++;
+                rightIter++;
+                if (leftIter >= leftEnd || rightIter >= rightEnd)
+                    break;
+            } else {
+                *dstIter++ = right;
+                rightIter++;
+                if (rightIter >= rightEnd)
+                    break;
+            }
+        }
+    }
+    
+    while (leftIter < leftEnd)
+        *dstIter++ = *leftIter++;
+    while (rightIter < rightEnd)
+        *dstIter++ = *rightIter++;
+    
+    return dstIter;
+}
+
 } // namespace WTF
 
 // This version of placement new omits a 0 check.
@@ -468,12 +516,22 @@ ALWAYS_INLINE constexpr typename remove_reference<T>::type&& move(T&& value)
     return move(forward<T>(value));
 }
 
+#if __cplusplus < 201703L && (!defined(_MSC_FULL_VER) || _MSC_FULL_VER < 190023918)
+template<class...> struct wtf_conjunction_impl;
+template<> struct wtf_conjunction_impl<> : true_type { };
+template<class B0> struct wtf_conjunction_impl<B0> : B0 { };
+template<class B0, class B1> struct wtf_conjunction_impl<B0, B1> : conditional<B0::value, B1, B0>::type { };
+template<class B0, class B1, class B2, class... Bn> struct wtf_conjunction_impl<B0, B1, B2, Bn...> : conditional<B0::value, wtf_conjunction_impl<B1, B2, Bn...>, B0>::type { };
+template<class... _Args> struct conjunction : wtf_conjunction_impl<_Args...> { };
+#endif
+
 } // namespace std
 
 #define WTFMove(value) std::move<WTF::CheckMoveParameter>(value)
 
 using WTF::KB;
 using WTF::MB;
+using WTF::GB;
 using WTF::approximateBinarySearch;
 using WTF::binarySearch;
 using WTF::bitwise_cast;
@@ -485,12 +543,9 @@ using WTF::isCompilationThread;
 using WTF::isPointerAligned;
 using WTF::isStatelessLambda;
 using WTF::is8ByteAligned;
+using WTF::mergeDeduplicatedSorted;
+using WTF::roundUpToMultipleOf;
 using WTF::safeCast;
 using WTF::tryBinarySearch;
-
-#if !COMPILER(CLANG) || __cplusplus >= 201400L
-// We normally don't want to bring in entire std namespaces, but literals are an exception.
-using namespace std::literals::chrono_literals;
-#endif
 
 #endif // WTF_StdLibExtras_h

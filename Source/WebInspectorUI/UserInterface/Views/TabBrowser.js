@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
+WI.TabBrowser = class TabBrowser extends WI.View
 {
     constructor(element, tabBar, navigationSidebar, detailsSidebar)
     {
@@ -37,42 +37,51 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         this._navigationSidebar = navigationSidebar || null;
         this._detailsSidebar = detailsSidebar || null;
 
-        if (this._navigationSidebar)
-            this._navigationSidebar.addEventListener(WebInspector.Sidebar.Event.CollapsedStateDidChange, this._sidebarCollapsedStateDidChange, this);
-
-        if (this._detailsSidebar) {
-            this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.CollapsedStateDidChange, this._sidebarCollapsedStateDidChange, this);
-            this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.SidebarPanelSelected, this._sidebarPanelSelected, this);
-            this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.WidthDidChange, this._detailsSidebarWidthDidChange, this);
+        if (this._navigationSidebar) {
+            this._navigationSidebar.addEventListener(WI.Sidebar.Event.CollapsedStateDidChange, this._sidebarCollapsedStateDidChange, this);
+            this._navigationSidebar.addEventListener(WI.Sidebar.Event.WidthDidChange, this._sidebarWidthDidChange, this);
         }
 
-        this._contentViewContainer = new WebInspector.ContentViewContainer;
+        if (this._detailsSidebar) {
+            this._detailsSidebar.addEventListener(WI.Sidebar.Event.CollapsedStateDidChange, this._sidebarCollapsedStateDidChange, this);
+            this._detailsSidebar.addEventListener(WI.Sidebar.Event.SidebarPanelSelected, this._sidebarPanelSelected, this);
+            this._detailsSidebar.addEventListener(WI.Sidebar.Event.WidthDidChange, this._sidebarWidthDidChange, this);
+        }
+
+        this._contentViewContainer = new WI.ContentViewContainer;
         this.addSubview(this._contentViewContainer);
 
         let showNextTab = () => { this._showNextTab(); };
         let showPreviousTab = () => { this._showPreviousTab(); };
-        let closeCurrentTab = () => {
-            let selectedTabBarItem = this._tabBar.selectedTabBarItem;
-            if (this._tabBar.tabBarItems.length > 3 || !selectedTabBarItem.isDefaultTab)
-                this._tabBar.removeTabBarItem(selectedTabBarItem);
-        };
 
-        this._closeCurrentTabKeyboardShortuct = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "W", closeCurrentTab);
+        let isRTL = WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL;
 
-        this._showNextTabKeyboardShortcut1 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.RightCurlyBrace, showNextTab);
-        this._showPreviousTabKeyboardShortcut1 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.LeftCurlyBrace, showPreviousTab);
-        this._showNextTabKeyboardShortcut2 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, WebInspector.KeyboardShortcut.Key.Tab, showNextTab);
-        this._showPreviousTabKeyboardShortcut2 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.Tab, showPreviousTab);
+        let nextKey1 = isRTL ? WI.KeyboardShortcut.Key.LeftCurlyBrace : WI.KeyboardShortcut.Key.RightCurlyBrace;
+        let previousKey1 = isRTL ? WI.KeyboardShortcut.Key.RightCurlyBrace : WI.KeyboardShortcut.Key.LeftCurlyBrace;
 
-        this._showNextTabKeyboardShortcut3 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.Right, this._showNextTabCheckingForEditableField.bind(this));
-        this._showNextTabKeyboardShortcut3.implicitlyPreventsDefault = false;
-        this._showPreviousTabKeyboardShortcut3 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.Left, this._showPreviousTabCheckingForEditableField.bind(this));
-        this._showPreviousTabKeyboardShortcut3.implicitlyPreventsDefault = false;
+        this._showNextTabKeyboardShortcut1 = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl | WI.KeyboardShortcut.Modifier.Shift, nextKey1, showNextTab);
+        this._showPreviousTabKeyboardShortcut1 = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl | WI.KeyboardShortcut.Modifier.Shift, previousKey1, showPreviousTab);
 
-        this._tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemSelected, this._tabBarItemSelected, this);
-        this._tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemRemoved, this._tabBarItemRemoved, this);
+        let nextModifier2 = isRTL ? WI.KeyboardShortcut.Modifier.Shift : 0;
+        let previousModifier2 = isRTL ? 0 : WI.KeyboardShortcut.Modifier.Shift;
+
+        this._showNextTabKeyboardShortcut2 = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Control | nextModifier2, WI.KeyboardShortcut.Key.Tab, showNextTab);
+        this._showPreviousTabKeyboardShortcut2 = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Control | previousModifier2, WI.KeyboardShortcut.Key.Tab, showPreviousTab);
+
+        let previousTabKey = isRTL ? WI.KeyboardShortcut.Key.Right : WI.KeyboardShortcut.Key.Left;
+        let nextTabKey = isRTL ? WI.KeyboardShortcut.Key.Left : WI.KeyboardShortcut.Key.Right;
+        this._previousTabKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl | WI.KeyboardShortcut.Modifier.Shift, previousTabKey, this._showPreviousTabCheckingForEditableField.bind(this));
+        this._previousTabKeyboardShortcut.implicitlyPreventsDefault = false;
+        this._nextTabKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl | WI.KeyboardShortcut.Modifier.Shift, nextTabKey, this._showNextTabCheckingForEditableField.bind(this));
+        this._nextTabKeyboardShortcut.implicitlyPreventsDefault = false;
+
+        this._tabBar.addEventListener(WI.TabBar.Event.TabBarItemSelected, this._tabBarItemSelected, this);
+        this._tabBar.addEventListener(WI.TabBar.Event.TabBarItemAdded, this._tabBarItemAdded, this);
+        this._tabBar.addEventListener(WI.TabBar.Event.TabBarItemRemoved, this._tabBarItemRemoved, this);
+        this._tabBar.newTabTabBarItem.addEventListener(WI.PinnedTabBarItem.Event.ContextMenu, this._handleNewTabContextMenu, this);
 
         this._recentTabContentViews = [];
+        this._closedTabClasses = new Set;
     }
 
     // Public
@@ -109,11 +118,19 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         return null;
     }
 
-    bestTabContentViewForRepresentedObject(representedObject)
+    bestTabContentViewForRepresentedObject(representedObject, options = {})
     {
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
 
         for (var tabContentView of this._recentTabContentViews) {
+            if (options.ignoreSearchTab && tabContentView instanceof WI.SearchTabContentView)
+                continue;
+
+            if (options.ignoreNetworkTab && tabContentView instanceof WI.LegacyNetworkTabContentView)
+                continue;
+            if (options.ignoreNetworkTab && tabContentView instanceof WI.NetworkTabContentView)
+                continue;
+
             if (tabContentView.canShowRepresentedObject(representedObject))
                 return tabContentView;
         }
@@ -121,16 +138,16 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         return null;
     }
 
-    addTabForContentView(tabContentView, doNotAnimate, insertionIndex)
+    addTabForContentView(tabContentView, options = {})
     {
-        console.assert(tabContentView instanceof WebInspector.TabContentView);
-        if (!(tabContentView instanceof WebInspector.TabContentView))
+        console.assert(tabContentView instanceof WI.TabContentView);
+        if (!(tabContentView instanceof WI.TabContentView))
             return false;
 
         let tabBarItem = tabContentView.tabBarItem;
 
-        console.assert(tabBarItem instanceof WebInspector.TabBarItem);
-        if (!(tabBarItem instanceof WebInspector.TabBarItem))
+        console.assert(tabBarItem instanceof WI.TabBarItem);
+        if (!(tabBarItem instanceof WI.TabBarItem))
             return false;
 
         if (tabBarItem.representedObject !== tabContentView)
@@ -148,10 +165,10 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         else
             this._recentTabContentViews.push(tabContentView);
 
-        if (typeof insertionIndex === "number")
-            this._tabBar.insertTabBarItem(tabBarItem, insertionIndex, doNotAnimate);
+        if (typeof options.insertionIndex === "number")
+            this._tabBar.insertTabBarItem(tabBarItem, options.insertionIndex, options);
         else
-            this._tabBar.addTabBarItem(tabBarItem, doNotAnimate);
+            this._tabBar.addTabBarItem(tabBarItem, options);
 
         console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
@@ -159,12 +176,13 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         return true;
     }
 
-    showTabForContentView(tabContentView, doNotAnimate, insertionIndex)
+    showTabForContentView(tabContentView, options = {})
     {
-        if (!this.addTabForContentView(tabContentView, doNotAnimate, insertionIndex))
+        if (!this.addTabForContentView(tabContentView, options))
             return false;
 
-        this._tabBar.selectedTabBarItem = tabContentView.tabBarItem;
+        if (!options.suppressSelection)
+            this._tabBar.selectedTabBarItem = tabContentView.tabBarItem;
 
         // FIXME: this is a workaround for <https://webkit.org/b/151876>.
         // Without this extra call, we might never lay out the child tab
@@ -176,20 +194,20 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         return true;
     }
 
-    closeTabForContentView(tabContentView, doNotAnimate)
+    closeTabForContentView(tabContentView, options = {})
     {
-        console.assert(tabContentView instanceof WebInspector.TabContentView);
-        if (!(tabContentView instanceof WebInspector.TabContentView))
+        console.assert(tabContentView instanceof WI.TabContentView);
+        if (!(tabContentView instanceof WI.TabContentView))
             return false;
 
-        console.assert(tabContentView.tabBarItem instanceof WebInspector.TabBarItem);
-        if (!(tabContentView.tabBarItem instanceof WebInspector.TabBarItem))
+        console.assert(tabContentView.tabBarItem instanceof WI.TabBarItem);
+        if (!(tabContentView.tabBarItem instanceof WI.TabBarItem))
             return false;
 
         if (tabContentView.tabBarItem.parentTabBar !== this._tabBar)
             return false;
 
-        this._tabBar.removeTabBarItem(tabContentView.tabBarItem, doNotAnimate);
+        this._tabBar.removeTabBarItem(tabContentView.tabBarItem, options);
 
         console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
@@ -201,11 +219,11 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
 
     layout()
     {
-        if (this.layoutReason !== WebInspector.View.LayoutReason.Resize)
+        if (this.layoutReason !== WI.View.LayoutReason.Resize)
             return;
 
         for (let tabContentView of this._recentTabContentViews)
-            tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol] = tabContentView !== this.selectedTabContentView;
+            tabContentView[WI.TabBrowser.NeedsResizeLayoutSymbol] = tabContentView !== this.selectedTabContentView;
     }
 
     // Private
@@ -215,7 +233,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         let tabContentView = this._tabBar.selectedTabBarItem ? this._tabBar.selectedTabBarItem.representedObject : null;
 
         if (tabContentView) {
-            let isSettingsTab = tabContentView instanceof WebInspector.SettingsTabContentView;
+            let isSettingsTab = tabContentView instanceof WI.SettingsTabContentView;
             if (!isSettingsTab) {
                 this._recentTabContentViews.remove(tabContentView);
                 this._recentTabContentViews.unshift(tabContentView);
@@ -236,12 +254,23 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         this._showDetailsSidebarPanelsForTabContentView(tabContentView);
 
         // If the tab browser was resized prior to showing the tab, the new tab needs to perform a resize layout.
-        if (tabContentView && tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol]) {
-            tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol] = false;
-            tabContentView.updateLayout(WebInspector.View.LayoutReason.Resize);
+        if (tabContentView && tabContentView[WI.TabBrowser.NeedsResizeLayoutSymbol]) {
+            tabContentView[WI.TabBrowser.NeedsResizeLayoutSymbol] = false;
+            tabContentView.updateLayout(WI.View.LayoutReason.Resize);
         }
 
-        this.dispatchEventToListeners(WebInspector.TabBrowser.Event.SelectedTabContentViewDidChange);
+        this.dispatchEventToListeners(WI.TabBrowser.Event.SelectedTabContentViewDidChange);
+    }
+
+    _tabBarItemAdded(event)
+    {
+        let tabContentView = event.data.tabBarItem.representedObject;
+
+        console.assert(tabContentView);
+        if (!tabContentView)
+            return;
+
+        this._closedTabClasses.delete(tabContentView.constructor);
     }
 
     _tabBarItemRemoved(event)
@@ -253,12 +282,45 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
             return;
 
         this._recentTabContentViews.remove(tabContentView);
+
+        if (!tabContentView.constructor.isEphemeral())
+            this._closedTabClasses.add(tabContentView.constructor);
+
         this._contentViewContainer.closeContentView(tabContentView);
 
         tabContentView.parentTabBrowser = null;
 
         console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
+    }
+
+    _handleNewTabContextMenu(event)
+    {
+        // The array must be reversed because Sets insert into the end, and we want to display the
+        // most recently closed item first (which is the last item added to the set).
+        let closedTabClasses = Array.from(this._closedTabClasses).reverse();
+        let allTabClasses = Array.from(WI.knownTabClasses());
+        let tabClassesToDisplay = closedTabClasses.concat(allTabClasses.filter((tabClass) => {
+            if (closedTabClasses.includes(tabClass))
+                return false;
+
+            if (tabClass.isEphemeral())
+                return false;
+
+            return WI.isNewTabWithTypeAllowed(tabClass.Type);
+        }));
+        if (!tabClassesToDisplay.length)
+            return;
+
+        let contextMenu = event.data.contextMenu;
+
+        contextMenu.appendItem(WI.UIString("Recently Closed Tabs"), null, true);
+
+        for (let tabClass of tabClassesToDisplay) {
+            contextMenu.appendItem(tabClass.tabInfo().title, () => {
+                WI.createNewTabWithType(tabClass.Type, {shouldShowNewTab: true});
+            });
+        }
     }
 
     _sidebarPanelSelected(event)
@@ -294,17 +356,24 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
             tabContentView.detailsSidebarCollapsedSetting.value = this._detailsSidebar.collapsed;
     }
 
-    _detailsSidebarWidthDidChange(event)
+    _sidebarWidthDidChange(event)
     {
-        if (this._ignoreSidebarEvents)
+        if (this._ignoreSidebarEvents || !event.data)
             return;
 
         let tabContentView = this.selectedTabContentView;
         if (!tabContentView)
             return;
 
-        if (event.target === this._detailsSidebar && event.data)
+        switch (event.target) {
+        case this._navigationSidebar:
+            tabContentView.navigationSidebarWidthSetting.value = event.data.newWidth;
+            break;
+
+        case this._detailsSidebar:
             tabContentView.detailsSidebarWidthSetting.value = event.data.newWidth;
+            break;
+        }
     }
 
     _showNavigationSidebarPanelForTabContentView(tabContentView)
@@ -322,6 +391,9 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
             this._ignoreSidebarEvents = false;
             return;
         }
+
+        if (tabContentView.navigationSidebarWidthSetting.value)
+            this._navigationSidebar.width = tabContentView.navigationSidebarWidthSetting.value;
 
         var navigationSidebarPanel = tabContentView.navigationSidebarPanel;
         if (!navigationSidebarPanel) {
@@ -393,7 +465,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
 
     _showNextTabCheckingForEditableField(event)
     {
-        if (WebInspector.isEventTargetAnEditableField(event))
+        if (WI.isEventTargetAnEditableField(event))
             return;
 
         this._showNextTab(event);
@@ -403,7 +475,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
 
     _showPreviousTabCheckingForEditableField(event)
     {
-        if (WebInspector.isEventTargetAnEditableField(event))
+        if (WI.isEventTargetAnEditableField(event))
             return;
 
         this._showPreviousTab(event);
@@ -412,8 +484,8 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
     }
 };
 
-WebInspector.TabBrowser.NeedsResizeLayoutSymbol = Symbol("needs-resize-layout");
+WI.TabBrowser.NeedsResizeLayoutSymbol = Symbol("needs-resize-layout");
 
-WebInspector.TabBrowser.Event = {
+WI.TabBrowser.Event = {
     SelectedTabContentViewDidChange: "tab-browser-selected-tab-content-view-did-change"
 };

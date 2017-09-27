@@ -43,14 +43,14 @@ class SecurityOrigin;
 
 struct Length;
 
-class CachedImage final : public CachedResource, public ImageObserver {
+class CachedImage final : public CachedResource {
     friend class MemoryCache;
 
 public:
-    CachedImage(CachedResourceRequest&&, SessionID);
-    CachedImage(Image*, SessionID);
+    CachedImage(CachedResourceRequest&&, PAL::SessionID);
+    CachedImage(Image*, PAL::SessionID);
     // Constructor to use for manually cached images.
-    CachedImage(const URL&, Image*, SessionID);
+    CachedImage(const URL&, Image*, PAL::SessionID, const String& domainForCachePartition);
     virtual ~CachedImage();
 
     WEBCORE_EXPORT Image* image(); // Returns the nullImage() if the image is not available yet.
@@ -63,10 +63,10 @@ public:
 
     bool canRender(const RenderElement* renderer, float multiplier) { return !errorOccurred() && !imageSizeForRenderer(renderer, multiplier).isEmpty(); }
 
-    void setContainerSizeForRenderer(const CachedImageClient*, const LayoutSize&, float);
-    bool usesImageContainerSize() const;
-    bool imageHasRelativeWidth() const;
-    bool imageHasRelativeHeight() const;
+    void setContainerContextForClient(const CachedImageClient&, const LayoutSize&, float, const URL&);
+    bool usesImageContainerSize() const { return m_image && m_image->usesContainerSize(); }
+    bool imageHasRelativeWidth() const { return m_image && m_image->hasRelativeWidth(); }
+    bool imageHasRelativeHeight() const { return m_image && m_image->hasRelativeHeight(); }
 
     void addDataBuffer(SharedBuffer&) override;
     void finishLoading(SharedBuffer*) override;
@@ -85,10 +85,12 @@ public:
 
     bool isOriginClean(SecurityOrigin*);
 
+    void addPendingImageDrawingClient(CachedImageClient&);
+
 private:
     void clear();
 
-    CachedImage(CachedImage&, const ResourceRequest&, SessionID);
+    CachedImage(CachedImage&, const ResourceRequest&, PAL::SessionID);
 
     void setBodyDataFrom(const CachedResource&) final;
 
@@ -107,6 +109,7 @@ private:
     void allClientsRemoved() override;
     void destroyDecodedData() override;
 
+    EncodedDataStatus setImageDataBuffer(SharedBuffer*, bool allDataReceived);
     void addData(const char* data, unsigned length) override;
     void error(CachedResource::Status) override;
     void responseReceived(const ResourceResponse&) override;
@@ -116,37 +119,56 @@ private:
 
     bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
 
-    // ImageObserver
-    bool allowSubsampling() const override { return m_allowSubsampling; }
-    bool allowAsyncImageDecoding() const override { return m_allowAsyncImageDecoding; }
-    bool showDebugBackground() const override { return m_showDebugBackground; }
-    void decodedSizeChanged(const Image*, long long delta) override;
-    void didDraw(const Image*) override;
+    class CachedImageObserver final : public RefCounted<CachedImageObserver>, public ImageObserver {
+    public:
+        static Ref<CachedImageObserver> create(CachedImage& image) { return adoptRef(*new CachedImageObserver(image)); }
+        HashSet<CachedImage*>& cachedImages() { return m_cachedImages; }
+        const HashSet<CachedImage*>& cachedImages() const { return m_cachedImages; }
 
-    void animationAdvanced(const Image*) override;
-    void changedInRect(const Image*, const IntRect* changeRect = nullptr) override;
+    private:
+        explicit CachedImageObserver(CachedImage&);
+
+        // ImageObserver API
+        URL sourceUrl() const override { return !m_cachedImages.isEmpty() ? (*m_cachedImages.begin())->url() : URL(); }
+        String mimeType() const override { return !m_cachedImages.isEmpty() ? (*m_cachedImages.begin())->mimeType() : emptyString(); }
+        long long expectedContentLength() const override { return !m_cachedImages.isEmpty() ? (*m_cachedImages.begin())->expectedContentLength() : 0; }
+
+        void decodedSizeChanged(const Image&, long long delta) final;
+        void didDraw(const Image&) final;
+
+        bool canDestroyDecodedData(const Image&) final;
+        void imageFrameAvailable(const Image&, ImageAnimatingState, const IntRect* changeRect = nullptr, DecodingStatus = DecodingStatus::Invalid) final;
+        void changedInRect(const Image&, const IntRect*) final;
+
+        HashSet<CachedImage*> m_cachedImages;
+    };
+
+    void decodedSizeChanged(const Image&, long long delta);
+    void didDraw(const Image&);
+    bool canDestroyDecodedData(const Image&);
+    void imageFrameAvailable(const Image&, ImageAnimatingState, const IntRect* changeRect = nullptr, DecodingStatus = DecodingStatus::Invalid);
+    void changedInRect(const Image&, const IntRect*);
 
     void addIncrementalDataBuffer(SharedBuffer&);
 
     void didReplaceSharedBufferContents() override;
 
-    typedef std::pair<LayoutSize, float> SizeAndZoom;
-    typedef HashMap<const CachedImageClient*, SizeAndZoom> ContainerSizeRequests;
-    ContainerSizeRequests m_pendingContainerSizeRequests;
+    struct ContainerContext {
+        LayoutSize containerSize;
+        float containerZoom;
+        URL imageURL;
+    };
 
+    using ContainerContextRequests = HashMap<const CachedImageClient*, ContainerContext>;
+    ContainerContextRequests m_pendingContainerContextRequests;
+
+    HashSet<CachedImageClient*> m_pendingImageDrawingClients;
+
+    RefPtr<CachedImageObserver> m_imageObserver;
     RefPtr<Image> m_image;
     std::unique_ptr<SVGImageCache> m_svgImageCache;
     bool m_isManuallyCached { false };
     bool m_shouldPaintBrokenImage { true };
-
-    // The default value of m_allowSubsampling should be the same as defaultImageSubsamplingEnabled in Settings.cpp
-#if PLATFORM(IOS)
-    bool m_allowSubsampling { true };
-#else
-    bool m_allowSubsampling { false };
-#endif
-    bool m_allowAsyncImageDecoding { true };
-    bool m_showDebugBackground { false };
 };
 
 } // namespace WebCore

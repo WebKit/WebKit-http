@@ -33,23 +33,31 @@
 
 namespace JSC {
 
-const ClassInfo JSCustomGetterSetterFunction::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(JSCustomGetterSetterFunction) };
+const ClassInfo JSCustomGetterSetterFunction::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSCustomGetterSetterFunction) };
 
 EncodedJSValue JSC_HOST_CALL JSCustomGetterSetterFunction::customGetterSetterFunctionCall(ExecState* exec)
 {
-    JSCustomGetterSetterFunction* customGetterSetterFunction = jsCast<JSCustomGetterSetterFunction*>(exec->callee());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSCustomGetterSetterFunction* customGetterSetterFunction = jsCast<JSCustomGetterSetterFunction*>(exec->jsCallee());
     CustomGetterSetter* customGetterSetter = customGetterSetterFunction->customGetterSetter();
+    JSValue thisValue = exec->thisValue();
 
     if (customGetterSetterFunction->isSetter()) {
         CustomGetterSetter::CustomSetter setter = customGetterSetter->setter();
         ASSERT(setter);
-        callCustomSetter(exec, setter, true, exec->thisValue(), exec->argument(0));
+        callCustomSetter(exec, setter, true, thisValue, exec->argument(0));
         return JSValue::encode(jsUndefined());
     }
 
-    CustomGetterSetter::CustomGetter getter = customGetterSetter->getter();
-    ASSERT(getter);
-    return getter(exec, JSValue::encode(exec->thisValue()), customGetterSetterFunction->propertyName());
+    if (isDOMAttributeGetterSetter(vm, customGetterSetter)) {
+        auto domAttribute = jsCast<DOMAttributeGetterSetter*>(customGetterSetter)->domAttribute();
+        if (!thisValue.inherits(vm, domAttribute.classInfo))
+            return throwVMDOMAttributeGetterTypeError(exec, scope, domAttribute.classInfo, customGetterSetterFunction->propertyName());
+    }
+
+    return customGetterSetter->getter()(exec, JSValue::encode(thisValue), customGetterSetterFunction->propertyName());
 }
 
 JSCustomGetterSetterFunction::JSCustomGetterSetterFunction(VM& vm, JSGlobalObject* globalObject, Structure* structure, const Type type, const PropertyName& propertyName)
@@ -82,13 +90,13 @@ void JSCustomGetterSetterFunction::visitChildren(JSCell* cell, SlotVisitor& visi
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_getterSetter);
+    visitor.append(thisObject->m_getterSetter);
 }
 
 void JSCustomGetterSetterFunction::finishCreation(VM& vm, NativeExecutable* executable, CustomGetterSetter* getterSetter, const String& name)
 {
     Base::finishCreation(vm, executable, isSetter(), name);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     ASSERT(getterSetter);
     m_getterSetter.set(vm, this, getterSetter);
 }

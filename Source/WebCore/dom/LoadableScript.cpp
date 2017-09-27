@@ -26,7 +26,12 @@
 #include "config.h"
 #include "LoadableScript.h"
 
+#include "CachedResourceLoader.h"
+#include "CachedScript.h"
+#include "ContentSecurityPolicy.h"
+#include "Document.h"
 #include "LoadableScriptClient.h"
+#include "Settings.h"
 
 namespace WebCore {
 

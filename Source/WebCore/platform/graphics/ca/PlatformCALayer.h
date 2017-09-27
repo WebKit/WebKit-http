@@ -23,14 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformCALayer_h
-#define PlatformCALayer_h
+#pragma once
 
 #include "FloatRoundedRect.h"
 #include "GraphicsLayer.h"
 #include <QuartzCore/CABase.h>
 #include <wtf/CurrentTime.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/TypeCasts.h>
@@ -68,13 +66,12 @@ public:
         LayerTypeWebLayer,
         LayerTypeSimpleLayer,
         LayerTypeTransformLayer,
-        LayerTypeWebTiledLayer,
         LayerTypeTiledBackingLayer,
         LayerTypePageTiledBackingLayer,
         LayerTypeTiledBackingTileLayer,
         LayerTypeRootLayer,
         LayerTypeAVPlayerLayer,
-        LayerTypeWebGLLayer,
+        LayerTypeContentsProvidedLayer,
         LayerTypeBackdropLayer,
         LayerTypeShapeLayer,
         LayerTypeLightSystemBackdropLayer,
@@ -84,7 +81,7 @@ public:
     };
     enum FilterType { Linear, Nearest, Trilinear };
 
-    virtual PassRefPtr<PlatformCALayer> clone(PlatformCALayerClient*) const = 0;
+    virtual Ref<PlatformCALayer> clone(PlatformCALayerClient*) const = 0;
 
     virtual ~PlatformCALayer();
 
@@ -114,6 +111,8 @@ public:
     virtual void copyContentsFromLayer(PlatformCALayer*) = 0;
 
     LayerType layerType() const { return m_layerType; }
+    
+    bool canHaveBackingStore() const;
 
     virtual PlatformCALayer* superlayer() const = 0;
     virtual void removeFromSuperlayer() = 0;
@@ -132,7 +131,7 @@ public:
 
     virtual void addAnimationForKey(const String& key, PlatformCAAnimation&) = 0;
     virtual void removeAnimationForKey(const String& key) = 0;
-    virtual PassRefPtr<PlatformCAAnimation> animationForKey(const String& key) = 0;
+    virtual RefPtr<PlatformCAAnimation> animationForKey(const String& key) = 0;
 
     virtual void setMask(PlatformCALayer*) = 0;
 
@@ -176,6 +175,12 @@ public:
     virtual bool acceleratesDrawing() const = 0;
     virtual void setAcceleratesDrawing(bool) = 0;
 
+    virtual bool wantsDeepColorBackingStore() const = 0;
+    virtual void setWantsDeepColorBackingStore(bool) = 0;
+
+    virtual bool supportsSubpixelAntialiasedText() const = 0;
+    virtual void setSupportsSubpixelAntialiasedText(bool) = 0;
+
     virtual CFTypeRef contents() const = 0;
     virtual void setContents(CFTypeRef) = 0;
 
@@ -183,7 +188,6 @@ public:
 
     virtual void setBackingStoreAttached(bool) = 0;
     virtual bool backingStoreAttached() const = 0;
-    virtual bool backingContributesToMemoryEstimate() const { return true; }
 
     virtual void setMinificationFilter(FilterType) = 0;
     virtual void setMagnificationFilter(FilterType) = 0;
@@ -234,7 +238,7 @@ public:
 
     virtual TiledBacking* tiledBacking() = 0;
 
-    virtual void drawTextAtPoint(CGContextRef, CGFloat x, CGFloat y, CGSize scale, CGFloat fontSize, const char* text, size_t length) const;
+    virtual void drawTextAtPoint(CGContextRef, CGFloat x, CGFloat y, CGSize scale, CGFloat fontSize, const char* text, size_t length, CGFloat strokeWidthAsPercentageOfFontSize = 0, Color strokeColor = Color()) const;
 
     static void flipContext(CGContextRef, CGFloat height);
     
@@ -254,8 +258,8 @@ public:
     void setAnchorPointOnMainThread(FloatPoint3D);
 #endif
 
-    virtual PassRefPtr<PlatformCALayer> createCompatibleLayer(LayerType, PlatformCALayerClient*) const = 0;
-    PassRefPtr<PlatformCALayer> createCompatibleLayerOrTakeFromPool(LayerType layerType, PlatformCALayerClient* client, IntSize);
+    virtual Ref<PlatformCALayer> createCompatibleLayer(LayerType, PlatformCALayerClient*) const = 0;
+    Ref<PlatformCALayer> createCompatibleLayerOrTakeFromPool(LayerType, PlatformCALayerClient*, IntSize);
 
 #if PLATFORM(COCOA)
     virtual void enumerateRectsBeingDrawn(CGContextRef, void (^block)(CGRect)) = 0;
@@ -272,7 +276,7 @@ public:
         
     // Functions allows us to share implementation across WebTiledLayer and WebLayer
     static RepaintRectList collectRectsToPaint(CGContextRef, PlatformCALayer*);
-    static void drawLayerContents(CGContextRef, PlatformCALayer*, RepaintRectList& dirtyRects);
+    static void drawLayerContents(CGContextRef, PlatformCALayer*, RepaintRectList& dirtyRects, GraphicsLayerPaintBehavior);
     static void drawRepaintIndicator(CGContextRef, PlatformCALayer*, int repaintCount, CGColorRef customBackgroundColor);
     static CGRect frameForLayer(const PlatformLayer*);
 
@@ -289,8 +293,8 @@ protected:
     PlatformCALayerClient* m_owner;
 };
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, PlatformCALayer::LayerType);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, PlatformCALayer::FilterType);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, PlatformCALayer::LayerType);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, PlatformCALayer::FilterType);
 
 } // namespace WebCore
 
@@ -298,5 +302,3 @@ WEBCORE_EXPORT TextStream& operator<<(TextStream&, PlatformCALayer::FilterType);
 SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
     static bool isType(const WebCore::PlatformCALayer& layer) { return layer.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // PlatformCALayer_h

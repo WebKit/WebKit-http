@@ -23,6 +23,7 @@
 #if USE(SOUP)
 
 #include "Cookie.h"
+#include "CookiesStrategy.h"
 #include "GUniquePtrSoup.h"
 #include "NetworkStorageSession.h"
 #include "NetworkingContext.h"
@@ -34,18 +35,6 @@
 #include <wtf/text/CString.h>
 
 namespace WebCore {
-
-static Cookie toWebCoreCookie(const SoupCookie* cookie)
-{
-    return Cookie(String::fromUTF8(cookie->name),
-                  String::fromUTF8(cookie->value),
-                  String::fromUTF8(cookie->domain),
-                  String::fromUTF8(cookie->path),
-                  cookie->expires ? static_cast<double>(soup_date_to_time_t(cookie->expires)) * 1000 : 0,
-                  cookie->http_only,
-                  cookie->secure,
-                  !cookie->expires);
-}
 
 static inline bool httpOnlyCookieExists(const GSList* cookies, const gchar* name, const gchar* path)
 {
@@ -93,21 +82,49 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
     soup_cookies_free(existingCookies);
 }
 
-static String cookiesForSession(const NetworkStorageSession& session, const URL& url, bool forHTTPHeader)
+static std::pair<String, bool> cookiesForSession(const NetworkStorageSession& session, const URL& url, bool forHTTPHeader, IncludeSecureCookies includeSecureCookies)
 {
     GUniquePtr<SoupURI> uri = url.createSoupURI();
-    GUniquePtr<char> cookies(soup_cookie_jar_get_cookies(session.cookieStorage(), uri.get(), forHTTPHeader));
-    return String::fromUTF8(cookies.get());
+    GSList* cookies = soup_cookie_jar_get_cookie_list(session.cookieStorage(), uri.get(), forHTTPHeader);
+    bool didAccessSecureCookies = false;
+
+    // libsoup should omit secure cookies itself if the protocol is not https.
+    if (url.protocolIs("https")) {
+        GSList* item = cookies;
+        while (item) {
+            auto cookie = static_cast<SoupCookie*>(item->data);
+            if (soup_cookie_get_secure(cookie)) {
+                didAccessSecureCookies = true;
+                if (includeSecureCookies == IncludeSecureCookies::No) {
+                    GSList* next = item->next;
+                    soup_cookie_free(static_cast<SoupCookie*>(item->data));
+                    cookies = g_slist_remove_link(cookies, item);
+                    item = next;
+                    continue;
+                }
+            }
+            item = item->next;
+        }
+    }
+
+    if (!cookies)
+        return { { }, false };
+
+    GUniquePtr<char> cookieHeader(soup_cookies_to_cookie_header(cookies));
+    soup_cookies_free(cookies);
+
+    return { String::fromUTF8(cookieHeader.get()), didAccessSecureCookies };
 }
 
-String cookiesForDOM(const NetworkStorageSession& session, const URL&, const URL& url)
+std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL&, const URL& url, IncludeSecureCookies includeSecureCookies)
 {
-    return cookiesForSession(session, url, false);
+    return cookiesForSession(session, url, false, includeSecureCookies);
 }
 
-String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& url)
+std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& url, IncludeSecureCookies includeSecureCookies)
 {
-    return cookiesForSession(session, url, true);
+    // Secure cookies will still only be included if url's protocol is https.
+    return cookiesForSession(session, url, true, includeSecureCookies);
 }
 
 bool cookiesEnabled(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/)
@@ -126,7 +143,9 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& /*firstParty
 
     for (GSList* iter = cookies.get(); iter; iter = g_slist_next(iter)) {
         SoupCookie* cookie = static_cast<SoupCookie*>(iter->data);
-        rawCookies.append(toWebCoreCookie(cookie));
+        rawCookies.append(Cookie(String::fromUTF8(cookie->name), String::fromUTF8(cookie->value), String::fromUTF8(cookie->domain),
+            String::fromUTF8(cookie->path), cookie->expires ? static_cast<double>(soup_date_to_time_t(cookie->expires)) * 1000 : 0,
+            cookie->http_only, cookie->secure, !cookie->expires, String(), URL(), Vector<uint16_t>{ }));
         soup_cookie_free(cookie);
     }
 
@@ -152,33 +171,6 @@ void deleteCookie(const NetworkStorageSession& session, const URL& url, const St
         }
         soup_cookie_free(cookie);
     }
-}
-
-static SoupDate* msToSoupDate(double ms)
-{
-    int year = msToYear(ms);
-    int dayOfYear = dayInYear(ms, year);
-    bool leapYear = isLeapYear(year);
-    return soup_date_new(year, monthFromDayInYear(dayOfYear, leapYear) + 1, dayInMonthFromDayInYear(dayOfYear, leapYear), msToHours(ms), msToMinutes(ms), static_cast<int>(ms / 1000) % 60);
-}
-
-static SoupCookie* toSoupCookie(const Cookie& cookie)
-{
-    SoupCookie* soupCookie = soup_cookie_new(cookie.name.utf8().data(), cookie.value.utf8().data(),
-        cookie.domain.utf8().data(), cookie.path.utf8().data(), -1);
-    soup_cookie_set_http_only(soupCookie, cookie.httpOnly);
-    soup_cookie_set_secure(soupCookie, cookie.secure);
-    if (!cookie.session) {
-        SoupDate* date = msToSoupDate(cookie.expires);
-        soup_cookie_set_expires(soupCookie, date);
-        soup_date_free(date);
-    }
-    return soupCookie;
-}
-
-void addCookie(const NetworkStorageSession& session, const URL&, const Cookie& cookie)
-{
-    soup_cookie_jar_add_cookie(session.cookieStorage(), toSoupCookie(cookie));
 }
 
 void getHostnamesWithCookies(const NetworkStorageSession& session, HashSet<String>& hostnames)
@@ -220,8 +212,35 @@ void deleteAllCookies(const NetworkStorageSession& session)
     }
 }
 
-void deleteAllCookiesModifiedSince(const NetworkStorageSession&, std::chrono::system_clock::time_point)
+void deleteAllCookiesModifiedSince(const NetworkStorageSession& session, std::chrono::system_clock::time_point timestamp)
 {
+    // FIXME: Add support for deleting cookies modified since the given timestamp. It should probably be added to libsoup.
+    if (timestamp == std::chrono::system_clock::from_time_t(0))
+        deleteAllCookies(session);
+    else
+        g_warning("Deleting cookies modified since a given time span is not supported yet");
+}
+
+static SoupDate* msToSoupDate(double ms)
+{
+    int year = msToYear(ms);
+    int dayOfYear = dayInYear(ms, year);
+    bool leapYear = isLeapYear(year);
+    return soup_date_new(year, monthFromDayInYear(dayOfYear, leapYear), dayInMonthFromDayInYear(dayOfYear, leapYear), msToHours(ms), msToMinutes(ms), static_cast<int>(ms / 1000) % 60);
+}
+
+static SoupCookie* toSoupCookie(const Cookie& cookie)
+{
+    SoupCookie* soupCookie = soup_cookie_new(cookie.name.utf8().data(), cookie.value.utf8().data(),
+        cookie.domain.utf8().data(), cookie.path.utf8().data(), -1);
+    soup_cookie_set_http_only(soupCookie, cookie.httpOnly);
+    soup_cookie_set_secure(soupCookie, cookie.secure);
+    if (!cookie.session) {
+        SoupDate* date = msToSoupDate(cookie.expires);
+        soup_cookie_set_expires(soupCookie, date);
+        soup_date_free(date);
+    }
+    return soupCookie;
 }
 
 void setCookies(const NetworkStorageSession& session, const Vector<Cookie>& cookies)
@@ -263,7 +282,9 @@ bool getCookies(const NetworkStorageSession& session, Vector<Cookie>& returnCook
 
     for (GSList* iter = cookies.get(); iter; iter = g_slist_next(iter)) {
         SoupCookie* cookie = static_cast<SoupCookie*>(iter->data);
-        returnCookies.append(toWebCoreCookie(cookie));
+        returnCookies.append(Cookie(String::fromUTF8(cookie->name), String::fromUTF8(cookie->value), String::fromUTF8(cookie->domain),
+            String::fromUTF8(cookie->path), cookie->expires ? static_cast<double>(soup_date_to_time_t(cookie->expires)) * 1000 : 0,
+            cookie->http_only, cookie->secure, !cookie->expires, String(), URL(), Vector<uint16_t>{ }));
         soup_cookie_free(cookie);
     }
     return true;

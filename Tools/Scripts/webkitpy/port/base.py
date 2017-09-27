@@ -57,8 +57,7 @@ from webkitpy.port import driver
 from webkitpy.port import image_diff
 from webkitpy.port import server_process
 from webkitpy.port.factory import PortFactory
-from webkitpy.layout_tests.servers import apache_http_server
-from webkitpy.layout_tests.servers import http_server
+from webkitpy.layout_tests.servers import apache_http_server, http_server, http_server_base
 from webkitpy.layout_tests.servers import web_platform_test_server
 from webkitpy.layout_tests.servers import websocket_server
 
@@ -128,9 +127,11 @@ class Port(object):
         self._helper = None
         self._http_server = None
         self._websocket_server = None
+        self._websocket_secure_server = None
         self._web_platform_test_server = None
         self._image_differ = None
         self._server_process_constructor = server_process.ServerProcess  # overridable for testing
+        self._test_runner_process_constructor = server_process.ServerProcess
 
         if not hasattr(options, 'configuration') or not options.configuration:
             self.set_option_default('configuration', self.default_configuration())
@@ -141,6 +142,9 @@ class Port(object):
         self._jhbuild_wrapper = []
         self._layout_tests_dir = hasattr(options, 'layout_tests_dir') and options.layout_tests_dir and self._filesystem.abspath(options.layout_tests_dir)
         self._w3c_resource_files = None
+
+    def target_host(self, worker_number=None):
+        return self.host
 
     def architecture(self):
         return self.get_option('architecture')
@@ -224,13 +228,15 @@ class Port(object):
         # If we're using a pre-built copy of WebKit (--root), we assume it also includes a build of DRT.
         if not self._root_was_set and self.get_option('build') and not self._build_driver():
             return False
-        if not self._check_driver():
+        if self.get_option('install') and not self._check_driver():
             return False
-        if self.get_option('pixel_tests'):
-            if not self.check_image_diff():
+        if self.get_option('install') and not self._check_port_build():
+            return False
+        if not self.check_image_diff():
+            if self.get_option('build'):
+                return self._build_image_diff()
+            else:
                 return False
-        if not self._check_port_build():
-            return False
         return True
 
     def _check_driver(self):
@@ -258,7 +264,8 @@ class Port(object):
         """This routine is used to check whether image_diff binary exists."""
         image_diff_path = self._path_to_image_diff()
         if not self._filesystem.exists(image_diff_path):
-            _log.error("ImageDiff was not found at %s" % image_diff_path)
+            if logging:
+                _log.error("ImageDiff was not found at %s" % image_diff_path)
             return False
         return True
 
@@ -802,10 +809,20 @@ class Port(object):
             return self.host.filesystem.abspath(filename)
 
     @memoized
-    def abspath_for_test(self, test_name):
+    def abspath_for_test(self, test_name, target_host=None):
         """Returns the full path to the file for a given test name. This is the
-        inverse of relative_test_filename()."""
-        return self._filesystem.join(self.layout_tests_dir(), test_name)
+        inverse of relative_test_filename() if no target_host is specified."""
+        host = target_host or self.host
+        return host.filesystem.join(host.filesystem.map_base_host_path(self.layout_tests_dir()), test_name)
+
+    def jsc_results_directory(self):
+        return self._build_path()
+
+    def bindings_results_directory(self):
+        return self._build_path()
+
+    def api_results_directory(self):
+        return self._build_path()
 
     def results_directory(self):
         """Absolute path to the place to store the test results (uses --results-directory)."""
@@ -850,21 +867,20 @@ class Port(object):
         # We intentionally copy only a subset of os.environ when
         # launching subprocesses to ensure consistent test results.
         clean_env = {}
+        # Note: don't set here driver specific variables (related to X11, Wayland, etc.)
+        # Use the driver _setup_environ_for_test() method for that.
         variables_to_copy = [
             # For Linux:
             'ALSA_CARD',
             'DBUS_SESSION_BUS_ADDRESS',
-            'HOME',
             'LANG',
             'LD_LIBRARY_PATH',
-            'XAUTHORITY',
             'XDG_DATA_DIRS',
             'XDG_RUNTIME_DIR',
 
             # Darwin:
             'DYLD_FRAMEWORK_PATH',
             'DYLD_LIBRARY_PATH',
-            'HOME',
             '__XPC_DYLD_FRAMEWORK_PATH',
             '__XPC_DYLD_LIBRARY_PATH',
 
@@ -875,24 +891,19 @@ class Port(object):
 
             # Windows:
             'COMSPEC',
-            'PATH',
             'SYSTEMDRIVE',
             'SYSTEMROOT',
             'WEBKIT_LIBRARIES',
 
-            # WPE:
-            'WAYLAND_DISPLAY',
-
             # Most ports (?):
+            'HOME',
+            'PATH',
             'WEBKIT_TESTFONTS',
             'WEBKIT_OUTPUTDIR',
 
         ]
         for variable in variables_to_copy:
             self._copy_value_from_environ_if_set(clean_env, variable)
-
-        # For Linux:
-        clean_env['DISPLAY'] = self._value_or_default_from_environ('DISPLAY', ':1')
 
         for string_variable in self.get_option('additional_env_var', []):
             [name, value] = string_variable.split('=', 1)
@@ -931,6 +942,18 @@ class Port(object):
         storage, it should override this method."""
         pass
 
+    def ports_to_forward(self):
+        ports = []
+        if self._http_server:
+            ports.extend(self._http_server.ports_to_forward())
+        if self._websocket_server:
+            ports.extend(self._websocket_server.ports_to_forward())
+        if self._websocket_server:
+            ports.extend(self._websocket_secure_server.ports_to_forward())
+        if self._web_platform_test_server:
+            ports.extend(self._web_platform_test_server.ports_to_forward())
+        return ports
+
     def start_http_server(self, additional_dirs=None):
         """Start a web server. Raise an error if it can't start or is already running.
 
@@ -944,6 +967,19 @@ class Port(object):
 
         server.start()
         self._http_server = server
+
+    def is_http_server_running(self):
+        return http_server_base.is_http_server_running()
+
+    def is_websocket_servers_running(self):
+        if self._websocket_secure_server and self._websocket_server:
+            return self._websocket_secure_server.is_running() and self._websocket_server.is_running()
+        elif self._websocket_server:
+            return self._websocket_server.is_running()
+        return False
+
+    def is_wpt_server_running(self):
+        return web_platform_test_server.is_wpt_server_running(self)
 
     def _extract_certificate_from_pem(self, pem_file, destination_certificate_file):
         return self._executive.run_command(['openssl', 'x509', '-outform', 'pem', '-in', pem_file, '-out', destination_certificate_file], return_exit_code=True) == 0
@@ -968,7 +1004,7 @@ class Port(object):
         self._websocket_server_temporary_directory = websocket_server_temporary_directory
         if self._extract_certificate_from_pem(pem_file, certificate_file) and self._extract_private_key_from_pem(pem_file, private_key_file):
             secure_server = self._websocket_secure_server = websocket_server.PyWebSocket(self, self.results_directory(),
-                                use_tls=True, port=9323, private_key=private_key_file, certificate=certificate_file)
+                                use_tls=True, port=websocket_server.PyWebSocket.DEFAULT_WSS_PORT, private_key=private_key_file, certificate=certificate_file)
             secure_server.start()
             self._websocket_secure_server = secure_server
 
@@ -981,8 +1017,11 @@ class Port(object):
     def web_platform_test_server_doc_root(self):
         return web_platform_test_server.doc_root(self) + self.TEST_PATH_SEPARATOR
 
-    def web_platform_test_server_base_url(self):
-        return web_platform_test_server.base_url(self)
+    def web_platform_test_server_base_http_url(self):
+        return web_platform_test_server.base_http_url(self)
+
+    def web_platform_test_server_base_https_url(self):
+        return web_platform_test_server.base_https_url(self)
 
     def http_server_supports_ipv6(self):
         # Cygwin is the only platform to still use Apache 1.3, which only supports IPV4.
@@ -1071,9 +1110,6 @@ class Port(object):
     def warn_if_bug_missing_in_test_expectations(self):
         return False
 
-    def use_generic_wk2_test_expectations(self):
-        return True
-
     def expectations_dict(self):
         """Returns an OrderedDict of name -> expectations strings.
         The names are expected to be (but not required to be) paths in the filesystem.
@@ -1107,7 +1143,7 @@ class Port(object):
         if non_wk2_name != self.port_name:
             search_paths.append(non_wk2_name)
 
-        if self.get_option('webkit_test_runner') and self.use_generic_wk2_test_expectations():
+        if self.get_option('webkit_test_runner'):
             # Because nearly all of the skipped tests for WebKit 2 are due to cross-platform
             # issues, all wk2 ports share a skipped list under platform/wk2.
             search_paths.extend(["wk2", self._wk2_port_name()])
@@ -1160,8 +1196,18 @@ class Port(object):
         _log.error("Could not find apache. Not installed or unknown path.")
         return None
 
+    def _is_fedora_php_version_7(self):
+        if self._filesystem.exists("/etc/httpd/modules/libphp7.so"):
+            return True
+        return False
+
     def _is_debian_php_version_7(self):
         if self._filesystem.exists("/usr/lib/apache2/modules/libphp7.0.so"):
+            return True
+        return False
+
+    def _is_darwin_php_version_7(self):
+        if self._filesystem.exists("/usr/libexec/apache2/libphp7.so"):
             return True
         return False
 
@@ -1184,13 +1230,25 @@ class Port(object):
             return "-php7"
         return ""
 
+    def _darwin_php_version(self):
+        if self._is_darwin_php_version_7():
+            return "-php7"
+        return ""
+
+    def _fedora_php_version(self):
+        if self._is_fedora_php_version_7():
+            return "-php7"
+        return ""
+
     # We pass sys_platform into this method to make it easy to unit test.
     def _apache_config_file_name_for_platform(self, sys_platform):
         if sys_platform == 'cygwin' or sys_platform.startswith('win'):
             return 'apache' + self._apache_version() + '-httpd-win.conf'
+        if sys_platform == 'darwin':
+            return 'apache' + self._apache_version() + self._darwin_php_version() + '-httpd.conf'
         if sys_platform.startswith('linux'):
             if self._is_redhat_based():
-                return 'fedora-httpd-' + self._apache_version() + '.conf'
+                return 'fedora-httpd-' + self._apache_version() + self._fedora_php_version() + '.conf'
             if self._is_debian_based():
                 return 'debian-httpd-' + self._apache_version() + self._debian_php_version() + '.conf'
             if self._is_arch_based():
@@ -1245,8 +1303,9 @@ class Port(object):
             local_driver_path = base + ".exe"
         return local_driver_path
 
-    def _driver_tempdir(self):
-        return self._filesystem.mkdtemp(prefix='%s-' % self.driver_name())
+    def _driver_tempdir(self, target_host=None):
+        host = target_host or self.host
+        return host.filesystem.mkdtemp(prefix='{}s-'.format(self.driver_name()))
 
     def _path_to_user_cache_directory(self, suffix=None):
         return None
@@ -1302,7 +1361,10 @@ class Port(object):
         """Returns the port's driver implementation."""
         return driver.Driver
 
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
+    def path_to_crash_logs(self):
+        raise NotImplementedError
+
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, target_host=None):
         name_str = name or '<unknown process name>'
         pid_str = str(pid or '<unknown>')
         stdout_lines = (stdout or '<empty>').decode('utf8', 'replace').splitlines()
@@ -1317,7 +1379,7 @@ class Port(object):
     def look_for_new_samples(self, unresponsive_processes, start_time):
         pass
 
-    def sample_process(self, name, pid):
+    def sample_process(self, name, pid, target_host=None):
         pass
 
     def find_system_pid(self, name, pid):
@@ -1340,7 +1402,7 @@ class Port(object):
         suffix = ""
         if self.port_name:
             suffix = self.port_name.upper()
-        return os.path.exists(self.path_from_webkit_base('WebKitBuild', 'Dependencies%s' % suffix))
+        return self._filesystem.exists(self.path_from_webkit_base('WebKitBuild', 'Dependencies%s' % suffix))
 
     # FIXME: Eventually we should standarize port naming, and make this method smart enough
     # to use for all port configurations (including architectures, graphics types, etc).
@@ -1370,7 +1432,6 @@ class Port(object):
 
     def _build_driver(self):
         environment = self.host.copy_current_environment()
-        environment.disable_gcc_smartquotes()
         env = environment.to_dictionary()
 
         # FIXME: We build both DumpRenderTree and WebKitTestRunner for WebKitTestRunner runs because
@@ -1379,6 +1440,16 @@ class Port(object):
             self._run_script("build-dumprendertree", args=self._build_driver_flags(), env=env)
             if self.get_option('webkit_test_runner'):
                 self._run_script("build-webkittestrunner", args=self._build_driver_flags(), env=env)
+        except ScriptError, e:
+            _log.error(e.message_with_output(output_limit=None))
+            return False
+        return True
+
+    def _build_image_diff(self):
+        environment = self.host.copy_current_environment()
+        env = environment.to_dictionary()
+        try:
+            self._run_script("build-imagediff", env=env)
         except ScriptError, e:
             _log.error(e.message_with_output(output_limit=None))
             return False

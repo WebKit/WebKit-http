@@ -28,6 +28,7 @@
 
 #include "JSWrappable.h"
 #include <JavaScriptCore/JSRetainPtr.h>
+#include <wtf/Optional.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -38,6 +39,15 @@ namespace WTR {
 
 class UIScriptContext;
 
+enum class DeviceOrientation {
+    Portrait,
+    PortraitUpsideDown,
+    LandscapeLeft,
+    LandscapeRight
+};
+
+DeviceOrientation* toDeviceOrientation(JSContextRef, JSValueRef);
+
 class UIScriptController : public JSWrappable {
 public:
     static Ref<UIScriptController> create(UIScriptContext& context)
@@ -46,11 +56,18 @@ public:
     }
 
     void contextDestroyed();
+    void checkForOutstandingCallbacks();
 
     void makeWindowObject(JSContextRef, JSObjectRef windowObject, JSValueRef* exception);
     
     void doAsyncTask(JSValueRef callback);
+    void doAfterPresentationUpdate(JSValueRef callback);
+    void doAfterNextStablePresentationUpdate(JSValueRef callback);
+    void doAfterVisibleContentRectUpdate(JSValueRef callback);
+
     void zoomToScale(double scale, JSValueRef callback);
+
+    void simulateAccessibilitySettingsChangeNotification(JSValueRef callback);
 
     void touchDownAtPoint(long x, long y, long touchCount, JSValueRef callback);
     void liftUpAtPoint(long x, long y, long touchCount, JSValueRef callback);
@@ -75,13 +92,22 @@ public:
 
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
+
+    void applyAutocorrection(JSStringRef newString, JSStringRef oldString, JSValueRef callback);
     
     void dismissFormAccessoryView();
     void selectFormAccessoryPickerRow(long);
     
     JSObjectRef contentsOfUserInterfaceItem(JSStringRef) const;
+    void overridePreference(JSStringRef preference, JSStringRef value);
     
     void scrollToOffset(long x, long y);
+
+    void immediateScrollToOffset(long x, long y);
+    void immediateZoomToScale(double scale);
+
+    void beginBackSwipe(JSValueRef callback);
+    void completeBackSwipe(JSValueRef callback);
 
     void setDidStartFormControlInteractionCallback(JSValueRef);
     JSValueRef didStartFormControlInteractionCallback() const;
@@ -110,20 +136,41 @@ public:
     void setDidEndScrollingCallback(JSValueRef);
     JSValueRef didEndScrollingCallback() const;
 
+    void playBackEventStream(JSStringRef stream, JSValueRef callback);
+
     double zoomScale() const;
     double minimumZoomScale() const;
     double maximumZoomScale() const;
+    
+    std::optional<bool> stableStateOverride() const;
+    void setStableStateOverride(std::optional<bool>);
 
     JSObjectRef contentVisibleRect() const;
     
     JSObjectRef selectionRangeViewRects() const;
+    JSObjectRef textSelectionCaretRect() const;
+    JSObjectRef inputViewBounds() const;
 
-    void insertText(JSStringRef, int location, int length);
+    void replaceTextAtRange(JSStringRef, int location, int length);
     void removeAllDynamicDictionaries();
     
     JSRetainPtr<JSStringRef> scrollingTreeAsText() const;
 
+    JSObjectRef propertiesOfLayerWithID(uint64_t layerID) const;
+
     void uiScriptComplete(JSStringRef result);
+    
+    void retrieveSpeakSelectionContent(JSValueRef);
+    JSRetainPtr<JSStringRef> accessibilitySpeakSelectionContent() const;
+    
+    void simulateRotation(DeviceOrientation*, JSValueRef);
+    void simulateRotationLikeSafari(DeviceOrientation*, JSValueRef);
+
+    // These use a callback to allow the client to know when view visibility state updates get to the web process.
+    void removeViewFromWindow(JSValueRef);
+    void addViewToWindow(JSValueRef);
+
+    void setSafeAreaInsets(double top, double right, double bottom, double left);
 
 private:
     UIScriptController(UIScriptContext&);
@@ -140,6 +187,7 @@ private:
     void platformSetDidHideKeyboardCallback();
     void platformSetDidEndScrollingCallback();
     void platformClearAllCallbacks();
+    void platformPlayBackEventStream(JSStringRef, JSValueRef);
 
     JSClassRef wrapperClass() final;
 

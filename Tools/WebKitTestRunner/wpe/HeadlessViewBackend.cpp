@@ -27,18 +27,47 @@
 #include "HeadlessViewBackend.h"
 
 #include <cassert>
+#include <fcntl.h>
+#include <unistd.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
+
+// Manually provide the EGL_CAST C++ definition in case eglplatform.h doesn't provide it.
+#ifndef EGL_CAST
+#define EGL_CAST(type, value) (static_cast<type>(value))
+#endif
+
+// FIXME: Deploy good practices and clean up GBM resources at process exit.
+static EGLDisplay getEGLDisplay()
+{
+    static EGLDisplay s_display = EGL_NO_DISPLAY;
+    if (s_display == EGL_NO_DISPLAY) {
+        int fd = open("/dev/dri/renderD128", O_RDWR | O_CLOEXEC | O_NOCTTY | O_NONBLOCK);
+        if (fd < 0)
+            return EGL_NO_DISPLAY;
+
+        struct gbm_device* device = gbm_create_device(fd);
+        if (!device)
+            return EGL_NO_DISPLAY;
+
+        EGLDisplay display = eglGetDisplay(device);
+        if (display == EGL_NO_DISPLAY)
+            return EGL_NO_DISPLAY;
+
+        if (!eglInitialize(display, nullptr, nullptr))
+            return EGL_NO_DISPLAY;
+
+        if (!eglBindAPI(EGL_OPENGL_ES_API))
+            return EGL_NO_DISPLAY;
+
+        s_display = display;
+    }
+
+    return s_display;
+}
 
 HeadlessViewBackend::HeadlessViewBackend()
 {
-    m_egl.display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (m_egl.display == EGL_NO_DISPLAY)
-        return;
-
-    if (!eglInitialize(m_egl.display, nullptr, nullptr))
-        return;
-
-    if (!eglBindAPI(EGL_OPENGL_ES_API))
-        return;
+    m_egl.display = getEGLDisplay();
 
     static const EGLint configAttributes[13] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -80,7 +109,28 @@ HeadlessViewBackend::HeadlessViewBackend()
             backend.performUpdate();
             return TRUE;
         }, this, nullptr);
+    g_source_set_priority(m_updateSource, RunLoopSourcePriority::RunLoopDispatcher);
     g_source_attach(m_updateSource, g_main_context_default());
+}
+
+HeadlessViewBackend::~HeadlessViewBackend()
+{
+    if (m_updateSource)
+        g_source_destroy(m_updateSource);
+
+    if (auto image = std::get<0>(m_pendingImage.second))
+        m_egl.destroyImage(m_egl.display, image);
+    if (auto image = std::get<0>(m_lockedImage.second))
+        m_egl.destroyImage(m_egl.display, image);
+
+    for (auto it : m_exportMap) {
+        int fd = it.second;
+        if (fd >= 0)
+            close(fd);
+    }
+
+    if (m_egl.context)
+        eglDestroyContext(m_egl.display, m_egl.context);
 }
 
 struct wpe_view_backend* HeadlessViewBackend::backend() const
@@ -176,19 +226,19 @@ struct wpe_mesa_view_backend_exportable_dma_buf_client HeadlessViewBackend::s_ex
     {
         auto& backend = *static_cast<HeadlessViewBackend*>(data);
 
-        auto it = backend.m_imageMap.end();
+        auto it = backend.m_exportMap.end();
         if (imageData->fd >= 0) {
-            assert(backend.m_imageMap.find(imageData->handle) == backend.m_imageMap.end());
+            assert(backend.m_exportMap.find(imageData->handle) == backend.m_exportMap.end());
 
-            it = backend.m_imageMap.insert({ imageData->handle, { imageData->fd, nullptr }}).first;
+            it = backend.m_exportMap.insert({ imageData->handle, imageData->fd }).first;
         } else {
-            assert(backend.m_imageMap.find(imageData->handle) != backend.m_imageMap.end());
-            it = backend.m_imageMap.find(imageData->handle);
+            assert(backend.m_exportMap.find(imageData->handle) != backend.m_exportMap.end());
+            it = backend.m_exportMap.find(imageData->handle);
         }
 
-        assert(it != backend.m_imageMap.end());
+        assert(it != backend.m_exportMap.end());
         uint32_t handle = it->first;
-        int32_t fd = it->second.first;
+        int32_t fd = it->second;
 
         backend.makeCurrent();
 

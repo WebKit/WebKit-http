@@ -23,34 +23,27 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderThemeWPE_h
-#define RenderThemeWPE_h
+#pragma once
 
 #include "RenderTheme.h"
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
 class RenderThemeWPE final : public RenderTheme {
 public:
-    static Ref<RenderTheme> create()
-    {
-        return adoptRef(*new RenderThemeWPE);
-    }
+    friend NeverDestroyed<RenderThemeWPE>;
 
-    virtual String extraDefaultStyleSheet() override;
+    String extraDefaultStyleSheet() override;
 #if ENABLE(VIDEO)
-    virtual String mediaControlsStyleSheet() override;
-    virtual String mediaControlsScript() override;
+    String mediaControlsStyleSheet() override;
+    String mediaControlsScript() override;
 #endif
 
 private:
     RenderThemeWPE() = default;
     virtual ~RenderThemeWPE() = default;
 
-    virtual void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
+    void updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription&) const override;
 };
 
 } // namespace WebCore
-
-#endif // RenderThemeWPE_h

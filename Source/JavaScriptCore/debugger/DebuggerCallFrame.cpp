@@ -29,6 +29,7 @@
 #include "config.h"
 #include "DebuggerCallFrame.h"
 
+#include "CatchScope.h"
 #include "CodeBlock.h"
 #include "DebuggerEvalEnabler.h"
 #include "DebuggerScope.h"
@@ -60,16 +61,16 @@ private:
     mutable unsigned m_column;
 };
 
-Ref<DebuggerCallFrame> DebuggerCallFrame::create(CallFrame* callFrame)
+Ref<DebuggerCallFrame> DebuggerCallFrame::create(VM& vm, CallFrame* callFrame)
 {
-    if (UNLIKELY(callFrame == callFrame->lexicalGlobalObject()->globalExec())) {
+    if (UNLIKELY(callFrame == callFrame->wasmAwareLexicalGlobalObject(vm)->globalExec())) {
         ShadowChicken::Frame emptyFrame;
         RELEASE_ASSERT(!emptyFrame.isTailDeleted);
-        return adoptRef(*new DebuggerCallFrame(callFrame, emptyFrame));
+        return adoptRef(*new DebuggerCallFrame(vm, callFrame, emptyFrame));
     }
 
     Vector<ShadowChicken::Frame> frames;
-    callFrame->vm().shadowChicken().iterate(callFrame->vm(), callFrame, [&] (const ShadowChicken::Frame& frame) -> bool {
+    vm.shadowChicken().iterate(vm, callFrame, [&] (const ShadowChicken::Frame& frame) -> bool {
         frames.append(frame);
         return true;
     });
@@ -78,24 +79,24 @@ Ref<DebuggerCallFrame> DebuggerCallFrame::create(CallFrame* callFrame)
     ASSERT(!frames[0].isTailDeleted); // The top frame should never be tail deleted.
 
     RefPtr<DebuggerCallFrame> currentParent = nullptr;
-    ExecState* exec = callFrame->lexicalGlobalObject()->globalExec();
+    ExecState* exec = callFrame->wasmAwareLexicalGlobalObject(vm)->globalExec();
     // This walks the stack from the entry stack frame to the top of the stack.
     for (unsigned i = frames.size(); i--; ) {
         const ShadowChicken::Frame& frame = frames[i];
         if (!frame.isTailDeleted)
             exec = frame.frame;
-        Ref<DebuggerCallFrame> currentFrame = adoptRef(*new DebuggerCallFrame(exec, frame));
+        Ref<DebuggerCallFrame> currentFrame = adoptRef(*new DebuggerCallFrame(vm, exec, frame));
         currentFrame->m_caller = currentParent;
         currentParent = WTFMove(currentFrame);
     }
     return *currentParent;
 }
 
-DebuggerCallFrame::DebuggerCallFrame(CallFrame* callFrame, const ShadowChicken::Frame& frame)
+DebuggerCallFrame::DebuggerCallFrame(VM& vm, CallFrame* callFrame, const ShadowChicken::Frame& frame)
     : m_validMachineFrame(callFrame)
     , m_shadowChickenFrame(frame)
 {
-    m_position = currentPosition();
+    m_position = currentPosition(vm);
 }
 
 RefPtr<DebuggerCallFrame> DebuggerCallFrame::callerFrame()
@@ -136,9 +137,10 @@ String DebuggerCallFrame::functionName() const
     if (!isValid())
         return String();
 
+    VM& vm = m_validMachineFrame->vm();
     if (isTailDeleted()) {
-        if (JSFunction* func = jsDynamicCast<JSFunction*>(m_shadowChickenFrame.callee))
-            return func->calculatedDisplayName(m_validMachineFrame->vm());
+        if (JSFunction* func = jsDynamicCast<JSFunction*>(vm, m_shadowChickenFrame.callee))
+            return func->calculatedDisplayName(vm);
         return m_shadowChickenFrame.codeBlock->inferredName().data();
     }
 
@@ -159,7 +161,7 @@ DebuggerScope* DebuggerCallFrame::scope()
             scope = m_shadowChickenFrame.scope;
         else if (codeBlock && codeBlock->scopeRegister().isValid())
             scope = m_validMachineFrame->scope(codeBlock->scopeRegister().offset());
-        else if (JSCallee* callee = jsDynamicCast<JSCallee*>(m_validMachineFrame->callee()))
+        else if (JSCallee* callee = jsDynamicCast<JSCallee*>(vm, m_validMachineFrame->jsCallee()))
             scope = callee->scope();
         else
             scope = m_validMachineFrame->lexicalGlobalObject()->globalLexicalEnvironment();
@@ -178,7 +180,7 @@ DebuggerCallFrame::Type DebuggerCallFrame::type() const
     if (isTailDeleted())
         return FunctionType;
 
-    if (jsDynamicCast<JSFunction*>(m_validMachineFrame->callee()))
+    if (jsDynamicCast<JSFunction*>(m_validMachineFrame->vm(), m_validMachineFrame->jsCallee()))
         return FunctionType;
 
     return ProgramType;
@@ -241,9 +243,9 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
         evalContextType = EvalContextType::None;
 
     VariableEnvironment variablesUnderTDZ;
-    JSScope::collectVariablesUnderTDZ(scope()->jsScope(), variablesUnderTDZ);
+    JSScope::collectClosureVariablesUnderTDZ(scope()->jsScope(), variablesUnderTDZ);
 
-    EvalExecutable* eval = EvalExecutable::create(callFrame, makeSource(script), codeBlock->isStrictMode(), codeBlock->unlinkedCodeBlock()->derivedContextType(), codeBlock->unlinkedCodeBlock()->isArrowFunction(), evalContextType, &variablesUnderTDZ);
+    auto* eval = DirectEvalExecutable::create(callFrame, makeSource(script, callFrame->callerSourceOrigin()), codeBlock->isStrictMode(), codeBlock->unlinkedCodeBlock()->derivedContextType(), codeBlock->unlinkedCodeBlock()->isArrowFunction(), evalContextType, &variablesUnderTDZ);
     if (UNLIKELY(catchScope.exception())) {
         exception = catchScope.exception();
         catchScope.clearException();
@@ -253,7 +255,7 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
     JSGlobalObject* globalObject = callFrame->vmEntryGlobalObject();
     if (scopeExtensionObject) {
         JSScope* ignoredPreviousScope = globalObject->globalScope();
-        globalObject->setGlobalScopeExtension(JSWithScope::create(vm, globalObject, scopeExtensionObject, ignoredPreviousScope));
+        globalObject->setGlobalScopeExtension(JSWithScope::create(vm, globalObject, ignoredPreviousScope, scopeExtensionObject));
     }
 
     JSValue thisValue = this->thisValue();
@@ -283,26 +285,26 @@ void DebuggerCallFrame::invalidate()
     }
 }
 
-TextPosition DebuggerCallFrame::currentPosition()
+TextPosition DebuggerCallFrame::currentPosition(VM& vm)
 {
     if (!m_validMachineFrame)
         return TextPosition();
 
     if (isTailDeleted()) {
         CodeBlock* codeBlock = m_shadowChickenFrame.codeBlock;
-        if (Optional<unsigned> bytecodeOffset = codeBlock->bytecodeOffsetFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
+        if (std::optional<unsigned> bytecodeOffset = codeBlock->bytecodeOffsetFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
             return TextPosition(OrdinalNumber::fromOneBasedInt(codeBlock->lineNumberForBytecodeOffset(*bytecodeOffset)),
                 OrdinalNumber::fromOneBasedInt(codeBlock->columnNumberForBytecodeOffset(*bytecodeOffset)));
         }
     }
 
-    return positionForCallFrame(m_validMachineFrame);
+    return positionForCallFrame(vm, m_validMachineFrame);
 }
 
-TextPosition DebuggerCallFrame::positionForCallFrame(CallFrame* callFrame)
+TextPosition DebuggerCallFrame::positionForCallFrame(VM& vm, CallFrame* callFrame)
 {
     LineAndColumnFunctor functor;
-    callFrame->iterate(functor);
+    StackVisitor::visit(callFrame, &vm, functor);
     return TextPosition(OrdinalNumber::fromOneBasedInt(functor.line()), OrdinalNumber::fromOneBasedInt(functor.column()));
 }
 

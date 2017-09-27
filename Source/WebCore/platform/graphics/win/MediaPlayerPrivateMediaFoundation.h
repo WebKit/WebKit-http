@@ -24,12 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaPlayerPrivateMediaFoundation_h
-#define MediaPlayerPrivateMediaFoundation_h
+#pragma once
 
 #include "COMPtr.h"
 #include "MediaPlayerPrivate.h"
-#include "Win32Handle.h"
 
 #include <D3D9.h>
 #include <Dxva2api.h>
@@ -44,6 +42,7 @@
 #include <wtf/Lock.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/win/Win32Handle.h>
 
 namespace WebCore {
 
@@ -112,6 +111,7 @@ private:
     bool m_hasAudio;
     bool m_hasVideo;
     bool m_preparingToPlay;
+    float m_volume;
     HWND m_hwndVideo;
     MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
@@ -120,6 +120,9 @@ private:
     class MediaPlayerListener;
     HashSet<MediaPlayerListener*> m_listeners;
     Lock m_mutexListeners;
+
+    FloatSize m_cachedNaturalSize;
+    mutable Lock m_cachedNaturalSizeLock;
 
     WeakPtrFactory<MediaPlayerPrivateMediaFoundation> m_weakPtrFactory;
     COMPtr<IMFMediaSession> m_mediaSession;
@@ -158,9 +161,12 @@ private:
 
     void addListener(MediaPlayerListener*);
     void removeListener(MediaPlayerListener*);
+    void setNaturalSize(const FloatSize&);
     void notifyDeleted();
 
     static LRESULT CALLBACK VideoViewWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+    bool setAllChannelVolumes(float);
 
     class MediaPlayerListener {
     public:
@@ -246,9 +252,9 @@ private:
         Direct3DPresenter* m_presenter { nullptr };
 
         DWORD m_threadID { 0 };
-        Win32Handle m_schedulerThread;
-        Win32Handle m_threadReadyEvent;
-        Win32Handle m_flushEvent;
+        WTF::Win32Handle m_schedulerThread;
+        WTF::Win32Handle m_threadReadyEvent;
+        WTF::Win32Handle m_flushEvent;
 
         float m_playbackRate { 1.0f };
         MFTIME m_frameDuration { 0 };
@@ -483,5 +489,3 @@ private:
 };
 
 }
-
-#endif

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
  * Copyright (C) 2016 Sukolsak Sakshuwong (sukolsak@gmail.com)
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 
 #if ENABLE(INTL)
 
+#include "CatchScope.h"
 #include "Error.h"
 #include "IntlNumberFormatConstructor.h"
 #include "IntlObject.h"
@@ -39,7 +40,7 @@
 
 namespace JSC {
 
-const ClassInfo IntlNumberFormat::s_info = { "Object", &Base::s_info, 0, CREATE_METHOD_TABLE(IntlNumberFormat) };
+const ClassInfo IntlNumberFormat::s_info = { "Object", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(IntlNumberFormat) };
 
 static const char* const relevantExtensionKeys[1] = { "nu" };
 
@@ -69,7 +70,7 @@ IntlNumberFormat::IntlNumberFormat(VM& vm, Structure* structure)
 void IntlNumberFormat::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 void IntlNumberFormat::destroy(JSCell* cell)
@@ -84,14 +85,16 @@ void IntlNumberFormat::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_boundFormat);
+    visitor.append(thisObject->m_boundFormat);
 }
 
+namespace IntlNFInternal {
 static Vector<String> localeData(const String& locale, size_t keyIndex)
 {
     // 9.1 Internal slots of Service Constructors & 11.2.3 Internal slots (ECMA-402 2.0)
     ASSERT_UNUSED(keyIndex, !keyIndex); // The index of the extension key "nu" in relevantExtensionKeys is 0.
     return numberingSystemsForLocale(locale);
+}
 }
 
 static inline unsigned computeCurrencySortKey(const String& currency)
@@ -190,8 +193,8 @@ void IntlNumberFormat::initializeNumberFormat(ExecState& state, JSValue locales,
 
     // 11. Let localeData be %NumberFormat%.[[localeData]].
     // 12. Let r be ResolveLocale(%NumberFormat%.[[availableLocales]], requestedLocales, opt, %NumberFormat%.[[relevantExtensionKeys]], localeData).
-    auto& availableLocales = state.callee()->globalObject()->intlNumberFormatAvailableLocales();
-    auto result = resolveLocale(state, availableLocales, requestedLocales, opt, relevantExtensionKeys, WTF_ARRAY_LENGTH(relevantExtensionKeys), localeData);
+    auto& availableLocales = state.jsCallee()->globalObject()->intlNumberFormatAvailableLocales();
+    auto result = resolveLocale(state, availableLocales, requestedLocales, opt, relevantExtensionKeys, WTF_ARRAY_LENGTH(relevantExtensionKeys), IntlNFInternal::localeData);
 
     // 13. Set numberFormat.[[locale]] to the value of r.[[locale]].
     m_locale = result.get(ASCIILiteral("locale"));
@@ -358,7 +361,7 @@ void IntlNumberFormat::createNumberFormat(ExecState& state)
 
     if (!m_initializedNumberFormat) {
         initializeNumberFormat(state, jsUndefined(), jsUndefined());
-        ASSERT_UNUSED(scope, !scope.exception());
+        scope.assertNoException();
     }
 
     UNumberFormatStyle style;
@@ -486,7 +489,7 @@ JSObject* IntlNumberFormat::resolvedOptions(ExecState& state)
 
     if (!m_initializedNumberFormat) {
         initializeNumberFormat(state, jsUndefined(), jsUndefined());
-        ASSERT_UNUSED(scope, !scope.exception());
+        scope.assertNoException();
     }
 
     JSObject* options = constructEmptyObject(&state);

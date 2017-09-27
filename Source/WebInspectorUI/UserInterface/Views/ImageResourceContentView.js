@@ -23,31 +23,82 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ImageResourceContentView = class ImageResourceContentView extends WebInspector.ResourceContentView
+WI.ImageResourceContentView = class ImageResourceContentView extends WI.ResourceContentView
 {
     constructor(resource)
     {
         super(resource, "image");
 
         this._imageElement = null;
+
+        const toolTip = WI.UIString("Show Grid");
+        const activatedToolTip = WI.UIString("Hide Grid");
+        this._showGridButtonNavigationItem = new WI.ActivateButtonNavigationItem("show-grid", toolTip, activatedToolTip, "Images/NavigationItemCheckers.svg", 13, 13);
+        this._showGridButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
+        this._showGridButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._showGridButtonClicked, this);
+        this._showGridButtonNavigationItem.activated = !!WI.settings.showImageGrid.value;
     }
 
     // Public
 
-    get imageElement()
+    get navigationItems()
     {
-        return this._imageElement;
+        return [this._showGridButtonNavigationItem];
     }
 
     contentAvailable(content, base64Encoded)
     {
-        this.element.removeChildren();
+        let objectURL = this.resource.createObjectURL();
+        if (!objectURL) {
+            this.showGenericErrorMessage();
+            return;
+        }
 
-        var objectURL = this.resource.createObjectURL();
+        this.removeLoadingIndicator();
+
         this._imageElement = document.createElement("img");
         this._imageElement.addEventListener("load", function() { URL.revokeObjectURL(objectURL); });
         this._imageElement.src = objectURL;
+        this._imageElement.setAttribute("filename", this.resource.urlComponents.lastPathComponent || "");
+        this._updateImageGrid();
 
         this.element.appendChild(this._imageElement);
+    }
+
+    // Protected
+
+    shown()
+    {
+        super.shown();
+
+        this._updateImageGrid();
+
+        WI.settings.showImageGrid.addEventListener(WI.Setting.Event.Changed, this._updateImageGrid, this);
+    }
+
+    hidden()
+    {
+        WI.settings.showImageGrid.removeEventListener(WI.Setting.Event.Changed, this._updateImageGrid, this);
+
+        super.hidden();
+    }
+
+    // Private
+
+    _updateImageGrid()
+    {
+        if (!this._imageElement)
+            return;
+
+        let activated = WI.settings.showImageGrid.value;
+        this._showGridButtonNavigationItem.activated = activated;
+        this._imageElement.classList.toggle("show-grid", activated);
+    }
+
+    _showGridButtonClicked(event)
+    {
+        WI.settings.showImageGrid.value = !this._showGridButtonNavigationItem.activated;
+
+        this._updateImageGrid();
     }
 };

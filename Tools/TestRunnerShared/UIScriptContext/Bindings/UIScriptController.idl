@@ -22,12 +22,25 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+ 
+enum DeviceOrientation {
+    "portrait",
+    "portrait-upsidedown",
+    "landscape-left",
+    "landscape-right"
+};
 
 interface UIScriptController {
 
     void doAsyncTask(object callback); // Used to test the harness.
+    void uiScriptComplete(DOMString result);
 
-    void zoomToScale(double scale, object callback);
+    void doAfterPresentationUpdate(object callback); // Call the callback after sending a message to the WebProcess and receiving a subsequent update.
+    void doAfterNextStablePresentationUpdate(object callback);
+
+    void doAfterVisibleContentRectUpdate(object callback);
+
+    void simulateAccessibilitySettingsChangeNotification(object callback);
 
     // Interaction.
     // These functions post events asynchronously. The callback is fired when the events have been dispatched, but any
@@ -58,6 +71,7 @@ interface UIScriptController {
     //          {
     //              "inputType" : "hand",
     //              "timeOffset" : 0,
+    //              "coordinateSpace" : "content",
     //              "touches" : [
     //                  {
     //                      "inputType" : "finger",
@@ -68,9 +82,11 @@ interface UIScriptController {
     //                  }
     //              ]
     //          },
+    //          // This is a basic force press
     //          {
     //              "interpolate" : "linear",
     //              "timestep" : 0.025,
+    //              "coordinateSpace" : "global",
     //              "startEvent" : {
     //                  "inputType" : "hand",
     //                  "timeOffset" : 0.025,
@@ -93,29 +109,70 @@ interface UIScriptController {
     //                          "inputType" : "finger",
     //                          "phase" : "stationary",
     //                          "id" : 1,
-    //                          "x" : 20,
-    //                          "y" : 40,
+    //                          "x" : 100,
+    //                          "y" : 120,
     //                          "pressure" : 500
     //                      }
     //                  ]
     //              }
     //          },
+    //          //This is a basic drag
+    //          {
+    //              "interpolate" : "linear",
+    //              "timestep" : 0.025,
+    //              "coordinateSpace" : "content",
+    //              "startEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 3.025,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "moved",
+    //                          "id" : 1,
+    //                          "x" : 100,
+    //                          "y" : 120,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              },
+    //              "endEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 4.0,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "moved",
+    //                          "id" : 1,
+    //                          "x" : 20,
+    //                          "y" : 40,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              }
+    //          },
+    //          //ending lift
     //          {
     //              "inputType" : "hand",
-    //              "timeOffset" : 0.002, // seconds relative to the first event
+    //              "timeOffset" : 4.025, // seconds relative to the first event
+    //              "coordinateSpace" : "content",
     //              "touches" : [
     //                  {
     //                      "inputType" : "finger",
     //                      "phase" : "ended",
     //                      "id" : 1,
-    //                      "x" : 100,
-    //                      "y" : 120
+    //                      "x" : 20,
+    //                      "y" : 40
     //                  }
     //              ]
     //          },
     //      ]
     //  }
     void sendEventStream(DOMString eventsJSON, object callback);
+
+    void beginBackSwipe(object callback);
+    void completeBackSwipe(object callback);
+
+    void playBackEventStream(DOMString eventStream, object callback);
 
     // Equivalent of pressing the Done button in the form accessory bar.
     void dismissFormAccessoryView();
@@ -134,6 +191,8 @@ interface UIScriptController {
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
 
+    void applyAutocorrection(DOMString newString, DOMString oldString, object callback);
+
     // Returned object is a dictionary with the passed in string as a key for returned object
     object contentsOfUserInterfaceItem(DOMString interfaceItem);
 
@@ -144,22 +203,47 @@ interface UIScriptController {
     attribute object willBeginZoomingCallback;
     attribute object didEndZoomingCallback;
 
+    void zoomToScale(double scale, object callback);
+
     void scrollToOffset(long x, long y); // Initiate an animated scroll in the UI process.
     attribute object didEndScrollingCallback;
+
+    void immediateScrollToOffset(long x, long y); // Set the scroll position in the UI process without animation.
+    void immediateZoomToScale(double scale); // Set the zoom scale in the UI process without animation.
 
     // View state
     readonly attribute double zoomScale;
     readonly attribute double minimumZoomScale;
     readonly attribute double maximumZoomScale;
 
+    // Overides the "in stable state" behavior of WKWebView (only applies to iOS)
+    // When false, content rect updates to the web process have inStableState=false, as if a scroll or zoom were in progress.
+    attribute boolean? stableStateOverride;
+
     readonly attribute object contentVisibleRect; // Returned object has 'left', 'top', 'width', 'height' properties.
 
     readonly attribute object selectionRangeViewRects; // An array of objects with 'left', 'top', 'width', and 'height' properties.
+    readonly attribute object textSelectionCaretRect; // An object with 'left', 'top', 'width', 'height' properties.
+    readonly attribute object inputViewBounds;
 
-    void insertText(DOMString text, long location, long length);
+    void replaceTextAtRange(DOMString text, long location, long length);
     void removeAllDynamicDictionaries();
 
     readonly attribute DOMString scrollingTreeAsText;
 
-    void uiScriptComplete(DOMString result);
+    object propertiesOfLayerWithID(unsigned long long layerID);
+
+    void retrieveSpeakSelectionContent(object callback);
+    readonly attribute DOMString accessibilitySpeakSelectionContent;
+    
+    void simulateRotation(DeviceOrientation orientation, object callback);
+    void simulateRotationLikeSafari(DeviceOrientation orientation, object callback);
+
+    // Unparent and parent the web view, simulating, for example, tab switching.
+    void removeViewFromWindow(object callback);
+    void addViewToWindow(object callback);
+
+    void overridePreference(DOMString preference, DOMString value);
+
+    void setSafeAreaInsets(double top, double right, double bottom, double left);
 };

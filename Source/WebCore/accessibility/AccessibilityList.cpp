@@ -118,7 +118,7 @@ bool AccessibilityList::childHasPseudoVisibleListItemMarkers(RenderObject* listI
     
     // Platforms which expose rendered text content through the parent element will treat
     // those renderers as "ignored" objects.
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     String text = axObj->textUnderElement();
     return !text.isEmpty() && !text.containsOnlyWhitespace();
 #else
@@ -185,7 +185,7 @@ AccessibilityRole AccessibilityList::determineAccessibilityRole()
     // <ul>, <ol> lists need to have visible markers.
     if (ariaRoleAttribute() != UnknownRole) {
         if (!listItemCount)
-            role = GroupRole;
+            role = ApplicationGroupRole;
     } else if (!hasVisibleMarkers)
         role = GroupRole;
 

@@ -28,7 +28,6 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "SecurityOriginData.h"
-#include <wtf/Ref.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
@@ -43,6 +42,8 @@ public:
         : m_databaseName(WTF::HashTableDeletedValue)
     {
     }
+
+    WEBCORE_EXPORT IDBDatabaseIdentifier(const String& databaseName, SecurityOriginData&& openingOrigin, SecurityOriginData&& mainFrameOrigin);
 
     IDBDatabaseIdentifier isolatedCopy() const;
 
@@ -59,11 +60,9 @@ public:
         unsigned mainFrameProtocolHash = StringHash::hash(m_mainFrameOrigin.protocol);
         unsigned mainFrameHostHash = StringHash::hash(m_mainFrameOrigin.host);
         
-        unsigned hashCodes[7] = { nameHash, openingProtocolHash, openingHostHash, m_openingOrigin.port.valueOr(0), mainFrameProtocolHash, mainFrameHostHash, m_mainFrameOrigin.port.valueOr(0) };
+        unsigned hashCodes[7] = { nameHash, openingProtocolHash, openingHostHash, m_openingOrigin.port.value_or(0), mainFrameProtocolHash, mainFrameHostHash, m_mainFrameOrigin.port.value_or(0) };
         return StringHasher::hashMemory<sizeof(hashCodes)>(hashCodes);
     }
-
-    IDBDatabaseIdentifier(const String& databaseName, const SecurityOrigin& openingOrigin, const SecurityOrigin& mainFrameOrigin);
 
     bool isValid() const
     {
@@ -89,7 +88,7 @@ public:
     static String databaseDirectoryRelativeToRoot(const SecurityOriginData& topLevelOrigin, const SecurityOriginData& openingOrigin, const String& rootDirectory);
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static bool decode(Decoder&, IDBDatabaseIdentifier&);
+    template<class Decoder> static std::optional<IDBDatabaseIdentifier> decode(Decoder&);
 
 #if !LOG_DISABLED
     String debugString() const;
@@ -125,18 +124,28 @@ void IDBDatabaseIdentifier::encode(Encoder& encoder) const
 }
 
 template<class Decoder>
-bool IDBDatabaseIdentifier::decode(Decoder& decoder, IDBDatabaseIdentifier& identifier)
+std::optional<IDBDatabaseIdentifier> IDBDatabaseIdentifier::decode(Decoder& decoder)
 {
-    if (!decoder.decode(identifier.m_databaseName))
-        return false;
+    std::optional<String> databaseName;
+    decoder >> databaseName;
+    if (!databaseName)
+        return std::nullopt;
 
-    if (!decoder.decode(identifier.m_openingOrigin))
-        return false;
+    std::optional<SecurityOriginData> openingOrigin;
+    decoder >> openingOrigin;
+    if (!openingOrigin)
+        return std::nullopt;
 
-    if (!decoder.decode(identifier.m_mainFrameOrigin))
-        return false;
+    std::optional<SecurityOriginData> mainFrameOrigin;
+    decoder >> mainFrameOrigin;
+    if (!mainFrameOrigin)
+        return std::nullopt;
 
-    return true;
+    IDBDatabaseIdentifier identifier;
+    identifier.m_databaseName = WTFMove(*databaseName); // FIXME: When decoding from IPC, databaseName can be null, and the non-empty constructor asserts that this is not the case.
+    identifier.m_openingOrigin = WTFMove(*openingOrigin);
+    identifier.m_mainFrameOrigin = WTFMove(*mainFrameOrigin);
+    return WTFMove(identifier);
 }
 
 } // namespace WebCore

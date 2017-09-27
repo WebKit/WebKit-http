@@ -111,6 +111,8 @@ PASS Document.querySelector: Invalid namespace: ^|div
 PASS Document.querySelectorAll: Invalid namespace: ^|div 
 PASS Document.querySelector: Invalid namespace: $|div 
 PASS Document.querySelectorAll: Invalid namespace: $|div 
+PASS Document.querySelector: Relative selector: >* 
+PASS Document.querySelectorAll: Relative selector: >* 
 PASS Detached Element.querySelector: Empty String:  
 PASS Detached Element.querySelectorAll: Empty String:  
 PASS Detached Element.querySelector: Invalid character: [ 
@@ -173,6 +175,8 @@ PASS Detached Element.querySelector: Invalid namespace: ^|div
 PASS Detached Element.querySelectorAll: Invalid namespace: ^|div 
 PASS Detached Element.querySelector: Invalid namespace: $|div 
 PASS Detached Element.querySelectorAll: Invalid namespace: $|div 
+PASS Detached Element.querySelector: Relative selector: >* 
+PASS Detached Element.querySelectorAll: Relative selector: >* 
 PASS Fragment.querySelector: Empty String:  
 PASS Fragment.querySelectorAll: Empty String:  
 PASS Fragment.querySelector: Invalid character: [ 
@@ -235,6 +239,8 @@ PASS Fragment.querySelector: Invalid namespace: ^|div
 PASS Fragment.querySelectorAll: Invalid namespace: ^|div 
 PASS Fragment.querySelector: Invalid namespace: $|div 
 PASS Fragment.querySelectorAll: Invalid namespace: $|div 
+PASS Fragment.querySelector: Relative selector: >* 
+PASS Fragment.querySelectorAll: Relative selector: >* 
 PASS In-document Element.querySelector: Empty String:  
 PASS In-document Element.querySelectorAll: Empty String:  
 PASS In-document Element.querySelector: Invalid character: [ 
@@ -297,6 +303,8 @@ PASS In-document Element.querySelector: Invalid namespace: ^|div
 PASS In-document Element.querySelectorAll: Invalid namespace: ^|div 
 PASS In-document Element.querySelector: Invalid namespace: $|div 
 PASS In-document Element.querySelectorAll: Invalid namespace: $|div 
+PASS In-document Element.querySelector: Relative selector: >* 
+PASS In-document Element.querySelectorAll: Relative selector: >* 
 PASS Document.querySelectorAll: Type selector, matching html element: html 
 PASS Document.querySelector: Type selector, matching html element: html 
 PASS Document.querySelectorAll: Type selector, matching body element: body 
@@ -313,8 +321,8 @@ PASS Document.querySelectorAll: Attribute presence selector, matching align attr
 PASS Document.querySelector: Attribute presence selector, matching align attribute with value: .attr-presence-div1[align] 
 PASS Document.querySelectorAll: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
 PASS Document.querySelector: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
-PASS Document.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
-PASS Document.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
+PASS Document.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
+PASS Document.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
 PASS Document.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS Document.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS Document.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align] 
@@ -451,8 +459,8 @@ PASS Document.querySelectorAll: :nth-of-type selector, matching every second ele
 PASS Document.querySelector: :nth-of-type selector, matching every second element of their type: #pseudo-nth-p1 :nth-of-type(2n) 
 PASS Document.querySelectorAll: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
 PASS Document.querySelector: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
-PASS Document.querySelectorAll: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
-PASS Document.querySelector: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Document.querySelectorAll: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Document.querySelector: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
 PASS Document.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Document.querySelector: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Document.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type, starting from the last: #pseudo-nth-p1 span:nth-last-of-type(2n-1) 
@@ -601,20 +609,6 @@ PASS Document.querySelectorAll: Descendant combinator, whitespace characters: #d
 #descendant-div2 
 PASS Document.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Document.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS Document.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Document.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Document.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Document.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Document.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Document.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS Document.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS Document.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Document.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Document.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 
@@ -739,8 +733,8 @@ PASS Detached Element.querySelectorAll: Attribute presence selector, matching al
 PASS Detached Element.querySelector: Attribute presence selector, matching align attribute with value: .attr-presence-div1[align] 
 PASS Detached Element.querySelectorAll: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
 PASS Detached Element.querySelector: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
-PASS Detached Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
-PASS Detached Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
+PASS Detached Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
+PASS Detached Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
 PASS Detached Element.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS Detached Element.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS Detached Element.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align] 
@@ -877,8 +871,8 @@ PASS Detached Element.querySelectorAll: :nth-of-type selector, matching every se
 PASS Detached Element.querySelector: :nth-of-type selector, matching every second element of their type: #pseudo-nth-p1 :nth-of-type(2n) 
 PASS Detached Element.querySelectorAll: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
 PASS Detached Element.querySelector: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
-PASS Detached Element.querySelectorAll: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
-PASS Detached Element.querySelector: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Detached Element.querySelectorAll: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Detached Element.querySelector: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
 PASS Detached Element.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Detached Element.querySelector: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Detached Element.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type, starting from the last: #pseudo-nth-p1 span:nth-last-of-type(2n-1) 
@@ -1027,18 +1021,6 @@ PASS Detached Element.querySelectorAll: Descendant combinator, whitespace charac
 #descendant-div2 
 PASS Detached Element.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS Detached Element.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS Detached Element.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Detached Element.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Detached Element.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 
@@ -1163,8 +1145,8 @@ PASS Fragment.querySelectorAll: Attribute presence selector, matching align attr
 PASS Fragment.querySelector: Attribute presence selector, matching align attribute with value: .attr-presence-div1[align] 
 PASS Fragment.querySelectorAll: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
 PASS Fragment.querySelector: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
-PASS Fragment.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
-PASS Fragment.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
+PASS Fragment.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
+PASS Fragment.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
 PASS Fragment.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS Fragment.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS Fragment.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align] 
@@ -1301,8 +1283,8 @@ PASS Fragment.querySelectorAll: :nth-of-type selector, matching every second ele
 PASS Fragment.querySelector: :nth-of-type selector, matching every second element of their type: #pseudo-nth-p1 :nth-of-type(2n) 
 PASS Fragment.querySelectorAll: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
 PASS Fragment.querySelector: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
-PASS Fragment.querySelectorAll: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
-PASS Fragment.querySelector: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Fragment.querySelectorAll: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Fragment.querySelector: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
 PASS Fragment.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Fragment.querySelector: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Fragment.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type, starting from the last: #pseudo-nth-p1 span:nth-last-of-type(2n-1) 
@@ -1451,18 +1433,6 @@ PASS Fragment.querySelectorAll: Descendant combinator, whitespace characters: #d
 #descendant-div2 
 PASS Fragment.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS Fragment.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS Fragment.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Fragment.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Fragment.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 
@@ -1587,8 +1557,8 @@ PASS In-document Element.querySelectorAll: Attribute presence selector, matching
 PASS In-document Element.querySelector: Attribute presence selector, matching align attribute with value: .attr-presence-div1[align] 
 PASS In-document Element.querySelectorAll: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
 PASS In-document Element.querySelector: Attribute presence selector, matching align attribute with empty value: .attr-presence-div2[align] 
-PASS In-document Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
-PASS In-document Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [TiTlE] 
+PASS In-document Element.querySelectorAll: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
+PASS In-document Element.querySelector: Attribute presence selector, matching title attribute, case insensitivity: #attr-presence [*|TiTlE] 
 PASS In-document Element.querySelectorAll: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS In-document Element.querySelector: Attribute presence selector, matching custom data-* attribute: [data-attr-presence] 
 PASS In-document Element.querySelectorAll: Attribute presence selector, not matching attribute with similar name: .attr-presence-div3[align], .attr-presence-div4[align] 
@@ -1725,8 +1695,8 @@ PASS In-document Element.querySelectorAll: :nth-of-type selector, matching every
 PASS In-document Element.querySelector: :nth-of-type selector, matching every second element of their type: #pseudo-nth-p1 :nth-of-type(2n) 
 PASS In-document Element.querySelectorAll: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
 PASS In-document Element.querySelector: :nth-of-type selector, matching every second elemetn of their type, starting from the first: #pseudo-nth-p1 span:nth-of-type(2n-1) 
-PASS In-document Element.querySelectorAll: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
-PASS In-document Element.querySelector: :nth-last-of-type selector, matching the thrid last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS In-document Element.querySelectorAll: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS In-document Element.querySelector: :nth-last-of-type selector, matching the third last em element: #pseudo-nth-p1 em:nth-last-of-type(3) 
 PASS In-document Element.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS In-document Element.querySelector: :nth-last-of-type selector, matching every second last element of their type: #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS In-document Element.querySelectorAll: :nth-last-of-type selector, matching every second last element of their type, starting from the last: #pseudo-nth-p1 span:nth-last-of-type(2n-1) 
@@ -1877,20 +1847,6 @@ PASS In-document Element.querySelectorAll: Descendant combinator, whitespace cha
 #descendant-div2 
 PASS In-document Element.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS In-document Element.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS In-document Element.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS In-document Element.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS In-document Element.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 

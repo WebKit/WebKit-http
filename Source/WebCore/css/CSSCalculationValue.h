@@ -36,11 +36,8 @@
 namespace WebCore {
 
 class CSSParserTokenRange;
-class CSSParserValueList;
 class CSSToLengthConversionData;
 class RenderStyle;
-
-struct CSSParserString;
 
 enum CalculationCategory {
     CalcNumber = 0,
@@ -58,7 +55,7 @@ class CSSCalcExpressionNode : public RefCounted<CSSCalcExpressionNode> {
 public:
     enum Type {
         CssCalcPrimitiveValue = 1,
-        CssCalcBinaryOperation
+        CssCalcOperation
     };
 
     virtual ~CSSCalcExpressionNode() { }
@@ -69,7 +66,7 @@ public:
     virtual String customCSSText() const = 0;
     virtual bool equals(const CSSCalcExpressionNode& other) const { return m_category == other.m_category && m_isInteger == other.m_isInteger; }
     virtual Type type() const = 0;
-    virtual CSSPrimitiveValue::UnitTypes primitiveType() const = 0;
+    virtual CSSPrimitiveValue::UnitType primitiveType() const = 0;
 
     CalculationCategory category() const { return m_category; }
     bool isInteger() const { return m_isInteger; }
@@ -88,10 +85,8 @@ private:
 
 class CSSCalcValue final : public CSSValue {
 public:
-    // FIXME-NEWPARSER: Remove the CSSParserString create when old parser goes away.
-    static RefPtr<CSSCalcValue> create(CSSParserString name, CSSParserValueList& arguments, ValueRange);
-    static RefPtr<CSSCalcValue> create(const CSSParserTokenRange&, ValueRange);
-    
+    static RefPtr<CSSCalcValue> create(CSSValueID function, const CSSParserTokenRange&, CalculationCategory destinationCategory, ValueRange);
+
     static RefPtr<CSSCalcValue> create(const CalculationValue&, const RenderStyle&);
 
     CalculationCategory category() const { return m_expression->category(); }

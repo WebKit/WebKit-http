@@ -23,20 +23,20 @@
 #include "config.h"
 #include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(GSTREAMER) && USE(OPENCDM)
+#include "GStreamerEMEUtilities.h"
+
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
 static void webKitMediaOpenCDMPlayReadyDecryptorFinalize(GObject*);
 
 GST_DEBUG_CATEGORY(webkit_media_opencdm_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_playready_decrypt_debug_category
 
-#define PLAYREADY_PROTECTION_SYSTEM_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
-
 static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" PLAYREADY_PROTECTION_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" PLAYREADY_PROTECTION_SYSTEM_UUID ";"));
+    GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID ";"));
 
 static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
     GST_PAD_SRC,
@@ -64,7 +64,7 @@ static void webkit_media_opencdm_playready_decrypt_class_init(WebKitOpenCDMPlayR
         "webkitopencdmplayready", 0, "OpenCDM PlayReady decryptor");
 
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
-    cencClass->protectionSystemId = PLAYREADY_PROTECTION_SYSTEM_UUID;
+    cencClass->protectionSystemId = WebCore::GStreamerEMEUtilities::s_PlayReadyUUID;
 }
 
 static void webkit_media_opencdm_playready_decrypt_init(WebKitOpenCDMPlayReadyDecrypt*)
@@ -76,4 +76,4 @@ static void webKitMediaOpenCDMPlayReadyDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(GSTREAMER) && USE(OPENCDM)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)

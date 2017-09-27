@@ -27,12 +27,12 @@
 #import "HIDEventGenerator.h"
 
 #import "IOKitSPI.h"
-#import "UIKitSPI.h"
-#import <WebCore/SoftLinking.h>
+#import "UIKitTestSPI.h"
 #import <mach/mach_time.h>
 #import <wtf/Assertions.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(BackBoardServices)
 SOFT_LINK(BackBoardServices, BKSHIDEventSetDigitizerInfo, void, (IOHIDEventRef digitizerEvent, uint32_t contextID, uint8_t systemGestureisPossible, uint8_t isSystemGestureStateChangeEvent, CFStringRef displayUUID, CFTimeInterval initialTouchTimestamp, float maxForce), (digitizerEvent, contextID, systemGestureisPossible, isSystemGestureStateChangeEvent, displayUUID, initialTouchTimestamp, maxForce));
@@ -44,6 +44,7 @@ NSString* const HIDEventTouchesKey = @"touches";
 NSString* const HIDEventPhaseKey = @"phase";
 NSString* const HIDEventInterpolateKey = @"interpolate";
 NSString* const HIDEventTimestepKey = @"timestep";
+NSString* const HIDEventCoordinateSpaceKey = @"coordinateSpace";
 NSString* const HIDEventStartEventKey = @"startEvent";
 NSString* const HIDEventEndEventKey = @"endEvent";
 NSString* const HIDEventTouchIDKey = @"id";
@@ -57,6 +58,9 @@ NSString* const HIDEventMinorRadiusKey = @"minorRadius";
 NSString* const HIDEventInputTypeHand = @"hand";
 NSString* const HIDEventInputTypeFinger = @"finger";
 NSString* const HIDEventInputTypeStylus = @"stylus";
+
+NSString* const HIDEventCoordinateSpaceTypeGlobal = @"global";
+NSString* const HIDEventCoordinateSpaceTypeContent = @"content";
 
 NSString* const HIDEventInterpolationTypeLinear = @"linear";
 NSString* const HIDEventInterpolationTypeSimpleCurve = @"simpleCurve";
@@ -389,15 +393,9 @@ static InterpolationType interpolationFromString(NSString *string)
         RetainPtr<IOHIDEventRef> subEvent;
         if (pointInfo->isStylus) {
             if (eventType == StylusEventTouched) {
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
                 eventMask |= kIOHIDDigitizerEventEstimatedAltitude;
                 eventMask |= kIOHIDDigitizerEventEstimatedAzimuth;
                 eventMask |= kIOHIDDigitizerEventEstimatedPressure;
-#else
-                eventMask |= kIOHIDDigitizerEventUpdateAltitudeMask;
-                eventMask |= kIOHIDDigitizerEventUpdateAzimuthMask;
-                eventMask |= kIOHIDDigitizerEventUpdatePressureMask;
-#endif
             } else if (eventType == StylusEventMoved)
                 eventMask = kIOHIDDigitizerEventPosition;
 
@@ -765,6 +763,11 @@ static InterpolationType interpolationFromString(NSString *string)
     }
 }
 
+- (BOOL)checkForOutstandingCallbacks
+{
+    return !([_eventCallbacks count] > 0);
+}
+
 static inline bool shouldWrapWithShiftKeyEventForCharacter(NSString *key)
 {
     if (key.length != 1)
@@ -1022,6 +1025,8 @@ static inline uint32_t hidUsageCodeForCharacter(NSString *key)
         [newEvent release];
         time += timeStep;
     }
+    
+    [interpolatedEvents addObject:endEvent];
 
     return interpolatedEvents;
 }

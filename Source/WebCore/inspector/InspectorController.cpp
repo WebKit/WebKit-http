@@ -33,10 +33,13 @@
 #include "InspectorController.h"
 
 #include "CommandLineAPIHost.h"
+#include "CommonVM.h"
+#include "DOMWindow.h"
 #include "DOMWrapperWorld.h"
 #include "GraphicsContext.h"
 #include "InspectorApplicationCacheAgent.h"
 #include "InspectorCSSAgent.h"
+#include "InspectorCanvasAgent.h"
 #include "InspectorClient.h"
 #include "InspectorDOMAgent.h"
 #include "InspectorDOMDebuggerAgent.h"
@@ -49,10 +52,10 @@
 #include "InspectorMemoryAgent.h"
 #include "InspectorNetworkAgent.h"
 #include "InspectorPageAgent.h"
-#include "InspectorReplayAgent.h"
 #include "InspectorTimelineAgent.h"
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
+#include "JSDOMBindingSecurity.h"
 #include "JSDOMWindow.h"
 #include "JSDOMWindowCustom.h"
 #include "JSMainThreadExecState.h"
@@ -150,10 +153,6 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_agents.append(std::make_unique<InspectorMemoryAgent>(pageContext));
 #endif
 
-#if ENABLE(WEB_REPLAY)
-    m_agents.append(std::make_unique<InspectorReplayAgent>(pageContext));
-#endif
-
     auto domStorageAgentPtr = std::make_unique<InspectorDOMStorageAgent>(pageContext, m_pageAgent);
     InspectorDOMStorageAgent* domStorageAgent = domStorageAgentPtr.get();
     m_agents.append(WTFMove(domStorageAgentPtr));
@@ -181,6 +180,10 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_agents.append(std::make_unique<InspectorLayerTreeAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorWorkerAgent>(pageContext));
 
+    auto canvasAgentPtr = std::make_unique<InspectorCanvasAgent>(pageContext);
+    m_instrumentingAgents->setInspectorCanvasAgent(canvasAgentPtr.get());
+    m_agents.append(WTFMove(canvasAgentPtr));
+
     ASSERT(m_injectedScriptManager->commandLineAPIHost());
     if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost()) {
         commandLineAPIHost->init(m_inspectorAgent
@@ -200,17 +203,12 @@ InspectorController::~InspectorController()
 
 void InspectorController::inspectedPageDestroyed()
 {
-    m_injectedScriptManager->disconnect();
-
-    // If the local frontend page was destroyed, close the window.
-    if (m_inspectorFrontendClient)
-        m_inspectorFrontendClient->closeWindow();
-
-    // The frontend should call setInspectorFrontendClient(nullptr) under closeWindow().
-    ASSERT(!m_inspectorFrontendClient);
-
     // Clean up resources and disconnect local and remote frontends.
     disconnectAllFrontends();
+
+    // Disconnect the client.
+    m_inspectorClient->inspectedPageDestroyed();
+    m_inspectorClient = nullptr;
 
     m_agents.discardValues();
 }
@@ -249,13 +247,14 @@ void InspectorController::didClearWindowObjectInWorld(Frame& frame, DOMWrapperWo
         m_inspectorFrontendClient->windowObjectCleared();
 }
 
-void InspectorController::connectFrontend(Inspector::FrontendChannel* frontendChannel, bool isAutomaticInspection)
+void InspectorController::connectFrontend(Inspector::FrontendChannel* frontendChannel, bool isAutomaticInspection, bool immediatelyPause)
 {
     ASSERT_ARG(frontendChannel, frontendChannel);
     ASSERT(m_inspectorClient);
 
     bool connectedFirstFrontend = !m_frontendRouter->hasFrontends();
     m_isAutomaticInspection = isAutomaticInspection;
+    m_pauseAfterInitialization = immediatelyPause;
 
     m_frontendRouter->connectFrontend(frontendChannel);
 
@@ -275,7 +274,9 @@ void InspectorController::connectFrontend(Inspector::FrontendChannel* frontendCh
 void InspectorController::disconnectFrontend(FrontendChannel* frontendChannel)
 {
     m_frontendRouter->disconnectFrontend(frontendChannel);
+
     m_isAutomaticInspection = false;
+    m_pauseAfterInitialization = false;
 
     InspectorInstrumentation::frontendDeleted();
 
@@ -284,8 +285,9 @@ void InspectorController::disconnectFrontend(FrontendChannel* frontendChannel)
         // Notify agents first.
         m_agents.willDestroyFrontendAndBackend(DisconnectReason::InspectorDestroyed);
 
-        // Destroy the inspector overlay's page.
+        // Clean up inspector resources.
         m_overlay->freePage();
+        m_injectedScriptManager->discardInjectedScripts();
 
         // Unplug all instrumentations since they aren't needed now.
         InspectorInstrumentation::unregisterInstrumentingAgents(m_instrumentingAgents.get());
@@ -299,8 +301,15 @@ void InspectorController::disconnectFrontend(FrontendChannel* frontendChannel)
 
 void InspectorController::disconnectAllFrontends()
 {
-    // The local frontend client should be disconnected already.
+    // If the local frontend page was destroyed, close the window.
+    if (m_inspectorFrontendClient)
+        m_inspectorFrontendClient->closeWindow();
+
+    // The frontend should call setInspectorFrontendClient(nullptr) under closeWindow().
     ASSERT(!m_inspectorFrontendClient);
+
+    if (!m_frontendRouter->hasFrontends())
+        return;
 
     for (unsigned i = 0; i < m_frontendRouter->frontendCount(); ++i)
         InspectorInstrumentation::frontendDeleted();
@@ -311,16 +320,14 @@ void InspectorController::disconnectAllFrontends()
     // Notify agents first, since they may need to use InspectorClient.
     m_agents.willDestroyFrontendAndBackend(DisconnectReason::InspectedTargetDestroyed);
 
-    // Destroy the inspector overlay's page.
+    // Clean up inspector resources.
     m_overlay->freePage();
-
-    // Disconnect local WK2 frontend and destroy the client.
-    m_inspectorClient->inspectedPageDestroyed();
-    m_inspectorClient = nullptr;
+    m_injectedScriptManager->disconnect();
 
     // Disconnect any remaining remote frontends.
     m_frontendRouter->disconnectAllFrontends();
     m_isAutomaticInspection = false;
+    m_pauseAfterInitialization = false;
 
 #if ENABLE(REMOTE_INSPECTOR)
     m_page.remoteInspectorInformationDidChange();
@@ -433,7 +440,8 @@ bool InspectorController::developerExtrasEnabled() const
 bool InspectorController::canAccessInspectedScriptState(JSC::ExecState* scriptState) const
 {
     JSLockHolder lock(scriptState);
-    JSDOMWindow* inspectedWindow = toJSDOMWindow(scriptState->lexicalGlobalObject());
+
+    JSDOMWindow* inspectedWindow = toJSDOMWindow(scriptState->vm(), scriptState->lexicalGlobalObject());
     if (!inspectedWindow)
         return false;
 
@@ -452,6 +460,14 @@ InspectorEvaluateHandler InspectorController::evaluateHandler() const
 
 void InspectorController::frontendInitialized()
 {
+    if (m_pauseAfterInitialization) {
+        m_pauseAfterInitialization = false;
+        if (PageDebuggerAgent* debuggerAgent = m_instrumentingAgents->pageDebuggerAgent()) {
+            ErrorString ignored;
+            debuggerAgent->pause(ignored);
+        }
+    }
+
 #if ENABLE(REMOTE_INSPECTOR)
     if (m_isAutomaticInspection)
         m_page.inspectorDebuggable().unpauseForInitializedInspector();
@@ -470,7 +486,7 @@ PageScriptDebugServer& InspectorController::scriptDebugServer()
 
 JSC::VM& InspectorController::vm()
 {
-    return JSDOMWindowBase::commonVM();
+    return commonVM();
 }
 
 void InspectorController::didComposite(Frame& frame)

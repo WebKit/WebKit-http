@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,34 +28,33 @@
 
 #pragma once
 
-#include "Event.h"
 #include "FrameLoaderTypes.h"
-#include "URL.h"
 #include "ResourceRequest.h"
 #include "UserGestureIndicator.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
+class Document;
+class Event;
+
 class NavigationAction {
 public:
-    WEBCORE_EXPORT NavigationAction();
-    WEBCORE_EXPORT explicit NavigationAction(const ResourceRequest&);
-    WEBCORE_EXPORT NavigationAction(const ResourceRequest&, NavigationType);
-    WEBCORE_EXPORT NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission);
+    NavigationAction();
+    WEBCORE_EXPORT NavigationAction(Document&, const ResourceRequest&, InitiatedByMainFrame, NavigationType = NavigationType::Other, ShouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow, Event* = nullptr, const AtomicString& downloadAttribute = nullAtom());
+    NavigationAction(Document&, const ResourceRequest&, InitiatedByMainFrame, FrameLoadType, bool isFormSubmission, Event* = nullptr, ShouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow, const AtomicString& downloadAttribute = nullAtom());
 
-    NavigationAction(const ResourceRequest&, ShouldOpenExternalURLsPolicy);
-    NavigationAction(const ResourceRequest&, NavigationType, Event*);
-    NavigationAction(const ResourceRequest&, NavigationType, Event*, ShouldOpenExternalURLsPolicy);
-    NavigationAction(const ResourceRequest&, NavigationType, Event*, ShouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute);
-    NavigationAction(const ResourceRequest&, NavigationType, ShouldOpenExternalURLsPolicy);
-    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event*);
-    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event*, ShouldOpenExternalURLsPolicy);
-    NavigationAction(const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event*, ShouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute);
+    WEBCORE_EXPORT ~NavigationAction();
+
+    WEBCORE_EXPORT NavigationAction(const NavigationAction&);
+    NavigationAction& operator=(const NavigationAction&);
+
+    NavigationAction(NavigationAction&&);
+    NavigationAction& operator=(NavigationAction&&);
 
     NavigationAction copyWithShouldOpenExternalURLsPolicy(ShouldOpenExternalURLsPolicy) const;
 
-    bool isEmpty() const { return m_resourceRequest.url().isEmpty(); }
+    bool isEmpty() const { return !m_sourceDocument || m_resourceRequest.url().isEmpty(); }
 
     URL url() const { return m_resourceRequest.url(); }
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
@@ -63,19 +62,24 @@ public:
     NavigationType type() const { return m_type; }
     const Event* event() const { return m_event.get(); }
 
+    const Document* sourceDocument() const { return m_sourceDocument.get(); }
+
     bool processingUserGesture() const { return m_userGestureToken ? m_userGestureToken->processingUserGesture() : false; }
     RefPtr<UserGestureToken> userGestureToken() const { return m_userGestureToken; }
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy() const { return m_shouldOpenExternalURLsPolicy; }
+    InitiatedByMainFrame initiatedByMainFrame() const { return m_initiatedByMainFrame; }
 
     const AtomicString& downloadAttribute() const { return m_downloadAttribute; }
 
 private:
+    RefPtr<Document> m_sourceDocument;
     ResourceRequest m_resourceRequest;
-    NavigationType m_type { NavigationType::Other };
+    NavigationType m_type;
+    ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy;
+    InitiatedByMainFrame m_initiatedByMainFrame;
     RefPtr<Event> m_event;
-    RefPtr<UserGestureToken> m_userGestureToken;
-    ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy { ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+    RefPtr<UserGestureToken> m_userGestureToken { UserGestureIndicator::currentUserGesture() };
     AtomicString m_downloadAttribute;
 };
 

@@ -3,60 +3,33 @@ class ResultsTable extends ComponentBase {
     {
         super(name);
         this._repositoryList = [];
-        this._valueFormatter = null;
-        this._rangeSelectorLabels = null;
-        this._rangeSelectorCallback = null;
-        this._selectedRange = {};
+        this._analysisResultsView = null;
     }
 
-    setValueFormatter(valueFormatter) { this._valueFormatter = valueFormatter; }
-    setRangeSelectorLabels(labels) { this._rangeSelectorLabels = labels; }
-    setRangeSelectorCallback(callback) { this._rangeSelectorCallback = callback; }
-    selectedRange() { return this._selectedRange; }
-
-    _rangeSelectorClicked(label, row)
+    setAnalysisResultsView(analysisResultsView)
     {
-        this._selectedRange[label] = row;
-        if (this._rangeSelectorCallback)
-            this._rangeSelectorCallback();
+        console.assert(analysisResultsView instanceof AnalysisResultsView);
+        this._analysisResultsView = analysisResultsView;
+        this.enqueueToRender();
     }
 
-    render()
+    renderTable(valueFormatter, rowGroups, headingLabel, buildHeaders = (headers) => headers, buildColumns = (columns, row, rowIndex) => columns)
     {
-        if (!this._valueFormatter)
-            return;
+        Instrumentation.startMeasuringTime('ResultsTable', 'renderTable');
 
-        Instrumentation.startMeasuringTime('ResultsTable', 'render');
+        const [repositoryList, constantCommits] = this._computeRepositoryList(rowGroups);
 
-        var rowGroups = this.buildRowGroups();
+        const barGraphGroup = new BarGraphGroup();
+        barGraphGroup.setShowLabels(true);
+        const element = ComponentBase.createElement;
+        let hasGroupHeading = false;
+        const tableBodies = rowGroups.map((group) => {
+            const groupHeading = group.heading;
+            const revisionSupressionCount = {};
+            hasGroupHeading = hasGroupHeading || groupHeading;
 
-        var extraRepositories = [];
-        var repositoryList = this._computeRepositoryList(rowGroups, extraRepositories);
-
-        this._selectedRange = {};
-
-        var barGraphGroup = new BarGraphGroup(this._valueFormatter);
-        var element = ComponentBase.createElement;
-        var self = this;
-        var hasGroupHeading = false;
-        var tableBodies = rowGroups.map(function (group) {
-            var groupHeading = group.heading;
-            var revisionSupressionCount = {};
-            hasGroupHeading = !!groupHeading;
-
-            return element('tbody', group.rows.map(function (row, rowIndex) {
-                var cells = [];
-
-                if (self._rangeSelectorLabels) {
-                    for (var label of self._rangeSelectorLabels) {
-                        var content = '';
-                        if (row.rootSet()) {
-                            content = element('input',
-                                {type: 'radio', name: label, onchange: self._rangeSelectorClicked.bind(self, label, row)});
-                        }
-                        cells.push(element('td', content));
-                    }
-                }
+            return element('tbody', group.rows.map((row, rowIndex) => {
+                const cells = [];
 
                 if (groupHeading !== undefined && !rowIndex)
                     cells.push(element('th', {rowspan: group.rows.length}, groupHeading));
@@ -65,55 +38,52 @@ class ResultsTable extends ComponentBase {
                 if (row.labelForWholeRow())
                     cells.push(element('td', {class: 'whole-row-label', colspan: repositoryList.length + 1}, row.labelForWholeRow()));
                 else {
-                    cells.push(element('td', row.resultContent(barGraphGroup)));
-                    cells.push(self._createRevisionListCells(repositoryList, revisionSupressionCount, group, row.rootSet(), rowIndex));
+                    cells.push(element('td', row.resultContent(valueFormatter, barGraphGroup)));
+                    cells.push(this._createRevisionListCells(repositoryList, revisionSupressionCount, group, row.commitSet(), rowIndex));
                 }
 
-                return element('tr', [cells, row.additionalColumns()]);
+                return element('tr', buildColumns(cells, row, rowIndex));
             }));
         });
 
         this.renderReplace(this.content().querySelector('table'), [
-            element('thead', [
-                this._rangeSelectorLabels ? this._rangeSelectorLabels.map(function (label) { return element('th', label) }) : [],
-                this.heading(),
-                element('th', 'Result'),
-                repositoryList.map(function (repository) { return element('th', repository.label()); }),
-                this.additionalHeading(),
-            ]),
+            tableBodies.length ? element('thead', [
+                buildHeaders([
+                    ComponentBase.createElement('th', {colspan: hasGroupHeading ? 2 : 1}, headingLabel),
+                    element('th', 'Result'),
+                    repositoryList.map((repository) => element('th', repository.label())),
+                ]),
+            ]) : [],
             tableBodies,
         ]);
 
-        this.renderReplace(this.content().querySelector('.results-table-extra-repositories'),
-            extraRepositories.map(function (commit) { return element('li', commit.title()); }));
+        this.renderReplace(this.content('constant-commits'), constantCommits.map((commit) => element('li', commit.title())));
 
-        barGraphGroup.render();
-
-        Instrumentation.endMeasuringTime('ResultsTable', 'render');
+        Instrumentation.endMeasuringTime('ResultsTable', 'renderTable');
     }
 
-    _createRevisionListCells(repositoryList, revisionSupressionCount, testGroup, rootSet, rowIndex)
+    _createRevisionListCells(repositoryList, revisionSupressionCount, testGroup, commitSet, rowIndex)
     {
-        var element = ComponentBase.createElement;
-        var link = ComponentBase.createLink;
-        var cells = [];
-        for (var repository of repositoryList) {
-            var commit = rootSet ? rootSet.commitForRepository(repository) : null;
+        const element = ComponentBase.createElement;
+        const link = ComponentBase.createLink;
+        const cells = [];
+        for (const repository of repositoryList) {
+            const commit = commitSet ? commitSet.commitForRepository(repository) : null;
 
             if (revisionSupressionCount[repository.id()]) {
                 revisionSupressionCount[repository.id()]--;
                 continue;
             }
 
-            var succeedingRowIndex = rowIndex + 1;
+            let succeedingRowIndex = rowIndex + 1;
             while (succeedingRowIndex < testGroup.rows.length) {
-                var succeedingRootSet = testGroup.rows[succeedingRowIndex].rootSet();
-                if (succeedingRootSet && commit != succeedingRootSet.commitForRepository(repository))
+                const succeedingCommitSet = testGroup.rows[succeedingRowIndex].commitSet();
+                if (succeedingCommitSet && commit != succeedingCommitSet.commitForRepository(repository))
                     break;
                 succeedingRowIndex++;
             }
-            var rowSpan = succeedingRowIndex - rowIndex;
-            var attributes = {class: 'revision'};
+            const rowSpan = succeedingRowIndex - rowIndex;
+            const attributes = {class: 'revision'};
             if (rowSpan > 1) {
                 revisionSupressionCount[repository.id()] = rowSpan - 1;
                 attributes['rowspan'] = rowSpan;                       
@@ -121,9 +91,9 @@ class ResultsTable extends ComponentBase {
             if (rowIndex + rowSpan >= testGroup.rows.length)
                 attributes['class'] += ' lastRevision';
 
-            var content = 'Missing';
+            let content = 'Missing';
             if (commit) {
-                var url = commit.url();
+                const url = commit.url();
                 content = url ? link(commit.label(), url) : commit.label();
             }
 
@@ -132,47 +102,35 @@ class ResultsTable extends ComponentBase {
         return cells;
     }
 
-    heading() { throw 'NotImplemented'; }
-    additionalHeading() { return []; }
-    buildRowGroups() { throw 'NotImplemented'; }
-
-    _computeRepositoryList(rowGroups, extraRepositories)
+    _computeRepositoryList(rowGroups)
     {
-        var allRepositories = Repository.all().sort(function (a, b) {
-            if (a.hasUrlForRevision() == b.hasUrlForRevision()) {
-                if (a.name() > b.name())
-                    return 1;
-                if (a.name() < b.name())
-                    return -1;
-                return 0;
-            }
-            return a.hasUrlForRevision() ? -1 /* a < b */ : 1; // a > b
-        });
-        var rootSets = [];
-        for (var group of rowGroups) {
-            for (var row of group.rows) {
-                var rootSet = row.rootSet();
-                if (rootSet)
-                    rootSets.push(rootSet);
+        const allRepositories = Repository.sortByNamePreferringOnesWithURL(Repository.all());
+        const commitSets = [];
+        for (let group of rowGroups) {
+            for (let row of group.rows) {
+                const commitSet = row.commitSet();
+                if (commitSet)
+                    commitSets.push(commitSet);
             }
         }
-        if (!rootSets.length)
-            return [];
+        if (!commitSets.length)
+            return [[], []];
 
-        var repositoryPresenceMap = {};
-        for (var repository of allRepositories) {
-            var someCommit = rootSets[0].commitForRepository(repository);
-            if (RootSet.containsMultipleCommitsForRepository(rootSets, repository))
-                repositoryPresenceMap[repository.id()] = true;
+        const changedRepositorySet = new Set;
+        const constantCommits = new Set;
+        for (let repository of allRepositories) {
+            const someCommit = commitSets[0].commitForRepository(repository);
+            if (CommitSet.containsMultipleCommitsForRepository(commitSets, repository))
+                changedRepositorySet.add(repository);
             else if (someCommit)
-                extraRepositories.push(someCommit);
+                constantCommits.add(someCommit);
         }
-        return allRepositories.filter(function (repository) { return repositoryPresenceMap[repository.id()]; });
+        return [allRepositories.filter((repository) => changedRepositorySet.has(repository)), [...constantCommits]];
     }
 
     static htmlTemplate()
     {
-        return `<table class="results-table"></table><ul class="results-table-extra-repositories"></ul>`;
+        return `<table class="results-table"></table><ul id="constant-commits"></ul>`;
     }
 
     static cssTemplate()
@@ -242,28 +200,28 @@ class ResultsTable extends ComponentBase {
                 border-top: solid 1px #ccc;
             }
 
-            .results-table single-bar-graph {
+            .results-table bar-graph {
                 display: block;
                 width: 7rem;
-                height: 1.2rem;
+                height: 1rem;
             }
 
-            .results-table-extra-repositories {
+            #constant-commits {
                 list-style: none;
                 margin: 0;
                 padding: 0.5rem 0 0 0.5rem;
                 font-size: 0.8rem;
             }
 
-            .results-table-extra-repositories:empty {
+            #constant-commits:empty {
                 padding: 0;
             }
 
-            .results-table-extra-repositories li {
+            #constant-commits li {
                 display: inline;
             }
 
-            .results-table-extra-repositories li:not(:last-child):after {
+            #constant-commits li:not(:last-child):after {
                 content: ', ';
             }
         `;
@@ -271,19 +229,18 @@ class ResultsTable extends ComponentBase {
 }
 
 class ResultsTableRow {
-    constructor(heading, rootSet)
+    constructor(heading, commitSet)
     {
         this._heading = heading;
         this._result = null;
         this._link = null;
         this._label = '-';
-        this._rootSet = rootSet;
-        this._additionalColumns = [];
+        this._commitSet = commitSet;
         this._labelForWholeRow = null;
     }
 
     heading() { return this._heading; }
-    rootSet() { return this._rootSet; }
+    commitSet() { return this._commitSet; }
     setResult(result) { this._result = result; }
     setLink(link, label)
     {
@@ -294,12 +251,17 @@ class ResultsTableRow {
     setLabelForWholeRow(label) { this._labelForWholeRow = label; }
     labelForWholeRow() { return this._labelForWholeRow; }
 
-    additionalColumns() { return this._additionalColumns; }
-    setAdditionalColumns(additionalColumns) { this._additionalColumns = additionalColumns; }
-
-    resultContent(barGraphGroup)
+    resultContent(valueFormatter, barGraphGroup)
     {
-        var resultContent = this._result ? barGraphGroup.addBar(this._result.value, this._result.interval) : this._label;
+        let resultContent = this._label;
+        if (this._result) {
+            const value = this._result.value;
+            const interval = this._result.interval;
+            let label = valueFormatter(value);
+            if (interval)
+                label += ' \u00B1' + ((value - interval[0]) * 100 / value).toFixed(2) + '%';
+            resultContent = barGraphGroup.addBar([value], [label], null, null, '#ccc', null);
+        }
         return this._link ? ComponentBase.createLink(resultContent, this._label, this._link) : resultContent;
     }
 }

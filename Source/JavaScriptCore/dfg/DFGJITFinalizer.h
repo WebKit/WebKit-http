@@ -30,13 +30,12 @@
 #include "DFGFinalizer.h"
 #include "DFGJITCode.h"
 #include "LinkBuffer.h"
-#include "MacroAssembler.h"
 
 namespace JSC { namespace DFG {
 
 class JITFinalizer : public Finalizer {
 public:
-    JITFinalizer(Plan&, PassRefPtr<JITCode>, std::unique_ptr<LinkBuffer>, MacroAssemblerCodePtr withArityCheck = MacroAssemblerCodePtr(MacroAssemblerCodePtr::EmptyValue));
+    JITFinalizer(Plan&, Ref<JITCode>&&, std::unique_ptr<LinkBuffer>, MacroAssemblerCodePtr withArityCheck = MacroAssemblerCodePtr(MacroAssemblerCodePtr::EmptyValue));
     virtual ~JITFinalizer();
     
     size_t codeSize() override;
@@ -46,7 +45,7 @@ public:
 private:
     void finalizeCommon();
     
-    RefPtr<JITCode> m_jitCode;
+    Ref<JITCode> m_jitCode;
     std::unique_ptr<LinkBuffer> m_linkBuffer;
     MacroAssemblerCodePtr m_withArityCheck;
 };

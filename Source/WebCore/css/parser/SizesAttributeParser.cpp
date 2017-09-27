@@ -33,14 +33,17 @@
 #include "CSSPrimitiveValue.h"
 #include "CSSToLengthConversionData.h"
 #include "CSSTokenizer.h"
+#include "FontCascade.h"
+#include "MediaList.h"
 #include "MediaQueryEvaluator.h"
+#include "MediaQueryParser.h"
 #include "RenderView.h"
 #include "SizesCalcParser.h"
 #include "StyleScope.h"
 
 namespace WebCore {
 
-float SizesAttributeParser::computeLength(double value, CSSPrimitiveValue::UnitTypes type, const Document& document)
+float SizesAttributeParser::computeLength(double value, CSSPrimitiveValue::UnitType type, const Document& document)
 {
     auto* renderer = document.renderView();
     if (!renderer)
@@ -70,7 +73,11 @@ SizesAttributeParser::SizesAttributeParser(const String& attribute, const Docume
     , m_length(0)
     , m_lengthWasSet(false)
 {
-    m_isValid = parse(CSSTokenizer::Scope(attribute).tokenRange());
+    // Ensure iframes have correct view size.
+    if (m_document.ownerElement())
+        m_document.ownerElement()->document().updateLayoutIgnorePendingStylesheets();
+
+    m_isValid = parse(CSSTokenizer(attribute).tokenRange());
 }
 
 float SizesAttributeParser::length()

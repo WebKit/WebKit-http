@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@ namespace JSC {
 bool VM::ensureStackCapacityFor(Register* newTopOfStack)
 {
 #if ENABLE(JIT)
-    ASSERT(wtfThreadData().stack().isGrowingDownward());
+    ASSERT(Thread::current().stack().isGrowingDownward());
     return newTopOfStack >= m_softStackLimit;
 #else
     return ensureStackCapacityForCLoop(newTopOfStack);
@@ -49,13 +49,6 @@ bool VM::isSafeToRecurseSoft() const
     safe = safe && isSafeToRecurseSoftCLoop();
 #endif
     return safe;
-}
-
-bool VM::shouldTriggerTermination(ExecState* exec)
-{
-    if (!watchdog())
-        return false;
-    return watchdog()->shouldTerminate(exec);
 }
 
 template<typename Func>

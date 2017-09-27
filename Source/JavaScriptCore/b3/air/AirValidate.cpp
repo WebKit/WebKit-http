@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -90,7 +90,7 @@ public:
 
                 // forEachArg must return Arg&'s that point into the args array.
                 inst.forEachArg(
-                    [&] (Arg& arg, Arg::Role, Arg::Type, Arg::Width) {
+                    [&] (Arg& arg, Arg::Role, Bank, Width) {
                         VALIDATE(&arg >= &inst.args[0], ("At ", arg, " in ", inst, " in ", *block));
                         VALIDATE(&arg <= &inst.args.last(), ("At ", arg, " in ", inst, " in ", *block));
                     });
@@ -101,8 +101,9 @@ public:
                     break;
                 case Shuffle:
                     // We can't handle trapping shuffles because of how we lower them. That could
-                    // be fixed though.
-                    VALIDATE(!inst.kind.traps, ("At ", inst, " in ", *block));
+                    // be fixed though. Ditto for shuffles that would do fences, which is the other
+                    // use of this bit.
+                    VALIDATE(!inst.kind.effects, ("At ", inst, " in ", *block));
                     break;
                 default:
                     break;

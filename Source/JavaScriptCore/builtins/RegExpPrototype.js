@@ -79,6 +79,7 @@ function hasObservableSideEffectsForRegExpMatch(regexp) {
     return !@isRegExpObject(regexp);
 }
 
+@overriddenName="[Symbol.match]"
 function match(strArg)
 {
     "use strict";
@@ -130,6 +131,7 @@ function match(strArg)
     }
 }
 
+@overriddenName="[Symbol.replace]"
 function replace(strArg, replace)
 {
     "use strict";
@@ -252,7 +254,8 @@ function replace(strArg, replace)
     let nextSourcePosition = 0;
     let lastPosition = 0;
 
-    for (result of resultList) {
+    for (let i = 0, resultListLength = resultList.length; i < resultListLength; ++i) {
+        let result = resultList[i];
         let nCaptures = result.length - 1;
         if (nCaptures < 0)
             nCaptures = 0;
@@ -296,6 +299,7 @@ function replace(strArg, replace)
 }
 
 // 21.2.5.9 RegExp.prototype[@@search] (string)
+@overriddenName="[Symbol.search]"
 function search(strArg)
 {
     "use strict";
@@ -316,16 +320,28 @@ function search(strArg)
 
     // 4. Let previousLastIndex be ? Get(rx, "lastIndex").
     let previousLastIndex = regexp.lastIndex;
-    // 5. Perform ? Set(rx, "lastIndex", 0, true).
-    regexp.lastIndex = 0;
+
+    // 5.If SameValue(previousLastIndex, 0) is false, then
+    // 5.a. Perform ? Set(rx, "lastIndex", 0, true).
+    // FIXME: Add SameValue support. https://bugs.webkit.org/show_bug.cgi?id=173226
+    if (previousLastIndex !== 0)
+        regexp.lastIndex = 0;
+
     // 6. Let result be ? RegExpExec(rx, S).
     let result = @regExpExec(regexp, str);
-    // 7. Perform ? Set(rx, "lastIndex", previousLastIndex, true).
-    regexp.lastIndex = previousLastIndex;
-    // 8. If result is null, return -1.
+
+    // 7. Let currentLastIndex be ? Get(rx, "lastIndex").
+    // 8. If SameValue(currentLastIndex, previousLastIndex) is false, then
+    // 8.a. Perform ? Set(rx, "lastIndex", previousLastIndex, true).
+    // FIXME: Add SameValue support. https://bugs.webkit.org/show_bug.cgi?id=173226
+    if (regexp.lastIndex !== previousLastIndex)
+        regexp.lastIndex = previousLastIndex;
+
+    // 9. If result is null, return -1.
     if (result === null)
         return -1;
-    // 9. Return ? Get(result, "index").
+
+    // 10. Return ? Get(result, "index").
     return result.index;
 }
 
@@ -367,6 +383,7 @@ function hasObservableSideEffectsForRegExpSplit(regexp) {
 }
 
 // ES 21.2.5.11 RegExp.prototype[@@split](string, limit)
+@overriddenName="[Symbol.split]"
 function split(string, limit)
 {
     "use strict";

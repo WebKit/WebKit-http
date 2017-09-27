@@ -22,6 +22,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+import fnmatch
+import json
 import os
 import os.path
 import shutil
@@ -34,11 +36,16 @@ from webkitpy.common.system.executive import ScriptError
 
 class BindingsTests:
 
-    def __init__(self, reset_results, generators, executive, verbose):
+    def __init__(self, reset_results, generators, executive, verbose, patterns, json_file_name):
         self.reset_results = reset_results
         self.generators = generators
         self.executive = executive
         self.verbose = verbose
+        self.patterns = patterns
+        self.json_file_name = json_file_name
+
+        if self.json_file_name:
+            self.failures = []
 
     def generate_from_idl(self, generator, idl_file, output_directory, supplemental_dependency_file):
         cmd = ['perl', '-w',
@@ -50,6 +57,7 @@ class BindingsTests:
                '--generator', generator,
                '--outputDir', output_directory,
                '--supplementalDependencyFile', supplemental_dependency_file,
+               '--idlAttributesFile', 'WebCore/bindings/scripts/IDLAttributes.json',
                idl_file]
 
         exit_code = 0
@@ -62,7 +70,7 @@ class BindingsTests:
             exit_code = e.exit_code
         return exit_code
 
-    def generate_supplemental_dependency(self, input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file):
+    def generate_supplemental_dependency(self, input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file, serviceworkerglobalscope_constructors_file):
         idl_files_list = tempfile.mkstemp()
         for input_file in os.listdir(input_directory):
             (name, extension) = os.path.splitext(input_file)
@@ -79,7 +87,8 @@ class BindingsTests:
                '--supplementalDependencyFile', supplemental_dependency_file,
                '--windowConstructorsFile', window_constructors_file,
                '--workerGlobalScopeConstructorsFile', workerglobalscope_constructors_file,
-               '--dedicatedWorkerGlobalScopeConstructorsFile', dedicatedworkerglobalscope_constructors_file]
+               '--dedicatedWorkerGlobalScopeConstructorsFile', dedicatedworkerglobalscope_constructors_file,
+               '--serviceWorkerGlobalScopeConstructorsFile', serviceworkerglobalscope_constructors_file]
 
         exit_code = 0
         try:
@@ -112,9 +121,19 @@ class BindingsTests:
                 print 'FAIL: (%s) %s' % (generator, output_file)
                 print output
                 changes_found = True
+                if self.json_file_name:
+                    self.failures.append("(%s) %s" % (generator, output_file))
             elif self.verbose:
                 print 'PASS: (%s) %s' % (generator, output_file)
         return changes_found
+
+    def test_matches_patterns(self, test):
+        if not self.patterns:
+            return True
+        for pattern in self.patterns:
+            if fnmatch.fnmatch(test, pattern):
+                return True
+        return False
 
     def run_tests(self, generator, input_directory, reference_directory, supplemental_dependency_file):
         work_directory = reference_directory
@@ -124,6 +143,10 @@ class BindingsTests:
             (name, extension) = os.path.splitext(input_file)
             if extension != '.idl':
                 continue
+
+            if not self.test_matches_patterns(input_file):
+                continue
+
             # Generate output into the work directory (either the given one or a
             # temp one if not reset_results is performed)
             if not self.reset_results:
@@ -157,12 +180,14 @@ class BindingsTests:
         window_constructors_file = tempfile.mkstemp()[1]
         workerglobalscope_constructors_file = tempfile.mkstemp()[1]
         dedicatedworkerglobalscope_constructors_file = tempfile.mkstemp()[1]
-        if self.generate_supplemental_dependency(input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file):
+        serviceworkerglobalscope_constructors_file = tempfile.mkstemp()[1]
+        if self.generate_supplemental_dependency(input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file, serviceworkerglobalscope_constructors_file):
             print 'Failed to generate a supplemental dependency file.'
             os.remove(supplemental_dependency_file)
             os.remove(window_constructors_file)
             os.remove(workerglobalscope_constructors_file)
             os.remove(dedicatedworkerglobalscope_constructors_file)
+            os.remove(serviceworkerglobalscope_constructors_file)
             return -1
 
         for generator in self.generators:
@@ -175,6 +200,16 @@ class BindingsTests:
         os.remove(window_constructors_file)
         os.remove(workerglobalscope_constructors_file)
         os.remove(dedicatedworkerglobalscope_constructors_file)
+        os.remove(serviceworkerglobalscope_constructors_file)
+
+        if self.json_file_name:
+            json_data = {
+                'failures': self.failures,
+            }
+
+            with open(self.json_file_name, 'w') as json_file:
+                json.dump(json_data, json_file)
+
         print ''
         if all_tests_passed:
             print 'All tests PASS!'

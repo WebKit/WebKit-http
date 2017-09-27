@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2007-2008, 2012, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -62,8 +62,8 @@ double JSValue::toLength(ExecState* exec) const
     if (d <= 0)
         return 0.0;
     if (std::isinf(d))
-        return 9007199254740991.0; // 2 ** 53 - 1
-    return std::min(d, 9007199254740991.0);
+        return maxSafeInteger();
+    return std::min(d, maxSafeInteger());
 }
 
 double JSValue::toNumberSlowCase(ExecState* exec) const
@@ -76,10 +76,10 @@ double JSValue::toNumberSlowCase(ExecState* exec) const
     return isUndefined() ? PNaN : 0; // null and false both convert to 0.
 }
 
-Optional<double> JSValue::toNumberFromPrimitive() const
+std::optional<double> JSValue::toNumberFromPrimitive() const
 {
     if (isEmpty())
-        return Nullopt;
+        return std::nullopt;
     if (isNumber())
         return asNumber();
     if (isBoolean())
@@ -88,7 +88,7 @@ Optional<double> JSValue::toNumberFromPrimitive() const
         return PNaN;
     if (isNull())
         return 0;
-    return Nullopt;
+    return std::nullopt;
 }
 
 JSObject* JSValue::toObjectSlowCase(ExecState* exec, JSGlobalObject* globalObject) const
@@ -150,17 +150,22 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (Optional<uint32_t> index = parseIndex(propertyName))
+    if (std::optional<uint32_t> index = parseIndex(propertyName)) {
+        scope.release();
         return putToPrimitiveByIndex(exec, index.value(), value, slot.isStrictMode());
+    }
 
     // Check if there are any setters or getters in the prototype chain
     JSObject* obj = synthesizePrototype(exec);
+    EXCEPTION_ASSERT(!!scope.exception() == !obj);
     if (UNLIKELY(!obj))
         return false;
     JSValue prototype;
     if (propertyName != vm.propertyNames->underscoreProto) {
         for (; !obj->structure()->hasReadOnlyOrGetterSetterPropertiesExcludingProto(); obj = asObject(prototype)) {
-            prototype = obj->getPrototypeDirect();
+            prototype = obj->getPrototype(vm, exec);
+            RETURN_IF_EXCEPTION(scope, false);
+
             if (prototype.isNull())
                 return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
         }
@@ -170,15 +175,17 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
         unsigned attributes;
         PropertyOffset offset = obj->structure()->get(vm, propertyName, attributes);
         if (offset != invalidOffset) {
-            if (attributes & ReadOnly)
+            if (attributes & PropertyAttribute::ReadOnly)
                 return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
 
             JSValue gs = obj->getDirect(offset);
-            if (gs.isGetterSetter())
+            if (gs.isGetterSetter()) {
+                scope.release();
                 return callSetter(exec, *this, gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode);
+            }
 
             if (gs.isCustomGetterSetter())
-                return callCustomSetter(exec, gs, attributes & CustomAccessor, obj, slot.thisValue(), value);
+                return callCustomSetter(exec, gs, attributes & PropertyAttribute::CustomAccessor, obj, slot.thisValue(), value);
 
             // If there's an existing property on the object or one of its 
             // prototypes it should be replaced, so break here.
@@ -205,12 +212,13 @@ bool JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSVa
     }
     
     JSObject* prototype = synthesizePrototype(exec);
-    if (UNLIKELY(!prototype)) {
-        ASSERT(scope.exception());
+    EXCEPTION_ASSERT(!!scope.exception() == !prototype);
+    if (UNLIKELY(!prototype))
         return false;
-    }
     bool putResult = false;
-    if (prototype->attemptToInterceptPutByIndexOnHoleForPrototype(exec, *this, propertyName, value, shouldThrow, putResult))
+    bool success = prototype->attemptToInterceptPutByIndexOnHoleForPrototype(exec, *this, propertyName, value, shouldThrow, putResult);
+    RETURN_IF_EXCEPTION(scope, false);
+    if (success)
         return putResult;
     
     return typeError(exec, scope, shouldThrow, ASCIILiteral(ReadonlyPropertyWriteError));
@@ -247,7 +255,7 @@ void JSValue::dumpInContextAssumingStructure(
 #endif
     } else if (isCell()) {
         if (structure->classInfo()->isSubClassOf(JSString::info())) {
-            JSString* string = jsCast<JSString*>(asCell());
+            JSString* string = asString(asCell());
             out.print("String");
             if (string->isRope())
                 out.print(" (rope)");
@@ -298,14 +306,15 @@ void JSValue::dumpForBacktrace(PrintStream& out) const
     else if (isDouble())
         out.printf("%lf", asDouble());
     else if (isCell()) {
-        if (asCell()->inherits(JSString::info())) {
-            JSString* string = jsCast<JSString*>(asCell());
+        VM& vm = *asCell()->vm();
+        if (asCell()->inherits(vm, JSString::info())) {
+            JSString* string = asString(asCell());
             const StringImpl* impl = string->tryGetValueImpl();
             if (impl)
                 out.print("\"", impl, "\"");
             else
                 out.print("(unresolved string)");
-        } else if (asCell()->inherits(Structure::info())) {
+        } else if (asCell()->inherits(vm, Structure::info())) {
             out.print("Structure[ ", asCell()->structure()->classInfo()->className);
 #if USE(JSVALUE64)
             out.print(" ID: ", asCell()->structureID());

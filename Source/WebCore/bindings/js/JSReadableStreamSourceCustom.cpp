@@ -29,46 +29,32 @@
 #include "config.h"
 #include "JSReadableStreamSource.h"
 
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
 
 using namespace JSC;
 
 namespace WebCore {
 
-static void startReadableStream(JSC::ExecState& state, Ref<DeferredPromise>&& promise)
+JSValue JSReadableStreamSource::start(ExecState& state, Ref<DeferredPromise>&& promise)
 {
-    JSReadableStreamSource* source = jsDynamicDowncast<JSReadableStreamSource*>(state.thisValue());
-    ASSERT(source);
-
+    VM& vm = state.vm();
+    
+    // FIXME: Why is it ok to ASSERT the argument count here?
     ASSERT(state.argumentCount());
-    JSReadableStreamDefaultController* controller = jsDynamicDowncast<JSReadableStreamDefaultController*>(state.uncheckedArgument(0));
+    JSReadableStreamDefaultController* controller = jsDynamicDowncast<JSReadableStreamDefaultController*>(vm, state.uncheckedArgument(0));
     ASSERT(controller);
 
-    source->wrapped().start(ReadableStreamDefaultController(controller), WTFMove(promise));
+    m_controller.set(vm, this, controller);
+
+    wrapped().start(ReadableStreamDefaultController(controller), WTFMove(promise));
+
+    return jsUndefined();
 }
 
-JSValue JSReadableStreamSource::start(ExecState& state)
+JSValue JSReadableStreamSource::pull(ExecState&, Ref<DeferredPromise>&& promise)
 {
-    ASSERT(state.argumentCount());
-    JSReadableStreamDefaultController* controller = jsDynamicDowncast<JSReadableStreamDefaultController*>(state.uncheckedArgument(0));
-    ASSERT(controller);
-
-    m_controller.set(state.vm(), this, controller);
-
-    return callPromiseFunction<startReadableStream, PromiseExecutionScope::WindowOrWorker>(state);
-}
-
-static void pullReadableStream(JSC::ExecState& state, Ref<DeferredPromise>&& promise)
-{
-    JSReadableStreamSource* source = jsDynamicDowncast<JSReadableStreamSource*>(state.thisValue());
-    ASSERT(source);
-
-    source->wrapped().pull(WTFMove(promise));
-}
-
-JSValue JSReadableStreamSource::pull(ExecState& state)
-{
-    return callPromiseFunction<pullReadableStream, PromiseExecutionScope::WindowOrWorker>(state);
+    wrapped().pull(WTFMove(promise));
+    return jsUndefined();
 }
 
 JSValue JSReadableStreamSource::controller(ExecState&) const
@@ -79,4 +65,4 @@ JSValue JSReadableStreamSource::controller(ExecState&) const
 
 }
 
-#endif // ENABLE(READABLE_STREAM_API)
+#endif // ENABLE(STREAMS_API)

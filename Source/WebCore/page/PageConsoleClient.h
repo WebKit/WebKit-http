@@ -32,6 +32,10 @@
 #include <runtime/ConsoleClient.h>
 #include <wtf/Forward.h>
 
+namespace Inspector {
+class ConsoleMessage;
+}
+
 namespace JSC {
 class ExecState;
 }
@@ -53,19 +57,23 @@ public:
     static void mute();
     static void unmute();
 
+    void addMessage(std::unique_ptr<Inspector::ConsoleMessage>&&);
+
+    // The following addMessage function are deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&& = nullptr, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0);
-    void addMessage(MessageSource, MessageLevel, const String& message, RefPtr<Inspector::ScriptCallStack>&&);
+    void addMessage(MessageSource, MessageLevel, const String& message, Ref<Inspector::ScriptCallStack>&&);
     void addMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0, Document* = nullptr);
 
 protected:
-    void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
-    void count(JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
+    void messageWithTypeAndLevel(MessageType, MessageLevel, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
+    void count(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
     void profile(JSC::ExecState*, const String& title) override;
     void profileEnd(JSC::ExecState*, const String& title) override;
     void takeHeapSnapshot(JSC::ExecState*, const String& title) override;
     void time(JSC::ExecState*, const String& title) override;
     void timeEnd(JSC::ExecState*, const String& title) override;
-    void timeStamp(JSC::ExecState*, RefPtr<Inspector::ScriptArguments>&&) override;
+    void timeStamp(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
 
 private:
     Page& m_page;

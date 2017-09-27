@@ -30,7 +30,7 @@ import string
 from string import Template
 
 from generator import Generator, ucfirst
-from models import ObjectType, EnumType
+from models import ObjectType, EnumType, Platforms
 from objc_generator import ObjCGenerator, join_type_and_name
 from objc_generator_templates import ObjCGeneratorTemplates as ObjCTemplates
 
@@ -44,8 +44,8 @@ def add_newline(lines):
 
 
 class ObjCHeaderGenerator(ObjCGenerator):
-    def __init__(self, model, input_filepath):
-        ObjCGenerator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        ObjCGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
         return '%s.h' % self.protocol_name()
@@ -60,9 +60,9 @@ class ObjCHeaderGenerator(ObjCGenerator):
         }
 
         domains = self.domains_to_generate()
-        type_domains = filter(ObjCGenerator.should_generate_domain_types_filter(self.model()), domains)
-        command_domains = filter(ObjCGenerator.should_generate_domain_command_handler_filter(self.model()), domains)
-        event_domains = filter(ObjCGenerator.should_generate_domain_event_dispatcher_filter(self.model()), domains)
+        type_domains = filter(self.should_generate_types_for_domain, domains)
+        command_domains = filter(self.should_generate_commands_for_domain, domains)
+        event_domains = filter(self.should_generate_events_for_domain, domains)
 
         # FIXME: <https://webkit.org/b/138222> Web Inspector: Reduce unnecessary enums/types generated in ObjC Protocol Interfaces
         # Currently we generate enums/types for all types in the type_domains. For the built-in
@@ -73,6 +73,7 @@ class ObjCHeaderGenerator(ObjCGenerator):
         sections.append(self.generate_license())
         sections.append(Template(ObjCTemplates.HeaderPrelude).substitute(None, **header_args))
         sections.append('\n'.join(filter(None, map(self._generate_forward_declarations, type_domains))))
+        sections.append(self._generate_enum_for_platforms())
         sections.append('\n'.join(filter(None, map(self._generate_enums, type_domains))))
         sections.append('\n'.join(filter(None, map(self._generate_types, type_domains))))
 
@@ -85,7 +86,7 @@ class ObjCHeaderGenerator(ObjCGenerator):
 
     def _generate_forward_declarations(self, domain):
         lines = []
-        for declaration in domain.type_declarations:
+        for declaration in self.type_declarations_for_domain(domain):
             if (isinstance(declaration.type, ObjectType)):
                 objc_name = self.objc_name_for_type(declaration.type)
                 lines.append('@class %s;' % objc_name)
@@ -95,7 +96,7 @@ class ObjCHeaderGenerator(ObjCGenerator):
         lines = []
 
         # Type enums and member enums.
-        for declaration in domain.type_declarations:
+        for declaration in self.type_declarations_for_domain(domain):
             if isinstance(declaration.type, EnumType):
                 add_newline(lines)
                 lines.append(self._generate_anonymous_enum_for_declaration(domain, declaration))
@@ -106,7 +107,7 @@ class ObjCHeaderGenerator(ObjCGenerator):
                         lines.append(self._generate_anonymous_enum_for_member(domain, declaration, member))
 
         # Anonymous command enums.
-        for command in domain.commands:
+        for command in self.commands_for_domain(domain):
             for parameter in command.call_parameters:
                 if isinstance(parameter.type, EnumType) and parameter.type.is_anonymous:
                     add_newline(lines)
@@ -117,7 +118,7 @@ class ObjCHeaderGenerator(ObjCGenerator):
                     lines.append(self._generate_anonymous_enum_for_parameter(domain, command.command_name, parameter))
 
         # Anonymous event enums.
-        for event in domain.events:
+        for event in self.events_for_domain(domain):
             for parameter in event.event_parameters:
                 if isinstance(parameter.type, EnumType) and parameter.type.is_anonymous:
                     add_newline(lines)
@@ -128,11 +129,16 @@ class ObjCHeaderGenerator(ObjCGenerator):
     def _generate_types(self, domain):
         lines = []
         # Type interfaces.
-        for declaration in domain.type_declarations:
+        for declaration in self.type_declarations_for_domain(domain):
             if isinstance(declaration.type, ObjectType):
                 add_newline(lines)
                 lines.append(self._generate_type_interface(domain, declaration))
         return '\n'.join(lines)
+
+    def _generate_enum_for_platforms(self):
+        objc_enum_name = '%sPlatform' % self.objc_prefix()
+        enum_values = [platform.name for platform in Platforms]
+        return self._generate_enum(objc_enum_name, enum_values)
 
     def _generate_anonymous_enum_for_declaration(self, domain, declaration):
         objc_enum_name = self.objc_enum_name_for_anonymous_enum_declaration(declaration)
@@ -192,11 +198,11 @@ class ObjCHeaderGenerator(ObjCGenerator):
 
     def _generate_command_protocols(self, domain):
         lines = []
-        if domain.commands:
+        if self.commands_for_domain(domain):
             objc_name = '%s%sDomainHandler' % (self.objc_prefix(), domain.domain_name)
             lines.append('@protocol %s <NSObject>' % objc_name)
             lines.append('@required')
-            for command in domain.commands:
+            for command in self.commands_for_domain(domain):
                 lines.append(self._generate_single_command_protocol(domain, command))
             lines.append('@end')
         return '\n'.join(lines)
@@ -218,11 +224,12 @@ class ObjCHeaderGenerator(ObjCGenerator):
 
     def _generate_event_interfaces(self, domain):
         lines = []
-        if domain.events:
+        events = self.events_for_domain(domain)
+        if len(events):
             objc_name = '%s%sDomainEventDispatcher' % (self.objc_prefix(), domain.domain_name)
             lines.append('__attribute__((visibility ("default")))')
             lines.append('@interface %s : NSObject' % objc_name)
-            for event in domain.events:
+            for event in events:
                 lines.append(self._generate_single_event_interface(domain, event))
             lines.append('@end')
         return '\n'.join(lines)

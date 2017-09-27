@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -44,6 +44,7 @@ inline auto HTMLCollection::rootTypeFromCollectionType(CollectionType type) -> R
     case DocAll:
     case WindowNamedItems:
     case DocumentNamedItems:
+    case DocumentAllNamedItems:
     case FormControls:
         return HTMLCollection::IsRootedAtDocument;
     case AllDescendants:
@@ -96,8 +97,8 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
     case DocLinks:
         return InvalidateOnHRefAttrChange;
     case WindowNamedItems:
-        return InvalidateOnIdNameAttrChange;
     case DocumentNamedItems:
+    case DocumentAllNamedItems:
         return InvalidateOnIdNameAttrChange;
     case FormControls:
         return InvalidateForFormControls;
@@ -130,13 +131,14 @@ HTMLCollection::~HTMLCollection()
     case ByHTMLTag:
     case WindowNamedItems:
     case DocumentNamedItems:
+    case DocumentAllNamedItems:
         break;
     default:
         ownerNode().nodeLists()->removeCachedCollection(this);
     }
 }
 
-void HTMLCollection::invalidateCache(Document& document)
+void HTMLCollection::invalidateCacheForDocument(Document& document)
 {
     if (hasNamedElementCache())
         invalidateNamedElementCache(document);
@@ -146,7 +148,10 @@ void HTMLCollection::invalidateNamedElementCache(Document& document) const
 {
     ASSERT(hasNamedElementCache());
     document.collectionWillClearIdNameMap(*this);
-    m_namedElementCache = nullptr;
+    {
+        auto locker = holdLock(m_namedElementCacheAssignmentLock);
+        m_namedElementCache = nullptr;
+    }
 }
 
 Element* HTMLCollection::namedItemSlow(const AtomicString& name) const
@@ -175,6 +180,19 @@ const Vector<AtomicString>& HTMLCollection::supportedPropertyNames()
     ASSERT(m_namedElementCache);
 
     return m_namedElementCache->propertyNames();
+}
+
+bool HTMLCollection::isSupportedPropertyName(const String& name)
+{
+    updateNamedElementCache();
+    ASSERT(m_namedElementCache);
+    
+    if (m_namedElementCache->findElementsWithId(name))
+        return true;
+    if (m_namedElementCache->findElementsWithName(name))
+        return true;
+
+    return false;
 }
 
 void HTMLCollection::updateNamedElementCache() const

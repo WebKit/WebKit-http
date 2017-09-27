@@ -42,9 +42,9 @@
 #include <wtf/win/GDIObject.h>
 
 #if USE(CG)
-#include "CoreGraphicsSPI.h"
 #include <ApplicationServices/ApplicationServices.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
+#include <pal/spi/cg/CoreGraphicsSPI.h>
 #endif
 
 #if USE(DIRECT2D)
@@ -137,12 +137,12 @@ static const Vector<String>* getLinkedFonts(String& family)
         return result;
     }
 
-    WCHAR* linkedFonts = reinterpret_cast<WCHAR*>(malloc(linkedFontsBufferSize));
-    if (::RegQueryValueEx(fontLinkKey, family.charactersWithNullTermination().data(), 0, nullptr, reinterpret_cast<BYTE*>(linkedFonts), &linkedFontsBufferSize) == ERROR_SUCCESS) {
-        unsigned length = linkedFontsBufferSize / sizeof(*linkedFonts);
-        appendLinkedFonts(linkedFonts, length, result);
+    static const constexpr unsigned InitialBufferSize { 256 / sizeof(WCHAR) };
+    Vector<WCHAR, InitialBufferSize> linkedFonts(roundUpToMultipleOf<sizeof(WCHAR)>(linkedFontsBufferSize) / sizeof(WCHAR));
+    if (::RegQueryValueEx(fontLinkKey, family.charactersWithNullTermination().data(), 0, nullptr, reinterpret_cast<BYTE*>(linkedFonts.data()), &linkedFontsBufferSize) == ERROR_SUCCESS) {
+        unsigned length = linkedFontsBufferSize / sizeof(WCHAR);
+        appendLinkedFonts(linkedFonts.data(), length, result);
     }
-    free(linkedFonts);
     RegCloseKey(fontLinkKey);
     return result;
 }
@@ -319,7 +319,7 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
         DeleteObject(hfont);
     }
 
-    return fontData.release();
+    return fontData;
 }
 
 Vector<String> FontCache::systemFontFamilies()
@@ -340,8 +340,9 @@ RefPtr<Font> FontCache::fontFromDescriptionAndLogFont(const FontDescription& fon
 
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(AtomicString, fallbackFontName, ());
-    if (!fallbackFontName.isEmpty())
+    static NeverDestroyed<AtomicString> fallbackFontName;
+
+    if (!fallbackFontName.get().isEmpty())
         return *fontForFamily(fontDescription, fallbackFontName);
 
     // FIXME: Would be even better to somehow get the user's default font here.  For now we'll pick
@@ -360,7 +361,7 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
     RefPtr<Font> simpleFont;
     for (size_t i = 0; i < WTF_ARRAY_LENGTH(fallbackFonts); ++i) {
         if (simpleFont = fontForFamily(fontDescription, fallbackFonts[i])) {
-            fallbackFontName = fallbackFonts[i];
+            fallbackFontName.get() = fallbackFonts[i];
             return *simpleFont;
         }
     }
@@ -393,20 +394,25 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
     return *simpleFont;
 }
 
-static LONG toGDIFontWeight(FontWeight fontWeight)
+static LONG toGDIFontWeight(FontSelectionValue fontWeight)
 {
-    static LONG gdiFontWeights[] = {
-        FW_THIN,        // FontWeight100
-        FW_EXTRALIGHT,  // FontWeight200
-        FW_LIGHT,       // FontWeight300
-        FW_NORMAL,      // FontWeight400
-        FW_MEDIUM,      // FontWeight500
-        FW_SEMIBOLD,    // FontWeight600
-        FW_BOLD,        // FontWeight700
-        FW_EXTRABOLD,   // FontWeight800
-        FW_HEAVY        // FontWeight900
-    };
-    return gdiFontWeights[fontWeight];
+    if (fontWeight < FontSelectionValue(150))
+        return FW_THIN;
+    if (fontWeight < FontSelectionValue(250))
+        return FW_EXTRALIGHT;
+    if (fontWeight < FontSelectionValue(350))
+        return FW_LIGHT;
+    if (fontWeight < FontSelectionValue(450))
+        return FW_NORMAL;
+    if (fontWeight < FontSelectionValue(550))
+        return FW_MEDIUM;
+    if (fontWeight < FontSelectionValue(650))
+        return FW_SEMIBOLD;
+    if (fontWeight < FontSelectionValue(750))
+        return FW_BOLD;
+    if (fontWeight < FontSelectionValue(850))
+        return FW_EXTRABOLD;
+    return FW_HEAVY;
 }
 
 static inline bool isGDIFontWeightBold(LONG gdiFontWeight)
@@ -531,30 +537,57 @@ struct TraitsInFamilyProcData {
     }
 
     const AtomicString& m_familyName;
-    HashSet<unsigned> m_traitsMasks;
+    Vector<FontSelectionCapabilities> m_capabilities;
 };
 
 static int CALLBACK traitsInFamilyEnumProc(CONST LOGFONT* logFont, CONST TEXTMETRIC* metrics, DWORD fontType, LPARAM lParam)
 {
     TraitsInFamilyProcData* procData = reinterpret_cast<TraitsInFamilyProcData*>(lParam);
 
-    unsigned traitsMask = 0;
-    traitsMask |= logFont->lfItalic ? FontStyleItalicMask : FontStyleNormalMask;
-    LONG weight = adjustedGDIFontWeight(logFont->lfWeight, procData->m_familyName);
-    traitsMask |= weight == FW_THIN ? FontWeight100Mask :
-        weight == FW_EXTRALIGHT ? FontWeight200Mask :
-        weight == FW_LIGHT ? FontWeight300Mask :
-        weight == FW_NORMAL ? FontWeight400Mask :
-        weight == FW_MEDIUM ? FontWeight500Mask :
-        weight == FW_SEMIBOLD ? FontWeight600Mask :
-        weight == FW_BOLD ? FontWeight700Mask :
-        weight == FW_EXTRABOLD ? FontWeight800Mask :
-                                 FontWeight900Mask;
-    procData->m_traitsMasks.add(traitsMask);
+    FontSelectionValue italic = logFont->lfItalic ? italicThreshold() : FontSelectionValue();
+
+    FontSelectionValue weight;
+    switch (adjustedGDIFontWeight(logFont->lfWeight, procData->m_familyName)) {
+    case FW_THIN:
+        weight = FontSelectionValue(100);
+        break;
+    case FW_EXTRALIGHT:
+        weight = FontSelectionValue(200);
+        break;
+    case FW_LIGHT:
+        weight = FontSelectionValue(300);
+        break;
+    case FW_NORMAL:
+        weight = FontSelectionValue(400);
+        break;
+    case FW_MEDIUM:
+        weight = FontSelectionValue(500);
+        break;
+    case FW_SEMIBOLD:
+        weight = FontSelectionValue(600);
+        break;
+    case FW_BOLD:
+        weight = FontSelectionValue(700);
+        break;
+    case FW_EXTRABOLD:
+        weight = FontSelectionValue(800);
+        break;
+    default:
+        weight = FontSelectionValue(900);
+        break;
+    }
+
+    FontSelectionValue stretch = normalStretchValue();
+
+    FontSelectionCapabilities result;
+    result.weight = FontSelectionRange(weight, weight);
+    result.width = FontSelectionRange(stretch, stretch);
+    result.slope = FontSelectionRange(italic, italic);
+    procData->m_capabilities.append(WTFMove(result));
     return 1;
 }
 
-Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString& familyName)
+Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomicString& familyName)
 {
     HWndDC hdc(0);
 
@@ -567,14 +600,14 @@ Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString& familyNa
 
     TraitsInFamilyProcData procData(familyName);
     EnumFontFamiliesEx(hdc, &logFont, traitsInFamilyEnumProc, reinterpret_cast<LPARAM>(&procData), 0);
-    Vector<FontTraitsMask> result;
-    result.reserveInitialCapacity(procData.m_traitsMasks.size());
-    for (unsigned mask : procData.m_traitsMasks)
-        result.uncheckedAppend(static_cast<FontTraitsMask>(mask));
+    Vector<FontSelectionCapabilities> result;
+    result.reserveInitialCapacity(procData.m_capabilities.size());
+    for (auto capabilities : procData.m_capabilities)
+        result.uncheckedAppend(capabilities);
     return result;
 }
 
-std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings*, const FontVariantSettings*)
+std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings*, const FontVariantSettings*, FontSelectionSpecifiedCapabilities)
 {
     bool isLucidaGrande = equalLettersIgnoringASCIICase(family, "lucida grande");
 
@@ -645,7 +678,7 @@ const AtomicString& FontCache::platformAlternateFamilyName(const AtomicString& f
             return microsoftSansSerif;
         break;
     }
-    return nullAtom;
+    return nullAtom();
 }
 
 }

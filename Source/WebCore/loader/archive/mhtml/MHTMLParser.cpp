@@ -68,15 +68,15 @@ RefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
         return nullptr;
     }
 
-    RefPtr<MHTMLArchive> archive = MHTMLArchive::create();
+    auto archive = MHTMLArchive::create();
     if (!header->isMultipart()) {
         // With IE a page with no resource is not multi-part.
         bool endOfArchiveReached = false;
         RefPtr<ArchiveResource> resource = parseNextPart(*header, String(), String(), endOfArchiveReached);
         if (!resource)
             return nullptr;
-        archive->setMainResource(resource);
-        return archive;
+        archive->setMainResource(resource.releaseNonNull());
+        return WTFMove(archive);
     }
 
     // Skip the message content (it's a generic browser specific message).
@@ -100,8 +100,8 @@ RefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
             ASSERT_UNUSED(endOfPartReached, endOfPartReached);
             // The top-frame is the first frame found, regardless of the nesting level.
             if (subframeArchive->mainResource())
-                addResourceToArchive(subframeArchive->mainResource(), archive.get());
-            archive->addSubframeArchive(subframeArchive);
+                addResourceToArchive(subframeArchive->mainResource(), archive.ptr());
+            archive->addSubframeArchive(subframeArchive.releaseNonNull());
             continue;
         }
 
@@ -110,10 +110,10 @@ RefPtr<MHTMLArchive> MHTMLParser::parseArchiveWithHeader(MIMEHeader* header)
             LOG_ERROR("Failed to parse MHTML part.");
             return nullptr;
         }
-        addResourceToArchive(resource.get(), archive.get());
+        addResourceToArchive(resource.get(), archive.ptr());
     }
 
-    return archive.release();
+    return WTFMove(archive);
 }
 
 void MHTMLParser::addResourceToArchive(ArchiveResource* resource, MHTMLArchive* archive)
@@ -126,13 +126,13 @@ void MHTMLParser::addResourceToArchive(ArchiveResource* resource, MHTMLArchive* 
 
     // The first document suitable resource is the main frame.
     if (!archive->mainResource()) {
-        archive->setMainResource(resource);
+        archive->setMainResource(*resource);
         m_frames.append(archive);
         return;
     }
 
     RefPtr<MHTMLArchive> subframe = MHTMLArchive::create();
-    subframe->setMainResource(resource);
+    subframe->setMainResource(*resource);
     m_frames.append(subframe);
 }
 
@@ -154,7 +154,7 @@ RefPtr<ArchiveResource> MHTMLParser::parseNextPart(const MIMEHeader& mimeHeader,
             LOG_ERROR("Binary contents requires end of part");
             return nullptr;
         }
-        content->append(part);
+        content->append(WTFMove(part));
         m_lineReader.setSeparator("\r\n");
         Vector<char> nextChars;
         if (m_lineReader.peek(nextChars, 2) != 2) {
@@ -211,7 +211,7 @@ RefPtr<ArchiveResource> MHTMLParser::parseNextPart(const MIMEHeader& mimeHeader,
         LOG_ERROR("Invalid encoding for MHTML part.");
         return nullptr;
     }
-    RefPtr<SharedBuffer> contentBuffer = SharedBuffer::adoptVector(data);
+    RefPtr<SharedBuffer> contentBuffer = SharedBuffer::create(WTFMove(data));
     // FIXME: the URL in the MIME header could be relative, we should resolve it if it is.
     // The specs mentions 5 ways to resolve a URL: http://tools.ietf.org/html/rfc2557#section-5
     // IE and Firefox (UNMht) seem to generate only absolute URLs.

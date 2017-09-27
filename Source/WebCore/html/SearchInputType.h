@@ -41,6 +41,7 @@ class SearchFieldResultsButtonElement;
 class SearchInputType final : public BaseTextInputType {
 public:
     explicit SearchInputType(HTMLInputElement&);
+    ~SearchInputType() override;
 
     void stopSearchEventTimer();
 
@@ -64,9 +65,11 @@ private:
     bool searchEventsShouldBeDispatched() const;
     void startSearchEventTimer();
 
-    SearchFieldResultsButtonElement* m_resultsButton;
-    HTMLElement* m_cancelButton;
+    RefPtr<SearchFieldResultsButtonElement> m_resultsButton;
+    RefPtr<HTMLElement> m_cancelButton;
     Timer m_searchEventTimer;
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_INPUT_TYPE(SearchInputType, isSearchField())

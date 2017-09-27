@@ -26,44 +26,38 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-enum RequestType { "", "audio", "font", "image", "script", "style", "track", "video" };
-enum RequestDestination { "", "document", "sharedworker", "subresource", "unknown", "worker" };
-enum RequestMode { "navigate", "same-origin", "no-cors", "cors" };
-enum RequestCredentials { "omit", "same-origin", "include" };
-enum RequestCache { "default", "no-store", "reload", "no-cache", "force-cache" };
-enum RequestRedirect { "follow", "error", "manual" };
-enum ReferrerPolicy { "", "no-referrer",  "no-referrer-when-downgrade", "origin", "origin-when-cross-origin", "unsafe-url" };
+enum FetchRequestType { "", "audio", "font", "image", "script", "style", "track", "video" };
+enum FetchRequestDestination { "", "document", "sharedworker", "subresource", "unknown", "worker" };
+
+typedef (FetchRequest or USVString) RequestInfo;
+
+typedef (Blob or BufferSource or DOMFormData or URLSearchParams or ReadableStream or USVString) BodyInit;
 
 [
     ActiveDOMObject,
-    Conditional=FETCH_API,
-    Constructor(any input, optional Dictionary init),
+    Constructor(RequestInfo input, optional FetchRequestInit init),
+    ConstructorMayThrowException,
+    ConstructorCallWith=ScriptExecutionContext,
     EnabledAtRuntime=FetchAPI,
     Exposed=(Window,Worker),
     InterfaceName=Request,
-    JSBuiltinConstructor,
-    PrivateIdentifier,
-    PublicIdentifier,
 ] interface FetchRequest {
-    readonly attribute DOMString method;
-    readonly attribute DOMString url;
-    readonly attribute FetchHeaders headers;
+    readonly attribute ByteString method;
+    [ImplementedAs=urlString] readonly attribute USVString url;
+    readonly attribute FetchHeaders headers; // FIXME: Should be [SameObject].
 
-    readonly attribute RequestType type;
-    readonly attribute RequestDestination destination;
-    readonly attribute DOMString referrer;
-    readonly attribute ReferrerPolicy referrerPolicy;
-    readonly attribute RequestMode mode;
-    readonly attribute RequestCredentials credentials;
-    readonly attribute RequestCache cache;
-    readonly attribute RequestRedirect redirect;
+    readonly attribute FetchRequestType type;
+    readonly attribute FetchRequestDestination destination;
+    readonly attribute USVString referrer;
+    readonly attribute FetchReferrerPolicy referrerPolicy;
+    readonly attribute FetchRequestMode mode;
+    readonly attribute FetchRequestCredentials credentials;
+    readonly attribute FetchRequestCache cache;
+    readonly attribute FetchRequestRedirect redirect;
     readonly attribute DOMString integrity;
+    readonly attribute boolean keepalive;
 
     [CallWith=ScriptExecutionContext, MayThrowException, NewObject] FetchRequest clone();
-
-    [MayThrowException, NewObject, PrivateIdentifier] FetchHeaders initializeWith(FetchRequest input, Dictionary init);
-    [MayThrowException, NewObject, PrivateIdentifier] FetchHeaders initializeWith(DOMString input, Dictionary init);
-    [CallWith=ScriptState, MayThrowException, PrivateIdentifier] void setBody(any body, FetchRequest? request);
 };
 
 FetchRequest implements FetchBody;

@@ -34,10 +34,6 @@
 #include <stdlib.h>
 #include <wtf/StdLibExtras.h>
 
-#if OS(SOLARIS)
-#include <ieeefp.h>
-#endif
-
 #if OS(OPENBSD)
 #include <sys/types.h>
 #include <machine/ieee.h>
@@ -73,24 +69,6 @@ const float sqrtOfTwoFloat = 1.41421356237309504880f;
 #else
 const double sqrtOfTwoDouble = M_SQRT2;
 const float sqrtOfTwoFloat = static_cast<float>(M_SQRT2);
-#endif
-
-#if OS(SOLARIS)
-
-namespace std {
-
-#ifndef isfinite
-inline bool isfinite(double x) { return finite(x) && !isnand(x); }
-#endif
-#ifndef signbit
-inline bool signbit(double x) { return copysign(1.0, x) < 0; }
-#endif
-#ifndef isinf
-inline bool isinf(double x) { return !finite(x) && !isnand(x); }
-#endif
-
-} // namespace std
-
 #endif
 
 #if COMPILER(MSVC)
@@ -141,10 +119,10 @@ inline float rad2grad(float r) { return r * 200.0f / piFloat; }
 inline float grad2rad(float g) { return g * piFloat / 200.0f; }
 
 // std::numeric_limits<T>::min() returns the smallest positive value for floating point types
-template<typename T> inline T defaultMinimumForClamp() { return std::numeric_limits<T>::min(); }
-template<> inline float defaultMinimumForClamp() { return -std::numeric_limits<float>::max(); }
-template<> inline double defaultMinimumForClamp() { return -std::numeric_limits<double>::max(); }
-template<typename T> inline T defaultMaximumForClamp() { return std::numeric_limits<T>::max(); }
+template<typename T> constexpr inline T defaultMinimumForClamp() { return std::numeric_limits<T>::min(); }
+template<> constexpr inline float defaultMinimumForClamp() { return -std::numeric_limits<float>::max(); }
+template<> constexpr inline double defaultMinimumForClamp() { return -std::numeric_limits<double>::max(); }
+template<typename T> constexpr inline T defaultMaximumForClamp() { return std::numeric_limits<T>::max(); }
 
 template<typename T> inline T clampTo(double value, T min = defaultMinimumForClamp<T>(), T max = defaultMaximumForClamp<T>())
 {
@@ -193,9 +171,25 @@ inline int clampToInteger(T x)
     return static_cast<int>(x);
 }
 
+// Explicitly accept 64bit result when clamping double value.
+// Keep in mind that double can only represent 53bit integer precisely.
+template<typename T> constexpr inline T clampToAccepting64(double value, T min = defaultMinimumForClamp<T>(), T max = defaultMaximumForClamp<T>())
+{
+    return (value >= static_cast<double>(max)) ? max : ((value <= static_cast<double>(min)) ? min : static_cast<T>(value));
+}
+
 inline bool isWithinIntRange(float x)
 {
     return x > static_cast<float>(std::numeric_limits<int>::min()) && x < static_cast<float>(std::numeric_limits<int>::max());
+}
+
+inline float normalizedFloat(float value)
+{
+    if (value > 0 && value < std::numeric_limits<float>::min())
+        return std::numeric_limits<float>::min();
+    if (value < 0 && value > -std::numeric_limits<float>::min())
+        return -std::numeric_limits<float>::min();
+    return value;
 }
 
 template<typename T> inline bool hasOneBitSet(T value)
@@ -256,6 +250,11 @@ template<typename T> inline bool isGreaterThanNonZeroPowerOfTwo(T value, unsigne
     // (where I use ** to denote pow()).
     return !!((value >> 1) >> (power - 1));
 }
+
+template<typename T> constexpr inline bool isLessThan(const T& a, const T& b) { return a < b; }
+template<typename T> constexpr inline bool isLessThanEqual(const T& a, const T& b) { return a <= b; }
+template<typename T> constexpr inline bool isGreaterThan(const T& a, const T& b) { return a > b; }
+template<typename T> constexpr inline bool isGreaterThanEqual(const T& a, const T& b) { return a >= b; }
 
 #ifndef UINT64_C
 #if COMPILER(MSVC)

@@ -36,8 +36,8 @@
 #include "ScrollingTreeNode.h"
 #include "ScrollingTreeOverflowScrollingNode.h"
 #include "ScrollingTreeScrollingNode.h"
-#include "TextStream.h"
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -102,7 +102,7 @@ void ScrollingTree::viewportChangedViaDelegatedScrolling(ScrollingNodeID nodeID,
     downcast<ScrollingTreeScrollingNode>(*node).updateLayersAfterViewportChange(fixedPositionRect, scale);
 }
 
-void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const WebCore::FloatPoint& scrollPosition, bool inUserInteration)
+void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const WebCore::FloatPoint& scrollPosition, bool inUserInteraction)
 {
     ScrollingTreeNode* node = nodeForID(nodeID);
     if (!is<ScrollingTreeOverflowScrollingNode>(node))
@@ -112,12 +112,14 @@ void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID n
     downcast<ScrollingTreeOverflowScrollingNode>(*node).updateLayersAfterDelegatedScroll(scrollPosition);
 
     // Update GraphicsLayers and scroll state.
-    scrollingTreeNodeDidScroll(nodeID, scrollPosition, Nullopt, inUserInteration ? SyncScrollingLayerPosition : SetScrollingLayerPosition);
+    scrollingTreeNodeDidScroll(nodeID, scrollPosition, std::nullopt, inUserInteraction ? ScrollingLayerPositionAction::Sync : ScrollingLayerPositionAction::Set);
 }
 
 void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollingStateTree)
 {
     bool rootStateNodeChanged = scrollingStateTree->hasNewRootStateNode();
+    
+    LOG(Scrolling, "\nScrollingTree::commitTreeState");
     
     ScrollingStateScrollingNode* rootNode = scrollingStateTree->rootStateNode();
     if (rootNode
@@ -138,7 +140,7 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
     }
     
     bool scrollRequestIsProgammatic = rootNode ? rootNode->requestedScrollPositionRepresentsProgrammaticScroll() : false;
-    TemporaryChange<bool> changeHandlingProgrammaticScroll(m_isHandlingProgrammaticScroll, scrollRequestIsProgammatic);
+    SetForScope<bool> changeHandlingProgrammaticScroll(m_isHandlingProgrammaticScroll, scrollRequestIsProgammatic);
 
     removeDestroyedNodes(*scrollingStateTree);
 
@@ -179,7 +181,7 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
         if (parentIt != m_nodeMap.end()) {
             ScrollingTreeNode* parent = parentIt->value;
             node->setParent(parent);
-            parent->appendChild(node);
+            parent->appendChild(*node);
         }
     }
 
@@ -189,7 +191,7 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
     if (auto nodeChildren = node->children()) {
         for (auto& childScrollingNode : *nodeChildren) {
             childScrollingNode->setParent(nullptr);
-            orphanNodes.add(childScrollingNode->scrollingNodeID(), childScrollingNode);
+            orphanNodes.add(childScrollingNode->scrollingNodeID(), childScrollingNode.get());
         }
         nodeChildren->clear();
     }

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include "WTFStringUtilities.h"
 #include <WebCore/URLParser.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/StringBuilder.h>
@@ -87,36 +88,19 @@ const TestTabs testTabsValueForSurrogatePairs = TestTabs::No;
 
 static void checkURL(const String& urlString, const ExpectedParts& parts, TestTabs testTabs = TestTabs::Yes)
 {
-    bool wasEnabled = URLParser::enabled();
-    URLParser::setEnabled(true);
     auto url = URL(URL(), urlString);
-    URLParser::setEnabled(false);
-    auto oldURL = URL(URL(), urlString);
-    URLParser::setEnabled(wasEnabled);
     
     EXPECT_TRUE(eq(parts.protocol, url.protocol().toString()));
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
-    EXPECT_EQ(parts.port, url.port().valueOr(0));
+    EXPECT_EQ(parts.port, url.port().value_or(0));
     EXPECT_TRUE(eq(parts.path, url.path()));
     EXPECT_TRUE(eq(parts.query, url.query()));
     EXPECT_TRUE(eq(parts.fragment, url.fragmentIdentifier()));
     EXPECT_TRUE(eq(parts.string, url.string()));
-    
-    EXPECT_TRUE(eq(parts.protocol, oldURL.protocol().toString()));
-    EXPECT_TRUE(eq(parts.user, oldURL.user()));
-    EXPECT_TRUE(eq(parts.password, oldURL.pass()));
-    EXPECT_TRUE(eq(parts.host, oldURL.host()));
-    EXPECT_EQ(parts.port, oldURL.port().valueOr(0));
-    EXPECT_TRUE(eq(parts.path, oldURL.path()));
-    EXPECT_TRUE(eq(parts.query, oldURL.query()));
-    EXPECT_TRUE(eq(parts.fragment, oldURL.fragmentIdentifier()));
-    EXPECT_TRUE(eq(parts.string, oldURL.string()));
-    
-    EXPECT_TRUE(URLParser::allValuesEqual(url, oldURL));
+
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
-    EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
 
     if (testTabs == TestTabs::No)
         return;
@@ -131,36 +115,19 @@ static void checkURL(const String& urlString, const ExpectedParts& parts, TestTa
 
 static void checkRelativeURL(const String& urlString, const String& baseURLString, const ExpectedParts& parts, TestTabs testTabs = TestTabs::Yes)
 {
-    bool wasEnabled = URLParser::enabled();
-    URLParser::setEnabled(true);
     auto url = URL(URL(URL(), baseURLString), urlString);
-    URLParser::setEnabled(false);
-    auto oldURL = URL(URL(URL(), baseURLString), urlString);
-    URLParser::setEnabled(wasEnabled);
     
     EXPECT_TRUE(eq(parts.protocol, url.protocol().toString()));
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
-    EXPECT_EQ(parts.port, url.port().valueOr(0));
+    EXPECT_EQ(parts.port, url.port().value_or(0));
     EXPECT_TRUE(eq(parts.path, url.path()));
     EXPECT_TRUE(eq(parts.query, url.query()));
     EXPECT_TRUE(eq(parts.fragment, url.fragmentIdentifier()));
     EXPECT_TRUE(eq(parts.string, url.string()));
     
-    EXPECT_TRUE(eq(parts.protocol, oldURL.protocol().toString()));
-    EXPECT_TRUE(eq(parts.user, oldURL.user()));
-    EXPECT_TRUE(eq(parts.password, oldURL.pass()));
-    EXPECT_TRUE(eq(parts.host, oldURL.host()));
-    EXPECT_EQ(parts.port, oldURL.port().valueOr(0));
-    EXPECT_TRUE(eq(parts.path, oldURL.path()));
-    EXPECT_TRUE(eq(parts.query, oldURL.query()));
-    EXPECT_TRUE(eq(parts.fragment, oldURL.fragmentIdentifier()));
-    EXPECT_TRUE(eq(parts.string, oldURL.string()));
-    
-    EXPECT_TRUE(URLParser::allValuesEqual(url, oldURL));
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
-    EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
     
     if (testTabs == TestTabs::No)
         return;
@@ -176,36 +143,20 @@ static void checkRelativeURL(const String& urlString, const String& baseURLStrin
 
 static void checkURLDifferences(const String& urlString, const ExpectedParts& partsNew, const ExpectedParts& partsOld, TestTabs testTabs = TestTabs::Yes)
 {
-    bool wasEnabled = URLParser::enabled();
-    URLParser::setEnabled(true);
+    UNUSED_PARAM(partsOld); // FIXME: Remove all the old expected parts.
     auto url = URL(URL(), urlString);
-    URLParser::setEnabled(false);
-    auto oldURL = URL(URL(), urlString);
-    URLParser::setEnabled(wasEnabled);
     
     EXPECT_TRUE(eq(partsNew.protocol, url.protocol().toString()));
     EXPECT_TRUE(eq(partsNew.user, url.user()));
     EXPECT_TRUE(eq(partsNew.password, url.pass()));
     EXPECT_TRUE(eq(partsNew.host, url.host()));
-    EXPECT_EQ(partsNew.port, url.port().valueOr(0));
+    EXPECT_EQ(partsNew.port, url.port().value_or(0));
     EXPECT_TRUE(eq(partsNew.path, url.path()));
     EXPECT_TRUE(eq(partsNew.query, url.query()));
     EXPECT_TRUE(eq(partsNew.fragment, url.fragmentIdentifier()));
     EXPECT_TRUE(eq(partsNew.string, url.string()));
     
-    EXPECT_TRUE(eq(partsOld.protocol, oldURL.protocol().toString()));
-    EXPECT_TRUE(eq(partsOld.user, oldURL.user()));
-    EXPECT_TRUE(eq(partsOld.password, oldURL.pass()));
-    EXPECT_TRUE(eq(partsOld.host, oldURL.host()));
-    EXPECT_EQ(partsOld.port, oldURL.port().valueOr(0));
-    EXPECT_TRUE(eq(partsOld.path, oldURL.path()));
-    EXPECT_TRUE(eq(partsOld.query, oldURL.query()));
-    EXPECT_TRUE(eq(partsOld.fragment, oldURL.fragmentIdentifier()));
-    EXPECT_TRUE(eq(partsOld.string, oldURL.string()));
-    
-    EXPECT_FALSE(URLParser::allValuesEqual(url, oldURL));
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
-    EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
     
     if (testTabs == TestTabs::No)
         return;
@@ -221,36 +172,20 @@ static void checkURLDifferences(const String& urlString, const ExpectedParts& pa
 
 static void checkRelativeURLDifferences(const String& urlString, const String& baseURLString, const ExpectedParts& partsNew, const ExpectedParts& partsOld, TestTabs testTabs = TestTabs::Yes)
 {
-    bool wasEnabled = URLParser::enabled();
-    URLParser::setEnabled(true);
+    UNUSED_PARAM(partsOld); // FIXME: Remove all the old expected parts.
     auto url = URL(URL(URL(), baseURLString), urlString);
-    URLParser::setEnabled(false);
-    auto oldURL = URL(URL(URL(), baseURLString), urlString);
-    URLParser::setEnabled(wasEnabled);
     
     EXPECT_TRUE(eq(partsNew.protocol, url.protocol().toString()));
     EXPECT_TRUE(eq(partsNew.user, url.user()));
     EXPECT_TRUE(eq(partsNew.password, url.pass()));
     EXPECT_TRUE(eq(partsNew.host, url.host()));
-    EXPECT_EQ(partsNew.port, url.port().valueOr(0));
+    EXPECT_EQ(partsNew.port, url.port().value_or(0));
     EXPECT_TRUE(eq(partsNew.path, url.path()));
     EXPECT_TRUE(eq(partsNew.query, url.query()));
     EXPECT_TRUE(eq(partsNew.fragment, url.fragmentIdentifier()));
     EXPECT_TRUE(eq(partsNew.string, url.string()));
     
-    EXPECT_TRUE(eq(partsOld.protocol, oldURL.protocol().toString()));
-    EXPECT_TRUE(eq(partsOld.user, oldURL.user()));
-    EXPECT_TRUE(eq(partsOld.password, oldURL.pass()));
-    EXPECT_TRUE(eq(partsOld.host, oldURL.host()));
-    EXPECT_EQ(partsOld.port, oldURL.port().valueOr(0));
-    EXPECT_TRUE(eq(partsOld.path, oldURL.path()));
-    EXPECT_TRUE(eq(partsOld.query, oldURL.query()));
-    EXPECT_TRUE(eq(partsOld.fragment, oldURL.fragmentIdentifier()));
-    EXPECT_TRUE(eq(partsOld.string, oldURL.string()));
-    
-    EXPECT_FALSE(URLParser::allValuesEqual(url, oldURL));
     EXPECT_TRUE(URLParser::internalValuesConsistent(url));
-    EXPECT_TRUE(URLParser::internalValuesConsistent(oldURL));
     
     if (testTabs == TestTabs::No)
         return;
@@ -282,7 +217,7 @@ static void checkURL(const String& urlString, const TextEncoding& encoding, cons
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
-    EXPECT_EQ(parts.port, url.port().valueOr(0));
+    EXPECT_EQ(parts.port, url.port().value_or(0));
     EXPECT_TRUE(eq(parts.path, url.path()));
     EXPECT_TRUE(eq(parts.query, url.query()));
     EXPECT_TRUE(eq(parts.fragment, url.fragmentIdentifier()));
@@ -308,7 +243,7 @@ static void checkURL(const String& urlString, const String& baseURLString, const
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
-    EXPECT_EQ(parts.port, url.port().valueOr(0));
+    EXPECT_EQ(parts.port, url.port().value_or(0));
     EXPECT_TRUE(eq(parts.path, url.path()));
     EXPECT_TRUE(eq(parts.query, url.query()));
     EXPECT_TRUE(eq(parts.fragment, url.fragmentIdentifier()));
@@ -323,16 +258,6 @@ static void checkURL(const String& urlString, const String& baseURLString, const
             parts.isInvalid() ? invalidParts(urlStringWithTab) : parts,
             TestTabs::No);
     }
-}
-
-template<size_t length>
-static String utf16String(const char16_t (&url)[length])
-{
-    StringBuilder builder;
-    builder.reserveCapacity(length - 1);
-    for (size_t i = 0; i < length - 1; ++i)
-        builder.append(static_cast<UChar>(url[i]));
-    return builder.toString();
 }
 
 TEST_F(URLParserTest, Basic)
@@ -502,11 +427,22 @@ TEST_F(URLParserTest, Basic)
     checkURL("http://\t//\\///user:@webkit.org:99?foo", {"http", "user", "", "webkit.org", 99, "/", "foo", "", "http://user@webkit.org:99/?foo"});
     checkURL("http:/\\user:@webkit.org:99?foo", {"http", "user", "", "webkit.org", 99, "/", "foo", "", "http://user@webkit.org:99/?foo"});
     checkURL("http://127.0.0.1", {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"});
-    checkURL("http://127.0.0.1.", {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
-    checkURL("http://127.0.0.1./", {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
-    checkURL("http://0x100.0/", {"http", "", "", "0x100.0", 0, "/", "", "", "http://0x100.0/"});
-    checkURL("http://0.0.0x100.0/", {"http", "", "", "0.0.0x100.0", 0, "/", "", "", "http://0.0.0x100.0/"});
-    checkURL("http://0.0.0.0x100/", {"http", "", "", "0.0.0.0x100", 0, "/", "", "", "http://0.0.0.0x100/"});
+    checkURLDifferences("http://127.0.0.1.",
+        {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"},
+        {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
+    checkURLDifferences("http://127.0.0.1./",
+        {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"},
+        {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
+    checkURL("http://127.0.0.1../", {"http", "", "", "127.0.0.1..", 0, "/", "", "", "http://127.0.0.1../"});
+    checkURLDifferences("http://0x100.0/",
+        {"", "", "", "", 0, "", "", "", "http://0x100.0/"},
+        {"http", "", "", "0x100.0", 0, "/", "", "", "http://0x100.0/"});
+    checkURLDifferences("http://0.0.0x100.0/",
+        {"", "", "", "", 0, "", "", "", "http://0.0.0x100.0/"},
+        {"http", "", "", "0.0.0x100.0", 0, "/", "", "", "http://0.0.0x100.0/"});
+    checkURLDifferences("http://0.0.0.0x100/",
+        {"", "", "", "", 0, "", "", "", "http://0.0.0.0x100/"},
+        {"http", "", "", "0.0.0.0x100", 0, "/", "", "", "http://0.0.0.0x100/"});
     checkURL("http://host:123?", {"http", "", "", "host", 123, "/", "", "", "http://host:123/?"});
     checkURL("http://host:123?query", {"http", "", "", "host", 123, "/", "query", "", "http://host:123/?query"});
     checkURL("http://host:123#", {"http", "", "", "host", 123, "/", "", "", "http://host:123/#"});
@@ -634,6 +570,23 @@ TEST_F(URLParserTest, ParseRelative)
         {"foo", "", "", "", 0, "", "", "", "foo://"},
         {"foo", "", "", "", 0, "//", "", "", "foo://"});
     checkRelativeURL(utf16String(u"#β"), "http://example.org/foo/bar", {"http", "", "", "example.org", 0, "/foo/bar", "", "%CE%B2", "http://example.org/foo/bar#%CE%B2"});
+    checkRelativeURL("index.html", "applewebdata://Host/", {"applewebdata", "", "", "Host", 0, "/index.html", "", "", "applewebdata://Host/index.html"});
+    checkRelativeURL("index.html", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "/index.html", "", "", "applewebdata://Host/index.html"});
+    checkRelativeURL("", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "", "", "applewebdata://Host"});
+    checkRelativeURL("?query", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "query", "", "applewebdata://Host?query"});
+    checkRelativeURL("#fragment", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "", "fragment", "applewebdata://Host#fragment"});
+    checkRelativeURL("notspecial://something?", "file:////var//containers//stuff/", {"notspecial", "", "", "something", 0, "", "", "", "notspecial://something?"}, TestTabs::No);
+    checkRelativeURL("notspecial://something#", "file:////var//containers//stuff/", {"notspecial", "", "", "something", 0, "", "", "", "notspecial://something#"}, TestTabs::No);
+    checkRelativeURL("http://something?", "file:////var//containers//stuff/", {"http", "", "", "something", 0, "/", "", "", "http://something/?"}, TestTabs::No);
+    checkRelativeURL("http://something#", "file:////var//containers//stuff/", {"http", "", "", "something", 0, "/", "", "", "http://something/#"}, TestTabs::No);
+    checkRelativeURL("file:", "file:///path?query#fragment", {"file", "", "", "", 0, "/path", "query", "", "file:///path?query"});
+    checkRelativeURL("/", "file:///C:/a/b", {"file", "", "", "", 0, "/C:/", "", "", "file:///C:/"});
+    checkRelativeURL("/abc", "file:///C:/a/b", {"file", "", "", "", 0, "/C:/abc", "", "", "file:///C:/abc"});
+    checkRelativeURL("/abc", "file:///C:", {"file", "", "", "", 0, "/C:/abc", "", "", "file:///C:/abc"});
+    checkRelativeURL("/abc", "file:///", {"file", "", "", "", 0, "/abc", "", "", "file:///abc"});
+    checkRelativeURL("//d:", "file:///C:/a/b", {"file", "", "", "", 0, "/d:", "", "", "file:///d:"}, TestTabs::No);
+    checkRelativeURL("//d|", "file:///C:/a/b", {"file", "", "", "", 0, "/d:", "", "", "file:///d:"}, TestTabs::No);
+    checkRelativeURL("//A|", "file:///C:/a/b", {"file", "", "", "", 0, "/A:", "", "", "file:///A:"}, TestTabs::No);
 
     // The checking of slashes in SpecialAuthoritySlashes needed to get this to pass contradicts what is in the spec,
     // but it is included in the web platform tests.
@@ -787,7 +740,12 @@ TEST_F(URLParserTest, ParserDifferences)
     checkURLDifferences("file:pAtH/",
         {"file", "", "", "", 0, "/pAtH/", "", "", "file:///pAtH/"},
         {"file", "", "", "", 0, "pAtH/", "", "", "file://pAtH/"});
-    
+    checkURLDifferences("http://example.com%A0",
+        {"", "", "", "", 0, "", "", "", "http://example.com%A0"},
+        {"http", "", "", "example.com%a0", 0, "/", "", "", "http://example.com%a0/"});
+    checkURLDifferences("http://%E2%98%83",
+        {"http", "", "", "xn--n3h", 0, "/", "", "", "http://xn--n3h/"},
+        {"http", "", "", "%e2%98%83", 0, "/", "", "", "http://%e2%98%83/"});
     checkURLDifferences("http://host%73",
         {"http", "", "", "hosts", 0, "/", "", "", "http://hosts/"},
         {"http", "", "", "host%73", 0, "/", "", "", "http://host%73/"});
@@ -903,11 +861,13 @@ TEST_F(URLParserTest, ParserDifferences)
         {"", "", "", "", 0, "", "", "", "http://:"},
         {"http", "", "", "", 0, "/", "", "", "http://:/"});
     checkURLDifferences("http:##foo",
-        {"http", "", "", "", 0, "", "", "#foo", "http://##foo"},
+        {"", "", "", "", 0, "", "", "", "http:##foo"},
         {"http", "", "", "", 0, "/", "", "#foo", "http:/##foo"});
     checkURLDifferences("http:??bar",
-        {"http", "", "", "", 0, "", "?bar", "", "http://??bar"},
+        {"", "", "", "", 0, "", "", "", "http:??bar"},
         {"http", "", "", "", 0, "/", "?bar", "", "http:/??bar"});
+    checkURL("asdf:##foo", {"asdf", "", "", "", 0, "", "", "#foo", "asdf:##foo"});
+    checkURL("asdf:??bar", {"asdf", "", "", "", 0, "", "?bar", "", "asdf:??bar"});
     checkRelativeURLDifferences("//C|/foo/bar", "file:///tmp/mock/path",
         {"file", "", "", "", 0, "/C:/foo/bar", "", "", "file:///C:/foo/bar"},
         {"", "", "", "", 0, "", "", "", "//C|/foo/bar"});
@@ -1076,13 +1036,13 @@ TEST_F(URLParserTest, ParserDifferences)
     checkURL("a://A", {"a", "", "", "A", 0, "", "", "", "a://A"});
     checkURL("a://A:2", {"a", "", "", "A", 2, "", "", "", "a://A:2"});
     checkURL("a://A:2/", {"a", "", "", "A", 2, "/", "", "", "a://A:2/"});
-    checkURLDifferences("asd://ß",
+    checkURLDifferences(u8"asd://ß",
         {"asd", "", "", "%C3%83%C2%9F", 0, "", "", "", "asd://%C3%83%C2%9F"},
         {"", "", "", "", 0, "", "", "", "about:blank"}, TestTabs::No);
-    checkURLDifferences("asd://ß:4",
+    checkURLDifferences(u8"asd://ß:4",
         {"asd", "", "", "%C3%83%C2%9F", 4, "", "", "", "asd://%C3%83%C2%9F:4"},
         {"", "", "", "", 0, "", "", "", "about:blank"}, TestTabs::No);
-    checkURLDifferences("asd://ß:4/",
+    checkURLDifferences(u8"asd://ß:4/",
         {"asd", "", "", "%C3%83%C2%9F", 4, "/", "", "", "asd://%C3%83%C2%9F:4/"},
         {"", "", "", "", 0, "", "", "", "about:blank"}, TestTabs::No);
     checkURLDifferences("a://[A::b]:4",
@@ -1093,6 +1053,32 @@ TEST_F(URLParserTest, ParserDifferences)
     checkRelativeURLDifferences("a://b", "//[aBc]",
         {"a", "", "", "b", 0, "", "", "", "a://b"},
         {"", "", "", "", 0, "", "", "", "a://b"});
+    checkURL(utf16String(u"http://öbb.at"), {"http", "", "", "xn--bb-eka.at", 0, "/", "", "", "http://xn--bb-eka.at/"});
+    checkURL(utf16String(u"http://ÖBB.at"), {"http", "", "", "xn--bb-eka.at", 0, "/", "", "", "http://xn--bb-eka.at/"});
+    checkURL(utf16String(u"http://√.com"), {"http", "", "", "xn--19g.com", 0, "/", "", "", "http://xn--19g.com/"});
+    checkURLDifferences(utf16String(u"http://faß.de"),
+        {"http", "", "", "xn--fa-hia.de", 0, "/", "", "", "http://xn--fa-hia.de/"},
+        {"http", "", "", "fass.de", 0, "/", "", "", "http://fass.de/"});
+    checkURL(utf16String(u"http://ԛәлп.com"), {"http", "", "", "xn--k1ai47bhi.com", 0, "/", "", "", "http://xn--k1ai47bhi.com/"});
+    checkURLDifferences(utf16String(u"http://Ⱥbby.com"),
+        {"http", "", "", "xn--bby-iy0b.com", 0, "/", "", "", "http://xn--bby-iy0b.com/"},
+        {"http", "", "", "xn--bby-spb.com", 0, "/", "", "", "http://xn--bby-spb.com/"});
+    checkURLDifferences(utf16String(u"http://\u2132"),
+        {"", "", "", "", 0, "", "", "", utf16String(u"http://Ⅎ")},
+        {"http", "", "", "xn--f3g", 0, "/", "", "", "http://xn--f3g/"});
+    checkURLDifferences(utf16String(u"http://\u05D9\u05B4\u05D5\u05D0\u05B8/"),
+        {"http", "", "", "xn--cdbi5etas", 0, "/", "", "", "http://xn--cdbi5etas/"},
+        {"", "", "", "", 0, "", "", "", "about:blank"}, TestTabs::No);
+    checkURLDifferences(utf16String(u"http://bidirectional\u0786\u07AE\u0782\u07B0\u0795\u07A9\u0793\u07A6\u0783\u07AA/"),
+        {"", "", "", "", 0, "", "", "", utf16String(u"http://bidirectionalކޮންޕީޓަރު/")},
+        {"", "", "", "", 0, "", "", "", "about:blank"}, TestTabs::No);
+    checkURLDifferences(utf16String(u"http://contextj\u200D"),
+        {"", "", "", "", 0, "", "", "", utf16String(u"http://contextj\u200D")},
+        {"http", "", "", "contextj", 0, "/", "", "", "http://contextj/"});
+    checkURL(utf16String(u"http://contexto\u30FB"), {"http", "", "", "xn--contexto-wg5g", 0, "/", "", "", "http://xn--contexto-wg5g/"});
+    checkURLDifferences(utf16String(u"http://\u321D\u321E/"),
+        {"http", "", "", "xn--()()-bs0sc174agx4b", 0, "/", "", "", "http://xn--()()-bs0sc174agx4b/"},
+        {"http", "", "", "xn--5mkc", 0, "/", "", "", "http://xn--5mkc/"});
 }
 
 TEST_F(URLParserTest, DefaultPort)
@@ -1233,14 +1219,13 @@ TEST_F(URLParserTest, ParserFailures)
     shouldFail("http://[1234::ab@]");
     shouldFail("http://[1234::ab~]");
     shouldFail("http://[2001::1");
+    shouldFail("http://4:b\xE1");
     shouldFail("http://[1:2:3:4:5:6:7:8~]/");
     shouldFail("http://[a:b:c:d:e:f:g:127.0.0.1]");
     shouldFail("http://[a:b:c:d:e:f:g:h:127.0.0.1]");
     shouldFail("http://[a:b:c:d:e:f:127.0.0.0x11]"); // Chrome treats this as hex, Firefox and the spec fail
     shouldFail("http://[a:b:c:d:e:f:127.0.-0.1]");
-    checkURLDifferences("asdf://space In\aHost",
-        {"asdf", "", "", "space In%07Host", 0, "", "", "", "asdf://space In%07Host"},
-        {"", "", "", "", 0, "", "", "", "asdf://space In\aHost"});
+    shouldFail("asdf://space In\aHost");
     shouldFail("asdf://[0:0:0:0:a:b:c:d");
 }
 
@@ -1313,6 +1298,8 @@ TEST_F(URLParserTest, QueryEncoding)
     checkURL(makeString("gopher://host/path?", withUmlauts, "#fragment"), "asdf://example.com/?doesntmatter", iso88591, {"gopher", "", "", "host", 0, "/path", "%DC%26%231072%3B%26%231105%3B", "fragment", "gopher://host/path?%DC%26%231072%3B%26%231105%3B#fragment"});
     checkURL(makeString("asdf://host/path?", withUmlauts, "#fragment"), "http://example.com/?doesntmatter", iso88591, {"asdf", "", "", "host", 0, "/path", "%C3%9C%D0%B0%D1%91", "fragment", "asdf://host/path?%C3%9C%D0%B0%D1%91#fragment"});
 
+    checkURL("http://host/pa'th?qu'ery#fr'agment", UTF8Encoding(), {"http", "", "", "host", 0, "/pa'th", "qu%27ery", "fr'agment", "http://host/pa'th?qu%27ery#fr'agment"});
+    checkURL("asdf://host/pa'th?qu'ery#fr'agment", UTF8Encoding(), {"asdf", "", "", "host", 0, "/pa'th", "qu'ery", "fr'agment", "asdf://host/pa'th?qu'ery#fr'agment"});
     // FIXME: Add more tests with other encodings and things like non-ascii characters, emoji and unmatched surrogate pairs.
 }
 

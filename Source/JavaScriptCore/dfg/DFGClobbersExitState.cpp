@@ -40,6 +40,7 @@ bool clobbersExitState(Graph& graph, Node* node)
     // There are certain nodes whose effect on the exit state has nothing to do with what they
     // normally clobber.
     switch (node->op()) {
+    case InitializeEntrypointArguments:
     case MovHint:
     case ZombieHint:
     case PutHint:
@@ -62,13 +63,15 @@ bool clobbersExitState(Graph& graph, Node* node)
     case MaterializeNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case MaterializeCreateActivation:
     case CountExecution:
-    case AllocatePropertyStorage:
-    case ReallocatePropertyStorage:
     case StoreBarrier:
     case FencedStoreBarrier:
+    case AllocatePropertyStorage:
+    case ReallocatePropertyStorage:
         // These do clobber memory, but nothing that is observable. It may be nice to separate the
         // heaps into those that are observable and those that aren't, but we don't do that right now.
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=148440
@@ -80,6 +83,8 @@ bool clobbersExitState(Graph& graph, Node* node)
 
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncGeneratorFunction:
+    case NewAsyncFunction:
         // Like above, but with the JSFunction allocation caveat.
         return node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid();
 

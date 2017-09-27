@@ -35,7 +35,6 @@
 #include "StorageInfo.h"
 
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "ScriptExecutionContext.h"
 #include "StorageErrorCallback.h"
 #include "StorageQuota.h"
@@ -58,7 +57,7 @@ void StorageInfo::queryUsageAndQuota(ScriptExecutionContext& scriptExecutionCont
     StorageQuota* storageQuota = getStorageQuota(storageType);
     if (!storageQuota) {
         // Unknown storage type is requested.
-        scriptExecutionContext->postTask(StorageErrorCallback::CallbackTask::create(WTFMove(errorCallback), NOT_SUPPORTED_ERR));
+        scriptExecutionContext->postTask(StorageErrorCallback::CallbackTask::create(WTFMove(errorCallback), NotSupportedError));
         return;
     }
     storageQuota->queryUsageAndQuota(scriptExecutionContext, WTFMove(successCallback), WTFMove(errorCallback));
@@ -70,7 +69,7 @@ void StorageInfo::requestQuota(ScriptExecutionContext& scriptExecutionContext, i
     StorageQuota* storageQuota = getStorageQuota(storageType);
     if (!storageQuota) {
         // Unknown storage type is requested.
-        scriptExecutionContext->postTask(StorageErrorCallback::CallbackTask::create(WTFMove(errorCallback), NOT_SUPPORTED_ERR));
+        scriptExecutionContext->postTask(StorageErrorCallback::CallbackTask::create(WTFMove(errorCallback), NotSupportedError));
         return;
     }
     storageQuota->requestQuota(scriptExecutionContext, newQuotaInBytes, WTFMove(successCallback), WTFMove(errorCallback));

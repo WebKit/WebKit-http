@@ -58,6 +58,8 @@ public:
     FloatSize viewToContentsOffset(const FloatPoint& scrollPosition) const;
     FloatRect layoutViewportForScrollPosition(const FloatPoint& visibleContentOrigin, float scale) const;
 
+    FloatRect fixedPositionRect() { return FloatRect(lastCommittedScrollPosition(), scrollableAreaSize()); };
+
 protected:
     ScrollingTreeFrameScrollingNode(ScrollingTree&, ScrollingNodeID);
 
@@ -70,13 +72,15 @@ protected:
     float topContentInset() const { return m_topContentInset; }
 
     FloatRect layoutViewport() const { return m_layoutViewport; };
+    void setLayoutViewport(const FloatRect& r) { m_layoutViewport = r; };
+
     FloatPoint minLayoutViewportOrigin() const { return m_minLayoutViewportOrigin; }
     FloatPoint maxLayoutViewportOrigin() const { return m_maxLayoutViewportOrigin; }
 
     ScrollBehaviorForFixedElements scrollBehaviorForFixedElements() const { return m_behaviorForFixed; }
-    
+
 private:
-    void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const override;
+    void dumpProperties(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const override;
 
     FloatRect m_layoutViewport;
     FloatPoint m_minLayoutViewportOrigin;

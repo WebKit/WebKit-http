@@ -30,6 +30,7 @@
 #include "RenderSVGResource.h"
 #include "ShadowRoot.h"
 #include "SVGDocument.h"
+#include "SVGDocumentExtensions.h"
 #include "SVGNames.h"
 #include "StyleInheritedData.h"
 #include "Text.h"
@@ -71,7 +72,7 @@ public:
 private:
     explicit SVGTRefTargetEventListener(SVGTRefElement& trefElement);
 
-    void handleEvent(ScriptExecutionContext*, Event*) final;
+    void handleEvent(ScriptExecutionContext&, Event&) final;
     bool operator==(const EventListener&) const final;
 
     SVGTRefElement& m_trefElement;
@@ -89,7 +90,7 @@ void SVGTRefTargetEventListener::attach(RefPtr<Element>&& target)
 {
     ASSERT(!isAttached());
     ASSERT(target.get());
-    ASSERT(target->inDocument());
+    ASSERT(target->isConnected());
 
     target->addEventListener(eventNames().DOMSubtreeModifiedEvent, *this, false);
     target->addEventListener(eventNames().DOMNodeRemovedFromDocumentEvent, *this, false);
@@ -113,13 +114,13 @@ bool SVGTRefTargetEventListener::operator==(const EventListener& listener) const
     return false;
 }
 
-void SVGTRefTargetEventListener::handleEvent(ScriptExecutionContext*, Event* event)
+void SVGTRefTargetEventListener::handleEvent(ScriptExecutionContext&, Event& event)
 {
     ASSERT(isAttached());
 
-    if (event->type() == eventNames().DOMSubtreeModifiedEvent && &m_trefElement != event->target())
+    if (event.type() == eventNames().DOMSubtreeModifiedEvent && &m_trefElement != event.target())
         m_trefElement.updateReferencedText(m_target.get());
-    else if (event->type() == eventNames().DOMNodeRemovedFromDocumentEvent)
+    else if (event.type() == eventNames().DOMNodeRemovedFromDocumentEvent)
         m_trefElement.detachTarget();
 }
 
@@ -164,7 +165,7 @@ void SVGTRefElement::detachTarget()
     if (container)
         container->setTextContent(emptyContent);
 
-    if (!inDocument())
+    if (!isConnected())
         return;
 
     // Mark the referenced ID as pending.
@@ -229,7 +230,7 @@ void SVGTRefElement::buildPendingResource()
     m_targetListener->detach();
 
     // If we're not yet in a document, this function will be called again from insertedInto().
-    if (!inDocument())
+    if (!isConnected())
         return;
 
     String id;
@@ -256,7 +257,7 @@ void SVGTRefElement::buildPendingResource()
 Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode& rootParent)
 {
     SVGElement::insertedInto(rootParent);
-    if (rootParent.inDocument())
+    if (rootParent.isConnected())
         return InsertionShouldCallFinishedInsertingSubtree;
     return InsertionDone;
 }
@@ -269,7 +270,7 @@ void SVGTRefElement::finishedInsertingSubtree()
 void SVGTRefElement::removedFrom(ContainerNode& rootParent)
 {
     SVGElement::removedFrom(rootParent);
-    if (rootParent.inDocument())
+    if (rootParent.isConnected())
         m_targetListener->detach();
 }
 

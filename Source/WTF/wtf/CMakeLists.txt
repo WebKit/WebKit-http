@@ -12,6 +12,9 @@ set(WTF_HEADERS
     BubbleSort.h
     BumpPointerAllocator.h
     ByteOrder.h
+    CPUTime.h
+    CagedPtr.h
+    CagedUniquePtr.h
     ClockType.h
     CompilationThread.h
     Compiler.h
@@ -30,12 +33,15 @@ set(WTF_HEADERS
     DisallowCType.h
     DoublyLinkedList.h
     FastMalloc.h
+    FastTLS.h
     FeatureDefines.h
     FilePrintStream.h
     FlipBytes.h
     Forward.h
     FunctionDispatcher.h
     GetPtr.h
+    Gigacage.h
+    GlobalVersion.h
     GraphNodeWorklist.h
     GregorianDateTime.h
     HashCountedSet.h
@@ -54,17 +60,30 @@ set(WTF_HEADERS
     IndexedContainerIterator.h
     IteratorAdaptors.h
     IteratorRange.h
+    Language.h
     ListHashSet.h
+    Liveness.h
     Lock.h
+    LockAlgorithmInlines.h
+    LockAlgorithm.h
+    LockedPrintStream.h
     Locker.h
+    LocklessBag.h
+    LoggingHashID.h
+    LoggingHashMap.h
+    LoggingHashSet.h
+    LoggingHashTraits.h
     MD5.h
     MainThread.h
     MallocPtr.h
     MathExtras.h
     MediaTime.h
+    MemoryFootprint.h
+    MemoryPressureHandler.h
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
+    NaturalLoops.h
     MonotonicTime.h
     Noncopyable.h
     NumberOfCores.h
@@ -82,15 +101,19 @@ set(WTF_HEADERS
     ParallelJobsOpenMP.h
     ParallelVectorIterator.h
     ParkingLot.h
-    PassRefPtr.h
     Platform.h
+    PlatformRegisters.h
     PrintStream.h
     ProcessID.h
     RAMSize.h
+    RandomDevice.h
     RandomNumber.h
     RandomNumberSeed.h
+    Range.h
     RangeSet.h
     RawPointer.h
+    ReadWriteLock.h
+    RecursiveLockAdapter.h
     RedBlackTree.h
     Ref.h
     RefCounted.h
@@ -108,26 +131,29 @@ set(WTF_HEADERS
     SmallPtrSet.h
     StackBounds.h
     StackStats.h
+    StackTrace.h
     StaticConstructors.h
     StdLibExtras.h
     Stopwatch.h
     StringExtras.h
     StringPrintStream.h
+    SystemFree.h
     SystemTracing.h
-    ThreadIdentifierDataPthreads.h
+    ThreadGroup.h
+    ThreadMessage.h
     ThreadSafeRefCounted.h
     ThreadSpecific.h
     Threading.h
     ThreadingPrimitives.h
     TimeWithDynamicClockType.h
     TinyPtrSet.h
+    UUID.h
     UniqueRef.h
     VMTags.h
     ValueCheck.h
     Variant.h
     Vector.h
     VectorTraits.h
-    WTFThreadData.h
     WallTime.h
     WeakPtr.h
     WordLock.h
@@ -157,12 +183,16 @@ set(WTF_HEADERS
     text/StringCommon.h
     text/StringHash.h
     text/StringImpl.h
+    text/StringMalloc.h
+    text/StringVector.h
     text/StringView.h
     text/SymbolImpl.h
     text/SymbolRegistry.h
     text/TextBreakIterator.h
     text/TextBreakIteratorInternalICU.h
+    text/TextStream.h
     text/UniquedStringImpl.h
+    text/ValueToString.h
     text/WTFString.h
 
     text/icu/UTextProvider.h
@@ -170,6 +200,7 @@ set(WTF_HEADERS
     text/icu/UTextProviderUTF16.h
 
     threads/BinarySemaphore.h
+    threads/Signals.h
 
     unicode/CharacterNames.h
     unicode/Collator.h
@@ -181,6 +212,7 @@ set(WTF_SOURCES
     Atomics.cpp
     AutomaticThread.cpp
     BitVector.cpp
+    CPUTime.cpp
     ClockType.cpp
     CompilationThread.cpp
     CrossThreadCopier.cpp
@@ -194,12 +226,17 @@ set(WTF_SOURCES
     FastMalloc.cpp
     FilePrintStream.cpp
     FunctionDispatcher.cpp
+    Gigacage.cpp
+    GlobalVersion.cpp
     GregorianDateTime.cpp
     HashTable.cpp
+    Language.cpp
     Lock.cpp
+    LockedPrintStream.cpp
     MD5.cpp
     MainThread.cpp
     MediaTime.cpp
+    MemoryPressureHandler.cpp
     MetaAllocator.cpp
     MonotonicTime.cpp
     NumberOfCores.cpp
@@ -210,7 +247,9 @@ set(WTF_SOURCES
     ParkingLot.cpp
     PrintStream.cpp
     RAMSize.cpp
+    RandomDevice.cpp
     RandomNumber.cpp
+    ReadWriteLock.cpp
     RefCountedLeakCounter.cpp
     RunLoop.cpp
     SHA1.cpp
@@ -218,10 +257,13 @@ set(WTF_SOURCES
     SixCharacterHash.cpp
     StackBounds.cpp
     StackStats.cpp
+    StackTrace.cpp
     StringPrintStream.cpp
+    ThreadGroup.cpp
+    ThreadMessage.cpp
     Threading.cpp
     TimeWithDynamicClockType.cpp
-    WTFThreadData.cpp
+    UUID.cpp
     WallTime.cpp
     WordLock.cpp
     WorkQueue.cpp
@@ -236,17 +278,24 @@ set(WTF_SOURCES
     dtoa/fixed-dtoa.cc
     dtoa/strtod.cc
 
+    persistence/PersistentCoders.cpp
+    persistence/PersistentDecoder.cpp
+    persistence/PersistentEncoder.cpp
+
     text/AtomicString.cpp
     text/AtomicStringImpl.cpp
     text/AtomicStringTable.cpp
     text/Base64.cpp
     text/CString.cpp
     text/StringBuilder.cpp
+    text/StringBuilderJSON.cpp
     text/StringImpl.cpp
-    text/StringStatics.cpp
+    text/StringMalloc.cpp
     text/StringView.cpp
+    text/SymbolImpl.cpp
     text/SymbolRegistry.cpp
     text/TextBreakIterator.cpp
+    text/TextStream.cpp
     text/WTFString.cpp
 
     text/icu/UTextProvider.cpp
@@ -254,6 +303,7 @@ set(WTF_SOURCES
     text/icu/UTextProviderUTF16.cpp
 
     threads/BinarySemaphore.cpp
+    threads/Signals.cpp
 
     unicode/UTF8.cpp
 )
@@ -261,15 +311,19 @@ set(WTF_SOURCES
 set(WTF_INCLUDE_DIRECTORIES
     "${BMALLOC_DIR}"
     "${WTF_DIR}"
+    "${CMAKE_BINARY_DIR}"
+    "${DERIVED_SOURCES_DIR}"
+    "${THIRDPARTY_DIR}"
+)
+
+set(WTF_PRIVATE_INCLUDE_DIRECTORIES
     "${WTF_DIR}/wtf"
     "${WTF_DIR}/wtf/dtoa"
+    "${WTF_DIR}/wtf/persistence"
     "${WTF_DIR}/wtf/text"
     "${WTF_DIR}/wtf/text/icu"
     "${WTF_DIR}/wtf/threads"
     "${WTF_DIR}/wtf/unicode"
-    "${THIRDPARTY_DIR}"
-    "${CMAKE_BINARY_DIR}"
-    "${DERIVED_SOURCES_DIR}"
 )
 
 set(WTF_LIBRARIES
@@ -307,17 +361,17 @@ if (WIN32)
         ThreadSpecificWin.cpp
         ThreadingWin.cpp
     )
-else ()
-    list(APPEND WTF_HEADERS
-        ThreadIdentifierDataPthreads.h
+    list(APPEND WTF_LIBRARIES
+        winmm
     )
+else ()
     list(APPEND WTF_SOURCES
         OSAllocatorPosix.cpp
-        ThreadIdentifierDataPthreads.cpp
         ThreadingPthreads.cpp
     )
 endif ()
 
+WEBKIT_FRAMEWORK_DECLARE(WTF)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})
@@ -339,3 +393,11 @@ if (MSVC)
         COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_DIR} $<TARGET_FILE:WTF>
         VERBATIM)
 endif ()
+
+file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/WTF/Scripts)
+
+file(COPY
+    ../Scripts/generate-unified-source-bundles.rb
+    DESTINATION
+    ${FORWARDING_HEADERS_DIR}/WTF/Scripts
+)

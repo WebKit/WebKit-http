@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Apple Inc. All rights reserved.
- * Copyright (C) 2016 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
+ * Copyright (C) 2016 Devin Rousso <webkit@devinrousso.com>. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,7 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TabBarItem = class TabBarItem extends WebInspector.Object
+WI.TabBarItem = class TabBarItem extends WI.Object
 {
     constructor(image, title, representedObject)
     {
@@ -33,10 +33,10 @@ WebInspector.TabBarItem = class TabBarItem extends WebInspector.Object
         this._parentTabBar = null;
 
         this._element = document.createElement("div");
-        this._element.classList.add(WebInspector.TabBarItem.StyleClassName);
+        this._element.classList.add(WI.TabBarItem.StyleClassName);
         this._element.setAttribute("role", "tab");
         this._element.tabIndex = 0;
-        this._element[WebInspector.TabBarItem.ElementReferenceSymbol] = this;
+        this._element[WI.TabBarItem.ElementReferenceSymbol] = this;
 
         this._element.createChild("div", "flex-space");
 
@@ -103,6 +103,6 @@ WebInspector.TabBarItem = class TabBarItem extends WebInspector.Object
     set title(title) { this._element.title = title || ""; }
 };
 
-WebInspector.TabBarItem.StyleClassName = "item";
-WebInspector.TabBarItem.CloseButtonStyleClassName = "close";
-WebInspector.TabBarItem.ElementReferenceSymbol = Symbol("tab-bar-item");
+WI.TabBarItem.StyleClassName = "item";
+WI.TabBarItem.CloseButtonStyleClassName = "close";
+WI.TabBarItem.ElementReferenceSymbol = Symbol("tab-bar-item");

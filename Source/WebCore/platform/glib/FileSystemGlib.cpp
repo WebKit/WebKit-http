@@ -25,14 +25,17 @@
 
 #include "FileMetadata.h"
 #include "NotImplemented.h"
-#include "UUID.h"
+#include <gio/gfiledescriptorbased.h>
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gstdio.h>
+#include <sys/file.h>
+#include <wtf/UUID.h>
 #include <wtf/glib/GLibUtilities.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -120,6 +123,15 @@ static bool getFileStat(const String& path, GStatBuf* statBuffer)
     return g_stat(filename.get(), statBuffer) != -1;
 }
 
+static bool getFileLStat(const String& path, GStatBuf* statBuffer)
+{
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
+        return false;
+
+    return g_lstat(filename.get(), statBuffer) != -1;
+}
+
 bool getFileSize(const String& path, long long& resultSize)
 {
     GStatBuf statResult;
@@ -152,16 +164,40 @@ bool getFileModificationTime(const String& path, time_t& modifiedTime)
     return true;
 }
 
-bool getFileMetadata(const String& path, FileMetadata& metadata)
+static FileMetadata::Type toFileMetataType(GStatBuf statResult)
+{
+    if (S_ISDIR(statResult.st_mode))
+        return FileMetadata::Type::Directory;
+    if (S_ISLNK(statResult.st_mode))
+        return FileMetadata::Type::SymbolicLink;
+    return FileMetadata::Type::File;
+}
+
+static std::optional<FileMetadata> fileMetadataUsingFunction(const String& path, bool (*statFunc)(const String&, GStatBuf*))
 {
     GStatBuf statResult;
-    if (!getFileStat(path, &statResult))
-        return false;
+    if (!statFunc(path, &statResult))
+        return std::nullopt;
 
-    metadata.modificationTime = statResult.st_mtime;
-    metadata.length = statResult.st_size;
-    metadata.type = S_ISDIR(statResult.st_mode) ? FileMetadata::TypeDirectory : FileMetadata::TypeFile;
-    return true;
+    String filename = pathGetFileName(path);
+    bool isHidden = !filename.isEmpty() && filename[0] == '.';
+
+    return FileMetadata {
+        static_cast<double>(statResult.st_mtime),
+        statResult.st_size,
+        isHidden,
+        toFileMetataType(statResult)
+    };
+}
+
+std::optional<FileMetadata> fileMetadata(const String& path)
+{
+    return fileMetadataUsingFunction(path, &getFileLStat);
+}
+
+std::optional<FileMetadata> fileMetadataFollowingSymlinks(const String& path)
+{
+    return fileMetadataUsingFunction(path, &getFileStat);
 }
 
 String pathByAppendingComponent(const String& path, const String& component)
@@ -169,6 +205,17 @@ String pathByAppendingComponent(const String& path, const String& component)
     if (path.endsWith(G_DIR_SEPARATOR_S))
         return path + component;
     return path + G_DIR_SEPARATOR_S + component;
+}
+
+String pathByAppendingComponents(StringView path, const Vector<StringView>& components)
+{
+    StringBuilder builder;
+    builder.append(path);
+    for (auto& component : components) {
+        builder.append(G_DIR_SEPARATOR_S);
+        builder.append(component);
+    }
+    return builder.toString();
 }
 
 bool makeAllDirectories(const String& path)
@@ -180,6 +227,19 @@ bool makeAllDirectories(const String& path)
 String homeDirectoryPath()
 {
     return stringFromFileSystemRepresentation(g_get_home_dir());
+}
+
+bool createSymbolicLink(const String& targetPath, const String& symbolicLinkPath)
+{
+    CString targetPathFSRep = fileSystemRepresentation(targetPath);
+    if (!targetPathFSRep.data() || targetPathFSRep.data()[0] == '\0')
+        return false;
+
+    CString symbolicLinkPathFSRep = fileSystemRepresentation(symbolicLinkPath);
+    if (!symbolicLinkPathFSRep.data() || symbolicLinkPathFSRep.data()[0] == '\0')
+        return false;
+
+    return !symlink(targetPathFSRep.data(), symbolicLinkPathFSRep.data());
 }
 
 String pathGetFileName(const String& pathName)
@@ -380,15 +440,6 @@ bool moveFile(const String& oldPath, const String& newPath)
     return g_rename(oldFilename.get(), newFilename.get()) != -1;
 }
 
-bool unloadModule(PlatformModule module)
-{
-#if OS(WINDOWS)
-    return ::FreeLibrary(module);
-#else
-    return g_module_close(module);
-#endif
-}
-
 bool hardLinkOrCopyFile(const String& source, const String& destination)
 {
 #if OS(WINDOWS)
@@ -411,5 +462,38 @@ bool hardLinkOrCopyFile(const String& source, const String& destination)
     return g_file_copy(sourceFile.get(), destinationFile.get(), G_FILE_COPY_NONE, nullptr, nullptr, nullptr, nullptr);
 #endif
 }
+
+std::optional<int32_t> getFileDeviceId(const CString& fsFile)
+{
+    GUniquePtr<gchar> filename = unescapedFilename(fsFile.data());
+    if (!filename)
+        return std::nullopt;
+
+    GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(filename.get()));
+    GRefPtr<GFileInfo> fileInfo = adoptGRef(g_file_query_filesystem_info(file.get(), G_FILE_ATTRIBUTE_UNIX_DEVICE, nullptr, nullptr));
+    if (!fileInfo)
+        return std::nullopt;
+
+    return g_file_info_get_attribute_uint32(fileInfo.get(), G_FILE_ATTRIBUTE_UNIX_DEVICE);
+}
+
+#if USE(FILE_LOCK)
+bool lockFile(PlatformFileHandle handle, FileLockMode lockMode)
+{
+    COMPILE_ASSERT(LOCK_SH == LockShared, LockSharedEncodingIsAsExpected);
+    COMPILE_ASSERT(LOCK_EX == LockExclusive, LockExclusiveEncodingIsAsExpected);
+    COMPILE_ASSERT(LOCK_NB == LockNonBlocking, LockNonBlockingEncodingIsAsExpected);
+    auto* inputStream = g_io_stream_get_input_stream(G_IO_STREAM(handle));
+    int result = flock(g_file_descriptor_based_get_fd(G_FILE_DESCRIPTOR_BASED(inputStream)), lockMode);
+    return result != -1;
+}
+
+bool unlockFile(PlatformFileHandle handle)
+{
+    auto* inputStream = g_io_stream_get_input_stream(G_IO_STREAM(handle));
+    int result = flock(g_file_descriptor_based_get_fd(G_FILE_DESCRIPTOR_BASED(inputStream)), LOCK_UN);
+    return result != -1;
+}
+#endif // USE(FILE_LOCK)
 
 }

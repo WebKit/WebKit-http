@@ -24,7 +24,7 @@
 #include "FloatPoint.h"
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
-#include "SVGLength.h"
+#include "SVGLengthValue.h"
 #include "SVGNames.h"
 #include <wtf/NeverDestroyed.h>
 
@@ -64,15 +64,13 @@ Ref<SVGLineElement> SVGLineElement::create(const QualifiedName& tagName, Documen
 
 bool SVGLineElement::isSupportedAttribute(const QualifiedName& attrName)
 {
-    static NeverDestroyed<HashSet<QualifiedName>> supportedAttributes;
-    if (supportedAttributes.get().isEmpty()) {
-        SVGLangSpace::addSupportedAttributes(supportedAttributes);
-        SVGExternalResourcesRequired::addSupportedAttributes(supportedAttributes);
-        supportedAttributes.get().add(SVGNames::x1Attr);
-        supportedAttributes.get().add(SVGNames::x2Attr);
-        supportedAttributes.get().add(SVGNames::y1Attr);
-        supportedAttributes.get().add(SVGNames::y2Attr);
-    }
+    static const auto supportedAttributes = makeNeverDestroyed([] {
+        HashSet<QualifiedName> set;
+        SVGLangSpace::addSupportedAttributes(set);
+        SVGExternalResourcesRequired::addSupportedAttributes(set);
+        set.add({ SVGNames::x1Attr, SVGNames::x2Attr, SVGNames::y1Attr, SVGNames::y2Attr });
+        return set;
+    }());
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
 }
 
@@ -81,13 +79,13 @@ void SVGLineElement::parseAttribute(const QualifiedName& name, const AtomicStrin
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::x1Attr)
-        setX1BaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setX1BaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::y1Attr)
-        setY1BaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setY1BaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::x2Attr)
-        setX2BaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setX2BaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::y2Attr)
-        setY2BaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setY2BaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
 
     reportAttributeParsingError(parseError, name, value);
 

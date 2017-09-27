@@ -9,16 +9,16 @@ window.addEventListener("load", function () {
     if (!window.internals)
         return;
 
-    window.internals.settings.forcedPrefersReducedMotionValue = "on";
+    window.internals.settings.forcedPrefersReducedMotionAccessibilityValue = "on";
     if (window.matchMedia("(prefers-reduced-motion)").matches)
         document.getElementById("a").style.color = "green";
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
         document.getElementById("b").style.color = "green";
 
-    window.internals.settings.forcedPrefersReducedMotionValue = "off";
+    window.internals.settings.forcedPrefersReducedMotionAccessibilityValue = "off";
     if (!window.matchMedia("(prefers-reduced-motion)").matches)
         document.getElementById("c").style.color = "green";
-    if (window.matchMedia("(prefers-reduced-motion: default)").matches)
+    if (window.matchMedia("(prefers-reduced-motion: no-preference)").matches)
         document.getElementById("d").style.color = "green";
 }, false);
 </script>

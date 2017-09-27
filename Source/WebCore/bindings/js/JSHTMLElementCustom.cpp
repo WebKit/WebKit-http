@@ -31,6 +31,7 @@
 #include "Document.h"
 #include "HTMLFormElement.h"
 #include "JSCustomElementInterface.h"
+#include "JSDOMConstructorBase.h"
 #include "JSNodeCustom.h"
 #include "ScriptExecutionContext.h"
 #include <runtime/InternalFunction.h>
@@ -45,7 +46,7 @@ EncodedJSValue JSC_HOST_CALL constructJSHTMLElement(ExecState& exec)
     VM& vm = exec.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto* jsConstructor = jsCast<DOMConstructorObject*>(exec.callee());
+    auto* jsConstructor = jsCast<JSDOMConstructorBase*>(exec.jsCallee());
     ASSERT(jsConstructor);
 
     auto* context = jsConstructor->scriptExecutionContext();
@@ -119,14 +120,14 @@ JSScope* JSHTMLElement::pushEventHandlerScope(ExecState* exec, JSScope* scope) c
     VM& vm = exec->vm();
     JSGlobalObject* lexicalGlobalObject = exec->lexicalGlobalObject();
     
-    scope = JSWithScope::create(vm, lexicalGlobalObject, asObject(toJS(exec, globalObject(), element.document())), scope);
+    scope = JSWithScope::create(vm, lexicalGlobalObject, scope, asObject(toJS(exec, globalObject(), element.document())));
 
     // The form is next, searched before the document, but after the element itself.
     if (HTMLFormElement* form = element.form())
-        scope = JSWithScope::create(vm, lexicalGlobalObject, asObject(toJS(exec, globalObject(), *form)), scope);
+        scope = JSWithScope::create(vm, lexicalGlobalObject, scope, asObject(toJS(exec, globalObject(), *form)));
 
     // The element is on top, searched first.
-    return JSWithScope::create(vm, lexicalGlobalObject, asObject(toJS(exec, globalObject(), element)), scope);
+    return JSWithScope::create(vm, lexicalGlobalObject, scope, asObject(toJS(exec, globalObject(), element)));
 }
 
 } // namespace WebCore

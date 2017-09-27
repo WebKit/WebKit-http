@@ -45,11 +45,13 @@ typedef struct _BrowserWindowClass   BrowserWindowClass;
 
 GType browser_window_get_type(void);
 
-GtkWidget* browser_window_new(GtkWindow*);
+GtkWidget* browser_window_new(GtkWindow*, WebKitWebContext*);
+WebKitWebContext* browser_window_get_web_context(BrowserWindow*);
 void browser_window_append_view(BrowserWindow*, WebKitWebView*);
 void browser_window_load_uri(BrowserWindow*, const char *uri);
 void browser_window_load_session(BrowserWindow *, const char *sessionFile);
 void browser_window_set_background_color(BrowserWindow*, GdkRGBA*);
+WebKitWebView* browser_window_get_or_create_web_view_for_automation(void);
 
 G_END_DECLS
 

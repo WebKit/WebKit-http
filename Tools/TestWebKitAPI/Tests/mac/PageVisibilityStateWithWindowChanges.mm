@@ -77,20 +77,24 @@ public:
     void initializeView(WKView *) override;
     void teardownView(WebView *) override;
     void teardownView(WKView *) override;
+
+private:
+    RetainPtr<id <WebUIDelegate>> m_delegate;
 };
 
 void PageVisibilityStateWithWindowChanges::initializeView(WebView *webView)
 {
-    // Released in teardownView.
-    webView.UIDelegate = [[PageVisibilityStateDelegate alloc] init];
+    m_delegate = adoptNS([[PageVisibilityStateDelegate alloc] init]);
+    webView.UIDelegate = m_delegate.get();
+
     [webView _setVisibilityState:WebPageVisibilityStatePrerender isInitialState:YES];
 }
 
 void PageVisibilityStateWithWindowChanges::teardownView(WebView *webView)
 {
-    id uiDelegate = webView.UIDelegate;
+    EXPECT_TRUE(webView.UIDelegate == m_delegate.get());
     webView.UIDelegate = nil;
-    [uiDelegate release];
+    m_delegate = nil;
 }
 
 void PageVisibilityStateWithWindowChanges::initializeView(WKView *wkView)
@@ -119,8 +123,14 @@ void PageVisibilityStateWithWindowChanges::runTest(View view)
     EXPECT_JS_EQ(view, "document.visibilityState", "prerender");
     EXPECT_JS_EQ(view, "document.hidden", "true");
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    NSWindowStyleMask windowStyle = NSWindowStyleMaskBorderless | NSWindowStyleMaskMiniaturizable;
+#else
+    NSUInteger windowStyle = NSBorderlessWindowMask | NSMiniaturizableWindowMask;
+#endif
+
     // Add it to a non-visible window. PageVisibility should still be "prerender".
-    RetainPtr<NSWindow> window = adoptNS([[NSWindow alloc] initWithContentRect:view.frame styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO]);
+    RetainPtr<NSWindow> window = adoptNS([[NSWindow alloc] initWithContentRect:view.frame styleMask:windowStyle backing:NSBackingStoreBuffered defer:NO]);
     [window.get().contentView addSubview:view];
     EXPECT_NOT_NULL([view window]);
     EXPECT_NOT_NULL([view superview]);

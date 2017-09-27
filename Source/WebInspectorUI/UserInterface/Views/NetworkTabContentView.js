@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,46 +23,82 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.NetworkTabContentView = class NetworkTabContentView extends WebInspector.ContentBrowserTabContentView
+WI.NetworkTabContentView = class NetworkTabContentView extends WI.TabContentView
 {
     constructor(identifier)
     {
-        let {image, title} = WebInspector.NetworkTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.resourceDetailsSidebarPanel, WebInspector.probeDetailsSidebarPanel];
+        let {image, title} = WI.NetworkTabContentView.tabInfo();
+        let tabBarItem = new WI.GeneralTabBarItem(image, title);
 
-        super(identifier || "network", "network", tabBarItem, WebInspector.NetworkSidebarPanel, detailsSidebarPanels);
+        super(identifier || "network", "network", tabBarItem);
+
+        this._networkTableContentView = new WI.NetworkTableContentView;
+
+        const disableBackForward = true;
+        const disableFindBanner = true;
+        this._contentBrowser = new WI.ContentBrowser(null, this, disableBackForward, disableFindBanner);
+        this._contentBrowser.showContentView(this._networkTableContentView);
+
+        this.addSubview(this._contentBrowser);
     }
+
+    // Static
 
     static tabInfo()
     {
         return {
             image: "Images/Network.svg",
-            title: WebInspector.UIString("Network"),
+            title: WI.UIString("Network"),
         };
     }
 
     static isTabAllowed()
     {
-        return !!window.NetworkAgent && !!window.PageAgent;
+        return !!window.NetworkAgent && !!window.PageAgent && WI.settings.experimentalEnableNewNetworkTab.value;
+    }
+
+    // Protected
+
+    shown()
+    {
+        super.shown();
+
+        this._contentBrowser.shown();
+    }
+
+    hidden()
+    {
+        this._contentBrowser.hidden();
+
+        super.hidden();
+    }
+
+    closed()
+    {
+        this._contentBrowser.contentViewContainer.closeAllContentViews();
+
+        super.closed();
     }
 
     // Public
 
+    get contentBrowser() { return this._contentBrowser; }
+
     get type()
     {
-        return WebInspector.NetworkTabContentView.Type;
+        return WI.NetworkTabContentView.Type;
     }
 
     canShowRepresentedObject(representedObject)
     {
-        return representedObject instanceof WebInspector.Resource;
+        return representedObject instanceof WI.Resource;
     }
 
     get supportsSplitContentBrowser()
     {
-        return false;
+        return true;
     }
 };
 
-WebInspector.NetworkTabContentView.Type = "network";
+// FIXME: When removing LegacyNetworkTabContentView this should move back to just "network".
+WI.NetworkTabContentView.Type = "new-network";

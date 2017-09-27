@@ -28,18 +28,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LayoutRect_h
-#define LayoutRect_h
+#pragma once
 
 #include "FloatRect.h"
 #include "IntRect.h"
 #include "LayoutPoint.h"
 #include "LengthBox.h"
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
+
+namespace WTF {
+class TextStream;
+}
 
 namespace WebCore {
-
-class TextStream;
 
 class LayoutRect {
 public:
@@ -240,8 +241,7 @@ inline FloatRect snapRectToDevicePixelsWithWritingDirection(const LayoutRect& re
 
 FloatRect encloseRectToDevicePixels(const LayoutRect&, float pixelSnappingFactor);
 
-TextStream& operator<<(TextStream&, const LayoutRect&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const LayoutRect&);
 
 } // namespace WebCore
 
-#endif // LayoutRect_h

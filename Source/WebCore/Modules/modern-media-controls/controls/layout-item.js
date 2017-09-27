@@ -24,10 +24,10 @@
  */
 
 const LayoutTraits = {
-    Unknown     : 0,
-    macOS       : 1 << 0,
-    iOS         : 1 << 1,
-    Fullscreen  : 1 << 2
+    Unknown        : 0,
+    macOS          : 1 << 0,
+    iOS            : 1 << 1,
+    Fullscreen     : 1 << 2
 };
 
 class LayoutItem extends LayoutNode

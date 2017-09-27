@@ -33,7 +33,6 @@ namespace TestWebKitAPI {
 
 using namespace WebCore;
 
-#if ENABLE(CSS_GRID_LAYOUT)
 static unsigned computeNumberOfTracks(CSSValueList& valueList)
 {
     unsigned numberOfTracks = 0;
@@ -44,11 +43,9 @@ static unsigned computeNumberOfTracks(CSSValueList& valueList)
     }
     return numberOfTracks;
 }
-#endif
 
 TEST(CSSPropertyParserTest, GridTrackLimits)
 {
-#if ENABLE(CSS_GRID_LAYOUT)
     struct {
         const CSSPropertyID propertyID;
         const char* input;
@@ -76,13 +73,12 @@ TEST(CSSPropertyParserTest, GridTrackLimits)
     auto properties = MutableStyleProperties::create();
 
     for (auto& testCase : testCases) {
-        ASSERT_TRUE(parser.parseDeclaration(properties, testCase.input, nullptr, nullptr));
+        ASSERT_TRUE(parser.parseDeclaration(properties, testCase.input));
         RefPtr<CSSValue> value = properties->getPropertyCSSValue(testCase.propertyID);
 
         ASSERT_TRUE(value->isValueList());
         EXPECT_EQ(computeNumberOfTracks(*downcast<CSSValueList>(value.get())), testCase.output);
     }
-#endif // ENABLE(CSS_GRID_LAYOUT)
 }
 
 } // namespace TestWebKitAPI

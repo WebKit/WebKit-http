@@ -23,6 +23,7 @@
 #include "RenderLineBreak.h"
 
 #include "Document.h"
+#include "FontMetrics.h"
 #include "HTMLElement.h"
 #include "HTMLWBRElement.h"
 #include "InlineElementBox.h"
@@ -46,13 +47,6 @@ static const SimpleLineLayout::Layout* simpleLineLayout(const RenderLineBreak& r
     if (!is<RenderBlockFlow>(*renderer.parent()))
         return nullptr;
     return downcast<RenderBlockFlow>(*renderer.parent()).simpleLineLayout();
-}
-
-static void ensureLineBoxes(const RenderLineBreak& renderer)
-{
-    if (!is<RenderBlockFlow>(*renderer.parent()))
-        return;
-    downcast<RenderBlockFlow>(*renderer.parent()).ensureLineBoxes();
 }
 
 RenderLineBreak::RenderLineBreak(HTMLElement& element, RenderStyle&& style)
@@ -111,7 +105,7 @@ void RenderLineBreak::deleteInlineBoxWrapper()
 {
     if (!m_inlineBoxWrapper)
         return;
-    if (!documentBeingDestroyed())
+    if (!renderTreeBeingDestroyed())
         m_inlineBoxWrapper->removeFromParent();
     delete m_inlineBoxWrapper;
     m_inlineBoxWrapper = nullptr;
@@ -127,6 +121,13 @@ void RenderLineBreak::dirtyLineBoxes(bool fullLayout)
         return;
     }
     m_inlineBoxWrapper->dirtyLineBoxes();
+}
+
+void RenderLineBreak::ensureLineBoxes()
+{
+    if (!is<RenderBlockFlow>(*parent()))
+        return;
+    downcast<RenderBlockFlow>(*parent()).ensureLineBoxes();
 }
 
 void RenderLineBreak::deleteLineBoxesBeforeSimpleLineLayout()
@@ -152,14 +153,14 @@ bool RenderLineBreak::canBeSelectionLeaf() const
 
 VisiblePosition RenderLineBreak::positionForPoint(const LayoutPoint&, const RenderRegion*)
 {
-    ensureLineBoxes(*this);
+    ensureLineBoxes();
     return createVisiblePosition(0, DOWNSTREAM);
 }
 
 void RenderLineBreak::setSelectionState(SelectionState state)
 {
     if (state != SelectionNone)
-        ensureLineBoxes(*this);
+        ensureLineBoxes();
     RenderBoxModelObject::setSelectionState(state);
     if (!m_inlineBoxWrapper)
         return;
@@ -228,7 +229,7 @@ void RenderLineBreak::updateFromStyle()
 #if PLATFORM(IOS)
 void RenderLineBreak::collectSelectionRects(Vector<SelectionRect>& rects, unsigned, unsigned)
 {
-    ensureLineBoxes(*this);
+    ensureLineBoxes();
     InlineElementBox* box = m_inlineBoxWrapper;
     if (!box)
         return;

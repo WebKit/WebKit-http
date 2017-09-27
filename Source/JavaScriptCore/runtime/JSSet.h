@@ -25,18 +25,14 @@
 
 #pragma once
 
+#include "HashMapImpl.h"
 #include "JSObject.h"
-#include "MapBase.h"
 
 namespace JSC {
 
-class JSSetIterator;
-
-class JSSet : public MapBase<HashMapBucket<HashMapBucketDataKey>> {
-    typedef MapBase<HashMapBucket<HashMapBucketDataKey>> Base;
+class JSSet final : public HashMapImpl<HashMapBucket<HashMapBucketDataKey>> {
+    using Base = HashMapImpl<HashMapBucket<HashMapBucketDataKey>>;
 public:
-
-    friend class JSSetIterator;
 
     DECLARE_EXPORT_INFO;
 
@@ -47,15 +43,19 @@ public:
 
     static JSSet* create(ExecState* exec, VM& vm, Structure* structure)
     {
-        JSSet* instance = new (NotNull, allocateCell<JSSet>(vm.heap)) JSSet(vm, structure);
+        return create(exec, vm, structure, 0);
+    }
+
+    static JSSet* create(ExecState* exec, VM& vm, Structure* structure, uint32_t size)
+    {
+        JSSet* instance = new (NotNull, allocateCell<JSSet>(vm.heap)) JSSet(vm, structure, size);
         instance->finishCreation(exec, vm);
         return instance;
     }
 
-    ALWAYS_INLINE void add(ExecState* exec, JSValue key)
-    {
-        m_map->add(exec, key);
-    }
+    bool isIteratorProtocolFastAndNonObservable();
+    bool canCloneFastAndNonObservable(Structure*);
+    JSSet* clone(ExecState*, VM&, Structure*);
 
 private:
     JSSet(VM& vm, Structure* structure)
@@ -63,7 +63,24 @@ private:
     {
     }
 
+    JSSet(VM& vm, Structure* structure, uint32_t sizeHint)
+        : Base(vm, structure, sizeHint)
+    {
+    }
+
     static String toStringName(const JSObject*, ExecState*);
 };
+
+inline bool isJSSet(JSCell* from)
+{
+    static_assert(std::is_final<JSSet>::value, "");
+    return from->type() == JSSetType;
+}
+
+inline bool isJSSet(JSValue from)
+{
+    static_assert(std::is_final<JSSet>::value, "");
+    return from.isCell() && from.asCell()->type() == JSSetType;
+}
 
 } // namespace JSC

@@ -22,6 +22,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include "config.h"
 #include "GamepadManager.h"
 
@@ -36,6 +37,7 @@
 #include "Logging.h"
 #include "NavigatorGamepad.h"
 #include "PlatformGamepad.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -115,8 +117,11 @@ void GamepadManager::platformGamepadDisconnected(PlatformGamepad& platformGamepa
     }
 }
 
-void GamepadManager::platformGamepadInputActivity()
+void GamepadManager::platformGamepadInputActivity(bool shouldMakeGamepadVisible)
 {
+    if (!shouldMakeGamepadVisible)
+        return;
+
     if (m_gamepadBlindNavigators.isEmpty() && m_gamepadBlindDOMWindows.isEmpty())
         return;
 

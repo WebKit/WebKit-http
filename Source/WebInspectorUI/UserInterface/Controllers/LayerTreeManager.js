@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.LayerTreeManager = class LayerTreeManager extends WebInspector.Object
+WI.LayerTreeManager = class LayerTreeManager extends WI.Object
 {
     constructor()
     {
@@ -128,6 +128,8 @@ WebInspector.LayerTreeManager = class LayerTreeManager extends WebInspector.Obje
                 return;
             }
 
+            layers = layers.map(WI.Layer.fromPayload);
+
             var firstLayer = layers[0];
             var layerForNode = firstLayer.nodeId === node.id && !firstLayer.isGeneratedContent ? layers.shift() : null;
             callback(layerForNode, layers);
@@ -145,10 +147,10 @@ WebInspector.LayerTreeManager = class LayerTreeManager extends WebInspector.Obje
 
     layerTreeDidChange()
     {
-        this.dispatchEventToListeners(WebInspector.LayerTreeManager.Event.LayerTreeDidChange);
+        this.dispatchEventToListeners(WI.LayerTreeManager.Event.LayerTreeDidChange);
     }
 };
 
-WebInspector.LayerTreeManager.Event = {
+WI.LayerTreeManager.Event = {
     LayerTreeDidChange: "layer-tree-did-change"
 };

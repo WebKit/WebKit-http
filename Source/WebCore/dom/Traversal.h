@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "ExceptionOr.h"
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -41,12 +42,13 @@ public:
 
 protected:
     NodeIteratorBase(Node&, unsigned whatToShow, RefPtr<NodeFilter>&&);
-    short acceptNode(Node*) const;
+    ExceptionOr<unsigned short> acceptNode(Node&);
 
 private:
     Ref<Node> m_root;
-    unsigned m_whatToShow;
     RefPtr<NodeFilter> m_filter;
+    unsigned m_whatToShow;
+    bool m_isActive { false };
 };
 
 } // namespace WebCore

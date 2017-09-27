@@ -27,9 +27,11 @@
 
 #include <initializer_list>
 
-namespace WebCore {
-
+namespace WTF {
 class TextStream;
+}
+
+namespace WebCore {
 
 static const size_t PrintColorAdjustBits = 1;
 enum PrintColorAdjust {
@@ -77,7 +79,7 @@ enum StyleDifferenceContextSensitiveProperty {
 // Static pseudo styles. Dynamic ones are produced on the fly.
 enum PseudoId : unsigned char {
     // The order must be NOP ID, public IDs, and then internal IDs.
-    NOPSEUDO, FIRST_LINE, FIRST_LETTER, BEFORE, AFTER, SELECTION, FIRST_LINE_INHERITED, SCROLLBAR,
+    NOPSEUDO, FIRST_LINE, FIRST_LETTER, MARKER, BEFORE, AFTER, SELECTION, SCROLLBAR,
     // Internal IDs follow:
     SCROLLBAR_THUMB, SCROLLBAR_BUTTON, SCROLLBAR_TRACK, SCROLLBAR_TRACK_PIECE, SCROLLBAR_CORNER, RESIZER,
     AFTER_LAST_INTERNAL_PSEUDOID,
@@ -475,7 +477,7 @@ enum TextZoom {
 };
 
 enum BreakBetween {
-    AutoBreakBetween, AvoidBreakBetween, AvoidColumnBreakBetween, AvoidPageBreakBetween, AvoidRegionBreakBetween, ColumnBreakBetween, RegionBreakBetween, PageBreakBetween, LeftPageBreakBetween, RightPageBreakBetween, RectoPageBreakBetween, VersoPageBreakBetween
+    AutoBreakBetween, AvoidBreakBetween, AvoidColumnBreakBetween, AvoidPageBreakBetween, ColumnBreakBetween, PageBreakBetween, LeftPageBreakBetween, RightPageBreakBetween, RectoPageBreakBetween, VersoPageBreakBetween
 };
 bool alwaysPageBreak(BreakBetween);
     
@@ -508,26 +510,31 @@ enum EVisibility { VISIBLE, HIDDEN, COLLAPSE };
 enum ECursor {
     // The following must match the order in CSSValueKeywords.in.
     CursorAuto,
-    CursorCross,
     CursorDefault,
-    CursorPointer,
-    CursorMove,
-    CursorVerticalText,
-    CursorCell,
+    // CursorNone
     CursorContextMenu,
-    CursorAlias,
+    CursorHelp,
+    CursorPointer,
     CursorProgress,
+    CursorWait,
+    CursorCell,
+    CursorCrosshair,
+    CursorText,
+    CursorVerticalText,
+    CursorAlias,
+    // CursorCopy
+    CursorMove,
     CursorNoDrop,
     CursorNotAllowed,
-    CursorZoomIn,
-    CursorZoomOut,
+    CursorGrab,
+    CursorGrabbing,
     CursorEResize,
+    CursorNResize,
     CursorNeResize,
     CursorNwResize,
-    CursorNResize,
+    CursorSResize,
     CursorSeResize,
     CursorSwResize,
-    CursorSResize,
     CursorWResize,
     CursorEwResize,
     CursorNsResize,
@@ -535,12 +542,9 @@ enum ECursor {
     CursorNwseResize,
     CursorColResize,
     CursorRowResize,
-    CursorText,
-    CursorWait,
-    CursorHelp,
     CursorAllScroll,
-    CursorWebkitGrab,
-    CursorWebkitGrabbing,
+    CursorZoomIn,
+    CursorZoomOut,
 
     // The following are handled as exceptions so don't need to match.
     CursorCopy,
@@ -562,11 +566,7 @@ enum EDisplay {
     TABLE_COLUMN_GROUP, TABLE_COLUMN, TABLE_CELL,
     TABLE_CAPTION, BOX, INLINE_BOX,
     FLEX, WEBKIT_FLEX, INLINE_FLEX, WEBKIT_INLINE_FLEX,
-    CONTENTS,
-#if ENABLE(CSS_GRID_LAYOUT)
-    GRID, INLINE_GRID,
-#endif
-    NONE
+    CONTENTS, GRID, INLINE_GRID, NONE
 };
 
 enum EInsideLink {
@@ -585,7 +585,13 @@ enum ETransformStyle3D {
 enum EBackfaceVisibility {
     BackfaceVisibilityVisible, BackfaceVisibilityHidden
 };
-    
+
+enum class TransformBox {
+    BorderBox,
+    FillBox,
+    ViewBox
+};
+
 enum ELineClampType { LineClampLineCount, LineClampPercentage };
 
 enum Hyphens { HyphensNone, HyphensManual, HyphensAuto };
@@ -622,8 +628,6 @@ enum ImageResolutionSnap { ImageResolutionNoSnap = 0, ImageResolutionSnapPixels 
 
 enum Order { LogicalOrder = 0, VisualOrder };
 
-enum RegionFragment { AutoRegionFragment, BreakRegionFragment };
-
 enum ColumnAxis { HorizontalColumnAxis, VerticalColumnAxis, AutoColumnAxis };
 
 enum ColumnProgression { NormalColumnProgression, ReverseColumnProgression };
@@ -634,7 +638,6 @@ enum LineAlign { LineAlignNone, LineAlignEdges };
 
 enum RubyPosition { RubyPositionBefore, RubyPositionAfter, RubyPositionInterCharacter };
 
-#if ENABLE(CSS_GRID_LAYOUT)
 static const size_t GridAutoFlowBits = 4;
 enum InternalGridAutoFlowAlgorithm {
     InternalAutoFlowAlgorithmSparse = 0x1,
@@ -658,7 +661,6 @@ enum AutoRepeatType {
     AutoFill,
     AutoFit
 };
-#endif
 
 // Reasonable maximum to prevent insane font sizes from causing crashes on some platforms (such as Windows).
 static const float maximumAllowedFontSize = 1000000.0f;
@@ -681,10 +683,25 @@ enum class TouchAction {
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
-enum class ScrollSnapType {
+enum class ScrollSnapStrictness {
     None,
     Proximity,
     Mandatory
+};
+
+enum class ScrollSnapAxis {
+    XAxis,
+    YAxis,
+    Block,
+    Inline,
+    Both
+};
+
+enum class ScrollSnapAxisAlignType {
+    None,
+    Start,
+    Center,
+    End
 };
 #endif
 
@@ -706,15 +723,38 @@ enum class ApplePayButtonType {
     Plain,
     Buy,
     SetUp,
-    Other,
+    Donate,
 };
 #endif
 
-TextStream& operator<<(TextStream&, EFillSizeType);
-TextStream& operator<<(TextStream&, EFillAttachment);
-TextStream& operator<<(TextStream&, EFillBox);
-TextStream& operator<<(TextStream&, EFillRepeat);
-TextStream& operator<<(TextStream&, EMaskSourceType);
-TextStream& operator<<(TextStream&, Edge);
+WTF::TextStream& operator<<(WTF::TextStream&, EFillSizeType);
+WTF::TextStream& operator<<(WTF::TextStream&, EFillAttachment);
+WTF::TextStream& operator<<(WTF::TextStream&, EFillBox);
+WTF::TextStream& operator<<(WTF::TextStream&, EFillRepeat);
+WTF::TextStream& operator<<(WTF::TextStream&, EMaskSourceType);
+WTF::TextStream& operator<<(WTF::TextStream&, Edge);
+
+// These are all minimized combinations of paint-order.
+enum class PaintOrder {
+    Normal,
+    Fill,
+    FillMarkers,
+    Stroke,
+    StrokeMarkers,
+    Markers,
+    MarkersStroke
+};
+
+enum class PaintType {
+    Fill,
+    Stroke,
+    Markers
+};
+
+enum class FontLoadingBehavior {
+    Auto, Block, Swap, Fallback, Optional
+};
+
+extern const float defaultMiterLimit;
 
 } // namespace WebCore

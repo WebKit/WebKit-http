@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-class IOSInlineMediaControls extends MediaControls
+class IOSInlineMediaControls extends InlineMediaControls
 {
 
     constructor(options = {})
@@ -33,65 +33,55 @@ class IOSInlineMediaControls extends MediaControls
         super(options);
 
         this.element.classList.add("ios");
-        this.element.classList.add("inline");
 
-        this.element.appendChild(this.startButton.element);
-
-        this._leftContainer = new ButtonsContainer({
-            buttons: [this.playPauseButton, this.skipBackButton],
-            cssClassName: "left",
-            padding: 24,
-            margin: 24,
-        });
-
-        this._rightContainer = new ButtonsContainer({
-            buttons: [this.airplayButton, this.pipButton, this.fullscreenButton],
-            cssClassName: "right",
-            padding: 24,
-            margin: 24
-        });
-
-        this.controlsBar.children = [this._leftContainer, this._rightContainer];
+        this._pinchGestureRecognizer = new PinchGestureRecognizer(this.element, this);
     }
 
     // Public
 
-    layout()
+    get showsStartButton()
     {
-        super.layout();
+        return super.showsStartButton;
+    }
 
-        // Reset dropped buttons.
-        for (let button of this._rightContainer.buttons)
-            delete button.dropped;
+    set showsStartButton(flag)
+    {
+        super.showsStartButton = flag;
 
-        this._leftContainer.layout();
-        this._rightContainer.layout();
+        if (!flag)
+            delete this._tapGestureRecognizer;
+        else if (!this._tapGestureRecognizer)
+            this._tapGestureRecognizer = new TapGestureRecognizer(this.element, this);
+    }
 
-        this.timeControl.width = this.width - this._leftContainer.width - this._rightContainer.width;
+    // Protected
 
-        if (this.timeControl.isSufficientlyWide) {
-            this.controlsBar.insertBefore(this.timeControl, this._rightContainer);
-            this.timeControl.x = this._leftContainer.width;
-        } else {
-            this.timeControl.remove();
-            // Since we don't have enough space to display the scrubber, we may also not have
-            // enough space to display all buttons in the left and right containers, so gradually drop them.
-            for (let control of [this.airplayButton, this.pipButton, this.skipBackButton, this.fullscreenButton]) {
-                // Nothing left to do if the combined container widths is shorter than the available width.
-                if (this._leftContainer.width + this._rightContainer.width < this.width)
-                    break;
+    gestureRecognizerStateDidChange(recognizer)
+    {
+        if (recognizer === this._pinchGestureRecognizer)
+            this._pinchGestureRecognizerStateDidChange(recognizer);
+        else if (recognizer === this._tapGestureRecognizer)
+            this._tapGestureRecognizerStateDidChange(recognizer);
+    }
 
-                // If the control was already not participating in layout, we can skip it.
-                if (!control.visible)
-                    continue;
+    // Private
 
-                // This control must now be dropped.
-                control.dropped = true;
+    _pinchGestureRecognizerStateDidChange(recognizer)
+    {
+        if (recognizer.state !== GestureRecognizer.States.Ended && recognizer.state !== GestureRecognizer.States.Changed)
+            return;
 
-                this._leftContainer.layout();
-                this._rightContainer.layout();
-            }
-        }
+        if (recognizer.scale > IOSInlineMediaControls.MinimumScaleToEnterFullscreen && this.delegate && typeof this.delegate.iOSInlineMediaControlsRecognizedPinchInGesture === "function")
+            this.delegate.iOSInlineMediaControlsRecognizedPinchInGesture();
+    }
+
+    _tapGestureRecognizerStateDidChange(recognizer)
+    {
+        console.assert(this.showsStartButton);
+        if (recognizer.state === GestureRecognizer.States.Recognized && this.delegate && typeof this.delegate.iOSInlineMediaControlsRecognizedTapGesture === "function")
+            this.delegate.iOSInlineMediaControlsRecognizedTapGesture();
     }
 
 }
+
+IOSInlineMediaControls.MinimumScaleToEnterFullscreen = 1.5;

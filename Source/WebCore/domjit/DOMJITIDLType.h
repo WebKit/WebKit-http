@@ -26,7 +26,6 @@
 #pragma once
 
 #include "IDLTypes.h"
-#include <bytecode/SpeculatedType.h>
 
 namespace WebCore { namespace DOMJIT {
 
@@ -40,6 +39,8 @@ template<> struct IDLJSArgumentTypeSelect<IDLShort> { typedef int32_t type; };
 template<> struct IDLJSArgumentTypeSelect<IDLUnsignedShort> { typedef int32_t type; };
 template<> struct IDLJSArgumentTypeSelect<IDLLong> { typedef int32_t type; };
 template<> struct IDLJSArgumentTypeSelect<IDLDOMString> { typedef JSC::JSString* type; };
+template<> struct IDLJSArgumentTypeSelect<IDLAtomicStringAdaptor<IDLDOMString>> { typedef JSC::JSString* type; };
+template<> struct IDLJSArgumentTypeSelect<IDLRequiresExistingAtomicStringAdaptor<IDLDOMString>> { typedef JSC::JSString* type; };
 
 template<typename IDLType>
 using IDLJSArgumentType = typename IDLJSArgumentTypeSelect<IDLType>::type;

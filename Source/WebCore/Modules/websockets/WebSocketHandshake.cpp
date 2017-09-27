@@ -30,11 +30,7 @@
  */
 
 #include "config.h"
-
-#if ENABLE(WEB_SOCKETS)
-
 #include "WebSocketHandshake.h"
-#include "WebSocket.h"
 
 #include "Cookie.h"
 #include "CookieJar.h"
@@ -42,11 +38,12 @@
 #include "HTTPHeaderMap.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
-#include "URL.h"
 #include "Logging.h"
 #include "ResourceRequest.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "URL.h"
+#include "WebSocket.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/MD5.h>
@@ -169,7 +166,7 @@ bool WebSocketHandshake::secure() const
 
 String WebSocketHandshake::clientOrigin() const
 {
-    return m_document->securityOrigin()->toString();
+    return m_document->securityOrigin().toString();
 }
 
 String WebSocketHandshake::clientLocation() const
@@ -182,7 +179,7 @@ String WebSocketHandshake::clientLocation() const
     return builder.toString();
 }
 
-CString WebSocketHandshake::clientHandshakeMessage() const
+CString WebSocketHandshake::clientHandshakeMessage()
 {
     // Keep the following consistent with clientHandshakeRequest().
     StringBuilder builder;
@@ -236,7 +233,7 @@ CString WebSocketHandshake::clientHandshakeMessage() const
     return builder.toString().utf8();
 }
 
-ResourceRequest WebSocketHandshake::clientHandshakeRequest() const
+ResourceRequest WebSocketHandshake::clientHandshakeRequest()
 {
     // Keep the following consistent with clientHandshakeMessage().
     ResourceRequest request(m_url);
@@ -487,7 +484,7 @@ int WebSocketHandshake::readStatusLine(const char* header, size_t headerLength, 
     if (statusCodeString.length() != 3) // Status code must consist of three digits.
         return lineLength;
     for (int i = 0; i < 3; ++i)
-        if (statusCodeString[i] < '0' || statusCodeString[i] > '9') {
+        if (!isASCIIDigit(statusCodeString[i])) {
             m_failureReason = makeString("Invalid status code: ", statusCodeString);
             return lineLength;
         }
@@ -615,5 +612,3 @@ bool WebSocketHandshake::checkResponseHeaders()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

@@ -27,14 +27,13 @@
 
 #if ENABLE(INTL)
 
-#include "IntlCollator.h"
 #include "JSObject.h"
 
 namespace JSC {
 
-class IntlCollatorPrototype : public IntlCollator {
+class IntlCollatorPrototype : public JSNonFinalObject {
 public:
-    typedef IntlCollator Base;
+    typedef JSNonFinalObject Base;
     static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
     static IntlCollatorPrototype* create(VM&, JSGlobalObject*, Structure*);

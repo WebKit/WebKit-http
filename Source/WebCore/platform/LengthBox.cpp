@@ -26,11 +26,17 @@
 #include "config.h"
 #include "LengthBox.h"
 
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
 TextStream& operator<<(TextStream& ts, const LengthBox& box)
+{
+    ts << "top: " << box.top() << " right: " << box.right() << " bottom: " << box.bottom() << " left: " << box.left();
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, const FloatBoxExtent& box)
 {
     ts << "top: " << box.top() << " right: " << box.right() << " bottom: " << box.bottom() << " left: " << box.left();
     return ts;

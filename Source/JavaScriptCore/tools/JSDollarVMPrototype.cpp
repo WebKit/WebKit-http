@@ -35,16 +35,17 @@
 #include "MarkedSpaceInlines.h"
 #include "StackVisitor.h"
 #include <wtf/DataLog.h>
+#include <wtf/ProcessID.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
 
-const ClassInfo JSDollarVMPrototype::s_info = { "DollarVMPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSDollarVMPrototype) };
+const ClassInfo JSDollarVMPrototype::s_info = { "DollarVMPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSDollarVMPrototype) };
     
     
 bool JSDollarVMPrototype::currentThreadOwnsJSLock(ExecState* exec)
 {
-    return exec->vm().apiLock().currentThreadIsHoldingLock();
+    return exec->vm().currentThreadIsHoldingAPILock();
 }
 
 static bool ensureCurrentThreadOwnsJSLock(ExecState* exec)
@@ -116,9 +117,10 @@ static EncodedJSValue JSC_HOST_CALL functionJITTrue(ExecState* exec)
 
 void JSDollarVMPrototype::gc(ExecState* exec)
 {
+    VM& vm = exec->vm();
     if (!ensureCurrentThreadOwnsJSLock(exec))
         return;
-    exec->heap()->collectAllGarbage();
+    vm.heap.collectNow(Sync, CollectionScope::Full);
 }
     
 static EncodedJSValue JSC_HOST_CALL functionGC(ExecState* exec)
@@ -129,9 +131,10 @@ static EncodedJSValue JSC_HOST_CALL functionGC(ExecState* exec)
 
 void JSDollarVMPrototype::edenGC(ExecState* exec)
 {
+    VM& vm = exec->vm();
     if (!ensureCurrentThreadOwnsJSLock(exec))
         return;
-    exec->heap()->collectSync(CollectionScope::Eden);
+    vm.heap.collectSync(CollectionScope::Eden);
 }
 
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState* exec)
@@ -276,13 +279,14 @@ static EncodedJSValue JSC_HOST_CALL functionCodeBlockForFrame(ExecState* exec)
 
 static CodeBlock* codeBlockFromArg(ExecState* exec)
 {
+    VM& vm = exec->vm();
     if (exec->argumentCount() < 1)
         return nullptr;
 
     JSValue value = exec->uncheckedArgument(0);
     CodeBlock* candidateCodeBlock = nullptr;
     if (value.isCell()) {
-        JSFunction* func = jsDynamicCast<JSFunction*>(value.asCell());
+        JSFunction* func = jsDynamicCast<JSFunction*>(vm, value.asCell());
         if (func) {
             if (func->isHostFunction())
                 candidateCodeBlock = nullptr;
@@ -337,7 +341,7 @@ static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
 {
     auto scope = DECLARE_THROW_SCOPE(exec->vm());
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
-        String argStr = exec->uncheckedArgument(i).toString(exec)->value(exec);
+        String argStr = exec->uncheckedArgument(i).toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         dataLog(argStr);
     }
@@ -437,12 +441,10 @@ static EncodedJSValue JSC_HOST_CALL functionValue(ExecState* exec)
     return JSValue::encode(jsString(exec, stream.toString()));
 }
 
-#if !PLATFORM(WIN)
 static EncodedJSValue JSC_HOST_CALL functionGetPID(ExecState*)
 {
-    return JSValue::encode(jsNumber(getpid()));
+    return JSValue::encode(jsNumber(getCurrentProcessID()));
 }
-#endif
 
 void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
@@ -450,7 +452,7 @@ void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     
     addFunction(vm, globalObject, "crash", functionCrash, 0);
     
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "dfgTrue"), 0, functionDFGTrue, DFGTrueIntrinsic, DontEnum);
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "dfgTrue"), 0, functionDFGTrue, DFGTrueIntrinsic, static_cast<unsigned>(PropertyAttribute::DontEnum));
     
     addFunction(vm, globalObject, "llintTrue", functionLLintTrue, 0);
     addFunction(vm, globalObject, "jitTrue", functionJITTrue, 0);
@@ -468,9 +470,7 @@ void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     addFunction(vm, globalObject, "printStack", functionPrintStack, 0);
 
     addFunction(vm, globalObject, "value", functionValue, 1);
-#if !PLATFORM(WIN)
     addFunction(vm, globalObject, "getpid", functionGetPID, 0);
-#endif
 }
 
 } // namespace JSC

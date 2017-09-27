@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,30 +36,27 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "Document.h"
 #include "DocumentLoader.h"
-#include "ExceptionCode.h"
-#include "Frame.h"
 #include "JSMediaStream.h"
 #include "JSOverconstrainedError.h"
+#include "Logging.h"
 #include "MainFrame.h"
-#include "MediaStream.h"
-#include "MediaStreamPrivate.h"
-#include "OverconstrainedError.h"
+#include "MediaConstraints.h"
 #include "RealtimeMediaSourceCenter.h"
-#include "SecurityOrigin.h"
+#include "SchemeRegistry.h"
 #include "Settings.h"
 #include "UserMediaController.h"
-#include <wtf/MainThread.h>
 
 namespace WebCore {
 
-ExceptionOr<void> UserMediaRequest::start(Document& document, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&& promise)
+ExceptionOr<void> UserMediaRequest::start(Document& document, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
 {
     auto* userMedia = UserMediaController::from(document.page());
     if (!userMedia)
-        return Exception { NOT_SUPPORTED_ERR }; // FIXME: Why is it better to return an exception here instead of rejecting the promise as we do just below?
+        return Exception { NotSupportedError }; // FIXME: Why is it better to return an exception here instead of rejecting the promise as we do just below?
 
-    if (!audioConstraints->isValid() && !videoConstraints->isValid()) {
+    if (!audioConstraints.isValid && !videoConstraints.isValid) {
         promise.reject(TypeError);
         return { };
     }
@@ -68,7 +65,7 @@ ExceptionOr<void> UserMediaRequest::start(Document& document, Ref<MediaConstrain
     return { };
 }
 
-UserMediaRequest::UserMediaRequest(Document& document, UserMediaController& controller, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&& promise)
+UserMediaRequest::UserMediaRequest(Document& document, UserMediaController& controller, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
     : ContextDestructionObserver(&document)
     , m_audioConstraints(WTFMove(audioConstraints))
     , m_videoConstraints(WTFMove(videoConstraints))
@@ -85,7 +82,6 @@ SecurityOrigin* UserMediaRequest::userMediaDocumentOrigin() const
 {
     if (!m_scriptExecutionContext)
         return nullptr;
-
     return m_scriptExecutionContext->securityOrigin();
 }
 
@@ -93,34 +89,31 @@ SecurityOrigin* UserMediaRequest::topLevelDocumentOrigin() const
 {
     if (!m_scriptExecutionContext)
         return nullptr;
-
-    return m_scriptExecutionContext->topOrigin();
+    return &m_scriptExecutionContext->topOrigin();
 }
 
 static bool isSecure(DocumentLoader& documentLoader)
 {
-    if (!documentLoader.response().url().protocolIs("https"))
-        return false;
-
-    if (!documentLoader.response().certificateInfo() || documentLoader.response().certificateInfo()->containsNonRootSHA1SignedCertificate())
-        return false;
-
-    return true;
+    auto& response = documentLoader.response();
+    return SchemeRegistry::shouldTreatURLSchemeAsSecure(response.url().protocol().toStringWithoutCopying())
+        && response.certificateInfo()
+        && !response.certificateInfo()->containsNonRootSHA1SignedCertificate();
 }
 
 static bool canCallGetUserMedia(Document& document, String& errorMessage)
 {
-    bool requiresSecureConnection = document.frame()->settings().mediaCaptureRequiresSecureConnection();
-    if (requiresSecureConnection && !isSecure(*document.loader())) {
+    bool requiresSecureConnection = document.settings().mediaCaptureRequiresSecureConnection();
+    auto& documentLoader = *document.loader();
+    if (requiresSecureConnection && !isSecure(documentLoader) && !SecurityOrigin::isLocalHostOrLoopbackIPAddress(documentLoader.response().url())) {
         errorMessage = "Trying to call getUserMedia from an insecure document.";
         return false;
     }
 
     auto& topDocument = document.topDocument();
     if (&document != &topDocument) {
-        auto& topOrigin = *topDocument.topOrigin();
+        auto& topOrigin = topDocument.topOrigin();
 
-        if (!document.securityOrigin()->isSameSchemeHostPort(&topOrigin)) {
+        if (!document.securityOrigin().isSameSchemeHostPort(topOrigin)) {
             errorMessage = "Trying to call getUserMedia from a document with a different security origin than its top-level frame.";
             return false;
         }
@@ -131,7 +124,7 @@ static bool canCallGetUserMedia(Document& document, String& errorMessage)
                 return false;
             }
 
-            if (!ancestorDocument->securityOrigin()->isSameSchemeHostPort(&topOrigin)) {
+            if (!ancestorDocument->securityOrigin().isSameSchemeHostPort(topOrigin)) {
                 errorMessage = "Trying to call getUserMedia from a document with a different security origin than its top-level frame.";
                 return false;
             }
@@ -149,24 +142,24 @@ void UserMediaRequest::start()
     }
 
     Document& document = downcast<Document>(*m_scriptExecutionContext);
-    DOMWindow& window = *document.domWindow();
 
     // 10.2 - 6.3 Optionally, e.g., based on a previously-established user preference, for security reasons,
     // or due to platform limitations, jump to the step labeled Permission Failure below.
     String errorMessage;
     if (!canCallGetUserMedia(document, errorMessage)) {
         deny(MediaAccessDenialReason::PermissionDenied, emptyString());
-        window.printErrorMessage(errorMessage);
+        document.domWindow()->printErrorMessage(errorMessage);
         return;
     }
 
     m_controller->requestUserMediaAccess(*this);
 }
 
-void UserMediaRequest::allow(const String& audioDeviceUID, const String& videoDeviceUID)
+void UserMediaRequest::allow(String&& audioDeviceUID, String&& videoDeviceUID, String&& deviceIdentifierHashSalt)
 {
-    m_allowedAudioDeviceUID = audioDeviceUID;
-    m_allowedVideoDeviceUID = videoDeviceUID;
+    RELEASE_LOG(MediaStream, "UserMediaRequest::allow %s %s", audioDeviceUID.utf8().data(), videoDeviceUID.utf8().data());
+    m_allowedAudioDeviceUID = WTFMove(audioDeviceUID);
+    m_allowedVideoDeviceUID = WTFMove(videoDeviceUID);
 
     RefPtr<UserMediaRequest> protectedThis = this;
     RealtimeMediaSourceCenter::NewMediaStreamHandler callback = [this, protectedThis = WTFMove(protectedThis)](RefPtr<MediaStreamPrivate>&& privateStream) mutable {
@@ -177,23 +170,32 @@ void UserMediaRequest::allow(const String& audioDeviceUID, const String& videoDe
             deny(MediaAccessDenialReason::HardwareError, emptyString());
             return;
         }
+        privateStream->monitorOrientation(downcast<Document>(m_scriptExecutionContext)->orientationNotifier());
 
-        auto stream = MediaStream::create(*m_scriptExecutionContext, WTFMove(privateStream));
+        auto stream = MediaStream::create(*m_scriptExecutionContext, privateStream.releaseNonNull());
         if (stream->getTracks().isEmpty()) {
             deny(MediaAccessDenialReason::HardwareError, emptyString());
             return;
         }
 
-        for (auto& track : stream->getAudioTracks())
-            track->source().startProducingData();
-
-        for (auto& track : stream->getVideoTracks())
-            track->source().startProducingData();
+        stream->startProducingData();
         
         m_promise.resolve(stream);
     };
 
-    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID, &m_audioConstraints.get(), &m_videoConstraints.get());
+    m_audioConstraints.deviceIDHashSalt = deviceIdentifierHashSalt;
+    m_videoConstraints.deviceIDHashSalt = WTFMove(deviceIdentifierHashSalt);
+
+    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID, &m_audioConstraints, &m_videoConstraints);
+
+    if (!m_scriptExecutionContext)
+        return;
+
+#if ENABLE(WEB_RTC)
+    auto* page = downcast<Document>(*m_scriptExecutionContext).page();
+    if (page)
+        page->rtcController().disableICECandidateFiltering();
+#endif
 }
 
 void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& invalidConstraint)
@@ -203,24 +205,31 @@ void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& invali
 
     switch (reason) {
     case MediaAccessDenialReason::NoConstraints:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - no constraints");
         m_promise.reject(TypeError);
         break;
     case MediaAccessDenialReason::UserMediaDisabled:
-        m_promise.reject(SECURITY_ERR);
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - user media disabled");
+        m_promise.reject(SecurityError);
         break;
     case MediaAccessDenialReason::NoCaptureDevices:
-        m_promise.reject(NOT_FOUND_ERR);
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - no capture devices");
+        m_promise.reject(NotFoundError);
         break;
     case MediaAccessDenialReason::InvalidConstraint:
-        m_promise.reject(OverconstrainedError::create(invalidConstraint, ASCIILiteral("Invalid constraint")).get());
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - invalid constraint - %s", invalidConstraint.utf8().data());
+        m_promise.rejectType<IDLInterface<OverconstrainedError>>(OverconstrainedError::create(invalidConstraint, ASCIILiteral("Invalid constraint")).get());
         break;
     case MediaAccessDenialReason::HardwareError:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - hardware error");
         m_promise.reject(NotReadableError);
         break;
     case MediaAccessDenialReason::OtherFailure:
-        m_promise.reject(ABORT_ERR);
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - other failure");
+        m_promise.reject(AbortError);
         break;
     case MediaAccessDenialReason::PermissionDenied:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - permission denied");
         m_promise.reject(NotAllowedError);
         break;
     }
@@ -228,14 +237,17 @@ void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& invali
 
 void UserMediaRequest::contextDestroyed()
 {
+    ContextDestructionObserver::contextDestroyed();
     Ref<UserMediaRequest> protectedThis(*this);
-
     if (m_controller) {
         m_controller->cancelUserMediaAccessRequest(*this);
         m_controller = nullptr;
     }
+}
 
-    ContextDestructionObserver::contextDestroyed();
+Document* UserMediaRequest::document() const
+{
+    return downcast<Document>(m_scriptExecutionContext);
 }
 
 } // namespace WebCore

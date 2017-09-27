@@ -23,9 +23,10 @@
 #include "config.h"
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(GSTREAMER)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
+#include "GUniquePtrGStreamer.h"
 #include <wtf/Condition.h>
 #include <wtf/RunLoop.h>
 
@@ -42,7 +43,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
 
-static gboolean webKitMediaCommonEncryptionDecryptDefaultSetupCipher(WebKitMediaCommonEncryptionDecrypt*);
+static gboolean webKitMediaCommonEncryptionDecryptDefaultSetupCipher(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*);
 static void webKitMediaCommonEncryptionDecryptDefaultReleaseCipher(WebKitMediaCommonEncryptionDecrypt*);
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_common_encryption_decrypt_debug_category);
@@ -110,13 +111,13 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
     unsigned size = gst_caps_get_size(caps);
     for (unsigned i = 0; i < size; ++i) {
         GstStructure* incomingStructure = gst_caps_get_structure(caps, i);
-        GRefPtr<GstStructure> outgoingStructure = nullptr;
+        GUniquePtr<GstStructure> outgoingStructure = nullptr;
 
         if (direction == GST_PAD_SINK) {
             if (!gst_structure_has_field(incomingStructure, "original-media-type"))
                 continue;
 
-            outgoingStructure = adoptGRef(gst_structure_copy(incomingStructure));
+            outgoingStructure = GUniquePtr<GstStructure>(gst_structure_copy(incomingStructure));
             gst_structure_set_name(outgoingStructure.get(), gst_structure_get_string(outgoingStructure.get(), "original-media-type"));
 
             // Filter out the DRM related fields from the down-stream caps.
@@ -128,7 +129,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
                     gst_structure_remove_field(outgoingStructure.get(), fieldName);
             }
         } else {
-            outgoingStructure = adoptGRef(gst_structure_copy(incomingStructure));
+            outgoingStructure = GUniquePtr<GstStructure>(gst_structure_copy(incomingStructure));
             // Filter out the video related fields from the up-stream caps,
             // because they are not relevant to the input caps of this element and
             // can cause caps negotiation failures with adaptive bitrate streams.
@@ -166,7 +167,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
         }
 
         if (!duplicate)
-            gst_caps_append_structure(transformedCaps, outgoingStructure.leakRef());
+            gst_caps_append_structure(transformedCaps, outgoingStructure.release());
     }
 
     if (filter) {
@@ -251,8 +252,13 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         subSamplesBuffer = gst_value_get_buffer(value);
     }
 
+    value = gst_structure_get_value(protectionMeta->info, "kid");
+    GstBuffer* keyIDBuffer = nullptr;
+    if (value)
+        keyIDBuffer = gst_value_get_buffer(value);
+
     WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
-    if (!klass->setupCipher(self)) {
+    if (!klass->setupCipher(self, keyIDBuffer)) {
         GST_ERROR_OBJECT(self, "Failed to configure cipher");
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));
         return GST_FLOW_NOT_SUPPORTED;
@@ -347,7 +353,7 @@ static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstE
 }
 
 
-static gboolean webKitMediaCommonEncryptionDecryptDefaultSetupCipher(WebKitMediaCommonEncryptionDecrypt*)
+static gboolean webKitMediaCommonEncryptionDecryptDefaultSetupCipher(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*)
 {
     return true;
 }
@@ -357,5 +363,4 @@ static void webKitMediaCommonEncryptionDecryptDefaultReleaseCipher(WebKitMediaCo
 {
 }
 
-
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(GSTREAMER)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)

@@ -28,6 +28,7 @@
 
 #import "BridgeJSC.h"
 #import "Frame.h"
+#import "JSDOMBindingSecurity.h"
 #import "JSDOMWindow.h"
 #import "JSDOMWindowCustom.h"
 #import "JSHTMLElement.h"
@@ -112,11 +113,11 @@ static void removeJSWrapperIfRetainCountOne(NSObject* wrapper, JSObject* impl)
         wrapperCache().remove(impl);
 }
 
-id createJSWrapper(JSC::JSObject* object, PassRefPtr<JSC::Bindings::RootObject> origin, PassRefPtr<JSC::Bindings::RootObject> root)
+id createJSWrapper(JSC::JSObject* object, RefPtr<JSC::Bindings::RootObject>&& origin, RefPtr<JSC::Bindings::RootObject>&& root)
 {
     if (id wrapper = getJSWrapper(object))
         return wrapper;
-    return [[[WebScriptObject alloc] _initWithJSObject:object originRootObject:origin rootObject:root] autorelease];
+    return [[[WebScriptObject alloc] _initWithJSObject:object originRootObject:WTFMove(origin) rootObject:WTFMove(root)] autorelease];
 }
 
 static void addExceptionToConsole(ExecState* exec, JSC::Exception* exception)
@@ -185,7 +186,7 @@ void disconnectWindowWrapper(WebScriptObject *windowWrapper)
     return WebCore::createJSWrapper(&wrapped, originRootObject, rootObject);
 }
 
-- (void)_setImp:(JSObject*)imp originRootObject:(PassRefPtr<RootObject>)originRootObject rootObject:(PassRefPtr<RootObject>)rootObject
+- (void)_setImp:(JSObject*)imp originRootObject:(RefPtr<RootObject>&&)originRootObject rootObject:(RefPtr<RootObject>&&)rootObject
 {
     // This function should only be called once, as a (possibly lazy) initializer.
     ASSERT(!_private->imp);
@@ -203,7 +204,7 @@ void disconnectWindowWrapper(WebScriptObject *windowWrapper)
         _private->rootObject->gcProtect(imp);
 }
 
-- (void)_setOriginRootObject:(PassRefPtr<RootObject>)originRootObject andRootObject:(PassRefPtr<RootObject>)rootObject
+- (void)_setOriginRootObject:(RefPtr<RootObject>&&)originRootObject andRootObject:(RefPtr<RootObject>&&)rootObject
 {
     ASSERT(_private->imp);
 
@@ -223,13 +224,13 @@ void disconnectWindowWrapper(WebScriptObject *windowWrapper)
     _private->originRootObject = originRootObject.leakRef();
 }
 
-- (id)_initWithJSObject:(JSC::JSObject*)imp originRootObject:(PassRefPtr<JSC::Bindings::RootObject>)originRootObject rootObject:(PassRefPtr<JSC::Bindings::RootObject>)rootObject
+- (id)_initWithJSObject:(JSC::JSObject*)imp originRootObject:(RefPtr<JSC::Bindings::RootObject>&&)originRootObject rootObject:(RefPtr<JSC::Bindings::RootObject>&&)rootObject
 {
     ASSERT(imp);
 
     self = [super init];
     _private = [[WebScriptObjectPrivate alloc] init];
-    [self _setImp:imp originRootObject:originRootObject rootObject:rootObject];
+    [self _setImp:imp originRootObject:WTFMove(originRootObject) rootObject:WTFMove(rootObject)];
     
     return self;
 }
@@ -381,7 +382,7 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     ExecState* exec = globalObject->globalExec();
     UNUSED_PARAM(scope);
     
-    JSC::JSValue returnValue = JSMainThreadExecState::profiledEvaluate(exec, JSC::ProfilingReason::Other, makeSource(String(script)), JSC::JSValue());
+    JSC::JSValue returnValue = JSMainThreadExecState::profiledEvaluate(exec, JSC::ProfilingReason::Other, makeSource(String(script), { }), JSC::JSValue());
 
     id resultObj = [WebScriptObject _convertValueToObjcValue:returnValue originRootObject:[self _originRootObject] rootObject:[self _rootObject]];
     
@@ -399,9 +400,9 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     auto scope = DECLARE_CATCH_SCOPE(vm);
     ExecState* exec = globalObject->globalExec();
 
-    JSObject* object = jsDynamicDowncast<JSObject*>([self _imp]);
+    JSObject* object = jsDynamicDowncast<JSObject*>(vm, [self _imp]);
     PutPropertySlot slot(object);
-    object->methodTable()->put(object, exec, Identifier::fromString(exec, String(key)), convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), slot);
+    object->methodTable(vm)->put(object, exec, Identifier::fromString(exec, String(key)), convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), slot);
 
     if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
@@ -455,7 +456,7 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     auto scope = DECLARE_CATCH_SCOPE(vm);
     ExecState* exec = globalObject->globalExec();
 
-    [self _imp]->methodTable()->deleteProperty([self _imp], exec, Identifier::fromString(exec, String(key)));
+    [self _imp]->methodTable(vm)->deleteProperty([self _imp], exec, Identifier::fromString(exec, String(key)));
 
     if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
@@ -536,7 +537,7 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     auto scope = DECLARE_CATCH_SCOPE(vm);
     ExecState* exec = globalObject->globalExec();
 
-    [self _imp]->methodTable()->putByIndex([self _imp], exec, index, convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), false);
+    [self _imp]->methodTable(vm)->putByIndex([self _imp], exec, index, convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), false);
 
     if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
@@ -565,13 +566,14 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
 {
     if (value.isObject()) {
         JSObject* object = asObject(value);
-        JSLockHolder lock(rootObject->globalObject()->vm());
+        JSC::VM& vm = rootObject->globalObject()->vm();
+        JSLockHolder lock(vm);
 
-        if (object->inherits(JSHTMLElement::info())) {
+        if (object->inherits(vm, JSHTMLElement::info())) {
             // Plugin elements cache the instance internally.
             if (ObjcInstance* instance = static_cast<ObjcInstance*>(pluginInstance(jsCast<JSHTMLElement*>(object)->wrapped())))
                 return instance->getObject();
-        } else if (object->inherits(ObjCRuntimeObject::info())) {
+        } else if (object->inherits(vm, ObjCRuntimeObject::info())) {
             ObjCRuntimeObject* runtimeObject = static_cast<ObjCRuntimeObject*>(object);
             ObjcInstance* instance = runtimeObject->getInternalObjCInstance();
             if (instance)

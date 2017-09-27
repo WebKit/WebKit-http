@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS builds CASCADE;
 DROP TABLE IF EXISTS committers CASCADE;
 DROP TABLE IF EXISTS commits CASCADE;
 DROP TABLE IF EXISTS build_commits CASCADE;
+DROP TABLE IF EXISTS commit_ownerships CASCADE;
 DROP TABLE IF EXISTS build_slaves CASCADE;
 DROP TABLE IF EXISTS builders CASCADE;
 DROP TABLE IF EXISTS repositories CASCADE;
@@ -22,11 +23,13 @@ DROP TABLE IF EXISTS analysis_strategies CASCADE;
 DROP TYPE IF EXISTS analysis_task_result_type CASCADE;
 DROP TABLE IF EXISTS build_triggerables CASCADE;
 DROP TABLE IF EXISTS triggerable_configurations CASCADE;
+DROP TABLE IF EXISTS triggerable_repository_groups CASCADE;
 DROP TABLE IF EXISTS triggerable_repositories CASCADE;
+DROP TABLE IF EXISTS uploaded_files CASCADE;
 DROP TABLE IF EXISTS bugs CASCADE;
 DROP TABLE IF EXISTS analysis_test_groups CASCADE;
-DROP TABLE IF EXISTS root_sets CASCADE;
-DROP TABLE IF EXISTS roots CASCADE;
+DROP TABLE IF EXISTS commit_sets CASCADE;
+DROP TABLE IF EXISTS commit_set_items CASCADE;
 DROP TABLE IF EXISTS build_requests CASCADE;
 DROP TYPE IF EXISTS build_request_status_type CASCADE;
 
@@ -38,11 +41,15 @@ CREATE TABLE platforms (
 
 CREATE TABLE repositories (
     repository_id serial PRIMARY KEY,
-    repository_parent integer REFERENCES repositories ON DELETE CASCADE,
+    repository_owner integer REFERENCES repositories ON DELETE CASCADE,
     repository_name varchar(64) NOT NULL,
     repository_url varchar(1024),
-    repository_blame_url varchar(1024),
-    CONSTRAINT repository_name_must_be_unique UNIQUE(repository_parent, repository_name));
+    repository_blame_url varchar(1024));
+
+CREATE UNIQUE INDEX repository_name_owner_unique_index ON repositories (repository_owner, repository_name)
+    WHERE repository_owner IS NOT NULL;
+CREATE UNIQUE INDEX repository_name_unique_index ON repositories (repository_name)
+    WHERE repository_owner IS NULL;
 
 CREATE TABLE bug_trackers (
     tracker_id serial PRIMARY KEY,
@@ -88,7 +95,7 @@ CREATE TABLE commits (
     commit_id serial PRIMARY KEY,
     commit_repository integer NOT NULL REFERENCES repositories ON DELETE CASCADE,
     commit_revision varchar(64) NOT NULL,
-    commit_parent integer REFERENCES commits ON DELETE CASCADE,
+    commit_previous_commit integer REFERENCES commits ON DELETE CASCADE,
     commit_time timestamp,
     commit_order integer,
     commit_committer integer REFERENCES committers ON DELETE CASCADE,
@@ -97,6 +104,12 @@ CREATE TABLE commits (
     CONSTRAINT commit_in_repository_must_be_unique UNIQUE(commit_repository, commit_revision));
 CREATE INDEX commit_time_index ON commits(commit_time);
 CREATE INDEX commit_order_index ON commits(commit_order);
+
+CREATE TABLE commit_ownerships (
+    commit_owner integer NOT NULL REFERENCES commits ON DELETE CASCADE,
+    commit_owned integer NOT NULL REFERENCES commits ON DELETE CASCADE,
+    PRIMARY KEY (commit_owner, commit_owned)
+);
 
 CREATE TABLE build_commits (
     commit_build integer NOT NULL REFERENCES builds ON DELETE CASCADE,
@@ -191,8 +204,8 @@ CREATE TABLE analysis_tasks (
     task_segmentation integer REFERENCES analysis_strategies,
     task_test_range integer REFERENCES analysis_strategies,
     task_created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
-    task_platform integer REFERENCES platforms NOT NULL,
-    task_metric integer REFERENCES test_metrics NOT NULL,
+    task_platform integer REFERENCES platforms,
+    task_metric integer REFERENCES test_metrics,
     task_start_run integer REFERENCES test_runs,
     task_start_run_time timestamp,
     task_end_run integer REFERENCES test_runs,
@@ -200,8 +213,13 @@ CREATE TABLE analysis_tasks (
     task_result analysis_task_result_type,
     task_needed boolean,
     CONSTRAINT analysis_task_should_be_unique_for_range UNIQUE(task_start_run, task_end_run),
-    CONSTRAINT analysis_task_should_not_be_associated_with_single_run
-        CHECK ((task_start_run IS NULL AND task_end_run IS NULL) OR (task_start_run IS NOT NULL AND task_end_run IS NOT NULL)));
+    CONSTRAINT analysis_task_must_be_associated_with_run_or_be_custom
+        CHECK ((task_start_run IS NULL AND task_start_run_time IS NULL
+                AND task_end_run IS NULL AND task_end_run_time IS NULL
+                AND task_platform IS NULL AND task_metric IS NULL)
+            OR (task_start_run IS NOT NULL AND task_start_run_time IS NOT NULL
+                AND task_end_run IS NOT NULL AND task_end_run_time IS NOT NULL
+                AND task_platform IS NOT NULL AND task_metric IS NOT NULL)));
 
 CREATE TABLE task_commits (
     taskcommit_task integer NOT NULL REFERENCES analysis_tasks ON DELETE CASCADE,
@@ -217,18 +235,41 @@ CREATE TABLE bugs (
 
 CREATE TABLE build_triggerables (
     triggerable_id serial PRIMARY KEY,
-    triggerable_name varchar(64) NOT NULL UNIQUE);
+    triggerable_name varchar(64) NOT NULL UNIQUE,
+    triggerable_disabled boolean NOT NULL DEFAULT FALSE);
+
+CREATE TABLE triggerable_repository_groups (
+    repositorygroup_id serial PRIMARY KEY,
+    repositorygroup_triggerable integer REFERENCES build_triggerables NOT NULL,
+    repositorygroup_name varchar(256) NOT NULL,
+    repositorygroup_description varchar(256),
+    repositorygroup_accepts_roots boolean NOT NULL DEFAULT FALSE,
+    CONSTRAINT repository_group_name_must_be_unique_for_triggerable UNIQUE(repositorygroup_triggerable, repositorygroup_name));
 
 CREATE TABLE triggerable_repositories (
-    trigrepo_triggerable integer REFERENCES build_triggerables NOT NULL,
     trigrepo_repository integer REFERENCES repositories NOT NULL,
-    trigrepo_sub_roots boolean NOT NULL DEFAULT FALSE);
+    trigrepo_group integer REFERENCES triggerable_repository_groups NOT NULL,
+    trigrepo_accepts_patch boolean NOT NULL DEFAULT FALSE,
+    CONSTRAINT repository_must_be_unique_for_repository_group UNIQUE(trigrepo_repository, trigrepo_group));
 
 CREATE TABLE triggerable_configurations (
     trigconfig_test integer REFERENCES tests NOT NULL,
     trigconfig_platform integer REFERENCES platforms NOT NULL,
     trigconfig_triggerable integer REFERENCES build_triggerables NOT NULL,
     CONSTRAINT triggerable_must_be_unique_for_test_and_platform UNIQUE(trigconfig_test, trigconfig_platform));
+
+CREATE TABLE uploaded_files (
+    file_id serial PRIMARY KEY,
+    file_created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    file_deleted_at timestamp,
+    file_mime varchar(64),
+    file_filename varchar(1024) NOT NULL,
+    file_extension varchar(16),
+    file_author varchar(256),
+    file_size bigint NOT NULL,
+    file_sha256 char(64) NOT NULL);
+CREATE INDEX file_author_index ON uploaded_files(file_author);
+CREATE UNIQUE INDEX file_sha256_index ON uploaded_files(file_sha256) WHERE file_deleted_at is NULL;
 
 CREATE TABLE analysis_test_groups (
     testgroup_id serial PRIMARY KEY,
@@ -240,26 +281,37 @@ CREATE TABLE analysis_test_groups (
     CONSTRAINT testgroup_name_must_be_unique_for_each_task UNIQUE(testgroup_task, testgroup_name));
 CREATE INDEX testgroup_task_index ON analysis_test_groups(testgroup_task);
 
-CREATE TABLE root_sets (
-    rootset_id serial PRIMARY KEY);
+CREATE TABLE commit_sets (
+    commitset_id serial PRIMARY KEY);
 
-CREATE TABLE roots (
-    root_set integer REFERENCES root_sets NOT NULL,
-    root_commit integer REFERENCES commits NOT NULL);
+CREATE TABLE commit_set_items (
+    commitset_set integer REFERENCES commit_sets NOT NULL,
+    commitset_commit integer REFERENCES commits,
+    commitset_commit_owner integer REFERENCES commits DEFAULT NULL,
+    commitset_patch_file integer REFERENCES uploaded_files,
+    commitset_root_file integer REFERENCES uploaded_files,
+    commitset_requires_build boolean DEFAULT FALSE,
+    CONSTRAINT commitset_must_have_commit_or_root CHECK (commitset_commit IS NOT NULL OR commitset_root_file IS NOT NULL),
+    CONSTRAINT commitset_with_patch_must_have_commit CHECK (commitset_patch_file IS NULL OR commitset_commit IS NOT NULL),
+    CONSTRAINT commitset_item_with_patch_must_requires_build CHECK (commitset_patch_file IS NULL OR commitset_requires_build = TRUE),
+    CONSTRAINT commitset_item_with_owned_commit_must_requires_build CHECK (commitset_commit_owner IS NULL OR commitset_requires_build = TRUE));
 
 CREATE TYPE build_request_status_type as ENUM ('pending', 'scheduled', 'running', 'failed', 'completed', 'canceled');
 CREATE TABLE build_requests (
     request_id serial PRIMARY KEY,
     request_triggerable integer REFERENCES build_triggerables NOT NULL,
+    request_repository_group integer REFERENCES triggerable_repository_groups,
     request_platform integer REFERENCES platforms NOT NULL,
-    request_test integer REFERENCES tests NOT NULL,
+    request_test integer REFERENCES tests,
     request_group integer REFERENCES analysis_test_groups NOT NULL,
     request_order integer NOT NULL,
-    request_root_set integer REFERENCES root_sets NOT NULL,
+    request_commit_set integer REFERENCES commit_sets NOT NULL,
     request_status build_request_status_type NOT NULL DEFAULT 'pending',
     request_url varchar(1024),
     request_build integer REFERENCES builds,
     request_created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
-    CONSTRAINT build_request_order_must_be_unique_in_group UNIQUE(request_group, request_order));
-CREATE INDEX build_request_triggerable ON build_requests(request_triggerable);    
+    CONSTRAINT build_request_order_must_be_unique_in_group UNIQUE(request_group, request_order),
+    CONSTRAINT build_request_order_must_be_positive_for_testing
+        CHECK ((request_test IS NOT NULL AND request_order >= 0) OR (request_test IS NULL AND request_order < 0)));
+CREATE INDEX build_request_triggerable ON build_requests(request_triggerable);
 CREATE INDEX build_request_build ON build_requests(request_build);

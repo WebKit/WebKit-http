@@ -67,8 +67,6 @@ require Config;
 my $ccLocation = "";
 if ($ENV{CC}) {
     $ccLocation = $ENV{CC};
-} elsif (($Config::Config{"osname"}) =~ /solaris/i) {
-    $ccLocation = "/usr/sfw/bin/gcc";
 } elsif ($Config::Config{"osname"} eq "darwin" && $ENV{SDKROOT}) {
     chomp($ccLocation = `xcrun -find cc -sdk '$ENV{SDKROOT}'`);
 } else {
@@ -202,7 +200,7 @@ sub defaultTagPropertyHash
         'wrapperOnlyIfMediaIsAvailable' => 0,
         'settingsConditional' => 0,
         'conditional' => 0,
-        'runtimeConditional' => 0,
+        'runtimeEnabled' => 0,
         'customTypeHelper' => 0,
     );
 }
@@ -415,28 +413,25 @@ sub printConstructorInterior
     # instead of having all the support for this here in this script?
     if ($enabledTags{$tagName}{wrapperOnlyIfMediaIsAvailable}) {
         print F <<END
-    Settings* settings = document.settings();
-    if (!MediaPlayer::isAvailable() || (settings && !settings->mediaEnabled()))
+    if (!MediaPlayer::isAvailable() || !document.settings().mediaEnabled())
         return $parameters{fallbackInterfaceName}::create($constructorTagName, document);
     
 END
 ;
     }
 
-    my $runtimeConditional = $enabledTags{$tagName}{runtimeConditional};
-    if ($runtimeConditional) {
-        print F <<END
-    if (!RuntimeEnabledFeatures::sharedFeatures().${runtimeConditional}Enabled())
-        return 0;
-END
-;
+    my $runtimeCondition;
+    my $settingsConditional = $enabledTags{$tagName}{settingsConditional};
+    my $runtimeEnabled = $enabledTags{$tagName}{runtimeEnabled};
+    if ($settingsConditional) {
+        $runtimeCondition = "document.settings().${settingsConditional}()";
+    } elsif ($runtimeEnabled) {
+        $runtimeCondition = "RuntimeEnabledFeatures::sharedFeatures().${runtimeEnabled}Enabled()";
     }
 
-    my $settingsConditional = $enabledTags{$tagName}{settingsConditional};
-    if ($settingsConditional) {
+    if ($runtimeCondition) {
         print F <<END
-    Settings* settings = document.settings();
-    if (!settings || !settings->${settingsConditional}())
+    if (!$runtimeCondition)
         return $parameters{fallbackInterfaceName}::create($constructorTagName, document);
 END
 ;
@@ -673,7 +668,7 @@ public:
 private:
 END
        ;
-       if ($parameters{namespace} eq "HTML" && ($parsedTags{$name}{wrapperOnlyIfMediaIsAvailable} || $parsedTags{$name}{settingsConditional})) {
+       if ($parameters{namespace} eq "HTML" && ($parsedTags{$name}{wrapperOnlyIfMediaIsAvailable} || $parsedTags{$name}{settingsConditional} || $parsedTags{$name}{runtimeEnabled})) {
            print F <<END
     static bool checkTagName(const WebCore::HTMLElement& element) { return !element.isHTMLUnknownElement() && element.hasTagName(WebCore::$parameters{namespace}Names::${name}Tag); }
     static bool checkTagName(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && checkTagName(downcast<WebCore::HTMLElement>(node)); }
@@ -808,11 +803,11 @@ sub printNamesCppFile
     print F StaticString::GenerateStringAsserts(\%allStrings);
 
     if (keys %allTags) {
-        my $tagsNamespace = $parameters{tagsNullNamespace} ? "nullAtom" : "${lowercaseNamespacePrefix}NS";
+        my $tagsNamespace = $parameters{tagsNullNamespace} ? "nullAtom()" : "${lowercaseNamespacePrefix}NS";
         printDefinitions($F, \%allTags, "tags", $tagsNamespace);
     }
     if (keys %allAttrs) {
-        my $attrsNamespace = $parameters{attrsNullNamespace} ? "nullAtom" : "${lowercaseNamespacePrefix}NS";
+        my $attrsNamespace = $parameters{attrsNullNamespace} ? "nullAtom()" : "${lowercaseNamespacePrefix}NS";
         printDefinitions($F, \%allAttrs, "attributes", $attrsNamespace);
     }
 
@@ -920,13 +915,13 @@ END
 print F <<END
     };
 
-    for (unsigned i = 0; i < WTF_ARRAY_LENGTH(${type}Table); ++i)
+    for (auto& entry : ${type}Table)
 END
 ;
-    if ($namespaceURI eq "nullAtom") {
-        print F "        createQualifiedName(${type}Table[i].targetAddress, &${type}Table[i].name);\n";
+    if ($namespaceURI eq "nullAtom()") {
+        print F "        createQualifiedName(entry.targetAddress, &entry.name);\n";
     } else {
-        print F "        createQualifiedName(${type}Table[i].targetAddress, &${type}Table[i].name, $namespaceURI);\n";
+        print F "        createQualifiedName(entry.targetAddress, &entry.name, $namespaceURI);\n";
     }
 }
 
@@ -1010,7 +1005,7 @@ struct ConstructorFunctionMapEntry {
     const QualifiedName* qualifiedName; // Use pointer instead of reference so that emptyValue() in HashMap is cheap to create.
 };
 
-static NEVER_INLINE void populate$parameters{namespace}FactoryMap(HashMap<AtomicStringImpl*, ConstructorFunctionMapEntry>& map)
+static NEVER_INLINE HashMap<AtomicStringImpl*, ConstructorFunctionMapEntry> create$parameters{namespace}FactoryMap()
 {
     struct TableEntry {
         const QualifiedName& name;
@@ -1026,16 +1021,15 @@ END
     print F <<END
     };
 
-    for (unsigned i = 0; i < WTF_ARRAY_LENGTH(table); ++i)
-        map.add(table[i].name.localName().impl(), ConstructorFunctionMapEntry(table[i].function, table[i].name));
+    HashMap<AtomicStringImpl*, ConstructorFunctionMapEntry> map;
+    for (auto& entry : table)
+        map.add(entry.name.localName().impl(), ConstructorFunctionMapEntry(entry.function, entry.name));
+    return map;
 }
-
 
 static ConstructorFunctionMapEntry find$parameters{namespace}ElementConstructorFunction(const AtomicString& localName)
 {
-    static NeverDestroyed<HashMap<AtomicStringImpl*, ConstructorFunctionMapEntry>> map;
-    if (map.get().isEmpty())
-        populate$parameters{namespace}FactoryMap(map);
+    static const auto map = makeNeverDestroyed(create$parameters{namespace}FactoryMap());
     return map.get().get(localName.impl());
 }
 
@@ -1066,7 +1060,7 @@ Ref<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createE
         const auto& name = *entry.qualifiedName;
         return entry.function($argumentList);
     }
-    return $parameters{fallbackInterfaceName}::create(QualifiedName(nullAtom, localName, ${lowercaseNamespacePrefix}NamespaceURI), document);
+    return $parameters{fallbackInterfaceName}::create(QualifiedName(nullAtom(), localName, ${lowercaseNamespacePrefix}NamespaceURI), document);
 }
 
 Ref<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createElement(const QualifiedName& name, Document& document$formElementArgumentForDefinition, bool createdByParser)
@@ -1192,16 +1186,13 @@ static JSDOMObject* create$enabledTags{$tagName}{interfaceName}Wrapper(JSDOMGlob
 
 END
             ;
-        } elsif ($enabledTags{$tagName}{runtimeConditional}) {
-            my $runtimeConditional = $enabledTags{$tagName}{runtimeConditional};
+        } elsif ($enabledTags{$tagName}{runtimeEnabled}) {
+            my $runtimeEnabled = $enabledTags{$tagName}{runtimeEnabled};
             print F <<END
 static JSDOMObject* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, Ref<$parameters{namespace}Element>&& element)
 {
-    if (!RuntimeEnabledFeatures::sharedFeatures().${runtimeConditional}Enabled()) {
-        ASSERT(element->is$parameters{fallbackInterfaceName}());
+    if (element->is$parameters{fallbackInterfaceName}())
         return createWrapper<$parameters{fallbackJSInterfaceName}>(globalObject, WTFMove(element));
-    }
-
     return createWrapper<${JSInterfaceName}>(globalObject, WTFMove(element));
 }
 END
@@ -1270,7 +1261,7 @@ END
 
 print F <<END
 
-static NEVER_INLINE void populate$parameters{namespace}WrapperMap(HashMap<AtomicStringImpl*, Create$parameters{namespace}ElementWrapperFunction>& map)
+static NEVER_INLINE HashMap<AtomicStringImpl*, Create$parameters{namespace}ElementWrapperFunction> create$parameters{namespace}WrapperMap()
 {
     struct TableEntry {
         const QualifiedName& name;
@@ -1308,15 +1299,15 @@ END
     print F <<END
     };
 
-    for (unsigned i = 0; i < WTF_ARRAY_LENGTH(table); ++i)
-        map.add(table[i].name.localName().impl(), table[i].function);
+    HashMap<AtomicStringImpl*, Create$parameters{namespace}ElementWrapperFunction> map;
+    for (auto& entry : table)
+        map.add(entry.name.localName().impl(), entry.function);
+    return map;
 }
 
 JSDOMObject* createJS$parameters{namespace}Wrapper(JSDOMGlobalObject* globalObject, Ref<$parameters{namespace}Element>&& element)
 {
-    static NeverDestroyed<HashMap<AtomicStringImpl*, Create$parameters{namespace}ElementWrapperFunction>> functions;
-    if (functions.get().isEmpty())
-        populate$parameters{namespace}WrapperMap(functions);
+    static const auto functions = makeNeverDestroyed(create$parameters{namespace}WrapperMap());
     if (auto function = functions.get().get(element->localName().impl()))
         return function(globalObject, WTFMove(element));
 END

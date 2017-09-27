@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,13 @@
 #pragma once
 
 #include "CredentialStorage.h"
-#include "SessionID.h"
+#include <pal/SessionID.h>
+#include <wtf/Function.h>
+#include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
-#include "CFNetworkSPI.h"
+#include <pal/spi/cf/CFNetworkSPI.h>
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -40,57 +42,93 @@
 typedef struct _SoupCookieJar SoupCookieJar;
 #endif
 
+#ifdef __OBJC__
+#include <objc/objc.h>
+#endif
+
+#if PLATFORM(COCOA)
+#include "CookieStorageObserver.h"
+#endif
+
 namespace WebCore {
 
 class NetworkingContext;
 class ResourceRequest;
 class SoupNetworkSession;
 
+struct Cookie;
+
 class NetworkStorageSession {
     WTF_MAKE_NONCOPYABLE(NetworkStorageSession); WTF_MAKE_FAST_ALLOCATED;
 public:
     WEBCORE_EXPORT static NetworkStorageSession& defaultStorageSession();
-    WEBCORE_EXPORT static NetworkStorageSession* storageSession(SessionID);
-    WEBCORE_EXPORT static void ensurePrivateBrowsingSession(SessionID, const String& identifierBase = String());
-    WEBCORE_EXPORT static void destroySession(SessionID);
-    WEBCORE_EXPORT static void forEach(std::function<void(const WebCore::NetworkStorageSession&)>);
+    WEBCORE_EXPORT static NetworkStorageSession* storageSession(PAL::SessionID);
+    WEBCORE_EXPORT static void ensurePrivateBrowsingSession(PAL::SessionID, const String& identifierBase = String());
+    WEBCORE_EXPORT static void ensureSession(PAL::SessionID, const String& identifierBase = String());
+    WEBCORE_EXPORT static void destroySession(PAL::SessionID);
+    WEBCORE_EXPORT static void forEach(const WTF::Function<void(const WebCore::NetworkStorageSession&)>&);
 
     WEBCORE_EXPORT static void switchToNewTestingSession();
 
-    SessionID sessionID() const { return m_sessionID; }
+    PAL::SessionID sessionID() const { return m_sessionID; }
     CredentialStorage& credentialStorage() { return m_credentialStorage; }
 
+#ifdef __OBJC__
+    NSHTTPCookieStorage *nsCookieStorage() const;
+#endif
+
+    const String& cacheStorageDirectory() const { return m_cacheStorageDirectory; }
+    void setCacheStorageDirectory(String&& path) { m_cacheStorageDirectory = WTFMove(path); }
+
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
-    NetworkStorageSession(SessionID, RetainPtr<CFURLStorageSessionRef>);
+    WEBCORE_EXPORT static void ensureSession(PAL::SessionID, const String& identifierBase, RetainPtr<CFHTTPCookieStorageRef>&&);
+    NetworkStorageSession(PAL::SessionID, RetainPtr<CFURLStorageSessionRef>&&, RetainPtr<CFHTTPCookieStorageRef>&&);
 
     // May be null, in which case a Foundation default should be used.
     CFURLStorageSessionRef platformSession() { return m_platformSession.get(); }
     WEBCORE_EXPORT RetainPtr<CFHTTPCookieStorageRef> cookieStorage() const;
     WEBCORE_EXPORT static void setCookieStoragePartitioningEnabled(bool);
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    WEBCORE_EXPORT String cookieStoragePartition(const ResourceRequest&) const;
+    WEBCORE_EXPORT bool shouldBlockCookies(const ResourceRequest&) const;
+    bool shouldBlockCookies(const URL& firstPartyForCookies, const URL& resource) const;
+    String cookieStoragePartition(const URL& firstPartyForCookies, const URL& resource) const;
+    WEBCORE_EXPORT void setPrevalentDomainsToPartitionOrBlockCookies(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, bool clearFirst);
+    WEBCORE_EXPORT void removePrevalentDomains(const Vector<String>& domains);
+#endif
 #elif USE(SOUP)
-    NetworkStorageSession(SessionID, std::unique_ptr<SoupNetworkSession>&&);
+    NetworkStorageSession(PAL::SessionID, std::unique_ptr<SoupNetworkSession>&&);
     ~NetworkStorageSession();
 
     SoupNetworkSession* soupNetworkSession() const { return m_session.get(); };
     SoupNetworkSession& getOrCreateSoupNetworkSession() const;
+    void clearSoupNetworkSessionAndCookieStorage();
     SoupCookieJar* cookieStorage() const;
     void setCookieStorage(SoupCookieJar*);
     void setCookieObserverHandler(Function<void ()>&&);
     void getCredentialFromPersistentStorage(const ProtectionSpace&, Function<void (Credential&&)> completionHandler);
     void saveCredentialToPersistentStorage(const ProtectionSpace&, const Credential&);
 #else
-    NetworkStorageSession(SessionID, NetworkingContext*);
+    NetworkStorageSession(PAL::SessionID, NetworkingContext*);
     ~NetworkStorageSession();
 
     NetworkingContext* context() const;
 #endif
 
+    WEBCORE_EXPORT void setCookie(const Cookie&);
+    WEBCORE_EXPORT void setCookies(const Vector<Cookie>&, const URL&, const URL& mainDocumentURL);
+    WEBCORE_EXPORT void deleteCookie(const Cookie&);
+    WEBCORE_EXPORT Vector<Cookie> getAllCookies();
+    WEBCORE_EXPORT Vector<Cookie> getCookies(const URL&);
+    WEBCORE_EXPORT void flushCookieStore();
+
 private:
-    static HashMap<SessionID, std::unique_ptr<NetworkStorageSession>>& globalSessionMap();
-    SessionID m_sessionID;
+    static HashMap<PAL::SessionID, std::unique_ptr<NetworkStorageSession>>& globalSessionMap();
+    PAL::SessionID m_sessionID;
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     RetainPtr<CFURLStorageSessionRef> m_platformSession;
+    RetainPtr<CFHTTPCookieStorageRef> m_platformCookieStorage;
 #elif USE(SOUP)
     static void cookiesDidChange(NetworkStorageSession*);
 
@@ -106,9 +144,27 @@ private:
 #endif
 
     CredentialStorage m_credentialStorage;
+
+    String m_cacheStorageDirectory;
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    bool shouldPartitionCookies(const String& topPrivatelyControlledDomain) const;
+    bool shouldBlockThirdPartyCookies(const String& topPrivatelyControlledDomain) const;
+    HashSet<String> m_topPrivatelyControlledDomainsToPartition;
+    HashSet<String> m_topPrivatelyControlledDomainsToBlock;
+#endif
+
+#if PLATFORM(COCOA)
+public:
+    CookieStorageObserver& cookieStorageObserver() const;
+
+private:
+    mutable RefPtr<CookieStorageObserver> m_cookieStorageObserver;
+#endif
 };
 
-WEBCORE_EXPORT String cookieStoragePartition(const ResourceRequest&);
-String cookieStoragePartition(const URL& firstPartyForCookies, const URL& resource);
+#if PLATFORM(COCOA)
+WEBCORE_EXPORT CFURLStorageSessionRef createPrivateStorageSession(CFStringRef identifier);
+#endif
 
 }

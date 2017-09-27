@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,10 +33,44 @@ const _mapValues = from => {
 };
 
 export const description = utilities.json("wasm.json");
-export const valueType = Object.keys(description.value_type);
-const _valueTypeSet = new Set(valueType);
+export const type = Object.keys(description.type);
+const _typeSet = new Set(type);
+export const isValidType = v => _typeSet.has(v);
+export const typeValue = _mapValues(description.type);
+const _valueTypeSet = new Set(description.value_type);
 export const isValidValueType = v => _valueTypeSet.has(v);
-export const valueTypeValue = _mapValues(description.value_type);
+const _blockTypeSet = new Set(description.block_type);
+export const isValidBlockType = v => _blockTypeSet.has(v);
 export const externalKindValue = _mapValues(description.external_kind);
 export const sections = Object.keys(description.section);
 export const sectionEncodingType = description.section[sections[0]].type;
+
+export function* opcodes(category = undefined) {
+    for (let op in description.opcode)
+        if (category !== undefined && description.opcode[op].category === category)
+            yield { name: op, opcode: description.opcode[op] };
+};
+export const memoryAccessInfo = op => {
+    //                <-----------valueType----------->  <-------type-------><---------width-------->  <--sign-->
+    const classify = /((?:i32)|(?:i64)|(?:f32)|(?:f64))\.((?:load)|(?:store))((?:8)|(?:16)|(?:32))?_?((?:s|u)?)/;
+    const found = op.name.match(classify);
+    const valueType = found[1];
+    const type = found[2];
+    const width = parseInt(found[3] ? found[3] : valueType.slice(1));
+    const sign = (() => {
+        switch (found[4]) {
+        case "s": return "signed";
+        case "u": return "unsigned";
+        default: return "agnostic";
+        }
+    })();
+    return { valueType, type, width, sign };
+};
+
+export const constForValueType = valueType => {
+    for (let op in description.opcode)
+        if (op.endsWith(".const") && description.opcode[op]["return"] == valueType)
+            return op;
+    throw new Error(`Implementation problem: no const type for ${valueType}`);
+};
+

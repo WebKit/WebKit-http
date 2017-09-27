@@ -54,13 +54,6 @@
             debug("Dictionary argument is mandatory.");
             shouldThrow('new RTCIceCandidate();');
 
-            debug("Dictionary member 'candidate' is required.");
-            shouldThrow('new RTCIceCandidate({});');
-            shouldThrow('new RTCIceCandidate({sdpMid:"bar", sdpMLineIndex:6});');
-            shouldThrow('new RTCIceCandidate({sdpMid:"bar"});');
-            shouldThrow('new RTCIceCandidate({sdpMLineIndex:6});');
-            debug("");
-
             debug("One of the 'sdpMid' or 'sdpMLineIndex' members must be present (and not null or undefined).");
             shouldThrow('new RTCIceCandidate({candidate:"foo"});');
             shouldThrow('new RTCIceCandidate({candidate:"foo", sdpMid: null});');
@@ -98,10 +91,14 @@
             shouldBe('candidate.sdpMLineIndex', '6');
             debug("");
 
+            debug("Conversion of sdpMLineIndex to unsigned short, following WebIDL rules without [Clamp] or [EnforceRange]");
+            shouldBe('(new RTCIceCandidate({candidate:"foo", sdpMLineIndex:"a"})).sdpMLineIndex', '0');
+            shouldBe('(new RTCIceCandidate({candidate:"foo", sdpMLineIndex:-1})).sdpMLineIndex', '65535');
+            shouldBe('(new RTCIceCandidate({candidate:"foo", sdpMLineIndex:65536})).sdpMLineIndex', '0');
+            shouldBe('(new RTCIceCandidate({candidate:"foo", sdpMLineIndex:65537})).sdpMLineIndex', '1');
+            debug("");
+
             debug("Some bad input");
-            shouldThrow('new RTCIceCandidate({candidate:"foo", sdpMLineIndex:"a"});');
-            shouldThrow('new RTCIceCandidate({candidate:"foo", sdpMLineIndex:-1});');
-            shouldThrow('new RTCIceCandidate({candidate:"foo", sdpMLineIndex:65536});');
             shouldThrow('new RTCIceCandidate(5);');
             shouldThrow('new RTCIceCandidate("foobar");');
             shouldThrow('new RTCIceCandidate(candidate:"");');

@@ -222,7 +222,7 @@ public:
     bool needsSectionRecalc() const { return m_needsSectionRecalc; }
     void setNeedsSectionRecalc()
     {
-        if (documentBeingDestroyed())
+        if (renderTreeBeingDestroyed())
             return;
         m_needsSectionRecalc = true;
         setNeedsLayout();
@@ -291,8 +291,8 @@ private:
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
     int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const final;
-    Optional<int> firstLineBaseline() const override;
-    Optional<int> inlineBlockBaseline(LineDirectionMode) const final;
+    std::optional<int> firstLineBaseline() const override;
+    std::optional<int> inlineBlockBaseline(LineDirectionMode) const final;
 
     RenderTableCol* slowColElement(unsigned col, bool* startEdge, bool* endEdge) const;
 
@@ -302,7 +302,6 @@ private:
     void invalidateCachedColumnOffsets();
 
     RenderBlock* firstLineBlock() const final;
-    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) final;
     
     void updateLogicalWidth() final;
 
@@ -314,7 +313,7 @@ private:
 
     void addOverflowFromChildren() final;
 
-    void subtractCaptionRect(LayoutRect&) const;
+    void adjustBorderBoxRectForPainting(LayoutRect&) override;
 
     void recalcCollapsedBorders();
     void recalcSections() const;
@@ -366,6 +365,7 @@ private:
     LayoutUnit m_borderEnd;
     mutable LayoutUnit m_columnOffsetTop;
     mutable LayoutUnit m_columnOffsetHeight;
+    bool m_inRecursiveSectionMovedWithPagination { false };
 };
 
 inline RenderTableSection* RenderTable::topSection() const

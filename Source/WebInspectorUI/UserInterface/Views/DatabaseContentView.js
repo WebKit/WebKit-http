@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DatabaseContentView = class DatabaseContentView extends WebInspector.ContentView
+WI.DatabaseContentView = class DatabaseContentView extends WI.ContentView
 {
     constructor(representedObject)
     {
@@ -33,7 +33,7 @@ WebInspector.DatabaseContentView = class DatabaseContentView extends WebInspecto
 
         this.element.classList.add("storage-view", "query", "monospace");
 
-        this._prompt = new WebInspector.ConsolePrompt(this, "text/x-sql");
+        this._prompt = new WI.ConsolePrompt(this, "text/x-sql");
         this.addSubview(this._prompt);
 
         this.element.addEventListener("click", this._messagesClicked.bind(this), true);
@@ -41,17 +41,9 @@ WebInspector.DatabaseContentView = class DatabaseContentView extends WebInspecto
 
     // Public
 
-    shown()
-    {
-        super.shown();
-
-        // FIXME: remove once <https://webkit.org/b/150741> is fixed.
-        this._prompt.shown();
-    }
-
     saveToCookie(cookie)
     {
-        cookie.type = WebInspector.ContentViewCookieType.Database;
+        cookie.type = WI.ContentViewCookieType.Database;
         cookie.host = this.representedObject.host;
         cookie.name = this.representedObject.name;
     }
@@ -96,7 +88,7 @@ WebInspector.DatabaseContentView = class DatabaseContentView extends WebInspecto
     _queryFinished(query, columnNames, values)
     {
         let trimmedQuery = query.trim();
-        let queryView = new WebInspector.DatabaseUserQuerySuccessView(trimmedQuery, columnNames, values);
+        let queryView = new WI.DatabaseUserQuerySuccessView(trimmedQuery, columnNames, values);
         this.insertSubviewBefore(queryView, this._prompt);
 
         if (queryView.dataGrid)
@@ -105,7 +97,7 @@ WebInspector.DatabaseContentView = class DatabaseContentView extends WebInspecto
         this._prompt.element.scrollIntoView(false);
 
         if (trimmedQuery.match(/^create /i) || trimmedQuery.match(/^drop table /i))
-            this.dispatchEventToListeners(WebInspector.DatabaseContentView.Event.SchemaUpdated, this.database);
+            this.dispatchEventToListeners(WI.DatabaseContentView.Event.SchemaUpdated, this.database);
     }
 
     _queryError(query, error)
@@ -114,16 +106,16 @@ WebInspector.DatabaseContentView = class DatabaseContentView extends WebInspecto
         if (error.message)
             message = error.message;
         else if (error.code === 2)
-            message = WebInspector.UIString("Database no longer has expected version.");
+            message = WI.UIString("Database no longer has expected version.");
         else
-            message = WebInspector.UIString("An unexpected error %s occurred.").format(error.code);
+            message = WI.UIString("An unexpected error %s occurred.").format(error.code);
 
-        let queryView = new WebInspector.DatabaseUserQueryErrorView(query, message);
+        let queryView = new WI.DatabaseUserQueryErrorView(query, message);
         this.insertSubviewBefore(queryView, this._prompt);
         this._prompt.element.scrollIntoView(false);
     }
 };
 
-WebInspector.DatabaseContentView.Event = {
+WI.DatabaseContentView.Event = {
     SchemaUpdated: "SchemaUpdated"
 };

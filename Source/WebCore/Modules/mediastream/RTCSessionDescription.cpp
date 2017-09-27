@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,53 +35,22 @@
 
 #if ENABLE(WEB_RTC)
 
-#include "Dictionary.h"
-#include "ExceptionCode.h"
-
 namespace WebCore {
 
-static bool parseTypeString(const String& string, RTCSessionDescription::SdpType& outType)
-{
-    if (string == "offer")
-        outType = RTCSessionDescription::SdpType::Offer;
-    else if (string == "pranswer")
-        outType = RTCSessionDescription::SdpType::Pranswer;
-    else if (string == "answer")
-        outType = RTCSessionDescription::SdpType::Answer;
-    else if (string == "rollback")
-        outType = RTCSessionDescription::SdpType::Rollback;
-    else
-        return false;
-
-    return true;
-}
-
-ExceptionOr<Ref<RTCSessionDescription>> RTCSessionDescription::create(const Dictionary& dictionary)
-{
-    String typeString;
-    // Dictionary member type is required.
-    if (!dictionary.get("type", typeString))
-        return Exception { TypeError };
-
-    SdpType type;
-    if (!parseTypeString(typeString, type))
-        return Exception { TypeError };
-
-    String sdp;
-    dictionary.get("sdp", sdp);
-
-    return adoptRef(*new RTCSessionDescription(type, sdp));
-}
-
-Ref<RTCSessionDescription> RTCSessionDescription::create(SdpType type, const String& sdp)
-{
-    return adoptRef(*new RTCSessionDescription(type, sdp));
-}
-
-RTCSessionDescription::RTCSessionDescription(SdpType type, const String& sdp)
+inline RTCSessionDescription::RTCSessionDescription(RTCSdpType type, String&& sdp)
     : m_type(type)
-    , m_sdp(sdp)
+    , m_sdp(WTFMove(sdp))
 {
+}
+
+Ref<RTCSessionDescription> RTCSessionDescription::create(Init&& dictionary)
+{
+    return create(dictionary.type, WTFMove(dictionary.sdp));
+}
+
+Ref<RTCSessionDescription> RTCSessionDescription::create(RTCSdpType type, String&& sdp)
+{
+    return adoptRef(*new RTCSessionDescription(type, WTFMove(sdp)));
 }
 
 } // namespace WebCore

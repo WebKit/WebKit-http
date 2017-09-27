@@ -162,14 +162,18 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
 void PlatformWebView::setWindowIsKey(bool isKey)
 {
     m_windowIsKey = isKey;
+    if (m_windowIsKey)
+        [m_window makeKeyWindow];
+    else
+        [m_window resignKeyWindow];
 }
 
-void PlatformWebView::resizeTo(unsigned width, unsigned height)
+void PlatformWebView::resizeTo(unsigned width, unsigned height, WebViewSizingMode sizingMode)
 {
     WKRect frame = windowFrame();
     frame.size.width = width;
     frame.size.height = height;
-    setWindowFrame(frame);
+    setWindowFrame(frame, sizingMode);
 }
 
 PlatformWebView::~PlatformWebView()
@@ -219,7 +223,7 @@ WKRect PlatformWebView::windowFrame()
     return wkFrame;
 }
 
-void PlatformWebView::setWindowFrame(WKRect frame)
+void PlatformWebView::setWindowFrame(WKRect frame, WebViewSizingMode)
 {
     [m_window setFrame:NSMakeRect(frame.origin.x, frame.origin.y, frame.size.width, frame.size.height) display:YES];
     [platformView() setFrame:NSMakeRect(0, 0, frame.size.width, frame.size.height)];
@@ -252,12 +256,22 @@ void PlatformWebView::removeChromeInputField()
     }
 }
 
+void PlatformWebView::addToWindow()
+{
+    [[m_window contentView] addSubview:m_view];
+}
+
+void PlatformWebView::removeFromWindow()
+{
+    [m_view removeFromSuperview];
+}
+
 void PlatformWebView::makeWebViewFirstResponder()
 {
     [m_window makeFirstResponder:platformView()];
 }
 
-WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
+RetainPtr<CGImageRef> PlatformWebView::windowSnapshotImage()
 {
     [platformView() display];
     CGWindowImageOption options = kCGWindowImageBoundsIgnoreFraming | kCGWindowImageShouldBeOpaque;
@@ -265,18 +279,7 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
     if ([m_window backingScaleFactor] == 1)
         options |= kCGWindowImageNominalResolution;
 
-    RetainPtr<CGImageRef> windowSnapshotImage = adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, [m_window windowNumber], options));
-
-    // windowSnapshotImage will be in GenericRGB, as we've set the main display's color space to GenericRGB.
-    return adoptWK(WKImageCreateFromCGImage(windowSnapshotImage.get(), 0));
-}
-
-bool PlatformWebView::viewSupportsOptions(const TestOptions& options) const
-{
-    if (m_options.useThreadedScrolling != options.useThreadedScrolling || m_options.overrideLanguages != options.overrideLanguages || m_options.useMockScrollbars != options.useMockScrollbars || m_options.needsSiteSpecificQuirks != options.needsSiteSpecificQuirks)
-        return false;
-
-    return true;
+    return adoptCF(CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, [m_window windowNumber], options));
 }
 
 void PlatformWebView::changeWindowScaleIfNeeded(float newScale)
@@ -284,7 +287,12 @@ void PlatformWebView::changeWindowScaleIfNeeded(float newScale)
     CGFloat currentScale = [m_window backingScaleFactor];
     if (currentScale == newScale)
         return;
+
     [m_window _setWindowResolution:newScale displayIfChanged:YES];
+#if WK_API_ENABLED
+    [m_view _setOverrideDeviceScaleFactor:newScale];
+#endif
+
     // Instead of re-constructing the current window, let's fake resize it to ensure that the scale change gets picked up.
     forceWindowFramesChanged();
     // Changing the scaling factor on the window does not trigger NSWindowDidChangeBackingPropertiesNotification. We need to send the notification manually.

@@ -5,7 +5,7 @@
         "url": "http://wiki.ecmascript.org/doku.php?id=harmony:specification_drafts",
         "keywords": ["es6", "es2015", "ecmascript"],
         "status": {
-            "status": "Done"
+            "status": "Supported"
         },
         "contact": [
             {
@@ -25,9 +25,14 @@
         "keywords": ["es7", "ecmascript"]
     },
     {
+        "name": "ESNext",
+        "url": "https://github.com/tc39/ecma262",
+        "keywords": ["esnext", "ecmascript"]
+    },
+    {
         "name": "Internationalization API",
         "status": {
-            "status": "Done"
+            "status": "Supported"
         },
         "url": "http://ecma-international.org/publications/standards/Ecma-402.htm",
         "documentation-url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl",
@@ -38,7 +43,7 @@
     {
         "name": "WebAssembly",
         "status": {
-            "status": "In Development"
+            "status": "Supported in Preview"
         },
         "url": "http://webassembly.github.io",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=146064",
@@ -54,19 +59,9 @@
 
     "features": [
     {
-        "name": "ASM.js",
-        "status": {
-            "status": "In Development",
-            "enabled-by-default": true
-        },
-        "url": "http://asmjs.org",
-        "description": "ASM.js defines a subset of JavaScript that enforce stronger typing and has specific patterns of memory access. ASM.js is rarely hand-written, it is typically generated from other languages by compiler such as Emscripten.",
-        "comment": "There is no \"use asm\" mode in JavaScriptCore. Instead WebKit integrates ASM.js optimizations directly in the optimizer. As a result, it is possible to mix ASM-style typing with regular code and still get great performance and power efficiency."
-    },
-    {
         "name": "Array.prototype.copyWithin",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://people.mozilla.org/~jorendorff/es6-draft.html#sec-array.prototype.copywithin",
@@ -81,7 +76,7 @@
     {
         "name": "Array.prototype.includes",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://github.com/tc39/Array.prototype.includes",
@@ -92,7 +87,7 @@
     {
         "name": "Arrow Functions",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-arrow-function-definitions",
@@ -101,9 +96,26 @@
         "specification": "ES6"
     },
     {
+        "name": "Async Iteration",
+        "status": {
+            "status": "In development",
+            "enabled-by-default": false
+        },
+        "url": "https://tc39.github.io/proposal-async-iteration/",
+        "documentation-url": "http://2ality.com/2016/10/asynchronous-iteration.html",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=166693",
+        "description": "This feature adds syntactic support for asynchronous iteration using the AsyncIterable and AsyncIterator protocols. It introduces a new IterationStatement, for-await-of, and adds syntax for creating async generator functions and methods.",
+        "specification": "ESNext",
+        "contact": {
+            "name": "Oleksandr Skachkov",
+            "twitter": "@alSkachkov",
+            "email": "gskachkov@gmail.com"
+        }
+    },
+    {
         "name": "Block Scoping",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-let-and-const-declarations",
@@ -114,7 +126,7 @@
     {
         "name": "Classes",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-class-definitions",
@@ -125,7 +137,7 @@
     {
         "name": "Default Parameter Values",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-function-definitions",
@@ -136,7 +148,7 @@
     {
         "name": "Destructuring Syntax",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-destructuring-assignment",
@@ -147,7 +159,7 @@
     {
         "name": "Exponentiation Syntax",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://tc39.github.io/ecma262/#prod-ExponentiationExpression",
@@ -164,7 +176,7 @@
     {
         "name": "Generators",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-generator-objects",
@@ -181,7 +193,7 @@
     {
         "name": "Map Data Structure",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://people.mozilla.org/~jorendorff/es6-draft.html#sec-map-constructor",
@@ -193,19 +205,19 @@
     {
         "name": "Modules",
         "status": {
-            "status": "In Development",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-modules",
         "documentation-url": "https://hacks.mozilla.org/2015/08/es6-in-depth-modules/",
         "description": "Modules make modularizing code and splitting it across different files easy because the syntax and semantics are now standard in the JavaScript langauge.",
         "specification": "ES6",
-        "comment": "ES6 work is done, however, this feature is still listed as \"In Development\" because the module loading specification has yet to be finalized <a href=\"https:\/\/whatwg.github.io\/loader\/\"><\/a>. It is possible to use Modules with the jsc command line tool by passing the -m flag, although it is primarily intended for testing."
+        "comment": "Modules can be loaded through script type=\"module\" tags. It is also possible to use Modules with the jsc command line tool by passing the -m flag."
     },
     {
         "name": "Number Object Extensions",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://people.mozilla.org/~jorendorff/es6-draft.html#sec-number-objects",
@@ -215,9 +227,20 @@
         "description": "Extend Number with the methods Number.isFinite(), Number.isInteger(), Number.isSafeInteger(), Number.isNaN() and the attributes Number.EPSILON, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER."
     },
     {
+        "name": "Object rest/spread",
+        "status": {
+            "status": "In development",
+            "enabled-by-default": false
+        },
+        "url": "https://github.com/tc39/proposal-object-rest-spread",
+        "documentation-url": "http://2ality.com/2016/10/rest-spread-properties.html",
+        "specification": "ESNext",
+        "description": "New syntax for gathering the rest of an object's properties when using destructuring."
+    },
+    {
         "name": "Octal and Binary Literals",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://people.mozilla.org/~jorendorff/es6-draft.html#sec-literals-numeric-literals",
@@ -228,7 +251,7 @@
     {
         "name": "Promise Objects",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true,
             "shipped": ["ios8-safari", "osx-safari-7.1"]
         },
@@ -240,7 +263,7 @@
     {
         "name": "Proxy Objects",
         "status": {
-            "status": "Done"
+            "status": "Supported"
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-proxy-objects",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=35731",
@@ -255,7 +278,7 @@
     {
         "name": "Reflect API",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-reflect-object",
@@ -266,7 +289,7 @@
     {
         "name": "Rest Parameter",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-function-definitions",
@@ -282,7 +305,7 @@
     {
         "name": "Set Data Structure",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://people.mozilla.org/~jorendorff/es6-draft.html#sec-set-constructor",
@@ -294,7 +317,7 @@
     {
         "name": "Symbol Objects",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://people.mozilla.org/~jorendorff/es6-draft.html#sec-symbol-objects",
@@ -309,7 +332,7 @@
     {
         "name": "Tagged Templates",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://people.mozilla.org/~jorendorff/es6-draft.html#sec-tagged-templates",
@@ -325,7 +348,7 @@
     {
         "name": "Tail Calls",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/index.html#sec-tail-position-calls",
@@ -336,7 +359,7 @@
     {
         "name": "Template Literals",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://people.mozilla.org/~jorendorff/es6-draft.html#sec-template-literals",
@@ -352,7 +375,7 @@
     {
         "name": "WeakMap",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://people.mozilla.org/~jorendorff/es6-draft.html#sec-weakmap-objects",
@@ -364,7 +387,7 @@
     {
         "name": "WeakSet",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://people.mozilla.org/~jorendorff/es6-draft.html#sec-weakset-objects",
@@ -378,9 +401,25 @@
         }
     },
     {
+        "name": "async/await",
+        "status": {
+            "status": "Supported",
+            "enabled-by-default": true
+        },
+        "url": "https://tc39.github.io/ecma262/#sec-async-function-definitions",
+        "documentation-url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function",
+        "description": "Async functions are a way to mix generators with promises to allow writing asynchronous code that looks synchronous.",
+        "specification": "ES7",
+        "contact": {
+            "name": "Saam Barati",
+            "twitter": "@saambarati",
+            "email": "sbarati@apple.com"
+        }
+    },
+    {
         "name": "for...of Loops",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://people.mozilla.org/~jorendorff/es6-draft.html#sec-for-in-and-for-of-statements",
@@ -392,7 +431,7 @@
     {
         "name": "new.target",
         "status": {
-            "status": "Done",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.ecma-international.org/ecma-262/6.0/#sec-built-in-function-objects",

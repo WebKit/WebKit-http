@@ -41,7 +41,7 @@ namespace WebCore {
 static const size_t sizeOfFileHeader = 14;
 
 BMPImageDecoder::BMPImageDecoder(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
-    : ImageDecoder(alphaOption, gammaAndColorProfileOption)
+    : ScalableImageDecoder(alphaOption, gammaAndColorProfileOption)
     , m_decodedOffset(0)
 {
 }
@@ -51,17 +51,9 @@ void BMPImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
     if (failed())
         return;
 
-    ImageDecoder::setData(data, allDataReceived);
+    ScalableImageDecoder::setData(data, allDataReceived);
     if (m_reader)
         m_reader->setData(&data);
-}
-
-bool BMPImageDecoder::isSizeAvailable()
-{
-    if (!ImageDecoder::isSizeAvailable())
-        decode(true);
-
-    return ImageDecoder::isSizeAvailable();
 }
 
 ImageFrame* BMPImageDecoder::frameBufferAtIndex(size_t index)
@@ -70,28 +62,28 @@ ImageFrame* BMPImageDecoder::frameBufferAtIndex(size_t index)
         return 0;
 
     if (m_frameBufferCache.isEmpty())
-        m_frameBufferCache.resize(1);
+        m_frameBufferCache.grow(1);
 
     ImageFrame* buffer = &m_frameBufferCache.first();
     if (!buffer->isComplete())
-        decode(false);
+        decode(false, isAllDataReceived());
     return buffer;
 }
 
 bool BMPImageDecoder::setFailed()
 {
     m_reader = nullptr;
-    return ImageDecoder::setFailed();
+    return ScalableImageDecoder::setFailed();
 }
 
-void BMPImageDecoder::decode(bool onlySize)
+void BMPImageDecoder::decode(bool onlySize, bool allDataReceived)
 {
     if (failed())
         return;
 
     // If we couldn't decode the image but we've received all the data, decoding
     // has failed.
-    if (!decodeHelper(onlySize) && isAllDataReceived())
+    if (!decodeHelper(onlySize) && allDataReceived)
         setFailed();
     // If we're done decoding the image, we don't need the BMPImageReader
     // anymore.  (If we failed, |m_reader| has already been cleared.)

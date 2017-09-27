@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +26,11 @@
 #include "config.h"
 #include "JSScope.h"
 
+#include "AbstractModuleRecord.h"
+#include "Exception.h"
 #include "JSGlobalObject.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
-#include "JSModuleRecord.h"
 #include "JSWithScope.h"
 #include "JSCInlines.h"
 #include "VariableEnvironment.h"
@@ -43,23 +44,21 @@ void JSScope::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSScope* thisObject = jsCast<JSScope*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_next);
+    visitor.append(thisObject->m_next);
 }
 
 // Returns true if we found enough information to terminate optimization.
 static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identifier& ident, GetOrPut getOrPut, size_t depth, bool& needsVarInjectionChecks, ResolveOp& op, InitializationMode initializationMode)
 {
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
     if (scope->isJSLexicalEnvironment()) {
         JSLexicalEnvironment* lexicalEnvironment = jsCast<JSLexicalEnvironment*>(scope);
-        if (ident == exec->propertyNames().arguments) {
-            // We know the property will be at this lexical environment scope, but we don't know how to cache it.
-            op = ResolveOp(Dynamic, 0, 0, 0, 0, 0);
-            return true;
-        }
 
         SymbolTable* symbolTable = lexicalEnvironment->symbolTable();
         {
-            ConcurrentJITLocker locker(symbolTable->m_lock);
+            ConcurrentJSLocker locker(symbolTable->m_lock);
             auto iter = symbolTable->find(locker, ident.impl());
             if (iter != symbolTable->end(locker)) {
                 SymbolTableEntry& entry = iter->value;
@@ -77,13 +76,14 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
 
         if (scope->type() == ModuleEnvironmentType) {
             JSModuleEnvironment* moduleEnvironment = jsCast<JSModuleEnvironment*>(scope);
-            JSModuleRecord* moduleRecord = moduleEnvironment->moduleRecord();
-            JSModuleRecord::Resolution resolution = moduleRecord->resolveImport(exec, ident);
-            if (resolution.type == JSModuleRecord::Resolution::Type::Resolved) {
-                JSModuleRecord* importedRecord = resolution.moduleRecord;
+            AbstractModuleRecord* moduleRecord = moduleEnvironment->moduleRecord();
+            AbstractModuleRecord::Resolution resolution = moduleRecord->resolveImport(exec, ident);
+            RETURN_IF_EXCEPTION(throwScope, false);
+            if (resolution.type == AbstractModuleRecord::Resolution::Type::Resolved) {
+                AbstractModuleRecord* importedRecord = resolution.moduleRecord;
                 JSModuleEnvironment* importedEnvironment = importedRecord->moduleEnvironment();
                 SymbolTable* symbolTable = importedEnvironment->symbolTable();
-                ConcurrentJITLocker locker(symbolTable->m_lock);
+                ConcurrentJSLocker locker(symbolTable->m_lock);
                 auto iter = symbolTable->find(locker, resolution.localName.impl());
                 ASSERT(iter != symbolTable->end(locker));
                 SymbolTableEntry& entry = iter->value;
@@ -101,7 +101,7 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
     if (scope->isGlobalLexicalEnvironment()) {
         JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(scope);
         SymbolTable* symbolTable = globalLexicalEnvironment->symbolTable();
-        ConcurrentJITLocker locker(symbolTable->m_lock);
+        ConcurrentJSLocker locker(symbolTable->m_lock);
         auto iter = symbolTable->find(locker, ident.impl());
         if (iter != symbolTable->end(locker)) {
             SymbolTableEntry& entry = iter->value;
@@ -134,7 +134,7 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
         JSGlobalObject* globalObject = jsCast<JSGlobalObject*>(scope);
         {
             SymbolTable* symbolTable = globalObject->symbolTable();
-            ConcurrentJITLocker locker(symbolTable->m_lock);
+            ConcurrentJSLocker locker(symbolTable->m_lock);
             auto iter = symbolTable->find(locker, ident.impl());
             if (iter != symbolTable->end(locker)) {
                 SymbolTableEntry& entry = iter->value;
@@ -205,7 +205,7 @@ static inline bool isUnscopable(ExecState* exec, JSScope* scope, JSObject* objec
     if (scope->type() != WithScopeType)
         return false;
 
-    JSValue unscopables = object->get(exec, exec->propertyNames().unscopablesSymbol);
+    JSValue unscopables = object->get(exec, vm.propertyNames->unscopablesSymbol);
     RETURN_IF_EXCEPTION(throwScope, false);
     if (!unscopables.isObject())
         return false;
@@ -215,7 +215,8 @@ static inline bool isUnscopable(ExecState* exec, JSScope* scope, JSObject* objec
     return blocked.toBoolean(exec);
 }
 
-JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& ident)
+template<typename ReturnPredicateFunctor, typename SkipPredicateFunctor>
+ALWAYS_INLINE JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& ident, ReturnPredicateFunctor returnPredicate, SkipPredicateFunctor skipPredicate)
 {
     VM& vm = exec->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -229,25 +230,78 @@ JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& id
         if (++it == end) {
             JSScope* globalScopeExtension = scope->globalObject(vm)->globalScopeExtension();
             if (UNLIKELY(globalScopeExtension)) {
-                if (object->hasProperty(exec, ident))
+                bool hasProperty = object->hasProperty(exec, ident);
+                RETURN_IF_EXCEPTION(throwScope, nullptr);
+                if (hasProperty)
                     return object;
                 JSObject* extensionScopeObject = JSScope::objectAtScope(globalScopeExtension);
-                if (extensionScopeObject->hasProperty(exec, ident))
+                hasProperty = extensionScopeObject->hasProperty(exec, ident);
+                RETURN_IF_EXCEPTION(throwScope, nullptr);
+                if (hasProperty)
                     return extensionScopeObject;
             }
             return object;
         }
 
-        if (object->hasProperty(exec, ident)) {
-            if (!isUnscopable(exec, scope, object, ident))
+        if (skipPredicate(scope))
+            continue;
+
+        bool hasProperty = object->hasProperty(exec, ident);
+        RETURN_IF_EXCEPTION(throwScope, nullptr);
+        if (hasProperty) {
+            bool unscopable = isUnscopable(exec, scope, object, ident);
+            EXCEPTION_ASSERT(!throwScope.exception() || !unscopable);
+            if (!unscopable)
                 return object;
-            ASSERT_WITH_MESSAGE_UNUSED(throwScope, !throwScope.exception(), "When an exception occurs, the result of isUnscopable becomes false");
+        }
+
+        if (returnPredicate(scope))
+            return object;
+    }
+}
+
+JSValue JSScope::resolveScopeForHoistingFuncDeclInEval(ExecState* exec, JSScope* scope, const Identifier& ident)
+{
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    auto returnPredicate = [&] (JSScope* scope) -> bool {
+        return scope->isVarScope();
+    };
+    auto skipPredicate = [&] (JSScope* scope) -> bool {
+        return scope->isWithScope();
+    };
+    JSObject* object = resolve(exec, scope, ident, returnPredicate, skipPredicate);
+    RETURN_IF_EXCEPTION(throwScope, { });
+
+    bool result = false;
+    if (JSScope* scope = jsDynamicCast<JSScope*>(vm, object)) {
+        if (SymbolTable* scopeSymbolTable = scope->symbolTable(vm)) {
+            result = scope->isGlobalObject()
+                ? JSObject::isExtensible(object, exec)
+                : scopeSymbolTable->scopeType() == SymbolTable::ScopeType::VarScope;
         }
     }
+
+    return result ? JSValue(object) : jsUndefined();
+}
+
+JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& ident)
+{
+    auto predicate1 = [&] (JSScope*) -> bool {
+        return false;
+    };
+    auto predicate2 = [&] (JSScope*) -> bool {
+        return false;
+    };
+    return resolve(exec, scope, ident, predicate1, predicate2);
 }
 
 ResolveOp JSScope::abstractResolve(ExecState* exec, size_t depthOffset, JSScope* scope, const Identifier& ident, GetOrPut getOrPut, ResolveType unlinkedType, InitializationMode initializationMode)
 {
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
     ResolveOp op(Dynamic, 0, 0, 0, 0, 0);
     if (unlinkedType == Dynamic)
         return op;
@@ -255,7 +309,9 @@ ResolveOp JSScope::abstractResolve(ExecState* exec, size_t depthOffset, JSScope*
     bool needsVarInjectionChecks = JSC::needsVarInjectionChecks(unlinkedType);
     size_t depth = depthOffset;
     for (; scope; scope = scope->next()) {
-        if (abstractAccess(exec, scope, ident, getOrPut, depth, needsVarInjectionChecks, op, initializationMode))
+        bool success = abstractAccess(exec, scope, ident, getOrPut, depth, needsVarInjectionChecks, op, initializationMode);
+        RETURN_IF_EXCEPTION(throwScope, ResolveOp(Dynamic, 0, 0, 0, 0, 0));
+        if (success)
             break;
         ++depth;
     }
@@ -263,21 +319,21 @@ ResolveOp JSScope::abstractResolve(ExecState* exec, size_t depthOffset, JSScope*
     return op;
 }
 
-void JSScope::collectVariablesUnderTDZ(JSScope* scope, VariableEnvironment& result)
+void JSScope::collectClosureVariablesUnderTDZ(JSScope* scope, VariableEnvironment& result)
 {
     for (; scope; scope = scope->next()) {
-        if (!scope->isLexicalScope() && !scope->isGlobalLexicalEnvironment() && !scope->isCatchScope())
+        if (!scope->isLexicalScope() && !scope->isCatchScope())
             continue;
 
         if (scope->isModuleScope()) {
-            JSModuleRecord* moduleRecord = jsCast<JSModuleEnvironment*>(scope)->moduleRecord();
+            AbstractModuleRecord* moduleRecord = jsCast<JSModuleEnvironment*>(scope)->moduleRecord();
             for (const auto& pair : moduleRecord->importEntries())
                 result.add(pair.key);
         }
 
         SymbolTable* symbolTable = jsCast<JSSymbolTableObject*>(scope)->symbolTable();
-        ASSERT(symbolTable->scopeType() == SymbolTable::ScopeType::LexicalScope || symbolTable->scopeType() == SymbolTable::ScopeType::GlobalLexicalScope || symbolTable->scopeType() == SymbolTable::ScopeType::CatchScope);
-        ConcurrentJITLocker locker(symbolTable->m_lock);
+        ASSERT(symbolTable->scopeType() == SymbolTable::ScopeType::LexicalScope || symbolTable->scopeType() == SymbolTable::ScopeType::CatchScope);
+        ConcurrentJSLocker locker(symbolTable->m_lock);
         for (auto end = symbolTable->end(locker), iter = symbolTable->begin(locker); iter != end; ++iter)
             result.add(iter->key);
     }
@@ -342,12 +398,19 @@ JSScope* JSScope::constantScopeForCodeBlock(ResolveType type, CodeBlock* codeBlo
     return nullptr;
 }
 
-SymbolTable* JSScope::symbolTable()
+SymbolTable* JSScope::symbolTable(VM& vm)
 {
-    if (JSSymbolTableObject* symbolTableObject = jsDynamicCast<JSSymbolTableObject*>(this))
+    if (JSSymbolTableObject* symbolTableObject = jsDynamicCast<JSSymbolTableObject*>(vm, this))
         return symbolTableObject->symbolTable();
 
     return nullptr;
+}
+
+JSValue JSScope::toThis(JSCell*, ExecState* exec, ECMAMode ecmaMode)
+{
+    if (ecmaMode == StrictMode)
+        return jsUndefined();
+    return exec->globalThisValue();
 }
 
 } // namespace JSC

@@ -28,7 +28,6 @@
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
 #include "inspector/InspectorAgentBase.h"
-#include "runtime/ConsoleTypes.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
@@ -63,7 +62,6 @@ public:
     void disable(ErrorString&) override;
     void clearMessages(ErrorString&) override;
     void setMonitoringXHREnabled(ErrorString&, bool enabled) override = 0;
-    void addInspectedNode(ErrorString&, int nodeId) override = 0;
 
     bool enabled() const { return m_enabled; }
     void reset();
@@ -71,9 +69,9 @@ public:
     void addMessageToConsole(std::unique_ptr<ConsoleMessage>);
 
     void startTiming(const String& title);
-    void stopTiming(const String& title, PassRefPtr<ScriptCallStack>);
+    void stopTiming(const String& title, Ref<ScriptCallStack>&&);
     void takeHeapSnapshot(const String& title);
-    void count(JSC::ExecState*, PassRefPtr<ScriptArguments>);
+    void count(JSC::ExecState*, Ref<ScriptArguments>&&);
 
 protected:
     void addConsoleMessage(std::unique_ptr<ConsoleMessage>);

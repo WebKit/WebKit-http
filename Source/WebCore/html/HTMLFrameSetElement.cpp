@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Simon Hausmann (hausmann@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2006, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,14 +25,16 @@
 #include "HTMLFrameSetElement.h"
 
 #include "CSSPropertyNames.h"
+#include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "ElementIterator.h"
 #include "Event.h"
-#include "EventNames.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLBodyElement.h"
+#include "HTMLCollection.h"
+#include "HTMLFrameElement.h"
 #include "HTMLNames.h"
 #include "Length.h"
 #include "MouseEvent.h"
@@ -143,7 +145,7 @@ void HTMLFrameSetElement::parseAttribute(const QualifiedName& name, const Atomic
 
     auto& eventName = HTMLBodyElement::eventNameForWindowEventHandlerAttribute(name);
     if (!eventName.isNull()) {
-        document().setWindowAttributeEventListener(eventName, name, value);
+        document().setWindowAttributeEventListener(eventName, name, value, mainThreadNormalWorld());
         return;
     }
 
@@ -154,7 +156,7 @@ bool HTMLFrameSetElement::rendererIsNeeded(const RenderStyle& style)
 {
     // For compatibility, frames render even when display: none is set.
     // However, we delay creating a renderer until stylesheets have loaded. 
-    return !style.isPlaceholderStyle();
+    return !style.isNotFinal();
 }
 
 RenderPtr<RenderElement> HTMLFrameSetElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
@@ -200,17 +202,16 @@ void HTMLFrameSetElement::defaultEventHandler(Event& event)
     HTMLElement::defaultEventHandler(event);
 }
 
-bool HTMLFrameSetElement::willRecalcStyle(Style::Change)
+void HTMLFrameSetElement::willRecalcStyle(Style::Change)
 {
     if (needsStyleRecalc() && renderer())
         renderer()->setNeedsLayout();
-    return true;
 }
 
 Node::InsertionNotificationRequest HTMLFrameSetElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.inDocument()) {
+    if (insertionPoint.isConnected()) {
         if (Frame* frame = document().frame())
             frame->loader().client().dispatchDidBecomeFrameset(document().isFrameSet());
     }
@@ -221,10 +222,28 @@ Node::InsertionNotificationRequest HTMLFrameSetElement::insertedInto(ContainerNo
 void HTMLFrameSetElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.inDocument()) {
+    if (insertionPoint.isConnected()) {
         if (Frame* frame = document().frame())
             frame->loader().client().dispatchDidBecomeFrameset(document().isFrameSet());
     }
+}
+
+DOMWindow* HTMLFrameSetElement::namedItem(const AtomicString& name)
+{
+    auto* frameElement = children()->namedItem(name);
+    if (!is<HTMLFrameElement>(frameElement))
+        return nullptr;
+
+    if (auto* document = downcast<HTMLFrameElement>(*frameElement).contentDocument())
+        return document->domWindow();
+    return nullptr;
+}
+
+Vector<AtomicString> HTMLFrameSetElement::supportedPropertyNames() const
+{
+    // NOTE: Left empty as no specification defines this named getter and we
+    //       have not historically exposed these named items for enumeration.
+    return { };
 }
 
 } // namespace WebCore

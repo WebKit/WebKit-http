@@ -28,69 +28,50 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmAesCbcParamsDeprecated.h"
+#include "CryptoAlgorithmAesCbcCfbParams.h"
 #include "CryptoKeyAES.h"
 #include <CommonCrypto/CommonCrypto.h>
 
 namespace WebCore {
 
-static void transformAES_CBC(CCOperation operation, const CryptoAlgorithmAesCbcParamsDeprecated& parameters, const CryptoKeyAES& key, const CryptoOperationData& data, CryptoAlgorithm::VectorCallback&& callback, CryptoAlgorithm::VoidCallback&& failureCallback)
+static ExceptionOr<Vector<uint8_t>> transformAES_CBC(CCOperation operation, const Vector<uint8_t>& iv, const Vector<uint8_t>& key, const Vector<uint8_t>& data)
 {
-    static_assert(sizeof(parameters.iv) == kCCBlockSizeAES128, "Initialization vector size must be the same as algorithm block size");
-
-    size_t keyLengthInBytes = key.key().size();
-    if (keyLengthInBytes != 16 && keyLengthInBytes != 24 && keyLengthInBytes != 32) {
-        failureCallback();
-        return;
-    }
-
     CCCryptorRef cryptor;
-#if PLATFORM(COCOA)
-    CCAlgorithm aesAlgorithm = kCCAlgorithmAES;
-#else
-    CCAlgorithm aesAlgorithm = kCCAlgorithmAES128;
-#endif
-    CCCryptorStatus status = CCCryptorCreate(operation, aesAlgorithm, kCCOptionPKCS7Padding, key.key().data(), keyLengthInBytes, parameters.iv.data(), &cryptor);
-    if (status) {
-        failureCallback();
-        return;
-    }
+    CCCryptorStatus status = CCCryptorCreate(operation, kCCAlgorithmAES, kCCOptionPKCS7Padding, key.data(), key.size(), iv.data(), &cryptor);
+    if (status)
+        return Exception { OperationError };
 
-    Vector<uint8_t> result(CCCryptorGetOutputLength(cryptor, data.second, true));
+    Vector<uint8_t> result(CCCryptorGetOutputLength(cryptor, data.size(), true));
 
     size_t bytesWritten;
-    status = CCCryptorUpdate(cryptor, data.first, data.second, result.data(), result.size(), &bytesWritten);
-    if (status) {
-        failureCallback();
-        return;
-    }
+    status = CCCryptorUpdate(cryptor, data.data(), data.size(), result.data(), result.size(), &bytesWritten);
+    if (status)
+        return Exception { OperationError };
 
     uint8_t* p = result.data() + bytesWritten;
     status = CCCryptorFinal(cryptor, p, result.end() - p, &bytesWritten);
     p += bytesWritten;
-    if (status) {
-        failureCallback();
-        return;
-    }
+    if (status)
+        return Exception { OperationError };
 
     ASSERT(p <= result.end());
     result.shrink(p - result.begin());
 
     CCCryptorRelease(cryptor);
 
-    callback(result);
+    return WTFMove(result);
 }
 
-ExceptionOr<void> CryptoAlgorithmAES_CBC::platformEncrypt(const CryptoAlgorithmAesCbcParamsDeprecated& parameters, const CryptoKeyAES& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmAES_CBC::platformEncrypt(CryptoAlgorithmAesCbcCfbParams& parameters, const CryptoKeyAES& key, const Vector<uint8_t>& plainText)
 {
-    transformAES_CBC(kCCEncrypt, parameters, key, data, WTFMove(callback), WTFMove(failureCallback));
-    return { };
+    ASSERT(parameters.ivVector().size() == kCCBlockSizeAES128);
+    return transformAES_CBC(kCCEncrypt, parameters.ivVector(), key.key(), plainText);
 }
 
-ExceptionOr<void> CryptoAlgorithmAES_CBC::platformDecrypt(const CryptoAlgorithmAesCbcParamsDeprecated& parameters, const CryptoKeyAES& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmAES_CBC::platformDecrypt(CryptoAlgorithmAesCbcCfbParams& parameters, const CryptoKeyAES& key, const Vector<uint8_t>& cipherText)
 {
-    transformAES_CBC(kCCDecrypt, parameters, key, data, WTFMove(callback), WTFMove(failureCallback));
-    return { };
+    ASSERT(parameters.ivVector().size() == kCCBlockSizeAES128);
+    return transformAES_CBC(kCCDecrypt, parameters.ivVector(), key.key(), cipherText);
 }
 
 } // namespace WebCore

@@ -27,13 +27,13 @@
 #include "config.h"
 #include "ApplyBlockElementCommand.h"
 
+#include "Editing.h"
 #include "HTMLBRElement.h"
 #include "HTMLNames.h"
 #include "RenderElement.h"
 #include "RenderStyle.h"
 #include "Text.h"
 #include "VisibleUnits.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
@@ -157,11 +157,11 @@ void ApplyBlockElementCommand::formatSelection(const VisiblePosition& startOfSel
         // indentIntoBlockquote could move more than one paragraph if the paragraph
         // is in a list item or a table. As a result, endAfterSelection could refer to a position
         // no longer in the document.
-        if (endAfterSelection.isNotNull() && !endAfterSelection.deepEquivalent().anchorNode()->inDocument())
+        if (endAfterSelection.isNotNull() && !endAfterSelection.deepEquivalent().anchorNode()->isConnected())
             break;
         // Sanity check: Make sure our moveParagraph calls didn't remove endOfNextParagraph.deepEquivalent().deprecatedNode()
         // If somehow we did, return to prevent crashes.
-        if (endOfNextParagraph.isNotNull() && !endOfNextParagraph.deepEquivalent().anchorNode()->inDocument()) {
+        if (endOfNextParagraph.isNotNull() && !endOfNextParagraph.deepEquivalent().anchorNode()->isConnected()) {
             ASSERT_NOT_REACHED();
             return;
         }
@@ -212,7 +212,8 @@ void ApplyBlockElementCommand::rangeForParagraphSplittingTextNodesIfNeeded(const
         if (!startStyle->collapseWhiteSpace() && start.offsetInContainerNode() > 0) {
             int startOffset = start.offsetInContainerNode();
             Text* startText = start.containerText();
-            splitTextNode(startText, startOffset);
+            ASSERT(startText);
+            splitTextNode(*startText, startOffset);
             start = firstPositionInNode(startText);
             if (isStartAndEndOnSameNode) {
                 ASSERT(end.offsetInContainerNode() >= startOffset);
@@ -239,14 +240,14 @@ void ApplyBlockElementCommand::rangeForParagraphSplittingTextNodesIfNeeded(const
         // If end is in the middle of a text node and the text node is editable, split.
         if (endStyle->userModify() != READ_ONLY && !endStyle->collapseWhiteSpace() && end.offsetInContainerNode() && end.offsetInContainerNode() < end.containerNode()->maxCharacterOffset()) {
             RefPtr<Text> endContainer = end.containerText();
-            splitTextNode(endContainer, end.offsetInContainerNode());
+            splitTextNode(*endContainer, end.offsetInContainerNode());
             if (isStartAndEndOnSameNode)
                 start = firstPositionInOrBeforeNode(endContainer->previousSibling());
             if (isEndAndEndOfLastParagraphOnSameNode) {
                 if (m_endOfLastParagraph.offsetInContainerNode() == end.offsetInContainerNode())
                     m_endOfLastParagraph = lastPositionInOrAfterNode(endContainer->previousSibling());
                 else
-                    m_endOfLastParagraph = Position(endContainer, m_endOfLastParagraph.offsetInContainerNode() - end.offsetInContainerNode());
+                    m_endOfLastParagraph = Position(endContainer.get(), m_endOfLastParagraph.offsetInContainerNode() - end.offsetInContainerNode());
             }
             end = lastPositionInNode(endContainer->previousSibling());
         }
@@ -268,7 +269,7 @@ VisiblePosition ApplyBlockElementCommand::endOfNextParagraphSplittingTextNodesIf
     // \n at the beginning of the text node immediately following the current paragraph is trimmed by moveParagraphWithClones.
     // If endOfNextParagraph was pointing at this same text node, endOfNextParagraph will be shifted by one paragraph.
     // Avoid this by splitting "\n"
-    splitTextNode(text, 1);
+    splitTextNode(*text, 1);
 
     if (text == start.containerNode() && is<Text>(text->previousSibling())) {
         ASSERT(start.offsetInContainerNode() < position.offsetInContainerNode());

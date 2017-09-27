@@ -70,8 +70,9 @@ namespace WebCore {
 // A helper which quickly fills a rectangle with a simple color fill.
 static inline void fillRectWithColor(cairo_t* cr, const FloatRect& rect, const Color& color)
 {
-    if (!color.alpha() && cairo_get_operator(cr) == CAIRO_OPERATOR_OVER)
+    if (!color.isVisible() && cairo_get_operator(cr) == CAIRO_OPERATOR_OVER)
         return;
+
     setSourceRGBAFromColor(cr, color);
     cairo_rectangle(cr, rect.x(), rect.y(), rect.width(), rect.height());
     cairo_fill(cr);
@@ -387,7 +388,7 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
     cairo_arc(cr, 0., 0., 1., 0., 2 * piFloat);
     cairo_restore(cr);
 
-    if (fillColor().alpha()) {
+    if (fillColor().isVisible()) {
         setSourceRGBAFromColor(cr, fillColor());
         cairo_fill_preserve(cr);
     }
@@ -726,7 +727,7 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& frect, RoundingM
         width = 1;
     else
         width = round(width);
-    if (height > -1 && width < 0)
+    if (height > -1 && height < 0)
         height = -1;
     else if (height > 0 && height < 1)
         height = 1;
@@ -1016,6 +1017,12 @@ void GraphicsContext::setMiterLimit(float miter)
     if (paintingDisabled())
         return;
 
+    if (isRecording()) {
+        // Maybe this should be part of the state.
+        m_displayListRecorder->setMiterLimit(miter);
+        return;
+    }
+
     cairo_set_miter_limit(platformContext()->cr(), miter);
 }
 
@@ -1029,13 +1036,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     if (paintingDisabled())
         return;
 
-    cairo_operator_t cairo_op;
-    if (blendOp == BlendModeNormal)
-        cairo_op = toCairoOperator(op);
-    else
-        cairo_op = toCairoOperator(blendOp);
-
-    cairo_set_operator(platformContext()->cr(), cairo_op);
+    cairo_set_operator(platformContext()->cr(), toCairoOperator(op, blendOp));
 }
 
 void GraphicsContext::canvasClip(const Path& path, WindRule windRule)
@@ -1176,13 +1177,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const
         return;
 
     cairo_t* cr = platformContext()->cr();
-    cairo_operator_t cairoOp;
-    if (blendMode == BlendModeNormal)
-        cairoOp = toCairoOperator(op);
-    else
-        cairoOp = toCairoOperator(blendMode);
-
-    drawPatternToCairoContext(cr, surface.get(), IntSize(image.size()), tileRect, patternTransform, phase, cairoOp, destRect);
+    drawPatternToCairoContext(cr, surface.get(), IntSize(image.size()), tileRect, patternTransform, phase, toCairoOperator(op, blendMode), destRect);
 }
 
 void GraphicsContext::setPlatformShouldAntialias(bool enable)

@@ -34,7 +34,7 @@
 
 namespace WebCore {
 
-const double kClientDataBufferingTimerThrottleDelay = 0.1;
+static const Seconds clientDataBufferingTimerThrottleDelay { 100_ms };
 
 #if !LOG_DISABLED
 static const char* stateName(PlatformMediaSession::State state)
@@ -62,6 +62,7 @@ static const char* interruptionName(PlatformMediaSession::InterruptionType type)
     INTERRUPTION_CASE(SystemInterruption);
     INTERRUPTION_CASE(SuspendedUnderLock);
     INTERRUPTION_CASE(InvisibleAutoplay);
+    INTERRUPTION_CASE(ProcessInactive);
     }
     
     ASSERT_NOT_REACHED();
@@ -81,7 +82,7 @@ PlatformMediaSession::PlatformMediaSession(PlatformMediaSessionClient& client)
     , m_stateToRestore(Idle)
     , m_notifyingClient(false)
 {
-    ASSERT(m_client.mediaType() >= None && m_client.mediaType() <= WebAudio);
+    ASSERT(m_client.mediaType() >= None && m_client.mediaType() <= MediaStreamCapturingAudio);
     PlatformMediaSessionManager::sharedManager().addSession(*this);
 }
 
@@ -260,7 +261,7 @@ void PlatformMediaSession::visibilityChanged()
 void PlatformMediaSession::scheduleClientDataBufferingCheck()
 {
     if (!m_clientDataBufferingTimer.isActive())
-        m_clientDataBufferingTimer.startOneShot(kClientDataBufferingTimerThrottleDelay);
+        m_clientDataBufferingTimer.startOneShot(clientDataBufferingTimerThrottleDelay);
 }
 
 void PlatformMediaSession::clientDataBufferingTimerFired()
@@ -299,6 +300,11 @@ bool PlatformMediaSession::isHidden() const
     return m_client.elementIsHidden();
 }
 
+bool PlatformMediaSession::isSuspended() const
+{
+    return m_client.isSuspended();
+}
+
 bool PlatformMediaSession::shouldOverrideBackgroundLoadingRestriction() const
 {
     return m_client.shouldOverrideBackgroundLoadingRestriction();
@@ -329,15 +335,16 @@ bool PlatformMediaSession::activeAudioSessionRequired()
         return false;
     if (state() != PlatformMediaSession::State::Playing)
         return false;
-    return m_canProduceAudio;
+    return canProduceAudio();
 }
 
-void PlatformMediaSession::setCanProduceAudio(bool canProduceAudio)
+bool PlatformMediaSession::canProduceAudio() const
 {
-    if (m_canProduceAudio == canProduceAudio)
-        return;
-    m_canProduceAudio = canProduceAudio;
+    return m_client.canProduceAudio();
+}
 
+void PlatformMediaSession::canProduceAudioChanged()
+{
     PlatformMediaSessionManager::sharedManager().sessionCanProduceAudioChanged(*this);
 }
 

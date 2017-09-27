@@ -36,8 +36,11 @@
 #include <OpenGLES/ES2/glext.h>
 #include <OpenGLES/ES3/gl.h>
 #else
-#if USE(OPENGL_ES_2)
+#if USE(LIBEPOXY)
+#include "EpoxyShims.h"
+#elif USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
+#define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #elif PLATFORM(MAC)
@@ -45,7 +48,7 @@
 #include <OpenGL/gl.h>
 #include <OpenGL/gl3.h>
 #undef GL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 #endif
@@ -209,12 +212,21 @@ String Extensions3DOpenGLCommon::getTranslatedShaderSourceANGLE(Platform3DObject
 
 void Extensions3DOpenGLCommon::initializeAvailableExtensions()
 {
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || (PLATFORM(GTK) && !USE(OPENGL_ES_2))
     if (m_useIndexedGetString) {
         GLint numExtensions = 0;
         ::glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
         for (GLint i = 0; i < numExtensions; ++i)
             m_availableExtensions.add(glGetStringi(GL_EXTENSIONS, i));
+
+        if (!m_availableExtensions.contains(ASCIILiteral("GL_ARB_texture_storage"))) {
+            GLint majorVersion;
+            glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
+            GLint minorVersion;
+            glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
+            if (majorVersion > 4 || (majorVersion == 4 && minorVersion >= 2))
+                m_availableExtensions.add(ASCIILiteral("GL_ARB_texture_storage"));
+        }
     } else
 #endif
     {

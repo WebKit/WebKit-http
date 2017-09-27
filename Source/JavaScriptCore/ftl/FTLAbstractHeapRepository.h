@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,10 +48,12 @@ namespace JSC { namespace FTL {
     macro(Butterfly_publicLength, Butterfly::offsetOfPublicLength()) \
     macro(Butterfly_vectorLength, Butterfly::offsetOfVectorLength()) \
     macro(CallFrame_callerFrame, CallFrame::callerFrameOffset()) \
+    macro(ClassInfo_parentClass, ClassInfo::offsetOfParentClass()) \
     macro(DirectArguments_callee, DirectArguments::offsetOfCallee()) \
     macro(DirectArguments_length, DirectArguments::offsetOfLength()) \
     macro(DirectArguments_minCapacity, DirectArguments::offsetOfMinCapacity()) \
-    macro(DirectArguments_overrides, DirectArguments::offsetOfOverrides()) \
+    macro(DirectArguments_mappedArguments, DirectArguments::offsetOfMappedArguments()) \
+    macro(DirectArguments_modifiedArgumentsDescriptor, DirectArguments::offsetOfModifiedArgumentsDescriptor()) \
     macro(GetterSetter_getter, GetterSetter::offsetOfGetter()) \
     macro(GetterSetter_setter, GetterSetter::offsetOfSetter()) \
     macro(JSArrayBufferView_length, JSArrayBufferView::offsetOfLength()) \
@@ -59,11 +61,11 @@ namespace JSC { namespace FTL {
     macro(JSArrayBufferView_vector, JSArrayBufferView::offsetOfVector()) \
     macro(JSCell_cellState, JSCell::cellStateOffset()) \
     macro(JSCell_header, 0) \
-    macro(JSCell_indexingType, JSCell::indexingTypeOffset()) \
+    macro(JSCell_indexingTypeAndMisc, JSCell::indexingTypeAndMiscOffset()) \
     macro(JSCell_structureID, JSCell::structureIDOffset()) \
     macro(JSCell_typeInfoFlags, JSCell::typeInfoFlagsOffset()) \
     macro(JSCell_typeInfoType, JSCell::typeInfoTypeOffset()) \
-    macro(JSCell_usefulBytes, JSCell::indexingTypeOffset()) \
+    macro(JSCell_usefulBytes, JSCell::indexingTypeAndMiscOffset()) \
     macro(JSFunction_executable, JSFunction::offsetOfExecutable()) \
     macro(JSFunction_scope, JSFunction::offsetOfScopeChain()) \
     macro(JSFunction_rareData, JSFunction::offsetOfRareData()) \
@@ -107,29 +109,32 @@ namespace JSC { namespace FTL {
     macro(Structure_globalObject, Structure::globalObjectOffset()) \
     macro(Structure_prototype, Structure::prototypeOffset()) \
     macro(Structure_structureID, Structure::structureIDOffset()) \
-    macro(JSMap_hashMapImpl, JSMap::offsetOfHashMapImpl()) \
-    macro(JSSet_hashMapImpl, JSSet::offsetOfHashMapImpl()) \
+    macro(Structure_inlineCapacity, Structure::inlineCapacityOffset()) \
+    macro(Structure_indexingTypeIncludingHistory, Structure::indexingTypeIncludingHistoryOffset()) \
     macro(HashMapImpl_capacity, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfCapacity()) \
     macro(HashMapImpl_buffer,  HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfBuffer()) \
+    macro(HashMapImpl_head,  HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfHead()) \
     macro(HashMapBucket_value, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()) \
     macro(HashMapBucket_key, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey()) \
+    macro(HashMapBucket_next, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfNext()) \
+    macro(HashMapBucket_deleted, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfDeleted()) \
     macro(Symbol_symbolImpl, Symbol::offsetOfSymbolImpl()) \
     macro(JSFixedArray_size, JSFixedArray::offsetOfSize()) \
 
 #define FOR_EACH_INDEXED_ABSTRACT_HEAP(macro) \
+    macro(ArrayStorage_vector, ArrayStorage::vectorOffset(), sizeof(WriteBarrier<Unknown>)) \
     macro(DirectArguments_storage, DirectArguments::storageOffset(), sizeof(EncodedJSValue)) \
-    macro(JSEnvironmentRecord_variables, JSEnvironmentRecord::offsetOfVariables(), sizeof(EncodedJSValue)) \
+    macro(JSLexicalEnvironment_variables, JSLexicalEnvironment::offsetOfVariables(), sizeof(EncodedJSValue)) \
     macro(JSPropertyNameEnumerator_cachedPropertyNamesVectorContents, 0, sizeof(WriteBarrier<JSString>)) \
     macro(JSRopeString_fibers, JSRopeString::offsetOfFibers(), sizeof(WriteBarrier<JSString>)) \
-    macro(MarkedSpace_Subspace_allocatorForSizeStep, OBJECT_OFFSETOF(MarkedSpace::Subspace, allocatorForSizeStep), sizeof(MarkedAllocator*)) \
     macro(ScopedArguments_overflowStorage, ScopedArguments::overflowStorageOffset(), sizeof(EncodedJSValue)) \
+    macro(Subspace_allocatorForSizeStep, Subspace::offsetOfAllocatorForSizeStep(), sizeof(MarkedAllocator*)) \
     macro(WriteBarrierBuffer_bufferContents, 0, sizeof(JSCell*)) \
     macro(characters8, 0, sizeof(LChar)) \
     macro(characters16, 0, sizeof(UChar)) \
     macro(indexedInt32Properties, 0, sizeof(EncodedJSValue)) \
     macro(indexedDoubleProperties, 0, sizeof(double)) \
     macro(indexedContiguousProperties, 0, sizeof(EncodedJSValue)) \
-    macro(indexedArrayStorageProperties, 0, sizeof(EncodedJSValue)) \
     macro(scopedArgumentsTableArguments, 0, sizeof(int32_t)) \
     macro(singleCharacterStrings, 0, sizeof(JSString*)) \
     macro(structureTable, 0, sizeof(Structure*)) \
@@ -188,7 +193,7 @@ public:
             return &indexedContiguousProperties;
             
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
-            return &indexedArrayStorageProperties;
+            return &ArrayStorage_vector;
             
         default:
             RELEASE_ASSERT_NOT_REACHED();
@@ -207,7 +212,7 @@ public:
             return indexedContiguousProperties;
         case DFG::Array::ArrayStorage:
         case DFG::Array::SlowPutArrayStorage:
-            return indexedArrayStorageProperties;
+            return ArrayStorage_vector;
         default:
             RELEASE_ASSERT_NOT_REACHED();
             return indexedInt32Properties;
@@ -221,6 +226,7 @@ public:
     void decoratePatchpointWrite(const AbstractHeap*, B3::Value*);
     void decorateFenceRead(const AbstractHeap*, B3::Value*);
     void decorateFenceWrite(const AbstractHeap*, B3::Value*);
+    void decorateFencedAccess(const AbstractHeap*, B3::Value*);
 
     void computeRangesAndDecorateInstructions();
 
@@ -248,6 +254,7 @@ private:
     Vector<HeapForValue> m_heapForPatchpointWrite;
     Vector<HeapForValue> m_heapForFenceRead;
     Vector<HeapForValue> m_heapForFenceWrite;
+    Vector<HeapForValue> m_heapForFencedAccess;
 };
 
 } } // namespace JSC::FTL

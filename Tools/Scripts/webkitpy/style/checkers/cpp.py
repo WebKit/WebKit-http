@@ -1869,9 +1869,9 @@ def check_spacing(file_extension, clean_lines, line_number, file_state, error):
 
     # Don't try to do spacing checks for operator methods
     line = sub(r'operator(==|!=|<|<<|<=|>=|>>|>|\+=|-=|\*=|/=|%=|&=|\|=|^=|<<=|>>=|/)\(', 'operator\(', line)
-    # Don't try to do spacing checks for #include, #import, or #if statements at
+    # Don't try to do spacing checks for #include, #import, #if, or #elif statements at
     # minimum because it messes up checks for spacing around /
-    if match(r'\s*#\s*(?:include|import|if)', line):
+    if match(r'\s*#\s*(?:include|import|if|elif)', line):
         return
     if not is_objective_c_property and not is_objective_c_synthesize and search(r'[\w.]=[\w.]', line):
         error(line_number, 'whitespace/operators', 4,
@@ -2430,17 +2430,17 @@ def check_braces(clean_lines, line_number, file_state, error):
         # We also allow '#' for #endif and '=' for array initialization,
         # and '- (' and '+ (' for Objective-C methods.
         previous_line = get_previous_non_blank_line(clean_lines, line_number)[0]
-        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override|const override)\s*)?(->\s*\S+)?\s*$', previous_line)
-             or search(r'\b(if|for|while|switch|else|NS_ENUM)\b', previous_line)
+        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override|const override|final|const final)\s*)?(->\s*\S+)?\s*$', previous_line)
+             or search(r'\b(if|for|while|switch|else|CF_OPTIONS|NS_ENUM|NS_ERROR_ENUM|NS_OPTIONS)\b', previous_line)
              or regex_for_lambdas_and_blocks(previous_line, line_number, file_state, error))
             and previous_line.find('#') < 0
             and previous_line.find('- (') != 0
             and previous_line.find('+ (') != 0):
             error(line_number, 'whitespace/braces', 4,
                   'This { should be at the end of the previous line')
-    elif (search(r'\)\s*(((const|override)\s*)*\s*)?{\s*$', line)
+    elif (search(r'\)\s*(((const|override|final)\s*)*\s*)?{\s*$', line)
           and line.count('(') == line.count(')')
-          and not search(r'(\s*(if|for|while|switch|NS_ENUM|@synchronized)|} @catch)\b', line)
+          and not search(r'(\s*(if|for|while|switch|CF_OPTIONS|NS_ENUM|NS_ERROR_ENUM|NS_OPTIONS|@synchronized)|} @catch)\b', line)
           and not regex_for_lambdas_and_blocks(line, line_number, file_state, error)
           and line.find("](") < 0
           and not match(r'\s+[A-Z_][A-Z_0-9]+\b', line)):
@@ -2729,6 +2729,23 @@ def check_for_null(clean_lines, line_number, file_state, error):
         error(line_number, 'readability/null', 4, 'Use nullptr instead of NULL (even in *comments*).')
 
 
+def check_soft_link_class_alloc(clean_lines, line_number, error):
+    """Checks that allocating an instance of a soft-linked class uses alloc[Class]Instance.
+
+    Args:
+      clean_lines: A CleansedLines instance containing the file.
+      line_number: The number of the line to check.
+      error: The function to call with any errors found.
+    """
+
+    line = clean_lines.elided[line_number]
+
+    matched = search(r'\[get(\w+)Class\(\)\s+alloc\]', line)
+    if matched:
+        error(line_number, 'runtime/soft-linked-alloc', 4,
+              'Using +alloc with a soft-linked class. Use alloc%sInstance() instead.' % matched.group(1))
+
+
 def get_line_width(line):
     """Determines the width of the line in column positions.
 
@@ -2822,6 +2839,7 @@ def check_style(clean_lines, line_number, file_extension, class_state, file_stat
     check_check(clean_lines, line_number, error)
     check_for_comparisons_to_zero(clean_lines, line_number, error)
     check_for_null(clean_lines, line_number, file_state, error)
+    check_soft_link_class_alloc(clean_lines, line_number, error)
     check_indentation_amount(clean_lines, line_number, error)
     check_enum_casing(clean_lines, line_number, enum_state, error)
 
@@ -3162,16 +3180,20 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
 
     # Check if some verboten C functions are being used.
     if search(r'\bsprintf\b', line):
-        error(line_number, 'runtime/printf', 5,
+        error(line_number, 'security/printf', 5,
               'Never use sprintf.  Use snprintf instead.')
     matched = search(r'\b(strcpy|strcat)\b', line)
     if matched:
-        error(line_number, 'runtime/printf', 4,
-              'Almost always, snprintf is better than %s' % matched.group(1))
+        error(line_number, 'security/printf', 4,
+              'Almost always, snprintf is better than %s.' % matched.group(1))
 
     if search(r'\bsscanf\b', line):
         error(line_number, 'runtime/printf', 1,
               'sscanf can be ok, but is slow and can overflow buffers.')
+
+    if search(r'\bmktemp\b', line):
+        error(line_number, 'security/temp_file', 5,
+              'Never use mktemp.  Use mkstemp or mkostemp instead.')
 
     # Check for suspicious usage of "if" like
     # } if (a == b) {
@@ -3184,7 +3206,7 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
     # Not perfect but it can catch printf(foo.c_str()) and printf(foo->c_str())
     matched = re.search(r'\b((?:string)?printf)\s*\(([\w.\->()]+)\)', line, re.I)
     if matched:
-        error(line_number, 'runtime/printf', 4,
+        error(line_number, 'security/printf', 4,
               'Potential format string bug. Do %s("%%s", %s) instead.'
               % (matched.group(1), matched.group(2)))
 
@@ -3397,7 +3419,7 @@ def check_identifier_name_in_declaration(filename, line_number, line, file_state
         if not file_state.is_objective_c_or_objective_cpp() and modified_identifier.find('_') >= 0:
             # Various exceptions to the rule: JavaScript op codes functions, const_iterator.
             if (not (filename.find('JavaScriptCore') >= 0 and (modified_identifier.find('op_') >= 0 or modified_identifier.find('intrinsic_') >= 0))
-                and not (filename.find('gtk') >= 0 and modified_identifier.startswith('webkit_') >= 0)
+                and not (('gtk' in filename or 'glib' in filename or 'wpe' in filename) and modified_identifier.startswith('webkit_') >= 0)
                 and not modified_identifier.startswith('tst_')
                 and not modified_identifier.startswith('webkit_dom_object_')
                 and not modified_identifier.startswith('webkit_soup')
@@ -3902,11 +3924,14 @@ class CppChecker(object):
         'runtime/references',
         'runtime/rtti',
         'runtime/sizeof',
+        'runtime/soft-linked-alloc',
         'runtime/string',
         'runtime/threadsafe_fn',
         'runtime/unsigned',
         'runtime/virtual',
         'runtime/wtf_move',
+        'security/printf',
+        'security/temp_file',
         'whitespace/blank_line',
         'whitespace/braces',
         'whitespace/brackets',

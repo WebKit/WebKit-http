@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirArg.h"
 #include "B3BasicBlockInlines.h"
 #include "B3BlockInsertionSet.h"
 #include "B3CCallValue.h"
@@ -39,11 +40,15 @@
 
 namespace JSC { namespace B3 {
 
+using Arg = Air::Arg;
+using Code = Air::Code;
+using Tmp = Air::Tmp;
+
 namespace {
 
-class LowerMacros {
+class LowerMacrosAfterOptimizations {
 public:
-    LowerMacros(Procedure& proc)
+    LowerMacrosAfterOptimizations(Procedure& proc)
         : m_proc(proc)
         , m_blockInsertionSet(proc)
         , m_insertionSet(proc)
@@ -152,6 +157,18 @@ private:
                 m_value->replaceWithIdentity(result);
                 break;
             }
+
+            case RotL: {
+                // ARM64 doesn't have a rotate left.
+                if (isARM64()) {
+                    Value* newShift = m_insertionSet.insert<Value>(m_index, Neg, m_value->origin(), m_value->child(1));
+                    Value* rotate = m_insertionSet.insert<Value>(m_index, RotR, m_value->origin(), m_value->child(0), newShift);
+                    m_value->replaceWithIdentity(rotate);
+                    break;
+                }
+                break;
+            }
+                
             default:
                 break;
             }
@@ -171,7 +188,7 @@ private:
 
 bool lowerMacrosImpl(Procedure& proc)
 {
-    LowerMacros lowerMacros(proc);
+    LowerMacrosAfterOptimizations lowerMacros(proc);
     return lowerMacros.run();
 }
 

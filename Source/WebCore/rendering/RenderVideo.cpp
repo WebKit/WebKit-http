@@ -56,8 +56,20 @@ RenderVideo::RenderVideo(HTMLVideoElement& element, RenderStyle&& style)
 
 RenderVideo::~RenderVideo()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderVideo::willBeDestroyed()
+{
     if (MediaPlayer* player = videoElement().player())
         player->setVisible(false);
+
+    RenderMedia::willBeDestroyed();
+}
+
+void RenderVideo::visibleInViewportStateChanged()
+{
+    videoElement().isVisibleInViewportChanged();
 }
 
 IntSize RenderVideo::defaultSize()
@@ -168,24 +180,22 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
     MediaPlayer* mediaPlayer = videoElement().player();
     bool displayingPoster = videoElement().shouldDisplayPosterImage();
 
-    Page* page = frame().page();
-
     if (!displayingPoster && !mediaPlayer) {
-        if (page && paintInfo.phase == PaintPhaseForeground)
-            page->addRelevantUnpaintedObject(this, visualOverflowRect());
+        if (paintInfo.phase == PaintPhaseForeground)
+            page().addRelevantUnpaintedObject(this, visualOverflowRect());
         return;
     }
 
     LayoutRect rect = videoBox();
     if (rect.isEmpty()) {
-        if (page && paintInfo.phase == PaintPhaseForeground)
-            page->addRelevantUnpaintedObject(this, visualOverflowRect());
+        if (paintInfo.phase == PaintPhaseForeground)
+            page().addRelevantUnpaintedObject(this, visualOverflowRect());
         return;
     }
     rect.moveBy(paintOffset);
 
-    if (page && paintInfo.phase == PaintPhaseForeground)
-        page->addRelevantRepaintedObject(this, rect);
+    if (paintInfo.phase == PaintPhaseForeground)
+        page().addRelevantRepaintedObject(this, rect);
 
     LayoutRect contentRect = contentBoxRect();
     contentRect.moveBy(paintOffset);
@@ -196,9 +206,9 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
         context.clip(contentRect);
 
     if (displayingPoster)
-        paintIntoRect(context, rect);
+        paintIntoRect(paintInfo, rect);
     else if (!videoElement().isFullscreen() || !mediaPlayer->supportsAcceleratedRendering()) {
-        if (view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers)
+        if (paintInfo.paintBehavior & PaintBehaviorFlattenCompositingLayers)
             mediaPlayer->paintCurrentFrameInContext(context, rect);
         else
             mediaPlayer->paint(context, rect);
@@ -226,7 +236,7 @@ void RenderVideo::updateFromElement()
 
 void RenderVideo::updatePlayer()
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
 
     bool intrinsicSizeChanged;
@@ -250,18 +260,13 @@ void RenderVideo::updatePlayer()
     IntRect windowRect = document().view()->contentsToScreen(absoluteBoundingBoxRect(true));
     mediaPlayer->setPosition(IntPoint(windowRect.x(), windowRect.y()));
 #endif
-    mediaPlayer->setVisible(true);
+    mediaPlayer->setVisible(!videoElement().elementIsHidden());
     mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFitFill);
 }
 
 LayoutUnit RenderVideo::computeReplacedLogicalWidth(ShouldComputePreferred shouldComputePreferred) const
 {
     return RenderReplaced::computeReplacedLogicalWidth(shouldComputePreferred);
-}
-
-LayoutUnit RenderVideo::computeReplacedLogicalHeight() const
-{
-    return RenderReplaced::computeReplacedLogicalHeight();
 }
 
 LayoutUnit RenderVideo::minimumReplacedHeight() const 

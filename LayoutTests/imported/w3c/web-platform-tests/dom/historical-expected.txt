@@ -27,11 +27,17 @@ PASS Historical DOM features must be removed: renameNode
 PASS Historical DOM features must be removed: defaultCharset 
 PASS Historical DOM features must be removed: height 
 PASS Historical DOM features must be removed: width 
+PASS Historical DOM features must be removed: commands 
+PASS Historical DOM features must be removed: cssElementMap 
+PASS Historical DOM features must be removed: async 
+PASS document.load 
 PASS DOMImplementation.getFeature() must be nuked. 
 PASS Historical DOM features must be removed: schemaTypeInfo 
 PASS Historical DOM features must be removed: setIdAttribute 
 PASS Historical DOM features must be removed: setIdAttributeNS 
 PASS Historical DOM features must be removed: setIdAttributeNode 
+PASS Attr member must be nuked: schemaTypeInfo 
+PASS Attr member must be nuked: isId 
 PASS DocumentType member must be nuked: entities 
 PASS DocumentType member must be nuked: notations 
 PASS DocumentType member must be nuked: internalSubset 
@@ -48,4 +54,20 @@ PASS Node member must be nuked: getUserData
 PASS Node member must be nuked: setUserData 
 PASS Node member must be nuked: rootNode 
 PASS Window member must be nuked: attachEvent 
+PASS Event should not have this constant: MOUSEDOWN 
+PASS Event should not have this constant: MOUSEUP 
+PASS Event should not have this constant: MOUSEOVER 
+PASS Event should not have this constant: MOUSEOUT 
+PASS Event should not have this constant: MOUSEMOVE 
+PASS Event should not have this constant: MOUSEDRAG 
+PASS Event should not have this constant: CLICK 
+PASS Event should not have this constant: DBLCLICK 
+PASS Event should not have this constant: KEYDOWN 
+PASS Event should not have this constant: KEYUP 
+PASS Event should not have this constant: KEYPRESS 
+PASS Event should not have this constant: DRAGDROP 
+PASS Event should not have this constant: FOCUS 
+PASS Event should not have this constant: BLUR 
+PASS Event should not have this constant: SELECT 
+PASS Event should not have this constant: CHANGE 
 

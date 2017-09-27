@@ -6,8 +6,8 @@ set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF "${TESTWEBKITAPI_RUNTIME_OUTPUT_D
 add_definitions(-DBUILDING_WEBKIT2__)
 
 add_custom_target(TestWebKitAPI-forwarding-headers
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${TESTWEBKITAPI_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
-    DEPENDS webkit2wpe-forwarding-headers
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${TESTWEBKITAPI_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
+    DEPENDS webkitwpe-forwarding-headers
 )
 
 set(ForwardingHeadersForTestWebKitAPI_NAME TestWebKitAPI-forwarding-headers)
@@ -26,6 +26,11 @@ set(test_main_SOURCES
     ${TESTWEBKITAPI_DIR}/wpe/main.cpp
 )
 
+set(bundle_harness_SOURCES
+    ${TESTWEBKITAPI_DIR}/wpe/InjectedBundleControllerWPE.cpp
+    ${TESTWEBKITAPI_DIR}/wpe/PlatformUtilitiesWPE.cpp
+)
+
 # TestWTF
 
 list(APPEND TestWTF_SOURCES
@@ -40,15 +45,23 @@ add_executable(TestWebCore
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/HTMLParserIdioms.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/MIMETypeRegistry.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBufferTest.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FileSystem.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
 )
 
-target_link_libraries(TestWebCore ${test_webcore_LIBRARIES})
+target_link_libraries(TestWebCore ${test_webcore_LIBRARIES} -Wl,--start-group WebCore WebCoreDerivedSources WebCorePlatformWPE -Wl,--end-group)
 add_dependencies(TestWebCore ${ForwardingHeadersForTestWebKitAPI_NAME})
 
 add_test(TestWebCore ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore/TestWebCore)
 set_tests_properties(TestWebCore PROPERTIES TIMEOUT 60)
 set_target_properties(TestWebCore PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore)
+
+if (COMPILER_IS_GCC_OR_CLANG)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebCore -Wno-sign-compare
+                                            -Wno-undef
+                                            -Wno-unused-parameter)
+endif ()

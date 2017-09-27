@@ -58,12 +58,12 @@
 #include <gdk/gdkwayland.h>
 #endif
 
-#if PLATFORM(EFL) && defined(HAVE_ECORE_X)
-#include <Ecore_X.h>
-#endif
-
 #if USE(EGL)
+#if USE(LIBEPOXY)
+#include "EpoxyEGL.h"
+#else
 #include <EGL/egl.h>
+#endif
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #endif
@@ -86,14 +86,26 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
         return std::make_unique<PlatformDisplayWayland>(gdk_wayland_display_get_wl_display(display));
 #endif
 #endif
-#elif PLATFORM(EFL) && defined(HAVE_ECORE_X)
-    return std::make_unique<PlatformDisplayX11>(static_cast<Display*>(ecore_x_display_get()));
 #elif PLATFORM(WIN)
     return std::make_unique<PlatformDisplayWin>();
 #endif
 
+#if PLATFORM(WAYLAND)
+    if (auto platformDisplay = PlatformDisplayWayland::create())
+        return platformDisplay;
+#endif
+
 #if PLATFORM(X11)
-    return std::make_unique<PlatformDisplayX11>();
+    if (auto platformDisplay = PlatformDisplayX11::create())
+        return platformDisplay;
+#endif
+
+    // If at this point we still don't have a display, just create a fake display with no native.
+#if PLATFORM(WAYLAND)
+    return std::make_unique<PlatformDisplayWayland>(nullptr);
+#endif
+#if PLATFORM(X11)
+    return std::make_unique<PlatformDisplayX11>(nullptr);
 #endif
 
 #if PLATFORM(WPE)
@@ -107,7 +119,14 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 PlatformDisplay& PlatformDisplay::sharedDisplay()
 {
     static std::once_flag onceFlag;
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexit-time-destructors"
+#endif
     static std::unique_ptr<PlatformDisplay> display;
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
     std::call_once(onceFlag, []{
         display = createPlatformDisplay();
     });
@@ -126,9 +145,10 @@ void PlatformDisplay::setSharedDisplayForCompositing(PlatformDisplay& display)
     s_sharedDisplayForCompositing = &display;
 }
 
-PlatformDisplay::PlatformDisplay()
+PlatformDisplay::PlatformDisplay(NativeDisplayOwned displayOwned)
+    : m_nativeDisplayOwned(displayOwned)
 #if USE(EGL)
-    : m_eglDisplay(EGL_NO_DISPLAY)
+    , m_eglDisplay(EGL_NO_DISPLAY)
 #endif
 {
 }
@@ -140,7 +160,7 @@ PlatformDisplay::~PlatformDisplay()
 #endif
 }
 
-#if !PLATFORM(EFL) && (USE(EGL) || USE(GLX))
+#if USE(EGL) || USE(GLX)
 GLContext* PlatformDisplay::sharingGLContext()
 {
     if (!m_sharingGLContext)
@@ -176,12 +196,6 @@ void PlatformDisplay::initializeEGLDisplay()
     m_eglDisplayInitialized = true;
 
     if (m_eglDisplay == EGL_NO_DISPLAY) {
-        // EGL is optionally soft linked on Windows.
-#if PLATFORM(WIN)
-        auto eglGetDisplay = eglGetDisplayPtr();
-        if (!eglGetDisplay)
-            return;
-#endif
         m_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         if (m_eglDisplay == EGL_NO_DISPLAY)
             return;
@@ -199,6 +213,7 @@ void PlatformDisplay::initializeEGLDisplay()
 
     eglDisplays().add(this);
 
+#if !PLATFORM(WIN)
     static bool eglAtexitHandlerInitialized = false;
     if (!eglAtexitHandlerInitialized) {
         // EGL registers atexit handlers to cleanup its global display list.
@@ -210,13 +225,9 @@ void PlatformDisplay::initializeEGLDisplay()
         // EGL atexit handlers and the PlatformDisplay destructor.
         // See https://bugs.webkit.org/show_bug.cgi?id=157973.
         eglAtexitHandlerInitialized = true;
-        std::atexit([] {
-            while (!eglDisplays().isEmpty()) {
-                auto* display = eglDisplays().takeAny();
-                display->terminateEGLDisplay();
-            }
-        });
+        std::atexit(shutDownEglDisplays);
     }
+#endif
 }
 
 void PlatformDisplay::terminateEGLDisplay()
@@ -228,6 +239,15 @@ void PlatformDisplay::terminateEGLDisplay()
     eglTerminate(m_eglDisplay);
     m_eglDisplay = EGL_NO_DISPLAY;
 }
+
+void PlatformDisplay::shutDownEglDisplays()
+{
+    while (!eglDisplays().isEmpty()) {
+        auto* display = eglDisplays().takeAny();
+        display->terminateEGLDisplay();
+    }
+}
+
 #endif // USE(EGL)
 
 } // namespace WebCore

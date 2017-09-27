@@ -21,6 +21,7 @@
 #pragma once
 
 #include "CSSValue.h"
+#include <wtf/Function.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -46,10 +47,6 @@ public:
     {
         return adoptRef(*new CSSValueList(SlashSeparator));
     }
-    static Ref<CSSValueList> createFromParserValueList(CSSParserValueList& list)
-    {
-        return adoptRef(*new CSSValueList(list));
-    }
 
     size_t length() const { return m_values.size(); }
     CSSValue* item(size_t index) { return index < m_values.size() ? m_values[index].ptr() : nullptr; }
@@ -72,23 +69,15 @@ public:
     bool equals(const CSSValueList&) const;
     bool equals(const CSSValue&) const;
 
-    bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
-    
-    Ref<CSSValueList> cloneForCSSOM() const;
+    bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
 
-    bool containsVariables() const;
-    bool checkVariablesForCycles(CustomPropertyValueMap& customProperties, HashSet<AtomicString>& seenProperties, HashSet<AtomicString>& invalidProperties) const;
-    
-    bool buildParserValueListSubstitutingVariables(CSSParserValueList*, const CustomPropertyValueMap& customProperties) const;
-    bool buildParserValueSubstitutingVariables(CSSParserValue*, const CustomPropertyValueMap& customProperties) const;
-    
+    unsigned separator() const { return m_valueListSeparator; }
+
 protected:
     CSSValueList(ClassType, ValueListSeparator);
-    CSSValueList(const CSSValueList& cloneFrom);
 
 private:
     explicit CSSValueList(ValueListSeparator);
-    explicit CSSValueList(CSSParserValueList&);
 
     Vector<Ref<CSSValue>, 4> m_values;
 };

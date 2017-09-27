@@ -28,7 +28,7 @@
 #if PLATFORM(MAC)
 
 #include "DictionaryPopupInfo.h"
-#include <functional>
+#include <wtf/Function.h>
 
 OBJC_CLASS NSString;
 OBJC_CLASS NSView;
@@ -36,7 +36,7 @@ OBJC_CLASS PDFSelection;
 
 // This file is included in Internals.cpp, so we can't use ObjC outright.
 #if defined(__OBJC__)
-#include "NSImmediateActionGestureRecognizerSPI.h"
+#include <pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h>
 #define PlatformAnimationController id<NSImmediateActionAnimationController>
 #else
 #define PlatformAnimationController void*
@@ -56,10 +56,10 @@ public:
 
     // FIXME: Should move/unify dictionaryPopupInfoForRange here too.
 
-    WEBCORE_EXPORT static void showPopup(const DictionaryPopupInfo&, NSView *, std::function<void(TextIndicator&)> textIndicatorInstallationCallback, std::function<FloatRect(FloatRect)> rootViewToViewConversionCallback = nullptr);
+    WEBCORE_EXPORT static void showPopup(const DictionaryPopupInfo&, NSView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr);
     WEBCORE_EXPORT static void hidePopup();
 
-    WEBCORE_EXPORT static PlatformAnimationController animationControllerForPopup(const DictionaryPopupInfo&, NSView *, std::function<void(TextIndicator&)> textIndicatorInstallationCallback, std::function<FloatRect(FloatRect)> rootViewToViewConversionCallback = nullptr);
+    WEBCORE_EXPORT static PlatformAnimationController animationControllerForPopup(const DictionaryPopupInfo&, NSView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr);
 };
 
 } // namespace WebCore

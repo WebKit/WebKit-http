@@ -48,27 +48,46 @@ CGGradientRef Gradient::platformGradient()
 
     sortStopsIfNecessary();
 
-    // FIXME: ExtendedColor - we should generate CGColorRefs here, so that
-    // we can handle color spaces.
+    auto colorsArray = adoptCF(CFArrayCreateMutable(0, m_stops.size(), &kCFTypeArrayCallBacks));
+    unsigned numStops = m_stops.size();
 
-    const int cReservedStops = 3;
-    Vector<CGFloat, 4 * cReservedStops> colorComponents;
-    colorComponents.reserveInitialCapacity(m_stops.size() * 4); // RGBA components per stop
+    const int reservedStops = 3;
+    Vector<CGFloat, reservedStops> locations;
+    locations.reserveInitialCapacity(numStops);
 
-    Vector<CGFloat, cReservedStops> locations;
-    locations.reserveInitialCapacity(m_stops.size());
+    Vector<CGFloat, 4 * reservedStops> colorComponents;
+    colorComponents.reserveInitialCapacity(numStops * 4);
 
-    for (size_t i = 0; i < m_stops.size(); ++i) {
-        colorComponents.uncheckedAppend(m_stops[i].red);
-        colorComponents.uncheckedAppend(m_stops[i].green);
-        colorComponents.uncheckedAppend(m_stops[i].blue);
-        colorComponents.uncheckedAppend(m_stops[i].alpha);
+    bool hasExtendedColors = false;
+    for (const auto& stop : m_stops) {
 
-        locations.uncheckedAppend(m_stops[i].stop);
+        // If all the stops are sRGB, it is faster to create a gradient using
+        // components than CGColors.
+        // FIXME: Rather than just check for extended colors, we should check the actual
+        // color space, and whether or not the components are outside [0-1].
+        // <rdar://problem/32926606>
+
+        if (stop.color.isExtended())
+            hasExtendedColors = true;
+
+        float r;
+        float g;
+        float b;
+        float a;
+        stop.color.getRGBA(r, g, b, a);
+        colorComponents.uncheckedAppend(r);
+        colorComponents.uncheckedAppend(g);
+        colorComponents.uncheckedAppend(b);
+        colorComponents.uncheckedAppend(a);
+
+        CFArrayAppendValue(colorsArray.get(), cachedCGColor(stop.color));
+        locations.uncheckedAppend(stop.offset);
     }
 
-    // FIXME: ExtendedColor - use CGGradientCreateWithColors so that we can have stops in different color spaces.
-    m_gradient = CGGradientCreateWithColorComponents(sRGBColorSpaceRef(), colorComponents.data(), locations.data(), m_stops.size());
+    if (hasExtendedColors)
+        m_gradient = CGGradientCreateWithColors(extendedSRGBColorSpaceRef(), colorsArray.get(), locations.data());
+    else
+        m_gradient = CGGradientCreateWithColorComponents(sRGBColorSpaceRef(), colorComponents.data(), locations.data(), numStops);
 
     return m_gradient;
 }

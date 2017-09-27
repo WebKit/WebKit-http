@@ -39,20 +39,22 @@ public:
     static Ref<Storage> create(Frame*, RefPtr<StorageArea>&&);
     ~Storage();
 
-    ExceptionOr<unsigned> length() const;
-    ExceptionOr<String> key(unsigned index) const;
-    ExceptionOr<String> getItem(const String& key) const;
+    unsigned length() const;
+    String key(unsigned index) const;
+    String getItem(const String& key) const;
     ExceptionOr<void> setItem(const String& key, const String& value);
     ExceptionOr<void> removeItem(const String& key);
     ExceptionOr<void> clear();
-    ExceptionOr<bool> contains(const String& key) const;
+    bool contains(const String& key) const;
+
+    // Bindings support functions.
+    bool isSupportedPropertyName(const String&) const;
+    Vector<AtomicString> supportedPropertyNames() const;
 
     StorageArea& area() const { return *m_storageArea; }
 
 private:
     Storage(Frame*, RefPtr<StorageArea>&&);
-
-    bool isDisabledByPrivateBrowsing() const;
 
     const RefPtr<StorageArea> m_storageArea;
 };

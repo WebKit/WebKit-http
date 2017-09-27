@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RTCDataChannelHandlerMock_h
-#define RTCDataChannelHandlerMock_h
+#pragma once
 
 #if ENABLE(WEB_RTC)
 
 #include "RTCDataChannelHandler.h"
-#include "RTCPeerConnectionHandler.h"
 #include "TimerEventBasedMock.h"
 
 namespace WebCore {
@@ -37,16 +35,16 @@ namespace WebCore {
 class RTCDataChannelHandlerMock final : public RTCDataChannelHandler, public TimerEventBasedMock {
 public:
     RTCDataChannelHandlerMock(const String&, const RTCDataChannelInit&);
-    virtual ~RTCDataChannelHandlerMock() { }
-
-    void setClient(RTCDataChannelHandlerClient*) override;
-
-    bool sendStringData(const String&) override;
-    bool sendRawData(const char*, size_t) override;
-    void close() override;
 
 private:
-    RTCDataChannelHandlerClient* m_client;
+    void setClient(RTCDataChannelHandlerClient&) final;
+
+    bool sendStringData(const String&) final;
+    bool sendRawData(const char*, size_t) final;
+    void close() final;
+    size_t bufferedAmount() const final { return 0; }
+
+    RTCDataChannelHandlerClient* m_client { nullptr };
 
     String m_label;
     String m_protocol;
@@ -55,5 +53,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(WEB_RTC)
-
-#endif // RTCDataChannelHandlerMock_h

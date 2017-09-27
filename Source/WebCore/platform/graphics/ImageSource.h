@@ -31,10 +31,10 @@
 #include "ImageOrientation.h"
 #include "IntPoint.h"
 #include "NativeImage.h"
-#include "TextStream.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Optional.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -53,28 +53,36 @@ public:
     ImageSource(Image*, AlphaOption = AlphaOption::Premultiplied, GammaAndColorProfileOption = GammaAndColorProfileOption::Applied);
     ~ImageSource();
 
-    void destroyDecodedData(SharedBuffer* data, bool destroyAll = true, size_t count = 0);
-    bool destroyDecodedDataIfNecessary(SharedBuffer* data, bool destroyAll = true, size_t count = 0);
+    void destroyAllDecodedData() { m_frameCache->destroyAllDecodedData(); }
+    void destroyAllDecodedDataExcludeFrame(size_t excludeFrame) { m_frameCache->destroyAllDecodedDataExcludeFrame(excludeFrame); }
+    void destroyDecodedDataBeforeFrame(size_t beforeFrame) { m_frameCache->destroyDecodedDataBeforeFrame(beforeFrame); }
+    void destroyIncompleteDecodedData() { m_frameCache->destroyIncompleteDecodedData(); }
+    void clearImage() { m_frameCache->clearImage(); }
+    void clearFrameBufferCache(size_t);
 
     bool ensureDecoderAvailable(SharedBuffer*);
     bool isDecoderAvailable() const { return m_decoder.get(); }
 
     void setData(SharedBuffer* data, bool allDataReceived);
-    bool dataChanged(SharedBuffer* data, bool allDataReceived);
+    void resetData(SharedBuffer* data);
+    EncodedDataStatus dataChanged(SharedBuffer* data, bool allDataReceived);
 
     unsigned decodedSize() const { return m_frameCache->decodedSize(); }
     bool isAllDataReceived();
 
-    bool isAsyncDecodingRequired();
-    bool requestFrameAsyncDecodingAtIndex(size_t index, SubsamplingLevel subsamplingLevel) { return m_frameCache->requestFrameAsyncDecodingAtIndex(index, subsamplingLevel); }
+    bool canUseAsyncDecoding();
+    void requestFrameAsyncDecodingAtIndex(size_t index, SubsamplingLevel subsamplingLevel, const std::optional<IntSize>& sizeForDrawing = { }) { m_frameCache->requestFrameAsyncDecodingAtIndex(index, subsamplingLevel, sizeForDrawing); }
+    bool hasAsyncDecodingQueue() const { return m_frameCache->hasAsyncDecodingQueue(); }
+    bool isAsyncDecodingQueueIdle() const  { return m_frameCache->isAsyncDecodingQueueIdle(); }
     void stopAsyncDecodingQueue() { m_frameCache->stopAsyncDecodingQueue(); }
 
     // Image metadata which is calculated by the decoder or can deduced by the case of the memory NativeImage.
-    bool isSizeAvailable() { return m_frameCache->isSizeAvailable(); }
+    EncodedDataStatus encodedDataStatus() { return m_frameCache->encodedDataStatus(); }
     size_t frameCount() { return m_frameCache->frameCount(); }
     RepetitionCount repetitionCount() { return m_frameCache->repetitionCount(); }
+    String uti() { return m_frameCache->uti(); }
     String filenameExtension() { return m_frameCache->filenameExtension(); }
-    Optional<IntPoint> hotSpot() { return m_frameCache->hotSpot(); }
+    std::optional<IntPoint> hotSpot() { return m_frameCache->hotSpot(); }
 
     // Image metadata which is calculated from the first ImageFrame.
     IntSize size() { return m_frameCache->size(); }
@@ -82,35 +90,36 @@ public:
     Color singlePixelSolidColor() { return m_frameCache->singlePixelSolidColor(); }
 
     // ImageFrame metadata which does not require caching the ImageFrame.
-    bool frameIsBeingDecodedAtIndex(size_t index) { return m_frameCache->frameIsBeingDecodedAtIndex(index); }
-    bool frameIsCompleteAtIndex(size_t index) { return m_frameCache->frameIsCompleteAtIndex(index); }
+    bool frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(size_t index, const DecodingOptions& decodingOptions) { return m_frameCache->frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(index, decodingOptions); }
+    DecodingStatus frameDecodingStatusAtIndex(size_t index) { return m_frameCache->frameDecodingStatusAtIndex(index); }
     bool frameHasAlphaAtIndex(size_t index) { return m_frameCache->frameHasAlphaAtIndex(index); }
     bool frameHasImageAtIndex(size_t index) { return m_frameCache->frameHasImageAtIndex(index); }
-    bool frameHasValidNativeImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) { return m_frameCache->frameHasValidNativeImageAtIndex(index, subsamplingLevel); }
+    bool frameHasFullSizeNativeImageAtIndex(size_t index, const std::optional<SubsamplingLevel>& subsamplingLevel) { return m_frameCache->frameHasFullSizeNativeImageAtIndex(index, subsamplingLevel); }
+    bool frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(size_t index, const std::optional<SubsamplingLevel>& subsamplingLevel, const DecodingOptions& decodingOptions) { return m_frameCache->frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(index, subsamplingLevel, decodingOptions); }
     SubsamplingLevel frameSubsamplingLevelAtIndex(size_t index) { return m_frameCache->frameSubsamplingLevelAtIndex(index); }
 
     // ImageFrame metadata which forces caching or re-caching the ImageFrame.
     IntSize frameSizeAtIndex(size_t index, SubsamplingLevel subsamplingLevel = SubsamplingLevel::Default) { return m_frameCache->frameSizeAtIndex(index, subsamplingLevel); }
     unsigned frameBytesAtIndex(size_t index, SubsamplingLevel subsamplingLevel = SubsamplingLevel::Default) { return m_frameCache->frameBytesAtIndex(index, subsamplingLevel); }
-    float frameDurationAtIndex(size_t index) { return m_frameCache->frameDurationAtIndex(index); }
+    Seconds frameDurationAtIndex(size_t index) { return m_frameCache->frameDurationAtIndex(index); }
     ImageOrientation frameOrientationAtIndex(size_t index) { return m_frameCache->frameOrientationAtIndex(index); }
-    NativeImagePtr frameImageAtIndex(size_t index, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* targetContext = nullptr);
+
+    NativeImagePtr frameImageAtIndex(size_t index) { return m_frameCache->frameImageAtIndex(index); }
+    NativeImagePtr frameImageAtIndexCacheIfNeeded(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
 
     SubsamplingLevel maximumSubsamplingLevel();
-    SubsamplingLevel subsamplingLevelForScale(float);
+    SubsamplingLevel subsamplingLevelForScaleFactor(GraphicsContext&, const FloatSize& scaleFactor);
     NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default);
 
 private:
-    void clearFrameBufferCache(size_t);
-    void clear(bool destroyAll, size_t count, SharedBuffer* data);
-    void dump(TextStream&);
+    void dump(WTF::TextStream&);
 
     void setDecoderTargetContext(const GraphicsContext*);
 
     Ref<ImageFrameCache> m_frameCache;
-    std::unique_ptr<ImageDecoder> m_decoder;
+    RefPtr<ImageDecoder> m_decoder;
 
-    Optional<SubsamplingLevel> m_maximumSubsamplingLevel;
+    std::optional<SubsamplingLevel> m_maximumSubsamplingLevel;
 
 #if PLATFORM(IOS)
     // FIXME: We should expose a setting to enable/disable progressive loading so that we can remove the PLATFORM(IOS)-guard.

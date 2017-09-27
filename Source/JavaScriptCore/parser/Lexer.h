@@ -24,6 +24,7 @@
 
 #include "Lookup.h"
 #include "ParserArena.h"
+#include "ParserModes.h"
 #include "ParserTokens.h"
 #include "SourceCode.h"
 #include <wtf/ASCIICType.h>
@@ -36,6 +37,8 @@ enum LexerFlags {
     LexerFlagsDontBuildStrings = 2,
     LexexFlagsDontBuildKeywords = 4
 };
+
+enum class LexerEscapeParseMode { Template, String };
 
 struct ParsedUnicodeEscapeValue;
 
@@ -77,7 +80,7 @@ public:
     bool prevTerminator() const { return m_terminator; }
     JSTokenType scanRegExp(JSToken*, UChar patternPrefix = 0);
     enum class RawStringsBuildMode { BuildRawStrings, DontBuildRawStrings };
-    JSTokenType scanTrailingTemplateString(JSToken*, RawStringsBuildMode);
+    JSTokenType scanTemplateString(JSToken*, RawStringsBuildMode);
 
     // Functions for use after parsing.
     bool sawError() const { return m_error; }
@@ -96,8 +99,8 @@ public:
         m_lineStart = sourcePtrFromOffset(lineStartOffset);
         ASSERT(currentOffset() >= currentLineStartOffset());
 
-        m_buffer8.resize(0);
-        m_buffer16.resize(0);
+        m_buffer8.shrink(0);
+        m_buffer16.shrink(0);
         if (LIKELY(m_code < m_codeEnd))
             m_current = *m_code;
         else
@@ -170,9 +173,8 @@ private:
     template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseString(JSTokenData*, bool strictMode);
     template <bool shouldBuildStrings> NEVER_INLINE StringParseResult parseStringSlowCase(JSTokenData*, bool strictMode);
 
-    enum class EscapeParseMode { Template, String };
-    template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseComplexEscape(EscapeParseMode, bool strictMode, T stringQuoteCharacter);
-    template <bool shouldBuildStrings> ALWAYS_INLINE StringParseResult parseTemplateLiteral(JSTokenData*, RawStringsBuildMode);
+    template <bool shouldBuildStrings, LexerEscapeParseMode escapeParseMode> ALWAYS_INLINE StringParseResult parseComplexEscape(bool strictMode, T stringQuoteCharacter);
+    ALWAYS_INLINE StringParseResult parseTemplateLiteral(JSTokenData*, RawStringsBuildMode);
     ALWAYS_INLINE void parseHex(double& returnValue);
     ALWAYS_INLINE bool parseBinary(double& returnValue);
     ALWAYS_INLINE bool parseOctal(double& returnValue);

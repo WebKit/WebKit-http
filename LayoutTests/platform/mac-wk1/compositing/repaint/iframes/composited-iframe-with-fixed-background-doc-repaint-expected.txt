@@ -12,7 +12,6 @@
           (bounds 432.00 332.00)
           (drawsContent 1)
           (repaint rects
-            (rect 24.00 16.00 100.00 8.00)
             (rect 16.00 16.00 400.00 300.00)
           )
         )

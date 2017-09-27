@@ -89,7 +89,7 @@ void Widget::setFocus(bool focused)
     if (!focused)
         return;
 
-    Frame* frame = Frame::frameForWidget(this);
+    Frame* frame = Frame::frameForWidget(*this);
     if (!frame)
         return;
 
@@ -184,7 +184,7 @@ NSView *Widget::getOuterView() const
     return view;
 }
 
-void Widget::paint(GraphicsContext& p, const IntRect& r)
+void Widget::paint(GraphicsContext& p, const IntRect& r, SecurityOriginPaintPolicy)
 {
     if (p.paintingDisabled())
         return;

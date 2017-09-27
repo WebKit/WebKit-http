@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Collabora, Ltd. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,13 +33,15 @@
 #include "FileMetadata.h"
 #include "NotImplemented.h"
 #include "PathWalker.h"
+#include <io.h>
+#include <shlobj.h>
+#include <shlwapi.h>
+#include <sys/stat.h>
+#include <windows.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
-
-#include <windows.h>
-#include <shlobj.h>
-#include <shlwapi.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -139,22 +141,83 @@ bool getFileCreationTime(const String& path, time_t& time)
     return true;
 }
 
-bool getFileMetadata(const String& path, FileMetadata& metadata)
+static String getFinalPathName(const String& path)
 {
-    WIN32_FIND_DATAW findData;
-    if (!getFindData(path, findData))
-        return false;
+    auto handle = openFile(path, OpenForRead);
+    if (!isHandleValid(handle))
+        return String();
 
-    if (!getFileSizeFromFindData(findData, metadata.length))
-        return false;
+    StringVector<UChar> buffer(MAX_PATH);
+    if (::GetFinalPathNameByHandleW(handle, buffer.data(), buffer.size(), VOLUME_NAME_NT) >= MAX_PATH) {
+        closeFile(handle);
+        return String();
+    }
+    closeFile(handle);
+
+    buffer.shrink(wcslen(buffer.data()));
+    return String::adopt(WTFMove(buffer));
+}
+
+static inline bool isSymbolicLink(WIN32_FIND_DATAW findData)
+{
+    return findData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT && findData.dwReserved0 == IO_REPARSE_TAG_SYMLINK;
+}
+
+static FileMetadata::Type toFileMetadataType(WIN32_FIND_DATAW findData)
+{
+    if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        return FileMetadata::Type::Directory;
+    if (isSymbolicLink(findData))
+        return FileMetadata::Type::SymbolicLink;
+    return FileMetadata::Type::File;
+}
+
+static std::optional<FileMetadata> findDataToFileMetadata(WIN32_FIND_DATAW findData)
+{
+    long long length;
+    if (!getFileSizeFromFindData(findData, length))
+        return std::nullopt;
 
     time_t modificationTime;
     getFileModificationTimeFromFindData(findData, modificationTime);
-    metadata.modificationTime = modificationTime;
 
-    metadata.type = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? FileMetadata::TypeDirectory : FileMetadata::TypeFile;
+    return FileMetadata {
+        static_cast<double>(modificationTime),
+        length,
+        static_cast<bool>(findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN),
+        toFileMetadataType(findData)
+    };
+}
 
-    return true;
+std::optional<FileMetadata> fileMetadata(const String& path)
+{
+    WIN32_FIND_DATAW findData;
+    if (!getFindData(path, findData))
+        return std::nullopt;
+
+    return findDataToFileMetadata(findData);
+}
+
+std::optional<FileMetadata> fileMetadataFollowingSymlinks(const String& path)
+{
+    WIN32_FIND_DATAW findData;
+    if (!getFindData(path, findData))
+        return std::nullopt;
+
+    if (isSymbolicLink(findData)) {
+        String targetPath = getFinalPathName(path);
+        if (targetPath.isNull())
+            return std::nullopt;
+        if (!getFindData(targetPath, findData))
+            return std::nullopt;
+    }
+
+    return findDataToFileMetadata(findData);
+}
+
+bool createSymbolicLink(const String& targetPath, const String& symbolicLinkPath)
+{
+    return !::CreateSymbolicLinkW(symbolicLinkPath.charactersWithNullTermination().data(), targetPath.charactersWithNullTermination().data(), 0);
 }
 
 bool fileExists(const String& path)
@@ -175,9 +238,16 @@ bool deleteEmptyDirectory(const String& path)
     return !!RemoveDirectoryW(filename.charactersWithNullTermination().data());
 }
 
+bool moveFile(const String& oldPath, const String& newPath)
+{
+    String oldFilename = oldPath;
+    String newFilename = newPath;
+    return !!::MoveFileEx(oldFilename.charactersWithNullTermination().data(), newFilename.charactersWithNullTermination().data(), MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
+}
+
 String pathByAppendingComponent(const String& path, const String& component)
 {
-    Vector<UChar> buffer(MAX_PATH);
+    StringVector<UChar> buffer(MAX_PATH);
 
     if (path.length() + 1 > buffer.size())
         return String();
@@ -191,6 +261,14 @@ String pathByAppendingComponent(const String& path, const String& component)
     buffer.shrink(wcslen(buffer.data()));
 
     return String::adopt(WTFMove(buffer));
+}
+
+String pathByAppendingComponents(StringView path, const Vector<StringView>& components)
+{
+    String result = path.toString();
+    for (auto& component : components)
+        result = pathByAppendingComponent(result, component.toString());
+    return result;
 }
 
 #if !USE(CF)
@@ -248,34 +326,33 @@ String directoryName(const String& path)
 
 static String bundleName()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, name, (ASCIILiteral("WebKit")));
+    static const NeverDestroyed<String> name = [] {
+        String name { ASCIILiteral { "WebKit" } };
 
 #if USE(CF)
-    static bool initialized;
-
-    if (!initialized) {
-        initialized = true;
-
-        if (CFBundleRef bundle = CFBundleGetMainBundle())
-            if (CFTypeRef bundleExecutable = CFBundleGetValueForInfoDictionaryKey(bundle, kCFBundleExecutableKey))
+        if (CFBundleRef bundle = CFBundleGetMainBundle()) {
+            if (CFTypeRef bundleExecutable = CFBundleGetValueForInfoDictionaryKey(bundle, kCFBundleExecutableKey)) {
                 if (CFGetTypeID(bundleExecutable) == CFStringGetTypeID())
                     name = reinterpret_cast<CFStringRef>(bundleExecutable);
-    }
+            }
+        }
 #endif
+
+        return name;
+    }();
 
     return name;
 }
 
 static String storageDirectory(DWORD pathIdentifier)
 {
-    Vector<UChar> buffer(MAX_PATH);
+    StringVector<UChar> buffer(MAX_PATH);
     if (FAILED(SHGetFolderPathW(0, pathIdentifier | CSIDL_FLAG_CREATE, 0, 0, buffer.data())))
         return String();
     buffer.resize(wcslen(buffer.data()));
     String directory = String::adopt(WTFMove(buffer));
 
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, companyNameDirectory, (ASCIILiteral("Apple Computer\\")));
-    directory = pathByAppendingComponent(directory, companyNameDirectory + bundleName());
+    directory = pathByAppendingComponent(directory, "Apple Computer\\" + bundleName());
     if (!makeAllDirectories(directory))
         return String();
 
@@ -337,10 +414,12 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 {
     DWORD desiredAccess = 0;
     DWORD creationDisposition = 0;
+    DWORD shareMode = 0;
     switch (mode) {
     case OpenForRead:
         desiredAccess = GENERIC_READ;
         creationDisposition = OPEN_EXISTING;
+        shareMode = FILE_SHARE_READ;
         break;
     case OpenForWrite:
         desiredAccess = GENERIC_WRITE;
@@ -351,7 +430,7 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     }
 
     String destination = path;
-    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, 0, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
+    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, shareMode, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
 }
 
 void closeFile(PlatformFileHandle& handle)
@@ -413,11 +492,6 @@ bool hardLinkOrCopyFile(const String& source, const String& destination)
     return !!::CopyFile(source.charactersWithNullTermination().data(), destination.charactersWithNullTermination().data(), TRUE);
 }
 
-bool unloadModule(PlatformModule module)
-{
-    return ::FreeLibrary(module);
-}
-
 String localUserSpecificStorageDirectory()
 {
     return cachedStorageDirectory(CSIDL_LOCAL_APPDATA);
@@ -450,6 +524,23 @@ bool getVolumeFreeSpace(const String&, uint64_t&)
 {
     notImplemented();
     return false;
+}
+
+std::optional<int32_t> getFileDeviceId(const CString& fsFile)
+{
+    auto handle = openFile(fsFile.data(), OpenForRead);
+    if (!isHandleValid(handle))
+        return std::nullopt;
+
+    BY_HANDLE_FILE_INFORMATION fileInformation = { };
+    if (!::GetFileInformationByHandle(handle, &fileInformation)) {
+        closeFile(handle);
+        return std::nullopt;
+    }
+
+    closeFile(handle);
+
+    return fileInformation.dwVolumeSerialNumber;
 }
 
 } // namespace WebCore

@@ -4,12 +4,10 @@ const assert = require('assert');
 
 const TestServer = require('./resources/test-server.js');
 const addBuilderForReport = require('./resources/common-operations.js').addBuilderForReport;
-const connectToDatabaseInEveryTest = require('./resources/common-operations.js').connectToDatabaseInEveryTest;
+const prepareServerTest = require('./resources/common-operations.js').prepareServerTest;
 
 describe("/admin/reprocess-report", function () {
-    this.timeout(1000);
-    TestServer.inject();
-    connectToDatabaseInEveryTest();
+    prepareServerTest(this);
 
     const simpleReport = [{
         "buildNumber": "1986",
@@ -24,15 +22,52 @@ describe("/admin/reprocess-report", function () {
             },
         }];
 
-    it("should add build", function (done) {
+    const simpleReportWithRevisions = [{
+        "buildNumber": "1986",
+        "buildTime": "2013-02-28T10:12:03",
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "tests": {
+                "test": {
+                    "metrics": {"FrameRate": { "current": [[1, 2, 3], [4, 5, 6]] }}
+                },
+            },
+        "revisions": {
+                "WebKit": {
+                    "timestamp": "2017-03-01T09:38:44.826833Z",
+                    "revision": "213214"
+                }
+            }
+        }];
+
+    it("should still create new repository when repository ownerships are different", () => {
+        let db = TestServer.database();
+        return addBuilderForReport(simpleReportWithRevisions[0]).then(() => {
+            return db.insert('repositories', {'name': 'WebKit', 'owner': 1});
+        }).then(() => {
+            return TestServer.remoteAPI().postJSON('/api/report/', simpleReportWithRevisions);
+        }).then((response) => {
+            assert.equal(response['status'], 'OK');
+            return db.selectRows('repositories', {'name': 'WebKit'});
+        }).then((repositories) => {
+            assert.equal(repositories.length, 2);
+            const webkitRepsitoryId = repositories[0].owner == 1 ? repositories[1].id : repositories[0].id;
+            return db.selectRows('commits', {'revision': '213214', 'repository': webkitRepsitoryId});
+        }).then((result) => {
+            assert(result.length, 1);
+        });
+    });
+
+    it("should add build", () => {
         let db = TestServer.database();
         let reportId;
-        addBuilderForReport(simpleReport[0]).then(function () {
+        return addBuilderForReport(simpleReport[0]).then(() => {
             return TestServer.remoteAPI().postJSON('/api/report/', simpleReport);
-        }).then(function (response) {
+        }).then((response) => {
             assert.equal(response['status'], 'OK');
             return Promise.all([db.selectAll('builds'), db.selectAll('reports')]);
-        }).then(function (result) {
+        }).then((result) => {
             const builds = result[0];
             const reports = result[1];
             assert.equal(builds.length, 1);
@@ -41,37 +76,36 @@ describe("/admin/reprocess-report", function () {
             reportId = reports[0]['id'];
             assert.equal(reports[0]['build_number'], 1986);
             return db.query('UPDATE reports SET report_build = NULL; DELETE FROM builds');
-        }).then(function () {
+        }).then(() => {
             return db.selectAll('builds');
-        }).then(function (builds) {
+        }).then((builds) => {
             assert.equal(builds.length, 0);
             return TestServer.remoteAPI().getJSONWithStatus(`/admin/reprocess-report?report=${reportId}`);
-        }).then(function () {
+        }).then(() => {
             return db.selectAll('builds');
-        }).then(function (builds) {
+        }).then((builds) => {
             assert.equal(builds.length, 1);
             assert.equal(builds[0]['number'], 1986);
-            done();
-        }).catch(done);
+        });
     });
 
-    it("should not duplicate the reprocessed report", function (done) {
+    it("should not duplicate the reprocessed report", () => {
         let db = TestServer.database();
         let originalReprot;
-        addBuilderForReport(simpleReport[0]).then(function () {
+        return addBuilderForReport(simpleReport[0]).then(() => {
             return TestServer.remoteAPI().postJSON('/api/report/', simpleReport);
-        }).then(function (response) {
+        }).then((response) => {
             assert.equal(response['status'], 'OK');
             return db.selectAll('reports');
-        }).then(function (reports) {
+        }).then((reports) => {
             assert.equal(reports.length, 1);
             originalReprot = reports[0];
             return db.query('UPDATE reports SET report_build = NULL; DELETE FROM builds');
-        }).then(function () {
+        }).then(() => {
             return TestServer.remoteAPI().getJSONWithStatus(`/admin/reprocess-report?report=${originalReprot['id']}`);
-        }).then(function () {
+        }).then(() => {
             return db.selectAll('reports');
-        }).then(function (reports) {
+        }).then((reports) => {
             assert.equal(reports.length, 1);
             const newPort = reports[0];
             originalReprot['committed_at'] = null;
@@ -80,7 +114,6 @@ describe("/admin/reprocess-report", function () {
             originalReprot['build'] = null;
             newPort['build'] = null;
             assert.deepEqual(originalReprot, newPort);
-            done();
-        }).catch(done);
+        });
     });
 });

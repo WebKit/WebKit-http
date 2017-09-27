@@ -25,7 +25,6 @@
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 #include "LayoutSize.h"
-#include "Page.h"
 #include "RenderSVGRoot.h"
 #include "SVGImage.h"
 #include "SVGImageForContainer.h"
@@ -50,16 +49,15 @@ void SVGImageCache::removeClientFromCache(const CachedImageClient* client)
     m_imageForContainerMap.remove(client);
 }
 
-void SVGImageCache::setContainerSizeForRenderer(const CachedImageClient* client, const LayoutSize& containerSize, float containerZoom)
+void SVGImageCache::setContainerContextForClient(const CachedImageClient& client, const LayoutSize& containerSize, float containerZoom, const URL& imageURL)
 {
-    ASSERT(client);
     ASSERT(!containerSize.isEmpty());
     ASSERT(containerZoom);
 
     FloatSize containerSizeWithoutZoom(containerSize);
     containerSizeWithoutZoom.scale(1 / containerZoom);
 
-    m_imageForContainerMap.set(client, SVGImageForContainer::create(m_svgImage, containerSizeWithoutZoom, containerZoom));
+    m_imageForContainerMap.set(&client, SVGImageForContainer::create(m_svgImage, containerSizeWithoutZoom, containerZoom, imageURL));
 }
 
 Image* SVGImageCache::findImageForRenderer(const RenderObject* renderer) const
@@ -79,7 +77,7 @@ Image* SVGImageCache::imageForRenderer(const RenderObject* renderer) const
 {
     auto* image = findImageForRenderer(renderer);
     if (!image)
-        return Image::nullImage();
+        return &Image::nullImage();
     ASSERT(!image->size().isEmpty());
     return image;
 }

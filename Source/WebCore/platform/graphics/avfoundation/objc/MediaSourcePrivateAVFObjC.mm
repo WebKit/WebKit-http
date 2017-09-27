@@ -33,8 +33,8 @@
 #import "MediaPlayerPrivateMediaSourceAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
 #import "SourceBufferPrivateAVFObjC.h"
-#import "SoftLinking.h"
 #import <objc/runtime.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -66,8 +66,7 @@ MediaSourcePrivate::AddStatus MediaSourcePrivateAVFObjC::addSourceBuffer(const C
 {
     MediaEngineSupportParameters parameters;
     parameters.isMediaSource = true;
-    parameters.type = contentType.type();
-    parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
+    parameters.type = contentType;
     if (MediaPlayerPrivateMediaSourceAVFObjC::supportsType(parameters) == MediaPlayer::IsNotSupported)
         return NotSupported;
 
@@ -174,14 +173,18 @@ bool MediaSourcePrivateAVFObjC::hasAudio() const
     return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), MediaSourcePrivateAVFObjCHasAudio);
 }
 
-static bool MediaSourcePrivateAVFObjCHasVideo(SourceBufferPrivateAVFObjC* sourceBuffer)
-{
-    return sourceBuffer->hasVideo();
-}
-
 bool MediaSourcePrivateAVFObjC::hasVideo() const
 {
-    return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), MediaSourcePrivateAVFObjCHasVideo);
+    return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), [] (SourceBufferPrivateAVFObjC* sourceBuffer) {
+        return sourceBuffer->hasVideo();
+    });
+}
+
+bool MediaSourcePrivateAVFObjC::hasSelectedVideo() const
+{
+    return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), [] (SourceBufferPrivateAVFObjC* sourceBuffer) {
+        return sourceBuffer->hasSelectedVideo();
+    });
 }
 
 void MediaSourcePrivateAVFObjC::willSeek()
@@ -216,6 +219,42 @@ FloatSize MediaSourcePrivateAVFObjC::naturalSize() const
         result = result.expandedTo(sourceBuffer->naturalSize());
 
     return result;
+}
+
+void MediaSourcePrivateAVFObjC::hasSelectedVideoChanged(SourceBufferPrivateAVFObjC& sourceBuffer)
+{
+    bool hasSelectedVideo = sourceBuffer.hasSelectedVideo();
+    if (m_sourceBufferWithSelectedVideo == &sourceBuffer && !hasSelectedVideo)
+        setSourceBufferWithSelectedVideo(nullptr);
+    else if (m_sourceBufferWithSelectedVideo != &sourceBuffer && hasSelectedVideo)
+        setSourceBufferWithSelectedVideo(&sourceBuffer);
+}
+
+void MediaSourcePrivateAVFObjC::setVideoLayer(AVSampleBufferDisplayLayer* layer)
+{
+    if (m_sourceBufferWithSelectedVideo)
+        m_sourceBufferWithSelectedVideo->setVideoLayer(layer);
+}
+
+void MediaSourcePrivateAVFObjC::setDecompressionSession(WebCoreDecompressionSession* decompressionSession)
+{
+    if (m_sourceBufferWithSelectedVideo)
+        m_sourceBufferWithSelectedVideo->setDecompressionSession(decompressionSession);
+}
+
+void MediaSourcePrivateAVFObjC::setSourceBufferWithSelectedVideo(SourceBufferPrivateAVFObjC* sourceBuffer)
+{
+    if (m_sourceBufferWithSelectedVideo) {
+        m_sourceBufferWithSelectedVideo->setVideoLayer(nullptr);
+        m_sourceBufferWithSelectedVideo->setDecompressionSession(nullptr);
+    }
+
+    m_sourceBufferWithSelectedVideo = sourceBuffer;
+
+    if (m_sourceBufferWithSelectedVideo) {
+        m_sourceBufferWithSelectedVideo->setVideoLayer(m_player->sampleBufferDisplayLayer());
+        m_sourceBufferWithSelectedVideo->setDecompressionSession(m_player->decompressionSession());
+    }
 }
 
 }

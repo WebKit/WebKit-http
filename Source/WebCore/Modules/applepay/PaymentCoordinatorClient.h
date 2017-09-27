@@ -27,30 +27,34 @@
 
 #if ENABLE(APPLE_PAY)
 
-#include "PaymentRequest.h"
-#include <functional>
+#include "ApplePaySessionPaymentRequest.h"
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 
 namespace WebCore {
 
 class PaymentMerchantSession;
 class URL;
-enum class PaymentAuthorizationStatus;
+struct PaymentAuthorizationResult;
+struct PaymentMethodUpdate;
+struct ShippingContactUpdate;
+struct ShippingMethodUpdate;
 
 class PaymentCoordinatorClient {
 public:
     virtual bool supportsVersion(unsigned version) = 0;
     virtual bool canMakePayments() = 0;
-    virtual void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, std::function<void (bool)> completionHandler) = 0;
-    virtual void openPaymentSetup(const String& merchantIdentifier, const String& domainName, std::function<void (bool)> completionHandler) = 0;
+    virtual void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) = 0;
+    virtual void openPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) = 0;
 
-    virtual bool showPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const PaymentRequest&) = 0;
+    virtual bool showPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const ApplePaySessionPaymentRequest&) = 0;
     virtual void completeMerchantValidation(const PaymentMerchantSession&) = 0;
-    virtual void completeShippingMethodSelection(PaymentAuthorizationStatus, Optional<PaymentRequest::TotalAndLineItems> newTotalAndItems) = 0;
-    virtual void completeShippingContactSelection(PaymentAuthorizationStatus, const Vector<PaymentRequest::ShippingMethod>& newShippingMethods, Optional<PaymentRequest::TotalAndLineItems> newTotalAndItems) = 0;
-    virtual void completePaymentMethodSelection(Optional<WebCore::PaymentRequest::TotalAndLineItems> newTotalAndItems) = 0;
-    virtual void completePaymentSession(PaymentAuthorizationStatus) = 0;
+    virtual void completeShippingMethodSelection(std::optional<ShippingMethodUpdate>&&) = 0;
+    virtual void completeShippingContactSelection(std::optional<ShippingContactUpdate>&&) = 0;
+    virtual void completePaymentMethodSelection(std::optional<PaymentMethodUpdate>&&) = 0;
+    virtual void completePaymentSession(std::optional<PaymentAuthorizationResult>&&) = 0;
     virtual void abortPaymentSession() = 0;
+    virtual void cancelPaymentSession() = 0;
     virtual void paymentCoordinatorDestroyed() = 0;
 
 protected:

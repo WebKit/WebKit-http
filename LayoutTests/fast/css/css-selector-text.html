@@ -73,21 +73,17 @@ testSelectorRoundTrip('[a*="b" i]');
 
 debug('');
 
-testSelectorRoundTrip('*|a');
-testSelectorRoundTrip('n|a');
-testSelectorRoundTrip('*|*');
-testSelectorRoundTrip('n|*');
+shouldBe("parseThenSerializeRule('*|a { }')", "'a { }'");
+shouldBe("parseThenSerializeRule('*|* { }')", "'* { }'");
 testSelectorRoundTrip('|a');
 testSelectorRoundTrip('|*');
 testSelectorRoundTrip('[*|a]');
-testSelectorRoundTrip('[n|a]');
 shouldBe("parseThenSerializeRule('[|a] { }')", "'[a] { }'");
 
 debug('');
 
 testSelectorRoundTrip('a:active');
 testSelectorRoundTrip('a b');
-testSelectorRoundTrip('a >> b');
 testSelectorRoundTrip('a + b');
 testSelectorRoundTrip('a ~ b');
 testSelectorRoundTrip('a > b');
@@ -271,24 +267,24 @@ testSelectorRoundTrip('a:not(a .b, #c > [d], e + f:empty, .g ~ #h:first-child) b
 
 debug('');
 
-shouldBe("parseThenSerializeRule('::-webkit-file-upload-button { }')", "'*::-webkit-file-upload-button { }'");
-shouldBe("parseThenSerializeRule('::-webkit-search-cancel-button { }')", "'*::-webkit-search-cancel-button { }'");
-shouldBe("parseThenSerializeRule('::-webkit-search-decoration { }')", "'*::-webkit-search-decoration { }'");
-shouldBe("parseThenSerializeRule('::-webkit-search-results-button { }')", "'*::-webkit-search-results-button { }'");
-shouldBe("parseThenSerializeRule('::-webkit-search-results-decoration { }')", "'*::-webkit-search-results-decoration { }'");
-shouldBe("parseThenSerializeRule('::-webkit-slider-thumb { }')", "'*::-webkit-slider-thumb { }'");
+shouldBe("parseThenSerializeRule('::-webkit-file-upload-button { }')", "'::-webkit-file-upload-button { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-cancel-button { }')", "'::-webkit-search-cancel-button { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-decoration { }')", "'::-webkit-search-decoration { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-results-button { }')", "'::-webkit-search-results-button { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-results-decoration { }')", "'::-webkit-search-results-decoration { }'");
+shouldBe("parseThenSerializeRule('::-webkit-slider-thumb { }')", "'::-webkit-slider-thumb { }'");
 
 debug('');
 
 testSelectorRoundTrip("a::-webkit-slider-thumb");
-shouldBe("parseThenSerializeRule('a ::-webkit-slider-thumb { }')", "'a *::-webkit-slider-thumb { }'");
+shouldBe("parseThenSerializeRule('a ::-webkit-slider-thumb { }')", "'a ::-webkit-slider-thumb { }'");
 testSelectorRoundTrip("[a]::-webkit-slider-thumb");
-shouldBe("parseThenSerializeRule('[a] ::-webkit-slider-thumb { }')", "'[a] *::-webkit-slider-thumb { }'");
+shouldBe("parseThenSerializeRule('[a] ::-webkit-slider-thumb { }')", "'[a] ::-webkit-slider-thumb { }'");
 testSelectorRoundTrip(".a::-webkit-slider-thumb");
-shouldBe("parseThenSerializeRule('.a ::-webkit-slider-thumb { }')", "'.a *::-webkit-slider-thumb { }'");
+shouldBe("parseThenSerializeRule('.a ::-webkit-slider-thumb { }')", "'.a ::-webkit-slider-thumb { }'");
 testSelectorRoundTrip("#a::-webkit-slider-thumb");
-shouldBe("parseThenSerializeRule('#a ::-webkit-slider-thumb { }')", "'#a *::-webkit-slider-thumb { }'");
-shouldBe("parseThenSerializeRule('* ::-webkit-slider-thumb { }')", "'* *::-webkit-slider-thumb { }'");
+shouldBe("parseThenSerializeRule('#a ::-webkit-slider-thumb { }')", "'#a ::-webkit-slider-thumb { }'");
+shouldBe("parseThenSerializeRule('* ::-webkit-slider-thumb { }')", "'* ::-webkit-slider-thumb { }'");
 
 debug('');
 
@@ -364,12 +360,6 @@ shouldBe("parseThenSerializeRule('input[type=file]:focus { }')", "'input[type=\"
 
 debug('');
 
-shouldBe("parseThenSerializeRule('a>>b { }')", "'a >> b { }'");
-shouldBe("parseThenSerializeRule('a >>b { }')", "'a >> b { }'");
-shouldBe("parseThenSerializeRule('a        >>b { }')", "'a >> b { }'");
-shouldBe("parseThenSerializeRule('a>> b { }')", "'a >> b { }'");
-shouldBe("parseThenSerializeRule('a>>       b { }')", "'a >> b { }'");
-shouldBe("parseThenSerializeRule('a        >>       b { }')", "'a >> b { }'");
 shouldBe("parseThenSerializeRule('a+b { }')", "'a + b { }'");
 shouldBe("parseThenSerializeRule('a~b { }')", "'a ~ b { }'");
 shouldBe("parseThenSerializeRule('a>b { }')", "'a > b { }'");

@@ -288,7 +288,7 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
     if (image) {
         // Make the decision about whether the image has changed.
         // This code makes the assumption that pointer equality on a NativeImagePtr is a valid way to tell if the image is changed.
-        // This assumption is true in Qt, GTK and EFL.
+        // This assumption is true for the GTK+ port.
         NativeImagePtr newNativeImagePtr = image->nativeImageForCurrentFrame();
         if (!newNativeImagePtr)
             return;
@@ -364,7 +364,7 @@ void GraphicsLayerTextureMapper::setIsScrollable(bool isScrollable)
     notifyChange(IsScrollableChange);
 }
 
-void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly(bool)
+void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
 {
     prepareBackingStoreIfNeeded();
     commitLayerChanges();
@@ -468,7 +468,7 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
         m_layer.setFilters(filters());
 
     if (m_changeMask & BackingStoreChange)
-        m_layer.setBackingStore(m_backingStore);
+        m_layer.setBackingStore(m_backingStore.copyRef());
 
     if (m_changeMask & DebugVisualsChange)
         m_layer.setDebugVisuals(isShowingDebugBorder(), debugBorderColor(), debugBorderWidth(), isShowingRepaintCounter());
@@ -497,19 +497,19 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     m_changeMask = NoChanges;
 }
 
-void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect, bool viewportIsStable)
+void GraphicsLayerTextureMapper::flushCompositingState(const FloatRect& rect)
 {
     if (!m_layer.textureMapper())
         return;
 
-    flushCompositingStateForThisLayerOnly(viewportIsStable);
+    flushCompositingStateForThisLayerOnly();
 
     if (maskLayer())
-        maskLayer()->flushCompositingState(rect, viewportIsStable);
+        maskLayer()->flushCompositingState(rect);
     if (replicaLayer())
-        replicaLayer()->flushCompositingState(rect, viewportIsStable);
+        replicaLayer()->flushCompositingState(rect);
     for (auto* child : children())
-        child->flushCompositingState(rect, viewportIsStable);
+        child->flushCompositingState(rect);
 }
 
 void GraphicsLayerTextureMapper::updateBackingStoreIncludingSubLayers()

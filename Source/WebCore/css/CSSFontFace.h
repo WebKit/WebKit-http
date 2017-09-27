@@ -25,8 +25,9 @@
 
 #pragma once
 
-#include "CSSFontFaceRule.h"
+#include "FontSelectionValueInlines.h"
 #include "FontTaggedSettings.h"
+#include "StyleRule.h"
 #include "TextFlags.h"
 #include "Timer.h"
 #include <memory>
@@ -51,6 +52,7 @@ class Document;
 class FontDescription;
 class Font;
 class FontFace;
+enum class ExternalResourceDownloadPolicy;
 
 class CSSFontFace final : public RefCounted<CSSFontFace> {
 public:
@@ -63,8 +65,9 @@ public:
     // FIXME: These functions don't need to have boolean return values.
     // Callers only call this with known-valid CSS values.
     bool setFamilies(CSSValue&);
-    bool setStyle(CSSValue&);
-    bool setWeight(CSSValue&);
+    void setStyle(CSSValue&);
+    void setWeight(CSSValue&);
+    void setStretch(CSSValue&);
     bool setUnicodeRange(CSSValue&);
     bool setVariantLigatures(CSSValue&);
     bool setVariantPosition(CSSValue&);
@@ -73,22 +76,26 @@ public:
     bool setVariantAlternates(CSSValue&);
     bool setVariantEastAsian(CSSValue&);
     void setFeatureSettings(CSSValue&);
+    void setLoadingBehavior(CSSValue&);
 
     enum class Status;
     struct UnicodeRange;
     const CSSValueList* families() const { return m_families.get(); }
-    FontTraitsMask traitsMask() const { return m_traitsMask; }
+    FontSelectionRange weight() const { return m_fontSelectionCapabilities.computeWeight(); }
+    FontSelectionRange stretch() const { return m_fontSelectionCapabilities.computeWidth(); }
+    FontSelectionRange italic() const { return m_fontSelectionCapabilities.computeSlope(); }
+    FontSelectionCapabilities fontSelectionCapabilities() const { return m_fontSelectionCapabilities.computeFontSelectionCapabilities(); }
     const Vector<UnicodeRange>& ranges() const { return m_ranges; }
     const FontFeatureSettings& featureSettings() const { return m_featureSettings; }
     const FontVariantSettings& variantSettings() const { return m_variantSettings; }
     void setVariantSettings(const FontVariantSettings& variantSettings) { m_variantSettings = variantSettings; }
-    void setTraitsMask(FontTraitsMask traitsMask) { m_traitsMask = traitsMask; }
+    void setWeight(FontSelectionRange weight) { m_fontSelectionCapabilities.weight = weight; }
+    void setStretch(FontSelectionRange stretch) { m_fontSelectionCapabilities.width = stretch; }
+    void setStyle(FontSelectionRange italic) { m_fontSelectionCapabilities.slope = italic; }
+    void setFontSelectionCapabilities(FontSelectionCapabilities capabilities) { m_fontSelectionCapabilities = capabilities; }
     bool isLocalFallback() const { return m_isLocalFallback; }
     Status status() const { return m_status; }
     StyleRuleFontFace* cssConnection() const { return m_cssConnection.get(); }
-
-    static Optional<FontTraitsMask> calculateStyleMask(CSSValue& style);
-    static Optional<FontTraitsMask> calculateWeightMask(CSSValue& weight);
 
     class Client;
     void addClient(Client&);
@@ -102,7 +109,8 @@ public:
     void fontLoaded(CSSFontFaceSource&);
 
     void load();
-    RefPtr<Font> font(const FontDescription&, bool syntheticBold, bool syntheticItalic);
+
+    RefPtr<Font> font(const FontDescription&, bool syntheticBold, bool syntheticItalic, ExternalResourceDownloadPolicy);
 
     static void appendSources(CSSFontFace&, CSSValueList&, Document*, bool isInitiatingElementInUserAgentShadowTree);
 
@@ -130,6 +138,8 @@ public:
     struct UnicodeRange {
         UChar32 from;
         UChar32 to;
+        bool operator==(const UnicodeRange& other) const { return from == other.from && to == other.to; }
+        bool operator!=(const UnicodeRange& other) const { return !(*this == other); }
     };
 
     bool rangesMatchCodePoint(UChar32) const;
@@ -152,7 +162,7 @@ public:
 private:
     CSSFontFace(CSSFontSelector*, StyleRuleFontFace*, FontFace*, bool isLocalFallback);
 
-    size_t pump();
+    size_t pump(ExternalResourceDownloadPolicy);
     void setStatus(Status);
     void notifyClientsOfFontPropertyChange();
 
@@ -162,7 +172,6 @@ private:
     void timeoutFired();
 
     RefPtr<CSSValueList> m_families;
-    FontTraitsMask m_traitsMask { static_cast<FontTraitsMask>(FontStyleNormalMask | FontWeight400Mask) };
     Vector<UnicodeRange> m_ranges;
     FontFeatureSettings m_featureSettings;
     FontVariantSettings m_variantSettings;
@@ -172,6 +181,8 @@ private:
     RefPtr<StyleRuleFontFace> m_cssConnection;
     HashSet<Client*> m_clients;
     WeakPtr<FontFace> m_wrapper;
+    FontSelectionSpecifiedCapabilities m_fontSelectionCapabilities;
+    FontLoadingBehavior m_loadingBehavior { FontLoadingBehavior::Auto };
     Status m_status { Status::Pending };
     bool m_isLocalFallback { false };
     bool m_sourcesPopulated { false };

@@ -47,6 +47,10 @@ class ServerError(Exception):
 class HttpServerBase(object):
     """A skeleton class for starting and stopping servers used by the layout tests."""
 
+    HTTP_SERVER_PORT = 8000
+    ALTERNATIVE_HTTP_SERVER_PORT = 8080
+    HTTPS_SERVER_PORT = 8443
+
     def __init__(self, port_obj):
         self._executive = port_obj._executive
         self._filesystem = port_obj._filesystem
@@ -67,6 +71,9 @@ class HttpServerBase(object):
 
         self._runtime_path = self._filesystem.join(tmpdir, "WebKit")
         self._filesystem.maybe_make_directory(self._runtime_path)
+
+    def ports_to_forward(self):
+        return [mapping['port'] for mapping in self._mappings]
 
     def start(self):
         """Starts the server. It is an error to start an already started server.
@@ -193,18 +200,23 @@ class HttpServerBase(object):
             raise ServerError("Server exited")
 
         for mapping in self._mappings:
-            s = socket.socket()
-            port = mapping['port']
-            try:
-                s.connect(('localhost', port))
-                _log.debug("Server running on %d" % port)
-            except IOError, e:
-                if e.errno not in (errno.ECONNREFUSED, errno.ECONNRESET):
-                    raise
-                _log.debug("Server NOT running on %d: %s" % (port, e))
+            if not self._is_running_on_port(mapping['port']):
                 return False
-            finally:
-                s.close()
+        return True
+
+    @classmethod
+    def _is_running_on_port(cls, port):
+        s = socket.socket()
+        try:
+            s.connect(('localhost', port))
+            _log.debug("Server running on %d" % port)
+        except IOError, e:
+            if e.errno not in (errno.ECONNREFUSED, errno.ECONNRESET):
+                raise
+            _log.debug("Server NOT running on %d: %s" % (port, e))
+            return False
+        finally:
+            s.close()
         return True
 
     def _check_that_all_ports_are_available(self):
@@ -223,3 +235,7 @@ class HttpServerBase(object):
                     raise
             finally:
                 s.close()
+
+
+def is_http_server_running():
+    return HttpServerBase._is_running_on_port(HttpServerBase.HTTP_SERVER_PORT)

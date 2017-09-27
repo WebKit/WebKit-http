@@ -37,12 +37,20 @@ public:
     FlowContents(const RenderBlockFlow&);
 
     struct Segment {
+        unsigned toSegmentPosition(unsigned position) const
+        {
+            ASSERT(position >= start);
+            return position - start;
+        }
+        unsigned toRenderPosition(unsigned position) const { return start + position; }
         unsigned start;
         unsigned end;
-        String text;
+        StringView text;
         const RenderObject& renderer;
+        bool canUseSimplifiedTextMeasuring;
     };
     const Segment& segmentForRun(unsigned start, unsigned end) const;
+    const Segment& segmentForPosition(unsigned) const;
 
     typedef Vector<Segment, 8>::const_iterator Iterator;
     Iterator begin() const { return m_segments.begin(); }
@@ -51,16 +59,25 @@ public:
 private:
     unsigned segmentIndexForRunSlow(unsigned start, unsigned end) const;
     const Vector<Segment, 8> m_segments;
-    mutable unsigned m_lastSegmentIndex;
+    mutable unsigned m_lastSegmentIndex { 0 };
 };
 
 inline const FlowContents::Segment& FlowContents::segmentForRun(unsigned start, unsigned end) const
 {
-    ASSERT(start < end);
+    ASSERT(start <= end);
     auto& lastSegment = m_segments[m_lastSegmentIndex];
     if (lastSegment.start <= start && end <= lastSegment.end)
         return m_segments[m_lastSegmentIndex];
     return m_segments[segmentIndexForRunSlow(start, end)];
+}
+
+inline const FlowContents::Segment& FlowContents::segmentForPosition(unsigned position) const
+{
+    auto it = std::lower_bound(m_segments.begin(), m_segments.end(), position, [](const Segment& segment, unsigned position) {
+        return segment.end <= position;
+    });
+    ASSERT(it != m_segments.end());
+    return m_segments[it - m_segments.begin()];
 }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,9 +37,7 @@
 
 namespace JSC { namespace FTL {
 
-using namespace DFG;
-
-JITFinalizer::JITFinalizer(Plan& plan)
+JITFinalizer::JITFinalizer(DFG::Plan& plan)
     : Finalizer(plan)
 {
 }
@@ -63,11 +61,15 @@ size_t JITFinalizer::codeSize()
 
 bool JITFinalizer::finalize()
 {
-    RELEASE_ASSERT_NOT_REACHED();
-    return false;
+    return finalizeCommon();
 }
 
 bool JITFinalizer::finalizeFunction()
+{
+    return finalizeCommon();
+}
+
+bool JITFinalizer::finalizeCommon()
 {
     bool dumpDisassembly = shouldDumpDisassembly() || Options::asyncDisassembly();
     
@@ -76,15 +78,17 @@ bool JITFinalizer::finalizeFunction()
             dumpDisassembly, *b3CodeLinkBuffer,
             ("FTL B3 code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data())));
 
-    jitCode->initializeArityCheckEntrypoint(
-        FINALIZE_CODE_IF(
-            dumpDisassembly, *entrypointLinkBuffer,
-            ("FTL entrypoint thunk for %s with B3 generated code at %p", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data(), function)));
+    if (entrypointLinkBuffer) {
+        jitCode->initializeArityCheckEntrypoint(
+            FINALIZE_CODE_IF(
+                dumpDisassembly, *entrypointLinkBuffer,
+                ("FTL entrypoint thunk for %s with B3 generated code at %p", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data(), function)));
+    }
     
-    m_plan.codeBlock->setJITCode(jitCode);
+    m_plan.codeBlock->setJITCode(*jitCode);
 
-    if (m_plan.compilation)
-        m_plan.vm->m_perBytecodeProfiler->addCompilation(m_plan.codeBlock, m_plan.compilation);
+    if (UNLIKELY(m_plan.compilation))
+        m_plan.vm->m_perBytecodeProfiler->addCompilation(m_plan.codeBlock, *m_plan.compilation);
     
     return true;
 }

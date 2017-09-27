@@ -260,8 +260,6 @@ PASS win['SVGAngle'] == '[object SVGAngleConstructor]' is true
 PASS win['SVGAngle'] == '[object SVGAngleConstructor]' is true
 PASS win['SVGColor'] == '[object SVGColorConstructor]' is true
 PASS win['SVGColor'] == '[object SVGColorConstructor]' is true
-PASS win['SVGException'] == '[object SVGExceptionConstructor]' is true
-PASS win['SVGException'] == '[object SVGExceptionConstructor]' is true
 PASS win['SVGGradientElement'] == '[object SVGGradientElementConstructor]' is true
 PASS win['SVGGradientElement'] == '[object SVGGradientElementConstructor]' is true
 PASS win['SVGLength'] == '[object SVGLengthConstructor]' is true
@@ -304,8 +302,6 @@ PASS win['XMLSerializer'] == '[object XMLSerializerConstructor]' is true
 PASS win['XMLSerializer'] == '[object XMLSerializerConstructor]' is true
 PASS win['XPathEvaluator'] == '[object XPathEvaluatorConstructor]' is true
 PASS win['XPathEvaluator'] == '[object XPathEvaluatorConstructor]' is true
-PASS win['XPathException'] == '[object XPathExceptionConstructor]' is true
-PASS win['XPathException'] == '[object XPathExceptionConstructor]' is true
 PASS win['XPathResult'] == '[object XPathResultConstructor]' is true
 PASS win['XPathResult'] == '[object XPathResultConstructor]' is true
 PASS win['XSLTProcessor'] == '[object XSLTProcessorConstructor]' is true

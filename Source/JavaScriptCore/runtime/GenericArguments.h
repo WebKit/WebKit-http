@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "CagedBarrierPtr.h"
 #include "JSObject.h"
 
 namespace JSC {
@@ -43,6 +44,7 @@ protected:
     {
     }
 
+    static void visitChildren(JSCell*, SlotVisitor&);
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static bool getOwnPropertySlotByIndex(JSObject*, ExecState*, unsigned propertyName, PropertySlot&);
     static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
@@ -52,7 +54,14 @@ protected:
     static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned propertyName);
     static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
     
+    void initModifiedArgumentsDescriptor(VM&, unsigned length);
+    void initModifiedArgumentsDescriptorIfNecessary(VM&, unsigned length);
+    void setModifiedArgumentDescriptor(VM&, unsigned index, unsigned length);
+    bool isModifiedArgumentDescriptor(unsigned index, unsigned length);
+
     void copyToArguments(ExecState*, VirtualRegister firstElementDest, unsigned offset, unsigned length);
+    
+    CagedBarrierPtr<Gigacage::Primitive, bool> m_modifiedArgumentsDescriptor;
 };
 
 } // namespace JSC

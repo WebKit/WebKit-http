@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.Object
+WI.ResourceTimingData = class ResourceTimingData
 {
     constructor(resource, data)
     {
-        super();
-
         data = data || {};
 
         console.assert(isNaN(data.domainLookupStart) === isNaN(data.domainLookupEnd));
@@ -65,7 +63,7 @@ WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.
             payload = {};
 
         function offsetToTimestamp(offset) {
-            return offset > 0 ? payload.startTime + offset / 1000 : NaN;
+            return offset > 0 ? payload.startTime + (offset / 1000) : NaN;
         }
 
         let data = {
@@ -84,7 +82,7 @@ WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.
         if (isNaN(data.connectStart) && !isNaN(data.secureConnectionStart))
             data.connectStart = data.secureConnectionStart;
 
-        return new WebInspector.ResourceTimingData(resource, data);
+        return new WI.ResourceTimingData(resource, data);
     }
 
     // Public
@@ -95,13 +93,15 @@ WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.
     get connectStart() { return this._connectStart; }
     get connectEnd() { return this._connectEnd; }
     get secureConnectionStart() { return this._secureConnectionStart; }
-    get requestStart() { return this._requestStart || this._resource.requestSentTimestamp; }
-    get responseStart() { return this._responseStart || this._resource.responseReceivedTimestamp; }
+    get requestStart() { return this._requestStart || this._startTime || this._resource.requestSentTimestamp; }
+    get responseStart() { return this._responseStart || this._startTime || this._resource.responseReceivedTimestamp; }
     get responseEnd() { return this._responseEnd || this._resource.finishedOrFailedTimestamp; }
 
     markResponseEndTime(responseEnd)
     {
         console.assert(typeof responseEnd === "number");
+        console.assert(isNaN(responseEnd) || responseEnd >= this.startTime, "responseEnd time should be greater than the start time", this.startTime, responseEnd);
+        console.assert(isNaN(responseEnd) || responseEnd >= this.requestStart, "responseEnd time should be greater than the request time", this.requestStart, responseEnd);
         this._responseEnd = responseEnd;
     }
 };

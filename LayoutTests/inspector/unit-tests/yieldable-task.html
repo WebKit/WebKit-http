@@ -18,7 +18,7 @@ function test()
     suite.addTestCase({
         name: "ItemsAreProcessedInIterationOrder",
         description: "Check that yieldableTaskWillProcessItem delegate is called on input items in order.",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let expectedItems = createTaskItems();
             let delegate = {
                 yieldableTaskWillProcessItem: (task, item) => {
@@ -33,14 +33,14 @@ function test()
                 }
             };
 
-            new WebInspector.YieldableTask(delegate, expectedItems.slice(), options).start();
+            new WI.YieldableTask(delegate, expectedItems.slice(), options).start();
         }
     });
 
     suite.addTestCase({
         name: "ProcessedItemsArgumentContainsExpectedItems",
         description: "The list of processed items after a yield should contain the items that were processed by yieldableTaskWillProcessItem.",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             const itemsToProcessBeforeForcingTaskToYield = 10;
             let actualProcessedItems = [];
 
@@ -66,14 +66,14 @@ function test()
                 }
             };
 
-            new WebInspector.YieldableTask(delegate, createTaskItems(40), options).start();
+            new WI.YieldableTask(delegate, createTaskItems(40), options).start();
         }
     });
 
     suite.addTestCase({
         name: "TaskFinishesWhenInterruptedByCancellation",
         description: "Check that a task can be cancelled.",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let items = createTaskItems(40);
             let delegate = {
                 yieldableTaskWillProcessItem: (task, item) => {
@@ -88,14 +88,14 @@ function test()
                 }
             };
 
-            new WebInspector.YieldableTask(delegate, items, options).start();
+            new WI.YieldableTask(delegate, items, options).start();
         }
     });
 
     suite.addTestCase({
         name: "ShortTaskCompletesWithoutYielding",
         description: "A task with very few items should run to completion without yielding.",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let processedItemsCount = 0;
 
             let delegate = {
@@ -112,7 +112,7 @@ function test()
                 }
             };
 
-            new WebInspector.YieldableTask(delegate, createTaskItems(50)).start();
+            new WI.YieldableTask(delegate, createTaskItems(50)).start();
         }
     });
 
@@ -120,7 +120,7 @@ function test()
         suite.addTestCase({
             name: `ProcessItemsFrom${name}`,
             description: "Check that any iterable object is supported.",
-            test: (resolve, reject) => {
+            test(resolve, reject) {
                 let delegate = {
                     yieldableTaskWillProcessItem: (task, item) => {
                         InspectorTest.log("Process item: " + JSON.stringify(item));
@@ -133,7 +133,7 @@ function test()
                     }
                 };
 
-                new WebInspector.YieldableTask(delegate, iterable).start();
+                new WI.YieldableTask(delegate, iterable).start();
             }
         });
     }
@@ -162,6 +162,6 @@ function test()
 </script>
 </head>
 <body onload="runTest()">
-    <p>Testing WebInspector.YieldableTask.</p>
+    <p>Testing WI.YieldableTask.</p>
 </body>
 </html>

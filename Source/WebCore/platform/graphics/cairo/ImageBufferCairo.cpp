@@ -52,9 +52,15 @@
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #include "GLContext.h"
 #include "TextureMapperGL.h"
+
+#if USE(EGL) && USE(LIBEPOXY)
+#include "EpoxyEGL.h"
+#endif
 #include <cairo-gl.h>
 
-#if USE(OPENGL_ES_2)
+#if USE(LIBEPOXY)
+#include <epoxy/gl.h>
+#elif USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
 #else
 #include "OpenGLShims.h"
@@ -141,6 +147,11 @@ void ImageBufferData::createCompositorBuffer()
 void ImageBufferData::markBufferChanged()
 {
     m_bufferChanged = true;
+}
+
+RefPtr<TextureMapperPlatformLayerProxy> ImageBufferData::proxy() const
+{
+    return m_platformLayerProxy.copyRef();
 }
 
 void ImageBufferData::swapBuffersIfNeeded()
@@ -240,7 +251,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
 #if USE(COORDINATED_GRAPHICS_THREADED)
         else {
             LockHolder locker(m_data.m_platformLayerProxy->lock());
-            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend, GL_RGBA));
+            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend, GraphicsContext3D::RGBA));
         }
 #endif
     }
@@ -249,10 +260,13 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     ASSERT(m_data.m_renderingMode != Accelerated);
 #endif
     {
+        static cairo_user_data_key_t s_surfaceDataKey;
+
         int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, m_size.width());
-        m_data.m_surfaceData = MallocPtr<unsigned char>::malloc(m_size.height() * stride);
-        memset(m_data.m_surfaceData.get(), 0, m_size.height() * stride);
-        m_data.m_surface = adoptRef(cairo_image_surface_create_for_data(m_data.m_surfaceData.get(), CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height(), stride));
+        auto* surfaceData = fastZeroedMalloc(m_size.height() * stride);
+
+        m_data.m_surface = adoptRef(cairo_image_surface_create_for_data(static_cast<unsigned char*>(surfaceData), CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height(), stride));
+        cairo_surface_set_user_data(m_data.m_surface.get(), &s_surfaceDataKey, surfaceData, [](void* data) { fastFree(data); });
     }
 
     if (cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
@@ -313,7 +327,7 @@ void ImageBuffer::draw(GraphicsContext& destinationContext, const FloatRect& des
 {
     BackingStoreCopy copyMode = &destinationContext == &context() ? CopyBackingStore : DontCopyBackingStore;
     RefPtr<Image> image = copyImage(copyMode);
-    destinationContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
+    destinationContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription()));
 }
 
 void ImageBuffer::drawPattern(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
@@ -323,7 +337,7 @@ void ImageBuffer::drawPattern(GraphicsContext& context, const FloatRect& destRec
         image->drawPattern(context, destRect, srcRect, patternTransform, phase, spacing, op);
 }
 
-void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
+void ImageBuffer::platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable)
 {
     // FIXME: Enable color space conversions on accelerated canvases.
     if (cairo_surface_get_type(m_data.m_surface.get()) != CAIRO_SURFACE_TYPE_IMAGE)
@@ -363,7 +377,7 @@ RefPtr<cairo_surface_t> copySurfaceToImageAndAdjustRect(cairo_surface_t* surface
 template <Multiply multiplied>
 RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const IntRect& logicalRect, const ImageBufferData& data, const IntSize& size, const IntSize& logicalSize, float resolutionScale)
 {
-    RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
+    auto result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
     if (!result)
         return nullptr;
 
@@ -440,7 +454,7 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const IntRect& logic
         destRows += destBytesPerRow;
     }
 
-    return result.release();
+    return result;
 }
 
 template<typename Unit>
@@ -463,17 +477,21 @@ inline Unit backingStoreUnit(const Unit& value, ImageBuffer::CoordinateSystem co
     return result;
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     IntRect logicalRect = logicalUnit(rect, coordinateSystem, m_resolutionScale);
     IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = backingStoreRect.size();
     return getImageData<Unmultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     IntRect logicalRect = logicalUnit(rect, coordinateSystem, m_resolutionScale);
     IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = backingStoreRect.size();
     return getImageData<Premultiplied>(backingStoreRect, logicalRect, m_data, m_size, m_logicalSize, m_resolutionScale);
 }
 
@@ -566,15 +584,15 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
     }
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(EFL)
+#if !PLATFORM(GTK)
 static cairo_status_t writeFunction(void* output, const unsigned char* data, unsigned int length)
 {
-    if (!reinterpret_cast<Vector<unsigned char>*>(output)->tryAppend(data, length))
+    if (!reinterpret_cast<Vector<uint8_t>*>(output)->tryAppend(data, length))
         return CAIRO_STATUS_WRITE_ERROR;
     return CAIRO_STATUS_SUCCESS;
 }
 
-static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<char>* output, Optional<double> quality)
+static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<uint8_t>* output, optional<double> quality)
 {
     ASSERT_UNUSED(mimeType, mimeType == "image/png" || mimeType == "image/jpeg"); // Only PNG  and JPEG output are supported for now.
 
@@ -591,21 +609,31 @@ static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<c
     return false;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
+{
+    Vector<uint8_t> encodedImage = toData(mimeType, quality);
+    if (encodedImage.isEmpty())
+        return "data:,";
+
+    Vector<char> base64Data;
+    base64Encode(encodedImage.data(), encodedImage.size(), base64Data);
+
+    return "data:" + mimeType + ";base64," + base64Data;
+}
+
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
     cairo_surface_t* image = cairo_get_target(context().platformContext()->cr());
 
-    Vector<char> encodedImage;
+    Vector<uint8_t> encodedImage;
     if (!image || !encodeImage(image, mimeType, &encodedImage, quality))
-        return "data:,";
+        return { };
 
-    Vector<char> base64Data;
-    base64Encode(encodedImage, base64Data);
-
-    return "data:" + mimeType + ";base64," + base64Data;
+    return encodedImage;
 }
+
 #endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS) && !USE(COORDINATED_GRAPHICS_THREADED)

@@ -31,7 +31,7 @@
 namespace JSC {
 
 StopIfNecessaryTimer::StopIfNecessaryTimer(VM* vm)
-    : HeapTimer(vm)
+    : Base(vm)
 {
 }
 
@@ -48,7 +48,7 @@ void StopIfNecessaryTimer::scheduleSoon()
         WTF::loadLoadFence();
         return;
     }
-    scheduleTimer(0);
+    scheduleTimer(0_s);
 }
 
 } // namespace JSC

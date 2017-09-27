@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2015-2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,13 +25,25 @@
 
 #include <wtf/Platform.h>
 
+#if USE(CF)
 #include "JavaScriptCore.h"
+#else
+#include "JavaScript.h"
+#endif
+
 #include "JSBasePrivate.h"
 #include "JSContextRefPrivate.h"
+#include "JSHeapFinalizerPrivate.h"
+#include "JSMarkingConstraintPrivate.h"
 #include "JSObjectRefPrivate.h"
 #include "JSScriptRefPrivate.h"
 #include "JSStringRefPrivate.h"
+#include "JSWeakPrivate.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #define ASSERT_DISABLED 0
 #include <wtf/Assertions.h>
 
@@ -45,6 +57,8 @@
 #include "FunctionOverridesTest.h"
 #include "GlobalContextWithFinalizerTest.h"
 #include "JSONParseTest.h"
+#include "JSObjectGetProxyTargetTest.h"
+#include "MultithreadedMultiVMExecutionTest.h"
 #include "PingPongStackOverflowTest.h"
 #include "TypedArrayCTest.h"
 
@@ -108,6 +122,7 @@ static void assertEqualsAsCharactersPtr(JSValueRef value, const char* expectedVa
 {
     JSStringRef valueAsString = JSValueToStringCopy(context, value, NULL);
 
+#if USE(CF)
     size_t jsLength = JSStringGetLength(valueAsString);
     const JSChar* jsBuffer = JSStringGetCharactersPtr(valueAsString);
 
@@ -134,6 +149,18 @@ static void assertEqualsAsCharactersPtr(JSValueRef value, const char* expectedVa
     }
 
     free(cfBuffer);
+#else
+    size_t bufferSize = JSStringGetMaximumUTF8CStringSize(valueAsString);
+    char* buffer = (char*)malloc(bufferSize);
+    JSStringGetUTF8CString(valueAsString, buffer, bufferSize);
+
+    if (strcmp(buffer, expectedValue)) {
+        fprintf(stderr, "assertEqualsAsCharactersPtr failed: jsBuffer != cfBuffer\n");
+        failed = 1;
+    }
+
+    free(buffer);
+#endif
     JSStringRelease(valueAsString);
 }
 
@@ -1107,6 +1134,10 @@ static bool globalContextNameTest()
     return result;
 }
 
+#if COMPILER(GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 static void checkConstnessInJSObjectNames()
 {
     JSStaticFunction fun;
@@ -1114,6 +1145,206 @@ static void checkConstnessInJSObjectNames()
     JSStaticValue val;
     val.name = "something";
 }
+#if COMPILER(GCC)
+#pragma GCC diagnostic pop
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void JSSynchronousGarbageCollectForDebugging(JSContextRef);
+#ifdef __cplusplus
+}
+#endif
+
+static const unsigned numWeakRefs = 10000;
+
+static void markingConstraint(JSMarkerRef marker, void *userData)
+{
+    JSWeakRef *weakRefs;
+    unsigned i;
+    
+    weakRefs = (JSWeakRef*)userData;
+    
+    for (i = 0; i < numWeakRefs; i += 2) {
+        JSWeakRef weakRef = weakRefs[i];
+        if (weakRef) {
+            JSObjectRef object = JSWeakGetObject(weakRefs[i]);
+            marker->Mark(marker, object);
+            assertTrue(marker->IsMarked(marker, object), "A marked object is marked");
+        }
+    }
+}
+
+static bool didRunHeapFinalizer;
+static JSContextGroupRef expectedContextGroup;
+
+static void heapFinalizer(JSContextGroupRef group, void *userData)
+{
+    assertTrue((uintptr_t)userData == (uintptr_t)42, "Correct userData was passed");
+    assertTrue(group == expectedContextGroup, "Correct context group");
+    
+    didRunHeapFinalizer = true;
+}
+
+static void testMarkingConstraintsAndHeapFinalizers(void)
+{
+    JSContextGroupRef group;
+    JSContextRef context;
+    JSWeakRef *weakRefs;
+    unsigned i;
+    unsigned deadCount;
+    
+    printf("Testing Marking Constraints.\n");
+    
+    group = JSContextGroupCreate();
+    expectedContextGroup = group;
+    
+    context = JSGlobalContextCreateInGroup(group, NULL);
+
+    weakRefs = (JSWeakRef*)calloc(numWeakRefs, sizeof(JSWeakRef));
+
+    JSContextGroupAddMarkingConstraint(group, markingConstraint, weakRefs);
+    JSContextGroupAddHeapFinalizer(group, heapFinalizer, (void*)(uintptr_t)42);
+    
+    for (i = numWeakRefs; i--;)
+        weakRefs[i] = JSWeakCreate(group, JSObjectMakeArray(context, 0, NULL, NULL));
+    
+    JSSynchronousGarbageCollectForDebugging(context);
+    assertTrue(didRunHeapFinalizer, "Did run heap finalizer");
+    
+    deadCount = 0;
+    for (i = 0; i < numWeakRefs; i += 2) {
+        assertTrue(JSWeakGetObject(weakRefs[i]), "Marked objects stayed alive");
+        if (!JSWeakGetObject(weakRefs[i + 1]))
+            deadCount++;
+    }
+    
+    assertTrue(deadCount != 0, "At least some objects died");
+    
+    for (i = numWeakRefs; i--;) {
+        JSWeakRef weakRef = weakRefs[i];
+        weakRefs[i] = NULL;
+        JSWeakRelease(group, weakRef);
+    }
+    
+    didRunHeapFinalizer = false;
+    JSSynchronousGarbageCollectForDebugging(context);
+    assertTrue(didRunHeapFinalizer, "Did run heap finalizer");
+
+    JSContextGroupRemoveHeapFinalizer(group, heapFinalizer, (void*)(uintptr_t)42);
+
+    didRunHeapFinalizer = false;
+    JSSynchronousGarbageCollectForDebugging(context);
+    assertTrue(!didRunHeapFinalizer, "Did not run heap finalizer");
+    
+    JSContextGroupRelease(group);
+
+    printf("PASS: Marking Constraints and Heap Finalizers.\n");
+}
+
+#if USE(CF)
+static void testCFStrings(void)
+{
+    /* The assertion utility functions we use below expects to get the JSGlobalContextRef
+       from the global context variable. */
+    JSGlobalContextRef oldContext = context;
+    context = JSGlobalContextCreate(0);
+
+    UniChar singleUniChar = 65; // Capital A
+    CFMutableStringRef cfString = CFStringCreateMutableWithExternalCharactersNoCopy(kCFAllocatorDefault, &singleUniChar, 1, 1, kCFAllocatorNull);
+
+    JSStringRef jsCFIString = JSStringCreateWithCFString(cfString);
+    JSValueRef jsCFString = JSValueMakeString(context, jsCFIString);
+
+    CFStringRef cfEmptyString = CFStringCreateWithCString(kCFAllocatorDefault, "", kCFStringEncodingUTF8);
+
+    JSStringRef jsCFEmptyIString = JSStringCreateWithCFString(cfEmptyString);
+    JSValueRef jsCFEmptyString = JSValueMakeString(context, jsCFEmptyIString);
+
+    CFIndex cfStringLength = CFStringGetLength(cfString);
+    UniChar* buffer = (UniChar*)malloc(cfStringLength * sizeof(UniChar));
+    CFStringGetCharacters(cfString, CFRangeMake(0, cfStringLength), buffer);
+    JSStringRef jsCFIStringWithCharacters = JSStringCreateWithCharacters((JSChar*)buffer, cfStringLength);
+    JSValueRef jsCFStringWithCharacters = JSValueMakeString(context, jsCFIStringWithCharacters);
+
+    JSStringRef jsCFEmptyIStringWithCharacters = JSStringCreateWithCharacters((JSChar*)buffer, CFStringGetLength(cfEmptyString));
+    free(buffer);
+    JSValueRef jsCFEmptyStringWithCharacters = JSValueMakeString(context, jsCFEmptyIStringWithCharacters);
+
+    ASSERT(JSValueGetType(context, jsCFString) == kJSTypeString);
+    ASSERT(JSValueGetType(context, jsCFStringWithCharacters) == kJSTypeString);
+    ASSERT(JSValueGetType(context, jsCFEmptyString) == kJSTypeString);
+    ASSERT(JSValueGetType(context, jsCFEmptyStringWithCharacters) == kJSTypeString);
+
+    JSStringRef emptyString = JSStringCreateWithCFString(CFSTR(""));
+    const JSChar* characters = JSStringGetCharactersPtr(emptyString);
+    if (!characters) {
+        printf("FAIL: Returned null when accessing character pointer of an empty String.\n");
+        failed = 1;
+    } else
+        printf("PASS: returned empty when accessing character pointer of an empty String.\n");
+
+    size_t length = JSStringGetLength(emptyString);
+    if (length) {
+        printf("FAIL: Didn't return 0 length for empty String.\n");
+        failed = 1;
+    } else
+        printf("PASS: returned 0 length for empty String.\n");
+    JSStringRelease(emptyString);
+
+    assertEqualsAsBoolean(jsCFString, true);
+    assertEqualsAsBoolean(jsCFStringWithCharacters, true);
+    assertEqualsAsBoolean(jsCFEmptyString, false);
+    assertEqualsAsBoolean(jsCFEmptyStringWithCharacters, false);
+
+    assertEqualsAsNumber(jsCFString, nan(""));
+    assertEqualsAsNumber(jsCFStringWithCharacters, nan(""));
+    assertEqualsAsNumber(jsCFEmptyString, 0);
+    assertEqualsAsNumber(jsCFEmptyStringWithCharacters, 0);
+    ASSERT(sizeof(JSChar) == sizeof(UniChar));
+
+    assertEqualsAsCharactersPtr(jsCFString, "A");
+    assertEqualsAsCharactersPtr(jsCFStringWithCharacters, "A");
+    assertEqualsAsCharactersPtr(jsCFEmptyString, "");
+    assertEqualsAsCharactersPtr(jsCFEmptyStringWithCharacters, "");
+
+    assertEqualsAsUTF8String(jsCFString, "A");
+    assertEqualsAsUTF8String(jsCFStringWithCharacters, "A");
+    assertEqualsAsUTF8String(jsCFEmptyString, "");
+    assertEqualsAsUTF8String(jsCFEmptyStringWithCharacters, "");
+
+    CFStringRef cfJSString = JSStringCopyCFString(kCFAllocatorDefault, jsCFIString);
+    CFStringRef cfJSEmptyString = JSStringCopyCFString(kCFAllocatorDefault, jsCFEmptyIString);
+    ASSERT(CFEqual(cfJSString, cfString));
+    ASSERT(CFEqual(cfJSEmptyString, cfEmptyString));
+    CFRelease(cfJSString);
+    CFRelease(cfJSEmptyString);
+
+    JSObjectRef o = JSObjectMake(context, NULL, NULL);
+    JSStringRef jsOneIString = JSStringCreateWithUTF8CString("1");
+    JSObjectSetProperty(context, o, jsOneIString, JSValueMakeNumber(context, 1), kJSPropertyAttributeNone, NULL);
+    JSObjectSetProperty(context, o, jsCFIString,  JSValueMakeNumber(context, 1), kJSPropertyAttributeDontEnum, NULL);
+    JSPropertyNameArrayRef nameArray = JSObjectCopyPropertyNames(context, o);
+    size_t expectedCount = JSPropertyNameArrayGetCount(nameArray);
+    size_t count;
+    for (count = 0; count < expectedCount; ++count)
+        JSPropertyNameArrayGetNameAtIndex(nameArray, count);
+    JSPropertyNameArrayRelease(nameArray);
+    ASSERT(count == 1); // jsCFString should not be enumerated
+
+    JSStringRelease(jsOneIString);
+    JSStringRelease(jsCFIString);
+    JSStringRelease(jsCFEmptyIString);
+    JSStringRelease(jsCFIStringWithCharacters);
+    JSStringRelease(jsCFEmptyIStringWithCharacters);
+    CFRelease(cfString);
+    CFRelease(cfEmptyString);
+
+    JSGlobalContextRelease(context);
+    context = oldContext;
+}
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -1125,6 +1356,7 @@ int main(int argc, char* argv[])
 #endif
 
     testCompareAndSwap();
+    startMultithreadedMultiVMExecutionTest();
 
 #if JSC_OBJC_API_ENABLED
     testObjectiveCAPI();
@@ -1143,6 +1375,12 @@ int main(int argc, char* argv[])
     TestInitializeFinalize = false;
 
     ASSERT(Base_didFinalize);
+
+    testMarkingConstraintsAndHeapFinalizers();
+
+#if USE(CF)
+    testCFStrings();
+#endif
 
     JSClassDefinition globalObjectClassDefinition = kJSClassDefinitionEmpty;
     globalObjectClassDefinition.initialize = globalObject_initialize;
@@ -1189,34 +1427,6 @@ int main(int argc, char* argv[])
     JSStringRef jsOneIString = JSStringCreateWithUTF8CString("1");
     JSValueRef jsOneString = JSValueMakeString(context, jsOneIString);
 
-    UniChar singleUniChar = 65; // Capital A
-    CFMutableStringRef cfString = 
-        CFStringCreateMutableWithExternalCharactersNoCopy(kCFAllocatorDefault,
-                                                          &singleUniChar,
-                                                          1,
-                                                          1,
-                                                          kCFAllocatorNull);
-
-    JSStringRef jsCFIString = JSStringCreateWithCFString(cfString);
-    JSValueRef jsCFString = JSValueMakeString(context, jsCFIString);
-    
-    CFStringRef cfEmptyString = CFStringCreateWithCString(kCFAllocatorDefault, "", kCFStringEncodingUTF8);
-    
-    JSStringRef jsCFEmptyIString = JSStringCreateWithCFString(cfEmptyString);
-    JSValueRef jsCFEmptyString = JSValueMakeString(context, jsCFEmptyIString);
-
-    CFIndex cfStringLength = CFStringGetLength(cfString);
-    UniChar* buffer = (UniChar*)malloc(cfStringLength * sizeof(UniChar));
-    CFStringGetCharacters(cfString, 
-                          CFRangeMake(0, cfStringLength), 
-                          buffer);
-    JSStringRef jsCFIStringWithCharacters = JSStringCreateWithCharacters((JSChar*)buffer, cfStringLength);
-    JSValueRef jsCFStringWithCharacters = JSValueMakeString(context, jsCFIStringWithCharacters);
-    
-    JSStringRef jsCFEmptyIStringWithCharacters = JSStringCreateWithCharacters((JSChar*)buffer, CFStringGetLength(cfEmptyString));
-    free(buffer);
-    JSValueRef jsCFEmptyStringWithCharacters = JSValueMakeString(context, jsCFEmptyIStringWithCharacters);
-
     JSChar constantString[] = { 'H', 'e', 'l', 'l', 'o', };
     JSStringRef constantStringRef = JSStringCreateWithCharactersNoCopy(constantString, sizeof(constantString) / sizeof(constantString[0]));
     ASSERT(JSStringGetCharactersPtr(constantStringRef) == constantString);
@@ -1232,10 +1442,6 @@ int main(int argc, char* argv[])
     ASSERT(JSValueGetType(context, jsOneThird) == kJSTypeNumber);
     ASSERT(JSValueGetType(context, jsEmptyString) == kJSTypeString);
     ASSERT(JSValueGetType(context, jsOneString) == kJSTypeString);
-    ASSERT(JSValueGetType(context, jsCFString) == kJSTypeString);
-    ASSERT(JSValueGetType(context, jsCFStringWithCharacters) == kJSTypeString);
-    ASSERT(JSValueGetType(context, jsCFEmptyString) == kJSTypeString);
-    ASSERT(JSValueGetType(context, jsCFEmptyStringWithCharacters) == kJSTypeString);
 
     ASSERT(!JSValueIsBoolean(context, NULL));
     ASSERT(!JSValueIsObject(context, NULL));
@@ -1258,14 +1464,6 @@ int main(int argc, char* argv[])
     } else
         printf("PASS: returned null when accessing character pointer of a null String.\n");
 
-    JSStringRef emptyString = JSStringCreateWithCFString(CFSTR(""));
-    characters = JSStringGetCharactersPtr(emptyString);
-    if (!characters) {
-        printf("FAIL: Returned null when accessing character pointer of an empty String.\n");
-        failed = 1;
-    } else
-        printf("PASS: returned empty when accessing character pointer of an empty String.\n");
-
     size_t length = JSStringGetLength(nullString);
     if (length) {
         printf("FAIL: Didn't return 0 length for null String.\n");
@@ -1273,14 +1471,6 @@ int main(int argc, char* argv[])
     } else
         printf("PASS: returned 0 length for null String.\n");
     JSStringRelease(nullString);
-
-    length = JSStringGetLength(emptyString);
-    if (length) {
-        printf("FAIL: Didn't return 0 length for empty String.\n");
-        failed = 1;
-    } else
-        printf("PASS: returned 0 length for empty String.\n");
-    JSStringRelease(emptyString);
 
     JSObjectRef propertyCatchalls = JSObjectMake(context, PropertyCatchalls_class(context), NULL);
     JSStringRef propertyCatchallsString = JSStringCreateWithUTF8CString("PropertyCatchalls");
@@ -1337,7 +1527,8 @@ int main(int argc, char* argv[])
 
     JSGarbageCollect(context);
 
-    for (int i = 0; i < 10000; i++)
+    int i;
+    for (i = 0; i < 10000; i++)
         JSObjectMake(context, 0, 0);
 
     aHeapRef = JSValueToObject(context, JSObjectGetPrivateProperty(context, myObject, privatePropertyName), 0);
@@ -1461,10 +1652,6 @@ int main(int argc, char* argv[])
     assertEqualsAsBoolean(jsOneThird, true);
     assertEqualsAsBoolean(jsEmptyString, false);
     assertEqualsAsBoolean(jsOneString, true);
-    assertEqualsAsBoolean(jsCFString, true);
-    assertEqualsAsBoolean(jsCFStringWithCharacters, true);
-    assertEqualsAsBoolean(jsCFEmptyString, false);
-    assertEqualsAsBoolean(jsCFEmptyStringWithCharacters, false);
     
     assertEqualsAsNumber(jsUndefined, nan(""));
     assertEqualsAsNumber(jsNull, 0);
@@ -1475,11 +1662,6 @@ int main(int argc, char* argv[])
     assertEqualsAsNumber(jsOneThird, 1.0 / 3.0);
     assertEqualsAsNumber(jsEmptyString, 0);
     assertEqualsAsNumber(jsOneString, 1);
-    assertEqualsAsNumber(jsCFString, nan(""));
-    assertEqualsAsNumber(jsCFStringWithCharacters, nan(""));
-    assertEqualsAsNumber(jsCFEmptyString, 0);
-    assertEqualsAsNumber(jsCFEmptyStringWithCharacters, 0);
-    ASSERT(sizeof(JSChar) == sizeof(UniChar));
     
     assertEqualsAsCharactersPtr(jsUndefined, "undefined");
     assertEqualsAsCharactersPtr(jsNull, "null");
@@ -1490,10 +1672,6 @@ int main(int argc, char* argv[])
     assertEqualsAsCharactersPtr(jsOneThird, "0.3333333333333333");
     assertEqualsAsCharactersPtr(jsEmptyString, "");
     assertEqualsAsCharactersPtr(jsOneString, "1");
-    assertEqualsAsCharactersPtr(jsCFString, "A");
-    assertEqualsAsCharactersPtr(jsCFStringWithCharacters, "A");
-    assertEqualsAsCharactersPtr(jsCFEmptyString, "");
-    assertEqualsAsCharactersPtr(jsCFEmptyStringWithCharacters, "");
     
     assertEqualsAsUTF8String(jsUndefined, "undefined");
     assertEqualsAsUTF8String(jsNull, "null");
@@ -1504,10 +1682,6 @@ int main(int argc, char* argv[])
     assertEqualsAsUTF8String(jsOneThird, "0.3333333333333333");
     assertEqualsAsUTF8String(jsEmptyString, "");
     assertEqualsAsUTF8String(jsOneString, "1");
-    assertEqualsAsUTF8String(jsCFString, "A");
-    assertEqualsAsUTF8String(jsCFStringWithCharacters, "A");
-    assertEqualsAsUTF8String(jsCFEmptyString, "");
-    assertEqualsAsUTF8String(jsCFEmptyStringWithCharacters, "");
     
     checkConstnessInJSObjectNames();
     
@@ -1516,16 +1690,6 @@ int main(int argc, char* argv[])
 
     ASSERT(JSValueIsEqual(context, jsOne, jsOneString, NULL));
     ASSERT(!JSValueIsEqual(context, jsTrue, jsFalse, NULL));
-    
-    CFStringRef cfJSString = JSStringCopyCFString(kCFAllocatorDefault, jsCFIString);
-    CFStringRef cfJSEmptyString = JSStringCopyCFString(kCFAllocatorDefault, jsCFEmptyIString);
-    ASSERT(CFEqual(cfJSString, cfString));
-    ASSERT(CFEqual(cfJSEmptyString, cfEmptyString));
-    CFRelease(cfJSString);
-    CFRelease(cfJSEmptyString);
-
-    CFRelease(cfString);
-    CFRelease(cfEmptyString);
     
     jsGlobalValue = JSObjectMake(context, NULL, NULL);
     makeGlobalNumberValue(context);
@@ -1680,17 +1844,6 @@ int main(int argc, char* argv[])
     JSObjectSetProperty(context, globalObject, string, derived2Constructor, kJSPropertyAttributeNone, NULL);
     JSStringRelease(string);
 
-    o = JSObjectMake(context, NULL, NULL);
-    JSObjectSetProperty(context, o, jsOneIString, JSValueMakeNumber(context, 1), kJSPropertyAttributeNone, NULL);
-    JSObjectSetProperty(context, o, jsCFIString,  JSValueMakeNumber(context, 1), kJSPropertyAttributeDontEnum, NULL);
-    JSPropertyNameArrayRef nameArray = JSObjectCopyPropertyNames(context, o);
-    size_t expectedCount = JSPropertyNameArrayGetCount(nameArray);
-    size_t count;
-    for (count = 0; count < expectedCount; ++count)
-        JSPropertyNameArrayGetNameAtIndex(nameArray, count);
-    JSPropertyNameArrayRelease(nameArray);
-    ASSERT(count == 1); // jsCFString should not be enumerated
-
     JSValueRef argumentsArrayValues[] = { JSValueMakeNumber(context, 10), JSValueMakeNumber(context, 20) };
     o = JSObjectMakeArray(context, sizeof(argumentsArrayValues) / sizeof(JSValueRef), argumentsArrayValues, NULL);
     string = JSStringCreateWithUTF8CString("length");
@@ -1814,9 +1967,11 @@ int main(int argc, char* argv[])
         ASSERT((!scriptObject) != (!errorMessage));
         if (!scriptObject) {
             printf("FAIL: Test script did not parse\n\t%s:%d\n\t", scriptPath, errorLine);
+#if USE(CF)
             CFStringRef errorCF = JSStringCopyCFString(kCFAllocatorDefault, errorMessage);
             CFShow(errorCF);
             CFRelease(errorCF);
+#endif
             JSStringRelease(errorMessage);
             failed = 1;
         }
@@ -1829,9 +1984,11 @@ int main(int argc, char* argv[])
         else {
             printf("FAIL: Test script returned unexpected value:\n");
             JSStringRef exceptionIString = JSValueToStringCopy(context, exception, NULL);
+#if USE(CF)
             CFStringRef exceptionCF = JSStringCopyCFString(kCFAllocatorDefault, exceptionIString);
             CFShow(exceptionCF);
             CFRelease(exceptionCF);
+#endif
             JSStringRelease(exceptionIString);
             failed = 1;
         }
@@ -1883,12 +2040,29 @@ int main(int argc, char* argv[])
         JSGlobalContextRelease(context);
     }
 
+    // Check JSObjectGetGlobalContext
+    {
+        JSGlobalContextRef context = JSGlobalContextCreateInGroup(NULL, NULL);
+        {
+            JSObjectRef globalObject = JSContextGetGlobalObject(context);
+            assertTrue(JSObjectGetGlobalContext(globalObject) == context, "global object context is correct");
+            JSObjectRef object = JSObjectMake(context, NULL, NULL);
+            assertTrue(JSObjectGetGlobalContext(object) == context, "regular object context is correct");
+            JSStringRef returnFunctionSource = JSStringCreateWithUTF8CString("return this;");
+            JSObjectRef theFunction = JSObjectMakeFunction(context, NULL, 0, NULL, returnFunctionSource, NULL, 1, NULL);
+            assertTrue(JSObjectGetGlobalContext(theFunction) == context, "function object context is correct");
+            assertTrue(JSObjectGetGlobalContext(NULL) == NULL, "NULL object context is NULL");
+            JSStringRelease(returnFunctionSource);
+        }
+        JSGlobalContextRelease(context);
+    }
     failed = testTypedArrayCAPI() || failed;
     failed = testExecutionTimeLimit() || failed;
     failed = testFunctionOverrides() || failed;
     failed = testGlobalContextWithFinalizer() || failed;
     failed = testPingPongStackOverflow() || failed;
     failed = testJSONParse() || failed;
+    failed = testJSObjectGetProxyTarget() || failed;
 
     // Clear out local variables pointing at JSObjectRefs to allow their values to be collected
     function = NULL;
@@ -1899,10 +2073,6 @@ int main(int argc, char* argv[])
 
     JSStringRelease(jsEmptyIString);
     JSStringRelease(jsOneIString);
-    JSStringRelease(jsCFIString);
-    JSStringRelease(jsCFEmptyIString);
-    JSStringRelease(jsCFIStringWithCharacters);
-    JSStringRelease(jsCFEmptyIStringWithCharacters);
     JSStringRelease(goodSyntax);
     JSStringRelease(badSyntax);
 
@@ -1940,6 +2110,8 @@ int main(int argc, char* argv[])
     customGlobalObjectClassTest();
     globalObjectSetPrototypeTest();
     globalObjectPrivatePropertyTest();
+
+    failed = finalizeMultithreadedMultiVMExecutionTest() || failed;
 
     if (failed) {
         printf("FAIL: Some tests failed.\n");

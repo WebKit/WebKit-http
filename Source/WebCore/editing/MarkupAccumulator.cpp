@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009, 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -149,8 +149,8 @@ void MarkupAccumulator::serializeNodesWithNamespaces(Node& targetNode, EChildren
         namespaceHash = *namespaces;
     else if (inXMLFragmentSerialization()) {
         // Make sure xml prefix and namespace are always known to uphold the constraints listed at http://www.w3.org/TR/xml-names11/#xmlReserved.
-        namespaceHash.set(xmlAtom.impl(), XMLNames::xmlNamespaceURI.impl());
-        namespaceHash.set(XMLNames::xmlNamespaceURI.impl(), xmlAtom.impl());
+        namespaceHash.set(xmlAtom().impl(), XMLNames::xmlNamespaceURI.impl());
+        namespaceHash.set(XMLNames::xmlNamespaceURI.impl(), xmlAtom().impl());
     }
 
     if (!childrenOnly)
@@ -214,10 +214,10 @@ void MarkupAccumulator::concatenateMarkup(StringBuilder& result)
     result.append(m_markup);
 }
 
-void MarkupAccumulator::appendAttributeValue(StringBuilder& result, const String& attribute, bool documentIsHTML)
+void MarkupAccumulator::appendAttributeValue(StringBuilder& result, const String& attribute, bool isSerializingHTML)
 {
     appendCharactersReplacingEntities(result, attribute, 0, attribute.length(),
-        documentIsHTML ? EntityMaskInHTMLAttributeValue : EntityMaskInAttributeValue);
+        isSerializingHTML ? EntityMaskInHTMLAttributeValue : EntityMaskInAttributeValue);
 }
 
 void MarkupAccumulator::appendCustomAttributes(StringBuilder&, const Element&, Namespaces*)
@@ -255,9 +255,9 @@ bool MarkupAccumulator::shouldAddNamespaceElement(const Element& element)
     // Don't add namespace attribute if it is already defined for this elem.
     const AtomicString& prefix = element.prefix();
     if (prefix.isEmpty())
-        return !element.hasAttribute(xmlnsAtom);
+        return !element.hasAttribute(xmlnsAtom());
 
-    static NeverDestroyed<String> xmlnsWithColon(ASCIILiteral("xmlns:"));
+    static NeverDestroyed<String> xmlnsWithColon(MAKE_STATIC_STRING_IMPL("xmlns:"));
     return !element.hasAttribute(xmlnsWithColon.get() + prefix);
 }
 
@@ -267,12 +267,12 @@ bool MarkupAccumulator::shouldAddNamespaceAttribute(const Attribute& attribute, 
 
     // Don't add namespace attributes twice
     // HTML Parser will create xmlns attributes without namespace for HTML elements, allow those as well.
-    if (attribute.name().localName() == xmlnsAtom && (attribute.namespaceURI().isEmpty() || attribute.namespaceURI() == XMLNSNames::xmlnsNamespaceURI)) {
-        namespaces.set(emptyAtom.impl(), attribute.value().impl());
+    if (attribute.name().localName() == xmlnsAtom() && (attribute.namespaceURI().isEmpty() || attribute.namespaceURI() == XMLNSNames::xmlnsNamespaceURI)) {
+        namespaces.set(emptyAtom().impl(), attribute.value().impl());
         return false;
     }
 
-    QualifiedName xmlnsPrefixAttr(xmlnsAtom, attribute.localName(), XMLNSNames::xmlnsNamespaceURI);
+    QualifiedName xmlnsPrefixAttr(xmlnsAtom(), attribute.localName(), XMLNSNames::xmlnsNamespaceURI);
     if (attribute.name() == xmlnsPrefixAttr) {
         namespaces.set(attribute.localName().impl(), attribute.value().impl());
         namespaces.set(attribute.value().impl(), attribute.localName().impl());
@@ -287,16 +287,16 @@ void MarkupAccumulator::appendNamespace(StringBuilder& result, const AtomicStrin
     namespaces.checkConsistency();
     if (namespaceURI.isEmpty()) {
         // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-xhtml-syntax.html#xml-fragment-serialization-algorithm
-        if (allowEmptyDefaultNS && namespaces.get(emptyAtom.impl())) {
+        if (allowEmptyDefaultNS && namespaces.get(emptyAtom().impl())) {
             result.append(' ');
-            result.append(xmlnsAtom.string());
+            result.append(xmlnsAtom().string());
             result.appendLiteral("=\"\"");
         }
         return;
     }
 
-    // Use emptyAtoms's impl() for both null and empty strings since the HashMap can't handle 0 as a key
-    AtomicStringImpl* pre = prefix.isEmpty() ? emptyAtom.impl() : prefix.impl();
+    // Use emptyAtom()s's impl() for both null and empty strings since the HashMap can't handle 0 as a key
+    AtomicStringImpl* pre = prefix.isEmpty() ? emptyAtom().impl() : prefix.impl();
     AtomicStringImpl* foundNS = namespaces.get(pre);
     if (foundNS != namespaceURI.impl()) {
         namespaces.set(pre, namespaceURI.impl());
@@ -307,7 +307,7 @@ void MarkupAccumulator::appendNamespace(StringBuilder& result, const AtomicStrin
         if (namespaceURI.impl() == XMLNames::xmlNamespaceURI.impl())
             return;
         result.append(' ');
-        result.append(xmlnsAtom.string());
+        result.append(xmlnsAtom().string());
         if (!prefix.isEmpty()) {
             result.append(':');
             result.append(prefix);
@@ -443,7 +443,7 @@ void MarkupAccumulator::appendOpenTag(StringBuilder& result, const Element& elem
         // a default namespace declaration to make this namespace well-formed. However, http://www.w3.org/TR/xml-names11/#xmlReserved states
         // "The prefix xml MUST NOT be declared as the default namespace.", so use the xml prefix explicitly.
         if (element.namespaceURI() == XMLNames::xmlNamespaceURI) {
-            result.append(xmlAtom);
+            result.append(xmlAtom());
             result.append(':');
         }
     }
@@ -489,18 +489,18 @@ void MarkupAccumulator::generateUniquePrefix(QualifiedName& prefixedName, const 
 
 void MarkupAccumulator::appendAttribute(StringBuilder& result, const Element& element, const Attribute& attribute, Namespaces* namespaces)
 {
-    bool documentIsHTML = element.document().isHTMLDocument();
+    bool isSerializingHTML = element.document().isHTMLDocument() && !inXMLFragmentSerialization();
 
     result.append(' ');
 
     QualifiedName prefixedName = attribute.name();
-    if (documentIsHTML && !attributeIsInSerializedNamespace(attribute))
+    if (isSerializingHTML && !attributeIsInSerializedNamespace(attribute))
         result.append(attribute.name().localName());
     else {
         if (!attribute.namespaceURI().isEmpty()) {
             if (attribute.namespaceURI() == XMLNames::xmlNamespaceURI) {
                 // Always use xml as prefix if the namespace is the XML namespace.
-                prefixedName.setPrefix(xmlAtom);
+                prefixedName.setPrefix(xmlAtom());
             } else {
                 AtomicStringImpl* foundNS = namespaces && attribute.prefix().impl() ? namespaces->get(attribute.prefix().impl()) : 0;
                 bool prefixIsAlreadyMappedToOtherNS = foundNS && foundNS != attribute.namespaceURI().impl();
@@ -509,7 +509,7 @@ void MarkupAccumulator::appendAttribute(StringBuilder& result, const Element& el
                         prefixedName.setPrefix(AtomicString(prefix));
                     else {
                         bool shouldBeDeclaredUsingAppendNamespace = !attribute.prefix().isEmpty() && !foundNS;
-                        if (!shouldBeDeclaredUsingAppendNamespace && attribute.localName() != xmlnsAtom && namespaces)
+                        if (!shouldBeDeclaredUsingAppendNamespace && attribute.localName() != xmlnsAtom() && namespaces)
                             generateUniquePrefix(prefixedName, *namespaces);
                     }
                 }
@@ -524,11 +524,11 @@ void MarkupAccumulator::appendAttribute(StringBuilder& result, const Element& el
         appendQuotedURLAttributeValue(result, element, attribute);
     else {
         result.append('"');
-        appendAttributeValue(result, attribute.value(), documentIsHTML);
+        appendAttributeValue(result, attribute.value(), isSerializingHTML);
         result.append('"');
     }
 
-    if ((inXMLFragmentSerialization() || !documentIsHTML) && namespaces && shouldAddNamespaceAttribute(attribute, *namespaces))
+    if (!isSerializingHTML && namespaces && shouldAddNamespaceAttribute(attribute, *namespaces))
         appendNamespace(result, prefixedName.prefix(), prefixedName.namespaceURI(), *namespaces);
 }
 

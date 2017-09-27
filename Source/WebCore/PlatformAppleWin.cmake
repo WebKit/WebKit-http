@@ -3,7 +3,6 @@ add_definitions(-DQUARTZCORE_DLL -DDISABLE_COREIMAGE -DDISABLE_FRONTEND -DDISABL
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBKIT_LIBRARIES_DIR}/include"
-    "${WEBKIT_LIBRARIES_DIR}/include/zlib"
     "${WEBCORE_DIR}/loader/archive/cf"
     "${WEBCORE_DIR}/platform/graphics/avfoundation"
     "${WEBCORE_DIR}/platform/graphics/avfoundation/cf"
@@ -11,8 +10,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/ca/win"
     "${WEBCORE_DIR}/platform/graphics/cg"
     "${WEBCORE_DIR}/platform/network/cf"
-    "${WEBCORE_DIR}/platform/spi/cf"
-    "${WEBCORE_DIR}/platform/spi/cg"
 )
 
 if (${USE_DIRECT2D})
@@ -26,7 +23,6 @@ else ()
         "${WEBCORE_DIR}/platform/graphics/ca"
         "${WEBCORE_DIR}/platform/graphics/ca/win"
         "${WEBCORE_DIR}/platform/graphics/cg"
-        "${WEBCORE_DIR}/platform/spi/cg"
     )
 endif ()
 
@@ -41,7 +37,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/avfoundation/InbandMetadataTextTrackPrivateAVF.cpp
     platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp
     platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp
-    platform/graphics/avfoundation/MediaTimeAVFoundation.cpp
     platform/graphics/avfoundation/WebMediaSessionManagerMac.cpp
 
     platform/graphics/avfoundation/cf/CDMSessionAVFoundationCF.cpp
@@ -138,6 +133,7 @@ else ()
         platform/graphics/cg/PatternCG.cpp
         platform/graphics/cg/SubimageCacheWithTimer.cpp
         platform/graphics/cg/TransformationMatrixCG.cpp
+        platform/graphics/cg/UTIRegistry.cpp
 
         platform/graphics/opentype/OpenTypeCG.cpp
 
@@ -154,8 +150,6 @@ endif ()
 
 list(APPEND WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/network/cf
-
-    platform/spi/cf
 )
 
 if (${USE_DIRECT2D})
@@ -170,7 +164,5 @@ else ()
         platform/graphics/ca/win
 
         platform/network/cf
-
-        platform/spi/cg
     )
 endif ()

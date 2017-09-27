@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,21 +23,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.SearchResultTreeElement = class SearchResultTreeElement extends WebInspector.GeneralTreeElement
+WI.SearchResultTreeElement = class SearchResultTreeElement extends WI.GeneralTreeElement
 {
     constructor(representedObject)
     {
-        console.assert(representedObject instanceof WebInspector.DOMSearchMatchObject || representedObject instanceof WebInspector.SourceCodeSearchMatchObject);
+        console.assert(representedObject instanceof WI.DOMSearchMatchObject || representedObject instanceof WI.SourceCodeSearchMatchObject);
 
-        var title = WebInspector.SearchResultTreeElement.truncateAndHighlightTitle(representedObject.title, representedObject.searchTerm, representedObject.sourceCodeTextRange);
-
-        super(representedObject.className, title, null, representedObject, false);
+        var title = WI.SearchResultTreeElement.truncateAndHighlightTitle(representedObject.title, representedObject.searchTerm, representedObject.sourceCodeTextRange);
+        const subtitle = null;
+        super(representedObject.className, title, subtitle, representedObject);
     }
 
     // Static
 
     static truncateAndHighlightTitle(title, searchTerm, sourceCodeTextRange)
     {
+        let isRTL = WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL;
+        const charactersToShowBeforeSearchMatch = isRTL ? 20 : 15;
+        const charactersToShowAfterSearchMatch = isRTL ? 15 : 50;
+
         // Use the original location, since those line/column offsets match the line text in title.
         var textRange = sourceCodeTextRange.textRange;
 
@@ -49,14 +53,14 @@ WebInspector.SearchResultTreeElement = class SearchResultTreeElement extends Web
         // Show some characters before the matching text (if there are enough) for context. TreeOutline takes care of the truncating
         // at the end of the string.
         var modifiedTitle = null;
-        if (searchTermIndex > WebInspector.SearchResultTreeElement.CharactersToShowBeforeSearchMatch) {
-            modifiedTitle = ellipsis + title.substring(searchTermIndex - WebInspector.SearchResultTreeElement.CharactersToShowBeforeSearchMatch);
-            searchTermIndex = WebInspector.SearchResultTreeElement.CharactersToShowBeforeSearchMatch + 1;
+        if (searchTermIndex > charactersToShowBeforeSearchMatch) {
+            modifiedTitle = ellipsis + title.substring(searchTermIndex - charactersToShowBeforeSearchMatch);
+            searchTermIndex = charactersToShowBeforeSearchMatch + 1;
         } else
             modifiedTitle = title;
 
         // Truncate the tail of the title so the tooltip isn't so large.
-        modifiedTitle = modifiedTitle.trimEnd(searchTermIndex + searchTerm.length + WebInspector.SearchResultTreeElement.CharactersToShowAfterSearchMatch);
+        modifiedTitle = modifiedTitle.trimEnd(searchTermIndex + searchTerm.length + charactersToShowAfterSearchMatch);
 
         console.assert(modifiedTitle.substring(searchTermIndex, searchTermIndex + searchTerm.length).toLowerCase() === searchTerm.toLowerCase());
 
@@ -80,7 +84,9 @@ WebInspector.SearchResultTreeElement = class SearchResultTreeElement extends Web
     {
         return {text: [this.representedObject.title]};
     }
-};
 
-WebInspector.SearchResultTreeElement.CharactersToShowBeforeSearchMatch = 15;
-WebInspector.SearchResultTreeElement.CharactersToShowAfterSearchMatch = 50;
+    get synthesizedTextValue()
+    {
+        return this.representedObject.sourceCodeTextRange.synthesizedTextValue + ":" + this.representedObject.title;
+    }
+};

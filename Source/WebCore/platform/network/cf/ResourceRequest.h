@@ -29,6 +29,7 @@
 #include "ResourceRequestBase.h"
 #include <wtf/RetainPtr.h>
 
+OBJC_CLASS NSCachedURLResponse;
 OBJC_CLASS NSURLRequest;
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
@@ -94,17 +95,6 @@ public:
     WEBCORE_EXPORT static CFStringRef isUserInitiatedKey();
 #endif
 
-#if ENABLE(CACHE_PARTITIONING)
-    WEBCORE_EXPORT static String partitionName(const String& domain);
-    const String& cachePartition() const { return m_cachePartition.isNull() ? emptyString() : m_cachePartition; }
-    void setCachePartition(const String& cachePartition)
-    {
-        ASSERT(cachePartition == partitionName(cachePartition));
-        m_cachePartition = cachePartition;
-    }
-    void setDomainForCachePartition(const String& domain) { m_cachePartition = partitionName(domain); }
-#endif
-
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     WEBCORE_EXPORT CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const;
     void setStorageSession(CFURLStorageSessionRef);
@@ -131,9 +121,6 @@ private:
 #if PLATFORM(COCOA)
     RetainPtr<NSURLRequest> m_nsRequest;
 #endif
-#if ENABLE(CACHE_PARTITIONING)
-    String m_cachePartition;
-#endif
 
     static bool s_httpPipeliningEnabled;
 };
@@ -148,5 +135,10 @@ inline bool ResourceRequest::resourcePrioritiesEnabled()
     return false;
 #endif
 }
+
+#if PLATFORM(COCOA)
+NSURLRequest *copyRequestWithStorageSession(CFURLStorageSessionRef, NSURLRequest *);
+WEBCORE_EXPORT NSCachedURLResponse *cachedResponseForRequest(CFURLStorageSessionRef, NSURLRequest *);
+#endif
 
 } // namespace WebCore

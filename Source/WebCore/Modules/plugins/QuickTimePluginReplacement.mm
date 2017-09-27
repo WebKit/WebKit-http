@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,26 +29,31 @@
 
 #import "QuickTimePluginReplacement.h"
 
+#import "CommonVM.h"
 #import "Event.h"
 #import "HTMLPlugInElement.h"
 #import "HTMLVideoElement.h"
 #import "JSDOMBinding.h"
+#import "JSDOMConvertNullable.h"
+#import "JSDOMConvertSequences.h"
+#import "JSDOMConvertStrings.h"
 #import "JSDOMGlobalObject.h"
 #import "JSHTMLVideoElement.h"
 #import "JSQuickTimePluginReplacement.h"
 #import "Logging.h"
 #import "MainFrame.h"
-#import "Page.h"
 #import "RenderElement.h"
 #import "ScriptController.h"
 #import "ScriptSourceCode.h"
 #import "Settings.h"
+#import "ShadowRoot.h"
 #import "UserAgentScripts.h"
-#import <objc/runtime.h>
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVMetadataItem.h>
 #import <Foundation/NSString.h>
-#import <JavaScriptCore/JavaScriptCore.h>
 #import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/JavaScriptCore.h>
+#import <objc/runtime.h>
+#import <runtime/CatchScope.h>
 #import <wtf/text/Base64.h>
 
 #import "CoreMediaSoftLink.h"
@@ -83,54 +88,41 @@ Ref<PluginReplacement> QuickTimePluginReplacement::create(HTMLPlugInElement& plu
 
 bool QuickTimePluginReplacement::supportsMimeType(const String& mimeType)
 {
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> typeHash = []() {
-        static const char* const types[] = {
-            "application/vnd.apple.mpegurl", "application/x-mpegurl", "audio/3gpp", "audio/3gpp2", "audio/aac", "audio/aiff",
-            "audio/amr", "audio/basic", "audio/mp3", "audio/mp4", "audio/mpeg", "audio/mpeg3", "audio/mpegurl", "audio/scpls",
-            "audio/wav", "audio/x-aac", "audio/x-aiff", "audio/x-caf", "audio/x-m4a", "audio/x-m4b", "audio/x-m4p",
-            "audio/x-m4r", "audio/x-mp3", "audio/x-mpeg", "audio/x-mpeg3", "audio/x-mpegurl", "audio/x-scpls", "audio/x-wav",
-            "video/3gpp", "video/3gpp2", "video/mp4", "video/quicktime", "video/x-m4v"
-        };
-        HashSet<String, ASCIICaseInsensitiveHash> set;
-        for (auto& type : types)
-            set.add(type);
-        return set;
-    }();
+    static const auto typeHash = makeNeverDestroyed(HashSet<String, ASCIICaseInsensitiveHash> {
+        "application/vnd.apple.mpegurl", "application/x-mpegurl", "audio/3gpp", "audio/3gpp2", "audio/aac", "audio/aiff",
+        "audio/amr", "audio/basic", "audio/mp3", "audio/mp4", "audio/mpeg", "audio/mpeg3", "audio/mpegurl", "audio/scpls",
+        "audio/wav", "audio/x-aac", "audio/x-aiff", "audio/x-caf", "audio/x-m4a", "audio/x-m4b", "audio/x-m4p",
+        "audio/x-m4r", "audio/x-mp3", "audio/x-mpeg", "audio/x-mpeg3", "audio/x-mpegurl", "audio/x-scpls", "audio/x-wav",
+        "video/3gpp", "video/3gpp2", "video/mp4", "video/quicktime", "video/x-m4v"
+    });
     return typeHash.get().contains(mimeType);
 }
 
 bool QuickTimePluginReplacement::supportsFileExtension(const String& extension)
 {
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> extensionSet = []() {
-        static const char* const extensions[] = {
-            "3g2", "3gp", "3gp2", "3gpp", "aac", "adts", "aif", "aifc", "aiff", "AMR", "au", "bwf", "caf", "cdda", "m3u",
-            "m3u8", "m4a", "m4b", "m4p", "m4r", "m4v", "mov", "mp3", "mp3", "mp4", "mpeg", "mpg", "mqv", "pls", "qt",
-            "snd", "swa", "ts", "ulw", "wav"
-        };
-        HashSet<String, ASCIICaseInsensitiveHash> set;
-        for (auto& extension : extensions)
-            set.add(extension);
-        return set;
-    }();
+    static const auto extensionSet = makeNeverDestroyed(HashSet<String, ASCIICaseInsensitiveHash> {
+        "3g2", "3gp", "3gp2", "3gpp", "aac", "adts", "aif", "aifc", "aiff", "AMR", "au", "bwf", "caf", "cdda", "m3u",
+        "m3u8", "m4a", "m4b", "m4p", "m4r", "m4v", "mov", "mp3", "mp3", "mp4", "mpeg", "mpg", "mqv", "pls", "qt",
+        "snd", "swa", "ts", "ulw", "wav"
+    });
     return extensionSet.get().contains(extension);
 }
 
-bool QuickTimePluginReplacement::isEnabledBySettings(const Settings* settings)
+bool QuickTimePluginReplacement::isEnabledBySettings(const Settings& settings)
 {
-    return settings->quickTimePluginReplacementEnabled();
+    return settings.quickTimePluginReplacementEnabled();
 }
 
 QuickTimePluginReplacement::QuickTimePluginReplacement(HTMLPlugInElement& plugin, const Vector<String>& paramNames, const Vector<String>& paramValues)
-    :PluginReplacement()
-    , m_parentElement(&plugin)
+    : m_parentElement(&plugin)
     , m_names(paramNames)
     , m_values(paramValues)
-    , m_scriptObject(nullptr)
 {
 }
 
 QuickTimePluginReplacement::~QuickTimePluginReplacement()
 {
+    // FIXME: Why is it useful to null out pointers in an object that is being destroyed?
     m_parentElement = nullptr;
     m_scriptObject = nullptr;
     m_mediaElement = nullptr;
@@ -148,7 +140,7 @@ RenderPtr<RenderElement> QuickTimePluginReplacement::createElementRenderer(HTMLP
 
 DOMWrapperWorld& QuickTimePluginReplacement::isolatedWorld()
 {
-    static DOMWrapperWorld& isolatedWorld = DOMWrapperWorld::create(JSDOMWindow::commonVM()).leakRef();
+    static DOMWrapperWorld& isolatedWorld = DOMWrapperWorld::create(commonVM()).leakRef();
     return isolatedWorld;
 }
 
@@ -200,9 +192,9 @@ bool QuickTimePluginReplacement::installReplacement(ShadowRoot& root)
     if (replacementFunction.isUndefinedOrNull())
         return false;
     JSC::JSObject* replacementObject = replacementFunction.toObject(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     JSC::CallData callData;
-    JSC::CallType callType = replacementObject->methodTable()->getCallData(replacementObject, callData);
+    JSC::CallType callType = replacementObject->methodTable(vm)->getCallData(replacementObject, callData);
     if (callType == JSC::CallType::None)
         return false;
 
@@ -221,7 +213,7 @@ bool QuickTimePluginReplacement::installReplacement(ShadowRoot& root)
     // Get the <video> created to replace the plug-in.
     JSC::JSValue value = replacement.get(exec, JSC::Identifier::fromString(exec, "video"));
     if (!scope.exception() && !value.isUndefinedOrNull())
-        m_mediaElement = JSHTMLVideoElement::toWrapped(value);
+        m_mediaElement = JSHTMLVideoElement::toWrapped(vm, value);
 
     if (!m_mediaElement) {
         LOG(Plugins, "%p - Failed to find <video> element created by QuickTime plugin replacement script.", this);
@@ -233,7 +225,7 @@ bool QuickTimePluginReplacement::installReplacement(ShadowRoot& root)
     value = replacement.get(exec, JSC::Identifier::fromString(exec, "scriptObject"));
     if (!scope.exception() && !value.isUndefinedOrNull()) {
         m_scriptObject = value.toObject(exec);
-        ASSERT(!scope.exception());
+        scope.assertNoException();
     }
 
     if (!m_scriptObject) {

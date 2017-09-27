@@ -26,7 +26,6 @@
 #ifndef PlatformMediaSession_h
 #define PlatformMediaSession_h
 
-#include "MediaProducer.h"
 #include "Timer.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
@@ -58,6 +57,7 @@ public:
         VideoAudio,
         Audio,
         WebAudio,
+        MediaStreamCapturingAudio,
     };
     MediaType mediaType() const;
     MediaType presentationType() const;
@@ -79,6 +79,7 @@ public:
         SystemInterruption,
         SuspendedUnderLock,
         InvisibleAutoplay,
+        ProcessInactive,
     };
     InterruptionType interruptionType() const { return m_interruptionType; }
 
@@ -143,6 +144,7 @@ public:
     DisplayType displayType() const;
 
     bool isHidden() const;
+    bool isSuspended() const;
 
     bool shouldOverrideBackgroundLoadingRestriction() const;
 
@@ -162,8 +164,8 @@ public:
 #endif
 
     bool activeAudioSessionRequired();
-    bool canProduceAudio() const { return m_canProduceAudio; }
-    void setCanProduceAudio(bool);
+    bool canProduceAudio() const;
+    void canProduceAudioChanged();
 
     void scheduleClientDataBufferingCheck();
     virtual void resetPlaybackSessionState() { }
@@ -186,7 +188,6 @@ private:
     int m_interruptionCount { 0 };
     bool m_notifyingClient;
     bool m_isPlayingToWirelessPlaybackTarget { false };
-    bool m_canProduceAudio { false };
 
     friend class PlatformMediaSessionManager;
 };
@@ -217,6 +218,8 @@ public:
 
     virtual void setShouldBufferData(bool) { }
     virtual bool elementIsHidden() const { return false; }
+    virtual bool canProduceAudio() const { return false; }
+    virtual bool isSuspended() const { return false; };
 
     virtual bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const = 0;
     virtual bool shouldOverrideBackgroundLoadingRestriction() const { return false; }
@@ -229,6 +232,8 @@ public:
 
     virtual const Document* hostingDocument() const = 0;
     virtual String sourceApplicationIdentifier() const = 0;
+
+    virtual bool processingUserGestureForMedia() const = 0;
 
 protected:
     virtual ~PlatformMediaSessionClient() { }

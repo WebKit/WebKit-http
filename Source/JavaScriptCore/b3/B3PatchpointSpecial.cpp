@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,8 @@
 
 namespace JSC { namespace B3 {
 
-using namespace Air;
+using Arg = Air::Arg;
+using Inst = Air::Inst;
 
 PatchpointSpecial::PatchpointSpecial()
 {
@@ -56,16 +57,16 @@ void PatchpointSpecial::forEachArg(Inst& inst, const ScopedLambda<Inst::EachArgC
         else
             role = Arg::Def;
         
-        callback(inst.args[argIndex++], role, inst.origin->airType(), inst.origin->airWidth());
+        callback(inst.args[argIndex++], role, inst.origin->resultBank(), inst.origin->resultWidth());
     }
 
-    forEachArgImpl(0, argIndex, inst, SameAsRep, Nullopt, callback);
+    forEachArgImpl(0, argIndex, inst, SameAsRep, std::nullopt, callback, std::nullopt);
     argIndex += inst.origin->numChildren();
 
     for (unsigned i = patchpoint->numGPScratchRegisters; i--;)
-        callback(inst.args[argIndex++], Arg::Scratch, Arg::GP, Arg::conservativeWidth(Arg::GP));
+        callback(inst.args[argIndex++], Arg::Scratch, GP, conservativeWidth(GP));
     for (unsigned i = patchpoint->numFPScratchRegisters; i--;)
-        callback(inst.args[argIndex++], Arg::Scratch, Arg::FP, Arg::conservativeWidth(Arg::FP));
+        callback(inst.args[argIndex++], Arg::Scratch, FP, conservativeWidth(FP));
 }
 
 bool PatchpointSpecial::isValid(Inst& inst)
@@ -130,8 +131,12 @@ bool PatchpointSpecial::admitsStack(Inst& inst, unsigned argIndex)
     return admitsStackImpl(0, 2, inst, argIndex);
 }
 
-CCallHelpers::Jump PatchpointSpecial::generate(
-    Inst& inst, CCallHelpers& jit, GenerationContext& context)
+bool PatchpointSpecial::admitsExtendedOffsetAddr(Inst& inst, unsigned argIndex)
+{
+    return admitsStack(inst, argIndex);
+}
+
+CCallHelpers::Jump PatchpointSpecial::generate(Inst& inst, CCallHelpers& jit, Air::GenerationContext& context)
 {
     PatchpointValue* value = inst.origin->as<PatchpointValue>();
     ASSERT(value);

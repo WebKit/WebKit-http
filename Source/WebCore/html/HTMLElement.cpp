@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2011 Motorola Mobility. All rights reserved.
  *
@@ -25,7 +25,7 @@
 #include "config.h"
 #include "HTMLElement.h"
 
-#include "CSSParser.h"
+#include "CSSMarkup.h"
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "CSSValuePool.h"
@@ -35,7 +35,6 @@
 #include "Event.h"
 #include "EventListener.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
@@ -58,6 +57,7 @@
 #include "NodeTraversal.h"
 #include "RenderElement.h"
 #include "ScriptController.h"
+#include "ShadowRoot.h"
 #include "SimulatedClick.h"
 #include "StyleProperties.h"
 #include "SubframeLoader.h"
@@ -93,16 +93,16 @@ String HTMLElement::nodeName() const
 static inline CSSValueID unicodeBidiAttributeForDirAuto(HTMLElement& element)
 {
     if (element.hasTagName(preTag) || element.hasTagName(textareaTag))
-        return CSSValueWebkitPlaintext;
+        return CSSValuePlaintext;
     // FIXME: For bdo element, dir="auto" should result in "bidi-override isolate" but we don't support having multiple values in unicode-bidi yet.
     // See https://bugs.webkit.org/show_bug.cgi?id=73164.
-    return CSSValueWebkitIsolate;
+    return CSSValueIsolate;
 }
 
 unsigned HTMLElement::parseBorderWidthAttribute(const AtomicString& value) const
 {
-    if (Optional<unsigned> borderWidth = parseHTMLNonNegativeInteger(value))
-        return borderWidth.value();
+    if (auto optionalBorderWidth = parseHTMLNonNegativeInteger(value))
+        return optionalBorderWidth.value();
 
     return hasTagName(tableTag) ? 1 : 0;
 }
@@ -117,7 +117,7 @@ void HTMLElement::mapLanguageAttributeToLocale(const AtomicString& value, Mutabl
 {
     if (!value.isEmpty()) {
         // Have to quote so the locale id is treated as a string instead of as a CSS keyword.
-        addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitLocale, quoteCSSString(value));
+        addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitLocale, serializeString(value));
     } else {
         // The empty string means the language is explicitly unknown.
         addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitLocale, CSSValueAuto);
@@ -183,7 +183,7 @@ void HTMLElement::collectStyleForPresentationAttribute(const QualifiedName& name
         case ContentEditableType::True:
             addPropertyToPresentationAttributeStyle(style, CSSPropertyWordWrap, CSSValueBreakWord);
             addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitNbspMode, CSSValueSpace);
-            addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitLineBreak, CSSValueAfterWhiteSpace);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyLineBreak, CSSValueAfterWhiteSpace);
 #if PLATFORM(IOS)
             addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitTextSizeAdjust, CSSValueNone);
 #endif
@@ -368,15 +368,15 @@ const AtomicString& HTMLElement::eventNameForEventHandlerAttribute(const Qualifi
 
     // Event handler attributes have no namespace.
     if (!attributeName.namespaceURI().isNull())
-        return nullAtom;
+        return nullAtom();
 
     // Fast early return for names that don't start with "on".
     AtomicStringImpl& localName = *attributeName.localName().impl();
     if (localName.length() < 3 || localName[0] != 'o' || localName[1] != 'n')
-        return nullAtom;
+        return nullAtom();
 
     auto it = map.find(&localName);
-    return it == map.end() ? nullAtom : it->value;
+    return it == map.end() ? nullAtom() : it->value;
 }
 
 const AtomicString& HTMLElement::eventNameForEventHandlerAttribute(const QualifiedName& attributeName)
@@ -402,6 +402,10 @@ Node::Editability HTMLElement::editabilityFromContentEditableAttr(const Node& no
         }
     }
 
+    auto* containingShadowRoot = node.containingShadowRoot();
+    if (containingShadowRoot && containingShadowRoot->mode() == ShadowRootMode::UserAgent)
+        return Editability::ReadOnly;
+
     auto& document = node.document();
     if (is<HTMLDocument>(document))
         return downcast<HTMLDocument>(document).inDesignMode() ? Editability::CanEditRichly : Editability::ReadOnly;
@@ -424,8 +428,8 @@ void HTMLElement::parseAttribute(const QualifiedName& name, const AtomicString& 
     if (name == tabindexAttr) {
         if (value.isEmpty())
             clearTabIndexExplicitlyIfNeeded();
-        else if (Optional<int> tabIndex = parseHTMLInteger(value))
-            setTabIndexExplicitly(tabIndex.value());
+        else if (auto optionalTabIndex = parseHTMLInteger(value))
+            setTabIndexExplicitly(optionalTabIndex.value());
         return;
     }
 
@@ -434,12 +438,14 @@ void HTMLElement::parseAttribute(const QualifiedName& name, const AtomicString& 
         setAttributeEventListener(eventName, name, value);
 }
 
-ExceptionOr<Ref<DocumentFragment>> HTMLElement::textToFragment(const String& text)
+static Ref<DocumentFragment> textToFragment(Document& document, const String& text)
 {
-    auto fragment = DocumentFragment::create(document());
+    auto fragment = DocumentFragment::create(document);
+
+    // It's safe to dispatch events on the new fragment since author scripts have no access to it yet.
+    NoEventDispatchAssertion::EventAllowedScope allowedScope(fragment);
 
     for (unsigned start = 0, length = text.length(); start < length; ) {
-
         // Find next line break.
         UChar c = 0;
         unsigned i;
@@ -449,17 +455,14 @@ ExceptionOr<Ref<DocumentFragment>> HTMLElement::textToFragment(const String& tex
                 break;
         }
 
-        auto appendResult = fragment->appendChild(Text::create(document(), text.substring(start, i - start)));
-        if (appendResult.hasException())
-            return appendResult.releaseException();
+        // If text is not the empty string, then append a new Text node whose data is text and node document is document to fragment.
+        if (i > start)
+            fragment->appendChild(Text::create(document, text.substring(start, i - start)));
 
         if (i == length)
             break;
 
-        appendResult = fragment->appendChild(HTMLBRElement::create(document()));
-        if (appendResult.hasException())
-            return appendResult.releaseException();
-
+        fragment->appendChild(HTMLBRElement::create(document));
         // Make sure \r\n doesn't result in two line breaks.
         if (c == '\r' && i + 1 < length && text[i + 1] == '\n')
             ++i;
@@ -467,21 +470,7 @@ ExceptionOr<Ref<DocumentFragment>> HTMLElement::textToFragment(const String& tex
         start = i + 1; // Character after line break.
     }
 
-    return WTFMove(fragment);
-}
-
-static inline bool shouldProhibitSetInnerOuterText(const HTMLElement& element)
-{
-    return element.hasTagName(colTag)
-        || element.hasTagName(colgroupTag)
-        || element.hasTagName(framesetTag)
-        || element.hasTagName(headTag)
-        || element.hasTagName(htmlTag)
-        || element.hasTagName(tableTag)
-        || element.hasTagName(tbodyTag)
-        || element.hasTagName(tfootTag)
-        || element.hasTagName(theadTag)
-        || element.hasTagName(trTag);
+    return fragment;
 }
 
 // Returns the conforming 'dir' value associated with the state the attribute is in (in its canonical case), if any,
@@ -499,7 +488,7 @@ static inline const AtomicString& toValidDirValue(const AtomicString& value)
         return rtlValue;
     if (equalLettersIgnoringASCIICase(value, "auto"))
         return autoValue;
-    return nullAtom;
+    return nullAtom();
 }
 
 const AtomicString& HTMLElement::dir() const
@@ -514,67 +503,58 @@ void HTMLElement::setDir(const AtomicString& value)
 
 ExceptionOr<void> HTMLElement::setInnerText(const String& text)
 {
-    if (ieForbidsInsertHTML())
-        return Exception { NO_MODIFICATION_ALLOWED_ERR };
-    if (shouldProhibitSetInnerOuterText(*this))
-        return Exception { NO_MODIFICATION_ALLOWED_ERR };
-
     // FIXME: This doesn't take whitespace collapsing into account at all.
 
     if (!text.contains('\n') && !text.contains('\r')) {
-        if (text.isEmpty()) {
-            removeChildren();
-            return { };
-        }
-        return replaceChildrenWithText(*this, text);
+        if (text.isEmpty())
+            replaceAllChildren(nullptr);
+        else
+            replaceAllChildren(document().createTextNode(text));
+        return { };
     }
 
     // FIXME: Do we need to be able to detect preserveNewline style even when there's no renderer?
     // FIXME: Can the renderer be out of date here? Do we need to call updateStyleIfNeeded?
     // For example, for the contents of textarea elements that are display:none?
-    auto r = renderer();
-    if ((r && r->style().preserveNewline()) || (inDocument() && isTextControlInnerTextElement())) {
-        if (!text.contains('\r'))
-            return replaceChildrenWithText(*this, text);
+    auto* r = renderer();
+    if ((r && r->style().preserveNewline()) || (isConnected() && isTextControlInnerTextElement())) {
+        if (!text.contains('\r')) {
+            replaceAllChildren(document().createTextNode(text));
+            return { };
+        }
         String textWithConsistentLineBreaks = text;
         textWithConsistentLineBreaks.replace("\r\n", "\n");
         textWithConsistentLineBreaks.replace('\r', '\n');
-        return replaceChildrenWithText(*this, textWithConsistentLineBreaks);
+        replaceAllChildren(document().createTextNode(textWithConsistentLineBreaks));
+        return { };
     }
 
     // Add text nodes and <br> elements.
-    auto fragment = textToFragment(text);
-    if (fragment.hasException())
-        return fragment.releaseException();
-    return replaceChildrenWithFragment(*this, fragment.releaseReturnValue());
+    auto fragment = textToFragment(document(), text);
+    // FIXME: This should use replaceAllChildren() once it accepts DocumentFragments as input.
+    // It's safe to dispatch events on the new fragment since author scripts have no access to it yet.
+    NoEventDispatchAssertion::EventAllowedScope allowedScope(fragment.get());
+    return replaceChildrenWithFragment(*this, WTFMove(fragment));
 }
 
 ExceptionOr<void> HTMLElement::setOuterText(const String& text)
 {
-    if (ieForbidsInsertHTML())
-        return Exception { NO_MODIFICATION_ALLOWED_ERR };
-    if (shouldProhibitSetInnerOuterText(*this))
-        return Exception { NO_MODIFICATION_ALLOWED_ERR };
-
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
-        return Exception { NO_MODIFICATION_ALLOWED_ERR };
+        return Exception { NoModificationAllowedError };
 
     RefPtr<Node> prev = previousSibling();
     RefPtr<Node> next = nextSibling();
     RefPtr<Node> newChild;
 
     // Convert text to fragment with <br> tags instead of linebreaks if needed.
-    if (text.contains('\r') || text.contains('\n')) {
-        auto result = textToFragment(text);
-        if (result.hasException())
-            return result.releaseException();
-        newChild = result.releaseReturnValue();
-    } else
+    if (text.contains('\r') || text.contains('\n'))
+        newChild = textToFragment(document(), text);
+    else
         newChild = Text::create(document(), text);
 
     if (!parentNode())
-        return Exception { HIERARCHY_REQUEST_ERR };
+        return Exception { HierarchyRequestError };
 
     auto replaceResult = parent->replaceChild(*newChild, *this);
     if (replaceResult.hasException())
@@ -665,7 +645,7 @@ ExceptionOr<void> HTMLElement::setContentEditable(const String& enabled)
     else if (equalLettersIgnoringASCIICase(enabled, "inherit"))
         removeAttribute(contenteditableAttr);
     else
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     return { };
 }
 
@@ -752,7 +732,7 @@ RenderPtr<RenderElement> HTMLElement::createElementRenderer(RenderStyle&& style,
     return RenderElement::createFor(*this, WTFMove(style));
 }
 
-HTMLFormElement* HTMLElement::virtualForm() const
+HTMLFormElement* HTMLElement::form() const
 {
     return HTMLFormElement::findClosestFormAncestor(*this);
 }
@@ -833,7 +813,7 @@ TextDirection HTMLElement::directionality(Node** strongDirectionalityTextNode) c
 
         // Skip elements with valid dir attribute
         if (is<Element>(*node)) {
-            AtomicString dirAttributeValue = downcast<Element>(*node).attributeWithoutSynchronization(dirAttr);
+            auto& dirAttributeValue = downcast<Element>(*node).attributeWithoutSynchronization(dirAttr);
             if (isLTROrRTLIgnoringCase(dirAttributeValue) || equalLettersIgnoringASCIICase(dirAttributeValue, "auto")) {
                 node = NodeTraversal::nextSkippingChildren(*node, this);
                 continue;
@@ -1078,7 +1058,7 @@ void HTMLElement::setAutocapitalize(const AtomicString& value)
 
 bool HTMLElement::shouldAutocorrect() const
 {
-    auto autocorrectValue = attributeWithoutSynchronization(HTMLNames::autocorrectAttr);
+    auto& autocorrectValue = attributeWithoutSynchronization(HTMLNames::autocorrectAttr);
     // Unrecognized values fall back to "on".
     return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
 }

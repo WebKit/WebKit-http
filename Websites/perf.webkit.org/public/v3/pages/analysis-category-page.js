@@ -23,10 +23,10 @@ class AnalysisCategoryPage extends PageWithHeading {
         var self = this;
         AnalysisTask.fetchAll().then(function () {
             self._fetched = true;
-            self.render();
+            self.enqueueToRender();
         }, function (error) {
             self._errorMessage = 'Failed to fetch the list of analysis tasks: ' + error;
-            self.render();
+            self.enqueueToRender();
         });
         super.open(state);
     }
@@ -59,12 +59,12 @@ class AnalysisCategoryPage extends PageWithHeading {
             this._categoryToolbar.setFilter(state.filter);
 
         if (!isOpen)
-            this.render();
+            this.enqueueToRender();
     }
 
     filterDidChange(shouldUpdateState)
     {
-        this.render();
+        this.enqueueToRender();
         if (shouldUpdateState)
             this.scheduleUrlStateUpdate();
     }
@@ -74,7 +74,7 @@ class AnalysisCategoryPage extends PageWithHeading {
         Instrumentation.startMeasuringTime('AnalysisCategoryPage', 'render');
 
         super.render();
-        this._categoryToolbar.render();
+        this._categoryToolbar.enqueueToRender();
 
         if (this._errorMessage) {
             console.assert(!this._fetched);
@@ -123,11 +123,9 @@ class AnalysisCategoryPage extends PageWithHeading {
         Instrumentation.startMeasuringTime('AnalysisCategoryPage', 'reconstructTaskList');
 
         console.assert(this.router());
-        var currentCategory = this._categoryToolbar.currentCategory();
+        const currentCategory = this._categoryToolbar.currentCategory();
 
-        var tasks = AnalysisTask.all().filter(function (task) {
-            return task.category() == currentCategory;
-        }).sort(function (a, b) {
+        const tasks = AnalysisTask.all().filter((task) => task.category() == currentCategory).sort((a, b) => {
             if (a.hasPendingRequests() == b.hasPendingRequests())
                 return b.createdAt() - a.createdAt();
             else if (a.hasPendingRequests()) // a < b
@@ -137,25 +135,25 @@ class AnalysisCategoryPage extends PageWithHeading {
             return 0;
         });
 
-        var element = ComponentBase.createElement;
-        var link = ComponentBase.createLink;
-        var router = this.router();
+        const element = ComponentBase.createElement;
+        const link = ComponentBase.createLink;
+        const router = this.router();
         this.renderReplace(this.content().querySelector('tbody.analysis-tasks'),
-            tasks.map(function (task) {
-                var status = AnalysisCategoryPage._computeStatus(task);
+            tasks.map((task) => {
+                const status = AnalysisCategoryPage._computeStatus(task);
                 return element('tr', [
                     element('td', {class: 'status'},
                         element('span', {class: status.class}, status.label)),
                     element('td', link(task.label(), router.url(`analysis/task/${task.id()}`))),    
                     element('td', {class: 'bugs'},
-                        element('ul', task.bugs().map(function (bug) {
-                            var url = bug.url();
-                            var title = bug.title();
+                        element('ul', task.bugs().map((bug) => {
+                            const url = bug.url();
+                            const title = bug.title();
                             return element('li', url ? link(bug.label(), title, url, true) : title);
                         }))),
                     element('td', {class: 'author'}, task.author()),
-                    element('td', {class: 'platform'}, task.platform().label()),
-                    element('td', task.metric().fullName()),
+                    element('td', {class: 'platform'}, task.platform() ? task.platform().label() : null),
+                    element('td', task.metric() ? task.metric().fullName() : null),
                     ]);
             }));
 

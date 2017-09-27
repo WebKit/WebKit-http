@@ -23,30 +23,32 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ScriptTreeElement = class ScriptTreeElement extends WebInspector.SourceCodeTreeElement
+WI.ScriptTreeElement = class ScriptTreeElement extends WI.SourceCodeTreeElement
 {
     constructor(script)
     {
-        console.assert(script instanceof WebInspector.Script);
+        console.assert(script instanceof WI.Script);
 
-        super(script, "script", null, null, script, false);
+        const title = null;
+        const subtitle = null;
+        super(script, "script", title, subtitle);
 
         this.mainTitle = script.displayName;
 
         if (script.url && !script.dynamicallyAddedScriptElement) {
             // Show the host as the subtitle if it is different from the main title.
-            var subtitle = WebInspector.displayNameForHost(script.urlComponents.host);
-            this.subtitle = this.mainTitle !== subtitle ? subtitle : null;
+            let host = WI.displayNameForHost(script.urlComponents.host);
+            this.subtitle = this.mainTitle !== host ? host : null;
 
             this.tooltip = script.url;
 
-            this.addClassName(WebInspector.ResourceTreeElement.ResourceIconStyleClassName);
-            this.addClassName(WebInspector.Resource.Type.Script);
+            this.addClassName(WI.ResourceTreeElement.ResourceIconStyleClassName);
+            this.addClassName(WI.Resource.Type.Script);
         } else
-            this.addClassName(WebInspector.ScriptTreeElement.AnonymousScriptIconStyleClassName);
+            this.addClassName(WI.ScriptTreeElement.AnonymousScriptIconStyleClassName);
 
         if (script.isMainResource()) {
-            console.assert(script.target.type === WebInspector.Target.Type.Worker);
+            console.assert(script.target.type === WI.Target.Type.Worker);
             this.addClassName("worker-icon");
         }
 
@@ -61,4 +63,4 @@ WebInspector.ScriptTreeElement = class ScriptTreeElement extends WebInspector.So
     }
 };
 
-WebInspector.ScriptTreeElement.AnonymousScriptIconStyleClassName = "anonymous-script-icon";
+WI.ScriptTreeElement.AnonymousScriptIconStyleClassName = "anonymous-script-icon";

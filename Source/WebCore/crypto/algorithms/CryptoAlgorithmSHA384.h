@@ -40,7 +40,7 @@ public:
 private:
     CryptoAlgorithmSHA384() = default;
     CryptoAlgorithmIdentifier identifier() const final;
-    ExceptionOr<void> digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback) final;
+    void digest(Vector<uint8_t>&&, VectorCallback&&, ExceptionCallback&&, ScriptExecutionContext&, WorkQueue&) final;
 };
 
 } // namespace WebCore

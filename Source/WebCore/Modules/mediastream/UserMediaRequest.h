@@ -35,27 +35,25 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "ActiveDOMObject.h"
-#include "Document.h"
-#include "MediaConstraintsImpl.h"
-#include "MediaDevices.h"
+#include "JSDOMPromiseDeferred.h"
+#include "MediaConstraints.h"
 
 namespace WebCore {
 
-class MediaConstraints;
-class MediaStreamPrivate;
-class UserMediaController;
+class MediaStream;
 class SecurityOrigin;
+class UserMediaController;
 
 class UserMediaRequest : public RefCounted<UserMediaRequest>, private ContextDestructionObserver {
 public:
-    static ExceptionOr<void> start(Document&, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&&);
+    static ExceptionOr<void> start(Document&, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&&);
 
     virtual ~UserMediaRequest();
 
     void start();
 
     WEBCORE_EXPORT void setAllowedMediaDeviceUIDs(const String& audioDeviceUID, const String& videoDeviceUID);
-    WEBCORE_EXPORT void allow(const String& audioDeviceUID, const String& videoDeviceUID);
+    WEBCORE_EXPORT void allow(String&& audioDeviceUID, String&& videoDeviceUID, String&& deviceIdentifierHashSalt);
 
     enum MediaAccessDenialReason { NoConstraints, UserMediaDisabled, NoCaptureDevices, InvalidConstraint, HardwareError, PermissionDenied, OtherFailure };
     WEBCORE_EXPORT void deny(MediaAccessDenialReason, const String& invalidConstraint);
@@ -63,23 +61,23 @@ public:
     const Vector<String>& audioDeviceUIDs() const { return m_audioDeviceUIDs; }
     const Vector<String>& videoDeviceUIDs() const { return m_videoDeviceUIDs; }
 
-    const MediaConstraintsImpl& audioConstraints() const { return m_audioConstraints; }
-    const MediaConstraintsImpl& videoConstraints() const { return m_videoConstraints; }
+    const MediaConstraints& audioConstraints() const { return m_audioConstraints; }
+    const MediaConstraints& videoConstraints() const { return m_videoConstraints; }
 
     const String& allowedAudioDeviceUID() const { return m_allowedAudioDeviceUID; }
     const String& allowedVideoDeviceUID() const { return m_allowedVideoDeviceUID; }
 
     WEBCORE_EXPORT SecurityOrigin* userMediaDocumentOrigin() const;
     WEBCORE_EXPORT SecurityOrigin* topLevelDocumentOrigin() const;
-    Document* document() const { return downcast<Document>(scriptExecutionContext()); }
+    WEBCORE_EXPORT Document* document() const;
 
 private:
-    UserMediaRequest(Document&, UserMediaController&, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&&);
+    UserMediaRequest(Document&, UserMediaController&, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&&);
 
     void contextDestroyed() final;
     
-    Ref<MediaConstraintsImpl> m_audioConstraints;
-    Ref<MediaConstraintsImpl> m_videoConstraints;
+    MediaConstraints m_audioConstraints;
+    MediaConstraints m_videoConstraints;
 
     Vector<String> m_videoDeviceUIDs;
     Vector<String> m_audioDeviceUIDs;
@@ -88,7 +86,7 @@ private:
     String m_allowedAudioDeviceUID;
 
     UserMediaController* m_controller;
-    MediaDevices::Promise m_promise;
+    DOMPromiseDeferred<IDLInterface<MediaStream>> m_promise;
     RefPtr<UserMediaRequest> m_protector;
 };
 

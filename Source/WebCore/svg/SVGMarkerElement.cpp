@@ -107,18 +107,21 @@ AffineTransform SVGMarkerElement::viewBoxToViewTransform(float viewWidth, float 
 
 bool SVGMarkerElement::isSupportedAttribute(const QualifiedName& attrName)
 {
-    static NeverDestroyed<HashSet<QualifiedName>> supportedAttributes;
-    if (supportedAttributes.get().isEmpty()) {
-        SVGLangSpace::addSupportedAttributes(supportedAttributes);
-        SVGExternalResourcesRequired::addSupportedAttributes(supportedAttributes);
-        SVGFitToViewBox::addSupportedAttributes(supportedAttributes);
-        supportedAttributes.get().add(SVGNames::markerUnitsAttr);
-        supportedAttributes.get().add(SVGNames::refXAttr);
-        supportedAttributes.get().add(SVGNames::refYAttr);
-        supportedAttributes.get().add(SVGNames::markerWidthAttr);
-        supportedAttributes.get().add(SVGNames::markerHeightAttr);
-        supportedAttributes.get().add(SVGNames::orientAttr);
-    }
+    static const auto supportedAttributes = makeNeverDestroyed([] {
+        HashSet<QualifiedName> set;
+        SVGLangSpace::addSupportedAttributes(set);
+        SVGExternalResourcesRequired::addSupportedAttributes(set);
+        SVGFitToViewBox::addSupportedAttributes(set);
+        set.add({
+            SVGNames::markerUnitsAttr,
+            SVGNames::refXAttr,
+            SVGNames::refYAttr,
+            SVGNames::markerWidthAttr,
+            SVGNames::markerHeightAttr,
+            SVGNames::orientAttr,
+        });
+        return set;
+    }());
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
 }
 
@@ -144,13 +147,13 @@ void SVGMarkerElement::parseAttribute(const QualifiedName& name, const AtomicStr
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::refXAttr)
-        setRefXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setRefXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::refYAttr)
-        setRefYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setRefYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::markerWidthAttr)
-        setMarkerWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setMarkerWidthBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::markerHeightAttr)
-        setMarkerHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setMarkerHeightBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
 
     reportAttributeParsingError(parseError, name, value);
 

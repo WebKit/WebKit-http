@@ -34,8 +34,6 @@
 #include "DumpRenderTreeWin.h"
 #elif PLATFORM(GTK)
 #include "DumpRenderTreeGtk.h"
-#elif PLATFORM(EFL)
-#include "DumpRenderTreeEfl.h"
 #endif
 
 #include <string>
@@ -55,14 +53,15 @@ extern RefPtr<TestRunner> gTestRunner;
 
 void dump();
 void displayWebView();
+void displayAndTrackRepaintsWebView();
 
 struct TestCommand {
-    TestCommand() : shouldDumpPixels(false), timeout(30000) { }
-
     std::string pathOrURL;
-    bool shouldDumpPixels;
+    std::string absolutePath;
+    bool shouldDumpPixels { false };
     std::string expectedPixelHash;
-    int timeout; // in ms
+    int timeout { 30000 }; // in ms
+    bool dumpJSConsoleLogInStdErr { false };
 };
 
 TestCommand parseInputLine(const std::string&);

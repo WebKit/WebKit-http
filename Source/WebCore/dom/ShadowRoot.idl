@@ -30,7 +30,8 @@
     readonly attribute ShadowRootMode mode;
     readonly attribute Element host;
 
-    [CEReactions, SetterMayThrowException, TreatNullAs=EmptyString] attribute DOMString innerHTML;
+    // FIXME: Seems to have been dropped from the Shadow DOM API.
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString innerHTML;
 };
 
 ShadowRoot implements DocumentOrShadowRoot;

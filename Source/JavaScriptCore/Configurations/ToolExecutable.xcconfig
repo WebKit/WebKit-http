@@ -1,4 +1,4 @@
-// Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+// Copyright (C) 2011-2017 Apple Inc. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -31,8 +31,11 @@ CODE_SIGN_ENTITLEMENTS_ios_minidom = entitlements.plist;
 CODE_SIGN_ENTITLEMENTS_ios_testair = entitlements.plist;
 CODE_SIGN_ENTITLEMENTS_ios_testapi = entitlements.plist;
 CODE_SIGN_ENTITLEMENTS_ios_testb3 = entitlements.plist;
+CODE_SIGN_ENTITLEMENTS_ios_testmasm = entitlements.plist;
 CODE_SIGN_ENTITLEMENTS_ios_testWasm = entitlements.plist;
 CODE_SIGN_ENTITLEMENTS_ios_testRegExp = entitlements.plist;
+
+OTHER_CODE_SIGN_FLAGS[sdk=iphone*] = -i com.apple.jsc;
 
 SKIP_INSTALL = $(SKIP_INSTALL_$(FORCE_TOOL_INSTALL));
 SKIP_INSTALL_ = YES;
@@ -46,9 +49,9 @@ CLANG_ENABLE_OBJC_ARC_armv7 = YES;
 CLANG_ENABLE_OBJC_ARC_armv7k = YES;
 CLANG_ENABLE_OBJC_ARC_armv7s = YES;
 CLANG_ENABLE_OBJC_ARC_arm64 = YES;
+CLANG_ENABLE_OBJC_ARC_arm64e = YES;
 
 OTHER_CFLAGS = $(ASAN_OTHER_CFLAGS) -isystem icu;
-OTHER_CPLUSPLUSFLAGS = $(ASAN_OTHER_CPLUSPLUSFLAGS) -isystem icu;
 OTHER_LDFLAGS = $(ASAN_OTHER_LDFLAGS);
 
 // Explicitly add the PrivateHeaders directory to the search path so that generated header files can be found in production builds.

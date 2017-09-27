@@ -1,5 +1,5 @@
 # Copyright (c) 2009, 2011 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -87,6 +87,14 @@ class BuildAndTest(AbstractSequencedCommand):
     ]
 
 
+class CheckPatchRelevance(AbstractSequencedCommand):
+    name = "check-patch-relevance"
+    help_text = "Check if this patch needs to be tested"
+    steps = [
+        steps.CheckPatchRelevance,
+    ]
+
+
 class Land(AbstractSequencedCommand):
     name = "land"
     help_text = "Land the current working directory diff and updates the associated bug if any"
@@ -119,6 +127,7 @@ class LandCowhand(AbstractSequencedCommand):
     name = "land-cowhand"
     help_text = "Prepares a ChangeLog and lands the current working directory diff."
     steps = [
+        steps.SortXcodeProjectFiles,
         steps.PrepareChangeLog,
         steps.EditChangeLog,
         steps.CheckStyle,

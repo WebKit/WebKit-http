@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Cable Television Labs, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,56 +25,70 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TrackPrivateBase_h
-#define TrackPrivateBase_h
-
-#include <wtf/Forward.h>
-#include <wtf/MediaTime.h>
-#include <wtf/Noncopyable.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/AtomicString.h>
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
-namespace WebCore {
+#include <pal/Logger.h>
+#include <pal/LoggerHelper.h>
+#include <wtf/MediaTime.h>
+#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/text/AtomicString.h>
 
-class TrackPrivateBase;
+namespace WebCore {
 
 class TrackPrivateBaseClient {
 public:
     virtual ~TrackPrivateBaseClient() { }
-    virtual void idChanged(TrackPrivateBase*, const AtomicString&) = 0;
-    virtual void labelChanged(TrackPrivateBase*, const AtomicString&) = 0;
-    virtual void languageChanged(TrackPrivateBase*, const AtomicString&) = 0;
-    virtual void willRemove(TrackPrivateBase*) = 0;
+    virtual void idChanged(const AtomicString&) = 0;
+    virtual void labelChanged(const AtomicString&) = 0;
+    virtual void languageChanged(const AtomicString&) = 0;
+    virtual void willRemove() = 0;
 };
 
-class TrackPrivateBase : public RefCounted<TrackPrivateBase> {
-    WTF_MAKE_NONCOPYABLE(TrackPrivateBase); WTF_MAKE_FAST_ALLOCATED;
+class TrackPrivateBase
+    : public ThreadSafeRefCounted<TrackPrivateBase>
+#if !RELEASE_LOG_DISABLED
+    , private PAL::LoggerHelper
+#endif
+{
+    WTF_MAKE_NONCOPYABLE(TrackPrivateBase);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    virtual ~TrackPrivateBase() { }
+    virtual ~TrackPrivateBase() = default;
 
     virtual TrackPrivateBaseClient* client() const = 0;
 
-    virtual AtomicString id() const { return emptyAtom; }
-    virtual AtomicString label() const { return emptyAtom; }
-    virtual AtomicString language() const { return emptyAtom; }
+    virtual AtomicString id() const { return emptyAtom(); }
+    virtual AtomicString label() const { return emptyAtom(); }
+    virtual AtomicString language() const { return emptyAtom(); }
 
     virtual int trackIndex() const { return 0; }
 
     virtual MediaTime startTimeVariance() const { return MediaTime::zeroTime(); }
-    
+
     void willBeRemoved()
     {
-        if (TrackPrivateBaseClient* client = this->client())
-            client->willRemove(this);
+        if (auto* client = this->client())
+            client->willRemove();
     }
 
+#if !RELEASE_LOG_DISABLED
+    void setLogger(const PAL::Logger&, const void*);
+    const PAL::Logger& logger() const final { ASSERT(m_logger); return *m_logger.get(); }
+    const void* logIdentifier() const final { return m_logIdentifier; }
+    WTFLogChannel& logChannel() const final;
+#endif
+
 protected:
-    TrackPrivateBase() { }
+    TrackPrivateBase() = default;
+
+#if !RELEASE_LOG_DISABLED
+    RefPtr<const PAL::Logger> m_logger;
+    const void* m_logIdentifier;
+#endif
 };
 
 } // namespace WebCore
 
-#endif
 #endif

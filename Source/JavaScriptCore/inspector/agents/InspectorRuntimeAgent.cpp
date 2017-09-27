@@ -89,7 +89,7 @@ void InspectorRuntimeAgent::parse(ErrorString&, const String& expression, Inspec
     JSLockHolder lock(m_vm);
 
     ParserError error;
-    checkSyntax(m_vm, JSC::makeSource(expression), error);
+    checkSyntax(m_vm, JSC::makeSource(expression, { }), error);
 
     switch (error.syntaxErrorType()) {
     case ParserError::SyntaxErrorNone:
@@ -156,6 +156,23 @@ void InspectorRuntimeAgent::callFunctionOn(ErrorString& errorString, const Strin
         unmuteConsole();
         setPauseOnExceptionsState(m_scriptDebugServer, previousPauseOnExceptionsState);
     }
+}
+
+void InspectorRuntimeAgent::getPreview(ErrorString& errorString, const String& objectId, RefPtr<Inspector::Protocol::Runtime::ObjectPreview>& preview)
+{
+    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptForObjectId(objectId);
+    if (injectedScript.hasNoValue()) {
+        errorString = ASCIILiteral("Could not find InjectedScript for objectId");
+        return;
+    }
+
+    ScriptDebugServer::PauseOnExceptionsState previousPauseOnExceptionsState = setPauseOnExceptionsState(m_scriptDebugServer, ScriptDebugServer::DontPauseOnExceptions);
+    muteConsole();
+
+    injectedScript.getPreview(errorString, objectId, &preview);
+
+    unmuteConsole();
+    setPauseOnExceptionsState(m_scriptDebugServer, previousPauseOnExceptionsState);
 }
 
 void InspectorRuntimeAgent::getProperties(ErrorString& errorString, const String& objectId, const bool* const ownProperties, const bool* const generatePreview, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::PropertyDescriptor>>& result, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Runtime::InternalPropertyDescriptor>>& internalProperties)
@@ -336,7 +353,7 @@ void InspectorRuntimeAgent::setTypeProfilerEnabledState(bool isTypeProfilingEnab
     vm.whenIdle([&vm, isTypeProfilingEnabled] () {
         bool shouldRecompileFromTypeProfiler = (isTypeProfilingEnabled ? vm.enableTypeProfiler() : vm.disableTypeProfiler());
         if (shouldRecompileFromTypeProfiler)
-            vm.deleteAllCode();
+            vm.deleteAllCode(PreventCollectionAndDeleteAllCode);
     });
 }
 
@@ -351,7 +368,7 @@ void InspectorRuntimeAgent::setControlFlowProfilerEnabledState(bool isControlFlo
         bool shouldRecompileFromControlFlowProfiler = (isControlFlowProfilingEnabled ? vm.enableControlFlowProfiler() : vm.disableControlFlowProfiler());
 
         if (shouldRecompileFromControlFlowProfiler)
-            vm.deleteAllCode();
+            vm.deleteAllCode(PreventCollectionAndDeleteAllCode);
     });
 }
 

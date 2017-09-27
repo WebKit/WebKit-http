@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,17 +30,123 @@
 
 #include "FunctionPrototype.h"
 #include "JSCInlines.h"
+#include "JSWebAssemblyHelpers.h"
+#include "JSWebAssemblyTable.h"
+
+namespace JSC {
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncLength(ExecState*);
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGrow(ExecState*);
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGet(ExecState*);
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncSet(ExecState*);
+}
 
 #include "WebAssemblyTablePrototype.lut.h"
 
 namespace JSC {
 
-const ClassInfo WebAssemblyTablePrototype::s_info = { "WebAssembly.Table.prototype", &Base::s_info, &prototypeTableWebAssemblyTable, CREATE_METHOD_TABLE(WebAssemblyTablePrototype) };
+const ClassInfo WebAssemblyTablePrototype::s_info = { "WebAssembly.Table", &Base::s_info, &prototypeTableWebAssemblyTable, nullptr, CREATE_METHOD_TABLE(WebAssemblyTablePrototype) };
 
 /* Source for WebAssemblyTablePrototype.lut.h
  @begin prototypeTableWebAssemblyTable
+ length webAssemblyTableProtoFuncLength DontEnum|Accessor 0
+ grow   webAssemblyTableProtoFuncGrow   DontEnum|Function 1
+ get    webAssemblyTableProtoFuncGet    DontEnum|Function 1
+ set    webAssemblyTableProtoFuncSet    DontEnum|Function 2
  @end
  */
+
+static ALWAYS_INLINE JSWebAssemblyTable* getTable(ExecState* exec, VM& vm, JSValue v)
+{
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    JSWebAssemblyTable* result = jsDynamicCast<JSWebAssemblyTable*>(vm, v);
+    if (!result) {
+        throwException(exec, throwScope, 
+            createTypeError(exec, ASCIILiteral("expected |this| value to be an instance of WebAssembly.Table")));
+        return nullptr;
+    }
+    return result;
+}
+
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncLength(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    JSWebAssemblyTable* table = getTable(exec, vm, exec->thisValue());
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    return JSValue::encode(jsNumber(table->size()));
+}
+
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGrow(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    JSWebAssemblyTable* table = getTable(exec, vm, exec->thisValue());
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+
+    uint32_t delta = toNonWrappingUint32(exec, exec->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+
+    uint32_t oldSize = table->size();
+
+    if (!table->grow(delta))
+        return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Table.prototype.grow could not grow the table"))));
+
+    return JSValue::encode(jsNumber(oldSize));
+}
+
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGet(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    JSWebAssemblyTable* table = getTable(exec, vm, exec->thisValue());
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+
+    uint32_t index = toNonWrappingUint32(exec, exec->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    if (index >= table->size())
+        return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Table.prototype.get expects an integer less than the size of the table"))));
+
+    if (JSObject* result = table->getFunction(index))
+        return JSValue::encode(result);
+    return JSValue::encode(jsNull());
+}
+
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncSet(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    JSWebAssemblyTable* table = getTable(exec, vm, exec->thisValue());
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+
+    JSValue value = exec->argument(1);
+    WebAssemblyFunction* wasmFunction;
+    WebAssemblyWrapperFunction* wasmWrapperFunction;
+    if (!value.isNull() && !isWebAssemblyHostFunction(vm, value, wasmFunction, wasmWrapperFunction))
+        return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("WebAssembly.Table.prototype.set expects the second argument to be null or an instance of WebAssembly.Function"))));
+
+    uint32_t index = toNonWrappingUint32(exec, exec->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+
+    if (index >= table->size())
+        return JSValue::encode(throwException(exec, throwScope, createRangeError(exec, ASCIILiteral("WebAssembly.Table.prototype.set expects an integer less than the size of the table"))));
+
+    if (value.isNull())
+        table->clearFunction(index);
+    else {
+        ASSERT(value.isObject() && isWebAssemblyHostFunction(vm, jsCast<JSObject*>(value), wasmFunction, wasmWrapperFunction));
+        ASSERT(!!wasmFunction || !!wasmWrapperFunction);
+        if (wasmFunction)
+            table->setFunction(vm, index, wasmFunction);
+        else
+            table->setFunction(vm, index, wasmWrapperFunction);
+    }
+    
+    return JSValue::encode(jsUndefined());
+}
 
 WebAssemblyTablePrototype* WebAssemblyTablePrototype::create(VM& vm, JSGlobalObject*, Structure* structure)
 {
@@ -57,6 +163,7 @@ Structure* WebAssemblyTablePrototype::createStructure(VM& vm, JSGlobalObject* gl
 void WebAssemblyTablePrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
+    ASSERT(inherits(vm, info()));
 }
 
 WebAssemblyTablePrototype::WebAssemblyTablePrototype(VM& vm, Structure* structure)

@@ -23,7 +23,9 @@
 #include "config.h"
 #include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(GSTREAMER) && USE(OPENCDM)
+#include "GStreamerEMEUtilities.h"
+
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
 static void webKitMediaOpenCDMWidevineDecryptorFinalize(GObject*);
 
@@ -33,12 +35,12 @@ GST_DEBUG_CATEGORY(webkit_media_opencdm_widevine_decrypt_debug_category);
 static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_UUID ";"));
+    GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID ";"));
 
 static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
     GST_PAD_SRC,
@@ -67,7 +69,7 @@ static void webkit_media_opencdm_widevine_decrypt_class_init(WebKitOpenCDMWidevi
         "webkitopencdmwidevine", 0, "OpenCDM Widevine decryptor");
 
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
-    cencClass->protectionSystemId = WIDEVINE_PROTECTION_SYSTEM_UUID;
+    cencClass->protectionSystemId = WebCore::GStreamerEMEUtilities::s_WidevineUUID;
 }
 
 static void webkit_media_opencdm_widevine_decrypt_init(WebKitOpenCDMWidevineDecrypt*)
@@ -79,4 +81,4 @@ static void webKitMediaOpenCDMWidevineDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(GSTREAMER) && USE(OPENCDM)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)

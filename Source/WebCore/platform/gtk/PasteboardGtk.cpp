@@ -50,11 +50,6 @@ std::unique_ptr<Pasteboard> Pasteboard::createForGlobalSelection()
     return std::make_unique<Pasteboard>("PRIMARY");
 }
 
-std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
-{
-    return std::make_unique<Pasteboard>(SelectionData::create());
-}
-
 #if ENABLE(DRAG_SUPPORT)
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop()
 {
@@ -102,23 +97,15 @@ const SelectionData& Pasteboard::selectionData() const
     return m_selectionData.get();
 }
 
-static ClipboardDataType selectionDataTypeFromHTMLClipboardType(const String& rawType)
+static ClipboardDataType selectionDataTypeFromHTMLClipboardType(const String& type)
 {
-    String type(rawType.stripWhiteSpace());
-
-    // Two special cases for IE compatibility
-    if (type == "Text" || type == "text")
-        return ClipboardDataTypeText;
-    if (type == "URL")
-        return ClipboardDataTypeURL;
-
     // From the Mac port: Ignore any trailing charset - JS strings are
     // Unicode, which encapsulates the charset issue.
-    if (type == "text/plain" || type.startsWith("text/plain;"))
+    if (type == "text/plain")
         return ClipboardDataTypeText;
-    if (type == "text/html" || type.startsWith("text/html;"))
+    if (type == "text/html")
         return ClipboardDataTypeMarkup;
-    if (type == "Files" || type == "text/uri-list" || type.startsWith("text/uri-list;"))
+    if (type == "Files" || type == "text/uri-list")
         return ClipboardDataTypeURIList;
 
     // Not a known type, so just default to using the text portion.
@@ -146,19 +133,20 @@ void Pasteboard::writeString(const String& type, const String& data)
     case ClipboardDataTypeURIList:
     case ClipboardDataTypeURL:
         m_selectionData->setURIList(data);
-        return;
+        break;
     case ClipboardDataTypeMarkup:
         m_selectionData->setMarkup(data);
-        return;
+        break;
     case ClipboardDataTypeText:
         m_selectionData->setText(data);
-        return;
+        break;
     case ClipboardDataTypeUnknown:
         m_selectionData->setUnknownTypeData(type, data);
-        return;
+        break;
     case ClipboardDataTypeImage:
         break;
     }
+    writeToClipboard();
 }
 
 void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartReplaceOption)
@@ -207,29 +195,6 @@ void Pasteboard::write(const PasteboardWebContent& pasteboardContent)
     writeToClipboard();
 }
 
-void Pasteboard::writePasteboard(const Pasteboard& sourcePasteboard)
-{
-    const auto& sourceDataObject = sourcePasteboard.selectionData();
-    m_selectionData->clearAll();
-
-    if (sourceDataObject.hasText())
-        m_selectionData->setText(sourceDataObject.text());
-    if (sourceDataObject.hasMarkup())
-        m_selectionData->setMarkup(sourceDataObject.markup());
-    if (sourceDataObject.hasURL())
-        m_selectionData->setURL(sourceDataObject.url(), sourceDataObject.urlLabel());
-    if (sourceDataObject.hasURIList())
-        m_selectionData->setURIList(sourceDataObject.uriList());
-    if (sourceDataObject.hasImage())
-        m_selectionData->setImage(sourceDataObject.image());
-    if (sourceDataObject.hasUnknownTypeData()) {
-        for (auto& it : sourceDataObject.unknownTypes())
-            m_selectionData->setUnknownTypeData(it.key, it.value);
-    }
-
-    writeToClipboard();
-}
-
 void Pasteboard::clear()
 {
     // We do not clear filenames. According to the spec: "The clearData() method
@@ -271,7 +236,7 @@ bool Pasteboard::canSmartReplace()
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void Pasteboard::setDragImage(DragImageRef, const IntPoint&)
+void Pasteboard::setDragImage(DragImage, const IntPoint&)
 {
 }
 #endif

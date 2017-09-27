@@ -33,7 +33,9 @@
 
 namespace JSC {
 
+namespace ShadowChickenInternal {
 static const bool verbose = false;
+}
 
 void ShadowChicken::Packet::dump(PrintStream& out) const
 {
@@ -84,9 +86,9 @@ void ShadowChicken::log(VM& vm, ExecState* exec, const Packet& packet)
     *m_logCursor++ = packet;
 }
 
-void ShadowChicken::update(VM&, ExecState* exec)
+void ShadowChicken::update(VM& vm, ExecState* exec)
 {
-    if (verbose) {
+    if (ShadowChickenInternal::verbose) {
         dataLog("Running update on: ", *this, "\n");
         WTFReportBacktrace();
     }
@@ -112,13 +114,13 @@ void ShadowChicken::update(VM&, ExecState* exec)
         }
     }
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("Highest point since last time: ", RawPointer(highestPointSinceLastTime), "\n");
     
     while (!m_stack.isEmpty() && (m_stack.last().frame < highestPointSinceLastTime || m_stack.last().isTailDeleted))
         m_stack.removeLast();
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Revised stack: ", listDump(m_stack), "\n");
     
     // It's possible that the top of stack is now tail-deleted. The stack no longer contains any
@@ -141,7 +143,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
     }
 
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Revised stack: ", listDump(m_stack), "\n");
     
     // The log-based and exec-based rules require that ShadowChicken was enabled. The point of
@@ -152,16 +154,24 @@ void ShadowChicken::update(VM&, ExecState* exec)
     if (!m_stack.isEmpty()) {
         Vector<Frame> stackRightNow;
         StackVisitor::visit(
-            exec, [&] (StackVisitor& visitor) -> StackVisitor::Status {
+            exec, &vm, [&] (StackVisitor& visitor) -> StackVisitor::Status {
                 if (visitor->isInlinedFrame())
                     return StackVisitor::Continue;
+                if (visitor->isWasmFrame()) {
+                    // FIXME: Make shadow chicken work with Wasm.
+                    // https://bugs.webkit.org/show_bug.cgi?id=165441
+                    return StackVisitor::Continue;
+                }
+
                 bool isTailDeleted = false;
-                stackRightNow.append(Frame(visitor->callee(), visitor->callFrame(), isTailDeleted));
+                // FIXME: Make shadow chicken work with Wasm.
+                // https://bugs.webkit.org/show_bug.cgi?id=165441
+                stackRightNow.append(Frame(jsCast<JSObject*>(visitor->callee().asCell()), visitor->callFrame(), isTailDeleted));
                 return StackVisitor::Continue;
             });
         stackRightNow.reverse();
         
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Stack right now: ", listDump(stackRightNow), "\n");
         
         unsigned shadowIndex = 0;
@@ -186,7 +196,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
         }
         m_stack.resize(shadowIndex);
         
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Revised stack: ", listDump(m_stack), "\n");
     }
     
@@ -200,17 +210,17 @@ void ShadowChicken::update(VM&, ExecState* exec)
         }
     }
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Highest point since last time: ", RawPointer(highestPointSinceLastTime), "\n");
     
     // Set everything up so that we know where the top frame is in the log.
     unsigned indexInLog = logCursorIndex;
     
     auto advanceIndexInLogTo = [&] (CallFrame* frame, JSObject* callee, CallFrame* callerFrame) -> bool {
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Advancing to frame = ", RawPointer(frame), " from indexInLog = ", indexInLog, "\n");
         if (indexInLog > logCursorIndex) {
-            if (verbose)
+            if (ShadowChickenInternal::verbose)
                 dataLog("    Bailing.\n");
             return false;
         }
@@ -236,7 +246,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
             if (packet.isPrologue() && packet.frame == frame
                 && (!callee || packet.callee == callee)
                 && (!callerFrame || packet.callerFrame == callerFrame)) {
-                if (verbose)
+                if (ShadowChickenInternal::verbose)
                     dataLog("    Found at indexInLog = ", indexInLog, "\n");
                 return true;
             }
@@ -258,48 +268,53 @@ void ShadowChicken::update(VM&, ExecState* exec)
         // It seems like the latter option is less harmful, so that's what we do.
         indexInLog = oldIndexInLog;
         
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Didn't find it.\n");
         return false;
     };
     
     Vector<Frame> toPush;
     StackVisitor::visit(
-        exec, [&] (StackVisitor& visitor) -> StackVisitor::Status {
+        exec, &vm, [&] (StackVisitor& visitor) -> StackVisitor::Status {
             if (visitor->isInlinedFrame()) {
                 // FIXME: Handle inlining.
                 // https://bugs.webkit.org/show_bug.cgi?id=155686
                 return StackVisitor::Continue;
             }
 
+            if (visitor->isWasmFrame()) {
+                // FIXME: Make shadow chicken work with Wasm.
+                return StackVisitor::Continue;
+            }
+
             CallFrame* callFrame = visitor->callFrame();
-            if (verbose)
+            if (ShadowChickenInternal::verbose)
                 dataLog("    Examining ", RawPointer(callFrame), "\n");
             if (callFrame == highestPointSinceLastTime) {
-                if (verbose)
+                if (ShadowChickenInternal::verbose)
                     dataLog("    Bailing at ", RawPointer(callFrame), " because it's the highest point since last time.\n");
                 return StackVisitor::Done;
             }
 
-            bool foundFrame = advanceIndexInLogTo(callFrame, callFrame->callee(), callFrame->callerFrame());
+            bool foundFrame = advanceIndexInLogTo(callFrame, callFrame->jsCallee(), callFrame->callerFrame());
             bool isTailDeleted = false;
             JSScope* scope = nullptr;
             CodeBlock* codeBlock = callFrame->codeBlock();
             if (codeBlock && codeBlock->wasCompiledWithDebuggingOpcodes() && codeBlock->scopeRegister().isValid()) {
                 scope = callFrame->scope(codeBlock->scopeRegister().offset());
-                RELEASE_ASSERT(scope->inherits(JSScope::info()));
+                RELEASE_ASSERT(scope->inherits(vm, JSScope::info()));
             } else if (foundFrame) {
                 scope = m_log[indexInLog].scope;
                 if (scope)
-                    RELEASE_ASSERT(scope->inherits(JSScope::info()));
+                    RELEASE_ASSERT(scope->inherits(vm, JSScope::info()));
             }
-            toPush.append(Frame(visitor->callee(), callFrame, isTailDeleted, callFrame->thisValue(), scope, codeBlock, callFrame->callSiteIndex()));
+            toPush.append(Frame(jsCast<JSObject*>(visitor->callee().asCell()), callFrame, isTailDeleted, callFrame->thisValue(), scope, codeBlock, callFrame->callSiteIndex()));
 
             if (indexInLog < logCursorIndex
                 // This condition protects us from the case where advanceIndexInLogTo didn't find
                 // anything.
                 && m_log[indexInLog].frame == toPush.last().frame) {
-                if (verbose)
+                if (ShadowChickenInternal::verbose)
                     dataLog("    Going to loop through to find tail deleted frames with indexInLog = ", indexInLog, " and push-stack top = ", toPush.last(), "\n");
                 for (;;) {
                     ASSERT(m_log[indexInLog].frame == toPush.last().frame);
@@ -324,7 +339,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
                     indexInLog--; // Skip over the tail packet.
                     
                     if (!advanceIndexInLogTo(tailPacket.frame, nullptr, nullptr)) {
-                        if (verbose)
+                        if (ShadowChickenInternal::verbose)
                             dataLog("Can't find prologue packet for tail: ", RawPointer(tailPacket.frame), "\n");
                         // We were unable to locate the prologue packet for this tail packet.
                         // This is rare but can happen in a situation like:
@@ -336,7 +351,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
                     }
                     Packet packet = m_log[indexInLog];
                     bool isTailDeleted = true;
-                    RELEASE_ASSERT(tailPacket.scope->inherits(JSScope::info()));
+                    RELEASE_ASSERT(tailPacket.scope->inherits(vm, JSScope::info()));
                     toPush.append(Frame(packet.callee, packet.frame, isTailDeleted, tailPacket.thisValue, tailPacket.scope, tailPacket.codeBlock, tailPacket.callSiteIndex));
                 }
             }
@@ -344,7 +359,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
             return StackVisitor::Continue;
         });
 
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Pushing: ", listDump(toPush), "\n");
     
     for (unsigned i = toPush.size(); i--;)
@@ -360,7 +375,7 @@ void ShadowChicken::update(VM&, ExecState* exec)
     } else
         m_logCursor = m_log;
 
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    After pushing: ", *this, "\n");
 
     // Remove tail frames until the number of tail deleted frames is small enough.
@@ -382,11 +397,11 @@ void ShadowChicken::update(VM&, ExecState* exec)
                 }
                 m_stack[dstIndex++] = frame;
             }
-            m_stack.resize(dstIndex);
+            m_stack.shrink(dstIndex);
         }
     }
 
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    After clean-up: ", *this, "\n");
 }
 
@@ -395,23 +410,23 @@ void ShadowChicken::visitChildren(SlotVisitor& visitor)
     for (unsigned i = m_logCursor - m_log; i--;) {
         JSObject* callee = m_log[i].callee;
         if (callee != Packet::tailMarker() && callee != Packet::throwMarker())
-            visitor.appendUnbarrieredReadOnlyPointer(callee);
+            visitor.appendUnbarriered(callee);
         if (callee != Packet::throwMarker())
-            visitor.appendUnbarrieredReadOnlyPointer(m_log[i].scope);
+            visitor.appendUnbarriered(m_log[i].scope);
         if (callee == Packet::tailMarker()) {
-            visitor.appendUnbarrieredValue(&m_log[i].thisValue);
-            visitor.appendUnbarrieredReadOnlyPointer(m_log[i].codeBlock);
+            visitor.appendUnbarriered(m_log[i].thisValue);
+            visitor.appendUnbarriered(m_log[i].codeBlock);
         }
     }
     
     for (unsigned i = m_stack.size(); i--; ) {
         Frame& frame = m_stack[i];
-        visitor.appendUnbarrieredValue(&frame.thisValue);
-        visitor.appendUnbarrieredReadOnlyPointer(frame.callee);
+        visitor.appendUnbarriered(frame.thisValue);
+        visitor.appendUnbarriered(frame.callee);
         if (frame.scope)
-            visitor.appendUnbarrieredReadOnlyPointer(frame.scope);
+            visitor.appendUnbarriered(frame.scope);
         if (frame.codeBlock)
-            visitor.appendUnbarrieredReadOnlyPointer(frame.codeBlock);
+            visitor.appendUnbarriered(frame.codeBlock);
     }
 }
 
@@ -444,6 +459,7 @@ JSArray* ShadowChicken::functionsOnStack(ExecState* exec)
         vm, exec,
         [&] (const Frame& frame) -> bool {
             result->push(exec, frame.callee);
+            scope.releaseAssertNoException(); // This function is only called from tests.
             return true;
         });
     

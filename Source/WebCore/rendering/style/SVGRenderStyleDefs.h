@@ -29,13 +29,21 @@
 #pragma once
 
 #include "Length.h"
-#include "SVGLength.h"
-#include "SVGPaint.h"
+#include "SVGLengthValue.h"
 #include "ShadowData.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
+    enum SVGPaintType {
+        SVG_PAINTTYPE_RGBCOLOR,
+        SVG_PAINTTYPE_NONE,
+        SVG_PAINTTYPE_CURRENTCOLOR,
+        SVG_PAINTTYPE_URI_NONE,
+        SVG_PAINTTYPE_URI_CURRENTCOLOR,
+        SVG_PAINTTYPE_URI_RGBCOLOR,
+        SVG_PAINTTYPE_URI
+    };
 
     enum EBaselineShift {
         BS_BASELINE, BS_SUB, BS_SUPER, BS_LENGTH
@@ -88,23 +96,6 @@ namespace WebCore {
         MT_ALPHA
     };
 
-    // These are all minimized combinations of paint-order.
-    enum PaintOrder {
-        PaintOrderNormal = 0,
-        PaintOrderFill = 1,
-        PaintOrderFillMarkers = 2,
-        PaintOrderStroke = 3,
-        PaintOrderStrokeMarkers = 4,
-        PaintOrderMarkers = 5,
-        PaintOrderMarkersStroke = 6
-    };
-
-    enum PaintType {
-        PaintTypeFill,
-        PaintTypeStroke,
-        PaintTypeMarkers
-    };
-
     class CSSValue;
     class CSSValueList;
     class SVGPaint;
@@ -122,10 +113,10 @@ namespace WebCore {
         }
 
         float opacity;
-        SVGPaint::SVGPaintType paintType;
+        SVGPaintType paintType;
         Color paintColor;
         String paintUri;
-        SVGPaint::SVGPaintType visitedLinkPaintType;
+        SVGPaintType visitedLinkPaintType;
         Color visitedLinkPaintColor;
         String visitedLinkPaintUri;
 
@@ -146,16 +137,14 @@ namespace WebCore {
         }
 
         float opacity;
-        float miterLimit;
 
-        Length width;
         Length dashOffset;
-        Vector<SVGLength> dashArray;
+        Vector<SVGLengthValue> dashArray;
 
-        SVGPaint::SVGPaintType paintType;
+        SVGPaintType paintType;
         Color paintColor;
         String paintUri;
-        SVGPaint::SVGPaintType visitedLinkPaintType;
+        SVGPaintType visitedLinkPaintType;
         Color visitedLinkPaintColor;
         String visitedLinkPaintUri;
 
@@ -194,7 +183,7 @@ namespace WebCore {
             return !(*this == other);
         }
 
-        SVGLength kerning;
+        SVGLengthValue kerning;
 
     private:
         StyleTextData();
@@ -218,7 +207,7 @@ namespace WebCore {
         Color lightingColor;
 
         // non-inherited text stuff lives here not in StyleTextData.
-        SVGLength baselineShiftValue;
+        SVGLengthValue baselineShiftValue;
 
     private:
         StyleMiscData();

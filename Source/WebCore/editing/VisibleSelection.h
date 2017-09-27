@@ -33,7 +33,7 @@ namespace WebCore {
 class Position;
 
 const EAffinity SEL_DEFAULT_AFFINITY = DOWNSTREAM;
-enum SelectionDirection { DirectionForward, DirectionBackward, DirectionRight, DirectionLeft };
+enum SelectionDirection : uint8_t { DirectionForward, DirectionBackward, DirectionRight, DirectionLeft };
 
 class VisibleSelection {
 public:
@@ -152,11 +152,13 @@ inline bool operator!=(const VisibleSelection& a, const VisibleSelection& b)
 {
     return !(a == b);
 }
+    
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const VisibleSelection&);
 
 } // namespace WebCore
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showTree(const WebCore::VisibleSelection&);
 void showTree(const WebCore::VisibleSelection*);
 #endif

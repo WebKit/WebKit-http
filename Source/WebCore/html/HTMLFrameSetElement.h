@@ -45,6 +45,9 @@ public:
     const Length* colLengths() const { return m_colLengths.get(); }
 
     static HTMLFrameSetElement* findContaining(Element* descendant);
+    
+    Vector<AtomicString> supportedPropertyNames() const;
+    DOMWindow* namedItem(const AtomicString&);
 
 private:
     HTMLFrameSetElement(const QualifiedName&, Document&);
@@ -59,7 +62,7 @@ private:
     
     void defaultEventHandler(Event&) final;
 
-    bool willRecalcStyle(Style::Change) final;
+    void willRecalcStyle(Style::Change) final;
 
     InsertionNotificationRequest insertedInto(ContainerNode&) final;
     void removedFrom(ContainerNode&) final;

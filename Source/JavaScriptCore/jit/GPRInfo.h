@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -139,7 +139,9 @@ public:
         ASSERT(!isAddress());
         return m_base;
     }
-    
+
+    GPRReg payloadGPR() const { return gpr(); }
+
     JSValueRegs regs() const
     {
         return JSValueRegs(gpr());
@@ -382,12 +384,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<int>(reg) < 8);
-        static const char* nameForRegister[8] = {
-            "eax", "ecx", "edx", "ebx",
-            "esp", "ebp", "esi", "edi",
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
@@ -511,14 +508,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<int>(reg) < 16);
-        static const char* nameForRegister[16] = {
-            "rax", "rcx", "rdx", "rbx",
-            "rsp", "rbp", "rsi", "rdi",
-            "r8", "r9", "r10", "r11",
-            "r12", "r13", "r14", "r15"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const std::array<GPRReg, 3>& reservedRegisters()
@@ -604,14 +594,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<int>(reg) < 16);
-        static const char* nameForRegister[16] = {
-            "r0", "r1", "r2", "r3",
-            "r4", "r5", "r6", "r7",
-            "r8", "r9", "r10", "r11",
-            "r12", "r13", "r14", "r15"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
@@ -718,14 +701,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<unsigned>(reg) < 32);
-        static const char* nameForRegister[32] = {
-            "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
-            "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
-            "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23",
-            "r24", "r25", "r26", "r27", "r28", "fp", "lr", "sp"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const std::array<GPRReg, 4>& reservedRegisters()
@@ -808,88 +784,13 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(reg < 16);
-        static const char* nameForRegister[16] = {
-            "zero", "at", "v0", "v1",
-            "a0", "a1", "a2", "a3",
-            "t0", "t1", "t2", "t3",
-            "t4", "t5", "t6", "t7"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
 };
 
 #endif // CPU(MIPS)
-
-#if CPU(SH4)
-#define NUMBER_OF_ARGUMENT_REGISTERS 4u
-#define NUMBER_OF_CALLEE_SAVES_REGISTERS 0u
-
-class GPRInfo {
-public:
-    typedef GPRReg RegisterType;
-    static const unsigned numberOfRegisters = 10;
-
-    // Note: regT3 is required to be callee-preserved.
-
-    // Temporary registers.
-    static const GPRReg regT0 = SH4Registers::r0;
-    static const GPRReg regT1 = SH4Registers::r1;
-    static const GPRReg regT2 = SH4Registers::r6;
-    static const GPRReg regT3 = SH4Registers::r7;
-    static const GPRReg regT4 = SH4Registers::r2;
-    static const GPRReg regT5 = SH4Registers::r3;
-    static const GPRReg regT6 = SH4Registers::r4;
-    static const GPRReg regT7 = SH4Registers::r5;
-    static const GPRReg regT8 = SH4Registers::r8;
-    static const GPRReg regT9 = SH4Registers::r9;
-    // These registers match the baseline JIT.
-    static const GPRReg cachedResultRegister = regT0;
-    static const GPRReg cachedResultRegister2 = regT1;
-    static const GPRReg callFrameRegister = SH4Registers::fp;
-    // These constants provide the names for the general purpose argument & return value registers.
-    static const GPRReg argumentGPR0 = SH4Registers::r4; // regT6
-    static const GPRReg argumentGPR1 = SH4Registers::r5; // regT7
-    static const GPRReg argumentGPR2 = SH4Registers::r6; // regT2
-    static const GPRReg argumentGPR3 = SH4Registers::r7; // regT3
-    static const GPRReg nonArgGPR0 = regT4;
-    static const GPRReg returnValueGPR = regT0;
-    static const GPRReg returnValueGPR2 = regT1;
-    static const GPRReg nonPreservedNonReturnGPR = regT2;
-
-    static GPRReg toRegister(unsigned index)
-    {
-        ASSERT(index < numberOfRegisters);
-        static const GPRReg registerForIndex[numberOfRegisters] = { regT0, regT1, regT2, regT3, regT4, regT5, regT6, regT7, regT8, regT9 };
-        return registerForIndex[index];
-    }
-
-    static unsigned toIndex(GPRReg reg)
-    {
-        ASSERT(reg != InvalidGPRReg);
-        ASSERT(reg < 14);
-        static const unsigned indexForRegister[14] = { 0, 1, 4, 5, 6, 7, 2, 3, 8, 9, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex };
-        unsigned result = indexForRegister[reg];
-        return result;
-    }
-
-    static const char* debugName(GPRReg reg)
-    {
-        ASSERT(reg != InvalidGPRReg);
-        ASSERT(reg < 16);
-        static const char* nameForRegister[16] = {
-            "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
-            "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
-        };
-        return nameForRegister[reg];
-    }
-
-    static const unsigned InvalidIndex = 0xffffffff;
-};
-
-#endif // CPU(SH4)
 
 // The baseline JIT uses "accumulator" style execution with regT0 (for 64-bit)
 // and regT0 + regT1 (for 32-bit) serving as the accumulator register(s) for

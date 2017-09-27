@@ -42,7 +42,7 @@ function makeHeaderValue(value)
 
 function generateTestURL(test)
 {
-    var body = typeof test.body !== 'undefined' ? test.body : "";
+    var body = typeof test.body !== 'undefined' ? escape(test.body) : "";
     var expiresInFutureIn304 = typeof test.expiresInFutureIn304 !== 'undefined' ? test.expiresInFutureIn304 : false;
     var uniqueTestId = Math.floor((Math.random() * 1000000000000));
     var testURL = "resources/generate-response.cgi?body=" + body;
@@ -54,7 +54,7 @@ function generateTestURL(test)
     if (!test.responseHeaders || !test.responseHeaders["Content-Type"])
         testURL += "&Content-Type=text/plain";
     for (var header in test.responseHeaders)
-        testURL += '&' + header + '=' + makeHeaderValue(test.responseHeaders[header]);
+        testURL += '&' + header + '=' + escape(makeHeaderValue(test.responseHeaders[header]));
     return testURL;
 }
 
@@ -75,7 +75,7 @@ function loadResource(test, onload)
     test.xhr.send();
 }
 
-function loadResourcesWithOptions(tests, options, completetion)
+function loadResourcesWithOptions(tests, options, completion)
 {
     if (options["ClearMemoryCache"])
         internals.clearMemoryCache();
@@ -86,14 +86,14 @@ function loadResourcesWithOptions(tests, options, completetion)
         loadResource(tests[i], function (ev) {
             --pendingCount;
             if (!pendingCount)
-                completetion(ev);
-         });
+                completion(ev);
+        });
     }
 }
 
-function loadResources(tests, completetion)
+function loadResources(tests, completion)
 {
-    loadResourcesWithOptions(tests, { "ClearMemoryCache" : true }, completetion);
+    loadResourcesWithOptions(tests, { "ClearMemoryCache" : true }, completion);
 }
 
 function printResults(tests)

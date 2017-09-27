@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2015 Canon Inc. All rights reserved.
  * Copyright (C) 2013 Google Inc. All rights reserved.
  *
@@ -27,6 +27,7 @@
 
 #include "config.h"
 
+#include "SharedBufferTest.h"
 #include "Test.h"
 #include <WebCore/SharedBuffer.h>
 #include <wtf/MainThread.h>
@@ -35,38 +36,6 @@
 using namespace WebCore;
 
 namespace TestWebKitAPI {
-
-const char* SharedBufferTestData = "This is a test";
-
-class SharedBufferTest : public testing::Test {
-public:
-    void SetUp() override
-    {
-        WTF::initializeMainThread();
-        
-        // create temp file
-        PlatformFileHandle handle;
-        m_tempFilePath = openTemporaryFile("tempTestFile", handle);
-        writeToFile(handle, SharedBufferTestData, strlen(SharedBufferTestData));
-        closeFile(handle); 
-
-        m_tempEmptyFilePath = openTemporaryFile("tempEmptyTestFile", handle);
-        closeFile(handle); 
-    }
-
-    void TearDown() override
-    {
-        deleteFile(m_tempFilePath);
-        deleteFile(m_tempEmptyFilePath);
-    }
-
-    const String& tempFilePath() { return m_tempFilePath; }
-    const String& tempEmptyFilePath() { return m_tempEmptyFilePath; }
-
-private:
-    String m_tempFilePath;
-    String m_tempEmptyFilePath;
-};
 
 TEST_F(SharedBufferTest, createWithContentsOfMissingFile)
 {
@@ -78,8 +47,8 @@ TEST_F(SharedBufferTest, createWithContentsOfExistingFile)
 {
     RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(tempFilePath());
     ASSERT_NOT_NULL(buffer);
-    EXPECT_TRUE(buffer->size() == strlen(SharedBufferTestData));
-    EXPECT_TRUE(String(SharedBufferTestData) == String(buffer->data(), buffer->size()));
+    EXPECT_TRUE(buffer->size() == strlen(SharedBufferTest::testData()));
+    EXPECT_TRUE(String(SharedBufferTest::testData()) == String(buffer->data(), buffer->size()));
 }
 
 TEST_F(SharedBufferTest, createWithContentsOfExistingEmptyFile)
@@ -113,12 +82,12 @@ TEST_F(SharedBufferTest, appendBufferCreatedWithContentsOfExistingFile)
     RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(tempFilePath());
     ASSERT_NOT_NULL(buffer);
     buffer->append("a", 1);
-    EXPECT_TRUE(buffer->size() == (strlen(SharedBufferTestData) + 1));
-    EXPECT_TRUE(!memcmp(buffer->data(), SharedBufferTestData, strlen(SharedBufferTestData)));
-    EXPECT_EQ('a', buffer->data()[strlen(SharedBufferTestData)]);
+    EXPECT_TRUE(buffer->size() == (strlen(SharedBufferTest::testData()) + 1));
+    EXPECT_TRUE(!memcmp(buffer->data(), SharedBufferTest::testData(), strlen(SharedBufferTest::testData())));
+    EXPECT_EQ('a', buffer->data()[strlen(SharedBufferTest::testData())]);
 }
 
-TEST_F(SharedBufferTest, createArrayBuffer)
+TEST_F(SharedBufferTest, tryCreateArrayBuffer)
 {
     char testData0[] = "Hello";
     char testData1[] = "World";
@@ -126,22 +95,22 @@ TEST_F(SharedBufferTest, createArrayBuffer)
     RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(testData0, strlen(testData0));
     sharedBuffer->append(testData1, strlen(testData1));
     sharedBuffer->append(testData2, strlen(testData2));
-    RefPtr<ArrayBuffer> arrayBuffer = sharedBuffer->createArrayBuffer();
+    RefPtr<ArrayBuffer> arrayBuffer = sharedBuffer->tryCreateArrayBuffer();
     char expectedConcatenation[] = "HelloWorldGoodbye";
     ASSERT_EQ(strlen(expectedConcatenation), arrayBuffer->byteLength());
     EXPECT_EQ(0, memcmp(expectedConcatenation, arrayBuffer->data(), strlen(expectedConcatenation)));
 }
 
-TEST_F(SharedBufferTest, createArrayBufferLargeSegments)
+TEST_F(SharedBufferTest, tryCreateArrayBufferLargeSegments)
 {
     Vector<char> vector0(0x4000, 'a');
     Vector<char> vector1(0x4000, 'b');
     Vector<char> vector2(0x4000, 'c');
 
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::adoptVector(vector0);
-    sharedBuffer->append(vector1);
-    sharedBuffer->append(vector2);
-    RefPtr<ArrayBuffer> arrayBuffer = sharedBuffer->createArrayBuffer();
+    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(WTFMove(vector0));
+    sharedBuffer->append(WTFMove(vector1));
+    sharedBuffer->append(WTFMove(vector2));
+    RefPtr<ArrayBuffer> arrayBuffer = sharedBuffer->tryCreateArrayBuffer();
     ASSERT_EQ(0x4000U + 0x4000U + 0x4000U, arrayBuffer->byteLength());
     int position = 0;
     for (int i = 0; i < 0x4000; ++i) {
@@ -189,6 +158,44 @@ TEST_F(SharedBufferTest, copy)
     ASSERT_EQ(0, memcmp(clone->data(), sharedBuffer->data(), clone->size()));
     clone->append(testData, length);
     ASSERT_EQ(length * 5, clone->size());
+}
+
+static void checkBuffer(const char* buffer, size_t bufferLength, const char* expected)
+{
+    // expected is null terminated, buffer is not.
+    size_t length = strlen(expected);
+    EXPECT_EQ(length, bufferLength);
+    for (size_t i = 0; i < length; ++i)
+        EXPECT_EQ(buffer[i], expected[i]);
+}
+
+TEST_F(SharedBufferTest, getSomeData)
+{
+    Vector<char> s1 = {'a', 'b', 'c', 'd'};
+    Vector<char> s2 = {'e', 'f', 'g', 'h'};
+    Vector<char> s3 = {'i', 'j', 'k', 'l'};
+    
+    auto buffer = SharedBuffer::create();
+    buffer->append(WTFMove(s1));
+    buffer->append(WTFMove(s2));
+    buffer->append(WTFMove(s3));
+    
+    auto abcd = buffer->getSomeData(0);
+    auto gh = buffer->getSomeData(6);
+    auto h = buffer->getSomeData(7);
+    auto ijkl = buffer->getSomeData(8);
+    auto kl = buffer->getSomeData(10);
+    auto abcdefghijkl = buffer->data();
+    auto ghijkl = buffer->getSomeData(6);
+    auto l = buffer->getSomeData(11);
+    checkBuffer(abcd.data(), abcd.size(), "abcd");
+    checkBuffer(gh.data(), gh.size(), "gh");
+    checkBuffer(h.data(), h.size(), "h");
+    checkBuffer(ijkl.data(), ijkl.size(), "ijkl");
+    checkBuffer(kl.data(), kl.size(), "kl");
+    checkBuffer(abcdefghijkl, buffer->size(), "abcdefghijkl");
+    checkBuffer(ghijkl.data(), ghijkl.size(), "ghijkl");
+    checkBuffer(l.data(), l.size(), "l");
 }
 
 }

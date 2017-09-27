@@ -23,27 +23,33 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel extends WebInspector.DOMDetailsSidebarPanel
+WI.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel extends WI.DOMDetailsSidebarPanel
 {
     constructor()
     {
-        super("css-style", WebInspector.UIString("Styles"), WebInspector.UIString("Style"), null, true);
+        const dontCreateNavigationItem = true;
+        super("css-style", WI.UIString("Styles"), dontCreateNavigationItem);
 
         this._selectedPanel = null;
-        this._computedStyleDetailsPanel = new WebInspector.ComputedStyleDetailsPanel(this);
-        this._rulesStyleDetailsPanel = new WebInspector.RulesStyleDetailsPanel(this);
-        this._visualStyleDetailsPanel = new WebInspector.VisualStyleDetailsPanel(this);
+        this._computedStyleDetailsPanel = new WI.ComputedStyleDetailsPanel(this);
+        this._rulesStyleDetailsPanel = new WI.RulesStyleDetailsPanel(this);
+        this._visualStyleDetailsPanel = new WI.VisualStyleDetailsPanel(this);
 
-        this._panels = [this._computedStyleDetailsPanel, this._rulesStyleDetailsPanel, this._visualStyleDetailsPanel];
-        this._panelNavigationInfo = [this._computedStyleDetailsPanel.navigationInfo, this._rulesStyleDetailsPanel.navigationInfo, this._visualStyleDetailsPanel.navigationInfo];
+        if (WI.settings.experimentalSpreadsheetStyleEditor.value)
+            this._activeRulesStyleDetailsPanel = new WI.SpreadsheetRulesStyleDetailsPanel(this);
+        else
+            this._activeRulesStyleDetailsPanel = this._rulesStyleDetailsPanel;
 
-        this._lastSelectedPanelSetting = new WebInspector.Setting("last-selected-style-details-panel", this._rulesStyleDetailsPanel.navigationInfo.identifier);
-        this._classListContainerToggledSetting = new WebInspector.Setting("class-list-container-toggled", false);
+        this._panels = [this._computedStyleDetailsPanel, this._activeRulesStyleDetailsPanel, this._visualStyleDetailsPanel];
+        this._panelNavigationInfo = [this._computedStyleDetailsPanel.navigationInfo, this._activeRulesStyleDetailsPanel.navigationInfo, this._visualStyleDetailsPanel.navigationInfo];
 
-        this._initiallySelectedPanel = this._panelMatchingIdentifier(this._lastSelectedPanelSetting.value) || this._rulesStyleDetailsPanel;
+        this._lastSelectedPanelSetting = new WI.Setting("last-selected-style-details-panel", this._activeRulesStyleDetailsPanel.navigationInfo.identifier);
+        this._classListContainerToggledSetting = new WI.Setting("class-list-container-toggled", false);
 
-        this._navigationItem = new WebInspector.ScopeRadioButtonNavigationItem(this.identifier, this.displayName, this._panelNavigationInfo, this._initiallySelectedPanel.navigationInfo);
-        this._navigationItem.addEventListener(WebInspector.ScopeRadioButtonNavigationItem.Event.SelectedItemChanged, this._handleSelectedItemChanged, this);
+        this._initiallySelectedPanel = this._panelMatchingIdentifier(this._lastSelectedPanelSetting.value) || this._activeRulesStyleDetailsPanel;
+
+        this._navigationItem = new WI.ScopeRadioButtonNavigationItem(this.identifier, this.displayName, this._panelNavigationInfo, this._initiallySelectedPanel.navigationInfo);
+        this._navigationItem.addEventListener(WI.ScopeRadioButtonNavigationItem.Event.SelectedItemChanged, this._handleSelectedItemChanged, this);
 
         this._forcedPseudoClassCheckboxes = {};
     }
@@ -75,8 +81,8 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     computedStyleDetailsPanelShowProperty(property)
     {
-        this._rulesStyleDetailsPanel.scrollToSectionAndHighlightProperty(property);
-        this._switchPanels(this._rulesStyleDetailsPanel);
+        this._activeRulesStyleDetailsPanel.scrollToSectionAndHighlightProperty(property);
+        this._switchPanels(this._activeRulesStyleDetailsPanel);
 
         this._navigationItem.selectedItemIdentifier = this._lastSelectedPanelSetting.value;
     }
@@ -108,9 +114,9 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         if (!effectiveDOMNode)
             return;
 
-        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.EnabledPseudoClassesChanged, this._updatePseudoClassCheckboxes, this);
-        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.AttributeModified, this._handleNodeAttributeModified, this);
-        effectiveDOMNode.addEventListener(WebInspector.DOMNode.Event.AttributeRemoved, this._handleNodeAttributeRemoved, this);
+        effectiveDOMNode.addEventListener(WI.DOMNode.Event.EnabledPseudoClassesChanged, this._updatePseudoClassCheckboxes, this);
+        effectiveDOMNode.addEventListener(WI.DOMNode.Event.AttributeModified, this._handleNodeAttributeModified, this);
+        effectiveDOMNode.addEventListener(WI.DOMNode.Event.AttributeRemoved, this._handleNodeAttributeRemoved, this);
     }
 
     removeEventListeners()
@@ -124,13 +130,13 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     initialLayout()
     {
-        if (WebInspector.cssStyleManager.canForcePseudoClasses()) {
+        if (WI.cssStyleManager.canForcePseudoClasses()) {
             this._forcedPseudoClassContainer = document.createElement("div");
             this._forcedPseudoClassContainer.className = "pseudo-classes";
 
             let groupElement = null;
 
-            WebInspector.CSSStyleManager.ForceablePseudoClasses.forEach(function(pseudoClass) {
+            WI.CSSStyleManager.ForceablePseudoClasses.forEach(function(pseudoClass) {
                 // We don't localize the label since it is a CSS pseudo-class from the CSS standard.
                 let label = pseudoClass.capitalize();
 
@@ -157,8 +163,8 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             this.contentView.element.appendChild(this._forcedPseudoClassContainer);
         }
 
-        this._computedStyleDetailsPanel.addEventListener(WebInspector.StyleDetailsPanel.Event.Refreshed, this._filterDidChange, this);
-        this._rulesStyleDetailsPanel.addEventListener(WebInspector.StyleDetailsPanel.Event.Refreshed, this._filterDidChange, this);
+        this._computedStyleDetailsPanel.addEventListener(WI.StyleDetailsPanel.Event.Refreshed, this._filterDidChange, this);
+        this._rulesStyleDetailsPanel.addEventListener(WI.StyleDetailsPanel.Event.Refreshed, this._filterDidChange, this);
 
         console.assert(this._initiallySelectedPanel, "Should have an initially selected panel.");
 
@@ -168,40 +174,33 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         let optionsContainer = this.element.createChild("div", "options-container");
 
         let newRuleButton = optionsContainer.createChild("img", "new-rule");
-        newRuleButton.title = WebInspector.UIString("New Rule");
+        newRuleButton.title = WI.UIString("Add new rule");
         newRuleButton.addEventListener("click", this._newRuleButtonClicked.bind(this));
+        newRuleButton.addEventListener("contextmenu", this._newRuleButtonContextMenu.bind(this));
 
-        this._filterBar = new WebInspector.FilterBar;
-        this._filterBar.placeholder = WebInspector.UIString("Filter Styles");
-        this._filterBar.addEventListener(WebInspector.FilterBar.Event.FilterDidChange, this._filterDidChange, this);
+        this._filterBar = new WI.FilterBar;
+        this._filterBar.addEventListener(WI.FilterBar.Event.FilterDidChange, this._filterDidChange, this);
         optionsContainer.appendChild(this._filterBar.element);
 
         this._classToggleButton = optionsContainer.createChild("button", "toggle-class-toggle");
-        this._classToggleButton.textContent = WebInspector.UIString("Classes");
-        this._classToggleButton.title = WebInspector.UIString("Toggle Classes");
+        this._classToggleButton.textContent = WI.UIString("Classes");
+        this._classToggleButton.title = WI.UIString("Toggle Classes");
         this._classToggleButton.addEventListener("click", this._classToggleButtonClicked.bind(this));
 
         this._classListContainer = this.element.createChild("div", "class-list-container");
         this._classListContainer.hidden = true;
 
         this._addClassContainer = this._classListContainer.createChild("div", "new-class");
-        this._addClassContainer.title = WebInspector.UIString("Add a Class");
+        this._addClassContainer.title = WI.UIString("Add a Class");
         this._addClassContainer.addEventListener("click", this._addClassContainerClicked.bind(this));
 
-        let addClassCheckbox = this._addClassContainer.createChild("input");
-        addClassCheckbox.type = "checkbox";
-        addClassCheckbox.checked = true;
-
-        let addClassIcon = useSVGSymbol("Images/Plus13.svg", "add-class-icon");
-        this._addClassContainer.appendChild(addClassIcon);
-
         this._addClassInput = this._addClassContainer.createChild("input", "class-name-input");
-        this._addClassInput.setAttribute("placeholder", WebInspector.UIString("Enter Class Name"));
+        this._addClassInput.setAttribute("placeholder", WI.UIString("Add New Class"));
         this._addClassInput.addEventListener("keypress", this._addClassInputKeyPressed.bind(this));
         this._addClassInput.addEventListener("blur", this._addClassInputBlur.bind(this));
 
-        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAddedOrRemoved, this);
-        WebInspector.cssStyleManager.addEventListener(WebInspector.CSSStyleManager.Event.StyleSheetRemoved, this._styleSheetAddedOrRemoved, this);
+        WI.cssStyleManager.addEventListener(WI.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAddedOrRemoved, this);
+        WI.cssStyleManager.addEventListener(WI.CSSStyleManager.Event.StyleSheetRemoved, this._styleSheetAddedOrRemoved, this);
 
         if (this._classListContainerToggledSetting.value)
             this._classToggleButtonClicked();
@@ -221,15 +220,15 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     get _initialScrollOffset()
     {
-        if (!WebInspector.cssStyleManager.canForcePseudoClasses())
+        if (!WI.cssStyleManager.canForcePseudoClasses())
             return 0;
-        return this.domNode && this.domNode.enabledPseudoClasses.length ? 0 : WebInspector.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset;
+        return this.domNode && this.domNode.enabledPseudoClasses.length ? 0 : WI.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset;
     }
 
     _updateNoForcedPseudoClassesScrollOffset()
     {
         if (this._forcedPseudoClassContainer)
-            WebInspector.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset = this._forcedPseudoClassContainer.offsetHeight;
+            WI.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset = this._forcedPseudoClassContainer.offsetHeight;
     }
 
     _panelMatchingIdentifier(identifier)
@@ -277,7 +276,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         let hasFilter = typeof this._selectedPanel.filterDidChange === "function";
         this.contentView.element.classList.toggle("has-filter-bar", hasFilter);
         if (this._filterBar)
-            this.contentView.element.classList.toggle(WebInspector.CSSStyleDetailsSidebarPanel.FilterInProgressClassName, hasFilter && this._filterBar.hasActiveFilters());
+            this.contentView.element.classList.toggle(WI.CSSStyleDetailsSidebarPanel.FilterInProgressClassName, hasFilter && this._filterBar.hasActiveFilters());
 
         this.contentView.element.classList.toggle("supports-new-rule", typeof this._selectedPanel.newRuleButtonClicked === "function");
         this._selectedPanel.shown();
@@ -329,6 +328,12 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             this._selectedPanel.newRuleButtonClicked();
     }
 
+    _newRuleButtonContextMenu(event)
+    {
+        if (this._selectedPanel && typeof this._selectedPanel.newRuleButtonContextMenu === "function")
+            this._selectedPanel.newRuleButtonContextMenu(event);
+    }
+
     _classToggleButtonClicked(event)
     {
         this._classToggleButton.classList.toggle("selected");
@@ -348,7 +353,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     _addClassInputKeyPressed(event)
     {
-        if (event.keyCode !== WebInspector.KeyboardShortcut.Key.Enter.keyCode)
+        if (event.keyCode !== WI.KeyboardShortcut.Key.Enter.keyCode)
             return;
 
         this._addClassInput.blur();
@@ -368,9 +373,9 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
             this._classListContainer.children[1].remove();
 
         let classes = this.domNode.getAttribute("class");
-        let classToggledMap = this.domNode[WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol];
+        let classToggledMap = this.domNode[WI.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol];
         if (!classToggledMap)
-            classToggledMap = this.domNode[WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol] = new Map;
+            classToggledMap = this.domNode[WI.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol] = new Map;
 
         if (classes && classes.length) {
             for (let className of classes.split(/\s+/))
@@ -392,7 +397,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         if (!className || !className.length)
             return;
 
-        let classToggledMap = this.domNode[WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol];
+        let classToggledMap = this.domNode[WI.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol];
         if (!classToggledMap)
             return;
 
@@ -412,7 +417,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
         classNameTitle.textContent = className;
         classNameTitle.draggable = true;
         classNameTitle.addEventListener("dragstart", (event) => {
-            event.dataTransfer.setData(WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesDragType, className);
+            event.dataTransfer.setData(WI.CSSStyleDetailsSidebarPanel.ToggledClassesDragType, className);
             event.dataTransfer.effectAllowed = "copy";
         });
 
@@ -432,7 +437,7 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
 
     _filterDidChange()
     {
-        this.contentView.element.classList.toggle(WebInspector.CSSStyleDetailsSidebarPanel.FilterInProgressClassName, this._filterBar.hasActiveFilters());
+        this.contentView.element.classList.toggle(WI.CSSStyleDetailsSidebarPanel.FilterInProgressClassName, this._filterBar.hasActiveFilters());
 
         this._selectedPanel.filterDidChange(this._filterBar);
     }
@@ -443,12 +448,12 @@ WebInspector.CSSStyleDetailsSidebarPanel = class CSSStyleDetailsSidebarPanel ext
     }
 };
 
-WebInspector.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset = 30; // Default height of the forced pseudo classes container. Updated in sizeDidChange.
-WebInspector.CSSStyleDetailsSidebarPanel.FilterInProgressClassName = "filter-in-progress";
-WebInspector.CSSStyleDetailsSidebarPanel.FilterMatchingSectionHasLabelClassName = "filter-section-has-label";
-WebInspector.CSSStyleDetailsSidebarPanel.FilterMatchSectionClassName = "filter-matching";
-WebInspector.CSSStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName = "filter-section-non-matching";
-WebInspector.CSSStyleDetailsSidebarPanel.NoFilterMatchInPropertyClassName = "filter-property-non-matching";
+WI.CSSStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset = 30; // Default height of the forced pseudo classes container. Updated in sizeDidChange.
+WI.CSSStyleDetailsSidebarPanel.FilterInProgressClassName = "filter-in-progress";
+WI.CSSStyleDetailsSidebarPanel.FilterMatchingSectionHasLabelClassName = "filter-section-has-label";
+WI.CSSStyleDetailsSidebarPanel.FilterMatchSectionClassName = "filter-matching";
+WI.CSSStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName = "filter-section-non-matching";
+WI.CSSStyleDetailsSidebarPanel.NoFilterMatchInPropertyClassName = "filter-property-non-matching";
 
-WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol = Symbol("css-style-details-sidebar-panel-toggled-classes-symbol");
-WebInspector.CSSStyleDetailsSidebarPanel.ToggledClassesDragType = "text/classname";
+WI.CSSStyleDetailsSidebarPanel.ToggledClassesSymbol = Symbol("css-style-details-sidebar-panel-toggled-classes-symbol");
+WI.CSSStyleDetailsSidebarPanel.ToggledClassesDragType = "text/classname";

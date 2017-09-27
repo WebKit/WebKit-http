@@ -30,16 +30,15 @@
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
 #include "InlineTextBox.h"
-#include "Page.h"
 #include "RenderBlock.h"
 #include "RenderChildIterator.h"
+#include "RenderFlowThread.h"
 #include "RenderFullScreen.h"
 #include "RenderGeometryMap.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
 #include "RenderLineBreak.h"
 #include "RenderListMarker.h"
-#include "RenderNamedFlowThread.h"
 #include "RenderTable.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -85,7 +84,7 @@ void RenderInline::willBeDestroyed()
     // properly dirty line boxes that they are removed from.  Effects that do :before/:after only on hover could crash otherwise.
     destroyLeftoverChildren();
     
-    if (!documentBeingDestroyed()) {
+    if (!renderTreeBeingDestroyed()) {
         if (firstLineBox()) {
             // We can't wait for RenderBoxModelObject::destroy to clear the selection,
             // because by then we will have nuked the line boxes.
@@ -224,14 +223,12 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
     auto* parentStyle = &parent()->style();
     RenderInline* parentRenderInline = is<RenderInline>(*parent()) ? downcast<RenderInline>(parent()) : nullptr;
     bool checkFonts = document().inNoQuirksMode();
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
     bool alwaysCreateLineBoxes = (parentRenderInline && parentRenderInline->alwaysCreateLineBoxes())
         || (parentRenderInline && parentStyle->verticalAlign() != BASELINE)
         || style().verticalAlign() != BASELINE
         || style().textEmphasisMark() != TextEmphasisMarkNone
         || (checkFonts && (!parentStyle->fontCascade().fontMetrics().hasIdenticalAscentDescentAndLineGap(style().fontCascade().fontMetrics())
-        || parentStyle->lineHeight() != style().lineHeight()))
-        || (flowThread && flowThread->isRenderNamedFlowThread()); // FIXME: Enable the optimization once we make overflow computation for culled inlines in regions.
+        || parentStyle->lineHeight() != style().lineHeight()));
 
     if (!alwaysCreateLineBoxes && checkFonts && view().usesFirstLineRules()) {
         // Have to check the first line style as well.
@@ -275,9 +272,12 @@ LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, unsigned, LayoutUn
 
 void RenderInline::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
+    auto* beforeChildOrPlaceholder = beforeChild;
+    if (auto* flowThread = flowThreadContainingBlock())
+        beforeChildOrPlaceholder = flowThread->resolveMovedChild(beforeChild);
     if (continuation())
-        return addChildToContinuation(newChild, beforeChild);
-    return addChildIgnoringContinuation(newChild, beforeChild);
+        return addChildToContinuation(newChild, beforeChildOrPlaceholder);
+    return addChildIgnoringContinuation(newChild, beforeChildOrPlaceholder);
 }
 
 static RenderBoxModelObject* nextContinuation(RenderObject* renderer)
@@ -324,10 +324,9 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
     if (!beforeChild && isAfterContent(lastChild()))
         beforeChild = lastChild();
     
-    bool useNewBlockInsideInlineModel = document().settings()->newBlockInsideInlineModelEnabled();
     bool childInline = newChildIsInline(*newChild, *this);
     // This code is for the old block-inside-inline model that uses continuations.
-    if (!useNewBlockInsideInlineModel && !childInline && !newChild->isFloatingOrOutOfFlowPositioned()) {
+    if (!childInline && !newChild->isFloatingOrOutOfFlowPositioned()) {
         // We are placing a block inside an inline. We have to perform a split of this
         // inline into continuations.  This involves creating an anonymous block box to hold
         // |newChild|.  We then make that block box a continuation of this inline.  We take all of
@@ -348,67 +347,7 @@ void RenderInline::addChildIgnoringContinuation(RenderObject* newChild, RenderOb
         return;
     }
     
-    if (!useNewBlockInsideInlineModel) {
-        RenderBoxModelObject::addChild(newChild, beforeChild);
-        newChild->setNeedsLayoutAndPrefWidthsRecalc();
-        return;
-    }
-
-    // This code is for the new block-inside-inline model that uses anonymous inline blocks.
-    // If the requested beforeChild is not one of our children, then this is most likely because
-    // there is an anonymous inline-block box within this object that contains the beforeChild.
-    // Insert the child into the anonymous inline-block box instead of here.
-    // A second possibility is that the beforeChild is an anonymous block inside the anonymous inline block.
-    // This can happen if inlines are inserted in between two of the anonymous inline block's block-level
-    // children after it has been created.
-    if (beforeChild && beforeChild->parent() != this) {
-        ASSERT(beforeChild->parent());
-        ASSERT(beforeChild->parent()->isAnonymousInlineBlock() || beforeChild->parent()->isAnonymousBlock());
-        if (beforeChild->parent()->isAnonymousInlineBlock()) {
-            if (!childInline || (childInline && beforeChild->parent()->firstChild() != beforeChild))
-                beforeChild->parent()->addChild(newChild, beforeChild);
-            else
-                addChild(newChild, beforeChild->parent());
-        } else if (beforeChild->parent()->isAnonymousBlock()) {
-            ASSERT(!beforeChild->parent()->parent() || beforeChild->parent()->parent()->isAnonymousInlineBlock());
-            ASSERT(childInline);
-            if (childInline || (!childInline && beforeChild->parent()->firstChild() != beforeChild))
-                beforeChild->parent()->addChild(newChild, beforeChild);
-            else
-                addChild(newChild, beforeChild->parent());
-        }
-        return;
-    }
-
-    if (!childInline) {
-        // We are placing a block inside an inline. We have to place the block inside an anonymous inline-block.
-        // This inline-block can house a sequence of contiguous block-level children, and they will all sit on the
-        // same "line" together. We try to reuse an existing inline-block if possible.
-        if (beforeChild) {
-            if (beforeChild->previousSibling() && beforeChild->previousSibling()->isAnonymousInlineBlock()) {
-                downcast<RenderBlockFlow>(beforeChild->previousSibling())->addChild(newChild);
-                return;
-            }
-        } else {
-            if (lastChild() && lastChild()->isAnonymousInlineBlock()) {
-                downcast<RenderBlockFlow>(lastChild())->addChild(newChild);
-                return;
-            }
-        }
- 
-        if (!newChild->isFloatingOrOutOfFlowPositioned()) {
-            // There was no suitable existing anonymous inline-block. Create a new one.
-            RenderBlockFlow* anonymousInlineBlock = new RenderBlockFlow(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), INLINE_BLOCK));
-            anonymousInlineBlock->initializeStyle();
-    
-            RenderBoxModelObject::addChild(anonymousInlineBlock, beforeChild);
-            anonymousInlineBlock->addChild(newChild);
-            return;
-        }
-    }
-
     RenderBoxModelObject::addChild(newChild, beforeChild);
-
     newChild->setNeedsLayoutAndPrefWidthsRecalc();
 }
 
@@ -619,16 +558,20 @@ void RenderInline::addChildToContinuation(RenderObject* newChild, RenderObject* 
     auto* flow = continuationBefore(beforeChild);
     // It may or may not be the direct parent of the beforeChild.
     RenderBoxModelObject* beforeChildAncestor = nullptr;
-    // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is the topmost wrapper.
     if (!beforeChild) {
         auto* continuation = nextContinuation(flow);
         beforeChildAncestor = continuation ? continuation : flow;
     } else if (canUseAsParentForContinuation(beforeChild->parent()))
         beforeChildAncestor = downcast<RenderBoxModelObject>(beforeChild->parent());
     else if (beforeChild->parent()) {
+        // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is the topmost wrapper.
         auto* parent = beforeChild->parent();
-        while (parent && parent->parent() && parent->parent()->isAnonymous())
+        while (parent && parent->parent() && parent->parent()->isAnonymous()) {
+            // The ancestor candidate needs to be inside the continuation.
+            if (parent->hasContinuation())
+                break;
             parent = parent->parent();
+        }
         ASSERT(parent && parent->parent());
         beforeChildAncestor = downcast<RenderBoxModelObject>(parent->parent());
     } else
@@ -953,9 +896,9 @@ bool RenderInline::hitTestCulledInline(const HitTestRequest& request, HitTestRes
 
     if (context.intersected()) {
         updateHitTestResult(result, tmpLocation.point());
-        // We can not use addNodeToRectBasedTestResult to determine if we fully enclose the hit-test area
+        // We cannot use addNodeToListBasedTestResult to determine if we fully enclose the hit-test area
         // because it can only handle rectangular targets.
-        result.addNodeToRectBasedTestResult(element(), request, locationInContainer);
+        result.addNodeToListBasedTestResult(element(), request, locationInContainer);
         return regionResult.contains(tmpLocation.boundingBox());
     }
     return false;

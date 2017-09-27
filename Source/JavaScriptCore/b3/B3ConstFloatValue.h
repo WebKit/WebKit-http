@@ -46,6 +46,8 @@ public:
     Value* divConstant(Procedure&, const Value* other) const override;
     Value* mulConstant(Procedure&, const Value* other) const override;
     Value* bitAndConstant(Procedure&, const Value* other) const override;
+    Value* bitOrConstant(Procedure&, const Value* other) const override;
+    Value* bitXorConstant(Procedure&, const Value* other) const override;
     Value* bitwiseCastConstant(Procedure&) const override;
     Value* floatToDoubleConstant(Procedure&) const override;
     Value* absConstant(Procedure&) const override;
@@ -59,6 +61,7 @@ public:
     TriState greaterThanConstant(const Value* other) const override;
     TriState lessEqualConstant(const Value* other) const override;
     TriState greaterEqualConstant(const Value* other) const override;
+    TriState equalOrUnorderedConstant(const Value* other) const override;
 
 protected:
     void dumpMeta(CommaPrinter&, PrintStream&) const override;

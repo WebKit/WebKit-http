@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015, 2016 Ericsson AB. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +34,6 @@
 
 #if ENABLE(WEB_RTC)
 
-#include "ExceptionCode.h"
 #include "SDPProcessor.h"
 #include <wtf/NeverDestroyed.h>
 
@@ -42,7 +42,7 @@ namespace WebCore {
 #define STRING_FUNCTION(name) \
     static const String& name##String() \
     { \
-        static NeverDestroyed<const String> name { ASCIILiteral(#name) }; \
+        static NeverDestroyed<const String> name(MAKE_STATIC_STRING_IMPL(#name)); \
         return name; \
     }
 
@@ -51,7 +51,7 @@ STRING_FUNCTION(pranswer)
 STRING_FUNCTION(answer)
 STRING_FUNCTION(rollback)
 
-Ref<MediaEndpointSessionDescription> MediaEndpointSessionDescription::create(RTCSessionDescription::SdpType type, RefPtr<MediaEndpointSessionConfiguration>&& configuration)
+Ref<MediaEndpointSessionDescription> MediaEndpointSessionDescription::create(RTCSdpType type, RefPtr<MediaEndpointSessionConfiguration>&& configuration)
 {
     return adoptRef(*new MediaEndpointSessionDescription(type, WTFMove(configuration), nullptr));
 }
@@ -62,9 +62,9 @@ ExceptionOr<Ref<MediaEndpointSessionDescription>> MediaEndpointSessionDescriptio
     auto result = sdpProcessor.parse(rtcDescription->sdp(), configuration);
     if (result != SDPProcessor::Result::Success) {
         if (result == SDPProcessor::Result::ParseError)
-            return Exception { INVALID_ACCESS_ERR, ASCIILiteral("SDP content is invalid") };
+            return Exception { InvalidAccessError, ASCIILiteral("SDP content is invalid") };
         LOG_ERROR("SDPProcessor internal error");
-        return Exception { ABORT_ERR, ASCIILiteral("Internal error") };
+        return Exception { AbortError, ASCIILiteral("Internal error") };
     }
     return adoptRef(*new MediaEndpointSessionDescription(rtcDescription->type(), WTFMove(configuration), WTFMove(rtcDescription)));
 }
@@ -82,23 +82,24 @@ RefPtr<RTCSessionDescription> MediaEndpointSessionDescription::toRTCSessionDescr
     // that same instance but with an updated sdp. It is used for RTCPeerConnection's description
     // atributes (e.g. localDescription and pendingLocalDescription).
     if (m_rtcDescription) {
-        m_rtcDescription->setSdp(sdpString);
+        m_rtcDescription->setSdp(WTFMove(sdpString));
         return m_rtcDescription;
     }
 
-    return RTCSessionDescription::create(m_type, sdpString);
+    return RTCSessionDescription::create(m_type, WTFMove(sdpString));
 }
 
+// FIXME: unify with LibWebRTCMediaEndpoint sessionDescriptionType().
 const String& MediaEndpointSessionDescription::typeString() const
 {
     switch (m_type) {
-    case RTCSessionDescription::SdpType::Offer:
+    case RTCSdpType::Offer:
         return offerString();
-    case RTCSessionDescription::SdpType::Pranswer:
+    case RTCSdpType::Pranswer:
         return pranswerString();
-    case RTCSessionDescription::SdpType::Answer:
+    case RTCSdpType::Answer:
         return answerString();
-    case RTCSessionDescription::SdpType::Rollback:
+    case RTCSdpType::Rollback:
         return rollbackString();
     }
 

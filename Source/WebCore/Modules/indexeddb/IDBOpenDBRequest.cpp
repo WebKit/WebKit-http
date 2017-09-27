@@ -28,7 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "DOMError.h"
+#include "DOMException.h"
 #include "EventNames.h"
 #include "IDBConnectionProxy.h"
 #include "IDBConnectionToServer.h"
@@ -70,7 +70,7 @@ void IDBOpenDBRequest::onError(const IDBResultData& data)
 {
     ASSERT(currentThread() == originThreadID());
 
-    m_domError = DOMError::create(data.error().name(), data.error().message());
+    m_domError = data.error().toDOMException();
     enqueueEvent(IDBRequestCompletionEvent::create(eventNames().errorEvent, true, true, *this));
 }
 
@@ -104,8 +104,8 @@ void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
     ASSERT(currentThread() == originThreadID());
     ASSERT(hasPendingActivity());
 
-    IDBError idbError(IDBDatabaseException::AbortError);
-    m_domError = DOMError::create(idbError.name(), idbError.message());
+    IDBError idbError(AbortError);
+    m_domError = DOMException::create(AbortError);
     setResultToUndefined();
 
     m_transaction->addRequest(*this);
@@ -136,7 +136,7 @@ void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)
     ASSERT(currentThread() == originThreadID());
 
     setResult(IDBDatabase::create(*scriptExecutionContext(), connectionProxy(), resultData));
-    m_isDone = true;
+    m_readyState = ReadyState::Done;
 
     enqueueEvent(IDBRequestCompletionEvent::create(eventNames().successEvent, false, false, *this));
 }
@@ -157,7 +157,7 @@ void IDBOpenDBRequest::onUpgradeNeeded(const IDBResultData& resultData)
     LOG(IndexedDB, "IDBOpenDBRequest::onUpgradeNeeded() - current version is %" PRIu64 ", new is %" PRIu64, oldVersion, newVersion);
 
     setResult(WTFMove(database));
-    m_isDone = true;
+    m_readyState = ReadyState::Done;
     m_transaction = WTFMove(transaction);
     m_transaction->addRequest(*this);
 
@@ -172,7 +172,7 @@ void IDBOpenDBRequest::onDeleteDatabaseSuccess(const IDBResultData& resultData)
 
     LOG(IndexedDB, "IDBOpenDBRequest::onDeleteDatabaseSuccess() - current version is %" PRIu64, oldVersion);
 
-    m_isDone = true;
+    m_readyState = ReadyState::Done;
     setResultToUndefined();
 
     enqueueEvent(IDBVersionChangeEvent::create(oldVersion, 0, eventNames().successEvent));

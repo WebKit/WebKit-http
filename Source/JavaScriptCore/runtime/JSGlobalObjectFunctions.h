@@ -25,7 +25,6 @@
 
 #include "JSCJSValue.h"
 #include <unicode/uchar.h>
-#include <wtf/text/LChar.h>
 
 namespace JSC {
 
@@ -49,11 +48,11 @@ EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeError(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorArgumentsCalleeAndCaller(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState*);
+EncodedJSValue JSC_HOST_CALL globalFuncHostPromiseRejectionTracker(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState*);
+EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState*);
+EncodedJSValue JSC_HOST_CALL globalFuncPropertyIsEnumerable(ExecState*);
 
-static const double mantissaOverflowLowerBound = 9007199254740992.0;
-double parseIntOverflow(const LChar*, unsigned length, int radix);
-bool isStrWhiteSpace(UChar);
 double jsToNumber(StringView);
 
 } // namespace JSC

@@ -46,7 +46,6 @@
 #include "MainFrame.h"
 #include "Page.h"
 #include "PageCache.h"
-#include "PageGroup.h"
 #include "ScrollingCoordinator.h"
 #include "SerializedScriptValue.h"
 #include "VisitedLinkStore.h"
@@ -90,7 +89,7 @@ void HistoryController::saveScrollPositionAndViewStateToItem(HistoryItem* item)
     if (page && m_frame.isMainFrame()) {
         item->setPageScaleFactor(page->pageScaleFactor() / page->viewScaleFactor());
 #if PLATFORM(IOS)
-        item->setObscuredInset(page->obscuredInset());
+        item->setObscuredInsets(page->obscuredInsets());
 #endif
     }
 
@@ -155,12 +154,12 @@ void HistoryController::restoreScrollPositionAndViewState()
     // through to the client.
     m_frame.loader().client().restoreViewState();
 
-#if !PLATFORM(IOS) && !PLATFORM(EFL)
+#if !PLATFORM(IOS)
     // Don't restore scroll point on iOS as FrameLoaderClient::restoreViewState() does that.
     if (view && !view->wasScrolledByUser()) {
         Page* page = m_frame.page();
-        auto desiredScrollPosition = m_currentItem->scrollPosition();
-
+        auto desiredScrollPosition = m_currentItem->shouldRestoreScrollPosition() ? m_currentItem->scrollPosition() : view->scrollPosition();
+        LOG(Scrolling, "HistoryController::restoreScrollPositionAndViewState scrolling to %d,%d", desiredScrollPosition.x(), desiredScrollPosition.y());
         if (page && m_frame.isMainFrame() && m_currentItem->pageScaleFactor())
             page->setPageScaleFactor(m_currentItem->pageScaleFactor() * page->viewScaleFactor(), desiredScrollPosition);
         else
@@ -230,6 +229,7 @@ void HistoryController::restoreDocumentState()
     switch (m_frame.loader().loadType()) {
     case FrameLoadType::Reload:
     case FrameLoadType::ReloadFromOrigin:
+    case FrameLoadType::ReloadExpiredOnly:
     case FrameLoadType::Same:
     case FrameLoadType::Replace:
         // Not restoring the document state.
@@ -292,6 +292,8 @@ bool HistoryController::shouldStopLoadingForHistoryItem(HistoryItem& targetItem)
 // This includes recursion to handle loading into framesets properly
 void HistoryController::goToItem(HistoryItem& targetItem, FrameLoadType type)
 {
+    LOG(History, "HistoryController %p goToItem %p type=%d", this, &targetItem, static_cast<int>(type));
+
     ASSERT(!m_frame.tree().parent());
     
     // shouldGoToHistoryItem is a private delegate method. This is needed to fix:
@@ -350,7 +352,7 @@ void HistoryController::updateForBackForwardNavigation()
 
 void HistoryController::updateForReload()
 {
-    LOG(History, "HistoryController %p updateForBackForwardNavigation: Updating History for reload in frame %p (main frame %d) %s", this, &m_frame, m_frame.isMainFrame(), m_frame.loader().documentLoader() ? m_frame.loader().documentLoader()->url().string().utf8().data() : "");
+    LOG(History, "HistoryController %p updateForReload: Updating History for reload in frame %p (main frame %d) %s", this, &m_frame, m_frame.isMainFrame(), m_frame.loader().documentLoader() ? m_frame.loader().documentLoader()->url().string().utf8().data() : "");
 
     if (m_currentItem) {
         PageCache::singleton().remove(*m_currentItem);
@@ -379,7 +381,7 @@ void HistoryController::updateForStandardLoad(HistoryUpdateType updateType)
 
     FrameLoader& frameLoader = m_frame.loader();
 
-    bool needPrivacy = m_frame.page()->usesEphemeralSession();
+    bool needPrivacy = m_frame.page() ? m_frame.page()->usesEphemeralSession() : true;
     const URL& historyURL = frameLoader.documentLoader()->urlForHistory();
 
     if (!frameLoader.documentLoader()->isClientRedirect()) {
@@ -413,7 +415,7 @@ void HistoryController::updateForRedirectWithLockedBackForwardList()
 {
     LOG(History, "HistoryController %p updateForRedirectWithLockedBackForwardList: Updating History for redirect load in frame %p (main frame %d) %s", this, &m_frame, m_frame.isMainFrame(), m_frame.loader().documentLoader() ? m_frame.loader().documentLoader()->url().string().utf8().data() : "");
     
-    bool needPrivacy = m_frame.page()->usesEphemeralSession();
+    bool needPrivacy = m_frame.page() ? m_frame.page()->usesEphemeralSession() : true;
     const URL& historyURL = m_frame.loader().documentLoader()->urlForHistory();
 
     if (m_frame.loader().documentLoader()->isClientRedirect()) {
@@ -458,7 +460,7 @@ void HistoryController::updateForClientRedirect()
         m_currentItem->clearScrollPosition();
     }
 
-    bool needPrivacy = m_frame.page()->usesEphemeralSession();
+    bool needPrivacy = m_frame.page() ? m_frame.page()->usesEphemeralSession() : true;
     const URL& historyURL = m_frame.loader().documentLoader()->urlForHistory();
 
     if (!historyURL.isEmpty() && !needPrivacy) {
@@ -547,11 +549,11 @@ void HistoryController::updateForSameDocumentNavigation()
     if (m_frame.document()->url().isEmpty())
         return;
 
-    if (m_frame.page()->usesEphemeralSession())
-        return;
-
     Page* page = m_frame.page();
     if (!page)
+        return;
+
+    if (page->usesEphemeralSession())
         return;
 
     addVisitedLink(*page, m_frame.document()->url());
@@ -601,9 +603,9 @@ void HistoryController::setCurrentItem(HistoryItem* item)
 
 void HistoryController::setCurrentItemTitle(const StringWithDirection& title)
 {
+    // FIXME: This ignores the title's direction.
     if (m_currentItem)
-        // FIXME: make use of title.direction() as well.
-        m_currentItem->setTitle(title.string());
+        m_currentItem->setTitle(title.string);
 }
 
 bool HistoryController::currentItemShouldBeReplaced() const
@@ -659,8 +661,8 @@ void HistoryController::initializeItem(HistoryItem& item)
 
     item.setURL(url);
     item.setTarget(m_frame.tree().uniqueName());
-    // FIXME: should store title directionality in history as well.
-    item.setTitle(title.string());
+    // FIXME: Should store the title direction as well.
+    item.setTitle(title.string);
     item.setOriginalURLString(originalURL.string());
 
     if (!unreachableURL.isEmpty() || documentLoader->response().httpStatusCode() >= 400)
@@ -741,7 +743,7 @@ void HistoryController::recursiveSetProvisionalItem(HistoryItem& item, HistoryIt
         Frame* childFrame = m_frame.tree().child(childFrameName);
         ASSERT(childFrame);
 
-        childFrame->loader().history().recursiveSetProvisionalItem(const_cast<HistoryItem&>(childItem.get()), fromChildItem);
+        childFrame->loader().history().recursiveSetProvisionalItem(childItem, fromChildItem);
     }
 }
 
@@ -761,7 +763,7 @@ void HistoryController::recursiveGoToItem(HistoryItem& item, HistoryItem* fromIt
         HistoryItem* fromChildItem = fromItem->childItemWithTarget(childFrameName);
         ASSERT(fromChildItem);
         if (Frame* childFrame = m_frame.tree().child(childFrameName))
-            childFrame->loader().history().recursiveGoToItem(const_cast<HistoryItem&>(childItem.get()), fromChildItem, type);
+            childFrame->loader().history().recursiveGoToItem(childItem, fromChildItem, type);
     }
 }
 
@@ -846,7 +848,7 @@ void HistoryController::updateCurrentItem()
     }
 }
 
-void HistoryController::pushState(PassRefPtr<SerializedScriptValue> stateObject, const String& title, const String& urlString)
+void HistoryController::pushState(RefPtr<SerializedScriptValue>&& stateObject, const String& title, const String& urlString)
 {
     if (!m_currentItem)
         return;
@@ -854,16 +856,19 @@ void HistoryController::pushState(PassRefPtr<SerializedScriptValue> stateObject,
     Page* page = m_frame.page();
     ASSERT(page);
 
+    bool shouldRestoreScrollPosition = m_currentItem->shouldRestoreScrollPosition();
+    
     // Get a HistoryItem tree for the current frame tree.
     Ref<HistoryItem> topItem = m_frame.mainFrame().loader().history().createItemTree(m_frame, false);
     
     // Override data in the current item (created by createItemTree) to reflect
     // the pushState() arguments.
     m_currentItem->setTitle(title);
-    m_currentItem->setStateObject(stateObject);
+    m_currentItem->setStateObject(WTFMove(stateObject));
     m_currentItem->setURLString(urlString);
+    m_currentItem->setShouldRestoreScrollPosition(shouldRestoreScrollPosition);
 
-    LOG(History, "HistoryController %p pushState: Adding top item %p, setting url of current item %p to %s", this, topItem.ptr(), m_currentItem.get(), urlString.ascii().data());
+    LOG(History, "HistoryController %p pushState: Adding top item %p, setting url of current item %p to %s, scrollRestoration is %s", this, topItem.ptr(), m_currentItem.get(), urlString.ascii().data(), topItem->shouldRestoreScrollPosition() ? "auto" : "manual");
 
     page->backForward().addItem(WTFMove(topItem));
 
@@ -874,24 +879,24 @@ void HistoryController::pushState(PassRefPtr<SerializedScriptValue> stateObject,
     m_frame.loader().client().updateGlobalHistory();
 }
 
-void HistoryController::replaceState(PassRefPtr<SerializedScriptValue> stateObject, const String& title, const String& urlString)
+void HistoryController::replaceState(RefPtr<SerializedScriptValue>&& stateObject, const String& title, const String& urlString)
 {
     if (!m_currentItem)
         return;
 
-    LOG(History, "HistoryController %p replaceState: Setting url of current item %p to %s", this, m_currentItem.get(), urlString.ascii().data());
+    LOG(History, "HistoryController %p replaceState: Setting url of current item %p to %s scrollRestoration %s", this, m_currentItem.get(), urlString.ascii().data(), m_currentItem->shouldRestoreScrollPosition() ? "auto" : "manual");
 
     if (!urlString.isEmpty())
         m_currentItem->setURLString(urlString);
     m_currentItem->setTitle(title);
-    m_currentItem->setStateObject(stateObject);
+    m_currentItem->setStateObject(WTFMove(stateObject));
     m_currentItem->setFormData(nullptr);
     m_currentItem->setFormContentType(String());
 
+    ASSERT(m_frame.page());
     if (m_frame.page()->usesEphemeralSession())
         return;
 
-    ASSERT(m_frame.page());
     addVisitedLink(*m_frame.page(), URL(ParsedURLString, urlString));
     m_frame.loader().client().updateGlobalHistory();
 }

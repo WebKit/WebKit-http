@@ -23,16 +23,17 @@
 #if ENABLE(Condition1)
 
 #include "DictionaryImplName.h"
-#include "JSDOMConvert.h"
+#include "JSDOMConvertDictionary.h"
+#include "JSDOMConvertEnumeration.h"
 
 namespace WebCore {
 
 template<> DictionaryImplName convertDictionary<DictionaryImplName>(JSC::ExecState&, JSC::JSValue);
 
+String convertEnumerationToString(TestStandaloneDictionary::EnumInStandaloneDictionaryFile);
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestStandaloneDictionary::EnumInStandaloneDictionaryFile);
 
-template<> Optional<TestStandaloneDictionary::EnumInStandaloneDictionaryFile> parseEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(JSC::ExecState&, JSC::JSValue);
-template<> TestStandaloneDictionary::EnumInStandaloneDictionaryFile convertEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(JSC::ExecState&, JSC::JSValue);
+template<> std::optional<TestStandaloneDictionary::EnumInStandaloneDictionaryFile> parseEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(JSC::ExecState&, JSC::JSValue);
 template<> const char* expectedEnumerationValues<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>();
 
 } // namespace WebCore

@@ -23,9 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-MockTrac = function()
+MockTrac = function(projectIdentifier)
 {
-    Trac.call(this, "https://trac.webkit.org/");
+    if (projectIdentifier) {
+        var options = { };
+        options[Trac.ProjectIdentifier] = projectIdentifier;
+        Trac.call(this, "https://trac.webkit.org/", options);
+    } else {
+        Trac.call(this, "https://trac.webkit.org/");
+    }
 };
 
 BaseObject.addConstructorFunctions(MockTrac);
@@ -101,3 +107,14 @@ MockTrac.EXAMPLE_TRAC_COMMITS = [
         "branches": ["trunk"]
     }
 ];
+
+MockTrac.recordedCommitIndicesByRevisionNumber = {
+    33018: 0,
+    33019: 1,
+    33020: 2,
+    33021: 3,
+    33022: 4,
+    33023: 5,
+    33024: 6,
+    33025: 7
+};

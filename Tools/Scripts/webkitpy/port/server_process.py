@@ -1,3 +1,4 @@
+# Copyright (C) 2017 Apple Inc. All rights reserved.
 # Copyright (C) 2010 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -59,7 +60,7 @@ class ServerProcess(object):
     indefinitely. The class also handles transparently restarting processes
     as necessary to keep issuing commands."""
 
-    def __init__(self, port_obj, name, cmd, env=None, universal_newlines=False, treat_no_data_as_crash=False):
+    def __init__(self, port_obj, name, cmd, env=None, universal_newlines=False, treat_no_data_as_crash=False, target_host=None):
         self._port = port_obj
         self._name = name  # Should be the command name (e.g. DumpRenderTree, ImageDiff)
         self._cmd = cmd
@@ -68,16 +69,13 @@ class ServerProcess(object):
         # Don't set if there will be binary data or the data must be ASCII encoded.
         self._universal_newlines = universal_newlines
         self._treat_no_data_as_crash = treat_no_data_as_crash
-        self._host = self._port.host
+        self._target_host = target_host or port_obj.host
         self._pid = None
         self._reset()
 
         # See comment in imports for why we need the win32 APIs and can't just use select.
         # FIXME: there should be a way to get win32 vs. cygwin from platforminfo.
         self._use_win32_apis = sys.platform.startswith('win')
-
-    def name(self):
-        return self._name
 
     def pid(self):
         return self._pid
@@ -103,27 +101,29 @@ class ServerProcess(object):
     def process_name(self):
         return self._name
 
+    @staticmethod
+    def _set_file_nonblocking(file):
+        flags = fcntl.fcntl(file.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl(file.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
     def _start(self):
         if self._proc:
             raise ValueError("%s already running" % self._name)
         self._reset()
         # close_fds is a workaround for http://bugs.python.org/issue2320
-        close_fds = not self._host.platform.is_win()
-        self._proc = self._host.executive.popen(self._cmd, stdin=self._host.executive.PIPE,
-            stdout=self._host.executive.PIPE,
-            stderr=self._host.executive.PIPE,
+        # In Python 2.7.10, close_fds is also supported on Windows.
+        close_fds = True
+        self._proc = self._target_host.executive.popen(self._cmd, stdin=self._target_host.executive.PIPE,
+            stdout=self._target_host.executive.PIPE,
+            stderr=self._target_host.executive.PIPE,
             close_fds=close_fds,
             env=self._env,
             universal_newlines=self._universal_newlines)
         self._pid = self._proc.pid
-        self._port.find_system_pid(self.name(), self._pid)
-        fd = self._proc.stdout.fileno()
+        self._port.find_system_pid(self.process_name(), self._pid)
         if not self._use_win32_apis:
-            fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
-            fd = self._proc.stderr.fileno()
-            fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-            fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+            self._set_file_nonblocking(self._proc.stdout)
+            self._set_file_nonblocking(self._proc.stderr)
 
     def _handle_possible_interrupt(self):
         """This routine checks to see if the process crashed or exited
@@ -216,7 +216,7 @@ class ServerProcess(object):
     def _handle_timeout(self):
         self.timed_out = True
         if self._port.get_option("sample_on_timeout"):
-            self._port.sample_process(self._name, self._proc.pid)
+            self._port.sample_process(self._name, self._proc.pid, self._target_host)
 
     def _split_string_after_index(self, string, index):
         return string[:index], string[index:]
@@ -243,7 +243,9 @@ class ServerProcess(object):
         except select.error, e:
             # We can ignore EINVAL since it's likely the process just crashed and we'll
             # figure that out the next time through the loop in _read().
-            if e.args[0] == errno.EINVAL:
+            # We also ignore EINTR as we can resume reading the next time
+            # through the loop in _read().
+            if e.args[0] in [errno.EINVAL, errno.EINTR]:
                 return
             raise
 
@@ -314,7 +316,8 @@ class ServerProcess(object):
     # It might be cleaner to pass in the file descriptor to poll instead.
     def _read(self, deadline, fetch_bytes_from_buffers_callback):
         while True:
-            if self.has_crashed():
+            # Polling does not need to occur before bytes are fetched from the buffer.
+            if self._crashed:
                 return None
 
             if time.time() > deadline:
@@ -324,6 +327,9 @@ class ServerProcess(object):
             bytes = fetch_bytes_from_buffers_callback()
             if bytes is not None:
                 return bytes
+
+            if self.has_crashed():
+                return None
 
             if self._use_win32_apis:
                 self._wait_for_data_and_update_buffers_using_win32_apis(deadline)
@@ -340,27 +346,31 @@ class ServerProcess(object):
 
         # Only bother to check for leaks or stderr if the process is still running.
         if self.poll() is None:
-            self._port.check_for_leaks(self.name(), self.pid())
+            self._port.check_for_leaks(self.process_name(), self.pid())
 
-        now = time.time()
         if self._proc.stdin:
             self._proc.stdin.close()
             self._proc.stdin = None
+
+        return self._wait_for_stop(timeout_secs)
+
+    def _wait_for_stop(self, timeout_secs=3.0):
+        now = time.time()
         killed = False
         if timeout_secs:
             deadline = now + timeout_secs
-            while self._proc.poll() is None and time.time() < deadline:
+            while self._proc and self._proc.poll() is None and time.time() < deadline:
                 time.sleep(0.01)
-            if self._proc.poll() is None:
+            if self._proc and self._proc.poll() is None:
                 _log.warning('stopping %s(pid %d) timed out, killing it' % (self._name, self._proc.pid))
 
-        if self._proc.poll() is None:
+        if self._proc and self._proc.poll() is None:
             self._kill()
             killed = True
             _log.debug('killed pid %d' % self._proc.pid)
 
         # read any remaining data on the pipes and return it.
-        if not killed:
+        if self._proc and not killed:
             if self._use_win32_apis:
                 self._wait_for_data_and_update_buffers_using_win32_apis(now)
             else:
@@ -373,8 +383,8 @@ class ServerProcess(object):
         self.stop(0.0)
 
     def _kill(self):
-        self._host.executive.kill_process(self._proc.pid)
-        if self._proc.poll() is not None:
+        self._target_host.executive.kill_process(self._proc.pid)
+        if self._proc.poll() is None:
             self._proc.wait()
 
     def replace_outputs(self, stdout, stderr):

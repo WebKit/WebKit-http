@@ -1,5 +1,5 @@
 # Copyright (c) 2009 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -62,6 +62,7 @@ class AbstractQueue(Command, QueueEngineDelegate):
     watchers = [
     ]
 
+    _skip_status = "Skip"
     _pass_status = "Pass"
     _fail_status = "Fail"
     _error_status = "Error"
@@ -117,7 +118,7 @@ class AbstractQueue(Command, QueueEngineDelegate):
         return os.path.join(self._log_directory(), "%s.log" % self.name)
 
     def work_item_log_path(self, work_item):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def begin_work_queue(self):
         _log.info("CAUTION: %s will discard all local changes in \"%s\"" % (self.name, self._tool.scm().checkout_root))
@@ -137,13 +138,13 @@ class AbstractQueue(Command, QueueEngineDelegate):
         return not self._options.iterations or self._iteration_count <= self._options.iterations
 
     def next_work_item(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def process_work_item(self, work_item):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def handle_unexpected_error(self, work_item, message):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     # Command methods
 
@@ -242,6 +243,10 @@ class AbstractPatchQueue(AbstractQueue):
     def _did_error(self, patch, reason):
         message = "%s: %s" % (self._error_status, reason)
         self._update_status(message, patch)
+        self._release_work_item(patch)
+
+    def _did_skip(self, patch):
+        self._update_status(self._skip_status, patch)
         self._release_work_item(patch)
 
     def _unlock_patch(self, patch):

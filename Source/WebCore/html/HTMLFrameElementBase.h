@@ -26,12 +26,17 @@
 #include "FrameLoaderTypes.h"
 #include "HTMLFrameOwnerElement.h"
 
+namespace JSC {
+class ExecState;
+}
+
 namespace WebCore {
 
 class HTMLFrameElementBase : public HTMLFrameOwnerElement {
 public:
     WEBCORE_EXPORT URL location() const;
     WEBCORE_EXPORT void setLocation(const String&);
+    void setLocation(JSC::ExecState&, const String&);
 
     ScrollbarMode scrollingMode() const final { return m_scrolling; }
     
@@ -42,6 +47,8 @@ public:
     WEBCORE_EXPORT int height();
 
     bool canContainRangeEndPoint() const final { return false; }
+
+    bool isURLAllowed(const URL&) const override;
 
 protected:
     HTMLFrameElementBase(const QualifiedName&, Document&);

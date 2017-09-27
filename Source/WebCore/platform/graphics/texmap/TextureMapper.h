@@ -21,7 +21,8 @@
 #define TextureMapper_h
 
 #include "BitmapTexture.h"
-#include "GraphicsContext.h"
+#include "Color.h"
+#include "GraphicsTypes3D.h"
 #include "IntRect.h"
 #include "IntSize.h"
 #include "TransformationMatrix.h"
@@ -71,21 +72,15 @@ public:
 
     virtual void drawTexture(const BitmapTexture&, const FloatRect& target, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0f, unsigned exposedEdges = AllEdges) = 0;
     virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&, bool allowBlend = true) = 0;
+    virtual void clearColor(const Color&) = 0;
 
     // makes a surface the target for the following drawTexture calls.
     virtual void bindSurface(BitmapTexture* surface) = 0;
-    void setGraphicsContext(GraphicsContext* context) { m_context = context; }
-    GraphicsContext* graphicsContext() { return m_context; }
     virtual void beginClip(const TransformationMatrix&, const FloatRect&) = 0;
     virtual void endClip() = 0;
     virtual IntRect clipBounds() = 0;
-    virtual PassRefPtr<BitmapTexture> createTexture() = 0;
-
-    void setImageInterpolationQuality(InterpolationQuality quality) { m_interpolationQuality = quality; }
-    void setTextDrawingMode(TextDrawingModeFlags mode) { m_textDrawingMode = mode; }
-
-    InterpolationQuality imageInterpolationQuality() const { return m_interpolationQuality; }
-    TextDrawingModeFlags textDrawingMode() const { return m_textDrawingMode; }
+    virtual Ref<BitmapTexture> createTexture() = 0;
+    virtual Ref<BitmapTexture> createTexture(GC3Dint internalFormat) = 0;
 
     virtual void beginPainting(PaintFlags = 0) { }
     virtual void endPainting() { }
@@ -94,13 +89,12 @@ public:
 
     virtual IntSize maxTextureSize() const = 0;
 
-    virtual PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&, const BitmapTexture::Flags = BitmapTexture::SupportsAlpha);
+    virtual RefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&, const BitmapTexture::Flags = BitmapTexture::SupportsAlpha);
 
     void setPatternTransform(const TransformationMatrix& p) { m_patternTransform = p; }
     void setWrapMode(WrapMode m) { m_wrapMode = m; }
 
 protected:
-    GraphicsContext* m_context;
     std::unique_ptr<BitmapTexturePool> m_texturePool;
 
     bool isInMaskMode() const { return m_isMaskMode; }
@@ -116,11 +110,9 @@ private:
         return nullptr;
     }
 #endif
-    InterpolationQuality m_interpolationQuality;
-    TextDrawingModeFlags m_textDrawingMode;
-    bool m_isMaskMode;
+    bool m_isMaskMode { false };
     TransformationMatrix m_patternTransform;
-    WrapMode m_wrapMode;
+    WrapMode m_wrapMode { StretchWrap };
 };
 
 }

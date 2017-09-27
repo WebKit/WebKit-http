@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -32,6 +31,23 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/fonts/math/limits-upperlimitbaselinerisemin5000.woff
 /LayoutTests/imported/w3c/web-platform-tests/fonts/math/limits-upperlimitgapmin7000.woff
 /LayoutTests/imported/w3c/web-platform-tests/fonts/math/lineheight5000-typolineheight2300.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-bold-fraktur.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-bold-italic.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-bold-sans-serif.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-bold-script.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-bold.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-double-struck.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-fraktur.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-initial.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-italic.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-looped.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-monospace.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-sans-serif-bold-italic.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-sans-serif-italic.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-sans-serif.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-script.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-stretched.woff
+/LayoutTests/imported/w3c/web-platform-tests/fonts/math/mathvariant-tailed.woff
 /LayoutTests/imported/w3c/web-platform-tests/fonts/math/radical-degreebottomraisepercent25-rulethickness1000.woff
 /LayoutTests/imported/w3c/web-platform-tests/fonts/math/radical-displaystyleverticalgap7000-rulethickness1000.woff
 /LayoutTests/imported/w3c/web-platform-tests/fonts/math/radical-extraascender3000-rulethickness1000.woff

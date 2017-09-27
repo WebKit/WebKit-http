@@ -43,21 +43,23 @@
 #include "HTMLUListElement.h"
 #include "HTMLVideoElement.h"
 #include "ImageBuffer.h"
-#include "Language.h"
 #include "LocalizedStrings.h"
 #include "Logging.h"
 #include "MediaControls.h"
+#include "MouseEvent.h"
 #include "Page.h"
 #include "PageGroup.h"
 #include "RenderLayer.h"
 #include "RenderMediaControlElements.h"
 #include "RenderSlider.h"
+#include "RenderTheme.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "TextTrackList.h"
 #include "VTTRegionList.h"
+#include <wtf/Language.h>
 
 namespace WebCore {
 
@@ -137,7 +139,7 @@ void MediaControlPanelElement::startTimer()
     // The timer is required to set the property display:'none' on the panel,
     // such that captions are correctly displayed at the bottom of the video
     // at the end of the fadeout transition.
-    double duration = document().page() ? document().page()->theme().mediaControlsFadeOutDuration() : 0;
+    Seconds duration = RenderTheme::singleton().mediaControlsFadeOutDuration();
     m_transitionTimer.startOneShot(duration);
 }
 
@@ -188,7 +190,7 @@ void MediaControlPanelElement::makeOpaque()
     if (m_opaque)
         return;
 
-    double duration = document().page() ? document().page()->theme().mediaControlsFadeInDuration() : 0;
+    double duration = RenderTheme::singleton().mediaControlsFadeInDuration();
 
     setInlineStyleProperty(CSSPropertyTransitionProperty, CSSPropertyOpacity);
     setInlineStyleProperty(CSSPropertyTransitionDuration, duration, CSSPrimitiveValue::CSS_S);
@@ -205,10 +207,10 @@ void MediaControlPanelElement::makeTransparent()
     if (!m_opaque)
         return;
 
-    double duration = document().page() ? document().page()->theme().mediaControlsFadeOutDuration() : 0;
+    Seconds duration = RenderTheme::singleton().mediaControlsFadeOutDuration();
 
     setInlineStyleProperty(CSSPropertyTransitionProperty, CSSPropertyOpacity);
-    setInlineStyleProperty(CSSPropertyTransitionDuration, duration, CSSPrimitiveValue::CSS_S);
+    setInlineStyleProperty(CSSPropertyTransitionDuration, duration.value(), CSSPrimitiveValue::CSS_S);
     setInlineStyleProperty(CSSPropertyOpacity, 0.0, CSSPrimitiveValue::CSS_NUMBER);
 
     m_opaque = false;
@@ -953,11 +955,11 @@ void MediaControlFullscreenButtonElement::defaultEventHandler(Event& event)
         // allows apps which embed a WebView to retain the existing full screen
         // video implementation without requiring them to implement their own full
         // screen behavior.
-        if (document().settings() && document().settings()->fullScreenEnabled()) {
+        if (document().settings().fullScreenEnabled()) {
             if (document().webkitIsFullScreen() && document().webkitCurrentFullScreenElement() == parentMediaElement(this))
                 document().webkitCancelFullScreen();
             else
-                document().requestFullScreenForElement(parentMediaElement(this), 0, Document::ExemptIFrameAllowFullScreenRequirement);
+                document().requestFullScreenForElement(parentMediaElement(this), Document::ExemptIFrameAllowFullScreenRequirement);
         } else
 #endif
             mediaController()->enterFullscreen();
@@ -1230,6 +1232,37 @@ void MediaControlTextTrackContainerElement::updateActiveCuesFontSize()
 
 }
 
+void MediaControlTextTrackContainerElement::updateTextStrokeStyle()
+{
+    if (!document().page())
+        return;
+
+    HTMLMediaElement* mediaElement = parentMediaElement(this);
+    if (!mediaElement)
+        return;
+    
+    String language;
+
+    // FIXME: Since it is possible to have more than one text track enabled, the following code may not find the correct language.
+    // The default UI only allows a user to enable one track at a time, so it should be OK for now, but we should consider doing
+    // this differently, see <https://bugs.webkit.org/show_bug.cgi?id=169875>.
+    auto& tracks = mediaElement->textTracks();
+    for (unsigned i = 0; i < tracks.length(); ++i) {
+        auto track = tracks.item(i);
+        if (track && track->mode() == TextTrack::Mode::Showing) {
+            language = track->validBCP47Language();
+            break;
+        }
+    }
+
+    float strokeWidth;
+    bool important;
+
+    // FIXME: find a way to set this property in the stylesheet like the other user style preferences, see <https://bugs.webkit.org/show_bug.cgi?id=169874>.
+    if (document().page()->group().captionPreferences().captionStrokeWidthForFont(m_fontSize, language, strokeWidth, important))
+        setInlineStyleProperty(CSSPropertyStrokeWidth, strokeWidth, CSSPrimitiveValue::CSS_PX, important);
+}
+
 void MediaControlTextTrackContainerElement::updateTimerFired()
 {
     if (!document().page())
@@ -1240,6 +1273,7 @@ void MediaControlTextTrackContainerElement::updateTimerFired()
 
     updateActiveCuesFontSize();
     updateDisplay();
+    updateTextStrokeStyle();
 }
 
 void MediaControlTextTrackContainerElement::updateTextTrackRepresentation()
@@ -1248,8 +1282,13 @@ void MediaControlTextTrackContainerElement::updateTextTrackRepresentation()
     if (!mediaElement)
         return;
 
-    if (!mediaElement->requiresTextTrackRepresentation())
+    if (!mediaElement->requiresTextTrackRepresentation()) {
+        if (m_textTrackRepresentation) {
+            clearTextTrackRepresentation();
+            updateSizes(true);
+        }
         return;
+    }
 
     if (!m_textTrackRepresentation) {
         m_textTrackRepresentation = TextTrackRepresentation::create(*this);
@@ -1336,7 +1375,7 @@ void MediaControlTextTrackContainerElement::updateSizes(bool forceUpdate)
     m_updateTextTrackRepresentationStyle = true;
 
     // FIXME (121170): This function is called during layout, and should lay out the text tracks immediately.
-    m_updateTimer.startOneShot(0);
+    m_updateTimer.startOneShot(0_s);
 }
 
 RefPtr<Image> MediaControlTextTrackContainerElement::createTextTrackRepresentationImage()
@@ -1370,7 +1409,7 @@ RefPtr<Image> MediaControlTextTrackContainerElement::createTextTrackRepresentati
     if (!buffer)
         return nullptr;
 
-    layer->paint(buffer->context(), paintingRect, LayoutSize(), PaintBehaviorFlattenCompositingLayers, nullptr, RenderLayer::PaintLayerPaintingCompositingAllPhases);
+    layer->paint(buffer->context(), paintingRect, LayoutSize(), PaintBehaviorFlattenCompositingLayers | PaintBehaviorSnapshotting, nullptr, RenderLayer::PaintLayerPaintingCompositingAllPhases);
 
     return ImageBuffer::sinkIntoImage(WTFMove(buffer));
 }

@@ -26,8 +26,10 @@
 #include "config.h"
 #include "JSDOMWrapper.h"
 
+#include "DOMWindow.h"
 #include "DOMWrapperWorld.h"
 #include "JSDOMWindow.h"
+#include "WebCoreJSClientData.h"
 #include <runtime/Error.h>
 
 using namespace JSC;
@@ -41,6 +43,16 @@ JSDOMWindow& JSDOMObject::domWindow() const
     auto* domWindow = JSC::jsCast<JSDOMWindow*>(JSC::JSNonFinalObject::globalObject());
     ASSERT(domWindow);
     return *domWindow;
+}
+
+Subspace* outputConstraintSubspaceFor(VM& vm)
+{
+    return &static_cast<JSVMClientData*>(vm.clientData)->outputConstraintSpace();
+}
+
+Subspace* globalObjectOutputConstraintSubspaceFor(VM& vm)
+{
+    return &static_cast<JSVMClientData*>(vm.clientData)->globalObjectOutputConstraintSpace();
 }
 
 } // namespace WebCore

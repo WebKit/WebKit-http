@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -16,16 +15,13 @@ None
 ------------------------------------------------------------------------
 List of files:
 /LayoutTests/imported/w3c/web-platform-tests/CONTRIBUTING.md
-/LayoutTests/imported/w3c/web-platform-tests/LICENSE
+/LayoutTests/imported/w3c/web-platform-tests/LICENSE.md
 /LayoutTests/imported/w3c/web-platform-tests/README.md
-/LayoutTests/imported/w3c/web-platform-tests/check_stability.py
-/LayoutTests/imported/w3c/web-platform-tests/ci_lint.sh
-/LayoutTests/imported/w3c/web-platform-tests/ci_stability.sh
+/LayoutTests/imported/w3c/web-platform-tests/check_stability.ini
 /LayoutTests/imported/w3c/web-platform-tests/config.default.json
-/LayoutTests/imported/w3c/web-platform-tests/diff-manifest.py
-/LayoutTests/imported/w3c/web-platform-tests/lint
 /LayoutTests/imported/w3c/web-platform-tests/lint.whitelist
-/LayoutTests/imported/w3c/web-platform-tests/manifest
-/LayoutTests/imported/w3c/web-platform-tests/serve
 /LayoutTests/imported/w3c/web-platform-tests/serve.py
 /LayoutTests/imported/w3c/web-platform-tests/server-side.md
+/LayoutTests/imported/w3c/web-platform-tests/update-built-tests.sh
+/LayoutTests/imported/w3c/web-platform-tests/wpt
+/LayoutTests/imported/w3c/web-platform-tests/wpt.py

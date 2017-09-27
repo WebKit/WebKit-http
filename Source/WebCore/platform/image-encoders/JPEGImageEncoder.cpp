@@ -23,6 +23,8 @@
 #include "JPEGImageEncoder.h"
 
 #include "IntSize.h"
+#include <wtf/Vector.h>
+
 // FIXME: jpeglib.h requires stdio.h to be included first for FILE
 #include <stdio.h>
 #include <jpeglib.h>
@@ -32,15 +34,15 @@ namespace WebCore {
 
 class JPEGDestinationManager : public jpeg_destination_mgr {
 public:
-    explicit JPEGDestinationManager(Vector<char>& toDump)
+    explicit JPEGDestinationManager(Vector<uint8_t>& toDump)
         : m_dump(toDump)
     {
         // Zero base class memory.
         jpeg_destination_mgr* base = this;
         memset(base, 0, sizeof(jpeg_destination_mgr));
     }
-    Vector<char> m_buffer;
-    Vector<char>& m_dump;
+    Vector<uint8_t> m_buffer;
+    Vector<uint8_t>& m_dump;
 };
 
 class JPEGCompressErrorMgr : public jpeg_error_mgr {
@@ -83,7 +85,7 @@ static void jpegErrorExit(j_common_ptr compressData)
     longjmp(err->m_setjmpBuffer, -1);
 }
 
-bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize& size, Vector<char>& jpegData, Optional<double> quality)
+bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize& size, Vector<uint8_t>& jpegData, std::optional<double> quality)
 {
     struct jpeg_compress_struct compressData;
     JPEGCompressErrorMgr err;
@@ -119,7 +121,7 @@ bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize
     }
 
     jpeg_start_compress(&compressData, TRUE);
-    rowBuffer.resize(compressData.image_width * 3);
+    rowBuffer.grow(compressData.image_width * 3);
 
     // add offset to prevent clobbered error caused by setjmp and longjmp.
     unsigned offset = 0;

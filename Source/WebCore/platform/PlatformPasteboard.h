@@ -26,9 +26,8 @@
 #ifndef PlatformPasteboard_h
 #define PlatformPasteboard_h
 
-#include <functional>
 #include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
+#include <wtf/Function.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 
@@ -51,14 +50,17 @@ class SelectionData;
 class SharedBuffer;
 class URL;
 struct PasteboardImage;
+struct PasteboardURL;
 struct PasteboardWebContent;
 
 class PlatformPasteboard {
 public:
-    // FIXME: probably we don't need a constructor that takes a pasteboard name for iOS.
     WEBCORE_EXPORT explicit PlatformPasteboard(const String& pasteboardName);
 #if PLATFORM(IOS) || PLATFORM(WPE)
     WEBCORE_EXPORT PlatformPasteboard();
+    WEBCORE_EXPORT Vector<String> filenamesForDataInteraction();
+    WEBCORE_EXPORT void getTypesByFidelityForItemAtIndex(Vector<String>& types, int index);
+    WEBCORE_EXPORT void updateSupportedTypeIdentifiers(const Vector<String>& types);
 #endif
     WEBCORE_EXPORT static String uniqueName();
 
@@ -82,22 +84,28 @@ public:
     WEBCORE_EXPORT void write(const PasteboardWebContent&);
     WEBCORE_EXPORT void write(const PasteboardImage&);
     WEBCORE_EXPORT void write(const String& pasteboardType, const String&);
+    WEBCORE_EXPORT void write(const PasteboardURL&);
     WEBCORE_EXPORT RefPtr<SharedBuffer> readBuffer(int index, const String& pasteboardType);
     WEBCORE_EXPORT String readString(int index, const String& pasteboardType);
-    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType);
+    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType, String& title);
     WEBCORE_EXPORT int count();
+    WEBCORE_EXPORT int numberOfFiles();
 
 #if PLATFORM(GTK)
-    WEBCORE_EXPORT void writeToClipboard(const SelectionData&, std::function<void()>&& primarySelectionCleared);
+    WEBCORE_EXPORT void writeToClipboard(const SelectionData&, WTF::Function<void()>&& primarySelectionCleared);
     WEBCORE_EXPORT Ref<SelectionData> readFromClipboard();
 #endif
 
 private:
+#if PLATFORM(IOS)
+    bool allowReadingURLAtIndex(const URL&, int index) const;
+#endif
+
 #if PLATFORM(MAC)
     RetainPtr<NSPasteboard> m_pasteboard;
 #endif
 #if PLATFORM(IOS)
-    RetainPtr<UIPasteboard> m_pasteboard;
+    RetainPtr<id> m_pasteboard;
 #endif
 #if PLATFORM(GTK)
     GtkClipboard* m_clipboard;

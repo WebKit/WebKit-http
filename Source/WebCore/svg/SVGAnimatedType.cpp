@@ -20,6 +20,7 @@
 #include "config.h"
 #include "SVGAnimatedType.h"
 
+#include "CSSParser.h"
 #include "SVGParserUtilities.h"
 #include "SVGPathByteStream.h"
 
@@ -138,7 +139,7 @@ std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createIntegerOptionalInteger(s
     return animatedType;
 }
 
-std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createLength(std::unique_ptr<SVGLength> length)
+std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createLength(std::unique_ptr<SVGLengthValue> length)
 {
     ASSERT(length);
     auto animatedType = std::make_unique<SVGAnimatedType>(AnimatedLength);
@@ -146,7 +147,7 @@ std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createLength(std::unique_ptr<S
     return animatedType;
 }
 
-std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createLengthList(std::unique_ptr<SVGLengthList> lengthList)
+std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createLengthList(std::unique_ptr<SVGLengthListValues> lengthList)
 {
     ASSERT(lengthList);
     auto animatedType = std::make_unique<SVGAnimatedType>(AnimatedLengthList);
@@ -162,7 +163,7 @@ std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createNumber(std::unique_ptr<f
     return animatedType;
 }
 
-std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createNumberList(std::unique_ptr<SVGNumberList> numberList)
+std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createNumberList(std::unique_ptr<SVGNumberListValues> numberList)
 {
     ASSERT(numberList);
     auto animatedType = std::make_unique<SVGAnimatedType>(AnimatedNumberList);
@@ -186,7 +187,7 @@ std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createPath(std::unique_ptr<SVG
     return animatedType;
 }
 
-std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createPointList(std::unique_ptr<SVGPointList> pointList)
+std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createPointList(std::unique_ptr<SVGPointListValues> pointList)
 {
     ASSERT(pointList);
     auto animatedType = std::make_unique<SVGAnimatedType>(AnimatedPoints);
@@ -218,7 +219,7 @@ std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createString(std::unique_ptr<S
     return animatedType;
 }
 
-std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createTransformList(std::unique_ptr<SVGTransformList> transformList)
+std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createTransformList(std::unique_ptr<SVGTransformListValues> transformList)
 {
     ASSERT(transformList);
     auto animatedType = std::make_unique<SVGAnimatedType>(AnimatedTransformList);
@@ -275,14 +276,14 @@ bool SVGAnimatedType::setValueAsString(const QualifiedName& attrName, const Stri
     switch (m_type) {
     case AnimatedColor:
         ASSERT(m_data.color);
-        *m_data.color = SVGColor::colorFromRGBColorString(value);
+        *m_data.color = CSSParser::parseColor(value.stripWhiteSpace());
         return true;
     case AnimatedLength:
         ASSERT(m_data.length);
-        return !m_data.length->setValueAsString(value, SVGLength::lengthModeForAnimatedLengthAttribute(attrName)).hasException();
+        return !m_data.length->setValueAsString(value, SVGLengthValue::lengthModeForAnimatedLengthAttribute(attrName)).hasException();
     case AnimatedLengthList:
         ASSERT(m_data.lengthList);
-        m_data.lengthList->parse(value, SVGLength::lengthModeForAnimatedLengthAttribute(attrName));
+        m_data.lengthList->parse(value, SVGLengthValue::lengthModeForAnimatedLengthAttribute(attrName));
         return true;
     case AnimatedNumber:
         ASSERT(m_data.number);

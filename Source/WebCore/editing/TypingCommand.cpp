@@ -31,6 +31,7 @@
 #include "DataTransfer.h"
 #include "DeleteSelectionCommand.h"
 #include "Document.h"
+#include "Editing.h"
 #include "Editor.h"
 #include "Element.h"
 #include "Frame.h"
@@ -46,7 +47,6 @@
 #include "StaticRange.h"
 #include "TextIterator.h"
 #include "VisibleUnits.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
@@ -279,7 +279,7 @@ void TypingCommand::insertLineBreak(Document& document, Options options)
         return;
     }
 
-    applyCommand(TypingCommand::create(document, InsertLineBreak, emptyString(), options));
+    TypingCommand::create(document, InsertLineBreak, emptyString(), options)->apply();
 }
 
 void TypingCommand::insertParagraphSeparatorInQuotedContent(Document& document)
@@ -291,7 +291,7 @@ void TypingCommand::insertParagraphSeparatorInQuotedContent(Document& document)
         return;
     }
 
-    applyCommand(TypingCommand::create(document, InsertParagraphSeparatorInQuotedContent));
+    TypingCommand::create(document, InsertParagraphSeparatorInQuotedContent)->apply();
 }
 
 void TypingCommand::insertParagraphSeparator(Document& document, Options options)
@@ -304,7 +304,7 @@ void TypingCommand::insertParagraphSeparator(Document& document, Options options
         return;
     }
 
-    applyCommand(TypingCommand::create(document, InsertParagraphSeparator, emptyString(), options));
+    TypingCommand::create(document, InsertParagraphSeparator, emptyString(), options)->apply();
 }
 
 RefPtr<TypingCommand> TypingCommand::lastTypingCommandIfStillOpenForTyping(Frame& frame)
@@ -510,14 +510,14 @@ void TypingCommand::typingAddedToOpenCommand(ETypingCommand commandTypeForAddedT
     updatePreservesTypingStyle(commandTypeForAddedTyping);
 
 #if PLATFORM(COCOA)
-    frame.editor().appliedEditing(this);
+    frame.editor().appliedEditing(*this);
     // Since the spellchecking code may also perform corrections and other replacements, it should happen after the typing changes.
     if (!m_shouldPreventSpellChecking)
         markMisspellingsAfterTyping(commandTypeForAddedTyping);
 #else
     // The old spellchecking code requires that checking be done first, to prevent issues like that in 6864072, where <doesn't> is marked as misspelled.
     markMisspellingsAfterTyping(commandTypeForAddedTyping);
-    frame.editor().appliedEditing(this);
+    frame.editor().appliedEditing(*this);
 #endif
 }
 
@@ -547,10 +547,10 @@ void TypingCommand::insertTextRunWithoutNewlines(const String &text, bool select
     if (!willAddTypingToOpenCommand(InsertText, CharacterGranularity, text))
         return;
 
-    RefPtr<InsertTextCommand> command = InsertTextCommand::create(document(), text, selectInsertedText,
+    auto command = InsertTextCommand::create(document(), text, selectInsertedText,
         m_compositionType == TextCompositionNone ? InsertTextCommand::RebalanceLeadingAndTrailingWhitespaces : InsertTextCommand::RebalanceAllWhitespaces, EditActionTypingInsertText);
 
-    applyCommandToComposite(command, endingSelection());
+    applyCommandToComposite(WTFMove(command), endingSelection());
 
     typingAddedToOpenCommand(InsertText);
 }
@@ -632,7 +632,7 @@ bool TypingCommand::makeEditableRootEmpty()
     }
 
     while (Node* child = root->firstChild())
-        removeNode(child);
+        removeNode(*child);
 
     addBlockPlaceholderIfNeeded(root);
     setEndingSelection(VisibleSelection(firstPositionInNode(root), DOWNSTREAM, endingSelection().isDirectional()));
@@ -669,7 +669,11 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
         if (shouldAddToKillRing && selection.isCaret() && granularity != CharacterGranularity)
             selection.modify(FrameSelection::AlterationExtend, DirectionBackward, CharacterGranularity);
 
-        if (endingSelection().visibleStart().previous(CannotCrossEditingBoundary).isNull()) {
+        const VisiblePosition& visibleStart = endingSelection().visibleStart();
+        const VisiblePosition& previousPosition = visibleStart.previous(CannotCrossEditingBoundary);
+        Node* enclosingTableCell = enclosingNodeOfType(visibleStart.deepEquivalent(), &isTableCell);
+        const Node* enclosingTableCellForPreviousPosition = enclosingNodeOfType(previousPosition.deepEquivalent(), &isTableCell);
+        if (previousPosition.isNull() || enclosingTableCell != enclosingTableCellForPreviousPosition) {
             // When the caret is at the start of the editable area in an empty list item, break out of the list item.
             if (auto deleteListSelection = shouldBreakOutOfEmptyListItem()) {
                 if (willAddTypingToOpenCommand(DeleteKey, granularity, { }, Range::create(document(), deleteListSelection.value().start(), deleteListSelection.value().end()))) {
@@ -678,17 +682,17 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
                 }
                 return;
             }
+        }
+        if (previousPosition.isNull()) {
             // When there are no visible positions in the editing root, delete its entire contents.
             // FIXME: Dispatch a `beforeinput` event here and bail if preventDefault() was invoked.
-            if (endingSelection().visibleStart().next(CannotCrossEditingBoundary).isNull() && makeEditableRootEmpty()) {
+            if (visibleStart.next(CannotCrossEditingBoundary).isNull() && makeEditableRootEmpty()) {
                 typingAddedToOpenCommand(DeleteKey);
                 return;
             }
         }
 
-        VisiblePosition visibleStart(endingSelection().visibleStart());
         // If we have a caret selection at the beginning of a cell, we have nothing to do.
-        Node* enclosingTableCell = enclosingNodeOfType(visibleStart.deepEquivalent(), &isTableCell);
         if (enclosingTableCell && visibleStart == firstPositionInNode(enclosingTableCell))
             return;
 

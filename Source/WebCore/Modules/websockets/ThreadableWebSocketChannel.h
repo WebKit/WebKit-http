@@ -30,8 +30,6 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 
@@ -52,6 +50,8 @@ class ThreadableWebSocketChannel {
 public:
     static Ref<ThreadableWebSocketChannel> create(ScriptExecutionContext&, WebSocketChannelClient&, SocketProvider&);
     ThreadableWebSocketChannel() { }
+
+    virtual bool isWebSocketChannel() const { return false; }
 
     enum SendResult {
         SendSuccess,
@@ -83,5 +83,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

@@ -28,7 +28,6 @@
 #include "ClassInfo.h"
 #include "Identifier.h"
 #include <wtf/Condition.h>
-#include <wtf/HashTable.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
@@ -48,6 +47,7 @@ namespace JSC {
     macro(OperationGetByIdGeneric) \
     macro(OperationGetByIdBuildList) \
     macro(OperationGetByIdOptimize) \
+    macro(OperationGetByIdWithThisOptimize) \
     macro(OperationInOptimize) \
     macro(OperationIn) \
     macro(OperationGenericIn) \
@@ -178,7 +178,7 @@ public:
 private:
 
     Spectrum<ICEvent, uint64_t> m_spectrum;
-    ThreadIdentifier m_thread;
+    RefPtr<Thread> m_thread;
     Lock m_lock;
     Condition m_condition;
     bool m_shouldStop { false };

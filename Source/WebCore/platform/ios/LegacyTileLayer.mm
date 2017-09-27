@@ -31,6 +31,7 @@
 #include "LegacyTileCache.h"
 #include "LegacyTileGrid.h"
 #include "WebCoreThread.h"
+#include <wtf/SetForScope.h>
 
 using namespace WebCore;
 
@@ -64,15 +65,14 @@ using namespace WebCore;
 
     [super renderInContext:context];
 
-    _tileGrid->tileCache().setOverrideVisibleRect(Nullopt);
+    _tileGrid->tileCache().setOverrideVisibleRect(std::nullopt);
 }
 @end
 
 @implementation LegacyTileLayer
 @synthesize paintCount = _paintCount;
 @synthesize tileGrid = _tileGrid;
-
-static LegacyTileLayer *layerBeingPainted;
+@synthesize isRenderingInContext = _isRenderingInContext;
 
 - (void)setNeedsDisplayInRect:(CGRect)rect
 {
@@ -93,6 +93,12 @@ static LegacyTileLayer *layerBeingPainted;
         _tileGrid->tileCache().prepareToDraw();
 }
 
+- (void)renderInContext:(CGContextRef)context
+{
+    SetForScope<BOOL> change(_isRenderingInContext, YES);
+    [super renderInContext:context];
+}
+
 - (void)drawInContext:(CGContextRef)context
 {
     // Bugs in clients or other frameworks may cause tile invalidation from within a CA commit.
@@ -105,7 +111,7 @@ static LegacyTileLayer *layerBeingPainted;
         WebThreadLock();
 
     if (_tileGrid)
-        _tileGrid->tileCache().drawLayer(self, context);
+        _tileGrid->tileCache().drawLayer(self, context, self.isRenderingInContext ? LegacyTileCache::DrawingFlags::Snapshotting : LegacyTileCache::DrawingFlags::None);
 }
 
 - (id<CAAction>)actionForKey:(NSString *)key
@@ -113,11 +119,6 @@ static LegacyTileLayer *layerBeingPainted;
     UNUSED_PARAM(key);
     // Disable all default actions
     return nil;
-}
-
-+ (LegacyTileLayer *)layerBeingPainted
-{
-    return layerBeingPainted;
 }
 
 @end

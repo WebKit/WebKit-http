@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #if ENABLE(B3_JIT)
 
 #include "B3Dominators.h"
+#include "B3PhaseScope.h"
 #include "B3Value.h"
 
 namespace JSC { namespace B3 {
@@ -56,6 +57,8 @@ Value* PureCSE::findMatch(const ValueKey& key, BasicBlock* block, Dominators& do
         return nullptr;
 
     for (Value* match : iter->value) {
+        if (!match->owner)
+            continue;
         if (dominators.dominates(match->owner, block))
             return match;
     }
@@ -75,6 +78,8 @@ bool PureCSE::process(Value* value, Dominators& dominators)
     Matches& matches = m_map.add(key, Matches()).iterator->value;
 
     for (Value* match : matches) {
+        if (!match->owner)
+            continue;
         if (dominators.dominates(match->owner, value->owner)) {
             value->replaceWithIdentity(match);
             return true;
@@ -83,6 +88,23 @@ bool PureCSE::process(Value* value, Dominators& dominators)
 
     matches.append(value);
     return false;
+}
+
+bool pureCSE(Procedure& proc)
+{
+    PhaseScope phaseScope(proc, "pureCSE");
+    
+    Dominators& dominators = proc.dominators();
+    PureCSE pureCSE;
+    bool result = false;
+    for (BasicBlock* block : proc.blocksInPreOrder()) {
+        for (Value* value : *block) {
+            result |= value->performSubstitution();
+            result |= pureCSE.process(value, dominators);
+        }
+    }
+    
+    return result;
 }
 
 } } // namespace JSC::B3

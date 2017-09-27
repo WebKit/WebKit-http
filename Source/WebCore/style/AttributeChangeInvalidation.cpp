@@ -26,44 +26,17 @@
 #include "config.h"
 #include "AttributeChangeInvalidation.h"
 
-#include "DocumentRuleSets.h"
 #include "ElementIterator.h"
-#include "ShadowRoot.h"
-#include "StyleInvalidationAnalysis.h"
-#include "StyleResolver.h"
-#include "StyleScope.h"
+#include "StyleInvalidationFunctions.h"
+#include "StyleInvalidator.h"
 
 namespace WebCore {
 namespace Style {
 
-static bool mayBeAffectedByAttributeChange(DocumentRuleSets& ruleSets, bool isHTML, const QualifiedName& attributeName)
+static bool mayBeAffectedByAttributeChange(const RuleFeatureSet& features, bool isHTML, const QualifiedName& attributeName)
 {
-    auto& nameSet = isHTML ? ruleSets.features().attributeCanonicalLocalNamesInRules : ruleSets.features().attributeLocalNamesInRules;
-    return nameSet.contains(attributeName.localName().impl());
-}
-
-static bool mayBeAffectedByHostRules(const Element& element, const QualifiedName& attributeName)
-{
-    auto* shadowRoot = element.shadowRoot();
-    if (!shadowRoot)
-        return false;
-    auto& shadowRuleSets = shadowRoot->styleScope().resolver().ruleSets();
-    if (shadowRuleSets.authorStyle().hostPseudoClassRules().isEmpty())
-        return false;
-
-    return mayBeAffectedByAttributeChange(shadowRuleSets, element.isHTMLElement(), attributeName);
-}
-
-static bool mayBeAffectedBySlottedRules(const Element& element, const QualifiedName& attributeName)
-{
-    for (auto* shadowRoot : assignedShadowRootsIfSlotted(element)) {
-        auto& ruleSets = shadowRoot->styleScope().resolver().ruleSets();
-        if (ruleSets.authorStyle().slottedPseudoElementRules().isEmpty())
-            continue;
-        if (mayBeAffectedByAttributeChange(ruleSets, element.isHTMLElement(), attributeName))
-            return true;
-    }
-    return false;
+    auto& nameSet = isHTML ? features.attributeCanonicalLocalNamesInRules : features.attributeLocalNamesInRules;
+    return nameSet.contains(attributeName.localName());
 }
 
 void AttributeChangeInvalidation::invalidateStyle(const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
@@ -71,12 +44,18 @@ void AttributeChangeInvalidation::invalidateStyle(const QualifiedName& attribute
     if (newValue == oldValue)
         return;
 
-    auto& ruleSets = m_element.styleResolver().ruleSets();
     bool isHTML = m_element.isHTMLElement();
 
-    bool mayAffectStyle = mayBeAffectedByAttributeChange(ruleSets, isHTML, attributeName)
-        || mayBeAffectedByHostRules(m_element, attributeName)
-        || mayBeAffectedBySlottedRules(m_element, attributeName);
+    bool mayAffectStyle = false;
+    bool mayAffectStyleInShadowTree = false;
+
+    traverseRuleFeatures(m_element, [&] (const RuleFeatureSet& features, bool mayAffectShadowTree) {
+        if (!mayBeAffectedByAttributeChange(features, isHTML, attributeName))
+            return;
+        mayAffectStyle = true;
+        if (mayAffectShadowTree)
+            mayAffectStyleInShadowTree = true;
+    });
 
     if (!mayAffectStyle)
         return;
@@ -86,7 +65,8 @@ void AttributeChangeInvalidation::invalidateStyle(const QualifiedName& attribute
         return;
     }
 
-    if (m_element.shadowRoot() && ruleSets.authorStyle().hasShadowPseudoElementRules()) {
+    if (mayAffectStyleInShadowTree) {
+        // FIXME: More fine-grained invalidation.
         m_element.invalidateStyleForSubtree();
         return;
     }
@@ -96,7 +76,8 @@ void AttributeChangeInvalidation::invalidateStyle(const QualifiedName& attribute
     if (!childrenOfType<Element>(m_element).first())
         return;
 
-    auto* attributeRules = ruleSets.ancestorAttributeRulesForHTML(attributeName.localName().impl());
+    auto& ruleSets = m_element.styleResolver().ruleSets();
+    auto* attributeRules = ruleSets.ancestorAttributeRulesForHTML(attributeName.localName());
     if (!attributeRules)
         return;
 
@@ -116,8 +97,8 @@ void AttributeChangeInvalidation::invalidateDescendants()
 {
     if (!m_descendantInvalidationRuleSet)
         return;
-    StyleInvalidationAnalysis invalidationAnalysis(*m_descendantInvalidationRuleSet);
-    invalidationAnalysis.invalidateStyle(m_element);
+    Invalidator invalidator(*m_descendantInvalidationRuleSet);
+    invalidator.invalidateStyle(m_element);
 }
 
 }

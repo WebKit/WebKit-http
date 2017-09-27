@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Igalia S.L.
- * Copyright (C) 2006-2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,11 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MainThreadSharedTimer_h
-#define MainThreadSharedTimer_h
+#pragma once
 
 #include "SharedTimer.h"
-#include <wtf/NeverDestroyed.h>
+#include <wtf/Forward.h>
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
 #include <wtf/RunLoop.h>
@@ -41,7 +40,7 @@ class MainThreadSharedTimer final : public SharedTimer {
 public:
     static MainThreadSharedTimer& singleton();
 
-    void setFiredFunction(std::function<void()>&&) override;
+    void setFiredFunction(WTF::Function<void()>&&) override;
     void setFireInterval(Seconds) override;
     void stop() override;
     void invalidate() override;
@@ -53,12 +52,10 @@ public:
 private:
     MainThreadSharedTimer();
 
-    std::function<void()> m_firedFunction;
+    WTF::Function<void()> m_firedFunction;
 #if PLATFORM(GTK) || PLATFORM(WPE)
     RunLoop::Timer<MainThreadSharedTimer> m_timer;
 #endif
 };
 
 } // namespace WebCore
-
-#endif // MainThreadSharedTimer

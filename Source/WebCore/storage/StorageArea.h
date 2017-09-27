@@ -35,7 +35,9 @@ class Frame;
 class SecurityOrigin;
 class StorageSyncManager;
 
-enum StorageType { LocalStorage, SessionStorage };
+enum class StorageType;
+
+struct SecurityOriginData;
 
 class StorageArea : public RefCounted<StorageArea> {
 public:
@@ -49,7 +51,6 @@ public:
     virtual void clear(Frame* sourceFrame) = 0;
     virtual bool contains(const String& key) = 0;
 
-    virtual bool canAccessStorage(Frame*) = 0;
     virtual StorageType storageType() const = 0;
 
     virtual size_t memoryBytesUsedByCache() = 0;
@@ -58,7 +59,7 @@ public:
     virtual void decrementAccessCount() { }
     virtual void closeDatabaseIfIdle() { }
 
-    virtual SecurityOrigin& securityOrigin() = 0;
+    virtual SecurityOriginData securityOrigin() const = 0;
 };
 
 } // namespace WebCore

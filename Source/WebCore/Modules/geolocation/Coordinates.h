@@ -25,8 +25,8 @@
 
 #pragma once
 
-#include "Event.h"
 #include <wtf/Optional.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -42,11 +42,11 @@ public:
 
     double latitude() const { return m_latitude; }
     double longitude() const { return m_longitude; }
-    Optional<double> altitude() const;
+    std::optional<double> altitude() const;
     double accuracy() const { return m_accuracy; }
-    Optional<double> altitudeAccuracy() const;
-    Optional<double> heading() const;
-    Optional<double> speed() const;
+    std::optional<double> altitudeAccuracy() const;
+    std::optional<double> heading() const;
+    std::optional<double> speed() const;
     
 private:
     Coordinates(double latitude, double longitude, bool providesAltitude, double altitude, double accuracy, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)

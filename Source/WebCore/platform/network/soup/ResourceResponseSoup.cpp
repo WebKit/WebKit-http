@@ -97,7 +97,18 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
 String ResourceResponse::platformSuggestedFilename() const
 {
     String contentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition));
-    return filenameFromHTTPContentDisposition(String::fromUTF8WithLatin1Fallback(contentDisposition.characters8(), contentDisposition.length()));
+    if (contentDisposition.isEmpty())
+        return String();
+
+    if (contentDisposition.is8Bit())
+        contentDisposition = String::fromUTF8WithLatin1Fallback(contentDisposition.characters8(), contentDisposition.length());
+    SoupMessageHeaders* soupHeaders = soup_message_headers_new(SOUP_MESSAGE_HEADERS_RESPONSE);
+    soup_message_headers_append(soupHeaders, "Content-Disposition", contentDisposition.utf8().data());
+    GRefPtr<GHashTable> params;
+    soup_message_headers_get_content_disposition(soupHeaders, nullptr, &params.outPtr());
+    soup_message_headers_free(soupHeaders);
+    char* filename = params ? static_cast<char*>(g_hash_table_lookup(params.get(), "filename")) : nullptr;
+    return filename ? String::fromUTF8(filename) : String();
 }
 
 }

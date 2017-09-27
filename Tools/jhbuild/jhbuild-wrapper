@@ -24,11 +24,9 @@ import shlex
 import subprocess
 import sys
 
-jhbuild_revision = 'e58ee087e92789bd2151132cac926f31cc0102d8'
+jhbuild_revision = 'b1d2ebdef165435c048c59192a32ba69d4f2c6dd'
 
 def determine_platform():
-    if '--efl' in sys.argv:
-        return "efl";
     if '--gtk' in sys.argv:
         return "gtk";
     if '--wpe' in sys.argv:

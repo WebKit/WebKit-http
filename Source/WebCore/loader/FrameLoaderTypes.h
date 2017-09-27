@@ -38,10 +38,16 @@ enum FrameState {
     FrameStateComplete
 };
 
-enum PolicyAction {
-    PolicyUse,
-    PolicyDownload,
-    PolicyIgnore
+enum class PolicyAction {
+    Use,
+    Download,
+    Ignore
+};
+
+enum class ReloadOption {
+    ExpiredOnly = 1 << 0,
+    FromOrigin  = 1 << 1,
+    DisableContentBlockers = 1 << 2,
 };
 
 enum class FrameLoadType {
@@ -54,6 +60,7 @@ enum class FrameLoadType {
     RedirectWithLockedBackForwardList, // FIXME: Merge "lockBackForwardList", "lockHistory", "quickRedirect" and "clientRedirect" into a single concept of redirect.
     Replace,
     ReloadFromOrigin,
+    ReloadExpiredOnly
 };
 
 enum class NewFrameOpenerPolicy {
@@ -74,6 +81,11 @@ enum class ShouldOpenExternalURLsPolicy {
     ShouldNotAllow,
     ShouldAllowExternalSchemes,
     ShouldAllow,
+};
+
+enum class InitiatedByMainFrame {
+    Yes,
+    Unknown,
 };
 
 enum ClearProvisionalItemPolicy {
@@ -135,3 +147,19 @@ enum class HasInsecureContent {
 };
 
 } // namespace WebCore
+
+namespace WTF {
+
+template<typename> struct EnumTraits;
+template<typename E, E...> struct EnumValues;
+
+template<> struct EnumTraits<WebCore::PolicyAction> {
+    using values = EnumValues<
+        WebCore::PolicyAction,
+        WebCore::PolicyAction::Use,
+        WebCore::PolicyAction::Download,
+        WebCore::PolicyAction::Ignore
+    >;
+};
+
+} // namespace WTF

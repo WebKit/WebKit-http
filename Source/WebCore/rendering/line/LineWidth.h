@@ -59,6 +59,7 @@ public:
     float logicalLeftOffset() const { return m_left; }
     
     bool hasCommitted() const { return m_hasCommitted; }
+    bool hasCommittedReplaced() const { return m_hasCommittedReplaced; }
 
     void updateAvailableWidth(LayoutUnit minimumHeight = 0);
     void shrinkAvailableWidthForNewFloatIfNeeded(const FloatingObject&);
@@ -66,8 +67,13 @@ public:
     {
         m_uncommittedWidth += delta;
     }
+    void addUncommittedReplacedWidth(float delta)
+    {
+        addUncommittedWidth(delta);
+        m_hasUncommittedReplaced = true;
+    }
     void commit();
-    void applyOverhang(RenderRubyRun*, RenderObject* startRenderer, RenderObject* endRenderer);
+    void applyOverhang(const RenderRubyRun&, RenderObject* startRenderer, RenderObject* endRenderer);
     void fitBelowFloats(bool isFirstLine = false);
     void setTrailingWhitespaceWidth(float collapsedWhitespace, float borderPaddingMargin = 0);
     IndentTextOrNot shouldIndentText() const { return m_shouldIndentText; }
@@ -91,6 +97,8 @@ private:
     float m_availableWidth { 0 };
     bool m_isFirstLine { true };
     bool m_hasCommitted { false };
+    bool m_hasCommittedReplaced { false };
+    bool m_hasUncommittedReplaced { false };
     IndentTextOrNot m_shouldIndentText;
 };
 

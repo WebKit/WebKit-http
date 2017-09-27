@@ -39,7 +39,7 @@
 #include "SchemeRegistry.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
-#include "Settings.h"
+#include "SecurityOriginData.h"
 
 namespace WebCore {
 
@@ -118,8 +118,8 @@ DatabaseContext::~DatabaseContext()
 // It is not safe to just delete the context here.
 void DatabaseContext::contextDestroyed()
 {
-    stopDatabases();
     ActiveDOMObject::contextDestroyed();
+    stopDatabases();
 }
 
 // stop() is from stopActiveDOMObjects() which indicates that the owner Frame
@@ -162,11 +162,6 @@ bool DatabaseContext::stopDatabases(DatabaseTaskSynchronizer* synchronizer)
     // FIXME: What guarantees this is never called after the script execution context is null?
     ASSERT(scriptExecutionContext());
 
-    if (scriptExecutionContext()->databaseContext()) {
-        ASSERT(scriptExecutionContext()->databaseContext() == this);
-        scriptExecutionContext()->setDatabaseContext(nullptr);
-    }
-
     // Though we initiate termination of the DatabaseThread here in
     // stopDatabases(), we can't clear the m_databaseThread ref till we get to
     // the destructor. This is because the Databases that are managed by
@@ -176,21 +171,26 @@ bool DatabaseContext::stopDatabases(DatabaseTaskSynchronizer* synchronizer)
     // why our ref count is 0 then and we're destructing). Then, the
     // m_databaseThread RefPtr destructor will deref and delete the
     // DatabaseThread.
-
-    if (m_databaseThread && !m_hasRequestedTermination) {
+    bool result = m_databaseThread && !m_hasRequestedTermination;
+    if (result) {
         m_databaseThread->requestTermination(synchronizer);
         m_hasRequestedTermination = true;
-        return true;
     }
 
-    return false;
+    auto& context = *scriptExecutionContext();
+    if (context.databaseContext()) {
+        ASSERT(context.databaseContext() == this);
+        context.setDatabaseContext(nullptr);
+    }
+
+    return result;
 }
 
 bool DatabaseContext::allowDatabaseAccess() const
 {
     if (is<Document>(*m_scriptExecutionContext)) {
         Document& document = downcast<Document>(*m_scriptExecutionContext);
-        if (!document.page() || (document.page()->usesEphemeralSession() && !SchemeRegistry::allowsDatabaseAccessInPrivateBrowsing(document.securityOrigin()->protocol())))
+        if (!document.page() || (document.page()->usesEphemeralSession() && !SchemeRegistry::allowsDatabaseAccessInPrivateBrowsing(document.securityOrigin().protocol())))
             return false;
         return true;
     }
@@ -204,15 +204,15 @@ void DatabaseContext::databaseExceededQuota(const String& name, DatabaseDetails 
     if (is<Document>(*m_scriptExecutionContext)) {
         Document& document = downcast<Document>(*m_scriptExecutionContext);
         if (Page* page = document.page())
-            page->chrome().client().exceededDatabaseQuota(document.frame(), name, details);
+            page->chrome().client().exceededDatabaseQuota(*document.frame(), name, details);
         return;
     }
     ASSERT(m_scriptExecutionContext->isWorkerGlobalScope());
 }
 
-SecurityOrigin* DatabaseContext::securityOrigin() const
+SecurityOriginData DatabaseContext::securityOrigin() const
 {
-    return m_scriptExecutionContext->securityOrigin();
+    return SecurityOriginData::fromSecurityOrigin(*m_scriptExecutionContext->securityOrigin());
 }
 
 bool DatabaseContext::isContextThread() const

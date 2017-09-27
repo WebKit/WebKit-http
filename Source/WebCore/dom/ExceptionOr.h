@@ -27,8 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "Exception.h"
-#include <wtf/Optional.h>
-#include <wtf/Variant.h>
+#include <wtf/CrossThreadCopier.h>
+#include <wtf/Expected.h>
 
 namespace WebCore {
 
@@ -39,11 +39,13 @@ public:
     template<typename OtherType> ExceptionOr(const OtherType&, typename std::enable_if<std::is_scalar<OtherType>::value && std::is_convertible<OtherType, ReturnType>::value>::type* = nullptr);
 
     bool hasException() const;
+    const Exception& exception() const;
     Exception&& releaseException();
+    const ReturnType& returnValue() const;
     ReturnType&& releaseReturnValue();
-
+    
 private:
-    Variant<Exception, ReturnType> m_value;
+    Expected<ReturnType, Exception> m_value;
 };
 
 template<typename ReturnReferenceType> class ExceptionOr<ReturnReferenceType&> {
@@ -52,9 +54,11 @@ public:
     ExceptionOr(ReturnReferenceType&);
 
     bool hasException() const;
+    const Exception& exception() const;
     Exception&& releaseException();
+    const ReturnReferenceType& returnValue() const;
     ReturnReferenceType& releaseReturnValue();
-
+    
 private:
     ExceptionOr<ReturnReferenceType*> m_value;
 };
@@ -65,16 +69,17 @@ public:
     ExceptionOr() = default;
 
     bool hasException() const;
+    const Exception& exception() const;
     Exception&& releaseException();
 
 private:
-    Optional<Exception> m_exception;
+    Expected<void, Exception> m_value;
 };
 
 ExceptionOr<void> isolatedCopy(ExceptionOr<void>&&);
 
 template<typename ReturnType> inline ExceptionOr<ReturnType>::ExceptionOr(Exception&& exception)
-    : m_value(WTFMove(exception))
+    : m_value(makeUnexpected(WTFMove(exception)))
 {
 }
 
@@ -90,17 +95,27 @@ template<typename ReturnType> template<typename OtherType> inline ExceptionOr<Re
 
 template<typename ReturnType> inline bool ExceptionOr<ReturnType>::hasException() const
 {
-    return WTF::holds_alternative<Exception>(m_value);
+    return !m_value.hasValue();
+}
+
+template<typename ReturnType> inline const Exception& ExceptionOr<ReturnType>::exception() const
+{
+    return m_value.error();
 }
 
 template<typename ReturnType> inline Exception&& ExceptionOr<ReturnType>::releaseException()
 {
-    return WTF::get<Exception>(WTFMove(m_value));
+    return WTFMove(m_value.error());
+}
+
+template<typename ReturnType> inline const ReturnType& ExceptionOr<ReturnType>::returnValue() const
+{
+    return m_value.value();
 }
 
 template<typename ReturnType> inline ReturnType&& ExceptionOr<ReturnType>::releaseReturnValue()
 {
-    return WTF::get<ReturnType>(WTFMove(m_value));
+    return WTFMove(m_value.value());
 }
 
 template<typename ReturnReferenceType> inline ExceptionOr<ReturnReferenceType&>::ExceptionOr(Exception&& exception)
@@ -118,9 +133,19 @@ template<typename ReturnReferenceType> inline bool ExceptionOr<ReturnReferenceTy
     return m_value.hasException();
 }
 
+template<typename ReturnReferenceType> inline const Exception& ExceptionOr<ReturnReferenceType&>::exception() const
+{
+    return m_value.exception();
+}
+
 template<typename ReturnReferenceType> inline Exception&& ExceptionOr<ReturnReferenceType&>::releaseException()
 {
     return m_value.releaseException();
+}
+
+template<typename ReturnReferenceType> inline const ReturnReferenceType& ExceptionOr<ReturnReferenceType&>::returnValue() const
+{
+    return *m_value.returnValue();
 }
 
 template<typename ReturnReferenceType> inline ReturnReferenceType& ExceptionOr<ReturnReferenceType&>::releaseReturnValue()
@@ -129,18 +154,23 @@ template<typename ReturnReferenceType> inline ReturnReferenceType& ExceptionOr<R
 }
 
 inline ExceptionOr<void>::ExceptionOr(Exception&& exception)
-    : m_exception(WTFMove(exception))
+    : m_value(makeUnexpected(WTFMove(exception)))
 {
 }
 
 inline bool ExceptionOr<void>::hasException() const
 {
-    return !!m_exception;
+    return !m_value.hasValue();
+}
+
+inline const Exception& ExceptionOr<void>::exception() const
+{
+    return m_value.error();
 }
 
 inline Exception&& ExceptionOr<void>::releaseException()
 {
-    return WTFMove(m_exception.value());
+    return WTFMove(m_value.error());
 }
 
 inline ExceptionOr<void> isolatedCopy(ExceptionOr<void>&& value)
@@ -150,4 +180,16 @@ inline ExceptionOr<void> isolatedCopy(ExceptionOr<void>&& value)
     return { };
 }
 
+}
+
+namespace WTF {
+template<typename T> struct CrossThreadCopierBase<false, false, WebCore::ExceptionOr<T> > {
+    typedef WebCore::ExceptionOr<T> Type;
+    static Type copy(const Type& source)
+    {
+        if (source.hasException())
+            return crossThreadCopy(source.exception());
+        return crossThreadCopy(source.returnValue());
+    }
+};
 }

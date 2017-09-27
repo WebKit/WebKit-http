@@ -28,10 +28,12 @@
 
 #import "CrashReporterInfo.h"
 #import "PlatformWebView.h"
+#import "StringFunctions.h"
 #import "TestInvocation.h"
 #import "TestRunnerWKWebView.h"
 #import <Foundation/Foundation.h>
 #import <WebKit/WKContextConfigurationRef.h>
+#import <WebKit/WKCookieManager.h>
 #import <WebKit/WKPreferencesRefPrivate.h>
 #import <WebKit/WKProcessPoolPrivate.h>
 #import <WebKit/WKStringCF.h>
@@ -40,12 +42,22 @@
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
 #import <WebKit/WKWebViewPrivate.h>
+#import <WebKit/WKWebsiteDataRecordPrivate.h>
+#import <WebKit/WKWebsiteDataStorePrivate.h>
+#import <WebKit/WKWebsiteDataStoreRef.h>
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <WebKit/_WKUserContentExtensionStore.h>
 #import <WebKit/_WKUserContentExtensionStorePrivate.h>
 #import <wtf/MainThread.h>
 
 namespace WTR {
+
+#if WK_API_ENABLED
+static NSString* toNSString(WKStringRef string)
+{
+    return [NSString stringWithCString:toWTFString(string).utf8().data()];
+}
+#endif
 
 static WKWebViewConfiguration *globalWebViewConfiguration;
 
@@ -59,7 +71,18 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
     globalWebViewConfiguration.websiteDataStore = (WKWebsiteDataStore *)WKContextGetWebsiteDataStore(context);
     globalWebViewConfiguration._allowUniversalAccessFromFileURLs = YES;
 
-#if TARGET_OS_IPHONE
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS)
+    globalWebViewConfiguration._applePayEnabled = YES;
+#endif
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || PLATFORM(IOS)
+    WKCookieManagerSetCookieStoragePartitioningEnabled(WKContextGetCookieManager(context), true);
+#endif
+
+    [globalWebViewConfiguration.websiteDataStore _setResourceLoadStatisticsEnabled:YES];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetShouldSubmitTelemetry:NO];
+
+#if PLATFORM(IOS)
     globalWebViewConfiguration.allowsInlineMediaPlayback = YES;
     globalWebViewConfiguration._inlineMediaPlaybackRequiresPlaysInlineAttribute = NO;
     globalWebViewConfiguration._invisibleAutoplayNotPermitted = NO;
@@ -67,6 +90,30 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
     globalWebViewConfiguration.requiresUserActionForMediaPlayback = NO;
 #endif
     globalWebViewConfiguration.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
+#endif
+}
+
+void TestController::cocoaPlatformInitialize()
+{
+    const char* dumpRenderTreeTemp = libraryPathForTesting();
+    if (!dumpRenderTreeTemp)
+        return;
+
+    String resourceLoadStatisticsFolder = String(dumpRenderTreeTemp) + '/' + "ResourceLoadStatistics";
+    [[NSFileManager defaultManager] createDirectoryAtPath:resourceLoadStatisticsFolder withIntermediateDirectories:YES attributes:nil error: nil];
+    String fullBrowsingSessionResourceLog = resourceLoadStatisticsFolder + '/' + "full_browsing_session_resourceLog.plist";
+    NSDictionary *resourceLogPlist = [[NSDictionary alloc] initWithObjectsAndKeys: [NSNumber numberWithInt:1], @"version", nil];
+    if (![resourceLogPlist writeToFile:fullBrowsingSessionResourceLog atomically:YES])
+        WTFCrash();
+    [resourceLogPlist release];
+}
+
+WKContextRef TestController::platformContext()
+{
+#if WK_API_ENABLED
+    return (WKContextRef)globalWebViewConfiguration.processPool;
+#else
+    return nullptr;
 #endif
 }
 
@@ -83,14 +130,20 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
 {
 #if WK_API_ENABLED
     RetainPtr<WKWebViewConfiguration> copiedConfiguration = adoptNS([globalWebViewConfiguration copy]);
-#if TARGET_OS_IPHONE
+
+#if PLATFORM(IOS)
     if (options.useDataDetection)
         [copiedConfiguration setDataDetectorTypes:WKDataDetectorTypeAll];
     if (options.ignoresViewportScaleLimits)
         [copiedConfiguration setIgnoresViewportScaleLimits:YES];
     if (options.useCharacterSelectionGranularity)
         [copiedConfiguration setSelectionGranularity:WKSelectionGranularityCharacter];
+    if (options.useCharacterSelectionGranularity)
+        [copiedConfiguration setSelectionGranularity:WKSelectionGranularityCharacter];
 #endif
+
+    if (options.enableAttachmentElement)
+        [copiedConfiguration _setAttachmentElementEnabled: YES];
 
     m_mainWebView = std::make_unique<PlatformWebView>(copiedConfiguration.get(), options);
 #else
@@ -177,5 +230,181 @@ unsigned TestController::imageCountInGeneralPasteboard() const
     
     return imagesArray.count;
 }
+
+void TestController::removeAllSessionCredentials()
+{
+#if WK_API_ENABLED
+    auto types = adoptNS([[NSSet alloc] initWithObjects:_WKWebsiteDataTypeCredentials, nil]);
+    [globalWebViewConfiguration.websiteDataStore removeDataOfTypes:types.get() modifiedSince:[NSDate distantPast] completionHandler:^() {
+        m_currentInvocation->didRemoveAllSessionCredentials();
+    }];
+#endif
+}
+
+#if WK_API_ENABLED
+void TestController::setStatisticsLastSeen(WKStringRef hostName, double seconds)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetLastSeen:seconds forHost:toNSString(hostName)];
+}
+    
+void TestController::setStatisticsPrevalentResource(WKStringRef hostName, bool value)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetIsPrevalentResource:value forHost:toNSString(hostName)];
+}
+
+bool TestController::isStatisticsPrevalentResource(WKStringRef hostName)
+{
+    __block bool isDataReady = false;
+    __block bool isPrevalentResource = false;
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsIsPrevalentResource:toNSString(hostName) completionHandler:^(BOOL _isPrevalentResource) {
+        isPrevalentResource = _isPrevalentResource;
+        isDataReady = true;
+    }];
+    platformRunUntil(isDataReady, 0);
+
+    return isPrevalentResource;
+}
+
+void TestController::setStatisticsHasHadUserInteraction(WKStringRef hostName, bool value)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetHadUserInteraction:value forHost:toNSString(hostName)];
+}
+
+bool TestController::isStatisticsHasHadUserInteraction(WKStringRef hostName)
+{
+    __block bool isDataReady = false;
+    __block bool hasHadUserInteraction = false;
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsHadUserInteraction:toNSString(hostName) completionHandler:^(BOOL _hasHadUserInteraction) {
+        hasHadUserInteraction = _hasHadUserInteraction;
+        isDataReady = true;
+    }];
+    platformRunUntil(isDataReady, 0);
+
+    return hasHadUserInteraction;
+}
+
+void TestController::setStatisticsGrandfathered(WKStringRef hostName, bool value)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetIsGrandfathered:value forHost:toNSString(hostName)];
+}
+
+bool TestController::isStatisticsGrandfathered(WKStringRef hostName)
+{
+    __block bool isDataReady = false;
+    __block bool isGrandfathered = false;
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsIsGrandfathered:toNSString(hostName) completionHandler:^(BOOL _isGrandfathered) {
+        isGrandfathered = _isGrandfathered;
+        isDataReady = true;
+    }];
+    platformRunUntil(isDataReady, 0);
+
+    return isGrandfathered;
+}
+
+void TestController::setStatisticsSubframeUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetSubframeUnderTopFrameOrigin:toNSString(topFrameHostName) forHost:toNSString(hostName)];
+}
+
+void TestController::setStatisticsSubresourceUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetSubresourceUnderTopFrameOrigin:toNSString(topFrameHostName) forHost:toNSString(hostName)];
+}
+
+void TestController::setStatisticsSubresourceUniqueRedirectTo(WKStringRef hostName, WKStringRef hostNameRedirectedTo)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetSubresourceUniqueRedirectTo:toNSString(hostNameRedirectedTo) forHost:toNSString(hostName)];
+}
+
+void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetTimeToLiveUserInteraction:seconds];
+}
+
+void TestController::setStatisticsTimeToLiveCookiePartitionFree(double seconds)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetTimeToLiveCookiePartitionFree:seconds];
+}
+
+void TestController::statisticsProcessStatisticsAndDataRecords()
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsProcessStatisticsAndDataRecords];
+}
+
+void TestController::statisticsUpdateCookiePartitioning()
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning];
+}
+
+void TestController::statisticsSetShouldPartitionCookiesForHost(WKStringRef hostName, bool value)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:value forHost:toNSString(hostName)];
+}
+
+void TestController::statisticsSubmitTelemetry()
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSubmitTelemetry];
+}
+
+void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetNotifyPagesWhenDataRecordsWereScanned:value];
+}
+
+void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool value)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetShouldClassifyResourcesBeforeDataRecordsRemoval:value];
+}
+
+void TestController::setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetNotifyPagesWhenTelemetryWasCaptured:value];
+}
+
+void TestController::setStatisticsMinimumTimeBetweenDataRecordsRemoval(double seconds)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetMinimumTimeBetweenDataRecordsRemoval:seconds];
+}
+
+void TestController::setStatisticsGrandfatheringTime(double seconds)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetGrandfatheringTime:seconds];
+}
+
+void TestController::setStatisticsMaxStatisticsEntries(unsigned entries)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetMaxStatisticsEntries:entries];
+}
+    
+void TestController::setStatisticsPruneEntriesDownTo(unsigned entries)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetPruneEntriesDownTo:entries];
+}
+    
+void TestController::statisticsClearInMemoryAndPersistentStore()
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStore];
+}
+
+void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:hours];
+}
+
+void TestController::statisticsClearThroughWebsiteDataRemoval()
+{
+#if WK_API_ENABLED
+    auto types = adoptNS([[NSSet alloc] initWithObjects:_WKWebsiteDataTypeResourceLoadStatistics, nil]);
+    [globalWebViewConfiguration.websiteDataStore removeDataOfTypes:types.get() modifiedSince:[NSDate distantPast] completionHandler:^() {
+        m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
+    }];
+#endif
+}
+
+void TestController::statisticsResetToConsistentState()
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsResetToConsistentState];
+}
+#endif // WK_API_ENABLED
 
 } // namespace WTR

@@ -37,10 +37,11 @@ DWORD WorkQueue::workThreadCallback(void* context)
 
     WorkQueue* queue = static_cast<WorkQueue*>(context);
 
-    if (!queue->tryRegisterAsWorkThread())
-        return 0;
+    if (queue->tryRegisterAsWorkThread())
+        queue->performWorkOnRegisteredWorkThread();
 
-    queue->performWorkOnRegisteredWorkThread();
+    queue->deref();
+
     return 0;
 }
 
@@ -51,15 +52,13 @@ void WorkQueue::performWorkOnRegisteredWorkThread()
     m_functionQueueLock.lock();
 
     while (!m_functionQueue.isEmpty()) {
-        Vector<Function<void ()>> functionQueue;
+        Vector<Function<void()>> functionQueue;
         m_functionQueue.swap(functionQueue);
 
         // Allow more work to be scheduled while we're not using the queue directly.
         m_functionQueueLock.unlock();
-        for (auto& function : functionQueue) {
+        for (auto& function : functionQueue)
             function();
-            deref();
-        }
         m_functionQueueLock.lock();
     }
 
@@ -98,10 +97,9 @@ void WorkQueue::platformInvalidate()
     ::DeleteTimerQueueEx(m_timerQueue, 0);
 }
 
-void WorkQueue::dispatch(Function<void ()>&& function)
+void WorkQueue::dispatch(Function<void()>&& function)
 {
     MutexLocker locker(m_functionQueueLock);
-    ref();
     m_functionQueue.append(WTFMove(function));
 
     // Spawn a work thread to perform the work we just added. As an optimization, we avoid
@@ -110,15 +108,17 @@ void WorkQueue::dispatch(Function<void ()>&& function)
     // hasn't registered itself yet, m_isWorkThreadRegistered will be false and we'll end up
     // spawning a second work thread here. But work thread registration process will ensure that
     // only one thread actually ends up performing work.)
-    if (!m_isWorkThreadRegistered)
+    if (!m_isWorkThreadRegistered) {
+        ref();
         ::QueueUserWorkItem(workThreadCallback, this, WT_EXECUTEDEFAULT);
+    }
 }
 
 struct TimerContext : public ThreadSafeRefCounted<TimerContext> {
     static RefPtr<TimerContext> create() { return adoptRef(new TimerContext); }
 
     WorkQueue* queue;
-    Function<void ()> function;
+    Function<void()> function;
     Mutex timerMutex;
     HANDLE timer;
 
@@ -149,7 +149,7 @@ void WorkQueue::timerCallback(void* context, BOOLEAN timerOrWaitFired)
     }
 }
 
-void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, Function<void ()>&& function)
+void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
 {
     ASSERT(m_timerQueue);
     ref();
@@ -164,7 +164,7 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, Function<void (
         // timer handle has been stored in it.
         MutexLocker lock(context->timerMutex);
 
-        int64_t milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        int64_t milliseconds = duration.milliseconds();
 
         // From empirical testing, we've seen CreateTimerQueueTimer() sometimes fire up to 5+ ms early.
         // This causes havoc for clients of this code that expect to not be called back until the
@@ -187,7 +187,7 @@ void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, Function<void (
     }
 
     // The timer callback will handle destroying context.
-    context.release().leakRef();
+    context.leakRef();
 }
 
 } // namespace WTF

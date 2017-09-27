@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-class AirplayButton extends IconButton
+class AirplayButton extends Button
 {
 
     constructor(layoutDelegate)
@@ -33,17 +33,6 @@ class AirplayButton extends IconButton
             iconName: Icons.Airplay,
             layoutDelegate
         });
-    }
-
-    // Public
-
-    get on()
-    {
-        return this.element.classList.contains("on");
-    }
-
-    set on(flag) {
-        this.element.classList.toggle("on", flag);
     }
 
 }

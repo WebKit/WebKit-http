@@ -27,12 +27,12 @@
 #include "ModifySelectionListLevel.h"
 
 #include "Document.h"
+#include "Editing.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLOListElement.h"
 #include "HTMLUListElement.h"
 #include "RenderObject.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
@@ -94,8 +94,8 @@ void ModifySelectionListLevelCommand::insertSiblingNodeRangeBefore(Node* startNo
     Node* node = startNode;
     while (1) {
         Node* next = node->nextSibling();
-        removeNode(node);
-        insertNodeBefore(node, refNode);
+        removeNode(*node);
+        insertNodeBefore(*node, *refNode);
 
         if (node == endNode)
             break;
@@ -109,8 +109,8 @@ void ModifySelectionListLevelCommand::insertSiblingNodeRangeAfter(Node* startNod
     Node* node = startNode;
     while (1) {
         Node* next = node->nextSibling();
-        removeNode(node);
-        insertNodeAfter(node, refNode);
+        removeNode(*node);
+        insertNodeAfter(*node, *refNode);
 
         if (node == endNode)
             break;
@@ -125,8 +125,8 @@ void ModifySelectionListLevelCommand::appendSiblingNodeRange(Node* startNode, No
     Node* node = startNode;
     while (1) {
         Node* next = node->nextSibling();
-        removeNode(node);
-        appendNode(node, newParent);
+        removeNode(*node);
+        appendNode(*node, *newParent);
 
         if (node == endNode)
             break;
@@ -197,7 +197,7 @@ void IncreaseSelectionListLevelCommand::doApply()
                 newParent = HTMLUListElement::create(document());
                 break;
         }
-        insertNodeBefore(newParent, startListChild);
+        insertNodeBefore(*newParent, *startListChild);
         appendSiblingNodeRange(startListChild, endListChild, newParent.get());
         m_listElement = WTFMove(newParent);
     }
@@ -219,17 +219,17 @@ RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevel(Docum
     return WTFMove(command->m_listElement);
 }
 
-PassRefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevel(Document* document)
+RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevel(Document* document)
 {
     return increaseSelectionListLevel(document, InheritedListType);
 }
 
-PassRefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelOrdered(Document* document)
+RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelOrdered(Document* document)
 {
     return increaseSelectionListLevel(document, OrderedList);
 }
 
-PassRefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelUnordered(Document* document)
+RefPtr<Node> IncreaseSelectionListLevelCommand::increaseSelectionListLevelUnordered(Document* document)
 {
     return increaseSelectionListLevel(document, UnorderedList);
 }
@@ -267,14 +267,14 @@ void DecreaseSelectionListLevelCommand::doApply()
         // at start of sublist, move the child(ren) to before the sublist
         insertSiblingNodeRangeBefore(startListChild, endListChild, listNode);
         // if that was the whole sublist we moved, remove the sublist node
-        if (!nextItem)
-            removeNode(listNode);
+        if (!nextItem && listNode)
+            removeNode(*listNode);
     } else if (!nextItem) {
         // at end of list, move the child(ren) to after the sublist
         insertSiblingNodeRangeAfter(startListChild, endListChild, listNode);    
     } else if (listNode) {
         // in the middle of list, split the list and move the children to the divide
-        splitElement(listNode, startListChild);
+        splitElement(*listNode, *startListChild);
         insertSiblingNodeRangeBefore(startListChild, endListChild, listNode);
     }
 }
@@ -290,7 +290,7 @@ void DecreaseSelectionListLevelCommand::decreaseSelectionListLevel(Document* doc
 {
     ASSERT(document);
     ASSERT(document->frame());
-    applyCommand(create(*document));
+    create(*document)->apply();
 }
 
 }

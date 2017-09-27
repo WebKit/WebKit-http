@@ -158,7 +158,7 @@ uint64_t MemoryIndex::countForKeyRange(const IDBKeyRangeData& inRange)
     return count;
 }
 
-void MemoryIndex::getAllRecords(const IDBKeyRangeData& keyRangeData, Optional<uint32_t> count, IndexedDB::GetAllType type, IDBGetAllResult& result) const
+void MemoryIndex::getAllRecords(const IDBKeyRangeData& keyRangeData, std::optional<uint32_t> count, IndexedDB::GetAllType type, IDBGetAllResult& result) const
 {
     LOG(IndexedDB, "MemoryIndex::getAllRecords");
 
@@ -218,7 +218,7 @@ IDBError MemoryIndex::putIndexKey(const IDBKeyData& valueKey, const IndexKey& in
     if (m_info.unique()) {
         for (auto& key : keys) {
             if (m_records->contains(key))
-                return IDBError(IDBDatabaseException::ConstraintError);
+                return IDBError(ConstraintError);
         }
     }
 
@@ -228,7 +228,7 @@ IDBError MemoryIndex::putIndexKey(const IDBKeyData& valueKey, const IndexKey& in
         notifyCursorsOfValueChange(key, valueKey);
     }
 
-    return { };
+    return IDBError { };
 }
 
 void MemoryIndex::removeRecord(const IDBKeyData& valueKey, const IndexKey& indexKey)

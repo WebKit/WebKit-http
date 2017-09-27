@@ -30,17 +30,17 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
 #include "FileReaderLoaderClient.h"
 #include "SocketStreamHandleClient.h"
 #include "ThreadableWebSocketChannel.h"
 #include "Timer.h"
 #include "WebSocketDeflateFramer.h"
 #include "WebSocketFrame.h"
+#include "WebSocketHandshake.h"
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/TypeCasts.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 
@@ -49,11 +49,12 @@ namespace WebCore {
 class Blob;
 class Document;
 class FileReaderLoader;
+class ResourceRequest;
+class ResourceResponse;
 class SocketProvider;
 class SocketStreamHandle;
 class SocketStreamError;
 class WebSocketChannelClient;
-class WebSocketHandshake;
 
 class WebSocketChannel : public RefCounted<WebSocketChannel>, public SocketStreamHandleClient, public ThreadableWebSocketChannel, public FileReaderLoaderClient
 {
@@ -61,6 +62,8 @@ class WebSocketChannel : public RefCounted<WebSocketChannel>, public SocketStrea
 public:
     static Ref<WebSocketChannel> create(Document& document, WebSocketChannelClient& client, SocketProvider& provider) { return adoptRef(*new WebSocketChannel(document, client, provider)); }
     virtual ~WebSocketChannel();
+
+    bool isWebSocketChannel() const final { return true; }
 
     bool send(const char* data, int length);
 
@@ -82,7 +85,8 @@ public:
     // SocketStreamHandleClient functions.
     void didOpenSocketStream(SocketStreamHandle&) final;
     void didCloseSocketStream(SocketStreamHandle&) final;
-    void didReceiveSocketStreamData(SocketStreamHandle&, const char*, Optional<size_t>) final;
+    void didReceiveSocketStreamData(SocketStreamHandle&, const char*, size_t) final;
+    void didFailToReceiveSocketStreamData(SocketStreamHandle&) final;
     void didUpdateBufferedAmount(SocketStreamHandle&, size_t bufferedAmount) final;
     void didFailSocketStream(SocketStreamHandle&, const SocketStreamError&) final;
 
@@ -110,6 +114,11 @@ public:
     void didReceiveData() override;
     void didFinishLoading() override;
     void didFail(int errorCode) override;
+
+    unsigned identifier() const { return m_identifier; }
+    ResourceRequest clientHandshakeRequest();
+    const ResourceResponse& serverHandshakeResponse() const;
+    WebSocketHandshake::Mode handshakeMode() const;
 
     using RefCounted<WebSocketChannel>::ref;
     using RefCounted<WebSocketChannel>::deref;
@@ -172,7 +181,7 @@ private:
 
     // If you are going to send a hybi-10 frame, you need to use the outgoing frame queue
     // instead of call sendFrame() directly.
-    bool sendFrame(WebSocketFrame::OpCode, const char* data, size_t dataLength);
+    void sendFrame(WebSocketFrame::OpCode, const char* data, size_t dataLength, WTF::Function<void(bool)> completionHandler);
 
     enum BlobLoaderStatus {
         BlobLoaderNotStarted,
@@ -218,4 +227,6 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(WEB_SOCKETS)
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::WebSocketChannel)
+    static bool isType(const WebCore::ThreadableWebSocketChannel& threadableWebSocketChannel) { return threadableWebSocketChannel.isWebSocketChannel(); }
+SPECIALIZE_TYPE_TRAITS_END()

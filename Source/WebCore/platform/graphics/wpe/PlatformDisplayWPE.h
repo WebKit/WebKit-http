@@ -23,58 +23,24 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PlatformDisplayWPE_h
-#define PlatformDisplayWPE_h
+#pragma once
 
 #if PLATFORM(WPE)
 
 #include "PlatformDisplay.h"
 
 struct wpe_renderer_backend_egl;
-struct wpe_renderer_backend_egl_target;
 
 namespace WebCore {
 
-class GLContext;
-class GLContextWPE;
-class IntSize;
-
 class PlatformDisplayWPE final : public PlatformDisplay {
 public:
-    static void initialize(std::pair<const uint8_t*, size_t>);
-
     PlatformDisplayWPE();
     virtual ~PlatformDisplayWPE();
 
     void initialize(int);
 
-    class EGLTarget {
-    public:
-        class Client {
-        public:
-            virtual void frameComplete() = 0;
-        };
-
-        EGLTarget(const PlatformDisplayWPE&, Client&, int);
-        ~EGLTarget();
-
-        void initialize(const IntSize&);
-        std::unique_ptr<GLContextWPE> createGLContext() const;
-
-        void resize(const IntSize&);
-
-        void frameWillRender();
-        void frameRendered();
-
-    private:
-        const PlatformDisplayWPE& m_display;
-        Client& m_client;
-        struct wpe_renderer_backend_egl_target* m_backend;
-    };
-
-    std::unique_ptr<EGLTarget> createEGLTarget(EGLTarget::Client&, int);
-
-    std::unique_ptr<GLContextWPE> createOffscreenContext(PlatformDisplay&, bool);
+    struct wpe_renderer_backend_egl* backend() const { return m_backend; }
 
 private:
     Type type() const override { return PlatformDisplay::Type::WPE; }
@@ -87,5 +53,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_PLATFORM_DISPLAY(PlatformDisplayWPE, WPE)
 
 #endif // PLATFORM(WPE)
-
-#endif // PlatformDisplayWPE_h

@@ -56,20 +56,22 @@ typedef struct _GdkRGBA GdkRGBA;
 #endif
 #endif
 
-namespace WebCore {
-
+namespace WTF {
 class TextStream;
+}
+
+namespace WebCore {
 
 typedef unsigned RGBA32; // Deprecated: Type for an RGBA quadruplet. Use RGBA class instead.
 
 WEBCORE_EXPORT RGBA32 makeRGB(int r, int g, int b);
 WEBCORE_EXPORT RGBA32 makeRGBA(int r, int g, int b, int a);
 
-RGBA32 makePremultipliedRGBA(int r, int g, int b, int a);
+RGBA32 makePremultipliedRGBA(int r, int g, int b, int a, bool ceiling = true);
 RGBA32 makeUnPremultipliedRGBA(int r, int g, int b, int a);
 
 WEBCORE_EXPORT RGBA32 colorWithOverrideAlpha(RGBA32 color, float overrideAlpha);
-RGBA32 colorWithOverrideAlpha(RGBA32 color, Optional<float> overrideAlpha);
+RGBA32 colorWithOverrideAlpha(RGBA32 color, std::optional<float> overrideAlpha);
 
 WEBCORE_EXPORT RGBA32 makeRGBA32FromFloats(float r, float g, float b, float a);
 RGBA32 makeRGBAFromHSLA(double h, double s, double l, double a);
@@ -173,7 +175,11 @@ public:
     WEBCORE_EXPORT Color(const Color&);
     WEBCORE_EXPORT Color(Color&&);
 
-    WEBCORE_EXPORT ~Color();
+    ~Color()
+    {
+        if (isExtended())
+            m_colorData.extendedColor->deref();
+    }
 
     static Color createUnchecked(int r, int g, int b)
     {
@@ -213,6 +219,8 @@ public:
     // should be identical, since the respective pointer will be different.
     unsigned hash() const { return WTF::intHash(m_colorData.rgbaAndFlags); }
 
+    // FIXME: ExtendedColor - these should be renamed (to be clear about their parameter types, or
+    // replaced with alternative accessors.
     WEBCORE_EXPORT void getRGBA(float& r, float& g, float& b, float& a) const;
     WEBCORE_EXPORT void getRGBA(double& r, double& g, double& b, double& a) const;
     WEBCORE_EXPORT void getHSL(double& h, double& s, double& l) const;
@@ -272,7 +280,10 @@ public:
     static const RGBA32 compositionFill = 0xFFE1DD55;
 #endif
 
-    WEBCORE_EXPORT bool isExtended() const;
+    bool isExtended() const
+    {
+        return !(m_colorData.rgbaAndFlags & invalidRGBAColor);
+    }
     WEBCORE_EXPORT ExtendedColor& asExtended() const;
 
     WEBCORE_EXPORT Color& operator=(const Color&);
@@ -408,7 +419,7 @@ inline uint16_t fastDivideBy255(uint16_t value)
     return approximation + (remainder >> 8);
 }
 
-inline RGBA32 colorWithOverrideAlpha(RGBA32 color, Optional<float> overrideAlpha)
+inline RGBA32 colorWithOverrideAlpha(RGBA32 color, std::optional<float> overrideAlpha)
 {
     return overrideAlpha ? colorWithOverrideAlpha(color, overrideAlpha.value()) : color;
 }
@@ -427,7 +438,7 @@ inline void Color::setRGB(RGBA32 rgb)
     tagAsValid();
 }
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const Color&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const Color&);
 
 inline bool Color::isBlackColor(const Color& color)
 {

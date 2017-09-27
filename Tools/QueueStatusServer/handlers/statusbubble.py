@@ -1,4 +1,5 @@
 # Copyright (C) 2009 Google Inc. All rights reserved.
+# Copyright (C) 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -43,6 +44,7 @@ progress_statuses = Set([
     "Started processing patch",
     "Cleaned working directory",
     "Updated working directory",
+    "Checked relevance of patch",
     "Applied patch",
     "Built patch",
     "Watchlist applied",
@@ -112,6 +114,7 @@ class StatusBubble(webapp.RequestHandler):
         bubble = {
             "name": queue.short_name().lower(),
             "attachment_id": attachment.id,
+            "queue_name": queue.name(),
         }
         # 10 recent statuses is enough to always include a resultative one, if there were any at all.
         statuses = QueueStatus.all().filter('queue_name =', queue.name()).filter('active_patch_id =', attachment.id).order('-date').fetch(limit=10)
@@ -182,11 +185,15 @@ class StatusBubble(webapp.RequestHandler):
         return bubble
 
     def _should_show_bubble_for(self, attachment, queue):
-         # Any pending queue is shown.
+        # Any pending queue is shown.
         if attachment.position_in_queue(queue):
             return True
-        # EWS queues are also shown when complete.
-        return bool(queue.is_ews() and attachment.status_for_queue(queue))
+
+        if not queue.is_ews():
+            return False
+
+        status = attachment.status_for_queue(queue)
+        return bool(status and not status.did_skip())
 
     def _build_bubbles_for_attachment(self, attachment):
         show_submit_to_ews = True

@@ -24,6 +24,8 @@
 #include "ExceptionOr.h"
 #include "ScriptWrappable.h"
 #include <wtf/Forward.h>
+#include <wtf/Optional.h>
+#include <wtf/Variant.h>
 
 namespace WebCore {
 
@@ -31,6 +33,7 @@ class CSSProperty;
 class CSSRule;
 class CSSStyleSheet;
 class CSSValue;
+class DeprecatedCSSOMValue;
 class MutableStyleProperties;
 class StyleProperties;
 class StyledElement;
@@ -49,7 +52,7 @@ public:
     virtual ExceptionOr<void> setCssText(const String&) = 0;
     virtual unsigned length() const = 0;
     virtual String item(unsigned index) const = 0;
-    virtual RefPtr<CSSValue> getPropertyCSSValue(const String& propertyName) = 0;
+    virtual RefPtr<DeprecatedCSSOMValue> getPropertyCSSValue(const String& propertyName) = 0;
     virtual String getPropertyValue(const String& propertyName) = 0;
     virtual String getPropertyPriority(const String& propertyName) = 0;
     virtual String getPropertyShorthand(const String& propertyName) = 0;
@@ -67,6 +70,11 @@ public:
     virtual Ref<MutableStyleProperties> copyProperties() const = 0;
 
     virtual CSSStyleSheet* parentStyleSheet() const { return nullptr; }
+
+    // Bindings support.
+    std::optional<Variant<String, double>> namedItem(const AtomicString&);
+    ExceptionOr<void> setNamedItem(const AtomicString& name, String value, bool& propertySupported);
+    Vector<AtomicString> supportedPropertyNames() const;
 
 protected:
     CSSStyleDeclaration() { }

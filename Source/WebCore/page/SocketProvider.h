@@ -25,8 +25,9 @@
 
 #pragma once
 
-#include "SessionID.h"
+#include <pal/SessionID.h>
 #include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -38,9 +39,7 @@ class URL;
 class WEBCORE_EXPORT SocketProvider : public ThreadSafeRefCounted<SocketProvider> {
 public:
     static Ref<SocketProvider> create() { return adoptRef(*new SocketProvider); }
-#if ENABLE(WEB_SOCKETS)
-    virtual Ref<SocketStreamHandle> createSocketStreamHandle(const URL&, SocketStreamHandleClient&, SessionID);
-#endif
+    virtual Ref<SocketStreamHandle> createSocketStreamHandle(const URL&, SocketStreamHandleClient&, PAL::SessionID, const String& credentialPartition);
     virtual ~SocketProvider() { };
 };
 

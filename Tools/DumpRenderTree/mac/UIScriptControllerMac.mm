@@ -28,10 +28,15 @@
 
 #import "DumpRenderTree.h"
 #import "UIScriptContext.h"
+#import <JavaScriptCore/JSContext.h>
+#import <JavaScriptCore/JSStringRefCF.h>
+#import <JavaScriptCore/JSValue.h>
 #import <WebKit/WebKit.h>
 #import <WebKit/WebViewPrivate.h>
 
 #if PLATFORM(MAC)
+
+#import "AppKitTestSPI.h"
 
 namespace WTR {
 
@@ -46,8 +51,28 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
     });
 }
 
-void UIScriptController::insertText(JSStringRef, int, int)
+void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
 {
+    return doAsyncTask(callback);
+}
+
+void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
+void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
+void UIScriptController::replaceTextAtRange(JSStringRef text, int location, int length)
+{
+    auto textToInsert = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, text));
+    auto rangeAttribute = adoptNS([[NSDictionary alloc] initWithObjectsAndKeys:NSStringFromRange(NSMakeRange(location == -1 ? NSNotFound : location, length)), NSTextInputReplacementRangeAttributeName, nil]);
+    auto textAndRange = adoptNS([[NSAttributedString alloc] initWithString:(NSString *)textToInsert.get() attributes:rangeAttribute.get()]);
+
+    [mainFrame.webView insertText:textAndRange.get()];
 }
 
 void UIScriptController::zoomToScale(double scale, JSValueRef callback)
@@ -57,16 +82,85 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     WebView *webView = [mainFrame webView];
     [webView _scaleWebView:scale atOrigin:NSZeroPoint];
 
-    dispatch_async(dispatch_get_main_queue(), ^ {
+    dispatch_async(dispatch_get_main_queue(), ^{
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
     });
 }
 
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
+{
+}
+
 JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
 {
+#if JSC_OBJC_API_ENABLED
+    WebView *webView = [mainFrame webView];
+    RetainPtr<CFStringRef> interfaceItemCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, interfaceItem));
+    NSDictionary *contentDictionary = [webView _contentsOfUserInterfaceItem:(NSString *)interfaceItemCF.get()];
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:contentDictionary inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+#else
+    UNUSED_PARAM(interfaceItem);
     return nullptr;
+#endif
+}
+
+void UIScriptController::overridePreference(JSStringRef preferenceRef, JSStringRef valueRef)
+{
+    WebPreferences *preferences = mainFrame.webView.preferences;
+
+    RetainPtr<CFStringRef> value = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, valueRef));
+    if (JSStringIsEqualToUTF8CString(preferenceRef, "WebKitMinimumFontSize"))
+        preferences.minimumFontSize = [(NSString *)value.get() doubleValue];
+}
+
+void UIScriptController::simulateRotation(DeviceOrientation*, JSValueRef)
+{
+}
+
+void UIScriptController::simulateRotationLikeSafari(DeviceOrientation*, JSValueRef)
+{
+}
+
+void UIScriptController::removeViewFromWindow(JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    WebView *webView = [mainFrame webView];
+    [webView removeFromSuperview];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    });
+}
+
+void UIScriptController::addViewToWindow(JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    WebView *webView = [mainFrame webView];
+    [[mainWindow contentView] addSubview:webView];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    });
+}
+
+void UIScriptController::beginBackSwipe(JSValueRef callback)
+{
+}
+
+void UIScriptController::completeBackSwipe(JSValueRef callback)
+{
+}
+
+void UIScriptController::platformPlayBackEventStream(JSStringRef, JSValueRef)
+{
 }
 
 }

@@ -27,10 +27,9 @@
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "EventListener.h"
+#include "ContextDestructionObserver.h"
 #include "EventTarget.h"
 #include "GenericEventQueue.h"
-#include "Timer.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -40,7 +39,7 @@ class HTMLMediaElement;
 class Element;
 class TrackBase;
 
-class TrackListBase : public RefCounted<TrackListBase>, public EventTargetWithInlineData {
+class TrackListBase : public RefCounted<TrackListBase>, public EventTargetWithInlineData, public ContextDestructionObserver {
 public:
     virtual ~TrackListBase();
 
@@ -52,7 +51,7 @@ public:
     EventTargetInterface eventTargetInterface() const override = 0;
     using RefCounted<TrackListBase>::ref;
     using RefCounted<TrackListBase>::deref;
-    ScriptExecutionContext* scriptExecutionContext() const final { return m_context; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
     virtual void clearElement();
     Element* element() const;
@@ -60,6 +59,7 @@ public:
 
     // Needs to be public so tracks can call it
     void scheduleChangeEvent();
+    bool isChangeEventScheduled() const;
 
     bool isAnyTrackEnabled() const;
 
@@ -78,7 +78,6 @@ private:
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
-    ScriptExecutionContext* m_context;
     HTMLMediaElement* m_element;
 
     GenericEventQueue m_asyncEventQueue;

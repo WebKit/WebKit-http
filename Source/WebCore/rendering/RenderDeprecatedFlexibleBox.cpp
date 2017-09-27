@@ -95,7 +95,7 @@ public:
 
             if (m_currentChild && notFirstOrdinalValue())
                 m_ordinalValues.add(m_currentChild->style().boxOrdinalGroup());
-        } while (!m_currentChild || (!m_currentChild->isAnonymous()
+        } while (!m_currentChild || m_currentChild->isExcludedFromNormalLayout() || (!m_currentChild->isAnonymous()
                  && m_currentChild->style().boxOrdinalGroup() != m_currentOrdinal));
         return m_currentChild;
     }
@@ -302,10 +302,13 @@ void RenderDeprecatedFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     LayoutSize oldLayoutDelta = view().layoutDelta();
 #endif
 
+    // Fieldsets need to find their legend and position it inside the border of the object.
+    // The legend then gets skipped during normal layout. The same is true for ruby text.
+    // It doesn't get included in the normal layout process but is instead skipped.
+    layoutExcludedChildren(relayoutChildren);
+
     ChildFrameRects oldChildRects;
     appendChildFrameRects(this, oldChildRects);
-    
-    dirtyForLayoutFromPercentageHeightDescendants();
 
     if (isHorizontal())
         layoutHorizontalBox(relayoutChildren);
@@ -427,13 +430,10 @@ void RenderDeprecatedFlexibleBox::layoutHorizontalBox(bool relayoutChildren)
             
             // Apply the child's current layout delta.
             layoutChildIfNeededApplyingDelta(child, childLayoutDelta);
-            
-            // Now do the layout.
-            layoutChildIfNeededApplyingDelta(child, childLayoutDelta);
 
             // Update our height and overflow height.
             if (style().boxAlign() == BBASELINE) {
-                LayoutUnit ascent = child->firstLineBaseline().valueOr(child->height() + child->marginBottom());
+                LayoutUnit ascent = child->firstLineBaseline().value_or(child->height() + child->marginBottom());
                 ascent += child->marginTop();
                 LayoutUnit descent = (child->height() + child->verticalMarginExtent()) - ascent;
 
@@ -508,7 +508,7 @@ void RenderDeprecatedFlexibleBox::layoutHorizontalBox(bool relayoutChildren)
                     childY += child->marginTop() + std::max<LayoutUnit>(0, (contentHeight() - (child->height() + child->verticalMarginExtent())) / 2);
                     break;
                 case BBASELINE: {
-                    LayoutUnit ascent = child->firstLineBaseline().valueOr(child->height() + child->marginBottom());
+                    LayoutUnit ascent = child->firstLineBaseline().value_or(child->height() + child->marginBottom());
                     ascent += child->marginTop();
                     childY += child->marginTop() + (maxAscent - ascent);
                     break;

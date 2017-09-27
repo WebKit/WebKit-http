@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.CSSSelector = class CSSSelector extends WebInspector.Object
+WI.CSSSelector = class CSSSelector
 {
     constructor(text, specificity, dynamic)
     {
-        super();
-
         console.assert(text);
 
         this._text = text;
@@ -59,6 +57,6 @@ WebInspector.CSSSelector = class CSSSelector extends WebInspector.Object
 
     isPseudoElementSelector()
     {
-        return WebInspector.CSSStyleManager.PseudoElementNames.some((name) => this._text.includes(`:${name}`));
+        return WI.CSSStyleManager.PseudoElementNames.some((name) => this._text.includes(`:${name}`));
     }
 };

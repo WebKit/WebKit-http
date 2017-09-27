@@ -39,7 +39,6 @@
 #include "FrameView.h"
 #include "HTMLMediaElement.h"
 #include "HistoryItem.h"
-#include "InspectorInstrumentation.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -48,6 +47,10 @@
 #include <limits>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
+
+#if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
+#include "RealtimeMediaSourceCenterMac.h"
+#endif
 
 #if ENABLE(MEDIA_STREAM)
 #include "MockRealtimeMediaSourceCenter.h"
@@ -110,8 +113,8 @@ bool Settings::gAllowsAnySSLCertificate = false;
 bool Settings::gNetworkDataUsageTrackingEnabled = false;
 bool Settings::gAVKitEnabled = false;
 bool Settings::gShouldOptOutOfNetworkStateObservation = false;
-bool Settings::gManageAudioSession = false;
 #endif
+bool Settings::gManageAudioSession = false;
 
 // NOTEs
 //  1) EditingMacBehavior comprises Tiger, Leopard, SnowLeopard and iOS builds, as well as QtWebKit when built on Mac;
@@ -143,7 +146,6 @@ static const bool defaultYouTubeFlashPluginReplacementEnabled = false;
 #endif
 
 #if PLATFORM(IOS)
-static const bool defaultFixedPositionCreatesStackingContext = true;
 static const bool defaultFixedBackgroundsPaintRelativeToDocument = true;
 static const bool defaultAcceleratedCompositingForFixedPositionEnabled = true;
 static const bool defaultAllowsInlineMediaPlayback = false;
@@ -157,7 +159,6 @@ static const bool defaultScrollingTreeIncludesFrames = true;
 static const bool defaultMediaControlsScaleWithPageZoom = true;
 static const bool defaultQuickTimePluginReplacementEnabled = true;
 #else
-static const bool defaultFixedPositionCreatesStackingContext = false;
 static const bool defaultFixedBackgroundsPaintRelativeToDocument = false;
 static const bool defaultAcceleratedCompositingForFixedPositionEnabled = false;
 static const bool defaultAllowsInlineMediaPlayback = true;
@@ -188,7 +189,7 @@ static const bool defaultSelectTrailingWhitespaceEnabled = false;
 // This amount of time must have elapsed before we will even consider scheduling a layout without a delay.
 // FIXME: For faster machines this value can really be lowered to 200. 250 is adequate, but a little high
 // for dual G5s. :)
-static const auto layoutScheduleThreshold = 250ms;
+static const Seconds layoutScheduleThreshold = 250_ms;
 
 Settings::Settings(Page* page)
     : m_page(nullptr)
@@ -215,7 +216,7 @@ Settings::Settings(Page* page)
     , m_touchEventEmulationEnabled(false)
 #endif
     , m_scrollingPerformanceLoggingEnabled(false)
-    , m_timeWithoutMouseMovementBeforeHidingControls(3)
+    , m_timeWithoutMouseMovementBeforeHidingControls(3_s)
     , m_setImageLoadingSettingsTimer(*this, &Settings::imageLoadingSettingsTimerFired)
     , m_hiddenPageDOMTimerThrottlingEnabled(false)
     , m_hiddenPageCSSAnimationSuspensionEnabled(false)
@@ -377,7 +378,7 @@ void Settings::setLoadsImagesAutomatically(bool loadsImagesAutomatically)
     // Starting these loads synchronously is not important.  By putting it on a 0-delay, properly closing the Page cancels them
     // before they have a chance to really start.
     // See http://webkit.org/b/60572 for more discussion.
-    m_setImageLoadingSettingsTimer.startOneShot(0);
+    m_setImageLoadingSettingsTimer.startOneShot(0_s);
 }
 
 void Settings::imageLoadingSettingsTimerFired()
@@ -398,7 +399,6 @@ void Settings::setScriptEnabled(bool isScriptEnabled)
 #if PLATFORM(IOS)
     m_page->setNeedsRecalcStyleInAllFrames();
 #endif
-    InspectorInstrumentation::scriptsEnabled(*m_page, m_isScriptEnabled);
 }
 
 void Settings::setJavaEnabled(bool isJavaEnabled)
@@ -416,7 +416,7 @@ void Settings::setImagesEnabled(bool areImagesEnabled)
     m_areImagesEnabled = areImagesEnabled;
 
     // See comment in setLoadsImagesAutomatically.
-    m_setImageLoadingSettingsTimer.startOneShot(0);
+    m_setImageLoadingSettingsTimer.startOneShot(0_s);
 }
 
 void Settings::setPreferMIMETypeForImages(bool preferMIMETypeForImages)
@@ -456,21 +456,20 @@ void Settings::setNeedsAdobeFrameReloadingQuirk(bool shouldNotReloadIFramesForUn
     m_needsAdobeFrameReloadingQuirk = shouldNotReloadIFramesForUnchangedSRC;
 }
 
-void Settings::setMinimumDOMTimerInterval(std::chrono::milliseconds interval)
+void Settings::setMinimumDOMTimerInterval(Seconds interval)
 {
-    auto oldTimerInterval = m_minimumDOMTimerInterval;
-    m_minimumDOMTimerInterval = interval;
+    auto oldTimerInterval = std::exchange(m_minimumDOMTimerInterval, interval);
 
     if (!m_page)
         return;
 
     for (Frame* frame = &m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->document())
-            frame->document()->adjustMinimumTimerInterval(oldTimerInterval);
+            frame->document()->adjustMinimumDOMTimerInterval(oldTimerInterval);
     }
 }
 
-void Settings::setLayoutInterval(std::chrono::milliseconds layoutInterval)
+void Settings::setLayoutInterval(Seconds layoutInterval)
 {
     // FIXME: It seems weird that this function may disregard the specified layout interval.
     // We should either expose layoutScheduleThreshold or better communicate this invariant.
@@ -794,5 +793,25 @@ bool Settings::allowsAnySSLCertificate()
 {
     return gAllowsAnySSLCertificate;
 }
+
+#if !PLATFORM(COCOA)
+const String& Settings::defaultMediaContentTypesRequiringHardwareSupport()
+{
+    return emptyString();
+}
+#endif
+
+void Settings::setMediaContentTypesRequiringHardwareSupport(const String& contentTypes)
+{
+    m_mediaContentTypesRequiringHardwareSupport.shrink(0);
+    for (auto type : StringView(contentTypes).split(':'))
+        m_mediaContentTypesRequiringHardwareSupport.append(ContentType { type.toString() });
+}
+
+void Settings::setMediaContentTypesRequiringHardwareSupport(const Vector<ContentType>& contentTypes)
+{
+    m_mediaContentTypesRequiringHardwareSupport = contentTypes;
+}
+
 
 } // namespace WebCore

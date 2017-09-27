@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,9 @@ enum LocationKind {
     InvalidLocationKind,
     
     ArrayLengthLoc,
+    VectorLengthLoc,
     ButterflyLoc,
+    ButterflyWithoutCagingLoc,
     CheckTypeInfoFlagsLoc,
     OverridesHasInstanceLoc,
     ClosureVariableLoc,
@@ -45,7 +47,9 @@ enum LocationKind {
     GetterLoc,
     GlobalVariableLoc,
     HasIndexedPropertyLoc,
-    IndexedPropertyLoc,
+    IndexedPropertyDoubleLoc,
+    IndexedPropertyInt52Loc,
+    IndexedPropertyJSLoc,
     IndexedPropertyStorageLoc,
     InstanceOfLoc,
     InvalidationPointLoc,
@@ -59,8 +63,12 @@ enum LocationKind {
     StackLoc,
     StackPayloadLoc,
     MapBucketLoc,
-    JSMapGetLoc,
-    MapHasLoc,
+    MapBucketHeadLoc,
+    MapBucketValueLoc,
+    MapBucketKeyLoc,
+    MapBucketMapNextLoc,
+    MapBucketSetNextLoc,
+    WeakMapGetLoc,
     DOMStateLoc,
 };
 
@@ -137,6 +145,29 @@ struct HeapLocationHash {
     static bool equal(const HeapLocation& a, const HeapLocation& b) { return a == b; }
     static const bool safeToCompareToEmptyOrDeleted = true;
 };
+
+LocationKind indexedPropertyLocForResultType(NodeFlags);
+
+inline LocationKind indexedPropertyLocForResultType(NodeFlags canonicalResultRepresentation)
+{
+    if (!canonicalResultRepresentation)
+        return IndexedPropertyJSLoc;
+
+    ASSERT((canonicalResultRepresentation & NodeResultMask) == canonicalResultRepresentation);
+    switch (canonicalResultRepresentation) {
+    case NodeResultDouble:
+        return IndexedPropertyDoubleLoc;
+    case NodeResultInt52:
+        return IndexedPropertyInt52Loc;
+    case NodeResultJS:
+        return IndexedPropertyJSLoc;
+    case NodeResultStorage:
+        RELEASE_ASSERT_NOT_REACHED();
+    default:
+        break;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
 
 } } // namespace JSC::DFG
 

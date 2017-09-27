@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011, 2013 Google Inc.  All rights reserved.
- * Copyright (C) 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,10 +30,9 @@
  */
 
 #include "config.h"
+#include "TextTrackCue.h"
 
 #if ENABLE(VIDEO_TRACK)
-
-#include "TextTrackCue.h"
 
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
@@ -46,10 +45,9 @@
 #include "VTTCue.h"
 #include "VTTRegionList.h"
 #include <wtf/MathExtras.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
-
-static const int invalidCueIndex = -1;
 
 const AtomicString& TextTrackCue::cueShadowPseudoId()
 {
@@ -60,9 +58,6 @@ const AtomicString& TextTrackCue::cueShadowPseudoId()
 TextTrackCue::TextTrackCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end)
     : m_startTime(start)
     , m_endTime(end)
-    , m_cueIndex(invalidCueIndex)
-    , m_processingCueChanges(0)
-    , m_track(0)
     , m_scriptExecutionContext(context)
     , m_isActive(false)
     , m_pauseOnExit(false)
@@ -149,23 +144,6 @@ void TextTrackCue::setPauseOnExit(bool value)
     m_pauseOnExit = value;
 }
 
-int TextTrackCue::cueIndex()
-{
-    if (m_cueIndex == invalidCueIndex) {
-        ASSERT(track());
-        ASSERT(track()->cues());
-        if (TextTrackCueList* cueList = track()->cues())
-            m_cueIndex = cueList->getCueIndex(this);
-    }
-
-    return m_cueIndex;
-}
-
-void TextTrackCue::invalidateCueIndex()
-{
-    m_cueIndex = invalidCueIndex;
-}
-
 bool TextTrackCue::dispatchEvent(Event& event)
 {
     // When a TextTrack's mode is disabled: no cues are active, no events fired.
@@ -236,6 +214,35 @@ bool TextTrackCue::doesExtendCue(const TextTrackCue& cue) const
         return false;
     
     return true;
+}
+
+String TextTrackCue::toString() const
+{
+    StringBuilder builder;
+
+    builder.appendLiteral("start = ");
+    builder.append(m_startTime.toString());
+
+    builder.appendLiteral(", end = ");
+    builder.append(m_endTime.toString());
+
+    const char* type = "Generic";
+    switch (cueType()) {
+    case TextTrackCue::Generic:
+        type = "Generic";
+        break;
+    case TextTrackCue::WebVTT:
+        type = "WebVTT";
+        break;
+    case TextTrackCue::Data:
+        type = "Data";
+        break;
+    }
+
+    builder.appendLiteral(", type = ");
+    builder.append(type);
+
+    return builder.toString();
 }
 
 } // namespace WebCore

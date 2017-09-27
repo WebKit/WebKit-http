@@ -29,6 +29,7 @@
 
 #include "IDBDatabaseInfo.h"
 #include "IDBError.h"
+#include <wtf/MainThread.h>
 
 namespace WebCore {
 
@@ -42,6 +43,8 @@ class IDBResourceIdentifier;
 class IDBTransactionInfo;
 class IDBValue;
 class ThreadSafeDataBuffer;
+
+enum class IDBGetRecordDataType;
 
 struct IDBGetAllRecordsData;
 struct IDBIterateCursorData;
@@ -62,7 +65,7 @@ public:
 
 class IDBBackingStore {
 public:
-    virtual ~IDBBackingStore() { }
+    virtual ~IDBBackingStore() { RELEASE_ASSERT(!isMainThread()); }
 
     virtual IDBError getOrEstablishDatabaseInfo(IDBDatabaseInfo&) = 0;
 
@@ -80,7 +83,7 @@ public:
     virtual IDBError keyExistsInObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyData&, bool& keyExists) = 0;
     virtual IDBError deleteRange(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData&) = 0;
     virtual IDBError addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo&, const IDBKeyData&, const IDBValue&) = 0;
-    virtual IDBError getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData&, IDBGetResult& outValue) = 0;
+    virtual IDBError getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData&, IDBGetRecordDataType, IDBGetResult& outValue) = 0;
     virtual IDBError getAllRecords(const IDBResourceIdentifier& transactionIdentifier, const IDBGetAllRecordsData&, IDBGetAllResult& outValue) = 0;
     virtual IDBError getIndexRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, IndexedDB::IndexRecordType, const IDBKeyRangeData&, IDBGetResult& outValue) = 0;
     virtual IDBError getCount(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData&, uint64_t& outCount) = 0;
@@ -89,12 +92,16 @@ public:
     virtual IDBError maybeUpdateKeyGeneratorNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, double newKeyNumber) = 0;
     virtual IDBError openCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBCursorInfo&, IDBGetResult& outResult) = 0;
     virtual IDBError iterateCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBIterateCursorData&, IDBGetResult& outResult) = 0;
+    virtual bool prefetchCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier) = 0;
 
     virtual IDBObjectStoreInfo* infoForObjectStore(uint64_t objectStoreIdentifier) = 0;
     virtual void deleteBackingStore() = 0;
 
     virtual bool supportsSimultaneousTransactions() = 0;
     virtual bool isEphemeral() = 0;
+
+protected:
+    IDBBackingStore() { RELEASE_ASSERT(!isMainThread()); }
 };
 
 } // namespace IDBServer

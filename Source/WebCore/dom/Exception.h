@@ -26,11 +26,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include "ExceptionCode.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
-
-using ExceptionCode = int;
 
 class Exception {
 public:
@@ -39,6 +38,11 @@ public:
     ExceptionCode code() const { return m_code; }
     const String& message() const { return m_message; }
     String&& releaseMessage() { return WTFMove(m_message); }
+
+    Exception isolatedCopy() const
+    {
+        return Exception { m_code, m_message.isolatedCopy() };
+    }
 
 private:
     ExceptionCode m_code;
@@ -51,7 +55,6 @@ inline Exception::Exception(ExceptionCode code, String&& message)
     : m_code(code)
     , m_message(WTFMove(message))
 {
-    ASSERT(code);
 }
 
 inline Exception isolatedCopy(Exception&& value)

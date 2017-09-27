@@ -15,14 +15,13 @@ import urlparse
 from benchmark_builder import BenchmarkBuilder
 from benchmark_results import BenchmarkResults
 from browser_driver.browser_driver_factory import BrowserDriverFactory
-from http_server_driver.http_server_driver_factory import HTTPServerDriverFactory
-from utils import timeout
 
 
 _log = logging.getLogger(__name__)
 
 
 class BenchmarkRunner(object):
+    name = 'benchmark_runner'
 
     def __init__(self, plan_file, local_copy, count_override, build_dir, output_file, platform, browser, scale_unit=True, device_id=None):
         try:
@@ -37,12 +36,12 @@ class BenchmarkRunner(object):
                 if count_override:
                     self._plan['count'] = count_override
                 self._browser_driver = BrowserDriverFactory.create(platform, browser)
-                self._http_server_driver = HTTPServerDriverFactory.create(platform)
-                self._http_server_driver.set_device_id(device_id)
                 self._build_dir = os.path.abspath(build_dir) if build_dir else None
                 self._output_file = output_file
                 self._scale_unit = scale_unit
-                self._device_id = device_id
+                self._config = self._plan.get('config', {})
+                if device_id:
+                    self._config['device_id'] = device_id
         except IOError as error:
             _log.error('Can not open plan file: {plan_file} - Error {error}'.format(plan_file=plan_file, error=error))
             raise error
@@ -61,24 +60,8 @@ class BenchmarkRunner(object):
                 return absPath
         return plan_file
 
-    def _get_result(self, test_url):
-        result = self._browser_driver.add_additional_results(test_url, self._http_server_driver.fetch_result())
-        assert(not self._http_server_driver.get_return_code())
-        return result
-
     def _run_one_test(self, web_root, test_file):
-        result = None
-        try:
-            self._http_server_driver.serve(web_root)
-            url = urlparse.urljoin(self._http_server_driver.base_url(), self._plan_name + '/' + test_file)
-            self._browser_driver.launch_url(url, self._plan['options'], self._build_dir)
-            with timeout(self._plan['timeout']):
-                result = self._get_result(url)
-        finally:
-            self._browser_driver.close_browsers()
-            self._http_server_driver.kill_server()
-
-        return json.loads(result)
+        raise NotImplementedError('BenchmarkRunner is an abstract class and shouldn\'t be instantiated.')
 
     def _run_benchmark(self, count, web_root):
         results = []
@@ -86,7 +69,7 @@ class BenchmarkRunner(object):
         for iteration in xrange(1, count + 1):
             _log.info('Start the iteration {current_iteration} of {iterations} for current benchmark'.format(current_iteration=iteration, iterations=count))
             try:
-                self._browser_driver.prepare_env(self._device_id)
+                self._browser_driver.prepare_env(self._config)
 
                 if 'entry_point' in self._plan:
                     result = self._run_one_test(web_root, self._plan['entry_point'])
@@ -107,7 +90,6 @@ class BenchmarkRunner(object):
 
             finally:
                 self._browser_driver.restore_env()
-                self._browser_driver.close_browsers()
 
             _log.info('End the iteration {current_iteration} of {iterations} for current benchmark'.format(current_iteration=iteration, iterations=count))
 
@@ -117,7 +99,7 @@ class BenchmarkRunner(object):
         self.show_results(results, self._scale_unit)
 
     def execute(self):
-        with BenchmarkBuilder(self._plan_name, self._plan) as web_root:
+        with BenchmarkBuilder(self._plan_name, self._plan, self.name) as web_root:
             self._run_benchmark(int(self._plan['count']), web_root)
 
     @classmethod

@@ -28,6 +28,7 @@
 #define StringBuilder_h
 
 #include <wtf/text/AtomicString.h>
+#include <wtf/text/IntegerToStringConversion.h>
 #include <wtf/text/StringView.h>
 #include <wtf/text/WTFString.h>
 
@@ -41,9 +42,11 @@ public:
     StringBuilder()
         : m_length(0)
         , m_is8Bit(true)
-        , m_bufferCharacters8(0)
+        , m_bufferCharacters8(nullptr)
     {
     }
+    StringBuilder(StringBuilder&&) = default;
+    StringBuilder& operator=(StringBuilder&&) = default;
 
     WTF_EXPORT_PRIVATE void append(const UChar*, unsigned);
     WTF_EXPORT_PRIVATE void append(const LChar*, unsigned);
@@ -173,8 +176,8 @@ public:
 
     WTF_EXPORT_PRIVATE void appendQuotedJSONString(const String&);
 
-    template<unsigned charactersCount>
-    ALWAYS_INLINE void appendLiteral(const char (&characters)[charactersCount]) { append(characters, charactersCount - 1); }
+    template<unsigned characterCount>
+    ALWAYS_INLINE void appendLiteral(const char (&characters)[characterCount]) { append(characters, characterCount - 1); }
 
     WTF_EXPORT_PRIVATE void appendNumber(int);
     WTF_EXPORT_PRIVATE void appendNumber(unsigned int);
@@ -204,7 +207,7 @@ public:
     AtomicString toAtomicString() const
     {
         if (!m_length)
-            return emptyAtom;
+            return emptyAtom();
 
         // If the buffer is sufficiently over-allocated, make a new AtomicString from a copy so its buffer is not so large.
         if (canShrink()) {
@@ -367,6 +370,12 @@ inline bool operator==(const StringBuilder& a, const String& b) { return equal(a
 inline bool operator!=(const StringBuilder& a, const String& b) { return !equal(a, b); }
 inline bool operator==(const String& a, const StringBuilder& b) { return equal(b, a); }
 inline bool operator!=(const String& a, const StringBuilder& b) { return !equal(b, a); }
+
+template<> struct IntegerToStringConversionTrait<StringBuilder> {
+    using ReturnType = void;
+    using AdditionalArgumentType = StringBuilder;
+    static void flush(LChar* characters, unsigned length, StringBuilder* stringBuilder) { stringBuilder->append(characters, length); }
+};
 
 } // namespace WTF
 

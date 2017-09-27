@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,18 +40,21 @@
 #include "Event.h"
 #include "FocusController.h"
 #include "HitTestResult.h"
+#include "InspectorController.h"
 #include "InspectorFrontendClient.h"
+#include "JSDOMConvertInterface.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSInspectorFrontendHost.h"
 #include "JSMainThreadExecState.h"
 #include "MainFrame.h"
 #include "MouseEvent.h"
 #include "Node.h"
 #include "Page.h"
 #include "Pasteboard.h"
-#include "ScriptGlobalObject.h"
 #include "ScriptState.h"
-#include "Sound.h"
 #include "UserGestureIndicator.h"
 #include <bindings/ScriptFunctionCall.h>
+#include <pal/system/Sound.h>
 #include <wtf/StdLibExtras.h>
 
 using namespace Inspector;
@@ -144,6 +147,19 @@ void InspectorFrontendHost::disconnectClient()
     m_frontendPage = nullptr;
 }
 
+void InspectorFrontendHost::addSelfToGlobalObjectInWorld(DOMWrapperWorld& world)
+{
+    auto& state = *execStateFromPage(world, m_frontendPage);
+    auto& vm = state.vm();
+    JSC::JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
+    auto& globalObject = *JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject());
+    globalObject.putDirect(vm, JSC::Identifier::fromString(&vm, "InspectorFrontendHost"), toJS<IDLInterface<InspectorFrontendHost>>(state, globalObject, *this));
+    if (UNLIKELY(scope.exception()))
+        reportException(&state, scope.exception());
+}
+
 void InspectorFrontendHost::loaded()
 {
     if (m_client)
@@ -158,6 +174,8 @@ void InspectorFrontendHost::requestSetDockSide(const String& side)
         m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Undocked);
     else if (side == "right")
         m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Right);
+    else if (side == "left")
+        m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Left);
     else if (side == "bottom")
         m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Bottom);
 }
@@ -194,6 +212,14 @@ float InspectorFrontendHost::zoomFactor()
         return m_frontendPage->mainFrame().pageZoomFactor();
 
     return 1.0;
+}
+
+String InspectorFrontendHost::userInterfaceLayoutDirection()
+{
+    if (m_client && m_client->userInterfaceLayoutDirection() == UserInterfaceLayoutDirection::RTL)
+        return ASCIILiteral("rtl");
+
+    return ASCIILiteral("ltr");
 }
 
 void InspectorFrontendHost::setAttachedWindowHeight(unsigned height)
@@ -252,8 +278,6 @@ String InspectorFrontendHost::platform()
     return ASCIILiteral("freebsd");
 #elif OS(OPENBSD)
     return ASCIILiteral("openbsd");
-#elif OS(SOLARIS)
-    return ASCIILiteral("solaris");
 #else
     return ASCIILiteral("unknown");
 #endif
@@ -263,8 +287,6 @@ String InspectorFrontendHost::port()
 {
 #if PLATFORM(GTK)
     return ASCIILiteral("gtk");
-#elif PLATFORM(EFL)
-    return ASCIILiteral("efl");
 #else
     return ASCIILiteral("unknown");
 #endif
@@ -326,34 +348,66 @@ void InspectorFrontendHost::sendMessageToBackend(const String& message)
 
 #if ENABLE(CONTEXT_MENUS)
 
-void InspectorFrontendHost::showContextMenu(Event* event, const Vector<ContextMenuItem>& items)
+static void populateContextMenu(Vector<InspectorFrontendHost::ContextMenuItem>&& items, ContextMenu& menu)
 {
-    if (!event)
-        return;
+    for (auto& item : items) {
+        if (item.type == "separator") {
+            menu.appendItem({ SeparatorType, ContextMenuItemTagNoAction, { } });
+            continue;
+        }
 
-    ASSERT(m_frontendPage);
-    auto& state = *execStateFromPage(debuggerWorld(), m_frontendPage);
-    JSC::JSObject* frontendApiObject;
-    if (!ScriptGlobalObject::get(state, "InspectorFrontendAPI", frontendApiObject)) {
-        ASSERT_NOT_REACHED();
-        return;
+        if (item.type == "subMenu" && item.subItems) {
+            ContextMenu subMenu;
+            populateContextMenu(WTFMove(*item.subItems), subMenu);
+
+            menu.appendItem({ SubmenuType, ContextMenuItemTagNoAction, item.label, &subMenu });
+            continue;
+        }
+
+        auto type = item.type == "checkbox" ? CheckableActionType : ActionType;
+        auto action = static_cast<ContextMenuAction>(ContextMenuItemBaseCustomTag + item.id.value_or(0));
+        ContextMenuItem menuItem = { type, action, item.label };
+        if (item.enabled)
+            menuItem.setEnabled(*item.enabled);
+        if (item.checked)
+            menuItem.setChecked(*item.checked);
+        menu.appendItem(menuItem);
     }
-    auto menuProvider = FrontendMenuProvider::create(this, { &state, frontendApiObject }, items);
-    m_frontendPage->contextMenuController().showContextMenu(event, menuProvider.ptr());
-    m_menuProvider = menuProvider.ptr();
 }
-
 #endif
 
-void InspectorFrontendHost::dispatchEventAsContextMenuEvent(Event* event)
+void InspectorFrontendHost::showContextMenu(Event& event, Vector<ContextMenuItem>&& items)
+{
+#if ENABLE(CONTEXT_MENUS)
+    ASSERT(m_frontendPage);
+
+    auto& state = *execStateFromPage(debuggerWorld(), m_frontendPage);
+    auto value = state.lexicalGlobalObject()->get(&state, JSC::Identifier::fromString(&state.vm(), "InspectorFrontendAPI"));
+    ASSERT(value);
+    ASSERT(value.isObject());
+    auto* frontendAPIObject = asObject(value);
+    
+    ContextMenu menu;
+    populateContextMenu(WTFMove(items), menu);
+
+    auto menuProvider = FrontendMenuProvider::create(this, { &state, frontendAPIObject }, menu.items());
+    m_menuProvider = menuProvider.ptr();
+    m_frontendPage->contextMenuController().showContextMenu(event, menuProvider);
+#else
+    UNUSED_PARAM(event);
+    UNUSED_PARAM(items);
+#endif
+}
+
+void InspectorFrontendHost::dispatchEventAsContextMenuEvent(Event& event)
 {
 #if ENABLE(CONTEXT_MENUS) && USE(ACCESSIBILITY_CONTEXT_MENUS)
     if (!is<MouseEvent>(event))
         return;
 
-    Frame* frame = event->target()->toNode()->document().frame();
-    MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
-    IntPoint mousePoint = IntPoint(mouseEvent.clientX(), mouseEvent.clientY());
+    auto& mouseEvent = downcast<MouseEvent>(event);
+    IntPoint mousePoint { mouseEvent.clientX(), mouseEvent.clientY() };
+    auto& frame = *mouseEvent.target()->toNode()->document().frame();
 
     m_frontendPage->contextMenuController().showContextMenuAt(frame, mousePoint);
 #else
@@ -374,7 +428,13 @@ void InspectorFrontendHost::unbufferedLog(const String& message)
 
 void InspectorFrontendHost::beep()
 {
-    systemBeep();
+    PAL::systemBeep();
+}
+
+void InspectorFrontendHost::inspectInspector()
+{
+    if (m_frontendPage)
+        m_frontendPage->inspectorController().show();
 }
 
 } // namespace WebCore

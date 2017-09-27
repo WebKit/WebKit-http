@@ -33,10 +33,6 @@ namespace WebCore {
 
 SuspendableTimer::SuspendableTimer(ScriptExecutionContext& context)
     : ActiveDOMObject(&context)
-    , m_suspended(false)
-    , m_savedNextFireInterval(0)
-    , m_savedRepeatInterval(0)
-    , m_savedIsActive(false)
 {
 }
 
@@ -101,7 +97,7 @@ void SuspendableTimer::cancel()
         m_suspended = false;
 }
 
-void SuspendableTimer::startRepeating(double repeatInterval)
+void SuspendableTimer::startRepeating(Seconds repeatInterval)
 {
     if (!m_suspended)
         TimerBase::startRepeating(repeatInterval);
@@ -112,27 +108,27 @@ void SuspendableTimer::startRepeating(double repeatInterval)
     }
 }
 
-void SuspendableTimer::startOneShot(double interval)
+void SuspendableTimer::startOneShot(Seconds interval)
 {
     if (!m_suspended)
         TimerBase::startOneShot(interval);
     else {
         m_savedIsActive = true;
         m_savedNextFireInterval = interval;
-        m_savedRepeatInterval = 0;
+        m_savedRepeatInterval = 0_s;
     }
 }
 
-double SuspendableTimer::repeatInterval() const
+Seconds SuspendableTimer::repeatInterval() const
 {
     if (!m_suspended)
         return TimerBase::repeatInterval();
     if (m_savedIsActive)
         return m_savedRepeatInterval;
-    return 0;
+    return 0_s;
 }
 
-void SuspendableTimer::augmentFireInterval(double delta)
+void SuspendableTimer::augmentFireInterval(Seconds delta)
 {
     if (!m_suspended)
         TimerBase::augmentFireInterval(delta);
@@ -141,11 +137,11 @@ void SuspendableTimer::augmentFireInterval(double delta)
     } else {
         m_savedIsActive = true;
         m_savedNextFireInterval = delta;
-        m_savedRepeatInterval = 0;
+        m_savedRepeatInterval = 0_s;
     }
 }
 
-void SuspendableTimer::augmentRepeatInterval(double delta)
+void SuspendableTimer::augmentRepeatInterval(Seconds delta)
 {
     if (!m_suspended)
         TimerBase::augmentRepeatInterval(delta);

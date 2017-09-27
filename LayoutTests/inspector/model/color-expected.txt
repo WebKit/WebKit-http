@@ -1,8 +1,8 @@
-Tests for the WebInspector.Color model object.
+Tests for the WI.Color model object.
 
 
-== Running test suite: WebInspector.Color
--- Running test case: WebInspector.Color.fromString
+== Running test suite: WI.Color
+-- Running test case: WI.Color.fromString
 PASS: '#000' should be detected
 PASS: '#000' was the expected 'Short HEX' format
 PASS: '#a0A' should be detected
@@ -77,7 +77,7 @@ PASS: 'hsl(0, 0%, 50%, 1)' should not be detected
 PASS: 'hsla(0, 0%, 50%, 1, 2)' should not be detected
 PASS: 'superblue' should not be detected
 
--- Running test case: WebInspector.Color properties
+-- Running test case: WI.Color properties
 PASS: 'red' should have alpha of 1.
 PASS: 'red' should be simple.
 PASS: 'red' should be a keyword.
@@ -103,13 +103,35 @@ PASS: '#11122233' should not be serializable as a short Hex
 PASS: '#11223344' should be serializable as a short Hex
 PASS: '#11223345' should not be serializable as a short Hex
 
--- Running test case: WebInspector.Color.prototype.nextFormat
+-- Running test case: WI.Color from components
+Check components for color 'rgb(255, 0, 0)'.
+PASS: Should have rgb of [255,0,0].
+PASS: Should have rgba of [255,0,0,1].
+PASS: Should have hsl of [0,100,50].
+PASS: Should have hsla of [0,100,50,1].
+Check components for color 'rgba(128, 128, 128, 0.5)'.
+PASS: Should have rgb of [128,128,128].
+PASS: Should have rgba of [128,128,128,0.5].
+PASS: Should have hsl of [0,0,50].
+PASS: Should have hsla of [0,0,50,0.5].
+Check components for color 'hsl(0, 0%, 50%)'.
+PASS: Should have rgb of [128,128,128].
+PASS: Should have rgba of [128,128,128,1].
+PASS: Should have hsl of [0,0,50].
+PASS: Should have hsla of [0,0,50,1].
+Check components for color 'hsla(0, 0%, 50%, 0.5)'.
+PASS: Should have rgb of [128,128,128].
+PASS: Should have rgba of [128,128,128,0.5].
+PASS: Should have hsl of [0,0,50].
+PASS: Should have hsla of [0,0,50,0.5].
+
+-- Running test case: WI.Color.prototype.nextFormat
 PASS: All format phases of 'transparent' should be as expected.
 PASS: All format phases of 'red' should be as expected.
 PASS: All format phases of 'rgb(100, 150, 200)' should be as expected.
 PASS: All format phases of 'rgba(100, 150, 200, 0.5)' should be as expected.
 
--- Running test case: WebInspector.Color.prototype.toString
+-- Running test case: WI.Color.prototype.toString
 PASS: Color as 'Original' should be 'RED'
 PASS: Color as 'Keyword' should be 'red'
 PASS: Color as 'Short HEX' should be '#f00'
@@ -130,4 +152,30 @@ PASS: Color as 'RGB' should be 'rgba(100, 200, 255, 0.5)'
 PASS: Color as 'RGBA' should be 'rgba(100, 200, 255, 0.5)'
 PASS: Color as 'HSL' should be 'hsla(201, 100%, 70%, 0.5)'
 PASS: Color as 'HSLA' should be 'hsla(201, 100%, 70%, 0.5)'
+
+-- Running test case: WI.Color.rgb2hsv
+PASS: Should convert [0,0,0] to [0,0,0].
+PASS: Should convert [255,255,255] to [0,0,1].
+PASS: Should convert [255,0,0] to [0,1,1].
+PASS: Should convert [0,255,0] to [120,1,1].
+PASS: Should convert [0,0,255] to [240,1,1].
+PASS: Should convert [-1,-1,-1] to [0,0,0].
+PASS: Should convert [256,256,256] to [0,0,1].
+PASS: Should convert [254.9,0,0] to [0,1,1].
+
+-- Running test case: WI.Color.cmyk2rgb
+PASS: Should convert [0,0,0,1] to [0,0,0].
+PASS: Should convert [1,0,0,0] to [0,255,255].
+PASS: Should convert [0,1,0,0] to [255,0,255].
+PASS: Should convert [0,0,1,0] to [255,255,0].
+PASS: Should convert [0,0,0,0] to [255,255,255].
+PASS: Should convert [2,0,0,0] to [0,255,255].
+PASS: Should convert [-1,0,0,0] to [255,255,255].
+
+-- Running test case: WI.Color.normalized2rgb
+PASS: Should convert [0,0,0] to [0,0,0].
+PASS: Should convert [1,1,1] to [255,255,255].
+PASS: Should convert [0.24,0.25,0.26] to [61,64,66].
+PASS: Should convert [2,0,0] to [255,0,0].
+PASS: Should convert [-1,0,0] to [0,0,0].
 

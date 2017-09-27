@@ -56,14 +56,14 @@ void BitmapImage::invalidatePlatformData()
     m_tiffRep = nullptr;
 }
 
-PassRefPtr<Image> Image::loadPlatformResource(const char *name)
+Ref<Image> Image::loadPlatformResource(const char *name)
 {
     NSBundle *bundle = [NSBundle bundleForClass:[WebCoreBundleFinder class]];
     NSString *imagePath = [bundle pathForResource:[NSString stringWithUTF8String:name] ofType:@"png"];
     NSData *namedImageData = [NSData dataWithContentsOfFile:imagePath];
     if (namedImageData) {
         auto image = BitmapImage::create();
-        image->setData(SharedBuffer::wrapNSData(namedImageData), true);
+        image->setData(SharedBuffer::create(namedImageData), true);
         return WTFMove(image);
     }
 

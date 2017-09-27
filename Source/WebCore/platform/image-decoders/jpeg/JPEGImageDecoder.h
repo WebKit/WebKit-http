@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "ImageDecoder.h"
+#include "ScalableImageDecoder.h"
 #include <stdio.h> // Needed by jpeglib.h for FILE.
 
 // ICU defines TRUE and FALSE macros, breaking libjpeg v9 headers
@@ -41,14 +41,17 @@ namespace WebCore {
     class JPEGImageReader;
 
     // This class decodes the JPEG image format.
-    class JPEGImageDecoder final : public ImageDecoder {
+    class JPEGImageDecoder final : public ScalableImageDecoder {
     public:
-        JPEGImageDecoder(AlphaOption, GammaAndColorProfileOption);
+        static Ref<ScalableImageDecoder> create(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+        {
+            return adoptRef(*new JPEGImageDecoder(alphaOption, gammaAndColorProfileOption));
+        }
+
         virtual ~JPEGImageDecoder();
 
-        // ImageDecoder
-        String filenameExtension() const override { return "jpg"; }
-        bool isSizeAvailable() override;
+        // ScalableImageDecoder
+        String filenameExtension() const override { return ASCIILiteral("jpg"); }
         bool setSize(const IntSize&) override;
         ImageFrame* frameBufferAtIndex(size_t index) override;
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
@@ -58,7 +61,7 @@ namespace WebCore {
 
         bool willDownSample()
         {
-            ASSERT(ImageDecoder::isSizeAvailable());
+            ASSERT(ScalableImageDecoder::encodedDataStatus() >= EncodedDataStatus::SizeAvailable);
             return m_scaled;
         }
 
@@ -68,10 +71,13 @@ namespace WebCore {
         void setOrientation(ImageOrientation orientation) { m_orientation = orientation; }
 
     private:
+        JPEGImageDecoder(AlphaOption, GammaAndColorProfileOption);
+        void tryDecodeSize(bool allDataReceived) override { decode(true, allDataReceived); }
+
         // Decodes the image.  If |onlySize| is true, stops decoding after
         // calculating the image size.  If decoding fails but there is no more
         // data coming, sets the "decode failure" flag.
-        void decode(bool onlySize);
+        void decode(bool onlySize, bool allDataReceived);
 
         template <J_COLOR_SPACE colorSpace>
         bool outputScanlines(ImageFrame& buffer);

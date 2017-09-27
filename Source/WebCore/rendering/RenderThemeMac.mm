@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -16,17 +16,16 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
 #import "config.h"
-
-#if !PLATFORM(IOS)
-
 #import "RenderThemeMac.h"
+
+#if PLATFORM(MAC)
 
 #import "BitmapImage.h"
 #import "CSSValueKeywords.h"
 #import "CSSValueList.h"
 #import "ColorMac.h"
-#import "CoreGraphicsSPI.h"
 #import "Document.h"
 #import "Element.h"
 #import "FileList.h"
@@ -48,8 +47,6 @@
 #import "LocalCurrentGraphicsContext.h"
 #import "LocalizedStrings.h"
 #import "MediaControlElements.h"
-#import "NSColorSPI.h"
-#import "NSSharingServicePickerSPI.h"
 #import "Page.h"
 #import "PaintInfo.h"
 #import "PathUtilities.h"
@@ -72,14 +69,17 @@
 #import "UserAgentScripts.h"
 #import "UserAgentStyleSheets.h"
 #import "WebCoreSystemInterface.h"
-#import <wtf/MathExtras.h>
-#import <wtf/RetainPtr.h>
-#import <wtf/RetainPtr.h>
-#import <wtf/StdLibExtras.h>
-#import <wtf/text/StringBuilder.h>
 #import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
 #import <math.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/NSColorSPI.h>
+#import <pal/spi/mac/NSCellSPI.h>
+#import <pal/spi/mac/NSSharingServicePickerSPI.h>
+#import <wtf/MathExtras.h>
+#import <wtf/RetainPtr.h>
+#import <wtf/StdLibExtras.h>
+#import <wtf/text/StringBuilder.h>
 
 #if ENABLE(METER_ELEMENT)
 #import "RenderMeter.h"
@@ -94,6 +94,7 @@
 
 #if ENABLE(SERVICE_CONTROLS) && HAVE(APPKIT_SERVICE_CONTROLS_SUPPORT)
 
+// FIXME: This should go into an SPI.h file in the spi directory.
 #if USE(APPLE_INTERNAL_SDK)
 #import <AppKit/AppKitDefines_Private.h>
 #import <AppKit/NSServicesRolloverButtonCell.h>
@@ -103,6 +104,7 @@
 @end
 #endif
 
+// FIXME: This should go into an SPI.h file in the spi directory.
 @interface NSServicesRolloverButtonCell ()
 + (NSServicesRolloverButtonCell *)serviceRolloverButtonCellForStyle:(NSSharingServicePickerStyle)style;
 - (NSRect)rectForBounds:(NSRect)bounds preferredEdge:(NSRectEdge)preferredEdge;
@@ -110,71 +112,62 @@
 
 #endif // ENABLE(SERVICE_CONTROLS)
 
-// The methods in this file are specific to the Mac OS X platform.
+// FIXME: This should go into an SPI.h file in the spi directory.
+@interface NSTextFieldCell ()
+- (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus;
+@end
 
-// We estimate the animation rate of a Mac OS X progress bar is 33 fps.
-// Hard code the value here because we haven't found API for it.
-const double progressAnimationFrameRate = 0.033;
+// FIXME: This should go into an SPI.h file in the spi directory.
+@interface NSSearchFieldCell ()
+@property (getter=isCenteredLook) BOOL centeredLook;
+@end
 
-// Mac OS X progress bar animation seems to have 256 frames.
-const double progressAnimationNumFrames = 256;
+static const Seconds progressAnimationFrameRate = 33_ms; // 30 fps
+static const double progressAnimationNumFrames = 256;
 
 @interface WebCoreRenderThemeNotificationObserver : NSObject
-{
-    WebCore::RenderTheme *_theme;
-}
-
-- (id)initWithTheme:(WebCore::RenderTheme *)theme;
-- (void)systemColorsDidChange:(NSNotification *)notification;
-
 @end
 
 @implementation WebCoreRenderThemeNotificationObserver
 
-- (id)initWithTheme:(WebCore::RenderTheme *)theme
+- (id)init
 {
-    if (!(self = [super init]))
+    self = [super init];
+    if (!self)
         return nil;
-
-    _theme = theme;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+        selector:@selector(systemColorsDidChange:) name:NSSystemColorsDidChangeNotification object:nil];
     return self;
 }
 
 - (void)systemColorsDidChange:(NSNotification *)unusedNotification
 {
     ASSERT_UNUSED(unusedNotification, [[unusedNotification name] isEqualToString:NSSystemColorsDidChangeNotification]);
-    _theme->platformColorsDidChange();
+    WebCore::RenderTheme::singleton().platformColorsDidChange();
 }
 
 @end
 
-@interface NSTextFieldCell (WKDetails)
-- (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus;
-@end
-
-
 @interface WebCoreTextFieldCell : NSTextFieldCell
-- (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus;
 @end
 
 @implementation WebCoreTextFieldCell
+
 - (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus
 {
-    // FIXME: This is a post-Lion-only workaround for <rdar://problem/11385461>. When that bug is resolved, we should remove this code.
+    // FIXME: This is a workaround for <rdar://problem/11385461>. When that bug is resolved, we should remove this code.
     CFMutableDictionaryRef coreUIDrawOptions = CFDictionaryCreateMutableCopy(NULL, 0, [super _coreUIDrawOptionsWithFrame:cellFrame inView:controlView includeFocus:includeFocus]);
     CFDictionarySetValue(coreUIDrawOptions, @"borders only", kCFBooleanTrue);
-    return (CFDictionaryRef)[NSMakeCollectable(coreUIDrawOptions) autorelease];
+    CFAutorelease(coreUIDrawOptions);
+    return coreUIDrawOptions;
 }
+
 @end
 
 @interface WebCoreRenderThemeBundle : NSObject
 @end
 
 @implementation WebCoreRenderThemeBundle
-@end
-
-@interface NSSearchFieldCell()
-@property (getter=isCenteredLook) BOOL centeredLook;
 @end
 
 namespace WebCore {
@@ -195,86 +188,97 @@ enum {
     leftPadding
 };
 
-Ref<RenderTheme> RenderTheme::themeForPage(Page*)
+RenderTheme& RenderTheme::singleton()
 {
-    static RenderTheme& rt = RenderThemeMac::create().leakRef();
-    return rt;
-}
-
-Ref<RenderTheme> RenderThemeMac::create()
-{
-    return adoptRef(*new RenderThemeMac);
+    static NeverDestroyed<RenderThemeMac> theme;
+    return theme;
 }
 
 RenderThemeMac::RenderThemeMac()
-    : m_isSliderThumbHorizontalPressed(false)
-    , m_isSliderThumbVerticalPressed(false)
-    , m_notificationObserver(adoptNS([[WebCoreRenderThemeNotificationObserver alloc] initWithTheme:this]))
+    : m_notificationObserver(adoptNS([[WebCoreRenderThemeNotificationObserver alloc] init]))
 {
-    [[NSNotificationCenter defaultCenter] addObserver:m_notificationObserver.get()
-                                                        selector:@selector(systemColorsDidChange:)
-                                                            name:NSSystemColorsDidChangeNotification
-                                                          object:nil];
 }
 
-RenderThemeMac::~RenderThemeMac()
-{
-    [[NSNotificationCenter defaultCenter] removeObserver:m_notificationObserver.get()];
-}
-
-NSView* RenderThemeMac::documentViewFor(const RenderObject& o) const
+NSView *RenderThemeMac::documentViewFor(const RenderObject& o) const
 {
     ControlStates states(extractControlStatesForRenderer(o));
     return ThemeMac::ensuredView(&o.view().frameView(), states);
 }
 
 #if ENABLE(VIDEO)
+
 String RenderThemeMac::mediaControlsStyleSheet()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsStyleSheet.isEmpty()) {
-        StringBuilder styleSheetBuilder;
-        if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
-            styleSheetBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"modern-media-controls" ofType:@"css" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil]);
-        else
-            styleSheetBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil]);
-        m_mediaControlsStyleSheet = styleSheetBuilder.toString();
-    }
-    return m_mediaControlsStyleSheet;
+    if (m_legacyMediaControlsStyleSheet.isEmpty())
+        m_legacyMediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
+    return m_legacyMediaControlsStyleSheet;
 #else
     return emptyString();
 #endif
+}
+
+String RenderThemeMac::modernMediaControlsStyleSheet()
+{
+#if ENABLE(MEDIA_CONTROLS_SCRIPT)
+    if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
+        if (m_mediaControlsStyleSheet.isEmpty())
+            m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"modern-media-controls" ofType:@"css" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil];
+        return m_mediaControlsStyleSheet;
+    }
+    return emptyString();
+#else
+    return emptyString();
+#endif
+}
+
+void RenderThemeMac::purgeCaches()
+{
+    m_legacyMediaControlsScript.clearImplIfNotShared();
+    m_mediaControlsScript.clearImplIfNotShared();
+    m_legacyMediaControlsStyleSheet.clearImplIfNotShared();
+    m_mediaControlsStyleSheet.clearImplIfNotShared();
 }
 
 String RenderThemeMac::mediaControlsScript()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsScript.isEmpty()) {
-        StringBuilder scriptBuilder;
-        NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
-        if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
+    if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
+        if (m_mediaControlsScript.isEmpty()) {
+            NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+
+            StringBuilder scriptBuilder;
+            scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls-localized-strings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
             scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls" ofType:@"js" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil]);
-        else {
-            scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-            scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+            m_mediaControlsScript = scriptBuilder.toString();
         }
-        m_mediaControlsScript = scriptBuilder.toString();
+        return m_mediaControlsScript;
     }
-    return m_mediaControlsScript;
+
+    if (m_legacyMediaControlsScript.isEmpty()) {
+        NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+
+        StringBuilder scriptBuilder;
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+
+        m_legacyMediaControlsScript = scriptBuilder.toString();
+    }
+    return m_legacyMediaControlsScript;
 #else
     return emptyString();
 #endif
 }
 
-String RenderThemeMac::mediaControlsBase64StringForIconAndPlatform(const String& iconName, const String& platform)
+String RenderThemeMac::mediaControlsBase64StringForIconNameAndType(const String& iconName, const String& iconType)
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
         return emptyString();
 
-    String directory = "modern-media-controls/images/" + platform;
+    NSString *directory = @"modern-media-controls/images";
     NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
-    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:@"png" inDirectory:directory]] base64EncodedStringWithOptions:0];
+    return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:iconType inDirectory:directory]] base64EncodedStringWithOptions:0];
 #else
     return emptyString();
 #endif
@@ -282,12 +286,13 @@ String RenderThemeMac::mediaControlsBase64StringForIconAndPlatform(const String&
 
 #endif // ENABLE(VIDEO)
 
-
 #if ENABLE(SERVICE_CONTROLS)
+
 String RenderThemeMac::imageControlsStyleSheet() const
 {
     return String(imageControlsMacUserAgentStyleSheet, sizeof(imageControlsMacUserAgentStyleSheet));
 }
+
 #endif
 
 Color RenderThemeMac::platformActiveSelectionBackgroundColor() const
@@ -331,7 +336,7 @@ Color RenderThemeMac::platformInactiveListBoxSelectionBackgroundColor() const
     return platformInactiveSelectionBackgroundColor();
 }
 
-static FontWeight toFontWeight(NSInteger appKitFontWeight)
+static FontSelectionValue toFontWeight(NSInteger appKitFontWeight)
 {
     ASSERT(appKitFontWeight > 0 && appKitFontWeight < 15);
     if (appKitFontWeight > 14)
@@ -339,21 +344,21 @@ static FontWeight toFontWeight(NSInteger appKitFontWeight)
     else if (appKitFontWeight < 1)
         appKitFontWeight = 1;
 
-    static const FontWeight fontWeights[] = {
-        FontWeight100,
-        FontWeight100,
-        FontWeight200,
-        FontWeight300,
-        FontWeight400,
-        FontWeight500,
-        FontWeight600,
-        FontWeight600,
-        FontWeight700,
-        FontWeight800,
-        FontWeight800,
-        FontWeight900,
-        FontWeight900,
-        FontWeight900
+    static const FontSelectionValue fontWeights[] = {
+        FontSelectionValue(100),
+        FontSelectionValue(100),
+        FontSelectionValue(200),
+        FontSelectionValue(300),
+        FontSelectionValue(400),
+        FontSelectionValue(500),
+        FontSelectionValue(600),
+        FontSelectionValue(600),
+        FontSelectionValue(700),
+        FontSelectionValue(800),
+        FontSelectionValue(800),
+        FontSelectionValue(900),
+        FontSelectionValue(900),
+        FontSelectionValue(900)
     };
     return fontWeights[appKitFontWeight - 1];
 }
@@ -394,7 +399,7 @@ void RenderThemeMac::updateCachedSystemFontDescription(CSSValueID cssValueId, Fo
         return;
 
     if (fontName.isNull())
-        fontName = AtomicString("-apple-system", AtomicString::ConstructFromLiteral);
+        fontName = AtomicString("system-ui", AtomicString::ConstructFromLiteral);
 
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
     fontDescription.setIsAbsoluteSize(true);
@@ -766,7 +771,7 @@ bool RenderThemeMac::controlSupportsTints(const RenderObject& o) const
 
 NSControlSize RenderThemeMac::controlSizeForFont(const RenderStyle& style) const
 {
-    int fontSize = style.fontSize();
+    int fontSize = style.computedFontPixelSize();
     if (fontSize >= 16)
         return NSControlSizeRegular;
     if (fontSize >= 11)
@@ -841,7 +846,7 @@ void RenderThemeMac::setFontFromControlSize(StyleResolver&, RenderStyle& style, 
 
 NSControlSize RenderThemeMac::controlSizeForSystemFont(const RenderStyle& style) const
 {
-    int fontSize = style.fontSize();
+    int fontSize = style.computedFontPixelSize();
     if (fontSize >= [NSFont systemFontSizeForControlSize:NSControlSizeRegular])
         return NSControlSizeRegular;
     if (fontSize >= [NSFont systemFontSizeForControlSize:NSControlSizeSmall])
@@ -880,7 +885,7 @@ void RenderThemeMac::adjustTextFieldStyle(StyleResolver&, RenderStyle&, const El
 bool RenderThemeMac::paintTextArea(const RenderObject& o, const PaintInfo& paintInfo, const FloatRect& r)
 {
     LocalCurrentGraphicsContext localContext(paintInfo.context());
-    wkDrawBezeledTextArea(r, isEnabled(o) && !isReadOnlyControl(o));
+    _NSDrawCarbonThemeListBox(r, isEnabled(o) && !isReadOnlyControl(o), YES, YES);
     return false;
 }
 
@@ -944,9 +949,9 @@ bool RenderThemeMac::paintMenuList(const RenderObject& renderer, const PaintInfo
     if (zoomLevel != 1.0f) {
         inflatedRect.setWidth(inflatedRect.width() / zoomLevel);
         inflatedRect.setHeight(inflatedRect.height() / zoomLevel);
-        paintInfo.context().translate(inflatedRect.x(), inflatedRect.y());
+        paintInfo.context().translate(inflatedRect.location());
         paintInfo.context().scale(zoomLevel);
-        paintInfo.context().translate(-inflatedRect.x(), -inflatedRect.y());
+        paintInfo.context().translate(-inflatedRect.location());
     }
 
     paintCellAndSetFocusedElementNeedsRepaintIfNecessary(popupButton, renderer, paintInfo, inflatedRect);
@@ -1048,11 +1053,10 @@ NSLevelIndicatorCell* RenderThemeMac::levelIndicatorFor(const RenderMeter& rende
     }
 
     [cell setLevelIndicatorStyle:levelIndicatorStyleFor(style.appearance())];
-    [cell setBaseWritingDirection:style.isLeftToRightDirection() ? NSWritingDirectionLeftToRight : NSWritingDirectionRightToLeft];
+    [cell setUserInterfaceLayoutDirection:style.isLeftToRightDirection() ? NSUserInterfaceLayoutDirectionLeftToRight : NSUserInterfaceLayoutDirectionRightToLeft];
     [cell setMinValue:element->min()];
     [cell setMaxValue:element->max()];
-    RetainPtr<NSNumber> valueObject = [NSNumber numberWithDouble:value];
-    [cell setObjectValue:valueObject.get()];
+    [cell setObjectValue:@(value)];
 
     return cell;
 }
@@ -1103,14 +1107,14 @@ int RenderThemeMac::minimumProgressBarHeight(const RenderStyle& style) const
     return sizeForSystemFont(style, progressBarSizes()).height();
 }
 
-double RenderThemeMac::animationRepeatIntervalForProgressBar(RenderProgress&) const
+Seconds RenderThemeMac::animationRepeatIntervalForProgressBar(RenderProgress&) const
 {
     return progressAnimationFrameRate;
 }
 
 double RenderThemeMac::animationDurationForProgressBar(RenderProgress&) const
 {
-    return progressAnimationNumFrames * progressAnimationFrameRate;
+    return progressAnimationNumFrames * progressAnimationFrameRate.value();
 }
 
 void RenderThemeMac::adjustProgressBarStyle(StyleResolver&, RenderStyle&, const Element*) const
@@ -1293,7 +1297,7 @@ bool RenderThemeMac::paintMenuListButtonDecorations(const RenderBox& renderer, c
     paintMenuListButtonGradients(renderer, paintInfo, bounds);
 
     // Since we actually know the size of the control here, we restrict the font scale to make sure the arrows will fit vertically in the bounds
-    float fontScale = std::min(renderer.style().fontSize() / baseFontSize, bounds.height() / (baseArrowHeight * 2 + baseSpaceBetweenArrows));
+    float fontScale = std::min(renderer.style().computedFontPixelSize() / baseFontSize, bounds.height() / (baseArrowHeight * 2 + baseSpaceBetweenArrows));
     float centerY = bounds.y() + bounds.height() / 2.0f;
     float arrowHeight = baseArrowHeight * fontScale;
     float arrowWidth = baseArrowWidth * fontScale;
@@ -1397,7 +1401,7 @@ LengthBox RenderThemeMac::popupInternalPaddingBox(const RenderStyle& style) cons
     }
 
     if (style.appearance() == MenulistButtonPart) {
-        float arrowWidth = baseArrowWidth * (style.fontSize() / baseFontSize);
+        float arrowWidth = baseArrowWidth * (style.computedFontPixelSize() / baseFontSize);
         float rightPadding = ceilf(arrowWidth + (arrowPaddingBefore + arrowPaddingAfter + paddingBeforeSeparator) * style.effectiveZoom());
         float leftPadding = styledPopupPaddingLeft * style.effectiveZoom();
         if (style.direction() == RTL)
@@ -1429,7 +1433,7 @@ PopupMenuStyle::PopupMenuSize RenderThemeMac::popupMenuSize(const RenderStyle& s
 
 void RenderThemeMac::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
-    float fontScale = style.fontSize() / baseFontSize;
+    float fontScale = style.computedFontPixelSize() / baseFontSize;
 
     style.resetPadding();
     style.setBorderRadius(IntSize(int(baseBorderRadius + fontScale - 1), int(baseBorderRadius + fontScale - 1))); // FIXME: Round up?
@@ -1457,12 +1461,11 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject& o, const IntSiz
 
 void RenderThemeMac::paintCellAndSetFocusedElementNeedsRepaintIfNecessary(NSCell* cell, const RenderObject& renderer, const PaintInfo& paintInfo, const FloatRect& rect)
 {
-    Page* page = renderer.document().page();
     bool shouldDrawFocusRing = isFocused(renderer) && renderer.style().outlineStyleIsAuto();
-    bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || page->pageScaleFactor() != 1;
+    bool shouldUseImageBuffer = renderer.style().effectiveZoom() != 1 || renderer.page().pageScaleFactor() != 1;
     bool shouldDrawCell = true;
-    if (ThemeMac::drawCellOrFocusRingWithViewIntoContext(cell, paintInfo.context(), rect, documentViewFor(renderer), shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, page->deviceScaleFactor()))
-        page->focusController().setFocusedElementNeedsRepaint();
+    if (ThemeMac::drawCellOrFocusRingWithViewIntoContext(cell, paintInfo.context(), rect, documentViewFor(renderer), shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, renderer.page().deviceScaleFactor()))
+        renderer.page().focusController().setFocusedElementNeedsRepaint();
 }
 
 const IntSize* RenderThemeMac::menuListSizes() const
@@ -1580,16 +1583,15 @@ bool RenderThemeMac::paintSliderThumb(const RenderObject& o, const PaintInfo& pa
 
     FloatRect unzoomedRect = bounds;
     if (zoomLevel != 1.0f) {
-        unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
-        unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
-        paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
+        unzoomedRect.setSize(unzoomedRect.size() / zoomLevel);
+        paintInfo.context().translate(unzoomedRect.location());
         paintInfo.context().scale(zoomLevel);
-        paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
+        paintInfo.context().translate(-unzoomedRect.location());
     }
 
     bool shouldDrawCell = true;
     bool shouldDrawFocusRing = false;
-    float deviceScaleFactor = o.document().page()->deviceScaleFactor();
+    float deviceScaleFactor = o.page().deviceScaleFactor();
     bool shouldUseImageBuffer = deviceScaleFactor != 1 || zoomLevel != 1;
     ThemeMac::drawCellOrFocusRingWithViewIntoContext(sliderThumbCell, paintInfo.context(), unzoomedRect, view, shouldDrawCell, shouldDrawFocusRing, shouldUseImageBuffer, deviceScaleFactor);
     [sliderThumbCell setControlView:nil];
@@ -1608,14 +1610,12 @@ bool RenderThemeMac::paintSearchField(const RenderObject& o, const PaintInfo& pa
 
     float zoomLevel = o.style().effectiveZoom();
 
-    IntRect unzoomedRect = r;
-
+    FloatRect unzoomedRect = r;
     if (zoomLevel != 1.0f) {
-        unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
-        unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
-        paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
+        unzoomedRect.setSize(unzoomedRect.size() / zoomLevel);
+        paintInfo.context().translate(unzoomedRect.location());
         paintInfo.context().scale(zoomLevel);
-        paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
+        paintInfo.context().translate(-unzoomedRect.location());
     }
 
     // Set the search button to nil before drawing.  Then reset it so we can draw it later.
@@ -1739,11 +1739,10 @@ bool RenderThemeMac::paintSearchFieldCancelButton(const RenderBox& box, const Pa
 
     FloatRect unzoomedRect(paintingPos, localBounds.size());
     if (zoomLevel != 1.0f) {
-        unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
-        unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
-        paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
+        unzoomedRect.setSize(unzoomedRect.size() / zoomLevel);
+        paintInfo.context().translate(unzoomedRect.location());
         paintInfo.context().scale(zoomLevel);
-        paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
+        paintInfo.context().translate(-unzoomedRect.location());
     }
     [[search cancelButtonCell] drawWithFrame:unzoomedRect inView:documentViewFor(box)];
     [[search cancelButtonCell] setControlView:nil];
@@ -1875,11 +1874,10 @@ bool RenderThemeMac::paintSearchFieldResultsButton(const RenderBox& box, const P
     
     FloatRect unzoomedRect(paintingPos, localBounds.size());
     if (zoomLevel != 1.0f) {
-        unzoomedRect.setWidth(unzoomedRect.width() / zoomLevel);
-        unzoomedRect.setHeight(unzoomedRect.height() / zoomLevel);
-        paintInfo.context().translate(unzoomedRect.x(), unzoomedRect.y());
+        unzoomedRect.setSize(unzoomedRect.size() / zoomLevel);
+        paintInfo.context().translate(unzoomedRect.location());
         paintInfo.context().scale(zoomLevel);
-        paintInfo.context().translate(-unzoomedRect.x(), -unzoomedRect.y());
+        paintInfo.context().translate(-unzoomedRect.location());
     }
 
     [[search searchButtonCell] drawWithFrame:unzoomedRect inView:documentViewFor(box)];
@@ -2111,7 +2109,7 @@ bool RenderThemeMac::paintImageControlsButton(const RenderObject& renderer, cons
     LocalCurrentGraphicsContext localContext(paintInfo.context());
     GraphicsContextStateSaver stateSaver(paintInfo.context());
 
-    paintInfo.context().translate(rect.x(), rect.y());
+    paintInfo.context().translate(rect.location());
 
     IntRect innerFrame(IntPoint(), rect.size());
     [cell drawWithFrame:innerFrame inView:documentViewFor(renderer)];
@@ -2321,8 +2319,7 @@ void AttachmentLayout::layOutTitle(const RenderAttachment& attachment)
 
 void AttachmentLayout::layOutSubtitle(const RenderAttachment& attachment)
 {
-    String subtitleText = attachment.attachmentElement().attributeWithoutSynchronization(subtitleAttr);
-
+    auto& subtitleText = attachment.attachmentElement().attributeWithoutSynchronization(subtitleAttr);
     if (subtitleText.isEmpty())
         return;
 
@@ -2419,14 +2416,13 @@ static RefPtr<Icon> iconForAttachment(const RenderAttachment& attachment)
             if (auto icon = Icon::createIconForUTI("public.directory"))
                 return icon;
         } else {
-            auto attachmentTypeCF = attachmentType.createCFString();
-            RetainPtr<CFStringRef> UTI;
-            if (isDeclaredUTI(attachmentTypeCF.get()))
-                UTI = attachmentTypeCF;
+            String UTI;
+            if (isDeclaredUTI(attachmentType))
+                UTI = attachmentType;
             else
-                UTI = UTIFromMIMEType(attachmentTypeCF.get());
+                UTI = UTIFromMIMEType(attachmentType);
 
-            if (auto icon = Icon::createIconForUTI(UTI.get()))
+            if (auto icon = Icon::createIconForUTI(UTI))
                 return icon;
         }
     }
@@ -2570,7 +2566,7 @@ bool RenderThemeMac::paintAttachment(const RenderObject& renderer, const PaintIn
 
     AttachmentLayout layout(attachment);
 
-    String progressString = attachment.attachmentElement().attributeWithoutSynchronization(progressAttr);
+    auto& progressString = attachment.attachmentElement().attributeWithoutSynchronization(progressAttr);
     bool validProgress = false;
     float progress = 0;
     if (!progressString.isEmpty())
@@ -2611,4 +2607,4 @@ bool RenderThemeMac::paintAttachment(const RenderObject& renderer, const PaintIn
 
 } // namespace WebCore
 
-#endif // !PLATFORM(IOS)
+#endif // PLATFORM(MAC)

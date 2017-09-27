@@ -23,6 +23,7 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
 
 #include "GRefPtrGStreamer.h"
+#include "GUniquePtrGStreamer.h"
 #include "MediaPlayerPrivateGStreamerMSE.h"
 #include "MediaSourceClientGStreamerMSE.h"
 #include "SourceBufferPrivateGStreamer.h"
@@ -49,7 +50,7 @@ public:
 
     void handleNeedContextSyncMessage(GstMessage*);
     void handleApplicationMessage(GstMessage*);
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA)
     void handleElementMessage(GstMessage*);
 #endif
 
@@ -59,8 +60,8 @@ public:
 
     GstFlowReturn handleNewAppsinkSample(GstElement*);
     GstFlowReturn pushNewBuffer(GstBuffer*);
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void dispatchDecryptionKey(GstBuffer*);
+#if ENABLE(ENCRYPTED_MEDIA)
+    void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
 #endif
 
     // Takes ownership of caps.
@@ -102,12 +103,11 @@ private:
     void handleAppsrcNeedDataReceived();
     void removeAppsrcDataLeavingProbe();
     void setAppsrcDataLeavingProbe();
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void dispatchPendingDecryptionKey();
+#if ENABLE(ENCRYPTED_MEDIA)
+    void dispatchPendingDecryptionStructure();
 #endif
     void notifyReceivedAllPendingSamples();
 
-private:
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     Ref<SourceBufferPrivateGStreamer> m_sourceBufferPrivate;
     MediaPlayerPrivateGStreamerMSE* m_playerPrivate;
@@ -123,7 +123,7 @@ private:
     GRefPtr<GstBus> m_bus;
     GRefPtr<GstElement> m_appsrc;
     GRefPtr<GstElement> m_demux;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA)
     GRefPtr<GstElement> m_decryptor;
 #endif
     // The demuxer has one src stream only, so only one appsink is needed and linked to it.
@@ -159,12 +159,11 @@ private:
     bool m_abortPending;
 
     WebCore::MediaSourceStreamTypeGStreamer m_streamType;
-    RefPtr<WebCore::TrackPrivateBase> m_oldTrack;
     RefPtr<WebCore::TrackPrivateBase> m_track;
 
     GRefPtr<GstBuffer> m_pendingBuffer;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    GRefPtr<GstBuffer> m_pendingKey;
+#if ENABLE(ENCRYPTED_MEDIA)
+    GUniquePtr<GstStructure> m_pendingDecryptionStructure;
 #endif
     Vector< GRefPtr<GstSample> > m_startupSamples;
     bool m_startupBufferingComplete { false };

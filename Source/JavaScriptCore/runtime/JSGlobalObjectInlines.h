@@ -53,7 +53,7 @@ ALWAYS_INLINE bool JSGlobalObject::stringPrototypeChainIsSane()
 }
 
 
-ALWAYS_INLINE bool JSGlobalObject::isArrayIteratorProtocolFastAndNonObservable()
+ALWAYS_INLINE bool JSGlobalObject::isArrayPrototypeIteratorProtocolFastAndNonObservable()
 {
     // We're fast if we don't have any indexed properties on the prototype.
     // We're non-observable if the iteration protocol hasn't changed.
@@ -64,6 +64,37 @@ ALWAYS_INLINE bool JSGlobalObject::isArrayIteratorProtocolFastAndNonObservable()
     // executing concurrently.
 
     return arrayIteratorProtocolWatchpoint().isStillValid() && !isHavingABadTime() && arrayPrototypeChainIsSane();
+}
+
+// We're non-observable if the iteration protocol hasn't changed.
+//
+// Note: it only makes sense to call this from the main thread. If you're
+// trying to prove this behavior on the compiler thread, you'll want to
+// carefully set up watchpoints to have correct ordering while JS code is
+// executing concurrently.
+ALWAYS_INLINE bool JSGlobalObject::isMapPrototypeIteratorProtocolFastAndNonObservable()
+{
+    return mapIteratorProtocolWatchpoint().isStillValid();
+}
+
+ALWAYS_INLINE bool JSGlobalObject::isSetPrototypeIteratorProtocolFastAndNonObservable()
+{
+    return setIteratorProtocolWatchpoint().isStillValid();
+}
+
+ALWAYS_INLINE bool JSGlobalObject::isStringPrototypeIteratorProtocolFastAndNonObservable()
+{
+    return stringIteratorProtocolWatchpoint().isStillValid();
+}
+
+ALWAYS_INLINE bool JSGlobalObject::isMapPrototypeSetFastAndNonObservable()
+{
+    return mapSetWatchpoint().isStillValid();
+}
+
+ALWAYS_INLINE bool JSGlobalObject::isSetPrototypeAddFastAndNonObservable()
+{
+    return setAddWatchpoint().isStillValid();
 }
 
 } // namespace JSC

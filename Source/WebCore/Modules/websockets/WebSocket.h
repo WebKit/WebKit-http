@@ -30,8 +30,6 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
@@ -39,6 +37,8 @@
 #include "URL.h"
 #include "WebSocketChannelClient.h"
 #include <wtf/Deque.h>
+#include <wtf/HashSet.h>
+#include <wtf/Lock.h>
 
 namespace JSC {
 class ArrayBuffer;
@@ -52,15 +52,15 @@ class ThreadableWebSocketChannel;
 
 class WebSocket final : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, private WebSocketChannelClient {
 public:
-    static void setIsAvailable(bool);
-    static bool isAvailable();
-
     static const char* subprotocolSeparator();
 
     static ExceptionOr<Ref<WebSocket>> create(ScriptExecutionContext&, const String& url);
     static ExceptionOr<Ref<WebSocket>> create(ScriptExecutionContext&, const String& url, const String& protocol);
     static ExceptionOr<Ref<WebSocket>> create(ScriptExecutionContext&, const String& url, const Vector<String>& protocols);
     virtual ~WebSocket();
+
+    static HashSet<WebSocket*>& allActiveWebSockets(const LockHolder&);
+    static StaticLock& allActiveWebSocketsMutex();
 
     enum State {
         CONNECTING = 0,
@@ -78,7 +78,9 @@ public:
     ExceptionOr<void> send(JSC::ArrayBufferView&);
     ExceptionOr<void> send(Blob&);
 
-    ExceptionOr<void> close(Optional<unsigned short> code, const String& reason);
+    ExceptionOr<void> close(std::optional<unsigned short> code, const String& reason);
+
+    RefPtr<ThreadableWebSocketChannel> channel() const;
 
     const URL& url() const;
     State readyState() const;
@@ -89,6 +91,8 @@ public:
 
     String binaryType() const;
     ExceptionOr<void> setBinaryType(const String&);
+
+    ScriptExecutionContext* scriptExecutionContext() const final;
 
     using RefCounted::ref;
     using RefCounted::deref;
@@ -108,7 +112,6 @@ private:
     const char* activeDOMObjectName() const final;
 
     EventTargetInterface eventTargetInterface() const final;
-    ScriptExecutionContext* scriptExecutionContext() const final;
 
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
@@ -143,5 +146,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

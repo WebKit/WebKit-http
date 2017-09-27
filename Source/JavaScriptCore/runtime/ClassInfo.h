@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -26,10 +26,15 @@
 #include "ConstructData.h"
 #include "JSCell.h"
 
+namespace WTF {
+class PrintStream;
+};
+
 namespace JSC {
 
 class HeapSnapshotBuilder;
 class JSArrayBufferView;
+class Snippet;
 struct HashTable;
 
 struct MethodTable {
@@ -38,7 +43,7 @@ struct MethodTable {
 
     typedef void (*VisitChildrenFunctionPtr)(JSCell*, SlotVisitor&);
     VisitChildrenFunctionPtr visitChildren;
-
+    
     typedef CallType (*GetCallDataFunctionPtr)(JSCell*, CallData&);
     GetCallDataFunctionPtr getCallData;
 
@@ -99,7 +104,7 @@ struct MethodTable {
     typedef ArrayBuffer* (*SlowDownAndWasteMemory)(JSArrayBufferView*);
     SlowDownAndWasteMemory slowDownAndWasteMemory;
     
-    typedef PassRefPtr<ArrayBufferView> (*GetTypedArrayImpl)(JSArrayBufferView*);
+    typedef RefPtr<ArrayBufferView> (*GetTypedArrayImpl)(JSArrayBufferView*);
     GetTypedArrayImpl getTypedArrayImpl;
 
     typedef bool (*PreventExtensionsFunctionPtr)(JSObject*, ExecState*);
@@ -122,6 +127,9 @@ struct MethodTable {
 
     typedef size_t (*EstimatedSizeFunctionPtr)(JSCell*);
     EstimatedSizeFunctionPtr estimatedSize;
+    
+    typedef void (*VisitOutputConstraintsPtr)(JSCell*, SlotVisitor&);
+    VisitOutputConstraintsPtr visitOutputConstraints;
 };
 
 #define CREATE_MEMBER_CHECKER(member) \
@@ -174,7 +182,8 @@ struct MethodTable {
         &ClassName::getPrototype, \
         &ClassName::dumpToStream, \
         &ClassName::heapSnapshot, \
-        &ClassName::estimatedSize \
+        &ClassName::estimatedSize, \
+        &ClassName::visitOutputConstraints \
     }, \
     ClassName::TypedArrayStorageType
 
@@ -186,6 +195,11 @@ struct ClassInfo {
     // nullptrif there is none.
     const ClassInfo* parentClass;
 
+    static ptrdiff_t offsetOfParentClass()
+    {
+        return OBJECT_OFFSETOF(ClassInfo, parentClass);
+    }
+
     bool isSubClassOf(const ClassInfo* other) const
     {
         for (const ClassInfo* ci = this; ci; ci = ci->parentClass) {
@@ -195,9 +209,14 @@ struct ClassInfo {
         return false;
     }
 
+    JS_EXPORT_PRIVATE void dump(PrintStream&) const;
+
     JS_EXPORT_PRIVATE bool hasStaticSetterOrReadonlyProperties() const;
 
     const HashTable* staticPropHashTable;
+
+    typedef Ref<Snippet> (*CheckSubClassSnippetFunctionPtr)(void);
+    CheckSubClassSnippetFunctionPtr checkSubClassSnippet;
 
     MethodTable methodTable;
 

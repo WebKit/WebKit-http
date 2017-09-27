@@ -23,6 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-button.airplay.on {
-    background-color: -apple-wireless-playback-target-active;
+button.airplay.on > picture {
+    background-color: -apple-wireless-playback-target-active !important;
+    mix-blend-mode: normal !important;
 }

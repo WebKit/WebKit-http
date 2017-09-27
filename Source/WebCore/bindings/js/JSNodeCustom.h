@@ -27,7 +27,6 @@
 
 #include "JSDOMBinding.h"
 #include "JSNode.h"
-#include "ShadowRoot.h"
 
 namespace WebCore {
 
@@ -65,12 +64,7 @@ inline void willCreatePossiblyOrphanedTreeByRemoval(Node* root)
 
 inline void* root(Node* node)
 {
-    if (node->inDocument())
-        return &node->document();
-
-    while (node->parentOrShadowHostNode())
-        node = node->parentOrShadowHostNode();
-    return node;
+    return node->opaqueRoot();
 }
 
 inline void* root(Node& node)

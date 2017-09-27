@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TileController_h
-#define TileController_h
+#pragma once
 
 #include "FloatRect.h"
 #include "IntRect.h"
@@ -36,6 +35,7 @@
 #include <wtf/Deque.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/Seconds.h>
 
 namespace WebCore {
 
@@ -71,6 +71,12 @@ public:
     bool acceleratesDrawing() const { return m_acceleratesDrawing; }
     WEBCORE_EXPORT void setAcceleratesDrawing(bool);
 
+    bool wantsDeepColorBackingStore() const { return m_wantsDeepColorBackingStore; }
+    WEBCORE_EXPORT void setWantsDeepColorBackingStore(bool);
+
+    bool supportsSubpixelAntialiasedText() const { return m_supportsSubpixelAntialiasedText; }
+    WEBCORE_EXPORT void setSupportsSubpixelAntialiasedText(bool);
+
     WEBCORE_EXPORT void setTilesOpaque(bool);
     bool tilesAreOpaque() const { return m_tilesAreOpaque; }
 
@@ -82,7 +88,9 @@ public:
 
     FloatRect visibleRect() const override { return m_visibleRect; }
     FloatRect coverageRect() const override { return m_coverageRect; }
-    Optional<FloatRect> layoutViewportRect() const { return m_layoutViewportRect; }
+    std::optional<FloatRect> layoutViewportRect() const { return m_layoutViewportRect; }
+
+    void setTileSizeUpdateDelayDisabledForTesting(bool) final;
 
     unsigned blankPixelCount() const;
     static unsigned blankPixelCountForTiles(const PlatformLayerList&, const FloatRect&, const IntPoint&);
@@ -113,7 +121,6 @@ public:
     int rightMarginWidth() const override;
     TileCoverage tileCoverage() const override { return m_tileCoverage; }
     void adjustTileCoverageRect(FloatRect& coverageRect, const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect, float contentsScale) const override;
-    bool unparentsOffscreenTiles() const override { return m_unparentsOffscreenTiles; }
     bool scrollingPerformanceLoggingEnabled() const override { return m_scrollingPerformanceLoggingEnabled; }
 
     IntRect boundsAtLastRevalidate() const { return m_boundsAtLastRevalidate; }
@@ -130,18 +137,19 @@ public:
     const TileGrid& tileGrid() const { return *m_tileGrid; }
 
     WEBCORE_EXPORT Vector<RefPtr<PlatformCALayer>> containerLayers();
+    
+    void logFilledVisibleFreshTile(unsigned blankPixelCount);
 
 private:
     TileGrid& tileGrid() { return *m_tileGrid; }
 
-    void scheduleTileRevalidation(double interval);
+    void scheduleTileRevalidation(Seconds interval);
 
-    bool isInWindow() const { return m_isInWindow; }
     float topContentInset() const { return m_topContentInset; }
 
     // TiledBacking member functions.
     void setVisibleRect(const FloatRect&) override;
-    void setLayoutViewportRect(Optional<FloatRect>) override;
+    void setLayoutViewportRect(std::optional<FloatRect>) override;
     void setCoverageRect(const FloatRect&) override;
     bool tilesWouldChangeForCoverageRect(const FloatRect&) const override;
     void setTiledScrollingIndicatorPosition(const FloatPoint&) override;
@@ -150,12 +158,12 @@ private:
     void setScrollability(Scrollability) override;
     void prepopulateRect(const FloatRect&) override;
     void setIsInWindow(bool) override;
+    bool isInWindow() const override { return m_isInWindow; }
     void setTileCoverage(TileCoverage) override;
     void revalidateTiles() override;
     void forceRepaint() override;
     IntRect tileGridExtent() const override;
     void setScrollingPerformanceLoggingEnabled(bool flag) override { m_scrollingPerformanceLoggingEnabled = flag; }
-    void setUnparentsOffscreenTiles(bool flag) override { m_unparentsOffscreenTiles = flag; }
     double retainedTileBackingStoreMemory() const override;
     IntRect tileCoverageRect() const override;
 #if USE(CA)
@@ -192,7 +200,7 @@ private:
     std::unique_ptr<TileGrid> m_zoomedOutTileGrid;
 
     FloatRect m_visibleRect; // Only used for scroll performance logging.
-    Optional<FloatRect> m_layoutViewportRect; // Only used by the tiled scrolling indicator.
+    std::optional<FloatRect> m_layoutViewportRect; // Only used by the tiled scrolling indicator.
     FloatRect m_coverageRect;
     IntRect m_boundsAtLastRevalidate;
 
@@ -205,23 +213,24 @@ private:
 
     int m_marginSize { kDefaultTileSize };
 
+    Scrollability m_scrollability { HorizontallyScrollable | VerticallyScrollable };
+
     // m_marginTop and m_marginBottom are the height in pixels of the top and bottom margin tiles. The width
     // of those tiles will be equivalent to the width of the other tiles in the grid. m_marginRight and
     // m_marginLeft are the width in pixels of the right and left margin tiles, respectively. The height of
     // those tiles will be equivalent to the height of the other tiles in the grid.
-    
-    Scrollability m_scrollability { HorizontallyScrollable | VerticallyScrollable };
-    
-    BoxExtent<bool> m_marginEdges;
+    RectEdges<bool> m_marginEdges;
     
     bool m_isInWindow { false };
     bool m_scrollingPerformanceLoggingEnabled { false };
-    bool m_unparentsOffscreenTiles { false };
     bool m_acceleratesDrawing { false };
+    bool m_wantsDeepColorBackingStore { false };
+    bool m_supportsSubpixelAntialiasedText { false };
     bool m_tilesAreOpaque { false };
     bool m_hasTilesWithTemporaryScaleFactor { false }; // Used to make low-res tiles when zooming.
     bool m_inLiveResize { false };
     mutable bool m_tileSizeLocked { false };
+    bool m_isTileSizeUpdateDelayDisabledForTesting { false };
 
     Color m_tileDebugBorderColor;
     float m_tileDebugBorderWidth { 0 };
@@ -231,4 +240,3 @@ private:
 
 } // namespace WebCore
 
-#endif // TileController_h

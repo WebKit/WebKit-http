@@ -29,10 +29,15 @@
 #include "IntRect.h"
 #include "IntSize.h"
 #include "NativeImage.h"
-
-#include <wtf/Vector.h>
+#include "SharedBuffer.h"
 
 namespace WebCore {
+
+#if USE(CAIRO)
+// Due to the pixman 16.16 floating point representation, cairo is not able to handle
+// images whose size is bigger than 32768.
+static const int cairoMaxImageSize = 32768;
+#endif
 
 class ImageBackingStore {
     WTF_MAKE_FAST_ALLOCATED;
@@ -54,12 +59,15 @@ public:
         if (size.isEmpty())
             return false;
 
-        unsigned area = size.area().unsafeGet();
-        if (!m_pixels.tryReserveCapacity(area))
+        Vector<char> buffer;
+        size_t bufferSize = size.area().unsafeGet() * sizeof(RGBA32);
+
+        if (!buffer.tryReserveCapacity(bufferSize))
             return false;
 
-        m_pixels.resize(area);
-        m_pixelsPtr = m_pixels.data();
+        buffer.grow(bufferSize);
+        m_pixels = SharedBuffer::create(WTFMove(buffer));
+        m_pixelsPtr = reinterpret_cast<RGBA32*>(const_cast<char*>(m_pixels->data()));
         m_size = size;
         m_frameRect = IntRect(IntPoint(), m_size);
         clear();
@@ -151,7 +159,7 @@ public:
         }
 
         if (!m_premultiplyAlpha)
-            *dest = makePremultipliedRGBA(redChannel(*dest), greenChannel(*dest), blueChannel(*dest), alphaChannel(*dest));
+            *dest = makePremultipliedRGBA(redChannel(*dest), greenChannel(*dest), blueChannel(*dest), alphaChannel(*dest), false);
 
         unsigned d = 255 - a;
 
@@ -169,6 +177,14 @@ public:
 
     static bool isOverSize(const IntSize& size)
     {
+#if USE(CAIRO)
+        // FIXME: this is a workaround to avoid the cairo image size limit, but we should implement support for
+        // bigger images. See https://bugs.webkit.org/show_bug.cgi?id=177227.
+        //
+        // If the image is bigger than the cairo limit it can't be displayed, so we don't even try to decode it.
+        if (size.width() > cairoMaxImageSize || size.height() > cairoMaxImageSize)
+            return true;
+#endif
         static unsigned long long MaxPixels = ((1 << 29) - 1);
         unsigned long long pixels = static_cast<unsigned long long>(size.width()) * static_cast<unsigned long long>(size.height());
         return pixels > MaxPixels;
@@ -183,12 +199,12 @@ private:
     }
 
     ImageBackingStore(const ImageBackingStore& other)
-        : m_pixels(other.m_pixels)
-        , m_size(other.m_size)
+        : m_size(other.m_size)
         , m_premultiplyAlpha(other.m_premultiplyAlpha)
     {
         ASSERT(!m_size.isEmpty() && !isOverSize(m_size));
-        m_pixelsPtr = m_pixels.data();
+        m_pixels = SharedBuffer::create(other.m_pixels->data(), other.m_pixels->size());
+        m_pixelsPtr = reinterpret_cast<RGBA32*>(const_cast<char*>(m_pixels->data()));
     }
 
     bool inBounds(const IntPoint& point) const
@@ -207,12 +223,12 @@ private:
             return 0;
 
         if (m_premultiplyAlpha && a < 255)
-            return makePremultipliedRGBA(r, g, b, a);
+            return makePremultipliedRGBA(r, g, b, a, false);
 
         return makeRGBA(r, g, b, a);
     }
 
-    Vector<RGBA32> m_pixels;
+    RefPtr<SharedBuffer> m_pixels;
     RGBA32* m_pixelsPtr { nullptr };
     IntSize m_size;
     IntRect m_frameRect; // This will always just be the entire buffer except for GIF and PNG frames

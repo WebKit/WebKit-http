@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -53,16 +53,14 @@ Ref<HTMLTitleElement> HTMLTitleElement::create(const QualifiedName& tagName, Doc
 Node::InsertionNotificationRequest HTMLTitleElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (inDocument() && !isInShadowTree())
-        document().titleElementAdded(*this);
+    document().titleElementAdded(*this);
     return InsertionDone;
 }
 
 void HTMLTitleElement::removedFrom(ContainerNode& insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.inDocument() && !insertionPoint.isInShadowTree())
-        document().titleElementRemoved(*this);
+    document().titleElementRemoved(*this);
 }
 
 void HTMLTitleElement::childrenChanged(const ChildChange& change)
@@ -74,10 +72,7 @@ void HTMLTitleElement::childrenChanged(const ChildChange& change)
 
 String HTMLTitleElement::text() const
 {
-    StringBuilder result;
-    for (Text* text = TextNodeTraversal::firstChild(*this); text; text = TextNodeTraversal::nextSibling(*text))
-        result.append(text->data());
-    return result.toString();
+    return TextNodeTraversal::childTextContent(*this);
 }
 
 StringWithDirection HTMLTitleElement::computedTextWithDirection()
@@ -85,11 +80,9 @@ StringWithDirection HTMLTitleElement::computedTextWithDirection()
     TextDirection direction = LTR;
     if (auto* computedStyle = this->computedStyle())
         direction = computedStyle->direction();
-    else {
-        auto style = styleResolver().styleForElement(*this, parentElement() ? parentElement()->renderStyle() : nullptr).renderStyle;
-        direction = style->direction();
-    }
-    return StringWithDirection(text(), direction);
+    else
+        direction = styleResolver().styleForElement(*this, parentElement() ? parentElement()->renderStyle() : nullptr).renderStyle->direction();
+    return { text(), direction };
 }
 
 void HTMLTitleElement::setText(const String& value)

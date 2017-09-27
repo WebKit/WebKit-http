@@ -51,6 +51,7 @@ public:
 
     // Milliseconds
     void setCustomTimeout(int duration) { m_timeout = duration; }
+    void setDumpJSConsoleLogInStdErr(bool value) { m_dumpJSConsoleLogInStdErr = value; }
 
     // Seconds
     double shortTimeout() const;
@@ -70,11 +71,15 @@ public:
 
     void notifyDownloadDone();
 
+    void didClearStatisticsThroughWebsiteDataRemoval();
+
+    void didRemoveAllSessionCredentials();
+    
 private:
     void dumpResults();
     static void dump(const char* textToStdout, const char* textToStderr = 0, bool seenError = false);
     enum class SnapshotResultType { WebView, WebContents };
-    void dumpPixelsAndCompareWithExpected(WKImageRef, WKArrayRef repaintRects, SnapshotResultType);
+    void dumpPixelsAndCompareWithExpected(SnapshotResultType, WKArrayRef repaintRects, WKImageRef = nullptr);
     void dumpAudio(WKDataRef);
     bool compareActualHashToExpectedAndDumpResults(const char[33]);
 
@@ -102,6 +107,7 @@ private:
     std::string m_expectedPixelHash;
 
     int m_timeout { 0 };
+    bool m_dumpJSConsoleLogInStdErr { false };
 
     // Invocation state
     bool m_gotInitialResponse { false };

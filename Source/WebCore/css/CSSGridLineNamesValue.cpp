@@ -31,7 +31,6 @@
 #include "config.h"
 #include "CSSGridLineNamesValue.h"
 
-#if ENABLE(CSS_GRID_LAYOUT)
 namespace WebCore {
 
 String CSSGridLineNamesValue::customCSSText() const
@@ -44,11 +43,4 @@ CSSGridLineNamesValue::CSSGridLineNamesValue()
 {
 }
 
-Ref<CSSGridLineNamesValue> CSSGridLineNamesValue::cloneForCSSOM() const
-{
-    return adoptRef(*new CSSGridLineNamesValue(*this));
 }
-
-}
-
-#endif

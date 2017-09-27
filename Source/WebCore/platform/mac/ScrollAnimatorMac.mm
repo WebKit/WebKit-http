@@ -33,15 +33,15 @@
 #include "GraphicsLayer.h"
 #include "Logging.h"
 #include "NSScrollerImpDetails.h"
-#include "NSScrollerImpSPI.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollView.h"
 #include "ScrollableArea.h"
 #include "ScrollbarTheme.h"
 #include "ScrollbarThemeMac.h"
-#include "TextStream.h"
 #include "WebCoreSystemInterface.h"
+#include <pal/spi/mac/NSScrollerImpSPI.h>
 #include <wtf/BlockObjCExceptions.h>
+#include <wtf/text/TextStream.h>
 
 using namespace WebCore;
 
@@ -1338,7 +1338,7 @@ void ScrollAnimatorMac::updateScrollerStyle()
 
 void ScrollAnimatorMac::startScrollbarPaintTimer()
 {
-    m_initialScrollbarPaintTimer.startOneShot(0.1);
+    m_initialScrollbarPaintTimer.startOneShot(100_ms);
 }
 
 bool ScrollAnimatorMac::scrollbarPaintTimerIsActive() const
@@ -1364,7 +1364,7 @@ void ScrollAnimatorMac::sendContentAreaScrolledSoon(const FloatSize& delta)
     m_contentAreaScrolledTimerScrollDelta = delta;
 
     if (!m_sendContentAreaScrolledTimer.isActive())
-        m_sendContentAreaScrolledTimer.startOneShot(0);
+        m_sendContentAreaScrolledTimer.startOneShot(0_s);
 
     if (m_wheelEventTestTrigger)
         m_wheelEventTestTrigger->deferTestsForReason(reinterpret_cast<WheelEventTestTrigger::ScrollableAreaIdentifier>(this), WheelEventTestTrigger::ContentScrollInProgress);

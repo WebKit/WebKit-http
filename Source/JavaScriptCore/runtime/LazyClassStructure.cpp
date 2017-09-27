@@ -68,18 +68,18 @@ void LazyClassStructure::Initializer::setConstructor(PropertyName propertyName, 
     
     this->constructor = constructor;
 
-    prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, constructor, DontEnum);
+    prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, constructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     if (!propertyName.isNull())
-        global->putDirect(vm, propertyName, constructor, DontEnum);
+        global->putDirect(vm, propertyName, constructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     classStructure.m_constructor.set(vm, global, constructor);
 }
 
 void LazyClassStructure::Initializer::setConstructor(JSObject* constructor)
 {
     String name;
-    if (InternalFunction* internalFunction = jsDynamicCast<InternalFunction*>(constructor))
+    if (InternalFunction* internalFunction = jsDynamicCast<InternalFunction*>(vm, constructor))
         name = internalFunction->name();
-    else if (JSFunction* function = jsDynamicCast<JSFunction*>(constructor))
+    else if (JSFunction* function = jsDynamicCast<JSFunction*>(vm, constructor))
         name = function->name(vm);
     else
         RELEASE_ASSERT_NOT_REACHED();
@@ -90,7 +90,7 @@ void LazyClassStructure::Initializer::setConstructor(JSObject* constructor)
 void LazyClassStructure::visit(SlotVisitor& visitor)
 {
     m_structure.visit(visitor);
-    visitor.append(&m_constructor);
+    visitor.append(m_constructor);
 }
 
 void LazyClassStructure::dump(PrintStream& out) const

@@ -1,4 +1,5 @@
 # Copyright (c) 2009 Google Inc. All rights reserved.
+# Copyright (c) 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -28,6 +29,7 @@
 
 import json
 import logging
+import os
 from optparse import make_option
 
 from webkitpy.common.config.committers import CommitterList
@@ -35,8 +37,10 @@ from webkitpy.common.config.ports import DeprecatedPort
 from webkitpy.common.system.filesystem import FileSystem
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.tool.bot.earlywarningsystemtask import EarlyWarningSystemTask, EarlyWarningSystemTaskDelegate
+from webkitpy.tool.bot.bindingstestresultsreader import BindingsTestResultsReader
 from webkitpy.tool.bot.layouttestresultsreader import LayoutTestResultsReader
-from webkitpy.tool.bot.patchanalysistask import UnableToApplyPatch, PatchIsNotValid
+from webkitpy.tool.bot.jsctestresultsreader import JSCTestResultsReader
+from webkitpy.tool.bot.patchanalysistask import UnableToApplyPatch, PatchIsNotValid, PatchIsNotApplicable
 from webkitpy.tool.bot.queueengine import QueueEngine
 from webkitpy.tool.commands.queues import AbstractReviewQueue
 
@@ -53,7 +57,13 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
 
     def begin_work_queue(self):
         AbstractReviewQueue.begin_work_queue(self)
-        self._layout_test_results_reader = LayoutTestResultsReader(self._tool, self._port.results_directory(), self._log_directory())
+
+        if self.group() == "jsc":
+            self._test_results_reader = JSCTestResultsReader(self._tool, self._port.jsc_results_directory())
+        elif self.group() == "bindings":
+            self._test_results_reader = BindingsTestResultsReader(self._tool, self._port.jsc_results_directory())
+        else:
+            self._test_results_reader = LayoutTestResultsReader(self._tool, self._port.results_directory(), self._log_directory())
 
     def _failing_tests_message(self, task, patch):
         results = task.results_from_patch_test_run(patch)
@@ -79,8 +89,12 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
             tool.bugs.add_cc_to_bug(patch.bug_id(), self.watchers)
         tool.bugs.set_flag_on_attachment(patch.id(), "commit-queue", "-", message)
 
+    # This exists for mocking
+    def _create_task(self, patch):
+        return EarlyWarningSystemTask(self, patch, should_run_tests=self._options.run_tests, should_build=self.should_build)
+
     def review_patch(self, patch):
-        task = EarlyWarningSystemTask(self, patch, self._options.run_tests)
+        task = self._create_task(patch)
         try:
             succeeded = task.run()
             if not succeeded:
@@ -92,6 +106,9 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
             return False
         except UnableToApplyPatch, e:
             self._did_error(patch, "%s unable to apply patch." % self.name)
+            return False
+        except PatchIsNotApplicable, e:
+            self._did_skip(patch)
             return False
         except ScriptError, e:
             self._post_reject_message_on_bug(self._tool, patch, task.failure_status_id, self._failing_tests_message(task, patch))
@@ -110,20 +127,23 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
         self.run_webkit_patch(command + [self._deprecated_port.flag()] + (['--architecture=%s' % self._port.architecture()] if self._port.architecture() and self._port.did_override_architecture else []))
 
     def command_passed(self, message, patch):
-        pass
+        self._update_status(message, patch=patch)
 
     def command_failed(self, message, script_error, patch):
         failure_log = self._log_from_script_error_for_upload(script_error)
         return self._update_status(message, patch=patch, results_file=failure_log)
 
     def test_results(self):
-        return self._layout_test_results_reader.results()
+        return self._test_results_reader.results()
 
     def archive_last_test_results(self, patch):
-        return self._layout_test_results_reader.archive(patch)
+        return self._test_results_reader.archive(patch)
 
     def build_style(self):
         return self._build_style
+
+    def group(self):
+        return self._group
 
     def refetch_patch(self, patch):
         return self._tool.bugs.fetch_attachment(patch.id())
@@ -149,12 +169,14 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
 
         classes = []
         for name, config in ewses.iteritems():
-            classes.append(type(name.encode('utf-8').translate(None, ' -'), (AbstractEarlyWarningSystem,), {
+            classes.append(type(name.encode('utf-8').translate(None, ' -'), (cls,), {
                 'name': config.get('name', config['port'] + '-ews'),
                 'port_name': config['port'],
                 'architecture': config.get('architecture', None),
                 '_build_style': config.get('style', "release"),
                 'watchers': config.get('watchers', []),
                 'run_tests': config.get('runTests', cls.run_tests),
+                '_group': config.get('group', None),
+                'should_build': config.get('shouldBuild', True),
             }))
         return classes

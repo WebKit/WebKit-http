@@ -132,6 +132,7 @@ for my $file (sort @files) {
     my $UIString;
     my $key;
     my $comment;
+    my $mnemonic;
     
     my $string;
     my $stringLine;
@@ -153,7 +154,11 @@ for my $file (sort @files) {
         # Handle all the tokens in the line.
         while (s-^\s*([#\w]+|/\*|//|[^#\w/'"()\[\],]+|.)--) {
             my $token = $1;
-            
+
+            if ($token eq "@" and $expected and $expected eq "a quoted string") {
+                next;
+            }
+
             if ($token eq "\"") {
                 if ($expected and $expected ne "a quoted string") {
                     emitError($file, $., "found a quoted string but expected $expected");
@@ -183,6 +188,9 @@ handleString:
                     } elsif (($macro =~ /(WEB_)?UI_STRING_KEY(_INTERNAL)?$/) and !defined $key) {
                         # FIXME: Validate UTF-8 here?
                         $key = $string;
+                        $expected = ",";
+                    } elsif (($macro =~ /WEB_UI_STRING_WITH_MNEMONIC$/) and !defined $mnemonic) {
+                        $mnemonic = $string;
                         $expected = ",";
                     } elsif (!defined $comment) {
                         # FIXME: Validate UTF-8 here?
@@ -236,12 +244,13 @@ handleString:
                     emitError($file, $., "found $token but expected $expected");
                     $expected = "";
                 }
-                if ($token =~ /(WEB_)?UI_STRING(_KEY)?(_INTERNAL)?$/) {
+                if (($token =~ /(WEB_)?UI_STRING(_KEY)?(_INTERNAL)?$/) || ($token =~ /WEB_UI_NSSTRING$/) || ($token =~ /WEB_UI_STRING_WITH_MNEMONIC$/) || ($token =~ /WEB_UI_CFSTRING$/)) {
                     $expected = "(";
                     $macro = $token;
                     $UIString = undef;
                     $key = undef;
                     $comment = undef;
+                    $mnemonic = undef;
                     $macroLine = $.;
                 } elsif ($token eq "(" or $token eq "[") {
                     ++$nestingLevel if defined $nestingLevel;

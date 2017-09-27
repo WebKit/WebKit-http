@@ -41,16 +41,16 @@ public:
 private:
     InsertParagraphSeparatorCommand(Document&, bool useDefaultParagraphElement, bool pasteBlockqutoeIntoUnquotedArea, EditAction);
 
-    virtual void doApply();
+    void doApply() override;
 
     void calculateStyleBeforeInsertion(const Position&);
     void applyStyleAfterInsertion(Node* originalEnclosingBlock);
     void getAncestorsInsideBlock(const Node* insertionNode, Element* outerBlock, Vector<RefPtr<Element>>& ancestors);
-    RefPtr<Element> cloneHierarchyUnderNewBlock(const Vector<RefPtr<Element>>& ancestors, PassRefPtr<Element> blockToInsert);
+    Ref<Element> cloneHierarchyUnderNewBlock(const Vector<RefPtr<Element>>& ancestors, Ref<Element>&& blockToInsert);
 
     bool shouldUseDefaultParagraphElement(Node*) const;
 
-    virtual bool preservesTypingStyle() const;
+    bool preservesTypingStyle() const override;
 
     RefPtr<EditingStyle> m_style;
 

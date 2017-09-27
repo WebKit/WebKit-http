@@ -41,9 +41,9 @@ unsigned DragData::numberOfFiles() const
     return m_platformDragData->filenames().size();
 }
 
-void DragData::asFilenames(Vector<String>& result) const
+Vector<String> DragData::asFilenames() const
 {
-    result = m_platformDragData->filenames();
+    return m_platformDragData->filenames();
 }
 
 bool DragData::containsPlainText() const
@@ -61,7 +61,7 @@ Color DragData::asColor() const
     return Color();
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(DraggingPurpose) const
 {
     return containsPlainText() || containsURL() || m_platformDragData->hasMarkup() || containsColor() || containsFiles();
 }

@@ -27,7 +27,6 @@
 #include "InternalFunction.h"
 #include "JSCallee.h"
 #include "JSScope.h"
-#include "Watchpoint.h"
 
 namespace JSC {
 
@@ -39,7 +38,6 @@ class JSGlobalObject;
 class LLIntOffsetsExtractor;
 class NativeExecutable;
 class SourceCode;
-class WebAssemblyExecutable;
 class InternalFunction;
 namespace DFG {
 class SpeculativeJIT;
@@ -66,7 +64,7 @@ public:
     typedef JSCallee Base;
     const static unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
 
-    static size_t allocationSize(size_t inlineCapacity)
+    static size_t allocationSize(Checked<size_t> inlineCapacity)
     {
         ASSERT_UNUSED(inlineCapacity, !inlineCapacity);
         return sizeof(JSFunction);
@@ -76,14 +74,8 @@ public:
     
     static JSFunction* createWithInvalidatedReallocationWatchpoint(VM&, FunctionExecutable*, JSScope*);
 
-    static JSFunction* create(VM&, FunctionExecutable*, JSScope*);
+    JS_EXPORT_PRIVATE static JSFunction* create(VM&, FunctionExecutable*, JSScope*);
     static JSFunction* create(VM&, FunctionExecutable*, JSScope*, Structure*);
-#if ENABLE(WEBASSEMBLY)
-    static JSFunction* create(VM&, WebAssemblyExecutable*, JSScope*);
-#endif
-
-    JS_EXPORT_PRIVATE static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*);
-    static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*, const String& name);
 
     JS_EXPORT_PRIVATE String name(VM&);
     JS_EXPORT_PRIVATE String displayName(VM&);
@@ -160,12 +152,8 @@ protected:
     JS_EXPORT_PRIVATE JSFunction(VM&, JSGlobalObject*, Structure*);
     JSFunction(VM&, FunctionExecutable*, JSScope*, Structure*);
 
-#if ENABLE(WEBASSEMBLY)
-    JSFunction(VM&, WebAssemblyExecutable*, JSScope*);
-#endif
-
     void finishCreation(VM&, NativeExecutable*, int length, const String& name);
-    using Base::finishCreation;
+    void finishCreation(VM&);
 
     FunctionRareData* allocateRareData(VM&);
     FunctionRareData* allocateAndInitializeRareData(ExecState*, size_t inlineCapacity);
@@ -199,7 +187,9 @@ private:
 
     enum class LazyPropertyType { NotLazyProperty, IsLazyProperty };
     LazyPropertyType reifyLazyPropertyIfNeeded(VM&, ExecState*, PropertyName);
-    LazyPropertyType reifyBoundNameIfNeeded(VM&, ExecState*, PropertyName);
+    LazyPropertyType reifyLazyPropertyForHostOrBuiltinIfNeeded(VM&, ExecState*, PropertyName);
+    LazyPropertyType reifyLazyLengthIfNeeded(VM&, ExecState*, PropertyName);
+    LazyPropertyType reifyLazyBoundNameIfNeeded(VM&, ExecState*, PropertyName);
 
     friend class LLIntOffsetsExtractor;
 

@@ -24,7 +24,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-enum ForcedPrefersReducedMotionValue { "system", "on", "off" };
+enum ForcedAccessibilityValue { "system", "on", "off" };
+enum FrameFlatteningValue { "Disabled", "EnabledForNonFullScreenIFrames", "FullyEnabled" };
 
 [
     NoInterfaceObject,
@@ -65,7 +66,6 @@ enum ForcedPrefersReducedMotionValue { "system", "on", "off" };
     // Editing, forms
     [MayThrowException] void setEditingBehavior(DOMString behavior);
     [MayThrowException] void setShouldConvertPositionStyleOnCopy(boolean convertPosition);
-    void setLangAttributeAwareFormControlUIEnabled(boolean enabled);
     [MayThrowException] void setPreferMIMETypeForImages(boolean preferMimeTypeForImage);
 
     // Other switches
@@ -76,24 +76,35 @@ enum ForcedPrefersReducedMotionValue { "system", "on", "off" };
     [MayThrowException] void setAutoscrollForDragAndDropEnabled(boolean enabled);
     [MayThrowException] void setBackgroundShouldExtendBeyondPage(boolean hasExtendedBackground);
     [MayThrowException] void setScrollingTreeIncludesFrames(boolean enabled);
+    [MayThrowException] void setAllowUnclampedScrollPosition(boolean allowUnclamped);
 
     [MayThrowException] void setMinimumTimerInterval(unrestricted double intervalInSeconds);
     [MayThrowException] void setAllowsInlineMediaPlayback(boolean allows);
     [MayThrowException] void setAllowsInlineMediaPlaybackAfterFullscreen(boolean allows);
     [MayThrowException] void setInlineMediaPlaybackRequiresPlaysInlineAttribute(boolean requires);
+    [MayThrowException] void setFrameFlattening(FrameFlatteningValue frameFlattening);
 
-    void setIndexedDBWorkersEnabled(boolean requires);
+    // RuntimeEnabledFeatures.
+    void setIndexedDBWorkersEnabled(boolean enabled);
+    void setCSSGridLayoutEnabled(boolean enabled);
+    void setWebGL2Enabled(boolean enabled);
+    void setWebGPUEnabled(boolean enabled);
+    void setWebVREnabled(boolean enabled);
 
     [MayThrowException] DOMString userInterfaceDirectionPolicy();
     [MayThrowException] void setUserInterfaceDirectionPolicy(DOMString policy);
     [MayThrowException] DOMString systemLayoutDirection();
     [MayThrowException] void setSystemLayoutDirection(DOMString direction);
 
-    [MayThrowException] boolean variationFontsEnabled();
-    [MayThrowException] void setVariationFontsEnabled(boolean enabled);
+    [MayThrowException] boolean deferredCSSParserEnabled();
+    [MayThrowException] void setDeferredCSSParserEnabled(boolean enabled);
 
-    attribute ForcedPrefersReducedMotionValue forcedPrefersReducedMotionValue;
+    [MayThrowException] void setShouldMockBoldSystemFontForAccessibility(boolean shouldMock);
 
-    void setInputEventsEnabled(boolean enabled);
+    attribute ForcedAccessibilityValue forcedColorsAreInvertedAccessibilityValue;
+    attribute ForcedAccessibilityValue forcedDisplayIsMonochromeAccessibilityValue;
+    attribute ForcedAccessibilityValue forcedPrefersReducedMotionAccessibilityValue;
+
+    [MayThrowException] void setShouldManageAudioSessionCategory(boolean should);
 };
 

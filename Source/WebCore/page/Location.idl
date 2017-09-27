@@ -28,27 +28,28 @@
 
 [
     CheckSecurity,
+    CustomDefineOwnProperty,
+    CustomDefineOwnPropertyOnPrototype,
     CustomDeleteProperty,
-    CustomEnumerateProperty,
+    CustomGetOwnPropertyNames,
+    CustomGetOwnPropertySlot,
     CustomGetPrototype,
-    CustomNamedSetter,
     CustomPreventExtensions,
-    CustomSetPrototype,
+    CustomPut,
+    CustomPutOnPrototype,
+    CustomToStringName,
     GenerateIsReachable=ImplFrame,
-    JSCustomDefineOwnProperty,
-    JSCustomDefineOwnPropertyOnPrototype,
-    JSCustomGetOwnPropertySlotAndDescriptor,
-    JSCustomNamedGetterOnPrototype,
-    Unforgeable,
+    IsImmutablePrototypeExoticObject,
+    Unforgeable
 ] interface Location {
     [SetterCallWith=ActiveWindow&FirstWindow, DoNotCheckSecurityOnSetter] stringifier attribute USVString href;
 
-    [CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void assign(USVString url);
+    [CallWith=ActiveWindow&FirstWindow, MayThrowException, ForwardDeclareInHeader] void assign(USVString url);
     [DoNotCheckSecurity, CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void replace(USVString url);
     [CallWith=ActiveWindow, ForwardDeclareInHeader] void reload();
 
     // URI decomposition attributes
-    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowException] attribute USVString protocol;
+    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString protocol;
     [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString host;
     [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString hostname;
     [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString port;
@@ -58,6 +59,6 @@
 
     readonly attribute USVString origin;
 
-    // FIXME: Add support for SameObject
-    [Unforgeable, CachedAttribute] readonly attribute FrozenArray<USVString> ancestorOrigins;
+    // FIXME: Add support for SameObject.
+    [Unforgeable, CachedAttribute] readonly attribute DOMStringList ancestorOrigins;
 };

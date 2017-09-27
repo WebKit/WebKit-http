@@ -25,6 +25,8 @@ validationMessageTimerMagnification type=int, initial=50
 # draw canvas in software.
 minimumAccelerated2dCanvasSize type=int, initial=275*256
 
+maximumAccelerated2dCanvasSize type=unsigned, initial=5120*2880
+
 layoutFallbackWidth type=int, initial=980
 deviceWidth type=int, initial=0
 deviceHeight type=int, initial=0
@@ -99,7 +101,6 @@ javaScriptRuntimeFlags type=JSC::RuntimeFlags
 downloadableBinaryFontsEnabled initial=true
 
 xssAuditorEnabled initial=false
-unsafePluginPastingEnabled initial=true
 acceleratedCompositingForFixedPositionEnabled initial=defaultAcceleratedCompositingForFixedPositionEnabled
 acceleratedCompositingForOverflowScrollEnabled initial=false
 rubberBandingForSubScrollableRegionsEnabled initial=true, conditional=RUBBER_BANDING
@@ -107,16 +108,14 @@ rubberBandingForSubScrollableRegionsEnabled initial=true, conditional=RUBBER_BAN
 experimentalNotificationsEnabled initial=false
 webGLEnabled initial=false
 webGLErrorsToConsoleEnabled initial=true
-openGLMultisamplingEnabled initial=true
 forceSoftwareWebGLRendering initial=false
+forceWebGLUsesLowPower initial=false
 accelerated2dCanvasEnabled initial=false
-antialiased2dCanvasEnabled initial=true
 loadDeferringEnabled initial=true
 webAudioEnabled initial=false
 paginateDuringLayoutEnabled initial=false
 fullScreenEnabled initial=false, conditional=FULLSCREEN_API
 asynchronousSpellCheckingEnabled initial=false
-mediaStreamEnabled initial=false
 
 # This feature requires an implementation of ValidationMessageClient.
 interactiveFormValidationEnabled initial=false
@@ -133,6 +132,7 @@ requiresUserGestureToLoadVideo initial=defaultRequiresUserGestureToLoadVideo
 videoPlaybackRequiresUserGesture initial=defaultVideoPlaybackRequiresUserGesture
 audioPlaybackRequiresUserGesture initial=defaultAudioPlaybackRequiresUserGesture
 mainContentUserGestureOverrideEnabled initial=false
+mediaUserGestureInheritsFromDocument initial=false
 allowsInlineMediaPlayback initial=defaultAllowsInlineMediaPlayback
 allowsInlineMediaPlaybackAfterFullscreen initial=true
 inlineMediaPlaybackRequiresPlaysInlineAttribute initial=defaultInlineMediaPlaybackRequiresPlaysInlineAttribute
@@ -160,8 +160,6 @@ imageSubsamplingEnabled initial=defaultImageSubsamplingEnabled
 wantsBalancedSetDefersLoadingBehavior initial=false
 requestAnimationFrameEnabled initial=true
 
-fixedPositionCreatesStackingContext initial=defaultFixedPositionCreatesStackingContext
-syncXHRInDocumentsEnabled initial=true
 cookieEnabled initial=true
 mediaEnabled initial=true
 DOMPasteAllowed initial=false
@@ -178,9 +176,9 @@ snapshotAllPlugIns initial=false
 autostartOriginPlugInSnapshottingEnabled initial=true
 primaryPlugInSnapshotDetectionEnabled initial=true
 maximumPlugInSnapshotAttempts type=unsigned, initial=20
-frameFlatteningEnabled initial=false
+frameFlattening type=FrameFlattening, initial=FrameFlatteningDisabled
+asyncFrameScrollingEnabled initial=false
 
-allowCustomScrollbarInMainFrame initial=true
 webSecurityEnabled initial=true
 spatialNavigationEnabled initial=false
 
@@ -198,7 +196,6 @@ defaultVideoPosterURL type=String
 smartInsertDeleteEnabled initial=defaultSmartInsertDeleteEnabled
 selectTrailingWhitespaceEnabled initial=defaultSelectTrailingWhitespaceEnabled
 
-selectionIncludesAltImageText initial=true
 useLegacyBackgroundSizeShorthandBehavior initial=false
 fixedBackgroundsPaintRelativeToDocument initial=defaultFixedBackgroundsPaintRelativeToDocument
 
@@ -206,6 +203,7 @@ textAutosizingEnabled initial=defaultTextAutosizingEnabled(), setNeedsStyleRecal
 textAutosizingWindowSizeOverride type=IntSize, setNeedsStyleRecalcInAllFrames=1, conditional=TEXT_AUTOSIZING
 minimumZoomFontSize type=float, initial=defaultMinimumZoomFontSize(), conditional=TEXT_AUTOSIZING
 
+subpixelAntialiasedLayerTextEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 simpleLineLayoutEnabled initial=true, setNeedsStyleRecalcInAllFrames=1
 simpleLineLayoutDebugBordersEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
@@ -226,8 +224,6 @@ maxParseDuration type=double, initial=-1
 standalone initial=false
 telephoneNumberParsingEnabled initial=false
 mediaDataLoadsAutomatically initial=defaultMediaDataLoadsAutomatically
-shouldTransformsAffectOverflow initial=true
-shouldDispatchJavaScriptWindowOnErrorEvents initial=false
 alwaysUseAcceleratedOverflowScroll initial=false
 imageControlsEnabled initial=false, conditional=SERVICE_CONTROLS
 
@@ -247,11 +243,9 @@ serviceControlsEnabled initial=false, conditional=SERVICE_CONTROLS
 
 appleMailPaginationQuirkEnabled initial=false
 
-attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
+deferredCSSParserEnabled initial=false
 
-newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
-
-newCSSParserEnabled initial=false
+repaintOutsideLayoutEnabled initial=false
 
 httpEquivEnabled initial=true
 
@@ -266,8 +260,6 @@ systemLayoutDirection type=TextDirection, initial=LTR
 
 allowContentSecurityPolicySourceStarToMatchAnyProtocol initial=false
 
-allowWindowOpenWithoutUserGesture initial=false
-
 selectionPaintingWithoutSelectionGapsEnabled initial=false
 
 shouldConvertInvalidURLsToBlank initial=true
@@ -276,19 +268,40 @@ springTimingFunctionEnabled initial=false
 
 treatIPAddressAsDomain initial=false
 
-variationFontsEnabled initial=true, setNeedsStyleRecalcInAllFrames=1, conditional=VARIATION_FONTS
+mediaPreloadingEnabled initial=false
 
 # Runtime-enabled features
 visualViewportEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
-intersectionObserverEnabled initial=false
 
 inputEventsEnabled initial=true
 
 quickTimePluginReplacementEnabled initial=defaultQuickTimePluginReplacementEnabled
 youTubeFlashPluginReplacementEnabled initial=defaultYouTubeFlashPluginReplacementEnabled
 
-forcedPrefersReducedMotionValue type=ForcedPrefersReducedMotionValue, initial=defaultForcedPrefersReducedMotionValue
+forcedColorsAreInvertedAccessibilityValue type=ForcedAccessibilityValue, initial=defaultForcedColorsAreInvertedAccessibilityValue
+forcedDisplayIsMonochromeAccessibilityValue type=ForcedAccessibilityValue, initial=defaultForcedDisplayIsMonochromeAccessibilityValue
+forcedPrefersReducedMotionAccessibilityValue type=ForcedAccessibilityValue, initial=defaultForcedPrefersReducedMotionAccessibilityValue
 
-asyncImageDecodingEnabled initial=true
+largeImageAsyncDecodingEnabled initial=true
+animatedImageAsyncDecodingEnabled initial=true
+webkitImageReadyEventEnabled initial=false
+
+shouldSuppressKeyboardInputDuringProvisionalNavigation initial=false
+
+langAttributeAwareFormControlUIEnabled initial=false
+
+subresourceIntegrityEnabled initial=true
+
+beaconAPIEnabled initial=false
+
+constantPropertiesEnabled initial=false
+
+viewportFitEnabled initial=false
+
+allowMediaContentTypesRequiringHardwareSupportAsFallback initial=false
+
+paymentRequestEnabled initial=false, conditional=PAYMENT_REQUEST
+
+storageAccessAPIEnabled initial=false
 
 scrollToFocusedElementEnabled initial=true

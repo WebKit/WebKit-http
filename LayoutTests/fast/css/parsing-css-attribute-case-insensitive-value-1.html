@@ -2,7 +2,6 @@
 <html>
 <head>
 <script src="../../resources/js-test-pre.js"></script>
-<style>@namespace WebKit url(http://www.webkit.org/rocks);</style>
 <style id="style-container"></style>
 </head>
 <body>
@@ -25,13 +24,9 @@ function testValidSelector(selectorString, expectedSerializedSelector) {
     shouldNotThrow('document.querySelector("' + selectorString.replace(/"/g, '\\"').replace('[', '[*|') + '")');
     shouldNotThrow('document.querySelector("' + selectorString.replace(/"/g, '\\"').replace('[', '[|') + '")');
 
-    // Namespaces are not supported by CSS queries.
-    shouldThrow('document.querySelector("' + selectorString.replace(/"/g, '\\"').replace('[', '[WebKit|') + '")');
-
     testValidSelectorCSSOMSerialization(selectorString, expectedSerializedSelector);
     testValidSelectorCSSOMSerialization(selectorString.replace('[', '[|'), expectedSerializedSelector);
     testValidSelectorCSSOMSerialization(selectorString.replace('[', '[*|'), expectedSerializedSelector.replace('[', '[*|'));
-    testValidSelectorCSSOMSerialization(selectorString.replace('[', '[WebKit|'), expectedSerializedSelector.replace('[', '[WebKit|'));
 }
 
 var simpleValidSelectors = [
@@ -55,7 +50,7 @@ for (var testCase of simpleValidSelectors) {
     testValidSelector(testCase[0], testCase[1]);
 
     // Used in function pseudo classes.
-    testValidSelector("foo >> bar " + testCase[0], "foo >> bar " + testCase[1]);
+    testValidSelector("foo bar " + testCase[0], "foo bar " + testCase[1]);
     testValidSelector(":nth-child(2n+1 of " + testCase[0] + ")", ":nth-child(2n+1 of " + testCase[1] + ")");
     testValidSelector(":nth-last-child(2n+1 of " + testCase[0] + ")", ":nth-last-child(2n+1 of " + testCase[1] + ")");
     testValidSelector(":matches(foo, " + testCase[0] + ", bar)", ":matches(foo, " + testCase[1] + ", bar)");

@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -17,6 +16,7 @@ None
 List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/FormData-append.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/OWNERS
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/README.md
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.any.js
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/abort-after-receive.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/abort-after-send.htm
@@ -33,12 +33,61 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/abort-event-order.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/abort-upload-event-abort.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/abort-upload-event-loadend.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-async-same-origin.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-async.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-access-control-origin-header-data-url.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-access-control-origin-header.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-async.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-non-cors-safelisted-method-async.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-non-cors-safelisted-method.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-preflight-cache-invalidation-by-header.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-preflight-cache-invalidation-by-method.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-preflight-cache-timeout.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-preflight-cache.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow-star.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-allow.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-cors-safelisted-request-headers.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-cors-safelisted-response-headers.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-denied.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-get-fail-non-simple.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-non-cors-safelisted-content-type.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-post-success-no-content-type.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-post-with-non-cors-safelisted-content-type.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-basic-preflight-denied.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-async-header-denied.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-async-method-denied.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-async-not-supported.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-credential-async.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-credential-sync.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-headers-async.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-headers-sync.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-request-header-lowercase.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-request-header-sorted.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-request-headers-origin.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-request-invalid-status-301.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-request-invalid-status-400.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-request-invalid-status-501.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-request-must-not-contain-cookie.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-sync-header-denied.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-sync-method-denied.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-sync-not-supported.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-recursive-failed-request.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-response-with-body-sync.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-response-with-body.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-response-with-exposed-headers.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-sandboxed-iframe-allow-origin-null.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-sandboxed-iframe-allow.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-sandboxed-iframe-denied-without-wildcard.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-sandboxed-iframe-denied.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/allow-lists-starting-with-comma.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/anonymous-mode-unsupported.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/data-uri.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-abort.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-error.sub.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-load.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-loadend.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-loadstart-upload.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-loadstart.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-progress.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/event-readystate-sync-open.htm
@@ -54,8 +103,10 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/formdata-has.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/formdata-set.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/formdata.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders-cl.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders-cookies.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders-status.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-case-insensitive.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-cookies-and-more.htm
@@ -64,9 +115,13 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-special-characters.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-unsent-opened-state.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/headers-normalize-response.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/historical.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/interfaces.html
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/loadstart-and-state.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-after-abort.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-after-setrequestheader.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-during-abort-event.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-during-abort-processing.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-during-abort.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-method-bogus.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-method-case-insensitive.htm
@@ -76,13 +131,13 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-open-send.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-open-sync-send.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-referer.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-send-during-abort.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-send-open.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-sync-open-send.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-about-blank-window.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-base-inserted-after-open.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-base-inserted.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-base.htm
-/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-bogus.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-encoding.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-fragment.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-javascript-window-2.htm
@@ -93,8 +148,10 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-multi-window-5.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-multi-window-6.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-multi-window.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-url-worker-simple.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/open-user-password-non-same-origin.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/overridemimetype-blob.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/overridemimetype-done-state.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/overridemimetype-headers-received-state-force-shiftjis.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/overridemimetype-invalid-mime-type.htm
@@ -103,7 +160,6 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/overridemimetype-open-state-force-xml.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/overridemimetype-unsent-state-force-shiftjis.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/progress-events-response-data-gzip.htm
-/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/readme.txt
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/response-data-arraybuffer.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/response-data-blob.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/response-data-deflate.htm
@@ -129,10 +185,12 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-blob-with-no-mime-type.html
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-conditional-cors.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-conditional.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-content-type-charset.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-content-type-string.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-data-arraybuffer.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-data-arraybufferview.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-data-blob.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-data-es-object.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-data-formdata.htm
@@ -172,9 +230,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-sync-response-event-order.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-sync-timeout.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-timeout-events.htm
-/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-usp.html
-/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-usp.js
-/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-usp.worker.js
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-usp.any.js
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-after-send.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-empty-value.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-allow-whitespace-in-value.htm
@@ -189,7 +245,9 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/status-async.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/status-basic.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/status-error.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/template-element.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/timeout-cors-async.htm
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/timeout-multiple-fetches.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/timeout-sync.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-basic.htm
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-eventtarget.htm
@@ -204,6 +262,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-abortedonmain.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-overrides.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-overridesexpires.html
+/LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-reused.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-simple.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-synconmain.html
 /LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-twice.html

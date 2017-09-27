@@ -28,7 +28,7 @@
 
 #if PLATFORM(IOS)
 
-#include "MobileGestaltSPI.h"
+#include <pal/spi/ios/MobileGestaltSPI.h>
 
 namespace WTF {
 class String;

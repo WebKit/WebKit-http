@@ -23,18 +23,21 @@
 
 namespace WebCore {
 
-template<typename PropertyType> class SVGStaticListPropertyTearOff final : public SVGListProperty<PropertyType> {
+template<typename PropertyType> 
+class SVGStaticListPropertyTearOff : public SVGListProperty<PropertyType> {
 public:
+    using Self = SVGStaticListPropertyTearOff<PropertyType>;
     using Base = SVGListProperty<PropertyType>;
+
     using ListItemType = typename SVGPropertyTraits<PropertyType>::ListItemType;
-    using ListItemTearOff = SVGPropertyTearOff<ListItemType>;
+    using ListItemTearOff = typename SVGPropertyTraits<PropertyType>::ListItemTearOff;
 
     using Base::m_role;
     using Base::m_values;
 
-    static Ref<SVGStaticListPropertyTearOff<PropertyType>> create(SVGElement& contextElement, PropertyType& values)
+    static Ref<Self> create(SVGElement& contextElement, PropertyType& values)
     {
-        return adoptRef(*new SVGStaticListPropertyTearOff(contextElement, values));
+        return adoptRef(*new Self(contextElement, values));
     }
 
     ExceptionOr<void> clear()
@@ -72,31 +75,31 @@ public:
         return Base::appendItemValues(newItem);
     }
 
-private:
-    SVGStaticListPropertyTearOff(SVGElement& contextElement, PropertyType& values)
-        : SVGListProperty<PropertyType>(UndefinedRole, values, nullptr)
-        , m_contextElement(contextElement)
+protected:
+    SVGStaticListPropertyTearOff(SVGElement* contextElement, PropertyType& values)
+        : Base(UndefinedRole, values, nullptr)
+        , m_contextElement(*contextElement)
     {
     }
 
-    virtual bool isReadOnly() const
+    bool isReadOnly() const override
     {
         return m_role == AnimValRole;
     }
 
-    virtual void commitChange()
+    void commitChange() override
     {
         ASSERT(m_values);
-        m_values->commitChange(m_contextElement.ptr());
+        m_values->commitChange(m_contextElement);
     }
 
-    virtual bool processIncomingListItemValue(const ListItemType&, unsigned*)
+    bool processIncomingListItemValue(const ListItemType&, unsigned*) override
     {
         // no-op for static lists
         return true;
     }
 
-    virtual bool processIncomingListItemWrapper(RefPtr<ListItemTearOff>&, unsigned*)
+    bool processIncomingListItemWrapper(Ref<ListItemTearOff>&, unsigned*) override
     {
         ASSERT_NOT_REACHED();
         return true;

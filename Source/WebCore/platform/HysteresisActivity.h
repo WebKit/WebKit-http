@@ -26,11 +26,12 @@
 #ifndef HysteresisActivity_h
 #define HysteresisActivity_h
 
-#include "Timer.h"
+#include <wtf/RunLoop.h>
+#include <wtf/Seconds.h>
 
 namespace WebCore {
 
-static const double DefaultHysteresisSeconds = 5.0;
+static const Seconds defaultHysteresisDuration { 5_s };
 
 enum class HysteresisState {
     Started,
@@ -39,11 +40,11 @@ enum class HysteresisState {
 
 class HysteresisActivity {
 public:
-    explicit HysteresisActivity(std::function<void(HysteresisState)> callback = [](HysteresisState) { }, double hysteresisSeconds = DefaultHysteresisSeconds)
-        : m_callback(callback)
+    explicit HysteresisActivity(WTF::Function<void(HysteresisState)>&& callback = [](HysteresisState) { }, Seconds hysteresisSeconds = defaultHysteresisDuration)
+        : m_callback(WTFMove(callback))
         , m_hysteresisSeconds(hysteresisSeconds)
         , m_active(false)
-        , m_timer(*this, &HysteresisActivity::hysteresisTimerFired)
+        , m_timer(RunLoop::main(), this, &HysteresisActivity::hysteresisTimerFired)
     {
     }
 
@@ -88,10 +89,10 @@ private:
         m_callback(HysteresisState::Stopped);
     }
 
-    std::function<void(HysteresisState)> m_callback;
-    double m_hysteresisSeconds;
+    WTF::Function<void(HysteresisState)> m_callback;
+    Seconds m_hysteresisSeconds;
     bool m_active;
-    Timer m_timer;
+    RunLoop::Timer<HysteresisActivity> m_timer;
 };
 
 } // namespace WebCore

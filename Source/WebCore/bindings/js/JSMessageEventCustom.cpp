@@ -33,11 +33,12 @@
 
 #include "JSBlob.h"
 #include "JSDOMBinding.h"
-#include "JSDOMConvert.h"
+#include "JSDOMConvertBufferSource.h"
+#include "JSDOMConvertInterface.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDOMWindow.h"
 #include "JSEventTarget.h"
 #include "JSMessagePort.h"
-#include "MessageEvent.h"
 #include <runtime/JSArray.h>
 #include <runtime/JSArrayBuffer.h>
 
@@ -80,74 +81,27 @@ JSValue JSMessageEvent::data(ExecState& state) const
         if (RefPtr<SerializedScriptValue> serializedValue = event.dataAsSerializedScriptValue()) {
             Vector<RefPtr<MessagePort>> ports = wrapped().ports();
             // FIXME: Why does this suppress exceptions?
-            result = serializedValue->deserialize(state, globalObject(), ports, NonThrowing);
+            result = serializedValue->deserialize(state, globalObject(), ports, SerializationErrorMode::NonThrowing);
         } else
             result = jsNull();
         break;
 
     case MessageEvent::DataTypeString:
-        result = jsStringWithCache(&state, event.dataAsString());
+        result = toJS<IDLDOMString>(state, event.dataAsString());
         break;
 
     case MessageEvent::DataTypeBlob:
-        result = toJS(&state, globalObject(), event.dataAsBlob());
+        result = toJS<IDLInterface<Blob>>(state, *globalObject(), event.dataAsBlob());
         break;
 
     case MessageEvent::DataTypeArrayBuffer:
-        result = toJS(&state, globalObject(), event.dataAsArrayBuffer());
+        result = toJS<IDLInterface<ArrayBuffer>>(state, *globalObject(), event.dataAsArrayBuffer());
         break;
     }
 
     // Save the result so we don't have to deserialize the value again.
     m_data.set(state.vm(), this, result);
     return result;
-}
-
-static JSC::JSValue handleInitMessageEvent(JSMessageEvent* jsEvent, JSC::ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    const String& typeArg = state.argument(0).toString(&state)->value(&state);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    bool canBubbleArg = state.argument(1).toBoolean(&state);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    bool cancelableArg = state.argument(2).toBoolean(&state);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    JSValue dataArg = state.argument(3);
-
-    const String originArg = valueToUSVString(&state, state.argument(4));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    const String lastEventIdArg = state.argument(5).toString(&state)->value(&state);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    auto sourceArg = convert<IDLNullable<IDLUnion<IDLInterface<DOMWindow>, IDLInterface<MessagePort>>>>(state, state.argument(6));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    
-    Vector<RefPtr<MessagePort>> messagePorts;
-    if (!state.argument(7).isUndefinedOrNull()) {
-        messagePorts = convert<IDLSequence<IDLInterface<MessagePort>>>(state, state.argument(7));
-        RETURN_IF_EXCEPTION(scope, JSValue());
-    }
-
-    MessageEvent& event = jsEvent->wrapped();
-    event.initMessageEvent(state, typeArg, canBubbleArg, cancelableArg, dataArg, originArg, lastEventIdArg, WTFMove(sourceArg), WTFMove(messagePorts));
-    jsEvent->m_data.set(vm, jsEvent, dataArg);
-    return jsUndefined();
-}
-
-JSC::JSValue JSMessageEvent::initMessageEvent(JSC::ExecState& state)
-{
-    return handleInitMessageEvent(this, state);
-}
-
-JSC::JSValue JSMessageEvent::webkitInitMessageEvent(JSC::ExecState& state)
-{
-    return handleInitMessageEvent(this, state);
 }
 
 } // namespace WebCore

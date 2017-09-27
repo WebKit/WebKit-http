@@ -28,11 +28,14 @@
 
 #pragma once
 
-#include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "SQLCallbackWrapper.h"
 #include "SQLTransactionBackend.h"
 #include "SQLTransactionStateMachine.h"
+#include "SQLValue.h"
+#include <wtf/Deque.h>
+#include <wtf/Lock.h>
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -43,7 +46,6 @@ class SQLStatementErrorCallback;
 class SQLTransactionBackend;
 class SQLTransactionCallback;
 class SQLTransactionErrorCallback;
-class SQLValue;
 class VoidCallback;
 
 class SQLTransactionWrapper : public ThreadSafeRefCounted<SQLTransactionWrapper> {
@@ -60,7 +62,7 @@ public:
     static Ref<SQLTransaction> create(Ref<Database>&&, RefPtr<SQLTransactionCallback>&&, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&&, RefPtr<SQLTransactionWrapper>&&, bool readOnly);
     ~SQLTransaction();
 
-    ExceptionOr<void> executeSQL(const String& sqlStatement, const Vector<SQLValue>& arguments, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&);
+    ExceptionOr<void> executeSql(const String& sqlStatement, std::optional<Vector<SQLValue>>&& arguments, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&);
 
     void lockAcquired();
     void performNextStep();

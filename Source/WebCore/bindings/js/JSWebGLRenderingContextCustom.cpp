@@ -26,12 +26,8 @@
 #include "config.h"
 
 #if ENABLE(WEBGL)
+
 #include "JSWebGLRenderingContext.h"
-#include "DOMWrapperWorld.h"
-#include <JavaScriptCore/JSCellInlines.h>
-#include <JavaScriptCore/StructureInlines.h>
-#include <heap/HeapInlines.h>
-#include <heap/SlotVisitorInlines.h>
 
 using namespace JSC;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,12 @@
 #include "JSCInlines.h"
 #include "TypeError.h"
 #include "TypedArrayController.h"
+#include <wtf/Gigacage.h>
 
 namespace JSC {
 
 const ClassInfo JSArrayBufferView::s_info = {
-    "ArrayBufferView", &Base::s_info, 0, CREATE_METHOD_TABLE(JSArrayBufferView)
+    "ArrayBufferView", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSArrayBufferView)
 };
 
 String JSArrayBufferView::toStringName(const JSObject*, ExecState*)
@@ -65,7 +66,7 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
         void* temp;
         size_t size = sizeOf(length, elementSize);
         if (size) {
-            temp = vm.heap.tryAllocateAuxiliary(nullptr, size);
+            temp = vm.primitiveGigacageAuxiliarySpace.tryAllocate(nullptr, size);
             if (!temp)
                 return;
         } else
@@ -76,7 +77,7 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
         m_mode = FastTypedArray;
 
         if (mode == ZeroFill) {
-            uint64_t* asWords = static_cast<uint64_t*>(m_vector);
+            uint64_t* asWords = static_cast<uint64_t*>(m_vector.getMayBeNull());
             for (unsigned i = size / sizeof(uint64_t); i--;)
                 asWords[i] = 0;
         }
@@ -88,13 +89,12 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
     if (length > static_cast<unsigned>(INT_MAX) / elementSize)
         return;
     
-    if (mode == ZeroFill) {
-        if (!tryFastCalloc(length, elementSize).getValue(m_vector))
-            return;
-    } else {
-        if (!tryFastMalloc(length * elementSize).getValue(m_vector))
-            return;
-    }
+    size_t size = static_cast<size_t>(length) * static_cast<size_t>(elementSize);
+    m_vector = Gigacage::tryMalloc(Gigacage::Primitive, size);
+    if (!m_vector)
+        return;
+    if (mode == ZeroFill)
+        memset(m_vector.get(), 0, size);
     
     vm.heap.reportExtraMemoryAllocated(static_cast<size_t>(length) * elementSize);
     
@@ -103,7 +103,7 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
 }
 
 JSArrayBufferView::ConstructionContext::ConstructionContext(
-    VM& vm, Structure* structure, PassRefPtr<ArrayBuffer> arrayBuffer,
+    VM& vm, Structure* structure, RefPtr<ArrayBuffer>&& arrayBuffer,
     unsigned byteOffset, unsigned length)
     : m_structure(structure)
     , m_length(length)
@@ -116,7 +116,7 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
 }
 
 JSArrayBufferView::ConstructionContext::ConstructionContext(
-    Structure* structure, PassRefPtr<ArrayBuffer> arrayBuffer,
+    Structure* structure, RefPtr<ArrayBuffer>&& arrayBuffer,
     unsigned byteOffset, unsigned length, DataViewTag)
     : m_structure(structure)
     , m_length(length)
@@ -159,6 +159,7 @@ void JSArrayBufferView::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSArrayBufferView* thisObject = jsCast<JSArrayBufferView*>(cell);
 
     if (thisObject->hasArrayBuffer()) {
+        WTF::loadLoadFence();
         ArrayBuffer* buffer = thisObject->possiblySharedBuffer();
         RELEASE_ASSERT(buffer);
         visitor.addOpaqueRoot(buffer);
@@ -191,7 +192,7 @@ void JSArrayBufferView::finalize(JSCell* cell)
     JSArrayBufferView* thisObject = static_cast<JSArrayBufferView*>(cell);
     ASSERT(thisObject->m_mode == OversizeTypedArray || thisObject->m_mode == WastefulTypedArray);
     if (thisObject->m_mode == OversizeTypedArray)
-        fastFree(thisObject->m_vector.get());
+        Gigacage::free(Gigacage::Primitive, thisObject->m_vector.get());
 }
 
 JSArrayBuffer* JSArrayBufferView::unsharedJSBuffer(ExecState* exec)

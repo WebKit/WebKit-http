@@ -27,18 +27,21 @@
 
 #if ENABLE(INTERSECTION_OBSERVER)
 
+#include "ActiveDOMCallback.h"
+#include "CallbackResult.h"
+#include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class IntersectionObserver;
 class IntersectionObserverEntry;
 
-class IntersectionObserverCallback : public RefCounted<IntersectionObserverCallback> {
+class IntersectionObserverCallback : public RefCounted<IntersectionObserverCallback>, public ActiveDOMCallback {
 public:
-    virtual ~IntersectionObserverCallback() { }
-    virtual bool handleEvent(Vector<RefPtr<IntersectionObserverEntry>>, IntersectionObserver*) = 0;
+    using ActiveDOMCallback::ActiveDOMCallback;
+
+    virtual CallbackResult<void> handleEvent(const Vector<Ref<IntersectionObserverEntry>>&, IntersectionObserver&) = 0;
 };
 
 } // namespace WebCore

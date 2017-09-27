@@ -28,123 +28,86 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "ExceptionOr.h"
 #include "FetchBodyOwner.h"
 #include "FetchOptions.h"
+#include "FetchRequestInit.h"
 #include "ResourceRequest.h"
 #include <wtf/Optional.h>
 
 namespace WebCore {
 
-class Dictionary;
+class Blob;
 class ScriptExecutionContext;
+class URLSearchParams;
 
 class FetchRequest final : public FetchBodyOwner {
 public:
-    static Ref<FetchRequest> create(ScriptExecutionContext& context) { return adoptRef(*new FetchRequest(context, Nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { })); }
-
-    ExceptionOr<FetchHeaders&> initializeWith(FetchRequest&, const Dictionary&);
-    ExceptionOr<FetchHeaders&> initializeWith(const String&, const Dictionary&);
-    ExceptionOr<void> setBody(JSC::ExecState&, JSC::JSValue, FetchRequest*);
-
-    const String& method() const { return m_internalRequest.request.httpMethod(); }
-    const String& url() const;
-    FetchHeaders& headers() { return m_headers.get(); }
-
-    using Type = FetchOptions::Type;
-    Type type() const;
-
-    using Destination = FetchOptions::Destination;
-    Destination destination() const;
-
-    String referrer() const;
-
-    using ReferrerPolicy = FetchOptions::ReferrerPolicy;
-    ReferrerPolicy referrerPolicy() const;
-
-    using Mode = FetchOptions::Mode;
-    Mode mode() const;
-
-    using Credentials = FetchOptions::Credentials;
-    Credentials credentials() const;
+    using Init = FetchRequestInit;
+    using Info = Variant<RefPtr<FetchRequest>, String>;
 
     using Cache = FetchOptions::Cache;
-    Cache cache() const;
-
+    using Credentials = FetchOptions::Credentials;
+    using Destination = FetchOptions::Destination;
+    using Mode = FetchOptions::Mode;
     using Redirect = FetchOptions::Redirect;
-    Redirect redirect() const;
+    using Type = FetchOptions::Type;
 
-    const String& integrity() const { return m_internalRequest.integrity; }
+
+    static ExceptionOr<Ref<FetchRequest>> create(ScriptExecutionContext&, Info&&, Init&&);
+    static Ref<FetchRequest> create(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceRequest&& request, FetchOptions&& options, String&& referrer) { return adoptRef(*new FetchRequest(context, WTFMove(body), WTFMove(headers), WTFMove(request), WTFMove(options), WTFMove(referrer))); }
+
+    const String& method() const { return m_request.httpMethod(); }
+    const String& urlString() const;
+    FetchHeaders& headers() { return m_headers.get(); }
+    const FetchHeaders& headers() const { return m_headers.get(); }
+
+    Type type() const { return m_options.type; }
+    Destination destination() const { return m_options.destination; }
+    String referrer() const;
+    ReferrerPolicy referrerPolicy() const { return m_options.referrerPolicy; }
+    Mode mode() const { return m_options.mode; }
+    Credentials credentials() const { return m_options.credentials; }
+    Cache cache() const { return m_options.cache; }
+    Redirect redirect() const { return m_options.redirect; }
+    bool keepalive() const { return m_options.keepAlive; };
+
+    const String& integrity() const { return m_options.integrity; }
 
     ExceptionOr<Ref<FetchRequest>> clone(ScriptExecutionContext&);
 
-    struct InternalRequest {
-        ResourceRequest request;
-        FetchOptions options;
-        String referrer;
-        String integrity;
-    };
+    const FetchOptions& fetchOptions() const { return m_options; }
+    const ResourceRequest& internalRequest() const { return m_request; }
+    const String& internalRequestReferrer() const { return m_referrer; }
+    const URL& url() const { return m_request.url(); }
 
-    const FetchOptions& fetchOptions() const { return m_internalRequest.options; }
-    ResourceRequest internalRequest() const;
-
-    const String& internalRequestReferrer() const { return m_internalRequest.referrer; }
+    ResourceRequest resourceRequest() const;
 
 private:
-    FetchRequest(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&, InternalRequest&&);
+    FetchRequest(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceRequest&&, FetchOptions&&, String&& referrer);
 
-    ExceptionOr<FetchHeaders&> initializeOptions(const Dictionary&);
+    ExceptionOr<void> initializeOptions(const Init&);
+    ExceptionOr<void> initializeWith(FetchRequest&, Init&&);
+    ExceptionOr<void> initializeWith(const String&, Init&&);
+    ExceptionOr<void> setBody(FetchBody::Init&&);
+    ExceptionOr<void> setBody(FetchRequest&);
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
 
-    InternalRequest m_internalRequest;
+
+    ResourceRequest m_request;
+    FetchOptions m_options;
+    String m_referrer;
     mutable String m_requestURL;
 };
 
-inline FetchRequest::FetchRequest(ScriptExecutionContext& context, Optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, InternalRequest&& internalRequest)
+inline FetchRequest::FetchRequest(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceRequest&& request, FetchOptions&& options, String&& referrer)
     : FetchBodyOwner(context, WTFMove(body), WTFMove(headers))
-    , m_internalRequest(WTFMove(internalRequest))
+    , m_request(WTFMove(request))
+    , m_options(WTFMove(options))
+    , m_referrer(WTFMove(referrer))
 {
-}
-
-inline auto FetchRequest::cache() const -> Cache
-{
-    return m_internalRequest.options.cache;
-}
-
-inline auto FetchRequest::credentials() const -> Credentials
-{
-    return m_internalRequest.options.credentials;
-}
-
-inline auto FetchRequest::destination() const -> Destination
-{
-    return m_internalRequest.options.destination;
-}
-
-inline auto FetchRequest::mode() const -> Mode
-{
-    return m_internalRequest.options.mode;
-}
-
-inline auto FetchRequest::redirect() const -> Redirect
-{
-    return m_internalRequest.options.redirect;
-}
-
-inline auto FetchRequest::referrerPolicy() const -> ReferrerPolicy
-{
-    return m_internalRequest.options.referrerPolicy;
-}
-
-inline auto FetchRequest::type() const -> Type
-{
-    return m_internalRequest.options.type;
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

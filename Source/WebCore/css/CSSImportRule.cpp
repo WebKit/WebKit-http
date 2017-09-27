@@ -23,11 +23,7 @@
 #include "CSSImportRule.h"
 
 #include "CSSStyleSheet.h"
-#include "CachedCSSStyleSheet.h"
-#include "CachedResourceLoader.h"
-#include "Document.h"
 #include "MediaList.h"
-#include "SecurityOrigin.h"
 #include "StyleRuleImport.h"
 #include "StyleSheetContents.h"
 #include <wtf/text/StringBuilder.h>

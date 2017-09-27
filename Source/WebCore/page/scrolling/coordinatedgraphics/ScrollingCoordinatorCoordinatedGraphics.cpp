@@ -24,10 +24,9 @@
  */
 
 #include "config.h"
+#include "ScrollingCoordinatorCoordinatedGraphics.h"
 
 #if USE(COORDINATED_GRAPHICS)
-
-#include "ScrollingCoordinatorCoordinatedGraphics.h"
 
 #include "CoordinatedGraphicsLayer.h"
 #include "FrameView.h"
@@ -40,7 +39,6 @@
 #include "ScrollingStateScrollingNode.h"
 #include "ScrollingStateStickyNode.h"
 #include "ScrollingStateTree.h"
-#include "Settings.h"
 
 namespace WebCore {
 
@@ -73,18 +71,26 @@ void ScrollingCoordinatorCoordinatedGraphics::clearStateTree()
     m_scrollingStateTree->clear();
 }
 
-void ScrollingCoordinatorCoordinatedGraphics::updateViewportConstrainedNode(ScrollingNodeID nodeID, const ViewportConstraints& constraints, GraphicsLayer* graphicsLayer)
+void ScrollingCoordinatorCoordinatedGraphics::updateNodeLayer(ScrollingNodeID nodeID, GraphicsLayer* graphicsLayer)
 {
-    ASSERT(supportsFixedPositionLayers());
+    ScrollingStateNode* node = m_scrollingStateTree->stateNodeForID(nodeID);
+    if (!node)
+        return;
 
+    node->setLayer(graphicsLayer);
+}
+
+void ScrollingCoordinatorCoordinatedGraphics::updateNodeViewportConstraints(ScrollingNodeID nodeID, const ViewportConstraints& constraints)
+{
     ScrollingStateNode* node = m_scrollingStateTree->stateNodeForID(nodeID);
     if (!node)
         return;
 
     switch (constraints.constraintType()) {
     case ViewportConstraints::FixedPositionConstraint: {
-        downcast<CoordinatedGraphicsLayer>(*graphicsLayer).setFixedToViewport(true);
-        downcast<ScrollingStateFixedNode>(*node).setLayer(graphicsLayer);
+        auto& layer = node->layer();
+        if (layer.representsGraphicsLayer())
+            downcast<CoordinatedGraphicsLayer>(static_cast<GraphicsLayer*>(layer))->setFixedToViewport(true);
         break;
     }
     case ViewportConstraints::StickyPositionConstraint:

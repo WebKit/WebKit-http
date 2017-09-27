@@ -41,9 +41,9 @@
 
 namespace WTR {
 
-void computeMD5HashStringForCairoSurface(cairo_surface_t* surface, char hashString[33])
+static void computeMD5HashStringForCairoSurface(cairo_surface_t* surface, char hashString[33])
 {
-    ASSERT(cairo_image_surface_get_format(surface) == CAIRO_FORMAT_ARGB32); // ImageDiff assumes 32 bit RGBA, we must as well.
+    ASSERT(cairo_image_surface_get_format(surface) == CAIRO_FORMAT_ARGB32 || cairo_image_surface_get_format(surface) == CAIRO_FORMAT_RGB24);
 
     size_t pixelsHigh = cairo_image_surface_get_height(surface);
     size_t pixelsWide = cairo_image_surface_get_width(surface);
@@ -106,9 +106,17 @@ static void paintRepaintRectOverlay(cairo_surface_t* surface, WKArrayRef repaint
     cairo_destroy(context);
 }
 
-void TestInvocation::dumpPixelsAndCompareWithExpected(WKImageRef image, WKArrayRef repaintRects, SnapshotResultType)
+void TestInvocation::dumpPixelsAndCompareWithExpected(SnapshotResultType snapshotType, WKArrayRef repaintRects, WKImageRef image)
 {
-    cairo_surface_t* surface = WKImageCreateCairoSurface(image);
+    cairo_surface_t* surface = nullptr;
+    switch (snapshotType) {
+    case SnapshotResultType::WebContents:
+        surface = WKImageCreateCairoSurface(image);
+        break;
+    case SnapshotResultType::WebView:
+        surface = TestController::singleton().mainWebView()->windowSnapshotImage();
+        break;
+    }
 
     if (repaintRects)
         paintRepaintRectOverlay(surface, repaintRects);

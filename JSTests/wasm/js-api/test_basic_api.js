@@ -1,7 +1,7 @@
 import * as assert from '../assert.js';
 import * as utilities from '../utilities.js';
 
-const version = 0xC;
+const version = 0x01;
 const emptyModuleArray = Uint8Array.of(0x0, 0x61, 0x73, 0x6d, version, 0x00, 0x00, 0x00);
 const invalidConstructorInputs = [undefined, null, "", 1, {}, []];
 const invalidInstanceImports = [null, "", 1];
@@ -10,6 +10,14 @@ const checkOwnPropertyDescriptor = (obj, prop, expect) => {
     const descriptor = Object.getOwnPropertyDescriptor(obj, prop);
     assert.eq(typeof descriptor.value, expect.typeofvalue);
     assert.eq(descriptor.writable, expect.writable);
+    assert.eq(descriptor.configurable, expect.configurable);
+    assert.eq(descriptor.enumerable, expect.enumerable);
+};
+
+const checkAccessorOwnPropertyDescriptor = (obj, prop, expect) => {
+    const descriptor = Object.getOwnPropertyDescriptor(obj, prop);
+    assert.eq(typeof descriptor.value, "undefined");
+    assert.eq(typeof descriptor.writable, "undefined");
     assert.eq(descriptor.configurable, expect.configurable);
     assert.eq(descriptor.enumerable, expect.enumerable);
 };
@@ -24,6 +32,7 @@ const constructorProperties = {
     "Memory":       { typeofvalue: "function", writable: true, configurable: true, enumerable: false, length: 1 },
     "Table":        { typeofvalue: "function", writable: true, configurable: true, enumerable: false, length: 1 },
     "CompileError": { typeofvalue: "function", writable: true, configurable: true, enumerable: false, length: 1 },
+    "LinkError":    { typeofvalue: "function", writable: true, configurable: true, enumerable: false, length: 1 },
     "RuntimeError": { typeofvalue: "function", writable: true, configurable: true, enumerable: false, length: 1 },
 };
 
@@ -48,16 +57,18 @@ for (const c in constructorProperties) {
     assert.eq(WebAssembly[c].length, constructorProperties[c].length);
     checkOwnPropertyDescriptor(WebAssembly, c, constructorProperties[c]);
     checkOwnPropertyDescriptor(WebAssembly[c], "prototype", { typeofvalue: "object", writable: false, configurable: false, enumerable: false });
-    assert.throws(() => WebAssembly[c](), TypeError, `calling WebAssembly.${c} constructor without new is invalid`);
+    if (["CompileError", "LinkError", "RuntimeError"].indexOf(c) >= 0)
+        WebAssembly[c](); // Per spec, the WebAssembly.*Error types match ye olden JavaScript NativeError behavior: they can be constructed without `new`.
+    else
+        assert.throws(() => WebAssembly[c](), TypeError, `calling WebAssembly.${c} constructor without new is invalid`);
     switch (c) {
     case "Module":
         for (const invalid of invalidConstructorInputs)
-            assert.throws(() => new WebAssembly[c](invalid), TypeError, `first argument to WebAssembly.Module must be an ArrayBufferView or an ArrayBuffer (evaluating 'new WebAssembly[c](invalid)')`);
+            assert.throws(() => new WebAssembly[c](invalid), TypeError, `first argument must be an ArrayBufferView or an ArrayBuffer (evaluating 'new WebAssembly[c](invalid)')`);
         for (const buffer of [new ArrayBuffer(), new DataView(new ArrayBuffer()), new Int8Array(), new Uint8Array(), new Uint8ClampedArray(), new Int16Array(), new Uint16Array(), new Int32Array(), new Uint32Array(), new Float32Array(), new Float64Array()])
             // FIXME the following should be WebAssembly.CompileError. https://bugs.webkit.org/show_bug.cgi?id=163768
-            assert.throws(() => new WebAssembly[c](buffer), Error, `Module is 0 bytes, expected at least 8 bytes (evaluating 'new WebAssembly[c](buffer)')`);
+            assert.throws(() => new WebAssembly[c](buffer), Error, `WebAssembly.Module doesn't parse at byte 0 / 0: expected a module of at least 8 bytes (evaluating 'new WebAssembly[c](buffer)')`);
         assert.instanceof(new WebAssembly[c](emptyModuleArray), WebAssembly.Module);
-        // FIXME test neutered TypedArray and TypedArrayView. https://bugs.webkit.org/show_bug.cgi?id=163899
         break;
     case "Instance":
         for (const invalid of invalidConstructorInputs)
@@ -67,37 +78,51 @@ for (const c in constructorProperties) {
         for (const invalid of invalidInstanceImports)
             assert.throws(() => new WebAssembly[c](new WebAssembly.Module(emptyModuleArray), invalid), TypeError, `second argument to WebAssembly.Instance must be undefined or an Object (evaluating 'new WebAssembly[c](new WebAssembly.Module(emptyModuleArray), invalid)')`);
         assert.isNotUndef(instance.exports);
-        checkOwnPropertyDescriptor(instance, "exports", { typeofvalue: "object", writable: true, configurable: true, enumerable: true });
+        checkAccessorOwnPropertyDescriptor(WebAssembly.Instance.prototype, "exports", { configurable: true, enumerable: false });
+        assert.throws(() => WebAssembly.Instance.prototype.exports = undefined, TypeError, `Attempted to assign to readonly property.`);
+        assert.throws(() => WebAssembly.Instance.prototype.exports, TypeError, `expected |this| value to be an instance of WebAssembly.Instance`);
         assert.isUndef(instance.exports.__proto__);
         assert.eq(Reflect.isExtensible(instance.exports), false);
-        assert.eq(Symbol.iterator in instance.exports, true);
+        assert.eq(Symbol.iterator in instance.exports, false);
         assert.eq(Symbol.toStringTag in instance.exports, true);
+        assert.eq(Object.getOwnPropertySymbols(instance.exports).length, 1);
+        assert.eq(Object.getOwnPropertySymbols(instance.exports)[0], Symbol.toStringTag);
+        assert.throws(() => instance.exports[Symbol.toStringTag] = 42, TypeError, `Attempted to assign to readonly property.`);
         break;
     case "Memory":
-        // FIXME Implement and test these APIs further. For now they just throw. https://bugs.webkit.org/show_bug.cgi?id=159775
-        assert.throws(() => new WebAssembly[c](), Error, `WebAssembly doesn't yet implement the ${c} constructor property`);
+        new WebAssembly.Memory({initial: 20});
         break;
     case "Table":
-        // FIXME Implement and test these APIs further. For now they just throw. https://bugs.webkit.org/show_bug.cgi?id=159775
-        assert.throws(() => new WebAssembly[c](), Error, `WebAssembly doesn't yet implement the ${c} constructor property`);
+        new WebAssembly.Table({initial: 20, element: "anyfunc"});
+        new WebAssembly.Table({initial: 20, maximum: 20, element: "anyfunc"});
+        new WebAssembly.Table({initial: 20, maximum: 25, element: "anyfunc"});
         break;
     case "CompileError":
+    case "LinkError":
     case "RuntimeError": {
-        const e = new WebAssembly[c];
-        assert.eq(e instanceof WebAssembly[c], true);
-        assert.eq(e instanceof Error, true);
-        assert.eq(e instanceof TypeError, false);
-        assert.eq(e.message, "");
-        assert.eq(typeof e.stack, "string");
-        const sillyString = "uh-oh!";
-        const e2 = new WebAssembly[c](sillyString);
-        assert.eq(e2.message, sillyString);
+        {
+            const e = new WebAssembly[c];
+            assert.eq(e instanceof WebAssembly[c], true);
+            assert.eq(e instanceof Error, true);
+            assert.eq(e instanceof TypeError, false);
+            assert.eq(e.message, "");
+            assert.eq(typeof e.stack, "string");
+            const sillyString = "uh-oh!";
+            const e2 = new WebAssembly[c](sillyString);
+            assert.eq(e2.message, sillyString + " (evaluating 'new WebAssembly[c](sillyString)')");
+        }
+        {
+            const e = WebAssembly[c]();
+            assert.eq(e instanceof WebAssembly[c], true);
+            assert.eq(e instanceof Error, true);
+            assert.eq(e instanceof TypeError, false);
+            assert.eq(e.message, "");
+            assert.eq(typeof e.stack, "string");
+            const sillyString = "uh-oh!";
+            const e2 = WebAssembly[c](sillyString);
+            assert.eq(e2.message, sillyString);
+        }
     } break;
     default: throw new Error(`Implementation error: unexpected constructor property "${c}"`);
     }
-}
-
-// FIXME Implement and test these APIs further. For now they just throw. https://bugs.webkit.org/show_bug.cgi?id=159775
-for (const f in functionProperties) {
-    assert.throws(() => WebAssembly[f](), Error, `WebAssembly doesn't yet implement the ${f} function property`);
 }

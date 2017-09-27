@@ -27,7 +27,7 @@
 #include "ComposedTreeIterator.h"
 
 #include "HTMLSlotElement.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -179,9 +179,9 @@ void ComposedTreeIterator::traverseNextLeavingContext()
 {
     while (context().iterator == context().end && m_contextStack.size() > 1) {
         m_contextStack.removeLast();
-        if (context().iterator == context().end)
-            return;
         if (is<HTMLSlotElement>(current()) && advanceInSlot(1))
+            return;
+        if (context().iterator == context().end)
             return;
         context().iterator.traverseNextSkippingChildren();
     }

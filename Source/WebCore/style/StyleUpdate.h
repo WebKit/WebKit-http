@@ -27,11 +27,9 @@
 
 #include "Node.h"
 #include "StyleChange.h"
-#include "StyleRelations.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -45,9 +43,32 @@ class Text;
 namespace Style {
 
 struct ElementUpdate {
+#if !COMPILER_SUPPORTS(NSDMI_FOR_AGGREGATES)
+    ElementUpdate() = default;
+    ElementUpdate(std::unique_ptr<RenderStyle> style, Change change, bool recompositeLayer)
+        : style { WTFMove(style) }
+        , change { change }
+        , recompositeLayer { recompositeLayer }
+    {
+    }
+#endif
     std::unique_ptr<RenderStyle> style;
     Change change { NoChange };
     bool recompositeLayer { false };
+};
+
+struct TextUpdate {
+#if !COMPILER_SUPPORTS(NSDMI_FOR_AGGREGATES)
+    TextUpdate() = default;
+    TextUpdate(unsigned offset, unsigned length)
+        : offset { offset }
+        , length { length }
+    {
+    }
+#endif
+
+    unsigned offset { 0 };
+    unsigned length { std::numeric_limits<unsigned>::max() };
 };
 
 class Update {
@@ -60,7 +81,7 @@ public:
     const ElementUpdate* elementUpdate(const Element&) const;
     ElementUpdate* elementUpdate(const Element&);
 
-    bool textUpdate(const Text&) const;
+    const TextUpdate* textUpdate(const Text&) const;
 
     const RenderStyle* elementStyle(const Element&) const;
     RenderStyle* elementStyle(const Element&);
@@ -70,8 +91,8 @@ public:
     unsigned size() const { return m_elements.size() + m_texts.size(); }
 
     void addElement(Element&, Element* parent, ElementUpdate&&);
-    void addText(Text&, Element* parent);
-    void addText(Text&);
+    void addText(Text&, Element* parent, TextUpdate&&);
+    void addText(Text&, TextUpdate&&);
 
 private:
     void addPossibleRoot(Element*);
@@ -79,7 +100,7 @@ private:
     Document& m_document;
     ListHashSet<ContainerNode*> m_roots;
     HashMap<const Element*, ElementUpdate> m_elements;
-    HashSet<const Text*> m_texts;
+    HashMap<const Text*, TextUpdate> m_texts;
 };
 
 }

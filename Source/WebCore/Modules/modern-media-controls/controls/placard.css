@@ -32,33 +32,34 @@
 
     background-color: black;
     color: rgb(164, 164, 164);
-    
-    font-family: -apple-system;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .placard .container {
-    position: absolute;
-    left: 50%;
-    top: 50%;
     max-width: 402px;
-
-    transform: translate(-50%, -50%);
+    width: 100%;
 }
 
-.placard .icon {
+.placard button {
     position: relative;
-    left: 50%;
-    -webkit-mask-repeat: no-repeat;
-    background-color: rgb(164, 164, 164) !important;
-
+    margin: auto;
     margin-bottom: 10px;
+    pointer-events: none;
+}
 
-    transform: translateX(-50%);
+.placard button > picture {
+    background-color: rgb(164, 164, 164) !important;
 }
 
 .placard .title,
 .placard .description {
+    padding: 0 10px;
     text-align: center;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .placard .title {
@@ -67,4 +68,12 @@
 
 .placard .description {
     font-size: 13px;
+    white-space: initial;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.media-controls:not(.uses-ltr-user-interface-layout-direction) .placard {
+    direction: rtl;
 }

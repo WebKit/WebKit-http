@@ -5,25 +5,43 @@ import json
 import logging
 import platform
 import os
+import sys
 
-from benchmark_runner import BenchmarkRunner
 from browser_driver.browser_driver_factory import BrowserDriverFactory
+from webdriver_benchmark_runner import WebDriverBenchmarkRunner
+from webserver_benchmark_runner import WebServerBenchmarkRunner
 
 
 _log = logging.getLogger(__name__)
+benchmark_runner_subclasses = {
+    WebDriverBenchmarkRunner.name: WebDriverBenchmarkRunner,
+    WebServerBenchmarkRunner.name: WebServerBenchmarkRunner,
+}
+
+
+def default_platform():
+    if sys.platform.startswith('linux'):
+        return 'linux'
+    return 'osx'
+
+
+def default_browser():
+    if sys.platform.startswith('linux'):
+        return 'minibrowser-gtk'
+    return 'safari'
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Automate the browser based performance benchmarks')
     parser.add_argument('--output-file', dest='output', default=None)
     parser.add_argument('--build-directory', dest='buildDir', help='Path to the browser executable. e.g. WebKitBuild/Release/')
-    parser.add_argument('--platform', dest='platform', default='osx', choices=BrowserDriverFactory.available_platforms())
-    # FIXME: Should we add chrome as an option? Well, chrome uses webkit in iOS.
-    parser.add_argument('--browser', dest='browser', default='safari', choices=BrowserDriverFactory.available_browsers())
+    parser.add_argument('--platform', dest='platform', default=default_platform(), choices=BrowserDriverFactory.available_platforms())
+    parser.add_argument('--browser', dest='browser', default=default_browser(), choices=BrowserDriverFactory.available_browsers())
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--local-copy', dest='localCopy', help='Path to a local copy of the benchmark. e.g. PerformanceTests/SunSpider/')
     parser.add_argument('--count', dest='countOverride', type=int, help='Number of times to run the benchmark. e.g. 5')
     parser.add_argument('--device-id', dest='device_id', default=None)
+    parser.add_argument('--driver', dest='driver', default=WebServerBenchmarkRunner.name, choices=benchmark_runner_subclasses.keys())
     parser.add_argument('--no-adjust-unit', dest='scale_unit', action='store_false')
     mutual_group = parser.add_mutually_exclusive_group(required=True)
     mutual_group.add_argument('--read-results-json', dest='json_file', help='Specify file you want to format')
@@ -40,6 +58,12 @@ def parse_args():
     _log.debug('\tplan name\t: %s', args.plan)
 
     return args
+
+
+def run_benchmark_plan(args, plan):
+    benchmark_runner_class = benchmark_runner_subclasses[args.driver]
+    runner = benchmark_runner_class(plan, args.localCopy, args.countOverride, args.buildDir, args.output, args.platform, args.browser, args.scale_unit, args.device_id)
+    runner.execute()
 
 
 def start(args):
@@ -65,8 +89,7 @@ def start(args):
                 continue
             _log.info('Starting benchmark plan: %s' % plan)
             try:
-                runner = BenchmarkRunner(plan, args.localCopy, args.countOverride, args.buildDir, args.output, args.platform, args.browser, args.scale_unit, args.device_id)
-                runner.execute()
+                run_benchmark_plan(args, plan)
                 _log.info('Finished benchmark plan: %s' % plan)
             except KeyboardInterrupt:
                 raise
@@ -76,8 +99,7 @@ def start(args):
         if failed:
             _log.error('The following benchmark plans have failed: %s' % failed)
         return len(failed)
-    runner = BenchmarkRunner(args.plan, args.localCopy, args.countOverride, args.buildDir, args.output, args.platform, args.browser, args.scale_unit, args.device_id)
-    runner.execute()
+    run_benchmark_plan(args, args.plan)
 
 
 def format_logger(logger):

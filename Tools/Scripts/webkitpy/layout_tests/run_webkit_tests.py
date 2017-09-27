@@ -104,11 +104,6 @@ def parse_args(args):
     option_group_definitions.append(("Configuration options", configuration_options()))
     option_group_definitions.append(("Printing Options", printing.print_options()))
 
-    option_group_definitions.append(("EFL-specific Options", [
-        optparse.make_option("--webprocess-cmd-prefix", type="string",
-            default=False, help="Prefix used when spawning the Web process (Debug mode only)"),
-    ]))
-
     option_group_definitions.append(("Feature Switches", [
         optparse.make_option("--complex-text", action="store_true", default=False,
             help="Use the complex text code path for all text (OS X and Windows only)"),
@@ -204,6 +199,8 @@ def parse_args(args):
             default=True, help="Run HTTP and WebSocket tests (default)"),
         optparse.make_option("--no-http", action="store_false", dest="http",
             help="Don't run HTTP and WebSocket tests"),
+        optparse.make_option("--no-http-servers", action="store_false", dest="start_http_servers_if_needed",
+            default=True, help="Don't start HTTP servers"),
         optparse.make_option("--ignore-metrics", action="store_true", dest="ignore_metrics",
             default=False, help="Ignore rendering metrics related information from test "
             "output, only compare the structure of the rendertree."),
@@ -289,13 +286,19 @@ def parse_args(args):
         optparse.make_option("--profiler", action="store",
             help="Output per-test profile information, using the specified profiler."),
         optparse.make_option("--no-timeout", action="store_true", default=False, help="Disable test timeouts"),
-        optparse.make_option("--wayland",  action="store_true", default=False,
-            help="Run the layout tests inside a (virtualized) weston compositor (GTK only)."),
+        optparse.make_option('--display-server', choices=['xvfb', 'xorg', 'weston', 'wayland'], default='xvfb',
+            help='"xvfb": Use a virtualized X11 server. "xorg": Use the current X11 session. '
+                 '"weston": Use a virtualized Weston server. "wayland": Use the current wayland session.'),
     ]))
 
-    option_group_definitions.append(("iOS Simulator Options", [
+    option_group_definitions.append(("iOS Options", [
+        optparse.make_option('--no-install', action='store_const', const=False, default=True, dest='install',
+            help='Skip install step for device and simulator testing'),
+        optparse.make_option('--version', help='Specify the version of iOS to be used. By default, this will adopt the runtime for iOS Simulator.'),
         optparse.make_option('--runtime', help='iOS Simulator runtime identifier (default: latest runtime)'),
         optparse.make_option('--device-type', help='iOS Simulator device type identifier (default: i386 -> iPhone 5, x86_64 -> iPhone 5s)'),
+        optparse.make_option('--dedicated-simulators', action="store_true", default=False,
+            help="If set, dedicated iOS simulators will always be created.  If not set, the script will attempt to use any currently running simulator."),
     ]))
 
     option_group_definitions.append(("Miscellaneous Options", [
@@ -362,6 +365,7 @@ def _print_expectations(port, options, args, logging_stream):
         printer.cleanup()
         return -1
 
+
 def _set_up_derived_options(port, options):
     """Sets the options values that depend on other options values."""
     if not options.child_processes:
@@ -420,8 +424,8 @@ def _set_up_derived_options(port, options):
     if options.run_singly:
         options.verbose = True
 
-    # The GTK+ and EFL ports only support WebKit2 so they always use WKTR.
-    if options.platform in ["efl", "gtk", "wpe"]:
+    # The GTK+ and WPE ports only support WebKit2 so they always use WKTR.
+    if options.platform in ["gtk", "wpe"]:
         options.webkit_test_runner = True
 
 

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CallData.h"
 
+#include "CatchScope.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSFunction.h"
@@ -35,8 +36,9 @@ namespace JSC {
 
 JSValue call(ExecState* exec, JSValue functionObject, CallType callType, const CallData& callData, JSValue thisValue, const ArgList& args)
 {
+    VM& vm = exec->vm();
     ASSERT(callType == CallType::JS || callType == CallType::Host);
-    return exec->interpreter()->executeCall(exec, asObject(functionObject), callType, callData, thisValue, args);
+    return vm.interpreter->executeCall(exec, asObject(functionObject), callType, callData, thisValue, args);
 }
 
 JSValue call(ExecState* exec, JSValue functionObject, CallType callType, const CallData& callData, JSValue thisValue, const ArgList& args, NakedPtr<Exception>& returnedException)

@@ -80,8 +80,15 @@ const assertOpThrows = (opFn, message) => {
 })();
 
 (function SectionsWithSameCustomName() {
-    const b = (new Builder()).Unknown("foo").End();
-    assert.throws(() => b.Unknown("foo"), Error, `Expected falsy: Cannot have two sections with the same name "foo" and ID 0`);
+    const b = (new Builder()).Unknown("foo").Byte(42).End().Unknown("foo").Byte(100).End();
+    const j = JSON.parse(b.json());
+    assert.eq(j.section.length, 2);
+    assert.eq(j.section[0].name, "foo");
+    assert.eq(j.section[0].data.length, 1);
+    assert.eq(j.section[0].data[0], 42);
+    assert.eq(j.section[1].name, "foo");
+    assert.eq(j.section[1].data.length, 1);
+    assert.eq(j.section[1].data[0], 100);
 })();
 
 (function EmptyTypeSection() {
@@ -240,6 +247,57 @@ const assertOpThrows = (opFn, message) => {
         .Export();
     assert.throws(() => e.Function("foo", 0, { params: ["i32"] }), Error, `Not the same: "1" and "0": Re-exporting import "bar" as "foo" has mismatching type`);
 })();
+
+(function StartInvalidNumberedFunction() {
+    const b = (new Builder())
+        .Type().End()
+        .Function().End()
+        .Start(0).End()
+    assert.throws(() => b.Code().End(), Error, `Start section refers to non-existant function '0'`);
+})();
+
+(function StartInvalidNamedFunction() {
+    const b = (new Builder())
+        .Type().End()
+        .Function().End()
+        .Start("foo").End();
+    assert.throws(() => b.Code().End(), Error, `Start section refers to non-existant function 'foo'`);
+})();
+
+(function StartNamedFunction() {
+    const b = (new Builder())
+        .Type().End()
+        .Function().End()
+        .Start("foo").End()
+        .Code()
+            .Function("foo", { params: [] }).End()
+        .End();
+    const j = JSON.parse(b.json());
+    assert.eq(j.section.length, 4);
+    assert.eq(j.section[2].name, "Start");
+    assert.eq(j.section[2].data.length, 1);
+    assert.eq(j.section[2].data[0], 0);
+})();
+
+/* FIXME implement checking of signature https://bugs.webkit.org/show_bug.cgi?id=165658
+(function StartInvalidTypeArg() {
+    const b = (new Builder())
+        .Type().End()
+        .Function().End()
+        .Start("foo").End()
+    assert.throws(() => b.Code().Function("foo", { params: ["i32"] }).End(), Error, `???`);
+})();
+
+(function StartInvalidTypeReturn() {
+    const b = (new Builder())
+        .Type().End()
+        .Function().End()
+        .Start("foo").End()
+    assert.throws(() => b.Code().Function("foo", { params: [], ret: "i32" }).I32Const(42).Ret().End(), Error, `???`);
+})();
+*/
+
+// FIXME test start of import or table. https://bugs.webkit.org/show_bug.cgi?id=165658
 
 (function EmptyCodeSection() {
     const b = new Builder();
@@ -403,7 +461,7 @@ const assertOpThrows = (opFn, message) => {
 })();
 
 (function CheckedOpcodeArgumentsTooMany() {
-    assertOpThrows(f => f.Nop("uh-oh!"), `Not the same: "1" and "0": "nop" expects 0 immediates, got 1`);
+    assertOpThrows(f => f.Nop("uh-oh!"), `Not the same: "1" and "0": "nop" expects exactly 0 immediates, got 1`);
 })();
 
 (function UncheckedOpcodeArgumentsTooMany() {
@@ -411,7 +469,7 @@ const assertOpThrows = (opFn, message) => {
 })();
 
 (function CheckedOpcodeArgumentsNotEnough() {
-    assertOpThrows(f => f.I32Const(), `Not the same: "0" and "1": "i32.const" expects 1 immediates, got 0`);
+    assertOpThrows(f => f.I32Const(), `Not the same: "0" and "1": "i32.const" expects exactly 1 immediate, got 0`);
 })();
 
 (function UncheckedOpcodeArgumentsNotEnough() {
@@ -431,11 +489,11 @@ const assertOpThrows = (opFn, message) => {
 
 (function CallInvalid() {
     for (let c of [-1, 0x100000000, "0", {}, Infinity, -Infinity, NaN, -NaN, null])
-        assertOpThrows(f => f.Call(c), `Expected truthy: Invalid value on call: got "${c}", expected i32`);
+        assertOpThrows(f => f.Call(c), `Expected truthy: Invalid value on call: got "${c}", expected non-negative i32`);
 })();
 
 (function I32ConstValid() {
-    for (let c of [0, 1, 2, 42, 1337, 0xFF, 0xFFFF, 0x7FFFFFFF, 0xFFFFFFFE, 0xFFFFFFFF]) {
+    for (let c of [-100, -1, 0, 1, 2, 42, 1337, 0xFF, 0xFFFF, 0x7FFFFFFF, 0xFFFFFFFE, 0xFFFFFFFF]) {
         const b = (new Builder()).Type().End().Code().Function().I32Const(c).Return().End().End();
         const j = JSON.parse(b.json());
         assert.eq(j.section[1].data[0].code[0].name, "i32.const");
@@ -446,7 +504,7 @@ const assertOpThrows = (opFn, message) => {
 })();
 
 (function I32ConstInvalid() {
-    for (let c of [-1, 0x100000000, 0.1, -0.1, "0", {}, Infinity, null])
+    for (let c of [0x100000000, 0.1, -0.1, "0", {}, Infinity, null])
         assertOpThrows(f => f.I32Const(c), `Expected truthy: Invalid value on i32.const: got "${c}", expected i32`);
 })();
 
@@ -459,7 +517,7 @@ const assertOpThrows = (opFn, message) => {
         assert.eq(j.section[1].data[0].code[0].name, "f32.const");
         assert.eq(j.section[1].data[0].code[0].arguments.length, 0);
         assert.eq(j.section[1].data[0].code[0].immediates.length, 1);
-        assert.eq(j.section[1].data[0].code[0].immediates[0], c);
+        assert.eq(j.section[1].data[0].code[0].immediates[0] === "NEGATIVE_ZERO" ? -0.0 : j.section[1].data[0].code[0].immediates[0], c);
     }
 })();
 
@@ -475,7 +533,7 @@ const assertOpThrows = (opFn, message) => {
         assert.eq(j.section[1].data[0].code[0].name, "f64.const");
         assert.eq(j.section[1].data[0].code[0].arguments.length, 0);
         assert.eq(j.section[1].data[0].code[0].immediates.length, 1);
-        assert.eq(j.section[1].data[0].code[0].immediates[0], c);
+        assert.eq(j.section[1].data[0].code[0].immediates[0] === "NEGATIVE_ZERO" ? -0.0 : j.section[1].data[0].code[0].immediates[0], c);
     }
 })();
 
@@ -568,5 +626,48 @@ const assertOpThrows = (opFn, message) => {
     assert.eq(j.section[1].data[0].code.length, 6);
     assert.eq(j.section[1].data[0].code[3].name, "select");
 })();
-
 // FIXME test type mismatch with select. https://bugs.webkit.org/show_bug.cgi?id=163267
+
+(function MemoryImport() {
+    const builder = (new Builder())
+        .Type().End()
+        .Import()
+            .Memory("__module__", "__field__", {initial: 30, maximum: 31})
+        .End()
+        .Code().End();
+
+    const json = JSON.parse(builder.json());
+    assert.eq(json.section.length, 3);
+    assert.eq(json.section[1].name, "Import");
+    assert.eq(json.section[1].data.length, 1);
+    assert.eq(json.section[1].data[0].module, "__module__");
+    assert.eq(json.section[1].data[0].field, "__field__");
+    assert.eq(json.section[1].data[0].kind, "Memory");
+    assert.eq(json.section[1].data[0].memoryDescription.initial, 30);
+    assert.eq(json.section[1].data[0].memoryDescription.maximum, 31);
+})();
+
+(function DataSection() {
+    const builder = (new Builder())
+        .Memory().InitialMaxPages(64, 64).End()
+        .Data()
+          .Segment([0xff, 0x2a]).Offset(4).End()
+          .Segment([0xde, 0xad, 0xbe, 0xef]).Index(0).Offset(24).End()
+        .End();
+    const json = JSON.parse(builder.json());
+    assert.eq(json.section.length, 2);
+    assert.eq(json.section[1].name, "Data");
+    assert.eq(json.section[1].data.length, 2);
+    assert.eq(json.section[1].data[0].index, 0);
+    assert.eq(json.section[1].data[0].offset, 4);
+    assert.eq(json.section[1].data[0].data.length, 2);
+    assert.eq(json.section[1].data[0].data[0], 0xff);
+    assert.eq(json.section[1].data[0].data[1], 0x2a);
+    assert.eq(json.section[1].data[1].index, 0);
+    assert.eq(json.section[1].data[1].offset, 24);
+    assert.eq(json.section[1].data[1].data.length, 4);
+    assert.eq(json.section[1].data[1].data[0], 0xde);
+    assert.eq(json.section[1].data[1].data[1], 0xad);
+    assert.eq(json.section[1].data[1].data[2], 0xbe);
+    assert.eq(json.section[1].data[1].data[3], 0xef);
+})();

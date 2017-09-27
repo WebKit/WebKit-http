@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,12 +46,16 @@ enum class IDBKeyPathParseError {
 
 void IDBParseKeyPath(const String&, Vector<String>&, IDBKeyPathParseError&);
 IDBKeyPath isolatedCopy(const IDBKeyPath&);
-inline Optional<IDBKeyPath> isolatedCopy(const Optional<IDBKeyPath>& variant)
+inline std::optional<IDBKeyPath> isolatedCopy(const std::optional<IDBKeyPath>& variant)
 {
     if (!variant)
         return { };
     return isolatedCopy(variant.value());
 }
+
+#if !LOG_DISABLED
+String loggingString(const IDBKeyPath&);
+#endif
 
 } // namespace WebCore
 

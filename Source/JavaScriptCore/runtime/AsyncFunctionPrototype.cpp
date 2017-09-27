@@ -38,7 +38,7 @@
 
 namespace JSC {
 
-const ClassInfo AsyncFunctionPrototype::s_info = { "AsyncFunction", &Base::s_info, nullptr, CREATE_METHOD_TABLE(AsyncFunctionPrototype) };
+const ClassInfo AsyncFunctionPrototype::s_info = { "AsyncFunction", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(AsyncFunctionPrototype) };
 
 AsyncFunctionPrototype::AsyncFunctionPrototype(VM& vm, Structure* structure)
     : JSC::JSNonFinalObject(vm, structure)
@@ -48,9 +48,9 @@ AsyncFunctionPrototype::AsyncFunctionPrototype(VM& vm, Structure* structure)
 void AsyncFunctionPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontDelete | ReadOnly | DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "AsyncFunction"), DontEnum | ReadOnly);
+    ASSERT(inherits(vm, info()));
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "AsyncFunction"), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     vm.prototypeMap.addPrototype(this);
 }
 

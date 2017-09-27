@@ -25,18 +25,19 @@
 
 #pragma once
 
+// This include order is necessary to enforce the GBM EGL platform.
+#include <gbm.h>
+#include <epoxy/egl.h>
+
 #include <cairo.h>
 #include <glib.h>
 #include <unordered_map>
 #include <wpe-mesa/view-backend-exportable-dma-buf.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
 
 class HeadlessViewBackend {
 public:
     HeadlessViewBackend();
+    ~HeadlessViewBackend();
 
     struct wpe_view_backend* backend() const;
 
@@ -60,7 +61,7 @@ private:
 
     struct wpe_mesa_view_backend_exportable_dma_buf* m_exportable;
 
-    std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> m_imageMap;
+    std::unordered_map<uint32_t, int32_t> m_exportMap;
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_pendingImage { };
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_lockedImage { };
 

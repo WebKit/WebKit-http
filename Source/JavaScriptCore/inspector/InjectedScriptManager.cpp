@@ -31,6 +31,7 @@
 #include "config.h"
 #include "InjectedScriptManager.h"
 
+#include "CatchScope.h"
 #include "Completion.h"
 #include "InjectedScriptHost.h"
 #include "InjectedScriptSource.h"
@@ -45,9 +46,9 @@ using namespace JSC;
 
 namespace Inspector {
 
-InjectedScriptManager::InjectedScriptManager(InspectorEnvironment& environment, PassRefPtr<InjectedScriptHost> injectedScriptHost)
+InjectedScriptManager::InjectedScriptManager(InspectorEnvironment& environment, Ref<InjectedScriptHost>&& injectedScriptHost)
     : m_environment(environment)
-    , m_injectedScriptHost(injectedScriptHost)
+    , m_injectedScriptHost(WTFMove(injectedScriptHost))
     , m_nextInjectedScriptId(1)
 {
 }
@@ -68,7 +69,7 @@ void InjectedScriptManager::discardInjectedScripts()
     m_scriptStateToId.clear();
 }
 
-InjectedScriptHost* InjectedScriptManager::injectedScriptHost()
+InjectedScriptHost& InjectedScriptManager::injectedScriptHost()
 {
     return m_injectedScriptHost.get();
 }
@@ -138,7 +139,7 @@ JSC::JSObject* InjectedScriptManager::createInjectedScript(const String& source,
     JSLockHolder lock(vm);
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
-    SourceCode sourceCode = makeSource(source);
+    SourceCode sourceCode = makeSource(source, { });
     JSGlobalObject* globalObject = scriptState->lexicalGlobalObject();
     JSValue globalThisValue = scriptState->globalThisValue();
 

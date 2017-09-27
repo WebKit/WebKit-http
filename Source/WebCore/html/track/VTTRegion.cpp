@@ -34,10 +34,9 @@
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "ClientRect.h"
+#include "DOMRect.h"
 #include "DOMTokenList.h"
 #include "ElementChildIterator.h"
-#include "ExceptionCode.h"
 #include "HTMLDivElement.h"
 #include "HTMLParserIdioms.h"
 #include "Logging.h"
@@ -56,7 +55,7 @@ namespace WebCore {
 static const float lineHeight = 5.33;
 
 // Default scrolling animation time period (s).
-static const float scrollTime = 0.433;
+static const Seconds scrollTime { 433_ms };
 
 VTTRegion::VTTRegion(ScriptExecutionContext& context)
     : ContextDestructionObserver(&context)
@@ -82,7 +81,7 @@ void VTTRegion::setId(const String& id)
 ExceptionOr<void> VTTRegion::setWidth(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_width = value;
     return { };
 }
@@ -90,7 +89,7 @@ ExceptionOr<void> VTTRegion::setWidth(double value)
 ExceptionOr<void> VTTRegion::setHeight(int value)
 {
     if (value < 0)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_heightInLines = value;
     return { };
 }
@@ -98,7 +97,7 @@ ExceptionOr<void> VTTRegion::setHeight(int value)
 ExceptionOr<void> VTTRegion::setRegionAnchorX(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_regionAnchor.setX(value);
     return { };
 }
@@ -106,7 +105,7 @@ ExceptionOr<void> VTTRegion::setRegionAnchorX(double value)
 ExceptionOr<void> VTTRegion::setRegionAnchorY(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_regionAnchor.setY(value);
     return { };
 }
@@ -114,7 +113,7 @@ ExceptionOr<void> VTTRegion::setRegionAnchorY(double value)
 ExceptionOr<void> VTTRegion::setViewportAnchorX(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_viewportAnchor.setX(value);
     return { };
 }
@@ -122,7 +121,7 @@ ExceptionOr<void> VTTRegion::setViewportAnchorX(double value)
 ExceptionOr<void> VTTRegion::setViewportAnchorY(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_viewportAnchor.setY(value);
     return { };
 }
@@ -135,7 +134,7 @@ static const AtomicString& upKeyword()
 
 const AtomicString& VTTRegion::scroll() const
 {
-    return m_scroll ? upKeyword() : emptyAtom;
+    return m_scroll ? upKeyword() : emptyAtom();
 }
 
 ExceptionOr<void> VTTRegion::setScroll(const AtomicString& value)
@@ -148,7 +147,7 @@ ExceptionOr<void> VTTRegion::setScroll(const AtomicString& value)
         m_scroll = true;
         return { };
     }
-    return Exception { SYNTAX_ERR };
+    return Exception { SyntaxError };
 }
 
 void VTTRegion::updateParametersFromRegion(const VTTRegion& other)
@@ -311,7 +310,7 @@ void VTTRegion::displayLastTextTrackCueBox()
 
     // Find first cue that is not entirely displayed and scroll it upwards.
     for (auto& child : childrenOfType<Element>(*m_cueContainer)) {
-        Ref<ClientRect> rect = child.getBoundingClientRect();
+        auto rect = child.getBoundingClientRect();
         float childTop = rect->top();
         float childBottom = rect->bottom();
 
@@ -403,7 +402,7 @@ void VTTRegion::startTimer()
     if (m_scrollTimer.isActive())
         return;
 
-    double duration = isScrollingRegion() ? scrollTime : 0;
+    Seconds duration = isScrollingRegion() ? scrollTime : 0_s;
     m_scrollTimer.startOneShot(duration);
 }
 

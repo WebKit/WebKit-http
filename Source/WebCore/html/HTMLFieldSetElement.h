@@ -30,7 +30,6 @@ namespace WebCore {
 
 class FormAssociatedElement;
 class HTMLFormControlsCollection;
-class RenderFieldSet;
 
 class HTMLFieldSetElement final : public HTMLFormControlElement {
 public:
@@ -47,8 +46,6 @@ public:
     void addInvalidDescendant(const HTMLFormControlElement&);
     void removeInvalidDescendant(const HTMLFormControlElement&);
 
-    RenderFieldSet* renderer() const;
-
 private:
     HTMLFieldSetElement(const QualifiedName&, Document&, HTMLFormElement*);
     ~HTMLFieldSetElement();
@@ -61,7 +58,7 @@ private:
     void disabledAttributeChanged() final;
     void disabledStateChanged() final;
     void childrenChanged(const ChildChange&) final;
-    void didMoveToNewDocument(Document* oldDocument) final;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) final;
 
     bool matchesValidPseudoClass() const final;
     bool matchesInvalidPseudoClass() const final;

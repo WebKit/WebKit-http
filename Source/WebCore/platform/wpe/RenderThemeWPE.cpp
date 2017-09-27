@@ -26,16 +26,16 @@
 #include "config.h"
 #include "RenderThemeWPE.h"
 
+#include "NotImplemented.h"
 #include "UserAgentScripts.h"
 #include "UserAgentStyleSheets.h"
-#include "NotImplemented.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-Ref<RenderTheme> RenderTheme::themeForPage(Page*)
+RenderTheme& RenderTheme::singleton()
 {
-    static RenderTheme& theme = RenderThemeWPE::create().leakRef();
+    static NeverDestroyed<RenderThemeWPE> theme;
     return theme;
 }
 
@@ -52,7 +52,7 @@ String RenderThemeWPE::extraDefaultStyleSheet()
 #if ENABLE(VIDEO)
 String RenderThemeWPE::mediaControlsStyleSheet()
 {
-    return String(mediaControlsBaseUserAgentStyleSheet, sizeof(mediaControlsBaseUserAgentStyleSheet));
+    return ASCIILiteral(mediaControlsBaseUserAgentStyleSheet);
 }
 
 String RenderThemeWPE::mediaControlsScript()

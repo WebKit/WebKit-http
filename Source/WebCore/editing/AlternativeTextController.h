@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,56 +27,24 @@
 
 #include "AlternativeTextClient.h"
 #include "DocumentMarker.h"
-#include "FrameSelection.h"
-#include "Range.h"
-#include "TextChecking.h"
+#include "Position.h"
 #include "Timer.h"
-#include "VisibleSelection.h"
 #include <wtf/Noncopyable.h>
+#include <wtf/Variant.h>
 
 namespace WebCore {
 
 class CompositeEditCommand;
-class EditorClient;
 class EditCommand;
 class EditCommandComposition;
+class EditorClient;
 class Event;
 class Frame;
+class Range;
 class TextCheckerClient;
+class VisibleSelection;
+
 struct DictationAlternative;
-
-class AlternativeTextDetails : public RefCounted<AlternativeTextDetails> {
-public:
-    AlternativeTextDetails() { }
-    virtual ~AlternativeTextDetails() { }
-};
-
-struct AlternativeTextInfo {
-    RefPtr<Range> rangeWithAlternative;
-    bool isActive;
-    AlternativeTextType type;
-    String originalText;
-    RefPtr<AlternativeTextDetails> details;
-};
-
-class DictationMarkerDetails : public DocumentMarkerDetails {
-public:
-    static Ref<DictationMarkerDetails> create(const String& originalText, uint64_t dictationContext)
-    {
-        return adoptRef(*new DictationMarkerDetails(originalText, dictationContext));
-    }
-    const String& originalText() const { return m_originalText; }
-    uint64_t dictationContext() const { return m_dictationContext; }
-private:
-    DictationMarkerDetails(const String& originalText, uint64_t dictationContext)
-    : m_dictationContext(dictationContext)
-    , m_originalText(originalText)
-    { }
- 
-    uint64_t m_dictationContext;
-    String m_originalText;
-};
-
 struct TextCheckingResult;
 
 #if USE(AUTOCORRECTION_PANEL)
@@ -99,7 +67,7 @@ public:
     void stopAlternativeTextUITimer() UNLESS_ENABLED({ })
 
     void dismiss(ReasonForDismissingAlternativeText) UNLESS_ENABLED({ })
-    void show(PassRefPtr<Range> rangeToReplace, const String& replacement) UNLESS_ENABLED({ UNUSED_PARAM(rangeToReplace); UNUSED_PARAM(replacement); })
+    void show(Range& rangeToReplace, const String& replacement) UNLESS_ENABLED({ UNUSED_PARAM(rangeToReplace); UNUSED_PARAM(replacement); })
 
     // Return true if correction was applied, false otherwise.
     bool applyAutocorrectionBeforeTypingIfAppropriate() UNLESS_ENABLED({ return false; })
@@ -116,30 +84,40 @@ public:
     void handleCancelOperation() UNLESS_ENABLED({ })
 
     bool hasPendingCorrection() const UNLESS_ENABLED({ return false; })
-    bool isSpellingMarkerAllowed(PassRefPtr<Range> misspellingRange) const UNLESS_ENABLED({ UNUSED_PARAM(misspellingRange); return true; })
+    bool isSpellingMarkerAllowed(Range& misspellingRange) const UNLESS_ENABLED({ UNUSED_PARAM(misspellingRange); return true; })
     bool isAutomaticSpellingCorrectionEnabled() UNLESS_ENABLED({ return false; })
     bool shouldRemoveMarkersUponEditing();
 
-    void recordAutocorrectionResponseReversed(const String& replacedString, PassRefPtr<Range> replacementRange) UNLESS_ENABLED({ UNUSED_PARAM(replacedString); UNUSED_PARAM(replacementRange); })
-    void markReversed(PassRefPtr<Range> changedRange) UNLESS_ENABLED({ UNUSED_PARAM(changedRange); })
-    void markCorrection(PassRefPtr<Range> replacedRange, const String& replacedString) UNLESS_ENABLED({ UNUSED_PARAM(replacedRange); UNUSED_PARAM(replacedString); })
+    void recordAutocorrectionResponse(AutocorrectionResponse, const String& replacedString, Range* replacementRange) UNLESS_ENABLED({ UNUSED_PARAM(replacedString); UNUSED_PARAM(replacementRange); })
+    void markReversed(Range& changedRange) UNLESS_ENABLED({ UNUSED_PARAM(changedRange); })
+    void markCorrection(Range& replacedRange, const String& replacedString) UNLESS_ENABLED({ UNUSED_PARAM(replacedRange); UNUSED_PARAM(replacedString); })
 
     // This function returns false if the replacement should not be carried out.
-    bool processMarkersOnTextToBeReplacedByResult(const TextCheckingResult*, Range* rangeToBeReplaced, const String& stringToBeReplaced) UNLESS_ENABLED({ UNUSED_PARAM(rangeToBeReplaced); UNUSED_PARAM(stringToBeReplaced); return true; });
+    bool processMarkersOnTextToBeReplacedByResult(const TextCheckingResult&, Range& rangeToBeReplaced, const String& stringToBeReplaced) UNLESS_ENABLED({ UNUSED_PARAM(rangeToBeReplaced); UNUSED_PARAM(stringToBeReplaced); return true; });
     void deletedAutocorrectionAtPosition(const Position&, const String& originalString) UNLESS_ENABLED({ UNUSED_PARAM(originalString); })
 
     bool insertDictatedText(const String&, const Vector<DictationAlternative>&, Event*);
-    void removeDictationAlternativesForMarker(const DocumentMarker*);
-    Vector<String> dictationAlternativesForMarker(const DocumentMarker*);
+    void removeDictationAlternativesForMarker(const DocumentMarker&);
+    Vector<String> dictationAlternativesForMarker(const DocumentMarker&);
     void applyDictationAlternative(const String& alternativeString);
 
 private:
 #if USE(AUTOCORRECTION_PANEL)
+    using AutocorrectionReplacement = String;
+    using AlternativeDictationContext = uint64_t;
+
+    struct AlternativeTextInfo {
+        RefPtr<Range> rangeWithAlternative;
+        bool isActive;
+        AlternativeTextType type;
+        String originalText;
+        Variant<AutocorrectionReplacement, AlternativeDictationContext> details;
+    };
+
     String dismissSoon(ReasonForDismissingAlternativeText);
-    void applyAlternativeTextToRange(const Range*, const String& alternative, AlternativeTextType, const Vector<DocumentMarker::MarkerType>&);
+    void applyAlternativeTextToRange(const Range&, const String& alternative, AlternativeTextType, OptionSet<DocumentMarker::MarkerType>);
     void timerFired();
-    void recordAutocorrectionResponseReversed(const String& replacedString, const String& replacementString);
-    void recordSpellcheckerResponseForModifiedCorrection(Range* rangeOfCorrection, const String& corrected, const String& correction);
+    void recordSpellcheckerResponseForModifiedCorrection(Range& rangeOfCorrection, const String& corrected, const String& correction);
     String markerDescriptionForAppliedAlternativeText(AlternativeTextType, DocumentMarker::MarkerType);
 
     bool shouldStartTimerFor(const DocumentMarker&, int endOffset) const;
@@ -153,8 +131,12 @@ private:
     void markPrecedingWhitespaceForDeletedAutocorrectionAfterCommand(EditCommand*);
 
     Timer m_timer;
-    AlternativeTextInfo m_alternativeTextInfo;
+    RefPtr<Range> m_rangeWithAlternative;
+    bool m_isActive;
     bool m_isDismissedByEditing;
+    AlternativeTextType m_type;
+    String m_originalText;
+    Variant<AutocorrectionReplacement, AlternativeDictationContext> m_details;
 
     String m_originalStringForLastDeletedAutocorrection;
     Position m_positionForLastDeletedAutocorrection;

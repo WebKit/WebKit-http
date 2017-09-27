@@ -31,12 +31,9 @@
 
 #pragma once
 
-#if ENABLE(WEB_TIMING)
-
 #include "Performance.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
-#include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -45,30 +42,40 @@ class PerformanceEntry : public RefCounted<PerformanceEntry> {
 public:
     virtual ~PerformanceEntry();
 
-    String name() const;
-    String entryType() const;
-    double startTime() const;
-    double duration() const;
+    String name() const { return m_name; }
+    String entryType() const { return m_entryType; }
+    double startTime() const { return m_startTime; }
+    double duration() const { return m_duration; }
 
-    virtual bool isResource() const { return false; }
-    virtual bool isMark() const { return false; }
-    virtual bool isMeasure() const { return false; }
+    enum class Type {
+        Navigation = 1 << 0,
+        Mark = 1 << 1,
+        Measure = 1 << 2,
+        Resource = 1 << 3,
+    };
 
-    static bool startTimeCompareLessThan(PassRefPtr<PerformanceEntry> a, PassRefPtr<PerformanceEntry> b)
+    Type type() const { return m_type; }
+
+    static std::optional<Type> parseEntryTypeString(const String& entryType);
+
+    bool isResource() const { return m_type == Type::Resource; }
+    bool isMark() const { return m_type == Type::Mark; }
+    bool isMeasure() const { return m_type == Type::Measure; }
+
+    static bool startTimeCompareLessThan(const RefPtr<PerformanceEntry>& a, const RefPtr<PerformanceEntry>& b)
     {
         return a->startTime() < b->startTime();
     }
 
 protected:
-    PerformanceEntry(const String& name, const String& entryType, double startTime, double finishTime);
+    PerformanceEntry(Type, const String& name, const String& entryType, double startTime, double finishTime);
 
 private:
     const String m_name;
     const String m_entryType;
     const double m_startTime;
     const double m_duration;
+    const Type m_type;
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_TIMING)

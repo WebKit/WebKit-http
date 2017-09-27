@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,11 +41,18 @@
 #include <unicode/uenum.h>
 #include <wtf/text/StringBuilder.h>
 
+#if JSC_ICU_HAS_UFIELDPOSITER
+#include <unicode/ufieldpositer.h>
+#endif
+
 namespace JSC {
 
-const ClassInfo IntlDateTimeFormat::s_info = { "Object", &Base::s_info, 0, CREATE_METHOD_TABLE(IntlDateTimeFormat) };
+const ClassInfo IntlDateTimeFormat::s_info = { "Object", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(IntlDateTimeFormat) };
 
+namespace IntlDTFInternal {
 static const char* const relevantExtensionKeys[2] = { "ca", "nu" };
+}
+
 static const size_t indexOfExtensionKeyCa = 0;
 static const size_t indexOfExtensionKeyNu = 1;
 
@@ -54,6 +61,14 @@ void IntlDateTimeFormat::UDateFormatDeleter::operator()(UDateFormat* dateFormat)
     if (dateFormat)
         udat_close(dateFormat);
 }
+
+#if JSC_ICU_HAS_UFIELDPOSITER
+void IntlDateTimeFormat::UFieldPositionIteratorDeleter::operator()(UFieldPositionIterator* iterator) const
+{
+    if (iterator)
+        ufieldpositer_close(iterator);
+}
+#endif
 
 IntlDateTimeFormat* IntlDateTimeFormat::create(VM& vm, Structure* structure)
 {
@@ -75,7 +90,7 @@ IntlDateTimeFormat::IntlDateTimeFormat(VM& vm, Structure* structure)
 void IntlDateTimeFormat::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 void IntlDateTimeFormat::destroy(JSCell* cell)
@@ -90,7 +105,7 @@ void IntlDateTimeFormat::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_boundFormat);
+    visitor.append(thisObject->m_boundFormat);
 }
 
 void IntlDateTimeFormat::setBoundFormat(VM& vm, JSBoundFunction* format)
@@ -177,6 +192,7 @@ static String canonicalizeTimeZoneName(const String& timeZoneName)
     return canonical;
 }
 
+namespace IntlDTFInternal {
 static Vector<String> localeData(const String& locale, size_t keyIndex)
 {
     Vector<String> keyLocaleData;
@@ -307,6 +323,7 @@ static JSObject* toDateTimeOptionsAnyDate(ExecState& exec, JSValue originalOptio
     // 9. Return options.
     return options;
 }
+}
 
 void IntlDateTimeFormat::setFormatsFromPattern(const StringView& pattern)
 {
@@ -421,7 +438,7 @@ void IntlDateTimeFormat::initializeDateTimeFormat(ExecState& exec, JSValue local
     RETURN_IF_EXCEPTION(scope, void());
 
     // 5. Let options be ToDateTimeOptions(options, "any", "date").
-    JSObject* options = toDateTimeOptionsAnyDate(exec, originalOptions);
+    JSObject* options = IntlDTFInternal::toDateTimeOptionsAnyDate(exec, originalOptions);
     // 6. ReturnIfAbrupt(options).
     RETURN_IF_EXCEPTION(scope, void());
 
@@ -437,8 +454,8 @@ void IntlDateTimeFormat::initializeDateTimeFormat(ExecState& exec, JSValue local
 
     // 11. Let localeData be the value of %DateTimeFormat%.[[localeData]].
     // 12. Let r be ResolveLocale( %DateTimeFormat%.[[availableLocales]], requestedLocales, opt, %DateTimeFormat%.[[relevantExtensionKeys]], localeData).
-    const HashSet<String> availableLocales = exec.callee()->globalObject()->intlDateTimeFormatAvailableLocales();
-    HashMap<String, String> resolved = resolveLocale(exec, availableLocales, requestedLocales, localeOpt, relevantExtensionKeys, WTF_ARRAY_LENGTH(relevantExtensionKeys), localeData);
+    const HashSet<String> availableLocales = exec.jsCallee()->globalObject()->intlDateTimeFormatAvailableLocales();
+    HashMap<String, String> resolved = resolveLocale(exec, availableLocales, requestedLocales, localeOpt, IntlDTFInternal::relevantExtensionKeys, WTF_ARRAY_LENGTH(IntlDTFInternal::relevantExtensionKeys), IntlDTFInternal::localeData);
 
     // 13. Set dateTimeFormat.[[locale]] to the value of r.[[locale]].
     m_locale = resolved.get(vm.propertyNames->locale.string());
@@ -820,7 +837,7 @@ JSObject* IntlDateTimeFormat::resolvedOptions(ExecState& exec)
     // Note: In this version of the ECMAScript 2015 Internationalization API, the timeZone property will be the name of the default time zone if no timeZone property was provided in the options object provided to the Intl.DateTimeFormat constructor. The previous version left the timeZone property undefined in this case.
     if (!m_initializedDateTimeFormat) {
         initializeDateTimeFormat(exec, jsUndefined(), jsUndefined());
-        ASSERT_UNUSED(scope, !scope.exception());
+        scope.assertNoException();
     }
 
     JSObject* options = constructEmptyObject(&exec);
@@ -869,7 +886,7 @@ JSValue IntlDateTimeFormat::format(ExecState& exec, double value)
     // 12.3.4 FormatDateTime abstract operation (ECMA-402 2.0)
     if (!m_initializedDateTimeFormat) {
         initializeDateTimeFormat(exec, jsUndefined(), jsUndefined());
-        ASSERT(!scope.exception());
+        scope.assertNoException();
     }
 
     // 1. If x is not a finite Number, then throw a RangeError exception.
@@ -890,6 +907,142 @@ JSValue IntlDateTimeFormat::format(ExecState& exec, double value)
 
     return jsString(&exec, String(result.data(), resultLength));
 }
+
+#if JSC_ICU_HAS_UFIELDPOSITER
+const char* IntlDateTimeFormat::partTypeString(UDateFormatField field)
+{
+    switch (field) {
+    case UDAT_ERA_FIELD:
+        return "era";
+    case UDAT_YEAR_FIELD:
+    case UDAT_YEAR_NAME_FIELD:
+    case UDAT_EXTENDED_YEAR_FIELD:
+        return "year";
+    case UDAT_MONTH_FIELD:
+    case UDAT_STANDALONE_MONTH_FIELD:
+        return "month";
+    case UDAT_DATE_FIELD:
+        return "day";
+    case UDAT_HOUR_OF_DAY1_FIELD:
+    case UDAT_HOUR_OF_DAY0_FIELD:
+    case UDAT_HOUR1_FIELD:
+    case UDAT_HOUR0_FIELD:
+        return "hour";
+    case UDAT_MINUTE_FIELD:
+        return "minute";
+    case UDAT_SECOND_FIELD:
+    case UDAT_FRACTIONAL_SECOND_FIELD:
+        return "second";
+    case UDAT_DAY_OF_WEEK_FIELD:
+    case UDAT_DOW_LOCAL_FIELD:
+    case UDAT_STANDALONE_DAY_FIELD:
+        return "weekday";
+    case UDAT_AM_PM_FIELD:
+#if U_ICU_VERSION_MAJOR_NUM >= 57
+    case UDAT_AM_PM_MIDNIGHT_NOON_FIELD:
+    case UDAT_FLEXIBLE_DAY_PERIOD_FIELD:
+#endif
+        return "dayPeriod";
+    case UDAT_TIMEZONE_FIELD:
+    case UDAT_TIMEZONE_RFC_FIELD:
+    case UDAT_TIMEZONE_GENERIC_FIELD:
+    case UDAT_TIMEZONE_SPECIAL_FIELD:
+    case UDAT_TIMEZONE_LOCALIZED_GMT_OFFSET_FIELD:
+    case UDAT_TIMEZONE_ISO_FIELD:
+    case UDAT_TIMEZONE_ISO_LOCAL_FIELD:
+        return "timeZoneName";
+    // These should not show up because there is no way to specify them in DateTimeFormat options.
+    // If they do, they don't fit well into any of known part types, so consider it a "literal".
+    case UDAT_DAY_OF_YEAR_FIELD:
+    case UDAT_DAY_OF_WEEK_IN_MONTH_FIELD:
+    case UDAT_WEEK_OF_YEAR_FIELD:
+    case UDAT_WEEK_OF_MONTH_FIELD:
+    case UDAT_YEAR_WOY_FIELD:
+    case UDAT_JULIAN_DAY_FIELD:
+    case UDAT_MILLISECONDS_IN_DAY_FIELD:
+    case UDAT_QUARTER_FIELD:
+    case UDAT_STANDALONE_QUARTER_FIELD:
+    case UDAT_RELATED_YEAR_FIELD:
+    case UDAT_TIME_SEPARATOR_FIELD:
+#if U_ICU_VERSION_MAJOR_NUM < 58
+    case UDAT_FIELD_COUNT:
+#endif
+        return "literal";
+    }
+    // Any newer additions to the UDateFormatField enum should just be considered a "literal" part.
+    return "literal";
+}
+
+
+JSValue IntlDateTimeFormat::formatToParts(ExecState& exec, double value)
+{
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    // 12.1.8 FormatDateTimeToParts (ECMA-402 4.0)
+    // https://tc39.github.io/ecma402/#sec-formatdatetimetoparts
+
+    if (!std::isfinite(value))
+        return throwRangeError(&exec, scope, ASCIILiteral("date value is not finite in DateTimeFormat formatToParts()"));
+
+    UErrorCode status = U_ZERO_ERROR;
+    auto fields = std::unique_ptr<UFieldPositionIterator, UFieldPositionIteratorDeleter>(ufieldpositer_open(&status));
+    if (U_FAILURE(status))
+        return throwTypeError(&exec, scope, ASCIILiteral("failed to open field position iterator"));
+
+    status = U_ZERO_ERROR;
+    Vector<UChar, 32> result(32);
+    auto resultLength = udat_formatForFields(m_dateFormat.get(), value, result.data(), result.size(), fields.get(), &status);
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+        status = U_ZERO_ERROR;
+        result.grow(resultLength);
+        udat_formatForFields(m_dateFormat.get(), value, result.data(), resultLength, fields.get(), &status);
+    }
+    if (U_FAILURE(status))
+        return throwTypeError(&exec, scope, ASCIILiteral("failed to format date value"));
+
+    JSGlobalObject* globalObject = exec.jsCallee()->globalObject();
+    JSArray* parts = JSArray::tryCreate(vm, globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous), 0);
+    if (!parts)
+        return throwOutOfMemoryError(&exec, scope);
+
+    auto resultString = String(result.data(), resultLength);
+    auto typePropertyName = Identifier::fromString(&vm, "type");
+    auto literalString = jsString(&exec, ASCIILiteral("literal"));
+
+    int32_t previousEndIndex = 0;
+    int32_t beginIndex = 0;
+    int32_t endIndex = 0;
+    while (previousEndIndex < resultLength) {
+        auto fieldType = ufieldpositer_next(fields.get(), &beginIndex, &endIndex);
+        if (fieldType < 0)
+            beginIndex = endIndex = resultLength;
+
+        if (previousEndIndex < beginIndex) {
+            auto value = jsString(&exec, resultString.substring(previousEndIndex, beginIndex - previousEndIndex));
+            JSObject* part = constructEmptyObject(&exec);
+            part->putDirect(vm, typePropertyName, literalString);
+            part->putDirect(vm, vm.propertyNames->value, value);
+            parts->push(&exec, part);
+            RETURN_IF_EXCEPTION(scope, { });
+        }
+        previousEndIndex = endIndex;
+
+        if (fieldType >= 0) {
+            auto type = jsString(&exec, partTypeString(UDateFormatField(fieldType)));
+            auto value = jsString(&exec, resultString.substring(beginIndex, endIndex - beginIndex));
+            JSObject* part = constructEmptyObject(&exec);
+            part->putDirect(vm, typePropertyName, type);
+            part->putDirect(vm, vm.propertyNames->value, value);
+            parts->push(&exec, part);
+            RETURN_IF_EXCEPTION(scope, { });
+        }
+    }
+
+
+    return parts;
+}
+#endif
 
 } // namespace JSC
 

@@ -35,12 +35,16 @@ namespace WTF {
 class UniquedStringImpl : public StringImpl {
 private:
     UniquedStringImpl() = delete;
+protected:
+    UniquedStringImpl(CreateSymbolTag, const LChar* characters, unsigned length) : StringImpl(CreateSymbol, characters, length) { }
+    UniquedStringImpl(CreateSymbolTag, const UChar* characters, unsigned length) : StringImpl(CreateSymbol, characters, length) { }
+    UniquedStringImpl(CreateSymbolTag) : StringImpl(CreateSymbol) { }
 };
 
 #if !ASSERT_DISABLED
-// UniquedStringImpls created from StaticASCIILiteral will ASSERT
+// UniquedStringImpls created from StaticStringImpl will ASSERT
 // in the generic ValueCheck<T>::checkConsistency
-// as they are not allocated by fastMalloc.
+// as they are not allocated by stringMalloc.
 // We don't currently have any way to detect that case
 // so we ignore the consistency check for all UniquedStringImpls*.
 template<> struct

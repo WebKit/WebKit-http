@@ -1,4 +1,5 @@
 # Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (C) 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -26,7 +27,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from webkitpy.tool.bot.patchanalysistask import PatchAnalysisTask, PatchAnalysisTaskDelegate, UnableToApplyPatch, PatchIsNotValid
+from webkitpy.tool.bot.patchanalysistask import PatchAnalysisTask, PatchAnalysisTaskDelegate, UnableToApplyPatch, PatchIsNotValid, PatchIsNotApplicable
 
 
 class EarlyWarningSystemTaskDelegate(PatchAnalysisTaskDelegate):
@@ -34,9 +35,10 @@ class EarlyWarningSystemTaskDelegate(PatchAnalysisTaskDelegate):
 
 
 class EarlyWarningSystemTask(PatchAnalysisTask):
-    def __init__(self, delegate, patch, should_run_tests=True):
+    def __init__(self, delegate, patch, should_run_tests=True, should_build=True):
         PatchAnalysisTask.__init__(self, delegate, patch)
         self._should_run_tests = should_run_tests
+        self._should_build = should_build
 
     def validate(self):
         self._patch = self._delegate.refetch_patch(self._patch)
@@ -58,10 +60,13 @@ class EarlyWarningSystemTask(PatchAnalysisTask):
             return False
         if not self._apply():
             raise UnableToApplyPatch(self._patch)
-        if not self._build():
-            if not self._build_without_patch():
-                return False
-            return self.report_failure()
+        if not self._check_patch_relevance():
+            raise PatchIsNotApplicable(self._patch)
+        if self._should_build:
+            if not self._build():
+                if not self._build_without_patch():
+                    return False
+                return self.report_failure()
         if not self._should_run_tests:
             return True
         return self._test_patch()

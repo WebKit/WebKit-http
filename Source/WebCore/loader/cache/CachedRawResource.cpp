@@ -36,24 +36,20 @@
 
 namespace WebCore {
 
-CachedRawResource::CachedRawResource(CachedResourceRequest&& request, Type type, SessionID sessionID)
+CachedRawResource::CachedRawResource(CachedResourceRequest&& request, Type type, PAL::SessionID sessionID)
     : CachedResource(WTFMove(request), type, sessionID)
     , m_identifier(0)
     , m_allowEncodedDataReplacement(true)
 {
-    ASSERT(isMainOrMediaOrRawResource());
+    ASSERT(isMainOrMediaOrIconOrRawResource());
 }
 
-const char* CachedRawResource::calculateIncrementalDataChunk(SharedBuffer* data, unsigned& incrementalDataLength)
+std::optional<SharedBufferDataView> CachedRawResource::calculateIncrementalDataChunk(const SharedBuffer* data) const
 {
-    incrementalDataLength = 0;
-    if (!data)
-        return nullptr;
-
-    unsigned previousDataLength = encodedSize();
-    ASSERT(data->size() >= previousDataLength);
-    incrementalDataLength = data->size() - previousDataLength;
-    return data->data() + previousDataLength;
+    size_t previousDataLength = encodedSize();
+    if (!data || data->size() <= previousDataLength)
+        return std::nullopt;
+    return data->getSomeData(previousDataLength);
 }
 
 void CachedRawResource::addDataBuffer(SharedBuffer& data)
@@ -62,10 +58,10 @@ void CachedRawResource::addDataBuffer(SharedBuffer& data)
     ASSERT(dataBufferingPolicy() == BufferData);
     m_data = &data;
 
-    unsigned incrementalDataLength;
-    const char* incrementalData = calculateIncrementalDataChunk(&data, incrementalDataLength);
+    auto incrementalData = calculateIncrementalDataChunk(&data);
     setEncodedSize(data.size());
-    notifyClientsDataWasReceived(incrementalData, incrementalDataLength);
+    if (incrementalData)
+        notifyClientsDataWasReceived(incrementalData->data(), incrementalData->size());
     if (dataBufferingPolicy() == DoNotBufferData) {
         if (m_loader)
             m_loader->setDataBufferingPolicy(DoNotBufferData);
@@ -90,14 +86,15 @@ void CachedRawResource::finishLoading(SharedBuffer* data)
     if (dataBufferingPolicy == BufferData) {
         m_data = data;
 
-        unsigned incrementalDataLength;
-        const char* incrementalData = calculateIncrementalDataChunk(data, incrementalDataLength);
-        if (data)
+        if (auto incrementalData = calculateIncrementalDataChunk(data)) {
             setEncodedSize(data->size());
-        notifyClientsDataWasReceived(incrementalData, incrementalDataLength);
+            notifyClientsDataWasReceived(incrementalData->data(), incrementalData->size());
+        }
     }
 
-    m_allowEncodedDataReplacement = !m_loader->isQuickLookResource();
+#if USE(QUICK_LOOK)
+    m_allowEncodedDataReplacement = m_loader && !m_loader->isQuickLookResource();
+#endif
 
     CachedResource::finishLoading(data);
     if (dataBufferingPolicy == BufferData && this->dataBufferingPolicy() == DoNotBufferData) {
@@ -200,6 +197,13 @@ void CachedRawResource::didSendData(unsigned long long bytesSent, unsigned long 
     CachedResourceClientWalker<CachedRawResourceClient> w(m_clients);
     while (CachedRawResourceClient* c = w.next())
         c->dataSent(*this, bytesSent, totalBytesToBeSent);
+}
+
+void CachedRawResource::finishedTimingForWorkerLoad(ResourceTiming&& resourceTiming)
+{
+    CachedResourceClientWalker<CachedRawResourceClient> w(m_clients);
+    while (CachedRawResourceClient* c = w.next())
+        c->finishedTimingForWorkerLoad(*this, resourceTiming);
 }
 
 void CachedRawResource::switchClientsToRevalidatedResource()

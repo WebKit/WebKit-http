@@ -39,20 +39,13 @@ typedef enum
     WKContentIndeterminateChange    = 1
 }   WKContentChange;
 
-bool WKObservingContentChanges(void);
-
 WEBCORE_EXPORT void WKStopObservingContentChanges(void);
 WEBCORE_EXPORT void WKBeginObservingContentChanges(bool allowsIntedeterminateChanges);
 
 WEBCORE_EXPORT WKContentChange WKObservedContentChange(void);
-void WKSetObservedContentChange(WKContentChange aChange);
 
 WEBCORE_EXPORT int WebThreadCountOfObservedContentModifiers(void);
 WEBCORE_EXPORT void WebThreadClearObservedContentModifiers(void);
-
-bool WebThreadContainsObservedContentModifier(void * aContentModifier);
-void WebThreadAddObservedContentModifier(void * aContentModifier);
-void WebThreadRemoveObservedContentModifier(void * aContentModifier);
 
 #ifdef __cplusplus
 }

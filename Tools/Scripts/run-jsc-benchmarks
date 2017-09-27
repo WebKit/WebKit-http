@@ -51,6 +51,8 @@ V8_PATH = PERFORMANCETESTS_PATH + "SunSpider" + "tests" + "v8-v6"
 MICROBENCHMARKS_PATH = OPENSOURCE_PATH + "JSTests" + "microbenchmarks"
 OCTANE_WRAPPER_PATH = PERFORMANCETESTS_PATH + "Octane" + "wrappers"
 JSBENCH_PATH = PERFORMANCETESTS_PATH + "JSBench"
+SIXSPEED_PATH = PERFORMANCETESTS_PATH + "SixSpeed" + "tests"
+SIXSPEED_WRAPPER_PATH = PERFORMANCETESTS_PATH + "SixSpeed" + "wrappers"
 
 TEMP_PATH = OPENSOURCE_PATH + "BenchmarkTemp"
 
@@ -223,6 +225,7 @@ $includeBrowsermarkJS=false
 $includeBrowsermarkDOM=false
 $includeOctane=true
 $includeCompressionBench = true
+$includeSixSpeed = true
 $measureGC=false
 $benchmarkPattern=nil
 $verbosity=0
@@ -318,6 +321,7 @@ def usage
   puts "                     The default is to run all benchmarks. The above options can"
   puts "                     be combined to run any subset (so --sunspider --dsp will run"
   puts "                     both SunSpider and DSP)."
+  puts "--six-speed          Only run SixSpeed."
   puts "--benchmarks         Only run benchmarks matching the given regular expression."
   puts "--measure-gc         Turn off manual calls to gc(), so that GC time is measured."
   puts "                     Works best with large values of --inner.  You can also say"
@@ -1644,6 +1648,20 @@ class AsmBenchBenchmark
   end
 end
 
+class SixSpeedBenchmark
+  include Benchmark
+
+  def initialize(name, path, iterations)
+    @name = name
+    @path = path
+    @iterations = iterations
+  end
+
+  def emitRunCode(plan)
+    emitBenchRunCode(fullname, plan, MultiFileTimedBenchmarkParameters.new([ensureFile("SixSpeed-#{@name}-wrapper", "#{SIXSPEED_WRAPPER_PATH}/wrapper.js"), ensureFile("SixSpeed-#{@name}", "#{SIXSPEED_PATH}/#{@path}")], simpleCommand("jscRun(#{@iterations});")))
+  end
+end
+
 
 class CompressionBenchBenchmark
   include Benchmark
@@ -2652,6 +2670,7 @@ begin
       $includeBrowsermarkDOM = false
       $includeOctane = false
       $includeCompressionBench = false
+      $includeSixSpeed = false
       $sawBenchOptions = true
     end
   end
@@ -2676,6 +2695,7 @@ begin
                  ['--browsermark-dom', GetoptLong::NO_ARGUMENT],
                  ['--octane', GetoptLong::NO_ARGUMENT],
                  ['--compression-bench', GetoptLong::NO_ARGUMENT],
+                 ['--six-speed', GetoptLong::NO_ARGUMENT],
                  ['--benchmarks', GetoptLong::REQUIRED_ARGUMENT],
                  ['--measure-gc', GetoptLong::OPTIONAL_ARGUMENT],
                  ['--force-vm-kind', GetoptLong::REQUIRED_ARGUMENT],
@@ -2776,6 +2796,9 @@ begin
     when '--compression-bench'
       resetBenchOptionsIfNecessary
       $includeCompressionBench = true
+    when '--six-speed'
+      resetBenchOptionsIfNecessary
+      $includeSixSpeed = true
     when '--benchmarks'
       $benchmarkPattern = Regexp.new(arg)
     when '--measure-gc'
@@ -3029,6 +3052,39 @@ begin
     COMPRESSIONBENCH.add CompressionBenchBenchmark.new(*args)
   }
 
+  SIXSPEED = BenchmarkSuite.new("SixSpeed", :geometricMean, 0)
+  [[ "template_string", 200000000 ],
+   [ "defaults", 100000000 ],
+   [ "map-set-lookup", 200000 ],
+   [ "spread", 1000000 ],
+   [ "object-assign", 600000 ],
+   [ "spread-literal", 1000000 ],
+   [ "map-set", 10000 ],
+   [ "destructuring-simple", 20000000 ],
+   [ "super", 3000000 ],
+   [ "for-of-object", 1000000 ],
+   [ "rest", 500000 ],
+   [ "regex-u", 1000000 ],
+   [ "arrow", 20000000 ],
+   [ "bindings-compound", 20000000 ],
+   [ "classes", 10000000 ],
+   [ "template_string_tag", 2000000 ],
+   [ "map-string", 30000000 ],
+   [ "arrow-declare", 30000000 ],
+   [ "spread-generator", 1000000 ],
+   [ "object-literal-ext", 1000000 ],
+   [ "generator", 3000000 ],
+   [ "arrow-args", 20000000 ],
+   [ "for-of-array", 5000000 ],
+   [ "bindings", 20000000 ],
+   [ "destructuring", 20000000 ],
+   [ "map-set-object", 5000 ],
+  ].each {
+    | name, iterations |
+    SIXSPEED.add SixSpeedBenchmark.new("#{name}.es5", "#{name}/#{name}.es5", iterations)
+    SIXSPEED.add SixSpeedBenchmark.new("#{name}.es6", "#{name}/#{name}.es6", iterations)
+  }
+
   DSPJS = BenchmarkSuite.new("DSP", :geometricMean, 0)
   DSPJS.add DSPJSFiltrrBenchmark.new("filtrr-posterize-tint", "e2")
   DSPJS.add DSPJSFiltrrBenchmark.new("filtrr-tint-contrast-sat-bright", "e5")
@@ -3149,6 +3205,15 @@ begin
       $stderr.puts "Warning: refusing to run CompressionBench because \"CompressionBenchPath\" isn't set in #{$configPath}"
     end
   end
+
+  if $includeSixSpeed and not SIXSPEED.empty?
+    if SIXSPEED_PATH
+      $suites << SIXSPEED
+    else
+      $stderr.puts "Warning: refusing to run SixSpeed because \"SixSpeedPath\" isn't set in #{$configPath}."
+    end
+  end
+
 
   $allSuites = $suites.map{|v| v.suites}.flatten(1)
   
@@ -3283,10 +3348,10 @@ begin
   if $prepare
     File.open("#{BENCH_DATA_PATH}/runscript", "w") {
       | file |
-      file.puts "echo \"HOSTNAME:\\c\""
+      file.puts "echo -e \"HOSTNAME:\\c\""
       file.puts "hostname"
       file.puts "echo"
-      file.puts "echo \"HARDWARE:\\c\""
+      file.puts "echo -e \"HARDWARE:\\c\""
       file.puts "/usr/sbin/sysctl hw.model"
       file.puts "echo"
       file.puts "set -e"
@@ -3296,14 +3361,14 @@ begin
         if $verbosity == 0 and not $silent
           text1 = lpad(idx.to_s,$runPlans.size.to_s.size)+"/"+$runPlans.size.to_s
           text2 = plan.to_s
-          file.puts("echo " + Shellwords.shellescape("\r#{text1} #{rpad(text2,$planpad)}") + "\"\\c\" 1>&2")
-          file.puts("echo " + Shellwords.shellescape("\r#{text1} #{text2}") + "\"\\c\" 1>&2")
+          file.puts("echo -e " + Shellwords.shellescape("\r#{text1} #{rpad(text2,$planpad)}") + "\"\\c\" 1>&2")
+          file.puts("echo -e " + Shellwords.shellescape("\r#{text1} #{text2}") + "\"\\c\" 1>&2")
         end
         plan.emitRunCode
       }
       if $verbosity == 0 and not $silent
-        file.puts("echo " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size} #{' '*($suitepad+1+$benchpad+1+$vmpad)}") + "\"\\c\" 1>&2")
-        file.puts("echo " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size}") + " 1>&2")
+        file.puts("echo -e " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size} #{' '*($suitepad+1+$benchpad+1+$vmpad)}") + "\"\\c\" 1>&2")
+        file.puts("echo -e " + Shellwords.shellescape("\r#{$runPlans.size}/#{$runPlans.size}") + " 1>&2")
       end
     }
   end

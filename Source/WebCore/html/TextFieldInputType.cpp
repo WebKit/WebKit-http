@@ -35,13 +35,14 @@
 #include "BeforeTextInsertedEvent.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "DOMFormData.h"
 #include "Editor.h"
 #include "EventNames.h"
-#include "FormDataList.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "KeyboardEvent.h"
 #include "LocalizedStrings.h"
 #include "NodeRenderStyle.h"
@@ -51,7 +52,6 @@
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
-#include <wtf/text/TextBreakIterator.h>
 #include "TextControlInnerElements.h"
 #include "TextEvent.h"
 #include "TextIterator.h"
@@ -188,29 +188,31 @@ void TextFieldInputType::forwardEvent(Event& event)
             return;
     }
 
-    if (event.isMouseEvent()
-        || event.type() == eventNames().blurEvent
-        || event.type() == eventNames().focusEvent)
-    {
-        element().document().updateStyleIfNeeded();
+    bool isFocusEvent = event.type() == eventNames().focusEvent;
+    bool isBlurEvent = event.type() == eventNames().blurEvent;
+    if (isFocusEvent || isBlurEvent)
+        capsLockStateMayHaveChanged();
+    if (event.isMouseEvent() || isFocusEvent || isBlurEvent)
+        element().forwardEvent(event);
+}
 
-        auto* renderer = element().renderer();
-        if (element().renderer()) {
-            if (event.type() == eventNames().blurEvent) {
-                if (auto* innerTextRenderer = innerTextElement()->renderer()) {
-                    if (auto* innerLayer = innerTextRenderer->layer()) {
-                        bool isLeftToRightDirection = downcast<RenderTextControlSingleLine>(*renderer).style().isLeftToRightDirection();
-                        ScrollOffset scrollOffset(isLeftToRightDirection ? 0 : innerLayer->scrollWidth(), 0);
-                        innerLayer->scrollToOffset(scrollOffset, RenderLayer::ScrollOffsetClamped);
-                    }
-                }
-                capsLockStateMayHaveChanged();
-            } else if (event.type() == eventNames().focusEvent)
-                capsLockStateMayHaveChanged();
+void TextFieldInputType::elementDidBlur()
+{
+    auto* renderer = element().renderer();
+    if (!renderer)
+        return;
 
-            element().forwardEvent(event);
-        }
-    }
+    auto* innerTextRenderer = innerTextElement()->renderer();
+    if (!innerTextRenderer)
+        return;
+
+    auto* innerLayer = innerTextRenderer->layer();
+    if (!innerLayer)
+        return;
+
+    bool isLeftToRightDirection = downcast<RenderTextControlSingleLine>(*renderer).style().isLeftToRightDirection();
+    ScrollOffset scrollOffset(isLeftToRightDirection ? 0 : innerLayer->scrollWidth(), 0);
+    innerLayer->scrollToOffset(scrollOffset, RenderLayer::ScrollOffsetClamped);
 }
 
 void TextFieldInputType::handleFocusEvent(Node* oldFocusedNode, FocusDirection)
@@ -244,12 +246,12 @@ bool TextFieldInputType::needsContainer() const
 
 bool TextFieldInputType::shouldHaveSpinButton() const
 {
-    return RenderTheme::themeForPage(element().document().page())->shouldHaveSpinButton(element());
+    return RenderTheme::singleton().shouldHaveSpinButton(element());
 }
 
 bool TextFieldInputType::shouldHaveCapsLockIndicator() const
 {
-    return RenderTheme::themeForPage(element().document().page())->shouldHaveCapsLockIndicator(element());
+    return RenderTheme::singleton().shouldHaveCapsLockIndicator(element());
 }
 
 void TextFieldInputType::createShadowSubtree()
@@ -378,22 +380,23 @@ bool TextFieldInputType::shouldUseInputMethod() const
     return true;
 }
 
-static bool isASCIILineBreak(UChar c)
+// FIXME: The name of this function doesn't make clear the two jobs it does:
+// 1) Limits the string to a particular number of grapheme clusters.
+// 2) Truncates the string at the first character which is a control character other than tab.
+// FIXME: TextFieldInputType::sanitizeValue doesn't need a limit on grapheme clusters. A limit on code units would do.
+// FIXME: Where does the "truncate at first control character" rule come from?
+static String limitLength(const String& string, unsigned maxNumGraphemeClusters)
 {
-    return c == '\r' || c == '\n';
-}
-
-static String limitLength(const String& string, int maxLength)
-{
-    unsigned newLength = numCharactersInGraphemeClusters(string, maxLength);
-    for (unsigned i = 0; i < newLength; ++i) {
-        const UChar current = string[i];
-        if (current < ' ' && current != '\t') {
-            newLength = i;
-            break;
-        }
-    }
-    return newLength < string.length() ? string.left(newLength) : string;
+    StringView stringView { string };
+    unsigned firstNonTabControlCharacterIndex = stringView.find([] (UChar character) {
+        return character < ' ' && character != '\t';
+    });
+    unsigned limitedLength;
+    if (stringView.is8Bit())
+        limitedLength = std::min(firstNonTabControlCharacterIndex, maxNumGraphemeClusters);
+    else
+        limitedLength = numCharactersInGraphemeClusters(stringView.substring(0, firstNonTabControlCharacterIndex), maxNumGraphemeClusters);
+    return string.left(limitedLength);
 }
 
 static String autoFillButtonTypeToAccessibilityLabel(AutoFillButtonType autoFillButtonType)
@@ -441,7 +444,7 @@ static bool isAutoFillButtonTypeChanged(const AtomicString& attribute, AutoFillB
 
 String TextFieldInputType::sanitizeValue(const String& proposedValue) const
 {
-    return limitLength(proposedValue.removeCharacters(isASCIILineBreak), HTMLInputElement::maxEffectiveLength);
+    return limitLength(proposedValue.removeCharacters(isHTMLLineBreak), HTMLInputElement::maxEffectiveLength);
 }
 
 void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent& event)
@@ -477,13 +480,12 @@ void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent& 
     // Truncate the inserted text to avoid violating the maxLength and other constraints.
     String eventText = event.text();
     unsigned textLength = eventText.length();
-    while (textLength > 0 && isASCIILineBreak(eventText[textLength - 1]))
+    while (textLength > 0 && isHTMLLineBreak(eventText[textLength - 1]))
         textLength--;
     eventText.truncate(textLength);
     eventText.replace("\r\n", " ");
     eventText.replace('\r', ' ');
     eventText.replace('\n', ' ');
-
     event.setText(limitLength(eventText, appendableLength));
 }
 
@@ -511,12 +513,12 @@ void TextFieldInputType::updatePlaceholderText()
     m_placeholder->setInnerText(placeholderText);
 }
 
-bool TextFieldInputType::appendFormData(FormDataList& list, bool multipart) const
+bool TextFieldInputType::appendFormData(DOMFormData& formData, bool multipart) const
 {
-    InputType::appendFormData(list, multipart);
-    const AtomicString& dirnameAttrValue = element().attributeWithoutSynchronization(dirnameAttr);
+    InputType::appendFormData(formData, multipart);
+    auto& dirnameAttrValue = element().attributeWithoutSynchronization(dirnameAttr);
     if (!dirnameAttrValue.isNull())
-        list.appendData(dirnameAttrValue, element().directionForFormData());
+        formData.append(dirnameAttrValue, element().directionForFormData());
     return true;
 }
 

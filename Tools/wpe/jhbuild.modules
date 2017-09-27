@@ -3,23 +3,31 @@
 <?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
 <moduleset>
 
+  <include href="../gstreamer/jhbuild.modules"/>
+
   <metamodule id="webkitwpe-testing-dependencies">
     <dependencies>
       <dep package="glib"/>
       <dep package="libsoup"/>
       <dep package="cairo"/>
+      <dep package="fonts"/>
+      <dep package="dicts"/>
+      <dep package="fontconfig"/>
+      <dep package="freetype6"/>
+      <dep package="harfbuzz"/>
       <dep package="xkbcommon"/>
       <dep package="wayland"/>
-      <dep package="gstreamer"/>
-      <dep package="gst-plugins-base"/>
-      <dep package="gst-plugins-good"/>
-      <dep package="gst-plugins-bad"/>
-      <dep package="gst-libav"/>
+      <dep package="webkit-gstreamer-testing-dependencies"/>
       <dep package="wpe"/>
       <dep package="wpe-mesa"/>
+      <dep package="libgpg-error"/>
+      <dep package="libgcrypt"/>
+      <dep package="libepoxy"/>
+      <dep package="dyz"/>
     </dependencies>
   </metamodule>
 
+  <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
   <repository type="tarball" name="sourceware.org-mirror"
       href="http://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
@@ -31,11 +39,15 @@
   <repository type="tarball" name="wayland.freedesktop.org"
       href="http://wayland.freedesktop.org"/>
   <repository type="git" name="github.com"
-      href="git://github.com"/>
-  <repository type="tarball" name="gstreamer"
-      href="http://gstreamer.freedesktop.org/src/"/>
+      href="https://github.com"/>
+  <repository type="tarball" name="github-tarball"
+      href="https://github.com/"/>
   <repository type="tarball" name="xkbcommon.org"
       href="http://xkbcommon.org"/>
+  <repository type="tarball" name="savannah.gnu.org"
+      href="http://download.savannah.gnu.org/releases/"/>
+  <repository type="tarball" name="gnupg.org"
+      href="https://www.gnupg.org/ftp/gcrypt/"/>
 
   <autotools id="libffi" autogen-sh="configure">
     <branch module="libffi/libffi-3.0.10.tar.gz" version="3.0.10"
@@ -57,7 +69,8 @@
     </branch>
   </autotools>
 
-  <autotools id="glib-networking">
+  <autotools id="glib-networking"
+             autogen-sh="configure">
     <dependencies>
       <dep package="glib"/>
     </dependencies>
@@ -67,6 +80,7 @@
   </autotools>
 
   <autotools id="libsoup"
+             autogen-sh="configure"
              autogenargs="--without-gnome --disable-introspection">
     <dependencies>
       <dep package="glib-networking"/>
@@ -76,12 +90,43 @@
             hash="sha256:ea34dd64fe44343445daf6dd690d0691e9d973468de44878da97371c16d89784"/>
   </autotools>
 
+  <autotools id="fonts" supports-non-srcdir-builds="no"
+             skip-autogen="true">
+    <branch repo="github.com" module="WebKitGTK/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.6"/>
+  </autotools>
+
+  <autotools id="dicts" supports-non-srcdir-builds="no"
+             skip-autogen="true">
+    <branch repo="github.com" module="mrobinson/webkitgtk-test-dicts.git" checkoutdir="webkitgtk-test-dicts" tag="0.0.1"/>
+  </autotools>
+
+  <autotools id="freetype6" autogen-sh="configure">
+    <branch module="freetype/freetype-2.8.tar.bz2" version="2.8"
+            repo="savannah.gnu.org"
+            hash="sha256:a3c603ed84c3c2495f9c9331fe6bba3bb0ee65e06ec331e0a0fb52158291b40b">
+    </branch>
+  </autotools>
+
   <autotools id="fontconfig" autogen-sh="configure">
-    <branch module="software/fontconfig/release/fontconfig-2.8.0.tar.gz" version="2.8.0"
+    <dependencies>
+      <dep package="freetype6"/>
+    </dependencies>
+    <branch module="software/fontconfig/release/fontconfig-2.12.4.tar.bz2" version="2.12.4"
             repo="freedesktop.org"
-            hash="sha256:fa2a1c6eea654d9fce7a4b1220f10c99cdec848dccaf1625c01f076b31382335"
-            md5sum="77e15a92006ddc2adbb06f840d591c0e">
-      <patch file="fontconfig-C-11-requires-a-space-between-literal-and-identifier.patch" strip="1"/>
+            hash="sha256:668293fcc4b3c59765cdee5cee05941091c0879edcc24dfec5455ef83912e45c"/>
+  </autotools>
+
+  <autotools id="harfbuzz" autogen-sh="configure"
+        autogenargs="--with-cairo=no --with-glib=no --with-freetype=yes">
+    <dependencies>
+      <dep package="freetype6"/>
+    </dependencies>
+    <branch module="software/harfbuzz/release/harfbuzz-1.3.3.tar.bz2"
+            version="1.3.3"
+            checkoutdir="harfbuzz-1.3.3"
+            repo="freedesktop.org"
+            hash="sha256:2620987115a4122b47321610dccbcc18f7f121115fd7b88dc8a695c8b66cb3c9"
+            md5sum="97ae15a72a93f1f27324a2b8d9bd3b1d">
     </branch>
   </autotools>
 
@@ -93,7 +138,9 @@
             hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"/>
   </autotools>
 
-  <autotools id="cairo" autogenargs="--enable-egl=yes --enable-glesv2">
+  <autotools id="cairo"
+             autogen-sh="configure"
+             autogenargs="--enable-egl=yes --enable-glesv2">
     <dependencies>
       <dep package="glib"/>
       <dep package="fontconfig"/>
@@ -106,84 +153,19 @@
     </branch>
   </autotools>
 
-  <autotools id="xkbcommon">
+  <autotools id="xkbcommon"
+             autogen-sh="configure">
     <branch module="download/libxkbcommon-0.5.0.tar.xz" version="0.5.0"
             repo="xkbcommon.org"
             hash="sha1:7127993bfb69e13cdff25fb8b3c8f26ce6be5bfa"/>
   </autotools>
 
-  <autotools id="wayland" autogenargs="--disable-documentation">
+  <autotools id="wayland"
+             autogen-sh="configure"
+             autogenargs="--disable-documentation">
     <branch module="releases/wayland-1.9.0.tar.xz" version="1.9.0"
             repo="wayland.freedesktop.org"
             hash="sha256:9c8770720aa0034479735f58a4dc4ca9b172ecfede28f5134312e135b7301efa"/>
-  </autotools>
-
-  <autotools id="orc" autogenargs="--disable-gtk-doc" autogen-sh="configure">
-    <branch module="orc/orc-0.4.17.tar.gz" version="0.4.17"
-            repo="gstreamer"
-            hash="sha256:4fc7cca48c59fff23afee78fb642cdbde001f56401c8f47b95a16578d1d5d7e8"
-            md5sum="af1bf3dab9e69f3c36f389285e2a12a1"/>
-  </autotools>
-
-  <autotools id="gstreamer" autogen-sh="configure" autogenargs="--disable-gtk-doc">
-    <dependencies>
-      <dep package="orc"/>
-    </dependencies>
-    <branch module="gstreamer/gstreamer-${version}.tar.xz" version="1.8.1"
-            repo="gstreamer"
-            hash="sha256:5a3722fb9302dd977c17ced4240293dc777cb716dc98c8cca63d75c27e5e3107"
-            md5sum="711ada79b63e47ac96adb4e5444dc908">
-      <patch file="gstreamer-typefind-Only-push-a-CAPS-event-downstream-if-the-.patch" strip="1"/>
-    </branch>
-  </autotools>
-
-  <autotools id="gst-plugins-base"
-             autogen-sh="configure"
-             autogenargs="--disable-examples --disable-gtk-doc">
-    <dependencies>
-      <dep package="gstreamer"/>
-    </dependencies>
-    <branch module="gst-plugins-base/gst-plugins-base-${version}.tar.xz" version="1.8.1"
-            repo="gstreamer"
-            hash="sha256:15a9de985cd265c344e359f5b19347df4021b7611ed2c2d91917cb900f2fad6f"
-            md5sum="5421edfeb7479d5f5776e917ba30e24e"/>
-  </autotools>
-
-  <autotools id="gst-plugins-good" autogen-sh="configure" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
-    <dependencies>
-      <dep package="gst-plugins-base"/>
-    </dependencies>
-
-    <branch module="gst-plugins-good/gst-plugins-good-${version}.tar.xz" version="1.8.1"
-            repo="gstreamer"
-            hash="sha256:2103e17921d67894e82eafdd64fb9b06518599952fd93e625bfbc83ffead0972"
-            md5sum="3eabe7277681b9bef8a64c312de03d47">
-      <patch file="gst-plugins-good-use-the-tfdt-decode-time.patch" strip="1"/>
-      <patch file="gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch" strip="1"/>
-    </branch>
-  </autotools>
-
-  <autotools id="gst-plugins-bad" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
-    <dependencies>
-      <dep package="gst-plugins-base"/>
-    </dependencies>
-    <branch module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" version="1.8.1"
-            repo="gstreamer"
-            hash="sha256:0bbd58f363734fc0c4a620b2d6fb01d427fdafdbda7b90b4e15d03b751ca40f5"
-            md5sum="e508da2a8a5c3d12264fe3415be2f451">
-      <patch file="gst-plugins-bad-0001-dtls-port-to-OpenSSL-1.1.0.patch" strip="1"/>
-      <patch file="gst-plugins-bad-0002-dtlscertificate-Fix-error-checking-in-RSA_generate_k.patch" strip="1"/>
-    </branch>
-  </autotools>
-
-  <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
-    <dependencies>
-      <dep package="gst-plugins-base"/>
-    </dependencies>
-    <branch module="gst-libav/gst-libav-${version}.tar.xz" version="1.8.1"
-            repo="gstreamer"
-            hash="sha256:44a49108c3531b5ac4f346a2247cd7fbafb0e8ab394394cb6d75a70300b38933"
-            md5sum="85f1a047606ca9e08493d7b6b42df462"/>
   </autotools>
 
   <cmake id="wpe">
@@ -199,6 +181,56 @@
       <dep package="xkbcommon" />
     </dependencies>
     <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend-mesa.git"
-            tag="9945753f9337fd67af098218b7819337aba21141" />
+            tag="b6e2a82dfd5a12761911dc890625ec81d2a012b4" />
   </cmake>
+
+  <autotools id="libgpg-error" autogen-sh="configure">
+    <branch module="libgpg-error/libgpg-error-1.27.tar.bz2"
+            version="1.27"
+            repo="gnupg.org"
+            hash="sha256:4f93aac6fecb7da2b92871bb9ee33032be6a87b174f54abf8ddf0911a22d29d2">
+    </branch>
+  </autotools>
+
+  <autotools id="libgcrypt" autogen-sh="configure">
+    <branch module="libgcrypt/libgcrypt-1.7.6.tar.bz2"
+            version="1.7.6"
+            repo="gnupg.org"
+            hash="sha256:626aafee84af9d2ce253d2c143dc1c0902dda045780cc241f39970fc60be05bc">
+        <patch file="libgcrypt-use-only-dev-urandom-for-testing.patch" strip="1"/>
+    </branch>
+    <dependencies>
+      <dep package="libgpg-error"/>
+    </dependencies>
+  </autotools>
+
+  <autotools id="libepoxy" autogen-sh="configure" autogenargs="--enable-glx=no">
+    <branch module="anholt/libepoxy/releases/download/1.4.3/libepoxy-1.4.3.tar.xz"
+            version="1.4.3" repo="github-tarball"/>
+  </autotools>
+
+  <autotools id="dyz" supports-non-srcdir-builds="no">
+    <branch repo="github.com" module="Igalia/dyz" tag="0880252bac243add39ea54c0797ceb167d775ce9"/>
+  </autotools>
+
+  <meson id="graphene">
+    <branch repo="github.com"
+            module="ebassi/graphene.git"
+            tag="1.6.0"/>
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+  </meson>
+
+  <distutils id="meson" python3="1">
+    <branch repo="github-tarball"
+            version="0.42.0"
+            module="mesonbuild/meson/releases/download/${version}/meson-${version}.tar.gz"
+            checkoutdir="meson-${version}"
+            hash="sha256:a74c7387a3dd8171e931bcd948355f7f9529368eae72c3c22a9beef6c2e73498"/>
+    <dependencies>
+      <dep package="ninja"/>
+    </dependencies>
+  </distutils>
+
 </moduleset>

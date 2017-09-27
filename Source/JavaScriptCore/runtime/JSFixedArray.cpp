@@ -26,11 +26,12 @@
 #include "config.h"
 #include "JSFixedArray.h"
 
+#include "CodeBlock.h"
 #include "JSCInlines.h"
 
 namespace JSC {
 
-const ClassInfo JSFixedArray::s_info = { "JSFixedArray", nullptr, nullptr, CREATE_METHOD_TABLE(JSFixedArray) };
+const ClassInfo JSFixedArray::s_info = { "JSFixedArray", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(JSFixedArray) };
 
 void JSFixedArray::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
@@ -38,6 +39,16 @@ void JSFixedArray::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
     visitor.appendValuesHidden(thisObject->buffer(), thisObject->size());
+}
+
+void JSFixedArray::copyToArguments(ExecState* exec, VirtualRegister firstElementDest, unsigned offset, unsigned length)
+{
+    for (unsigned i = 0; i < length; ++i) {
+        if ((i + offset) < m_size)
+            exec->r(firstElementDest + i) = get(i + offset);
+        else
+            exec->r(firstElementDest + i) = jsUndefined();
+    }
 }
 
 } // namespace JSC

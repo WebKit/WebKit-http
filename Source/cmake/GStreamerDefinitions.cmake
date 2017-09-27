@@ -1,0 +1,12 @@
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_VIDEO PUBLIC ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_VIDEO_TRACK PRIVATE ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEB_AUDIO PUBLIC ON)
+
+WEBKIT_OPTION_DEFINE(USE_GSTREAMER "Whether to use GStreamer support for Media" PRIVATE ON)
+WEBKIT_OPTION_DEFINE(USE_GSTREAMER_GL "Whether to enable support for GStreamer GL" PRIVATE ON)
+WEBKIT_OPTION_DEFINE(USE_GSTREAMER_WEBKIT_HTTP_SRC "Whether to enable support for Media resources loading with WebKit" PRIVATE ON)
+WEBKIT_OPTION_DEFINE(USE_GSTREAMER_MPEGTS "Whether to enable support for MPEG-TS" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(USE_HOLE_PUNCH_EXTERNAL "Transparent hole for the video player, rendering done by external application" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(USE_HOLE_PUNCH_GSTREAMER "Transparent hole for the video player, rendering done by GStreamer and platform dependant sink" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(USE_WESTEROS_SINK "Westeros-Sink to be used as video-sink for GStreamer video player" PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(USE_FUSION_SINK "Fusion-Sink to be used as video-sink for GStreamer video player" PUBLIC OFF)

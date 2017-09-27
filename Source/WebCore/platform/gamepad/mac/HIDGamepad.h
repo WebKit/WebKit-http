@@ -31,6 +31,7 @@
 #include <IOKit/hid/IOHIDDevice.h>
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/UniqueRef.h>
 
 namespace WebCore {
 
@@ -54,6 +55,7 @@ struct HIDGamepadElement {
 
     virtual bool isButton() const { return false; }
     virtual bool isAxis() const { return false; }
+    virtual bool isDPad() const { return false; }
 
     virtual double normalizedValue() = 0;
 };
@@ -67,7 +69,7 @@ struct HIDGamepadButton : HIDGamepadElement {
 
     uint32_t priority;
 
-    bool isButton() const override { return true; }
+    bool isButton() const final { return true; }
 
     // Buttons normalize to the range (0.0) - (1.0)
     double normalizedValue() override
@@ -82,7 +84,7 @@ struct HIDGamepadAxis : HIDGamepadElement {
     {
     }
 
-    bool isAxis() const override { return true; }
+    bool isAxis() const final { return true; }
 
     // Axes normalize to the range (-1.0) - (1.0)
     double normalizedValue() override
@@ -91,13 +93,29 @@ struct HIDGamepadAxis : HIDGamepadElement {
     }
 };
 
+struct HIDGamepadDPad : HIDGamepadElement {
+    HIDGamepadDPad(double min, double max, IOHIDElementRef element)
+        : HIDGamepadElement(min, max, element)
+    {
+    }
+
+    bool isDPad() const final { return true; }
+
+    virtual double normalizedValue() { RELEASE_ASSERT_NOT_REACHED(); }
+};
+
+enum class HIDInputType {
+    ButtonPress,
+    NotAButtonPress,
+};
+
 class HIDGamepad : public PlatformGamepad {
 public:
     HIDGamepad(IOHIDDeviceRef, unsigned index);
 
     IOHIDDeviceRef hidDevice() const { return m_hidDevice.get(); }
 
-    void valueChanged(IOHIDValueRef);
+    HIDInputType valueChanged(IOHIDValueRef);
 
     const Vector<double>& axisValues() const final { return m_axisValues; }
     const Vector<double>& buttonValues() const final { return m_buttonValues; }
@@ -107,6 +125,7 @@ private:
     void initElementsFromArray(CFArrayRef);
 
     bool maybeAddButton(IOHIDElementRef);
+    bool maybeAddDPad(IOHIDElementRef);
     bool maybeAddAxis(IOHIDElementRef);
 
     void getCurrentValueForElement(const HIDGamepadElement&);
@@ -115,8 +134,9 @@ private:
 
     HashMap<IOHIDElementCookie, HIDGamepadElement*> m_elementMap;
 
-    Vector<std::unique_ptr<HIDGamepadButton>> m_buttons;
-    Vector<std::unique_ptr<HIDGamepadAxis>> m_axes;
+    Vector<UniqueRef<HIDGamepadButton>> m_buttons;
+    Vector<UniqueRef<HIDGamepadAxis>> m_axes;
+    Vector<UniqueRef<HIDGamepadDPad>> m_dPads;
     Vector<double> m_buttonValues;
     Vector<double> m_axisValues;
 };

@@ -26,7 +26,10 @@
 #include "config.h"
 #include "TypedArrayCTest.h"
 
-#include "JavaScriptCore.h"
+#include "JavaScript.h"
+#include <limits.h>
+#include <math.h>
+#include <stdio.h>
 #include <wtf/Assertions.h>
 
 extern "C" void JSSynchronousGarbageCollectForDebugging(JSContextRef);

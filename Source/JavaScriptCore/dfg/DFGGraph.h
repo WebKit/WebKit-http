@@ -33,9 +33,7 @@
 #include "DFGArgumentPosition.h"
 #include "DFGBasicBlock.h"
 #include "DFGFrozenValue.h"
-#include "DFGLongLivedState.h"
 #include "DFGNode.h"
-#include "DFGNodeAllocator.h"
 #include "DFGPlan.h"
 #include "DFGPropertyTypeKey.h"
 #include "DFGScannable.h"
@@ -47,6 +45,10 @@
 #include <wtf/Vector.h>
 #include <wtf/StdLibExtras.h>
 
+namespace WTF {
+template <typename T> class SingleRootGraph;
+}
+
 namespace JSC {
 
 class CodeBlock;
@@ -57,13 +59,20 @@ namespace DFG {
 class BackwardsCFG;
 class BackwardsDominators;
 class CFG;
+class CPSCFG;
 class ControlEquivalenceAnalysis;
-class Dominators;
+template <typename T> class Dominators;
+template <typename T> class NaturalLoops;
 class FlowIndexing;
-class NaturalLoops;
-class PrePostNumbering;
-
 template<typename> class FlowMap;
+
+using ArgumentsVector = Vector<Node*, 8>;
+
+using SSACFG = CFG;
+using CPSDominators = Dominators<CPSCFG>;
+using SSADominators = Dominators<SSACFG>;
+using CPSNaturalLoops = NaturalLoops<CPSCFG>;
+using SSANaturalLoops = NaturalLoops<SSACFG>;
 
 #define DFG_NODE_DO_TO_CHILDREN(graph, node, thingToDo) do {            \
         Node* _node = (node);                                           \
@@ -95,16 +104,18 @@ template<typename> class FlowMap;
         }                                                               \
     } while (false)
 
-#define DFG_ASSERT(graph, node, assertion) do {                         \
+#define DFG_ASSERT(graph, node, assertion, ...) do {                    \
         if (!!(assertion))                                              \
             break;                                                      \
-        (graph).handleAssertionFailure(                                 \
+        (graph).logAssertionFailure(                                    \
             (node), __FILE__, __LINE__, WTF_PRETTY_FUNCTION, #assertion); \
+        CRASH_WITH_SECURITY_IMPLICATION_AND_INFO(__VA_ARGS__);          \
     } while (false)
 
-#define DFG_CRASH(graph, node, reason) do {                             \
-        (graph).handleAssertionFailure(                                 \
+#define DFG_CRASH(graph, node, reason, ...) do {                        \
+        (graph).logAssertionFailure(                                    \
             (node), __FILE__, __LINE__, WTF_PRETTY_FUNCTION, (reason)); \
+        CRASH_WITH_SECURITY_IMPLICATION_AND_INFO(__VA_ARGS__);          \
     } while (false)
 
 struct InlineVariableData {
@@ -126,7 +137,7 @@ enum AddSpeculationMode {
 // Nodes that are 'dead' remain in the vector with refCount 0.
 class Graph : public virtual Scannable {
 public:
-    Graph(VM&, Plan&, LongLivedState&);
+    Graph(VM&, Plan&);
     ~Graph();
     
     void changeChild(Edge& edge, Node* newNode)
@@ -186,22 +197,20 @@ public:
     template<typename... Params>
     Node* addNode(Params... params)
     {
-        Node* node = new (m_allocator) Node(params...);
-        addNodeToMapByIndex(node);
-        return node;
+        return m_nodes.addNew(params...);
     }
+
     template<typename... Params>
     Node* addNode(SpeculatedType type, Params... params)
     {
-        Node* node = new (m_allocator) Node(params...);
+        Node* node = m_nodes.addNew(params...);
         node->predict(type);
-        addNodeToMapByIndex(node);
         return node;
     }
 
     void deleteNode(Node*);
-    unsigned maxNodeCount() const { return m_nodesByIndex.size(); }
-    Node* nodeAt(unsigned index) const { return m_nodesByIndex[index]; }
+    unsigned maxNodeCount() const { return m_nodes.size(); }
+    Node* nodeAt(unsigned index) const { return m_nodes[index]; }
     void packNodeIndices();
 
     void dethread();
@@ -213,7 +222,12 @@ public:
     void convertToConstant(Node* node, JSValue value);
     void convertToStrongConstant(Node* node, JSValue value);
     
-    StructureRegistrationResult registerStructure(Structure* structure);
+    RegisteredStructure registerStructure(Structure* structure)
+    {
+        StructureRegistrationResult ignored;
+        return registerStructure(structure, ignored);
+    }
+    RegisteredStructure registerStructure(Structure*, StructureRegistrationResult&);
     void assertIsRegistered(Structure* structure);
     
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
@@ -288,13 +302,44 @@ public:
         Node* left = add->child1().node();
         Node* right = add->child2().node();
 
-        auto isAnyIntSpeculationForAdd = [](SpeculatedType value) {
-            return !!value && (value & (SpecAnyInt | SpecAnyIntAsDouble)) == value;
+        if (hasExitSite(add, Int52Overflow))
+            return false;
+
+        if (Node::shouldSpeculateAnyInt(left, right))
+            return true;
+
+        auto shouldSpeculateAnyIntForAdd = [](Node* node) {
+            auto isAnyIntSpeculationForAdd = [](SpeculatedType value) {
+                return !!value && (value & (SpecAnyInt | SpecAnyIntAsDouble)) == value;
+            };
+
+            // When DoubleConstant node appears, it means that users explicitly write a constant in their code with double form instead of integer form (1.0 instead of 1).
+            // In that case, we should honor this decision: using it as integer is not appropriate.
+            if (node->op() == DoubleConstant)
+                return false;
+            return isAnyIntSpeculationForAdd(node->prediction());
         };
 
-        return isAnyIntSpeculationForAdd(left->prediction())
-            && isAnyIntSpeculationForAdd(right->prediction())
-            && !hasExitSite(add, Int52Overflow);
+        // Allow AnyInt ArithAdd only when the one side of the binary operation should be speculated AnyInt. It is a bit conservative
+        // decision. This is because Double to Int52 conversion is not so cheap. Frequent back-and-forth conversions between Double and Int52
+        // rather hurt the performance. If the one side of the operation is already Int52, the cost for constructing ArithAdd becomes
+        // cheap since only one Double to Int52 conversion could be required.
+        // This recovers some regression in assorted tests while keeping kraken crypto improvements.
+        if (!left->shouldSpeculateAnyInt() && !right->shouldSpeculateAnyInt())
+            return false;
+
+        auto usesAsNumbers = [](Node* node) {
+            NodeFlags flags = node->flags() & NodeBytecodeBackPropMask;
+            if (!flags)
+                return false;
+            return (flags & (NodeBytecodeUsesAsNumber | NodeBytecodeNeedsNegZero | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex)) == flags;
+        };
+
+        // Wrapping Int52 to Value is also not so cheap. Thus, we allow Int52 addition only when the node is used as number.
+        if (!usesAsNumbers(add))
+            return false;
+
+        return shouldSpeculateAnyIntForAdd(left) && shouldSpeculateAnyIntForAdd(right);
     }
     
     bool binaryArithShouldSpeculateInt32(Node* node, PredictionPass pass)
@@ -346,12 +391,26 @@ public:
     
     static const char *opName(NodeType);
     
-    StructureSet* addStructureSet(const StructureSet& structureSet)
+    RegisteredStructureSet* addStructureSet(const StructureSet& structureSet)
     {
+        m_structureSets.append();
+        RegisteredStructureSet* result = &m_structureSets.last();
+
         for (Structure* structure : structureSet)
-            registerStructure(structure);
-        m_structureSet.append(structureSet);
-        return &m_structureSet.last();
+            result->add(registerStructure(structure));
+
+        return result;
+    }
+
+    RegisteredStructureSet* addStructureSet(const RegisteredStructureSet& structureSet)
+    {
+        m_structureSets.append();
+        RegisteredStructureSet* result = &m_structureSets.last();
+
+        for (RegisteredStructure structure : structureSet)
+            result->add(structure);
+
+        return result;
     }
     
     JSGlobalObject* globalObjectFor(CodeOrigin codeOrigin)
@@ -362,7 +421,7 @@ public:
     JSObject* globalThisObjectFor(CodeOrigin codeOrigin)
     {
         JSGlobalObject* object = globalObjectFor(codeOrigin);
-        return jsCast<JSObject*>(object->methodTable()->toThis(object, object->globalExec(), NotStrictMode));
+        return jsCast<JSObject*>(object->methodTable(m_vm)->toThis(object, object->globalExec(), NotStrictMode));
     }
     
     ScriptExecutable* executableFor(InlineCallFrame* inlineCallFrame)
@@ -428,10 +487,10 @@ public:
     BasicBlock* block(BlockIndex blockIndex) const { return m_blocks[blockIndex].get(); }
     BasicBlock* lastBlock() const { return block(numBlocks() - 1); }
 
-    void appendBlock(PassRefPtr<BasicBlock> basicBlock)
+    void appendBlock(Ref<BasicBlock>&& basicBlock)
     {
         basicBlock->index = m_blocks.size();
-        m_blocks.append(basicBlock);
+        m_blocks.append(WTFMove(basicBlock));
     }
     
     void killBlock(BlockIndex blockIndex)
@@ -671,10 +730,8 @@ public:
         return watchpoints().isWatched(globalObject->havingABadTimeWatchpoint());
     }
 
-    bool isWatchingArrayIteratorProtocolWatchpoint(Node* node)
+    bool isWatchingGlobalObjectWatchpoint(JSGlobalObject* globalObject, InlineWatchpointSet& set)
     {
-        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
-        InlineWatchpointSet& set = globalObject->arrayIteratorProtocolWatchpoint();
         if (watchpoints().isWatched(set))
             return true;
 
@@ -689,6 +746,20 @@ public:
         }
 
         return false;
+    }
+
+    bool isWatchingArrayIteratorProtocolWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        InlineWatchpointSet& set = globalObject->arrayIteratorProtocolWatchpoint();
+        return isWatchingGlobalObjectWatchpoint(globalObject, set);
+    }
+
+    bool isWatchingNumberToStringWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        InlineWatchpointSet& set = globalObject->numberToStringWatchpoint();
+        return isWatchingGlobalObjectWatchpoint(globalObject, set);
     }
     
     Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
@@ -720,7 +791,7 @@ public:
     }
 
     AbstractValue inferredValueForProperty(
-        const StructureSet& base, UniquedStringImpl* uid, StructureClobberState = StructuresAreWatched);
+        const RegisteredStructureSet& base, UniquedStringImpl* uid, StructureClobberState = StructuresAreWatched);
 
     // This uses either constant property inference or property type inference to derive a good abstract
     // value for some property accessed with the given abstract value base.
@@ -780,7 +851,7 @@ public:
             // Arguments are always live. This would be redundant if it wasn't for our
             // op_call_varargs inlining. See the comment above.
             exclusionStart = stackOffset + CallFrame::argumentOffsetIncludingThis(0);
-            exclusionEnd = stackOffset + CallFrame::argumentOffsetIncludingThis(inlineCallFrame->arguments.size());
+            exclusionEnd = stackOffset + CallFrame::argumentOffsetIncludingThis(inlineCallFrame->argumentsWithFixup.size());
             
             // We will always have a "this" argument and exclusionStart should be a smaller stack
             // offset than exclusionEnd.
@@ -823,7 +894,7 @@ public:
     unsigned requiredRegisterCountForExit();
     unsigned requiredRegisterCountForExecutionAndExit();
     
-    JSValue tryGetConstantProperty(JSValue base, const StructureSet&, PropertyOffset);
+    JSValue tryGetConstantProperty(JSValue base, const RegisteredStructureSet&, PropertyOffset);
     JSValue tryGetConstantProperty(JSValue base, Structure*, PropertyOffset);
     JSValue tryGetConstantProperty(JSValue base, const StructureAbstractValue&, PropertyOffset);
     JSValue tryGetConstantProperty(const AbstractValue&, PropertyOffset);
@@ -834,46 +905,77 @@ public:
     
     JSArrayBufferView* tryGetFoldableView(JSValue);
     JSArrayBufferView* tryGetFoldableView(JSValue, ArrayMode arrayMode);
+
+    bool canDoFastSpread(Node*, const AbstractValue&);
     
     void registerFrozenValues();
     
     void visitChildren(SlotVisitor&) override;
     
-    NO_RETURN_DUE_TO_CRASH void handleAssertionFailure(
+    void logAssertionFailure(
         std::nullptr_t, const char* file, int line, const char* function,
         const char* assertion);
-    NO_RETURN_DUE_TO_CRASH void handleAssertionFailure(
+    void logAssertionFailure(
         Node*, const char* file, int line, const char* function,
         const char* assertion);
-    NO_RETURN_DUE_TO_CRASH void handleAssertionFailure(
+    void logAssertionFailure(
         BasicBlock*, const char* file, int line, const char* function,
         const char* assertion);
 
     bool hasDebuggerEnabled() const { return m_hasDebuggerEnabled; }
 
-    Dominators& ensureDominators();
-    PrePostNumbering& ensurePrePostNumbering();
-    NaturalLoops& ensureNaturalLoops();
+    CPSDominators& ensureCPSDominators();
+    SSADominators& ensureSSADominators();
+    CPSNaturalLoops& ensureCPSNaturalLoops();
+    SSANaturalLoops& ensureSSANaturalLoops();
     BackwardsCFG& ensureBackwardsCFG();
     BackwardsDominators& ensureBackwardsDominators();
     ControlEquivalenceAnalysis& ensureControlEquivalenceAnalysis();
+    CPSCFG& ensureCPSCFG();
 
-    // This function only makes sense to call after bytecode parsing
+    // These functions only makes sense to call after bytecode parsing
     // because it queries the m_hasExceptionHandlers boolean whose value
     // is only fully determined after bytcode parsing.
+    bool willCatchExceptionInMachineFrame(CodeOrigin codeOrigin)
+    {
+        CodeOrigin ignored;
+        HandlerInfo* ignored2;
+        return willCatchExceptionInMachineFrame(codeOrigin, ignored, ignored2);
+    }
     bool willCatchExceptionInMachineFrame(CodeOrigin, CodeOrigin& opCatchOriginOut, HandlerInfo*& catchHandlerOut);
     
     bool needsScopeRegister() const { return m_hasDebuggerEnabled || m_codeBlock->usesEval(); }
     bool needsFlushedThis() const { return m_codeBlock->usesEval(); }
+
+    void clearCPSCFGData();
+
+    bool isRoot(BasicBlock* block) const
+    {
+        ASSERT_WITH_MESSAGE(!m_isInSSAConversion, "This is not written to work during SSA conversion.");
+
+        if (m_form == SSA) {
+            ASSERT(m_roots.size() == 1);
+            ASSERT(m_roots.contains(this->block(0)));
+            return block == this->block(0);
+        }
+
+        if (m_roots.size() <= 4) {
+            bool result = m_roots.contains(block);
+            ASSERT(result == m_rootToArguments.contains(block));
+            return result;
+        }
+        bool result = m_rootToArguments.contains(block);
+        ASSERT(result == m_roots.contains(block));
+        return result;
+    }
 
     VM& m_vm;
     Plan& m_plan;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
     
-    NodeAllocator& m_allocator;
-
-    Vector< RefPtr<BasicBlock> , 8> m_blocks;
+    Vector<RefPtr<BasicBlock>, 8> m_blocks;
+    Vector<BasicBlock*, 1> m_roots;
     Vector<Edge, 16> m_varArgChildren;
 
     HashMap<EncodedJSValue, FrozenValue*, EncodedJSValueHash, EncodedJSValueHashTraits> m_frozenValueMap;
@@ -885,12 +987,13 @@ public:
     
     // In CPS, this is all of the SetArgument nodes for the arguments in the machine code block
     // that survived DCE. All of them except maybe "this" will survive DCE, because of the Flush
-    // nodes.
+    // nodes. In SSA, this has no meaning. It's empty.
+    HashMap<BasicBlock*, ArgumentsVector> m_rootToArguments;
+
+    // In SSA, this is the argument speculation that we've locked in for an entrypoint block.
     //
-    // In SSA, this is all of the GetStack nodes for the arguments in the machine code block that
-    // may have some speculation in the prologue and survived DCE. Note that to get the speculation
-    // for an argument in SSA, you must use m_argumentFormats, since we still have to speculate
-    // even if the argument got killed. For example:
+    // We must speculate on the argument types at each entrypoint even if operations involving
+    // arguments get killed. For example:
     //
     //     function foo(x) {
     //        var tmp = x + 1;
@@ -908,14 +1011,23 @@ public:
     //
     // If we DCE the ArithAdd and we remove the int check on x, then this won't do the side
     // effects.
-    Vector<Node*, 8> m_arguments;
-    
-    // In CPS, this is meaningless. In SSA, this is the argument speculation that we've locked in.
-    Vector<FlushFormat> m_argumentFormats;
-    
+    //
+    // By convention, entrypoint index 0 is used for the CodeBlock's op_enter entrypoint.
+    // So argumentFormats[0] are the argument formats for the normal call entrypoint.
+    Vector<Vector<FlushFormat>> m_argumentFormats;
+
+    // This maps an entrypoint index to a particular op_catch bytecode offset. By convention,
+    // it'll never have zero as a key because we use zero to mean the op_enter entrypoint.
+    HashMap<unsigned, unsigned> m_entrypointIndexToCatchBytecodeOffset;
+
+    // This is the number of logical entrypoints that we're compiling. This is only used
+    // in SSA. Each EntrySwitch node must have m_numberOfEntrypoints cases. Note, this is
+    // not the same as m_roots.size(). m_roots.size() represents the number of roots in
+    // the CFG. In SSA, m_roots.size() == 1 even if we're compiling more than one entrypoint.
+    unsigned m_numberOfEntrypoints { UINT_MAX };
+
     SegmentedVector<VariableAccessData, 16> m_variableAccessData;
     SegmentedVector<ArgumentPosition, 8> m_argumentPositions;
-    SegmentedVector<StructureSet, 16> m_structureSet;
     Bag<Transition> m_transitions;
     SegmentedVector<NewArrayBufferData, 4> m_newArrayBufferData;
     Bag<BranchData> m_branchData;
@@ -934,11 +1046,13 @@ public:
     HashMap<CodeBlock*, std::unique_ptr<BytecodeKills>> m_bytecodeKills;
     HashSet<std::pair<JSObject*, PropertyOffset>> m_safeToLoad;
     HashMap<PropertyTypeKey, InferredType::Descriptor> m_inferredTypes;
-    Vector<RefPtr<DOMJIT::Patchpoint>> m_domJITPatchpoints;
-    std::unique_ptr<Dominators> m_dominators;
-    std::unique_ptr<PrePostNumbering> m_prePostNumbering;
-    std::unique_ptr<NaturalLoops> m_naturalLoops;
-    std::unique_ptr<CFG> m_cfg;
+    Vector<Ref<Snippet>> m_domJITSnippets;
+    std::unique_ptr<CPSDominators> m_cpsDominators;
+    std::unique_ptr<SSADominators> m_ssaDominators;
+    std::unique_ptr<CPSNaturalLoops> m_cpsNaturalLoops;
+    std::unique_ptr<SSANaturalLoops> m_ssaNaturalLoops;
+    std::unique_ptr<SSACFG> m_ssaCFG;
+    std::unique_ptr<CPSCFG> m_cpsCFG;
     std::unique_ptr<BackwardsCFG> m_backwardsCFG;
     std::unique_ptr<BackwardsDominators> m_backwardsDominators;
     std::unique_ptr<ControlEquivalenceAnalysis> m_controlEquivalenceAnalysis;
@@ -950,7 +1064,7 @@ public:
     HashMap<const StringImpl*, String> m_copiedStrings;
 
 #if USE(JSVALUE32_64)
-    std::unordered_map<int64_t, double*> m_doubleConstantsMap;
+    std::unordered_map<int64_t, double*, std::hash<int64_t>, std::equal_to<int64_t>, FastAllocator<std::pair<const int64_t, double*>>> m_doubleConstantsMap;
     std::unique_ptr<Bag<double>> m_doubleConstants;
 #endif
     
@@ -962,12 +1076,16 @@ public:
     RefCountState m_refCountState;
     bool m_hasDebuggerEnabled;
     bool m_hasExceptionHandlers { false };
+    bool m_isInSSAConversion { false };
+    std::optional<uint32_t> m_maxLocalsForCatchOSREntry;
     std::unique_ptr<FlowIndexing> m_indexingCache;
     std::unique_ptr<FlowMap<AbstractValue>> m_abstractValuesCache;
+    Bag<EntrySwitchData> m_entrySwitchData;
+
+    RegisteredStructure stringStructure;
+    RegisteredStructure symbolStructure;
 
 private:
-    void addNodeToMapByIndex(Node*);
-
     bool isStringPrototypeMethodSane(JSGlobalObject*, UniquedStringImpl*);
 
     void handleSuccessor(Vector<BasicBlock*, 16>& worklist, BasicBlock*, BasicBlock* successor);
@@ -1000,8 +1118,8 @@ private:
         return bytecodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateInt32AndTruncateConstants : DontSpeculateInt32;
     }
 
-    Vector<Node*, 0, UnsafeVectorOverflow> m_nodesByIndex;
-    Vector<unsigned, 0, UnsafeVectorOverflow> m_nodeIndexFreeList;
+    B3::SparseCollection<Node> m_nodes;
+    SegmentedVector<RegisteredStructureSet, 16> m_structureSets;
 };
 
 } } // namespace JSC::DFG

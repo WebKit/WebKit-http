@@ -58,7 +58,7 @@ public:
     MediaSourcePrivate::AddStatus addSourceBuffer(RefPtr<SourceBufferPrivateGStreamer>);
     void removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer>);
     void attachTrack(RefPtr<SourceBufferPrivateGStreamer>, RefPtr<TrackPrivateBase>, GstStructure*, GstCaps*);
-    void reattachTrack(RefPtr<SourceBufferPrivateGStreamer>, RefPtr<TrackPrivateBase>);
+    void reattachTrack(RefPtr<SourceBufferPrivateGStreamer>, RefPtr<TrackPrivateBase>, const char*);
     void notifyDurationChanged();
 
     // From MediaSourceGStreamer.
@@ -66,7 +66,9 @@ public:
 
     // From SourceBufferPrivateGStreamer.
     void flush(AtomicString);
-    void enqueueSample(RefPtr<MediaSample>);
+    void enqueueSample(Ref<MediaSample>&&);
+
+    bool hasFutureData(const MediaTime& start);
 
     bool hasFutureData(const MediaTime& start);
 

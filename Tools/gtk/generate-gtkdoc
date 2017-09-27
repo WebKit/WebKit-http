@@ -80,12 +80,15 @@ def files_to_ignore(source_dirs, headers_with_gtkdoc):
     """
     implementation_files = list(headers_with_gtkdoc)
     for header in headers_with_gtkdoc:
-        def add_file_if_exists(file):
-            if os.path.isfile(file):
-                implementation_files.append(os.path.abspath(file))
-        header_name_without_extension = os.path.splitext(header)[0]
-        add_file_if_exists(header_name_without_extension + ".cpp")
-        add_file_if_exists(header_name_without_extension + ".c")
+        def add_file_if_exists(filename):
+            for dir in source_dirs:
+                file = os.path.join(dir, filename)
+                if os.path.isfile(file):
+                    implementation_files.append(os.path.abspath(file))
+        header_basename_without_extension = os.path.splitext(os.path.basename(header))[0]
+        add_file_if_exists(header_basename_without_extension + ".cpp")
+        add_file_if_exists(header_basename_without_extension + "Gtk.cpp")
+        add_file_if_exists(header_basename_without_extension + ".c")
 
     def file_should_be_ignored(file):
         if os.path.splitext(file)[1] not in ['.h', '.c', '.cpp', '.cc']:
@@ -129,14 +132,12 @@ def get_generator_for_config(config_file, virtual_root, cross_reference_deps = [
     })
 
 def generate_doc(generator, skip_html):
-    print("\nGenerating {0} documentation...".format(generator.module_name))
     generator.generate(not skip_html)
     if generator.saw_warnings:
         print_missing_api(generator)
     return generator.saw_warnings
 
 def rebase_doc(generator):
-    print("\nRebasing {0} documentation...".format(generator.module_name))
     try:
         generator.rebase_installed_docs()
     except Exception:

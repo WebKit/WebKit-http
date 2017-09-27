@@ -38,6 +38,7 @@ namespace WebCore {
 
 class ScrollingStateFixedNode;
 class ScrollingStateScrollingNode;
+class ScrollingTreeFrameScrollingNode;
 
 class ScrollingTreeNode : public RefCounted<ScrollingTreeNode> {
 public:
@@ -60,21 +61,22 @@ public:
     ScrollingTreeNode* parent() const { return m_parent; }
     void setParent(ScrollingTreeNode* parent) { m_parent = parent; }
 
-    typedef Vector<RefPtr<ScrollingTreeNode>> ScrollingTreeChildrenVector;
-    ScrollingTreeChildrenVector* children() { return m_children.get(); }
-    
-    void appendChild(PassRefPtr<ScrollingTreeNode>);
-    void removeChild(ScrollingTreeNode*);
+    Vector<RefPtr<ScrollingTreeNode>>* children() { return m_children.get(); }
 
-    WEBCORE_EXPORT void dump(TextStream&, ScrollingStateTreeAsTextBehavior) const;
+    void appendChild(Ref<ScrollingTreeNode>&&);
+    void removeChild(ScrollingTreeNode&);
+
+    WEBCORE_EXPORT ScrollingTreeFrameScrollingNode* enclosingFrameNode() const;
+
+    WEBCORE_EXPORT void dump(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const;
 
 protected:
     ScrollingTreeNode(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
     ScrollingTree& scrollingTree() const { return m_scrollingTree; }
 
-    std::unique_ptr<ScrollingTreeChildrenVector> m_children;
+    std::unique_ptr<Vector<RefPtr<ScrollingTreeNode>>> m_children;
 
-    WEBCORE_EXPORT virtual void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const;
+    WEBCORE_EXPORT virtual void dumpProperties(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const;
 
 private:
     ScrollingTree& m_scrollingTree;

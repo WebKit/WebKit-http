@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,13 +31,13 @@
 #import "AuthenticationChallenge.h"
 #import "AuthenticationMac.h"
 #import "Logging.h"
-#import "NSURLRequestSPI.h"
 #import "ResourceHandle.h"
 #import "ResourceHandleClient.h"
 #import "ResourceRequest.h"
 #import "ResourceResponse.h"
 #import "SharedBuffer.h"
 #import "WebCoreURLResponse.h"
+#import <pal/spi/cf/CFNetworkSPI.h>
 
 using namespace WebCore;
 
@@ -142,50 +142,12 @@ using namespace WebCore;
         [response _setMIMEType:@"text/html"];
 #endif
 
-#if USE(QUICK_LOOK)
-    bool isQuickLookPreview = false;
-    m_handle->setQuickLookHandle(QuickLookHandle::create(m_handle, connection, response, self));
-    if (m_handle->quickLookHandle()) {
-        response = m_handle->quickLookHandle()->nsResponse();
-        isQuickLookPreview = true;
-    }
-#endif
-
     ResourceResponse resourceResponse(response);
     resourceResponse.setSource(ResourceResponse::Source::Network);
-#if USE(QUICK_LOOK)
-    resourceResponse.setIsQuickLook(isQuickLookPreview);
-#endif
-#if ENABLE(WEB_TIMING)
-    ResourceHandle::getConnectionTimingData(connection, resourceResponse.networkLoadTiming());
-#else
-    UNUSED_PARAM(connection);
-#endif
+    ResourceHandle::getConnectionTimingData(connection, resourceResponse.deprecatedNetworkLoadMetrics());
 
-    m_handle->client()->didReceiveResponse(m_handle, WTFMove(resourceResponse));
+    m_handle->didReceiveResponse(WTFMove(resourceResponse));
 }
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-- (void)connection:(NSURLConnection *)connection didReceiveDataArray:(NSArray *)dataArray
-{
-    UNUSED_PARAM(connection);
-    LOG(Network, "Handle %p delegate connection:%p didReceiveDataArray:%p arraySize:%d", m_handle, connection, dataArray, [dataArray count]);
-
-    if (!dataArray)
-        return;
-
-    if (!m_handle || !m_handle->client())
-        return;
-
-#if USE(QUICK_LOOK)
-    if (m_handle->quickLookHandle() && m_handle->quickLookHandle()->didReceiveDataArray(reinterpret_cast<CFArrayRef>(dataArray)))
-        return;
-#endif
-
-    m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::wrapCFDataArray(reinterpret_cast<CFArrayRef>(dataArray)), -1);
-    // The call to didReceiveData above can cancel a load, and if so, the delegate (self) could have been deallocated by this point.
-}
-#endif
 
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data lengthReceived:(long long)lengthReceived
 {
@@ -205,15 +167,10 @@ using namespace WebCore;
     // However, with today's computers and networking speeds, this won't happen in practice.
     // Could be an issue with a giant local file.
 
-#if USE(QUICK_LOOK)
-    if (m_handle->quickLookHandle() && m_handle->quickLookHandle()->didReceiveData(reinterpret_cast<CFDataRef>(data)))
-        return;
-#endif
-
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
     // -1 means we do not provide any data about transfer size to inspector so it would use
     // Content-Length headers or content size to show transfer size.
-    m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::wrapNSData(data), -1);
+    m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::create(data), -1);
 }
 
 - (void)connection:(NSURLConnection *)connection didSendBodyData:(NSInteger)bytesWritten totalBytesWritten:(NSInteger)totalBytesWritten totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite
@@ -237,12 +194,7 @@ using namespace WebCore;
     if (!m_handle || !m_handle->client())
         return;
 
-#if USE(QUICK_LOOK)
-    if (m_handle->quickLookHandle() && m_handle->quickLookHandle()->didFinishLoading())
-        return;
-#endif
-
-    m_handle->client()->didFinishLoading(m_handle, 0);
+    m_handle->client()->didFinishLoading(m_handle);
 }
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
@@ -253,11 +205,6 @@ using namespace WebCore;
 
     if (!m_handle || !m_handle->client())
         return;
-
-#if USE(QUICK_LOOK)
-    if (m_handle->quickLookHandle())
-        m_handle->quickLookHandle()->didFail();
-#endif
 
     m_handle->client()->didFail(m_handle, error);
 }

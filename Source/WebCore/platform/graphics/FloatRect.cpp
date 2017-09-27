@@ -29,10 +29,10 @@
 
 #include "FloatConversion.h"
 #include "IntRect.h"
-#include "TextStream.h"
 #include <algorithm>
 #include <math.h>
 #include <wtf/MathExtras.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -215,10 +215,9 @@ FloatRect encloseRectToDevicePixels(const FloatRect& rect, float deviceScaleFact
 
 IntRect enclosingIntRect(const FloatRect& rect)
 {
-    IntPoint location = flooredIntPoint(rect.minXMinYCorner());
-    IntPoint maxPoint = ceiledIntPoint(rect.maxXMaxYCorner());
-
-    return IntRect(location, maxPoint - location);
+    FloatPoint location = flooredIntPoint(rect.minXMinYCorner());
+    FloatPoint maxPoint = ceiledIntPoint(rect.maxXMaxYCorner());
+    return IntRect(IntPoint(location), IntSize(maxPoint - location));
 }
 
 IntRect roundedIntRect(const FloatRect& rect)

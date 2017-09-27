@@ -3,7 +3,7 @@ class BuildRequestQueuePage extends PageWithHeading {
     constructor()
     {
         super('build-request-queue-page');
-        this._triggerables = [];
+        this._buildRequestsByTriggerable = new Map;
     }
 
     routeName() { return 'analysis/queue'; }
@@ -11,24 +11,14 @@ class BuildRequestQueuePage extends PageWithHeading {
 
     open(state)
     {
-        var self = this;
-        BuildRequest.fetchTriggerables().then(function (list) {
-            self._triggerables = list.map(function (entry) {
-                var triggerable = {name: entry.name, buildRequests: BuildRequest.cachedRequestsForTriggerableID(entry.id)};
-
-                BuildRequest.fetchForTriggerable(entry.name).then(function (requests) {
-                    triggerable.buildRequests = requests;
-                    self.render();
-                });
-
-                return triggerable;
+        for (let triggerable of Triggerable.all()) {
+            BuildRequest.fetchForTriggerable(triggerable.name()).then((requests) => {
+                this._buildRequestsByTriggerable.set(triggerable, requests);
+                this.enqueueToRender();
             });
-            self.render();
-        });
+        }
 
-        AnalysisTask.fetchAll().then(function () {
-            self.render();
-        });
+        AnalysisTask.fetchAll().then(() => this.enqueueToRender());
 
         super.open(state);
     }
@@ -37,26 +27,33 @@ class BuildRequestQueuePage extends PageWithHeading {
     {
         super.render();
 
-        var referenceTime = Date.now();
+        const referenceTime = Date.now();
         this.renderReplace(this.content().querySelector('.triggerable-list'),
-            this._triggerables.map(this._constructBuildRequestTable.bind(this, referenceTime)));
+            Triggerable.sortByName(Triggerable.all()).map((triggerable) => {
+                const buildRequests = this._buildRequestsByTriggerable.get(triggerable) || [];
+                return this._constructBuildRequestTable(referenceTime, triggerable, buildRequests);
+            }));
     }
 
-    _constructBuildRequestTable(referenceTime, triggerable)
+    _constructBuildRequestTable(referenceTime, triggerable, buildRequests)
     {
-        if (!triggerable.buildRequests.length)
+        if (!buildRequests.length)
             return [];
 
-        var rowList = [];
-        var previousRow = null;
-        var requestCount = 0;
-        var requestCountForGroup = {};
-        for (var request of triggerable.buildRequests) {
-            var groupId = request.testGroupId();
-            if (groupId in requestCountForGroup)
+        const rowList = [];
+        const requestCountForGroup = {};
+        const requestsByGroup = {};
+        let previousRow = null;
+        let requestCount = 0;
+        for (const request of buildRequests) {
+            const groupId = request.testGroupId();
+            if (groupId in requestCountForGroup) {
                 requestCountForGroup[groupId]++;
-            else
-                requestCountForGroup[groupId] = 1
+                requestsByGroup[groupId].push(request);
+            } else {
+                requestCountForGroup[groupId] = 1;
+                requestsByGroup[groupId] = [request];
+            }
 
             if (request.hasFinished())
                 continue;
@@ -72,11 +69,11 @@ class BuildRequestQueuePage extends PageWithHeading {
             previousRow = rowList[rowList.length - 1];
         }
 
-        var element = ComponentBase.createElement;
-        var link = ComponentBase.createLink;
-        var router = this.router();
+        const element = ComponentBase.createElement;
+        const link = ComponentBase.createLink;
+        const router = this.router();
         return element('table', {class: 'build-request-table'}, [
-            element('caption', `${triggerable.name}: ${requestCount} pending requests`),
+            element('caption', `${triggerable.name()}: ${requestCount} pending requests`),
             element('thead', [
                 element('td', 'Request ID'),
                 element('td', 'Platform'),
@@ -87,23 +84,32 @@ class BuildRequestQueuePage extends PageWithHeading {
                 element('td', 'Status'),
                 element('td', 'Waiting Time'),
             ]),
-            element('tbody', rowList.map(function (entry) {
+            element('tbody', rowList.map((entry) => {
                 if (entry.contraction) {
                     return element('tr', {class: 'contraction'}, [
                         element('td', {colspan: 8}, `${entry.count} additional requests`)
                     ]);
                 }
 
-                var request = entry.request;
-                var taskId = request.analysisTaskId();
-                var task = AnalysisTask.findById(taskId);
+                const request = entry.request;
+                const taskId = request.analysisTaskId();
+                const task = AnalysisTask.findById(taskId);
+                const requestsForGroup = requestsByGroup[request.testGroupId()];
+                const firstOrder = requestsForGroup[0].order();
+                let testName = null;
+                if (request.test())
+                    testName = request.test().fullName();
+                else {
+                    const firstRequestToTest = requestsForGroup.find((request) => !!request.test());
+                    testName = `Building (for ${firstRequestToTest.test().fullName()})`;
+                }
                 return element('tr', [
                     element('td', {class: 'request-id'}, request.id()),
                     element('td', {class: 'platform'}, request.platform().name()),
-                    element('td', {class: 'test'}, request.test().fullName()),
+                    element('td', {class: 'test'}, testName),
                     element('td', {class: 'task'}, !task ? taskId : link(task.name(), router.url(`analysis/task/${task.id()}`))),
                     element('td', {class: 'test-group'}, request.testGroupId()),
-                    element('td', {class: 'order'}, `${request.order() + 1} of ${requestCountForGroup[request.testGroupId()]}`),
+                    element('td', {class: 'order'}, `${request.order() - firstOrder + 1} of ${requestCountForGroup[request.testGroupId()]}`),
                     element('td', {class: 'status'}, request.statusLabel()),
                     element('td', {class: 'wait'}, request.waitingTime(referenceTime))]);
             }))]);

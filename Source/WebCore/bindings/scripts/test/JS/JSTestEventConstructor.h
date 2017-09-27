@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "JSDOMConvert.h"
+#include "JSDOMConvertDictionary.h"
 #include "JSEvent.h"
 #include "TestEventConstructor.h"
 
@@ -37,8 +37,8 @@ public:
         return ptr;
     }
 
-    static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static JSC::JSObject* prototype(JSC::VM&, JSC::JSGlobalObject*);
+    static JSC::JSObject* createPrototype(JSC::VM&, JSDOMGlobalObject&);
+    static JSC::JSObject* prototype(JSC::VM&, JSDOMGlobalObject&);
 
     DECLARE_INFO;
 

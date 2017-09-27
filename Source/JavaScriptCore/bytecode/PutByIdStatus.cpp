@@ -28,6 +28,7 @@
 
 #include "CodeBlock.h"
 #include "ComplexGetStatus.h"
+#include "GetterSetterAccessCase.h"
 #include "LLIntData.h"
 #include "LowLevelInterpreter.h"
 #include "JSCInlines.h"
@@ -54,7 +55,7 @@ bool PutByIdStatus::appendVariant(const PutByIdVariant& variant)
 }
 
 #if ENABLE(DFG_JIT)
-bool PutByIdStatus::hasExitSite(const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex)
+bool PutByIdStatus::hasExitSite(const ConcurrentJSLocker& locker, CodeBlock* profiledBlock, unsigned bytecodeIndex)
 {
     return profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadCache))
         || profiledBlock->hasExitSite(locker, DFG::FrequentExitSite(bytecodeIndex, BadConstantCache));
@@ -99,7 +100,7 @@ PutByIdStatus PutByIdStatus::computeFromLLInt(CodeBlock* profiledBlock, unsigned
     if (!(instruction[8].u.putByIdFlags & PutByIdIsDirect)) {
         conditionSet =
             generateConditionsForPropertySetterMissConcurrently(
-                *profiledBlock->vm(), profiledBlock->globalObject(), structure, uid);
+                vm, profiledBlock->globalObject(), structure, uid);
         if (!conditionSet.isValid())
             return PutByIdStatus(NoInformation);
     }
@@ -110,7 +111,7 @@ PutByIdStatus PutByIdStatus::computeFromLLInt(CodeBlock* profiledBlock, unsigned
 
 PutByIdStatus PutByIdStatus::computeFor(CodeBlock* profiledBlock, StubInfoMap& map, unsigned bytecodeIndex, UniquedStringImpl* uid)
 {
-    ConcurrentJITLocker locker(profiledBlock->m_lock);
+    ConcurrentJSLocker locker(profiledBlock->m_lock);
     
     UNUSED_PARAM(profiledBlock);
     UNUSED_PARAM(bytecodeIndex);
@@ -134,7 +135,7 @@ PutByIdStatus PutByIdStatus::computeFor(CodeBlock* profiledBlock, StubInfoMap& m
 }
 
 #if ENABLE(JIT)
-PutByIdStatus PutByIdStatus::computeForStubInfo(const ConcurrentJITLocker& locker, CodeBlock* baselineBlock, StructureStubInfo* stubInfo, CodeOrigin codeOrigin, UniquedStringImpl* uid)
+PutByIdStatus PutByIdStatus::computeForStubInfo(const ConcurrentJSLocker& locker, CodeBlock* baselineBlock, StructureStubInfo* stubInfo, CodeOrigin codeOrigin, UniquedStringImpl* uid)
 {
     return computeForStubInfo(
         locker, baselineBlock, stubInfo, uid,
@@ -142,7 +143,7 @@ PutByIdStatus PutByIdStatus::computeForStubInfo(const ConcurrentJITLocker& locke
 }
 
 PutByIdStatus PutByIdStatus::computeForStubInfo(
-    const ConcurrentJITLocker& locker, CodeBlock* profiledBlock, StructureStubInfo* stubInfo,
+    const ConcurrentJSLocker& locker, CodeBlock* profiledBlock, StructureStubInfo* stubInfo,
     UniquedStringImpl* uid, CallLinkStatus::ExitSiteData callExitSiteData)
 {
     if (!stubInfo || !stubInfo->everConsidered)
@@ -227,7 +228,7 @@ PutByIdStatus PutByIdStatus::computeForStubInfo(
                 case ComplexGetStatus::Inlineable: {
                     std::unique_ptr<CallLinkStatus> callLinkStatus =
                         std::make_unique<CallLinkStatus>();
-                    if (CallLinkInfo* callLinkInfo = access.callLinkInfo()) {
+                    if (CallLinkInfo* callLinkInfo = access.as<GetterSetterAccessCase>().callLinkInfo()) {
                         *callLinkStatus = CallLinkStatus::computeFor(
                             locker, profiledBlock, *callLinkInfo, callExitSiteData);
                     }
@@ -266,7 +267,7 @@ PutByIdStatus PutByIdStatus::computeFor(CodeBlock* baselineBlock, CodeBlock* dfg
     if (dfgBlock) {
         CallLinkStatus::ExitSiteData exitSiteData;
         {
-            ConcurrentJITLocker locker(baselineBlock->m_lock);
+            ConcurrentJSLocker locker(baselineBlock->m_lock);
             if (hasExitSite(locker, baselineBlock, codeOrigin.bytecodeIndex))
                 return PutByIdStatus(TakesSlowPath);
             exitSiteData = CallLinkStatus::computeExitSiteData(
@@ -275,7 +276,7 @@ PutByIdStatus PutByIdStatus::computeFor(CodeBlock* baselineBlock, CodeBlock* dfg
             
         PutByIdStatus result;
         {
-            ConcurrentJITLocker locker(dfgBlock->m_lock);
+            ConcurrentJSLocker locker(dfgBlock->m_lock);
             result = computeForStubInfo(
                 locker, dfgBlock, dfgMap.get(codeOrigin), uid, exitSiteData);
         }
@@ -302,6 +303,7 @@ PutByIdStatus PutByIdStatus::computeFor(JSGlobalObject* globalObject, const Stru
     if (set.isEmpty())
         return PutByIdStatus();
     
+    VM& vm = globalObject->vm();
     PutByIdStatus result;
     result.m_state = Simple;
     for (unsigned i = 0; i < set.size(); ++i) {
@@ -316,10 +318,10 @@ PutByIdStatus PutByIdStatus::computeFor(JSGlobalObject* globalObject, const Stru
         unsigned attributes;
         PropertyOffset offset = structure->getConcurrently(uid, attributes);
         if (isValidOffset(offset)) {
-            if (attributes & CustomAccessor)
+            if (attributes & PropertyAttribute::CustomAccessor)
                 return PutByIdStatus(MakesCalls);
 
-            if (attributes & (Accessor | ReadOnly))
+            if (attributes & (PropertyAttribute::Accessor | PropertyAttribute::ReadOnly))
                 return PutByIdStatus(TakesSlowPath);
             
             WatchpointSet* replaceSet = structure->propertyReplacementWatchpointSet(offset);
@@ -354,7 +356,7 @@ PutByIdStatus PutByIdStatus::computeFor(JSGlobalObject* globalObject, const Stru
         ObjectPropertyConditionSet conditionSet;
         if (!isDirect) {
             conditionSet = generateConditionsForPropertySetterMissConcurrently(
-                globalObject->vm(), globalObject, structure, uid);
+                vm, globalObject, structure, uid);
             if (!conditionSet.isValid())
                 return PutByIdStatus(TakesSlowPath);
         }

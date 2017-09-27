@@ -49,7 +49,7 @@ static std::unique_ptr<char[]> createCopy(const char* data, int length)
     std::unique_ptr<char[]> copy(new char[length]);
     memcpy(copy.get(), data, length);
 
-    return WTFMove(copy);
+    return copy;
 }
 
 SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client)
@@ -66,7 +66,7 @@ SocketStreamHandleImpl::~SocketStreamHandleImpl()
     ASSERT(!m_workerThread);
 }
 
-Optional<size_t> SocketStreamHandleImpl::platformSend(const char* data, size_t length)
+std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const char* data, size_t length)
 {
     LOG(Network, "SocketStreamHandle %p platformSend", this);
 
@@ -103,7 +103,7 @@ bool SocketStreamHandleImpl::readData(CURL* curlHandle)
 
     CURLcode ret = curl_easy_recv(curlHandle, data.get(), bufferSize, &bytesRead);
 
-    if (ret == CURLE_OK && bytesRead >= 0) {
+    if (ret == CURLE_OK) {
         m_mutexReceive.lock();
         m_receiveData.append(SocketData { WTFMove(data), bytesRead });
         m_mutexReceive.unlock();
@@ -199,7 +199,7 @@ void SocketStreamHandleImpl::startThread()
 
     ref(); // stopThread() will call deref().
 
-    m_workerThread = createThread("WebSocket thread", [this] {
+    m_workerThread = Thread::create("WebSocket thread", [this] {
 
         ASSERT(!isMainThread());
 
@@ -249,8 +249,8 @@ void SocketStreamHandleImpl::stopThread()
         return;
 
     m_stopThread = true;
-    waitForThreadCompletion(m_workerThread);
-    m_workerThread = 0;
+    m_workerThread->waitForCompletion();
+    m_workerThread = nullptr;
     deref();
 }
 

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -35,9 +35,14 @@
 
 namespace WebCore {
 
+class Document;
+class EventListener;
+class EventTarget;
 class InspectorOverlay;
 class InspectorPageAgent;
 class Page;
+class RegisteredEventListener;
+class TimerBase;
 
 class PageDebuggerAgent final : public WebDebuggerAgent {
     WTF_MAKE_NONCOPYABLE(PageDebuggerAgent);
@@ -52,11 +57,26 @@ public:
     void mainFrameStoppedLoading();
     void mainFrameNavigated();
 
+    void didRequestAnimationFrame(int callbackId, Document&);
+    void willFireAnimationFrame(int callbackId);
+    void didCancelAnimationFrame(int callbackId);
+
+    void didAddEventListener(EventTarget&, const AtomicString& eventType);
+    void willRemoveEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
+    void willHandleEvent(const RegisteredEventListener&);
+
+    void didPostMessage(const TimerBase&, JSC::ExecState&);
+    void didFailPostMessage(const TimerBase&);
+    void willDispatchPostMessage(const TimerBase&);
+    void didDispatchPostMessage(const TimerBase&);
+
 protected:
     void enable() override;
     void disable(bool isBeingDestroyed) override;
 
     String sourceMapURLForScript(const Script&) override;
+
+    void didClearAsyncStackTraceData() override;
 
 private:
     void muteConsole() override;
@@ -65,12 +85,17 @@ private:
     void breakpointActionLog(JSC::ExecState&, const String&) override;
 
     Inspector::InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) override;
-    void setOverlayMessage(ErrorString&, const String*) final;
+    void setOverlayMessage(ErrorString&, const String* const) final;
 
     Page& m_page;
 
     InspectorPageAgent* m_pageAgent;
     InspectorOverlay* m_overlay { nullptr };
+
+    HashMap<const RegisteredEventListener*, int> m_registeredEventListeners;
+    HashMap<const TimerBase*, int> m_postMessageTimers;
+    int m_nextEventListenerIdentifier { 1 };
+    int m_nextPostMessageIdentifier { 1 };
 };
 
 } // namespace WebCore

@@ -6,7 +6,7 @@
       "nicks" : [
          "aakash_jain"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Aaron Boodman" : {
       "emails" : [
@@ -161,6 +161,15 @@
       "emails" : [
          "WebkitBugTracker@adobe.com"
       ]
+   },
+   "Adrian Perez de Castro" : {
+      "emails" : [
+         "aperez@igalia.com"
+      ],
+      "nicks" : [
+         "aperezdc"
+      ],
+      "status" : "committer"
    },
    "Adrienne Walker" : {
       "emails" : [
@@ -371,6 +380,16 @@
          "aliu"
       ],
       "status" : "reviewer"
+   },
+   "Alicia Boya Garcia" : {
+      "emails" : [
+         "aboya@igalia.com",
+         "ntrrgc@gmail.com"
+      ],
+      "nicks" : [
+         "ntrrgc",
+         "aboya"
+      ]
    },
    "Allan Sandfeld Jensen" : {
       "emails" : [
@@ -1008,6 +1027,15 @@
       ],
       "status" : "committer"
    },
+   "Caio Araujo Neponoceno de Lima" : {
+      "emails" : [
+         "ticaiolima@gmail.com"
+      ],
+      "nicks" : [
+         "caiolima"
+      ],
+      "status" : "committer"
+   },
    "Caio Marcelo de Oliveira Filho" : {
       "emails" : [
          "cmarcelo@webkit.org",
@@ -1054,7 +1082,7 @@
       "nicks" : [
          "clopez"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Carlos Garcia Campos" : {
       "emails" : [
@@ -1119,14 +1147,13 @@
       ],
       "status" : "committer"
    },
-   "Charles Wei" : {
+   "Charlie Turner" : {
       "emails" : [
-         "charles.wei@torchmobile.com.cn"
+         "cturner@igalia.com"
       ],
       "nicks" : [
-         "cswei"
-      ],
-      "status" : "committer"
+         "cturner"
+      ]
    },
    "Chelsea Pugh" : {
       "emails" : [
@@ -1468,6 +1495,14 @@
       ],
       "status" : "reviewer"
    },
+   "David Jonathan Ross" : {
+      "emails" : [
+         "david@djr.com"
+      ],
+      "nicks" : [
+         "djr"
+      ]
+   },
    "David Kilzer" : {
       "aliases" : [
          "Dave Kilzer"
@@ -1530,6 +1565,14 @@
       ],
       "status" : "reviewer"
    },
+   "Dean Johnson" : {
+      "emails" : [
+         "dean_johnson@apple.com"
+      ],
+      "nicks" : [
+         "deanj"
+      ]
+   },
    "Denis Nomiyama" : {
       "emails" : [
          "d.nomiyama@samsung.com"
@@ -1542,13 +1585,13 @@
    },
    "Devin Rousso" : {
       "emails" : [
-         "dcrousso+webkit@gmail.com"
+         "webkit@devinrousso.com"
       ],
       "expertise" : "Web Inspector",
       "nicks" : [
          "dcrousso"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Dewei Zhu" : {
       "emails" : [
@@ -1702,6 +1745,16 @@
          "gramps"
       ],
       "status" : "reviewer"
+   },
+   "Don Olmstead" : {
+      "emails" : [
+         "don.olmstead@sony.com",
+         "don.olmstead@am.sony.com"
+      ],
+      "nicks" : [
+         "dolmstead"
+      ],
+      "status" : "committer"
    },
    "Dongseong Hwang" : {
       "emails" : [
@@ -2007,7 +2060,15 @@
       "nicks" : [
          "fredw"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
+   },
+   "Fujii Hironori" : {
+      "emails" : [
+         "Hironori.Fujii@sony.com"
+      ],
+      "nicks" : [
+         "fujihiro"
+      ]
    },
    "Fumitoshi Ukai" : {
       "emails" : [
@@ -2179,6 +2240,16 @@
       ],
       "status" : "committer"
    },
+   "Guillaume Emont" : {
+      "emails" : [
+         "guijemont@igalia.com"
+      ],
+      "expertise" : "JavaScriptCore",
+      "nicks" : [
+         "guijemont"
+      ],
+      "status" : "committer"
+   },
    "Gurpreet Kaur" : {
       "emails" : [
          "gur.trio@gmail.com",
@@ -2218,6 +2289,7 @@
    "Gyuyoung Kim" : {
       "emails" : [
          "gyuyoung.kim@webkit.org",
+         "gyuyoung@igalia.com",
          "gyuyoung.kim@navercorp.com",
          "gyuyoung@gmail.com",
          "gyuyoung.kim@samsung.com"
@@ -2446,7 +2518,7 @@
          "jfb_",
          "jfbastien"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Jacky Jiang" : {
       "emails" : [
@@ -2592,8 +2664,7 @@
    },
    "Jason Liu" : {
       "emails" : [
-         "jasonliuwebkit@gmail.com",
-         "jason.liu@torchmobile.com.cn"
+         "jasonliuwebkit@gmail.com"
       ],
       "nicks" : [
          "jasonliu"
@@ -2754,10 +2825,11 @@
       "emails" : [
          "jiewen_tan@apple.com"
       ],
+      "expertise" : "WebCrypto API",
       "nicks" : [
          "Jiewen"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Jing Zhao" : {
       "emails" : [
@@ -2973,8 +3045,7 @@
    },
    "Jonathan Dong" : {
       "emails" : [
-         "jonathan.dong.webkit@gmail.com",
-         "jonathan.dong@torchmobile.com.cn"
+         "jonathan.dong.webkit@gmail.com"
       ],
       "expertise" : "The BlackBerry Port",
       "nicks" : [
@@ -3425,10 +3496,11 @@
          "annulen@yandex.ru",
          "ktokarev@smartlabs.tv"
       ],
+      "expertise" : "CMake build system, Perl scripts",
       "nicks" : [
          "annulen"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Kristof Kosztyo" : {
       "emails" : [
@@ -3556,8 +3628,7 @@
          "leoyang@rim.com",
          "leoyang@blackberry.com",
          "leoyang@webkit.org",
-         "leoyang.webkit@gmail.com",
-         "leo.yang@torchmobile.com.cn"
+         "leoyang.webkit@gmail.com"
       ],
       "expertise" : "The BlackBerry Port",
       "nicks" : [
@@ -3794,8 +3865,7 @@
    "Mary Wu" : {
       "emails" : [
          "mawu@blackberry.com",
-         "wwendy2007@gmail.com",
-         "mary.wu@torchmobile.com.cn"
+         "wwendy2007@gmail.com"
       ],
       "nicks" : [
          "marywu"
@@ -3843,6 +3913,15 @@
       ],
       "nicks" : [
          "matthanson"
+      ],
+      "status" : "committer"
+   },
+   "Matt Lewis" : {
+      "emails" : [
+         "jlewis3@apple.com"
+      ],
+      "nicks" : [
+         "mattlewis"
       ],
       "status" : "committer"
    },
@@ -3918,7 +3997,8 @@
       ],
       "nicks" : [
          "GameMaker"
-      ]
+      ],
+      "status" : "committer"
    },
    "Michael Br\u00fcning" : {
       "emails" : [
@@ -4122,6 +4202,16 @@
       "emails" : [
          "qinmin@chromium.org"
       ]
+   },
+   "Ms2ger" : {
+      "emails" : [
+         "Ms2ger@igalia.com",
+         "Ms2ger@gmail.com"
+      ],
+      "nicks" : [
+         "Ms2ger"
+      ],
+      "status" : "committer"
    },
    "Myles C. Maxfield" : {
       "aliases" : [
@@ -4452,7 +4542,8 @@
    "Philip Rogers" : {
       "emails" : [
          "pdr@google.com",
-         "pdr@chromium.org"
+         "pdr@chromium.org",
+         "pdr+autocc@chromium.org"
       ],
       "expertise" : "SVG (Scalable Vector Graphics)",
       "nicks" : [
@@ -4696,6 +4787,16 @@
       ],
       "status" : "committer"
    },
+   "Robin Morisset" : {
+      "emails" : [
+         "rmorisset@apple.com",
+         "robin.morisset@normalesup.org"
+      ],
+      "nicks" : [
+         "rmorisset"
+      ],
+      "status" : "committer"
+   },
    "Roger Fong" : {
       "emails" : [
          "roger_fong@apple.com"
@@ -4720,6 +4821,24 @@
          "rtakacs"
       ],
       "status" : "committer"
+   },
+   "Romain Bellessort" : {
+      "emails" : [
+         "romain.wkt@gmail.com",
+         "romain.bellessort@crf.canon.fr"
+      ],
+      "nicks" : [
+         "romainb"
+      ],
+      "status" : "committer"
+   },
+   "Ross Kirsling" : {
+      "emails" : [
+         "ross.kirsling@sony.com"
+      ],
+      "nicks" : [
+         "rkirsling"
+      ]
    },
    "Ruth Fong" : {
       "emails" : [
@@ -5260,8 +5379,9 @@
          "Tim Hatcher"
       ],
       "emails" : [
-         "timothy@apple.com",
-         "timothy@hatcher.name"
+         "timothy@hatcher.name",
+         "thatcher@tesla.com",
+         "timothy@apple.com"
       ],
       "expertise" : "WebKit API (Mac), WebKit Web Site, Developer Tools (Web Inspector, JavaScript Debugger)",
       "nicks" : [
@@ -5304,6 +5424,15 @@
       ],
       "nicks" : [
          "tommyw"
+      ],
+      "status" : "committer"
+   },
+   "Tom\u00e1\u0161 Popela" : {
+      "emails" : [
+         "tpopela@redhat.com"
+      ],
+      "nicks" : [
+         "tpopela"
       ],
       "status" : "committer"
    },
@@ -5651,7 +5780,8 @@
    "Youenn Fablet" : {
       "emails" : [
          "youennf@gmail.com",
-         "youenn.fablet@crf.canon.fr"
+         "youenn@apple.com",
+         "yfablet@apple.com"
       ],
       "nicks" : [
          "youenn"

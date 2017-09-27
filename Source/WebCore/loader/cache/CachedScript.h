@@ -33,17 +33,11 @@ class TextResourceDecoder;
 
 class CachedScript final : public CachedResource {
 public:
-    CachedScript(CachedResourceRequest&&, SessionID);
+    CachedScript(CachedResourceRequest&&, PAL::SessionID);
     virtual ~CachedScript();
 
     StringView script();
     unsigned scriptHash();
-
-    String mimeType() const;
-
-#if ENABLE(NOSNIFF)
-    bool mimeTypeAllowedByNosniff() const;
-#endif
 
 private:
     bool mayTryReplaceEncodedData() const final { return true; }

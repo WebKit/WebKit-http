@@ -36,7 +36,7 @@ class SummaryPage extends PageWithHeading {
         var current = Date.now();
         var timeRange = [current - 24 * 3600 * 1000, current];
         for (var group of this._configGroups)
-            group.fetchAndComputeSummary(timeRange).then(this.render.bind(this));
+            group.fetchAndComputeSummary(timeRange).then(() => { this.enqueueToRender(); });
     }
 
     render()
@@ -106,19 +106,20 @@ class SummaryPage extends PageWithHeading {
         var ratioGraph = new RatioBarGraph();
 
         if (configurationList.length == 0) {
-            this._renderQueue.push(function () { ratioGraph.render(); });
+            this._renderQueue.push(() => { ratioGraph.enqueueToRender(); });
             return element('td', ratioGraph);
         }
 
         var state = ChartsPage.createStateForConfigurationList(configurationList);
         var anchor = link(ratioGraph, this.router().url('charts', state));
-        var cell = element('td', [anchor, new SpinnerIcon]);
+        var spinner = new SpinnerIcon;
+        var cell = element('td', [anchor, spinner]);
 
-        this._renderQueue.push(this._renderCell.bind(this, cell, anchor, ratioGraph, configurationGroup));
+        this._renderQueue.push(this._renderCell.bind(this, cell, spinner, anchor, ratioGraph, configurationGroup));
         return cell;
     }
 
-    _renderCell(cell, anchor, ratioGraph, configurationGroup)
+    _renderCell(cell, spinner, anchor, ratioGraph, configurationGroup)
     {
         if (configurationGroup.isFetching())
             cell.classList.add('fetching');
@@ -128,7 +129,7 @@ class SummaryPage extends PageWithHeading {
         var warningText = this._warningTextForGroup(configurationGroup);
         anchor.title = warningText || 'Open charts';
         ratioGraph.update(configurationGroup.ratio(), configurationGroup.label(), !!warningText);
-        ratioGraph.render();
+        ratioGraph.enqueueToRender();
     }
 
     _warningTextForGroup(configurationGroup)
@@ -258,23 +259,26 @@ class SummaryPageConfigurationGroup {
         this._isFetching = false;
         this._smallerIsBetter = metrics.length ? metrics[0].isSmallerBetter() : null;
 
-        for (var platform of platforms) {
+        for (const platform of platforms) {
             console.assert(platform instanceof Platform);
-            var foundInSomeMetric = false;
-            for (var metric of metrics) {
+            let foundInSomeMetric = false;
+            let excludedMerticCount = 0;
+            for (const metric of metrics) {
                 console.assert(metric instanceof Metric);
                 console.assert(this._smallerIsBetter == metric.isSmallerBetter());
                 metric.isSmallerBetter();
 
-                if (excludedConfigurations && platform.id() in excludedConfigurations && excludedConfigurations[platform.id()].includes(+metric.id()))
+                if (excludedConfigurations && platform.id() in excludedConfigurations && excludedConfigurations[platform.id()].includes(+metric.id())) {
+                    excludedMerticCount += 1;
                     continue;
+                }
                 if (!platform.hasMetric(metric))
                     continue;
                 foundInSomeMetric = true;
                 this._measurementSets.push(MeasurementSet.findSet(platform.id(), metric.id(), platform.lastModified(metric)));
                 this._configurationList.push([platform.id(), metric.id()]);
             }
-            if (!foundInSomeMetric)
+            if (!foundInSomeMetric && excludedMerticCount < metrics.length)
                 this._missingPlatforms.add(platform);
         }
     }
@@ -361,13 +365,12 @@ class SummaryPageConfigurationGroup {
         if (!timeSeries.firstPoint())
             return NaN;
 
-        var startPoint = timeSeries.findPointAfterTime(timeRange[0]) || timeSeries.lastPoint();
-        var afterEndPoint = timeSeries.findPointAfterTime(timeRange[1]) || timeSeries.lastPoint();
-        var endPoint = timeSeries.previousPoint(afterEndPoint);
+        const startPoint = timeSeries.findPointAfterTime(timeRange[0]) || timeSeries.lastPoint();
+        const afterEndPoint = timeSeries.findPointAfterTime(timeRange[1]) || timeSeries.lastPoint();
+        let endPoint = timeSeries.previousPoint(afterEndPoint);
         if (!endPoint || startPoint == afterEndPoint)
             endPoint = afterEndPoint;
 
-        var points = timeSeries.dataBetweenPoints(startPoint, endPoint).map(function (point) { return point.value; });
-        return Statistics.median(points);
+        return Statistics.median(timeSeries.viewBetweenPoints(startPoint, endPoint).values());
     }
 }

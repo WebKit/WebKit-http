@@ -33,6 +33,12 @@ enum EndOfStreamError {
     "decode"
 };
 
+enum ReadyState {
+    "closed",
+    "open",
+    "ended"
+};
+
 [
     ActiveDOMObject,
     Conditional=MEDIA_SOURCE,
@@ -46,12 +52,12 @@ enum EndOfStreamError {
     // Subset of sourceBuffers that provide data for the selected/enabled tracks.
     readonly attribute SourceBufferList activeSourceBuffers;
 
-    [SetterMayThrowException] attribute unrestricted double duration;
+    attribute unrestricted double duration;
 
     [MayThrowException] SourceBuffer addSourceBuffer(DOMString type);
     [MayThrowException] void removeSourceBuffer(SourceBuffer buffer);
 
-    readonly attribute DOMString readyState;
+    readonly attribute ReadyState readyState;
     
     [MayThrowException] void endOfStream(optional EndOfStreamError error);
 

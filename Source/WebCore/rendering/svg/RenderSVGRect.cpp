@@ -28,8 +28,6 @@
 #include "config.h"
 #include "RenderSVGRect.h"
 
-#include "SVGNames.h"
-
 namespace WebCore {
 
 RenderSVGRect::RenderSVGRect(SVGRectElement& element, RenderStyle&& style)
@@ -54,6 +52,7 @@ void RenderSVGRect::updateShapeFromElement()
     m_fillBoundingBox = FloatRect();
     m_innerStrokeRect = FloatRect();
     m_outerStrokeRect = FloatRect();
+    clearPath();
 
     SVGLengthContext lengthContext(&rectElement());
     FloatSize boundingBoxSize(lengthContext.valueForLength(style().width(), LengthModeWidth), lengthContext.valueForLength(style().height(), LengthModeHeight));
@@ -122,7 +121,7 @@ void RenderSVGRect::fillShape(GraphicsContext& context) const
 
 void RenderSVGRect::strokeShape(GraphicsContext& context) const
 {
-    if (!style().svgStyle().hasVisibleStroke())
+    if (!style().hasVisibleStroke())
         return;
 
     if (m_usePathFallback) {

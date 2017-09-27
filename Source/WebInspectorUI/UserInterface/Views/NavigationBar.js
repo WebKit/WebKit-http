@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
+WI.NavigationBar = class NavigationBar extends WI.View
 {
     constructor(element, navigationItems, role, label)
     {
@@ -45,6 +45,7 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         this._forceLayout = false;
         this._minimumWidth = NaN;
         this._navigationItems = [];
+        this._selectedNavigationItem = null;
 
         if (navigationItems) {
             for (var i = 0; i < navigationItems.length; ++i)
@@ -61,14 +62,14 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
 
     insertNavigationItem(navigationItem, index, parentElement)
     {
-        console.assert(navigationItem instanceof WebInspector.NavigationItem);
-        if (!(navigationItem instanceof WebInspector.NavigationItem))
+        console.assert(navigationItem instanceof WI.NavigationItem);
+        if (!(navigationItem instanceof WI.NavigationItem))
             return null;
 
         if (navigationItem.parentNavigationBar)
             navigationItem.parentNavigationBar.removeNavigationItem(navigationItem);
 
-        navigationItem._parentNavigationBar = this;
+        navigationItem.didAttach(this);
 
         console.assert(index >= 0 && index <= this._navigationItems.length);
         index = Math.max(0, Math.min(index, this._navigationItems.length));
@@ -92,13 +93,20 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         return navigationItem;
     }
 
-    removeNavigationItem(navigationItemOrIdentifierOrIndex)
+    removeNavigationItem(navigationItem)
     {
-        var navigationItem = this._findNavigationItem(navigationItemOrIdentifierOrIndex);
-        if (!navigationItem)
+        console.assert(navigationItem instanceof WI.NavigationItem);
+        if (!(navigationItem instanceof WI.NavigationItem))
             return null;
 
-        navigationItem._parentNavigationBar = null;
+        if (!navigationItem._parentNavigationBar)
+            return null;
+
+        console.assert(navigationItem._parentNavigationBar === this, "Cannot remove item with unexpected parent bar.", navigationItem);
+        if (navigationItem._parentNavigationBar !== this)
+            return null;
+
+        navigationItem.didDetach();
 
         if (this._selectedNavigationItem === navigationItem)
             this.selectedNavigationItem = null;
@@ -115,15 +123,18 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
 
     get selectedNavigationItem()
     {
-        return this._selectedNavigationItem || null;
+        return this._selectedNavigationItem;
     }
 
-    set selectedNavigationItem(navigationItemOrIdentifierOrIndex)
+    set selectedNavigationItem(navigationItem)
     {
-        var navigationItem = this._findNavigationItem(navigationItemOrIdentifierOrIndex);
+        let navigationItemHasOtherParent = navigationItem && navigationItem.parentNavigationBar !== this;
+        console.assert(!navigationItemHasOtherParent, "Cannot select item with unexpected parent bar.", navigationItem);
+        if (navigationItemHasOtherParent)
+            return;
 
         // Only radio navigation items can be selected.
-        if (!(navigationItem instanceof WebInspector.RadioButtonNavigationItem))
+        if (!(navigationItem instanceof WI.RadioButtonNavigationItem))
             navigationItem = null;
 
         if (this._selectedNavigationItem === navigationItem)
@@ -140,7 +151,7 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         // When the mouse is down don't dispatch the selected event, it will be dispatched on mouse up.
         // This prevents sending the event while the user is scrubbing the bar.
         if (!this._mouseIsDown)
-            this.dispatchEventToListeners(WebInspector.NavigationBar.Event.NavigationItemSelected);
+            this.dispatchEventToListeners(WI.NavigationBar.Event.NavigationItemSelected);
     }
 
     get navigationItems()
@@ -161,6 +172,32 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         return false;
     }
 
+    findNavigationItem(identifier)
+    {
+        function matchingSelfOrChild(item) {
+            if (item.identifier === identifier)
+                return item;
+
+            if (item instanceof WI.GroupNavigationItem) {
+                for (let childItem of item.navigationItems) {
+                    let result = matchingSelfOrChild(childItem);
+                    if (result)
+                        return result;
+                }
+            }
+
+            return null;
+        }
+
+        for (let item of this._navigationItems) {
+            let result = matchingSelfOrChild(item);
+            if (result)
+                return result;
+        }
+
+        return null;
+    }
+
     needsLayout()
     {
         this._forceLayout = true;
@@ -170,60 +207,79 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
 
     layout()
     {
-        if (this.layoutReason !== WebInspector.View.LayoutReason.Resize && !this._forceLayout)
+        if (this.layoutReason !== WI.View.LayoutReason.Resize && !this._forceLayout)
             return;
 
         this._forceLayout = false;
 
         // Remove the collapsed style class to test if the items can fit at full width.
-        this.element.classList.remove(WebInspector.NavigationBar.CollapsedStyleClassName);
+        this.element.classList.remove(WI.NavigationBar.CollapsedStyleClassName);
+
+        function forceItemHidden(item, hidden) {
+            item[WI.NavigationBar.ForceHiddenSymbol] = hidden;
+            item.element.classList.toggle("force-hidden", hidden);
+        }
+
+        function isDivider(item) {
+            return item instanceof WI.DividerNavigationItem;
+        }
 
         // Tell each navigation item to update to full width if needed.
-        for (let navigationItem of this._navigationItems)
-            navigationItem.updateLayout(true);
-
-        let totalItemWidth = 0;
-        for (let navigationItem of this._navigationItems) {
-            // Skip flexible space items since they can take up no space at the minimum width.
-            if (navigationItem instanceof WebInspector.FlexibleSpaceNavigationItem)
-                continue;
-
-            totalItemWidth += navigationItem.element.realOffsetWidth;
+        for (let item of this._navigationItems) {
+            forceItemHidden(item, false);
+            item.updateLayout(true);
         }
+
+        let visibleNavigationItems = this._visibleNavigationItems;
+
+        function calculateVisibleItemWidth() {
+            return visibleNavigationItems.reduce((total, item) => total + item.width, 0);
+        }
+
+        let totalItemWidth = calculateVisibleItemWidth();
 
         const barWidth = this.element.realOffsetWidth;
 
         // Add the collapsed class back if the items are wider than the bar.
         if (totalItemWidth > barWidth)
-            this.element.classList.add(WebInspector.NavigationBar.CollapsedStyleClassName);
+            this.element.classList.add(WI.NavigationBar.CollapsedStyleClassName);
 
         // Give each navigation item the opportunity to collapse further.
-        for (let navigationItem of this._navigationItems)
-            navigationItem.updateLayout(false);
+        for (let item of visibleNavigationItems)
+            item.updateLayout(false);
+
+        totalItemWidth = calculateVisibleItemWidth();
+
+        if (totalItemWidth > barWidth) {
+            // Hide visible items, starting with the lowest priority item, until
+            // the bar fits the available width.
+            visibleNavigationItems.sort((a, b) => a.visibilityPriority - b.visibilityPriority);
+
+            while (totalItemWidth > barWidth && visibleNavigationItems.length) {
+                let navigationItem = visibleNavigationItems.shift();
+                totalItemWidth -= navigationItem.width;
+                forceItemHidden(navigationItem, true);
+            }
+
+            visibleNavigationItems = this._visibleNavigationItems;
+        }
+
+        // Hide leading, trailing, and consecutive dividers.
+        let previousItem = null;
+        for (let item of visibleNavigationItems) {
+            if (isDivider(item) && (!previousItem || isDivider(previousItem))) {
+                forceItemHidden(item);
+                continue;
+            }
+
+            previousItem = item;
+        }
+
+        if (isDivider(previousItem))
+            forceItemHidden(previousItem);
     }
 
     // Private
-
-    _findNavigationItem(navigationItemOrIdentifierOrIndex)
-    {
-        var navigationItem = null;
-
-        if (navigationItemOrIdentifierOrIndex instanceof WebInspector.NavigationItem) {
-            if (this._navigationItems.includes(navigationItemOrIdentifierOrIndex))
-                navigationItem = navigationItemOrIdentifierOrIndex;
-        } else if (typeof navigationItemOrIdentifierOrIndex === "number") {
-            navigationItem = this._navigationItems[navigationItemOrIdentifierOrIndex];
-        } else if (typeof navigationItemOrIdentifierOrIndex === "string") {
-            for (var i = 0; i < this._navigationItems.length; ++i) {
-                if (this._navigationItems[i].identifier === navigationItemOrIdentifierOrIndex) {
-                    navigationItem = this._navigationItems[i];
-                    break;
-                }
-            }
-        }
-
-        return navigationItem;
-    }
 
     _mouseDown(event)
     {
@@ -236,7 +292,7 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         if (!this._focused)
             this.element.removeAttribute("tabindex");
 
-        var itemElement = event.target.enclosingNodeOrSelfWithClass(WebInspector.RadioButtonNavigationItem.StyleClassName);
+        var itemElement = event.target.enclosingNodeOrSelfWithClass(WI.RadioButtonNavigationItem.StyleClassName);
         if (!itemElement || !itemElement.navigationItem)
             return;
 
@@ -271,7 +327,7 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         event.preventDefault();
         event.stopPropagation();
 
-        var itemElement = event.target.enclosingNodeOrSelfWithClass(WebInspector.RadioButtonNavigationItem.StyleClassName);
+        var itemElement = event.target.enclosingNodeOrSelfWithClass(WI.RadioButtonNavigationItem.StyleClassName);
         if (!itemElement || !itemElement.navigationItem || !this.element.contains(itemElement)) {
             // Find the element that is at the X position of the mouse, even when the mouse is no longer
             // vertically in the navigation bar.
@@ -279,7 +335,7 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
             if (!element)
                 return;
 
-            itemElement = element.enclosingNodeOrSelfWithClass(WebInspector.RadioButtonNavigationItem.StyleClassName);
+            itemElement = element.enclosingNodeOrSelfWithClass(WI.RadioButtonNavigationItem.StyleClassName);
             if (!itemElement || !itemElement.navigationItem || !this.element.contains(itemElement))
                 return;
         }
@@ -316,7 +372,7 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
         // Dispatch the selected event here since the selectedNavigationItem setter surpresses it
         // while the mouse is down to prevent sending it while scrubbing the bar.
         if (this._previousSelectedNavigationItem !== this.selectedNavigationItem)
-            this.dispatchEventToListeners(WebInspector.NavigationBar.Event.NavigationItemSelected);
+            this.dispatchEventToListeners(WI.NavigationBar.Event.NavigationItemSelected);
 
         delete this._previousSelectedNavigationItem;
 
@@ -343,14 +399,14 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
 
             do {
                 selectedNavigationItemIndex = Math.max(0, selectedNavigationItemIndex - 1);
-            } while (selectedNavigationItemIndex && !(this._navigationItems[selectedNavigationItemIndex] instanceof WebInspector.RadioButtonNavigationItem));
+            } while (selectedNavigationItemIndex && !(this._navigationItems[selectedNavigationItemIndex] instanceof WI.RadioButtonNavigationItem));
         } else if (event.keyIdentifier === "Right") {
             do {
                 selectedNavigationItemIndex = Math.min(selectedNavigationItemIndex + 1, this._navigationItems.length - 1);
-            } while (selectedNavigationItemIndex < this._navigationItems.length - 1 && !(this._navigationItems[selectedNavigationItemIndex] instanceof WebInspector.RadioButtonNavigationItem));
+            } while (selectedNavigationItemIndex < this._navigationItems.length - 1 && !(this._navigationItems[selectedNavigationItemIndex] instanceof WI.RadioButtonNavigationItem));
         }
 
-        if (!(this._navigationItems[selectedNavigationItemIndex] instanceof WebInspector.RadioButtonNavigationItem))
+        if (!(this._navigationItems[selectedNavigationItemIndex] instanceof WI.RadioButtonNavigationItem))
             return;
 
         this.selectedNavigationItem = this._navigationItems[selectedNavigationItemIndex];
@@ -368,31 +424,38 @@ WebInspector.NavigationBar = class NavigationBar extends WebInspector.View
 
     _calculateMinimumWidth()
     {
-        const wasCollapsed = this.element.classList.contains(WebInspector.NavigationBar.CollapsedStyleClassName);
+        const wasCollapsed = this.element.classList.contains(WI.NavigationBar.CollapsedStyleClassName);
 
         // Add the collapsed style class to calculate the width of the items when they are collapsed.
         if (!wasCollapsed)
-            this.element.classList.add(WebInspector.NavigationBar.CollapsedStyleClassName);
+            this.element.classList.add(WI.NavigationBar.CollapsedStyleClassName);
 
-        let totalItemWidth = 0;
-        for (let item of this._navigationItems) {
-            // Skip flexible space items since they can take up no space at the minimum width.
-            if (item instanceof WebInspector.FlexibleSpaceNavigationItem)
-                continue;
-
-            totalItemWidth += item.minimumWidth;
-        }
+        let totalItemWidth = this._visibleNavigationItems.reduce((total, item) => item.minimumWidth, 0);
 
         // Remove the collapsed style class if we were not collapsed before.
         if (!wasCollapsed)
-            this.element.classList.remove(WebInspector.NavigationBar.CollapsedStyleClassName);
+            this.element.classList.remove(WI.NavigationBar.CollapsedStyleClassName);
 
         return totalItemWidth;
     }
+
+    get _visibleNavigationItems()
+    {
+        return this._navigationItems.filter((item) => {
+            if (item instanceof WI.FlexibleSpaceNavigationItem)
+                return false;
+            if (item.hidden || item[WI.NavigationBar.ForceHiddenSymbol])
+                return false;
+            return true;
+        });
+    }
 };
 
-WebInspector.NavigationBar.CollapsedStyleClassName = "collapsed";
+WI.NavigationBar.CachedWidthSymbol = Symbol("cached-width");
+WI.NavigationBar.ForceHiddenSymbol = Symbol("force-hidden");
 
-WebInspector.NavigationBar.Event = {
+WI.NavigationBar.CollapsedStyleClassName = "collapsed";
+
+WI.NavigationBar.Event = {
     NavigationItemSelected: "navigation-bar-navigation-item-selected"
 };

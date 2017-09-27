@@ -1,5 +1,5 @@
 add_custom_target(WebKitTestRunner-forwarding-headers
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_TESTRUNNER_DIR} --include-path ${WEBKIT_TESTRUNNER_SHARED_DIR} --output ${FORWARDING_HEADERS_DIR} --platform gtk --platform soup
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_TESTRUNNER_DIR} --include-path ${WEBKIT_TESTRUNNER_SHARED_DIR} --output ${FORWARDING_HEADERS_DIR} --platform gtk --platform soup
 )
 
 set(ForwardingHeadersForWebKitTestRunner_NAME WebKitTestRunner-forwarding-headers)
@@ -15,7 +15,6 @@ list(APPEND WebKitTestRunner_SOURCES
 
 list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
     ${FORWARDING_HEADERS_DIR}
-    ${WTF_DIR}/wtf/glib
 )
 
 list(APPEND WebKitTestRunner_SYSTEM_INCLUDE_DIRECTORIES
@@ -41,7 +40,7 @@ set(WebKitTestRunnerInjectedBundle_LIBRARIES
     ${GLIB_LIBRARIES}
     ${GTK3_LIBRARIES}
     WebCoreTestSupport
-    WebKit2
+    WebKit
 )
 
 list(APPEND WebKitTestRunnerInjectedBundle_SOURCES

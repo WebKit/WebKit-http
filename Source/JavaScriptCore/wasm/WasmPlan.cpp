@@ -29,85 +29,110 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "B3Compilation.h"
+#include "JSCInlines.h"
+#include "JSGlobalObject.h"
 #include "WasmB3IRGenerator.h"
+#include "WasmBinding.h"
+#include "WasmCallee.h"
 #include "WasmCallingConvention.h"
+#include "WasmFaultSignalHandler.h"
 #include "WasmMemory.h"
 #include "WasmModuleParser.h"
 #include "WasmValidate.h"
 #include <wtf/DataLog.h>
-#include <wtf/text/StringBuilder.h>
+#include <wtf/Locker.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/StdLibExtras.h>
+#include <wtf/SystemTracing.h>
 
 namespace JSC { namespace Wasm {
 
+namespace WasmPlanInternal {
 static const bool verbose = false;
-    
-Plan::Plan(VM* vm, Vector<uint8_t> source)
-    : Plan(vm, source.data(), source.size())
-{
 }
 
-Plan::Plan(VM* vm, const uint8_t* source, size_t sourceLength)
-    : m_vm(vm)
+Plan::Plan(VM* vm, Ref<ModuleInformation> info, CompletionTask&& task)
+    : m_moduleInformation(WTFMove(info))
+    , m_source(m_moduleInformation->source.data())
+    , m_sourceLength(m_moduleInformation->source.size())
+{
+    m_completionTasks.append(std::make_pair(vm, WTFMove(task)));
+}
+
+Plan::Plan(VM* vm, const uint8_t* source, size_t sourceLength, CompletionTask&& task)
+    : m_moduleInformation(adoptRef(*new ModuleInformation(Vector<uint8_t>())))
     , m_source(source)
     , m_sourceLength(sourceLength)
 {
+    m_completionTasks.append(std::make_pair(vm, WTFMove(task)));
 }
 
-void Plan::run()
+void Plan::runCompletionTasks(const AbstractLocker&)
 {
-    if (verbose)
-        dataLogLn("Starting plan.");
-    {
-        ModuleParser moduleParser(m_source, m_sourceLength);
-        if (!moduleParser.parse()) {
-            if (verbose)
-                dataLogLn("Parsing module failed: ", moduleParser.errorMessage());
-            m_errorMessage = moduleParser.errorMessage();
-            return;
-        }
-        m_moduleInformation = WTFMove(moduleParser.moduleInformation());
+    ASSERT(isComplete() && !hasWork());
+
+    for (auto& task : m_completionTasks)
+        task.second->run(task.first, *this);
+    m_completionTasks.clear();
+    m_completed.notifyAll();
+}
+
+void Plan::addCompletionTask(VM& vm, CompletionTask&& task)
+{
+    LockHolder locker(m_lock);
+    if (!isComplete())
+        m_completionTasks.append(std::make_pair(&vm, WTFMove(task)));
+    else
+        task->run(&vm, *this);
+}
+
+void Plan::waitForCompletion()
+{
+    LockHolder locker(m_lock);
+    if (!isComplete()) {
+        m_completed.wait(m_lock);
     }
-    if (verbose)
-        dataLogLn("Parsed module.");
+}
 
-    if (!m_compiledFunctions.tryReserveCapacity(m_moduleInformation->functions.size())) {
-        StringBuilder builder;
-        builder.appendLiteral("Failed allocating enough space for ");
-        builder.appendNumber(m_moduleInformation->functions.size());
-        builder.appendLiteral(" compiled functions");
-        m_errorMessage = builder.toString();
-        return;
-    }
+bool Plan::tryRemoveVMAndCancelIfLast(VM& vm)
+{
+    LockHolder locker(m_lock);
 
-    for (const FunctionInformation& info : m_moduleInformation->functions) {
-        if (verbose)
-            dataLogLn("Processing function starting at: ", info.start, " and ending at: ", info.end);
-        const uint8_t* functionStart = m_source + info.start;
-        size_t functionLength = info.end - info.start;
-        ASSERT(functionLength <= m_sourceLength);
-
-        String error = validateFunction(functionStart, functionLength, info.signature, m_moduleInformation->functions);
-        if (!error.isNull()) {
-            if (verbose) {
-                for (unsigned i = 0; i < functionLength; ++i)
-                    dataLog(RawPointer(reinterpret_cast<void*>(functionStart[i])), ", ");
-                dataLogLn();
-            }
-            m_errorMessage = error;
-            return;
-        }
-
-        m_compiledFunctions.uncheckedAppend(parseAndCompile(*m_vm, functionStart, functionLength, m_moduleInformation->memory.get(), info.signature, m_moduleInformation->functions));
+    if (!ASSERT_DISABLED) {
+        // We allow the first completion task to not have a vm.
+        for (unsigned i = 1; i < m_completionTasks.size(); ++i)
+            ASSERT(m_completionTasks[i].first);
     }
 
-    // Patch the call sites for each function.
-    for (std::unique_ptr<FunctionCompilation>& functionPtr : m_compiledFunctions) {
-        FunctionCompilation* function = functionPtr.get();
-        for (auto& call : function->unlinkedCalls)
-            MacroAssembler::repatchCall(call.callLocation, CodeLocationLabel(m_compiledFunctions[call.functionIndex]->code->code()));
+    bool removedAnyTasks = false;
+    m_completionTasks.removeAllMatching([&] (const std::pair<VM*, CompletionTask>& pair) {
+        bool shouldRemove = pair.first == &vm;
+        removedAnyTasks |= shouldRemove;
+        return shouldRemove;
+    });
+
+    if (!removedAnyTasks)
+        return false;
+
+    if (isComplete()) {
+        // We trivially cancel anything that's completed.
+        return true;
     }
 
-    m_failed = false;
+    // FIXME: Make 0 index not so magical: https://bugs.webkit.org/show_bug.cgi?id=171395
+    if (m_completionTasks.isEmpty() || (m_completionTasks.size() == 1 && !m_completionTasks[0].first)) {
+        fail(locker, ASCIILiteral("WebAssembly Plan was cancelled. If you see this error message please file a bug at bugs.webkit.org!"));
+        return true;
+    }
+
+    return false;
+}
+
+void Plan::fail(const AbstractLocker& locker, String&& errorMessage)
+{
+    dataLogLnIf(WasmPlanInternal::verbose, "failing with message: ", errorMessage);
+    m_errorMessage = WTFMove(errorMessage);
+    complete(locker);
 }
 
 Plan::~Plan() { }

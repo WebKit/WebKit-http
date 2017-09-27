@@ -56,6 +56,8 @@ public:
     typedef RangeType Range;
     typedef typename Range::Type Type;
 
+    typedef Vector<Range, 8> VectorType;
+    
     RangeSet()
     {
     }
@@ -77,6 +79,10 @@ public:
         m_isCompact = false;
 
         // We append without compacting only if doing so is guaranteed not to resize the vector.
+        // FIXME: This heuristic is almost certainly wrong, because we don't control the capacity. I
+        // think that this means that we will sometimes be rage-compacting when we are just shy of the
+        // capacity.
+        // https://bugs.webkit.org/show_bug.cgi?id=170308
         if (m_ranges.size() + 1 < m_ranges.capacity()) {
             m_ranges.append(range);
             return;
@@ -121,8 +127,23 @@ public:
     {
         out.print("{", listDump(m_ranges), ", isCompact = ", m_isCompact, "}");
     }
+    
+    typename VectorType::const_iterator begin() const
+    {
+        return m_ranges.begin();
+    }
+    
+    typename VectorType::const_iterator end() const
+    {
+        return m_ranges.end();
+    }
+    
+    void addAll(const RangeSet& other)
+    {
+        for (Range range : other)
+            add(range);
+    }
 
-private:
     void compact()
     {
         if (m_isCompact)
@@ -155,11 +176,12 @@ private:
             lastRange = &m_ranges[dstIndex++];
             *lastRange = range;
         }
-        m_ranges.resize(dstIndex);
+        m_ranges.shrink(dstIndex);
 
         m_isCompact = true;
     }
     
+private:
     static bool overlapsNonEmpty(const Range& a, const Range& b)
     {
         return nonEmptyRangesOverlap(a.begin(), a.end(), b.begin(), b.end());
@@ -183,7 +205,7 @@ private:
         return UINT_MAX;
     }
     
-    Vector<Range, 8> m_ranges;
+    VectorType m_ranges;
     bool m_isCompact { true };
 };
 

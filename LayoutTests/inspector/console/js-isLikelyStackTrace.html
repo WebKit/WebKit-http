@@ -41,12 +41,12 @@ function getAnonymousFunctionError()
 
 function test()
 {
-    let suite = InspectorTest.createAsyncSuite("WebInspector.StackTrace.isLikelyStackTrace");
+    let suite = InspectorTest.createAsyncSuite("WI.StackTrace.isLikelyStackTrace");
 
     suite.addTestCase({
         name: "notStacktrace",
-        test: function(resolve, reject) {
-            var result = WebInspector.StackTrace.isLikelyStackTrace("Messages:42\nUnread:16");
+        test(resolve, reject) {
+            var result = WI.StackTrace.isLikelyStackTrace("Messages:42\nUnread:16");
             InspectorTest.assert(result, "Should NOT be a stacktrace.");
             resolve();
         }
@@ -54,12 +54,12 @@ function test()
 
     suite.addTestCase({
         name: "typeErrorWrap",
-        test: function(resolve, reject) {
+        test(resolve, reject) {
             InspectorTest.evaluateInPage("typeErrorWrap()", function(error, result) {
                 if (error)
                     reject(error);
 
-                InspectorTest.assert(WebInspector.StackTrace.isLikelyStackTrace(result), "Should be a stacktrace.");
+                InspectorTest.assert(WI.StackTrace.isLikelyStackTrace(result), "Should be a stacktrace.");
 
                 resolve();
             });
@@ -68,12 +68,12 @@ function test()
 
     suite.addTestCase({
         name: "getAnonymousFunctionError",
-        test: function(resolve, reject) {
+        test(resolve, reject) {
             InspectorTest.evaluateInPage("getAnonymousFunctionError()", function(error, result) {
                 if (error)
                     reject(error);
 
-                InspectorTest.assert(WebInspector.StackTrace.isLikelyStackTrace(result), "Should be a stacktrace.");
+                InspectorTest.assert(WI.StackTrace.isLikelyStackTrace(result), "Should be a stacktrace.");
 
                 resolve();
             });
@@ -82,12 +82,12 @@ function test()
 
     suite.addTestCase({
         name: "testWithNativeCallInBetween",
-        test: function(resolve, reject) {
+        test(resolve, reject) {
             InspectorTest.evaluateInPage("testWithNativeCallInBetween()", function(error, result) {
                 if (error)
                     reject(error);
 
-                InspectorTest.assert(WebInspector.StackTrace.isLikelyStackTrace(result), "Should be a stacktrace.");
+                InspectorTest.assert(WI.StackTrace.isLikelyStackTrace(result), "Should be a stacktrace.");
 
                 resolve();
             });

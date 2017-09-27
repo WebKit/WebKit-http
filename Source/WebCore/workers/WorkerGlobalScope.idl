@@ -40,12 +40,10 @@
 
     // WorkerUtils
 
-    [Custom] void importScripts(/*[Variadic] USVString urls */);
+    [MayThrowException] void importScripts(USVString... urls);
     readonly attribute WorkerNavigator navigator;
 
     // Additional constructors
-
-    attribute DOMURLConstructor webkitURL; // FIXME: deprecate this.
 
     // FIXME: Automatically generate these once we can drop the IndexedDBWorkers runtime flag.
     [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBCursorConstructor IDBCursor;
@@ -62,4 +60,5 @@
 };
 
 WorkerGlobalScope implements GlobalCrypto;
+WorkerGlobalScope implements GlobalPerformance;
 WorkerGlobalScope implements WindowOrWorkerGlobalScope;

@@ -47,11 +47,12 @@ public:
     }
 
     static EvalCodeBlock* create(VM* vm, EvalExecutable* ownerExecutable, UnlinkedEvalCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider)
+        JSScope* scope, RefPtr<SourceProvider>&& sourceProvider)
     {
         EvalCodeBlock* instance = new (NotNull, allocateCell<EvalCodeBlock>(vm->heap))
-            EvalCodeBlock(vm, vm->evalCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
+            EvalCodeBlock(vm, vm->evalCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, WTFMove(sourceProvider));
+        if (!instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope))
+            return nullptr;
         return instance;
     }
 
@@ -62,6 +63,8 @@ public:
 
     const Identifier& variable(unsigned index) { return unlinkedEvalCodeBlock()->variable(index); }
     unsigned numVariables() { return unlinkedEvalCodeBlock()->numVariables(); }
+    const Identifier& functionHoistingCandidate(unsigned index) { return unlinkedEvalCodeBlock()->functionHoistingCandidate(index); }
+    unsigned numFunctionHoistingCandidates() { return unlinkedEvalCodeBlock()->numFunctionHoistingCandidates(); }
     
 private:
     EvalCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, EvalCodeBlock& other)
@@ -70,8 +73,8 @@ private:
     }
         
     EvalCodeBlock(VM* vm, Structure* structure, EvalExecutable* ownerExecutable, UnlinkedEvalCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider)
-        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, 1)
+        JSScope* scope, RefPtr<SourceProvider>&& sourceProvider)
+        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, WTFMove(sourceProvider), 0, 1)
     {
     }
     

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,7 +49,7 @@ enum class FrameAndStackAdjustmentRequirement {
 static MacroAssemblerCodeRef genericGenerationThunkGenerator(
     VM* vm, FunctionPtr generationFunction, const char* name, unsigned extraPopsToRestore, FrameAndStackAdjustmentRequirement frameAndStackAdjustmentRequirement)
 {
-    AssemblyHelpers jit(vm, 0);
+    AssemblyHelpers jit(nullptr);
 
     if (frameAndStackAdjustmentRequirement == FrameAndStackAdjustmentRequirement::Needed) {
         // This needs to happen before we use the scratch buffer because this function also uses the scratch buffer.
@@ -79,7 +79,7 @@ static MacroAssemblerCodeRef genericGenerationThunkGenerator(
     saveAllRegisters(jit, buffer);
     
     // Tell GC mark phase how much of the scratch buffer is active during call.
-    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::nonArgGPR0);
+    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::nonArgGPR0);
     jit.storePtr(MacroAssembler::TrustedImmPtr(requiredScratchMemorySizeInBytes()), GPRInfo::nonArgGPR0);
 
     jit.loadPtr(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
@@ -96,7 +96,7 @@ static MacroAssemblerCodeRef genericGenerationThunkGenerator(
     jit.move(GPRInfo::returnValueGPR, GPRInfo::regT0);
     
     // Make sure we tell the GC that we're not using the scratch buffer anymore.
-    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT1);
+    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::regT1);
     jit.storePtr(MacroAssembler::TrustedImmPtr(0), GPRInfo::regT1);
     
     // Prepare for tail call.
@@ -117,7 +117,7 @@ static MacroAssemblerCodeRef genericGenerationThunkGenerator(
 
     jit.ret();
     
-    LinkBuffer patchBuffer(*vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     patchBuffer.link(functionCall, generationFunction);
     return FINALIZE_CODE(patchBuffer, ("%s", name));
 }
@@ -164,9 +164,9 @@ static void registerClobberCheck(AssemblyHelpers& jit, RegisterSet dontClobber)
     }
 }
 
-MacroAssemblerCodeRef slowPathCallThunkGenerator(VM& vm, const SlowPathCallKey& key)
+MacroAssemblerCodeRef slowPathCallThunkGenerator(const SlowPathCallKey& key)
 {
-    AssemblyHelpers jit(&vm, 0);
+    AssemblyHelpers jit(nullptr);
     
     // We want to save the given registers at the given offset, then we want to save the
     // old return address somewhere past that offset, and then finally we want to make the
@@ -222,7 +222,7 @@ MacroAssemblerCodeRef slowPathCallThunkGenerator(VM& vm, const SlowPathCallKey& 
     
     jit.ret();
 
-    LinkBuffer patchBuffer(vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     patchBuffer.link(call, FunctionPtr(key.callTarget()));
     return FINALIZE_CODE(patchBuffer, ("FTL slow path call thunk for %s", toCString(key).data()));
 }

@@ -23,11 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.NavigationSidebarPanel
+WI.SearchSidebarPanel = class SearchSidebarPanel extends WI.NavigationSidebarPanel
 {
     constructor(contentBrowser)
     {
-        super("search", WebInspector.UIString("Search"), true, true);
+        super("search", WI.UIString("Search"), true, true);
 
         this.contentBrowser = contentBrowser;
 
@@ -42,17 +42,15 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
         this._inputElement.addEventListener("input", this._searchFieldInput.bind(this));
         this._inputElement.setAttribute("results", 5);
         this._inputElement.setAttribute("autosave", "inspector-search-autosave");
-        this._inputElement.setAttribute("placeholder", WebInspector.UIString("Search Resource Content"));
+        this._inputElement.setAttribute("placeholder", WI.UIString("Search Resource Content"));
         searchElement.appendChild(this._inputElement);
 
-        this.filterBar.placeholder = WebInspector.UIString("Filter Search Results");
-
-        this._searchQuerySetting = new WebInspector.Setting("search-sidebar-query", "");
+        this._searchQuerySetting = new WI.Setting("search-sidebar-query", "");
         this._inputElement.value = this._searchQuerySetting.value;
 
-        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
+        WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
 
-        this.contentTreeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
+        this.contentTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
     }
 
     // Public
@@ -61,14 +59,21 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
     {
         super.closed();
 
-        WebInspector.Frame.removeEventListener(null, null, this);
+        WI.Frame.removeEventListener(null, null, this);
     }
 
-    focusSearchField()
+    focusSearchField(performSearch)
     {
-        this.show();
+        if (!this.parentSidebar)
+            return;
+
+        this.parentSidebar.selectedSidebarPanel = this;
+        this.parentSidebar.collapsed = false;
 
         this._inputElement.select();
+
+        if (performSearch)
+            this.performSearch(this._inputElement.value);
     }
 
     performSearch(searchQuery)
@@ -82,6 +87,10 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
 
         this.hideEmptyContentPlaceholder();
 
+        this.element.classList.remove("changed");
+        if (this._changedBanner)
+            this._changedBanner.remove();
+
         searchQuery = searchQuery.trim();
         if (!searchQuery.length)
             return;
@@ -91,6 +100,17 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
         var isRegex = false;
 
         var updateEmptyContentPlaceholderTimeout = null;
+
+        function createTreeElementForMatchObject(matchObject, parentTreeElement)
+        {
+            let matchTreeElement = new WI.SearchResultTreeElement(matchObject);
+            matchTreeElement.addEventListener(WI.TreeElement.Event.DoubleClick, this._treeElementDoubleClick, this);
+
+            parentTreeElement.appendChild(matchTreeElement);
+
+            if (!this.contentTreeOutline.selectedTreeElement)
+                matchTreeElement.revealAndSelect(false, true);
+        }
 
         function updateEmptyContentPlaceholderSoon()
         {
@@ -106,7 +126,7 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
                 updateEmptyContentPlaceholderTimeout = null;
             }
 
-            this.updateEmptyContentPlaceholder(WebInspector.UIString("No Search Results"));
+            this.updateEmptyContentPlaceholder(WI.UIString("No Search Results"));
         }
 
         function forEachMatch(searchQuery, lineContent, callback)
@@ -131,7 +151,7 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
                 if (error || !resourceMatches || !resourceMatches.length)
                     return;
 
-                var frame = WebInspector.frameResourceManager.frameForIdentifier(frameId);
+                var frame = WI.frameResourceManager.frameForIdentifier(frameId);
                 if (!frame)
                     return;
 
@@ -143,13 +163,10 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
 
                 for (var i = 0; i < resourceMatches.length; ++i) {
                     var match = resourceMatches[i];
-                    forEachMatch(searchQuery, match.lineContent, function(lineMatch, lastIndex) {
-                        var matchObject = new WebInspector.SourceCodeSearchMatchObject(resource, match.lineContent, searchQuery, new WebInspector.TextRange(match.lineNumber, lineMatch.index, match.lineNumber, lastIndex));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        resourceTreeElement.appendChild(matchTreeElement);
-                        if (!this.contentTreeOutline.selectedTreeElement)
-                            matchTreeElement.revealAndSelect(false, true);
-                    }.bind(this));
+                    forEachMatch(searchQuery, match.lineContent, (lineMatch, lastIndex) => {
+                        var matchObject = new WI.SourceCodeSearchMatchObject(resource, match.lineContent, searchQuery, new WI.TextRange(match.lineNumber, lineMatch.index, match.lineNumber, lastIndex));
+                        createTreeElementForMatchObject.call(this, matchObject, resourceTreeElement);
+                    });
                 }
 
                 updateEmptyContentPlaceholder.call(this);
@@ -163,6 +180,12 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
                 // COMPATIBILITY (iOS 9): Page.searchInResources did not have the optional requestId parameter.
                 PageAgent.searchInResource(searchResult.frameId, searchResult.url, searchQuery, isCaseSensitive, isRegex, searchResult.requestId, resourceCallback.bind(this, searchResult.frameId, searchResult.url));
             }
+
+            let promises = [
+                WI.Frame.awaitEvent(WI.Frame.Event.ResourceWasAdded),
+                WI.Target.awaitEvent(WI.Target.Event.ResourceAdded)
+            ];
+            Promise.race(promises).then(this._contentChanged.bind(this));
         }
 
         function searchScripts(scriptsToSearch)
@@ -183,13 +206,10 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
 
                 for (var i = 0; i < scriptMatches.length; ++i) {
                     var match = scriptMatches[i];
-                    forEachMatch(searchQuery, match.lineContent, function(lineMatch, lastIndex) {
-                        var matchObject = new WebInspector.SourceCodeSearchMatchObject(script, match.lineContent, searchQuery, new WebInspector.TextRange(match.lineNumber, lineMatch.index, match.lineNumber, lastIndex));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        scriptTreeElement.appendChild(matchTreeElement);
-                        if (!this.contentTreeOutline.selectedTreeElement)
-                            matchTreeElement.revealAndSelect(false, true);
-                    }.bind(this));
+                    forEachMatch(searchQuery, match.lineContent, (lineMatch, lastIndex) => {
+                        var matchObject = new WI.SourceCodeSearchMatchObject(script, match.lineContent, searchQuery, new WI.TextRange(match.lineNumber, lineMatch.index, match.lineNumber, lastIndex));
+                        createTreeElementForMatchObject.call(this, matchObject, scriptTreeElement);
+                    });
                 }
 
                 updateEmptyContentPlaceholder.call(this);
@@ -222,7 +242,7 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
                     if (this._domSearchIdentifier !== searchId)
                         return;
 
-                    var domNode = WebInspector.domTreeManager.nodeForId(nodeIds[i]);
+                    var domNode = WI.domTreeManager.nodeForId(nodeIds[i]);
                     if (!domNode || !domNode.ownerDocument)
                         continue;
 
@@ -231,31 +251,25 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
                         continue;
 
                     // FIXME: This should use a frame to do resourceForURL, but DOMAgent does not provide a frameId.
-                    var resource = WebInspector.frameResourceManager.resourceForURL(domNode.ownerDocument.documentURL);
+                    var resource = WI.frameResourceManager.resourceForURL(domNode.ownerDocument.documentURL);
                     if (!resource)
                         continue;
 
                     var resourceTreeElement = this._searchTreeElementForResource(resource);
-                    var domNodeTitle = WebInspector.DOMSearchMatchObject.titleForDOMNode(domNode);
+                    var domNodeTitle = WI.DOMSearchMatchObject.titleForDOMNode(domNode);
 
                     // Textual matches.
                     var didFindTextualMatch = false;
-                    forEachMatch(searchQuery, domNodeTitle, function(lineMatch, lastIndex) {
-                        var matchObject = new WebInspector.DOMSearchMatchObject(resource, domNode, domNodeTitle, searchQuery, new WebInspector.TextRange(0, lineMatch.index, 0, lastIndex));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        resourceTreeElement.appendChild(matchTreeElement);
-                        if (!this.contentTreeOutline.selectedTreeElement)
-                            matchTreeElement.revealAndSelect(false, true);
+                    forEachMatch(searchQuery, domNodeTitle, (lineMatch, lastIndex) => {
+                        var matchObject = new WI.DOMSearchMatchObject(resource, domNode, domNodeTitle, searchQuery, new WI.TextRange(0, lineMatch.index, 0, lastIndex));
+                        createTreeElementForMatchObject.call(this, matchObject, resourceTreeElement);
                         didFindTextualMatch = true;
-                    }.bind(this));
+                    });
 
                     // Non-textual matches are CSS Selector or XPath matches. In such cases, display the node entirely highlighted.
                     if (!didFindTextualMatch) {
-                        var matchObject = new WebInspector.DOMSearchMatchObject(resource, domNode, domNodeTitle, domNodeTitle, new WebInspector.TextRange(0, 0, 0, domNodeTitle.length));
-                        var matchTreeElement = new WebInspector.SearchResultTreeElement(matchObject);
-                        resourceTreeElement.appendChild(matchTreeElement);
-                        if (!this.contentTreeOutline.selectedTreeElement)
-                            matchTreeElement.revealAndSelect(false, true);
+                        var matchObject = new WI.DOMSearchMatchObject(resource, domNode, domNodeTitle, domNodeTitle, new WI.TextRange(0, 0, 0, domNodeTitle.length));
+                        createTreeElementForMatchObject.call(this, matchObject, resourceTreeElement);
                     }
 
                     updateEmptyContentPlaceholder.call(this);
@@ -266,12 +280,12 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
         }
 
         if (window.DOMAgent)
-            WebInspector.domTreeManager.requestDocument(function(){});
+            WI.domTreeManager.ensureDocument();
 
         if (window.PageAgent)
             PageAgent.searchInResources(searchQuery, isCaseSensitive, isRegex, resourcesCallback.bind(this));
 
-        setTimeout(searchScripts.bind(this, WebInspector.debuggerManager.searchableScripts), 0);
+        setTimeout(searchScripts.bind(this, WI.debuggerManager.searchableScripts), 0);
 
         if (window.DOMAgent) {
             if (this._domSearchIdentifier) {
@@ -306,7 +320,7 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
     {
         var resourceTreeElement = this.contentTreeOutline.getCachedTreeElement(resource);
         if (!resourceTreeElement) {
-            resourceTreeElement = new WebInspector.ResourceTreeElement(resource);
+            resourceTreeElement = new WI.ResourceTreeElement(resource);
             resourceTreeElement.hasChildren = true;
             resourceTreeElement.expand();
 
@@ -320,7 +334,7 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
     {
         var scriptTreeElement = this.contentTreeOutline.getCachedTreeElement(script);
         if (!scriptTreeElement) {
-            scriptTreeElement = new WebInspector.ScriptTreeElement(script);
+            scriptTreeElement = new WI.ScriptTreeElement(script);
             scriptTreeElement.hasChildren = true;
             scriptTreeElement.expand();
 
@@ -343,28 +357,76 @@ WebInspector.SearchSidebarPanel = class SearchSidebarPanel extends WebInspector.
         this.contentTreeOutline.removeChildren();
         this.contentBrowser.contentViewContainer.closeAllContentViews();
 
-        if (this.visible)
-            this.focusSearchField();
+        if (this.visible) {
+            const performSearch = true;
+            this.focusSearchField(performSearch);
+        }
     }
 
     _treeSelectionDidChange(event)
     {
-        let treeElement = event.data.selectedElement;
-        if (!treeElement || treeElement instanceof WebInspector.FolderTreeElement)
+        if (!this.visible)
             return;
 
-        if (treeElement instanceof WebInspector.ResourceTreeElement || treeElement instanceof WebInspector.ScriptTreeElement) {
-            WebInspector.showRepresentedObject(treeElement.representedObject);
+        let treeElement = event.data.selectedElement;
+        if (!treeElement || treeElement instanceof WI.FolderTreeElement)
+            return;
+
+        const options = {
+            ignoreNetworkTab: true,
+        };
+
+        if (treeElement instanceof WI.ResourceTreeElement || treeElement instanceof WI.ScriptTreeElement) {
+            const cookie = null;
+            WI.showRepresentedObject(treeElement.representedObject, cookie, options);
             return;
         }
 
-        console.assert(treeElement instanceof WebInspector.SearchResultTreeElement);
-        if (!(treeElement instanceof WebInspector.SearchResultTreeElement))
+        console.assert(treeElement instanceof WI.SearchResultTreeElement);
+        if (!(treeElement instanceof WI.SearchResultTreeElement))
             return;
 
-        if (treeElement.representedObject instanceof WebInspector.DOMSearchMatchObject)
-            WebInspector.showMainFrameDOMTree(treeElement.representedObject.domNode);
-        else if (treeElement.representedObject instanceof WebInspector.SourceCodeSearchMatchObject)
-            WebInspector.showOriginalOrFormattedSourceCodeTextRange(treeElement.representedObject.sourceCodeTextRange);
+        if (treeElement.representedObject instanceof WI.DOMSearchMatchObject)
+            WI.showMainFrameDOMTree(treeElement.representedObject.domNode);
+        else if (treeElement.representedObject instanceof WI.SourceCodeSearchMatchObject)
+            WI.showOriginalOrFormattedSourceCodeTextRange(treeElement.representedObject.sourceCodeTextRange, options);
+    }
+
+    _treeElementDoubleClick(event)
+    {
+        let treeElement = event.target;
+        if (!treeElement)
+            return;
+
+        if (treeElement.representedObject instanceof WI.DOMSearchMatchObject) {
+            WI.showMainFrameDOMTree(treeElement.representedObject.domNode, {
+                ignoreSearchTab: true,
+            });
+        } else if (treeElement.representedObject instanceof WI.SourceCodeSearchMatchObject) {
+            WI.showOriginalOrFormattedSourceCodeTextRange(treeElement.representedObject.sourceCodeTextRange, {
+                ignoreNetworkTab: true,
+                ignoreSearchTab: true,
+            });
+        }
+    }
+
+    _contentChanged(event)
+    {
+        this.element.classList.add("changed");
+
+        if (!this._changedBanner) {
+            this._changedBanner = document.createElement("div");
+            this._changedBanner.classList.add("banner");
+            this._changedBanner.append(WI.UIString("The page's content has changed"), document.createElement("br"));
+
+            let performSearchLink = this._changedBanner.appendChild(document.createElement("a"));
+            performSearchLink.textContent = WI.UIString("Search Again");
+            performSearchLink.addEventListener("click", () => {
+                const performSearch = true;
+                this.focusSearchField(performSearch);
+            });
+        }
+
+        this.element.appendChild(this._changedBanner);
     }
 };

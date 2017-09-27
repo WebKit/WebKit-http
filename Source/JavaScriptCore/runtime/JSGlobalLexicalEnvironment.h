@@ -34,7 +34,7 @@ class JSGlobalLexicalEnvironment : public JSSegmentedVariableObject {
 public:
     typedef JSSegmentedVariableObject Base;
 
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesToThis;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
 
     static JSGlobalLexicalEnvironment* create(VM& vm, Structure* structure, JSScope* parentScope)
     {
@@ -42,7 +42,6 @@ public:
             new (NotNull, allocateCell<JSGlobalLexicalEnvironment>(vm.heap)) JSGlobalLexicalEnvironment(vm, structure, parentScope);
         result->finishCreation(vm);
         result->symbolTable()->setScopeType(SymbolTable::ScopeType::GlobalLexicalScope);
-        vm.heap.addFinalizer(result, destroy);
         return result;
     }
 
@@ -56,8 +55,6 @@ public:
     bool isEmpty() const { return !symbolTable()->size(); }
     bool isConstVariable(UniquedStringImpl*);
 
-    static JSValue toThis(JSCell*, ExecState*, ECMAMode);
-    
     DECLARE_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject)

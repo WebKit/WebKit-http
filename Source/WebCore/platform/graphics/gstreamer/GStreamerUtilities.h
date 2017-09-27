@@ -19,7 +19,6 @@
 
 #pragma once
 
-#include "Logging.h"
 
 #include <gst/gst.h>
 #include <gst/video/video-format.h>
@@ -59,16 +58,11 @@ bool getSampleVideoInfo(GstSample*, GstVideoInfo&);
 GstBuffer* createGstBuffer(GstBuffer*);
 GstBuffer* createGstBufferForData(const char* data, int length);
 char* getGstBufferDataPointer(GstBuffer*);
-void mapGstBuffer(GstBuffer*);
+void mapGstBuffer(GstBuffer*, uint32_t);
 void unmapGstBuffer(GstBuffer*);
 bool initializeGStreamer();
 unsigned getGstPlayFlag(const char* nick);
 uint64_t toGstUnsigned64Time(const MediaTime&);
 GstClockTime toGstClockTime(const MediaTime&);
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
-GstElement* getPipeline(GstElement*);
-
-#if GST_CHECK_VERSION(1, 5, 3) && (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA))
-GstElement* createGstDecryptor(const gchar* protectionSystem);
-#endif
 }

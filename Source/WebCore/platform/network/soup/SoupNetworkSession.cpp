@@ -30,13 +30,14 @@
 #include "SoupNetworkSession.h"
 
 #include "AuthenticationChallenge.h"
-#include "CryptoDigest.h"
 #include "FileSystem.h"
 #include "GUniquePtrSoup.h"
 #include "Logging.h"
 #include "ResourceHandle.h"
+#include "SoupNetworkProxySettings.h"
 #include <glib/gstdio.h>
 #include <libsoup/soup.h>
+#include <pal/crypto/CryptoDigest.h>
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/Base64.h>
@@ -48,6 +49,8 @@ namespace WebCore {
 
 static bool gIgnoreTLSErrors;
 static CString gInitialAcceptLanguages;
+static SoupNetworkProxySettings gProxySettings;
+static GType gCustomProtocolRequestType;
 
 #if !LOG_DISABLED
 inline static void soupLogPrinter(SoupLogger*, SoupLoggerLogLevel, char direction, const char* data, gpointer)
@@ -78,7 +81,7 @@ private:
         if (!certificateData)
             return String();
 
-        auto digest = CryptoDigest::create(CryptoDigest::Algorithm::SHA_256);
+        auto digest = PAL::CryptoDigest::create(PAL::CryptoDigest::Algorithm::SHA_256);
         digest->addBytes(certificateData->data, certificateData->len);
 
         auto hash = digest->computeHash();
@@ -102,7 +105,7 @@ static void authenticateCallback(SoupSession*, SoupMessage* soupMessage, SoupAut
     handle->didReceiveAuthenticationChallenge(AuthenticationChallenge(soupMessage, soupAuth, retrying, handle.get()));
 }
 
-#if ENABLE(WEB_TIMING) && !SOUP_CHECK_VERSION(2, 49, 91)
+#if !SOUP_CHECK_VERSION(2, 49, 91)
 static void requestStartedCallback(SoupSession*, SoupMessage* soupMessage, SoupSocket*, gpointer)
 {
     RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(g_object_get_data(G_OBJECT(soupMessage), "handle"));
@@ -140,6 +143,8 @@ SoupNetworkSession::SoupNetworkSession(SoupCookieJar* cookieJar)
         SOUP_SESSION_SSL_STRICT, FALSE,
         nullptr);
 
+    setupCustomProtocols();
+
     if (!gInitialAcceptLanguages.isNull())
         setAcceptLanguages(gInitialAcceptLanguages);
 
@@ -151,10 +156,12 @@ SoupNetworkSession::SoupNetworkSession(SoupCookieJar* cookieJar)
     }
 #endif
 
+    if (gProxySettings.mode != SoupNetworkProxySettings::Mode::Default)
+        setupProxy();
     setupLogger();
 
     g_signal_connect(m_soupSession.get(), "authenticate", G_CALLBACK(authenticateCallback), nullptr);
-#if ENABLE(WEB_TIMING) && !SOUP_CHECK_VERSION(2, 49, 91)
+#if !SOUP_CHECK_VERSION(2, 49, 91)
     g_signal_connect(m_soupSession.get(), "request-started", G_CALLBACK(requestStartedCallback), nullptr);
 #endif
 }
@@ -230,26 +237,35 @@ void SoupNetworkSession::clearCache(const String& cacheDirectory)
     }
 }
 
-void SoupNetworkSession::setHTTPProxy(const char* httpProxy, const char* httpProxyExceptions)
+void SoupNetworkSession::setupProxy()
 {
-#if PLATFORM(EFL) || PLATFORM(WPE)
-    // Only for EFL because GTK port uses the default resolver, which uses GIO's proxy resolver.
-    GProxyResolver* resolver = nullptr;
-    if (httpProxy) {
-        gchar** ignoreLists = nullptr;
-        if (httpProxyExceptions)
-            ignoreLists =  g_strsplit(httpProxyExceptions, ",", -1);
-
-        resolver = g_simple_proxy_resolver_new(httpProxy, ignoreLists);
-
-        g_strfreev(ignoreLists);
+    GRefPtr<GProxyResolver> resolver;
+    switch (gProxySettings.mode) {
+    case SoupNetworkProxySettings::Mode::Default: {
+        GRefPtr<GProxyResolver> currentResolver;
+        g_object_get(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, &currentResolver.outPtr(), nullptr);
+        GProxyResolver* defaultResolver = g_proxy_resolver_get_default();
+        if (currentResolver.get() == defaultResolver)
+            return;
+        resolver = defaultResolver;
+        break;
+    }
+    case SoupNetworkProxySettings::Mode::NoProxy:
+        // Do nothing in this case, resolver is nullptr so that when set it will disable proxies.
+        break;
+    case SoupNetworkProxySettings::Mode::Custom:
+        resolver = adoptGRef(g_simple_proxy_resolver_new(nullptr, nullptr));
+        if (!gProxySettings.defaultProxyURL.isNull())
+            g_simple_proxy_resolver_set_default_proxy(G_SIMPLE_PROXY_RESOLVER(resolver.get()), gProxySettings.defaultProxyURL.data());
+        if (gProxySettings.ignoreHosts)
+            g_simple_proxy_resolver_set_ignore_hosts(G_SIMPLE_PROXY_RESOLVER(resolver.get()), gProxySettings.ignoreHosts.get());
+        for (const auto& iter : gProxySettings.proxyMap)
+            g_simple_proxy_resolver_set_uri_proxy(G_SIMPLE_PROXY_RESOLVER(resolver.get()), iter.key.data(), iter.value.data());
+        break;
     }
 
-    g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver, nullptr);
-#else
-    UNUSED_PARAM(httpProxy);
-    UNUSED_PARAM(httpProxyExceptions);
-#endif
+    g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver.get(), nullptr);
+    soup_session_abort(m_soupSession.get());
 }
 
 void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
@@ -275,17 +291,32 @@ void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
 #endif
 }
 
-void SoupNetworkSession::setupHTTPProxyFromEnvironment()
+#if PLATFORM(WPE)
+void SoupNetworkSession::setProxySettingsFromEnvironment()
 {
-#if PLATFORM(EFL) || PLATFORM(WPE)
+// FIXME: This function should not exist at all and we don't want to accidentally use it in other ports.
+// The correct way to set proxy settings from the environment is to use a GProxyResolver that does so.
+// It also lacks the rather important https_proxy and ftp_proxy variables, and the uppercase versions of
+// all four variables, all of which you almost surely want to be respected if you're setting http_proxy,
+// and all of which would be supported via the default proxy resolver in non-GNOME/Ubuntu environments
+// (at least, I think that's right). Additionally, it is incorrect for WebKit to respect this environment
+// variable when running in a GNOME or Ubuntu environment, where GNOME proxy configuration should be
+// respected instead. The only reason to retain this function is to not alter the incorrect behavior for EFL.
     const char* httpProxy = getenv("http_proxy");
     if (!httpProxy)
         return;
 
-    setHTTPProxy(httpProxy, getenv("no_proxy"));
-#endif
+    gProxySettings.defaultProxyURL = httpProxy;
+    const char* httpProxyExceptions = getenv("no_proxy");
+    if (httpProxyExceptions)
+        gProxySettings.ignoreHosts.reset(g_strsplit(httpProxyExceptions, ",", -1));
 }
+#endif
 
+void SoupNetworkSession::setProxySettings(const SoupNetworkProxySettings& settings)
+{
+    gProxySettings = settings;
+}
 
 void SoupNetworkSession::setInitialAcceptLanguages(const CString& languages)
 {
@@ -297,12 +328,30 @@ void SoupNetworkSession::setAcceptLanguages(const CString& languages)
     g_object_set(m_soupSession.get(), "accept-language", languages.data(), nullptr);
 }
 
+void SoupNetworkSession::setCustomProtocolRequestType(GType requestType)
+{
+    ASSERT(g_type_is_a(requestType, SOUP_TYPE_REQUEST));
+    gCustomProtocolRequestType = requestType;
+}
+
+void SoupNetworkSession::setupCustomProtocols()
+{
+    if (!g_type_is_a(gCustomProtocolRequestType, SOUP_TYPE_REQUEST))
+        return;
+
+    auto* requestClass = static_cast<SoupRequestClass*>(g_type_class_peek(gCustomProtocolRequestType));
+    if (!requestClass || !requestClass->schemes)
+        return;
+
+    soup_session_add_feature_by_type(m_soupSession.get(), gCustomProtocolRequestType);
+}
+
 void SoupNetworkSession::setShouldIgnoreTLSErrors(bool ignoreTLSErrors)
 {
     gIgnoreTLSErrors = ignoreTLSErrors;
 }
 
-void SoupNetworkSession::checkTLSErrors(SoupRequest* soupRequest, SoupMessage* message, std::function<void (const ResourceError&)>&& completionHandler)
+void SoupNetworkSession::checkTLSErrors(SoupRequest* soupRequest, SoupMessage* message, WTF::Function<void (const ResourceError&)>&& completionHandler)
 {
     if (gIgnoreTLSErrors) {
         completionHandler({ });

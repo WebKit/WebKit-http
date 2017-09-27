@@ -45,7 +45,7 @@ static const size_t sizeOfDirectory = 6;
 static const size_t sizeOfDirEntry = 16;
 
 ICOImageDecoder::ICOImageDecoder(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
-    : ImageDecoder(alphaOption, gammaAndColorProfileOption)
+    : ScalableImageDecoder(alphaOption, gammaAndColorProfileOption)
     , m_decodedOffset(0)
 {
 }
@@ -59,7 +59,7 @@ void ICOImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
     if (failed())
         return;
 
-    ImageDecoder::setData(data, allDataReceived);
+    ScalableImageDecoder::setData(data, allDataReceived);
 
     for (BMPReaders::iterator i(m_bmpReaders.begin()); i != m_bmpReaders.end(); ++i) {
         if (*i)
@@ -69,20 +69,12 @@ void ICOImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
         setDataForPNGDecoderAtIndex(i);
 }
 
-bool ICOImageDecoder::isSizeAvailable()
+IntSize ICOImageDecoder::size() const
 {
-    if (!ImageDecoder::isSizeAvailable())
-        decode(0, true);
-
-    return ImageDecoder::isSizeAvailable();
+    return m_frameSize.isEmpty() ? ScalableImageDecoder::size() : m_frameSize;
 }
 
-IntSize ICOImageDecoder::size()
-{
-    return m_frameSize.isEmpty() ? ImageDecoder::size() : m_frameSize;
-}
-
-IntSize ICOImageDecoder::frameSizeAtIndex(size_t index, SubsamplingLevel)
+IntSize ICOImageDecoder::frameSizeAtIndex(size_t index, SubsamplingLevel) const
 {
     return (index && (index < m_dirEntries.size())) ? m_dirEntries[index].m_size : size();
 }
@@ -91,12 +83,12 @@ bool ICOImageDecoder::setSize(const IntSize& size)
 {
     // The size calculated inside the BMPImageReader had better match the one in
     // the icon directory.
-    return m_frameSize.isEmpty() ? ImageDecoder::setSize(size) : ((size == m_frameSize) || setFailed());
+    return m_frameSize.isEmpty() ? ScalableImageDecoder::setSize(size) : ((size == m_frameSize) || setFailed());
 }
 
 size_t ICOImageDecoder::frameCount() const
 {
-    const_cast<ICOImageDecoder*>(this)->decode(0, true);
+    const_cast<ICOImageDecoder*>(this)->decode(0, true, isAllDataReceived());
     return m_frameBufferCache.size();
 }
 
@@ -108,7 +100,7 @@ ImageFrame* ICOImageDecoder::frameBufferAtIndex(size_t index)
 
     ImageFrame* buffer = &m_frameBufferCache[index];
     if (!buffer->isComplete())
-        decode(index, false);
+        decode(index, false, isAllDataReceived());
     return buffer;
 }
 
@@ -116,10 +108,10 @@ bool ICOImageDecoder::setFailed()
 {
     m_bmpReaders.clear();
     m_pngDecoders.clear();
-    return ImageDecoder::setFailed();
+    return ScalableImageDecoder::setFailed();
 }
 
-Optional<IntPoint> ICOImageDecoder::hotSpot() const
+std::optional<IntPoint> ICOImageDecoder::hotSpot() const
 {
     // When unspecified, the default frame is always frame 0. This is consistent with
     // BitmapImage where currentFrame() starts at 0 and only increases when animation is
@@ -127,10 +119,10 @@ Optional<IntPoint> ICOImageDecoder::hotSpot() const
     return hotSpotAtIndex(0);
 }
 
-Optional<IntPoint> ICOImageDecoder::hotSpotAtIndex(size_t index) const
+std::optional<IntPoint> ICOImageDecoder::hotSpotAtIndex(size_t index) const
 {
     if (index >= m_dirEntries.size() || m_fileType != CURSOR)
-        return Nullopt;
+        return std::nullopt;
 
     return m_dirEntries[index].m_hotSpot;
 }
@@ -158,14 +150,14 @@ void ICOImageDecoder::setDataForPNGDecoderAtIndex(size_t index)
     m_pngDecoders[index]->setData(*pngData, isAllDataReceived());
 }
 
-void ICOImageDecoder::decode(size_t index, bool onlySize)
+void ICOImageDecoder::decode(size_t index, bool onlySize, bool allDataReceived)
 {
     if (failed())
         return;
 
     // If we couldn't decode the image but we've received all the data, decoding
     // has failed.
-    if ((!decodeDirectory() || (!onlySize && !decodeAtIndex(index))) && isAllDataReceived())
+    if ((!decodeDirectory() || (!onlySize && !decodeAtIndex(index))) && allDataReceived)
         setFailed();
     // If we're done decoding this frame, we don't need the BMPImageReader or
     // PNGImageDecoder anymore.  (If we failed, these have already been
@@ -176,7 +168,7 @@ void ICOImageDecoder::decode(size_t index, bool onlySize)
     }
     
     if (m_frameBufferCache.isEmpty())
-        m_frameBufferCache.resize(m_dirEntries.size());
+        m_frameBufferCache.grow(m_dirEntries.size());
     // CAUTION: We must not resize m_frameBufferCache again after this, as
     // decodeAtIndex() may give a BMPImageReader a pointer to one of the
     // entries.
@@ -216,14 +208,12 @@ bool ICOImageDecoder::decodeAtIndex(size_t index)
     }
 
     if (!m_pngDecoders[index]) {
-        m_pngDecoders[index] = std::make_unique<
-            PNGImageDecoder>(m_premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied,
-                m_ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied);
+        m_pngDecoders[index] = PNGImageDecoder::create(m_premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied, m_ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied);
         setDataForPNGDecoderAtIndex(index);
     }
     // Fail if the size the PNGImageDecoder calculated does not match the size
     // in the directory.
-    if (m_pngDecoders[index]->isSizeAvailable() && (m_pngDecoders[index]->size() != dirEntry.m_size))
+    if (m_pngDecoders[index]->encodedDataStatus() >= EncodedDataStatus::SizeAvailable && (m_pngDecoders[index]->size() != dirEntry.m_size))
         return setFailed();
     m_frameBufferCache[index] = *m_pngDecoders[index]->frameBufferAtIndex(0);
     return !m_pngDecoders[index]->failed() || setFailed();

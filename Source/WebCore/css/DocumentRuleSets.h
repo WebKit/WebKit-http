@@ -40,16 +40,16 @@ class MediaQueryEvaluator;
 
 class DocumentRuleSets {
 public:
-    DocumentRuleSets();
+    DocumentRuleSets(StyleResolver&);
     ~DocumentRuleSets();
-    
+
     bool isAuthorStyleDefined() const { return m_isAuthorStyleDefined; }
     RuleSet& authorStyle() const { return *m_authorStyle.get(); }
-    RuleSet* userStyle() const { return m_userStyle.get(); }
+    RuleSet* userStyle() const;
     const RuleFeatureSet& features() const;
     RuleSet* sibling() const { return m_siblingRuleSet.get(); }
     RuleSet* uncommonAttribute() const { return m_uncommonAttributeRuleSet.get(); }
-    RuleSet* ancestorClassRules(AtomicStringImpl* className) const;
+    RuleSet* ancestorClassRules(const AtomicString& className) const;
 
     struct AttributeRules {
         WTF_MAKE_FAST_ALLOCATED;
@@ -57,9 +57,11 @@ public:
         Vector<const CSSSelector*> attributeSelectors;
         std::unique_ptr<RuleSet> ruleSet;
     };
-    const AttributeRules* ancestorAttributeRulesForHTML(AtomicStringImpl*) const;
+    const AttributeRules* ancestorAttributeRulesForHTML(const AtomicString&) const;
 
-    void initUserStyle(ExtensionStyleSheets&, const MediaQueryEvaluator&, StyleResolver&);
+    void setUsesSharedUserStyle(bool b) { m_usesSharedUserStyle = b; }
+    void initializeUserStyle();
+
     void resetAuthorStyle();
     void appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>&, MediaQueryEvaluator*, InspectorCSSOMWrappers&, StyleResolver*);
 
@@ -72,13 +74,15 @@ private:
     bool m_isAuthorStyleDefined { false };
     std::unique_ptr<RuleSet> m_authorStyle;
     std::unique_ptr<RuleSet> m_userStyle;
+    bool m_usesSharedUserStyle { false };
 
+    StyleResolver& m_styleResolver;
     mutable RuleFeatureSet m_features;
     mutable unsigned m_defaultStyleVersionOnFeatureCollection { 0 };
     mutable std::unique_ptr<RuleSet> m_siblingRuleSet;
     mutable std::unique_ptr<RuleSet> m_uncommonAttributeRuleSet;
-    mutable HashMap<AtomicStringImpl*, std::unique_ptr<RuleSet>> m_ancestorClassRuleSets;
-    mutable HashMap<AtomicStringImpl*, std::unique_ptr<AttributeRules>> m_ancestorAttributeRuleSetsForHTML;
+    mutable HashMap<AtomicString, std::unique_ptr<RuleSet>> m_ancestorClassRuleSets;
+    mutable HashMap<AtomicString, std::unique_ptr<AttributeRules>> m_ancestorAttributeRuleSetsForHTML;
 };
 
 inline const RuleFeatureSet& DocumentRuleSets::features() const

@@ -256,7 +256,7 @@ struct BacktrackingLevel {
 class SelectorCodeGenerator {
 public:
     SelectorCodeGenerator(const CSSSelector*, SelectorContext);
-    SelectorCompilationStatus compile(JSC::VM*, JSC::MacroAssemblerCodeRef&);
+    SelectorCompilationStatus compile(JSC::MacroAssemblerCodeRef&);
 
 private:
     static const Assembler::RegisterID returnRegister;
@@ -326,8 +326,8 @@ private:
     void generateElementHasFocusWithin(Assembler::JumpList& failureCases);
 
     // Helpers.
-    void generateAddStyleRelationIfResolvingStyle(Assembler::RegisterID element, Style::Relation::Type, Optional<Assembler::RegisterID> value = { });
-    void generateAddStyleRelation(Assembler::RegisterID checkingContext, Assembler::RegisterID element, Style::Relation::Type, Optional<Assembler::RegisterID> value = { });
+    void generateAddStyleRelationIfResolvingStyle(Assembler::RegisterID element, Style::Relation::Type, std::optional<Assembler::RegisterID> value = { });
+    void generateAddStyleRelation(Assembler::RegisterID checkingContext, Assembler::RegisterID element, Style::Relation::Type, std::optional<Assembler::RegisterID> value = { });
     Assembler::Jump branchOnResolvingModeWithCheckingContext(Assembler::RelationalCondition, SelectorChecker::Mode, Assembler::RegisterID checkingContext);
     Assembler::Jump branchOnResolvingMode(Assembler::RelationalCondition, SelectorChecker::Mode, Assembler::RegisterID checkingContext);
     void generateElementIsFirstLink(Assembler::JumpList& failureCases, Assembler::RegisterID element);
@@ -395,16 +395,13 @@ SelectorCompilationStatus compileSelector(const CSSSelector* lastSelector, JSC::
     if (!vm->canUseJIT())
         return SelectorCompilationStatus::CannotCompile;
     SelectorCodeGenerator codeGenerator(lastSelector, selectorContext);
-    return codeGenerator.compile(vm, codeRef);
+    return codeGenerator.compile(codeRef);
 }
 
 static inline FragmentRelation fragmentRelationForSelectorRelation(CSSSelector::RelationType relation)
 {
     switch (relation) {
     case CSSSelector::DescendantSpace:
-#if ENABLE_CSS_SELECTORS_LEVEL4
-    case CSSSelector::DescendantDoubleChild:
-#endif
         return FragmentRelation::Descendant;
     case CSSSelector::Child:
         return FragmentRelation::Child;
@@ -1046,7 +1043,7 @@ static FunctionType constructFragments(const CSSSelector* rootSelector, Selector
 
 static inline bool attributeNameTestingRequiresNamespaceRegister(const CSSSelector& attributeSelector)
 {
-    return attributeSelector.attribute().prefix() != starAtom && !attributeSelector.attribute().namespaceURI().isNull();
+    return attributeSelector.attribute().prefix() != starAtom() && !attributeSelector.attribute().namespaceURI().isNull();
 }
 
 static inline bool attributeValueTestingRequiresExtraRegister(const AttributeMatchingInfo& attributeInfo)
@@ -1208,7 +1205,7 @@ void computeBacktrackingMemoryRequirements(SelectorFragmentList& selectorFragmen
     }
 }
 
-inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::VM* vm, JSC::MacroAssemblerCodeRef& codeRef)
+inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::MacroAssemblerCodeRef& codeRef)
 {
     switch (m_functionType) {
     case FunctionType::SimpleSelectorChecker:
@@ -1223,7 +1220,7 @@ inline SelectorCompilationStatus SelectorCodeGenerator::compile(JSC::VM* vm, JSC
         return SelectorCompilationStatus::CannotCompile;
     }
 
-    JSC::LinkBuffer linkBuffer(*vm, m_assembler, CSS_CODE_ID, JSC::JITCompilationCanFail);
+    JSC::LinkBuffer linkBuffer(m_assembler, CSS_CODE_ID, JSC::JITCompilationCanFail);
     if (!linkBuffer.isValid()) {
         // This could be SelectorCompilationStatus::NotCompiled but that would cause us to re-enter
         // the CSS JIT every time we evaluate that selector.
@@ -1386,7 +1383,7 @@ static inline TagNameEquality equalTagNames(const CSSSelector* lhs, const CSSSel
 
     const AtomicString& lhsLocalName = lhsQualifiedName.localName();
     const AtomicString& rhsLocalName = rhsQualifiedName.localName();
-    if (lhsLocalName != starAtom && rhsLocalName != starAtom) {
+    if (lhsLocalName != starAtom() && rhsLocalName != starAtom()) {
         const AtomicString& lhsLowercaseLocalName = lhs->tagLowercaseLocalName();
         const AtomicString& rhsLowercaseLocalName = rhs->tagLowercaseLocalName();
 
@@ -1400,7 +1397,7 @@ static inline TagNameEquality equalTagNames(const CSSSelector* lhs, const CSSSel
 
     const AtomicString& lhsNamespaceURI = lhsQualifiedName.namespaceURI();
     const AtomicString& rhsNamespaceURI = rhsQualifiedName.namespaceURI();
-    if (lhsNamespaceURI != starAtom && rhsNamespaceURI != starAtom) {
+    if (lhsNamespaceURI != starAtom() && rhsNamespaceURI != starAtom()) {
         if (lhsNamespaceURI != rhsNamespaceURI)
             return TagNameEquality::StrictlyNotEqual;
         return TagNameEquality::StrictlyEqual;
@@ -2170,7 +2167,7 @@ void SelectorCodeGenerator::generateIndirectAdjacentTreeWalker(Assembler::JumpLi
     localFailureCases.linkTo(loopStart, &m_assembler);
 }
 
-void SelectorCodeGenerator::generateAddStyleRelationIfResolvingStyle(Assembler::RegisterID element, Style::Relation::Type relationType, Optional<Assembler::RegisterID> value)
+void SelectorCodeGenerator::generateAddStyleRelationIfResolvingStyle(Assembler::RegisterID element, Style::Relation::Type relationType, std::optional<Assembler::RegisterID> value)
 {
     if (m_selectorContext == SelectorContext::QuerySelector)
         return;
@@ -2188,7 +2185,7 @@ static void addStyleRelationFunction(SelectorChecker::CheckingContext* checkingC
     checkingContext->styleRelations.append({ *element, Style::Relation::AffectedByActive, 1 });
 }
 
-void SelectorCodeGenerator::generateAddStyleRelation(Assembler::RegisterID checkingContext, Assembler::RegisterID element, Style::Relation::Type relationType, Optional<Assembler::RegisterID> value)
+void SelectorCodeGenerator::generateAddStyleRelation(Assembler::RegisterID checkingContext, Assembler::RegisterID element, Style::Relation::Type relationType, std::optional<Assembler::RegisterID> value)
 {
     ASSERT(m_selectorContext != SelectorContext::QuerySelector);
 
@@ -2800,7 +2797,7 @@ void SelectorCodeGenerator::generateElementAttributeMatching(Assembler::JumpList
         LocalRegister qualifiedNameImpl(m_registerAllocator);
         m_assembler.loadPtr(Assembler::Address(currentAttributeAddress, Attribute::nameMemoryOffset()), qualifiedNameImpl);
 
-        bool shouldCheckNamespace = attributeSelector.attribute().prefix() != starAtom;
+        bool shouldCheckNamespace = attributeSelector.attribute().prefix() != starAtom();
         if (shouldCheckNamespace) {
             Assembler::Jump nameDoesNotMatch = m_assembler.branchPtr(Assembler::NotEqual, Assembler::Address(qualifiedNameImpl, QualifiedName::QualifiedNameImpl::localNameMemoryOffset()), localNameToMatch);
 
@@ -3391,7 +3388,7 @@ inline void SelectorCodeGenerator::generateElementHasTagName(Assembler::JumpList
     m_assembler.loadPtr(Assembler::Address(elementAddressRegister, Element::tagQNameMemoryOffset() + QualifiedName::implMemoryOffset()), qualifiedNameImpl);
 
     const AtomicString& selectorLocalName = nameToMatch.localName();
-    if (selectorLocalName != starAtom) {
+    if (selectorLocalName != starAtom()) {
         const AtomicString& lowercaseLocalName = tagMatchingSelector.tagLowercaseLocalName();
 
         if (selectorLocalName == lowercaseLocalName) {
@@ -3421,7 +3418,7 @@ inline void SelectorCodeGenerator::generateElementHasTagName(Assembler::JumpList
     }
 
     const AtomicString& selectorNamespaceURI = nameToMatch.namespaceURI();
-    if (selectorNamespaceURI != starAtom) {
+    if (selectorNamespaceURI != starAtom()) {
         // Generate namespaceURI == element->namespaceURI().
         LocalRegister constantRegister(m_registerAllocator);
         m_assembler.move(Assembler::TrustedImmPtr(selectorNamespaceURI.impl()), constantRegister);
@@ -3664,7 +3661,7 @@ void SelectorCodeGenerator::generateElementIsNthLastChildOf(Assembler::JumpList&
         for (const NthChildOfSelectorInfo& nthLastChildOfSelectorInfo : fragment.nthLastChildOfFilters) {
             if (nthFilterIsAlwaysSatisified(nthLastChildOfSelectorInfo.a, nthLastChildOfSelectorInfo.b))
                 continue;
-            validSubsetFilters.append(&nthLastChildOfSelectorInfo);
+            validSubsetFilters.uncheckedAppend(&nthLastChildOfSelectorInfo);
         }
         if (validSubsetFilters.isEmpty())
             return;

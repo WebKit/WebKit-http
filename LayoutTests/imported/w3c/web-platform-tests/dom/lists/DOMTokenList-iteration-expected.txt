@@ -1,3 +1,8 @@
 
-FAIL DOMTokenList iteration: keys, values, etc. assert_array_equals: lengths differ, expected 3 got 2
+PASS classList 
+PASS classList.keys 
+PASS classList.values 
+PASS classList.entries 
+PASS classList.forEach 
+PASS classList inheritance from Array.prototype 
 

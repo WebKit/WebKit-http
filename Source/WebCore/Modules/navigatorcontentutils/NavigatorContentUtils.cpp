@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011, Google Inc. All rights reserved.
  * Copyright (C) 2012, Samsung Electronics. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -30,7 +31,6 @@
 #if ENABLE(NAVIGATOR_CONTENT_UTILS)
 
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "Navigator.h"
 #include "Page.h"
@@ -41,14 +41,14 @@ namespace WebCore {
 
 static bool verifyCustomHandlerURL(const URL& baseURL, const String& url)
 {
-    // The specification requires that it is a SYNTAX_ERR if the "%s" token is
+    // The specification requires that it is a SyntaxError if the "%s" token is
     // not present.
     static const char token[] = "%s";
     int index = url.find(token);
     if (-1 == index)
         return false;
 
-    // It is also a SYNTAX_ERR if the custom handler URL, as created by removing
+    // It is also a SyntaxError if the custom handler URL, as created by removing
     // the "%s" token and prepending the base url, does not resolve.
     String newURL = url;
     newURL.remove(index, WTF_ARRAY_LENGTH(token) - 1);
@@ -104,10 +104,10 @@ ExceptionOr<void> NavigatorContentUtils::registerProtocolHandler(Navigator& navi
     URL baseURL = navigator.frame()->document()->baseURL();
 
     if (!verifyCustomHandlerURL(baseURL, url))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (!verifyProtocolHandlerScheme(scheme))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     NavigatorContentUtils::from(navigator.frame()->page())->client()->registerProtocolHandler(scheme, baseURL, URL(ParsedURLString, url), navigator.frame()->displayStringModifiedByEncoding(title));
     return { };
@@ -117,9 +117,9 @@ ExceptionOr<void> NavigatorContentUtils::registerProtocolHandler(Navigator& navi
 
 static String customHandlersStateString(const NavigatorContentUtilsClient::CustomHandlersState state)
 {
-    static NeverDestroyed<String> newHandler(ASCIILiteral("new"));
-    static NeverDestroyed<String> registeredHandler(ASCIILiteral("registered"));
-    static NeverDestroyed<String> declinedHandler(ASCIILiteral("declined"));
+    static NeverDestroyed<String> newHandler(MAKE_STATIC_STRING_IMPL("new"));
+    static NeverDestroyed<String> registeredHandler(MAKE_STATIC_STRING_IMPL("registered"));
+    static NeverDestroyed<String> declinedHandler(MAKE_STATIC_STRING_IMPL("declined"));
 
     switch (state) {
     case NavigatorContentUtilsClient::CustomHandlersNew:
@@ -136,7 +136,7 @@ static String customHandlersStateString(const NavigatorContentUtilsClient::Custo
 
 ExceptionOr<String> NavigatorContentUtils::isProtocolHandlerRegistered(Navigator& navigator, const String& scheme, const String& url)
 {
-    static NeverDestroyed<String> declined(ASCIILiteral("declined"));
+    static NeverDestroyed<String> declined(MAKE_STATIC_STRING_IMPL("declined"));
 
     if (!navigator.frame())
         return String { declined };
@@ -144,10 +144,10 @@ ExceptionOr<String> NavigatorContentUtils::isProtocolHandlerRegistered(Navigator
     URL baseURL = navigator.frame()->document()->baseURL();
 
     if (!verifyCustomHandlerURL(baseURL, url))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (!verifyProtocolHandlerScheme(scheme))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     return customHandlersStateString(NavigatorContentUtils::from(navigator.frame()->page())->client()->isProtocolHandlerRegistered(scheme, baseURL, URL(ParsedURLString, url)));
 }
@@ -160,10 +160,10 @@ ExceptionOr<void> NavigatorContentUtils::unregisterProtocolHandler(Navigator& na
     URL baseURL = navigator.frame()->document()->baseURL();
 
     if (!verifyCustomHandlerURL(baseURL, url))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (!verifyProtocolHandlerScheme(scheme))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     NavigatorContentUtils::from(navigator.frame()->page())->client()->unregisterProtocolHandler(scheme, baseURL, URL(ParsedURLString, url));
     return { };

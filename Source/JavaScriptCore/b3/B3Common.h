@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,12 +27,13 @@
 
 #if ENABLE(B3_JIT)
 
+#include "CPU.h"
+#include "GPRInfo.h"
 #include "JSExportMacros.h"
+#include "Options.h"
+#include <wtf/Optional.h>
 
 namespace JSC { namespace B3 {
-
-inline bool is64Bit() { return sizeof(void*) == 8; }
-inline bool is32Bit() { return !is64Bit(); }
 
 enum B3ComplitationMode {
     B3Mode,
@@ -100,6 +101,12 @@ inline bool isRepresentableAs(int64_t value)
 }
 
 template<typename ResultType>
+inline bool isRepresentableAs(size_t value)
+{
+    return isRepresentableAsImpl<ResultType, size_t, size_t>(value);
+}
+
+template<typename ResultType>
 inline bool isRepresentableAs(double value)
 {
     return isRepresentableAsImpl<ResultType, double, int64_t>(value);
@@ -124,6 +131,59 @@ static IntType chillMod(IntType numerator, IntType denominator)
         return 0;
     return numerator % denominator;
 }
+
+template<typename IntType>
+static IntType chillUDiv(IntType numerator, IntType denominator)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType unsignedNumerator = static_cast<UnsignedIntType>(numerator);
+    UnsignedIntType unsignedDenominator = static_cast<UnsignedIntType>(denominator);
+    if (!unsignedDenominator)
+        return 0;
+    return unsignedNumerator / unsignedDenominator;
+}
+
+template<typename IntType>
+static IntType chillUMod(IntType numerator, IntType denominator)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType unsignedNumerator = static_cast<UnsignedIntType>(numerator);
+    UnsignedIntType unsignedDenominator = static_cast<UnsignedIntType>(denominator);
+    if (!unsignedDenominator)
+        return 0;
+    return unsignedNumerator % unsignedDenominator;
+}
+
+template<typename IntType>
+static IntType rotateRight(IntType value, int32_t shift)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType uValue = static_cast<UnsignedIntType>(value);
+    int32_t bits = sizeof(IntType) * 8;
+    int32_t mask = bits - 1;
+    shift &= mask;
+    return (uValue >> shift) | (uValue << ((bits - shift) & mask));
+}
+
+template<typename IntType>
+static IntType rotateLeft(IntType value, int32_t shift)
+{
+    typedef typename std::make_unsigned<IntType>::type UnsignedIntType;
+    UnsignedIntType uValue = static_cast<UnsignedIntType>(value);
+    int32_t bits = sizeof(IntType) * 8;
+    int32_t mask = bits - 1;
+    shift &= mask;
+    return (uValue << shift) | (uValue >> ((bits - shift) & mask));
+}
+
+inline unsigned defaultOptLevel()
+{
+    // This should almost always return 2, but we allow this default to be lowered for testing. Some
+    // components will deliberately set the optLevel.
+    return Options::defaultB3OptLevel();
+}
+
+std::optional<GPRReg> pinnedExtendedOffsetAddrRegister();
 
 } } // namespace JSC::B3
 

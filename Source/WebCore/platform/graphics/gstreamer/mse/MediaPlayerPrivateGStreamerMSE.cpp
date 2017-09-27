@@ -48,11 +48,15 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/video/video.h>
 #include <wtf/Condition.h>
+#include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StringPrintStream.h>
+#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomicStringHash.h>
 
-#if USE(PLAYREADY)
-#include "PlayreadySession.h"
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "CDMClearKey.h"
+#include "SharedBuffer.h"
 #endif
 
 #if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
@@ -71,9 +75,6 @@ static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
     default: return "(unknown)";
     }
 }
-
-// Max interval in seconds to stay in the READY state on manual state change requests.
-static const unsigned gReadyStateTimerInterval = 60;
 
 GST_DEBUG_CATEGORY(webkit_mse_debug);
 #define GST_CAT_DEFAULT webkit_mse_debug
@@ -210,7 +211,7 @@ void MediaPlayerPrivateGStreamerMSE::seek(const MediaTime& time)
     }
 
     m_isEndReached = false;
-    GST_DEBUG("m_seeking=%s, m_seekTime=%s", m_seeking ? "true" : "false", toString(m_seekTime).utf8().data());
+    GST_DEBUG("m_seeking=%s, m_seekTime=%f", boolForPrinting(m_seeking), m_seekTime);
 }
 
 void MediaPlayerPrivateGStreamerMSE::configurePlaySink()
@@ -333,7 +334,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
 
         // Media source may trigger seek completion even when the target time is not yet buffered,
         // in this case it is better continue the seek and wait for the app to provide media data.
-        m_mseSeekCompleted=true;
+        m_mseSeekCompleted = true;
         m_mediaSource->seekToTime(seekTime);
         if (!m_mseSeekCompleted) {
             GST_DEBUG("[Seek] Delaying the seek: MSE is not ready");
@@ -346,11 +347,8 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
                 return false;
             }
             return true;
-        } else {
-            GST_DEBUG("[Seek] The target seek time is not buffered yet,"
-                      " but media source says OK to continue the seek,"
-                      " seekTime=%f", seekTime.toDouble());
         }
+        GST_DEBUG("[Seek] The target seek time is not buffered yet, but media source says OK to continue the seek, seekTime=%f", seekTime.toDouble());
     }
 
     // Complete previous MSE seek if needed.
@@ -507,8 +505,7 @@ void MediaPlayerPrivateGStreamerMSE::setRate(float)
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayerPrivateGStreamerMSE::buffered() const
 {
-    RELEASE_ASSERT(m_mediaSource.get() != nullptr);
-    return m_mediaSource->buffered();
+    return m_mediaSource ? m_mediaSource->buffered() : std::make_unique<PlatformTimeRanges>();
 }
 
 void MediaPlayerPrivateGStreamerMSE::sourceChanged()
@@ -771,7 +768,7 @@ void MediaPlayerPrivateGStreamerMSE::getSupportedTypes(HashSet<String, ASCIICase
     types = mimeTypeCache();
 }
 
-void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> appendPipeline, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack)
+void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> appendPipeline, RefPtr<WebCore::TrackPrivateBase> newTrack, bool firstTrackDetected)
 {
     ASSERT(appendPipeline->track() == newTrack);
 
@@ -792,15 +789,89 @@ void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> append
         m_videoSize.setHeight(height);
     }
 
-    if (!oldTrack)
+    if (firstTrackDetected)
         m_playbackPipeline->attachTrack(appendPipeline->sourceBufferPrivate(), newTrack, structure, caps);
     else
-        m_playbackPipeline->reattachTrack(appendPipeline->sourceBufferPrivate(), newTrack);
+        m_playbackPipeline->reattachTrack(appendPipeline->sourceBufferPrivate(), newTrack, mediaType);
+}
+
+const static HashSet<AtomicString>& codecSet()
+{
+    static NeverDestroyed<HashSet<AtomicString>> codecTypes = []()
+    {
+        MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements();
+        HashSet<AtomicString> set;
+
+        GList* audioDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO, GST_RANK_MARGINAL);
+        GList* videoDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
+
+        enum ElementType {
+            AudioDecoder = 0,
+            VideoDecoder
+        };
+        struct GstCapsWebKitMapping {
+            ElementType elementType;
+            const char* capsString;
+            Vector<AtomicString> webkitCodecs;
+        };
+
+        GstCapsWebKitMapping mapping[] = {
+            { VideoDecoder, "video/x-h264,  profile=(string){ constrained-baseline, baseline }", { "x-h264", "avc*" } },
+            { VideoDecoder, "video/mpeg, mpegversion=(int){1,2}, systemstream=(boolean)false", { "mpeg" } }
+        };
+
+        for (auto& current : mapping) {
+            GList* factories = nullptr;
+            switch (current.elementType) {
+            case AudioDecoder:
+                factories = audioDecoderFactories;
+                break;
+            case VideoDecoder:
+                factories = videoDecoderFactories;
+                break;
+            default:
+                g_assert_not_reached();
+                break;
+            }
+
+            g_assert_nonnull(factories);
+
+            if (gstRegistryHasElementForMediaType(factories, current.capsString) && factories != nullptr) {
+                if (!current.webkitCodecs.isEmpty()) {
+                    for (const auto& mimeType : current.webkitCodecs)
+                        set.add(mimeType);
+                } else
+                    set.add(AtomicString(current.capsString));
+            }
+        }
+
+        bool audioMpegSupported = false;
+        if (gstRegistryHasElementForMediaType(audioDecoderFactories, "audio/mpeg, mpegversion=(int)1, layer=(int)[1, 3]")) {
+            audioMpegSupported = true;
+            set.add(AtomicString("audio/mp3"));
+        }
+
+        if (gstRegistryHasElementForMediaType(audioDecoderFactories, "audio/mpeg, mpegversion=(int){2, 4}")) {
+            audioMpegSupported = true;
+            set.add(AtomicString("mp4a*"));
+        }
+
+        if (audioMpegSupported) {
+            set.add(AtomicString("audio/mpeg"));
+            set.add(AtomicString("audio/x-mpeg"));
+        }
+
+
+        gst_plugin_feature_list_free(audioDecoderFactories);
+        gst_plugin_feature_list_free(videoDecoderFactories);
+
+        return set;
+    }();
+    return codecTypes;
 }
 
 bool MediaPlayerPrivateGStreamerMSE::supportsCodecs(const String& codecs)
 {
-    static Vector<const char*> supportedCodecs = { "avc*", "mp4a*", "mpeg", "x-h264" };
     Vector<String> codecEntries;
     codecs.split(',', false, codecEntries);
 
@@ -813,8 +884,9 @@ bool MediaPlayerPrivateGStreamerMSE::supportsCodecs(const String& codecs)
             codec = codec.substring(slashIndex+1);
 
         const char* codecData = codec.utf8().data();
-        for (const auto& pattern : supportedCodecs) {
-            if (isCodecSupported = !fnmatch(pattern, codecData, 0))
+        for (const auto& pattern : codecSet()) {
+            isCodecSupported = !fnmatch(pattern.string().utf8().data(), codecData, 0);
+            if (isCodecSupported)
                 break;
         }
         if (!isCodecSupported)
@@ -841,12 +913,13 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
     if (!parameters.isMediaSource)
         return result;
 
+    auto containerType = parameters.type.containerType();
     // Disable VPX/Opus on MSE for now, mp4/avc1 seems way more reliable currently.
-    if (parameters.type.endsWith("webm"))
+    if (containerType.endsWith("webm"))
         return result;
 
     // YouTube TV provides empty types for some videos and we want to be selected as best media engine for them.
-    if (parameters.type.isEmpty()) {
+    if (containerType.isEmpty()) {
         result = MediaPlayer::MayBeSupported;
         return result;
     }
@@ -864,59 +937,16 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
         return result;
 
     // Spec says we should not return "probably" if the codecs string is empty.
-    if (mimeTypeCache().contains(parameters.type)) {
-        if (parameters.codecs.isEmpty())
+    if (mimeTypeCache().contains(containerType)) {
+        String codecs = parameters.type.parameter(ContentType::codecsParameter());
+        if (codecs.isEmpty())
             result = MediaPlayer::MayBeSupported;
         else
-            result = supportsCodecs(parameters.codecs) ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported;
+            result = supportsCodecs(codecs) ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported;
     }
 
     return extendedSupportsType(parameters, result);
 }
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
-{
-    for (auto it : m_appendPipelinesMap)
-        it.value->dispatchDecryptionKey(buffer);
-}
-
-#if USE(PLAYREADY)
-void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession(PlayreadySession* session)
-{
-    GST_TRACE("emitting session");
-    if (!session->ready())
-        return;
-
-    for (auto it : m_appendPipelinesMap)
-        if (session->hasPipeline(it.value->pipeline())) {
-            gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-                gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
-            it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
-        }
-}
-#endif
-#endif
-
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
-void MediaPlayerPrivateGStreamerMSE::emitOpenCDMSession()
-{
-    CDMSessionOpenCDM* cdmSession = openCDMSession();
-    if (!cdmSession)
-        return;
-
-    const String& sessionId = cdmSession->sessionId();
-    if (sessionId.isEmpty())
-        return;
-
-    for (auto it : m_appendPipelinesMap) {
-            gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-                gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
-            it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
-    }
-    GST_DEBUG("emitted OpenCDM session on pipeline");
-}
-#endif
 
 void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStreamStatus status)
 {
@@ -936,11 +966,11 @@ void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
 
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
-    MediaTime cachedPosition = m_cachedPosition;
+    MediaTime cachedPosition = MediaTime::createWithFloat(m_cachedPosition);
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
     MediaTime playbackProgress = abs(position - cachedPosition);
 
-    if (m_eosPending && abs(position - durationMediaTime()) < MediaTime(1 * GST_SECOND, GST_SECOND) && !playbackProgress) {
+    if (m_eosPending && abs(position - durationMediaTime()) < MediaTime(GST_SECOND, GST_SECOND) && !playbackProgress) {
         if (m_networkState != MediaPlayer::Loaded) {
             m_networkState = MediaPlayer::Loaded;
             m_player->networkStateChanged();
@@ -972,6 +1002,43 @@ float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
 
     return result;
 }
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
+{
+    if (is<CDMInstanceClearKey>(instance)) {
+        auto& ckInstance = downcast<CDMInstanceClearKey>(instance);
+        if (ckInstance.keys().isEmpty())
+            return;
+
+        GValue keyIDList = G_VALUE_INIT, keyValueList = G_VALUE_INIT;
+        g_value_init(&keyIDList, GST_TYPE_LIST);
+        g_value_init(&keyValueList, GST_TYPE_LIST);
+
+        auto appendBuffer =
+            [](GValue* valueList, const SharedBuffer& buffer)
+            {
+                GValue* bufferValue = g_new0(GValue, 1);
+                g_value_init(bufferValue, GST_TYPE_BUFFER);
+                gst_value_take_buffer(bufferValue,
+                    gst_buffer_new_wrapped(g_memdup(buffer.data(), buffer.size()), buffer.size()));
+                gst_value_list_append_and_take_value(valueList, bufferValue);
+            };
+
+        for (auto& key : ckInstance.keys()) {
+            appendBuffer(&keyIDList, *key.keyIDData);
+            appendBuffer(&keyValueList, *key.keyValueData);
+        }
+
+        GUniquePtr<GstStructure> structure(gst_structure_new_empty("drm-cipher-clearkey"));
+        gst_structure_set_value(structure.get(), "key-ids", &keyIDList);
+        gst_structure_set_value(structure.get(), "key-values", &keyValueList);
+
+        for (auto it : m_appendPipelinesMap)
+            it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+    }
+}
+#endif
 
 } // namespace WebCore.
 

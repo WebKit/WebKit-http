@@ -23,13 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebAudioSourceProviderAVFObjC_h
-#define WebAudioSourceProviderAVFObjC_h
+#pragma once
 
 #if ENABLE(WEB_AUDIO) && ENABLE(MEDIA_STREAM)
 
-#include "AVAudioCaptureSource.h"
-#include "AudioSourceProvider.h"
+#include "CAAudioStreamDescription.h"
+#include "MediaStreamTrackPrivate.h"
+#include "WebAudioSourceProvider.h"
+#include <CoreAudio/CoreAudioTypes.h>
 #include <wtf/Lock.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -42,46 +43,44 @@ typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
 
 namespace WebCore {
 
-class AVAudioCaptureSource;
-class CARingBuffer;
+class AudioSampleDataSource;
+class CAAudioStreamDescription;
 
-class WebAudioSourceProviderAVFObjC : public RefCounted<WebAudioSourceProviderAVFObjC>, public AudioSourceProvider, public AVAudioCaptureSource::Observer {
+class WEBCORE_EXPORT WebAudioSourceProviderAVFObjC final : public WebAudioSourceProvider, MediaStreamTrackPrivate::Observer {
 public:
-    static Ref<WebAudioSourceProviderAVFObjC> create(AVAudioCaptureSource&);
+    static Ref<WebAudioSourceProviderAVFObjC> create(MediaStreamTrackPrivate&);
     virtual ~WebAudioSourceProviderAVFObjC();
 
-private:
-    WebAudioSourceProviderAVFObjC(AVAudioCaptureSource&);
+    void prepare(const AudioStreamBasicDescription&);
+    void unprepare();
 
-    void startProducingData();
-    void stopProducingData();
+private:
+    explicit WebAudioSourceProviderAVFObjC(MediaStreamTrackPrivate&);
 
     // AudioSourceProvider
-    void provideInput(AudioBus*, size_t) override;
-    void setClient(AudioSourceProviderClient*) override;
+    void provideInput(AudioBus*, size_t) final;
+    void setClient(AudioSourceProviderClient*) final;
 
-    // AVAudioCaptureSource::Observer
-    void prepare(const AudioStreamBasicDescription *) override;
-    void unprepare() override;
-    void process(CMFormatDescriptionRef, CMSampleBufferRef) override;
+    // MediaStreamTrackPrivate::Observer
+    void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) final;
+    void trackEnded(MediaStreamTrackPrivate&) final { }
+    void trackMutedChanged(MediaStreamTrackPrivate&) final { }
+    void trackSettingsChanged(MediaStreamTrackPrivate&) final { }
+    void trackEnabledChanged(MediaStreamTrackPrivate&) final { }
 
     size_t m_listBufferSize { 0 };
-    std::unique_ptr<AudioBufferList> m_list;
-    AudioConverterRef m_converter;
-    std::unique_ptr<AudioStreamBasicDescription> m_inputDescription;
-    std::unique_ptr<AudioStreamBasicDescription> m_outputDescription;
-    std::unique_ptr<CARingBuffer> m_ringBuffer;
+    std::optional<CAAudioStreamDescription> m_inputDescription;
+    std::optional<CAAudioStreamDescription> m_outputDescription;
+    RefPtr<AudioSampleDataSource> m_dataSource;
 
-    uint64_t m_writeAheadCount { 0 };
     uint64_t m_writeCount { 0 };
     uint64_t m_readCount { 0 };
     AudioSourceProviderClient* m_client { nullptr };
-    AVAudioCaptureSource* m_captureSource { nullptr };
+    MediaStreamTrackPrivate* m_captureSource { nullptr };
+    Lock m_mutex;
     bool m_connected { false };
 };
-    
-}
 
-#endif
+}
 
 #endif

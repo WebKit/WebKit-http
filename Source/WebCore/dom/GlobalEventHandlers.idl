@@ -32,8 +32,6 @@
     // are not yet implemented.
 
     attribute EventHandler onabort;
-    [Conditional=REQUEST_AUTOCOMPLETE] attribute EventHandler onautocomplete;
-    [Conditional=REQUEST_AUTOCOMPLETE] attribute EventHandler onautocompleteerror;
     attribute EventHandler onblur;
     // attribute EventHandler oncancel;
     attribute EventHandler oncanplay;
@@ -79,6 +77,7 @@
     attribute EventHandler onplaying;
     attribute EventHandler onprogress;
     attribute EventHandler onratechange;
+    attribute EventHandler onrejectionhandled;
     attribute EventHandler onreset;
     attribute EventHandler onresize;
     attribute EventHandler onscroll;
@@ -92,9 +91,21 @@
     attribute EventHandler onsuspend;
     attribute EventHandler ontimeupdate;
     attribute EventHandler ontoggle;
+    attribute EventHandler onunhandledrejection;
     attribute EventHandler onvolumechange;
     attribute EventHandler onwaiting;
 
+    // Extensions from CSS Transitions API (https://drafts.csswg.org/css-transitions/#interface-globaleventhandlers-idl).
+    attribute EventHandler ontransitionend;
+    // attribute EventHandler ontransitionrun;
+    // attribute EventHandler ontransitionstart;
+    // attribute EventHandler ontransitioncancel;
+
+    // Event handlers from CSS Animations API (https://drafts.csswg.org/css-animations/#interface-globaleventhandlers-idl).
+    attribute EventHandler onanimationend;
+    attribute EventHandler onanimationiteration;
+    attribute EventHandler onanimationstart;
+    // attribute EventHandler onanimationcancel;
 
     // Additions that are not yet part of the standard.
 
@@ -109,8 +120,4 @@
     [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcedown;
     [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcewillbegin;
     [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforceup;
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealbottom;
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealleft;
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealright;
-    [NotEnumerable, Conditional=WILL_REVEAL_EDGE_EVENTS] attribute EventHandler onwebkitwillrevealtop;
 };

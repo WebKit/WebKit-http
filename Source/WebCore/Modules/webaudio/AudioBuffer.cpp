@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,7 +44,12 @@ RefPtr<AudioBuffer> AudioBuffer::create(unsigned numberOfChannels, size_t number
 {
     if (sampleRate < 22050 || sampleRate > 96000 || numberOfChannels > AudioContext::maxNumberOfChannels() || !numberOfFrames)
         return nullptr;
-    return adoptRef(*new AudioBuffer(numberOfChannels, numberOfFrames, sampleRate));
+
+    auto buffer = adoptRef(*new AudioBuffer(numberOfChannels, numberOfFrames, sampleRate));
+    if (!buffer->m_length)
+        return nullptr;
+
+    return WTFMove(buffer);
 }
 
 RefPtr<AudioBuffer> AudioBuffer::createFromAudioFileData(const void* data, size_t dataSize, bool mixToMono, float sampleRate)
@@ -61,9 +67,14 @@ AudioBuffer::AudioBuffer(unsigned numberOfChannels, size_t numberOfFrames, float
     m_channels.reserveCapacity(numberOfChannels);
 
     for (unsigned i = 0; i < numberOfChannels; ++i) {
-        RefPtr<Float32Array> channelDataArray = Float32Array::create(m_length);
+        auto channelDataArray = Float32Array::create(m_length);
+        if (!channelDataArray) {
+            invalidate();
+            break;
+        }
+
         channelDataArray->setNeuterable(false);
-        m_channels.append(channelDataArray);
+        m_channels.append(WTFMove(channelDataArray));
     }
 }
 
@@ -76,21 +87,33 @@ AudioBuffer::AudioBuffer(AudioBus& bus)
     m_channels.reserveCapacity(numberOfChannels);
     for (unsigned i = 0; i < numberOfChannels; ++i) {
         auto channelDataArray = Float32Array::create(m_length);
+        if (!channelDataArray) {
+            invalidate();
+            break;
+        }
+
         channelDataArray->setNeuterable(false);
         channelDataArray->setRange(bus.channel(i)->data(), m_length, 0);
         m_channels.append(WTFMove(channelDataArray));
     }
 }
 
+void AudioBuffer::invalidate()
+{
+    releaseMemory();
+    m_length = 0;
+}
+
 void AudioBuffer::releaseMemory()
 {
+    auto locker = holdLock(m_channelsLock);
     m_channels.clear();
 }
 
 ExceptionOr<Ref<Float32Array>> AudioBuffer::getChannelData(unsigned channelIndex)
 {
     if (channelIndex >= m_channels.size())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     auto& channelData = *m_channels[channelIndex];
     auto array = Float32Array::create(channelData.unsharedBuffer(), channelData.byteOffset(), channelData.length());
     RELEASE_ASSERT(array);
@@ -112,6 +135,12 @@ void AudioBuffer::zero()
 
 size_t AudioBuffer::memoryCost() const
 {
+    // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful
+    // about what data we access here and how. We need to hold a lock to prevent m_channels
+    // from being changed while we iterate it, but calling channel->byteLength() is safe
+    // because it doesn't involve chasing any pointers that can be nullified while the
+    // AudioBuffer is alive.
+    auto locker = holdLock(m_channelsLock);
     size_t cost = 0;
     for (auto& channel : m_channels)
         cost += channel->byteLength();

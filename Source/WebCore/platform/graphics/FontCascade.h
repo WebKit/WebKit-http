@@ -2,7 +2,7 @@
  * Copyright (C) 2000 Lars Knoll (knoll@kde.org)
  *           (C) 2000 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2006, 2007, 2010, 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Holger Hans Peter Freyther
  *
  * This library is free software; you can redistribute it and/or
@@ -22,15 +22,13 @@
  *
  */
 
-#ifndef FontCascade_h
-#define FontCascade_h
+#pragma once
 
 #include "DashArray.h"
 #include "Font.h"
 #include "FontCascadeFonts.h"
 #include "FontDescription.h"
 #include "Path.h"
-#include "TextFlags.h"
 #include <wtf/HashSet.h>
 #include <wtf/Optional.h>
 #include <wtf/WeakPtr.h>
@@ -44,13 +42,6 @@
 
 namespace WebCore {
 
-class FloatPoint;
-class FloatRect;
-class FontData;
-class FontMetrics;
-class FontPlatformData;
-class FontSelector;
-class GlyphBuffer;
 class GraphicsContext;
 class LayoutRect;
 class RenderText;
@@ -60,21 +51,12 @@ class TextRun;
 struct GlyphData;
 
 struct GlyphOverflow {
-    GlyphOverflow()
-        : left(0)
-        , right(0)
-        , top(0)
-        , bottom(0)
-        , computeBounds(false)
-    {
-    }
-
-    inline bool isEmpty()
+    bool isEmpty() const
     {
         return !left && !right && !top && !bottom;
     }
 
-    inline void extendTo(const GlyphOverflow& other)
+    void extendTo(const GlyphOverflow& other)
     {
         left = std::max(left, other.left);
         right = std::max(right, other.right);
@@ -84,14 +66,15 @@ struct GlyphOverflow {
 
     bool operator!=(const GlyphOverflow& other)
     {
+        // FIXME: Probably should name this rather than making it the != operator since it ignores the value of computeBounds.
         return left != other.left || right != other.right || top != other.top || bottom != other.bottom;
     }
 
-    int left;
-    int right;
-    int top;
-    int bottom;
-    bool computeBounds;
+    int left { 0 };
+    int right { 0 };
+    int top { 0 };
+    int bottom { 0 };
+    bool computeBounds { false };
 };
 
 class GlyphToPathTranslator {
@@ -114,7 +97,7 @@ public:
 class FontCascade {
 public:
     WEBCORE_EXPORT FontCascade();
-    WEBCORE_EXPORT FontCascade(const FontCascadeDescription&, float letterSpacing, float wordSpacing);
+    WEBCORE_EXPORT FontCascade(const FontCascadeDescription&, float letterSpacing = 0, float wordSpacing = 0);
     // This constructor is only used if the platform wants to start with a native font.
     WEBCORE_EXPORT FontCascade(const FontPlatformData&, FontSmoothingMode = AutoSmoothing);
 
@@ -129,22 +112,24 @@ public:
     int pixelSize() const { return fontDescription().computedPixelSize(); }
     float size() const { return fontDescription().computedSize(); }
 
-    void update(RefPtr<FontSelector>&&) const;
+    WEBCORE_EXPORT void update(RefPtr<FontSelector>&& = nullptr) const;
 
     enum CustomFontNotReadyAction { DoNotPaintIfFontNotReady, UseFallbackIfFontNotReady };
-    WEBCORE_EXPORT float drawText(GraphicsContext&, const TextRun&, const FloatPoint&, unsigned from = 0, Optional<unsigned> to = Nullopt, CustomFontNotReadyAction = DoNotPaintIfFontNotReady) const;
+    WEBCORE_EXPORT float drawText(GraphicsContext&, const TextRun&, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt, CustomFontNotReadyAction = DoNotPaintIfFontNotReady) const;
     static void drawGlyphs(GraphicsContext&, const Font&, const GlyphBuffer&, unsigned from, unsigned numGlyphs, const FloatPoint&, FontSmoothingMode);
-    void drawEmphasisMarks(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from = 0, Optional<unsigned> to = Nullopt) const;
+    void drawEmphasisMarks(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt) const;
 
     DashArray dashesForIntersectionsWithRect(const TextRun&, const FloatPoint& textOrigin, const FloatRect& lineExtents) const;
 
+    float widthOfTextRange(const TextRun&, unsigned from, unsigned to, HashSet<const Font*>* fallbackFonts = 0, float* outWidthBeforeRange = nullptr, float* outWidthAfterRange = nullptr) const;
     WEBCORE_EXPORT float width(const TextRun&, HashSet<const Font*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
+    float widthForSimpleText(StringView text) const;
 
     std::unique_ptr<TextLayout, TextLayoutDeleter> createLayout(RenderText&, float xPos, bool collapseWhiteSpace) const;
     static float width(TextLayout&, unsigned from, unsigned len, HashSet<const Font*>* fallbackFonts = 0);
 
     int offsetForPosition(const TextRun&, float position, bool includePartialGlyphs) const;
-    void adjustSelectionRectForText(const TextRun&, LayoutRect& selectionRect, unsigned from = 0, Optional<unsigned> to = Nullopt) const;
+    void adjustSelectionRectForText(const TextRun&, LayoutRect& selectionRect, unsigned from = 0, std::optional<unsigned> to = std::nullopt) const;
 
     bool isSmallCaps() const { return m_fontDescription.variantCaps() == FontVariantCaps::Small; }
 
@@ -163,8 +148,8 @@ public:
     unsigned familyCount() const { return m_fontDescription.familyCount(); }
     const AtomicString& familyAt(unsigned i) const { return m_fontDescription.familyAt(i); }
 
-    FontItalic italic() const { return m_fontDescription.italic(); }
-    FontWeight weight() const { return m_fontDescription.weight(); }
+    FontSelectionValue italic() const { return m_fontDescription.italic(); }
+    FontSelectionValue weight() const { return m_fontDescription.weight(); }
     FontWidthVariant widthVariant() const { return m_fontDescription.widthVariant(); }
 
     bool isPlatformFont() const { return m_fonts->isForPlatformFont(); }
@@ -183,10 +168,8 @@ public:
     const Font& primaryFont() const;
     const FontRanges& fallbackRangesAt(unsigned) const;
     GlyphData glyphDataForCharacter(UChar32, bool mirror, FontVariant = AutoVariant) const;
-    
-#if PLATFORM(COCOA)
+
     const Font* fontForCombiningCharacterSequence(const UChar*, size_t length) const;
-#endif
 
     static bool isCJKIdeograph(UChar32);
     static bool isCJKIdeographOrSymbol(UChar32);
@@ -212,7 +195,7 @@ public:
 
     bool primaryFontIsSystemFont() const;
 
-    WeakPtr<FontCascade> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<FontCascade> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(*const_cast<FontCascade*>(this)); }
 
 private:
     enum ForTextEmphasisOrNot { NotForTextEmphasis, ForTextEmphasis };
@@ -221,13 +204,13 @@ private:
     // Returns the initial in-stream advance.
     float getGlyphsAndAdvancesForSimpleText(const TextRun&, unsigned from, unsigned to, GlyphBuffer&, ForTextEmphasisOrNot = NotForTextEmphasis) const;
     void drawEmphasisMarksForSimpleText(GraphicsContext&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from, unsigned to) const;
-    void drawGlyphBuffer(GraphicsContext&, const GlyphBuffer&, FloatPoint&) const;
+    void drawGlyphBuffer(GraphicsContext&, const GlyphBuffer&, FloatPoint&, CustomFontNotReadyAction) const;
     void drawEmphasisMarks(GraphicsContext&, const GlyphBuffer&, const AtomicString&, const FloatPoint&) const;
     float floatWidthForSimpleText(const TextRun&, HashSet<const Font*>* fallbackFonts = 0, GlyphOverflow* = 0) const;
     int offsetForPositionForSimpleText(const TextRun&, float position, bool includePartialGlyphs) const;
     void adjustSelectionRectForSimpleText(const TextRun&, LayoutRect& selectionRect, unsigned from, unsigned to) const;
 
-    Optional<GlyphData> getEmphasisMarkGlyphData(const AtomicString&) const;
+    std::optional<GlyphData> getEmphasisMarkGlyphData(const AtomicString&) const;
 
     static bool canReturnFallbackFontsForComplexText();
     static bool canExpandAroundIdeographsInComplexText();
@@ -292,7 +275,7 @@ private:
             return true;
         if (textRenderingMode == OptimizeSpeed)
             return false;
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || USE(FREETYPE)
         return true;
 #else
         return false;
@@ -311,7 +294,7 @@ private:
 
     bool computeRequiresShaping() const
     {
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || USE(FREETYPE)
         if (!m_fontDescription.variantSettings().isAllNormal())
             return true;
         if (m_fontDescription.featureSettings().size())
@@ -325,11 +308,11 @@ private:
     FontCascadeDescription m_fontDescription;
     mutable RefPtr<FontCascadeFonts> m_fonts;
     WeakPtrFactory<FontCascade> m_weakPtrFactory;
-    float m_letterSpacing;
-    float m_wordSpacing;
-    mutable bool m_useBackslashAsYenSymbol;
-    mutable unsigned m_enableKerning : 1; // Computed from m_fontDescription.
-    mutable unsigned m_requiresShaping : 1; // Computed from m_fontDescription.
+    float m_letterSpacing { 0 };
+    float m_wordSpacing { 0 };
+    mutable bool m_useBackslashAsYenSymbol { false };
+    mutable bool m_enableKerning { false }; // Computed from m_fontDescription.
+    mutable bool m_requiresShaping { false }; // Computed from m_fontDescription.
 };
 
 void invalidateFontCascadeCache();
@@ -370,5 +353,3 @@ inline float FontCascade::tabWidth(const Font& font, unsigned tabSize, float pos
 }
 
 }
-
-#endif

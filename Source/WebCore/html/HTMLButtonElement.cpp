@@ -26,8 +26,8 @@
 #include "config.h"
 #include "HTMLButtonElement.h"
 
+#include "DOMFormData.h"
 #include "EventNames.h"
-#include "FormDataList.h"
 #include "HTMLFormElement.h"
 #include "HTMLNames.h"
 #include "KeyboardEvent.h"
@@ -79,7 +79,7 @@ const AtomicString& HTMLButtonElement::formControlType() const
     }
 
     ASSERT_NOT_REACHED();
-    return emptyAtom;
+    return emptyAtom();
 }
 
 bool HTMLButtonElement::isPresentationAttribute(const QualifiedName& name) const
@@ -184,11 +184,11 @@ void HTMLButtonElement::setActivatedSubmit(bool flag)
     m_isActivatedSubmit = flag;
 }
 
-bool HTMLButtonElement::appendFormData(FormDataList& formData, bool)
+bool HTMLButtonElement::appendFormData(DOMFormData& formData, bool)
 {
     if (m_type != SUBMIT || name().isEmpty() || !m_isActivatedSubmit)
         return false;
-    formData.appendData(name(), value());
+    formData.append(name(), value());
     return true;
 }
 

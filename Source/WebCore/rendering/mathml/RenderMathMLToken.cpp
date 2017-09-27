@@ -330,15 +330,15 @@ static UChar32 mathVariant(UChar32 codePoint, MathMLElement::MathVariant mathvar
         Arabic
     };
     CharacterType varType;
-    if ('A' <= codePoint && codePoint <= 'Z') {
+    if (isASCIIUpper(codePoint)) {
         baseChar = codePoint - 'A';
         varType = Latin;
-    } else if ('a' <= codePoint && codePoint <= 'z') {
+    } else if (isASCIILower(codePoint)) {
         // Lowercase characters are placed immediately after the uppercase characters in the Unicode mathematical block.
         // The constant subtraction represents the number of characters between the start of the sequence (capital A) and the first lowercase letter.
         baseChar = mathBoldSmallA - mathBoldUpperA + codePoint - 'a';
         varType = Latin;
-    } else if ('0' <= codePoint && codePoint <= '9') {
+    } else if (isASCIIDigit(codePoint)) {
         baseChar = codePoint - '0';
         varType = Number;
     } else if (greekUpperAlpha <= codePoint && codePoint <= greekUpperOmega) {
@@ -516,7 +516,7 @@ void RenderMathMLToken::updateMathVariantGlyph()
 {
     ASSERT(m_mathVariantGlyphDirty);
 
-    m_mathVariantCodePoint = Nullopt;
+    m_mathVariantCodePoint = std::nullopt;
     m_mathVariantGlyphDirty = false;
 
     // Early return if the token element contains RenderElements.
@@ -528,7 +528,7 @@ void RenderMathMLToken::updateMathVariantGlyph()
 
     const auto& tokenElement = element();
     if (auto codePoint = MathMLTokenElement::convertToSingleCodePoint(element().textContent())) {
-        MathMLElement::MathVariant mathvariant = mathMLStyle()->mathVariant();
+        MathMLElement::MathVariant mathvariant = mathMLStyle().mathVariant();
         if (mathvariant == MathMLElement::MathVariant::None)
             mathvariant = tokenElement.hasTagName(MathMLNames::miTag) ? MathMLElement::MathVariant::Italic : MathMLElement::MathVariant::Normal;
         UChar32 transformedCodePoint = mathVariant(codePoint.value(), mathvariant);
@@ -551,12 +551,12 @@ void RenderMathMLToken::updateFromElement()
     setMathVariantGlyphDirty();
 }
 
-Optional<int> RenderMathMLToken::firstLineBaseline() const
+std::optional<int> RenderMathMLToken::firstLineBaseline() const
 {
     if (m_mathVariantCodePoint) {
         auto mathVariantGlyph = style().fontCascade().glyphDataForCharacter(m_mathVariantCodePoint.value(), m_mathVariantIsMirrored);
         if (mathVariantGlyph.font)
-            return Optional<int>(static_cast<int>(lroundf(-mathVariantGlyph.font->boundsForGlyph(mathVariantGlyph.glyph).y())));
+            return std::optional<int>(static_cast<int>(lroundf(-mathVariantGlyph.font->boundsForGlyph(mathVariantGlyph.glyph).y())));
     }
     return RenderMathMLBlock::firstLineBaseline();
 }

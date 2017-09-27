@@ -28,8 +28,9 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
+#include "CryptoAlgorithmAesKeyParams.h"
 #include "CryptoAlgorithmRegistry.h"
-#include "CryptoKeyDataOctetSequence.h"
+#include "ExceptionOr.h"
 #include "JsonWebKey.h"
 #include <wtf/text/Base64.h>
 #include <wtf/text/WTFString.h>
@@ -63,7 +64,6 @@ bool CryptoKeyAES::isValidAESAlgorithm(CryptoAlgorithmIdentifier algorithm)
 {
     return algorithm == CryptoAlgorithmIdentifier::AES_CTR
         || algorithm == CryptoAlgorithmIdentifier::AES_CBC
-        || algorithm == CryptoAlgorithmIdentifier::AES_CMAC
         || algorithm == CryptoAlgorithmIdentifier::AES_GCM
         || algorithm == CryptoAlgorithmIdentifier::AES_CFB
         || algorithm == CryptoAlgorithmIdentifier::AES_KW;
@@ -87,16 +87,16 @@ RefPtr<CryptoKeyAES> CryptoKeyAES::importJwk(CryptoAlgorithmIdentifier algorithm
 {
     if (keyData.kty != "oct")
         return nullptr;
-    if (!keyData.k)
+    if (keyData.k.isNull())
         return nullptr;
     Vector<uint8_t> octetSequence;
-    if (!base64URLDecode(keyData.k.value(), octetSequence))
+    if (!base64URLDecode(keyData.k, octetSequence))
         return nullptr;
     if (!callback(octetSequence.size() * 8, keyData.alg))
         return nullptr;
-    if (usages && keyData.use && keyData.use.value() != "enc")
+    if (usages && !keyData.use.isNull() && keyData.use != "enc")
         return nullptr;
-    if (keyData.usages && ((keyData.usages & usages) != usages))
+    if (keyData.key_ops && ((keyData.usages & usages) != usages))
         return nullptr;
     if (keyData.ext && !keyData.ext.value() && extractable)
         return nullptr;
@@ -104,14 +104,30 @@ RefPtr<CryptoKeyAES> CryptoKeyAES::importJwk(CryptoAlgorithmIdentifier algorithm
     return adoptRef(new CryptoKeyAES(algorithm, WTFMove(octetSequence), extractable, usages));
 }
 
-std::unique_ptr<KeyAlgorithm> CryptoKeyAES::buildAlgorithm() const
+JsonWebKey CryptoKeyAES::exportJwk() const
 {
-    return std::make_unique<AesKeyAlgorithm>(CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier()), m_key.size() * 8);
+    JsonWebKey result;
+    result.kty = "oct";
+    result.k = base64URLEncode(m_key);
+    result.key_ops = usages();
+    result.ext = extractable();
+    return result;
 }
 
-std::unique_ptr<CryptoKeyData> CryptoKeyAES::exportData() const
+ExceptionOr<size_t> CryptoKeyAES::getKeyLength(const CryptoAlgorithmParameters& parameters)
 {
-    return std::make_unique<CryptoKeyDataOctetSequence>(m_key);
+    auto& aesParameters = downcast<CryptoAlgorithmAesKeyParams>(parameters);
+    if (!lengthIsValid(aesParameters.length))
+        return Exception { OperationError };
+    return aesParameters.length;
+}
+
+auto CryptoKeyAES::algorithm() const -> KeyAlgorithm
+{
+    CryptoAesKeyAlgorithm result;
+    result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+    result.length = m_key.size() * 8;
+    return result;
 }
 
 } // namespace WebCore

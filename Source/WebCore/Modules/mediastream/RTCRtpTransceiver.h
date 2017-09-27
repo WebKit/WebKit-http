@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Ericsson AB. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +36,7 @@
 #include "RTCIceTransport.h"
 #include "RTCRtpReceiver.h"
 #include "RTCRtpSender.h"
+#include "RTCRtpTransceiverDirection.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -44,9 +46,6 @@ namespace WebCore {
 
 class RTCRtpTransceiver : public RefCounted<RTCRtpTransceiver>, public ScriptWrappable {
 public:
-    // This enum is mirrored in RTCPeerConnection.h
-    enum class Direction { Sendrecv, Sendonly, Recvonly, Inactive };
-
     static Ref<RTCRtpTransceiver> create(Ref<RTCRtpSender>&& sender, Ref<RTCRtpReceiver>&& receiver) { return adoptRef(*new RTCRtpTransceiver(WTFMove(sender), WTFMove(receiver))); }
     virtual ~RTCRtpTransceiver() { }
 
@@ -55,8 +54,9 @@ public:
     void disableSendingDirection();
 
     const String& directionString() const;
-    Direction direction() const { return m_direction; }
-    void setDirection(Direction direction) { m_direction = direction; }
+    RTCRtpTransceiverDirection direction() const { return m_direction; }
+    // FIXME: setDirection should trigger negotiation needed.
+    void setDirection(RTCRtpTransceiverDirection direction) { m_direction = direction; }
 
     const String& provisionalMid() const { return m_provisionalMid; }
     void setProvisionalMid(const String& provisionalMid) { m_provisionalMid = provisionalMid; }
@@ -83,7 +83,7 @@ private:
     String m_provisionalMid;
     String m_mid;
 
-    Direction m_direction;
+    RTCRtpTransceiverDirection m_direction;
 
     Ref<RTCRtpSender> m_sender;
     Ref<RTCRtpReceiver> m_receiver;

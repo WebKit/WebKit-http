@@ -32,33 +32,33 @@
 #include "Logging.h"
 #include "PlatformCALayer.h"
 #include "Region.h"
-#include "TextStream.h"
 #include "TileCoverageMap.h"
 #include "TileGrid.h"
 #include <utility>
 #include <wtf/MainThread.h>
+#include <wtf/text/TextStream.h>
 
 #if USE(IOSURFACE)
 #include "IOSurface.h"
 #endif
 
 #if PLATFORM(IOS)
-#include "MemoryPressureHandler.h"
 #include "TileControllerMemoryHandlerIOS.h"
+#include <wtf/MemoryPressureHandler.h>
 #endif
 
 namespace WebCore {
 
-static const auto tileSizeUpdateDelay = std::chrono::milliseconds { 500 };
+static const Seconds tileSizeUpdateDelay { 500_ms };
 
 String TileController::tileGridContainerLayerName()
 {
-    return ASCIILiteral("TileGrid Container Layer");
+    return ASCIILiteral("TileGrid container");
 }
 
 String TileController::zoomedOutTileGridContainerLayerName()
 {
-    return ASCIILiteral("Zoomed Out TileGrid Container Layer");
+    return ASCIILiteral("Zoomed-out TileGrid container");
 }
 
 TileController::TileController(PlatformCALayer* rootPlatformLayer)
@@ -157,6 +157,7 @@ void TileController::setZoomedOutContentsScale(float scale)
 
     if (m_zoomedOutContentsScale == scale)
         return;
+
     m_zoomedOutContentsScale = scale;
 
     if (m_zoomedOutTileGrid && m_zoomedOutTileGrid->scale() != m_zoomedOutContentsScale)
@@ -167,8 +168,26 @@ void TileController::setAcceleratesDrawing(bool acceleratesDrawing)
 {
     if (m_acceleratesDrawing == acceleratesDrawing)
         return;
-    m_acceleratesDrawing = acceleratesDrawing;
 
+    m_acceleratesDrawing = acceleratesDrawing;
+    tileGrid().updateTileLayerProperties();
+}
+
+void TileController::setWantsDeepColorBackingStore(bool wantsDeepColorBackingStore)
+{
+    if (m_wantsDeepColorBackingStore == wantsDeepColorBackingStore)
+        return;
+
+    m_wantsDeepColorBackingStore = wantsDeepColorBackingStore;
+    tileGrid().updateTileLayerProperties();
+}
+
+void TileController::setSupportsSubpixelAntialiasedText(bool supportsSubpixelAntialiasedText)
+{
+    if (m_supportsSubpixelAntialiasedText == supportsSubpixelAntialiasedText)
+        return;
+
+    m_supportsSubpixelAntialiasedText = supportsSubpixelAntialiasedText;
     tileGrid().updateTileLayerProperties();
 }
 
@@ -176,8 +195,8 @@ void TileController::setTilesOpaque(bool opaque)
 {
     if (opaque == m_tilesAreOpaque)
         return;
-    m_tilesAreOpaque = opaque;
 
+    m_tilesAreOpaque = opaque;
     tileGrid().updateTileLayerProperties();
 }
 
@@ -190,7 +209,7 @@ void TileController::setVisibleRect(const FloatRect& rect)
     updateTileCoverageMap();
 }
 
-void TileController::setLayoutViewportRect(Optional<FloatRect> rect)
+void TileController::setLayoutViewportRect(std::optional<FloatRect> rect)
 {
     if (rect == m_layoutViewportRect)
         return;
@@ -266,7 +285,7 @@ void TileController::setIsInWindow(bool isInWindow)
     if (m_isInWindow)
         setNeedsRevalidateTiles();
     else {
-        const double tileRevalidationTimeout = 4;
+        const Seconds tileRevalidationTimeout = 4_s;
         scheduleTileRevalidation(tileRevalidationTimeout);
     }
 }
@@ -307,6 +326,11 @@ void TileController::setTileDebugBorderColor(Color borderColor)
     m_tileDebugBorderColor = borderColor;
 
     tileGrid().updateTileLayerProperties();
+}
+
+void TileController::setTileSizeUpdateDelayDisabledForTesting(bool value)
+{
+    m_isTileSizeUpdateDelayDisabledForTesting = value;
 }
 
 IntRect TileController::boundsForSize(const FloatSize& size) const
@@ -381,13 +405,13 @@ void TileController::adjustTileCoverageRect(FloatRect& coverageRect, const Float
     double horizontalMargin = kDefaultTileSize / contentsScale;
     double verticalMargin = kDefaultTileSize / contentsScale;
 
-    double currentTime = monotonicallyIncreasingTime();
-    double timeDelta = currentTime - m_velocity.lastUpdateTime;
+    MonotonicTime currentTime = MonotonicTime::now();
+    Seconds timeDelta = currentTime - m_velocity.lastUpdateTime;
 
     FloatRect futureRect = visibleRect;
     futureRect.setLocation(FloatPoint(
-        futureRect.location().x() + timeDelta * m_velocity.horizontalVelocity,
-        futureRect.location().y() + timeDelta * m_velocity.verticalVelocity));
+        futureRect.location().x() + timeDelta.value() * m_velocity.horizontalVelocity,
+        futureRect.location().y() + timeDelta.value() * m_velocity.verticalVelocity));
 
     if (m_velocity.horizontalVelocity) {
         futureRect.setWidth(futureRect.width() + horizontalMargin);
@@ -456,7 +480,7 @@ void TileController::adjustTileCoverageRect(FloatRect& coverageRect, const Float
 #endif
 }
 
-void TileController::scheduleTileRevalidation(double interval)
+void TileController::scheduleTileRevalidation(Seconds interval)
 {
     if (m_tileRevalidationTimer.isActive() && m_tileRevalidationTimer.nextFireInterval() < interval)
         return;
@@ -487,7 +511,10 @@ void TileController::didEndLiveResize()
 
 void TileController::notePendingTileSizeChange()
 {
-    m_tileSizeChangeTimer.restart();
+    if (m_isTileSizeUpdateDelayDisabledForTesting)
+        tileSizeChangeTimerFired();
+    else
+        m_tileSizeChangeTimer.restart();
 }
 
 void TileController::tileSizeChangeTimerFired()
@@ -640,7 +667,7 @@ void TileController::setScrollingModeIndication(ScrollingModeIndication scrollin
 
 void TileController::setHasMargins(bool marginTop, bool marginBottom, bool marginLeft, bool marginRight)
 {
-    BoxExtent<bool> marginEdges(marginTop, marginRight, marginBottom, marginLeft);
+    RectEdges<bool> marginEdges(marginTop, marginRight, marginBottom, marginLeft);
     if (marginEdges == m_marginEdges)
         return;
     
@@ -702,15 +729,20 @@ RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect,
     layer->setBorderWidth(m_tileDebugBorderWidth);
     layer->setEdgeAntialiasingMask(0);
     layer->setOpaque(m_tilesAreOpaque);
-#ifndef NDEBUG
-    layer->setName("Tile");
-#endif
+
+    StringBuilder nameBuilder;
+    nameBuilder.append("tile at ");
+    nameBuilder.appendNumber(tileRect.location().x());
+    nameBuilder.append(',');
+    nameBuilder.appendNumber(tileRect.location().y());
+    layer->setName(nameBuilder.toString());
 
     float temporaryScaleFactor = owningGraphicsLayer()->platformCALayerContentsScaleMultiplierForNewTiles(m_tileCacheLayer);
     m_hasTilesWithTemporaryScaleFactor |= temporaryScaleFactor != 1;
 
     layer->setContentsScale(m_deviceScaleFactor * temporaryScaleFactor);
     layer->setAcceleratesDrawing(m_acceleratesDrawing);
+    layer->setWantsDeepColorBackingStore(m_wantsDeepColorBackingStore);
 
     layer->setNeedsDisplay();
 
@@ -744,6 +776,11 @@ void TileController::removeUnparentedTilesNow()
     updateTileCoverageMap();
 }
 #endif
+
+void TileController::logFilledVisibleFreshTile(unsigned blankPixelCount)
+{
+    owningGraphicsLayer()->platformCALayerLogFilledVisibleFreshTile(blankPixelCount);
+}
 
 } // namespace WebCore
 

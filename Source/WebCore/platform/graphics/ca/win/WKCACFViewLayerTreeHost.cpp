@@ -30,10 +30,10 @@
 
 #include "GDIUtilities.h"
 #include "PlatformCALayer.h"
-#include "SoftLinking.h"
 #include <QuartzCore/CACFLayer.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
+#include <wtf/SoftLinking.h>
 
 typedef struct _CACFLayer* CACFLayerRef;
 
@@ -66,10 +66,10 @@ SOFT_LINK(WebKitQuartzCoreAdditions, WKCACFViewSetContextUserData, void, __cdecl
 SOFT_LINK_OPTIONAL(WebKitQuartzCoreAdditions, WKCACFViewSetShouldInvertColors, void, _cdecl, (WKCACFViewRef view, bool shouldInvertColors))
 SOFT_LINK_OPTIONAL(WebKitQuartzCoreAdditions, WKCACFViewGetD3DDevice9, IDirect3DDevice9*, _cdecl, (WKCACFViewRef view))
 
-PassRefPtr<WKCACFViewLayerTreeHost> WKCACFViewLayerTreeHost::create()
+RefPtr<WKCACFViewLayerTreeHost> WKCACFViewLayerTreeHost::create()
 {
     if (!WebKitQuartzCoreAdditionsLibrary())
-        return 0;
+        return nullptr;
 
     return adoptRef(new WKCACFViewLayerTreeHost);
 }
@@ -124,12 +124,6 @@ void WKCACFViewLayerTreeHost::contextDidChange()
 
 void WKCACFViewLayerTreeHost::initializeContext(void* userData, PlatformCALayer* layer)
 {
-#if HAVE(CACFLAYER_SETCONTENTSSCALE)
-    float scaleFactor = deviceScaleFactorForWindow(nullptr);
-    CACFLayerSetTransform(layer->platformLayer(), CATransform3DMakeScale(scaleFactor, scaleFactor, 1));
-    CACFLayerSetContentsScale(layer->platformLayer(), scaleFactor);
-#endif
-
     WKCACFViewSetContextUserData(m_view.get(), userData);
     WKCACFViewSetLayer(m_view.get(), layer->platformLayer());
     WKCACFViewSetContextDidChangeCallback(m_view.get(), contextDidChangeCallback, this);
@@ -138,6 +132,14 @@ void WKCACFViewLayerTreeHost::initializeContext(void* userData, PlatformCALayer*
 void WKCACFViewLayerTreeHost::resize()
 {
     m_viewNeedsUpdate = true;
+}
+
+void WKCACFViewLayerTreeHost::setScaleFactor(float scaleFactor)
+{
+#if HAVE(CACFLAYER_SETCONTENTSSCALE)
+    CACFLayerSetTransform(rootLayer()->platformLayer(), CATransform3DMakeScale(scaleFactor, scaleFactor, 1));
+    CACFLayerSetContentsScale(rootLayer()->platformLayer(), scaleFactor);
+#endif
 }
 
 bool WKCACFViewLayerTreeHost::createRenderer()

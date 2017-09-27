@@ -1,0 +1,27 @@
+set(PAL_SOURCES
+    SessionID.cpp
+
+    system/SleepDisabler.cpp
+    system/SystemSleepListener.cpp
+)
+
+set(PAL_INCLUDE_DIRECTORIES
+    "${PAL_DIR}"
+)
+
+set(PAL_PRIVATE_INCLUDE_DIRECTORIES
+    "${PAL_DIR}/pal"
+    "${PAL_DIR}/pal/crypto"
+    "${PAL_DIR}/pal/system"
+    "${PAL_DIR}/pal/text"
+)
+
+set(PAL_LIBRARIES
+    PRIVATE WTF
+)
+
+WEBKIT_FRAMEWORK_DECLARE(PAL)
+WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
+
+WEBKIT_WRAP_SOURCELIST(${PAL_SOURCES})
+WEBKIT_FRAMEWORK(PAL)

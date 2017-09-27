@@ -31,68 +31,31 @@
 #include <algorithm>
 #include <wtf/unicode/UTF8.h>
 
-namespace WebCore {
-
-#if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-
-static const unsigned segmentSize = 0x1000;
-static const unsigned segmentPositionMask = 0x0FFF;
-
-static inline unsigned segmentIndex(unsigned position)
-{
-    return position / segmentSize;
-}
-
-static inline unsigned offsetInSegment(unsigned position)
-{
-    return position & segmentPositionMask;
-}
-
-static inline char* allocateSegment() WARN_UNUSED_RETURN;
-static inline char* allocateSegment()
-{
-    return static_cast<char*>(fastMalloc(segmentSize));
-}
-
-static inline void freeSegment(char* p)
-{
-    fastFree(p);
-}
-
+#if USE(SOUP)
+#include "GUniquePtrSoup.h"
 #endif
 
-SharedBuffer::SharedBuffer()
-    : m_buffer(adoptRef(*new DataBuffer))
-{
-}
+namespace WebCore {
 
-SharedBuffer::SharedBuffer(unsigned size)
-    : m_size(size)
-    , m_buffer(adoptRef(*new DataBuffer))
-{
-}
-
-SharedBuffer::SharedBuffer(const char* data, unsigned size)
-    : m_buffer(adoptRef(*new DataBuffer))
+SharedBuffer::SharedBuffer(const char* data, size_t size)
 {
     append(data, size);
 }
 
-SharedBuffer::SharedBuffer(const unsigned char* data, unsigned size)
-    : m_buffer(adoptRef(*new DataBuffer))
+SharedBuffer::SharedBuffer(const unsigned char* data, size_t size)
 {
     append(reinterpret_cast<const char*>(data), size);
 }
 
 SharedBuffer::SharedBuffer(MappedFileData&& fileData)
-    : m_buffer(adoptRef(*new DataBuffer))
-    , m_fileData(WTFMove(fileData))
+    : m_size(fileData.size())
 {
+    m_segments.append({0, DataSegment::create(WTFMove(fileData))});
 }
 
-SharedBuffer::~SharedBuffer()
+SharedBuffer::SharedBuffer(Vector<char>&& data)
 {
-    clear();
+    append(WTFMove(data));
 }
 
 RefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& filePath)
@@ -106,329 +69,185 @@ RefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& filePa
     return adoptRef(new SharedBuffer(WTFMove(mappedFileData)));
 }
 
-Ref<SharedBuffer> SharedBuffer::adoptVector(Vector<char>& vector)
+Ref<SharedBuffer> SharedBuffer::create(Vector<char>&& vector)
 {
-    auto buffer = create();
-    buffer->m_buffer->data.swap(vector);
-    buffer->m_size = buffer->m_buffer->data.size();
-    return buffer;
+    return adoptRef(*new SharedBuffer(WTFMove(vector)));
 }
 
-unsigned SharedBuffer::size() const
+void SharedBuffer::combineIntoOneSegment() const
 {
-    if (hasPlatformData())
-        return platformDataSize();
-    
-    if (m_fileData)
-        return m_fileData.size();
+#if !ASSERT_DISABLED
+    // FIXME: We ought to be able to set this to true and have no assertions fire.
+    // Remove all instances of appending after calling this, because they are all O(n^2) algorithms since r215686.
+    // m_hasBeenCombinedIntoOneSegment = true;
+#endif
+    if (m_segments.size() <= 1)
+        return;
 
-    return m_size;
+    Vector<char> combinedData;
+    combinedData.reserveInitialCapacity(m_size);
+    for (const auto& segment : m_segments)
+        combinedData.append(segment.segment->data(), segment.segment->size());
+    ASSERT(combinedData.size() == m_size);
+    m_segments.clear();
+    m_segments.append({0, DataSegment::create(WTFMove(combinedData))});
+    ASSERT(m_segments.size() == 1);
+    ASSERT(internallyConsistent());
 }
 
 const char* SharedBuffer::data() const
 {
-    if (hasPlatformData())
-        return platformData();
-
-    if (m_fileData)
-        return static_cast<const char*>(m_fileData.data());
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    if (const char* buffer = singleDataArrayBuffer())
-        return buffer;
-#endif
-
-    return this->buffer().data();
+    if (!m_segments.size())
+        return nullptr;
+    combineIntoOneSegment();
+    ASSERT(internallyConsistent());
+    return m_segments[0].segment->data();
 }
 
-RefPtr<ArrayBuffer> SharedBuffer::createArrayBuffer() const
+SharedBufferDataView SharedBuffer::getSomeData(size_t position) const
+{
+    RELEASE_ASSERT(position < m_size);
+    auto comparator = [](const size_t& position, const DataSegmentVectorEntry& entry) {
+        return position < entry.beginPosition;
+    };
+    const DataSegmentVectorEntry* element = std::upper_bound(m_segments.begin(), m_segments.end(), position, comparator);
+    element--; // std::upper_bound gives a pointer to the element that is greater than position. We want the element just before that.
+    return { element->segment.copyRef(), position - element->beginPosition };
+}
+
+RefPtr<ArrayBuffer> SharedBuffer::tryCreateArrayBuffer() const
 {
     RefPtr<ArrayBuffer> arrayBuffer = ArrayBuffer::createUninitialized(static_cast<unsigned>(size()), sizeof(char));
     if (!arrayBuffer) {
-        WTFLogAlways("SharedBuffer::createArrayBuffer Unable to create buffer. Requested size was %d x %lu\n", size(), sizeof(char));
+        WTFLogAlways("SharedBuffer::tryCreateArrayBuffer Unable to create buffer. Requested size was %zu x %lu\n", size(), sizeof(char));
         return nullptr;
     }
 
-    const char* segment = 0;
-    unsigned position = 0;
-    while (unsigned segmentSize = getSomeData(segment, position)) {
-        memcpy(static_cast<char*>(arrayBuffer->data()) + position, segment, segmentSize);
-        position += segmentSize;
+    size_t position = 0;
+    for (const auto& segment : m_segments) {
+        memcpy(static_cast<char*>(arrayBuffer->data()) + position, segment.segment->data(), segment.segment->size());
+        position += segment.segment->size();
     }
 
-    if (position != arrayBuffer->byteLength()) {
-        ASSERT_NOT_REACHED();
-        // Don't return the incomplete ArrayBuffer.
-        return nullptr;
-    }
-
+    ASSERT(position == m_size);
+    ASSERT(internallyConsistent());
     return arrayBuffer;
 }
 
-void SharedBuffer::append(SharedBuffer& data)
+void SharedBuffer::append(const SharedBuffer& data)
 {
-    if (maybeAppendPlatformData(data))
-        return;
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    if (maybeAppendDataArray(data))
-        return;
-#endif
-
-    const char* segment;
-    size_t position = 0;
-    while (size_t length = data.getSomeData(segment, position)) {
-        append(segment, length);
-        position += length;
+    ASSERT(!m_hasBeenCombinedIntoOneSegment);
+    m_segments.reserveCapacity(m_segments.size() + data.m_segments.size());
+    for (const auto& element : data.m_segments) {
+        m_segments.uncheckedAppend({m_size, element.segment.copyRef()});
+        m_size += element.segment->size();
     }
+    ASSERT(internallyConsistent());
 }
 
-void SharedBuffer::append(const char* data, unsigned length)
+void SharedBuffer::append(const char* data, size_t length)
 {
-    if (!length)
-        return;
-
-    maybeTransferMappedFileData();
-    maybeTransferPlatformData();
-
-#if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    unsigned positionInSegment = offsetInSegment(m_size - m_buffer->data.size());
+    ASSERT(!m_hasBeenCombinedIntoOneSegment);
+    Vector<char> vector;
+    vector.append(data, length);
+    m_segments.append({m_size, DataSegment::create(WTFMove(vector))});
     m_size += length;
-
-    if (m_size <= segmentSize) {
-        // No need to use segments for small resource data
-        if (m_buffer->data.isEmpty())
-            m_buffer->data.reserveInitialCapacity(length);
-        appendToDataBuffer(data, length);
-        return;
-    }
-
-    char* segment;
-    if (!positionInSegment) {
-        segment = allocateSegment();
-        m_segments.append(segment);
-    } else
-        segment = m_segments.last() + positionInSegment;
-
-    unsigned segmentFreeSpace = segmentSize - positionInSegment;
-    unsigned bytesToCopy = std::min(length, segmentFreeSpace);
-
-    for (;;) {
-        memcpy(segment, data, bytesToCopy);
-        if (static_cast<unsigned>(length) == bytesToCopy)
-            break;
-
-        length -= bytesToCopy;
-        data += bytesToCopy;
-        segment = allocateSegment();
-        m_segments.append(segment);
-        bytesToCopy = std::min(length, segmentSize);
-    }
-#else
-    m_size += length;
-    if (m_buffer->data.isEmpty())
-        m_buffer->data.reserveInitialCapacity(length);
-    appendToDataBuffer(data, length);
-#endif
+    ASSERT(internallyConsistent());
 }
 
-void SharedBuffer::append(const Vector<char>& data)
+void SharedBuffer::append(Vector<char>&& data)
 {
-    append(data.data(), data.size());
+    ASSERT(!m_hasBeenCombinedIntoOneSegment);
+    auto dataSize = data.size();
+    m_segments.append({m_size, DataSegment::create(WTFMove(data))});
+    m_size += dataSize;
+    ASSERT(internallyConsistent());
 }
 
 void SharedBuffer::clear()
 {
-    m_fileData = { };
-
-    clearPlatformData();
-    
-#if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    for (char* segment : m_segments)
-        freeSegment(segment);
-    m_segments.clear();
-#else
-    m_dataArray.clear();
-#endif
-
     m_size = 0;
-    clearDataBuffer();
+    m_segments.clear();
+    ASSERT(internallyConsistent());
 }
 
 Ref<SharedBuffer> SharedBuffer::copy() const
 {
-    Ref<SharedBuffer> clone { adoptRef(*new SharedBuffer) };
-
-    if (hasPlatformData() || m_fileData) {
-        clone->append(data(), size());
-        return clone;
-    }
-
+    Ref<SharedBuffer> clone = adoptRef(*new SharedBuffer);
     clone->m_size = m_size;
-    clone->m_buffer->data.reserveCapacity(m_size);
-    clone->m_buffer->data.append(m_buffer->data.data(), m_buffer->data.size());
-
-#if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    if (!m_segments.isEmpty()) {
-        unsigned lastIndex = m_segments.size() - 1;
-        for (unsigned i = 0; i < lastIndex; ++i)
-            clone->m_buffer->data.append(m_segments[i], segmentSize);
-
-        unsigned sizeOfLastSegment = m_size - m_buffer->data.size() - lastIndex * segmentSize;
-        clone->m_buffer->data.append(m_segments.last(), sizeOfLastSegment);
-    }
-#else
-    for (auto& data : m_dataArray)
-        clone->m_dataArray.append(data.get());
-#endif
-    ASSERT(clone->size() == size());
-
+    clone->m_segments.reserveInitialCapacity(m_segments.size());
+    for (const auto& element : m_segments)
+        clone->m_segments.uncheckedAppend({element.beginPosition, element.segment.copyRef()});
+    ASSERT(clone->internallyConsistent());
+    ASSERT(internallyConsistent());
     return clone;
 }
 
-void SharedBuffer::duplicateDataBufferIfNecessary() const
+#if !ASSERT_DISABLED
+bool SharedBuffer::internallyConsistent() const
 {
-    size_t currentCapacity = m_buffer->data.capacity();
-    if (m_buffer->hasOneRef() || m_size <= currentCapacity)
-        return;
-
-    size_t newCapacity = std::max(static_cast<size_t>(m_size), currentCapacity * 2);
-    auto newBuffer = adoptRef(*new DataBuffer);
-    newBuffer->data.reserveInitialCapacity(newCapacity);
-    newBuffer->data = m_buffer->data;
-    m_buffer = WTFMove(newBuffer);
+    size_t position = 0;
+    for (const auto& element : m_segments) {
+        if (element.beginPosition != position)
+            return false;
+        position += element.segment->size();
+    }
+    return position == m_size;
 }
+#endif
 
-void SharedBuffer::appendToDataBuffer(const char *data, unsigned length) const
+const char* SharedBuffer::DataSegment::data() const
 {
-    duplicateDataBufferIfNecessary();
-    m_buffer->data.append(data, length);
-}
-
-void SharedBuffer::clearDataBuffer()
-{
-    if (!m_buffer->hasOneRef())
-        m_buffer = adoptRef(*new DataBuffer);
-    else
-        m_buffer->data.clear();
+    auto visitor = WTF::makeVisitor(
+        [](const Vector<char>& data) { return data.data(); },
+#if USE(CF)
+        [](const RetainPtr<CFDataRef>& data) { return reinterpret_cast<const char*>(CFDataGetBytePtr(data.get())); },
+#endif
+#if USE(SOUP)
+        [](const GUniquePtr<SoupBuffer>& data) { return data->data; },
+#endif
+        [](const MappedFileData& data) { return reinterpret_cast<const char*>(data.data()); }
+    );
+    return WTF::visit(visitor, m_immutableData);
 }
 
 #if !USE(CF)
-void SharedBuffer::hintMemoryNotNeededSoon()
+void SharedBuffer::hintMemoryNotNeededSoon() const
 {
 }
 #endif
 
-#if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-
-void SharedBuffer::copyBufferAndClear(char* destination, unsigned bytesToCopy) const
+size_t SharedBuffer::DataSegment::size() const
 {
-    for (char* segment : m_segments) {
-        unsigned effectiveBytesToCopy = std::min(bytesToCopy, segmentSize);
-        memcpy(destination, segment, effectiveBytesToCopy);
-        destination += effectiveBytesToCopy;
-        bytesToCopy -= effectiveBytesToCopy;
-        freeSegment(segment);
-    }
-    m_segments.clear();
-}
-
+    auto visitor = WTF::makeVisitor(
+        [](const Vector<char>& data) { return data.size(); },
+#if USE(CF)
+        [](const RetainPtr<CFDataRef>& data) { return CFDataGetLength(data.get()); },
 #endif
-
-const Vector<char>& SharedBuffer::buffer() const
-{
-    unsigned bufferSize = m_buffer->data.size();
-    if (m_size > bufferSize) {
-        duplicateDataBufferIfNecessary();
-        m_buffer->data.resize(m_size);
-        copyBufferAndClear(m_buffer->data.data() + bufferSize, m_size - bufferSize);
-    }
-    return m_buffer->data;
-}
-
-unsigned SharedBuffer::getSomeData(const char*& someData, unsigned position) const
-{
-    unsigned totalSize = size();
-    if (position >= totalSize) {
-        someData = 0;
-        return 0;
-    }
-
-    if (hasPlatformData() || m_fileData) {
-        ASSERT_WITH_SECURITY_IMPLICATION(position < size());
-        someData = data() + position;
-        return totalSize - position;
-    }
-
-    ASSERT_WITH_SECURITY_IMPLICATION(position < m_size);
-    unsigned consecutiveSize = m_buffer->data.size();
-    if (position < consecutiveSize) {
-        someData = m_buffer->data.data() + position;
-        return consecutiveSize - position;
-    }
- 
-    position -= consecutiveSize;
-#if !USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-    unsigned segments = m_segments.size();
-    unsigned maxSegmentedSize = segments * segmentSize;
-    unsigned segment = segmentIndex(position);
-    if (segment < segments) {
-        unsigned bytesLeft = totalSize - consecutiveSize;
-        unsigned segmentedSize = std::min(maxSegmentedSize, bytesLeft);
-
-        unsigned positionInSegment = offsetInSegment(position);
-        someData = m_segments[segment] + positionInSegment;
-        return segment == segments - 1 ? segmentedSize - position : segmentSize - positionInSegment;
-    }
-    ASSERT_NOT_REACHED();
-    return 0;
-#else
-    return copySomeDataFromDataArray(someData, position);
+#if USE(SOUP)
+        [](const GUniquePtr<SoupBuffer>& data) { return static_cast<size_t>(data->length); },
 #endif
+        [](const MappedFileData& data) { return data.size(); }
+    );
+    return WTF::visit(visitor, m_immutableData);
 }
 
-void SharedBuffer::maybeTransferMappedFileData()
+SharedBufferDataView::SharedBufferDataView(Ref<SharedBuffer::DataSegment>&& segment, size_t positionWithinSegment)
+    : m_positionWithinSegment(positionWithinSegment)
+    , m_segment(WTFMove(segment))
 {
-    if (m_fileData) {
-        auto fileData = WTFMove(m_fileData);
-        append(static_cast<const char*>(fileData.data()), fileData.size());
-    }
+    ASSERT(positionWithinSegment < m_segment->size());
 }
 
-#if !USE(CF) && !USE(SOUP)
-
-inline void SharedBuffer::clearPlatformData()
+size_t SharedBufferDataView::size() const
 {
+    return m_segment->size() - m_positionWithinSegment;
 }
 
-inline void SharedBuffer::maybeTransferPlatformData()
+const char* SharedBufferDataView::data() const
 {
+    return m_segment->data() + m_positionWithinSegment;
 }
-
-inline bool SharedBuffer::hasPlatformData() const
-{
-    return false;
-}
-
-inline const char* SharedBuffer::platformData() const
-{
-    ASSERT_NOT_REACHED();
-
-    return nullptr;
-}
-
-inline unsigned SharedBuffer::platformDataSize() const
-{
-    ASSERT_NOT_REACHED();
-    
-    return 0;
-}
-
-inline bool SharedBuffer::maybeAppendPlatformData(SharedBuffer&)
-{
-    return false;
-}
-
-#endif
 
 RefPtr<SharedBuffer> utf8Buffer(const String& string)
 {
@@ -452,7 +271,7 @@ RefPtr<SharedBuffer> utf8Buffer(const String& string)
     }
 
     buffer.shrink(p - buffer.data());
-    return SharedBuffer::adoptVector(buffer);
+    return SharedBuffer::create(WTFMove(buffer));
 }
 
 } // namespace WebCore

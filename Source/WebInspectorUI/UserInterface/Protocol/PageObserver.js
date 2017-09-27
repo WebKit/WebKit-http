@@ -23,28 +23,28 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.PageObserver = class PageObserver
+WI.PageObserver = class PageObserver
 {
     // Events defined by the "Page" domain.
 
     domContentEventFired(timestamp)
     {
-        WebInspector.timelineManager.pageDOMContentLoadedEventFired(timestamp);
+        WI.timelineManager.pageDOMContentLoadedEventFired(timestamp);
     }
 
     loadEventFired(timestamp)
     {
-        WebInspector.timelineManager.pageLoadEventFired(timestamp);
+        WI.timelineManager.pageLoadEventFired(timestamp);
     }
 
     frameNavigated(frame, loaderId)
     {
-        WebInspector.frameResourceManager.frameDidNavigate(frame, loaderId);
+        WI.frameResourceManager.frameDidNavigate(frame, loaderId);
     }
 
     frameDetached(frameId)
     {
-        WebInspector.frameResourceManager.frameDidDetach(frameId);
+        WI.frameResourceManager.frameDidDetach(frameId);
     }
 
     frameStartedLoading(frameId)
@@ -69,16 +69,16 @@ WebInspector.PageObserver = class PageObserver
 
     javascriptDialogOpening(message)
     {
-        // Not handled yet.
+        // COMPATIBILITY (iOS 10): Page.javascriptDialogOpening was removed after iOS 10.
     }
 
     javascriptDialogClosed()
     {
-        // Not handled yet.
+        // COMPATIBILITY (iOS 10): Page.javascriptDialogClosed was removed after iOS 10.
     }
 
     scriptsEnabled(enabled)
     {
-        // Not handled yet.
+        // COMPATIBILITY (iOS 10): Page.scriptsEnabled was removed after iOS 10.
     }
 };

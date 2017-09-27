@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
  *           (C) 2007, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  *
@@ -41,6 +41,7 @@
 namespace WebCore {
 
 class DOMWindow;
+class DOMWrapperWorld;
 class Node;
 
 struct EventTargetData {
@@ -80,13 +81,13 @@ public:
     };
 
     struct AddEventListenerOptions : ListenerOptions {
-        AddEventListenerOptions(bool capture = false, bool passive = false, bool once = false)
+        AddEventListenerOptions(bool capture = false, std::optional<bool> passive = std::nullopt, bool once = false)
             : ListenerOptions(capture)
             , passive(passive)
             , once(once)
         { }
 
-        bool passive;
+        std::optional<bool> passive;
         bool once;
     };
 
@@ -104,8 +105,8 @@ public:
     virtual void uncaughtExceptionInEventHandler();
 
     // Used for legacy "onevent" attributes.
-    bool setAttributeEventListener(const AtomicString& eventType, RefPtr<EventListener>&&);
-    EventListener* attributeEventListener(const AtomicString& eventType);
+    bool setAttributeEventListener(const AtomicString& eventType, RefPtr<EventListener>&&, DOMWrapperWorld&);
+    EventListener* attributeEventListener(const AtomicString& eventType, DOMWrapperWorld&);
 
     bool hasEventListeners() const;
     bool hasEventListeners(const AtomicString& eventType) const;
@@ -123,6 +124,7 @@ protected:
     virtual ~EventTarget() = default;
     
     virtual EventTargetData* eventTargetData() = 0;
+    virtual EventTargetData* eventTargetDataConcurrently() = 0;
     virtual EventTargetData& ensureEventTargetData() = 0;
     const EventTargetData* eventTargetData() const;
 
@@ -138,6 +140,7 @@ private:
 class EventTargetWithInlineData : public EventTarget {
 protected:
     EventTargetData* eventTargetData() final { return &m_eventTargetData; }
+    EventTargetData* eventTargetDataConcurrently() final { return &m_eventTargetData; }
     EventTargetData& ensureEventTargetData() final { return m_eventTargetData; }
 private:
     EventTargetData m_eventTargetData;
@@ -146,13 +149,6 @@ private:
 inline const EventTargetData* EventTarget::eventTargetData() const
 {
     return const_cast<EventTarget*>(this)->eventTargetData();
-}
-
-inline void EventTarget::visitJSEventListeners(JSC::SlotVisitor& visitor)
-{
-    EventListenerIterator iterator { this };
-    while (auto* listener = iterator.nextListener())
-        listener->visitJSFunction(visitor);
 }
 
 inline bool EventTarget::isFiringEventListeners() const

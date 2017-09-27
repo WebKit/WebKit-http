@@ -20,14 +20,14 @@
 
 #pragma once
 
-#include "ActiveDOMCallback.h"
+#include "IDLTypes.h"
 #include "JSCallbackData.h"
 #include "TestCallbackFunctionWithTypedefs.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
-class JSTestCallbackFunctionWithTypedefs : public TestCallbackFunctionWithTypedefs, public ActiveDOMCallback {
+class JSTestCallbackFunctionWithTypedefs final : public TestCallbackFunctionWithTypedefs {
 public:
     static Ref<JSTestCallbackFunctionWithTypedefs> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
@@ -40,15 +40,15 @@ public:
     JSCallbackDataStrong* callbackData() { return m_data; }
 
     // Functions
-    virtual bool handleEvent(Vector<RefPtr<LONG>> sequenceArg, int32_t longArg);
+    CallbackResult<typename IDLVoid::ImplementationType> handleEvent(typename IDLSequence<IDLNullable<IDLLong>>::ParameterType sequenceArg, typename IDLLong::ParameterType longArg) override;
 
 private:
-    JSTestCallbackFunctionWithTypedefs(JSC::JSObject* callback, JSDOMGlobalObject*);
+    JSTestCallbackFunctionWithTypedefs(JSC::JSObject*, JSDOMGlobalObject*);
 
     JSCallbackDataStrong* m_data;
 };
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestCallbackFunctionWithTypedefs&);
-inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestCallbackFunctionWithTypedefs* impl) { return impl ? toJS(state, globalObject, *impl) : JSC::jsNull(); }
+JSC::JSValue toJS(TestCallbackFunctionWithTypedefs&);
+inline JSC::JSValue toJS(TestCallbackFunctionWithTypedefs* impl) { return impl ? toJS(*impl) : JSC::jsNull(); }
 
 } // namespace WebCore

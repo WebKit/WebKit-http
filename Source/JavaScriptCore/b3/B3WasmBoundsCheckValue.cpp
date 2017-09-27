@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "B3WasmBoundsCheckValue.h"
+#include "WasmMemory.h"
 
 #if ENABLE(B3_JIT)
 
@@ -34,11 +35,24 @@ WasmBoundsCheckValue::~WasmBoundsCheckValue()
 {
 }
 
-WasmBoundsCheckValue::WasmBoundsCheckValue(Origin origin, Value* ptr, GPRReg pinnedGPR, unsigned offset)
+WasmBoundsCheckValue::WasmBoundsCheckValue(Origin origin, GPRReg pinnedGPR, Value* ptr, unsigned offset)
     : Value(CheckedOpcode, WasmBoundsCheck, origin, ptr)
-    , m_pinnedGPR(pinnedGPR)
     , m_offset(offset)
+    , m_boundsType(Type::Pinned)
 {
+    m_bounds.pinned = pinnedGPR;
+}
+
+WasmBoundsCheckValue::WasmBoundsCheckValue(Origin origin, Value* ptr, unsigned offset, size_t maximum)
+    : Value(CheckedOpcode, WasmBoundsCheck, origin, ptr)
+    , m_offset(offset)
+    , m_boundsType(Type::Maximum)
+{
+#if ENABLE(WEBASSEMBLY)
+    size_t redzoneLimit = static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) + Wasm::Memory::fastMappedRedzoneBytes();
+    ASSERT_UNUSED(redzoneLimit, maximum <= redzoneLimit);
+#endif
+    m_bounds.maximum = maximum;
 }
 
 Value* WasmBoundsCheckValue::cloneImpl() const
@@ -48,7 +62,14 @@ Value* WasmBoundsCheckValue::cloneImpl() const
 
 void WasmBoundsCheckValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const
 {
-    out.print(comma, "sizeRegister = ", m_pinnedGPR, ", offset = ", m_offset);
+    switch (m_boundsType) {
+    case Type::Pinned:
+        out.print(comma, "offset = ", m_offset, ", pinned = ", m_bounds.pinned);
+        break;
+    case Type::Maximum:
+        out.print(comma, "offset = ", m_offset, ", maximum = ", m_bounds.maximum);
+        break;
+    }
 }
 
 } } // namespace JSC::B3

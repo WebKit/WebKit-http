@@ -16,13 +16,23 @@ class BuildbotTriggerable {
         assert(typeof(this._lookbackCount) == 'number' && this._lookbackCount > 0, 'lookbackCount must be a number greater than 0');
 
         this._remote = remote;
+        this._config = config;
+        this._buildbotRemote = buildbotRemote;
 
         this._slaveInfo = slaveInfo;
         assert(typeof(slaveInfo.name) == 'string', 'slave name must be specified');
         assert(typeof(slaveInfo.password) == 'string', 'slave password must be specified');
 
-        this._syncers = BuildbotSyncer._loadConfig(buildbotRemote, config);
-        this._logger = logger || {log: function () { }, error: function () { }};
+        this._syncers = null;
+        this._logger = logger || {log: () => { }, error: () => { }};
+    }
+
+    initSyncers()
+    {
+        return new Promise((resolve, reject) => {
+            this._syncers = BuildbotSyncer._loadConfig(this._buildbotRemote, this._config);
+            setTimeout(resolve, 0);
+        });
     }
 
     name() { return this._name; }
@@ -30,17 +40,29 @@ class BuildbotTriggerable {
     updateTriggerable()
     {
         const map = new Map;
+        let repositoryGroups = [];
         for (const syncer of this._syncers) {
             for (const config of syncer.testConfigurations()) {
                 const entry = {test: config.test.id(), platform: config.platform.id()};
                 map.set(entry.test + '-' + entry.platform, entry);
             }
+            // FIXME: Move BuildbotSyncer._loadConfig here and store repository groups directly.
+            repositoryGroups = syncer.repositoryGroups();
         }
-        return this._remote.postJSON(`/api/update-triggerable/`, {
+        return this._remote.postJSONWithStatus(`/api/update-triggerable/`, {
             'slaveName': this._slaveInfo.name,
             'slavePassword': this._slaveInfo.password,
             'triggerable': this._name,
-            'configurations': Array.from(map.values())});
+            'configurations': Array.from(map.values()),
+            'repositoryGroups': Object.keys(repositoryGroups).map((groupName) => {
+                const group = repositoryGroups[groupName];
+                return {
+                    name: groupName,
+                    description: group.description,
+                    acceptsRoots: group.acceptsRoots,
+                    repositories: group.repositoryList,
+                };
+            })});
     }
 
     syncOnce()
@@ -48,136 +70,170 @@ class BuildbotTriggerable {
         let syncerList = this._syncers;
         let buildReqeustsByGroup = new Map;
 
-        let self = this;
         this._logger.log(`Fetching build requests for ${this._name}...`);
-        return BuildRequest.fetchForTriggerable(this._name).then(function (buildRequests) {
-            self._validateRequests(buildRequests);
+        let validRequests;
+        return BuildRequest.fetchForTriggerable(this._name).then((buildRequests) => {
+            validRequests = this._validateRequests(buildRequests);
             buildReqeustsByGroup = BuildbotTriggerable._testGroupMapForBuildRequests(buildRequests);
-            return self._pullBuildbotOnAllSyncers(buildReqeustsByGroup);
-        }).then(function (updates) {
-            self._logger.log('Scheduling builds');
-            let promistList = [];
-            let testGroupList = Array.from(buildReqeustsByGroup.values()).sort(function (a, b) { return a.groupOrder - b.groupOrder; });
-            for (let group of testGroupList) {
-                let promise = self._scheduleNextRequestInGroupIfSlaveIsAvailable(group, updates);
+            return this._pullBuildbotOnAllSyncers(buildReqeustsByGroup);
+        }).then((updates) => {
+            this._logger.log('Scheduling builds');
+            const promistList = [];
+            const testGroupList = Array.from(buildReqeustsByGroup.values()).sort(function (a, b) { return a.groupOrder - b.groupOrder; });
+            for (const group of testGroupList) {
+                const nextRequest = this._nextRequestInGroup(group, updates);
+                if (!validRequests.has(nextRequest))
+                    continue;
+                const promise = this._scheduleRequestIfSlaveIsAvailable(nextRequest, group.requests,
+                    nextRequest.isBuild() ? group.buildSyncer : group.testSyncer,
+                    nextRequest.isBuild() ? group.buildSlaveName : group.testSlaveName);
                 if (promise)
                     promistList.push(promise);
             }
             return Promise.all(promistList);
-        }).then(function () {
+        }).then(() => {
             // Pull all buildbots for the second time since the previous step may have scheduled more builds.
-            return self._pullBuildbotOnAllSyncers(buildReqeustsByGroup);
-        }).then(function (updates) {
+            return this._pullBuildbotOnAllSyncers(buildReqeustsByGroup);
+        }).then((updates) => {
             // FIXME: Add a new API that just updates the requests.
-            return self._remote.postJSON(`/api/build-requests/${self._name}`, {
-                'slaveName': self._slaveInfo.name,
-                'slavePassword': self._slaveInfo.password,
+            return this._remote.postJSONWithStatus(`/api/build-requests/${this._name}`, {
+                'slaveName': this._slaveInfo.name,
+                'slavePassword': this._slaveInfo.password,
                 'buildRequestUpdates': updates});
-        }).then(function (response) {
-            if (response['status'] != 'OK')
-                self._logger.log('Failed to update the build requests status: ' + response['status']);
-        })
+        });
     }
 
     _validateRequests(buildRequests)
     {
-        let testPlatformPairs = {};
+        const testPlatformPairs = {};
+        const validatedRequests = new Set;
         for (let request of buildRequests) {
-            if (!this._syncers.some(function (syncer) { return syncer.matchesConfiguration(request); })) {
-                let key = request.platform().id + '-' + request.test().id();
+            if (!this._syncers.some((syncer) => syncer.matchesConfiguration(request))) {
+                const key = request.platform().id + '-' + (request.isBuild() ? 'build' : request.test().id());
+                const kind = request.isBuild() ? 'Building' : `"${request.test().fullName()}"`;
                 if (!(key in testPlatformPairs))
-                    this._logger.error(`No matching configuration for "${request.test().fullName()}" on "${request.platform().name()}".`);                
+                    this._logger.error(`Build request ${request.id()} has no matching configuration: ${kind} on "${request.platform().name()}".`);
                 testPlatformPairs[key] = true;
+                continue;
             }
+            const triggerable = request.triggerable();
+            if (!triggerable) {
+                this._logger.error(`Build request ${request.id()} does not specify a valid triggerable`);
+                continue;
+            }
+            assert(triggerable instanceof Triggerable, 'Must specify a valid triggerable');
+            assert.equal(triggerable.name(), this._name, 'Must specify the triggerable of this syncer');
+            const repositoryGroup = request.repositoryGroup();
+            if (!repositoryGroup) {
+                this._logger.error(`Build request ${request.id()} does not specify a repository group. Such a build request is no longer supported.`);
+                continue;
+            }
+            const acceptedGroups = triggerable.repositoryGroups();
+            if (!acceptedGroups.includes(repositoryGroup)) {
+                const acceptedNames = acceptedGroups.map((group) => group.name()).join(', ');
+                this._logger.error(`Build request ${request.id()} specifies ${repositoryGroup.name()} but triggerable ${this._name} only accepts ${acceptedNames}`);
+                continue;
+            }
+            validatedRequests.add(request);
         }
+
+        return validatedRequests;
     }
 
     _pullBuildbotOnAllSyncers(buildReqeustsByGroup)
     {
         let updates = {};
         let associatedRequests = new Set;
-        let self = this;
-        return Promise.all(this._syncers.map(function (syncer) {
-            return syncer.pullBuildbot(self._lookbackCount).then(function (entryList) {
-                for (let entry of entryList) {
-                    let request = BuildRequest.findById(entry.buildRequestId());
+        return Promise.all(this._syncers.map((syncer) => {
+            return syncer.pullBuildbot(this._lookbackCount).then((entryList) => {
+                for (const entry of entryList) {
+                    const request = BuildRequest.findById(entry.buildRequestId());
                     if (!request)
                         continue;
                     associatedRequests.add(request);
 
-                    let info = buildReqeustsByGroup.get(request.testGroupId());
-                    assert(!info.syncer || info.syncer == syncer);
-                    info.syncer = syncer;
-                    if (entry.slaveName()) {
-                        assert(!info.slaveName || info.slaveName == entry.slaveName());
-                        info.slaveName = entry.slaveName();
+                    const info = buildReqeustsByGroup.get(request.testGroupId());
+                    if (request.isBuild()) {
+                        assert(!info.buildSyncer || info.buildSyncer == buildSyncer);
+                        if (entry.slaveName()) {
+                            assert(!info.buildSlaveName || info.buildSlaveName == entry.slaveName());
+                            info.buildSlaveName = entry.slaveName();
+                        }
+                    } else {
+                        assert(!info.testSyncer || info.testSyncer == testSyncer);
+                        if (entry.slaveName()) {
+                            assert(!info.testSlaveName || info.testSlaveName == entry.slaveName());
+                            info.testSlaveName = entry.slaveName();
+                        }
                     }
 
-                    let newStatus = entry.buildRequestStatusIfUpdateIsNeeded(request);
+                    const newStatus = entry.buildRequestStatusIfUpdateIsNeeded(request);
                     if (newStatus) {
-                        self._logger.log(`Updating the status of build request ${request.id()} from ${request.status()} to ${newStatus}`);
+                        this._logger.log(`Updating the status of build request ${request.id()} from ${request.status()} to ${newStatus}`);
                         updates[entry.buildRequestId()] = {status: newStatus, url: entry.url()};
                     } else if (!request.statusUrl()) {
-                        self._logger.log(`Setting the status URL of build request ${request.id()} to ${entry.url()}`);
+                        this._logger.log(`Setting the status URL of build request ${request.id()} to ${entry.url()}`);
                         updates[entry.buildRequestId()] = {status: request.status(), url: entry.url()};
                     }
                 }
             });
-        })).then(function () {
-            for (let request of BuildRequest.all()) {
+        })).then(() => {
+            for (const request of BuildRequest.all()) {
                 if (request.hasStarted() && !request.hasFinished() && !associatedRequests.has(request)) {
-                    self._logger.log(`Updating the status of build request ${request.id()} from ${request.status()} to failedIfNotCompleted`);
+                    this._logger.log(`Updating the status of build request ${request.id()} from ${request.status()} to failedIfNotCompleted`);
                     assert(!(request.id() in updates));
                     updates[request.id()] = {status: 'failedIfNotCompleted'};
                 }
             }
-        }).then(function () { return updates; });
+        }).then(() => updates);
     }
 
-    _scheduleNextRequestInGroupIfSlaveIsAvailable(groupInfo, pendingUpdates)
+    _nextRequestInGroup(groupInfo, pendingUpdates)
     {
-        let nextRequest = null;
-        for (let request of groupInfo.requests) {
+        for (const request of groupInfo.requests) {
             if (request.isScheduled() || (request.id() in pendingUpdates && pendingUpdates[request.id()]['status'] == 'scheduled'))
-                break;
-            if (request.isPending() && !(request.id() in pendingUpdates)) {
-                nextRequest = request;
-                break;
-            }
+                return null;
+            if (request.isPending() && !(request.id() in pendingUpdates))
+                return request;
+            if (request.isBuild() && !request.hasCompleted())
+                return null; // A build request is still pending, scheduled, running, or failed.
         }
+        return null;
+    }
+
+    _scheduleRequestIfSlaveIsAvailable(nextRequest, requestsInGroup, syncer, slaveName)
+    {
         if (!nextRequest)
             return null;
 
-        let promise;
-        let syncer;
-        if (!!nextRequest.order()) {
-            syncer = groupInfo.syncer;
-            if (!syncer)
-                this._logger.error(`Could not identify the syncer for ${nextRequest.id()}.`);
-            else
-                promise = syncer.scheduleRequestInGroupIfAvailable(nextRequest, groupInfo.slaveName);
+        const isFirstRequest = nextRequest == requestsInGroup[0] || !nextRequest.order();
+        if (!isFirstRequest) {
+            if (syncer)
+                return this._scheduleRequestWithLog(syncer, nextRequest, requestsInGroup, slaveName);
+            this._logger.error(`Could not identify the syncer for ${nextRequest.id()}.`);
         }
 
-        if (!syncer) {
-            for (syncer of this._syncers) {
-                let promise = syncer.scheduleRequestInGroupIfAvailable(nextRequest);
-                if (promise)
-                    break;
-            }
+        // Pick a new syncer for the first test.
+        for (const syncer of this._syncers) {
+            const promise = this._scheduleRequestWithLog(syncer, nextRequest, requestsInGroup, null);
+            if (promise)
+                return promise;
         }
-
-        if (promise) {
-            let slaveName = groupInfo.slaveName ? ` on ${groupInfo.slaveName}` : '';
-            this._logger.log(`Scheduling build request ${nextRequest.id()}${slaveName} in ${syncer.builderName()}`);
-            return promise;
-        }
-
         return null;
+    }
+
+    _scheduleRequestWithLog(syncer, request, requestsInGroup, slaveName)
+    {
+        const promise = syncer.scheduleRequestInGroupIfAvailable(request, requestsInGroup, slaveName);
+        if (!promise)
+            return promise;
+        this._logger.log(`Scheduling build request ${request.id()}${slaveName ? ' on ' + slaveName : ''} in ${syncer.builderName()}`);
+        return promise;
     }
 
     static _testGroupMapForBuildRequests(buildRequests)
     {
-        let map = new Map;
+        const map = new Map;
         let groupOrder = 0;
         for (let request of buildRequests) {
             let groupId = request.testGroupId();

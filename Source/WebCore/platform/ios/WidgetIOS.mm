@@ -31,7 +31,6 @@
 #import "FontCascade.h"
 #import "Frame.h"
 #import "GraphicsContext.h"
-#import "Page.h"
 #import "PlatformMouseEvent.h"
 #import "ScrollView.h"
 #import "WAKScrollView.h"
@@ -140,7 +139,7 @@ NSView* Widget::getOuterView() const
     return view;
 }
 
-void Widget::paint(GraphicsContext& p, const IntRect& r)
+void Widget::paint(GraphicsContext& p, const IntRect& r, SecurityOriginPaintPolicy)
 {
     if (p.paintingDisabled())
         return;

@@ -2,7 +2,6 @@
 
 import logging
 import os
-import re
 import subprocess
 import time
 
@@ -17,9 +16,9 @@ class OSXSafariDriver(OSXBrowserDriver):
     process_name = 'Safari'
     browser_name = 'safari'
 
-    def prepare_env(self, device_id):
+    def prepare_env(self, config):
         self._safari_process = None
-        super(OSXSafariDriver, self).prepare_env(device_id)
+        super(OSXSafariDriver, self).prepare_env(config)
         force_remove(os.path.join(os.path.expanduser('~'), 'Library/Saved Application State/com.apple.Safari.savedState'))
         force_remove(os.path.join(os.path.expanduser('~'), 'Library/Safari/LastSession.plist'))
         self._maximize_window()
@@ -43,7 +42,14 @@ class OSXSafariDriver(OSXBrowserDriver):
         # Stop for initialization of the safari process, otherwise, open
         # command may use the system safari.
         time.sleep(3)
-        subprocess.Popen(['open', url])
+        subprocess.Popen(['open', '-a', args[0], url])
+
+    def launch_driver(self, url, options, browser_build_path):
+        import webkitpy.thirdparty.autoinstalled.selenium
+        from selenium import webdriver
+        driver = webdriver.Safari(quiet=False)
+        self._launch_webdriver(url=url, driver=driver)
+        return driver
 
     def close_browsers(self):
         super(OSXSafariDriver, self).close_browsers()

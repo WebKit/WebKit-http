@@ -70,7 +70,7 @@ public:
         // that the def happens before any of the effects of the stackmap. This is only valid for
         // the result constraint of a Patchpoint.
         SomeEarlyRegister,
-
+        
         // As an input representation, this forces a particular register. As an output
         // representation, this tells us what register B3 picked.
         Register,
@@ -78,7 +78,7 @@ public:
         // As an input representation, this forces a particular register and states that
         // the register is used late. This means that the register is used after the result
         // is defined (i.e, the result will interfere with this as an input).
-        // It's not valid for this to be used as a result kind.
+        // It's not a valid output representation.
         LateRegister,
 
         // As an output representation, this tells us what stack slot B3 picked. It's not a valid

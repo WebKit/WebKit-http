@@ -26,7 +26,6 @@
 #ifndef WTF_Condition_h
 #define WTF_Condition_h
 
-#include <functional>
 #include <wtf/CurrentTime.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ParkingLot.h>
@@ -50,6 +49,11 @@ struct ConditionBase {
     // you what kind of time Condition would be able to use without conversions. However, if you
     // are unlikely to be affected by the cost of conversions, it is better to use MonotonicTime.
     typedef ParkingLot::Time Time;
+    
+    void construct()
+    {
+        m_hasWaiters.store(false);
+    }
     
     // Wait on a parking queue while releasing the given lock. It will unlock the lock just before
     // parking, and relock it upon wakeup. Returns true if we woke up due to some call to
@@ -169,7 +173,7 @@ struct ConditionBase {
         ParkingLot::unparkAll(&m_hasWaiters);
     }
     
-protected:
+private:
     Atomic<bool> m_hasWaiters;
 };
 
@@ -178,7 +182,7 @@ class Condition : public ConditionBase {
 public:
     Condition()
     {
-        m_hasWaiters.store(false);
+        construct();
     }
 };
 

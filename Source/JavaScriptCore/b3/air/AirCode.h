@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 #include "AirArg.h"
 #include "AirBasicBlock.h"
+#include "AirDisassembler.h"
 #include "AirSpecial.h"
 #include "AirStackSlot.h"
 #include "AirTmp.h"
@@ -51,9 +52,15 @@ namespace Air {
 
 class BlockInsertionSet;
 class CCallSpecial;
+class CFG;
+class Code;
+class Disassembler;
 
-typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
+typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg);
 typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
+
+typedef void PrologueGeneratorFunction(CCallHelpers&, Code&);
+typedef SharedTask<PrologueGeneratorFunction> PrologueGenerator;
 
 // This is an IR that is very close to the bare metal. It requires about 40x more bytes than the
 // generated machine code - for example if you're generating 1MB of machine code, you need about
@@ -67,26 +74,28 @@ public:
 
     Procedure& proc() { return m_proc; }
     
-    const Vector<Reg>& regsInPriorityOrder(Arg::Type type) const
+    const Vector<Reg>& regsInPriorityOrder(Bank bank) const
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return m_gpRegsInPriorityOrder;
-        case Arg::FP:
+        case FP:
             return m_fpRegsInPriorityOrder;
         }
         ASSERT_NOT_REACHED();
     }
-    
-    void setRegsInPriorityOrder(Arg::Type, const Vector<Reg>&);
     
     // This is the set of registers that Air is allowed to emit code to mutate. It's derived from
     // regsInPriorityOrder. Any registers not in this set are said to be "pinned".
     const RegisterSet& mutableRegs() const { return m_mutableRegs; }
     
     bool isPinned(Reg reg) const { return !mutableRegs().get(reg); }
-    
     void pinRegister(Reg);
+    
+    void setOptLevel(unsigned optLevel) { m_optLevel = optLevel; }
+    unsigned optLevel() const { return m_optLevel; }
+    
+    bool needsUsedRegisters() const;
 
     JS_EXPORT_PRIVATE BasicBlock* addBlock(double frequency = 1);
 
@@ -97,31 +106,42 @@ public:
         unsigned byteSize, StackSlotKind, B3::StackSlot* = nullptr);
     StackSlot* addStackSlot(B3::StackSlot*);
 
-    Special* addSpecial(std::unique_ptr<Special>);
+    JS_EXPORT_PRIVATE Special* addSpecial(std::unique_ptr<Special>);
 
     // This is the special you need to make a C call!
     CCallSpecial* cCallSpecial();
 
-    Tmp newTmp(Arg::Type type)
+    Tmp newTmp(Bank bank)
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return Tmp::gpTmpForIndex(m_numGPTmps++);
-        case Arg::FP:
+        case FP:
             return Tmp::fpTmpForIndex(m_numFPTmps++);
         }
         ASSERT_NOT_REACHED();
     }
 
-    unsigned numTmps(Arg::Type type)
+    unsigned numTmps(Bank bank)
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return m_numGPTmps;
-        case Arg::FP:
+        case FP:
             return m_numFPTmps;
         }
         ASSERT_NOT_REACHED();
+    }
+    
+    template<typename Func>
+    void forEachTmp(const Func& func)
+    {
+        for (unsigned bankIndex = 0; bankIndex < numBanks; ++bankIndex) {
+            Bank bank = static_cast<Bank>(bankIndex);
+            unsigned numTmps = this->numTmps(bank);
+            for (unsigned i = 0; i < numTmps; ++i)
+                func(Tmp::tmpForIndex(bank, i));
+        }
     }
 
     unsigned callArgAreaSizeInBytes() const { return m_callArgAreaSize; }
@@ -149,12 +169,28 @@ public:
     const Vector<FrequentedBlock>& entrypoints() const { return m_entrypoints; }
     const FrequentedBlock& entrypoint(unsigned index) const { return m_entrypoints[index]; }
     bool isEntrypoint(BasicBlock*) const;
-    
+    // Note: It is only valid to call this function after LowerEntrySwitch.
+    std::optional<unsigned> entrypointIndex(BasicBlock*) const;
+
+    // Note: We allow this to be called even before we set m_entrypoints just for convenience to users of this API.
+    // However, if you call this before setNumEntrypoints, setNumEntrypoints will overwrite this value.
+    void setPrologueForEntrypoint(unsigned entrypointIndex, Ref<PrologueGenerator>&& generator)
+    {
+        m_prologueGenerators[entrypointIndex] = WTFMove(generator);
+    }
+    const Ref<PrologueGenerator>& prologueGeneratorForEntrypoint(unsigned entrypointIndex)
+    {
+        return m_prologueGenerators[entrypointIndex];
+    }
+
+    void setNumEntrypoints(unsigned);
+
     // This is used by lowerEntrySwitch().
     template<typename Vector>
     void setEntrypoints(Vector&& vector)
     {
         m_entrypoints = std::forward<Vector>(vector);
+        RELEASE_ASSERT(m_entrypoints.size() == m_prologueGenerators.size());
     }
     
     CCallHelpers::Label entrypointLabel(unsigned index) const
@@ -167,14 +203,28 @@ public:
     void setEntrypointLabels(Vector&& vector)
     {
         m_entrypointLabels = std::forward<Vector>(vector);
+        RELEASE_ASSERT(m_entrypointLabels.size() == m_prologueGenerators.size());
     }
+    
+    void setStackIsAllocated(bool value)
+    {
+        m_stackIsAllocated = value;
+    }
+    
+    bool stackIsAllocated() const { return m_stackIsAllocated; }
+    
+    // This sets the callee save registers.
+    void setCalleeSaveRegisterAtOffsetList(RegisterAtOffsetList&&, StackSlot*);
 
-    const RegisterAtOffsetList& calleeSaveRegisters() const { return m_calleeSaveRegisters; }
-    RegisterAtOffsetList& calleeSaveRegisters() { return m_calleeSaveRegisters; }
+    // This returns the correctly offset list of callee save registers.
+    RegisterAtOffsetList calleeSaveRegisterAtOffsetList() const;
+    
+    // This just tells you what the callee saves are.
+    RegisterSet calleeSaveRegisters() const { return m_calleeSaveRegisters; }
 
     // Recomputes predecessors and deletes unreachable blocks.
     void resetReachability();
-
+    
     JS_EXPORT_PRIVATE void dump(PrintStream&) const;
 
     unsigned size() const { return m_blocks.size(); }
@@ -254,6 +304,8 @@ public:
     void addFastTmp(Tmp);
     bool isFastTmp(Tmp tmp) const { return m_fastTmps.contains(tmp); }
     
+    CFG& cfg() const { return *m_cfg; }
+    
     void* addDataSection(size_t);
     
     // The name has to be a string literal, since we don't do any memory management for the string.
@@ -275,18 +327,27 @@ public:
     // it's mainly for validating the results from JSAir.
     unsigned jsHash() const;
 
+    void setDisassembler(std::unique_ptr<Disassembler>&& disassembler) { m_disassembler = WTFMove(disassembler); }
+    Disassembler* disassembler() { return m_disassembler.get(); }
+
+    RegisterSet mutableGPRs();
+    RegisterSet mutableFPRs();
+    RegisterSet pinnedRegisters() const { return m_pinnedRegs; }
+
 private:
     friend class ::JSC::B3::Procedure;
     friend class BlockInsertionSet;
     
     Code(Procedure&);
 
-    Vector<Reg>& regsInPriorityOrderImpl(Arg::Type type)
+    void setRegsInPriorityOrder(Bank, const Vector<Reg>&);
+    
+    Vector<Reg>& regsInPriorityOrderImpl(Bank bank)
     {
-        switch (type) {
-        case Arg::GP:
+        switch (bank) {
+        case GP:
             return m_gpRegsInPriorityOrder;
-        case Arg::FP:
+        case FP:
             return m_fpRegsInPriorityOrder;
         }
         ASSERT_NOT_REACHED();
@@ -296,20 +357,29 @@ private:
     Vector<Reg> m_gpRegsInPriorityOrder;
     Vector<Reg> m_fpRegsInPriorityOrder;
     RegisterSet m_mutableRegs;
+    RegisterSet m_pinnedRegs;
     SparseCollection<StackSlot> m_stackSlots;
     Vector<std::unique_ptr<BasicBlock>> m_blocks;
     SparseCollection<Special> m_specials;
+    std::unique_ptr<CFG> m_cfg;
     HashSet<Tmp> m_fastTmps;
     CCallSpecial* m_cCallSpecial { nullptr };
     unsigned m_numGPTmps { 0 };
     unsigned m_numFPTmps { 0 };
     unsigned m_frameSize { 0 };
     unsigned m_callArgAreaSize { 0 };
-    RegisterAtOffsetList m_calleeSaveRegisters;
+    bool m_stackIsAllocated { false };
+    RegisterAtOffsetList m_uncorrectedCalleeSaveRegisterAtOffsetList;
+    RegisterSet m_calleeSaveRegisters;
+    StackSlot* m_calleeSaveStackSlot { nullptr };
     Vector<FrequentedBlock> m_entrypoints; // This is empty until after lowerEntrySwitch().
     Vector<CCallHelpers::Label> m_entrypointLabels; // This is empty until code generation.
+    Vector<Ref<PrologueGenerator>, 1> m_prologueGenerators;
     RefPtr<WasmBoundsCheckGenerator> m_wasmBoundsCheckGenerator;
     const char* m_lastPhaseName;
+    std::unique_ptr<Disassembler> m_disassembler;
+    unsigned m_optLevel { defaultOptLevel() };
+    Ref<PrologueGenerator> m_defaultPrologueGenerator;
 };
 
 } } } // namespace JSC::B3::Air

@@ -35,15 +35,15 @@ public:
 
     void doCollection() override;
 
-    bool didSyncGCRecently() const { return m_didSyncGCRecently; }
-    void setDidSyncGCRecently() { m_didSyncGCRecently = true; }
+    bool didGCRecently() const { return m_didGCRecently; }
+    void setDidGCRecently() { m_didGCRecently = true; }
 
 protected:
-    double lastGCLength() override;
+    Seconds lastGCLength() override;
     double gcTimeSlice(size_t bytes) override;
     double deathRate() override;
 
-    bool m_didSyncGCRecently { false };
+    bool m_didGCRecently { false };
 };
 
 inline RefPtr<FullGCActivityCallback> GCActivityCallback::createFullTimer(Heap* heap)

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "TextIndicator.h"
 
+#include "ColorHash.h"
 #include "Document.h"
 #include "Editor.h"
 #include "Element.h"
@@ -38,9 +39,16 @@
 #include "ImageBuffer.h"
 #include "IntRect.h"
 #include "NodeTraversal.h"
-#include "Page.h"
 #include "Range.h"
+#include "RenderElement.h"
 #include "RenderObject.h"
+#include "RenderText.h"
+#include "TextIterator.h"
+#include "TextPaintStyle.h"
+
+#if PLATFORM(IOS)
+#include "SelectionRect.h"
+#endif
 
 using namespace WebCore;
 
@@ -71,13 +79,13 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
 
     Ref<Frame> protector(*frame);
 
-#if PLATFORM(IOS)
-    frame->editor().setIgnoreCompositionSelectionChange(true);
-    frame->selection().setUpdateAppearanceEnabled(true);
-#endif
-
     VisibleSelection oldSelection = frame->selection().selection();
-    frame->selection().setSelection(range);
+    TemporarySelectionOptions temporarySelectionOptions = TemporarySelectionOptionDefault;
+#if PLATFORM(IOS)
+    temporarySelectionOptions |= TemporarySelectionOptionIgnoreSelectionChanges;
+    temporarySelectionOptions |= TemporarySelectionOptionEnableAppearanceUpdates;
+#endif
+    TemporarySelectionChange selectionChange(*frame, { range }, temporarySelectionOptions);
 
     TextIndicatorData data;
 
@@ -89,16 +97,7 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
     if (!initializeIndicator(data, *frame, range, margin, indicatesCurrentSelection))
         return nullptr;
 
-    RefPtr<TextIndicator> indicator = TextIndicator::create(data);
-
-    frame->selection().setSelection(oldSelection);
-
-#if PLATFORM(IOS)
-    frame->editor().setIgnoreCompositionSelectionChange(false, Editor::RevealSelection::No);
-    frame->selection().setUpdateAppearanceEnabled(false);
-#endif
-
-    return indicator;
+    return TextIndicator::create(data);
 }
 
 RefPtr<TextIndicator> TextIndicator::createWithSelectionInFrame(Frame& frame, TextIndicatorOptions options, TextIndicatorPresentationTransition presentationTransition, FloatSize margin)
@@ -151,7 +150,7 @@ static SnapshotOptions snapshotOptionsForTextIndicatorOptions(TextIndicatorOptio
     return snapshotOptions;
 }
 
-static RefPtr<Image> takeSnapshot(Frame& frame, IntRect rect, SnapshotOptions options, float& scaleFactor, Vector<FloatRect>& clipRectsInDocumentCoordinates)
+static RefPtr<Image> takeSnapshot(Frame& frame, IntRect rect, SnapshotOptions options, float& scaleFactor, const Vector<FloatRect>& clipRectsInDocumentCoordinates)
 {
     std::unique_ptr<ImageBuffer> buffer = snapshotFrameRectWithClip(frame, rect, clipRectsInDocumentCoordinates, options);
     if (!buffer)
@@ -160,7 +159,7 @@ static RefPtr<Image> takeSnapshot(Frame& frame, IntRect rect, SnapshotOptions op
     return ImageBuffer::sinkIntoImage(WTFMove(buffer), Unscaled);
 }
 
-static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapshotRect, Vector<FloatRect>& clipRectsInDocumentCoordinates)
+static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapshotRect, const Vector<FloatRect>& clipRectsInDocumentCoordinates)
 {
     SnapshotOptions snapshotOptions = snapshotOptionsForTextIndicatorOptions(data.options);
 
@@ -173,12 +172,128 @@ static bool takeSnapshots(TextIndicatorData& data, Frame& frame, IntRect snapsho
         data.contentImageWithHighlight = takeSnapshot(frame, snapshotRect, SnapshotOptionsNone, snapshotScaleFactor, clipRectsInDocumentCoordinates);
         ASSERT(!data.contentImageWithHighlight || data.contentImageScaleFactor == snapshotScaleFactor);
     }
+
+    if (data.options & TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection) {
+        float snapshotScaleFactor;
+        auto snapshotRect = frame.view()->visibleContentRect();
+        data.contentImageWithoutSelection = takeSnapshot(frame, snapshotRect, SnapshotOptionsPaintEverythingExcludingSelection, snapshotScaleFactor, { });
+        data.contentImageWithoutSelectionRectInRootViewCoordinates = frame.view()->contentsToRootView(snapshotRect);
+    }
     
     return true;
 }
 
+#if PLATFORM(IOS)
+
+static void getSelectionRectsForRange(Vector<FloatRect>& resultingRects, const Range& range)
+{
+    Vector<SelectionRect> selectionRectsForRange;
+    Vector<FloatRect> selectionRectsForRangeInBoundingRectCoordinates;
+    range.collectSelectionRects(selectionRectsForRange);
+    for (auto selectionRect : selectionRectsForRange)
+        resultingRects.append(selectionRect.rect());
+}
+
+#endif
+
+static bool styleContainsComplexBackground(const RenderStyle& style)
+{
+    if (style.hasBlendMode())
+        return true;
+
+    if (style.hasBackgroundImage())
+        return true;
+
+    if (style.hasBackdropFilter())
+        return true;
+
+    return false;
+}
+
+static HashSet<Color> estimatedTextColorsForRange(const Range& range)
+{
+    HashSet<Color> colors;
+    for (TextIterator iterator(&range); !iterator.atEnd(); iterator.advance()) {
+        auto* node = iterator.node();
+        if (!is<Text>(node) || !is<RenderText>(node->renderer()))
+            continue;
+
+        colors.add(node->renderer()->style().color());
+    }
+    return colors;
+}
+
+static Color estimatedBackgroundColorForRange(const Range& range, const Frame& frame)
+{
+    auto estimatedBackgroundColor = frame.view() ? frame.view()->documentBackgroundColor() : Color::transparent;
+
+    RenderElement* renderer = nullptr;
+    auto commonAncestor = range.commonAncestorContainer();
+    while (commonAncestor) {
+        if (is<RenderElement>(commonAncestor->renderer())) {
+            renderer = downcast<RenderElement>(commonAncestor->renderer());
+            break;
+        }
+        commonAncestor = commonAncestor->parentOrShadowHostElement();
+    }
+
+    auto boundingRectForRange = enclosingIntRect(range.absoluteBoundingRect(Range::RespectClippingForTextRects::Yes));
+    Vector<Color> parentRendererBackgroundColors;
+    for (; !!renderer; renderer = renderer->parent()) {
+        auto absoluteBoundingBox = renderer->absoluteBoundingBoxRect();
+        auto& style = renderer->style();
+        if (!absoluteBoundingBox.contains(boundingRectForRange) || !style.hasBackground())
+            continue;
+
+        if (styleContainsComplexBackground(style))
+            return estimatedBackgroundColor;
+
+        auto visitedDependentBackgroundColor = style.visitedDependentColor(CSSPropertyBackgroundColor);
+        if (visitedDependentBackgroundColor != Color::transparent)
+            parentRendererBackgroundColors.append(visitedDependentBackgroundColor);
+    }
+    parentRendererBackgroundColors.reverse();
+    for (auto backgroundColor : parentRendererBackgroundColors)
+        estimatedBackgroundColor = estimatedBackgroundColor.blend(backgroundColor);
+
+    return estimatedBackgroundColor;
+}
+
+static bool hasAnyIllegibleColors(TextIndicatorData& data, const Color& backgroundColor, HashSet<Color>&& textColors)
+{
+    if (data.options & TextIndicatorOptionPaintAllContent)
+        return false;
+
+    if (!(data.options & TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges))
+        return false;
+
+    if (!(data.options & TextIndicatorOptionComputeEstimatedBackgroundColor))
+        return false;
+
+    bool hasOnlyLegibleTextColors = true;
+    if (data.options & TextIndicatorOptionRespectTextColor) {
+        for (auto& textColor : textColors) {
+            hasOnlyLegibleTextColors = textColorIsLegibleAgainstBackgroundColor(textColor, backgroundColor);
+            if (!hasOnlyLegibleTextColors)
+                break;
+        }
+    } else
+        hasOnlyLegibleTextColors = textColorIsLegibleAgainstBackgroundColor(Color::black, backgroundColor);
+
+    return !hasOnlyLegibleTextColors || textColors.isEmpty();
+}
+
 static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Range& range, FloatSize margin, bool indicatesCurrentSelection)
 {
+    if (auto* document = frame.document())
+        document->updateLayoutIgnorePendingStylesheets();
+
+    bool treatRangeAsComplexDueToIllegibleTextColors = false;
+    if (data.options & TextIndicatorOptionComputeEstimatedBackgroundColor) {
+        data.estimatedBackgroundColor = estimatedBackgroundColorForRange(range, frame);
+        treatRangeAsComplexDueToIllegibleTextColors = hasAnyIllegibleColors(data, data.estimatedBackgroundColor, estimatedTextColorsForRange(range));
+    }
+
     Vector<FloatRect> textRects;
 
     // FIXME (138888): Ideally we wouldn't remove the margin in this case, but we need to
@@ -189,36 +304,58 @@ static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Ran
 
     FrameSelection::TextRectangleHeight textRectHeight = (data.options & TextIndicatorOptionTightlyFitContent) ? FrameSelection::TextRectangleHeight::TextHeight : FrameSelection::TextRectangleHeight::SelectionHeight;
 
-    if ((data.options & TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges) && hasNonInlineOrReplacedElements(range))
+    if ((data.options & TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges) && (hasNonInlineOrReplacedElements(range) || treatRangeAsComplexDueToIllegibleTextColors))
         data.options |= TextIndicatorOptionPaintAllContent;
+#if PLATFORM(IOS)
+    else if (data.options & TextIndicatorOptionUseSelectionRectForSizing)
+        getSelectionRectsForRange(textRects, range);
+#endif
     else {
-        if (data.options & TextIndicatorOptionDoNotClipToVisibleRect)
-            frame.selection().getTextRectangles(textRects, textRectHeight);
-        else
-            frame.selection().getClippedVisibleTextRectangles(textRects, textRectHeight);
+        Vector<IntRect> absoluteTextRects;
+        range.absoluteTextRects(absoluteTextRects, textRectHeight == FrameSelection::TextRectangleHeight::SelectionHeight, nullptr, Range::RespectClippingForTextRects::Yes);
+
+        textRects.reserveInitialCapacity(absoluteTextRects.size());
+        for (auto& rect : absoluteTextRects)
+            textRects.uncheckedAppend(rect);
     }
 
-    if (textRects.isEmpty()) {
-        RenderView* renderView = frame.contentRenderer();
-        if (!renderView)
-            return false;
-        FloatRect boundingRect = range.absoluteBoundingRect();
-        if (data.options & TextIndicatorOptionDoNotClipToVisibleRect)
-            textRects.append(boundingRect);
-        else {
-            // Clip to the visible rect, just like getClippedVisibleTextRectangles does.
-            // FIXME: We really want to clip to the unobscured rect in both cases, I think.
-            // (this seems to work on Mac, but maybe not iOS?)
-            FloatRect visibleContentRect = frame.view()->visibleContentRect(ScrollableArea::LegacyIOSDocumentVisibleRect);
-            textRects.append(intersection(visibleContentRect, boundingRect));
-        }
+    if (textRects.isEmpty())
+        textRects.append(range.absoluteBoundingRect(Range::RespectClippingForTextRects::Yes));
+
+    auto frameView = frame.view();
+
+    // Use the exposedContentRect/viewExposedRect instead of visibleContentRect to avoid creating a huge indicator for a large view inside a scroll view.
+    IntRect contentsClipRect;
+#if PLATFORM(IOS)
+    contentsClipRect = enclosingIntRect(frameView->exposedContentRect());
+#else
+    if (auto viewExposedRect = frameView->viewExposedRect())
+        contentsClipRect = frameView->viewToContents(enclosingIntRect(*viewExposedRect));
+    else
+        contentsClipRect = frameView->visibleContentRect();
+#endif
+
+    if (data.options & TextIndicatorOptionExpandClipBeyondVisibleRect) {
+        contentsClipRect.inflateX(contentsClipRect.width() / 2);
+        contentsClipRect.inflateY(contentsClipRect.height() / 2);
     }
 
     FloatRect textBoundingRectInRootViewCoordinates;
     FloatRect textBoundingRectInDocumentCoordinates;
+    Vector<FloatRect> clippedTextRectsInDocumentCoordinates;
     Vector<FloatRect> textRectsInRootViewCoordinates;
     for (const FloatRect& textRect : textRects) {
-        FloatRect textRectInDocumentCoordinatesIncludingMargin = textRect;
+        FloatRect clippedTextRect;
+        if (data.options & TextIndicatorOptionDoNotClipToVisibleRect)
+            clippedTextRect = textRect;
+        else
+            clippedTextRect = intersection(textRect, contentsClipRect);
+        if (clippedTextRect.isEmpty())
+            continue;
+
+        clippedTextRectsInDocumentCoordinates.append(clippedTextRect);
+
+        FloatRect textRectInDocumentCoordinatesIncludingMargin = clippedTextRect;
         textRectInDocumentCoordinatesIncludingMargin.inflateX(margin.width());
         textRectInDocumentCoordinatesIncludingMargin.inflateY(margin.height());
         textBoundingRectInDocumentCoordinates.unite(textRectInDocumentCoordinatesIncludingMargin);
@@ -240,7 +377,7 @@ static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Ran
     data.textBoundingRectInRootViewCoordinates = textBoundingRectInRootViewCoordinates;
     data.textRectsInBoundingRectCoordinates = textRectsInBoundingRectCoordinates;
 
-    return takeSnapshots(data, frame, enclosingIntRect(textBoundingRectInDocumentCoordinates), textRects);
+    return takeSnapshots(data, frame, enclosingIntRect(textBoundingRectInDocumentCoordinates), clippedTextRectsInDocumentCoordinates);
 }
 
 } // namespace WebCore

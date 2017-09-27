@@ -30,7 +30,7 @@
 
 namespace JSC {
 
-const ClassInfo JSGlobalLexicalEnvironment::s_info = { "JSGlobalLexicalEnvironment", &Base::s_info, 0, CREATE_METHOD_TABLE(JSGlobalLexicalEnvironment) };
+const ClassInfo JSGlobalLexicalEnvironment::s_info = { "JSGlobalLexicalEnvironment", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSGlobalLexicalEnvironment) };
 
 void JSGlobalLexicalEnvironment::destroy(JSCell* cell)
 {
@@ -59,13 +59,6 @@ bool JSGlobalLexicalEnvironment::isConstVariable(UniquedStringImpl* impl)
     SymbolTableEntry entry = symbolTable()->get(impl);
     ASSERT(!entry.isNull());
     return entry.isReadOnly();
-}
-
-JSValue JSGlobalLexicalEnvironment::toThis(JSCell*, ExecState* exec, ECMAMode ecmaMode)
-{
-    if (ecmaMode == StrictMode)
-        return jsUndefined();
-    return exec->globalThisValue();
 }
 
 } // namespace JSC

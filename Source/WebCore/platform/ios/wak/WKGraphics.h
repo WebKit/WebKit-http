@@ -30,8 +30,6 @@
 
 #import <CoreGraphics/CoreGraphics.h>
 
-typedef int WKCompositeOperation;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,11 +38,6 @@ WEBCORE_EXPORT CGContextRef WKGetCurrentGraphicsContext(void);
 WEBCORE_EXPORT void WKSetCurrentGraphicsContext(CGContextRef);
 
 WEBCORE_EXPORT void WKRectFill(CGContextRef, CGRect aRect);
-void WKRectFillUsingOperation(CGContextRef, CGRect, WKCompositeOperation);
-
-CGImageRef WKGraphicsCreateImageFromBundleWithName(const char *image_file);
-CGPatternRef WKCreatePatternFromCGImage(CGImageRef imageRef);
-void WKSetPattern(CGContextRef context, CGPatternRef pattern, bool fill, bool stroke);
 
 #ifdef __cplusplus
 }

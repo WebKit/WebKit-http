@@ -101,7 +101,7 @@ class BuiltinsInternalsWrapperImplementationGenerator(BuiltinsGenerator):
     def generate_constructor(self):
         guards = set([object.annotations.get('conditional') for object in self.internals if 'conditional' in object.annotations])
         lines = ["JSBuiltinInternalFunctions::JSBuiltinInternalFunctions(JSC::VM& vm)",
-                 BuiltinsGenerator.wrap_with_guard(" || ".join(guards), "    : m_vm(vm)")]
+                 "    : m_vm(vm)"]
         for object in self.internals:
             initializer = "    , %s(m_vm)" % self.member_name(object)
             lines.append(BuiltinsGenerator.wrap_with_guard(object.annotations.get('conditional'), initializer))
@@ -114,7 +114,7 @@ class BuiltinsInternalsWrapperImplementationGenerator(BuiltinsGenerator):
         lines = []
         lines.append("#define DECLARE_GLOBAL_STATIC(name) \\")
         lines.append("    JSDOMGlobalObject::GlobalPropertyInfo( \\")
-        lines.append("        clientData.builtinFunctions().%sBuiltins().name##PrivateName(), %s().m_##name##Function.get() , JSC::DontDelete | JSC::ReadOnly)," % (self.accessor_name(object), self.accessor_name(object)))
+        lines.append("        clientData.builtinFunctions().%sBuiltins().name##PrivateName(), %s().m_##name##Function.get() , JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly)," % (self.accessor_name(object), self.accessor_name(object)))
         lines.append("    WEBCORE_FOREACH_%s_BUILTIN_FUNCTION_NAME(DECLARE_GLOBAL_STATIC)" % object.object_name.upper())
         lines.append("#undef DECLARE_GLOBAL_STATIC")
         return '\n'.join(lines)

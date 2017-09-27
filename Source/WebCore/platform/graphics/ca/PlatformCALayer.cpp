@@ -28,16 +28,16 @@
 
 #if USE(CA)
 
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreText/CoreText.h>
 #include "GraphicsContextCG.h"
 #include "LayerPool.h"
 #include "PlatformCALayerClient.h"
-#include "TextStream.h"
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreText/CoreText.h>
 #include <wtf/StringExtras.h>
+#include <wtf/text/TextStream.h>
 
 #if PLATFORM(WIN)
-#include "CoreTextSPIWin.h"
+#include <pal/spi/win/CoreTextSPIWin.h>
 #endif
 
 namespace WebCore {
@@ -64,6 +64,14 @@ PlatformCALayer::~PlatformCALayer()
     // Clear the owner, which also clears it in the delegate to prevent attempts
     // to use the GraphicsLayerCA after it has been destroyed.
     setOwner(nullptr);
+}
+
+bool PlatformCALayer::canHaveBackingStore() const
+{
+    return m_layerType == LayerType::LayerTypeWebLayer
+        || m_layerType == LayerType::LayerTypeTiledBackingLayer
+        || m_layerType == LayerType::LayerTypePageTiledBackingLayer
+        || m_layerType == LayerType::LayerTypeTiledBackingTileLayer;
 }
 
 void PlatformCALayer::drawRepaintIndicator(CGContextRef context, PlatformCALayer* platformCALayer, int repaintCount, CGColorRef customBackgroundColor)
@@ -108,12 +116,20 @@ void PlatformCALayer::drawRepaintIndicator(CGContextRef context, PlatformCALayer
         CGContextStrokeRect(context, indicatorBox);
     }
 
+    CGFloat strokeWidthAsPercentageOfFontSize = 0;
+    Color strokeColor;
+
+    if (!platformCALayer->isOpaque() && platformCALayer->supportsSubpixelAntialiasedText() && platformCALayer->acceleratesDrawing()) {
+        strokeColor = Color(0, 0, 0, 200);
+        strokeWidthAsPercentageOfFontSize = -4.5; // Negative means "stroke and fill"; see docs for kCTStrokeWidthAttributeName.
+    }
+
     if (platformCALayer->acceleratesDrawing())
         CGContextSetRGBFillColor(context, 1, 0, 0, 1);
     else
         CGContextSetRGBFillColor(context, 1, 1, 1, 1);
     
-    platformCALayer->drawTextAtPoint(context, indicatorBox.x() + 5, indicatorBox.y() + 22, CGSizeMake(1, -1), 22, text, strlen(text));
+    platformCALayer->drawTextAtPoint(context, indicatorBox.x() + 5, indicatorBox.y() + 22, CGSizeMake(1, -1), 22, text, strlen(text), strokeWidthAsPercentageOfFontSize, strokeColor);
     
     CGContextEndTransparencyLayer(context);
 }
@@ -124,13 +140,25 @@ void PlatformCALayer::flipContext(CGContextRef context, CGFloat height)
     CGContextTranslateCTM(context, 0, -height);
 }
 
-// This function is needed to work around a bug in Windows CG <rdar://problem/22703470>
-void PlatformCALayer::drawTextAtPoint(CGContextRef context, CGFloat x, CGFloat y, CGSize scale, CGFloat fontSize, const char* text, size_t length) const
+void PlatformCALayer::drawTextAtPoint(CGContextRef context, CGFloat x, CGFloat y, CGSize scale, CGFloat fontSize, const char* text, size_t length, CGFloat strokeWidthAsPercentageOfFontSize, Color strokeColor) const
 {
     auto matrix = CGAffineTransformMakeScale(scale.width, scale.height);
     auto font = adoptCF(CTFontCreateWithName(CFSTR("Helvetica"), fontSize, &matrix));
-    CFTypeRef keys[] = { kCTFontAttributeName, kCTForegroundColorFromContextAttributeName };
-    CFTypeRef values[] = { font.get(), kCFBooleanTrue };
+    auto strokeWidthNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberCGFloatType, &strokeWidthAsPercentageOfFontSize));
+
+    CFTypeRef keys[] = {
+        kCTFontAttributeName,
+        kCTForegroundColorFromContextAttributeName,
+        kCTStrokeWidthAttributeName,
+        kCTStrokeColorAttributeName,
+    };
+    CFTypeRef values[] = {
+        font.get(),
+        kCFBooleanTrue,
+        strokeWidthNumber.get(),
+        cachedCGColor(strokeColor),
+    };
+
     auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     auto string = adoptCF(CFStringCreateWithBytesNoCopy(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(text), length, kCFStringEncodingUTF8, false, kCFAllocatorNull));
     auto attributedString = adoptCF(CFAttributedStringCreate(kCFAllocatorDefault, string.get(), attributes.get()));
@@ -139,19 +167,16 @@ void PlatformCALayer::drawTextAtPoint(CGContextRef context, CGFloat x, CGFloat y
     CTLineDraw(line.get(), context);
 }
 
-PassRefPtr<PlatformCALayer> PlatformCALayer::createCompatibleLayerOrTakeFromPool(PlatformCALayer::LayerType layerType, PlatformCALayerClient* client, IntSize size)
+Ref<PlatformCALayer> PlatformCALayer::createCompatibleLayerOrTakeFromPool(PlatformCALayer::LayerType layerType, PlatformCALayerClient* client, IntSize size)
 {
-    RefPtr<PlatformCALayer> layer;
-
-    if ((layer = layerPool().takeLayerWithSize(size))) {
-        layer->setOwner(client);
-        return WTFMove(layer);
+    if (auto layerFromPool = layerPool().takeLayerWithSize(size)) {
+        layerFromPool->setOwner(client);
+        return layerFromPool.releaseNonNull();
     }
 
-    layer = createCompatibleLayer(layerType, client);
+    auto layer = createCompatibleLayer(layerType, client);
     layer->setBounds(FloatRect(FloatPoint(), size));
-    
-    return WTFMove(layer);
+    return layer;
 }
 
 void PlatformCALayer::moveToLayerPool()
@@ -177,9 +202,6 @@ TextStream& operator<<(TextStream& ts, PlatformCALayer::LayerType layerType)
     case PlatformCALayer::LayerTypeTransformLayer:
         ts << "transform-layer";
         break;
-    case PlatformCALayer::LayerTypeWebTiledLayer:
-        ts << "tiled-layer";
-        break;
     case PlatformCALayer::LayerTypeTiledBackingLayer:
         ts << "tiled-backing-layer";
         break;
@@ -198,8 +220,8 @@ TextStream& operator<<(TextStream& ts, PlatformCALayer::LayerType layerType)
     case PlatformCALayer::LayerTypeAVPlayerLayer:
         ts << "av-player-layer";
         break;
-    case PlatformCALayer::LayerTypeWebGLLayer:
-        ts << "web-gl-layer";
+    case PlatformCALayer::LayerTypeContentsProvidedLayer:
+        ts << "contents-provided-layer";
         break;
     case PlatformCALayer::LayerTypeShapeLayer:
         ts << "shape-layer";

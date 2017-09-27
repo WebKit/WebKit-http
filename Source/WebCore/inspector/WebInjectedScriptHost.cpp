@@ -26,8 +26,8 @@
 #include "config.h"
 #include "WebInjectedScriptHost.h"
 
-#include "ExceptionHeaders.h"
-#include "ExceptionInterfaces.h"
+#include "DOMException.h"
+#include "JSDOMException.h"
 #include "JSHTMLAllCollection.h"
 #include "JSHTMLCollection.h"
 #include "JSNode.h"
@@ -36,28 +36,25 @@
 using namespace JSC;
 
 namespace WebCore {
-    
-#define RETURN_ERROR_IF_VALUE_INHERITS_EXCEPTION_TYPE(interfaceName) \
-    if (value.inherits(JS##interfaceName::info())) \
-        return jsNontrivialString(exec, ASCIILiteral("error"));
 
 JSValue WebInjectedScriptHost::subtype(JSC::ExecState* exec, JSC::JSValue value)
 {
-    if (value.inherits(JSNode::info()))
+    VM& vm = exec->vm();
+    if (value.inherits(vm, JSNode::info()))
         return jsNontrivialString(exec, ASCIILiteral("node"));
-    if (value.inherits(JSNodeList::info()))
+    if (value.inherits(vm, JSNodeList::info()))
         return jsNontrivialString(exec, ASCIILiteral("array"));
-    if (value.inherits(JSHTMLCollection::info()))
+    if (value.inherits(vm, JSHTMLCollection::info()))
         return jsNontrivialString(exec, ASCIILiteral("array"));
-
-    DOM_EXCEPTION_INTERFACES_FOR_EACH(RETURN_ERROR_IF_VALUE_INHERITS_EXCEPTION_TYPE)
+    if (value.inherits(vm, JSDOMException::info()))
+        return jsNontrivialString(exec, ASCIILiteral("error"));
 
     return jsUndefined();
 }
 
-bool WebInjectedScriptHost::isHTMLAllCollection(JSC::JSValue value)
+bool WebInjectedScriptHost::isHTMLAllCollection(JSC::VM& vm, JSC::JSValue value)
 {
-    return value.inherits(JSHTMLAllCollection::info());
+    return value.inherits(vm, JSHTMLAllCollection::info());
 }
 
 } // namespace WebCore

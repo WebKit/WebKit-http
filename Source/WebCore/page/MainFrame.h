@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "EventHandler.h"
 #include "Frame.h"
 #include <wtf/Vector.h>
 
@@ -34,6 +33,7 @@ namespace WebCore {
 class PageConfiguration;
 class PageOverlayController;
 class PaymentCoordinator;
+class PerformanceLogging;
 class ScrollLatchingState;
 class ServicesOverlayController;
 class WheelEventDeltaFilter;
@@ -66,6 +66,10 @@ public:
     PaymentCoordinator& paymentCoordinator() const { return *m_paymentCoordinator; }
 #endif
 
+    PerformanceLogging& performanceLogging() const { return *m_performanceLogging; }
+
+    void didCompleteLoad();
+
 private:
     MainFrame(Page&, PageConfiguration&);
 
@@ -86,6 +90,11 @@ private:
 #if ENABLE(APPLE_PAY)
     std::unique_ptr<PaymentCoordinator> m_paymentCoordinator;
 #endif
+
+    std::unique_ptr<PerformanceLogging> m_performanceLogging;
+
+    unsigned m_navigationDisableCount { 0 };
+    friend class NavigationDisabler;
 };
 
 } // namespace WebCore

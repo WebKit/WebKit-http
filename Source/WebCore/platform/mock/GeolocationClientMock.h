@@ -29,13 +29,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GeolocationClientMock_h
-#define GeolocationClientMock_h
+#pragma once
 
 #include "GeolocationClient.h"
 #include "Timer.h"
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -54,19 +52,19 @@ public:
     void reset();
     void setController(GeolocationController*);
 
-    void setPosition(PassRefPtr<GeolocationPosition>);
+    void setPosition(RefPtr<GeolocationPosition>&&);
     void setPositionUnavailableError(const String& errorMessage);
     void setPermission(bool allowed);
     int numberOfPendingPermissionRequests() const;
 
     // GeolocationClient
-    virtual void geolocationDestroyed();
-    virtual void startUpdating();
-    virtual void stopUpdating();
-    virtual void setEnableHighAccuracy(bool);
-    virtual GeolocationPosition* lastPosition();
-    virtual void requestPermission(Geolocation*);
-    virtual void cancelPermissionRequest(Geolocation*);
+    void geolocationDestroyed() override;
+    void startUpdating() override;
+    void stopUpdating() override;
+    void setEnableHighAccuracy(bool) override;
+    GeolocationPosition* lastPosition() override;
+    void requestPermission(Geolocation&) override;
+    void cancelPermissionRequest(Geolocation&) override;
 
 private:
     void asyncUpdateController();
@@ -95,5 +93,3 @@ private:
 };
 
 }
-
-#endif

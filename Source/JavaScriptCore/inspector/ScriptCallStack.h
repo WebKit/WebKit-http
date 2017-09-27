@@ -31,7 +31,6 @@
 
 #pragma once
 
-#include "InspectorProtocolObjects.h"
 #include "ScriptCallFrame.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
@@ -57,7 +56,7 @@ public:
 
     bool isEqual(ScriptCallStack*) const;
 
-    Ref<Inspector::Protocol::Console::StackTrace> buildInspectorArray() const;
+    Ref<Inspector::Protocol::Array<Inspector::Protocol::Console::CallFrame>> buildInspectorArray() const;
 
 private:
     ScriptCallStack();

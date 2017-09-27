@@ -51,7 +51,7 @@ public:
     virtual bool paint(Scrollbar&, GraphicsContext&, const IntRect& /*damageRect*/) { return false; }
     virtual ScrollbarPart hitTest(Scrollbar&, const IntPoint&) { return NoPart; }
     
-    virtual int scrollbarThickness(ScrollbarControlSize = RegularScrollbar) { return 0; }
+    virtual int scrollbarThickness(ScrollbarControlSize = RegularScrollbar, ScrollbarExpansionState = ScrollbarExpansionState::Expanded) { return 0; }
 
     virtual ScrollbarButtonsPlacement buttonsPlacement() const { return ScrollbarButtonsSingle; }
 
@@ -105,8 +105,8 @@ public:
 
     virtual int maxOverlapBetweenPages() { return std::numeric_limits<int>::max(); }
 
-    virtual double initialAutoscrollTimerDelay() { return 0.25; }
-    virtual double autoscrollTimerDelay() { return 0.05; }
+    virtual Seconds initialAutoscrollTimerDelay() { return 250_ms; }
+    virtual Seconds autoscrollTimerDelay() { return 50_ms; }
 
     virtual void registerScrollbar(Scrollbar&) { }
     virtual void unregisterScrollbar(Scrollbar&) { }

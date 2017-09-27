@@ -4,59 +4,52 @@ class TestGroupForm extends ComponentBase {
     constructor(name)
     {
         super(name || 'test-group-form');
-        this._startCallback = null;
-        this._disabled = false;
-        this._label = undefined;
         this._repetitionCount = 4;
-
-        this._nameControl = this.content().querySelector('.name');
-        this._repetitionCountControl = this.content().querySelector('.repetition-count');
-        var self = this;
-        this._repetitionCountControl.onchange = function () {
-            self._repetitionCount = self._repetitionCountControl.value;
-        }
-
-        var boundSubmitted = this._submitted.bind(this);
-        this.content().querySelector('form').onsubmit = function (event) {
-            event.preventDefault();
-            boundSubmitted();
-        }
     }
 
-    setStartCallback(callback) { this._startCallback = callback; }
-    setDisabled(disabled) { this._disabled = !!disabled; }
-    setLabel(label) { this._label = label; }
-    setRepetitionCount(count) { this._repetitionCount = count; }
-
-    render()
+    setRepetitionCount(count)
     {
-        var button = this.content().querySelector('button');
-        if (this._label)
-            button.textContent = this._label;
-        button.disabled = this._disabled;
-        this._repetitionCountControl.value = this._repetitionCount;
+        this.content('repetition-count').value = count;
+        this._repetitionCount = count;
     }
 
-    _submitted()
+    didConstructShadowTree()
     {
-        if (this._startCallback)
-            this._startCallback(this._repetitionCount);
+        const repetitionCountSelect = this.content('repetition-count');
+        repetitionCountSelect.onchange = () => {
+            this._repetitionCount = repetitionCountSelect.value;
+        }
+        this.content('form').onsubmit = this.createEventHandler(() => this.startTesting());
+    }
+
+    startTesting()
+    {
+        this.dispatchAction('startTesting', this._repetitionCount);
     }
 
     static htmlTemplate()
     {
-        return `<form><button type="submit">Start A/B testing</button>${this.formContent()}</form>`;
+        return `<form id="form"><button id="start-button" type="submit"><slot>Start A/B testing</slot></button>${this.formContent()}</form>`;
+    }
+
+    static cssTemplate()
+    {
+        return `
+            :host {
+                display: block;
+            }
+        `;
     }
 
     static formContent()
     {
         return `
             with
-            <select class="repetition-count">
+            <select id="repetition-count">
                 <option>1</option>
                 <option>2</option>
                 <option>3</option>
-                <option>4</option>
+                <option selected>4</option>
                 <option>5</option>
                 <option>6</option>
                 <option>7</option>

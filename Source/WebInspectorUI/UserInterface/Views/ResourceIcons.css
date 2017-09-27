@@ -39,7 +39,7 @@
     content: image-set(url(../Images/DocumentFont.png) 1x, url(../Images/DocumentFont@2x.png) 2x);
 }
 
-.resource-icon.resource-type-stylesheet .icon {
+:matches(.resource-icon.resource-type-stylesheet, .stylesheet-icon) .icon {
     content: image-set(url(../Images/DocumentCSS.png) 1x, url(../Images/DocumentCSS@2x.png) 2x);
 }
 
@@ -63,9 +63,24 @@
     content: image-set(url(../Images/ClippingJS.png) 1x, url(../Images/ClippingJS@2x.png) 2x);
 }
 
-/* FIXME: <https://webkit.org/b/164138> [GTK] Web Inspector: Add new GTK+ icons for Worker Scripts */
-body:matches(.mac-platform, .windows-platform) .script.worker-icon .icon {
+.script.worker-icon .icon {
     content: image-set(url(../Images/WorkerScript.png) 1x, url(../Images/WorkerScript@2x.png) 2x);
+}
+
+.resource-icon.resource-type-websocket .icon {
+    content: image-set(url(../Images/WebSocket.png) 1x, url(../Images/WebSocket@2x.png) 2x);
+}
+
+.canvas.canvas-2d .icon {
+    content: url(../Images/Canvas2D.svg);
+}
+
+.canvas:matches(.webgl, .webgl2, .webgpu) .icon {
+    content: url(../Images/Canvas3D.svg);
+}
+
+.shader-program .icon {
+    content: image-set(url(../Images/DocumentGL.png) 1x, url(../Images/DocumentGL@2x.png) 2x);
 }
 
 .large .resource-icon .icon {
@@ -84,7 +99,7 @@ body:matches(.mac-platform, .windows-platform) .script.worker-icon .icon {
     content: image-set(url(../Images/DocumentFontLarge.png) 1x, url(../Images/DocumentFontLarge@2x.png) 2x);
 }
 
-.large .resource-icon.resource-type-stylesheet .icon {
+.large :matches(.resource-icon.resource-type-stylesheet, .stylesheet-icon) .icon {
     content: image-set(url(../Images/DocumentCSSLarge.png) 1x, url(../Images/DocumentCSSLarge@2x.png) 2x);
 }
 
@@ -108,7 +123,10 @@ body:matches(.mac-platform, .windows-platform) .script.worker-icon .icon {
     content: image-set(url(../Images/ClippingJSLarge.png) 1x, url(../Images/ClippingJSLarge@2x.png) 2x);
 }
 
-/* FIXME: <https://webkit.org/b/164138> [GTK] Web Inspector: Add new GTK+ icons for Worker Scripts */
-body:matches(.mac-platform, .windows-platform) .large .script.worker-icon .icon {
+.large .script.worker-icon .icon {
     content: image-set(url(../Images/WorkerScriptLarge.png) 1x, url(../Images/WorkerScriptLarge@2x.png) 2x);
+}
+
+.large .resource-icon.resource-type-websocket .icon {
+    content: image-set(url(../Images/WebSocketLarge.png) 1x, url(../Images/WebSocketLarge@2x.png) 2x);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,31 +28,37 @@
 
 #if ENABLE(B3_JIT)
 
+#include "B3AtomicValue.h"
+#include "B3MemoryValueInlines.h"
+#include "B3ValueInlines.h"
+
 namespace JSC { namespace B3 {
 
 MemoryValue::~MemoryValue()
 {
 }
 
+bool MemoryValue::isLegalOffsetImpl(int64_t offset) const
+{
+    return B3::isRepresentableAs<OffsetType>(offset) && isLegalOffset(static_cast<OffsetType>(offset));
+}
+
+Type MemoryValue::accessType() const
+{
+    if (isLoad())
+        return type();
+    // This happens to work for atomics, too. That's why AtomicValue does not need to override this.
+    return child(0)->type();
+}
+
+Bank MemoryValue::accessBank() const
+{
+    return bankForType(accessType());
+}
+
 size_t MemoryValue::accessByteSize() const
 {
-    switch (opcode()) {
-    case Load8Z:
-    case Load8S:
-    case Store8:
-        return 1;
-    case Load16Z:
-    case Load16S:
-    case Store16:
-        return 2;
-    case Load:
-        return sizeofType(type());
-    case Store:
-        return sizeofType(child(0)->type());
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        return 0;
-    }
+    return bytes(accessWidth());
 }
 
 void MemoryValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const
@@ -60,13 +66,72 @@ void MemoryValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const
     if (m_offset)
         out.print(comma, "offset = ", m_offset);
     if ((isLoad() && effects().reads != range())
-        || (isStore() && effects().writes != range()))
+        || (isStore() && effects().writes != range())
+        || isExotic())
         out.print(comma, "range = ", range());
+    if (isExotic())
+        out.print(comma, "fenceRange = ", fenceRange());
 }
 
 Value* MemoryValue::cloneImpl() const
 {
     return new MemoryValue(*this);
+}
+
+// Use this form for Load (but not Load8Z, Load8S, or any of the Loads that have a suffix that
+// describes the returned type).
+MemoryValue::MemoryValue(MemoryValue::MemoryValueLoad, Kind kind, Type type, Origin origin, Value* pointer, MemoryValue::OffsetType offset, HeapRange range, HeapRange fenceRange)
+    : Value(CheckedOpcode, kind, type, origin, pointer)
+    , m_offset(offset)
+    , m_range(range)
+    , m_fenceRange(fenceRange)
+{
+    if (!ASSERT_DISABLED) {
+        switch (kind.opcode()) {
+        case Load:
+            break;
+        case Load8Z:
+        case Load8S:
+        case Load16Z:
+        case Load16S:
+            ASSERT(type == Int32);
+            break;
+        case Store8:
+        case Store16:
+        case Store:
+            ASSERT(type == Void);
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    }
+}
+
+// Use this form for loads where the return type is implied.
+MemoryValue::MemoryValue(MemoryValue::MemoryValueLoadImplied, Kind kind, Origin origin, Value* pointer, MemoryValue::OffsetType offset, HeapRange range, HeapRange fenceRange)
+    : MemoryValue(kind, Int32, origin, pointer, offset, range, fenceRange)
+{
+    if (!ASSERT_DISABLED) {
+        switch (kind.opcode()) {
+        case Load8Z:
+        case Load8S:
+        case Load16Z:
+        case Load16S:
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    }
+}
+
+// Use this form for stores.
+MemoryValue::MemoryValue(MemoryValue::MemoryValueStore, Kind kind, Origin origin, Value* value, Value* pointer, MemoryValue::OffsetType offset, HeapRange range, HeapRange fenceRange)
+    : Value(CheckedOpcode, kind, Void, origin, value, pointer)
+    , m_offset(offset)
+    , m_range(range)
+    , m_fenceRange(fenceRange)
+{
+    ASSERT(B3::isStore(kind.opcode()));
 }
 
 } } // namespace JSC::B3

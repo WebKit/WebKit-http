@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,6 +47,7 @@ bool Arg::isStackMemory() const
     case Addr:
         return base() == Air::Tmp(GPRInfo::callFrameRegister)
             || base() == Air::Tmp(MacroAssembler::stackPointerRegister);
+    case ExtendedOffsetAddr:
     case Stack:
     case CallArg:
         return true;
@@ -73,15 +74,15 @@ bool Arg::usesTmp(Air::Tmp tmp) const
 
 bool Arg::canRepresent(Value* value) const
 {
-    return isType(typeForB3Type(value->type()));
+    return isBank(bankForType(value->type()));
 }
 
-bool Arg::isCompatibleType(const Arg& other) const
+bool Arg::isCompatibleBank(const Arg& other) const
 {
-    if (hasType())
-        return other.isType(type());
-    if (other.hasType())
-        return isType(other.type());
+    if (hasBank())
+        return other.isBank(bank());
+    if (other.hasBank())
+        return isBank(other.bank());
     return true;
 }
 
@@ -102,6 +103,7 @@ unsigned Arg::jsHash() const
     case RelCond:
     case ResCond:
     case DoubleCond:
+    case StatusCond:
     case WidthArg:
         result += static_cast<unsigned>(m_offset);
         break;
@@ -110,7 +112,11 @@ unsigned Arg::jsHash() const
         result += static_cast<unsigned>(m_offset);
         result += static_cast<unsigned>(m_offset >> 32);
         break;
+    case SimpleAddr:
+        result += m_base.internalValue();
+        break;
     case Addr:
+    case ExtendedOffsetAddr:
         result += m_offset;
         result += m_base.internalValue();
         break;
@@ -150,7 +156,11 @@ void Arg::dump(PrintStream& out) const
     case BitImm64:
         out.printf("$0x%llx", static_cast<long long unsigned>(m_offset));
         return;
+    case SimpleAddr:
+        out.print("(", base(), ")");
+        return;
     case Addr:
+    case ExtendedOffsetAddr:
         if (offset())
             out.print(offset());
         out.print("(", base(), ")");
@@ -181,6 +191,9 @@ void Arg::dump(PrintStream& out) const
         return;
     case DoubleCond:
         out.print(asDoubleCondition());
+        return;
+    case StatusCond:
+        out.print(asStatusCondition());
         return;
     case Special:
         out.print(pointerDump(special()));
@@ -220,8 +233,14 @@ void printInternal(PrintStream& out, Arg::Kind kind)
     case Arg::BitImm64:
         out.print("BitImm64");
         return;
+    case Arg::SimpleAddr:
+        out.print("SimpleAddr");
+        return;
     case Arg::Addr:
         out.print("Addr");
+        return;
+    case Arg::ExtendedOffsetAddr:
+        out.print("ExtendedOffsetAddr");
         return;
     case Arg::Stack:
         out.print("Stack");
@@ -241,11 +260,59 @@ void printInternal(PrintStream& out, Arg::Kind kind)
     case Arg::DoubleCond:
         out.print("DoubleCond");
         return;
+    case Arg::StatusCond:
+        out.print("StatusCond");
+        return;
     case Arg::Special:
         out.print("Special");
         return;
     case Arg::WidthArg:
         out.print("WidthArg");
+        return;
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, Arg::Temperature temperature)
+{
+    switch (temperature) {
+    case Arg::Cold:
+        out.print("Cold");
+        return;
+    case Arg::Warm:
+        out.print("Warm");
+        return;
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, Arg::Phase phase)
+{
+    switch (phase) {
+    case Arg::Early:
+        out.print("Early");
+        return;
+    case Arg::Late:
+        out.print("Late");
+        return;
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void printInternal(PrintStream& out, Arg::Timing timing)
+{
+    switch (timing) {
+    case Arg::OnlyEarly:
+        out.print("OnlyEarly");
+        return;
+    case Arg::OnlyLate:
+        out.print("OnlyLate");
+        return;
+    case Arg::EarlyAndLate:
+        out.print("EarlyAndLate");
         return;
     }
 
@@ -285,42 +352,11 @@ void printInternal(PrintStream& out, Arg::Role role)
     case Arg::EarlyDef:
         out.print("EarlyDef");
         return;
+    case Arg::EarlyZDef:
+        out.print("EarlyZDef");
+        return;
     case Arg::Scratch:
         out.print("Scratch");
-        return;
-    }
-
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-void printInternal(PrintStream& out, Arg::Type type)
-{
-    switch (type) {
-    case Arg::GP:
-        out.print("GP");
-        return;
-    case Arg::FP:
-        out.print("FP");
-        return;
-    }
-
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-void printInternal(PrintStream& out, Arg::Width width)
-{
-    switch (width) {
-    case Arg::Width8:
-        out.print("8");
-        return;
-    case Arg::Width16:
-        out.print("16");
-        return;
-    case Arg::Width32:
-        out.print("32");
-        return;
-    case Arg::Width64:
-        out.print("64");
         return;
     }
 

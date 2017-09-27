@@ -25,7 +25,6 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
-#include <wtf/Vector.h>
 
 #if PLATFORM(IOS)
 #include "NativeImage.h"
@@ -78,8 +77,6 @@ private:
 #elif PLATFORM(GTK)
     Icon();
     GdkPixbuf* m_icon;
-#elif PLATFORM(EFL)
-    Icon();
 #endif
 };
 

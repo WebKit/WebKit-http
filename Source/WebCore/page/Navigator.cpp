@@ -31,20 +31,21 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "Geolocation.h"
-#include "Language.h"
 #include "Page.h"
 #include "PluginData.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include <wtf/Language.h>
 #include <wtf/StdLibExtras.h>
 
 using namespace WTF;
 
 namespace WebCore {
 
-Navigator::Navigator(Frame& frame)
-    : DOMWindowProperty(&frame)
+Navigator::Navigator(ScriptExecutionContext& context, Frame& frame)
+    : NavigatorBase(context)
+    , DOMWindowProperty(&frame)
 {
 }
 
@@ -125,7 +126,7 @@ bool Navigator::javaEnabled() const
 
     if (!m_frame->settings().isJavaEnabled())
         return false;
-    if (m_frame->document()->securityOrigin()->isLocal() && !m_frame->settings().isJavaEnabledForLocalFiles())
+    if (m_frame->document()->securityOrigin().isLocal() && !m_frame->settings().isJavaEnabledForLocalFiles())
         return false;
 
     return true;

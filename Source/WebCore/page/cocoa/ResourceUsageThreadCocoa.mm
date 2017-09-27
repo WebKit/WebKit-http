@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,27 +28,23 @@
 
 #if ENABLE(RESOURCE_USAGE)
 
-#include "MachVMSPI.h"
 #include <JavaScriptCore/GCActivityCallback.h>
 #include <heap/Heap.h>
 #include <mach/mach.h>
 #include <mach/vm_statistics.h>
+#include <pal/spi/cocoa/MachVMSPI.h>
 #include <runtime/VM.h>
-#include <sys/sysctl.h>
 
 namespace WebCore {
 
-static size_t vmPageSize()
+size_t vmPageSize()
 {
-    static size_t pageSize;
-    static std::once_flag onceFlag;
-    std::call_once(onceFlag, [&] {
-        size_t outputSize = sizeof(pageSize);
-        int status = sysctlbyname("vm.pagesize", &pageSize, &outputSize, nullptr, 0);
-        ASSERT_UNUSED(status, status != -1);
-        ASSERT(pageSize);
-    });
-    return pageSize;
+#if PLATFORM(IOS)
+    return vm_kernel_page_size;
+#else
+    static size_t cached = sysconf(_SC_PAGESIZE);
+    return cached;
+#endif
 }
 
 void logFootprintComparison(const std::array<TagInfo, 256>& before, const std::array<TagInfo, 256>& after)
@@ -84,6 +80,7 @@ const char* displayNameForVMTag(unsigned tag)
     case VM_MEMORY_IMAGEIO: return "ImageIO";
     case VM_MEMORY_CGIMAGE: return "CG image";
     case VM_MEMORY_JAVASCRIPT_JIT_EXECUTABLE_ALLOCATOR: return "JSC JIT";
+    case VM_MEMORY_JAVASCRIPT_CORE: return "WebAssembly";
     case VM_MEMORY_MALLOC: return "malloc";
     case VM_MEMORY_MALLOC_HUGE: return "malloc (huge)";
     case VM_MEMORY_MALLOC_LARGE: return "malloc (large)";
@@ -185,6 +182,8 @@ static unsigned categoryForVMTag(unsigned tag)
         return MemoryCategory::Images;
     case VM_MEMORY_JAVASCRIPT_JIT_EXECUTABLE_ALLOCATOR:
         return MemoryCategory::JSJIT;
+    case VM_MEMORY_JAVASCRIPT_CORE:
+        return MemoryCategory::WebAssembly;
     case VM_MEMORY_MALLOC:
     case VM_MEMORY_MALLOC_HUGE:
     case VM_MEMORY_MALLOC_LARGE:

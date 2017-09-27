@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
@@ -34,14 +34,18 @@ namespace WebCore {
 class AlternativeTextClient;
 class ApplicationCacheStorage;
 class BackForwardClient;
+class CacheStorageProvider;
 class ChromeClient;
+class ContextMenuClient;
 class DatabaseProvider;
 class DiagnosticLoggingClient;
 class DragClient;
 class EditorClient;
 class FrameLoaderClient;
 class InspectorClient;
+class LibWebRTCProvider;
 class PaymentCoordinatorClient;
+class PerformanceLoggingClient;
 class PlugInClient;
 class PluginInfoProvider;
 class ProgressTrackerClient;
@@ -50,15 +54,12 @@ class StorageNamespaceProvider;
 class UserContentProvider;
 class ValidationMessageClient;
 class VisitedLinkStore;
-
-#if ENABLE(CONTEXT_MENUS)
-class ContextMenuClient;
-#endif
+class WebGLStateTracker;
 
 class PageConfiguration {
     WTF_MAKE_NONCOPYABLE(PageConfiguration); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, Ref<SocketProvider>&&);
+    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, Ref<SocketProvider>&&, UniqueRef<LibWebRTCProvider>&&, Ref<CacheStorageProvider>&&);
     WEBCORE_EXPORT ~PageConfiguration();
 
     AlternativeTextClient* alternativeTextClient { nullptr };
@@ -74,15 +75,20 @@ public:
     PaymentCoordinatorClient* paymentCoordinatorClient { nullptr };
 #endif
 
+    UniqueRef<LibWebRTCProvider> libWebRTCProvider;
+
     PlugInClient* plugInClient { nullptr };
     ProgressTrackerClient* progressTrackerClient { nullptr };
     RefPtr<BackForwardClient> backForwardClient;
     std::unique_ptr<ValidationMessageClient> validationMessageClient;
     FrameLoaderClient* loaderClientForMainFrame { nullptr };
     std::unique_ptr<DiagnosticLoggingClient> diagnosticLoggingClient;
+    std::unique_ptr<PerformanceLoggingClient> performanceLoggingClient;
+    std::unique_ptr<WebGLStateTracker> webGLStateTracker;
 
     RefPtr<ApplicationCacheStorage> applicationCacheStorage;
     RefPtr<DatabaseProvider> databaseProvider;
+    Ref<CacheStorageProvider> cacheStorageProvider;
     RefPtr<PluginInfoProvider> pluginInfoProvider;
     RefPtr<StorageNamespaceProvider> storageNamespaceProvider;
     RefPtr<UserContentProvider> userContentProvider;

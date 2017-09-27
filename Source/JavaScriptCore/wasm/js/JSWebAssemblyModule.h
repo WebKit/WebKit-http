@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,32 +29,59 @@
 
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
-#include "WasmFormat.h"
+#include "UnconditionalFinalizer.h"
+#include "WasmModule.h"
+#include <wtf/Bag.h>
+#include <wtf/Forward.h>
 
 namespace JSC {
+
+namespace Wasm {
+class Module;
+class Plan;
+}
+
+class SymbolTable;
+class JSWebAssemblyCodeBlock;
+class JSWebAssemblyMemory;
+class WebAssemblyToJSCallee;
 
 class JSWebAssemblyModule : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static JSWebAssemblyModule* create(VM&, Structure*, std::unique_ptr<Wasm::ModuleInformation>&, Wasm::CompiledFunctions&);
+    DECLARE_EXPORT_INFO;
+
+    JS_EXPORT_PRIVATE static JSWebAssemblyModule* createStub(VM&, ExecState*, Structure*, Wasm::Module::ValidationResult&&);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
-    DECLARE_INFO;
-
-    const Wasm::ModuleInformation* moduleInformation() const
+    const Wasm::ModuleInformation& moduleInformation() const { return m_module->moduleInformation(); }
+    SymbolTable* exportSymbolTable() const { return m_exportSymbolTable.get(); }
+    Wasm::SignatureIndex signatureIndexFromFunctionIndexSpace(unsigned functionIndexSpace) const
     {
-        return m_moduleInformation.get();
+        return m_module->signatureIndexFromFunctionIndexSpace(functionIndexSpace);
     }
+    WebAssemblyToJSCallee* callee() const { return m_callee.get(); }
 
-protected:
-    JSWebAssemblyModule(VM&, Structure*, std::unique_ptr<Wasm::ModuleInformation>&, Wasm::CompiledFunctions&);
+    JSWebAssemblyCodeBlock* codeBlock(Wasm::MemoryMode mode) { return m_codeBlocks[static_cast<size_t>(mode)].get(); }
+
+    const Vector<uint8_t>& source() const;
+
+    Wasm::Module& module() { return m_module.get(); }
+    void setCodeBlock(VM&, Wasm::MemoryMode, JSWebAssemblyCodeBlock*);
+
+private:
+    friend class JSWebAssemblyCodeBlock;
+
+    JSWebAssemblyModule(VM&, Structure*, Ref<Wasm::Module>&&);
     void finishCreation(VM&);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
-private:
-    std::unique_ptr<Wasm::ModuleInformation> m_moduleInformation;
-    Wasm::CompiledFunctions m_compiledFunctions;
+
+    Ref<Wasm::Module> m_module;
+    WriteBarrier<SymbolTable> m_exportSymbolTable;
+    WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlocks[Wasm::NumberOfMemoryModes];
+    WriteBarrier<WebAssemblyToJSCallee> m_callee;
 };
 
 } // namespace JSC

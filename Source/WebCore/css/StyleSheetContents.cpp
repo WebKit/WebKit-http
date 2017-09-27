@@ -1,6 +1,6 @@
 /*
  * (C) 1999-2003 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2004, 2006, 2007, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,18 +26,24 @@
 #include "CSSStyleSheet.h"
 #include "CachedCSSStyleSheet.h"
 #include "Document.h"
+#include "Frame.h"
+#include "FrameLoader.h"
 #include "MediaList.h"
 #include "Node.h"
 #include "Page.h"
 #include "PageConsoleClient.h"
+#include "ResourceLoadInfo.h"
 #include "RuleSet.h"
 #include "SecurityOrigin.h"
-#include "StyleProperties.h"
 #include "StyleRule.h"
 #include "StyleRuleImport.h"
 #include <wtf/Deque.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Ref.h>
+
+#if ENABLE(CONTENT_EXTENSIONS)
+#include "UserContentController.h"
+#endif
 
 namespace WebCore {
 
@@ -62,7 +68,7 @@ unsigned StyleSheetContents::estimatedSizeInBytes() const
 StyleSheetContents::StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext& context)
     : m_ownerRule(ownerRule)
     , m_originalURL(originalURL)
-    , m_defaultNamespace(starAtom)
+    , m_defaultNamespace(starAtom())
     , m_isUserStyleSheet(ownerRule && ownerRule->parentStyleSheet() && ownerRule->parentStyleSheet()->isUserStyleSheet())
     , m_parserContext(context)
 {
@@ -305,36 +311,38 @@ const AtomicString& StyleSheetContents::namespaceURIFromPrefix(const AtomicStrin
 {
     PrefixNamespaceURIMap::const_iterator it = m_namespaces.find(prefix);
     if (it == m_namespaces.end())
-        return nullAtom;
+        return nullAtom();
     return it->value;
 }
 
 void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cachedStyleSheet, const SecurityOrigin* securityOrigin)
 {
     bool isSameOriginRequest = securityOrigin && securityOrigin->canRequest(baseURL());
-    CachedCSSStyleSheet::MIMETypeCheck mimeTypeCheck = isStrictParserMode(m_parserContext.mode) || !isSameOriginRequest ? CachedCSSStyleSheet::MIMETypeCheck::Strict : CachedCSSStyleSheet::MIMETypeCheck::Lax;
+    CachedCSSStyleSheet::MIMETypeCheckHint mimeTypeCheckHint = isStrictParserMode(m_parserContext.mode) || !isSameOriginRequest ? CachedCSSStyleSheet::MIMETypeCheckHint::Strict : CachedCSSStyleSheet::MIMETypeCheckHint::Lax;
     bool hasValidMIMEType = true;
-    String sheetText = cachedStyleSheet->sheetText(mimeTypeCheck, &hasValidMIMEType);
+    String sheetText = cachedStyleSheet->sheetText(mimeTypeCheckHint, &hasValidMIMEType);
 
     if (!hasValidMIMEType) {
         ASSERT(sheetText.isNull());
         if (auto* document = singleOwnerDocument()) {
             if (auto* page = document->page()) {
                 if (isStrictParserMode(m_parserContext.mode))
-                    page->console().addMessage(MessageSource::Security, MessageLevel::Error, "Did not parse stylesheet at '" + cachedStyleSheet->url().stringCenterEllipsizedToLength() + "' because non CSS MIME types are not allowed in strict mode.");
+                    page->console().addMessage(MessageSource::Security, MessageLevel::Error, makeString("Did not parse stylesheet at '", cachedStyleSheet->url().stringCenterEllipsizedToLength(), "' because non CSS MIME types are not allowed in strict mode."));
+                else if (!cachedStyleSheet->mimeTypeAllowedByNosniff())
+                    page->console().addMessage(MessageSource::Security, MessageLevel::Error, makeString("Did not parse stylesheet at '", cachedStyleSheet->url().stringCenterEllipsizedToLength(), "' because non CSS MIME types are not allowed when 'X-Content-Type: nosniff' is given."));
                 else
-                    page->console().addMessage(MessageSource::Security, MessageLevel::Error, "Did not parse stylesheet at '" + cachedStyleSheet->url().stringCenterEllipsizedToLength() + "' because non CSS MIME types are not allowed for cross-origin stylesheets.");
+                    page->console().addMessage(MessageSource::Security, MessageLevel::Error, makeString("Did not parse stylesheet at '", cachedStyleSheet->url().stringCenterEllipsizedToLength(), "' because non CSS MIME types are not allowed for cross-origin stylesheets."));
             }
         }
         return;
     }
 
     CSSParser p(parserContext());
-    p.parseSheet(this, sheetText, TextPosition(), nullptr, true);
+    p.parseSheet(this, sheetText, CSSParser::RuleParsing::Deferred);
 
     if (m_parserContext.needsSiteSpecificQuirks && isStrictParserMode(m_parserContext.mode)) {
         // Work around <https://bugs.webkit.org/show_bug.cgi?id=28350>.
-        static NeverDestroyed<const String> mediaWikiKHTMLFixesStyleSheet(ASCIILiteral("/* KHTML fix stylesheet */\n/* work around the horizontal scrollbars */\n#column-content { margin-left: 0; }\n\n"));
+        static NeverDestroyed<const String> mediaWikiKHTMLFixesStyleSheet(MAKE_STATIC_STRING_IMPL("/* KHTML fix stylesheet */\n/* work around the horizontal scrollbars */\n#column-content { margin-left: 0; }\n\n"));
         // There are two variants of KHTMLFixes.css. One is equal to mediaWikiKHTMLFixesStyleSheet,
         // while the other lacks the second trailing newline.
         if (baseURL().string().endsWith("/KHTMLFixes.css") && !sheetText.isNull() && mediaWikiKHTMLFixesStyleSheet.get().startsWith(sheetText)
@@ -345,13 +353,8 @@ void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cached
 
 bool StyleSheetContents::parseString(const String& sheetText)
 {
-    return parseStringAtPosition(sheetText, TextPosition(), false);
-}
-
-bool StyleSheetContents::parseStringAtPosition(const String& sheetText, const TextPosition& textPosition, bool createdByParser)
-{
     CSSParser p(parserContext());
-    p.parseSheet(this, sheetText, textPosition, nullptr, createdByParser);
+    p.parseSheet(this, sheetText, parserContext().mode != UASheetMode ? CSSParser::RuleParsing::Deferred : CSSParser::RuleParsing::Normal);
     return true;
 }
 
@@ -369,9 +372,6 @@ void StyleSheetContents::checkLoaded()
     if (isLoading())
         return;
 
-    // Avoid |this| being deleted by scripts that run via
-    // ScriptableDocumentParser::executeScriptsWaitingForStylesheets().
-    // See <rdar://problem/6622300>.
     Ref<StyleSheetContents> protectedThis(*this);
     StyleSheetContents* parentSheet = parentStyleSheet();
     if (parentSheet) {
@@ -393,6 +393,7 @@ void StyleSheetContents::notifyLoadedSheet(const CachedCSSStyleSheet* sheet)
 {
     ASSERT(sheet);
     m_didLoadErrorOccur |= sheet->errorOccurred();
+    m_didLoadErrorOccur |= !sheet->mimeTypeAllowedByNosniff();
 }
 
 void StyleSheetContents::startLoadingDynamicSheet()
@@ -426,29 +427,29 @@ Document* StyleSheetContents::singleOwnerDocument() const
 
 URL StyleSheetContents::completeURL(const String& url) const
 {
-    return CSSParser::completeURL(m_parserContext, url);
+    return m_parserContext.completeURL(url);
 }
 
-static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rules, const std::function<bool (const CachedResource&)>& handler)
+static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rules, const WTF::Function<bool (const CachedResource&)>& handler)
 {
     for (auto& rule : rules) {
         switch (rule->type()) {
-        case StyleRuleBase::Style:
-            if (downcast<StyleRule>(*rule).properties().traverseSubresources(handler))
+        case StyleRuleBase::Style: {
+            auto* properties = downcast<StyleRule>(*rule).propertiesWithoutDeferredParsing();
+            if (properties && properties->traverseSubresources(handler))
                 return true;
             break;
+        }
         case StyleRuleBase::FontFace:
             if (downcast<StyleRuleFontFace>(*rule).properties().traverseSubresources(handler))
                 return true;
             break;
-        case StyleRuleBase::Media:
-            if (traverseSubresourcesInRules(downcast<StyleRuleMedia>(*rule).childRules(), handler))
+        case StyleRuleBase::Media: {
+            auto* childRules = downcast<StyleRuleMedia>(*rule).childRulesWithoutDeferredParsing();
+            if (childRules && traverseSubresourcesInRules(*childRules, handler))
                 return true;
             break;
-        case StyleRuleBase::Region:
-            if (traverseSubresourcesInRules(downcast<StyleRuleRegion>(*rule).childRules(), handler))
-                return true;
-            break;
+        }
         case StyleRuleBase::Import:
             ASSERT_NOT_REACHED();
 #if ASSERT_DISABLED
@@ -470,7 +471,7 @@ static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rul
     return false;
 }
 
-bool StyleSheetContents::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool StyleSheetContents::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     for (auto& importRule : m_importRules) {
         if (auto* cachedResource = importRule->cachedCSSStyleSheet()) {
@@ -484,14 +485,29 @@ bool StyleSheetContents::traverseSubresources(const std::function<bool (const Ca
     return traverseSubresourcesInRules(m_childRules, handler);
 }
 
-bool StyleSheetContents::subresourcesAllowReuse(CachePolicy cachePolicy) const
+bool StyleSheetContents::subresourcesAllowReuse(CachePolicy cachePolicy, FrameLoader& loader) const
 {
-    bool hasFailedOrExpiredResources = traverseSubresources([cachePolicy](const CachedResource& resource) {
+    bool hasFailedOrExpiredResources = traverseSubresources([cachePolicy, &loader](const CachedResource& resource) {
         if (resource.loadFailedOrCanceled())
             return true;
         // We can't revalidate subresources individually so don't use reuse the parsed sheet if they need revalidation.
         if (resource.makeRevalidationDecision(cachePolicy) != CachedResource::RevalidationDecision::No)
             return true;
+
+#if ENABLE(CONTENT_EXTENSIONS)
+        // If a cached subresource is blocked or made HTTPS by a content blocker, we cannot reuse the cached stylesheet.
+        auto* page = loader.frame().page();
+        auto* documentLoader = loader.documentLoader();
+        if (page && documentLoader) {
+            const auto& request = resource.resourceRequest();
+            auto blockedStatus = page->userContentProvider().processContentExtensionRulesForLoad(request.url(), toResourceType(resource.type()), *documentLoader);
+            if (blockedStatus.blockedLoad || blockedStatus.madeHTTPS)
+                return true;
+        }
+#else
+        UNUSED_PARAM(loader);
+#endif
+
         return false;
     });
     return !hasFailedOrExpiredResources;

@@ -113,7 +113,6 @@ void InjectedScript::functionDetails(ErrorString& errorString, JSC::JSValue valu
 {
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), ASCIILiteral("functionDetails"), inspectorEnvironment()->functionCallHandler());
     function.appendArgument(value);
-    function.appendArgument(true); // Preview only.
 
     RefPtr<InspectorValue> resultValue;
     makeCall(function, &resultValue);
@@ -124,6 +123,22 @@ void InjectedScript::functionDetails(ErrorString& errorString, JSC::JSValue valu
     }
 
     *result = BindingTraits<Inspector::Protocol::Debugger::FunctionDetails>::runtimeCast(WTFMove(resultValue));
+}
+
+void InjectedScript::getPreview(ErrorString& errorString, const String& objectId, RefPtr<Protocol::Runtime::ObjectPreview>* result)
+{
+    Deprecated::ScriptFunctionCall function(injectedScriptObject(), ASCIILiteral("getPreview"), inspectorEnvironment()->functionCallHandler());
+    function.appendArgument(objectId);
+
+    RefPtr<InspectorValue> resultValue;
+    makeCall(function, &resultValue);
+    if (!resultValue || resultValue->type() != InspectorValue::Type::Object) {
+        if (!resultValue->asString(errorString))
+            errorString = ASCIILiteral("Internal error");
+        return;
+    }
+
+    *result = BindingTraits<Inspector::Protocol::Runtime::ObjectPreview>::runtimeCast(WTFMove(resultValue));
 }
 
 void InjectedScript::getProperties(ErrorString& errorString, const String& objectId, bool ownProperties, bool generatePreview, RefPtr<Array<Inspector::Protocol::Runtime::PropertyDescriptor>>* properties)
@@ -219,6 +234,8 @@ Ref<Array<Inspector::Protocol::Debugger::CallFrame>> InjectedScript::wrapCallFra
 
     bool hadException = false;
     auto callFramesValue = callFunctionWithEvalEnabled(function, hadException);
+    if (!callFramesValue)
+        return Array<Inspector::Protocol::Debugger::CallFrame>::create();
     ASSERT(!hadException);
     RefPtr<InspectorValue> result = toInspectorValue(*scriptState(), callFramesValue);
     if (result->type() == InspectorValue::Type::Array)

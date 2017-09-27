@@ -52,7 +52,6 @@ public:
         , m_hasAnnotationsBefore(false)
         , m_hasAnnotationsAfter(false)
         , m_isFirstAfterPageBreak(false)
-        , m_hasAnonymousInlineBlock(false)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
         , m_hasBadChildList(false)
 #endif
@@ -71,7 +70,7 @@ public:
 #endif
 
 #if ENABLE(TREE_DEBUGGING)
-    void showLineTreeAndMark(const InlineBox* markedBox, int depth) const override;
+    void outputLineTreeAndMark(WTF::TextStream&, const InlineBox* markedBox, int depth) const override;
     const char* boxName() const override;
 #endif
 
@@ -115,8 +114,8 @@ public:
 
     void paintBoxDecorations(PaintInfo&, const LayoutPoint&);
     void paintMask(PaintInfo&, const LayoutPoint&);
-    void paintFillLayers(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
-    void paintFillLayer(const PaintInfo&, const Color&, const FillLayer*, const LayoutRect&, CompositeOperator = CompositeSourceOver);
+    void paintFillLayers(const PaintInfo&, const Color&, const FillLayer&, const LayoutRect&, CompositeOperator = CompositeSourceOver);
+    void paintFillLayer(const PaintInfo&, const Color&, const FillLayer&, const LayoutRect&, CompositeOperator = CompositeSourceOver);
     void paintBoxShadow(const PaintInfo&, const RenderStyle&, ShadowStyle, const LayoutRect&);
     void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom) override;
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom, HitTestAction) override;
@@ -210,10 +209,6 @@ public:
     bool hasTextDescendants() const { return m_hasTextDescendants; }
     void setHasTextChildren() { m_hasTextChildren = true; setHasTextDescendants(); }
     void setHasTextDescendants() { m_hasTextDescendants = true; }
-    
-    bool hasAnonymousInlineBlock() const { return m_hasAnonymousInlineBlock; }
-    void setHasAnonymousInlineBlock(bool b) { m_hasAnonymousInlineBlock = b; }
-    RenderBlockFlow* anonymousInlineBlock() const;
     
     void checkConsistency() const;
     void setHasBadChildList();
@@ -343,7 +338,6 @@ protected:
     unsigned m_lineBreakBidiStatusLast : 5; // UCharDirection
 
     unsigned m_isFirstAfterPageBreak : 1;
-    unsigned m_hasAnonymousInlineBlock : 1;
 
     // End of RootInlineBox-specific members.
 
@@ -374,6 +368,6 @@ inline void InlineFlowBox::setHasBadChildList()
 SPECIALIZE_TYPE_TRAITS_INLINE_BOX(InlineFlowBox, isInlineFlowBox())
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showTree(const WebCore::InlineFlowBox*);
 #endif

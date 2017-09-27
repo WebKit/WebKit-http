@@ -1,23 +1,29 @@
-set(WTF_LIBRARY_TYPE STATIC)
 set(WTF_OUTPUT_NAME WTFGTK)
 
 list(APPEND WTF_SOURCES
+    generic/MainThreadGeneric.cpp
     generic/WorkQueueGeneric.cpp
     glib/GLibUtilities.cpp
     glib/GRefPtr.cpp
-    glib/MainThreadGLib.cpp
     glib/RunLoopGLib.cpp
-    PlatformUserPreferredLanguagesUnix.cpp
+
+    linux/CurrentProcessMemoryStatus.cpp
+    linux/MemoryFootprintLinux.cpp
+    linux/MemoryPressureHandlerLinux.cpp
+
+    unix/CPUTimeUnix.cpp
+    unix/LanguageUnix.cpp
+
     UniStdExtras.cpp
 
-    text/gtk/TextBreakIteratorInternalICUGtk.cpp
+    text/unix/TextBreakIteratorInternalICUUnix.cpp
 )
 
 list(APPEND WTF_LIBRARIES
+    ${CMAKE_THREAD_LIBS_INIT}
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
-    pthread
     ${ZLIB_LIBRARIES}
 )
 

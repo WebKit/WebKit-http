@@ -88,9 +88,9 @@ function runTest()
         try {
             testFunction();
         } catch (e) {
-            // FIXME: the redirected console methods do not forward additional arguments.
-            console.error("Exception during test execution: " + e, e.stack || "(no stack trace)");
-            InspectorTest.completeTest();
+            // Using this instead of window.onerror will preserve the stack trace.
+            e.code = testFunction.toString();
+            InspectorTest.reportUncaughtException(e);
         }
     }
 
@@ -99,6 +99,24 @@ function runTest()
 
     testRunner.evaluateInWebInspector(initializationCodeString);
     testRunner.evaluateInWebInspector(testFunctionCodeString);
+}
+
+function runTestHTTPS()
+{
+    if (window.testRunner) {
+        testRunner.dumpAsText();
+        testRunner.waitUntilDone();
+    }
+
+    let url = new URL(document.URL);
+    if (url.protocol !== "https:") {
+        url.protocol = "https:";
+        url.port = "8443";
+        window.location.href = url.toString();
+        return;
+    }
+
+    runTest();
 }
 
 TestPage.completeTest = function()
@@ -138,6 +156,8 @@ TestPage.addResult = function(text)
 
     this._resultElement.append(text, document.createElement("br"));
 }
+
+TestPage.log = TestPage.addResult;
 
 TestPage.dispatchEventToFrontend = function(eventName, data)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +31,10 @@
 #include "DFGAdaptiveInferredPropertyValueWatchpoint.h"
 #include "DFGAdaptiveStructureWatchpoint.h"
 #include "DFGJumpReplacement.h"
+#include "DFGOSREntry.h"
 #include "InlineCallFrameSet.h"
 #include "JSCell.h"
 #include "ProfilerCompilation.h"
-#include "SymbolTable.h"
 #include <wtf/Bag.h>
 #include <wtf/Noncopyable.h>
 
@@ -76,6 +76,7 @@ public:
         , frameRegisterCount(std::numeric_limits<unsigned>::max())
         , requiredRegisterCountForExit(std::numeric_limits<unsigned>::max())
     { }
+    ~CommonData();
     
     void notifyCompilingStructureTransition(Plan&, CodeBlock*, Node*);
     CallSiteIndex addCodeOrigin(CodeOrigin);
@@ -86,7 +87,24 @@ public:
     void shrinkToFit();
     
     bool invalidate(); // Returns true if we did invalidate, or false if the code block was already invalidated.
-    
+    bool hasInstalledVMTrapsBreakpoints() const { return isStillValid && hasVMTrapsBreakpointsInstalled; }
+    void installVMTrapBreakpoints(CodeBlock* owner);
+    bool isVMTrapBreakpoint(void* address);
+
+    CatchEntrypointData* catchOSREntryDataForBytecodeIndex(unsigned bytecodeIndex)
+    {
+        return tryBinarySearch<CatchEntrypointData, unsigned>(
+            catchEntrypoints, catchEntrypoints.size(), bytecodeIndex,
+            [] (const CatchEntrypointData* item) { return item->bytecodeIndex; });
+    }
+
+    void appendCatchEntrypoint(unsigned bytecodeIndex, void* machineCode, Vector<FlushFormat>&& argumentFormats)
+    {
+        catchEntrypoints.append(CatchEntrypointData { machineCode,  WTFMove(argumentFormats), bytecodeIndex });
+    }
+
+    void finalizeCatchEntrypoints();
+
     unsigned requiredRegisterCountForExecutionAndExit() const
     {
         return std::max(frameRegisterCount, requiredRegisterCountForExit);
@@ -103,15 +121,18 @@ public:
     Vector<WeakReferenceTransition> transitions;
     Vector<WriteBarrier<JSCell>> weakReferences;
     Vector<WriteBarrier<Structure>> weakStructureReferences;
+    Vector<CatchEntrypointData> catchEntrypoints;
     Bag<CodeBlockJettisoningWatchpoint> watchpoints;
     Bag<AdaptiveStructureWatchpoint> adaptiveStructureWatchpoints;
     Bag<AdaptiveInferredPropertyValueWatchpoint> adaptiveInferredPropertyValueWatchpoints;
     Vector<JumpReplacement> jumpReplacements;
     
+    ScratchBuffer* catchOSREntryBuffer;
     RefPtr<Profiler::Compilation> compilation;
     bool livenessHasBeenProved; // Initialized and used on every GC.
     bool allTransitionsHaveBeenMarked; // Initialized and used on every GC.
     bool isStillValid;
+    bool hasVMTrapsBreakpointsInstalled { false };
     
 #if USE(JSVALUE32_64)
     std::unique_ptr<Bag<double>> doubleConstants;
@@ -124,6 +145,8 @@ private:
     HashSet<unsigned, WTF::IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> callSiteIndexFreeList;
 
 };
+
+CodeBlock* codeBlockForVMTrapPC(void* pc);
 
 } } // namespace JSC::DFG
 

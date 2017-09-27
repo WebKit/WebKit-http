@@ -22,6 +22,7 @@
 #include "config.h"
 #include "FontCache.h"
 
+#include "CairoUtilities.h"
 #include "FcUniquePtr.h"
 #include "Font.h"
 #include "RefPtrCairo.h"
@@ -57,6 +58,7 @@ static RefPtr<FcPattern> createFontConfigPatternForCharacters(const UChar* chara
 
     FcPatternAddBool(pattern.get(), FC_SCALABLE, FcTrue);
     FcConfigSubstitute(nullptr, pattern.get(), FcMatchPattern);
+    cairo_ft_font_options_substitute(getDefaultCairoFontOptions(), pattern.get());
     FcDefaultSubstitute(pattern.get());
     return pattern;
 }
@@ -133,7 +135,7 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString&)
+Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomicString&)
 {
     return { };
 }
@@ -158,31 +160,25 @@ static String getFamilyNameStringFromFamily(const AtomicString& family)
     return "";
 }
 
-static int fontWeightToFontconfigWeight(FontWeight weight)
+static int fontWeightToFontconfigWeight(FontSelectionValue weight)
 {
-    switch (weight) {
-    case FontWeight100:
+    if (weight < FontSelectionValue(150))
         return FC_WEIGHT_THIN;
-    case FontWeight200:
+    if (weight < FontSelectionValue(250))
         return FC_WEIGHT_ULTRALIGHT;
-    case FontWeight300:
+    if (weight < FontSelectionValue(350))
         return FC_WEIGHT_LIGHT;
-    case FontWeight400:
+    if (weight < FontSelectionValue(450))
         return FC_WEIGHT_REGULAR;
-    case FontWeight500:
+    if (weight < FontSelectionValue(550))
         return FC_WEIGHT_MEDIUM;
-    case FontWeight600:
+    if (weight < FontSelectionValue(650))
         return FC_WEIGHT_SEMIBOLD;
-    case FontWeight700:
+    if (weight < FontSelectionValue(750))
         return FC_WEIGHT_BOLD;
-    case FontWeight800:
+    if (weight < FontSelectionValue(850))
         return FC_WEIGHT_EXTRABOLD;
-    case FontWeight900:
-        return FC_WEIGHT_ULTRABLACK;
-    default:
-        ASSERT_NOT_REACHED();
-        return FC_WEIGHT_REGULAR;
-    }
+    return FC_WEIGHT_ULTRABLACK;
 }
 
 // This is based on Chromium BSD code from Skia (src/ports/SkFontMgr_fontconfig.cpp). It is a
@@ -261,6 +257,7 @@ static Vector<String> strongAliasesForFamily(const String& family)
         return Vector<String>();
 
     FcConfigSubstitute(nullptr, pattern.get(), FcMatchPattern);
+    cairo_ft_font_options_substitute(getDefaultCairoFontOptions(), pattern.get());
     FcDefaultSubstitute(pattern.get());
 
     FcUniquePtr<FcObjectSet> familiesOnly(FcObjectSetBuild(FC_FAMILY, nullptr));
@@ -322,7 +319,7 @@ static inline bool isCommonlyUsedGenericFamily(const String& familyNameString)
         || equalLettersIgnoringASCIICase(familyNameString, "cursive");
 }
 
-std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings*, const FontVariantSettings*)
+std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings*, const FontVariantSettings*, FontSelectionSpecifiedCapabilities)
 {
     // The CSS font matching algorithm (http://www.w3.org/TR/css3-fonts/#font-matching-algorithm)
     // says that we must find an exact match for font family, slant (italic or oblique can be used)
@@ -355,6 +352,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
     // configuration step, before any matching occurs, we allow arbitrary family substitutions,
     // since this is an exact matter of respecting the user's font configuration.
     FcConfigSubstitute(nullptr, pattern.get(), FcMatchPattern);
+    cairo_ft_font_options_substitute(getDefaultCairoFontOptions(), pattern.get());
     FcDefaultSubstitute(pattern.get());
 
     FcChar8* fontConfigFamilyNameAfterConfiguration;
@@ -366,15 +364,22 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
     if (!resultPattern) // No match.
         return nullptr;
 
+    // Loop through each font family of the result to see if it fits the one we requested.
+    bool matchedFontFamily = false;
     FcChar8* fontConfigFamilyNameAfterMatching;
-    FcPatternGetString(resultPattern.get(), FC_FAMILY, 0, &fontConfigFamilyNameAfterMatching);
-    String familyNameAfterMatching = String::fromUTF8(reinterpret_cast<char*>(fontConfigFamilyNameAfterMatching));
+    for (int i = 0; FcPatternGetString(resultPattern.get(), FC_FAMILY, i, &fontConfigFamilyNameAfterMatching) == FcResultMatch; ++i) {
+        // If Fontconfig gave us a different font family than the one we requested, we should ignore it
+        // and allow WebCore to give us the next font on the CSS fallback list. The exceptions are if
+        // this family name is a commonly-used generic family, or if the families are strongly-aliased.
+        // Checking for a strong alias comes last, since it is slow.
+        String familyNameAfterMatching = String::fromUTF8(reinterpret_cast<char*>(fontConfigFamilyNameAfterMatching));
+        if (equalIgnoringASCIICase(familyNameAfterConfiguration, familyNameAfterMatching) || isCommonlyUsedGenericFamily(familyNameString) || areStronglyAliased(familyNameAfterConfiguration, familyNameAfterMatching)) {
+            matchedFontFamily = true;
+            break;
+        }
+    }
 
-    // If Fontconfig gave us a different font family than the one we requested, we should ignore it
-    // and allow WebCore to give us the next font on the CSS fallback list. The exceptions are if
-    // this family name is a commonly-used generic family, or if the families are strongly-aliased.
-    // Checking for a strong alias comes last, since it is slow.
-    if (!equalIgnoringASCIICase(familyNameAfterConfiguration, familyNameAfterMatching) && !isCommonlyUsedGenericFamily(familyNameString) && !areStronglyAliased(familyNameAfterConfiguration, familyNameAfterMatching))
+    if (!matchedFontFamily)
         return nullptr;
 
     // Verify that this font has an encoding compatible with Fontconfig. Fontconfig currently
@@ -389,7 +394,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
 
 const AtomicString& FontCache::platformAlternateFamilyName(const AtomicString&)
 {
-    return nullAtom;
+    return nullAtom();
 }
 
 }

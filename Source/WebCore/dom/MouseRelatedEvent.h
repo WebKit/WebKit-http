@@ -28,6 +28,8 @@
 
 namespace WebCore {
 
+class FrameView;
+
 struct MouseRelatedEventInit : public EventModifierInit {
     int screenX { 0 };
     int screenY { 0 };
@@ -55,6 +57,7 @@ public:
     bool isSimulated() const { return m_isSimulated; }
     int pageX() const final;
     int pageY() const final;
+    WEBCORE_EXPORT FloatPoint locationInRootViewCoordinates() const;
     virtual const LayoutPoint& pageLocation() const;
     WEBCORE_EXPORT int x() const;
     WEBCORE_EXPORT int y() const;
@@ -62,11 +65,15 @@ public:
     // Page point in "absolute" coordinates (i.e. post-zoomed, page-relative coords,
     // usable with RenderObject::absoluteToLocal).
     const LayoutPoint& absoluteLocation() const { return m_absoluteLocation; }
-    void setAbsoluteLocation(const LayoutPoint& p) { m_absoluteLocation = p; }
+    
+    static FrameView* frameViewFromDOMWindow(DOMWindow*);
+
+    static LayoutPoint pagePointToClientPoint(LayoutPoint pagePoint, FrameView*);
+    static LayoutPoint pagePointToAbsolutePoint(LayoutPoint pagePoint, FrameView*);
 
 protected:
-    MouseRelatedEvent();
-    MouseRelatedEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, DOMWindow*,
+    MouseRelatedEvent() = default;
+    MouseRelatedEvent(const AtomicString& type, bool canBubble, bool cancelable, MonotonicTime timestamp, DOMWindow*,
         int detail, const IntPoint& screenLocation, const IntPoint& windowLocation,
 #if ENABLE(POINTER_LOCK)
         const IntPoint& movementDelta,
@@ -80,6 +87,8 @@ protected:
 
     void computePageLocation();
     void computeRelativePosition();
+
+    float documentToAbsoluteScaleFactor() const;
 
     // Expose these so MouseEvent::initMouseEvent can set them.
     IntPoint m_screenLocation;
@@ -95,8 +104,8 @@ private:
     LayoutPoint m_layerLocation;
     LayoutPoint m_offsetLocation;
     LayoutPoint m_absoluteLocation;
-    bool m_isSimulated;
-    bool m_hasCachedRelativePosition;
+    bool m_isSimulated { false };
+    bool m_hasCachedRelativePosition { false };
 };
 
 } // namespace WebCore

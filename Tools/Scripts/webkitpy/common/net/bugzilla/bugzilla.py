@@ -486,12 +486,14 @@ class Bugzilla(object):
 
     def _parse_bug_id_from_attachment_page(self, page):
         # The "Up" relation happens to point to the bug.
-        up_link = BeautifulSoup(page).find('link', rel='Up')
-        if not up_link:
-            # This attachment does not exist (or you don't have permissions to
-            # view it).
+        title = BeautifulSoup(page).find('div', attrs={'id':'bug_title'})
+        if not title :
+            _log.warning("This attachment does not exist (or you don't have permissions to view it).")
             return None
-        match = re.search("show_bug.cgi\?id=(?P<bug_id>\d+)", up_link['href'])
+        match = re.search("show_bug.cgi\?id=(?P<bug_id>\d+)", str(title))
+        if not match:
+            _log.warning("Unable to parse bug id from attachment")
+            return None
         return int(match.group('bug_id'))
 
     def bug_id_for_attachment_id(self, attachment_id):
@@ -511,11 +513,13 @@ class Bugzilla(object):
         # so re-use that.
         bug_id = self.bug_id_for_attachment_id(attachment_id)
         if not bug_id:
+            _log.warning("Unable to parse bug_id from attachment {}".format(attachment_id))
             return None
         attachments = self.fetch_bug(bug_id).attachments(include_obsolete=True)
         for attachment in attachments:
             if attachment.id() == int(attachment_id):
                 return attachment
+        _log.error("Error in fetching attachment {}, bug_id: {}".format(attachment_id, bug_id))
         return None  # This should never be hit.
 
     def authenticate(self):
@@ -616,6 +620,14 @@ class Bugzilla(object):
             self.browser['comment'] = comment_text
         self.browser.submit()
 
+    @staticmethod
+    def _parse_attachment_id_from_add_patch_to_bug_response(response_html):
+        match = re.search('<title>Attachment (?P<attachment_id>\d+) added to Bug \d+</title>', response_html)
+        if match:
+            return match.group('attachment_id')
+        _log.warning('Unable to parse attachment id')
+        return None
+
     # FIXME: The arguments to this function should be simplified and then
     # this should be merged into add_attachment_to_bug
     def add_patch_to_bug(self,
@@ -648,7 +660,8 @@ class Bugzilla(object):
         if comment_text:
             _log.info(comment_text)
             self.browser['comment'] = comment_text
-        self.browser.submit()
+        response = self.browser.submit()
+        return self._parse_attachment_id_from_add_patch_to_bug_response(response.read())
 
     # FIXME: There has to be a more concise way to write this method.
     def _check_create_bug_response(self, response_html):

@@ -43,7 +43,7 @@ namespace WebCore {
 // FIXME: Skip Content Security Policy check when associated plugin element is in a user agent shadow tree.
 // See <https://bugs.webkit.org/show_bug.cgi?id=146663>.
 NetscapePlugInStreamLoader::NetscapePlugInStreamLoader(Frame& frame, NetscapePlugInStreamLoaderClient& client)
-    : ResourceLoader(frame, ResourceLoaderOptions(SendCallbacks, SniffContent, DoNotBufferData, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, SkipSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching))
+    : ResourceLoader(frame, ResourceLoaderOptions(SendCallbacks, SniffContent, DoNotBufferData, StoredCredentialsPolicy::Use, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, SkipSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching))
     , m_client(&client)
 {
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -88,11 +88,11 @@ bool NetscapePlugInStreamLoader::init(const ResourceRequest& request)
     return true;
 }
 
-void NetscapePlugInStreamLoader::willSendRequest(ResourceRequest&& request, const ResourceResponse& redirectResponse, std::function<void(ResourceRequest&&)>&& callback)
+void NetscapePlugInStreamLoader::willSendRequest(ResourceRequest&& request, const ResourceResponse& redirectResponse, WTF::Function<void(ResourceRequest&&)>&& callback)
 {
     RefPtr<NetscapePlugInStreamLoader> protectedThis(this);
 
-    m_client->willSendRequest(this, WTFMove(request), redirectResponse, [protectedThis, redirectResponse, callback](ResourceRequest request) {
+    m_client->willSendRequest(this, WTFMove(request), redirectResponse, [protectedThis, redirectResponse, callback = WTFMove(callback)](ResourceRequest request) {
         if (!request.isNull())
             protectedThis->willSendRequestInternal(request, redirectResponse);
 
@@ -146,14 +146,14 @@ void NetscapePlugInStreamLoader::didReceiveDataOrBuffer(const char* data, int le
     ResourceLoader::didReceiveDataOrBuffer(data, length, WTFMove(buffer), encodedDataLength, dataPayloadType);
 }
 
-void NetscapePlugInStreamLoader::didFinishLoading(double finishTime)
+void NetscapePlugInStreamLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMetrics)
 {
     Ref<NetscapePlugInStreamLoader> protectedThis(*this);
 
     notifyDone();
 
     m_client->didFinishLoading(this);
-    ResourceLoader::didFinishLoading(finishTime);
+    ResourceLoader::didFinishLoading(networkLoadMetrics);
 }
 
 void NetscapePlugInStreamLoader::didFail(const ResourceError& error)

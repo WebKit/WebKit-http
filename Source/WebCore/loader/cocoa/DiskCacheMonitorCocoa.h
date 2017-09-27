@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,7 @@
 #pragma once
 
 #include "ResourceRequest.h"
-#include "SessionID.h"
-#include <wtf/PassRefPtr.h>
+#include <pal/SessionID.h>
 
 typedef const struct _CFCachedURLResponse* CFCachedURLResponseRef;
 
@@ -35,23 +34,21 @@ namespace WebCore {
 
 class SharedBuffer;
 
-class WEBCORE_EXPORT DiskCacheMonitor {
+class DiskCacheMonitor {
 public:
-    static void monitorFileBackingStoreCreation(const ResourceRequest&, SessionID, CFCachedURLResponseRef);
-    static PassRefPtr<SharedBuffer> tryGetFileBackedSharedBufferFromCFURLCachedResponse(CFCachedURLResponseRef);
-    virtual ~DiskCacheMonitor() { }
-
-protected:
-    WEBCORE_EXPORT DiskCacheMonitor(const ResourceRequest&, SessionID, CFCachedURLResponseRef);
-
-    virtual void resourceBecameFileBacked(SharedBuffer&);
-
-    const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
-    SessionID sessionID() const { return m_sessionID; }
+    static void monitorFileBackingStoreCreation(const ResourceRequest&, PAL::SessionID, CFCachedURLResponseRef);
+    static RefPtr<SharedBuffer> tryGetFileBackedSharedBufferFromCFURLCachedResponse(CFCachedURLResponseRef);
 
 private:
+    DiskCacheMonitor(const ResourceRequest&, PAL::SessionID, CFCachedURLResponseRef);
+
+    void resourceBecameFileBacked(SharedBuffer&);
+
+    const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
+    PAL::SessionID sessionID() const { return m_sessionID; }
+
     ResourceRequest m_resourceRequest;
-    SessionID m_sessionID;
+    PAL::SessionID m_sessionID;
 };
 
 } // namespace WebKit

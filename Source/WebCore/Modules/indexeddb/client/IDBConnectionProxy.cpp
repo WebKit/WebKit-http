@@ -249,7 +249,7 @@ void IDBConnectionProxy::completeOperation(const IDBResultData& resultData)
     if (!operation)
         return;
 
-    operation->performCompleteOnOriginThread(resultData, WTFMove(operation));
+    operation->transitionToComplete(resultData, WTFMove(operation));
 }
 
 void IDBConnectionProxy::abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
@@ -484,12 +484,12 @@ void IDBConnectionProxy::handleMainThreadTasks()
         task->performTask();
 }
 
-void IDBConnectionProxy::getAllDatabaseNames(const SecurityOrigin& mainFrameOrigin, const SecurityOrigin& openingOrigin, std::function<void (const Vector<String>&)> callback)
+void IDBConnectionProxy::getAllDatabaseNames(const SecurityOrigin& mainFrameOrigin, const SecurityOrigin& openingOrigin, Function<void (const Vector<String>&)>&& callback)
 {
     // This method is only meant to be called by the web inspector on the main thread.
     RELEASE_ASSERT(isMainThread());
 
-    m_connectionToServer.getAllDatabaseNames(mainFrameOrigin, openingOrigin, callback);
+    m_connectionToServer.getAllDatabaseNames(mainFrameOrigin, openingOrigin, WTFMove(callback));
 }
 
 void IDBConnectionProxy::registerDatabaseConnection(IDBDatabase& database)

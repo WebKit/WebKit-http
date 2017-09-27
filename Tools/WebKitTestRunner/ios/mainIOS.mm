@@ -27,7 +27,7 @@
 
 #import "HIDEventGenerator.h"
 #import "TestController.h"
-#import "UIKitSPI.h"
+#import "UIKitTestSPI.h"
 #import <UIKit/UIKit.h>
 
 static int _argc;
@@ -66,6 +66,8 @@ int main(int argc, const char* argv[])
 {
     _argc = argc;
     _argv = argv;
+
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"WebKitLinkedOnOrAfterEverything"];
 
     UIApplicationMain(argc, (char**)argv, @"WebKitTestRunnerApp", @"WebKitTestRunnerApp");
     return 0;

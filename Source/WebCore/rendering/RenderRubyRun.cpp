@@ -101,10 +101,6 @@ RenderBlock* RenderRubyRun::firstLineBlock() const
     return 0;
 }
 
-void RenderRubyRun::updateFirstLetter(RenderTreeMutationIsAllowed)
-{
-}
-
 bool RenderRubyRun::isChildAllowed(const RenderObject& child, const RenderStyle&) const
 {
     return child.isInline() || child.isRubyText();
@@ -158,7 +154,7 @@ void RenderRubyRun::removeChild(RenderObject& child)
 {
     // If the child is a ruby text, then merge the ruby base with the base of
     // the right sibling run, if possible.
-    if (!beingDestroyed() && !documentBeingDestroyed() && child.isRubyText()) {
+    if (!beingDestroyed() && !renderTreeBeingDestroyed() && child.isRubyText()) {
         RenderRubyBase* base = rubyBase();
         RenderObject* rightNeighbour = nextSibling();
         if (base && is<RenderRubyRun>(rightNeighbour)) {
@@ -167,7 +163,7 @@ void RenderRubyRun::removeChild(RenderObject& child)
             if (rightRun.hasRubyBase()) {
                 RenderRubyBase* rightBase = rightRun.rubyBaseSafe();
                 // Collect all children in a single base, then swap the bases.
-                rightBase->mergeChildrenWithBase(base);
+                rightBase->mergeChildrenWithBase(*base);
                 moveChildTo(&rightRun, base);
                 rightRun.moveChildTo(this, rightBase);
                 // The now empty ruby base will be removed below.
@@ -178,7 +174,7 @@ void RenderRubyRun::removeChild(RenderObject& child)
 
     RenderBlockFlow::removeChild(child);
 
-    if (!beingDestroyed() && !documentBeingDestroyed()) {
+    if (!beingDestroyed() && !renderTreeBeingDestroyed()) {
         // Check if our base (if any) is now empty. If so, destroy it.
         RenderBlock* base = rubyBase();
         if (base && !base->firstChild()) {
@@ -213,17 +209,19 @@ RenderRubyRun* RenderRubyRun::staticCreateRubyRun(const RenderObject* parentRuby
     return renderer;
 }
 
-RenderObject* RenderRubyRun::layoutSpecialExcludedChild(bool relayoutChildren)
+void RenderRubyRun::layoutExcludedChildren(bool relayoutChildren)
 {
+    RenderBlockFlow::layoutExcludedChildren(relayoutChildren);
+
     StackStats::LayoutCheckPoint layoutCheckPoint;
     // Don't bother positioning the RenderRubyRun yet.
     RenderRubyText* rt = rubyText();
     if (!rt)
-        return 0;
+        return;
+    rt->setIsExcludedFromNormalLayout(true);
     if (relayoutChildren)
         rt->setChildNeedsLayout(MarkOnlyThis);
     rt->layoutIfNeeded();
-    return rt;
 }
 
 void RenderRubyRun::layout()
@@ -312,7 +310,7 @@ static bool shouldOverhang(bool firstLine, const RenderObject* renderer, const R
         return false;
     const RenderStyle& rubyBaseStyle = firstLine ? rubyBase.firstLineStyle() : rubyBase.style();
     const RenderStyle& style = firstLine ? renderer->firstLineStyle() : renderer->style();
-    return style.fontSize() <= rubyBaseStyle.fontSize();
+    return style.computedFontPixelSize() <= rubyBaseStyle.computedFontPixelSize();
 }
 
 void RenderRubyRun::getOverhang(bool firstLine, RenderObject* startRenderer, RenderObject* endRenderer, float& startOverhang, float& endOverhang) const
@@ -351,7 +349,7 @@ void RenderRubyRun::getOverhang(bool firstLine, RenderObject* startRenderer, Ren
     // We can overhang the ruby by no more than half the width of the neighboring text
     // and no more than half the font size.
     const RenderStyle& rubyTextStyle = firstLine ? rubyText->firstLineStyle() : rubyText->style();
-    float halfWidthOfFontSize = rubyTextStyle.fontSize() / 2.;
+    float halfWidthOfFontSize = rubyTextStyle.computedFontPixelSize() / 2.;
     if (startOverhang)
         startOverhang = std::min(startOverhang, std::min(downcast<RenderText>(*startRenderer).minLogicalWidth(), halfWidthOfFontSize));
     if (endOverhang)

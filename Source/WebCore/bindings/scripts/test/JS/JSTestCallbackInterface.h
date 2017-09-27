@@ -20,16 +20,18 @@
 
 #pragma once
 
-#if ENABLE(SPEECH_SYNTHESIS)
+#if ENABLE(TEST_CONDITIONAL)
 
-#include "ActiveDOMCallback.h"
+#include "IDLTypes.h"
 #include "JSCallbackData.h"
+#include "JSDOMConvertDictionary.h"
+#include "JSDOMConvertEnumeration.h"
 #include "TestCallbackInterface.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
-class JSTestCallbackInterface : public TestCallbackInterface, public ActiveDOMCallback {
+class JSTestCallbackInterface final : public TestCallbackInterface {
 public:
     static Ref<JSTestCallbackInterface> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
@@ -43,23 +45,35 @@ public:
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
 
     // Functions
-    virtual bool callbackWithNoParam();
-    virtual bool callbackWithArrayParam(RefPtr<Float32Array> arrayParam);
-    virtual bool callbackWithSerializedScriptValueParam(RefPtr<SerializedScriptValue>&& srzParam, const String& strParam);
-    virtual int32_t customCallback(Class5* class5Param, Class6* class6Param);
-    virtual bool callbackWithStringList(DOMStringList* listParam);
-    virtual bool callbackWithBoolean(bool boolParam);
-    virtual bool callbackRequiresThisToPass(int32_t longParam, TestNode* testNodeParam);
+    CallbackResult<typename IDLVoid::ImplementationType> callbackWithNoParam() override;
+    CallbackResult<typename IDLVoid::ImplementationType> callbackWithArrayParam(typename IDLFloat32Array::ParameterType arrayParam) override;
+    CallbackResult<typename IDLVoid::ImplementationType> callbackWithSerializedScriptValueParam(typename IDLSerializedScriptValue<SerializedScriptValue>::ParameterType srzParam, typename IDLDOMString::ParameterType strParam) override;
+    CallbackResult<typename IDLLong::ImplementationType> customCallback(typename IDLInterface<TestObj>::ParameterType testObjParam, typename IDLInterface<TestNode>::ParameterType testNodeParam) override;
+    CallbackResult<typename IDLVoid::ImplementationType> callbackWithStringList(typename IDLInterface<DOMStringList>::ParameterType listParam) override;
+    CallbackResult<typename IDLVoid::ImplementationType> callbackWithBoolean(typename IDLBoolean::ParameterType boolParam) override;
+    CallbackResult<typename IDLVoid::ImplementationType> callbackRequiresThisToPass(typename IDLLong::ParameterType longParam, typename IDLInterface<TestNode>::ParameterType testNodeParam) override;
+    CallbackResult<typename IDLDOMString::ImplementationType> callbackWithAReturnValue() override;
+    CallbackResult<typename IDLDOMString::ImplementationType> callbackThatRethrowsExceptions(typename IDLEnumeration<TestCallbackInterface::Enum>::ParameterType enumParam) override;
+    CallbackResult<typename IDLDOMString::ImplementationType> callbackThatSkipsInvokeCheck(typename IDLDictionary<TestCallbackInterface::Dictionary>::ParameterType dictionaryParam) override;
+    CallbackResult<typename IDLDOMString::ImplementationType> callbackWithThisObject(typename IDLInterface<TestNode>::ParameterType thisObject, typename IDLInterface<TestObj>::ParameterType testObjParam) override;
 
 private:
-    JSTestCallbackInterface(JSC::JSObject* callback, JSDOMGlobalObject*);
+    JSTestCallbackInterface(JSC::JSObject*, JSDOMGlobalObject*);
 
     JSCallbackDataStrong* m_data;
 };
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestCallbackInterface&);
-inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestCallbackInterface* impl) { return impl ? toJS(state, globalObject, *impl) : JSC::jsNull(); }
+JSC::JSValue toJS(TestCallbackInterface&);
+inline JSC::JSValue toJS(TestCallbackInterface* impl) { return impl ? toJS(*impl) : JSC::jsNull(); }
+
+String convertEnumerationToString(TestCallbackInterface::Enum);
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestCallbackInterface::Enum);
+
+template<> std::optional<TestCallbackInterface::Enum> parseEnumeration<TestCallbackInterface::Enum>(JSC::ExecState&, JSC::JSValue);
+template<> const char* expectedEnumerationValues<TestCallbackInterface::Enum>();
+
+template<> TestCallbackInterface::Dictionary convertDictionary<TestCallbackInterface::Dictionary>(JSC::ExecState&, JSC::JSValue);
 
 } // namespace WebCore
 
-#endif // ENABLE(SPEECH_SYNTHESIS)
+#endif // ENABLE(TEST_CONDITIONAL)

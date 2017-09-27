@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Ericsson AB. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +29,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MockMediaEndpoint_h
-#define MockMediaEndpoint_h
+#pragma once
 
 #if ENABLE(WEB_RTC)
 
 #include "MediaEndpoint.h"
+#include "RTCIceTransportState.h"
 #include "Timer.h"
 
 namespace WebCore {
@@ -86,15 +87,15 @@ private:
     Vector<IceCandidate> m_fakeIceCandidates;
     Timer m_iceCandidateTimer;
 
-    Vector<std::pair<String, MediaEndpoint::IceTransportState>> m_iceTransportStateChanges;
+    Vector<std::pair<String, RTCIceTransportState>> m_iceTransportStateChanges;
     Timer m_iceTransportTimer;
 
     Vector<String> m_midsOfSourcesToUnmute;
     Timer m_unmuteTimer;
+    
+    WeakPtrFactory<MockMediaEndpoint> m_weakPtrFactory;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(WEB_RTC)
-
-#endif // MockMediaEndpoint_h

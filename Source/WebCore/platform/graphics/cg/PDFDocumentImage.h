@@ -48,9 +48,9 @@ class ImageBuffer;
 
 class PDFDocumentImage final : public Image {
 public:
-    static PassRefPtr<PDFDocumentImage> create(ImageObserver* observer)
+    static Ref<PDFDocumentImage> create(ImageObserver* observer)
     {
-        return adoptRef(new PDFDocumentImage(observer));
+        return adoptRef(*new PDFDocumentImage(observer));
     }
 
     void setPdfImageCachingPolicy(PDFImageCachingPolicy);
@@ -65,19 +65,19 @@ private:
 
     bool hasSingleSecurityOrigin() const override { return true; }
 
-    bool dataChanged(bool allDataReceived) override;
+    EncodedDataStatus dataChanged(bool allDataReceived) override;
 
     void destroyDecodedData(bool /*destroyAll*/ = true) override;
 
     void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override;
     FloatSize size() const override;
 
-    void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
+    ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) override;
 
     // FIXME: Implement this to be less conservative.
     bool currentFrameKnownToBeOpaque() const override { return false; }
 
-    void dump(TextStream&) const override;
+    void dump(WTF::TextStream&) const override;
 
     void createPDFDocument();
     void computeBoundsForCurrentPage();

@@ -151,13 +151,13 @@ static JSCell* formatLocaleDate(ExecState* exec, DateInstance*, double timeInMil
     bool useCustomFormat = false;
     String customFormatString;
 
-    String arg0String = exec->argument(0).toString(exec)->value(exec);
+    String arg0String = exec->argument(0).toWTFString(exec);
     if (arg0String == "custom" && !exec->argument(1).isUndefined()) {
         useCustomFormat = true;
-        customFormatString = exec->argument(1).toString(exec)->value(exec);
+        customFormatString = exec->argument(1).toWTFString(exec);
     } else if (format == LocaleDateAndTime && !exec->argument(1).isUndefined()) {
         dateStyle = styleFromArgString(arg0String, dateStyle);
-        timeStyle = styleFromArgString(exec->argument(1).toString(exec)->value(exec), timeStyle);
+        timeStyle = styleFromArgString(exec->argument(1).toWTFString(exec), timeStyle);
     } else if (format != LocaleTime && !exec->argument(0).isUndefined())
         dateStyle = styleFromArgString(arg0String, dateStyle);
     else if (format != LocaleDate && !exec->argument(0).isUndefined())
@@ -320,9 +320,10 @@ static JSCell* formatLocaleDate(ExecState* exec, DateInstance* dateObject, doubl
 
 static EncodedJSValue formateDateInstance(ExecState* exec, DateTimeFormat format, bool asUTCVariant)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue);
@@ -427,7 +428,7 @@ static bool fillStructuresUsingDateArgs(ExecState *exec, int maxArgs, double *ms
     return ok;
 }
 
-const ClassInfo DatePrototype::s_info = {"Object", &JSNonFinalObject::s_info, &dateTable, CREATE_METHOD_TABLE(DatePrototype)};
+const ClassInfo DatePrototype::s_info = {"Object", &JSNonFinalObject::s_info, &dateTable, nullptr, CREATE_METHOD_TABLE(DatePrototype)};
 
 /* Source for DatePrototype.lut.h
 @begin dateTable
@@ -488,22 +489,22 @@ DatePrototype::DatePrototype(VM& vm, Structure* structure)
 void DatePrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     Identifier toUTCStringName = Identifier::fromString(&vm, ASCIILiteral("toUTCString"));
     JSFunction* toUTCStringFunction = JSFunction::create(vm, globalObject, 0, toUTCStringName.string(), dateProtoFuncToUTCString);
-    putDirectWithoutTransition(vm, toUTCStringName, toUTCStringFunction, DontEnum);
-    putDirectWithoutTransition(vm, Identifier::fromString(&vm, ASCIILiteral("toGMTString")), toUTCStringFunction, DontEnum);
+    putDirectWithoutTransition(vm, toUTCStringName, toUTCStringFunction, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, Identifier::fromString(&vm, ASCIILiteral("toGMTString")), toUTCStringFunction, static_cast<unsigned>(PropertyAttribute::DontEnum));
 
 #if ENABLE(INTL)
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("toLocaleString", datePrototypeToLocaleStringCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("toLocaleDateString", datePrototypeToLocaleDateStringCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("toLocaleTimeString", datePrototypeToLocaleTimeStringCodeGenerator, DontEnum);
-#else
-    UNUSED_PARAM(globalObject);
-#endif // ENABLE(INTL)
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("toLocaleString", datePrototypeToLocaleStringCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("toLocaleDateString", datePrototypeToLocaleDateStringCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("toLocaleTimeString", datePrototypeToLocaleTimeStringCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
+#endif
 
-    JSC_NATIVE_FUNCTION(vm.propertyNames->toPrimitiveSymbol, dateProtoFuncToPrimitiveSymbol, DontEnum | ReadOnly, 1);
+    JSFunction* toPrimitiveFunction = JSFunction::create(vm, globalObject, 1, ASCIILiteral("[Symbol.toPrimitive]"), dateProtoFuncToPrimitiveSymbol, NoIntrinsic);
+    putDirectWithoutTransition(vm, vm.propertyNames->toPrimitiveSymbol, toPrimitiveFunction, PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+
     // The constructor will be added later, after DateConstructor has been built.
 }
 
@@ -523,9 +524,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToUTCString(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToISOString(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
     
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -570,9 +572,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToTimeString(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleString(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -581,9 +584,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleString(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleDateString(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -592,9 +596,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleDateString(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncToLocaleTimeString(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -620,14 +625,16 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToPrimitiveSymbol(ExecState* exec)
     if (type == NoPreference)
         type = PreferString;
 
+    scope.release();
     return JSValue::encode(thisObject->ordinaryToPrimitive(exec, type));
 }
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTime(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     return JSValue::encode(asDateInstance(thisValue)->internalValue());
@@ -635,9 +642,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTime(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetFullYear(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -650,9 +658,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetFullYear(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCFullYear(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -665,9 +674,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCFullYear(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMonth(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -680,9 +690,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMonth(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMonth(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -695,9 +706,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMonth(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDate(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -710,9 +722,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDate(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDate(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -725,9 +738,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDate(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDay(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -740,9 +754,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetDay(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDay(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -755,9 +770,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCDay(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetHours(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -770,9 +786,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetHours(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCHours(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -785,9 +802,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCHours(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMinutes(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -800,9 +818,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMinutes(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMinutes(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -815,9 +834,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMinutes(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetSeconds(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -830,9 +850,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetSeconds(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCSeconds(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -845,9 +866,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCSeconds(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMilliSeconds(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -862,9 +884,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetMilliSeconds(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMilliseconds(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -879,9 +902,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetUTCMilliseconds(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTimezoneOffset(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -894,30 +918,32 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncGetTimezoneOffset(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncSetTime(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
 
     double milli = timeClip(exec->argument(0).toNumber(exec));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSValue result = jsNumber(milli);
-    thisDateObj->setInternalValue(exec->vm(), result);
+    thisDateObj->setInternalValue(vm, result);
     return JSValue::encode(result);
 }
 
 static EncodedJSValue setNewValueFromTimeArgs(ExecState* exec, int numArgsToUse, WTF::TimeType inputTimeType)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue);
     double milli = thisDateObj->internalNumber();
-    VM& vm = exec->vm();
-    
+
     if (!exec->argumentCount() || std::isnan(milli)) {
         JSValue result = jsNaN();
         thisDateObj->setInternalValue(vm, result);
@@ -935,7 +961,9 @@ static EncodedJSValue setNewValueFromTimeArgs(ExecState* exec, int numArgsToUse,
 
     GregorianDateTime gregorianDateTime;
     gregorianDateTime.copyFrom(*other);
-    if (!fillStructuresUsingTimeArgs(exec, numArgsToUse, &ms, &gregorianDateTime)) {
+    bool success = fillStructuresUsingTimeArgs(exec, numArgsToUse, &ms, &gregorianDateTime);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    if (!success) {
         JSValue result = jsNaN();
         thisDateObj->setInternalValue(vm, result);
         return JSValue::encode(result);
@@ -949,19 +977,19 @@ static EncodedJSValue setNewValueFromTimeArgs(ExecState* exec, int numArgsToUse,
 
 static EncodedJSValue setNewValueFromDateArgs(ExecState* exec, int numArgsToUse, WTF::TimeType inputTimeType)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue);
     if (!exec->argumentCount()) {
         JSValue result = jsNaN();
-        thisDateObj->setInternalValue(exec->vm(), result);
+        thisDateObj->setInternalValue(vm, result);
         return JSValue::encode(result);
     }
 
-    VM& vm = exec->vm();
     double milli = thisDateObj->internalNumber();
     double ms = 0; 
 
@@ -1062,12 +1090,12 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncSetUTCFullYear(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncSetYear(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
-    VM& vm = exec->vm();
     DateInstance* thisDateObj = asDateInstance(thisValue);
     if (!exec->argumentCount()) { 
         JSValue result = jsNaN();
@@ -1106,9 +1134,10 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncSetYear(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL dateProtoFuncGetYear(ExecState* exec)
 {
-    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(DateInstance::info()))
+    if (!thisValue.inherits(vm, DateInstance::info()))
         return throwVMTypeError(exec, scope);
 
     DateInstance* thisDateObj = asDateInstance(thisValue); 
@@ -1142,7 +1171,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToJSON(ExecState* exec)
     if (callType == CallType::None)
         return throwVMTypeError(exec, scope, ASCIILiteral("toISOString is not a function"));
 
-    JSValue result = call(exec, asObject(toISOValue), callType, callData, object, exec->emptyList());
+    JSValue result = call(exec, asObject(toISOValue), callType, callData, object, *vm.emptyList);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     if (result.isObject())
         return throwVMTypeError(exec, scope, ASCIILiteral("toISOString did not return a primitive value"));

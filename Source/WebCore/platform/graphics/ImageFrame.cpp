@@ -50,7 +50,7 @@ ImageFrame& ImageFrame::operator=(const ImageFrame& other)
     if (this == &other)
         return *this;
 
-    m_decoding = other.m_decoding;
+    m_decodingStatus = other.m_decodingStatus;
     m_size = other.m_size;
 
 #if !USE(CG)
@@ -63,11 +63,24 @@ ImageFrame& ImageFrame::operator=(const ImageFrame& other)
 
     m_nativeImage = other.m_nativeImage;
     m_subsamplingLevel = other.m_subsamplingLevel;
+    m_decodingOptions = other.m_decodingOptions;
 
     m_orientation = other.m_orientation;
     m_duration = other.m_duration;
     m_hasAlpha = other.m_hasAlpha;
     return *this;
+}
+
+void ImageFrame::setDecodingStatus(DecodingStatus decodingStatus)
+{
+    ASSERT(decodingStatus != DecodingStatus::Decoding);
+    m_decodingStatus = decodingStatus;
+}
+
+DecodingStatus ImageFrame::decodingStatus() const
+{
+    ASSERT(m_decodingStatus != DecodingStatus::Decoding);
+    return m_decodingStatus;
 }
 
 unsigned ImageFrame::clearImage()
@@ -84,6 +97,7 @@ unsigned ImageFrame::clearImage()
 
     clearNativeImageSubimages(m_nativeImage);
     m_nativeImage = nullptr;
+    m_decodingOptions = { };
 
     return frameBytes;
 }
@@ -122,6 +136,21 @@ IntSize ImageFrame::size() const
         return backingStore()->size();
 #endif
     return m_size;
+}
+    
+bool ImageFrame::hasNativeImage(const std::optional<SubsamplingLevel>& subsamplingLevel) const
+{
+    return m_nativeImage && (!subsamplingLevel || *subsamplingLevel >= m_subsamplingLevel);
+}
+
+bool ImageFrame::hasFullSizeNativeImage(const std::optional<SubsamplingLevel>& subsamplingLevel) const
+{
+    return hasNativeImage(subsamplingLevel) && (m_decodingOptions.isSynchronous() || m_decodingOptions.hasFullSize());
+}
+
+bool ImageFrame::hasDecodedNativeImageCompatibleWithOptions(const std::optional<SubsamplingLevel>& subsamplingLevel, const DecodingOptions& decodingOptions) const
+{
+    return hasNativeImage(subsamplingLevel) && m_decodingOptions.isAsynchronousCompatibleWith(decodingOptions);
 }
 
 Color ImageFrame::singlePixelSolidColor() const

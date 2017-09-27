@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,61 +23,68 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPlaybackControlsManager_h
-#define WebPlaybackControlsManager_h
-
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 
-namespace WebCore {
-class WebPlaybackSessionInterfaceMac;
-}
-
-#if USE(APPLE_INTERNAL_SDK) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
-#import <WebKitAdditions/WebPlaybackControlsControllerAdditions.h>
-#else
-#import <WebCore/AVKitSPI.h>
+#import <pal/spi/cocoa/AVKitSPI.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
 
-OBJC_CLASS AVValueTiming;
+namespace WebCore {
+class PlaybackSessionInterfaceMac;
+struct MediaSelectionOption;
+}
+
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
 WEBCORE_EXPORT
 @interface WebPlaybackControlsManager : NSObject
-#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    <AVTouchBarPlaybackControlsControlling>
+#else
     <AVFunctionBarPlaybackControlsControlling>
 #endif
 {
+@private
     NSTimeInterval _contentDuration;
-
     RetainPtr<AVValueTiming> _timing;
     NSTimeInterval _seekToTime;
     RetainPtr<NSArray> _seekableTimeRanges;
     BOOL _hasEnabledAudio;
     BOOL _hasEnabledVideo;
+    RetainPtr<NSArray<AVTouchBarMediaSelectionOption *>> _audioTouchBarMediaSelectionOptions;
+    RetainPtr<AVTouchBarMediaSelectionOption> _currentAudioTouchBarMediaSelectionOption;
+    RetainPtr<NSArray<AVTouchBarMediaSelectionOption *>> _legibleTouchBarMediaSelectionOptions;
+    RetainPtr<AVTouchBarMediaSelectionOption> _currentLegibleTouchBarMediaSelectionOption;
     float _rate;
-    BOOL _playing;
     BOOL _canTogglePlayback;
 
-@private
-    RefPtr<WebCore::WebPlaybackSessionInterfaceMac> _webPlaybackSessionInterfaceMac;
+    RefPtr<WebCore::PlaybackSessionInterfaceMac> _playbackSessionInterfaceMac;
 }
 
-@property (assign) WebCore::WebPlaybackSessionInterfaceMac* webPlaybackSessionInterfaceMac;
+@property (assign) WebCore::PlaybackSessionInterfaceMac* playbackSessionInterfaceMac;
 @property (readwrite) NSTimeInterval contentDuration;
 @property (nonatomic, retain, readwrite) AVValueTiming *timing;
+@property (nonatomic) NSTimeInterval seekToTime;
 @property (nonatomic, retain, readwrite) NSArray *seekableTimeRanges;
-@property (readwrite) BOOL hasEnabledAudio;
-@property (readwrite) BOOL hasEnabledVideo;
-@property (nonatomic) float rate;
+@property (nonatomic) BOOL hasEnabledAudio;
+@property (nonatomic) BOOL hasEnabledVideo;
 @property (getter=isPlaying) BOOL playing;
 @property BOOL canTogglePlayback;
+@property (nonatomic) float rate;
+@property BOOL allowsPictureInPicturePlayback;
+@property (getter=isPictureInPictureActive) BOOL pictureInPictureActive;
+@property BOOL canTogglePictureInPicture;
 
-- (void)setAudioMediaSelectionOptions:(const Vector<WTF::String>&)options withSelectedIndex:(NSUInteger)selectedIndex;
-- (void)setLegibleMediaSelectionOptions:(const Vector<WTF::String>&)options withSelectedIndex:(NSUInteger)selectedIndex;
-
+- (AVTouchBarMediaSelectionOption *)currentAudioTouchBarMediaSelectionOption;
+- (void)setCurrentAudioTouchBarMediaSelectionOption:(AVTouchBarMediaSelectionOption *)option;
+- (AVTouchBarMediaSelectionOption *)currentLegibleTouchBarMediaSelectionOption;
+- (void)setCurrentLegibleTouchBarMediaSelectionOption:(AVTouchBarMediaSelectionOption *)option;
+- (void)setAudioMediaSelectionOptions:(const Vector<WebCore::MediaSelectionOption>&)options withSelectedIndex:(NSUInteger)selectedIndex;
+- (void)setLegibleMediaSelectionOptions:(const Vector<WebCore::MediaSelectionOption>&)options withSelectedIndex:(NSUInteger)selectedIndex;
+- (void)setAudioMediaSelectionIndex:(NSUInteger)selectedIndex;
+- (void)setLegibleMediaSelectionIndex:(NSUInteger)selectedIndex;
 @end
-#endif // USE(APPLE_INTERNAL_SDK) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+
+#endif // ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
 #endif // PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-
-#endif // WebPlaybackControlsManager_h

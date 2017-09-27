@@ -103,7 +103,7 @@ public:
             & ~(sizeof(EncodedJSValue) - 1);
     }
 
-    static size_t allocationSize(size_t inlineCapacity)
+    static size_t allocationSize(Checked<size_t> inlineCapacity)
     {
         ASSERT_UNUSED(inlineCapacity, !inlineCapacity);
         return sizeof(JSArrayBufferView);
@@ -122,25 +122,25 @@ protected:
         ConstructionContext(Structure*, uint32_t length, void* vector);
         
         JS_EXPORT_PRIVATE ConstructionContext(
-            VM&, Structure*, PassRefPtr<ArrayBuffer>,
+            VM&, Structure*, RefPtr<ArrayBuffer>&&,
             unsigned byteOffset, unsigned length);
         
         enum DataViewTag { DataView };
         ConstructionContext(
-            Structure*, PassRefPtr<ArrayBuffer>,
+            Structure*, RefPtr<ArrayBuffer>&&,
             unsigned byteOffset, unsigned length, DataViewTag);
         
         bool operator!() const { return !m_structure; }
         
         Structure* structure() const { return m_structure; }
-        void* vector() const { return m_vector; }
+        void* vector() const { return m_vector.getMayBeNull(); }
         uint32_t length() const { return m_length; }
         TypedArrayMode mode() const { return m_mode; }
         Butterfly* butterfly() const { return m_butterfly; }
         
     private:
         Structure* m_structure;
-        void* m_vector;
+        CagedPtr<Gigacage::Primitive, void> m_vector;
         uint32_t m_length;
         TypedArrayMode m_mode;
         Butterfly* m_butterfly;
@@ -162,12 +162,12 @@ public:
     ArrayBuffer* possiblySharedBuffer();
     JSArrayBuffer* unsharedJSBuffer(ExecState* exec);
     JSArrayBuffer* possiblySharedJSBuffer(ExecState* exec);
-    PassRefPtr<ArrayBufferView> unsharedImpl();
-    PassRefPtr<ArrayBufferView> possiblySharedImpl();
+    RefPtr<ArrayBufferView> unsharedImpl();
+    RefPtr<ArrayBufferView> possiblySharedImpl();
     bool isNeutered() { return hasArrayBuffer() && !vector(); }
     void neuter();
     
-    void* vector() const { return m_vector.get(); }
+    void* vector() const { return m_vector.getMayBeNull(); }
     
     unsigned byteOffset();
     unsigned length() const { return m_length; }
@@ -178,7 +178,7 @@ public:
     static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(JSArrayBufferView, m_length); }
     static ptrdiff_t offsetOfMode() { return OBJECT_OFFSETOF(JSArrayBufferView, m_mode); }
     
-    static RefPtr<ArrayBufferView> toWrapped(JSValue);
+    static RefPtr<ArrayBufferView> toWrapped(VM&, JSValue);
 
 private:
     static void finalize(JSCell*);
@@ -190,7 +190,7 @@ protected:
 
     static String toStringName(const JSObject*, ExecState*);
 
-    AuxiliaryBarrier<void*> m_vector;
+    CagedBarrierPtr<Gigacage::Primitive, void> m_vector;
     uint32_t m_length;
     TypedArrayMode m_mode;
 };

@@ -31,9 +31,10 @@
 
 #pragma once
 
-#include "SessionID.h"
 #include "SocketStreamHandle.h"
+#include <pal/SessionID.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/StreamBuffer.h>
 
 typedef struct __CFHTTPMessage* CFHTTPMessageRef;
 
@@ -45,15 +46,18 @@ class SocketStreamHandleClient;
 
 class SocketStreamHandleImpl : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID sessionID) { return adoptRef(*new SocketStreamHandleImpl(url, client, sessionID)); }
+    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID sessionID, const String& credentialPartition, SourceApplicationAuditToken&& auditData) { return adoptRef(*new SocketStreamHandleImpl(url, client, sessionID, credentialPartition, WTFMove(auditData))); }
 
     virtual ~SocketStreamHandleImpl();
 
+    WEBCORE_EXPORT void platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
+    WEBCORE_EXPORT void platformClose() final;
 private:
-    virtual Optional<size_t> platformSend(const char* data, size_t length);
-    virtual void platformClose();
+    size_t bufferedAmount() final;
+    std::optional<size_t> platformSendInternal(const char*, size_t);
+    bool sendPendingData();
 
-    WEBCORE_EXPORT SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&, SessionID);
+    WEBCORE_EXPORT SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&, PAL::SessionID, const String& credentialPartition, SourceApplicationAuditToken&&);
     void createStreams();
     void scheduleStreams();
     void chooseProxy();
@@ -95,7 +99,12 @@ private:
     RetainPtr<CFWriteStreamRef> m_writeStream;
 
     RetainPtr<CFURLRef> m_httpsURL; // ws(s): replaced with https:
-    SessionID m_sessionID;
+    PAL::SessionID m_sessionID;
+    String m_credentialPartition;
+    SourceApplicationAuditToken m_auditData;
+
+    StreamBuffer<char, 1024 * 1024> m_buffer;
+    static const unsigned maxBufferSize = 100 * 1024 * 1024;
 };
 
 } // namespace WebCore

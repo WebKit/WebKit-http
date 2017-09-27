@@ -29,10 +29,12 @@ interface SVGGraphicsElement : SVGElement {
     readonly attribute SVGElement nearestViewportElement;
     readonly attribute SVGElement farthestViewportElement;
 
-    SVGRect getBBox();
-    SVGMatrix getCTM();
-    SVGMatrix getScreenCTM();
-    [MayThrowException] SVGMatrix getTransformToElement(optional SVGElement? element = null);
+    [ImplementedAs=getBBoxForBindings, NewObject] SVGRect getBBox();
+    [ImplementedAs=getCTMForBindings, NewObject] SVGMatrix getCTM();
+    [ImplementedAs=getScreenCTMForBindings, NewObject] SVGMatrix getScreenCTM();
+
+    // FIXME: This is not in the specification and has been dropped by Blink.
+    [MayThrowException, NewObject] SVGMatrix getTransformToElement(optional SVGElement? element = null);
 };
 
 SVGGraphicsElement implements SVGTests;

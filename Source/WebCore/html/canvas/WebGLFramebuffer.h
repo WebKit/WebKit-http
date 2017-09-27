@@ -58,7 +58,7 @@ public:
 
     virtual ~WebGLFramebuffer();
 
-    static Ref<WebGLFramebuffer> create(WebGLRenderingContextBase*);
+    static Ref<WebGLFramebuffer> create(WebGLRenderingContextBase&);
 
     void setAttachmentForBoundFramebuffer(GC3Denum attachment, GC3Denum texTarget, WebGLTexture*, GC3Dint level);
     void setAttachmentForBoundFramebuffer(GC3Denum attachment, WebGLRenderbuffer*);
@@ -78,7 +78,7 @@ public:
     // Return false if the framebuffer is incomplete; otherwise initialize
     // the buffers if they haven't been initialized and
     // needToInitializeAttachments is true.
-    bool onAccess(GraphicsContext3D*, bool needToInitializeAttachments, const char** reason);
+    bool onAccess(GraphicsContext3D*, const char** reason);
 
     // Software version of glCheckFramebufferStatus(), except that when
     // FRAMEBUFFER_COMPLETE is returned, it is still possible for
@@ -98,7 +98,7 @@ public:
     GC3Denum getDrawBuffer(GC3Denum);
 
 protected:
-    WebGLFramebuffer(WebGLRenderingContextBase*);
+    WebGLFramebuffer(WebGLRenderingContextBase&);
 
     void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
 

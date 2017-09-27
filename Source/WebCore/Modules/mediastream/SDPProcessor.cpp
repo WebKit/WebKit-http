@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015, 2016 Ericsson AB. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #if ENABLE(WEB_RTC)
 #include "SDPProcessor.h"
 
+#include "CommonVM.h"
 #include "Document.h"
 #include "Frame.h"
 #include "SDPProcessorScriptResource.h"
@@ -41,6 +42,7 @@
 #include "ScriptSourceCode.h"
 #include "inspector/InspectorValues.h"
 #include <bindings/ScriptObject.h>
+#include <runtime/CatchScope.h>
 #include <wtf/NeverDestroyed.h>
 
 using namespace Inspector;
@@ -50,12 +52,13 @@ namespace WebCore {
 #define STRING_FUNCTION(name) \
     static const String& name##String() \
     { \
-        static NeverDestroyed<const String> name { ASCIILiteral(#name) }; \
+        static NeverDestroyed<const String> name(MAKE_STATIC_STRING_IMPL(#name)); \
         return name; \
     }
 
 STRING_FUNCTION(address)
 STRING_FUNCTION(apt)
+STRING_FUNCTION(bundlePolicy)
 STRING_FUNCTION(candidates)
 STRING_FUNCTION(ccmfir)
 STRING_FUNCTION(channels)
@@ -181,13 +184,12 @@ static RefPtr<MediaEndpointSessionConfiguration> configurationFromJSON(const Str
 
     String stringValue;
     unsigned intValue;
-    unsigned long longValue;
     bool boolValue;
 
     RefPtr<InspectorObject> originatorObject = InspectorObject::create();
     if (object->getObject(originatorString(), originatorObject)) {
-        if (originatorObject->getInteger(sessionIdString(), longValue))
-            configuration->setSessionId(longValue);
+        if (originatorObject->getString(sessionIdString(), stringValue))
+            configuration->setSessionId(stringValue.toInt64());
         if (originatorObject->getInteger(sessionVersionString(), intValue))
             configuration->setSessionVersion(intValue);
     }
@@ -327,25 +329,39 @@ static RefPtr<MediaEndpointSessionConfiguration> configurationFromJSON(const Str
     return configuration;
 }
 
-static Optional<IceCandidate> iceCandidateFromJSON(const String& json)
+static std::optional<IceCandidate> iceCandidateFromJSON(const String& json)
 {
     RefPtr<InspectorValue> value;
     if (!InspectorValue::parseJSON(json, value))
-        return Nullopt;
+        return std::nullopt;
 
     RefPtr<InspectorObject> candidateObject;
     if (!value->asObject(candidateObject))
-        return Nullopt;
+        return std::nullopt;
 
     return createCandidate(*candidateObject);
+}
+
+static String getBundlePolicyName(const PeerConnectionStates::BundlePolicy bundlePolicy)
+{
+    switch (bundlePolicy) {
+    case PeerConnectionStates::BundlePolicy::MaxCompat:
+        return "max-compat";
+    case PeerConnectionStates::BundlePolicy::MaxBundle:
+        return "max-bundle";
+    case PeerConnectionStates::BundlePolicy::Balanced:
+    default:
+        return "balanced";
+    };
 }
 
 static String configurationToJSON(const MediaEndpointSessionConfiguration& configuration)
 {
     RefPtr<InspectorObject> object = InspectorObject::create();
+    object->setString(bundlePolicyString(), getBundlePolicyName(configuration.bundlePolicy()));
 
     RefPtr<InspectorObject> originatorObject = InspectorObject::create();
-    originatorObject->setDouble(sessionIdString(), configuration.sessionId());
+    originatorObject->setString(sessionIdString(), String::number(configuration.sessionId()));
     originatorObject->setInteger(sessionVersionString(), configuration.sessionVersion());
     object->setObject(originatorString(), originatorObject);
 
@@ -495,7 +511,7 @@ bool SDPProcessor::callScript(const String& functionName, const String& argument
         return false;
 
     if (!m_isolatedWorld)
-        m_isolatedWorld = DOMWrapperWorld::create(JSDOMWindow::commonVM());
+        m_isolatedWorld = DOMWrapperWorld::create(commonVM());
 
     ScriptController& scriptController = document->frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(*m_isolatedWorld));
@@ -520,7 +536,7 @@ bool SDPProcessor::callScript(const String& functionName, const String& argument
 
     JSC::JSObject* function = functionValue.toObject(exec);
     JSC::CallData callData;
-    JSC::CallType callType = function->methodTable()->getCallData(function, callData);
+    JSC::CallType callType = function->methodTable(vm)->getCallData(function, callData);
     if (callType == JSC::CallType::None)
         return false;
 
@@ -537,7 +553,7 @@ bool SDPProcessor::callScript(const String& functionName, const String& argument
     if (!result.isString())
         return false;
 
-    outResult = result.getString(exec);
+    outResult = asString(result)->value(exec);
     return true;
 }
 

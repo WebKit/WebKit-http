@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Google Inc. All rights reserved.
- * 
+ * Copyright (C) 2017 Apple Inc.  All rights reserved.
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
@@ -70,11 +71,14 @@ namespace WebCore {
         public:
             Task(ScriptExecutionContext::Task&&, const String& mode);
             const String& mode() const { return m_mode; }
-            void performTask(const WorkerRunLoop&, WorkerGlobalScope*);
 
         private:
+            void performTask(WorkerGlobalScope*);
+
             ScriptExecutionContext::Task m_task;
             String m_mode;
+
+            friend class WorkerRunLoop;
         };
 
     private:
@@ -84,6 +88,8 @@ namespace WebCore {
         // Runs any clean up tasks that are currently in the queue and returns.
         // This should only be called when the context is closed or loop has been terminated.
         void runCleanupTasks(WorkerGlobalScope*);
+
+        bool isNested() const { return m_nestedCount > 1; }
 
         MessageQueue<Task> m_messageQueue;
         std::unique_ptr<WorkerSharedTimer> m_sharedTimer;

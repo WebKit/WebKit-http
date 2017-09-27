@@ -54,6 +54,8 @@ public:
         }
     }
 
+    enum IsolatedCopyTag { IsolatedCopy };
+    IDBGetAllResult(const IDBGetAllResult&, IsolatedCopyTag);
     IDBGetAllResult isolatedCopy() const;
 
     IndexedDB::GetAllType type() const { return m_type; }
@@ -69,6 +71,8 @@ public:
     WEBCORE_EXPORT Vector<String> allBlobFilePaths() const;
 
 private:
+    static void isolatedCopy(const IDBGetAllResult& source, IDBGetAllResult& destination);
+
     IndexedDB::GetAllType m_type { IndexedDB::GetAllType::Keys };
     WTF::Variant<Vector<IDBKeyData>, Vector<IDBValue>, std::nullptr_t> m_results { nullptr };
 };
@@ -103,16 +107,21 @@ bool IDBGetAllResult::decode(Decoder& decoder, IDBGetAllResult& result)
         return false;
 
     switch (index) {
-    case 0:
+    case 0: {
         result.m_results = Vector<IDBKeyData>();
         if (!decoder.decode(WTF::get<Vector<IDBKeyData>>(result.m_results)))
             return false;
         break;
-    case 1:
+    }
+    case 1: {
         result.m_results = Vector<IDBValue>();
-        if (!decoder.decode(WTF::get<Vector<IDBValue>>(result.m_results)))
+        std::optional<Vector<IDBValue>> optional;
+        decoder >> optional;
+        if (!optional)
             return false;
+        WTF::get<Vector<IDBValue>>(result.m_results) = WTFMove(*optional);
         break;
+    }
     case 2:
         result.m_results = nullptr;
         break;

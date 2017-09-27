@@ -31,6 +31,7 @@
 #include "InspectorAgentBase.h"
 #include "InspectorFrontendChannel.h"
 #include "JSGlobalObject.h"
+#include "JSGlobalObjectInspectorController.h"
 #include "JSLock.h"
 #include "RemoteInspector.h"
 
@@ -49,11 +50,11 @@ String JSGlobalObjectDebuggable::name() const
     return name.isEmpty() ? ASCIILiteral("JSContext") : name;
 }
 
-void JSGlobalObjectDebuggable::connect(FrontendChannel* frontendChannel, bool automaticInspection)
+void JSGlobalObjectDebuggable::connect(FrontendChannel* frontendChannel, bool automaticInspection, bool immediatelyPause)
 {
     JSLockHolder locker(&m_globalObject.vm());
 
-    m_globalObject.inspectorController().connectFrontend(frontendChannel, automaticInspection);
+    m_globalObject.inspectorController().connectFrontend(frontendChannel, automaticInspection, immediatelyPause);
 }
 
 void JSGlobalObjectDebuggable::disconnect(FrontendChannel* frontendChannel)
@@ -61,13 +62,6 @@ void JSGlobalObjectDebuggable::disconnect(FrontendChannel* frontendChannel)
     JSLockHolder locker(&m_globalObject.vm());
 
     m_globalObject.inspectorController().disconnectFrontend(frontendChannel);
-}
-
-void JSGlobalObjectDebuggable::pause()
-{
-    JSLockHolder locker(&m_globalObject.vm());
-
-    m_globalObject.inspectorController().pause();
 }
 
 void JSGlobalObjectDebuggable::dispatchMessageFromRemote(const String& message)

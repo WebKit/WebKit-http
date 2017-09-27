@@ -28,15 +28,15 @@ function test()
     suite.addTestCase({
         name: "NoArguments",
         description: "No arguments increments a shared global counter.",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let seen = 0;
             const expected = 16;
-            WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.MessageAdded, handler);
+            WI.logManager.addEventListener(WI.LogManager.Event.MessageAdded, handler);
             function handler(event) {
                 let message = event.data.message;
                 InspectorTest.log(message.messageText);
                 if (++seen === expected) {
-                    WebInspector.logManager.removeEventListener(WebInspector.LogManager.Event.MessageAdded, handler);
+                    WI.logManager.removeEventListener(WI.LogManager.Event.MessageAdded, handler);
                     resolve();
                 }
             }
@@ -49,15 +49,15 @@ function test()
     suite.addTestCase({
         name: "WithLabel",
         description: "Labeled counters increment the label.",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let seen = 0;
             const expected = 20;
-            WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.MessageAdded, handler);
+            WI.logManager.addEventListener(WI.LogManager.Event.MessageAdded, handler);
             function handler(event) {
                 let message = event.data.message;
                 InspectorTest.log(message.messageText);
                 if (++seen === expected) {
-                    WebInspector.logManager.removeEventListener(WebInspector.LogManager.Event.MessageAdded, handler);
+                    WI.logManager.removeEventListener(WI.LogManager.Event.MessageAdded, handler);
                     resolve();
                 }
             }

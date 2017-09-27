@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "CSSFontStyleValue.h"
 #include "CSSValue.h"
 #include <wtf/RefPtr.h>
 
@@ -39,9 +40,10 @@ public:
 
     bool equals(const CSSFontValue&) const;
 
-    RefPtr<CSSPrimitiveValue> style;
+    RefPtr<CSSFontStyleValue> style;
     RefPtr<CSSPrimitiveValue> variant;
     RefPtr<CSSPrimitiveValue> weight;
+    RefPtr<CSSPrimitiveValue> stretch;
     RefPtr<CSSPrimitiveValue> size;
     RefPtr<CSSPrimitiveValue> lineHeight;
     RefPtr<CSSValueList> family;

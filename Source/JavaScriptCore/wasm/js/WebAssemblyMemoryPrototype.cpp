@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,18 +29,70 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "FunctionPrototype.h"
+#include "JSArrayBuffer.h"
 #include "JSCInlines.h"
+#include "JSWebAssemblyMemory.h"
+#include "JSWebAssemblyHelpers.h"
+
+namespace JSC {
+static EncodedJSValue JSC_HOST_CALL webAssemblyMemoryProtoFuncGrow(ExecState*);
+static EncodedJSValue JSC_HOST_CALL webAssemblyMemoryProtoFuncBuffer(ExecState*);
+}
 
 #include "WebAssemblyMemoryPrototype.lut.h"
 
+
 namespace JSC {
 
-const ClassInfo WebAssemblyMemoryPrototype::s_info = { "WebAssembly.Memory.prototype", &Base::s_info, &prototypeTableWebAssemblyMemory, CREATE_METHOD_TABLE(WebAssemblyMemoryPrototype) };
+const ClassInfo WebAssemblyMemoryPrototype::s_info = { "WebAssembly.Memory", &Base::s_info, &prototypeTableWebAssemblyMemory, nullptr, CREATE_METHOD_TABLE(WebAssemblyMemoryPrototype) };
 
 /* Source for WebAssemblyMemoryPrototype.lut.h
- @begin prototypeTableWebAssemblyMemory
- @end
- */
+@begin prototypeTableWebAssemblyMemory
+ grow   webAssemblyMemoryProtoFuncGrow   DontEnum|Function 1
+ buffer webAssemblyMemoryProtoFuncBuffer DontEnum|Accessor 0
+@end
+*/
+
+ALWAYS_INLINE JSWebAssemblyMemory* getMemory(ExecState* exec, VM& vm, JSValue value)
+{
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    JSWebAssemblyMemory* memory = jsDynamicCast<JSWebAssemblyMemory*>(vm, value); 
+    if (!memory) {
+        throwException(exec, throwScope, 
+            createTypeError(exec, ASCIILiteral("WebAssembly.Memory.prototype.buffer getter called with non WebAssembly.Memory |this| value")));
+        return nullptr;
+    }
+    return memory;
+}
+
+EncodedJSValue JSC_HOST_CALL webAssemblyMemoryProtoFuncGrow(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    JSWebAssemblyMemory* memory = getMemory(exec, vm, exec->thisValue()); 
+    RETURN_IF_EXCEPTION(throwScope, { });
+    
+    uint32_t delta = toNonWrappingUint32(exec, exec->argument(0));
+    RETURN_IF_EXCEPTION(throwScope, { });
+
+    bool shouldThrowExceptionsOnFailure = true;
+    Wasm::PageCount result = memory->grow(vm, exec, delta, shouldThrowExceptionsOnFailure);
+    RETURN_IF_EXCEPTION(throwScope, { });
+
+    return JSValue::encode(jsNumber(result.pageCount()));
+}
+
+EncodedJSValue JSC_HOST_CALL webAssemblyMemoryProtoFuncBuffer(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    JSWebAssemblyMemory* memory = getMemory(exec, vm, exec->thisValue()); 
+    RETURN_IF_EXCEPTION(throwScope, { });
+    return JSValue::encode(memory->buffer(exec->vm(), exec->lexicalGlobalObject()));
+}
 
 WebAssemblyMemoryPrototype* WebAssemblyMemoryPrototype::create(VM& vm, JSGlobalObject*, Structure* structure)
 {
@@ -57,6 +109,7 @@ Structure* WebAssemblyMemoryPrototype::createStructure(VM& vm, JSGlobalObject* g
 void WebAssemblyMemoryPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
+    ASSERT(inherits(vm, info()));
 }
 
 WebAssemblyMemoryPrototype::WebAssemblyMemoryPrototype(VM& vm, Structure* structure)

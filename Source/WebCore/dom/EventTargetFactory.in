@@ -15,6 +15,7 @@ IDBOpenDBRequest conditional=INDEXED_DATABASE
 IDBRequest conditional=INDEXED_DATABASE
 IDBTransaction conditional=INDEXED_DATABASE
 MediaController conditional=VIDEO
+MediaDevices conditional=MEDIA_STREAM
 MediaKeySession conditional=ENCRYPTED_MEDIA
 MediaRemoteControls conditional=MEDIA_SESSION
 MediaSource conditional=MEDIA_SOURCE
@@ -22,21 +23,25 @@ MediaStream conditional=MEDIA_STREAM
 MediaStreamTrack conditional=MEDIA_STREAM
 MessagePort
 Node
-Notification conditional=NOTIFICATIONS|LEGACY_NOTIFICATIONS
-Performance conditional=WEB_TIMING
+Notification conditional=NOTIFICATIONS
+PaymentRequest conditional=PAYMENT_REQUEST
+Performance
 RTCDataChannel conditional=WEB_RTC
-RTCDTMFSender conditional=WEB_RTC
+RTCDTMFSender conditional=WEB_RTC_DTMF
 RTCPeerConnection conditional=WEB_RTC
+ServiceWorker conditional=SERVICE_WORKER
+ServiceWorkerContainer conditional=SERVICE_WORKER
+ServiceWorkerRegistration conditional=SERVICE_WORKER
 SourceBuffer conditional=MEDIA_SOURCE
 SourceBufferList conditional=MEDIA_SOURCE
 SpeechSynthesisUtterance conditional=SPEECH_SYNTHESIS
 TextTrack conditional=VIDEO_TRACK
 TextTrackCue conditional=VIDEO_TRACK
 TextTrackList conditional=VIDEO_TRACK
+VRDisplay
 VideoTrackList conditional=VIDEO_TRACK
 WebKitMediaKeySession conditional=LEGACY_ENCRYPTED_MEDIA
-WebKitNamedFlow
-WebSocket conditional=WEB_SOCKETS
+WebSocket
 Worker
 XMLHttpRequest
 XMLHttpRequestUpload

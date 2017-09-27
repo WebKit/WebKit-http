@@ -35,16 +35,18 @@
 #include "HTMLNames.h"
 #include "HTMLTableElement.h"
 #include "LayoutRepainter.h"
+#include "RenderBlockFlow.h"
 #include "RenderChildIterator.h"
+#include "RenderDescendantIterator.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
-#include "RenderNamedFlowFragment.h"
 #include "RenderTableCaption.h"
 #include "RenderTableCell.h"
 #include "RenderTableCol.h"
 #include "RenderTableSection.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
+#include <wtf/SetForScope.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
@@ -236,7 +238,7 @@ void RenderTable::removeCaption(const RenderTableCaption* oldCaption)
 void RenderTable::invalidateCachedColumns()
 {
     m_columnRenderersValid = false;
-    m_columnRenderers.resize(0);
+    m_columnRenderers.shrink(0);
     m_effectiveColumnIndexMap.clear();
 }
 
@@ -373,9 +375,9 @@ LayoutUnit RenderTable::convertStyleLogicalHeightToComputedHeight(const Length& 
         }
         return styleLogicalHeight.value() - borders;
     } else if (styleLogicalHeight.isPercentOrCalculated())
-        return computePercentageLogicalHeight(styleLogicalHeight).valueOr(0);
+        return computePercentageLogicalHeight(styleLogicalHeight).value_or(0);
     else if (styleLogicalHeight.isIntrinsic())
-        return computeIntrinsicLogicalContentHeightUsing(styleLogicalHeight, logicalHeight() - borderAndPadding, borderAndPadding).valueOr(0);
+        return computeIntrinsicLogicalContentHeightUsing(styleLogicalHeight, logicalHeight() - borderAndPadding, borderAndPadding).value_or(0);
     else
         ASSERT_NOT_REACHED();
     return LayoutUnit();
@@ -472,8 +474,11 @@ void RenderTable::layout()
 
     LayoutUnit totalSectionLogicalHeight = 0;
     LayoutUnit oldTableLogicalTop = 0;
-    for (unsigned i = 0; i < m_captions.size(); i++)
+    for (unsigned i = 0; i < m_captions.size(); i++) {
+        if (m_captions[i]->style().captionSide() == CAPBOTTOM)
+            continue;
         oldTableLogicalTop += m_captions[i]->logicalHeight() + m_captions[i]->marginBefore() + m_captions[i]->marginAfter();
+    }
 
     bool collapsing = collapseBorders();
 
@@ -594,6 +599,21 @@ void RenderTable::layout()
             repaintRectangle(LayoutRect(movedSectionLogicalTop, visualOverflowRect().y(), visualOverflowRect().maxX() - movedSectionLogicalTop, visualOverflowRect().height()));
     }
 
+    bool paginated = view().layoutState() && view().layoutState()->isPaginated();
+    if (sectionMoved && paginated) {
+        // FIXME: Table layout should always stabilize even when section moves (see webkit.org/b/174412).
+        if (!m_inRecursiveSectionMovedWithPagination) {
+            SetForScope<bool> paginatedSectionMoved(m_inRecursiveSectionMovedWithPagination, true);
+            markForPaginationRelayoutIfNeeded();
+            layoutIfNeeded();
+        } else
+            ASSERT_NOT_REACHED();
+    }
+    
+    // FIXME: This value isn't the intrinsic content logical height, but we need
+    // to update the value as its used by flexbox layout. crbug.com/367324
+    cacheIntrinsicContentLogicalHeightForFlexItem(contentLogicalHeight());
+    
     m_columnLogicalWidthChanged = false;
     clearNeedsLayout();
 }
@@ -749,7 +769,7 @@ void RenderTable::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
         paintOutline(paintInfo, LayoutRect(paintOffset, size()));
 }
 
-void RenderTable::subtractCaptionRect(LayoutRect& rect) const
+void RenderTable::adjustBorderBoxRectForPainting(LayoutRect& rect)
 {
     for (unsigned i = 0; i < m_captions.size(); i++) {
         LayoutUnit captionLogicalHeight = m_captions[i]->logicalHeight() + m_captions[i]->marginBefore() + m_captions[i]->marginAfter();
@@ -764,6 +784,8 @@ void RenderTable::subtractCaptionRect(LayoutRect& rect) const
                 rect.move(captionLogicalHeight, 0);
         }
     }
+    
+    RenderBlock::adjustBorderBoxRectForPainting(rect);
 }
 
 void RenderTable::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -772,8 +794,8 @@ void RenderTable::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& p
         return;
 
     LayoutRect rect(paintOffset, size());
-    subtractCaptionRect(rect);
-
+    adjustBorderBoxRectForPainting(rect);
+    
     BackgroundBleedAvoidance bleedAvoidance = determineBackgroundBleedAvoidance(paintInfo.context());
     if (!boxShadowShouldBeAppliedToBackground(rect.location(), bleedAvoidance))
         paintBoxShadow(paintInfo, rect, style(), Normal);
@@ -790,7 +812,7 @@ void RenderTable::paintMask(PaintInfo& paintInfo, const LayoutPoint& paintOffset
         return;
 
     LayoutRect rect(paintOffset, size());
-    subtractCaptionRect(rect);
+    adjustBorderBoxRectForPainting(rect);
 
     paintMaskImages(paintInfo, rect);
 }
@@ -1462,43 +1484,39 @@ RenderBlock* RenderTable::firstLineBlock() const
     return nullptr;
 }
 
-void RenderTable::updateFirstLetter(RenderTreeMutationIsAllowed)
-{
-}
-
 int RenderTable::baselinePosition(FontBaseline baselineType, bool firstLine, LineDirectionMode direction, LinePositionMode linePositionMode) const
 {
-    return firstLineBaseline().valueOrCompute([&] {
+    return valueOrCompute(firstLineBaseline(), [&] {
         return RenderBox::baselinePosition(baselineType, firstLine, direction, linePositionMode);
     });
 }
 
-Optional<int> RenderTable::inlineBlockBaseline(LineDirectionMode) const
+std::optional<int> RenderTable::inlineBlockBaseline(LineDirectionMode) const
 {
     // Tables are skipped when computing an inline-block's baseline.
-    return Optional<int>();
+    return std::optional<int>();
 }
 
-Optional<int> RenderTable::firstLineBaseline() const
+std::optional<int> RenderTable::firstLineBaseline() const
 {
     // The baseline of a 'table' is the same as the 'inline-table' baseline per CSS 3 Flexbox (CSS 2.1
     // doesn't define the baseline of a 'table' only an 'inline-table').
     // This is also needed to properly determine the baseline of a cell if it has a table child.
 
     if (isWritingModeRoot())
-        return Optional<int>();
+        return std::optional<int>();
 
     recalcSectionsIfNeeded();
 
     const RenderTableSection* topNonEmptySection = this->topNonEmptySection();
     if (!topNonEmptySection)
-        return Optional<int>();
+        return std::optional<int>();
 
-    if (Optional<int> baseline = topNonEmptySection->firstLineBaseline())
-        return Optional<int>(topNonEmptySection->logicalTop() + baseline.value());
+    if (std::optional<int> baseline = topNonEmptySection->firstLineBaseline())
+        return std::optional<int>(topNonEmptySection->logicalTop() + baseline.value());
 
     // FIXME: A table row always has a baseline per CSS 2.1. Will this return the right value?
-    return Optional<int>();
+    return std::optional<int>();
 }
 
 LayoutRect RenderTable::overflowClipRect(const LayoutPoint& location, RenderRegion* region, OverlayScrollbarSizeRelevancy relevancy, PaintPhase phase)
@@ -1511,7 +1529,7 @@ LayoutRect RenderTable::overflowClipRect(const LayoutPoint& location, RenderRegi
         rect.setLocation(location + rect.location());
     } else
         rect = RenderBox::overflowClipRect(location, region, relevancy);
-    
+
     // If we have a caption, expand the clip to include the caption.
     // FIXME: Technically this is wrong, but it's virtually impossible to fix this
     // for real until captions have been re-written.
@@ -1536,7 +1554,7 @@ bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutPoint adjustedLocation = accumulatedOffset + location();
 
     // Check kids first.
-    if (!hasOverflowClip() || locationInContainer.intersects(overflowClipRect(adjustedLocation, currentRenderNamedFlowFragment()))) {
+    if (!hasOverflowClip() || locationInContainer.intersects(overflowClipRect(adjustedLocation, nullptr))) {
         for (RenderObject* child = lastChild(); child; child = child->previousSibling()) {
             if (is<RenderBox>(*child) && !downcast<RenderBox>(*child).hasSelfPaintingLayer() && (child->isTableSection() || child->isTableCaption())) {
                 LayoutPoint childPoint = flipForWritingModeForChild(downcast<RenderBox>(child), adjustedLocation);
@@ -1552,7 +1570,7 @@ bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutRect boundsRect(adjustedLocation, size());
     if (visibleToHitTesting() && (action == HitTestBlockBackground || action == HitTestChildBlockBackground) && locationInContainer.intersects(boundsRect)) {
         updateHitTestResult(result, flipForWritingMode(locationInContainer.point() - toLayoutSize(adjustedLocation)));
-        if (!result.addNodeToRectBasedTestResult(element(), request, locationInContainer, boundsRect))
+        if (result.addNodeToListBasedTestResult(element(), request, locationInContainer, boundsRect) == HitTestProgress::Stop)
             return true;
     }
 

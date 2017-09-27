@@ -62,6 +62,6 @@ my @xcodeOptions = ("-target", "ImageDiff");
 push @xcodeOptions, XcodeOptions();
 
 # Build
-chdir "Tools/DumpRenderTree" or die;
-$result = buildXCodeProject("DumpRenderTree", $clean, @xcodeOptions, @ARGV);
+chdir "Tools/ImageDiff" or die;
+$result = buildXCodeProject("ImageDiff", $clean, @xcodeOptions, @ARGV);
 exit exitStatus($result);

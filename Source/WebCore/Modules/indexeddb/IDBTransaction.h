@@ -43,7 +43,7 @@
 
 namespace WebCore {
 
-class DOMError;
+class DOMException;
 class DOMStringList;
 class IDBCursor;
 class IDBCursorInfo;
@@ -76,7 +76,7 @@ public:
     Ref<DOMStringList> objectStoreNames() const;
     IDBTransactionMode mode() const { return m_info.mode(); }
     IDBDatabase* db();
-    DOMError* error() const;
+    DOMException* error() const;
     ExceptionOr<Ref<IDBObjectStore>> objectStore(const String& name);
     ExceptionOr<void> abort();
 
@@ -115,8 +115,8 @@ public:
 
     Ref<IDBRequest> requestPutOrAdd(JSC::ExecState&, IDBObjectStore&, IDBKey*, SerializedScriptValue&, IndexedDB::ObjectStoreOverwriteMode);
     Ref<IDBRequest> requestGetRecord(JSC::ExecState&, IDBObjectStore&, const IDBGetRecordData&);
-    Ref<IDBRequest> requestGetAllObjectStoreRecords(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&, IndexedDB::GetAllType, Optional<uint32_t> count);
-    Ref<IDBRequest> requestGetAllIndexRecords(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&, IndexedDB::GetAllType, Optional<uint32_t> count);
+    Ref<IDBRequest> requestGetAllObjectStoreRecords(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&, IndexedDB::GetAllType, std::optional<uint32_t> count);
+    Ref<IDBRequest> requestGetAllIndexRecords(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&, IndexedDB::GetAllType, std::optional<uint32_t> count);
     Ref<IDBRequest> requestDeleteRecord(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&);
     Ref<IDBRequest> requestClearObjectStore(JSC::ExecState&, IDBObjectStore&);
     Ref<IDBRequest> requestCount(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&);
@@ -133,12 +133,15 @@ public:
     void addRequest(IDBRequest&);
     void removeRequest(IDBRequest&);
 
-    void abortDueToFailedRequest(DOMError&);
+    void abortDueToFailedRequest(DOMException&);
 
     void activate();
     void deactivate();
 
-    void operationDidComplete(IDBClient::TransactionOperation&);
+    void operationCompletedOnServer(const IDBResultData&, IDBClient::TransactionOperation&);
+    void operationCompletedOnClient(IDBClient::TransactionOperation&);
+
+    void finishedDispatchEventForRequest(IDBRequest&);
 
     bool isFinishedOrFinishing() const;
     bool isFinished() const { return m_state == IndexedDB::TransactionState::Finished; }
@@ -157,9 +160,11 @@ private:
     void internalAbort();
     void notifyDidAbort(const IDBError&);
     void finishAbortOrCommit();
+    void abortInProgressOperations(const IDBError&);
 
     void scheduleOperation(RefPtr<IDBClient::TransactionOperation>&&);
-    void operationTimerFired();
+    void pendingOperationTimerFired();
+    void completedOperationTimerFired();
 
     void fireOnComplete();
     void fireOnAbort();
@@ -217,7 +222,11 @@ private:
 
     void establishOnServer();
 
-    void scheduleOperationTimer();
+    void completeNoncursorRequest(IDBRequest&, const IDBResultData&);
+    void completeCursorRequest(IDBRequest&, const IDBResultData&);
+
+    void schedulePendingOperationTimer();
+    void scheduleCompletedOperationTimer();
 
     Ref<IDBDatabase> m_database;
     IDBTransactionInfo m_info;
@@ -226,15 +235,19 @@ private:
     bool m_startedOnServer { false };
 
     IDBError m_idbError;
-    RefPtr<DOMError> m_domError;
+    RefPtr<DOMException> m_domError;
 
-    Timer m_operationTimer;
+    Timer m_pendingOperationTimer;
+    Timer m_completedOperationTimer;
     std::unique_ptr<Timer> m_activationTimer;
 
     RefPtr<IDBOpenDBRequest> m_openDBRequest;
 
-    Deque<RefPtr<IDBClient::TransactionOperation>> m_transactionOperationQueue;
+    Deque<RefPtr<IDBClient::TransactionOperation>> m_pendingTransactionOperationQueue;
+    Deque<IDBClient::TransactionOperation*> m_transactionOperationsInProgressQueue;
+    Deque<std::pair<RefPtr<IDBClient::TransactionOperation>, IDBResultData>> m_completedOnServerQueue;
     Deque<RefPtr<IDBClient::TransactionOperation>> m_abortQueue;
+
     HashMap<IDBResourceIdentifier, RefPtr<IDBClient::TransactionOperation>> m_transactionOperationMap;
 
     mutable Lock m_referencedObjectStoreLock;
@@ -242,6 +255,7 @@ private:
     HashMap<uint64_t, std::unique_ptr<IDBObjectStore>> m_deletedObjectStores;
 
     HashSet<RefPtr<IDBRequest>> m_openRequests;
+    RefPtr<IDBRequest> m_currentlyCompletingRequest;
 
     bool m_contextStopped { false };
 };

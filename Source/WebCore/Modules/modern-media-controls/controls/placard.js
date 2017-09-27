@@ -23,26 +23,57 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+const MinHeightToDisplayDescription = 100;
+const MinHeightToDisplayTitle = 40;
+
 class Placard extends LayoutItem
 {
 
-    constructor({ iconName = null, title = "", description = "", layoutDelegate = null } = {})
+    constructor({ iconName = null, title = "", description = "", width = 400, height = 300, layoutDelegate = null } = {})
     {
         super({
             element: `<div class="placard"></div>`,
             layoutDelegate
         });
 
-        const container = this.addChild(new LayoutNode(`<div class="container"></div>`));
+        this._container = this.addChild(new LayoutNode(`<div class="container"></div>`));
         
-        if (iconName)
-            container.addChild(new IconButton(this)).iconName = iconName;
+        if (iconName) {
+            this._icon = new Button(this);
+            this._icon.iconName = iconName;
+            this._icon.element.disabled = true;
+        }
 
         if (!!title)
-            container.addChild(new LayoutNode(`<div class="title">${title}</div>`));
+            this._titleNode = new LayoutNode(`<div class="title">${title}</div>`);
 
         if (!!description)
-            container.addChild(new LayoutNode(`<div class="description">${description}</div>`));
+            this._descriptionNode = new LayoutNode(`<div class="description">${description}</div>`);
+
+        this.minDimensionToDisplayIcon = 170;
+
+        this.width = width;
+        this.height = height;
+    }
+
+    // Protected
+
+    layout()
+    {
+        super.layout();
+
+        const children = [];
+
+        if (this._icon && this.width >= this.minDimensionToDisplayIcon && this.height >= this.minDimensionToDisplayIcon)
+            children.push(this._icon);
+
+        if (this._titleNode && this.height >= MinHeightToDisplayTitle)
+            children.push(this._titleNode);
+
+        if (this._descriptionNode && this.height >= MinHeightToDisplayDescription)
+            children.push(this._descriptionNode);
+
+        this._container.children = children;
     }
 
 }

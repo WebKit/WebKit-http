@@ -37,7 +37,7 @@ function checkInstaller {
         exit 0
     fi
 
-    if [ `uname` -eq "Darwin" ]; then
+    if [ `uname` = "Darwin" ]; then
        installDependenciesWithBrew
        exit 0
     fi
@@ -65,6 +65,7 @@ function installDependenciesWithBrew {
          libcroco \
          libgcrypt \
          libgpg-error \
+         libtasn1 \
          libtiff \
          libtool \
          ninja \
@@ -106,18 +107,20 @@ function installDependenciesWithApt {
         libedit-dev \
         libenchant-dev \
         libfaad-dev \
+        libffi-dev \
         $(aptIfElse libgcrypt20-dev libgcrypt11-dev) \
-        $(aptIfElse libgeoclue-2-dev libgeoclue-dev) \
         libgirepository1.0-dev \
         libgl1-mesa-dev \
         libgl1-mesa-glx \
         libgtk2.0-dev \
         libgtk-3-dev \
         libgstreamer1.0-dev \
+        libgstreamer-plugins-bad1.0-dev \
         libgstreamer-plugins-base1.0-dev \
         libgudev-1.0-dev \
         libhyphen-dev \
         libjpeg-dev \
+        libmount-dev \
         libmpg123-dev \
         libnotify-dev \
         libopus-dev \
@@ -128,9 +131,12 @@ function installDependenciesWithApt {
         libsecret-1-dev \
         libsoup2.4-dev \
         libsqlite3-dev \
+        libsrtp0-dev \
+        libtasn1-6-dev \
         libtheora-dev \
         libtool \
         libvorbis-dev \
+        libvpx-dev \
         libwebp-dev \
         libxcomposite-dev \
         libxt-dev \
@@ -147,8 +153,10 @@ function installDependenciesWithApt {
         apache2 \
         curl \
         dbus-x11 \
+        gdb \
         libapache2-mod-bw \
         $(aptIfElse libapache2-mod-php7.0 libapache2-mod-php5) \
+        libcgi-pm-perl \
         libgpg-error-dev \
         psmisc \
         pulseaudio-utils \
@@ -167,6 +175,7 @@ function installDependenciesWithApt {
         gsettings-desktop-schemas-dev \
         icon-naming-utils \
         libcroco3-dev \
+        libcups2-dev \
         libdrm-dev \
         libegl1-mesa-dev \
         libepoxy-dev \
@@ -179,6 +188,7 @@ function installDependenciesWithApt {
         libjson-glib-dev \
         libinput-dev \
         libmtdev-dev \
+        liborc-0.4-dev \
         libp11-kit-dev \
         libpciaccess-dev \
         libproxy-dev \
@@ -187,8 +197,9 @@ function installDependenciesWithApt {
         libv4l-dev \
         libxcb-composite0-dev \
         libxcb-xfixes0-dev \
-        libxfont-dev \
+        $(aptIfElse libxfont1-dev libxfont-dev) \
         libxkbfile-dev \
+        libxkbcommon-x11-dev \
         libtool-bin \
         libudev-dev \
         python-dev \
@@ -205,7 +216,8 @@ function installDependenciesWithApt {
         x11proto-xf86dri-dev \
         xfonts-utils \
         xtrans-dev \
-        xutils-dev"
+        xutils-dev \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -223,6 +235,7 @@ function installDependenciesWithPacman {
         bison \
         cmake \
         libedit \
+        libffi \
         file \
         findutils \
         flex \
@@ -234,6 +247,7 @@ function installDependenciesWithPacman {
         grep \
         groff \
         gstreamer \
+        gst-plugins-bad \
         gst-plugins-base-libs \
         gzip \
         hyphen \
@@ -270,10 +284,13 @@ function installDependenciesWithPacman {
         librsvg \
         libsecret \
         libsoup \
+        libsrtp \
         sqlite \
+        libtasn1 \
         libtheora \
         libtool \
         libvorbis \
+        libvpx \
         libwebp \
         libxcomposite \
         libxt \
@@ -281,6 +298,7 @@ function installDependenciesWithPacman {
         libxtst \
         ninja \
         ruby \
+        util-linux \
         xorg-font-utils \
         wayland"
 
@@ -290,6 +308,7 @@ function installDependenciesWithPacman {
     packages="$packages \
         apache \
         curl \
+        gdb \
         hunspell \
         hunspell-en \
         php-apache \
@@ -313,6 +332,7 @@ function installDependenciesWithPacman {
         gsettings-desktop-schemas \
         icon-naming-utils \
         libcroco \
+        libcups \
         libdrm \
         libepoxy \
         libevdev \
@@ -326,7 +346,9 @@ function installDependenciesWithPacman {
         libxfont \
         libxcb \
         libxkbfile \
+        libxkbcommon-x11 \
         mtdev \
+        orc \
         python2 \
         python2-lxml \
         ragel \
@@ -343,7 +365,8 @@ function installDependenciesWithPacman {
         xorg-font-utils \
         xorg-util-macros \
         xtrans \
-        xorg-utils"
+        xorg-utils \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -372,6 +395,7 @@ function installDependenciesWithDnf {
         gobject-introspection-devel \
         gperf \
         gstreamer1-devel \
+        gstreamer1-plugins-bad-free-devel \
         gstreamer1-plugins-base-devel \
         gtk-doc \
         gtk2-devel \
@@ -383,23 +407,33 @@ function installDependenciesWithDnf {
         libXtst-devel \
         libxslt-devel \
         libedit-devel \
+        libffi-devel \
         libgcrypt-devel \
         libgudev1-devel \
         libjpeg-turbo-devel \
+        libmount-devel \
         libnotify-devel \
         libpng-devel \
         libsecret-devel \
         libsoup-devel \
+        libsrtp-devel \
+        libtasn1-devel \
+        libtheora-devel \
         libv4l-devel \
+        libvorbis-devel \
+        libvpx-devel \
         libwebp-devel \
         libwayland-client-devel \
         libwayland-server-devel \
         mesa-libGL-devel \
         ninja-build \
         openssl-devel \
+        opus-devel \
         patch \
         pcre-devel \
+        perl-JSON-PP \
         perl-Switch \
+        perl-Time-HiRes \
         perl-version \
         pulseaudio-libs-devel \
         python-devel \
@@ -411,6 +445,7 @@ function installDependenciesWithDnf {
     packages="$packages \
         curl \
         dbus-x11 \
+        gdb \
         hunspell-en \
         httpd \
         libgpg-error-devel \
@@ -430,12 +465,12 @@ function installDependenciesWithDnf {
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
-        expat-devel \
+        cups-devel \
         docbook-utils \
-        docbook-utils-pdf \
+        expat-devel \
         git \
-        gobject-introspection \
         gnutls-devel \
+        gobject-introspection \
         gsettings-desktop-schemas-devel \
         icon-naming-utils \
         itstool \
@@ -452,14 +487,17 @@ function installDependenciesWithDnf {
         libtiff-devel \
         libxcb-devel \
         libxkbfile-devel \
+        libxkbcommon-x11-devel \
         mesa-libEGL-devel \
         mtdev-devel \
+        orc-devel \
         ragel \
         systemd-devel \
         xorg-x11-font-utils \
         xorg-x11-proto-devel \
         xorg-x11-util-macros \
-        xorg-x11-xtrans-devel"
+        xorg-x11-xtrans-devel \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages

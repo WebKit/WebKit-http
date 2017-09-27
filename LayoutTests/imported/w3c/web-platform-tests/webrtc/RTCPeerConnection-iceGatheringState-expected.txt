@@ -1,0 +1,7 @@
+
+Harness Error (TIMEOUT), message = null
+
+PASS Initial iceGatheringState should be new 
+TIMEOUT iceGatheringState should eventually become complete after setLocalDescription Test timed out
+FAIL connection with one data channel should eventually have connected connection state undefined is not an object (evaluating 'pc2.sctp.transport')
+

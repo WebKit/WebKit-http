@@ -23,6 +23,7 @@
 #include "Document.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "Logging.h"
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
 #include "MediaQueryList.h"
@@ -31,6 +32,7 @@
 #include "RenderElement.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -66,7 +68,7 @@ std::unique_ptr<RenderStyle> MediaQueryMatcher::documentElementUserAgentStyle() 
     if (!documentElement)
         return nullptr;
 
-    return m_document->styleScope().resolver().styleForElement(*documentElement, m_document->renderStyle(), MatchOnlyUserAgentRules).renderStyle;
+    return m_document->styleScope().resolver().styleForElement(*documentElement, m_document->renderStyle(), nullptr, MatchOnlyUserAgentRules).renderStyle;
 }
 
 bool MediaQueryMatcher::evaluate(const MediaQuerySet& media)
@@ -118,6 +120,8 @@ void MediaQueryMatcher::styleResolverChanged()
     if (!style)
         return;
 
+    LOG_WITH_STREAM(MediaQueries, stream << "MediaQueryMatcher::styleResolverChanged " << m_document->url());
+
     MediaQueryEvaluator evaluator { mediaType(), *m_document, style.get() };
     Vector<Listener> listeners;
     listeners.reserveInitialCapacity(m_listeners.size());
@@ -127,7 +131,7 @@ void MediaQueryMatcher::styleResolverChanged()
         bool notify;
         listener.query->evaluate(evaluator, notify);
         if (notify)
-            listener.listener->handleEvent(listener.query.ptr());
+            listener.listener->handleEvent(listener.query);
     }
 }
 

@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CDMSessionAVFoundationObjC_h
-#define CDMSessionAVFoundationObjC_h
+#pragma once
 
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/text/WTFString.h>
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
@@ -53,7 +53,7 @@ public:
 
     void playerDidReceiveError(NSError *);
 
-    WeakPtr<CDMSessionAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<CDMSessionAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
 protected:
     WeakPtr<MediaPlayerPrivateAVFoundationObjC> m_parent;
@@ -66,5 +66,3 @@ protected:
 }
 
 #endif
-
-#endif // CDMSessionAVFoundationObjC_h

@@ -32,12 +32,19 @@
 #pragma once
 
 #include "URL.h"
-#include <wtf/StreamBuffer.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
 
 class SocketStreamHandleClient;
+
+typedef struct {
+#if PLATFORM(COCOA)
+    RetainPtr<CFDataRef> sourceApplicationAuditData;
+#else
+    void *empty { nullptr };
+#endif
+} SourceApplicationAuditToken;
 
 class SocketStreamHandle : public ThreadSafeRefCounted<SocketStreamHandle> {
 public:
@@ -45,21 +52,19 @@ public:
     virtual ~SocketStreamHandle() { }
     SocketStreamState state() const;
 
-    bool send(const char* data, size_t length);
+    void sendData(const char* data, size_t length, Function<void(bool)>);
     void close(); // Disconnect after all data in buffer are sent.
     void disconnect();
-    size_t bufferedAmount() const { return m_buffer.size(); }
+    virtual size_t bufferedAmount() = 0;
 
 protected:
-    SocketStreamHandle(const URL&, SocketStreamHandleClient&);
+    WEBCORE_EXPORT SocketStreamHandle(const URL&, SocketStreamHandleClient&);
 
-    bool sendPendingData();
-    virtual Optional<size_t> platformSend(const char* data, size_t length) = 0;
+    virtual void platformSend(const char* data, size_t length, Function<void(bool)>&&) = 0;
     virtual void platformClose() = 0;
 
     URL m_url;
     SocketStreamHandleClient& m_client;
-    StreamBuffer<char, 1024 * 1024> m_buffer;
     SocketStreamState m_state;
 };
 

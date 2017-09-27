@@ -345,7 +345,7 @@ fieldset {
     -webkit-padding-end: 0.75em;
     -webkit-padding-after: 0.625em;
     border: 2px groove ThreeDFace;
-    min-width: -webkit-min-content;
+    min-width: min-content;
 }
 
 button {
@@ -538,7 +538,6 @@ input::-webkit-inner-spin-button {
      * use RenderTextControlSingleLine as renderer which sets height of spin
      * button in layout(). */
     height: 1.5em;
-    vertical-align: top;
     flex: none;
     -webkit-user-select: none;
 }
@@ -795,7 +794,7 @@ input[type="checkbox"] {
 #if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
 input[type="radio"] {
     -webkit-appearance: radio;
-    border-radius: 8px;
+    border-radius: 50%;
     width: 16px;
     height: 16px;
     padding: 0px;
@@ -1178,7 +1177,7 @@ template {
 }
 
 bdi, output {
-    unicode-bidi: -webkit-isolate;
+    unicode-bidi: isolate;
 }
 
 bdo {

@@ -28,10 +28,12 @@
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
-#import "QuartzCoreSPI.h"
+#import "Color.h"
 #import "WebCoreCALayerExtras.h"
 #import <mach/mach_init.h>
 #import <mach/mach_port.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <wtf/BlockPtr.h>
 
 @interface WebVideoContainerLayer : CALayer
 @end
@@ -85,7 +87,7 @@ void VideoFullscreenLayerManager::setVideoLayer(PlatformLayer *videoLayer, IntSi
     }
 }
 
-void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, std::function<void()> completionHandler)
+void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, WTF::Function<void()>&& completionHandler)
 {
     if (m_videoFullscreenLayer == videoFullscreenLayer) {
         completionHandler();
@@ -112,23 +114,21 @@ void VideoFullscreenLayerManager::setVideoFullscreenLayer(PlatformLayer *videoFu
         CAContext *newContext = [m_videoLayer context];
         if (oldContext && newContext && oldContext != newContext) {
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-            if ([oldContext respondsToSelector:@selector(setCommitPriority:)]) {
-                [oldContext setCommitPriority:0];
-                [newContext setCommitPriority:1];
-            }
+            oldContext.commitPriority = 0;
+            newContext.commitPriority = 1;
 #endif
             mach_port_t fencePort = [oldContext createFencePort];
             [newContext setFencePort:fencePort];
             mach_port_deallocate(mach_task_self(), fencePort);
         }
 
-        [CATransaction setCompletionBlock:[completionHandler] {
+        [CATransaction setCompletionBlock:BlockPtr<void ()>::fromCallable([completionHandler = WTFMove(completionHandler)] {
             completionHandler();
-        }];
+        }).get()];
     } else {
-        [CATransaction setCompletionBlock:[completionHandler] {
+        [CATransaction setCompletionBlock:BlockPtr<void ()>::fromCallable([completionHandler = WTFMove(completionHandler)] {
             completionHandler();
-        }];
+        }).get()];
     }
 
     [CATransaction commit];

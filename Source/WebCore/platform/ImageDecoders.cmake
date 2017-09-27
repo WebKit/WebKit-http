@@ -9,7 +9,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_SOURCES
-    platform/image-decoders/ImageDecoder.cpp
+    platform/image-decoders/ScalableImageDecoder.cpp
 
     platform/image-decoders/bmp/BMPImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageReader.cpp
@@ -26,23 +26,14 @@ list(APPEND WebCore_SOURCES
     platform/image-decoders/webp/WEBPImageDecoder.cpp
 )
 
-if (JPEG_FOUND)
-    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-        ${JPEG_INCLUDE_DIR}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${JPEG_LIBRARIES}
-    )
-endif ()
-
-if (PNG_FOUND)
-    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-        ${PNG_INCLUDE_DIRS}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${PNG_LIBRARIES}
-    )
-endif ()
+list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+    ${JPEG_INCLUDE_DIR}
+    ${PNG_INCLUDE_DIRS}
+)
+list(APPEND WebCore_LIBRARIES
+    ${JPEG_LIBRARIES}
+    ${PNG_LIBRARIES}
+)
 
 if (WEBP_FOUND)
     list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -50,5 +41,11 @@ if (WEBP_FOUND)
     )
     list(APPEND WebCore_LIBRARIES
         ${WEBP_LIBRARIES}
+    )
+endif ()
+
+if (USE_CAIRO)
+    list(APPEND WebCore_SOURCES
+        platform/image-decoders/cairo/ImageBackingStoreCairo.cpp
     )
 endif ()

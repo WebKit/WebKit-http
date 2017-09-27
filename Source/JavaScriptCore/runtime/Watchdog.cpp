@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,8 +40,8 @@ static std::chrono::microseconds currentWallClockTime()
     return std::chrono::duration_cast<std::chrono::microseconds>(steadyTimeSinceEpoch);
 }
 
-Watchdog::Watchdog()
-    : m_timerDidFire(false)
+Watchdog::Watchdog(VM* vm)
+    : m_vm(vm)
     , m_timeLimit(noTimeLimit)
     , m_cpuDeadline(noTimeLimit)
     , m_wallClockDeadline(noTimeLimit)
@@ -55,7 +55,7 @@ Watchdog::Watchdog()
 void Watchdog::setTimeLimit(std::chrono::microseconds limit,
     ShouldTerminateCallback callback, void* data1, void* data2)
 {
-    LockHolder locker(m_lock);
+    ASSERT(m_vm->currentThreadIsHoldingAPILock());
 
     m_timeLimit = limit;
     m_callback = callback;
@@ -63,40 +63,24 @@ void Watchdog::setTimeLimit(std::chrono::microseconds limit,
     m_callbackData2 = data2;
 
     if (m_hasEnteredVM && hasTimeLimit())
-        startTimer(locker, m_timeLimit);
+        startTimer(m_timeLimit);
 }
 
-JS_EXPORT_PRIVATE void Watchdog::terminateSoon()
+bool Watchdog::shouldTerminate(ExecState* exec)
 {
-    LockHolder locker(m_lock);
+    ASSERT(m_vm->currentThreadIsHoldingAPILock());
+    if (currentWallClockTime() < m_wallClockDeadline)
+        return false; // Just a stale timer firing. Nothing to do.
 
-    m_timeLimit = std::chrono::microseconds(0);
-    m_cpuDeadline = std::chrono::microseconds(0);
-    m_wallClockDeadline = std::chrono::microseconds(0);
-    m_timerDidFire = true;
-}
+    // Set m_wallClockDeadline to noTimeLimit here so that we can reject all future
+    // spurious wakes.
+    m_wallClockDeadline = noTimeLimit;
 
-bool Watchdog::shouldTerminateSlow(ExecState* exec)
-{
-    {
-        LockHolder locker(m_lock);
-
-        ASSERT(m_timerDidFire);
-        m_timerDidFire = false;
-
-        if (currentWallClockTime() < m_wallClockDeadline)
-            return false; // Just a stale timer firing. Nothing to do.
-
-        // Set m_wallClockDeadline to noTimeLimit here so that we can reject all future
-        // spurious wakes.
-        m_wallClockDeadline = noTimeLimit;
-
-        auto cpuTime = currentCPUTime();
-        if (cpuTime < m_cpuDeadline) {
-            auto remainingCPUTime = m_cpuDeadline - cpuTime;
-            startTimer(locker, remainingCPUTime);
-            return false;
-        }
+    auto cpuTime = currentCPUTime();
+    if (cpuTime < m_cpuDeadline) {
+        auto remainingCPUTime = m_cpuDeadline - cpuTime;
+        startTimer(remainingCPUTime);
+        return false;
     }
 
     // Note: we should not be holding the lock while calling the callbacks. The callbacks may
@@ -109,24 +93,21 @@ bool Watchdog::shouldTerminateSlow(ExecState* exec)
     if (needsTermination)
         return true;
 
-    {
-        LockHolder locker(m_lock);
+    // If we get here, then the callback above did not want to terminate execution. As a
+    // result, the callback may have done one of the following:
+    //   1. cleared the time limit (i.e. watchdog is disabled),
+    //   2. set a new time limit via Watchdog::setTimeLimit(), or
+    //   3. did nothing (i.e. allow another cycle of the current time limit).
+    //
+    // In the case of 1, we don't have to do anything.
+    // In the case of 2, Watchdog::setTimeLimit() would already have started the timer.
+    // In the case of 3, we need to re-start the timer here.
 
-        // If we get here, then the callback above did not want to terminate execution. As a
-        // result, the callback may have done one of the following:
-        //   1. cleared the time limit (i.e. watchdog is disabled),
-        //   2. set a new time limit via Watchdog::setTimeLimit(), or
-        //   3. did nothing (i.e. allow another cycle of the current time limit).
-        //
-        // In the case of 1, we don't have to do anything.
-        // In the case of 2, Watchdog::setTimeLimit() would already have started the timer.
-        // In the case of 3, we need to re-start the timer here.
+    ASSERT(m_hasEnteredVM);
+    bool callbackAlreadyStartedTimer = (m_cpuDeadline != noTimeLimit);
+    if (hasTimeLimit() && !callbackAlreadyStartedTimer)
+        startTimer(m_timeLimit);
 
-        ASSERT(m_hasEnteredVM);
-        bool callbackAlreadyStartedTimer = (m_cpuDeadline != noTimeLimit);
-        if (hasTimeLimit() && !callbackAlreadyStartedTimer)
-            startTimer(locker, m_timeLimit);
-    }
     return false;
 }
 
@@ -138,23 +119,21 @@ bool Watchdog::hasTimeLimit()
 void Watchdog::enteredVM()
 {
     m_hasEnteredVM = true;
-    if (hasTimeLimit()) {
-        LockHolder locker(m_lock);
-        startTimer(locker, m_timeLimit);
-    }
+    if (hasTimeLimit())
+        startTimer(m_timeLimit);
 }
 
 void Watchdog::exitedVM()
 {
     ASSERT(m_hasEnteredVM);
-    LockHolder locker(m_lock);
-    stopTimer(locker);
+    stopTimer();
     m_hasEnteredVM = false;
 }
 
-void Watchdog::startTimer(LockHolder&, std::chrono::microseconds timeLimit)
+void Watchdog::startTimer(std::chrono::microseconds timeLimit)
 {
     ASSERT(m_hasEnteredVM);
+    ASSERT(m_vm->currentThreadIsHoldingAPILock());
     ASSERT(hasTimeLimit());
     ASSERT(timeLimit <= m_timeLimit);
 
@@ -167,21 +146,32 @@ void Watchdog::startTimer(LockHolder&, std::chrono::microseconds timeLimit)
         return; // Wait for the current active timer to expire before starting a new one.
 
     // Else, the current active timer won't fire soon enough. So, start a new timer.
-    this->ref(); // m_timerHandler will deref to match later.
     m_wallClockDeadline = wallClockDeadline;
 
-    m_timerQueue->dispatchAfter(std::chrono::nanoseconds(timeLimit), [this] {
-        {
-            LockHolder locker(m_lock);
-            m_timerDidFire = true;
-        }
-        deref();
+    // We need to ensure that the Watchdog outlives the timer.
+    // For the same reason, the timer may also outlive the VM that the Watchdog operates on.
+    // So, we always need to null check m_vm before using it. The VM will notify the Watchdog
+    // via willDestroyVM() before it goes away.
+    RefPtr<Watchdog> protectedThis = this;
+    m_timerQueue->dispatchAfter(Seconds::fromMicroseconds(timeLimit.count()), [this, protectedThis] {
+        LockHolder locker(m_lock);
+        if (m_vm)
+            m_vm->notifyNeedWatchdogCheck();
     });
 }
 
-void Watchdog::stopTimer(LockHolder&)
+void Watchdog::stopTimer()
 {
+    ASSERT(m_hasEnteredVM);
+    ASSERT(m_vm->currentThreadIsHoldingAPILock());
     m_cpuDeadline = noTimeLimit;
+}
+
+void Watchdog::willDestroyVM(VM* vm)
+{
+    LockHolder locker(m_lock);
+    ASSERT_UNUSED(vm, m_vm == vm);
+    m_vm = nullptr;
 }
 
 } // namespace JSC

@@ -29,7 +29,6 @@
 
 #include "CSSSelector.h"
 #include "Element.h"
-#include "SpaceSplitString.h"
 #include "StyleRelations.h"
 
 namespace WebCore {
@@ -84,6 +83,7 @@ public:
         RenderScrollbar* scrollbar { nullptr };
         ScrollbarPart scrollbarPart { NoPart };
         const ContainerNode* scope { nullptr };
+        bool isMatchingHostPseudoClass { false };
 
         // FIXME: It would be nicer to have a separate object for return values. This requires some more work in the selector compiler.
         Style::Relations styleRelations;

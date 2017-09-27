@@ -1,8 +1,12 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 
-// This test requires ENABLE_ES2017_ASYNCFUNCTION_SYNTAX to be enabled at build time.
-//@ skip
+function shouldBe(expected, actual, msg = "") {
+    if (msg)
+        msg = " for " + msg;
+    if (actual !== expected)
+        throw new Error("bad value" + msg + ": " + actual + ". Expected " + expected);
+}
 
 function testSyntax(script) {
     try {
@@ -28,15 +32,18 @@ function testSyntaxError(script, message) {
 }
 
 (function testTopLevelAsyncAwaitSyntaxSloppyMode() {
+    testSyntax(`({async: 1})`);
     testSyntax(`var asyncFn = async function() { await 1; };`);
     testSyntax(`var asyncFn = async function withName() { await 1; };`);
     testSyntax(`var asyncFn = async () => await 'test';`);
     testSyntax(`var asyncFn = async x => await x + 'test';`);
+    testSyntax(`function foo(fn) { fn({ async: true }); }`);
     testSyntax(`async function asyncFn() { await 1; }`);
     testSyntax(`var O = { async method() { await 1; } };`);
     testSyntax(`var O = { async ['meth' + 'od']() { await 1; } };`);
     testSyntax(`var O = { async 'method'() { await 1; } };`);
     testSyntax(`var O = { async 0() { await 1; } };`);
+    testSyntax(`var O = { async function() {} };`);
     testSyntax(`class C { async method() { await 1; } };`);
     testSyntax(`class C { async ['meth' + 'od']() { await 1; } };`);
     testSyntax(`class C { async 'method'() { await 1; } };`);
@@ -45,13 +52,27 @@ function testSyntaxError(script, message) {
     testSyntax(`var asyncFn = async({ foo = 1 } = {}) => foo;`);
     testSyntax(`function* g() { var f = async(yield); }`);
     testSyntax(`function* g() { var f = async(x = yield); }`);
+    testSyntax(`class C { async ['function']() {} }`);
+    testSyntax(`class C {}; class C2 extends C { async ['function']() {} }`);
+    testSyntax(`class C { static async ['function']() {} }`);
+    testSyntax(`class C {}; class C2 extends C { static async ['function']() {} }`);
+    testSyntax(`class C { async function() {} }`);
+    testSyntax(`class C {}; class C2 extends C { async function() {} }`);
+    testSyntax(`class C { static async function() {} }`);
+    testSyntax(`class C {}; class C2 extends C { static async function() {} }`);
+    testSyntax(`class C { async 'function'() {} }`);
+    testSyntax(`class C {}; class C2 extends C { async 'function'() {} }`);
+    testSyntax(`class C { static async 'function'() {} }`);
+    testSyntax(`class C {}; class C2 extends C { static async 'function'() {} }`);
 })();
 
 (function testTopLevelAsyncAwaitSyntaxStrictMode() {
+    testSyntax(`"use strict"; ({async: 1})`);
     testSyntax(`"use strict"; var asyncFn = async function() { await 1; };`);
     testSyntax(`"use strict"; var asyncFn = async function withName() { await 1; };`);
     testSyntax(`"use strict"; var asyncFn = async () => await 'test';`);
     testSyntax(`"use strict"; var asyncFn = async x => await x + 'test';`);
+    testSyntax(`"use strict"; function foo(fn) { fn({ async: true }); }`);
     testSyntax(`"use strict"; async function asyncFn() { await 1; }`);
     testSyntax(`"use strict"; var O = { async method() { await 1; } };`);
     testSyntax(`"use strict"; var O = { async ['meth' + 'od']() { await 1; } };`);
@@ -65,6 +86,20 @@ function testSyntaxError(script, message) {
     testSyntax(`"use strict"; var asyncFn = async({ foo = 1 } = {}) => foo;`);
     testSyntax(`"use strict"; function* g() { var f = async(yield); }`);
     testSyntax(`"use strict"; function* g() { var f = async(x = yield); }`);
+    testSyntax(`"use strict"; class C { async ['function']() {} }`);
+    testSyntax(`"use strict"; class C {}; class C2 extends C { async ['function']() {} }`);
+    testSyntax(`"use strict"; class C { static async ['function']() {} }`);
+    testSyntax(`"use strict"; class C {}; class C2 extends C { static async ['function']() {} }`);
+    testSyntax(`"use strict"; class C { async function() {} }`);
+    testSyntax(`"use strict"; class C {}; class C2 extends C { async function() {} }`);
+    testSyntax(`"use strict"; class C { async function() {} }`);
+    testSyntax(`"use strict"; class C {}; class C2 extends C { async function() {} }`);
+    testSyntax(`"use strict"; class C { static async function() {} }`);
+    testSyntax(`"use strict"; class C {}; class C2 extends C { static async function() {} }`);
+    testSyntax(`"use strict"; class C { async 'function'() {} }`);
+    testSyntax(`"use strict"; class C {}; class C2 extends C { async 'function'() {} }`);
+    testSyntax(`"use strict"; class C { static async 'function'() {} }`);
+    testSyntax(`"use strict"; class C {}; class C2 extends C { static async 'function'() {} }`);
 })();
 
 (function testNestedAsyncAwaitSyntax() {
@@ -124,6 +159,9 @@ function testSyntaxError(script, message) {
 
 
 (function testTopLevelAsyncAwaitSyntaxSloppyMode() {
+    testSyntaxError(`({ async 
+        foo() {} })`);
+    testSyntaxError(`({async =  1})`);
     testSyntaxError(`var asyncFn = async function await() {}`);
     testSyntaxError(`var asyncFn = async () => var await = 'test';`);
     testSyntaxError(`var asyncFn = async () => { var await = 'test'; };`);
@@ -133,19 +171,29 @@ function testSyntaxError(script, message) {
     testSyntaxError(`var asyncFn = async (await) => 'test';`);
     testSyntaxError(`async function asyncFunctionDeclaration(await) {}`);
 
-    // FIXME: MethodDefinitions do not apply StrictFormalParameters restrictions
-    //        in sloppy mode (https://bugs.webkit.org/show_bug.cgi?id=161408)
-    //testSyntaxError(`var outerObject = { async method(a, a) {} }`);
-    //testSyntaxError(`var outerObject = { async ['meth' + 'od'](a, a) {} }`);
-    //testSyntaxError(`var outerObject = { async 'method'(a, a) {} }`);
-    //testSyntaxError(`var outerObject = { async 0(a, a) {} }`);
+    testSyntaxError(`var outerObject = { async method(a, a) {} }`);
+    testSyntaxError(`var outerObject = { async ['meth' + 'od'](a, a) {} }`);
+    testSyntaxError(`var outerObject = { async 'method'(a, a) {} }`);
+    testSyntaxError(`var outerObject = { async 0(a, a) {} }`);
+
+    testSyntaxError(`var outerObject = { async method(a, {a}) {} }`);
+    testSyntaxError(`var outerObject = { async method({a}, a) {} }`);
+    testSyntaxError(`var outerObject = { async method({a}, {a}) {} }`);
+    testSyntaxError(`var outerObject = { async method(a, ...a) {} }`);
+    testSyntaxError(`var outerObject = { async method({a}, ...a) {} }`);
+    testSyntaxError(`var outerObject = { async method(a, ...a) {} }`);
+    testSyntaxError(`var outerObject = { async method({a, ...a}) {} }`);
+    testSyntaxError(`var outerObject = { func: async function(a, {a}) {} }`);
+    testSyntaxError(`var outerObject = { func: async function({a}, a) {} }`);
+    testSyntaxError(`var outerObject = { func: async function({a}, {a}) {} }`);
+    testSyntaxError(`var outerObject = { func: async function(a, ...a) {} }`);
+    testSyntaxError(`var outerObject = { func: async function({a}, ...a) {} }`);
+    testSyntaxError(`var outerObject = { func: async function(a, ...a) {} }`);
+    testSyntaxError(`var outerObject = { func: async function({a, ...a}) {} }`);
 
     testSyntaxError(`var asyncArrowFn = async() => await;`);
 
-    testSyntaxError(`var asyncFn = async function*() {}`);
-    testSyntaxError(`async function* asyncGenerator() {}`);
     testSyntaxError(`var O = { *async asyncGeneratorMethod() {} };`);
-    testSyntaxError(`var O = { async *asyncGeneratorMethod() {} };`);
     testSyntaxError(`var O = { async asyncGeneratorMethod*() {} };`);
 
     testSyntaxError(`var asyncFn = async function(x = await 1) { return x; }`);
@@ -197,6 +245,9 @@ function testSyntaxError(script, message) {
 })();
 
 (function testTopLevelAsyncAwaitSyntaxStrictMode() {
+    testSyntaxError(`"use strict"; ({ async 
+        foo() {} })`);
+    testSyntaxError(`"use strict"; ({async =  1})`);
     testSyntaxError(`"use strict"; var asyncFn = async function await() {}`);
     testSyntaxError(`"use strict"; var asyncFn = async () => var await = 'test';`);
     testSyntaxError(`"use strict"; var asyncFn = async () => { var await = 'test'; };`);
@@ -213,11 +264,10 @@ function testSyntaxError(script, message) {
 
     testSyntaxError(`"use strict"; var asyncArrowFn = async() => await;`);
 
-    testSyntaxError(`"use strict"; var asyncFn = async function*() {}`);
-    testSyntaxError(`"use strict"; async function* asyncGenerator() {}`);
     testSyntaxError(`"use strict"; var O = { *async asyncGeneratorMethod() {} };`);
-    testSyntaxError(`"use strict"; var O = { async *asyncGeneratorMethod() {} };`);
     testSyntaxError(`"use strict"; var O = { async asyncGeneratorMethod*() {} };`);
+
+    testSyntax(`"use strict"; var O = { async function() {} };`);
 
     testSyntaxError(`"use strict"; var asyncFn = async function(x = await 1) { return x; }`);
     testSyntaxError(`"use strict"; async function f(x = await 1) { return x; }`);
@@ -391,3 +441,87 @@ async function fn(b) {
     const b = 1;
 }
 `, `SyntaxError: Cannot declare a const variable twice: 'b'.`);
+
+(function testMethodDefinition() {
+    testSyntax("({ async [foo]() {} })");
+    testSyntax("({ async [Symbol.asyncIterator]() {} })");
+    testSyntax("({ async 0() {} })");
+    testSyntax("({ async 'string'() {} })");
+    testSyntax("({ async ident() {} })");
+
+    testSyntax("(class { async [foo]() {} })");
+    testSyntax("(class { async [Symbol.asyncIterator]() {} })");
+    testSyntax("(class { async 0() {} })");
+    testSyntax("(class { async 'string'() {} })");
+    testSyntax("(class { async ident() {} })");
+
+    testSyntax("(class { static async [foo]() {} })");
+    testSyntax("(class { static async [Symbol.asyncIterator]() {} })");
+    testSyntax("(class { static async 0() {} })");
+    testSyntax("(class { static async 'string'() {} })");
+    testSyntax("(class { static async ident() {} })");
+})();
+
+(function testLineTerminator() {
+    let testLineFeedErrors = (prefix, suffix) => {
+        testSyntaxError(`${prefix}// comment
+                         ${suffix}`);
+        testSyntaxError(`${prefix}/* comment
+                         */ ${suffix}`);
+        testSyntaxError(`${prefix}
+                         ${suffix}`);
+        testSyntaxError(`"use strict";${prefix}// comment
+                         ${suffix}`);
+        testSyntaxError(`"use strict";${prefix}/* comment
+                         */ ${suffix}`);
+        testSyntaxError(`"use strict";${prefix}
+                         ${suffix}`);
+    };
+
+    let testLineFeeds = (prefix, suffix) => {
+        testSyntax(`${prefix}// comment
+                    ${suffix}`);
+        testSyntax(`${prefix}/* comment
+                    */${suffix}`);
+        testSyntax(`${prefix}
+                    ${suffix}`);
+        testSyntax(`"use strict";${prefix}// comment
+                    ${suffix}`);
+        testSyntax(`"use strict";${prefix}/* comment
+                    */${suffix}`);
+        testSyntax(`"use strict";${prefix}
+                    ${suffix}`);
+    };
+
+    let tests = [
+        // ObjectLiteral AsyncMethodDefinition
+        { prefix: "({ async", suffix: "method() {} }).method" },
+
+        // ClassLiteral AsyncMethodDefinition
+        { prefix: "(class { async", suffix: "method() {} }).prototype.method" },
+
+        // AsyncArrowFunctions
+        { prefix: "(async", suffix: "param => 1)" },
+        { prefix: "(async", suffix: "(param) => 1)" },
+        { prefix: "(async", suffix: "param => {})" },
+        { prefix: "(async", suffix: "(param) => {})" },
+    ];
+
+    for (let { prefix, suffix } of tests) {
+        testSyntax(`${prefix} ${suffix}`);
+        testSyntax(`"use strict";${prefix} ${suffix}`);
+        shouldBe("function", typeof eval(`${prefix} ${suffix}`));
+        shouldBe("function", typeof eval(`"use strict";${prefix} ${suffix}`));
+        testLineFeedErrors(prefix, suffix);
+    }
+
+    // AsyncFunctionDeclaration
+    testSyntax("async function foo() {}");
+    testLineFeeds("async", "function foo() {}");
+
+    // AsyncFunctionExpression
+    testSyntax("var x = async function foo() {}");
+    testSyntax("'use strict';var x = async function foo() {}");
+    testLineFeeds("var x = async", "function foo() {}");
+    testLineFeedErrors("var x = async", "function() {}");
+})();

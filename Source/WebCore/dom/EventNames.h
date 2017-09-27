@@ -45,6 +45,7 @@ namespace WebCore {
     macro(DOMNodeRemovedFromDocument) \
     macro(DOMSubtreeModified) \
     macro(abort) \
+    macro(activate) \
     macro(active) \
     macro(addsourcebuffer) \
     macro(addstream) \
@@ -67,6 +68,7 @@ namespace WebCore {
     macro(blocked) \
     macro(blur) \
     macro(boundary) \
+    macro(bufferedamountlow) \
     macro(cached) \
     macro(cancel) \
     macro(canplay) \
@@ -82,13 +84,16 @@ namespace WebCore {
     macro(compositionstart) \
     macro(compositionupdate) \
     macro(connect) \
+    macro(connectionstatechange) \
     macro(connecting) \
     macro(contextmenu) \
+    macro(controllerchange) \
     macro(copy) \
     macro(cuechange) \
     macro(cut) \
     macro(datachannel) \
     macro(dblclick) \
+    macro(devicechange) \
     macro(devicemotion) \
     macro(deviceorientation) \
     macro(dischargingtimechange) \
@@ -109,6 +114,7 @@ namespace WebCore {
     macro(enter) \
     macro(error) \
     macro(exit) \
+    macro(fetch) \
     macro(focus) \
     macro(focusin) \
     macro(focusout) \
@@ -128,6 +134,7 @@ namespace WebCore {
     macro(icegatheringstatechange) \
     macro(inactive) \
     macro(input) \
+    macro(install) \
     macro(invalid) \
     macro(keydown) \
     macro(keypress) \
@@ -145,6 +152,7 @@ namespace WebCore {
     macro(loadstart) \
     macro(mark) \
     macro(message) \
+    macro(messageerror) \
     macro(mousedown) \
     macro(mouseenter) \
     macro(mouseleave) \
@@ -180,6 +188,7 @@ namespace WebCore {
     macro(progress) \
     macro(ratechange) \
     macro(readystatechange) \
+    macro(rejectionhandled) \
     macro(removesourcebuffer) \
     macro(removestream) \
     macro(removetrack) \
@@ -196,8 +205,10 @@ namespace WebCore {
     macro(select) \
     macro(selectionchange) \
     macro(selectstart) \
-    macro(shippingmethodselected) \
+    macro(shippingaddresschange) \
     macro(shippingcontactselected) \
+    macro(shippingmethodselected) \
+    macro(shippingoptionchange) \
     macro(show) \
     macro(signalingstatechange) \
     macro(slotchange) \
@@ -228,10 +239,12 @@ namespace WebCore {
     macro(touchstart) \
     macro(track) \
     macro(transitionend) \
+    macro(unhandledrejection) \
     macro(unload) \
     macro(unmute) \
     macro(update) \
     macro(updateend) \
+    macro(updatefound) \
     macro(updateready) \
     macro(updatestart) \
     macro(upgradeneeded) \
@@ -239,8 +252,16 @@ namespace WebCore {
     macro(versionchange) \
     macro(visibilitychange) \
     macro(volumechange) \
+    macro(vrdisplayactivate) \
+    macro(vrdisplayblur) \
+    macro(vrdisplayconnect) \
+    macro(vrdisplaydeactivate) \
+    macro(vrdisplaydisconnect) \
+    macro(vrdisplayfocus) \
+    macro(vrdisplaypresentchange) \
     macro(waiting) \
     macro(waitingforkey) \
+    macro(webglcontextchanged) \
     macro(webglcontextcreationerror) \
     macro(webglcontextlost) \
     macro(webglcontextrestored) \
@@ -252,7 +273,6 @@ namespace WebCore {
     macro(webkitTransitionEnd) \
     macro(webkitbeginfullscreen) \
     macro(webkitcurrentplaybacktargetiswirelesschanged) \
-    macro(webkitdeviceproximity) \
     macro(webkitendfullscreen) \
     macro(webkitfullscreenchange) \
     macro(webkitfullscreenerror) \
@@ -311,11 +331,13 @@ public:
     bool isWheelEventType(const AtomicString& eventType) const;
     bool isGestureEventType(const AtomicString& eventType) const;
     bool isTouchEventType(const AtomicString& eventType) const;
+    bool isTouchScrollBlockingEventType(const AtomicString& eventType) const;
 #if ENABLE(GAMEPAD)
     bool isGamepadEventType(const AtomicString& eventType) const;
 #endif
 
     std::array<std::reference_wrapper<const AtomicString>, 5> touchEventNames() const;
+    std::array<std::reference_wrapper<const AtomicString>, 3> gestureEventNames() const;
 
 private:
     EventNames(); // Private to prevent accidental call to EventNames() instead of eventNames().
@@ -336,6 +358,12 @@ inline bool EventNames::isGestureEventType(const AtomicString& eventType) const
     return eventType == gesturestartEvent || eventType == gesturechangeEvent || eventType == gestureendEvent;
 }
 
+inline bool EventNames::isTouchScrollBlockingEventType(const AtomicString& eventType) const
+{
+    return eventType == touchstartEvent
+        || eventType == touchmoveEvent;
+}
+
 inline bool EventNames::isTouchEventType(const AtomicString& eventType) const
 {
     return eventType == touchstartEvent
@@ -354,6 +382,11 @@ inline bool EventNames::isWheelEventType(const AtomicString& eventType) const
 inline std::array<std::reference_wrapper<const AtomicString>, 5> EventNames::touchEventNames() const
 {
     return { { touchstartEvent, touchmoveEvent, touchendEvent, touchcancelEvent, touchforcechangeEvent } };
+}
+
+inline std::array<std::reference_wrapper<const AtomicString>, 3> EventNames::gestureEventNames() const
+{
+    return { { gesturestartEvent, gesturechangeEvent, gestureendEvent } };
 }
 
 #if ENABLE(GAMEPAD)

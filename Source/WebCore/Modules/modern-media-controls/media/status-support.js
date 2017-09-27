@@ -35,20 +35,23 @@ class StatusSupport extends MediaControllerSupport
 
     get mediaEvents()
     {
-        return ["durationchange", "loadstart", "error", "abort", "suspend", "stalled", "waiting", "emptied", "loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
+        return ["durationchange", "loadstart", "error", "abort", "suspend", "stalled", "waiting", "playing", "emptied", "loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
     }
 
     syncControl()
     {
         const media = this.mediaController.media;
+        const isLiveBroadcast = media.duration === Number.POSITIVE_INFINITY;
+        const canPlayThrough = media.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA && !media.error;
 
         if (!!media.error)
-            this.control.text = "Error";
-        if (media.duration === Number.POSITIVE_INFINITY && media.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)
-            this.control.text = "Live Broadcast";
-        if (media.readyState <= HTMLMediaElement.HAVE_NOTHING && media.networkState === HTMLMediaElement.NETWORK_LOADING)
-            this.control.text = "Loading";
+            this.control.text = UIString("Error");
+        else if (isLiveBroadcast && media.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA)
+            this.control.text = UIString("Live Broadcast");
+        else
+            this.control.text = "";
+
+        this.mediaController.controls.timeControl.loading = !media.played.length && !canPlayThrough && media.networkState === HTMLMediaElement.NETWORK_LOADING;
     }
 
 }
- 

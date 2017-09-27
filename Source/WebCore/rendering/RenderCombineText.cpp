@@ -54,6 +54,7 @@ void RenderCombineText::styleDidChange(StyleDifference diff, const RenderStyle* 
     }
 
     m_needsFontUpdate = true;
+    combineTextIfNeeded();
 }
 
 void RenderCombineText::setRenderedText(const String& text)
@@ -61,6 +62,7 @@ void RenderCombineText::setRenderedText(const String& text)
     RenderText::setRenderedText(text);
 
     m_needsFontUpdate = true;
+    combineTextIfNeeded();
 }
 
 float RenderCombineText::width(unsigned from, unsigned length, const FontCascade& font, float xPosition, HashSet<const Font*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
@@ -71,10 +73,10 @@ float RenderCombineText::width(unsigned from, unsigned length, const FontCascade
     return RenderText::width(from, length, font, xPosition, fallbackFonts, glyphOverflow);
 }
 
-Optional<FloatPoint> RenderCombineText::computeTextOrigin(const FloatRect& boxRect) const
+std::optional<FloatPoint> RenderCombineText::computeTextOrigin(const FloatRect& boxRect) const
 {
     if (!m_isCombined)
-        return Nullopt;
+        return std::nullopt;
 
     // Visually center m_combinedTextWidth/Ascent/Descent within boxRect
     FloatPoint result = boxRect.minXMaxYCorner();
@@ -95,7 +97,7 @@ String RenderCombineText::combinedStringForRendering() const
     return { };
 }
 
-void RenderCombineText::combineText()
+void RenderCombineText::combineTextIfNeeded()
 {
     if (!m_needsFontUpdate)
         return;
@@ -136,8 +138,8 @@ void RenderCombineText::combineText()
     else {
         // Need to try compressed glyphs.
         static const FontWidthVariant widthVariants[] = { HalfWidth, ThirdWidth, QuarterWidth };
-        for (size_t i = 0 ; i < WTF_ARRAY_LENGTH(widthVariants) ; ++i) {
-            description.setWidthVariant(widthVariants[i]); // When modifying this, make sure to keep it in sync with FontPlatformData::isForTextCombine()!
+        for (auto widthVariant : widthVariants) {
+            description.setWidthVariant(widthVariant); // When modifying this, make sure to keep it in sync with FontPlatformData::isForTextCombine()!
 
             FontCascade compressedFont(description, style().fontCascade().letterSpacing(), style().fontCascade().wordSpacing());
             compressedFont.update(fontSelector);
@@ -192,6 +194,8 @@ void RenderCombineText::combineText()
         m_combinedTextWidth = combinedTextWidth;
         m_combinedTextAscent = glyphOverflow.top;
         m_combinedTextDescent = glyphOverflow.bottom;
+        m_lineBoxes.dirtyRange(*this, 0, originalText().length(), originalText().length());
+        setNeedsLayout();
     }
 }
 

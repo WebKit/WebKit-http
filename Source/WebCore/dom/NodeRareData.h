@@ -22,22 +22,15 @@
 #pragma once
 
 #include "ChildNodeList.h"
-#include "ClassCollection.h"
-#include "DOMTokenList.h"
 #include "HTMLCollection.h"
 #include "HTMLNames.h"
 #include "LiveNodeList.h"
-#include "MutationObserver.h"
 #include "MutationObserverRegistration.h"
 #include "Page.h"
 #include "QualifiedName.h"
 #include "TagCollection.h"
 #include <wtf/HashSet.h>
 #include <wtf/text/AtomicString.h>
-
-#if ENABLE(VIDEO_TRACK)
-#include "TextTrack.h"
-#endif
 
 namespace WebCore {
 
@@ -129,7 +122,7 @@ public:
 
     ALWAYS_INLINE Ref<TagCollectionNS> addCachedTagCollectionNS(ContainerNode& node, const AtomicString& namespaceURI, const AtomicString& localName)
     {
-        QualifiedName name(nullAtom, localName, namespaceURI);
+        QualifiedName name(nullAtom(), localName, namespaceURI);
         TagCollectionNSCache::AddResult result = m_tagCollectionNSCache.fastAdd(name, nullptr);
         if (!result.isNewEntry)
             return *result.iterator->value;
@@ -154,7 +147,7 @@ public:
     template<typename T, typename ContainerType>
     ALWAYS_INLINE Ref<T> addCachedCollection(ContainerType& container, CollectionType collectionType)
     {
-        CollectionCacheMap::AddResult result = m_cachedCollections.fastAdd(namedCollectionKey(collectionType, starAtom), nullptr);
+        CollectionCacheMap::AddResult result = m_cachedCollections.fastAdd(namedCollectionKey(collectionType, starAtom()), nullptr);
         if (!result.isNewEntry)
             return static_cast<T&>(*result.iterator->value);
 
@@ -166,11 +159,11 @@ public:
     template<typename T>
     T* cachedCollection(CollectionType collectionType)
     {
-        return static_cast<T*>(m_cachedCollections.get(namedCollectionKey(collectionType, starAtom)));
+        return static_cast<T*>(m_cachedCollections.get(namedCollectionKey(collectionType, starAtom())));
     }
 
     template <class NodeListType>
-    void removeCacheWithAtomicName(NodeListType* list, const AtomicString& name = starAtom)
+    void removeCacheWithAtomicName(NodeListType* list, const AtomicString& name = starAtom())
     {
         ASSERT(list == m_atomicNameCaches.get(namedNodeListKey<NodeListType>(name)));
         if (deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(list->ownerNode()))
@@ -180,14 +173,14 @@ public:
 
     void removeCachedTagCollectionNS(HTMLCollection& collection, const AtomicString& namespaceURI, const AtomicString& localName)
     {
-        QualifiedName name(nullAtom, localName, namespaceURI);
+        QualifiedName name(nullAtom(), localName, namespaceURI);
         ASSERT(&collection == m_tagCollectionNSCache.get(name));
         if (deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(collection.ownerNode()))
             return;
         m_tagCollectionNSCache.remove(name);
     }
 
-    void removeCachedCollection(HTMLCollection* collection, const AtomicString& name = starAtom)
+    void removeCachedCollection(HTMLCollection* collection, const AtomicString& name = starAtom())
     {
         ASSERT(collection == m_cachedCollections.get(namedCollectionKey(collection->type(), name)));
         if (deleteThisAndUpdateNodeRareDataIfAboutToRemoveLastList(collection->ownerNode()))
@@ -195,31 +188,31 @@ public:
         m_cachedCollections.remove(namedCollectionKey(collection->type(), name));
     }
 
-    void invalidateCaches(const QualifiedName* attrName = nullptr);
+    void invalidateCaches();
+    void invalidateCachesForAttribute(const QualifiedName& attrName);
 
     void adoptTreeScope()
     {
         invalidateCaches();
     }
 
-    void adoptDocument(Document* oldDocument, Document* newDocument)
+    void adoptDocument(Document& oldDocument, Document& newDocument)
     {
-        ASSERT(oldDocument);
-        if (oldDocument == newDocument) {
+        if (&oldDocument == &newDocument) {
             invalidateCaches();
             return;
         }
 
         for (auto& cache : m_atomicNameCaches.values())
-            cache->invalidateCache(*oldDocument);
+            cache->invalidateCacheForDocument(oldDocument);
 
         for (auto& list : m_tagCollectionNSCache.values()) {
             ASSERT(!list->isRootedAtDocument());
-            list->invalidateCache(*oldDocument);
+            list->invalidateCacheForDocument(oldDocument);
         }
 
         for (auto& collection : m_cachedCollections.values())
-            collection->invalidateCache(*oldDocument);
+            collection->invalidateCacheForDocument(oldDocument);
     }
 
 private:

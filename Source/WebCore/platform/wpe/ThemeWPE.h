@@ -23,28 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThemeWPE_h
-#define ThemeWPE_h
+#pragma once
 
 #include "Theme.h"
 
 namespace WebCore {
 
-class ThemeWPE : public Theme {
-public:
-    ThemeWPE() { }
-    virtual ~ThemeWPE() { }
-
-    virtual LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float) const override;
-
-    virtual void paint(ControlPart, ControlStates&, GraphicsContext&, const FloatRect&, float, ScrollView*, float, float) override;
-
+class ThemeWPE final : public Theme {
 private:
+    LengthSize controlSize(ControlPart, const FontCascade&, const LengthSize&, float) const final;
+
+    void paint(ControlPart, ControlStates&, GraphicsContext&, const FloatRect&, float, ScrollView*, float, float) final;
+
     void paintCheckbox(ControlStates&, GraphicsContext&, const FloatRect&, float);
     void paintRadio(ControlStates&, GraphicsContext&, const FloatRect&, float);
     void paintButton(ControlStates&, GraphicsContext&, const FloatRect&, float);
 };
 
 } // namespace WebCore
-
-#endif // ThemeWPE_h

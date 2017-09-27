@@ -26,18 +26,19 @@
 #pragma once
 
 #include "ApplicationCache.h"
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 
-    class URL;
+class URL;
 
-    struct Manifest {
-        Vector<URL> onlineWhitelistedURLs;
-        HashSet<String> explicitURLs;
-        FallbackURLVector fallbackURLs;
-        bool allowAllNetworkRequests; // Wildcard found in NETWORK section.
-    };
+struct Manifest {
+    Vector<URL> onlineWhitelistedURLs;
+    HashSet<String> explicitURLs;
+    FallbackURLVector fallbackURLs;
+    bool allowAllNetworkRequests; // Wildcard found in NETWORK section.
+};
 
-    bool parseManifest(const URL& manifestURL, const char* data, int length, Manifest&);
+bool parseManifest(const URL& manifestURL, const String& manifestMIMEType, const char* data, int length, Manifest&);
 
 } // namespace WebCore

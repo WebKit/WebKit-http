@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Target = class Target extends WebInspector.Object
+WI.Target = class Target extends WI.Object
 {
     constructor(identifier, name, type, connection)
     {
@@ -35,12 +35,10 @@ WebInspector.Target = class Target extends WebInspector.Object
         this._connection = connection;
         this._executionContext = null;
         this._mainResource = null;
-        this._resourceCollection = new WebInspector.ResourceCollection;
-        this._extraScriptCollection = new WebInspector.Collection(WebInspector.Collection.TypeVerifier.Script);
+        this._resourceCollection = new WI.ResourceCollection;
+        this._extraScriptCollection = new WI.Collection(WI.Collection.TypeVerifier.Script);
 
         this._connection.target = this;
-
-        this.initialize();
     }
 
     // Agents
@@ -48,6 +46,7 @@ WebInspector.Target = class Target extends WebInspector.Object
     get RuntimeAgent() { return this._connection._agents.Runtime; }
     get ConsoleAgent() { return this._connection._agents.Console; }
     get DebuggerAgent() { return this._connection._agents.Debugger; }
+    get HeapAgent() { return this._connection._agents.Heap; }
 
     // Public
 
@@ -67,7 +66,7 @@ WebInspector.Target = class Target extends WebInspector.Object
     {
         this._resourceCollection.add(resource);
 
-        this.dispatchEventToListeners(WebInspector.Target.Event.ResourceAdded, {resource});
+        this.dispatchEventToListeners(WI.Target.Event.ResourceAdded, {resource});
     }
 
     adoptResource(resource)
@@ -81,79 +80,16 @@ WebInspector.Target = class Target extends WebInspector.Object
     {
         this._extraScriptCollection.add(script);
 
-        this.dispatchEventToListeners(WebInspector.Target.Event.ScriptAdded, {script});
+        this.dispatchEventToListeners(WI.Target.Event.ScriptAdded, {script});
     }
 };
 
-WebInspector.Target.Type = {
+WI.Target.Type = {
     Main: Symbol("main"),
     Worker: Symbol("worker"),
 };
 
-WebInspector.Target.Event = {
+WI.Target.Event = {
     ResourceAdded: "target-resource-added",
     ScriptAdded: "target-script-added",
 };
-
-WebInspector.MainTarget = class MainTarget extends WebInspector.Target
-{
-    constructor(connection)
-    {
-        super("", "", WebInspector.Target.Type.Main, InspectorBackend.mainConnection);
-    }
-
-    // Protected (Target)
-
-    get displayName()
-    {
-        if (WebInspector.debuggableType === WebInspector.DebuggableType.Web)
-            return WebInspector.UIString("Main Frame");
-        return WebInspector.UIString("Main Context");
-    }
-
-    get mainResource()
-    {
-        let mainFrame = WebInspector.frameResourceManager.mainFrame;
-        return mainFrame ? mainFrame.mainResource : null;
-    }
-
-    initialize()
-    {
-        this._executionContext = new WebInspector.ExecutionContext(this, WebInspector.RuntimeManager.TopLevelContextExecutionIdentifier, this.displayName, true, null);
-    }
-}
-
-WebInspector.WorkerTarget = class WorkerTarget extends WebInspector.Target
-{
-    constructor(workerId, name, connection)
-    {
-        super(workerId, name, WebInspector.Target.Type.Worker, connection);
-    }
-
-    // Protected (Target)
-
-    get displayName()
-    {
-        return WebInspector.displayNameForURL(this._name);
-    }
-
-    initialize()
-    {
-        WebInspector.frameResourceManager.adoptOrphanedResourcesForTarget(this);
-
-        if (this.RuntimeAgent) {
-            this._executionContext = new WebInspector.ExecutionContext(this, WebInspector.RuntimeManager.TopLevelContextExecutionIdentifier, this.displayName, false, null);
-            this.RuntimeAgent.enable();
-            if (WebInspector.showJavaScriptTypeInformationSetting && WebInspector.showJavaScriptTypeInformationSetting.value)
-                this.RuntimeAgent.enableTypeProfiler();
-            if (WebInspector.enableControlFlowProfilerSetting && WebInspector.enableControlFlowProfilerSetting.value)
-                this.RuntimeAgent.enableControlFlowProfiler();
-        }
-
-        if (this.DebuggerAgent)
-            WebInspector.debuggerManager.initializeTarget(this);
-
-        if (this.ConsoleAgent)
-            this.ConsoleAgent.enable();
-    }
-}

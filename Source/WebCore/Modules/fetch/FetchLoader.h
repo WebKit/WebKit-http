@@ -28,8 +28,6 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "FetchBodyConsumer.h"
 #include "ThreadableLoader.h"
 #include "ThreadableLoaderClient.h"
@@ -57,7 +55,7 @@ private:
     // ThreadableLoaderClient API.
     void didReceiveResponse(unsigned long, const ResourceResponse&) final;
     void didReceiveData(const char*, int) final;
-    void didFinishLoading(unsigned long, double) final;
+    void didFinishLoading(unsigned long) final;
     void didFail(const ResourceError&) final;
 
 private:
@@ -68,5 +66,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

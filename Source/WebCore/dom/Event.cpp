@@ -23,18 +23,21 @@
 #include "config.h"
 #include "Event.h"
 
+#include "DOMWindow.h"
+#include "Document.h"
 #include "EventNames.h"
 #include "EventPath.h"
 #include "EventTarget.h"
-#include "RuntimeApplicationChecks.h"
+#include "Performance.h"
 #include "UserGestureIndicator.h"
+#include "WorkerGlobalScope.h"
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
 Event::Event(IsTrusted isTrusted)
     : m_isTrusted(isTrusted == IsTrusted::Yes)
-    , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
+    , m_createTime(MonotonicTime::now())
 {
 }
 
@@ -44,17 +47,17 @@ Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableAr
     , m_canBubble(canBubbleArg)
     , m_cancelable(cancelableArg)
     , m_isTrusted(true)
-    , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
+    , m_createTime(MonotonicTime::now())
 {
 }
 
-Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableArg, double timestamp)
+Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableArg, MonotonicTime timestamp)
     : m_type(eventType)
     , m_isInitialized(true)
     , m_canBubble(canBubbleArg)
     , m_cancelable(cancelableArg)
     , m_isTrusted(true)
-    , m_createTime(convertSecondsToDOMTimeStamp(timestamp))
+    , m_createTime(timestamp)
 {
 }
 
@@ -65,7 +68,7 @@ Event::Event(const AtomicString& eventType, const EventInit& initializer, IsTrus
     , m_cancelable(initializer.cancelable)
     , m_composed(initializer.composed)
     , m_isTrusted(isTrusted == IsTrusted::Yes)
-    , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
+    , m_createTime(MonotonicTime::now())
 {
 }
 
@@ -88,23 +91,6 @@ void Event::initEvent(const AtomicString& eventTypeArg, bool canBubbleArg, bool 
     m_type = eventTypeArg;
     m_canBubble = canBubbleArg;
     m_cancelable = cancelableArg;
-}
-
-ExceptionOr<void> Event::initEventForBindings(ScriptExecutionContext& scriptExecutionContext, const AtomicString& type, bool bubbles)
-{
-#if PLATFORM(IOS)
-    // FIXME: Temporary quirk for Baidu Nuomi App which calls initEvent() with too few parameters (rdar://problem/28707838).
-    if (IOSApplication::isBaiduNuomi()) {
-        scriptExecutionContext.addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Calling Event.prototype.initEvent() with less than 3 parameters is deprecated."));
-        initEvent(type, bubbles, false);
-        return { };
-    }
-#else
-    UNUSED_PARAM(scriptExecutionContext);
-    UNUSED_PARAM(type);
-    UNUSED_PARAM(bubbles);
-#endif
-    return Exception { TypeError, ASCIILiteral("Not enough arguments") };
 }
 
 bool Event::composed() const
@@ -168,11 +154,6 @@ bool Event::isTouchEvent() const
     return false;
 }
 
-bool Event::isDragEvent() const
-{
-    return false;
-}
-
 bool Event::isClipboardEvent() const
 {
     return false;
@@ -203,11 +184,6 @@ bool Event::isWheelEvent() const
     return false;
 }
 
-Ref<Event> Event::cloneFor(HTMLIFrameElement*) const
-{
-    return Event::create(type(), bubbles(), cancelable());
-}
-
 void Event::setTarget(RefPtr<EventTarget>&& target)
 {
     if (m_target == target)
@@ -216,6 +192,11 @@ void Event::setTarget(RefPtr<EventTarget>&& target)
     m_target = WTFMove(target);
     if (m_target)
         receivedTarget();
+}
+
+void Event::setCurrentTarget(EventTarget* currentTarget)
+{
+    m_currentTarget = currentTarget;
 }
 
 Vector<EventTarget*> Event::composedPath() const
@@ -237,6 +218,20 @@ void Event::setUnderlyingEvent(Event* underlyingEvent)
             return;
     }
     m_underlyingEvent = underlyingEvent;
+}
+
+DOMHighResTimeStamp Event::timeStampForBindings(ScriptExecutionContext& context) const
+{
+    Performance* performance = nullptr;
+    if (is<WorkerGlobalScope>(context))
+        performance = &downcast<WorkerGlobalScope>(context).performance();
+    else if (auto* window = downcast<Document>(context).domWindow())
+        performance = window->performance();
+
+    if (!performance)
+        return 0;
+
+    return performance->relativeTimeFromTimeOriginInReducedResolution(m_createTime);
 }
 
 } // namespace WebCore

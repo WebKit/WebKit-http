@@ -30,9 +30,7 @@
 
 #include "SQLTransactionStateMachine.h"
 #include <memory>
-#include <wtf/Deque.h>
 #include <wtf/Forward.h>
-#include <wtf/Lock.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -44,7 +42,6 @@ class SQLiteTransaction;
 class SQLStatement;
 class SQLTransaction;
 class SQLTransactionWrapper;
-class SQLValue;
 
 class SQLTransactionBackend : public SQLTransactionStateMachine<SQLTransactionBackend> {
 public:

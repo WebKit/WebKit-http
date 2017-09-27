@@ -32,6 +32,7 @@
 #include "IDBResourceIdentifier.h"
 #include "IDBResultData.h"
 #include "IDBTransaction.h"
+#include <wtf/Function.h>
 #include <wtf/MainThread.h>
 #include <wtf/Threading.h>
 
@@ -61,35 +62,52 @@ public:
         m_performFunction = { };
     }
 
-    void performCompleteOnOriginThread(const IDBResultData& data, RefPtr<TransactionOperation>&& lastRef)
+    void transitionToCompleteOnThisThread(const IDBResultData& data)
+    {
+        ASSERT(m_originThreadID == currentThread());
+        m_transaction->operationCompletedOnServer(data, *this);
+    }
+
+    void transitionToComplete(const IDBResultData& data, RefPtr<TransactionOperation>&& lastRef)
     {
         ASSERT(isMainThread());
 
         if (m_originThreadID == currentThread())
-            completed(data);
+            transitionToCompleteOnThisThread(data);
         else {
-            m_transaction->performCallbackOnOriginThread(*this, &TransactionOperation::completed, data);
+            m_transaction->performCallbackOnOriginThread(*this, &TransactionOperation::transitionToCompleteOnThisThread, data);
             m_transaction->callFunctionOnOriginThread([lastRef = WTFMove(lastRef)]() {
             });
         }
     }
 
-    void completed(const IDBResultData& data)
+    void doComplete(const IDBResultData& data)
     {
         ASSERT(m_originThreadID == currentThread());
-        ASSERT(m_completeFunction);
+
+        // Due to race conditions between the server sending an "operation complete" message and the client
+        // forcefully aborting an operation, it's unavoidable that this method might be called twice.
+        // It's okay to handle that gracefully with an early return.
+        if (!m_completeFunction)
+            return;
+
         m_completeFunction(data);
-        m_transaction->operationDidComplete(*this);
+        m_transaction->operationCompletedOnClient(*this);
 
         // m_completeFunction might be holding the last ref to this TransactionOperation,
         // so we need to do this trick to null it out without first destroying it.
-        std::function<void (const IDBResultData&)> oldCompleteFunction;
+        WTF::Function<void (const IDBResultData&)> oldCompleteFunction;
         std::swap(m_completeFunction, oldCompleteFunction);
     }
 
     const IDBResourceIdentifier& identifier() const { return m_identifier; }
 
     ThreadIdentifier originThreadID() const { return m_originThreadID; }
+
+    IDBRequest* idbRequest() { return m_idbRequest.get(); }
+
+    bool nextRequestCanGoToServer() const { return m_nextRequestCanGoToServer && m_idbRequest; }
+    void setNextRequestCanGoToServer(bool nextRequestCanGoToServer) { m_nextRequestCanGoToServer = nextRequestCanGoToServer; }
 
 protected:
     TransactionOperation(IDBTransaction& transaction)
@@ -106,8 +124,8 @@ protected:
     uint64_t m_indexIdentifier { 0 };
     std::unique_ptr<IDBResourceIdentifier> m_cursorIdentifier;
     IndexedDB::IndexRecordType m_indexRecordType;
-    std::function<void ()> m_performFunction;
-    std::function<void (const IDBResultData&)> m_completeFunction;
+    WTF::Function<void ()> m_performFunction;
+    WTF::Function<void (const IDBResultData&)> m_completeFunction;
 
 private:
     IDBResourceIdentifier transactionIdentifier() const { return m_transaction->info().identifier(); }
@@ -118,6 +136,8 @@ private:
     IndexedDB::IndexRecordType indexRecordType() const { return m_indexRecordType; }
 
     ThreadIdentifier m_originThreadID { currentThread() };
+    RefPtr<IDBRequest> m_idbRequest;
+    bool m_nextRequestCanGoToServer { true };
 };
 
 template <typename... Arguments>

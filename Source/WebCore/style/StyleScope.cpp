@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004-2009, 2011-2012, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2009, 2011-2012, 2015-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -28,28 +28,29 @@
 #include "config.h"
 #include "StyleScope.h"
 
+#include "CSSFontSelector.h"
 #include "CSSStyleSheet.h"
 #include "Element.h"
 #include "ElementChildIterator.h"
 #include "ExtensionStyleSheets.h"
+#include "HTMLHeadElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLLinkElement.h"
+#include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
 #include "InspectorInstrumentation.h"
-#include "Page.h"
-#include "PageGroup.h"
 #include "ProcessingInstruction.h"
-#include "SVGNames.h"
 #include "SVGStyleElement.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "StyleInvalidationAnalysis.h"
+#include "StyleInvalidator.h"
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
 #include "StyleSheetList.h"
 #include "UserContentController.h"
 #include "UserContentURLPattern.h"
 #include "UserStyleSheet.h"
+#include <wtf/SetForScope.h>
 
 namespace WebCore {
 
@@ -73,6 +74,7 @@ Scope::Scope(ShadowRoot& shadowRoot)
 
 Scope::~Scope()
 {
+    ASSERT(!hasPendingSheets());
 }
 
 bool Scope::shouldUseSharedUserAgentShadowTreeStyleResolver() const
@@ -93,9 +95,24 @@ StyleResolver& Scope::resolver()
         return m_document.userAgentShadowTreeStyleResolver();
 
     if (!m_resolver) {
+        SetForScope<bool> isUpdatingStyleResolver { m_isUpdatingStyleResolver, true };
+
         m_resolver = std::make_unique<StyleResolver>(m_document);
+
+        if (!m_shadowRoot) {
+            m_document.fontSelector().buildStarted();
+            m_resolver->ruleSets().initializeUserStyle();
+        } else
+            m_resolver->ruleSets().setUsesSharedUserStyle(m_shadowRoot->mode() != ShadowRootMode::UserAgent);
+
+        m_resolver->addCurrentSVGFontFaceRules();
         m_resolver->appendAuthorStyleSheets(m_activeStyleSheets);
+
+        if (!m_shadowRoot)
+            m_document.fontSelector().buildCompleted();
     }
+    ASSERT(!m_shadowRoot || &m_document == &m_shadowRoot->document());
+    ASSERT(&m_resolver->document() == &m_document);
     return *m_resolver;
 }
 
@@ -117,11 +134,40 @@ void Scope::clearResolver()
 
 Scope& Scope::forNode(Node& node)
 {
-    ASSERT(node.inDocument());
+    ASSERT(node.isConnected());
     auto* shadowRoot = node.containingShadowRoot();
     if (shadowRoot)
         return shadowRoot->styleScope();
     return node.document().styleScope();
+}
+
+Scope* Scope::forOrdinal(Element& element, ScopeOrdinal ordinal)
+{
+    switch (ordinal) {
+    case ScopeOrdinal::Element:
+        return &forNode(element);
+    case ScopeOrdinal::ContainingHost: {
+        auto* containingShadowRoot = element.containingShadowRoot();
+        if (!containingShadowRoot)
+            return nullptr;
+        return &forNode(*containingShadowRoot->host());
+    }
+    case ScopeOrdinal::Shadow: {
+        auto* shadowRoot = element.shadowRoot();
+        if (!shadowRoot)
+            return nullptr;
+        return &shadowRoot->styleScope();
+    }
+    default: {
+        ASSERT(ordinal >= ScopeOrdinal::FirstSlot);
+        auto slotIndex = ScopeOrdinal::FirstSlot;
+        for (auto* slot = element.assignedSlot(); slot; slot = slot->assignedSlot(), ++slotIndex) {
+            if (slotIndex == ordinal)
+                return &forNode(*slot);
+        }
+        return nullptr;
+    }
+    }
 }
 
 void Scope::setPreferredStylesheetSetName(const String& name)
@@ -140,26 +186,49 @@ void Scope::setSelectedStylesheetSetName(const String& name)
     didChangeActiveStyleSheetCandidates();
 }
 
-// This method is called whenever a top-level stylesheet has finished loading.
-void Scope::removePendingSheet(RemovePendingSheetNotificationType notification)
+
+void Scope::addPendingSheet(const Element& element)
 {
-    // Make sure we knew this sheet was pending, and that our count isn't out of sync.
-    ASSERT(m_pendingStyleSheetCount > 0);
+    ASSERT(!hasPendingSheet(element));
 
-    m_pendingStyleSheetCount--;
-    
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Stylesheet loaded at time %d. %d stylesheets still remain.\n", elapsedTime(), m_pendingStylesheets);
-#endif
+    bool isInHead = ancestorsOfType<HTMLHeadElement>(element).first();
+    if (isInHead)
+        m_elementsInHeadWithPendingSheets.add(&element);
+    else
+        m_elementsInBodyWithPendingSheets.add(&element);
+}
 
-    if (m_pendingStyleSheetCount)
+// This method is called whenever a top-level stylesheet has finished loading.
+void Scope::removePendingSheet(const Element& element)
+{
+    ASSERT(hasPendingSheet(element));
+
+    if (!m_elementsInHeadWithPendingSheets.remove(&element))
+        m_elementsInBodyWithPendingSheets.remove(&element);
+
+    didRemovePendingStylesheet();
+}
+
+void Scope::addPendingSheet(const ProcessingInstruction& processingInstruction)
+{
+    ASSERT(!m_processingInstructionsWithPendingSheets.contains(&processingInstruction));
+
+    m_processingInstructionsWithPendingSheets.add(&processingInstruction);
+}
+
+void Scope::removePendingSheet(const ProcessingInstruction& processingInstruction)
+{
+    ASSERT(m_processingInstructionsWithPendingSheets.contains(&processingInstruction));
+
+    m_processingInstructionsWithPendingSheets.remove(&processingInstruction);
+
+    didRemovePendingStylesheet();
+}
+
+void Scope::didRemovePendingStylesheet()
+{
+    if (hasPendingSheets())
         return;
-
-    if (notification == RemovePendingSheetNotifyLater) {
-        m_document.setNeedsNotifyRemoveAllPendingStylesheet();
-        return;
-    }
 
     didChangeActiveStyleSheetCandidates();
 
@@ -167,9 +236,24 @@ void Scope::removePendingSheet(RemovePendingSheetNotificationType notification)
         m_document.didRemoveAllPendingStylesheet();
 }
 
+bool Scope::hasPendingSheet(const Element& element) const
+{
+    return m_elementsInHeadWithPendingSheets.contains(&element) || hasPendingSheetInBody(element);
+}
+
+bool Scope::hasPendingSheetInBody(const Element& element) const
+{
+    return m_elementsInBodyWithPendingSheets.contains(&element);
+}
+
+bool Scope::hasPendingSheet(const ProcessingInstruction& processingInstruction) const
+{
+    return m_processingInstructionsWithPendingSheets.contains(&processingInstruction);
+}
+
 void Scope::addStyleSheetCandidateNode(Node& node, bool createdByParser)
 {
-    if (!node.inDocument())
+    if (!node.isConnected())
         return;
     
     // Until the <body> exists, we have no choice but to compare document positions,
@@ -208,7 +292,7 @@ void Scope::removeStyleSheetCandidateNode(Node& node)
 
 void Scope::collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>& sheets)
 {
-    if (m_document.settings() && !m_document.settings()->authorAndUserStylesEnabled())
+    if (!m_document.settings().authorAndUserStylesEnabled())
         return;
 
     for (auto& node : m_styleSheetCandidateNodes) {
@@ -248,7 +332,7 @@ void Scope::collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>& sheets)
                     continue;
                 }
                 if (!linkElement.sheet())
-                    title = nullAtom;
+                    title = nullAtom();
             }
             // Get the current preferred styleset. This is the
             // set of sheets that will be enabled.
@@ -323,17 +407,17 @@ Scope::StyleResolverUpdateType Scope::analyzeStyleSheetChange(const Vector<RefPt
     auto styleResolverUpdateType = hasInsertions ? Reset : Additive;
 
     // If we are already parsing the body and so may have significant amount of elements, put some effort into trying to avoid style recalcs.
-    if (!m_document.bodyOrFrameset() || m_document.hasNodesWithPlaceholderStyle())
+    if (!m_document.bodyOrFrameset() || m_document.hasNodesWithNonFinalStyle() || m_document.hasNodesWithMissingStyle())
         return styleResolverUpdateType;
 
-    StyleInvalidationAnalysis invalidationAnalysis(addedSheets, styleResolver.mediaQueryEvaluator());
-    if (invalidationAnalysis.dirtiesAllStyle())
+    Invalidator invalidator(addedSheets, styleResolver.mediaQueryEvaluator());
+    if (invalidator.dirtiesAllStyle())
         return styleResolverUpdateType;
 
     if (m_shadowRoot)
-        invalidationAnalysis.invalidateStyle(*m_shadowRoot);
+        invalidator.invalidateStyle(*m_shadowRoot);
     else
-        invalidationAnalysis.invalidateStyle(m_document);
+        invalidator.invalidateStyle(m_document);
 
     requiresFullStyleRecalc = false;
 
@@ -371,15 +455,6 @@ void Scope::updateActiveStyleSheets(UpdateType updateType)
         m_document.scheduleForcedStyleRecalc();
         return;
     }
-
-    // Don't bother updating, since we haven't loaded all our style info yet
-    // and haven't calculated the style resolver for the first time.
-    if (!m_shadowRoot && !m_didUpdateActiveStyleSheets && m_pendingStyleSheetCount) {
-        clearResolver();
-        return;
-    }
-
-    m_didUpdateActiveStyleSheets = true;
 
     Vector<RefPtr<StyleSheet>> activeStyleSheets;
     collectActiveStyleSheets(activeStyleSheets);
@@ -433,6 +508,7 @@ void Scope::updateStyleResolver(Vector<RefPtr<CSSStyleSheet>>& activeStyleSheets
     }
     auto& styleResolver = resolver();
 
+    SetForScope<bool> isUpdatingStyleResolver { m_isUpdatingStyleResolver, true };
     if (updateType == Reset) {
         styleResolver.ruleSets().resetAuthorStyle();
         styleResolver.appendAuthorStyleSheets(activeStyleSheets);
@@ -503,6 +579,10 @@ void Scope::clearPendingUpdate()
 
 void Scope::scheduleUpdate(UpdateType update)
 {
+    // FIXME: The m_isUpdatingStyleResolver test is here because extension stylesheets can get us here from StyleResolver::appendAuthorStyleSheets.
+    if (update == UpdateType::ContentsOrInterpretation && !m_isUpdatingStyleResolver)
+        clearResolver();
+
     if (!m_pendingUpdate || *m_pendingUpdate < update) {
         m_pendingUpdate = update;
         if (m_shadowRoot)
@@ -511,7 +591,7 @@ void Scope::scheduleUpdate(UpdateType update)
 
     if (m_pendingUpdateTimer.isActive())
         return;
-    m_pendingUpdateTimer.startOneShot(0);
+    m_pendingUpdateTimer.startOneShot(0_s);
 }
 
 void Scope::didChangeActiveStyleSheetCandidates()

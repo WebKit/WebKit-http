@@ -35,6 +35,7 @@
 #include "ContentSecurityPolicy.h"
 #include "DOMWindow.h"
 #include "DocumentLoader.h"
+#include "Event.h"
 #include "EventNames.h"
 #include "FormState.h"
 #include "Frame.h"
@@ -43,7 +44,7 @@
 #include "HTMLFormElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLPlugInElement.h"
-#include "SecurityOrigin.h"
+#include <wtf/CompletionHandler.h>
 
 #if USE(QUICK_LOOK)
 #include "QuickLook.h"
@@ -75,23 +76,23 @@ PolicyChecker::PolicyChecker(Frame& frame)
 {
 }
 
-void PolicyChecker::checkNavigationPolicy(const ResourceRequest& newRequest, bool didReceiveRedirectResponse, NavigationPolicyDecisionFunction function)
+void PolicyChecker::checkNavigationPolicy(const ResourceRequest& newRequest, bool didReceiveRedirectResponse, NavigationPolicyDecisionFunction&& function)
 {
     checkNavigationPolicy(newRequest, didReceiveRedirectResponse, m_frame.loader().activeDocumentLoader(), nullptr, WTFMove(function));
 }
 
-void PolicyChecker::checkNavigationPolicy(const ResourceRequest& request, bool didReceiveRedirectResponse, DocumentLoader* loader, PassRefPtr<FormState> formState, NavigationPolicyDecisionFunction function)
+void PolicyChecker::checkNavigationPolicy(const ResourceRequest& request, bool didReceiveRedirectResponse, DocumentLoader* loader, FormState* formState, NavigationPolicyDecisionFunction&& function)
 {
     NavigationAction action = loader->triggeringAction();
     if (action.isEmpty()) {
-        action = NavigationAction(request, NavigationType::Other, loader->shouldOpenExternalURLsPolicyToPropagate());
+        action = NavigationAction { *m_frame.document(), request, InitiatedByMainFrame::Unknown, NavigationType::Other, loader->shouldOpenExternalURLsPolicyToPropagate() };
         loader->setTriggeringAction(action);
     }
 
     // Don't ask more than once for the same request or if we are loading an empty URL.
     // This avoids confusion on the part of the client.
     if (equalIgnoringHeaderFields(request, loader->lastCheckedRequest()) || (!request.isNull() && request.url().isEmpty())) {
-        function(request, 0, true);
+        function(request, nullptr, true);
         loader->setLastCheckedRequest(request);
         return;
     }
@@ -106,7 +107,7 @@ void PolicyChecker::checkNavigationPolicy(const ResourceRequest& request, bool d
 #endif
         if (isBackForwardLoadType(m_loadType))
             m_loadType = FrameLoadType::Reload;
-        function(request, 0, shouldContinue);
+        function(request, nullptr, shouldContinue);
         return;
     }
 
@@ -116,20 +117,16 @@ void PolicyChecker::checkNavigationPolicy(const ResourceRequest& request, bool d
             // reveal that the frame was blocked. This way, it looks like any other cross-origin page load.
             m_frame.ownerElement()->dispatchEvent(Event::create(eventNames().loadEvent, false, false));
         }
-        function(request, 0, false);
+        function(request, nullptr, false);
         return;
     }
 
     loader->setLastCheckedRequest(request);
 
-    m_callback.set(request, formState.get(), WTFMove(function));
-
 #if USE(QUICK_LOOK)
     // Always allow QuickLook-generated URLs based on the protocol scheme.
-    if (!request.isNull() && request.url().protocolIs(QLPreviewProtocol())) {
-        continueAfterNavigationPolicy(PolicyUse);
-        return;
-    }
+    if (!request.isNull() && isQuickLookPreviewURL(request.url()))
+        return function(request, formState, true);
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
@@ -139,126 +136,66 @@ void PolicyChecker::checkNavigationPolicy(const ResourceRequest& request, bool d
             if (unblocked)
                 frame->loader().reload();
         });
-        continueAfterNavigationPolicy(PolicyIgnore);
-        return;
+        return function({ }, nullptr, false);
     }
     m_contentFilterUnblockHandler = { };
 #endif
 
     m_delegateIsDecidingNavigationPolicy = true;
-    m_suggestedFilename = action.downloadAttribute();
-    m_frame.loader().client().dispatchDecidePolicyForNavigationAction(action, request, formState, [this](PolicyAction action) {
-        continueAfterNavigationPolicy(action);
+    String suggestedFilename = action.downloadAttribute().isEmpty() ? nullAtom() : action.downloadAttribute();
+    ResourceRequest requestCopy = request;
+    m_frame.loader().client().dispatchDecidePolicyForNavigationAction(action, request, didReceiveRedirectResponse, formState, [this, function = WTFMove(function), request = WTFMove(requestCopy), formState = makeRefPtr(formState), suggestedFilename = WTFMove(suggestedFilename)](PolicyAction policyAction) mutable {
+        switch (policyAction) {
+        case PolicyAction::Download:
+            m_frame.loader().setOriginalURLForDownloadRequest(request);
+            m_frame.loader().client().startDownload(request, suggestedFilename);
+            FALLTHROUGH;
+        case PolicyAction::Ignore:
+            return function({ }, nullptr, false);
+        case PolicyAction::Use:
+            if (!m_frame.loader().client().canHandleRequest(request)) {
+                handleUnimplementablePolicy(m_frame.loader().client().cannotShowURLError(request));
+                return function({ }, nullptr, false);
+            }
+            return function(request, formState.get(), true);
+        }
+        ASSERT_NOT_REACHED();
     });
     m_delegateIsDecidingNavigationPolicy = false;
 }
 
-void PolicyChecker::checkNewWindowPolicy(const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& frameName, NewWindowPolicyDecisionFunction function)
+void PolicyChecker::checkNewWindowPolicy(NavigationAction&& navigationAction, const ResourceRequest& request, FormState* formState, const String& frameName, NewWindowPolicyDecisionFunction&& function)
 {
     if (m_frame.document() && m_frame.document()->isSandboxed(SandboxPopups))
-        return continueAfterNavigationPolicy(PolicyIgnore);
+        return function({ }, nullptr, { }, { }, false);
 
-    if (!DOMWindow::allowPopUp(&m_frame))
-        return continueAfterNavigationPolicy(PolicyIgnore);
+    if (!DOMWindow::allowPopUp(m_frame))
+        return function({ }, nullptr, { }, { }, false);
 
-    m_callback.set(request, formState, frameName, action, WTFMove(function));
-    m_frame.loader().client().dispatchDecidePolicyForNewWindowAction(action, request, formState, frameName, [this](PolicyAction action) {
-        continueAfterNewWindowPolicy(action);
+    m_frame.loader().client().dispatchDecidePolicyForNewWindowAction(navigationAction, request, formState, frameName, [frame = makeRef(m_frame), request, formState = makeRefPtr(formState), frameName, navigationAction, function = WTFMove(function)](PolicyAction policyAction) mutable {
+        switch (policyAction) {
+        case PolicyAction::Download:
+            frame->loader().client().startDownload(request);
+            FALLTHROUGH;
+        case PolicyAction::Ignore:
+            function({ }, nullptr, { }, { }, false);
+            return;
+        case PolicyAction::Use:
+            function(request, formState.get(), frameName, navigationAction, true);
+            return;
+        }
+        ASSERT_NOT_REACHED();
     });
-}
-
-void PolicyChecker::checkContentPolicy(const ResourceResponse& response, ContentPolicyDecisionFunction function)
-{
-    m_callback.set(WTFMove(function));
-    m_frame.loader().client().dispatchDecidePolicyForResponse(response, m_frame.loader().activeDocumentLoader()->request(), [this](PolicyAction action) {
-        continueAfterContentPolicy(action);
-    });
-}
-
-void PolicyChecker::cancelCheck()
-{
-    m_frame.loader().client().cancelPolicyCheck();
-    m_callback.clear();
 }
 
 void PolicyChecker::stopCheck()
 {
     m_frame.loader().client().cancelPolicyCheck();
-    PolicyCallback callback = m_callback;
-    m_callback.clear();
-    callback.cancel();
 }
 
 void PolicyChecker::cannotShowMIMEType(const ResourceResponse& response)
 {
     handleUnimplementablePolicy(m_frame.loader().client().cannotShowMIMETypeError(response));
-}
-
-void PolicyChecker::continueLoadAfterWillSubmitForm(PolicyAction)
-{
-    // See header file for an explaination of why this function
-    // isn't like the others.
-    m_frame.loader().continueLoadAfterWillSubmitForm();
-}
-
-void PolicyChecker::continueAfterNavigationPolicy(PolicyAction policy)
-{
-    PolicyCallback callback = m_callback;
-    m_callback.clear();
-
-    bool shouldContinue = policy == PolicyUse;
-
-    switch (policy) {
-        case PolicyIgnore:
-            callback.clearRequest();
-            break;
-        case PolicyDownload: {
-            ResourceRequest request = callback.request();
-            m_frame.loader().setOriginalURLForDownloadRequest(request);
-            m_frame.loader().client().startDownload(request, m_suggestedFilename);
-            callback.clearRequest();
-            break;
-        }
-        case PolicyUse: {
-            ResourceRequest request(callback.request());
-
-            if (!m_frame.loader().client().canHandleRequest(request)) {
-                handleUnimplementablePolicy(m_frame.loader().client().cannotShowURLError(callback.request()));
-                callback.clearRequest();
-                shouldContinue = false;
-            }
-            break;
-        }
-    }
-
-    callback.call(shouldContinue);
-}
-
-void PolicyChecker::continueAfterNewWindowPolicy(PolicyAction policy)
-{
-    PolicyCallback callback = m_callback;
-    m_callback.clear();
-
-    switch (policy) {
-        case PolicyIgnore:
-            callback.clearRequest();
-            break;
-        case PolicyDownload:
-            m_frame.loader().client().startDownload(callback.request());
-            callback.clearRequest();
-            break;
-        case PolicyUse:
-            break;
-    }
-
-    callback.call(policy == PolicyUse);
-}
-
-void PolicyChecker::continueAfterContentPolicy(PolicyAction policy)
-{
-    PolicyCallback callback = m_callback;
-    m_callback.clear();
-    callback.call(policy);
 }
 
 void PolicyChecker::handleUnimplementablePolicy(const ResourceError& error)

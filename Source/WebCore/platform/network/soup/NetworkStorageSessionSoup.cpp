@@ -30,9 +30,11 @@
 
 #if USE(SOUP)
 
+#include "Cookie.h"
 #include "ResourceHandle.h"
 #include "SoupNetworkSession.h"
 #include <libsoup/soup.h>
+#include <wtf/DateMath.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/glib/GUniquePtr.h>
@@ -47,7 +49,7 @@
 
 namespace WebCore {
 
-NetworkStorageSession::NetworkStorageSession(SessionID sessionID, std::unique_ptr<SoupNetworkSession>&& session)
+NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID, std::unique_ptr<SoupNetworkSession>&& session)
     : m_sessionID(sessionID)
     , m_session(WTFMove(session))
 {
@@ -73,20 +75,25 @@ static std::unique_ptr<NetworkStorageSession>& defaultSession()
 NetworkStorageSession& NetworkStorageSession::defaultStorageSession()
 {
     if (!defaultSession())
-        defaultSession() = std::make_unique<NetworkStorageSession>(SessionID::defaultSessionID(), nullptr);
+        defaultSession() = std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), nullptr);
     return *defaultSession();
 }
 
-void NetworkStorageSession::ensurePrivateBrowsingSession(SessionID sessionID, const String&)
+void NetworkStorageSession::ensurePrivateBrowsingSession(PAL::SessionID sessionID, const String&)
 {
-    ASSERT(sessionID != SessionID::defaultSessionID());
+    ASSERT(sessionID != PAL::SessionID::defaultSessionID());
     ASSERT(!globalSessionMap().contains(sessionID));
     globalSessionMap().add(sessionID, std::make_unique<NetworkStorageSession>(sessionID, std::make_unique<SoupNetworkSession>()));
 }
 
+void NetworkStorageSession::ensureSession(PAL::SessionID, const String&)
+{
+    // FIXME: Implement
+}
+
 void NetworkStorageSession::switchToNewTestingSession()
 {
-    defaultSession() = std::make_unique<NetworkStorageSession>(SessionID::defaultSessionID(), std::make_unique<SoupNetworkSession>());
+    defaultSession() = std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), std::make_unique<SoupNetworkSession>());
 }
 
 SoupNetworkSession& NetworkStorageSession::getOrCreateSoupNetworkSession() const
@@ -94,6 +101,14 @@ SoupNetworkSession& NetworkStorageSession::getOrCreateSoupNetworkSession() const
     if (!m_session)
         m_session = std::make_unique<SoupNetworkSession>(m_cookieStorage.get());
     return *m_session;
+}
+
+void NetworkStorageSession::clearSoupNetworkSessionAndCookieStorage()
+{
+    ASSERT(defaultSession().get() == this);
+    m_session = nullptr;
+    m_cookieObserverHandler = nullptr;
+    m_cookieStorage = nullptr;
 }
 
 void NetworkStorageSession::cookiesDidChange(NetworkStorageSession* session)
@@ -272,6 +287,64 @@ void NetworkStorageSession::saveCredentialToPersistentStorage(const ProtectionSp
     UNUSED_PARAM(protectionSpace);
     UNUSED_PARAM(credential);
 #endif
+}
+
+static SoupDate* msToSoupDate(double ms)
+{
+    int year = msToYear(ms);
+    int dayOfYear = dayInYear(ms, year);
+    bool leapYear = isLeapYear(year);
+
+    // monthFromDayInYear() returns a value in the [0,11] range, while soup_date_new() expects
+    // a value in the [1,12] range, meaning we have to manually adjust the month value.
+    return soup_date_new(year, monthFromDayInYear(dayOfYear, leapYear) + 1, dayInMonthFromDayInYear(dayOfYear, leapYear), msToHours(ms), msToMinutes(ms), static_cast<int>(ms / 1000) % 60);
+}
+
+static SoupCookie* toSoupCookie(const Cookie& cookie)
+{
+    SoupCookie* soupCookie = soup_cookie_new(cookie.name.utf8().data(), cookie.value.utf8().data(),
+        cookie.domain.utf8().data(), cookie.path.utf8().data(), -1);
+    soup_cookie_set_http_only(soupCookie, cookie.httpOnly);
+    soup_cookie_set_secure(soupCookie, cookie.secure);
+    if (!cookie.session) {
+        SoupDate* date = msToSoupDate(cookie.expires);
+        soup_cookie_set_expires(soupCookie, date);
+        soup_date_free(date);
+    }
+    return soupCookie;
+}
+
+void NetworkStorageSession::setCookies(const Vector<Cookie>& cookies, const URL&, const URL&)
+{
+    for (auto cookie : cookies)
+        soup_cookie_jar_add_cookie(cookieStorage(), toSoupCookie(cookie));
+}
+
+void NetworkStorageSession::setCookie(const Cookie&)
+{
+    // FIXME: Implement for WK2 to use.
+}
+
+void NetworkStorageSession::deleteCookie(const Cookie&)
+{
+    // FIXME: Implement for WK2 to use.
+}
+
+Vector<Cookie> NetworkStorageSession::getAllCookies()
+{
+    // FIXME: Implement for WK2 to use.
+    return { };
+}
+
+Vector<Cookie> NetworkStorageSession::getCookies(const URL&)
+{
+    // FIXME: Implement for WK2 to use.
+    return { };
+}
+
+void NetworkStorageSession::flushCookieStore()
+{
+    // FIXME: Implement for WK2 to use.
 }
 
 } // namespace WebCore

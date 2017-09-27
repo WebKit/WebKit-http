@@ -27,27 +27,29 @@
 #include "ThemeWPE.h"
 
 #include "Color.h"
+#include "ControlStates.h"
 #include "FloatRoundedRect.h"
 #include "GraphicsContext.h"
+#include "LengthSize.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-Theme* platformTheme()
+Theme& Theme::singleton()
 {
     static NeverDestroyed<ThemeWPE> theme;
-    return &theme.get();
+    return theme;
 }
 
 LengthSize ThemeWPE::controlSize(ControlPart part, const FontCascade& fontCascade, const LengthSize& zoomedSize, float zoomFactor) const
 {
-    if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
+    if (!zoomedSize.width.isIntrinsicOrAuto() && !zoomedSize.height.isIntrinsicOrAuto())
         return Theme::controlSize(part, fontCascade, zoomedSize, zoomFactor);
 
     switch (part) {
     case CheckboxPart:
     case RadioPart:
-        return LengthSize(Length(12, Fixed), Length(12, Fixed));
+        return LengthSize { Length(12, Fixed), Length(12, Fixed) };
     default:
         break;
     }

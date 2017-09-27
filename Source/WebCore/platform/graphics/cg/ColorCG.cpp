@@ -35,12 +35,12 @@
 #if !PLATFORM(IOS)
 #include <ApplicationServices/ApplicationServices.h>
 #else
-#include "CoreGraphicsSPI.h"
+#include <pal/spi/cg/CoreGraphicsSPI.h>
 #include <wtf/StdLibExtras.h>
 #endif // !PLATFORM(IOS)
 
 namespace WebCore {
-static CGColorRef leakCGColor(const Color&);
+static CGColorRef leakCGColor(const Color&) CF_RETURNS_RETAINED;
 }
 
 namespace WTF {

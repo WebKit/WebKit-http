@@ -30,8 +30,6 @@
 
 #pragma once
 
-#if ENABLE(CSS_GRID_LAYOUT)
-
 #include "CSSValueList.h"
 
 namespace WebCore {
@@ -45,8 +43,6 @@ public:
 
     String customCSSText() const;
 
-    Ref<CSSGridLineNamesValue> cloneForCSSOM() const;
-
 private:
     CSSGridLineNamesValue();
 };
@@ -54,5 +50,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSGridLineNamesValue, isGridLineNamesValue());
-
-#endif // ENABLE(CSS_GRID_LAYOUT)

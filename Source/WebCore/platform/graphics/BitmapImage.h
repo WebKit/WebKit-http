@@ -48,6 +48,7 @@ typedef struct HBITMAP__ *HBITMAP;
 
 namespace WebCore {
 
+class Settings;
 class Timer;
 
 class BitmapImage final : public Image {
@@ -64,38 +65,52 @@ public:
     WEBCORE_EXPORT static RefPtr<BitmapImage> create(HBITMAP);
 #endif
     virtual ~BitmapImage();
-    
+
+    void updateFromSettings(const Settings&);
+
     bool hasSingleSecurityOrigin() const override { return true; }
 
-    bool dataChanged(bool allDataReceived) override;
+    EncodedDataStatus dataChanged(bool allDataReceived) override;
     unsigned decodedSize() const { return m_source.decodedSize(); }
 
-    bool isSizeAvailable() const { return m_source.isSizeAvailable(); }
+    EncodedDataStatus encodedDataStatus() const { return m_source.encodedDataStatus(); }
     size_t frameCount() const { return m_source.frameCount(); }
     RepetitionCount repetitionCount() const { return m_source.repetitionCount(); }
+    String uti() const override { return m_source.uti(); }
     String filenameExtension() const override { return m_source.filenameExtension(); }
-    Optional<IntPoint> hotSpot() const override { return m_source.hotSpot(); }
+    std::optional<IntPoint> hotSpot() const override { return m_source.hotSpot(); }
 
     // FloatSize due to override.
     FloatSize size() const override { return m_source.size(); }
     IntSize sizeRespectingOrientation() const { return m_source.sizeRespectingOrientation(); }
     Color singlePixelSolidColor() const override { return m_source.singlePixelSolidColor(); }
-
-    bool frameIsBeingDecodedAtIndex(size_t index) const { return m_source.frameIsBeingDecodedAtIndex(index); }
-    bool frameIsCompleteAtIndex(size_t index) const { return m_source.frameIsCompleteAtIndex(index); }
+    bool frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(size_t index, const DecodingOptions& decodingOptions) const { return m_source.frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(index, decodingOptions); }
+    DecodingStatus frameDecodingStatusAtIndex(size_t index) const { return m_source.frameDecodingStatusAtIndex(index); }
+    bool frameIsCompleteAtIndex(size_t index) const { return frameDecodingStatusAtIndex(index) == DecodingStatus::Complete; }
     bool frameHasAlphaAtIndex(size_t index) const { return m_source.frameHasAlphaAtIndex(index); }
-    bool frameHasValidNativeImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) const { return m_source.frameHasValidNativeImageAtIndex(index, subsamplingLevel); }
+
+    bool frameHasFullSizeNativeImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) { return m_source.frameHasFullSizeNativeImageAtIndex(index, subsamplingLevel); }
+    bool frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(size_t index, const std::optional<SubsamplingLevel>& subsamplingLevel, const DecodingOptions& decodingOptions) { return m_source.frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(index, subsamplingLevel, decodingOptions); }
+
     SubsamplingLevel frameSubsamplingLevelAtIndex(size_t index) const { return m_source.frameSubsamplingLevelAtIndex(index); }
 
-    float frameDurationAtIndex(size_t index) const { return m_source.frameDurationAtIndex(index); }
+    Seconds frameDurationAtIndex(size_t index) const { return m_source.frameDurationAtIndex(index); }
     ImageOrientation frameOrientationAtIndex(size_t index) const { return m_source.frameOrientationAtIndex(index); }
 
     size_t currentFrame() const { return m_currentFrame; }
     bool currentFrameKnownToBeOpaque() const override { return !frameHasAlphaAtIndex(currentFrame()); }
     ImageOrientation orientationForCurrentFrame() const override { return frameOrientationAtIndex(currentFrame()); }
+    bool canAnimate() const;
 
-    bool isAsyncDecodingForcedForTesting() const { return m_frameDecodingDurationForTesting > 0; }
-    void setFrameDecodingDurationForTesting(float duration) { m_frameDecodingDurationForTesting = duration; }
+    bool shouldUseAsyncDecodingForAnimatedImagesForTesting() const { return m_frameDecodingDurationForTesting > 0_s; }
+    void setFrameDecodingDurationForTesting(Seconds duration) { m_frameDecodingDurationForTesting = duration; }
+    bool canUseAsyncDecodingForLargeImages() const;
+    bool shouldUseAsyncDecodingForAnimatedImages() const;
+    void setClearDecoderAfterAsyncFrameRequestForTesting(bool value) { m_clearDecoderAfterAsyncFrameRequestForTesting = value; }
+    void setLargeImageAsyncDecodingEnabledForTesting(bool enabled) { m_largeImageAsyncDecodingEnabledForTesting = enabled; }
+    bool isLargeImageAsyncDecodingEnabledForTesting() const { return m_largeImageAsyncDecodingEnabledForTesting; }
+
+    WEBCORE_EXPORT unsigned decodeCountForTesting() const;
 
     // Accessors for native image formats.
 #if USE(APPKIT)
@@ -116,10 +131,6 @@ public:
     GdkPixbuf* getGdkPixbuf() override;
 #endif
 
-#if PLATFORM(EFL)
-    Evas_Object* getEvasObject(Evas*) override;
-#endif
-
     WEBCORE_EXPORT NativeImagePtr nativeImage(const GraphicsContext* = nullptr) override;
     NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) override;
 #if USE(CG)
@@ -131,11 +142,8 @@ protected:
     WEBCORE_EXPORT BitmapImage(NativeImagePtr&&, ImageObserver* = nullptr);
     WEBCORE_EXPORT BitmapImage(ImageObserver* = nullptr);
 
-    NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
-
-    bool allowSubsampling() const { return imageObserver() && imageObserver()->allowSubsampling(); }
-    bool allowAsyncImageDecoding() const { return imageObserver() && imageObserver()->allowAsyncImageDecoding(); }
-    bool showDebugBackground() const { return imageObserver() && imageObserver()->showDebugBackground(); }
+    NativeImagePtr frameImageAtIndex(size_t index) { return m_source.frameImageAtIndex(index); }
+    NativeImagePtr frameImageAtIndexCacheIfNeeded(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
 
     // Called to invalidate cached data. When |destroyAll| is true, we wipe out
     // the entire frame buffer cache and tell the image source to destroy
@@ -149,29 +157,28 @@ protected:
     // |destroyAll| along.
     void destroyDecodedDataIfNecessary(bool destroyAll = true);
 
-    void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
+    ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) override;
     void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal) override;
 #if PLATFORM(WIN)
     void drawFrameMatchingSourceSize(GraphicsContext&, const FloatRect& dstRect, const IntSize& srcSize, CompositeOperator) override;
 #endif
 
     // Animation.
-    enum class StartAnimationResult { CannotStart, IncompleteData, TimerActive, DecodingActive, Started };
+    enum class StartAnimationStatus { CannotStart, IncompleteData, TimerActive, DecodingActive, Started };
     bool isAnimated() const override { return m_source.frameCount() > 1; }
-    bool shouldAnimate();
-    bool canAnimate();
+    bool shouldAnimate() const;
     void startAnimation() override { internalStartAnimation(); }
-    StartAnimationResult internalStartAnimation();
+    StartAnimationStatus internalStartAnimation();
     void advanceAnimation();
     void internalAdvanceAnimation();
+    bool isAnimating() const final;
 
     // It may look unusual that there is no start animation call as public API. This is because
     // we start and stop animating lazily. Animation begins whenever someone draws the image. It will
     // automatically pause once all observers no longer want to render the image anywhere.
     void stopAnimation() override;
     void resetAnimation() override;
-    void newFrameNativeImageAvailableAtIndex(size_t) override;
-
+    
     // Handle platform-specific data
     void invalidatePlatformData();
 
@@ -185,26 +192,52 @@ protected:
 
 private:
     void clearTimer();
-    void startTimer(double delay);
+    void startTimer(Seconds delay);
+    bool canDestroyDecodedData();
+    void setCurrentFrameDecodingStatusIfNecessary(DecodingStatus);
     bool isBitmapImage() const override { return true; }
-    void dump(TextStream&) const override;
+    void decode(WTF::Function<void()>&&) override;
+    void callDecodingCallbacks();
+    void imageFrameAvailableAtIndex(size_t) override;
+    void dump(WTF::TextStream&) const override;
+
+    // Animated images over a certain size are considered large enough that we'll only hang on to one frame at a time.
+    static const unsigned LargeAnimationCutoff = 30 * 1014 * 1024;
 
     mutable ImageSource m_source;
 
     size_t m_currentFrame { 0 }; // The index of the current frame of animation.
     SubsamplingLevel m_currentSubsamplingLevel { SubsamplingLevel::Default };
+    DecodingStatus m_currentFrameDecodingStatus { DecodingStatus::Invalid };
     std::unique_ptr<Timer> m_frameTimer;
     RepetitionCount m_repetitionsComplete { RepetitionCountNone }; // How many repetitions we've finished.
-    double m_desiredFrameStartTime { 0 }; // The system time at which we hope to see the next call to startAnimation().
+    MonotonicTime m_desiredFrameStartTime; // The system time at which we hope to see the next call to startAnimation().
+
+    std::unique_ptr<Vector<Function<void()>, 1>> m_decodingCallbacks;
+    Seconds m_frameDecodingDurationForTesting;
+    MonotonicTime m_desiredFrameDecodeTimeForTesting;
+
     bool m_animationFinished { false };
 
-    float m_frameDecodingDurationForTesting { 0 };
-    double m_desiredFrameDecodeTimeForTesting { 0 };
+    // The default value of m_allowSubsampling should be the same as defaultImageSubsamplingEnabled in Settings.cpp
+#if PLATFORM(IOS)
+    bool m_allowSubsampling { true };
+#else
+    bool m_allowSubsampling { false };
+#endif
+    bool m_allowAnimatedImageAsyncDecoding { false };
+    bool m_showDebugBackground { false };
+
+    bool m_clearDecoderAfterAsyncFrameRequestForTesting { false };
+    bool m_largeImageAsyncDecodingEnabledForTesting { false };
+
 #if !LOG_DISABLED
     size_t m_lateFrameCount { 0 };
     size_t m_earlyFrameCount { 0 };
     size_t m_cachedFrameCount { 0 };
 #endif
+
+    unsigned m_decodeCountForTesting { 0 };
 
 #if USE(APPKIT)
     mutable RetainPtr<NSImage> m_nsImage; // A cached NSImage of all the frames. Only built lazily if someone actually queries for one.

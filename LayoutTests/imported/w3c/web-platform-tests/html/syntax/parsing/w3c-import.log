@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -43,15 +42,22 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_entities02.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_html5test-com.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_inbody01.html
+/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_adoption01.html
+/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_foreign-fragment.html
+/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_math.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_tests4.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_tests6.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_tests7.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_tests_innerHTML_1.html
+/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_innerHTML_webkit02.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_isindex.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_main-element.html
+/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_menuitem-element.html
+/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_namespace-sensitivity.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_pending-spec-changes-plain-text-unsafe.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_pending-spec-changes.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_plain-text-unsafe.html
+/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_ruby.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_scriptdata01.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_scripted_adoption01.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing/html5lib_scripted_ark.html

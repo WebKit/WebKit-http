@@ -9,6 +9,7 @@ var textElements = {
     relList: {type: "tokenlist", domAttrName: "rel"},
     hreflang: "string",
     type: "string",
+    referrerPolicy: {type: "enum", keywords: ["", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin", "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url"]},
 
     // HTMLHyperlinkElementUtils
     href: "url",
@@ -30,6 +31,9 @@ var textElements = {
   },
   dfn: {},
   abbr: {},
+  ruby: {},
+  rt: {},
+  rp: {},
   data: {
     value: "string",
   },
@@ -37,9 +41,7 @@ var textElements = {
     dateTime: "string",
   },
   code: {},
-  // Opera 11.50 doesn't allow unquoted "var" here, although ES5 does and
-  // other browsers support it.
-  "var": {},
+  var: {},
   samp: {},
   kbd: {},
   sub: {},
@@ -48,9 +50,6 @@ var textElements = {
   b: {},
   u: {},
   mark: {},
-  ruby: {},
-  rt: {},
-  rp: {},
   bdi: {},
   bdo: {},
   span: {},

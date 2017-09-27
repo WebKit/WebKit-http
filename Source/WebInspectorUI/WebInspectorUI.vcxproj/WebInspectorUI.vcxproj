@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="DebugSuffix|Win32">
@@ -414,6 +414,7 @@
     <None Include="..\UserInterface\EventListenerSectionGroup.js" />
     <None Include="..\UserInterface\ExecutionContext.js" />
     <None Include="..\UserInterface\ExecutionContextList.js" />
+    <None Include="..\UserInterface\External\CodeMirror\clike.js" />
     <None Include="..\UserInterface\External\CodeMirror\clojure.js" />
     <None Include="..\UserInterface\External\CodeMirror\closebrackets.js" />
     <None Include="..\UserInterface\External\CodeMirror\codemirror.css" />
@@ -660,7 +661,6 @@
     <None Include="..\UserInterface\IndeterminateProgressSpinner.js" />
     <None Include="..\UserInterface\InspectorBackend.js" />
     <None Include="..\UserInterface\InspectorFrontendAPI.js" />
-    <None Include="..\UserInterface\InspectorFrontendHostStub.js" />
     <None Include="..\UserInterface\InspectorObserver.js" />
     <None Include="..\UserInterface\InstrumentIcons.css" />
     <None Include="..\UserInterface\InstrumentSidebarPanel.css" />

@@ -27,32 +27,23 @@
 
 #include "NodeFilter.h"
 #include "NodeFilterCondition.h"
-#include <wtf/RefPtr.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
 class NativeNodeFilter final : public NodeFilter {
 public:
-    static Ref<NativeNodeFilter> create(RefPtr<NodeFilterCondition>&& condition)
+    static Ref<NativeNodeFilter> create(ScriptExecutionContext* context, Ref<NodeFilterCondition>&& condition)
     {
-        return adoptRef(*new NativeNodeFilter(WTFMove(condition)));
+        return adoptRef(*new NativeNodeFilter(context, WTFMove(condition)));
     }
 
-    static Ref<NativeNodeFilter> create()
-    {
-        return adoptRef(*new NativeNodeFilter());
-    }
-
-    uint16_t acceptNode(Node*) override;
-
-    void setCondition(RefPtr<NodeFilterCondition>&& condition) { ASSERT(!m_condition); m_condition = condition; }
+    CallbackResult<unsigned short> acceptNode(Node&) override;
 
 private:
-    WEBCORE_EXPORT explicit NativeNodeFilter(RefPtr<NodeFilterCondition>&&);
+    WEBCORE_EXPORT explicit NativeNodeFilter(ScriptExecutionContext*, Ref<NodeFilterCondition>&&);
 
-    NativeNodeFilter() { }
-
-    RefPtr<NodeFilterCondition> m_condition;
+    Ref<NodeFilterCondition> m_condition;
 };
 
 } // namespace WebCore

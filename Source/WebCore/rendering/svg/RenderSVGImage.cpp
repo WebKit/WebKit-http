@@ -28,6 +28,7 @@
 
 #include "FloatQuad.h"
 #include "GraphicsContext.h"
+#include "HitTestResult.h"
 #include "LayoutRepainter.h"
 #include "PointerEventsHitRules.h"
 #include "RenderImageResource.h"
@@ -35,7 +36,6 @@
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceFilter.h"
 #include "SVGImageElement.h"
-#include "SVGLength.h"
 #include "SVGRenderingContext.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
@@ -49,12 +49,17 @@ RenderSVGImage::RenderSVGImage(SVGImageElement& element, RenderStyle&& style)
     , m_needsTransformUpdate(true)
     , m_imageResource(std::make_unique<RenderImageResource>())
 {
-    imageResource().initialize(this);
+    imageResource().initialize(*this);
 }
 
 RenderSVGImage::~RenderSVGImage()
 {
+}
+
+void RenderSVGImage::willBeDestroyed()
+{
     imageResource().shutdown();
+    RenderSVGModelObject::willBeDestroyed();
 }
 
 SVGImageElement& RenderSVGImage::imageElement() const
@@ -70,14 +75,16 @@ bool RenderSVGImage::updateImageViewport()
     SVGLengthContext lengthContext(&imageElement());
     m_objectBoundingBox = FloatRect(imageElement().x().value(lengthContext), imageElement().y().value(lengthContext), imageElement().width().value(lengthContext), imageElement().height().value(lengthContext));
 
+    URL imageSourceURL = document().completeURL(imageElement().imageSourceURL());
+
     // Images with preserveAspectRatio=none should force non-uniform scaling. This can be achieved
     // by setting the image's container size to its intrinsic size.
     // See: http://www.w3.org/TR/SVG/single-page.html, 7.8 The ‘preserveAspectRatio’ attribute.
     if (imageElement().preserveAspectRatio().align() == SVGPreserveAspectRatioValue::SVG_PRESERVEASPECTRATIO_NONE) {
         if (CachedImage* cachedImage = imageResource().cachedImage()) {
-            LayoutSize intrinsicSize = cachedImage->imageSizeForRenderer(0, style().effectiveZoom());
+            LayoutSize intrinsicSize = cachedImage->imageSizeForRenderer(nullptr, style().effectiveZoom());
             if (intrinsicSize != imageResource().imageSize(style().effectiveZoom())) {
-                imageResource().setContainerSizeForRenderer(roundedIntSize(intrinsicSize));
+                imageResource().setContainerContext(roundedIntSize(intrinsicSize), imageSourceURL);
                 updatedViewport = true;
             }
         }
@@ -85,7 +92,7 @@ bool RenderSVGImage::updateImageViewport()
 
     if (oldBoundaries != m_objectBoundingBox) {
         if (!updatedViewport)
-            imageResource().setContainerSizeForRenderer(enclosingIntRect(m_objectBoundingBox).size());
+            imageResource().setContainerContext(enclosingIntRect(m_objectBoundingBox).size(), imageSourceURL);
         updatedViewport = true;
         m_needsBoundariesUpdate = true;
     }
@@ -132,7 +139,7 @@ void RenderSVGImage::layout()
 void RenderSVGImage::paint(PaintInfo& paintInfo, const LayoutPoint&)
 {
     if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhaseForeground
-        || style().visibility() == HIDDEN || !imageResource().hasImage())
+        || style().visibility() == HIDDEN || !imageResource().cachedImage())
         return;
 
     FloatRect boundingBox = repaintRectInLocalCoordinates();
@@ -186,7 +193,7 @@ bool RenderSVGImage::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_IMAGE_HITTESTING, request, style().pointerEvents());
     bool isVisible = (style().visibility() == VISIBLE);
     if (isVisible || !hitRules.requireVisible) {
-        FloatPoint localPoint = localToParentTransform().inverse().valueOr(AffineTransform()).mapPoint(pointInParent);
+        FloatPoint localPoint = localToParentTransform().inverse().value_or(AffineTransform()).mapPoint(pointInParent);
             
         if (!SVGRenderSupport::pointInClippingArea(*this, localPoint))
             return false;
@@ -194,7 +201,8 @@ bool RenderSVGImage::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
         if (hitRules.canHitFill) {
             if (m_objectBoundingBox.contains(localPoint)) {
                 updateHitTestResult(result, LayoutPoint(localPoint));
-                return true;
+                if (result.addNodeToListBasedTestResult(&imageElement(), request, localPoint) == HitTestProgress::Stop)
+                    return true;
             }
         }
     }

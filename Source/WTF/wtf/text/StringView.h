@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #ifndef StringView_h
 #define StringView_h
 
+#include <limits.h>
 #include <unicode/utypes.h>
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
@@ -93,6 +94,7 @@ public:
     String toString() const;
     String toStringWithoutCopying() const;
     AtomicString toAtomicString() const;
+    RefPtr<AtomicStringImpl> toExistingAtomicString() const;
 
 #if USE(CF)
     // This function converts null strings to empty strings.
@@ -114,12 +116,21 @@ public:
     void getCharactersWithUpconvert(UChar*) const;
 
     StringView substring(unsigned start, unsigned length = std::numeric_limits<unsigned>::max()) const;
-    WTF_EXPORT_STRING_API Vector<StringView> split(UChar);
+    StringView left(unsigned len) const { return substring(0, len); }
+    StringView right(unsigned len) const { return substring(length() - len, len); }
+
+    template<typename MatchedCharacterPredicate>
+    StringView stripLeadingAndTrailingMatchedCharacters(const MatchedCharacterPredicate&);
+
+    class SplitResult;
+    SplitResult split(UChar) const;
 
     size_t find(UChar, unsigned start = 0) const;
     size_t find(CharacterMatchFunction, unsigned start = 0) const;
 
     WTF_EXPORT_STRING_API size_t find(StringView, unsigned start) const;
+
+    size_t reverseFind(UChar, unsigned index = UINT_MAX) const;
 
     WTF_EXPORT_STRING_API size_t findIgnoringASCIICase(const StringView&) const;
     WTF_EXPORT_STRING_API size_t findIgnoringASCIICase(const StringView&, unsigned startOffset) const;
@@ -148,6 +159,9 @@ private:
 
     void initialize(const LChar*, unsigned length);
     void initialize(const UChar*, unsigned length);
+
+    template<typename CharacterType, typename MatchedCharacterPredicate>
+    StringView stripLeadingAndTrailingMatchedCharacters(const CharacterType*, const MatchedCharacterPredicate&);
 
 #if CHECK_STRINGVIEW_LIFETIME
     WTF_EXPORT_STRING_API bool underlyingStringIsValid() const;
@@ -483,6 +497,13 @@ inline AtomicString StringView::toAtomicString() const
     return AtomicString(characters16(), m_length);
 }
 
+inline RefPtr<AtomicStringImpl> StringView::toExistingAtomicString() const
+{
+    if (is8Bit())
+        return AtomicStringImpl::lookUp(characters8(), m_length);
+    return AtomicStringImpl::lookUp(characters16(), m_length);
+}
+
 inline float StringView::toFloat(bool& isValid) const
 {
     if (is8Bit())
@@ -529,6 +550,13 @@ inline size_t StringView::find(CharacterMatchFunction matchFunction, unsigned st
     if (is8Bit())
         return WTF::find(characters8(), m_length, matchFunction, start);
     return WTF::find(characters16(), m_length, matchFunction, start);
+}
+
+inline size_t StringView::reverseFind(UChar character, unsigned index) const
+{
+    if (is8Bit())
+        return WTF::reverseFind(characters8(), m_length, character, index);
+    return WTF::reverseFind(characters16(), m_length, character, index);
 }
 
 #if !CHECK_STRINGVIEW_LIFETIME
@@ -601,6 +629,19 @@ inline bool equalIgnoringASCIICase(StringView a, const char* b)
     return equalIgnoringASCIICaseCommon(a, b);
 }
 
+class StringView::SplitResult {
+public:
+    explicit SplitResult(StringView, UChar separator);
+
+    class Iterator;
+    Iterator begin() const;
+    Iterator end() const;
+
+private:
+    StringView m_string;
+    UChar m_separator;
+};
+
 class StringView::GraphemeClusters {
 public:
     explicit GraphemeClusters(const StringView&);
@@ -637,9 +678,32 @@ private:
     StringView m_stringView;
 };
 
+class StringView::SplitResult::Iterator {
+public:
+    StringView operator*() const;
+
+    WTF_EXPORT_PRIVATE Iterator& operator++();
+
+    bool operator==(const Iterator&) const;
+    bool operator!=(const Iterator&) const;
+
+private:
+    enum PositionTag { AtEnd };
+    Iterator(const SplitResult&);
+    Iterator(const SplitResult&, PositionTag);
+
+    WTF_EXPORT_PRIVATE void findNextSubstring();
+
+    friend SplitResult;
+
+    const SplitResult& m_result;
+    unsigned m_position { 0 };
+    unsigned m_length;
+};
+
 class StringView::GraphemeClusters::Iterator {
 public:
-    WTF_EXPORT_PRIVATE Iterator() = delete;
+    Iterator() = delete;
     WTF_EXPORT_PRIVATE Iterator(const StringView&, unsigned index);
     WTF_EXPORT_PRIVATE ~Iterator();
 
@@ -673,7 +737,7 @@ public:
 
 private:
     std::reference_wrapper<const StringView> m_stringView;
-    Optional<unsigned> m_nextCodePointOffset;
+    std::optional<unsigned> m_nextCodePointOffset;
     UChar32 m_codePoint;
 };
 
@@ -738,7 +802,7 @@ inline auto StringView::CodePoints::Iterator::operator++() -> Iterator&
 {
     ASSERT(m_nextCodePointOffset);
     if (m_nextCodePointOffset.value() == m_stringView.get().length()) {
-        m_nextCodePointOffset = Nullopt;
+        m_nextCodePointOffset = std::nullopt;
         return *this;
     }
     if (m_stringView.get().is8Bit())
@@ -825,6 +889,90 @@ inline auto StringView::CodeUnits::begin() const -> Iterator
 inline auto StringView::CodeUnits::end() const -> Iterator
 {
     return Iterator(m_stringView, m_stringView.length());
+}
+
+inline auto StringView::split(UChar separator) const -> SplitResult
+{
+    return SplitResult { *this, separator };
+}
+
+inline StringView::SplitResult::SplitResult(StringView stringView, UChar separator)
+    : m_string { stringView }
+    , m_separator { separator }
+{
+}
+
+inline auto StringView::SplitResult::begin() const -> Iterator
+{
+    return Iterator { *this };
+}
+
+inline auto StringView::SplitResult::end() const -> Iterator
+{
+    return Iterator { *this, Iterator::AtEnd };
+}
+
+inline StringView::SplitResult::Iterator::Iterator(const SplitResult& result)
+    : m_result { result }
+{
+    findNextSubstring();
+}
+
+inline StringView::SplitResult::Iterator::Iterator(const SplitResult& result, PositionTag)
+    : m_result { result }
+    , m_position { result.m_string.length() }
+{
+}
+
+inline StringView StringView::SplitResult::Iterator::operator*() const
+{
+    ASSERT(m_position < m_result.m_string.length());
+    return m_result.m_string.substring(m_position, m_length);
+}
+
+inline bool StringView::SplitResult::Iterator::operator==(const Iterator& other) const
+{
+    ASSERT(&m_result == &other.m_result);
+    return m_position == other.m_position;
+}
+
+inline bool StringView::SplitResult::Iterator::operator!=(const Iterator& other) const
+{
+    return !(*this == other);
+}
+
+template<typename CharacterType, typename MatchedCharacterPredicate>
+inline StringView StringView::stripLeadingAndTrailingMatchedCharacters(const CharacterType* characters, const MatchedCharacterPredicate& predicate)
+{
+    if (!m_length)
+        return *this;
+
+    unsigned start = 0;
+    unsigned end = m_length - 1;
+    
+    while (start <= end && predicate(characters[start]))
+        ++start;
+    
+    if (start > end)
+        return StringView::empty();
+
+    while (end && predicate(characters[end]))
+        --end;
+
+    if (!start && end == m_length - 1)
+        return *this;
+
+    StringView result(characters + start, end + 1 - start);
+    result.setUnderlyingString(*this);
+    return result;
+}
+
+template<typename MatchedCharacterPredicate>
+StringView StringView::stripLeadingAndTrailingMatchedCharacters(const MatchedCharacterPredicate& predicate)
+{
+    if (is8Bit())
+        return stripLeadingAndTrailingMatchedCharacters<LChar>(characters8(), predicate);
+    return stripLeadingAndTrailingMatchedCharacters<UChar>(characters16(), predicate);
 }
 
 template<unsigned length> inline bool equalLettersIgnoringASCIICase(StringView string, const char (&lowercaseLetters)[length])

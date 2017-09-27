@@ -52,6 +52,7 @@ class ChartStyles {
             backgroundIntervalStyle: 'rgba(255, 153, 153, 0.1)',
             backgroundPointStyle: '#f99',
             backgroundLineStyle: '#fcc',
+            interactive: true,
         };
     }
 
@@ -117,9 +118,9 @@ class ChartStyles {
         var options = this.dashboardOptions(valueFormatter);
         options.axis.yAxisWidth = 0; // rem
         options.selection = {
-            lineStyle: '#f93',
+            lineStyle: 'rgba(51, 204, 255, .5)',
             lineWidth: 2,
-            fillStyle: 'rgba(153, 204, 102, .125)',
+            fillStyle: 'rgba(51, 204, 255, .125)',
         }
         return options;
     }
@@ -129,13 +130,20 @@ class ChartStyles {
         var options = this.dashboardOptions(valueFormatter);
         options.axis.xAxisEndPadding = 5;
         options.axis.yAxisWidth = 5;
+        options.zoomButton = true;
         options.selection = {
-            lineStyle: '#f93',
+            lineStyle: '#3cf',
             lineWidth: 2,
-            fillStyle: 'rgba(153, 204, 102, .125)',
+            fillStyle: 'rgba(51, 204, 255, .125)',
         }
         options.indicator = {
-            lineStyle: '#f93',
+            lineStyle: '#3cf',
+            lineWidth: 2,
+            pointRadius: 2,
+        };
+        options.lockedIndicator = {
+            fillStyle: '#fff',
+            lineStyle: '#36c',
             lineWidth: 2,
             pointRadius: 3,
         };

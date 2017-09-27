@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 Nikolas Zimmermann <zimmermann@kde.org>
- * Copyright (C) 2008, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,12 +47,13 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
+#include "UTIUtilities.h"
 #include "WebCoreSystemInterface.h"
 #endif
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
 #include "IOSurface.h"
-#include "IOSurfaceSPI.h"
+#include <pal/spi/cocoa/IOSurfaceSPI.h>
 #endif
 
 // CA uses ARGB32 for textures and ARGB32 -> ARGB32 resampling is optimized.
@@ -107,7 +108,7 @@ std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize
         return nullptr;
 
     // Set up a corresponding scale factor on the graphics context.
-    buffer->context().scale(FloatSize(scaledSize.width() / size.width(), scaledSize.height() / size.height()));
+    buffer->context().scale(scaledSize / size);
     return buffer;
 }
 
@@ -212,6 +213,10 @@ FloatSize ImageBuffer::sizeForDestinationSize(FloatSize destinationSize) const
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
 size_t ImageBuffer::memoryCost() const
 {
+    // memoryCost() may be invoked concurrently from a GC thread, and we need to be careful about what data we access here and how.
+    // It's safe to access internalSize() because it doesn't do any pointer chasing.
+    // It's safe to access m_data.surface because the surface can only be assigned during construction of this ImageBuffer.
+    // It's safe to access m_data.surface->totalBytes() because totalBytes() doesn't chase pointers.
     if (m_data.surface)
         return m_data.surface->totalBytes();
     return 4 * internalSize().width() * internalSize().height();
@@ -219,6 +224,9 @@ size_t ImageBuffer::memoryCost() const
 
 size_t ImageBuffer::externalMemoryCost() const
 {
+    // externalMemoryCost() may be invoked concurrently from a GC thread, and we need to be careful about what data we access here and how.
+    // It's safe to access m_data.surface because the surface can only be assigned during construction of this ImageBuffer.
+    // It's safe to access m_data.surface->totalBytes() because totalBytes() doesn't chase pointers.
     if (m_data.surface)
         return m_data.surface->totalBytes();
     return 0;
@@ -382,7 +390,7 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& des
     }
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     if (context().isAcceleratedContext())
         flushContext();
@@ -390,11 +398,14 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& r
     IntRect srcRect = rect;
     if (coordinateSystem == LogicalCoordinateSystem)
         srcRect.scale(m_resolutionScale);
+
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = srcRect.size();
 
     return m_data.getData(srcRect, internalSize(), context().isAcceleratedContext(), true, 1);
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
     if (context().isAcceleratedContext())
         flushContext();
@@ -402,6 +413,9 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& 
     IntRect srcRect = rect;
     if (coordinateSystem == LogicalCoordinateSystem)
         srcRect.scale(m_resolutionScale);
+
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = srcRect.size();
 
     return m_data.getData(srcRect, internalSize(), context().isAcceleratedContext(), false, 1);
 }
@@ -434,10 +448,11 @@ static inline CFStringRef jpegUTI()
     return kUTTypeJPEG;
 }
     
-static RetainPtr<CFStringRef> utiFromMIMEType(const String& mimeType)
+static RetainPtr<CFStringRef> utiFromImageBufferMIMEType(const String& mimeType)
 {
+    // FIXME: Why doesn't iOS use the CoreServices version?
 #if PLATFORM(MAC)
-    return adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, mimeType.createCFString().get(), 0));
+    return UTIFromMIMEType(mimeType).createCFString();
 #else
     ASSERT(isMainThread()); // It is unclear if CFSTR is threadsafe.
 
@@ -458,7 +473,7 @@ static RetainPtr<CFStringRef> utiFromMIMEType(const String& mimeType)
 #endif
 }
 
-static bool encodeImage(CGImageRef image, CFStringRef uti, Optional<double> quality, CFMutableDataRef data)
+static bool encodeImage(CGImageRef image, CFStringRef uti, std::optional<double> quality, CFMutableDataRef data)
 {
     if (!image || !uti || !data)
         return false;
@@ -483,46 +498,60 @@ static bool encodeImage(CGImageRef image, CFStringRef uti, Optional<double> qual
     return CGImageDestinationFinalize(destination.get());
 }
 
-static String dataURL(CGImageRef image, const String& mimeType, Optional<double> quality)
+static String dataURL(CFDataRef data, const String& mimeType)
 {
-    auto uti = utiFromMIMEType(mimeType);
-    ASSERT(uti);
-
-    auto data = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
-    if (!encodeImage(image, uti.get(), quality, data.get()))
-        return ASCIILiteral("data:,");
-
     Vector<char> base64Data;
-    base64Encode(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()), base64Data);
+    base64Encode(CFDataGetBytePtr(data), CFDataGetLength(data), base64Data);
 
     return "data:" + mimeType + ";base64," + base64Data;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, CoordinateSystem) const
+static Vector<uint8_t> dataVector(CFDataRef cfData)
+{
+    Vector<uint8_t> data;
+    data.append(CFDataGetBytePtr(cfData), CFDataGetLength(cfData));
+    return data;
+}
+
+String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
+{
+    if (auto data = toCFData(mimeType, quality))
+        return dataURL(data.get(), mimeType);
+    return ASCIILiteral("data:,");
+}
+
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
+{
+    if (auto data = toCFData(mimeType, quality))
+        return dataVector(data.get());
+    return { };
+}
+
+RetainPtr<CFDataRef> ImageBuffer::toCFData(const String& mimeType, std::optional<double> quality) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
     if (context().isAcceleratedContext())
         flushContext();
 
-    auto uti = utiFromMIMEType(mimeType);
+    auto uti = utiFromImageBufferMIMEType(mimeType);
     ASSERT(uti);
 
-    RefPtr<Uint8ClampedArray> premultipliedData;
     RetainPtr<CGImageRef> image;
+    RefPtr<Uint8ClampedArray> premultipliedData;
 
     if (CFEqual(uti.get(), jpegUTI())) {
         // JPEGs don't have an alpha channel, so we have to manually composite on top of black.
-        premultipliedData = getPremultipliedImageData(IntRect(IntPoint(0, 0), logicalSize()));
+        premultipliedData = getPremultipliedImageData(IntRect(IntPoint(), logicalSize()));
         if (!premultipliedData)
-            return ASCIILiteral("data:,");
+            return nullptr;
 
-        auto dataProvider = adoptCF(CGDataProviderCreateWithData(0, premultipliedData->data(), 4 * logicalSize().width() * logicalSize().height(), 0));
+        size_t dataSize = 4 * logicalSize().width() * logicalSize().height();
+        auto dataProvider = adoptCF(CGDataProviderCreateWithData(nullptr, premultipliedData->data(), dataSize, nullptr));
         if (!dataProvider)
-            return ASCIILiteral("data:,");
+            return nullptr;
 
-        image = adoptCF(CGImageCreate(logicalSize().width(), logicalSize().height(), 8, 32, 4 * logicalSize().width(),
-            sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
+        image = adoptCF(CGImageCreate(logicalSize().width(), logicalSize().height(), 8, 32, 4 * logicalSize().width(), sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
     } else if (m_resolutionScale == 1) {
         image = copyNativeImage(CopyBackingStore);
         image = createCroppedImageIfNecessary(image.get(), internalSize());
@@ -536,14 +565,18 @@ String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, 
         image = adoptCF(CGBitmapContextCreateImage(context.get()));
     }
 
-    return dataURL(image.get(), mimeType, quality);
+    auto cfData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
+    if (!encodeImage(image.get(), uti.get(), quality, cfData.get()))
+        return nullptr;
+
+    return WTFMove(cfData);
 }
 
-String dataURL(const ImageData& source, const String& mimeType, Optional<double> quality)
+static RetainPtr<CFDataRef> cfData(const ImageData& source, const String& mimeType, std::optional<double> quality)
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
-    auto uti = utiFromMIMEType(mimeType);
+    auto uti = utiFromImageBufferMIMEType(mimeType);
     ASSERT(uti);
 
     CGImageAlphaInfo dataAlphaInfo = kCGImageAlphaLast;
@@ -554,9 +587,9 @@ String dataURL(const ImageData& source, const String& mimeType, Optional<double>
         // JPEGs don't have an alpha channel, so we have to manually composite on top of black.
         size_t size = 4 * source.width() * source.height();
         if (!premultipliedData.tryReserveCapacity(size))
-            return ASCIILiteral("data:,");
+            return nullptr;
 
-        premultipliedData.resize(size);
+        premultipliedData.grow(size);
         unsigned char *buffer = premultipliedData.data();
         for (size_t i = 0; i < size; i += 4) {
             unsigned alpha = data[i + 3];
@@ -577,11 +610,29 @@ String dataURL(const ImageData& source, const String& mimeType, Optional<double>
 
     auto dataProvider = adoptCF(CGDataProviderCreateWithData(0, data, 4 * source.width() * source.height(), 0));
     if (!dataProvider)
-        return ASCIILiteral("data:,");
+        return nullptr;
 
-    auto image = adoptCF(CGImageCreate(source.width(), source.height(), 8, 32, 4 * source.width(),
-        sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | dataAlphaInfo, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
-    return dataURL(image.get(), mimeType, quality);
+    auto image = adoptCF(CGImageCreate(source.width(), source.height(), 8, 32, 4 * source.width(), sRGBColorSpaceRef(), kCGBitmapByteOrderDefault | dataAlphaInfo, dataProvider.get(), 0, false, kCGRenderingIntentDefault));
+
+    auto cfData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
+    if (!encodeImage(image.get(), uti.get(), quality, cfData.get()))
+        return nullptr;
+
+    return WTFMove(cfData);
+}
+
+String dataURL(const ImageData& source, const String& mimeType, std::optional<double> quality)
+{
+    if (auto data = cfData(source, mimeType, quality))
+        return dataURL(data.get(), mimeType);
+    return ASCIILiteral("data:,");
+}
+
+Vector<uint8_t> data(const ImageData& source, const String& mimeType, std::optional<double> quality)
+{
+    if (auto data = cfData(source, mimeType, quality))
+        return dataVector(data.get());
+    return { };
 }
 
 } // namespace WebCore

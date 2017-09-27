@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
 #include "ProfilerBytecodeSequence.h"
 
 #include "CodeBlock.h"
-#include "Interpreter.h"
+#include "InterpreterInlines.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "Operands.h"
@@ -40,8 +40,8 @@ BytecodeSequence::BytecodeSequence(CodeBlock* codeBlock)
     StringPrintStream out;
     
     for (unsigned i = 0; i < codeBlock->numberOfArgumentValueProfiles(); ++i) {
-        ConcurrentJITLocker locker(codeBlock->m_lock);
-        CString description = codeBlock->valueProfileForArgument(i)->briefDescription(locker);
+        ConcurrentJSLocker locker(codeBlock->m_lock);
+        CString description = codeBlock->valueProfileForArgument(i).briefDescription(locker);
         if (!description.length())
             continue;
         out.reset();
@@ -55,10 +55,9 @@ BytecodeSequence::BytecodeSequence(CodeBlock* codeBlock)
     for (unsigned bytecodeIndex = 0; bytecodeIndex < codeBlock->instructions().size();) {
         out.reset();
         codeBlock->dumpBytecode(out, bytecodeIndex, stubInfos);
-        m_sequence.append(Bytecode(bytecodeIndex, codeBlock->vm()->interpreter->getOpcodeID(codeBlock->instructions()[bytecodeIndex].u.opcode), out.toCString()));
-        bytecodeIndex += opcodeLength(
-            codeBlock->vm()->interpreter->getOpcodeID(
-                codeBlock->instructions()[bytecodeIndex].u.opcode));
+        OpcodeID opcodeID = Interpreter::getOpcodeID(codeBlock->instructions()[bytecodeIndex].u.opcode);
+        m_sequence.append(Bytecode(bytecodeIndex, opcodeID, out.toCString()));
+        bytecodeIndex += opcodeLength(opcodeID);
     }
 }
 
@@ -82,15 +81,19 @@ void BytecodeSequence::addSequenceProperties(ExecState* exec, JSObject* result) 
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSArray* header = constructEmptyArray(exec, 0);
     RETURN_IF_EXCEPTION(scope, void());
-    for (unsigned i = 0; i < m_header.size(); ++i)
+    for (unsigned i = 0; i < m_header.size(); ++i) {
         header->putDirectIndex(exec, i, jsString(exec, String::fromUTF8(m_header[i])));
-    result->putDirect(vm, exec->propertyNames().header, header);
+        RETURN_IF_EXCEPTION(scope, void());
+    }
+    result->putDirect(vm, vm.propertyNames->header, header);
     
     JSArray* sequence = constructEmptyArray(exec, 0);
     RETURN_IF_EXCEPTION(scope, void());
-    for (unsigned i = 0; i < m_sequence.size(); ++i)
+    for (unsigned i = 0; i < m_sequence.size(); ++i) {
         sequence->putDirectIndex(exec, i, m_sequence[i].toJS(exec));
-    result->putDirect(vm, exec->propertyNames().bytecode, sequence);
+        RETURN_IF_EXCEPTION(scope, void());
+    }
+    result->putDirect(vm, vm.propertyNames->bytecode, sequence);
 }
 
 } } // namespace JSC::Profiler

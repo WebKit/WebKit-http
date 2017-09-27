@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015, 2016 Ericsson AB. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,59 +29,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// FIXME: Remove once older code is upgraded
 #pragma once
 
 #if ENABLE(WEB_RTC)
+
+#include "RTCBundlePolicy.h"
+#include "RTCIceConnectionState.h"
+#include "RTCIceGatheringState.h"
+#include "RTCIceTransportPolicy.h"
+#include "RTCIceTransportState.h"
+#include "RTCSignalingState.h"
 
 namespace WebCore {
 
 namespace PeerConnectionStates {
 
-enum class SignalingState {
-    Stable = 1,
-    HaveLocalOffer = 2,
-    HaveRemoteOffer = 3,
-    HaveLocalPrAnswer = 4,
-    HaveRemotePrAnswer = 5,
-    Closed = 6
-};
-
-enum class IceConnectionState {
-    New = 1,
-    Checking = 2,
-    Connected = 3,
-    Completed = 4,
-    Failed = 5,
-    Disconnected = 6,
-    Closed = 7
-};
-
-enum class IceGatheringState {
-    New = 1,
-    Gathering = 2,
-    Complete = 3
-};
-
-enum class IceTransportState {
-    New = 1,
-    Checking = 2,
-    Connected = 3,
-    Completed = 4,
-    Failed = 5,
-    Disconnected = 6,
-    Closed = 7
-};
-
-enum class IceTransportPolicy {
-    Relay,
-    All
-};
-
-enum class BundlePolicy {
-    Balanced,
-    MaxCompat,
-    MaxBundle
-};
+using BundlePolicy = RTCBundlePolicy;
+using IceConnectionState = RTCIceConnectionState;
+using IceGatheringState = RTCIceGatheringState;
+using IceTransportPolicy = RTCIceTransportPolicy;
+using IceTransportState = RTCIceTransportState;
+using SignalingState = RTCSignalingState;
 
 }
 

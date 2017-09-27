@@ -130,12 +130,12 @@ private:
                 [&] (const ChildAndOrigin& a, const ChildAndOrigin& b) -> bool {
                     return a.child < b.child;
                 });
-            auto end = std::unique(
-                m_neededBarriers.begin(), m_neededBarriers.end(),
+            removeRepeatedElements(
+                m_neededBarriers, 
                 [&] (const ChildAndOrigin& a, const ChildAndOrigin& b) -> bool{
                     return a.child == b.child;
                 });
-            for (auto iter = m_neededBarriers.begin(); iter != end; ++iter) {
+            for (auto iter = m_neededBarriers.begin(); iter != m_neededBarriers.end(); ++iter) {
                 Node* child = iter->child;
                 CodeOrigin semanticOrigin = iter->semanticOrigin;
                 
@@ -149,7 +149,7 @@ private:
                     nodeIndex, SpecNone, type, origin.withSemantic(semanticOrigin),
                     Edge(child, KnownCellUse));
             }
-            m_neededBarriers.resize(0);
+            m_neededBarriers.shrink(0);
         }
         
         m_insertionSet.execute(block);

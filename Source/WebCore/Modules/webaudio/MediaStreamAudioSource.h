@@ -30,8 +30,6 @@
 #include "AudioDestinationConsumer.h"
 #include "RealtimeMediaSource.h"
 #include <wtf/Lock.h>
-#include <wtf/RefCounted.h>
-#include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -46,7 +44,7 @@ public:
 
     ~MediaStreamAudioSource() { }
 
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() const final;
+    const RealtimeMediaSourceCapabilities& capabilities() const final;
     const RealtimeMediaSourceSettings& settings() const final;
 
     const String& deviceId() const { return m_deviceId; }
@@ -62,7 +60,7 @@ public:
 private:
     MediaStreamAudioSource();
 
-    AudioSourceProvider* audioSourceProvider() override;
+    bool isCaptureSource() const final { return true; }
 
     String m_deviceId;
     Lock m_audioConsumersLock;

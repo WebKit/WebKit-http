@@ -55,9 +55,9 @@ public:
     void resume();
 
 private:
-    static const double minimumProgressEventDispatchingIntervalInSeconds;
+    static const Seconds minimumProgressEventDispatchingInterval;
 
-    virtual void fired();
+    void fired() override;
     void dispatchDeferredEvents();
     void flushProgressEvent();
     void dispatchEvent(Event&);

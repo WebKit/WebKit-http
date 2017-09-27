@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CrossfadeGeneratedImage_h
-#define CrossfadeGeneratedImage_h
+#pragma once
 
 #include "FloatSize.h"
 #include "GeneratedImage.h"
 #include "Image.h"
-#include "ImageObserver.h"
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -49,14 +47,14 @@ public:
     FloatSize size() const override { return m_crossfadeSize; }
 
 protected:
-    void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
+    ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) override;
     void drawPattern(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode) override;
 
     CrossfadeGeneratedImage(Image& fromImage, Image& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize&);
 
 private:
     bool isCrossfadeGeneratedImage() const override { return true; }
-    void dump(TextStream&) const override;
+    void dump(WTF::TextStream&) const override;
     
     void drawCrossfade(GraphicsContext&);
 
@@ -69,4 +67,4 @@ private:
 
 }
 
-#endif
+SPECIALIZE_TYPE_TRAITS_IMAGE(CrossfadeGeneratedImage)

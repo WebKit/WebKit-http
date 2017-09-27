@@ -65,7 +65,7 @@ public:
 protected:
     explicit HTMLDocumentParser(HTMLDocument&);
 
-    void insert(const SegmentedString&) final;
+    void insert(SegmentedString&&) final;
     void append(RefPtr<StringImpl>&&) override;
     void finish() override;
 
@@ -83,6 +83,7 @@ private:
     void stopParsing() final;
     bool isWaitingForScripts() const override;
     bool isExecutingScript() const final;
+    bool hasScriptsWaitingForStylesheets() const final;
     void executeScriptsWaitingForStylesheets() final;
     void suspendScheduledTasks() final;
     void resumeScheduledTasks() final;

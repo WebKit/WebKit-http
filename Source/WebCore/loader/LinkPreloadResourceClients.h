@@ -32,7 +32,8 @@
 #include "CachedImage.h"
 #include "CachedImageClient.h"
 #include "CachedRawResource.h"
-#include "CachedResourceLoader.h"
+#include "CachedRawResourceClient.h"
+#include "CachedResourceHandle.h"
 #include "CachedScript.h"
 #include "CachedStyleSheetClient.h"
 
@@ -61,8 +62,10 @@ protected:
 
     void clearResource(CachedResourceClient& client)
     {
-        if (m_resource)
+        if (m_resource) {
+            m_resource->cancelLoad();
             m_resource->removeClient(client);
+        }
         m_resource = nullptr;
     }
 
@@ -86,6 +89,7 @@ public:
     void notifyFinished(CachedResource& resource) override { triggerEvents(resource); }
 
     void clear() override { clearResource(*this); }
+    bool shouldMarkAsReferenced() const override { return false; }
 
 private:
     LinkPreloadScriptResourceClient(LinkLoader& loader, CachedScript& resource)
@@ -112,6 +116,7 @@ public:
     }
 
     void clear() override { clearResource(*this); }
+    bool shouldMarkAsReferenced() const override { return false; }
 
 private:
     LinkPreloadStyleResourceClient(LinkLoader& loader, CachedCSSStyleSheet& resource)
@@ -133,6 +138,7 @@ public:
     void notifyFinished(CachedResource& resource) override { triggerEvents(resource); }
 
     void clear() override { clearResource(*this); }
+    bool shouldMarkAsReferenced() const override { return false; }
 
 private:
     LinkPreloadImageResourceClient(LinkLoader& loader, CachedImage& resource)
@@ -158,6 +164,7 @@ public:
     }
 
     void clear() override { clearResource(*this); }
+    bool shouldMarkAsReferenced() const override { return false; }
 
 private:
     LinkPreloadFontResourceClient(LinkLoader& loader, CachedFont& resource)
@@ -179,6 +186,7 @@ public:
     void notifyFinished(CachedResource& resource) override { triggerEvents(resource); }
 
     void clear() override { clearResource(*this); }
+    bool shouldMarkAsReferenced() const override { return false; }
 
 private:
     LinkPreloadRawResourceClient(LinkLoader& loader, CachedRawResource& resource)

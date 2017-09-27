@@ -37,11 +37,11 @@ public:
 
     static ProgramExecutable* create(ExecState* exec, const SourceCode& source)
     {
-        ProgramExecutable* executable = new (NotNull, allocateCell<ProgramExecutable>(*exec->heap())) ProgramExecutable(exec, source);
-        executable->finishCreation(exec->vm());
+        VM& vm = exec->vm();
+        ProgramExecutable* executable = new (NotNull, allocateCell<ProgramExecutable>(vm.heap)) ProgramExecutable(exec, source);
+        executable->finishCreation(vm);
         return executable;
     }
-
 
     JSObject* initializeGlobalProperties(VM&, CallFrame*, JSScope*);
 
@@ -54,7 +54,7 @@ public:
 
     JSObject* checkSyntax(ExecState*);
 
-    PassRefPtr<JITCode> generatedJITCode()
+    Ref<JITCode> generatedJITCode()
     {
         return generatedJITCodeForCall();
     }

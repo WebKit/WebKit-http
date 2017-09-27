@@ -21,7 +21,6 @@
 #pragma once
 
 #include "FontCascade.h"
-#include "RenderElement.h"
 #include "RenderText.h"
 #include "Text.h"
 
@@ -33,8 +32,8 @@ public:
 
     Text& textNode() const { return downcast<Text>(nodeForNonAnonymous()); }
 
-    void combineText();
-    Optional<FloatPoint> computeTextOrigin(const FloatRect& boxRect) const;
+    void combineTextIfNeeded();
+    std::optional<FloatPoint> computeTextOrigin(const FloatRect& boxRect) const;
     String combinedStringForRendering() const;
     bool isCombined() const { return m_isCombined; }
     float combinedTextWidth(const FontCascade& font) const { return font.size(); }

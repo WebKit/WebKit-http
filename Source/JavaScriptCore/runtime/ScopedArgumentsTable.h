@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "JSCell.h"
 #include "ScopeOffset.h"
 #include <wtf/Assertions.h>
+#include <wtf/CagedUniquePtr.h>
 
 namespace JSC {
 
@@ -77,6 +78,8 @@ public:
     static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(ScopedArgumentsTable, m_length); }
     static ptrdiff_t offsetOfArguments() { return OBJECT_OFFSETOF(ScopedArgumentsTable, m_arguments); }
 
+    typedef CagedUniquePtr<Gigacage::Primitive, ScopeOffset[]> ArgumentsPtr;
+
 private:
     ScopeOffset& at(uint32_t i)
     {
@@ -86,7 +89,7 @@ private:
     
     uint32_t m_length;
     bool m_locked; // Being locked means that there are multiple references to this object and none of them expect to see the others' modifications. This means that modifications need to make a copy first.
-    std::unique_ptr<ScopeOffset[]> m_arguments;
+    ArgumentsPtr m_arguments;
 };
 
 } // namespace JSC

@@ -32,11 +32,12 @@
 
 namespace JSC {
 
-JSWebAssemblyRuntimeError* JSWebAssemblyRuntimeError::create(ExecState* state, Structure* structure, const String& message, bool useCurrentFrame)
+JSWebAssemblyRuntimeError* JSWebAssemblyRuntimeError::create(ExecState* exec, VM& vm, Structure* structure, const String& message)
 {
-    auto& vm = state->vm();
     auto* instance = new (NotNull, allocateCell<JSWebAssemblyRuntimeError>(vm.heap)) JSWebAssemblyRuntimeError(vm, structure);
-    instance->finishCreation(state, vm, message, useCurrentFrame);
+    instance->m_sourceAppender = defaultSourceAppender;
+    bool useCurrentFrame = true;
+    instance->finishCreation(exec, vm, message, useCurrentFrame);
     return instance;
 }
 
@@ -45,8 +46,9 @@ JSWebAssemblyRuntimeError::JSWebAssemblyRuntimeError(VM& vm, Structure* structur
 {
 }
 
-const ClassInfo JSWebAssemblyRuntimeError::s_info = { "WebAssembly.RuntimeError", &Base::s_info, 0, CREATE_METHOD_TABLE(JSWebAssemblyRuntimeError) };
+const ClassInfo JSWebAssemblyRuntimeError::s_info = { "WebAssembly.RuntimeError", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSWebAssemblyRuntimeError) };
 
+    
 } // namespace JSC
 
 #endif // ENABLE(WEBASSEMBLY)

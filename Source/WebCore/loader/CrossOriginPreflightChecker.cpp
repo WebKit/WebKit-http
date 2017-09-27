@@ -38,9 +38,11 @@
 #include "CrossOriginAccessControl.h"
 #include "CrossOriginPreflightResultCache.h"
 #include "DocumentThreadableLoader.h"
+#include "FrameLoader.h"
 #include "InspectorInstrumentation.h"
+#include "NetworkLoadMetrics.h"
 #include "RuntimeEnabledFeatures.h"
-#include "ThreadableLoaderClient.h"
+#include "SharedBuffer.h"
 
 namespace WebCore {
 
@@ -58,31 +60,22 @@ CrossOriginPreflightChecker::~CrossOriginPreflightChecker()
 
 void CrossOriginPreflightChecker::validatePreflightResponse(DocumentThreadableLoader& loader, ResourceRequest&& request, unsigned long identifier, const ResourceResponse& response)
 {
+    String errorDescription;
+    if (!WebCore::validatePreflightResponse(request, response, loader.options().storedCredentialsPolicy, loader.securityOrigin(), errorDescription)) {
+        loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), errorDescription, ResourceError::Type::AccessControl));
+        return;
+    }
+
     Frame* frame = loader.document().frame();
     ASSERT(frame);
-    auto cookie = InspectorInstrumentation::willReceiveResourceResponse(frame);
-    InspectorInstrumentation::didReceiveResourceResponse(cookie, identifier, frame->loader().documentLoader(), response, 0);
 
-    if (!response.isSuccessful()) {
-        loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), ASCIILiteral("Preflight response is not successful"), ResourceError::Type::AccessControl));
-        return;
-    }
+    // FIXME: <https://webkit.org/b/164889> Web Inspector: Show Preflight Request information in inspector
+    // This is only showing success preflight requests and responses but we should show network events
+    // for preflight failures and distinguish them better from non-preflight requests.
+    NetworkLoadMetrics emptyMetrics;
+    InspectorInstrumentation::didReceiveResourceResponse(*frame, identifier, frame->loader().documentLoader(), response, nullptr);
+    InspectorInstrumentation::didFinishLoading(frame, frame->loader().documentLoader(), identifier, emptyMetrics, nullptr);
 
-    String description;
-    if (!passesAccessControlCheck(response, loader.options().allowCredentials, loader.securityOrigin(), description)) {
-        loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), description, ResourceError::Type::AccessControl));
-        return;
-    }
-
-    auto result = std::make_unique<CrossOriginPreflightResultCacheItem>(loader.options().allowCredentials);
-    if (!result->parse(response, description)
-        || !result->allowsCrossOriginMethod(request.httpMethod(), description)
-        || !result->allowsCrossOriginHeaders(request.httpHeaderFields(), description)) {
-        loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), description, ResourceError::Type::AccessControl));
-        return;
-    }
-
-    CrossOriginPreflightResultCache::singleton().appendEntry(loader.securityOrigin().toString(), request.url(), WTFMove(result));
     loader.preflightSuccess(WTFMove(request));
 }
 
@@ -114,7 +107,7 @@ void CrossOriginPreflightChecker::startPreflight()
         preflightRequest.setInitiator(m_loader.options().initiator);
 
     ASSERT(!m_resource);
-    m_resource = m_loader.document().cachedResourceLoader().requestRawResource(WTFMove(preflightRequest));
+    m_resource = m_loader.document().cachedResourceLoader().requestRawResource(WTFMove(preflightRequest)).valueOr(nullptr);
     if (m_resource)
         m_resource->addClient(*this);
 }
@@ -129,7 +122,7 @@ void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, 
     ResourceResponse response;
     RefPtr<SharedBuffer> data;
 
-    unsigned identifier = loader.document().frame()->loader().loadResourceSynchronously(preflightRequest, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, error, response, data);
+    unsigned identifier = loader.document().frame()->loader().loadResourceSynchronously(preflightRequest, StoredCredentialsPolicy::DoNotUse, ClientCredentialPolicy::CannotAskClientForCredentials, error, response, data);
 
     if (!error.isNull()) {
         // If the preflight was cancelled by underlying code, it probably means the request was blocked due to some access control policy.

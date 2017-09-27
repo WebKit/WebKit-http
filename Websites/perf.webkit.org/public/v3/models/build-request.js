@@ -6,19 +6,21 @@ class BuildRequest extends DataModelObject {
     {
         super(id, object);
         this._triggerable = object.triggerable;
+        console.assert(!object.repositoryGroup || object.repositoryGroup instanceof TriggerableRepositoryGroup);
         this._analysisTaskId = object.task;
         this._testGroupId = object.testGroupId;
         console.assert(!object.testGroup || object.testGroup instanceof TestGroup);
         this._testGroup = object.testGroup;
         if (this._testGroup)
             this._testGroup.addBuildRequest(this);
+        this._repositoryGroup = object.repositoryGroup;
         console.assert(object.platform instanceof Platform);
         this._platform = object.platform;
-        console.assert(object.test instanceof Test);
+        console.assert(!object.test || object.test instanceof Test);
         this._test = object.test;
         this._order = object.order;
-        console.assert(object.rootSet instanceof RootSet);
-        this._rootSet = object.rootSet;
+        console.assert(object.commitSet instanceof CommitSet);
+        this._commitSet = object.commitSet;
         this._status = object.status;
         this._statusUrl = object.url;
         this._buildId = object.build;
@@ -28,24 +30,35 @@ class BuildRequest extends DataModelObject {
 
     updateSingleton(object)
     {
-        console.assert(this._testGroup == object.testGroup);
         console.assert(this._order == object.order);
-        console.assert(this._rootSet == object.rootSet);
+        console.assert(this._commitSet == object.commitSet);
+
+        const testGroup = object.testGroup;
+        console.assert(!this._testGroup || this._testGroup == testGroup);
+        if (!this._testGroup && testGroup)
+            testGroup.addBuildRequest(this);
+
+        this._testGroup = testGroup;
         this._status = object.status;
         this._statusUrl = object.url;
         this._buildId = object.build;
     }
 
+    triggerable() { return this._triggerable; }
     analysisTaskId() { return this._analysisTaskId; }
     testGroupId() { return this._testGroupId; }
     testGroup() { return this._testGroup; }
+    repositoryGroup() { return this._repositoryGroup; }
     platform() { return this._platform; }
     test() { return this._test; }
+    isBuild() { return this._order < 0; }
+    isTest() { return this._order >= 0; }
     order() { return +this._order; }
-    rootSet() { return this._rootSet; }
+    commitSet() { return this._commitSet; }
 
     status() { return this._status; }
     hasFinished() { return this._status == 'failed' || this._status == 'completed' || this._status == 'canceled'; }
+    hasCompleted() { return this._status == 'completed'; }
     hasStarted() { return this._status != 'pending'; }
     isScheduled() { return this._status == 'scheduled'; }
     isPending() { return this._status == 'pending'; }
@@ -108,28 +121,6 @@ class BuildRequest extends DataModelObject {
         return label;
     }
 
-    result() { return this._result; }
-    setResult(result)
-    {
-        this._result = result;
-        this._testGroup.didSetResult(this);
-    }
-
-    static fetchTriggerables()
-    {
-        return this.cachedFetch('/api/triggerables/').then(function (response) {
-            return response.triggerables.map(function (entry) { return {id: entry.id, name: entry.name}; });
-        });
-    }
-
-    // FIXME: Create a real model object for triggerables.
-    static cachedRequestsForTriggerableID(id)
-    {
-        return this.all().filter(function (request) {
-            return request._triggerable == id;
-        });
-    }
-
     static fetchForTriggerable(triggerable)
     {
         return RemoteAPI.getJSONWithStatus('/api/build-requests/' + triggerable).then(function (data) {
@@ -139,23 +130,33 @@ class BuildRequest extends DataModelObject {
 
     static constructBuildRequestsFromData(data)
     {
-        var rootIdMap = {};
-        for (var root of data['roots']) {
-            rootIdMap[root.id] = root;
-            root.repository = Repository.findById(root.repository);
+        for (let rawData of data['commits']) {
+            rawData.repository = Repository.findById(rawData.repository);
+            CommitLog.ensureSingleton(rawData.id, rawData);
         }
 
-        var rootSets = data['rootSets'].map(function (row) {
-            row.roots = row.roots.map(function (rootId) { return rootIdMap[rootId]; });
-            return RootSet.ensureSingleton(row.id, row);
+        for (let uploadedFile of data['uploadedFiles'])
+            UploadedFile.ensureSingleton(uploadedFile.id, uploadedFile);
+
+        const commitSets = data['commitSets'].map((rawData) => {
+            for (const item of rawData.revisionItems) {
+                item.commit = CommitLog.findById(item.commit);
+                item.patch = item.patch ? UploadedFile.findById(item.patch) : null;
+                item.rootFile = item.rootFile ? UploadedFile.findById(item.rootFile) : null;
+                item.commitOwner = item.commitOwner ? CommitLog.findById(item.commitOwner) : null;
+            }
+            rawData.customRoots = rawData.customRoots.map((fileId) => UploadedFile.findById(fileId));
+            return CommitSet.ensureSingleton(rawData.id, rawData);
         });
 
         return data['buildRequests'].map(function (rawData) {
+            rawData.triggerable = Triggerable.findById(rawData.triggerable);
+            rawData.repositoryGroup = TriggerableRepositoryGroup.findById(rawData.repositoryGroup);
             rawData.platform = Platform.findById(rawData.platform);
             rawData.test = Test.findById(rawData.test);
             rawData.testGroupId = rawData.testGroup;
             rawData.testGroup = TestGroup.findById(rawData.testGroup);
-            rawData.rootSet = RootSet.findById(rawData.rootSet);
+            rawData.commitSet = CommitSet.findById(rawData.commitSet);
             return BuildRequest.ensureSingleton(rawData.id, rawData);
         });
     }

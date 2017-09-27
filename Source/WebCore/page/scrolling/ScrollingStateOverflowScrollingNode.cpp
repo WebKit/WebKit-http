@@ -29,7 +29,7 @@
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #include "ScrollingStateTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -46,8 +46,6 @@ ScrollingStateOverflowScrollingNode::ScrollingStateOverflowScrollingNode(Scrolli
 ScrollingStateOverflowScrollingNode::ScrollingStateOverflowScrollingNode(const ScrollingStateOverflowScrollingNode& stateNode, ScrollingStateTree& adoptiveTree)
     : ScrollingStateScrollingNode(stateNode, adoptiveTree)
 {
-    if (hasChangedProperty(ScrolledContentsLayer))
-        setScrolledContentsLayer(stateNode.scrolledContentsLayer().toRepresentation(adoptiveTree.preferredLayerRepresentation()));
 }
 
 ScrollingStateOverflowScrollingNode::~ScrollingStateOverflowScrollingNode()
@@ -59,25 +57,11 @@ Ref<ScrollingStateNode> ScrollingStateOverflowScrollingNode::clone(ScrollingStat
     return adoptRef(*new ScrollingStateOverflowScrollingNode(*this, adoptiveTree));
 }
     
-void ScrollingStateOverflowScrollingNode::setScrolledContentsLayer(const LayerRepresentation& layerRepresentation)
+void ScrollingStateOverflowScrollingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
 {
-    if (layerRepresentation == m_scrolledContentsLayer)
-        return;
+    ts << "Overflow scrolling node";
     
-    m_scrolledContentsLayer = layerRepresentation;
-    setPropertyChanged(ScrolledContentsLayer);
-}
-
-void ScrollingStateOverflowScrollingNode::dumpProperties(TextStream& ts, int indent, ScrollingStateTreeAsTextBehavior behavior) const
-{
-    ts << "(" << "Overflow scrolling node" << "\n";
-    
-    ScrollingStateScrollingNode::dumpProperties(ts, indent, behavior);
-    
-    if ((behavior & ScrollingStateTreeAsTextBehaviorIncludeLayerIDs) && m_scrolledContentsLayer.layerID()) {
-        writeIndent(ts, indent + 1);
-        ts << "(scrolled contents layer " << m_scrolledContentsLayer.layerID() << ")\n";
-    }
+    ScrollingStateScrollingNode::dumpProperties(ts, behavior);
 }
 
 } // namespace WebCore

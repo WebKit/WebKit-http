@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2009, 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -33,10 +33,12 @@
 
 #include "ArithProfile.h"
 #include "BuiltinExecutables.h"
+#include "BuiltinNames.h"
 #include "BytecodeGeneratorification.h"
 #include "BytecodeLivenessAnalysis.h"
 #include "DefinePropertyAttributes.h"
 #include "Interpreter.h"
+#include "JSAsyncGeneratorFunction.h"
 #include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGeneratorFunction.h"
@@ -62,13 +64,20 @@ using namespace std;
 
 namespace JSC {
 
-void Label::setLocation(unsigned location)
+template<typename T>
+static inline void shrinkToFit(T& segmentedVector)
+{
+    while (segmentedVector.size() && !segmentedVector.last().refCount())
+        segmentedVector.removeLast();
+}
+
+void Label::setLocation(BytecodeGenerator& generator, unsigned location)
 {
     m_location = location;
     
     unsigned size = m_unresolvedJumps.size();
     for (unsigned i = 0; i < size; ++i)
-        m_generator.instructions()[m_unresolvedJumps[i].second].u.operand = m_location - m_unresolvedJumps[i].first;
+        generator.instructions()[m_unresolvedJumps[i].second].u.operand = m_location - m_unresolvedJumps[i].first;
 }
 
 void Variable::dump(PrintStream& out) const
@@ -99,22 +108,36 @@ ParserError BytecodeGenerator::generate()
 
     {
         RefPtr<RegisterID> temp = newTemporary();
-        RefPtr<RegisterID> globalScope;
+        RefPtr<RegisterID> tolLevelScope;
         for (auto functionPair : m_functionsToInitialize) {
             FunctionMetadataNode* metadata = functionPair.first;
             FunctionVariableType functionType = functionPair.second;
             emitNewFunction(temp.get(), metadata);
             if (functionType == NormalFunctionVariable)
                 initializeVariable(variable(metadata->ident()), temp.get());
-            else if (functionType == GlobalFunctionVariable) {
-                if (!globalScope) {
-                    // We know this will resolve to the global object because our parser/global initialization code 
+            else if (functionType == TopLevelFunctionVariable) {
+                if (!tolLevelScope) {
+                    // We know this will resolve to the top level scope or global object because our parser/global initialization code 
                     // doesn't allow let/const/class variables to have the same names as functions.
-                    RefPtr<RegisterID> globalObjectScope = emitResolveScope(nullptr, Variable(metadata->ident())); 
-                    globalScope = newBlockScopeVariable(); 
-                    emitMove(globalScope.get(), globalObjectScope.get());
+                    // This is a top level function, and it's an error to ever create a top level function
+                    // name that would resolve to a lexical variable. E.g:
+                    // ```
+                    //     function f() {
+                    //         {
+                    //             let x;
+                    //             {
+                    //             //// error thrown here
+                    //                  eval("function x(){}");
+                    //             }
+                    //         }
+                    //     }
+                    // ```
+                    // Therefore, we're guaranteed to have this resolve to a top level variable.
+                    RefPtr<RegisterID> tolLevelObjectScope = emitResolveScope(nullptr, Variable(metadata->ident()));
+                    tolLevelScope = newBlockScopeVariable();
+                    emitMove(tolLevelScope.get(), tolLevelObjectScope.get());
                 }
-                emitPutToScope(globalScope.get(), Variable(metadata->ident()), temp.get(), ThrowIfNotFound, InitializationMode::NotInitialization);
+                emitPutToScope(tolLevelScope.get(), Variable(metadata->ident()), temp.get(), ThrowIfNotFound, InitializationMode::NotInitialization);
             } else
                 RELEASE_ASSERT_NOT_REACHED();
         }
@@ -123,11 +146,29 @@ ParserError BytecodeGenerator::generate()
     bool callingClassConstructor = constructorKind() != ConstructorKind::None && !isConstructor();
     if (!callingClassConstructor)
         m_scopeNode->emitBytecode(*this);
+    else {
+        // At this point we would have emitted an unconditional throw followed by some nonsense that's
+        // just an artifact of how this generator is structured. That code never runs, but it confuses
+        // bytecode analyses because it constitutes an unterminated basic block. So, we terminate the
+        // basic block the strongest way possible.
+        emitUnreachable();
+    }
+
+    for (auto& tuple : m_catchesToEmit) {
+        Ref<Label> realCatchTarget = newEmittedLabel();
+        emitOpcode(op_catch);
+        instructions().append(std::get<1>(tuple));
+        instructions().append(std::get<2>(tuple));
+        instructions().append(0);
+
+        TryData* tryData = std::get<0>(tuple);
+        emitJump(tryData->target.get());
+        tryData->target = WTFMove(realCatchTarget);
+    }
 
     m_staticPropertyAnalyzer.kill();
 
-    for (unsigned i = 0; i < m_tryRanges.size(); ++i) {
-        TryRange& range = m_tryRanges[i];
+    for (auto& range : m_tryRanges) {
         int start = range.start->bind();
         int end = range.end->bind();
         
@@ -156,7 +197,6 @@ ParserError BytecodeGenerator::generate()
         if (end <= start)
             continue;
         
-        ASSERT(range.tryData->handlerType != HandlerType::Illegal);
         UnlinkedHandlerInfo info(static_cast<uint32_t>(start), static_cast<uint32_t>(end),
             static_cast<uint32_t>(range.tryData->target->bind()), range.tryData->handlerType);
         m_codeBlock->addExceptionHandler(info);
@@ -166,6 +206,7 @@ ParserError BytecodeGenerator::generate()
     if (isGeneratorOrAsyncFunctionBodyParseMode(m_codeBlock->parseMode()))
         performGeneratorification(m_codeBlock.get(), m_instructions, m_generatorFrameSymbolTable.get(), m_generatorFrameSymbolTableIndex);
 
+    RELEASE_ASSERT(static_cast<unsigned>(m_codeBlock->numCalleeLocals()) < static_cast<unsigned>(FirstConstantRegisterIndex));
     m_codeBlock->setInstructions(std::make_unique<UnlinkedInstructionStream>(m_instructions));
 
     m_codeBlock->shrinkToFit();
@@ -197,12 +238,13 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
 
     allocateAndEmitScope();
 
+    emitCheckTraps();
+
     const FunctionStack& functionStack = programNode->functionStack();
 
-    for (size_t i = 0; i < functionStack.size(); ++i) {
-        FunctionMetadataNode* function = functionStack[i];
-        m_functionsToInitialize.append(std::make_pair(function, GlobalFunctionVariable));
-    }
+    for (auto* function : functionStack)
+        m_functionsToInitialize.append(std::make_pair(function, TopLevelFunctionVariable));
+
     if (Options::validateBytecode()) {
         for (auto& entry : programNode->varDeclarations())
             RELEASE_ASSERT(entry.value.isVar());
@@ -255,15 +297,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     // If IsSimpleParameterList is false, we will create a strict-mode like arguments object.
     // IsSimpleParameterList is false if the argument list contains any default parameter values,
     // a rest parameter, or any destructuring patterns.
-    bool isSimpleParameterList = true;
     // If we do have default parameters, destructuring parameters, or a rest parameter, our parameters will be allocated in a different scope.
-    for (size_t i = 0; i < parameters.size(); i++) {
-        std::pair<DestructuringPatternNode*, ExpressionNode*> parameter = parameters.at(i);
-        bool hasDefaultParameterValue = !!parameter.second;
-        auto pattern = parameter.first;
-        bool isSimpleParameter = !hasDefaultParameterValue && pattern->isBindingNode();
-        isSimpleParameterList &= isSimpleParameter;
-    }
+    bool isSimpleParameterList = parameters.isSimpleParameterList();
 
     SourceParseMode parseMode = codeBlock->parseMode();
 
@@ -271,7 +306,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     bool shouldCaptureSomeOfTheThings = m_shouldEmitDebugHooks || functionNode->needsActivation() || containsArrowOrEvalButNotInArrowBlock;
 
     bool shouldCaptureAllOfTheThings = m_shouldEmitDebugHooks || codeBlock->usesEval();
-    bool needsArguments = (functionNode->usesArguments() || codeBlock->usesEval() || (functionNode->usesArrowFunction() && !codeBlock->isArrowFunction() && isArgumentsUsedInInnerArrowFunction()));
+    bool needsArguments = ((functionNode->usesArguments() && !codeBlock->isArrowFunction()) || codeBlock->usesEval() || (functionNode->usesArrowFunction() && !codeBlock->isArrowFunction() && isArgumentsUsedInInnerArrowFunction()));
 
     if (isGeneratorOrAsyncFunctionBodyParseMode(parseMode)) {
         // Generator and AsyncFunction never provides "arguments". "arguments" reference will be resolved in an upper generator function scope.
@@ -330,6 +365,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
 
     allocateAndEmitScope();
 
+    emitCheckTraps();
+    
     if (functionNameIsInScope(functionNode->ident(), functionNode->functionMode())) {
         ASSERT(parseMode != SourceParseMode::GeneratorBodyMode);
         ASSERT(!isAsyncFunctionBodyParseMode(parseMode));
@@ -540,7 +577,10 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
 
     m_newTargetRegister = addVar();
     switch (parseMode) {
-    case SourceParseMode::GeneratorWrapperFunctionMode: {
+    case SourceParseMode::GeneratorWrapperFunctionMode:
+    case SourceParseMode::GeneratorWrapperMethodMode:
+    case SourceParseMode::AsyncGeneratorWrapperMethodMode:
+    case SourceParseMode::AsyncGeneratorWrapperFunctionMode: {
         m_generatorRegister = addVar();
 
         // FIXME: Emit to_this only when Generator uses it.
@@ -562,6 +602,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         ASSERT(!isConstructor());
         ASSERT(constructorKind() == ConstructorKind::None);
         m_generatorRegister = addVar();
+        m_promiseCapabilityRegister = addVar();
 
         if (parseMode != SourceParseMode::AsyncArrowFunctionMode) {
             // FIXME: Emit to_this only when AsyncFunctionBody uses it.
@@ -574,9 +615,27 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         }
 
         emitNewObject(m_generatorRegister);
+
+        // let promiseCapability be @newPromiseCapability(@Promise)
+        auto varNewPromiseCapability = variable(propertyNames().builtinNames().newPromiseCapabilityPrivateName());
+        RefPtr<RegisterID> scope = newTemporary();
+        moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), varNewPromiseCapability));
+        RefPtr<RegisterID> newPromiseCapability = emitGetFromScope(newTemporary(), scope.get(), varNewPromiseCapability, ThrowIfNotFound);
+
+        CallArguments args(*this, nullptr, 1);
+        emitLoad(args.thisRegister(), jsUndefined());
+
+        auto varPromiseConstructor = variable(propertyNames().builtinNames().PromisePrivateName());
+        moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), varPromiseConstructor));
+        emitGetFromScope(args.argumentRegister(0), scope.get(), varPromiseConstructor, ThrowIfNotFound);
+
+        // JSTextPosition(int _line, int _offset, int _lineStartOffset)
+        JSTextPosition divot(m_scopeNode->firstLine(), m_scopeNode->startOffset(), m_scopeNode->lineStartOffset());
+        emitCall(promiseCapabilityRegister(), newPromiseCapability.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
         break;
     }
 
+    case SourceParseMode::AsyncGeneratorBodyMode:
     case SourceParseMode::AsyncFunctionBodyMode:
     case SourceParseMode::AsyncArrowFunctionBodyMode:
     case SourceParseMode::GeneratorBodyMode: {
@@ -590,16 +649,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             if (isConstructor()) {
                 emitMove(m_newTargetRegister, &m_thisRegister);
                 if (constructorKind() == ConstructorKind::Extends) {
-                    RefPtr<Label> isDerived = newLabel();
-                    RefPtr<Label> done = newLabel();
-                    m_isDerivedConstuctor = addVar();
-                    emitGetById(m_isDerivedConstuctor, &m_calleeRegister, propertyNames().builtinNames().isDerivedConstructorPrivateName());
-                    emitJumpIfTrue(m_isDerivedConstuctor, isDerived.get());
-                    emitCreateThis(&m_thisRegister);
-                    emitJump(done.get());
-                    emitLabel(isDerived.get());
                     emitMoveEmptyValue(&m_thisRegister);
-                    emitLabel(done.get());
                 } else
                     emitCreateThis(&m_thisRegister);
             } else if (constructorKind() != ConstructorKind::None)
@@ -658,37 +708,37 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     // because a function's default parameter ExpressionNodes will use temporary registers.
     pushTDZVariables(*parentScopeTDZVariables, TDZCheckOptimization::DoNotOptimize, TDZRequirement::UnderTDZ);
 
+    Ref<Label> catchLabel = newLabel();
     TryData* tryFormalParametersData = nullptr;
-    if (isAsyncFunctionWrapperParseMode(parseMode) && !isSimpleParameterList) {
-        RefPtr<Label> tryFormalParametersStart = emitLabel(newLabel().get());
-        tryFormalParametersData = pushTry(tryFormalParametersStart.get());
+    bool needTryCatch = isAsyncFunctionWrapperParseMode(parseMode) && !isSimpleParameterList;
+    if (needTryCatch) {
+        Ref<Label> tryFormalParametersStart = newEmittedLabel();
+        tryFormalParametersData = pushTry(tryFormalParametersStart.get(), catchLabel.get(), HandlerType::SynthesizedCatch);
     }
 
     initializeDefaultParameterValuesAndSetupFunctionScopeStack(parameters, isSimpleParameterList, functionNode, functionSymbolTable, symbolTableConstantIndex, captures, shouldCreateArgumentsVariableInParameterScope);
 
-    if (isAsyncFunctionWrapperParseMode(parseMode) && !isSimpleParameterList) {
-        RefPtr<Label> didNotThrow = newLabel();
+    if (needTryCatch) {
+        Ref<Label> didNotThrow = newLabel();
         emitJump(didNotThrow.get());
-        RefPtr<RegisterID> exception = newTemporary();
-        RefPtr<RegisterID> thrownValue = newTemporary();
-        RefPtr<Label> catchHere = emitLabel(newLabel().get());
-        popTryAndEmitCatch(tryFormalParametersData, exception.get(), thrownValue.get(), catchHere.get(), HandlerType::Catch);
+        emitLabel(catchLabel.get());
+        popTry(tryFormalParametersData, catchLabel.get());
 
-        // return @Promise.@reject(thrownValue);
-        Variable promiseVar = variable(m_vm->propertyNames->builtinNames().PromisePrivateName());
-        RefPtr<RegisterID> scope = emitResolveScope(newTemporary(), promiseVar);
-        RefPtr<RegisterID> promiseConstructor = emitGetFromScope(newTemporary(), scope.get(), promiseVar, ResolveMode::ThrowIfNotFound);
-        RefPtr<RegisterID> promiseReject = emitGetById(newTemporary(), promiseConstructor.get(), m_vm->propertyNames->builtinNames().rejectPrivateName());
+        RefPtr<RegisterID> thrownValue = newTemporary();
+        RegisterID* unused = newTemporary();
+        emitCatch(unused, thrownValue.get(), tryFormalParametersData);
+
+        // return promiseCapability.@reject(thrownValue)
+        RefPtr<RegisterID> reject = emitGetById(newTemporary(), promiseCapabilityRegister(), m_vm->propertyNames->builtinNames().rejectPrivateName());
 
         CallArguments args(*this, nullptr, 1);
-
-        emitMove(args.thisRegister(), promiseConstructor.get());
+        emitLoad(args.thisRegister(), jsUndefined());
         emitMove(args.argumentRegister(0), thrownValue.get());
 
         JSTextPosition divot(functionNode->firstLine(), functionNode->startOffset(), functionNode->lineStartOffset());
 
-        RefPtr<RegisterID> result = emitCall(newTemporary(), promiseReject.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
-        emitReturn(result.get());
+        RefPtr<RegisterID> result = emitCall(newTemporary(), reject.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
+        emitReturn(emitGetById(newTemporary(), promiseCapabilityRegister(), m_vm->propertyNames->builtinNames().promisePrivateName()));
 
         emitLabel(didNotThrow.get());
     }
@@ -742,20 +792,26 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
 
     allocateAndEmitScope();
 
-    const DeclarationStacks::FunctionStack& functionStack = evalNode->functionStack();
-    for (size_t i = 0; i < functionStack.size(); ++i)
-        m_codeBlock->addFunctionDecl(makeFunction(functionStack[i]));
+    emitCheckTraps();
+    
+    for (FunctionMetadataNode* function : evalNode->functionStack()) {
+        m_codeBlock->addFunctionDecl(makeFunction(function));
+        m_functionsToInitialize.append(std::make_pair(function, TopLevelFunctionVariable));
+    }
 
     const VariableEnvironment& varDeclarations = evalNode->varDeclarations();
-    unsigned numVariables = varDeclarations.size();
     Vector<Identifier, 0, UnsafeVectorOverflow> variables;
-    variables.reserveCapacity(numVariables);
+    Vector<Identifier, 0, UnsafeVectorOverflow> hoistedFunctions;
     for (auto& entry : varDeclarations) {
         ASSERT(entry.value.isVar());
         ASSERT(entry.key->isAtomic() || entry.key->isSymbol());
-        variables.append(Identifier::fromUid(m_vm, entry.key.get()));
+        if (entry.value.isSloppyModeHoistingCandidate())
+            hoistedFunctions.append(Identifier::fromUid(m_vm, entry.key.get()));
+        else
+            variables.append(Identifier::fromUid(m_vm, entry.key.get()));
     }
     codeBlock->adoptVariables(variables);
+    codeBlock->adoptFunctionHoistingCandidates(WTFMove(hoistedFunctions));
     
     if (evalNode->usesSuperCall() || evalNode->usesNewTarget())
         m_newTargetRegister = addVar();
@@ -825,6 +881,8 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ModuleProgramNode* moduleProgramNod
 
     allocateAndEmitScope();
 
+    emitCheckTraps();
+    
     m_calleeRegister.setIndex(CallFrameSlot::callee);
 
     m_codeBlock->setNumParameters(1); // Allocate space for "this"
@@ -855,7 +913,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ModuleProgramNode* moduleProgramNod
 
     pushTDZVariables(lexicalVariables, TDZCheckOptimization::Optimize, TDZRequirement::UnderTDZ);
     bool isWithScope = false;
-    m_symbolTableStack.append(SymbolTableStackEntry { moduleEnvironmentSymbolTable, m_topMostScope, isWithScope, constantSymbolTable->index() });
+    m_lexicalScopeStack.append({ moduleEnvironmentSymbolTable, m_topMostScope, isWithScope, constantSymbolTable->index() });
     emitPrefillStackTDZVariables(lexicalVariables, moduleEnvironmentSymbolTable);
 
     // makeFunction assumes that there's correct TDZ stack entries.
@@ -960,11 +1018,13 @@ void BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeSta
             std::pair<DestructuringPatternNode*, ExpressionNode*> parameter = parameters.at(i);
             if (parameter.first->isRestParameter())
                 continue;
-            RefPtr<RegisterID> parameterValue = &registerFor(virtualRegisterForArgument(1 + i));
-            emitMove(temp.get(), parameterValue.get());
+            if ((i + 1) < m_parameters.size())
+                emitMove(temp.get(), &m_parameters[i + 1]);
+            else
+                emitGetArgument(temp.get(), i);
             if (parameter.second) {
-                RefPtr<RegisterID> condition = emitIsUndefined(newTemporary(), parameterValue.get());
-                RefPtr<Label> skipDefaultParameterBecauseNotUndefined = newLabel();
+                RefPtr<RegisterID> condition = emitIsUndefined(newTemporary(), temp.get());
+                Ref<Label> skipDefaultParameterBecauseNotUndefined = newLabel();
                 emitJumpIfFalse(condition.get(), skipDefaultParameterBecauseNotUndefined.get());
                 emitNode(temp.get(), parameter.second);
                 emitLabel(skipDefaultParameterBecauseNotUndefined.get());
@@ -1008,6 +1068,12 @@ void BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeSta
     }
 }
 
+bool BytecodeGenerator::needsDerivedConstructorInArrowFunctionLexicalEnvironment()
+{
+    ASSERT(m_codeBlock->isClassContext() || !(isConstructor() && constructorKind() == ConstructorKind::Extends));
+    return m_codeBlock->isClassContext() && isSuperUsedInInnerArrowFunction();
+}
+
 void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable* functionSymbolTable, bool canReuseLexicalEnvironment)
 {
     ASSERT(!m_arrowFunctionContextLexicalEnvironmentRegister);
@@ -1030,7 +1096,7 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
             functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().newTargetLocalPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
         
-        if (isConstructor() && constructorKind() == ConstructorKind::Extends && isSuperUsedInInnerArrowFunction()) {
+        if (needsDerivedConstructorInArrowFunctionLexicalEnvironment()) {
             offset = functionSymbolTable->takeNextScopeOffset(NoLockingNecessary);
             functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().derivedConstructorPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
@@ -1052,26 +1118,27 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
         addTarget.iterator->value.setIsLet();
     }
 
-    if (isConstructor() && constructorKind() == ConstructorKind::Extends && isSuperUsedInInnerArrowFunction()) {
+    if (needsDerivedConstructorInArrowFunctionLexicalEnvironment()) {
         auto derivedConstructor = environment.add(propertyNames().builtinNames().derivedConstructorPrivateName());
         derivedConstructor.iterator->value.setIsCaptured();
         derivedConstructor.iterator->value.setIsLet();
     }
 
     if (environment.size() > 0) {
-        size_t size = m_symbolTableStack.size();
+        size_t size = m_lexicalScopeStack.size();
         pushLexicalScopeInternal(environment, TDZCheckOptimization::Optimize, NestedScopeType::IsNotNested, nullptr, TDZRequirement::UnderTDZ, ScopeType::LetConstScope, ScopeRegisterType::Block);
 
-        ASSERT_UNUSED(size, m_symbolTableStack.size() == size + 1);
+        ASSERT_UNUSED(size, m_lexicalScopeStack.size() == size + 1);
 
-        m_arrowFunctionContextLexicalEnvironmentRegister = m_symbolTableStack.last().m_scope;
+        m_arrowFunctionContextLexicalEnvironmentRegister = m_lexicalScopeStack.last().m_scope;
     }
 }
 
 RegisterID* BytecodeGenerator::initializeNextParameter()
 {
     VirtualRegister reg = virtualRegisterForArgument(m_codeBlock->numParameters());
-    RegisterID& parameter = registerFor(reg);
+    m_parameters.grow(m_parameters.size() + 1);
+    auto& parameter = registerFor(reg);
     parameter.setIndex(reg.offset());
     m_codeBlock->addParameter();
     return &parameter;
@@ -1081,14 +1148,23 @@ void BytecodeGenerator::initializeParameters(FunctionParameters& parameters)
 {
     // Make sure the code block knows about all of our parameters, and make sure that parameters
     // needing destructuring are noted.
-    m_parameters.grow(parameters.size() + 1); // reserve space for "this"
     m_thisRegister.setIndex(initializeNextParameter()->index()); // this
+
+    bool nonSimpleArguments = false;
     for (unsigned i = 0; i < parameters.size(); ++i) {
-        auto pattern = parameters.at(i).first;
+        auto parameter = parameters.at(i);
+        auto pattern = parameter.first;
         if (pattern->isRestParameter()) {
             RELEASE_ASSERT(!m_restParameter);
             m_restParameter = static_cast<RestParameterNode*>(pattern);
-        } else
+            nonSimpleArguments = true;
+            continue;
+        }
+        if (parameter.second) {
+            nonSimpleArguments = true;
+            continue;
+        }
+        if (!nonSimpleArguments)
             initializeNextParameter();
     }
 }
@@ -1107,11 +1183,11 @@ void BytecodeGenerator::initializeVarLexicalEnvironment(int symbolTableConstantI
         instructions().append(scopeRegister()->index());
         instructions().append(m_lexicalEnvironmentRegister->index());
 
-        pushScopedControlFlowContext();
+        pushLocalControlFlowScope();
     }
     bool isWithScope = false;
-    m_symbolTableStack.append(SymbolTableStackEntry{ functionSymbolTable, m_lexicalEnvironmentRegister, isWithScope, symbolTableConstantIndex });
-    m_varScopeSymbolTableIndex = m_symbolTableStack.size() - 1;
+    m_lexicalScopeStack.append({ functionSymbolTable, m_lexicalEnvironmentRegister, isWithScope, symbolTableConstantIndex });
+    m_varScopeLexicalScopeStackIndex = m_lexicalScopeStack.size() - 1;
 }
 
 UniquedStringImpl* BytecodeGenerator::visibleNameForParameter(DestructuringPatternNode* pattern)
@@ -1135,8 +1211,7 @@ RegisterID* BytecodeGenerator::newRegister()
 
 void BytecodeGenerator::reclaimFreeRegisters()
 {
-    while (m_calleeLocals.size() && !m_calleeLocals.last().refCount())
-        m_calleeLocals.removeLast();
+    shrinkToFit(m_calleeLocals);
 }
 
 RegisterID* BytecodeGenerator::newBlockScopeVariable()
@@ -1155,40 +1230,42 @@ RegisterID* BytecodeGenerator::newTemporary()
     return result;
 }
 
-LabelScopePtr BytecodeGenerator::newLabelScope(LabelScope::Type type, const Identifier* name)
+Ref<LabelScope> BytecodeGenerator::newLabelScope(LabelScope::Type type, const Identifier* name)
 {
-    // Reclaim free label scopes.
-    while (m_labelScopes.size() && !m_labelScopes.last().refCount())
-        m_labelScopes.removeLast();
+    shrinkToFit(m_labelScopes);
 
     // Allocate new label scope.
-    LabelScope scope(type, name, labelScopeDepth(), newLabel(), type == LabelScope::Loop ? newLabel() : PassRefPtr<Label>()); // Only loops have continue targets.
-    m_labelScopes.append(scope);
-    return LabelScopePtr(m_labelScopes, m_labelScopes.size() - 1);
+    m_labelScopes.append(type, name, labelScopeDepth(), newLabel(), type == LabelScope::Loop ? RefPtr<Label>(newLabel()) : RefPtr<Label>()); // Only loops have continue targets.
+    return m_labelScopes.last();
 }
 
-PassRefPtr<Label> BytecodeGenerator::newLabel()
+Ref<Label> BytecodeGenerator::newLabel()
 {
-    // Reclaim free label IDs.
-    while (m_labels.size() && !m_labels.last().refCount())
-        m_labels.removeLast();
+    shrinkToFit(m_labels);
 
     // Allocate new label ID.
-    m_labels.append(*this);
-    return &m_labels.last();
+    m_labels.append();
+    return m_labels.last();
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitLabel(Label* l0)
+Ref<Label> BytecodeGenerator::newEmittedLabel()
+{
+    Ref<Label> label = newLabel();
+    emitLabel(label.get());
+    return label;
+}
+
+void BytecodeGenerator::emitLabel(Label& l0)
 {
     unsigned newLabelIndex = instructions().size();
-    l0->setLocation(newLabelIndex);
+    l0.setLocation(*this, newLabelIndex);
 
     if (m_codeBlock->numberOfJumpTargets()) {
         unsigned lastLabelIndex = m_codeBlock->lastJumpTarget();
         ASSERT(lastLabelIndex <= newLabelIndex);
         if (newLabelIndex == lastLabelIndex) {
             // Peephole optimizations have already been disabled by emitting the last label
-            return l0;
+            return;
         }
     }
 
@@ -1196,7 +1273,6 @@ PassRefPtr<Label> BytecodeGenerator::emitLabel(Label* l0)
 
     // This disables peephole optimizations when an instruction is a jump target
     m_lastOpcodeID = op_end;
-    return l0;
 }
 
 void BytecodeGenerator::emitOpcode(OpcodeID opcodeID)
@@ -1235,19 +1311,17 @@ UnlinkedValueProfile BytecodeGenerator::emitProfiledOpcode(OpcodeID opcodeID)
 void BytecodeGenerator::emitEnter()
 {
     emitOpcode(op_enter);
-    emitWatchdog();
 }
 
 void BytecodeGenerator::emitLoopHint()
 {
     emitOpcode(op_loop_hint);
-    emitWatchdog();
+    emitCheckTraps();
 }
 
-void BytecodeGenerator::emitWatchdog()
+void BytecodeGenerator::emitCheckTraps()
 {
-    if (vm()->watchdog())
-        emitOpcode(op_watchdog);
+    emitOpcode(op_check_traps);
 }
 
 void BytecodeGenerator::retrieveLastBinaryOp(int& dstIndex, int& src1Index, int& src2Index)
@@ -1281,15 +1355,14 @@ void ALWAYS_INLINE BytecodeGenerator::rewindUnaryOp()
     m_lastOpcodeID = op_end;
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitJump(Label* target)
+void BytecodeGenerator::emitJump(Label& target)
 {
     size_t begin = instructions().size();
     emitOpcode(op_jmp);
-    instructions().append(target->bind(begin, instructions().size()));
-    return target;
+    instructions().append(target.bind(begin, instructions().size()));
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* target)
+void BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label& target)
 {
     if (m_lastOpcodeID == op_less) {
         int dstIndex;
@@ -1305,8 +1378,8 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             emitOpcode(op_jless);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
     } else if (m_lastOpcodeID == op_lesseq) {
         int dstIndex;
@@ -1322,8 +1395,8 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             emitOpcode(op_jlesseq);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
     } else if (m_lastOpcodeID == op_greater) {
         int dstIndex;
@@ -1339,8 +1412,8 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             emitOpcode(op_jgreater);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
     } else if (m_lastOpcodeID == op_greatereq) {
         int dstIndex;
@@ -1356,10 +1429,10 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             emitOpcode(op_jgreatereq);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
-    } else if (m_lastOpcodeID == op_eq_null && target->isForward()) {
+    } else if (m_lastOpcodeID == op_eq_null && target.isForward()) {
         int dstIndex;
         int srcIndex;
 
@@ -1371,10 +1444,10 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             size_t begin = instructions().size();
             emitOpcode(op_jeq_null);
             instructions().append(srcIndex);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
-    } else if (m_lastOpcodeID == op_neq_null && target->isForward()) {
+    } else if (m_lastOpcodeID == op_neq_null && target.isForward()) {
         int dstIndex;
         int srcIndex;
 
@@ -1386,8 +1459,8 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             size_t begin = instructions().size();
             emitOpcode(op_jneq_null);
             instructions().append(srcIndex);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
     }
 
@@ -1395,13 +1468,12 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
 
     emitOpcode(op_jtrue);
     instructions().append(cond->index());
-    instructions().append(target->bind(begin, instructions().size()));
-    return target;
+    instructions().append(target.bind(begin, instructions().size()));
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* target)
+void BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label& target)
 {
-    if (m_lastOpcodeID == op_less && target->isForward()) {
+    if (m_lastOpcodeID == op_less && target.isForward()) {
         int dstIndex;
         int src1Index;
         int src2Index;
@@ -1415,10 +1487,10 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             emitOpcode(op_jnless);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
-    } else if (m_lastOpcodeID == op_lesseq && target->isForward()) {
+    } else if (m_lastOpcodeID == op_lesseq && target.isForward()) {
         int dstIndex;
         int src1Index;
         int src2Index;
@@ -1432,10 +1504,10 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             emitOpcode(op_jnlesseq);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
-    } else if (m_lastOpcodeID == op_greater && target->isForward()) {
+    } else if (m_lastOpcodeID == op_greater && target.isForward()) {
         int dstIndex;
         int src1Index;
         int src2Index;
@@ -1449,10 +1521,10 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             emitOpcode(op_jngreater);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
-    } else if (m_lastOpcodeID == op_greatereq && target->isForward()) {
+    } else if (m_lastOpcodeID == op_greatereq && target.isForward()) {
         int dstIndex;
         int src1Index;
         int src2Index;
@@ -1466,8 +1538,8 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             emitOpcode(op_jngreatereq);
             instructions().append(src1Index);
             instructions().append(src2Index);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
     } else if (m_lastOpcodeID == op_not) {
         int dstIndex;
@@ -1481,10 +1553,10 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             size_t begin = instructions().size();
             emitOpcode(op_jtrue);
             instructions().append(srcIndex);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
-    } else if (m_lastOpcodeID == op_eq_null && target->isForward()) {
+    } else if (m_lastOpcodeID == op_eq_null && target.isForward()) {
         int dstIndex;
         int srcIndex;
 
@@ -1496,10 +1568,10 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             size_t begin = instructions().size();
             emitOpcode(op_jneq_null);
             instructions().append(srcIndex);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
-    } else if (m_lastOpcodeID == op_neq_null && target->isForward()) {
+    } else if (m_lastOpcodeID == op_neq_null && target.isForward()) {
         int dstIndex;
         int srcIndex;
 
@@ -1511,40 +1583,37 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             size_t begin = instructions().size();
             emitOpcode(op_jeq_null);
             instructions().append(srcIndex);
-            instructions().append(target->bind(begin, instructions().size()));
-            return target;
+            instructions().append(target.bind(begin, instructions().size()));
+            return;
         }
     }
 
     size_t begin = instructions().size();
     emitOpcode(op_jfalse);
     instructions().append(cond->index());
-    instructions().append(target->bind(begin, instructions().size()));
-    return target;
+    instructions().append(target.bind(begin, instructions().size()));
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitJumpIfNotFunctionCall(RegisterID* cond, Label* target)
+void BytecodeGenerator::emitJumpIfNotFunctionCall(RegisterID* cond, Label& target)
 {
     size_t begin = instructions().size();
 
     emitOpcode(op_jneq_ptr);
     instructions().append(cond->index());
     instructions().append(Special::CallFunction);
-    instructions().append(target->bind(begin, instructions().size()));
+    instructions().append(target.bind(begin, instructions().size()));
     instructions().append(0);
-    return target;
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitJumpIfNotFunctionApply(RegisterID* cond, Label* target)
+void BytecodeGenerator::emitJumpIfNotFunctionApply(RegisterID* cond, Label& target)
 {
     size_t begin = instructions().size();
 
     emitOpcode(op_jneq_ptr);
     instructions().append(cond->index());
     instructions().append(Special::ApplyFunction);
-    instructions().append(target->bind(begin, instructions().size()));
+    instructions().append(target.bind(begin, instructions().size()));
     instructions().append(0);
-    return target;
 }
 
 bool BytecodeGenerator::hasConstant(const Identifier& ident) const
@@ -1567,9 +1636,7 @@ unsigned BytecodeGenerator::addConstant(const Identifier& ident)
 RegisterID* BytecodeGenerator::addConstantEmptyValue()
 {
     if (!m_emptyValueRegister) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(JSValue());
         m_emptyValueRegister = &m_constantPoolRegisters[index];
     }
@@ -1589,8 +1656,7 @@ RegisterID* BytecodeGenerator::addConstantValue(JSValue v, SourceCodeRepresentat
     EncodedJSValueWithRepresentation valueMapKey { JSValue::encode(v), sourceCodeRepresentation };
     JSValueMap::AddResult result = m_jsValueMap.add(valueMapKey, m_nextConstantOffset);
     if (result.isNewEntry) {
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        addConstantIndex();
         m_codeBlock->addConstant(v, sourceCodeRepresentation);
     } else
         index = result.iterator->value;
@@ -1601,9 +1667,7 @@ RegisterID* BytecodeGenerator::emitMoveLinkTimeConstant(RegisterID* dst, LinkTim
 {
     unsigned constantIndex = static_cast<unsigned>(type);
     if (!m_linkTimeConstantRegisters[constantIndex]) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(type);
         m_linkTimeConstantRegisters[constantIndex] = &m_constantPoolRegisters[index];
     }
@@ -1875,6 +1939,14 @@ void BytecodeGenerator::emitProfileControlFlow(int textOffset)
     }
 }
 
+unsigned BytecodeGenerator::addConstantIndex()
+{
+    unsigned index = m_nextConstantOffset;
+    m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
+    ++m_nextConstantOffset;
+    return index;
+}
+
 RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, bool b)
 {
     return emitLoad(dst, jsBoolean(b));
@@ -1898,12 +1970,29 @@ RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, JSValue v, SourceCodeRe
     return constantID;
 }
 
+RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, IdentifierSet& set)
+{
+    for (const auto& entry : m_codeBlock->constantIdentifierSets()) {
+        if (entry.first != set)
+            continue;
+        
+        return &m_constantPoolRegisters[entry.second];
+    }
+    
+    unsigned index = addConstantIndex();
+    m_codeBlock->addSetConstant(set);
+    RegisterID* m_setRegister = &m_constantPoolRegisters[index];
+    
+    if (dst)
+        return emitMove(dst, m_setRegister);
+    
+    return m_setRegister;
+}
+
 RegisterID* BytecodeGenerator::emitLoadGlobalObject(RegisterID* dst)
 {
     if (!m_globalObjectRegister) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(JSValue());
         m_globalObjectRegister = &m_constantPoolRegisters[index];
         m_codeBlock->setGlobalObjectRegister(VirtualRegister(index));
@@ -1947,7 +2036,7 @@ bool BytecodeGenerator::instantiateLexicalVariables(const VariableEnvironment& l
                 varOffset = VarOffset(local->virtualRegister());
             }
 
-            SymbolTableEntry newEntry(varOffset, entry.value.isConst() ? ReadOnly : 0);
+            SymbolTableEntry newEntry(varOffset, static_cast<unsigned>(entry.value.isConst() ? PropertyAttribute::ReadOnly : PropertyAttribute::None));
             symbolTable->add(NoLockingNecessary, entry.key.get(), newEntry);
         }
     }
@@ -2053,11 +2142,11 @@ void BytecodeGenerator::pushLexicalScopeInternal(VariableEnvironment& environmen
 
         emitMove(scopeRegister(), newScope);
 
-        pushScopedControlFlowContext();
+        pushLocalControlFlowScope();
     }
 
     bool isWithScope = false;
-    m_symbolTableStack.append(SymbolTableStackEntry{ symbolTable, newScope, isWithScope, symbolTableConstantIndex });
+    m_lexicalScopeStack.append({ symbolTable, newScope, isWithScope, symbolTableConstantIndex });
     pushTDZVariables(environment, tdzCheckOptimization, tdzRequirement);
 
     if (tdzRequirement == TDZRequirement::UnderTDZ)
@@ -2100,8 +2189,8 @@ void BytecodeGenerator::initializeBlockScopedFunctions(VariableEnvironment& envi
     if (!functionStack.size())
         return;
 
-    SymbolTable* symbolTable = m_symbolTableStack.last().m_symbolTable;
-    RegisterID* scope = m_symbolTableStack.last().m_scope;
+    SymbolTable* symbolTable = m_lexicalScopeStack.last().m_symbolTable;
+    RegisterID* scope = m_lexicalScopeStack.last().m_scope;
     RefPtr<RegisterID> temp = newTemporary();
     int symbolTableIndex = constantSymbolTable ? constantSymbolTable->index() : 0;
     for (FunctionMetadataNode* function : functionStack) {
@@ -2121,25 +2210,70 @@ void BytecodeGenerator::initializeBlockScopedFunctions(VariableEnvironment& envi
 void BytecodeGenerator::hoistSloppyModeFunctionIfNecessary(const Identifier& functionName)
 {
     if (m_scopeNode->hasSloppyModeHoistedFunction(functionName.impl())) {
-        Variable currentFunctionVariable = variable(functionName);
-        RefPtr<RegisterID> currentValue;
-        if (RegisterID* local = currentFunctionVariable.local())
-            currentValue = local;
-        else {
-            RefPtr<RegisterID> scope = emitResolveScope(nullptr, currentFunctionVariable);
-            currentValue = emitGetFromScope(newTemporary(), scope.get(), currentFunctionVariable, DoNotThrowIfNotFound);
+        if (codeType() != EvalCode) {
+            Variable currentFunctionVariable = variable(functionName);
+            RefPtr<RegisterID> currentValue;
+            if (RegisterID* local = currentFunctionVariable.local())
+                currentValue = local;
+            else {
+                RefPtr<RegisterID> scope = emitResolveScope(nullptr, currentFunctionVariable);
+                currentValue = emitGetFromScope(newTemporary(), scope.get(), currentFunctionVariable, DoNotThrowIfNotFound);
+            }
+
+            ASSERT(m_varScopeLexicalScopeStackIndex);
+            ASSERT(*m_varScopeLexicalScopeStackIndex < m_lexicalScopeStack.size());
+            LexicalScopeStackEntry varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex];
+            SymbolTable* varSymbolTable = varScope.m_symbolTable;
+            ASSERT(varSymbolTable->scopeType() == SymbolTable::ScopeType::VarScope);
+            SymbolTableEntry entry = varSymbolTable->get(NoLockingNecessary, functionName.impl());
+            if (functionName == propertyNames().arguments && entry.isNull()) {
+                // "arguments" might be put in the parameter scope when we have a non-simple
+                // parameter list since "arguments" is visible to expressions inside the
+                // parameter evaluation list.
+                // e.g:
+                // function foo(x = arguments) { { function arguments() { } } }
+                RELEASE_ASSERT(*m_varScopeLexicalScopeStackIndex > 0);
+                varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex - 1];
+                SymbolTable* parameterSymbolTable = varScope.m_symbolTable;
+                entry = parameterSymbolTable->get(NoLockingNecessary, functionName.impl());
+            }
+            RELEASE_ASSERT(!entry.isNull());
+            bool isLexicallyScoped = false;
+            emitPutToScope(varScope.m_scope, variableForLocalEntry(functionName, entry, varScope.m_symbolTableConstantIndex, isLexicallyScoped), currentValue.get(), DoNotThrowIfNotFound, InitializationMode::NotInitialization);
+        } else {
+            Variable currentFunctionVariable = variable(functionName);
+            RefPtr<RegisterID> currentValue;
+            if (RegisterID* local = currentFunctionVariable.local())
+                currentValue = local;
+            else {
+                RefPtr<RegisterID> scope = emitResolveScope(nullptr, currentFunctionVariable);
+                currentValue = emitGetFromScope(newTemporary(), scope.get(), currentFunctionVariable, DoNotThrowIfNotFound);
+            }
+
+            RefPtr<RegisterID> scopeId = emitResolveScopeForHoistingFuncDeclInEval(nullptr, functionName);
+            RefPtr<RegisterID> checkResult = emitIsUndefined(newTemporary(), scopeId.get());
+            
+            Ref<Label> isNotVarScopeLabel = newLabel();
+            emitJumpIfTrue(checkResult.get(), isNotVarScopeLabel.get());
+
+            // Put to outer scope
+            emitPutToScope(scopeId.get(), functionName, currentValue.get(), DoNotThrowIfNotFound, InitializationMode::NotInitialization);
+            emitLabel(isNotVarScopeLabel.get());
+
         }
-        
-        ASSERT(m_varScopeSymbolTableIndex);
-        ASSERT(*m_varScopeSymbolTableIndex < m_symbolTableStack.size());
-        SymbolTableStackEntry& varScope = m_symbolTableStack[*m_varScopeSymbolTableIndex];
-        SymbolTable* varSymbolTable = varScope.m_symbolTable;
-        ASSERT(varSymbolTable->scopeType() == SymbolTable::ScopeType::VarScope);
-        SymbolTableEntry entry = varSymbolTable->get(NoLockingNecessary, functionName.impl());
-        ASSERT(!entry.isNull());
-        bool isLexicallyScoped = false;
-        emitPutToScope(varScope.m_scope, variableForLocalEntry(functionName, entry, varScope.m_symbolTableConstantIndex, isLexicallyScoped), currentValue.get(), DoNotThrowIfNotFound, InitializationMode::NotInitialization);
     }
+}
+
+RegisterID* BytecodeGenerator::emitResolveScopeForHoistingFuncDeclInEval(RegisterID* dst, const Identifier& property)
+{
+    ASSERT(m_codeType == EvalCode);
+
+    dst = finalDestination(dst);
+    emitOpcode(op_resolve_scope_for_hoisting_func_decl_in_eval);
+    instructions().append(kill(dst));
+    instructions().append(m_topMostScope->index());
+    instructions().append(addConstant(property));
+    return dst;
 }
 
 void BytecodeGenerator::popLexicalScope(VariableEnvironmentNode* node)
@@ -2158,7 +2292,7 @@ void BytecodeGenerator::popLexicalScopeInternal(VariableEnvironment& environment
     if (m_shouldEmitDebugHooks)
         environment.markAllVariablesAsCaptured();
 
-    SymbolTableStackEntry stackEntry = m_symbolTableStack.takeLast();
+    auto stackEntry = m_lexicalScopeStack.takeLast();
     SymbolTable* symbolTable = stackEntry.m_symbolTable;
     bool hasCapturedVariables = false;
     for (auto& entry : environment) {
@@ -2177,7 +2311,7 @@ void BytecodeGenerator::popLexicalScopeInternal(VariableEnvironment& environment
     if (hasCapturedVariables) {
         RELEASE_ASSERT(stackEntry.m_scope);
         emitPopScope(scopeRegister(), stackEntry.m_scope);
-        popScopedControlFlowContext();
+        popLocalControlFlowScope();
         stackEntry.m_scope->deref();
     }
 
@@ -2203,7 +2337,7 @@ void BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration(VariableEnvir
     // activation into the new activation because each iteration of a for loop
     // gets a new activation.
 
-    SymbolTableStackEntry stackEntry = m_symbolTableStack.last();
+    auto stackEntry = m_lexicalScopeStack.last();
     SymbolTable* symbolTable = stackEntry.m_symbolTable;
     RegisterID* loopScope = stackEntry.m_scope;
     ASSERT(symbolTable->scopeSize());
@@ -2258,10 +2392,8 @@ void BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration(VariableEnvir
 
 Variable BytecodeGenerator::variable(const Identifier& property, ThisResolutionType thisResolutionType)
 {
-    if (property == propertyNames().thisIdentifier && thisResolutionType == ThisResolutionType::Local) {
-        return Variable(property, VarOffset(thisRegister()->virtualRegister()), thisRegister(),
-            ReadOnly, Variable::SpecialVariable, 0, false);
-    }
+    if (property == propertyNames().thisIdentifier && thisResolutionType == ThisResolutionType::Local)
+        return Variable(property, VarOffset(thisRegister()->virtualRegister()), thisRegister(), static_cast<unsigned>(PropertyAttribute::ReadOnly), Variable::SpecialVariable, 0, false);
     
     // We can optimize lookups if the lexical variable is found before a "with" or "catch"
     // scope because we're guaranteed static resolution. If we have to pass through
@@ -2282,8 +2414,8 @@ Variable BytecodeGenerator::variable(const Identifier& property, ThisResolutionT
     //         doSomethingWith(x);
     //     }
     // }
-    for (unsigned i = m_symbolTableStack.size(); i--; ) {
-        SymbolTableStackEntry& stackEntry = m_symbolTableStack[i];
+    for (unsigned i = m_lexicalScopeStack.size(); i--; ) {
+        auto& stackEntry = m_lexicalScopeStack[i];
         if (stackEntry.m_isWithScope)
             return Variable(property);
         SymbolTable* symbolTable = stackEntry.m_symbolTable;
@@ -2378,10 +2510,10 @@ RegisterID* BytecodeGenerator::emitOverridesHasInstance(RegisterID* dst, Registe
 // will start with this ResolveType and compute the least upper bound including intercepting scopes.
 ResolveType BytecodeGenerator::resolveType()
 {
-    for (unsigned i = m_symbolTableStack.size(); i--; ) {
-        if (m_symbolTableStack[i].m_isWithScope)
+    for (unsigned i = m_lexicalScopeStack.size(); i--; ) {
+        if (m_lexicalScopeStack[i].m_isWithScope)
             return Dynamic;
-        if (m_usesNonStrictEval && m_symbolTableStack[i].m_symbolTable->scopeType() == SymbolTable::ScopeType::FunctionNameScope) {
+        if (m_usesNonStrictEval && m_lexicalScopeStack[i].m_symbolTable->scopeType() == SymbolTable::ScopeType::FunctionNameScope) {
             // We never want to assign to a FunctionNameScope. Returning Dynamic here achieves this goal.
             // If we aren't in non-strict eval mode, then NodesCodeGen needs to take care not to emit
             // a put_to_scope with the destination being the function name scope variable.
@@ -2410,8 +2542,8 @@ RegisterID* BytecodeGenerator::emitResolveScope(RegisterID* dst, const Variable&
         // don't do that already is that m_lexicalEnvironment is required by ConstDeclNode. ConstDeclNode
         // requires weird things because it is a shameful pile of nonsense, but block scoping would make
         // that code sensible and obviate the need for us to do bad things.
-        for (unsigned i = m_symbolTableStack.size(); i--; ) {
-            SymbolTableStackEntry& stackEntry = m_symbolTableStack[i];
+        for (unsigned i = m_lexicalScopeStack.size(); i--; ) {
+            auto& stackEntry = m_lexicalScopeStack[i];
             // We should not resolve a variable to VarKind::Scope if a "with" scope lies in between the current
             // scope and the resolved scope.
             RELEASE_ASSERT(!stackEntry.m_isWithScope);
@@ -2546,6 +2678,17 @@ RegisterID* BytecodeGenerator::emitInstanceOfCustom(RegisterID* dst, RegisterID*
     instructions().append(value->index());
     instructions().append(constructor->index());
     instructions().append(hasInstanceValue->index());
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitIn(RegisterID* dst, RegisterID* property, RegisterID* base)
+{
+    UnlinkedArrayProfile arrayProfile = newArrayProfile();
+    emitOpcode(op_in);
+    instructions().append(dst->index());
+    instructions().append(base->index());
+    instructions().append(property->index());
+    instructions().append(arrayProfile);
     return dst;
 }
 
@@ -2716,11 +2859,32 @@ void BytecodeGenerator::emitPutGeneratorFields(RegisterID* nextFunction)
 
     emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorNextPrivateName(), nextFunction, PropertyNode::KnownDirect);
 
-    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorThisPrivateName(), &m_thisRegister, PropertyNode::KnownDirect);
+    // We do not store 'this' in arrow function within constructor,
+    // because it might be not initialized, if super is called later.
+    if (!(isDerivedConstructorContext() && m_codeBlock->parseMode() == SourceParseMode::AsyncArrowFunctionMode))
+        emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorThisPrivateName(), &m_thisRegister, PropertyNode::KnownDirect);
 
     emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorStatePrivateName(), emitLoad(nullptr, jsNumber(0)), PropertyNode::KnownDirect);
 
     emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorFramePrivateName(), emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
+}
+
+void BytecodeGenerator::emitPutAsyncGeneratorFields(RegisterID* nextFunction)
+{
+    ASSERT(isAsyncGeneratorFunctionParseMode(parseMode()));
+
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorNextPrivateName(), nextFunction, PropertyNode::KnownDirect);
+        
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorThisPrivateName(), &m_thisRegister, PropertyNode::KnownDirect);
+        
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorStatePrivateName(), emitLoad(nullptr, jsNumber(static_cast<int32_t>(JSAsyncGeneratorFunction::AsyncGeneratorState::SuspendedStart))), PropertyNode::KnownDirect);
+        
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorFramePrivateName(), emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
+
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().asyncGeneratorSuspendReasonPrivateName(), emitLoad(nullptr, jsNumber(static_cast<int32_t>(JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason::None))), PropertyNode::KnownDirect);
+
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().asyncGeneratorQueueFirstPrivateName(), emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().asyncGeneratorQueueLastPrivateName(), emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
 }
 
 RegisterID* BytecodeGenerator::emitDeleteById(RegisterID* dst, RegisterID* base, const Identifier& property)
@@ -2734,28 +2898,30 @@ RegisterID* BytecodeGenerator::emitDeleteById(RegisterID* dst, RegisterID* base,
 
 RegisterID* BytecodeGenerator::emitGetByVal(RegisterID* dst, RegisterID* base, RegisterID* property)
 {
-    for (size_t i = m_forInContextStack.size(); i > 0; i--) {
-        ForInContext* context = m_forInContextStack[i - 1].get();
-        if (context->local() != property)
+    for (size_t i = m_forInContextStack.size(); i--; ) {
+        ForInContext& context = m_forInContextStack[i].get();
+        if (context.local() != property)
             continue;
 
-        if (!context->isValid())
-            break;
+        unsigned instIndex = instructions().size();
 
-        if (context->type() == ForInContext::IndexedForInContextType) {
-            property = static_cast<IndexedForInContext*>(context)->index();
+        if (context.type() == ForInContext::IndexedForInContextType) {
+            static_cast<IndexedForInContext&>(context).addGetInst(instIndex, property->index());
+            property = static_cast<IndexedForInContext&>(context).index();
             break;
         }
 
-        ASSERT(context->type() == ForInContext::StructureForInContextType);
-        StructureForInContext* structureContext = static_cast<StructureForInContext*>(context);
+        ASSERT(context.type() == ForInContext::StructureForInContextType);
+        StructureForInContext& structureContext = static_cast<StructureForInContext&>(context);
         UnlinkedValueProfile profile = emitProfiledOpcode(op_get_direct_pname);
         instructions().append(kill(dst));
         instructions().append(base->index());
         instructions().append(property->index());
-        instructions().append(structureContext->index()->index());
-        instructions().append(structureContext->enumerator()->index());
+        instructions().append(structureContext.index()->index());
+        instructions().append(structureContext.enumerator()->index());
         instructions().append(profile);
+
+        structureContext.addGetInst(instIndex, property->index(), profile);
         return dst;
     }
 
@@ -2838,6 +3004,20 @@ RegisterID* BytecodeGenerator::emitAssert(RegisterID* condition, int line)
     instructions().append(condition->index());
     instructions().append(line);
     return condition;
+}
+
+RegisterID* BytecodeGenerator::emitIdWithProfile(RegisterID* src, SpeculatedType profile)
+{
+    emitOpcode(op_identity_with_profile);
+    instructions().append(src->index());
+    instructions().append(static_cast<uint32_t>(profile >> 32));
+    instructions().append(static_cast<uint32_t>(profile));
+    return src;
+}
+
+void BytecodeGenerator::emitUnreachable()
+{
+    emitOpcode(op_unreachable);
 }
 
 RegisterID* BytecodeGenerator::emitGetArgument(RegisterID* dst, int32_t index)
@@ -2981,14 +3161,14 @@ JSString* BytecodeGenerator::addStringConstant(const Identifier& identifier)
     return stringInMap;
 }
 
-JSTemplateRegistryKey* BytecodeGenerator::addTemplateRegistryKeyConstant(const TemplateRegistryKey& templateRegistryKey)
+RegisterID* BytecodeGenerator::addTemplateRegistryKeyConstant(Ref<TemplateRegistryKey>&& templateRegistryKey)
 {
-    JSTemplateRegistryKey*& templateRegistryKeyInMap = m_templateRegistryKeyMap.add(templateRegistryKey, nullptr).iterator->value;
-    if (!templateRegistryKeyInMap) {
-        templateRegistryKeyInMap = JSTemplateRegistryKey::create(*vm(), templateRegistryKey);
-        addConstantValue(templateRegistryKeyInMap);
-    }
-    return templateRegistryKeyInMap;
+    return m_templateRegistryKeyMap.ensure(templateRegistryKey.copyRef(), [&] {
+        auto* result = JSTemplateRegistryKey::create(*vm(), WTFMove(templateRegistryKey));
+        unsigned index = addConstantIndex();
+        m_codeBlock->addConstant(result);
+        return &m_constantPoolRegisters[index];
+    }).iterator->value;
 }
 
 RegisterID* BytecodeGenerator::emitNewArray(RegisterID* dst, ElementNode* elements, unsigned length)
@@ -3115,12 +3295,18 @@ void BytecodeGenerator::emitNewFunctionExpressionCommon(RegisterID* dst, Functio
     OpcodeID opcodeID = op_new_func_exp;
     switch (function->parseMode()) {
     case SourceParseMode::GeneratorWrapperFunctionMode:
+    case SourceParseMode::GeneratorWrapperMethodMode:
         opcodeID = op_new_generator_func_exp;
         break;
     case SourceParseMode::AsyncFunctionMode:
     case SourceParseMode::AsyncMethodMode:
     case SourceParseMode::AsyncArrowFunctionMode:
         opcodeID = op_new_async_func_exp;
+        break;
+    case SourceParseMode::AsyncGeneratorWrapperFunctionMode:
+    case SourceParseMode::AsyncGeneratorWrapperMethodMode:
+        ASSERT(Options::useAsyncIterator());
+        opcodeID = op_new_async_generator_func_exp;
         break;
     default:
         break;
@@ -3172,11 +3358,14 @@ RegisterID* BytecodeGenerator::emitNewDefaultConstructor(RegisterID* dst, Constr
 RegisterID* BytecodeGenerator::emitNewFunction(RegisterID* dst, FunctionMetadataNode* function)
 {
     unsigned index = m_codeBlock->addFunctionDecl(makeFunction(function));
-    if (function->parseMode() == SourceParseMode::GeneratorWrapperFunctionMode)
+    if (isGeneratorWrapperParseMode(function->parseMode()))
         emitOpcode(op_new_generator_func);
     else if (function->parseMode() == SourceParseMode::AsyncFunctionMode)
         emitOpcode(op_new_async_func);
-    else
+    else if (function->parseMode() == SourceParseMode::AsyncGeneratorWrapperFunctionMode) {
+        ASSERT(Options::useAsyncIterator());
+        emitOpcode(op_new_async_generator_func);
+    } else
         emitOpcode(op_new_func);
     instructions().append(dst->index());
     instructions().append(scopeRegister()->index());
@@ -3230,9 +3419,9 @@ ExpectedFunction BytecodeGenerator::expectedFunctionForIdentifier(const Identifi
     return NoExpectedFunction;
 }
 
-ExpectedFunction BytecodeGenerator::emitExpectedFunctionSnippet(RegisterID* dst, RegisterID* func, ExpectedFunction expectedFunction, CallArguments& callArguments, Label* done)
+ExpectedFunction BytecodeGenerator::emitExpectedFunctionSnippet(RegisterID* dst, RegisterID* func, ExpectedFunction expectedFunction, CallArguments& callArguments, Label& done)
 {
-    RefPtr<Label> realCall = newLabel();
+    Ref<Label> realCall = newLabel();
     switch (expectedFunction) {
     case ExpectObjectConstructor: {
         // If the number of arguments is non-zero, then we can't do anything interesting.
@@ -3289,7 +3478,7 @@ ExpectedFunction BytecodeGenerator::emitExpectedFunctionSnippet(RegisterID* dst,
     
     size_t begin = instructions().size();
     emitOpcode(op_jmp);
-    instructions().append(done->bind(begin, instructions().size()));
+    instructions().append(done.bind(begin, instructions().size()));
     emitLabel(realCall.get());
     
     return expectedFunction;
@@ -3307,6 +3496,19 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
         if (n && n->m_expr->isSpreadExpression()) {
             RELEASE_ASSERT(!n->m_next);
             auto expression = static_cast<SpreadExpressionNode*>(n->m_expr)->expression();
+            if (expression->isArrayLiteral()) {
+                auto* elements = static_cast<ArrayNode*>(expression)->elements();
+                if (elements && !elements->next() && elements->value()->isSpreadExpression()) {
+                    ExpressionNode* expression = static_cast<SpreadExpressionNode*>(elements->value())->expression();
+                    RefPtr<RegisterID> argumentRegister = emitNode(callArguments.argumentRegister(0), expression);
+                    emitOpcode(op_spread);
+                    instructions().append(argumentRegister.get()->index());
+                    instructions().append(argumentRegister.get()->index());
+
+                    RefPtr<RegisterID> thisRegister = emitMove(newTemporary(), callArguments.thisRegister());
+                    return emitCallVarargs(opcodeID == op_tail_call ? op_tail_call_varargs : op_call_varargs, dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, divot, divotStart, divotEnd, debuggableCall);
+                }
+            }
             RefPtr<RegisterID> argumentRegister;
             argumentRegister = expression->emitBytecode(*this, callArguments.argumentRegister(0));
             RefPtr<RegisterID> thisRegister = emitMove(newTemporary(), callArguments.thisRegister());
@@ -3326,7 +3528,7 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
 
     emitExpressionInfo(divot, divotStart, divotEnd);
 
-    RefPtr<Label> done = newLabel();
+    Ref<Label> done = newLabel();
     expectedFunction = emitExpectedFunctionSnippet(dst, func, expectedFunction, callArguments, done.get());
     
     if (opcodeID == op_tail_call)
@@ -3473,30 +3675,25 @@ void BytecodeGenerator::emitCallDefineProperty(RegisterID* newObj, RegisterID* p
     }
 }
 
-RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
+RegisterID* BytecodeGenerator::emitReturn(RegisterID* src, ReturnFrom from)
 {
     if (isConstructor()) {
-        bool mightBeDerived = constructorKind() == ConstructorKind::Extends;
+        bool isDerived = constructorKind() == ConstructorKind::Extends;
         bool srcIsThis = src->index() == m_thisRegister.index();
 
-        if (mightBeDerived && srcIsThis)
+        if (isDerived && (srcIsThis || from == ReturnFrom::Finally))
             emitTDZCheck(src);
 
-        if (!srcIsThis) {
-            RefPtr<Label> isObjectLabel = newLabel();
+        if (!srcIsThis || from == ReturnFrom::Finally) {
+            Ref<Label> isObjectLabel = newLabel();
             emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectLabel.get());
 
-            if (mightBeDerived) {
-                ASSERT(m_isDerivedConstuctor);
-                RefPtr<Label> returnThis = newLabel();
-                emitJumpIfFalse(m_isDerivedConstuctor, returnThis.get());
-                // Else, we're a derived constructor here.
-                RefPtr<Label> isUndefinedLabel = newLabel();
+            if (isDerived) {
+                Ref<Label> isUndefinedLabel = newLabel();
                 emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isUndefinedLabel.get());
                 emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
                 emitLabel(isUndefinedLabel.get());
                 emitTDZCheck(&m_thisRegister);
-                emitLabel(returnThis.get());
             }
             emitUnaryNoDstOp(op_ret, &m_thisRegister);
             emitLabel(isObjectLabel.get());
@@ -3513,7 +3710,7 @@ RegisterID* BytecodeGenerator::emitUnaryNoDstOp(OpcodeID opcodeID, RegisterID* s
     return src;
 }
 
-RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, ExpectedFunction expectedFunction, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, RegisterID* lazyThis, ExpectedFunction expectedFunction, CallArguments& callArguments, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
     ASSERT(func->refCount());
 
@@ -3525,15 +3722,32 @@ RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, 
         if (n && n->m_expr->isSpreadExpression()) {
             RELEASE_ASSERT(!n->m_next);
             auto expression = static_cast<SpreadExpressionNode*>(n->m_expr)->expression();
+            if (expression->isArrayLiteral()) {
+                auto* elements = static_cast<ArrayNode*>(expression)->elements();
+                if (elements && !elements->next() && elements->value()->isSpreadExpression()) {
+                    ExpressionNode* expression = static_cast<SpreadExpressionNode*>(elements->value())->expression();
+                    RefPtr<RegisterID> argumentRegister = emitNode(callArguments.argumentRegister(0), expression);
+                    emitOpcode(op_spread);
+                    instructions().append(argumentRegister.get()->index());
+                    instructions().append(argumentRegister.get()->index());
+
+                    emitMove(callArguments.thisRegister(), lazyThis);
+                    RefPtr<RegisterID> thisRegister = emitMove(newTemporary(), callArguments.thisRegister());
+                    return emitConstructVarargs(dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, divot, divotStart, divotEnd, DebuggableCall::No);
+                }
+            }
             RefPtr<RegisterID> argumentRegister;
             argumentRegister = expression->emitBytecode(*this, callArguments.argumentRegister(0));
+            emitMove(callArguments.thisRegister(), lazyThis);
             return emitConstructVarargs(dst, func, callArguments.thisRegister(), argumentRegister.get(), newTemporary(), 0, divot, divotStart, divotEnd, DebuggableCall::No);
         }
         
         for (ArgumentListNode* n = argumentsNode->m_listNode; n; n = n->m_next)
             emitNode(callArguments.argumentRegister(argument++), n);
     }
-
+    
+    emitMove(callArguments.thisRegister(), lazyThis);
+    
     // Reserve space for call frame.
     Vector<RefPtr<RegisterID>, CallFrame::headerSizeInRegisters, UnsafeVectorOverflow> callFrame;
     for (int i = 0; i < CallFrame::headerSizeInRegisters; ++i)
@@ -3541,7 +3755,7 @@ RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, 
 
     emitExpressionInfo(divot, divotStart, divotEnd);
     
-    RefPtr<Label> done = newLabel();
+    Ref<Label> done = newLabel();
     expectedFunction = emitExpectedFunctionSnippet(dst, func, expectedFunction, callArguments, done.get());
 
     UnlinkedValueProfile profile = emitProfiledOpcode(op_construct);
@@ -3586,17 +3800,17 @@ void BytecodeGenerator::emitGetScope()
 
 RegisterID* BytecodeGenerator::emitPushWithScope(RegisterID* objectScope)
 {
-    pushScopedControlFlowContext();
+    pushLocalControlFlowScope();
     RegisterID* newScope = newBlockScopeVariable();
     newScope->ref();
 
     emitOpcode(op_push_with_scope);
     instructions().append(newScope->index());
-    instructions().append(objectScope->index());
     instructions().append(scopeRegister()->index());
+    instructions().append(objectScope->index());
 
     emitMove(scopeRegister(), newScope);
-    m_symbolTableStack.append(SymbolTableStackEntry{ nullptr, newScope, true, 0 });
+    m_lexicalScopeStack.append({ nullptr, newScope, true, 0 });
 
     return newScope;
 }
@@ -3618,8 +3832,8 @@ void BytecodeGenerator::emitPopScope(RegisterID* dst, RegisterID* scope)
 void BytecodeGenerator::emitPopWithScope()
 {
     emitPopScope(scopeRegister(), scopeRegister());
-    popScopedControlFlowContext();
-    SymbolTableStackEntry stackEntry = m_symbolTableStack.takeLast();
+    popLocalControlFlowScope();
+    auto stackEntry = m_lexicalScopeStack.takeLast();
     stackEntry.m_scope->deref();
     RELEASE_ASSERT(stackEntry.m_isWithScope);
 }
@@ -3660,157 +3874,85 @@ void BytecodeGenerator::emitWillLeaveCallFrameDebugHook()
     emitDebugHook(WillLeaveCallFrame, m_scopeNode->lastLine(), m_scopeNode->startOffset(), m_scopeNode->lineStartOffset());
 }
 
-void BytecodeGenerator::pushFinallyContext(StatementNode* finallyBlock)
+FinallyContext* BytecodeGenerator::pushFinallyControlFlowScope(Label& finallyLabel)
 {
-    // Reclaim free label scopes.
-    while (m_labelScopes.size() && !m_labelScopes.last().refCount())
-        m_labelScopes.removeLast();
+    ControlFlowScope scope(ControlFlowScope::Finally, currentLexicalScopeIndex(), FinallyContext(m_currentFinallyContext, finallyLabel));
+    m_controlFlowScopeStack.append(WTFMove(scope));
 
-    ControlFlowContext scope;
-    scope.isFinallyBlock = true;
-    FinallyContext context = {
-        finallyBlock,
-        nullptr,
-        nullptr,
-        static_cast<unsigned>(m_scopeContextStack.size()),
-        static_cast<unsigned>(m_switchContextStack.size()),
-        static_cast<unsigned>(m_forInContextStack.size()),
-        static_cast<unsigned>(m_tryContextStack.size()),
-        static_cast<unsigned>(m_labelScopes.size()),
-        static_cast<unsigned>(m_symbolTableStack.size()),
-        m_finallyDepth,
-        m_localScopeDepth
-    };
-    scope.finallyContext = context;
-    m_scopeContextStack.append(scope);
     m_finallyDepth++;
+    m_currentFinallyContext = &m_controlFlowScopeStack.last().finallyContext;
+    return m_currentFinallyContext;
 }
 
-void BytecodeGenerator::pushIteratorCloseContext(RegisterID* iterator, ThrowableExpressionData* node)
+FinallyContext BytecodeGenerator::popFinallyControlFlowScope()
 {
-    // Reclaim free label scopes.
-    while (m_labelScopes.size() && !m_labelScopes.last().refCount())
-        m_labelScopes.removeLast();
-
-    ControlFlowContext scope;
-    scope.isFinallyBlock = true;
-    FinallyContext context = {
-        nullptr,
-        iterator,
-        node,
-        static_cast<unsigned>(m_scopeContextStack.size()),
-        static_cast<unsigned>(m_switchContextStack.size()),
-        static_cast<unsigned>(m_forInContextStack.size()),
-        static_cast<unsigned>(m_tryContextStack.size()),
-        static_cast<unsigned>(m_labelScopes.size()),
-        static_cast<unsigned>(m_symbolTableStack.size()),
-        m_finallyDepth,
-        m_localScopeDepth
-    };
-    scope.finallyContext = context;
-    m_scopeContextStack.append(scope);
-    m_finallyDepth++;
-}
-
-void BytecodeGenerator::popFinallyContext()
-{
-    ASSERT(m_scopeContextStack.size());
-    ASSERT(m_scopeContextStack.last().isFinallyBlock);
-    ASSERT(m_scopeContextStack.last().finallyContext.finallyBlock);
-    ASSERT(!m_scopeContextStack.last().finallyContext.iterator);
-    ASSERT(!m_scopeContextStack.last().finallyContext.enumerationNode);
+    ASSERT(m_controlFlowScopeStack.size());
+    ASSERT(m_controlFlowScopeStack.last().isFinallyScope());
     ASSERT(m_finallyDepth > 0);
-    m_scopeContextStack.removeLast();
+    ASSERT(m_currentFinallyContext);
+    m_currentFinallyContext = m_currentFinallyContext->outerContext();
     m_finallyDepth--;
+    return m_controlFlowScopeStack.takeLast().finallyContext;
 }
 
-void BytecodeGenerator::popIteratorCloseContext()
+LabelScope* BytecodeGenerator::breakTarget(const Identifier& name)
 {
-    ASSERT(m_scopeContextStack.size());
-    ASSERT(m_scopeContextStack.last().isFinallyBlock);
-    ASSERT(!m_scopeContextStack.last().finallyContext.finallyBlock);
-    ASSERT(m_scopeContextStack.last().finallyContext.iterator);
-    ASSERT(m_scopeContextStack.last().finallyContext.enumerationNode);
-    ASSERT(m_finallyDepth > 0);
-    m_scopeContextStack.removeLast();
-    m_finallyDepth--;
-}
-
-LabelScopePtr BytecodeGenerator::breakTarget(const Identifier& name)
-{
-    // Reclaim free label scopes.
-    //
-    // The condition was previously coded as 'm_labelScopes.size() && !m_labelScopes.last().refCount()',
-    // however sometimes this appears to lead to GCC going a little haywire and entering the loop with
-    // size 0, leading to segfaulty badness.  We are yet to identify a valid cause within our code to
-    // cause the GCC codegen to misbehave in this fashion, and as such the following refactoring of the
-    // loop condition is a workaround.
-    while (m_labelScopes.size()) {
-        if  (m_labelScopes.last().refCount())
-            break;
-        m_labelScopes.removeLast();
-    }
+    shrinkToFit(m_labelScopes);
 
     if (!m_labelScopes.size())
-        return LabelScopePtr::null();
+        return nullptr;
 
     // We special-case the following, which is a syntax error in Firefox:
     // label:
     //     break;
     if (name.isEmpty()) {
         for (int i = m_labelScopes.size() - 1; i >= 0; --i) {
-            LabelScope* scope = &m_labelScopes[i];
-            if (scope->type() != LabelScope::NamedLabel) {
-                ASSERT(scope->breakTarget());
-                return LabelScopePtr(m_labelScopes, i);
-            }
+            LabelScope& scope = m_labelScopes[i];
+            if (scope.type() != LabelScope::NamedLabel)
+                return &scope;
         }
-        return LabelScopePtr::null();
+        return nullptr;
     }
 
     for (int i = m_labelScopes.size() - 1; i >= 0; --i) {
-        LabelScope* scope = &m_labelScopes[i];
-        if (scope->name() && *scope->name() == name) {
-            ASSERT(scope->breakTarget());
-            return LabelScopePtr(m_labelScopes, i);
-        }
+        LabelScope& scope = m_labelScopes[i];
+        if (scope.name() && *scope.name() == name)
+            return &scope;
     }
-    return LabelScopePtr::null();
+    return nullptr;
 }
 
-LabelScopePtr BytecodeGenerator::continueTarget(const Identifier& name)
+LabelScope* BytecodeGenerator::continueTarget(const Identifier& name)
 {
-    // Reclaim free label scopes.
-    while (m_labelScopes.size() && !m_labelScopes.last().refCount())
-        m_labelScopes.removeLast();
+    shrinkToFit(m_labelScopes);
 
     if (!m_labelScopes.size())
-        return LabelScopePtr::null();
+        return nullptr;
 
     if (name.isEmpty()) {
         for (int i = m_labelScopes.size() - 1; i >= 0; --i) {
-            LabelScope* scope = &m_labelScopes[i];
-            if (scope->type() == LabelScope::Loop) {
-                ASSERT(scope->continueTarget());
-                return LabelScopePtr(m_labelScopes, i);
+            LabelScope& scope = m_labelScopes[i];
+            if (scope.type() == LabelScope::Loop) {
+                ASSERT(scope.continueTarget());
+                return &scope;
             }
         }
-        return LabelScopePtr::null();
+        return nullptr;
     }
 
     // Continue to the loop nested nearest to the label scope that matches
     // 'name'.
-    LabelScopePtr result = LabelScopePtr::null();
+    LabelScope* result = nullptr;
     for (int i = m_labelScopes.size() - 1; i >= 0; --i) {
-        LabelScope* scope = &m_labelScopes[i];
-        if (scope->type() == LabelScope::Loop) {
-            ASSERT(scope->continueTarget());
-            result = LabelScopePtr(m_labelScopes, i);
+        LabelScope& scope = m_labelScopes[i];
+        if (scope.type() == LabelScope::Loop) {
+            ASSERT(scope.continueTarget());
+            result = &scope;
         }
-        if (scope->name() && *scope->name() == name)
+        if (scope.name() && *scope.name() == name)
             return result; // may be null.
     }
-    return LabelScopePtr::null();
+    return nullptr;
 }
 
 void BytecodeGenerator::allocateCalleeSaveSpace()
@@ -3833,206 +3975,74 @@ void BytecodeGenerator::allocateAndEmitScope()
     m_topMostScope = addVar();
     emitMove(m_topMostScope, scopeRegister());
 }
-    
-void BytecodeGenerator::emitComplexPopScopes(RegisterID* scope, ControlFlowContext* topScope, ControlFlowContext* bottomScope)
+
+TryData* BytecodeGenerator::pushTry(Label& start, Label& handlerLabel, HandlerType handlerType)
 {
-    while (topScope > bottomScope) {
-        // First we count the number of dynamic scopes we need to remove to get
-        // to a finally block.
-        int nNormalScopes = 0;
-        while (topScope > bottomScope) {
-            if (topScope->isFinallyBlock)
-                break;
-            ++nNormalScopes;
-            --topScope;
-        }
-
-        if (nNormalScopes) {
-            // We need to remove a number of dynamic scopes to get to the next
-            // finally block
-            RefPtr<RegisterID> parentScope = newTemporary();
-            while (nNormalScopes--) {
-                parentScope = emitGetParentScope(parentScope.get(), scope);
-                emitMove(scope, parentScope.get());
-            }
-
-            // If topScope == bottomScope then there isn't a finally block left to emit.
-            if (topScope == bottomScope)
-                return;
-        }
-        
-        Vector<ControlFlowContext> savedScopeContextStack;
-        Vector<SwitchInfo> savedSwitchContextStack;
-        Vector<RefPtr<ForInContext>> savedForInContextStack;
-        Vector<TryContext> poppedTryContexts;
-        Vector<SymbolTableStackEntry> savedSymbolTableStack;
-        LabelScopeStore savedLabelScopes;
-        while (topScope > bottomScope && topScope->isFinallyBlock) {
-            RefPtr<Label> beforeFinally = emitLabel(newLabel().get());
-            
-            // Save the current state of the world while instating the state of the world
-            // for the finally block.
-            FinallyContext finallyContext = topScope->finallyContext;
-            bool flipScopes = finallyContext.scopeContextStackSize != m_scopeContextStack.size();
-            bool flipSwitches = finallyContext.switchContextStackSize != m_switchContextStack.size();
-            bool flipForIns = finallyContext.forInContextStackSize != m_forInContextStack.size();
-            bool flipTries = finallyContext.tryContextStackSize != m_tryContextStack.size();
-            bool flipLabelScopes = finallyContext.labelScopesSize != m_labelScopes.size();
-            bool flipSymbolTableStack = finallyContext.symbolTableStackSize != m_symbolTableStack.size();
-            int topScopeIndex = -1;
-            int bottomScopeIndex = -1;
-            if (flipScopes) {
-                topScopeIndex = topScope - m_scopeContextStack.begin();
-                bottomScopeIndex = bottomScope - m_scopeContextStack.begin();
-                savedScopeContextStack = m_scopeContextStack;
-                m_scopeContextStack.shrink(finallyContext.scopeContextStackSize);
-            }
-            if (flipSwitches) {
-                savedSwitchContextStack = m_switchContextStack;
-                m_switchContextStack.shrink(finallyContext.switchContextStackSize);
-            }
-            if (flipForIns) {
-                savedForInContextStack = m_forInContextStack;
-                m_forInContextStack.shrink(finallyContext.forInContextStackSize);
-            }
-            if (flipTries) {
-                while (m_tryContextStack.size() != finallyContext.tryContextStackSize) {
-                    ASSERT(m_tryContextStack.size() > finallyContext.tryContextStackSize);
-                    TryContext context = m_tryContextStack.takeLast();
-                    TryRange range;
-                    range.start = context.start;
-                    range.end = beforeFinally;
-                    range.tryData = context.tryData;
-                    m_tryRanges.append(range);
-                    poppedTryContexts.append(context);
-                }
-            }
-            if (flipLabelScopes) {
-                savedLabelScopes = m_labelScopes;
-                while (m_labelScopes.size() > finallyContext.labelScopesSize)
-                    m_labelScopes.removeLast();
-            }
-            if (flipSymbolTableStack) {
-                savedSymbolTableStack = m_symbolTableStack;
-                m_symbolTableStack.shrink(finallyContext.symbolTableStackSize);
-            }
-            int savedFinallyDepth = m_finallyDepth;
-            m_finallyDepth = finallyContext.finallyDepth;
-            int savedDynamicScopeDepth = m_localScopeDepth;
-            m_localScopeDepth = finallyContext.dynamicScopeDepth;
-            
-            if (finallyContext.finallyBlock) {
-                // Emit the finally block.
-                emitNode(finallyContext.finallyBlock);
-            } else {
-                // Emit the IteratorClose block.
-                ASSERT(finallyContext.iterator);
-                emitIteratorClose(finallyContext.iterator, finallyContext.enumerationNode);
-            }
-
-            RefPtr<Label> afterFinally = emitLabel(newLabel().get());
-            
-            // Restore the state of the world.
-            if (flipScopes) {
-                m_scopeContextStack = savedScopeContextStack;
-                topScope = &m_scopeContextStack[topScopeIndex]; // assert it's within bounds
-                bottomScope = m_scopeContextStack.begin() + bottomScopeIndex; // don't assert, since it the index might be -1.
-            }
-            if (flipSwitches)
-                m_switchContextStack = savedSwitchContextStack;
-            if (flipForIns)
-                m_forInContextStack = savedForInContextStack;
-            if (flipTries) {
-                ASSERT(m_tryContextStack.size() == finallyContext.tryContextStackSize);
-                for (unsigned i = poppedTryContexts.size(); i--;) {
-                    TryContext context = poppedTryContexts[i];
-                    context.start = afterFinally;
-                    m_tryContextStack.append(context);
-                }
-                poppedTryContexts.clear();
-            }
-            if (flipLabelScopes)
-                m_labelScopes = savedLabelScopes;
-            if (flipSymbolTableStack)
-                m_symbolTableStack = savedSymbolTableStack;
-            m_finallyDepth = savedFinallyDepth;
-            m_localScopeDepth = savedDynamicScopeDepth;
-            
-            --topScope;
-        }
-    }
-}
-
-void BytecodeGenerator::emitPopScopes(RegisterID* scope, int targetScopeDepth)
-{
-    ASSERT(labelScopeDepth() - targetScopeDepth >= 0);
-
-    size_t scopeDelta = labelScopeDepth() - targetScopeDepth;
-    ASSERT(scopeDelta <= m_scopeContextStack.size());
-    if (!scopeDelta)
-        return;
-
-    if (!m_finallyDepth) {
-        RefPtr<RegisterID> parentScope = newTemporary();
-        while (scopeDelta--) {
-            parentScope = emitGetParentScope(parentScope.get(), scope);
-            emitMove(scope, parentScope.get());
-        }
-        return;
-    }
-
-    emitComplexPopScopes(scope, &m_scopeContextStack.last(), &m_scopeContextStack.last() - scopeDelta);
-}
-
-TryData* BytecodeGenerator::pushTry(Label* start)
-{
-    TryData tryData;
-    tryData.target = newLabel();
-    tryData.handlerType = HandlerType::Illegal;
-    m_tryData.append(tryData);
+    m_tryData.append(TryData { handlerLabel, handlerType });
     TryData* result = &m_tryData.last();
     
-    TryContext tryContext;
-    tryContext.start = start;
-    tryContext.tryData = result;
-    
-    m_tryContextStack.append(tryContext);
+    m_tryContextStack.append(TryContext {
+        start,
+        result
+    });
     
     return result;
 }
 
-void BytecodeGenerator::popTryAndEmitCatch(TryData* tryData, RegisterID* exceptionRegister, RegisterID* thrownValueRegister, Label* end, HandlerType handlerType)
+void BytecodeGenerator::popTry(TryData* tryData, Label& end)
 {
     m_usesExceptions = true;
     
     ASSERT_UNUSED(tryData, m_tryContextStack.last().tryData == tryData);
     
-    TryRange tryRange;
-    tryRange.start = m_tryContextStack.last().start;
-    tryRange.end = end;
-    tryRange.tryData = m_tryContextStack.last().tryData;
-    m_tryRanges.append(tryRange);
+    m_tryRanges.append(TryRange {
+        m_tryContextStack.last().start.copyRef(),
+        end,
+        m_tryContextStack.last().tryData
+    });
     m_tryContextStack.removeLast();
-    
-    emitLabel(tryRange.tryData->target.get());
-    tryRange.tryData->handlerType = handlerType;
+}
 
-    emitOpcode(op_catch);
-    instructions().append(exceptionRegister->index());
-    instructions().append(thrownValueRegister->index());
+void BytecodeGenerator::emitCatch(RegisterID* exceptionRegister, RegisterID* thrownValueRegister, TryData* data)
+{
+    m_catchesToEmit.append(CatchEntry { data, exceptionRegister->index(), thrownValueRegister->index() });
+}
 
-    bool foundLocalScope = false;
-    for (unsigned i = m_symbolTableStack.size(); i--; ) {
-        // Note that if we don't find a local scope in the current function/program, 
-        // we must grab the outer-most scope of this bytecode generation.
-        if (m_symbolTableStack[i].m_scope) {
-            foundLocalScope = true;
-            emitMove(scopeRegister(), m_symbolTableStack[i].m_scope);
-            break;
+void BytecodeGenerator::restoreScopeRegister(int lexicalScopeIndex)
+{
+    if (lexicalScopeIndex == CurrentLexicalScopeIndex)
+        return; // No change needed.
+
+    if (lexicalScopeIndex != OutermostLexicalScopeIndex) {
+        ASSERT(lexicalScopeIndex < static_cast<int>(m_lexicalScopeStack.size()));
+        int endIndex = lexicalScopeIndex + 1;
+        for (size_t i = endIndex; i--; ) {
+            if (m_lexicalScopeStack[i].m_scope) {
+                emitMove(scopeRegister(), m_lexicalScopeStack[i].m_scope);
+                return;
+            }
         }
     }
-    if (!foundLocalScope)
-        emitMove(scopeRegister(), m_topMostScope);
+    // Note that if we don't find a local scope in the current function/program,
+    // we must grab the outer-most scope of this bytecode generation.
+    emitMove(scopeRegister(), m_topMostScope);
+}
+
+void BytecodeGenerator::restoreScopeRegister()
+{
+    restoreScopeRegister(currentLexicalScopeIndex());
+}
+
+int BytecodeGenerator::labelScopeDepthToLexicalScopeIndex(int targetLabelScopeDepth)
+{
+    ASSERT(labelScopeDepth() - targetLabelScopeDepth >= 0);
+    size_t scopeDelta = labelScopeDepth() - targetLabelScopeDepth;
+    ASSERT(scopeDelta <= m_controlFlowScopeStack.size());
+    if (!scopeDelta)
+        return CurrentLexicalScopeIndex;
+
+    ControlFlowScope& targetScope = m_controlFlowScopeStack[targetLabelScopeDepth];
+    return targetScope.lexicalScopeIndex;
 }
 
 int BytecodeGenerator::localScopeDepth() const
@@ -4041,8 +4051,10 @@ int BytecodeGenerator::localScopeDepth() const
 }
 
 int BytecodeGenerator::labelScopeDepth() const
-{ 
-    return localScopeDepth() + m_finallyDepth;
+{
+    unsigned depth = localScopeDepth() + m_finallyDepth;
+    ASSERT(depth == m_controlFlowScopeStack.size());
+    return depth;
 }
 
 void BytecodeGenerator::emitThrowStaticError(ErrorType errorType, RegisterID* raw)
@@ -4106,23 +4118,22 @@ void BytecodeGenerator::emitPushFunctionNameScope(const Identifier& property, Re
     pushLexicalScopeInternal(nameScopeEnvironment, TDZCheckOptimization::Optimize, NestedScopeType::IsNotNested, nullptr, TDZRequirement::NotUnderTDZ, ScopeType::FunctionNameScope, ScopeRegisterType::Var);
     ASSERT_UNUSED(numVars, m_codeBlock->m_numVars == static_cast<int>(numVars + 1)); // Should have only created one new "var" for the function name scope.
     bool shouldTreatAsLexicalVariable = isStrictMode();
-    Variable functionVar = variableForLocalEntry(property, m_symbolTableStack.last().m_symbolTable->get(NoLockingNecessary, property.impl()), m_symbolTableStack.last().m_symbolTableConstantIndex, shouldTreatAsLexicalVariable);
-    emitPutToScope(m_symbolTableStack.last().m_scope, functionVar, callee, ThrowIfNotFound, InitializationMode::NotInitialization);
+    Variable functionVar = variableForLocalEntry(property, m_lexicalScopeStack.last().m_symbolTable->get(NoLockingNecessary, property.impl()), m_lexicalScopeStack.last().m_symbolTableConstantIndex, shouldTreatAsLexicalVariable);
+    emitPutToScope(m_lexicalScopeStack.last().m_scope, functionVar, callee, ThrowIfNotFound, InitializationMode::NotInitialization);
 }
 
-void BytecodeGenerator::pushScopedControlFlowContext()
+void BytecodeGenerator::pushLocalControlFlowScope()
 {
-    ControlFlowContext context;
-    context.isFinallyBlock = false;
-    m_scopeContextStack.append(context);
+    ControlFlowScope scope(ControlFlowScope::Label, currentLexicalScopeIndex());
+    m_controlFlowScopeStack.append(WTFMove(scope));
     m_localScopeDepth++;
 }
 
-void BytecodeGenerator::popScopedControlFlowContext()
+void BytecodeGenerator::popLocalControlFlowScope()
 {
-    ASSERT(m_scopeContextStack.size());
-    ASSERT(!m_scopeContextStack.last().isFinallyBlock);
-    m_scopeContextStack.removeLast();
+    ASSERT(m_controlFlowScopeStack.size());
+    ASSERT(!m_controlFlowScopeStack.last().isFinallyScope());
+    m_controlFlowScopeStack.removeLast();
     m_localScopeDepth--;
 }
 
@@ -4186,7 +4197,7 @@ static int32_t keyForCharacterSwitch(ExpressionNode* node, int32_t min, int32_t 
 
 static void prepareJumpTableForSwitch(
     UnlinkedSimpleJumpTable& jumpTable, int32_t switchAddress, uint32_t clauseCount,
-    RefPtr<Label>* labels, ExpressionNode** nodes, int32_t min, int32_t max,
+    const Vector<Ref<Label>, 8>& labels, ExpressionNode** nodes, int32_t min, int32_t max,
     int32_t (*keyGetter)(ExpressionNode*, int32_t min, int32_t max))
 {
     jumpTable.min = min;
@@ -4200,7 +4211,7 @@ static void prepareJumpTableForSwitch(
     }
 }
 
-static void prepareJumpTableForStringSwitch(UnlinkedStringJumpTable& jumpTable, int32_t switchAddress, uint32_t clauseCount, RefPtr<Label>* labels, ExpressionNode** nodes)
+static void prepareJumpTableForStringSwitch(UnlinkedStringJumpTable& jumpTable, int32_t switchAddress, uint32_t clauseCount, const Vector<Ref<Label>, 8>& labels, ExpressionNode** nodes)
 {
     for (uint32_t i = 0; i < clauseCount; ++i) {
         // We're emitting this after the clause labels should have been fixed, so 
@@ -4213,7 +4224,7 @@ static void prepareJumpTableForStringSwitch(UnlinkedStringJumpTable& jumpTable, 
     }
 }
 
-void BytecodeGenerator::endSwitch(uint32_t clauseCount, RefPtr<Label>* labels, ExpressionNode** nodes, Label* defaultLabel, int32_t min, int32_t max)
+void BytecodeGenerator::endSwitch(uint32_t clauseCount, const Vector<Ref<Label>, 8>& labels, ExpressionNode** nodes, Label& defaultLabel, int32_t min, int32_t max)
 {
     SwitchInfo switchInfo = m_switchContextStack.last();
     m_switchContextStack.removeLast();
@@ -4222,7 +4233,7 @@ void BytecodeGenerator::endSwitch(uint32_t clauseCount, RefPtr<Label>* labels, E
     case SwitchInfo::SwitchImmediate:
     case SwitchInfo::SwitchCharacter: {
         instructions()[switchInfo.bytecodeOffset + 1] = m_codeBlock->numberOfSwitchJumpTables();
-        instructions()[switchInfo.bytecodeOffset + 2] = defaultLabel->bind(switchInfo.bytecodeOffset, switchInfo.bytecodeOffset + 3);
+        instructions()[switchInfo.bytecodeOffset + 2] = defaultLabel.bind(switchInfo.bytecodeOffset, switchInfo.bytecodeOffset + 3);
 
         UnlinkedSimpleJumpTable& jumpTable = m_codeBlock->addSwitchJumpTable();
         prepareJumpTableForSwitch(
@@ -4235,7 +4246,7 @@ void BytecodeGenerator::endSwitch(uint32_t clauseCount, RefPtr<Label>* labels, E
         
     case SwitchInfo::SwitchString: {
         instructions()[switchInfo.bytecodeOffset + 1] = m_codeBlock->numberOfStringSwitchJumpTables();
-        instructions()[switchInfo.bytecodeOffset + 2] = defaultLabel->bind(switchInfo.bytecodeOffset, switchInfo.bytecodeOffset + 3);
+        instructions()[switchInfo.bytecodeOffset + 2] = defaultLabel.bind(switchInfo.bytecodeOffset, switchInfo.bytecodeOffset + 3);
 
         UnlinkedStringJumpTable& jumpTable = m_codeBlock->addStringSwitchJumpTable();
         prepareJumpTableForStringSwitch(jumpTable, switchInfo.bytecodeOffset, clauseCount, labels, nodes);
@@ -4276,69 +4287,116 @@ bool BytecodeGenerator::emitReadOnlyExceptionIfNeeded(const Variable& variable)
     }
     return false;
 }
-    
+
 void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, ExpressionNode* subjectNode, const std::function<void(BytecodeGenerator&, RegisterID*)>& callBack, ForOfNode* forLoopNode, RegisterID* forLoopSymbolTable)
 {
+    bool isForAwait = forLoopNode ? forLoopNode->isForAwait() : false;
+    ASSERT(!isForAwait || (isForAwait && isAsyncFunctionParseMode(parseMode())));
+
+    CompletionRecordScope completionRecordScope(*this);
+
     RefPtr<RegisterID> subject = newTemporary();
     emitNode(subject.get(), subjectNode);
-    RefPtr<RegisterID> iterator = emitGetById(newTemporary(), subject.get(), propertyNames().iteratorSymbol);
-    {
-        CallArguments args(*this, nullptr);
-        emitMove(args.thisRegister(), subject.get());
-        emitCall(iterator.get(), iterator.get(), NoExpectedFunction, args, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
-    }
+    RefPtr<RegisterID> iterator = isForAwait ? emitGetAsyncIterator(subject.get(), node) : emitGetIterator(subject.get(), node);
+    RefPtr<RegisterID> nextMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().next);
 
-    RefPtr<Label> loopDone = newLabel();
+    Ref<Label> loopDone = newLabel();
+    Ref<Label> tryStartLabel = newLabel();
+    Ref<Label> finallyViaThrowLabel = newLabel();
+    Ref<Label> finallyLabel = newLabel();
+    Ref<Label> catchLabel = newLabel();
+    Ref<Label> endCatchLabel = newLabel();
+
     // RefPtr<Register> iterator's lifetime must be longer than IteratorCloseContext.
-    pushIteratorCloseContext(iterator.get(), node);
+    FinallyContext* finallyContext = pushFinallyControlFlowScope(finallyLabel.get());
+
     {
-        LabelScopePtr scope = newLabelScope(LabelScope::Loop);
+        Ref<LabelScope> scope = newLabelScope(LabelScope::Loop);
         RefPtr<RegisterID> value = newTemporary();
         emitLoad(value.get(), jsUndefined());
 
-        emitJump(scope->continueTarget());
+        emitJump(*scope->continueTarget());
 
-        RefPtr<Label> loopStart = newLabel();
+        Ref<Label> loopStart = newLabel();
         emitLabel(loopStart.get());
         emitLoopHint();
 
-        RefPtr<Label> tryStartLabel = newLabel();
         emitLabel(tryStartLabel.get());
-        TryData* tryData = pushTry(tryStartLabel.get());
+        TryData* tryData = pushTry(tryStartLabel.get(), finallyViaThrowLabel.get(), HandlerType::SynthesizedFinally);
         callBack(*this, value.get());
-        emitJump(scope->continueTarget());
+        emitJump(*scope->continueTarget());
 
-        // IteratorClose sequence for throw-ed control flow.
+        // IteratorClose sequence for abrupt completions.
         {
-            RefPtr<Label> catchHere = emitLabel(newLabel().get());
-            RefPtr<RegisterID> exceptionRegister = newTemporary();
-            RefPtr<RegisterID> thrownValueRegister = newTemporary();
-            popTryAndEmitCatch(tryData, exceptionRegister.get(),
-                thrownValueRegister.get(), catchHere.get(), HandlerType::SynthesizedFinally);
+            // Finally block for the enumeration.
+            emitLabel(finallyViaThrowLabel.get());
+            popTry(tryData, finallyViaThrowLabel.get());
 
-            RefPtr<Label> catchDone = newLabel();
+            Ref<Label> finallyBodyLabel = newLabel();
+            RefPtr<RegisterID> finallyExceptionRegister = newTemporary();
+            RegisterID* unused = newTemporary();
+
+            emitCatch(completionValueRegister(), unused, tryData);
+            emitSetCompletionType(CompletionType::Throw);
+            emitMove(finallyExceptionRegister.get(), completionValueRegister());
+            emitJump(finallyBodyLabel.get());
+
+            emitLabel(finallyLabel.get());
+            emitMoveEmptyValue(finallyExceptionRegister.get());
+
+            emitLabel(finallyBodyLabel.get());
+            restoreScopeRegister();
+
+            Ref<Label> finallyDone = newLabel();
 
             RefPtr<RegisterID> returnMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().returnKeyword);
-            emitJumpIfTrue(emitIsUndefined(newTemporary(), returnMethod.get()), catchDone.get());
+            emitJumpIfTrue(emitIsUndefined(newTemporary(), returnMethod.get()), finallyDone.get());
 
-            RefPtr<Label> returnCallTryStart = newLabel();
+            Ref<Label> returnCallTryStart = newLabel();
             emitLabel(returnCallTryStart.get());
-            TryData* returnCallTryData = pushTry(returnCallTryStart.get());
+            TryData* returnCallTryData = pushTry(returnCallTryStart.get(), catchLabel.get(), HandlerType::SynthesizedCatch);
 
             CallArguments returnArguments(*this, nullptr);
             emitMove(returnArguments.thisRegister(), iterator.get());
             emitCall(value.get(), returnMethod.get(), NoExpectedFunction, returnArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
 
-            emitLabel(catchDone.get());
-            emitThrow(exceptionRegister.get());
+            if (isForAwait)
+                emitAwait(value.get());
 
-            // Absorb exception.
-            popTryAndEmitCatch(returnCallTryData, newTemporary(),
-                newTemporary(), catchDone.get(), HandlerType::SynthesizedFinally);
-            emitThrow(exceptionRegister.get());
+            emitJumpIfTrue(emitIsObject(newTemporary(), value.get()), finallyDone.get());
+            emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
+
+            emitLabel(finallyDone.get());
+            emitFinallyCompletion(*finallyContext, completionTypeRegister(), endCatchLabel.get());
+
+            popTry(returnCallTryData, finallyDone.get());
+
+            // Catch block for exceptions that may be thrown while calling the return
+            // handler in the enumeration finally block. The only reason we need this
+            // catch block is because if entered the above finally block due to a thrown
+            // exception, then we want to re-throw the original exception on exiting
+            // the finally block. Otherwise, we'll let any new exception pass through.
+            {
+                emitLabel(catchLabel.get());
+                RefPtr<RegisterID> exceptionRegister = newTemporary();
+                RegisterID* unused = newTemporary();
+                emitCatch(exceptionRegister.get(), unused, returnCallTryData);
+                // Since this is a synthesized catch block and we're guaranteed to never need
+                // to resolve any symbols from the scope, we can skip restoring the scope
+                // register here.
+
+                Ref<Label> throwLabel = newLabel();
+                emitJumpIfTrue(emitIsEmpty(newTemporary(), finallyExceptionRegister.get()), throwLabel.get());
+                emitMove(exceptionRegister.get(), finallyExceptionRegister.get());
+
+                emitLabel(throwLabel.get());
+                emitThrow(exceptionRegister.get());
+
+                emitLabel(endCatchLabel.get());
+            }
         }
 
-        emitLabel(scope->continueTarget());
+        emitLabel(*scope->continueTarget());
         if (forLoopNode) {
             RELEASE_ASSERT(forLoopNode->isForOfNode());
             prepareLexicalScopeForNextForLoopIteration(forLoopNode, forLoopSymbolTable);
@@ -4346,46 +4404,56 @@ void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, Expressio
         }
 
         {
-            emitIteratorNext(value.get(), iterator.get(), node);
+            emitIteratorNext(value.get(), nextMethod.get(), iterator.get(), node, isForAwait ? EmitAwait::Yes : EmitAwait::No);
+
             emitJumpIfTrue(emitGetById(newTemporary(), value.get(), propertyNames().done), loopDone.get());
             emitGetById(value.get(), value.get(), propertyNames().value);
             emitJump(loopStart.get());
         }
 
-        emitLabel(scope->breakTarget());
+        bool breakLabelIsBound = scope->breakTargetMayBeBound();
+        if (breakLabelIsBound)
+            emitLabel(scope->breakTarget());
+        popFinallyControlFlowScope();
+        if (breakLabelIsBound) {
+            // IteratorClose sequence for break-ed control flow.
+            emitIteratorClose(iterator.get(), node, isForAwait ? EmitAwait::Yes : EmitAwait::No);
+        }
     }
-
-    // IteratorClose sequence for break-ed control flow.
-    popIteratorCloseContext();
-    emitIteratorClose(iterator.get(), node);
     emitLabel(loopDone.get());
 }
 
 RegisterID* BytecodeGenerator::emitGetTemplateObject(RegisterID* dst, TaggedTemplateNode* taggedTemplate)
 {
     TemplateRegistryKey::StringVector rawStrings;
-    TemplateRegistryKey::StringVector cookedStrings;
+    TemplateRegistryKey::OptionalStringVector cookedStrings;
 
     TemplateStringListNode* templateString = taggedTemplate->templateLiteral()->templateStrings();
     for (; templateString; templateString = templateString->next()) {
-        rawStrings.append(templateString->value()->raw().impl());
-        cookedStrings.append(templateString->value()->cooked().impl());
+        auto* string = templateString->value();
+        ASSERT(string->raw());
+        rawStrings.append(string->raw()->impl());
+        if (!string->cooked())
+            cookedStrings.append(std::nullopt);
+        else
+            cookedStrings.append(string->cooked()->impl());
     }
+    RefPtr<RegisterID> constant = addTemplateRegistryKeyConstant(m_vm->templateRegistryKeyTable().createKey(WTFMove(rawStrings), WTFMove(cookedStrings)));
+    if (!dst)
+        return constant.get();
+    return emitMove(dst, constant.get());
+}
 
-    RefPtr<RegisterID> getTemplateObject = nullptr;
-    Variable var = variable(propertyNames().builtinNames().getTemplateObjectPrivateName());
+RegisterID* BytecodeGenerator::emitGetGlobalPrivate(RegisterID* dst, const Identifier& property)
+{
+    dst = tempDestination(dst);
+    Variable var = variable(property);
     if (RegisterID* local = var.local())
-        getTemplateObject = emitMove(newTemporary(), local);
-    else {
-        getTemplateObject = newTemporary();
-        RefPtr<RegisterID> scope = newTemporary();
-        moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), var));
-        emitGetFromScope(getTemplateObject.get(), scope.get(), var, ThrowIfNotFound);
-    }
+        return emitMove(dst, local);
 
-    CallArguments arguments(*this, nullptr);
-    emitLoad(arguments.thisRegister(), JSValue(addTemplateRegistryKeyConstant(TemplateRegistryKey(rawStrings, cookedStrings))));
-    return emitCall(dst, getTemplateObject.get(), NoExpectedFunction, arguments, taggedTemplate->divot(), taggedTemplate->divotStart(), taggedTemplate->divotEnd(), DebuggableCall::No);
+    RefPtr<RegisterID> scope = newTemporary();
+    moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), var));
+    return emitGetFromScope(dst, scope.get(), var, ThrowIfNotFound);
 }
 
 RegisterID* BytecodeGenerator::emitGetEnumerableLength(RegisterID* dst, RegisterID* base)
@@ -4477,6 +4545,14 @@ RegisterID* BytecodeGenerator::emitIsObject(RegisterID* dst, RegisterID* src)
     return dst;
 }
 
+RegisterID* BytecodeGenerator::emitIsNumber(RegisterID* dst, RegisterID* src)
+{
+    emitOpcode(op_is_number);
+    instructions().append(dst->index());
+    instructions().append(src->index());
+    return dst;
+}
+
 RegisterID* BytecodeGenerator::emitIsUndefined(RegisterID* dst, RegisterID* src)
 {
     emitOpcode(op_is_undefined);
@@ -4493,16 +4569,18 @@ RegisterID* BytecodeGenerator::emitIsEmpty(RegisterID* dst, RegisterID* src)
     return dst;
 }
     
-RegisterID* BytecodeGenerator::emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node)
+RegisterID* BytecodeGenerator::emitIteratorNext(RegisterID* dst, RegisterID* nextMethod, RegisterID* iterator, const ThrowableExpressionData* node, EmitAwait doEmitAwait)
 {
     {
-        RefPtr<RegisterID> next = emitGetById(newTemporary(), iterator, propertyNames().next);
         CallArguments nextArguments(*this, nullptr);
         emitMove(nextArguments.thisRegister(), iterator);
-        emitCall(dst, next.get(), NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
+        emitCall(dst, nextMethod, NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
+
+        if (doEmitAwait == EmitAwait::Yes)
+            emitAwait(dst);
     }
     {
-        RefPtr<Label> typeIsObject = newLabel();
+        Ref<Label> typeIsObject = newLabel();
         emitJumpIfTrue(emitIsObject(newTemporary(), dst), typeIsObject.get());
         emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
         emitLabel(typeIsObject.get());
@@ -4510,27 +4588,21 @@ RegisterID* BytecodeGenerator::emitIteratorNext(RegisterID* dst, RegisterID* ite
     return dst;
 }
 
-RegisterID* BytecodeGenerator::emitIteratorNextWithValue(RegisterID* dst, RegisterID* iterator, RegisterID* value, const ThrowableExpressionData* node)
+RegisterID* BytecodeGenerator::emitIteratorNextWithValue(RegisterID* dst, RegisterID* nextMethod, RegisterID* iterator, RegisterID* value, const ThrowableExpressionData* node)
 {
     {
-        RefPtr<RegisterID> next = emitGetById(newTemporary(), iterator, propertyNames().next);
         CallArguments nextArguments(*this, nullptr, 1);
         emitMove(nextArguments.thisRegister(), iterator);
         emitMove(nextArguments.argumentRegister(0), value);
-        emitCall(dst, next.get(), NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
+        emitCall(dst, nextMethod, NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
     }
-    {
-        RefPtr<Label> typeIsObject = newLabel();
-        emitJumpIfTrue(emitIsObject(newTemporary(), dst), typeIsObject.get());
-        emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
-        emitLabel(typeIsObject.get());
-    }
+
     return dst;
 }
 
-void BytecodeGenerator::emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node)
+void BytecodeGenerator::emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node, EmitAwait doEmitAwait)
 {
-    RefPtr<Label> done = newLabel();
+    Ref<Label> done = newLabel();
     RefPtr<RegisterID> returnMethod = emitGetById(newTemporary(), iterator, propertyNames().returnKeyword);
     emitJumpIfTrue(emitIsUndefined(newTemporary(), returnMethod.get()), done.get());
 
@@ -4538,6 +4610,10 @@ void BytecodeGenerator::emitIteratorClose(RegisterID* iterator, const ThrowableE
     CallArguments returnArguments(*this, nullptr);
     emitMove(returnArguments.thisRegister(), iterator);
     emitCall(value.get(), returnMethod.get(), NoExpectedFunction, returnArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
+
+    if (doEmitAwait == EmitAwait::Yes)
+        emitAwait(value.get());
+
     emitJumpIfTrue(emitIsObject(newTemporary(), value.get()), done.get());
     emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
     emitLabel(done.get());
@@ -4547,13 +4623,16 @@ void BytecodeGenerator::pushIndexedForInScope(RegisterID* localRegister, Registe
 {
     if (!localRegister)
         return;
-    m_forInContextStack.append(adoptRef(new IndexedForInContext(localRegister, indexRegister)));
+    m_forInContextStack.append(adoptRef(*new IndexedForInContext(localRegister, indexRegister)));
 }
 
 void BytecodeGenerator::popIndexedForInScope(RegisterID* localRegister)
 {
     if (!localRegister)
         return;
+
+    ASSERT(m_forInContextStack.last()->type() == ForInContext::IndexedForInContextType);
+    static_cast<IndexedForInContext&>(m_forInContextStack.last().get()).finalize(*this);
     m_forInContextStack.removeLast();
 }
 
@@ -4585,11 +4664,12 @@ RegisterID* BytecodeGenerator::emitLoadDerivedConstructorFromArrowFunctionLexica
 
 RegisterID* BytecodeGenerator::ensureThis()
 {
-    if (constructorKind() == ConstructorKind::Extends && needsToUpdateArrowFunctionContext() && isSuperCallUsedInInnerArrowFunction())
-        emitLoadThisFromArrowFunctionLexicalEnvironment();
+    if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext()) {
+        if ((needsToUpdateArrowFunctionContext() && isSuperCallUsedInInnerArrowFunction()) || m_codeBlock->parseMode() == SourceParseMode::AsyncArrowFunctionBodyMode)
+            emitLoadThisFromArrowFunctionLexicalEnvironment();
 
-    if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())
         emitTDZCheck(thisRegister());
+    }
 
     return thisRegister();
 }
@@ -4631,13 +4711,11 @@ void BytecodeGenerator::emitPutNewTargetToArrowFunctionContextScope()
     
 void BytecodeGenerator::emitPutDerivedConstructorToArrowFunctionContextScope()
 {
-    if ((isConstructor() && constructorKind() == ConstructorKind::Extends) || m_codeBlock->isClassContext()) {
-        if (isSuperUsedInInnerArrowFunction()) {
-            ASSERT(m_arrowFunctionContextLexicalEnvironmentRegister);
-            
-            Variable protoScope = variable(propertyNames().builtinNames().derivedConstructorPrivateName());
-            emitPutToScope(m_arrowFunctionContextLexicalEnvironmentRegister, protoScope, &m_calleeRegister, DoNotThrowIfNotFound, InitializationMode::Initialization);
-        }
+    if (needsDerivedConstructorInArrowFunctionLexicalEnvironment()) {
+        ASSERT(m_arrowFunctionContextLexicalEnvironmentRegister);
+
+        Variable protoScope = variable(propertyNames().builtinNames().derivedConstructorPrivateName());
+        emitPutToScope(m_arrowFunctionContextLexicalEnvironmentRegister, protoScope, &m_calleeRegister, DoNotThrowIfNotFound, InitializationMode::Initialization);
     }
 }
 
@@ -4657,13 +4735,15 @@ void BytecodeGenerator::pushStructureForInScope(RegisterID* localRegister, Regis
 {
     if (!localRegister)
         return;
-    m_forInContextStack.append(adoptRef(new StructureForInContext(localRegister, indexRegister, propertyRegister, enumeratorRegister)));
+    m_forInContextStack.append(adoptRef(*new StructureForInContext(localRegister, indexRegister, propertyRegister, enumeratorRegister)));
 }
 
 void BytecodeGenerator::popStructureForInScope(RegisterID* localRegister)
 {
     if (!localRegister)
         return;
+    ASSERT(m_forInContextStack.last()->type() == ForInContext::StructureForInContextType);
+    static_cast<StructureForInContext&>(m_forInContextStack.last().get()).finalize(*this);
     m_forInContextStack.removeLast();
 }
 
@@ -4680,12 +4760,10 @@ void BytecodeGenerator::invalidateForInContextForLocal(RegisterID* localRegister
     // to perform some flow-sensitive analysis to see if/when the loop iteration variable was 
     // reassigned, or we'd have to resort to runtime checks to see if the variable had been 
     // reassigned from its original value.
-    for (size_t i = m_forInContextStack.size(); i > 0; i--) {
-        ForInContext* context = m_forInContextStack[i - 1].get();
-        if (context->local() != localRegister)
-            continue;
-        context->invalidate();
-        break;
+    for (size_t i = m_forInContextStack.size(); i--; ) {
+        ForInContext& context = m_forInContextStack[i].get();
+        if (context.local() == localRegister)
+            context.invalidate();
     }
 }
 
@@ -4708,7 +4786,7 @@ void BytecodeGenerator::emitRequireObjectCoercible(RegisterID* value, const Stri
 {
     // FIXME: op_jneq_null treats "undetectable" objects as null/undefined. RequireObjectCoercible
     // thus incorrectly throws a TypeError for interfaces like HTMLAllCollection.
-    RefPtr<Label> target = newLabel();
+    Ref<Label> target = newLabel();
     size_t begin = instructions().size();
     emitOpcode(op_jneq_null);
     instructions().append(value->index());
@@ -4717,24 +4795,28 @@ void BytecodeGenerator::emitRequireObjectCoercible(RegisterID* value, const Stri
     emitLabel(target.get());
 }
 
-void BytecodeGenerator::emitYieldPoint(RegisterID* argument)
+void BytecodeGenerator::emitYieldPoint(RegisterID* argument, JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason result)
 {
-    RefPtr<Label> mergePoint = newLabel();
+    Ref<Label> mergePoint = newLabel();
     unsigned yieldPointIndex = m_yieldPoints++;
     emitGeneratorStateChange(yieldPointIndex + 1);
 
+    if (parseMode() == SourceParseMode::AsyncGeneratorBodyMode) {
+        int suspendReason = static_cast<int32_t>(result);
+        emitPutById(generatorRegister(), propertyNames().builtinNames().asyncGeneratorSuspendReasonPrivateName(), emitLoad(nullptr, jsNumber(suspendReason)));
+    }
+
     // Split the try range here.
-    RefPtr<Label> savePoint = emitLabel(newLabel().get());
+    Ref<Label> savePoint = newEmittedLabel();
     for (unsigned i = m_tryContextStack.size(); i--;) {
         TryContext& context = m_tryContextStack[i];
-        TryRange range;
-        range.start = context.start;
-        range.end = savePoint;
-        range.tryData = context.tryData;
-        m_tryRanges.append(range);
-
+        m_tryRanges.append(TryRange {
+            context.start.copyRef(),
+            savePoint.copyRef(),
+            context.tryData
+        });
         // Try range will be restared at the merge point.
-        context.start = mergePoint;
+        context.start = mergePoint.get();
     }
     Vector<TryContext> savedTryContextStack;
     m_tryContextStack.swap(savedTryContextStack);
@@ -4749,26 +4831,24 @@ void BytecodeGenerator::emitYieldPoint(RegisterID* argument)
     emitLabel(mergePoint.get());
 }
 
-RegisterID* BytecodeGenerator::emitYield(RegisterID* argument)
+RegisterID* BytecodeGenerator::emitYield(RegisterID* argument, JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason result)
 {
-    emitYieldPoint(argument);
+    emitYieldPoint(argument, result);
 
-    RefPtr<Label> normalLabel = newLabel();
+    Ref<Label> normalLabel = newLabel();
     RefPtr<RegisterID> condition = newTemporary();
     emitEqualityOp(op_stricteq, condition.get(), generatorResumeModeRegister(), emitLoad(nullptr, jsNumber(static_cast<int32_t>(JSGeneratorFunction::GeneratorResumeMode::NormalMode))));
     emitJumpIfTrue(condition.get(), normalLabel.get());
 
-    RefPtr<Label> throwLabel = newLabel();
+    Ref<Label> throwLabel = newLabel();
     emitEqualityOp(op_stricteq, condition.get(), generatorResumeModeRegister(), emitLoad(nullptr, jsNumber(static_cast<int32_t>(JSGeneratorFunction::GeneratorResumeMode::ThrowMode))));
     emitJumpIfTrue(condition.get(), throwLabel.get());
     // Return.
     {
         RefPtr<RegisterID> returnRegister = generatorValueRegister();
-        if (isInFinallyBlock()) {
-            returnRegister = emitMove(newTemporary(), returnRegister.get());
-            emitPopScopes(scopeRegister(), 0);
-        }
-        emitReturn(returnRegister.get());
+        bool hasFinally = emitReturnViaFinallyIfNeeded(returnRegister.get());
+        if (!hasFinally)
+            emitReturn(returnRegister.get());
     }
 
     // Throw.
@@ -4780,34 +4860,91 @@ RegisterID* BytecodeGenerator::emitYield(RegisterID* argument)
     return generatorValueRegister();
 }
 
+RegisterID* BytecodeGenerator::emitCallIterator(RegisterID* iterator, RegisterID* argument, ThrowableExpressionData* node)
+{
+    CallArguments args(*this, nullptr);
+    emitMove(args.thisRegister(), argument);
+    emitCall(iterator, iterator, NoExpectedFunction, args, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
+
+    return iterator;
+}
+
+void BytecodeGenerator::emitAwait(RegisterID* value)
+{
+    emitYield(value, JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason::Await);
+    emitMove(value, generatorValueRegister());
+}
+
+RegisterID* BytecodeGenerator::emitGetIterator(RegisterID* argument, ThrowableExpressionData* node)
+{
+    RefPtr<RegisterID> iterator = emitGetById(newTemporary(), argument, propertyNames().iteratorSymbol);
+    emitCallIterator(iterator.get(), argument, node);
+
+    return iterator.get();
+}
+
+RegisterID* BytecodeGenerator::emitGetAsyncIterator(RegisterID* argument, ThrowableExpressionData* node)
+{
+    RefPtr<RegisterID> iterator = emitGetById(newTemporary(), argument, propertyNames().asyncIteratorSymbol);
+    Ref<Label> asyncIteratorNotFound = newLabel();
+    Ref<Label> asyncIteratorFound = newLabel();
+    Ref<Label> iteratorReceived = newLabel();
+
+    emitJumpIfTrue(emitIsUndefined(newTemporary(), iterator.get()), asyncIteratorNotFound.get());
+    emitJumpIfTrue(emitUnaryOp(op_eq_null, newTemporary(), iterator.get()), asyncIteratorNotFound.get());
+
+    emitJump(asyncIteratorFound.get());
+    emitLabel(asyncIteratorNotFound.get());
+
+    RefPtr<RegisterID> commonIterator = emitGetIterator(argument, node);
+    emitMove(iterator.get(), commonIterator.get());
+
+    auto varCreateAsyncFromSyncIterator = variable(propertyNames().builtinNames().createAsyncFromSyncIteratorPrivateName());
+    RefPtr<RegisterID> scope = newTemporary();
+    moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), varCreateAsyncFromSyncIterator));
+    RefPtr<RegisterID> createAsyncFromSyncIterator = emitGetFromScope(newTemporary(), scope.get(), varCreateAsyncFromSyncIterator, ThrowIfNotFound);
+
+    CallArguments args(*this, nullptr, 1);
+    emitLoad(args.thisRegister(), jsUndefined());
+
+    emitMove(args.argumentRegister(0), iterator.get());
+
+    JSTextPosition divot(m_scopeNode->firstLine(), m_scopeNode->startOffset(), m_scopeNode->lineStartOffset());
+    emitCall(iterator.get(), createAsyncFromSyncIterator.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
+
+    emitJump(iteratorReceived.get());
+
+    emitLabel(asyncIteratorFound.get());
+    emitCallIterator(iterator.get(), argument, node);
+    emitLabel(iteratorReceived.get());
+
+    return iterator.get();
+}
+
 RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, ThrowableExpressionData* node)
 {
     RefPtr<RegisterID> value = newTemporary();
     {
-        RefPtr<RegisterID> iterator = emitGetById(newTemporary(), argument, propertyNames().iteratorSymbol);
-        {
-            CallArguments args(*this, nullptr);
-            emitMove(args.thisRegister(), argument);
-            emitCall(iterator.get(), iterator.get(), NoExpectedFunction, args, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
-        }
+        RefPtr<RegisterID> iterator = parseMode() == SourceParseMode::AsyncGeneratorBodyMode ? emitGetAsyncIterator(argument, node) : emitGetIterator(argument, node);
+        RefPtr<RegisterID> nextMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().next);
 
-        RefPtr<Label> loopDone = newLabel();
+        Ref<Label> loopDone = newLabel();
         {
-            RefPtr<Label> nextElement = newLabel();
+            Ref<Label> nextElement = newLabel();
             emitLoad(value.get(), jsUndefined());
 
             emitJump(nextElement.get());
 
-            RefPtr<Label> loopStart = newLabel();
+            Ref<Label> loopStart = newLabel();
             emitLabel(loopStart.get());
             emitLoopHint();
 
-            RefPtr<Label> branchOnResult = newLabel();
+            Ref<Label> branchOnResult = newLabel();
             {
-                emitYieldPoint(value.get());
+                emitYieldPoint(value.get(), JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason::Yield);
 
-                RefPtr<Label> normalLabel = newLabel();
-                RefPtr<Label> returnLabel = newLabel();
+                Ref<Label> normalLabel = newLabel();
+                Ref<Label> returnLabel = newLabel();
                 {
                     RefPtr<RegisterID> condition = newTemporary();
                     emitEqualityOp(op_stricteq, condition.get(), generatorResumeModeRegister(), emitLoad(nullptr, jsNumber(static_cast<int32_t>(JSGeneratorFunction::GeneratorResumeMode::NormalMode))));
@@ -4821,11 +4958,13 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
 
                 // Throw.
                 {
-                    RefPtr<Label> throwMethodFound = newLabel();
+                    Ref<Label> throwMethodFound = newLabel();
                     RefPtr<RegisterID> throwMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().throwKeyword);
                     emitJumpIfFalse(emitIsUndefined(newTemporary(), throwMethod.get()), throwMethodFound.get());
 
-                    emitIteratorClose(iterator.get(), node);
+                    EmitAwait emitAwaitInIteratorClose = parseMode() == SourceParseMode::AsyncGeneratorBodyMode ? EmitAwait::Yes : EmitAwait::No;
+                    emitIteratorClose(iterator.get(), node, emitAwaitInIteratorClose);
+
                     emitThrowTypeError(ASCIILiteral("Delegated generator does not have a 'throw' method."));
 
                     emitLabel(throwMethodFound.get());
@@ -4834,20 +4973,19 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
                     emitMove(throwArguments.argumentRegister(0), generatorValueRegister());
                     emitCall(value.get(), throwMethod.get(), NoExpectedFunction, throwArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
 
-                    emitJumpIfTrue(emitIsObject(newTemporary(), value.get()), branchOnResult.get());
-                    emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
+                    emitJump(branchOnResult.get());
                 }
 
                 // Return.
                 emitLabel(returnLabel.get());
                 {
-                    RefPtr<Label> returnMethodFound = newLabel();
+                    Ref<Label> returnMethodFound = newLabel();
                     RefPtr<RegisterID> returnMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().returnKeyword);
                     emitJumpIfFalse(emitIsUndefined(newTemporary(), returnMethod.get()), returnMethodFound.get());
 
                     emitMove(value.get(), generatorValueRegister());
 
-                    RefPtr<Label> returnSequence = newLabel();
+                    Ref<Label> returnSequence = newLabel();
                     emitJump(returnSequence.get());
 
                     emitLabel(returnMethodFound.get());
@@ -4856,12 +4994,16 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
                     emitMove(returnArguments.argumentRegister(0), generatorValueRegister());
                     emitCall(value.get(), returnMethod.get(), NoExpectedFunction, returnArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
 
-                    RefPtr<Label> returnIteratorResultIsObject = newLabel();
+                    if (parseMode() == SourceParseMode::AsyncGeneratorBodyMode)
+                        emitAwait(value.get());
+
+                    Ref<Label> returnIteratorResultIsObject = newLabel();
                     emitJumpIfTrue(emitIsObject(newTemporary(), value.get()), returnIteratorResultIsObject.get());
                     emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
 
                     emitLabel(returnIteratorResultIsObject.get());
-                    RefPtr<Label> returnFromGenerator = newLabel();
+
+                    Ref<Label> returnFromGenerator = newLabel();
                     emitJumpIfTrue(emitGetById(newTemporary(), value.get(), propertyNames().done), returnFromGenerator.get());
 
                     emitGetById(value.get(), value.get(), propertyNames().value);
@@ -4871,9 +5013,9 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
                     emitGetById(value.get(), value.get(), propertyNames().value);
 
                     emitLabel(returnSequence.get());
-                    if (isInFinallyBlock())
-                        emitPopScopes(scopeRegister(), 0);
-                    emitReturn(value.get());
+                    bool hasFinally = emitReturnViaFinallyIfNeeded(value.get());
+                    if (!hasFinally)
+                        emitReturn(value.get());
                 }
 
                 // Normal.
@@ -4882,11 +5024,21 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
             }
 
             emitLabel(nextElement.get());
-            emitIteratorNextWithValue(value.get(), iterator.get(), value.get(), node);
+            emitIteratorNextWithValue(value.get(), nextMethod.get(), iterator.get(), value.get(), node);
 
             emitLabel(branchOnResult.get());
+
+            if (parseMode() == SourceParseMode::AsyncGeneratorBodyMode)
+                emitAwait(value.get());
+
+            Ref<Label> iteratorValueIsObject = newLabel();
+            emitJumpIfTrue(emitIsObject(newTemporary(), value.get()), iteratorValueIsObject.get());
+            emitThrowTypeError(ASCIILiteral("Iterator result interface is not an object."));
+            emitLabel(iteratorValueIsObject.get());
+
             emitJumpIfTrue(emitGetById(newTemporary(), value.get(), propertyNames().done), loopDone.get());
             emitGetById(value.get(), value.get(), propertyNames().value);
+
             emitJump(loopStart.get());
         }
         emitLabel(loopDone.get());
@@ -4901,6 +5053,186 @@ void BytecodeGenerator::emitGeneratorStateChange(int32_t state)
 {
     RegisterID* completedState = emitLoad(nullptr, jsNumber(state));
     emitPutById(generatorRegister(), propertyNames().builtinNames().generatorStatePrivateName(), completedState);
+}
+
+bool BytecodeGenerator::emitJumpViaFinallyIfNeeded(int targetLabelScopeDepth, Label& jumpTarget)
+{
+    ASSERT(labelScopeDepth() - targetLabelScopeDepth >= 0);
+    size_t numberOfScopesToCheckForFinally = labelScopeDepth() - targetLabelScopeDepth;
+    ASSERT(numberOfScopesToCheckForFinally <= m_controlFlowScopeStack.size());
+    if (!numberOfScopesToCheckForFinally)
+        return false;
+
+    FinallyContext* innermostFinallyContext = nullptr;
+    FinallyContext* outermostFinallyContext = nullptr;
+    size_t scopeIndex = m_controlFlowScopeStack.size() - 1;
+    while (numberOfScopesToCheckForFinally--) {
+        ControlFlowScope* scope = &m_controlFlowScopeStack[scopeIndex--];
+        if (scope->isFinallyScope()) {
+            FinallyContext* finallyContext = &scope->finallyContext;
+            if (!innermostFinallyContext)
+                innermostFinallyContext = finallyContext;
+            outermostFinallyContext = finallyContext;
+            finallyContext->incNumberOfBreaksOrContinues();
+        }
+    }
+    if (!outermostFinallyContext)
+        return false; // No finallys to thread through.
+
+    auto jumpID = bytecodeOffsetToJumpID(instructions().size());
+    int lexicalScopeIndex = labelScopeDepthToLexicalScopeIndex(targetLabelScopeDepth);
+    outermostFinallyContext->registerJump(jumpID, lexicalScopeIndex, jumpTarget);
+
+    emitSetCompletionType(jumpID);
+    emitJump(*innermostFinallyContext->finallyLabel());
+    return true; // We'll be jumping to a finally block.
+}
+
+bool BytecodeGenerator::emitReturnViaFinallyIfNeeded(RegisterID* returnRegister)
+{
+    size_t numberOfScopesToCheckForFinally = m_controlFlowScopeStack.size();
+    if (!numberOfScopesToCheckForFinally)
+        return false;
+
+    FinallyContext* innermostFinallyContext = nullptr;
+    while (numberOfScopesToCheckForFinally) {
+        size_t scopeIndex = --numberOfScopesToCheckForFinally;
+        ControlFlowScope* scope = &m_controlFlowScopeStack[scopeIndex];
+        if (scope->isFinallyScope()) {
+            FinallyContext* finallyContext = &scope->finallyContext;
+            if (!innermostFinallyContext)
+                innermostFinallyContext = finallyContext;
+            finallyContext->setHandlesReturns();
+        }
+    }
+    if (!innermostFinallyContext)
+        return false; // No finallys to thread through.
+
+    emitSetCompletionType(CompletionType::Return);
+    emitSetCompletionValue(returnRegister);
+    emitJump(*innermostFinallyContext->finallyLabel());
+    return true; // We'll be jumping to a finally block.
+}
+
+void BytecodeGenerator::emitFinallyCompletion(FinallyContext& context, RegisterID* completionTypeRegister, Label& normalCompletionLabel)
+{
+    if (context.numberOfBreaksOrContinues() || context.handlesReturns()) {
+        emitJumpIf(op_stricteq, completionTypeRegister, CompletionType::Normal, normalCompletionLabel);
+
+        FinallyContext* outerContext = context.outerContext();
+
+        size_t numberOfJumps = context.numberOfJumps();
+        ASSERT(outerContext || numberOfJumps == context.numberOfBreaksOrContinues());
+
+        for (size_t i = 0; i < numberOfJumps; i++) {
+            Ref<Label> nextLabel = newLabel();
+            auto& jump = context.jumps(i);
+            emitJumpIf(op_nstricteq, completionTypeRegister, jump.jumpID, nextLabel.get());
+
+            restoreScopeRegister(jump.targetLexicalScopeIndex);
+            emitSetCompletionType(CompletionType::Normal);
+            emitJump(jump.targetLabel.get());
+
+            emitLabel(nextLabel.get());
+        }
+
+        if (outerContext) {
+            // We are not the outermost finally.
+            bool hasBreaksOrContinuesNotCoveredByJumps = context.numberOfBreaksOrContinues() > numberOfJumps;
+            if (hasBreaksOrContinuesNotCoveredByJumps || context.handlesReturns())
+                emitJumpIf(op_nstricteq, completionTypeRegister, CompletionType::Throw, *outerContext->finallyLabel());
+
+        } else {
+            // We are the outermost finally.
+            if (context.handlesReturns()) {
+                Ref<Label> notReturnLabel = newLabel();
+                emitJumpIf(op_nstricteq, completionTypeRegister, CompletionType::Return, notReturnLabel.get());
+
+                emitWillLeaveCallFrameDebugHook();
+                emitReturn(completionValueRegister(), ReturnFrom::Finally);
+                
+                emitLabel(notReturnLabel.get());
+            }
+        }
+    }
+    emitJumpIf(op_nstricteq, completionTypeRegister, CompletionType::Throw, normalCompletionLabel);
+    emitThrow(completionValueRegister());
+}
+
+bool BytecodeGenerator::allocateCompletionRecordRegisters()
+{
+    if (m_completionTypeRegister)
+        return false;
+
+    ASSERT(!m_completionValueRegister);
+    m_completionTypeRegister = newTemporary();
+    m_completionValueRegister = newTemporary();
+
+    emitSetCompletionType(CompletionType::Normal);
+    emitMoveEmptyValue(m_completionValueRegister.get());
+    return true;
+}
+
+void BytecodeGenerator::releaseCompletionRecordRegisters()
+{
+    ASSERT(m_completionTypeRegister && m_completionValueRegister);
+    m_completionTypeRegister = nullptr;
+    m_completionValueRegister = nullptr;
+}
+
+void BytecodeGenerator::emitJumpIf(OpcodeID compareOpcode, RegisterID* completionTypeRegister, CompletionType type, Label& jumpTarget)
+{
+    RefPtr<RegisterID> tempRegister = newTemporary();
+    RegisterID* valueConstant = addConstantValue(jsNumber(static_cast<int>(type)));
+    OperandTypes operandTypes = OperandTypes(ResultType::numberTypeIsInt32(), ResultType::unknownType());
+
+    auto equivalenceResult = emitBinaryOp(compareOpcode, tempRegister.get(), valueConstant, completionTypeRegister, operandTypes);
+    emitJumpIfTrue(equivalenceResult, jumpTarget);
+}
+
+void StructureForInContext::finalize(BytecodeGenerator& generator)
+{
+    if (isValid())
+        return;
+
+    for (const auto& instTuple : m_getInsts) {
+        unsigned instIndex = std::get<0>(instTuple);
+        int propertyRegIndex = std::get<1>(instTuple);
+        UnlinkedValueProfile valueProfile = std::get<2>(instTuple);
+        OpcodeID op = generator.instructions()[instIndex].u.opcode;
+        RELEASE_ASSERT(op == op_get_direct_pname);
+        ASSERT(opcodeLength(op_get_direct_pname) == 7);
+        ASSERT(opcodeLength(op_get_by_val) == 6);
+
+        // 0. Change the opcode to get_by_val.
+        generator.instructions()[instIndex].u.opcode = op_get_by_val;
+        // 1. dst stays the same.
+        // 2. base stays the same.
+        // 3. property gets switched to the original property.
+        generator.instructions()[instIndex + 3].u.operand = propertyRegIndex;
+        // 4. add an array profile.
+        generator.instructions()[instIndex + 4].u.unsignedValue = generator.newArrayProfile();
+        // 5. set the result value profile.
+        generator.instructions()[instIndex + 5].u.unsignedValue = valueProfile;
+        // 6. nop out the last instruction word.
+        generator.instructions()[instIndex + 6].u.opcode = op_nop;
+    }
+}
+
+void IndexedForInContext::finalize(BytecodeGenerator& generator)
+{
+    if (isValid())
+        return;
+
+    for (const auto& instPair : m_getInsts) {
+        unsigned instIndex = instPair.first;
+        int propertyRegIndex = instPair.second;
+        OpcodeID op = generator.instructions()[instIndex].u.opcode;
+        RELEASE_ASSERT(op == op_get_by_val);
+        // We just need to perform the get_by_val with the original property here,
+        // not the indexed one.
+        generator.instructions()[instIndex + 3].u.operand = propertyRegIndex;
+    }
 }
 
 } // namespace JSC

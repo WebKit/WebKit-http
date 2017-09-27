@@ -51,15 +51,20 @@ public:
     explicit LinkLoader(LinkLoaderClient&);
     virtual ~LinkLoader();
 
-    bool loadLink(const LinkRelAttribute&, const URL&, const String& as, const String& crossOrigin, Document&);
-    static Optional<CachedResource::Type> resourceTypeFromAsAttribute(const String& as);
+    bool loadLink(const LinkRelAttribute&, const URL&, const String& as, const String& media, const String& type, const String& crossOrigin, Document&);
+    static std::optional<CachedResource::Type> resourceTypeFromAsAttribute(const String& as);
 
-    WeakPtr<LinkLoader> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    enum class MediaAttributeCheck { MediaAttributeEmpty, MediaAttributeNotEmpty };
+    static void loadLinksFromHeader(const String& headerValue, const URL& baseURL, Document&, MediaAttributeCheck);
+    static bool isSupportedType(CachedResource::Type, const String& mimeType);
+
+    WeakPtr<LinkLoader> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
     void triggerEvents(const CachedResource&);
+    void cancelLoad();
 
 private:
     void notifyFinished(CachedResource&) override;
-    void preloadIfNeeded(const LinkRelAttribute&, const URL& href, Document&, const String& as, const String& crossOriginMode);
+    static std::unique_ptr<LinkPreloadResourceClient> preloadIfNeeded(const LinkRelAttribute&, const URL& href, Document&, const String& as, const String& media, const String& type, const String& crossOriginMode, LinkLoader*);
 
     LinkLoaderClient& m_client;
     CachedResourceHandle<CachedResource> m_cachedLinkResource;

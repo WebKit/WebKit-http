@@ -31,6 +31,8 @@
 #include "DOMWrapperWorld.h"
 #include "HTMLUnknownElement.h"
 #include "JSDOMBinding.h"
+#include "JSDOMConvertNullable.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDOMGlobalObject.h"
 #include "JSElement.h"
 #include "JSHTMLElement.h"
@@ -48,7 +50,7 @@ JSCustomElementInterface::JSCustomElementInterface(const QualifiedName& name, JS
     : ActiveDOMCallback(globalObject->scriptExecutionContext())
     , m_name(name)
     , m_constructor(constructor)
-    , m_isolatedWorld(&globalObject->world())
+    , m_isolatedWorld(globalObject->world())
 {
 }
 
@@ -63,11 +65,26 @@ Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& do
     if (auto element = tryToConstructCustomElement(document, localName))
         return element.releaseNonNull();
 
-    auto element = HTMLUnknownElement::create(QualifiedName(nullAtom, localName, HTMLNames::xhtmlNamespaceURI), document);
+    auto element = HTMLUnknownElement::create(QualifiedName(nullAtom(), localName, HTMLNames::xhtmlNamespaceURI), document);
     element->setIsCustomElementUpgradeCandidate();
     element->setIsFailedCustomElement(*this);
 
-    return element.get();
+    return WTFMove(element);
+}
+
+Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& document, const QualifiedName& name)
+{
+    if (auto element = tryToConstructCustomElement(document, name.localName())) {
+        if (!name.prefix().isNull())
+            element->setPrefix(name.prefix());
+        return element.releaseNonNull();
+    }
+
+    auto element = HTMLUnknownElement::create(name, document);
+    element->setIsCustomElementUpgradeCandidate();
+    element->setIsFailedCustomElement(*this);
+
+    return WTFMove(element);
 }
 
 RefPtr<Element> JSCustomElementInterface::tryToConstructCustomElement(Document& document, const AtomicString& localName)
@@ -87,7 +104,7 @@ RefPtr<Element> JSCustomElementInterface::tryToConstructCustomElement(Document& 
     ASSERT(&document == scriptExecutionContext());
     auto& state = *document.execState();
     auto element = constructCustomElementSynchronously(document, vm, state, m_constructor.get(), localName);
-    ASSERT(!!scope.exception() == !element);
+    EXCEPTION_ASSERT(!!scope.exception() == !element);
     if (!element) {
         auto* exception = scope.exception();
         scope.clearException();
@@ -104,22 +121,20 @@ static RefPtr<Element> constructCustomElementSynchronously(Document& document, V
 {
     auto scope = DECLARE_THROW_SCOPE(vm);
     ConstructData constructData;
-    ConstructType constructType = constructor->methodTable()->getConstructData(constructor, constructData);
+    ConstructType constructType = constructor->methodTable(vm)->getConstructData(constructor, constructData);
     if (constructType == ConstructType::None) {
         ASSERT_NOT_REACHED();
         return nullptr;
     }
 
-    MarkedArgumentBuffer args;
-    args.append(jsStringWithCache(&state, localName));
-
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionConstruct(&document, constructType, constructData);
+    MarkedArgumentBuffer args;
     JSValue newElement = construct(&state, constructor, constructType, constructData, args);
     InspectorInstrumentation::didCallFunction(cookie, &document);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     ASSERT(!newElement.isEmpty());
-    HTMLElement* wrappedElement = JSHTMLElement::toWrapped(newElement);
+    HTMLElement* wrappedElement = JSHTMLElement::toWrapped(vm, newElement);
     if (!wrappedElement) {
         throwTypeError(&state, scope, ASCIILiteral("The result of constructing a custom element must be a HTMLElement"));
         return nullptr;
@@ -169,12 +184,12 @@ void JSCustomElementInterface::upgradeElement(Element& element)
     if (!context)
         return;
     ASSERT(context->isDocument());
-    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
+    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, m_isolatedWorld);
     ExecState* state = globalObject->globalExec();
     RETURN_IF_EXCEPTION(scope, void());
 
     ConstructData constructData;
-    ConstructType constructType = m_constructor->methodTable()->getConstructData(m_constructor.get(), constructData);
+    ConstructType constructType = m_constructor->methodTable(vm)->getConstructData(m_constructor.get(), constructData);
     if (constructType == ConstructType::None) {
         ASSERT_NOT_REACHED();
         return;
@@ -197,10 +212,10 @@ void JSCustomElementInterface::upgradeElement(Element& element)
         return;
     }
 
-    Element* wrappedElement = JSElement::toWrapped(returnedElement);
+    Element* wrappedElement = JSElement::toWrapped(vm, returnedElement);
     if (!wrappedElement || wrappedElement != &element) {
         element.setIsFailedCustomElement(*this);
-        reportException(state, createDOMException(state, INVALID_STATE_ERR, "Custom element constructor failed to upgrade an element"));
+        reportException(state, createDOMException(state, InvalidStateError, "Custom element constructor failed to upgrade an element"));
         return;
     }
     element.setIsDefinedCustomElement(*this);
@@ -216,17 +231,18 @@ void JSCustomElementInterface::invokeCallback(Element& element, JSObject* callba
         return;
 
     Ref<JSCustomElementInterface> protectedThis(*this);
-    JSLockHolder lock(m_isolatedWorld->vm());
+    VM& vm = m_isolatedWorld->vm();
+    JSLockHolder lock(vm);
 
     ASSERT(context);
     ASSERT(context->isDocument());
-    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
+    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, m_isolatedWorld);
     ExecState* state = globalObject->globalExec();
 
     JSObject* jsElement = asObject(toJS(state, globalObject, element));
 
     CallData callData;
-    CallType callType = callback->methodTable()->getCallData(callback, callData);
+    CallType callType = callback->methodTable(vm)->getCallData(callback, callData);
     ASSERT(callType != CallType::None);
 
     MarkedArgumentBuffer args;

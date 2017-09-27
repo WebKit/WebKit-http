@@ -29,49 +29,48 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CommonCryptoUtilities.h"
-#include "CryptoAlgorithmRsaOaepParamsDeprecated.h"
+#include "CryptoAlgorithmRsaOaepParams.h"
 #include "CryptoKeyRSA.h"
-#include "ExceptionCode.h"
 
 namespace WebCore {
 
-ExceptionOr<void> CryptoAlgorithmRSA_OAEP::platformEncrypt(const CryptoAlgorithmRsaOaepParamsDeprecated& parameters, const CryptoKeyRSA& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
+static ExceptionOr<Vector<uint8_t>> encryptRSA_OAEP(CryptoAlgorithmIdentifier hash, const Vector<uint8_t>& label, const PlatformRSAKey key, size_t keyLength, const Vector<uint8_t>& data)
 {
     CCDigestAlgorithm digestAlgorithm;
-    if (!getCommonCryptoDigestAlgorithm(parameters.hash, digestAlgorithm))
-        return Exception { NOT_SUPPORTED_ERR };
+    if (!getCommonCryptoDigestAlgorithm(hash, digestAlgorithm))
+        return Exception { OperationError };
 
-    Vector<uint8_t> cipherText(1024);
+    Vector<uint8_t> cipherText(keyLength / 8); // Per Step 3.c of https://tools.ietf.org/html/rfc3447#section-7.1.1
     size_t cipherTextLength = cipherText.size();
-    ASSERT(parameters.hasLabel || parameters.label.isEmpty());
-    CCCryptorStatus status = CCRSACryptorEncrypt(key.platformKey(), ccOAEPPadding, data.first, data.second, cipherText.data(), &cipherTextLength, parameters.label.data(), parameters.label.size(), digestAlgorithm);
-    if (status) {
-        failureCallback();
-        return { };
-    }
+    if (CCRSACryptorEncrypt(key, ccOAEPPadding, data.data(), data.size(), cipherText.data(), &cipherTextLength, label.data(), label.size(), digestAlgorithm))
+        return Exception { OperationError };
 
-    cipherText.resize(cipherTextLength);
-    callback(cipherText);
-    return { };
+    return WTFMove(cipherText);
 }
 
-ExceptionOr<void> CryptoAlgorithmRSA_OAEP::platformDecrypt(const CryptoAlgorithmRsaOaepParamsDeprecated& parameters, const CryptoKeyRSA& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
+static ExceptionOr<Vector<uint8_t>> decryptRSA_OAEP(CryptoAlgorithmIdentifier hash, const Vector<uint8_t>& label, const PlatformRSAKey key, size_t keyLength, const Vector<uint8_t>& data)
 {
     CCDigestAlgorithm digestAlgorithm;
-    if (!getCommonCryptoDigestAlgorithm(parameters.hash, digestAlgorithm))
-        return Exception { NOT_SUPPORTED_ERR };
+    if (!getCommonCryptoDigestAlgorithm(hash, digestAlgorithm))
+        return Exception { OperationError };
 
-    Vector<uint8_t> plainText(1024);
+    Vector<uint8_t> plainText(keyLength / 8); // Per Step 1.b of https://tools.ietf.org/html/rfc3447#section-7.1.1
     size_t plainTextLength = plainText.size();
-    CCCryptorStatus status = CCRSACryptorDecrypt(key.platformKey(), ccOAEPPadding, data.first, data.second, plainText.data(), &plainTextLength, parameters.label.data(), parameters.label.size(), digestAlgorithm);
-    if (status) {
-        failureCallback();
-        return { };
-    }
+    if (CCRSACryptorDecrypt(key, ccOAEPPadding, data.data(), data.size(), plainText.data(), &plainTextLength, label.data(), label.size(), digestAlgorithm))
+        return Exception { OperationError };
 
     plainText.resize(plainTextLength);
-    callback(plainText);
-    return { };
+    return WTFMove(plainText);
+}
+
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmRSA_OAEP::platformEncrypt(CryptoAlgorithmRsaOaepParams& parameters, const CryptoKeyRSA& key, const Vector<uint8_t>& plainText)
+{
+    return encryptRSA_OAEP(key.hashAlgorithmIdentifier(), parameters.labelVector(), key.platformKey(), key.keySizeInBits(), plainText);
+}
+
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmRSA_OAEP::platformDecrypt(CryptoAlgorithmRsaOaepParams& parameters, const CryptoKeyRSA& key, const Vector<uint8_t>& cipherText)
+{
+    return decryptRSA_OAEP(key.hashAlgorithmIdentifier(), parameters.labelVector(), key.platformKey(), key.keySizeInBits(), cipherText);
 }
 
 } // namespace WebCore

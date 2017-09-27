@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CompareAndSwapTest.h"
 
+#include <functional>
 #include <stdio.h>
 #include <wtf/Atomics.h>
 #include <wtf/Threading.h>
@@ -96,7 +97,7 @@ void testCompareAndSwap()
 {
     Bitmap bitmap;
     const int numThreads = 5;
-    ThreadIdentifier threadIDs[numThreads];
+    RefPtr<Thread> threads[numThreads];
     Data data[numThreads];
 
     WTF::initializeThreading();
@@ -106,13 +107,12 @@ void testCompareAndSwap()
         data[i].bitmap = &bitmap;
         data[i].id = i;
         data[i].numThreads = numThreads;
-        std::function<void()> threadFunc = std::bind(setBitThreadFunc, &data[i]);
-        threadIDs[i] = createThread("setBitThreadFunc", threadFunc);
+        threads[i] = Thread::create("setBitThreadFunc", std::bind(setBitThreadFunc, &data[i]));
     }
 
     printf("Waiting for %d threads to join\n", numThreads);
     for (int i = 0; i < numThreads; i++)
-        waitForThreadCompletion(threadIDs[i]);
+        threads[i]->waitForCompletion();
 
     printf("PASS: CompareAndSwap test completed without a hang\n");
 }

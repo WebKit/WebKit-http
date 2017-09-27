@@ -26,7 +26,7 @@
 // FIXME: Provide Parameter lists for the constructors themselves? (new RegExp(...)).
 // FIXME: Provide Parameter lists for global functions (eval, decodeURI, ...).
 
-WebInspector.NativeConstructorFunctionParameters = {
+WI.NativeConstructorFunctionParameters = {
     Object: {
         assign: "target, ...sources",
         create: "prototype, [propertiesObject]",
@@ -134,7 +134,6 @@ WebInspector.NativeConstructorFunctionParameters = {
         construct: "target, argumentsList, [newTarget=target]",
         defineProperty: "target, propertyKey, attributes",
         deleteProperty: "target, propertyKey",
-        enumerate: "target",
         get: "target, propertyKey, [receiver]",
         getOwnPropertyDescriptor: "target, propertyKey",
         getPrototypeOf: "target",
@@ -221,7 +220,7 @@ WebInspector.NativeConstructorFunctionParameters = {
     },
 };
 
-WebInspector.NativePrototypeFunctionParameters = {
+WI.NativePrototypeFunctionParameters = {
 
     // Built-in JavaScript objects.
     // FIXME: TypedArrays (Int8Array, etc),
@@ -408,8 +407,6 @@ WebInspector.NativePrototypeFunctionParameters = {
         removeAttribute: "attributeName",
         removeAttributeNS: "namespace, attributeName",
         removeAttributeNode: "attributeName",
-        scrollByLines: "[lines]",
-        scrollByPages: "[pages]",
         scrollIntoView: "[alignWithTop]",
         scrollIntoViewIfNeeded: "[centerIfNeeded]",
         setAttribute: "name, value",
@@ -696,11 +693,6 @@ WebInspector.NativePrototypeFunctionParameters = {
         __proto__: null,
     },
 
-    ClientRectList: {
-        item: "[index]",
-        __proto__: null,
-    },
-
     CommandLineAPIHost: {
         copyText: "text",
         databaseId: "database",
@@ -728,7 +720,7 @@ WebInspector.NativePrototypeFunctionParameters = {
     },
 
     CustomEvent: {
-        initCustomEvent: "[typeArg], [canBubbleArg], [cancelableArg], [detailArg]",
+        initCustomEvent: "type, [bubbles], [cancelable], [detail]",
         __proto__: null,
     },
 
@@ -820,7 +812,7 @@ WebInspector.NativePrototypeFunctionParameters = {
     },
 
     Event: {
-        initEvent: "type, canBubble, cancelable",
+        initEvent: "type, [bubbles], [cancelable]",
         __proto__: null,
     },
 
@@ -1119,8 +1111,7 @@ WebInspector.NativePrototypeFunctionParameters = {
     },
 
     MessageEvent: {
-        initMessageEvent: "[typeArg], [canBubbleArg], [cancelableArg], [dataArg], [originArg], [lastEventIdArg], [sourceArg], [messagePorts]",
-        webkitInitMessageEvent: "[typeArg], [canBubbleArg], [cancelableArg], [dataArg], [originArg], [lastEventIdArg], [sourceArg], [transferables]",
+        initMessageEvent: "type, [bubbles], [cancelable], [data], [origin], [lastEventId], [source], [messagePorts]",
         __proto__: null,
     },
 
@@ -1162,7 +1153,7 @@ WebInspector.NativePrototypeFunctionParameters = {
     },
 
     Navigator: {
-        webkitGetUserMedia: "options, successCallback, errorCallback",
+        getUserMedia: "options, successCallback, errorCallback",
         __proto__: null,
     },
 
@@ -1228,6 +1219,27 @@ WebInspector.NativePrototypeFunctionParameters = {
         moveTo: "[x], [y]",
         quadraticCurveTo: "[cpx], [cpy], [x], [y]",
         rect: "[x], [y], [width], [height]",
+        __proto__: null,
+    },
+
+    Performance: {
+        clearMarks: "[name]",
+        clearMeasures: "name",
+        getEntriesByName: "name, [type]",
+        getEntriesByType: "type",
+        mark: "name",
+        measure: "name, [startMark], [endMark]",
+        __proto__: null,
+    },
+
+    PerformanceObserver: {
+        observe: "options",
+        __proto__: null,
+    },
+
+    PerformanceObserverEntryList: {
+        getEntriesByName: "name, [type]",
+        getEntriesByType: "type",
         __proto__: null,
     },
 
@@ -2166,7 +2178,7 @@ WebInspector.NativePrototypeFunctionParameters = {
 (function() {
     // COMPATIBILITY (iOS 9): EventTarget properties were on instances, now there
     // is an actual EventTarget prototype in the chain.
-    var EventTarget = WebInspector.NativePrototypeFunctionParameters.EventTarget;
+    var EventTarget = WI.NativePrototypeFunctionParameters.EventTarget;
     var eventTargetTypes = [
         "Node", "Window",
         "AudioNode", "AudioTrackList", "DOMApplicationCache", "FileReader",
@@ -2176,7 +2188,7 @@ WebInspector.NativePrototypeFunctionParameters = {
         "WorkerGlobalScope", "XMLHttpRequest", "webkitMediaStream", "webkitRTCPeerConnection"
     ];
     for (var type of eventTargetTypes)
-        Object.assign(WebInspector.NativePrototypeFunctionParameters[type], EventTarget);
+        Object.assign(WI.NativePrototypeFunctionParameters[type], EventTarget);
 
     var ElementQueries = {
         getElementsByClassName: "classNames",
@@ -2185,27 +2197,27 @@ WebInspector.NativePrototypeFunctionParameters = {
         querySelector: "selectors",
         querySelectorAll: "selectors",
     };
-    Object.assign(WebInspector.NativePrototypeFunctionParameters.Element, ElementQueries);
-    Object.assign(WebInspector.NativePrototypeFunctionParameters.Document, ElementQueries);
+    Object.assign(WI.NativePrototypeFunctionParameters.Element, ElementQueries);
+    Object.assign(WI.NativePrototypeFunctionParameters.Document, ElementQueries);
 
     var ChildNode = {
         after: "[node|string]...",
         before: "[node|string]...",
         replaceWith: "[node|string]...",
     };
-    Object.assign(WebInspector.NativePrototypeFunctionParameters.Element, ChildNode);
-    Object.assign(WebInspector.NativePrototypeFunctionParameters.CharacterData, ChildNode);
+    Object.assign(WI.NativePrototypeFunctionParameters.Element, ChildNode);
+    Object.assign(WI.NativePrototypeFunctionParameters.CharacterData, ChildNode);
 
     var ParentNode = {
         append: "[node|string]...",
         prepend: "[node|string]...",
     };
-    Object.assign(WebInspector.NativePrototypeFunctionParameters.Element, ParentNode);
-    Object.assign(WebInspector.NativePrototypeFunctionParameters.Document, ParentNode);
-    Object.assign(WebInspector.NativePrototypeFunctionParameters.DocumentFragment, ParentNode);
+    Object.assign(WI.NativePrototypeFunctionParameters.Element, ParentNode);
+    Object.assign(WI.NativePrototypeFunctionParameters.Document, ParentNode);
+    Object.assign(WI.NativePrototypeFunctionParameters.DocumentFragment, ParentNode);
 
     // COMPATIBILITY (iOS 9): window.console used to be a Console object instance,
     // now it is just a namespace object on the global object.
-    WebInspector.NativePrototypeFunctionParameters.Console = WebInspector.NativeConstructorFunctionParameters.Console;
+    WI.NativePrototypeFunctionParameters.Console = WI.NativeConstructorFunctionParameters.Console;
 
 })();

@@ -25,8 +25,7 @@
 
 #if USE(GLIB)
 
-#include <wtf/GetPtr.h>
-#include <wtf/RefPtr.h>
+#include <wtf/HashTraits.h>
 #include <algorithm>
 
 extern "C" void g_object_unref(gpointer);
@@ -250,6 +249,24 @@ template <typename T> inline void derefGPtr(T* ptr)
     if (ptr)
         g_object_unref(ptr);
 }
+
+template<typename P> struct DefaultHash<GRefPtr<P>> { typedef PtrHash<GRefPtr<P>> Hash; };
+
+template<typename P> struct HashTraits<GRefPtr<P>> : SimpleClassHashTraits<GRefPtr<P>> {
+    static P* emptyValue() { return nullptr; }
+
+    typedef P* PeekType;
+    static PeekType peek(const GRefPtr<P>& value) { return value.get(); }
+    static PeekType peek(P* value) { return value; }
+
+    static void customDeleteBucket(GRefPtr<P>& value)
+    {
+        // See unique_ptr's customDeleteBucket() for an explanation.
+        ASSERT(!SimpleClassHashTraits<GRefPtr<P>>::isDeletedValue(value));
+        auto valueToBeDestroyed = WTFMove(value);
+        SimpleClassHashTraits<GRefPtr<P>>::constructDeletedValue(value);
+    }
+};
 
 } // namespace WTF
 

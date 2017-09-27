@@ -35,6 +35,7 @@
 #include "JSDOMBinding.h"
 #include "npruntime_priv.h"
 #include "runtime_root.h"
+#include <runtime/CatchScope.h>
 #include <runtime/Error.h>
 #include <runtime/JSGlobalObject.h>
 #include <runtime/JSLock.h>
@@ -277,7 +278,7 @@ bool _NPN_Evaluate(NPP, NPObject* o, NPString* s, NPVariant* variant)
         ExecState* exec = globalObject->globalExec();
         String scriptString = convertNPStringToUTF16(s);
         
-        JSValue returnValue = JSC::evaluate(exec, makeSource(scriptString), JSC::JSValue());
+        JSValue returnValue = JSC::evaluate(exec, JSC::makeSource(scriptString, { }), JSC::JSValue());
 
         convertValueToNPVariant(exec, returnValue, variant);
         scope.clearException();
@@ -345,9 +346,9 @@ bool _NPN_SetProperty(NPP, NPObject* o, NPIdentifier propertyName, const NPVaria
 
         if (i->isString()) {
             PutPropertySlot slot(obj->imp);
-            obj->imp->methodTable()->put(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()), convertNPVariantToValue(exec, variant, rootObject), slot);
+            obj->imp->methodTable(vm)->put(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()), convertNPVariantToValue(exec, variant, rootObject), slot);
         } else
-            obj->imp->methodTable()->putByIndex(obj->imp, exec, i->number(), convertNPVariantToValue(exec, variant, rootObject), false);
+            obj->imp->methodTable(vm)->putByIndex(obj->imp, exec, i->number(), convertNPVariantToValue(exec, variant, rootObject), false);
         scope.clearException();
         return true;
     }
@@ -388,9 +389,9 @@ bool _NPN_RemoveProperty(NPP, NPObject* o, NPIdentifier propertyName)
         }
 
         if (i->isString())
-            obj->imp->methodTable()->deleteProperty(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()));
+            obj->imp->methodTable(vm)->deleteProperty(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()));
         else
-            obj->imp->methodTable()->deletePropertyByIndex(obj->imp, exec, i->number());
+            obj->imp->methodTable(vm)->deletePropertyByIndex(obj->imp, exec, i->number());
 
         scope.clearException();
         return true;
@@ -483,9 +484,9 @@ bool _NPN_Enumerate(NPP, NPObject* o, NPIdentifier** identifier, uint32_t* count
         auto scope = DECLARE_CATCH_SCOPE(vm);
 
         ExecState* exec = globalObject->globalExec();
-        PropertyNameArray propertyNames(exec, PropertyNameMode::Strings);
+        PropertyNameArray propertyNames(&vm, PropertyNameMode::Strings, PrivateSymbolMode::Exclude);
 
-        obj->imp->methodTable()->getPropertyNames(obj->imp, exec, propertyNames, EnumerationMode());
+        obj->imp->methodTable(vm)->getPropertyNames(obj->imp, exec, propertyNames, EnumerationMode());
         unsigned size = static_cast<unsigned>(propertyNames.size());
         // FIXME: This should really call NPN_MemAlloc but that's in WebKit
         NPIdentifier* identifiers = static_cast<NPIdentifier*>(malloc(sizeof(NPIdentifier) * size));

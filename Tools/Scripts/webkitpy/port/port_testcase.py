@@ -37,11 +37,15 @@ import sys
 import time
 import unittest
 
+from contextlib import contextmanager
+
 from webkitpy.common.system.executive_mock import MockExecutive
 from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.common.system.systemhost_mock import MockSystemHost
 from webkitpy.port.base import Port
+from webkitpy.port.config import apple_additions
+from webkitpy.port.image_diff import ImageDiffer
 from webkitpy.port.server_process_mock import MockServerProcess
 from webkitpy.layout_tests.servers import http_server_base
 from webkitpy.tool.mocktool import MockOptions
@@ -72,6 +76,30 @@ class TestWebKitPort(Port):
         return ["accessibility", ]
 
 
+@contextmanager
+def bind_mock_apple_additions():
+
+    class MockAppleAdditions(object):
+
+        @staticmethod
+        def layout_tests_path():
+            return '/additional_testing_path/'
+
+        @staticmethod
+        def ios_os_name(name):
+            return 'add-{}'.format(name)
+
+        @staticmethod
+        def mac_os_name(name):
+            return 'add-{}'.format(name)
+
+    # apple_additions is a memoized function. Take advantage of this fact and manipulate the cache
+    # to temporarily return a mocked result
+    apple_additions._results_cache[()] = MockAppleAdditions
+    yield
+    apple_additions._results_cache[()] = None
+
+
 class PortTestCase(unittest.TestCase):
     """Tests that all Port implementations must pass."""
     HTTP_PORTS = (8000, 8080, 8443)
@@ -82,7 +110,7 @@ class PortTestCase(unittest.TestCase):
     os_version = None
     port_maker = TestWebKitPort
     port_name = None
-    is_simulator = False
+    disable_setup = False
 
     def make_port(self, host=None, port_name=None, options=None, os_name=None, os_version=None, **kwargs):
         host = host or MockSystemHost(os_name=(os_name or self.os_name), os_version=(os_version or self.os_version))
@@ -252,24 +280,49 @@ class PortTestCase(unittest.TestCase):
             self.proc = MockServerProcess(port, nm, cmd, env, lines=['diff: 100% failed\n', 'diff: 100% failed\n'])
             return self.proc
 
-        # FIXME: Can't pretend to run a simulator's setup, so just skip this test.
-        if self.is_simulator:
+        # FIXME: Can't pretend to run setup for some ports, so just skip this test.
+        if self.disable_setup:
             return
 
         port._server_process_constructor = make_proc
         port.setup_test_run()
+
+        # First test the case of not using the JHBuild wrapper.
+        self.assertFalse(port._should_use_jhbuild())
+
         self.assertEqual(port.diff_image('foo', 'bar'), ('', 100.0, None))
-        self.assertEqual(self.proc.cmd[1:3], ["--tolerance", "0.1"])
-
+        self.assertEqual(self.proc.cmd, [port._path_to_image_diff(), "--tolerance", "0.1"])
         self.assertEqual(port.diff_image('foo', 'bar', None), ('', 100.0, None))
-        self.assertEqual(self.proc.cmd[1:3], ["--tolerance", "0.1"])
-
+        self.assertEqual(self.proc.cmd, [port._path_to_image_diff(), "--tolerance", "0.1"])
         self.assertEqual(port.diff_image('foo', 'bar', 0), ('', 100.0, None))
-        self.assertEqual(self.proc.cmd[1:3], ["--tolerance", "0"])
+        self.assertEqual(self.proc.cmd, [port._path_to_image_diff(), "--tolerance", "0"])
+
+        # Now test the case of using JHBuild wrapper.
+        port._filesystem.maybe_make_directory(port.path_from_webkit_base('WebKitBuild', 'Dependencies%s' % port.port_name.upper()))
+        self.assertTrue(port._should_use_jhbuild())
+
+        self.assertEqual(port.diff_image('foo', 'bar'), ('', 100.0, None))
+        self.assertEqual(self.proc.cmd, port._jhbuild_wrapper + [port._path_to_image_diff(), "--tolerance", "0.1"])
+        self.assertEqual(port.diff_image('foo', 'bar', None), ('', 100.0, None))
+        self.assertEqual(self.proc.cmd, port._jhbuild_wrapper + [port._path_to_image_diff(), "--tolerance", "0.1"])
+        self.assertEqual(port.diff_image('foo', 'bar', 0), ('', 100.0, None))
+        self.assertEqual(self.proc.cmd, port._jhbuild_wrapper + [port._path_to_image_diff(), "--tolerance", "0"])
 
         port.clean_up_test_run()
         self.assertTrue(self.proc.stopped)
         self.assertEqual(port._image_differ, None)
+
+    def test_diff_image_passed(self):
+        port = self.make_port()
+        port._server_process_constructor = lambda port, nm, cmd, env: MockServerProcess(lines=['diff: 0% passed\n'])
+        image_differ = ImageDiffer(port)
+        self.assertEqual(image_differ.diff_image('foo', 'bar', 0.1), (None, 0, None))
+
+    def test_diff_image_failed(self):
+        port = self.make_port()
+        port._server_process_constructor = lambda port, nm, cmd, env: MockServerProcess(lines=['diff: 100% failed\n'])
+        image_differ = ImageDiffer(port)
+        self.assertEqual(image_differ.diff_image('foo', 'bar', 0.1), ('', 100.0, None))
 
     def test_diff_image_crashed(self):
         port = self.make_port()
@@ -279,8 +332,8 @@ class PortTestCase(unittest.TestCase):
             self.proc = MockServerProcess(port, nm, cmd, env, crashed=True)
             return self.proc
 
-        # FIXME: Can't pretend to run a simulator's setup, so just skip this test.
-        if self.is_simulator:
+        # FIXME: Can't pretend to run setup for some ports, so just skip this test.
+        if self.disable_setup:
             return
 
         port._server_process_constructor = make_proc
@@ -504,18 +557,18 @@ class PortTestCase(unittest.TestCase):
         # Delay setting _executive to avoid logging during construction
         port._executive = MockExecutive(should_log=True)
         port._options = MockOptions(configuration="Release")  # This should not be necessary, but I think TestWebKitPort is actually reading from disk (and thus detects the current configuration).
-        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\n"
+        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\n"
         self.assertTrue(output.assert_outputs(self, port._build_driver, expected_logs=expected_logs))
 
         # Make sure WebKitTestRunner is used.
         port._options = MockOptions(webkit_test_runner=True, configuration="Release")
-        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\nMOCK run_command: ['Tools/Scripts/build-webkittestrunner', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\n"
+        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\nMOCK run_command: ['Tools/Scripts/build-webkittestrunner', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\n"
         self.assertTrue(output.assert_outputs(self, port._build_driver, expected_logs=expected_logs))
 
         # Make sure we show the build log when --verbose is passed, which we simulate by setting the logging level to DEBUG.
         output.set_log_level(logging.DEBUG)
         port._options = MockOptions(configuration="Release")
-        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}
+        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}
 Output of ['Tools/Scripts/build-dumprendertree', '--release']:
 MOCK output of child process
 """
@@ -525,7 +578,7 @@ MOCK output of child process
         # Make sure that failure to build returns False.
         port._executive = MockExecutive(should_log=True, should_throw=True)
         # Because WK2 currently has to build both webkittestrunner and DRT, if DRT fails, that's the only one it tries.
-        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}
+        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}
 MOCK ScriptError
 
 MOCK output of child process

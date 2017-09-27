@@ -23,13 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IOSurface_h
-#define IOSurface_h
+#pragma once
 
 #if USE(IOSURFACE)
 
 #include "GraphicsContext.h"
 #include "IntSize.h"
+
+namespace WTF {
+class TextStream;
+}
 
 namespace WebCore {
 
@@ -47,7 +50,7 @@ public:
 
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, CGColorSpaceRef, Format = Format::RGBA);
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> create(IntSize, IntSize contextSize, CGColorSpaceRef, Format = Format::RGBA);
-    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&, CGColorSpaceRef);
+    WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromSendRight(const MachSendRight&&, CGColorSpaceRef);
     static std::unique_ptr<IOSurface> createFromSurface(IOSurfaceRef, CGColorSpaceRef);
     WEBCORE_EXPORT static std::unique_ptr<IOSurface> createFromImage(CGImageRef);
     
@@ -62,7 +65,7 @@ public:
     // Any images created from a surface need to be released before releasing
     // the surface, or an expensive GPU readback can result.
     WEBCORE_EXPORT RetainPtr<CGImageRef> createImage();
-    static RetainPtr<CGImageRef> sinkIntoImage(std::unique_ptr<IOSurface>);
+    WEBCORE_EXPORT static RetainPtr<CGImageRef> sinkIntoImage(std::unique_ptr<IOSurface>);
 
     id asLayerContents() const { return (id)(CFTypeRef)m_surface.get(); }
     IOSurfaceRef surface() const { return m_surface.get(); }
@@ -87,6 +90,7 @@ public:
     size_t totalBytes() const { return m_totalBytes; }
     CGColorSpaceRef colorSpace() const { return m_colorSpace.get(); }
     WEBCORE_EXPORT Format format() const;
+    IOSurfaceID surfaceID() const;
 
     WEBCORE_EXPORT bool isInUse() const;
 
@@ -96,7 +100,7 @@ public:
 
 #if PLATFORM(IOS)
     WEBCORE_EXPORT static bool allowConversionFromFormatToFormat(Format, Format);
-    WEBCORE_EXPORT static void convertToFormat(std::unique_ptr<WebCore::IOSurface>&& inSurface, Format, std::function<void(std::unique_ptr<WebCore::IOSurface>)>);
+    WEBCORE_EXPORT static void convertToFormat(std::unique_ptr<WebCore::IOSurface>&& inSurface, Format, WTF::Function<void(std::unique_ptr<WebCore::IOSurface>)>&&);
 #endif
 
 private:
@@ -118,8 +122,9 @@ private:
     RetainPtr<IOSurfaceRef> m_surface;
 };
 
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const WebCore::IOSurface&);
+
 } // namespace WebCore
 
 #endif // USE(IOSURFACE)
 
-#endif // IOSurface_h

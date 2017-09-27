@@ -23,7 +23,7 @@
 #include "config.h"
 #include "WebKitOpenCDMDecryptorGStreamer.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(GSTREAMER) && USE(OPENCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
 #include "GUniquePtrGStreamer.h"
 
@@ -75,12 +75,14 @@ static void webkit_media_opencdm_decrypt_init(WebKitOpenCDMDecrypt* self)
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(self);
     self->priv = priv;
     new (priv) WebKitOpenCDMDecryptPrivate();
+    GST_TRACE_OBJECT(self, "created");
 }
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
 {
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(object));
-    priv->m_openCdm->ReleaseMem();
+    if (priv->m_openCdm)
+        priv->m_openCdm->ReleaseMem();
     priv->~WebKitOpenCDMDecryptPrivate();
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
@@ -98,11 +100,11 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
 
     if (priv->m_session != temporarySession.get() ) {
         priv->m_session = temporarySession.get();
-        GST_INFO_OBJECT(self, "selecting session %s", priv->m_session.utf8().data());
         priv->m_openCdm = std::make_unique<media::OpenCdm>();
         priv->m_openCdm->SelectSession(priv->m_session.utf8().data());
+        GST_DEBUG_OBJECT(self, "selected session %s", priv->m_session.utf8().data());
     } else
-        GST_INFO_OBJECT(self, "session %s already selected", priv->m_session.utf8().data());
+        GST_DEBUG_OBJECT(self, "session %s already selected!", priv->m_session.utf8().data());
 
     return true;
 }
@@ -123,7 +125,6 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
     }
 
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
-    ASSERT(priv->sessionMetaData);
 
     int errorCode;
     bool returnValue = true;
@@ -162,8 +163,8 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_byte_reader_set_pos(reader.get(), 0);
 
         // Decrypt cipher.
-        if (errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
-            ivMap.data, static_cast<uint32_t>(ivMap.size))) {
+        if ((errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
+            ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
             returnValue = false;
@@ -186,8 +187,8 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     } else {
         // Decrypt cipher.
-        if (errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
-            ivMap.data, static_cast<uint32_t>(ivMap.size))) {
+        if ((errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
+            ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             returnValue = false;
             goto beach;
@@ -200,4 +201,4 @@ beach:
     return returnValue;
 }
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(GSTREAMER) && USE(OPENCDM)
+#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)

@@ -35,13 +35,13 @@ from webkitpy.thirdparty.irc import irclib
 
 class IRCBotDelegate(object):
     def irc_message_received(self, nick, message):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def irc_nickname(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
     def irc_password(self):
-        raise NotImplementedError, "subclasses must implement"
+        raise NotImplementedError('subclasses must implement')
 
 
 class IRCBot(ircbot.SingleServerIRCBot, MessagePumpDelegate):
@@ -84,10 +84,8 @@ class IRCBot(ircbot.SingleServerIRCBot, MessagePumpDelegate):
         # Some IRC clients, like xchat-gnome, default to using a comma
         # when addressing someone.
         vocative_separator = request[len(connection.get_nickname())]
-        if vocative_separator == ':':
-            request = request.split(':', 1)
-        elif vocative_separator == ',':
-            request = request.split(',', 1)
+        if vocative_separator in [':', ',', ' ']:
+            request = request.split(vocative_separator, 1)
         else:
             return
 

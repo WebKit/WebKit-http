@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Apple. All rights reserved.
+# Copyright (C) 2012-2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@ def __lldb_init_module(debugger, dict):
     debugger.HandleCommand('command script add -f lldb_webkit.btjs btjs')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFString_SummaryProvider WTF::String')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFStringImpl_SummaryProvider WTF::StringImpl')
+    debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFStringView_SummaryProvider WTF::StringView')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFAtomicString_SummaryProvider WTF::AtomicString')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFVector_SummaryProvider -x "WTF::Vector<.+>$"')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFHashTable_SummaryProvider -x "WTF::HashTable<.+>$"')
@@ -46,6 +47,8 @@ def __lldb_init_module(debugger, dict):
     debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreLayoutUnit_SummaryProvider WebCore::LayoutUnit')
     debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreLayoutSize_SummaryProvider WebCore::LayoutSize')
     debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreLayoutPoint_SummaryProvider WebCore::LayoutPoint')
+    debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreURL_SummaryProvider WebCore::URL')
+
 
 def WTFString_SummaryProvider(valobj, dict):
     provider = WTFStringProvider(valobj, dict)
@@ -57,6 +60,11 @@ def WTFStringImpl_SummaryProvider(valobj, dict):
     if not provider.is_initialized():
         return ""
     return "{ length = %d, is8bit = %d, contents = '%s' }" % (provider.get_length(), provider.is_8bit(), provider.to_string())
+
+
+def WTFStringView_SummaryProvider(valobj, dict):
+    provider = WTFStringViewProvider(valobj, dict)
+    return "{ length = %d, contents = '%s' }" % (provider.get_length(), provider.to_string())
 
 
 def WTFAtomicString_SummaryProvider(valobj, dict):
@@ -86,6 +94,11 @@ def WTFMediaTime_SummaryProvider(valobj, dict):
     if provider.hasDoubleValue():
         return "{ %f }" % (provider.timeValueAsDouble())
     return "{ %d/%d, %f }" % (provider.timeValue(), provider.timeScale(), float(provider.timeValue()) / provider.timeScale())
+
+
+def WebCoreURL_SummaryProvider(valobj, dict):
+    provider = WebCoreURLProvider(valobj, dict)
+    return "{ %s }" % provider.to_string()
 
 
 def WebCoreLayoutUnit_SummaryProvider(valobj, dict):
@@ -155,7 +168,6 @@ def btjs(debugger, command, result, internal_dict):
 # FIXME: Provide support for the following types:
 # def WTFVector_SummaryProvider(valobj, dict):
 # def WTFCString_SummaryProvider(valobj, dict):
-# def WebCoreKURLGooglePrivate_SummaryProvider(valobj, dict):
 # def WebCoreQualifiedName_SummaryProvider(valobj, dict):
 # def JSCIdentifier_SummaryProvider(valobj, dict):
 # def JSCJSString_SummaryProvider(valobj, dict):
@@ -225,10 +237,10 @@ class WTFStringImplProvider:
         return self.valobj.GetChildMemberWithName('m_length').GetValueAsUnsigned(0)
 
     def get_data8(self):
-        return self.valobj.GetChildAtIndex(2).GetChildMemberWithName('m_data8')
+        return self.valobj.GetChildAtIndex(0).GetChildAtIndex(2).GetChildMemberWithName('m_data8')
 
     def get_data16(self):
-        return self.valobj.GetChildAtIndex(2).GetChildMemberWithName('m_data16')
+        return self.valobj.GetChildAtIndex(0).GetChildAtIndex(2).GetChildMemberWithName('m_data16')
 
     def to_string(self):
         error = lldb.SBError()
@@ -247,6 +259,30 @@ class WTFStringImplProvider:
 
     def is_initialized(self):
         return self.valobj.GetValueAsUnsigned() != 0
+
+
+class WTFStringViewProvider:
+    def __init__(self, valobj, dict):
+        self.valobj = valobj
+
+    def is_8bit(self):
+        return bool(self.valobj.GetChildMemberWithName('m_is8Bit').GetValueAsUnsigned(0))
+
+    def get_length(self):
+        return self.valobj.GetChildMemberWithName('m_length').GetValueAsUnsigned(0)
+
+    def get_characters(self):
+        return self.valobj.GetChildMemberWithName('m_characters')
+
+    def to_string(self):
+        error = lldb.SBError()
+
+        if not self.get_characters() or not self.get_length():
+            return u""
+
+        if self.is_8bit():
+            return lstring_to_string(self.get_characters(), error, self.get_length())
+        return ustring_to_string(self.get_characters(), error, self.get_length())
 
 
 class WTFStringProvider:
@@ -303,6 +339,14 @@ class WebCoreLayoutPointProvider:
     def get_y(self):
         return WebCoreLayoutUnitProvider(self.valobj.GetChildMemberWithName('m_y'), dict).to_string()
 
+
+class WebCoreURLProvider:
+    "Print a WebCore::URL"
+    def __init__(self, valobj, dict):
+        self.valobj = valobj
+
+    def to_string(self):
+        return WTFStringProvider(self.valobj.GetChildMemberWithName('m_string'), dict).to_string()
 
 class WTFVectorProvider:
     def __init__(self, valobj, internal_dict):

@@ -50,7 +50,6 @@ const int maxErrors = 25;
 
 XMLErrors::XMLErrors(Document& document)
     : m_document(document)
-    , m_lastErrorPosition(TextPosition::belowRangePosition())
 {
 }
 
@@ -61,7 +60,7 @@ void XMLErrors::handleError(ErrorType type, const char* message, int lineNumber,
 
 void XMLErrors::handleError(ErrorType type, const char* message, TextPosition position)
 {
-    if (type == fatal || (m_errorCount < maxErrors && m_lastErrorPosition.m_line != position.m_line && m_lastErrorPosition.m_column != position.m_column)) {
+    if (type == fatal || (m_errorCount < maxErrors && (!m_lastErrorPosition || (m_lastErrorPosition->m_line != position.m_line && m_lastErrorPosition->m_column != position.m_column)))) {
         switch (type) {
         case warning:
             appendErrorMessage("warning", position, message);
@@ -90,7 +89,7 @@ void XMLErrors::appendErrorMessage(const String& typeString, TextPosition positi
 
 static inline Ref<Element> createXHTMLParserErrorHeader(Document& document, const String& errorMessages)
 {
-    Ref<Element> reportElement = document.createElement(QualifiedName(nullAtom, "parsererror", xhtmlNamespaceURI), true);
+    Ref<Element> reportElement = document.createElement(QualifiedName(nullAtom(), "parsererror", xhtmlNamespaceURI), true);
 
     Vector<Attribute> reportAttributes;
     reportAttributes.append(Attribute(styleAttr, "display: block; white-space: pre; border: 2px solid #c77; padding: 0 1em 0 1em; margin: 1em; background-color: #fdd; color: black"));
@@ -141,8 +140,9 @@ void XMLErrors::insertErrorMessageBlock()
         rootElement->parserAppendChild(body);
 
         m_document.parserRemoveChild(*documentElement);
+        if (!documentElement->parentNode())
+            body->parserAppendChild(*documentElement);
 
-        body->parserAppendChild(*documentElement);
         m_document.parserAppendChild(rootElement);
 
         documentElement = WTFMove(body);

@@ -31,9 +31,6 @@
 #include "Chrome.h"
 #include "HTMLDivElement.h"
 #include "MediaControlElements.h"
-#include "MouseEvent.h"
-#include "RenderTheme.h"
-#include "Text.h"
 #include <wtf/RefPtr.h>
 
 #if ENABLE(VIDEO_TRACK)
@@ -104,6 +101,7 @@ class MediaControls : public HTMLDivElement {
     virtual void hideTextTrackDisplay();
     virtual void updateTextTrackDisplay();
     virtual void textTrackPreferencesChanged();
+    virtual void clearTextDisplayContainer();
 #endif
 
 protected:

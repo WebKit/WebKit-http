@@ -39,7 +39,8 @@ enum RegExpFlags {
     FlagMultiline = 4,
     FlagSticky = 8,
     FlagUnicode = 16,
-    InvalidFlags = 32,
+    FlagDotAll = 32,
+    InvalidFlags = 64,
     DeletedValueFlags = -1
 };
 
@@ -63,9 +64,9 @@ struct RegExpKey {
     {
     }
 
-    RegExpKey(RegExpFlags flags, const PassRefPtr<StringImpl> pattern)
+    RegExpKey(RegExpFlags flags, RefPtr<StringImpl>&& pattern)
         : flagsValue(flags)
-        , pattern(pattern)
+        , pattern(WTFMove(pattern))
     {
     }
 

@@ -27,9 +27,13 @@
 
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+class ScriptExecutionContext;
+class ServiceWorkerContainer;
 
 class NavigatorBase : public RefCounted<NavigatorBase> {
 public:
@@ -51,8 +55,15 @@ public:
     static String language();
     static Vector<String> languages();
 
-#if ENABLE(NAVIGATOR_HWCONCURRENCY)
-    static int hardwareConcurrency();
+protected:
+    explicit NavigatorBase(ScriptExecutionContext&);
+
+#if ENABLE(SERVICE_WORKER)
+public:
+    ServiceWorkerContainer* serviceWorker();
+
+private:
+    UniqueRef<ServiceWorkerContainer> m_serviceWorkerContainer;
 #endif
 };
 

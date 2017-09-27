@@ -29,11 +29,13 @@ class StatusLabel extends LayoutItem
     constructor(layoutDelegate)
     {
         super({
-            element: `<div class="status-label">`,
+            element: `<div class="status-label"></div>`,
             layoutDelegate
         });
 
         this._text = "";
+        this.minimumWidth = 120;
+        this.idealMinimumWidth = this.minimumWidth;
     }
 
     // Public
@@ -53,6 +55,11 @@ class StatusLabel extends LayoutItem
 
         if (this.layoutDelegate)
             this.layoutDelegate.needsLayout = true;
+    }
+
+    get enabled()
+    {
+        return this._text !== "";
     }
 
     // Protected

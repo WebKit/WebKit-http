@@ -22,9 +22,7 @@
 
 #pragma once
 
-#include "CSSPropertySourceData.h"
 #include "StyleRule.h"
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -42,11 +40,6 @@ public:
     virtual void endRuleBody(unsigned offset) = 0;
     virtual void observeProperty(unsigned startOffset, unsigned endOffset, bool isImportant, bool isParsed) = 0;
     virtual void observeComment(unsigned startOffset, unsigned endOffset) = 0;
-    // FIXME: Unused, should be removed
-    virtual void startMediaQueryExp(unsigned offset) = 0;
-    virtual void endMediaQueryExp(unsigned offset) = 0;
-    virtual void startMediaQuery() = 0;
-    virtual void endMediaQuery() = 0;
 };
 
 } // namespace WebCore

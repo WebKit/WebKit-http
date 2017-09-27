@@ -26,11 +26,10 @@
 #include "config.h"
 #include "DOMTokenList.h"
 
-#include "ExceptionCode.h"
 #include "HTMLParserIdioms.h"
 #include "SpaceSplitString.h"
 #include <wtf/HashSet.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/text/AtomicStringHash.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -51,10 +50,10 @@ static inline bool tokenContainsHTMLSpace(const String& token)
 ExceptionOr<void> DOMTokenList::validateToken(const String& token)
 {
     if (token.isEmpty())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (tokenContainsHTMLSpace(token))
-        return Exception { INVALID_CHARACTER_ERR };
+        return Exception { InvalidCharacterError };
 
     return { };
 }
@@ -133,7 +132,7 @@ ExceptionOr<void> DOMTokenList::remove(const AtomicString& token)
     return removeInternal(&token.string(), 1);
 }
 
-ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, Optional<bool> force)
+ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, std::optional<bool> force)
 {
     auto result = validateToken(token);
     if (result.hasException())
@@ -142,7 +141,7 @@ ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, Optional<bool>
     auto& tokens = this->tokens();
 
     if (tokens.contains(token)) {
-        if (!force.valueOr(false)) {
+        if (!force.value_or(false)) {
             tokens.removeFirst(token);
             updateAssociatedAttributeFromTokens();
             return false;
@@ -158,23 +157,29 @@ ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, Optional<bool>
     return true;
 }
 
-ExceptionOr<void> DOMTokenList::replace(const AtomicString& token, const AtomicString& newToken)
+// https://dom.spec.whatwg.org/#dom-domtokenlist-replace
+ExceptionOr<void> DOMTokenList::replace(const AtomicString& item, const AtomicString& replacement)
 {
-    if (token.isEmpty() || newToken.isEmpty())
-        return Exception { SYNTAX_ERR };
+    if (item.isEmpty() || replacement.isEmpty())
+        return Exception { SyntaxError };
 
-    if (tokenContainsHTMLSpace(token) || tokenContainsHTMLSpace(newToken))
-        return Exception { INVALID_CHARACTER_ERR };
+    if (tokenContainsHTMLSpace(item) || tokenContainsHTMLSpace(replacement))
+        return Exception { InvalidCharacterError };
 
     auto& tokens = this->tokens();
-    size_t index = tokens.find(token);
+
+    auto matchesItemOrReplacement = [&](auto& token) {
+        return token == item || token == replacement;
+    };
+
+    size_t index = tokens.findMatching(matchesItemOrReplacement);
     if (index == notFound)
         return { };
 
-    if (tokens.find(newToken) != notFound)
-        tokens.remove(index);
-    else
-        tokens[index] = newToken;
+    tokens[index] = replacement;
+    tokens.removeFirstMatching(matchesItemOrReplacement, index + 1);
+    ASSERT(item == replacement || tokens.find(item) == notFound);
+    ASSERT(tokens.reverseFind(replacement) == index);
 
     updateAssociatedAttributeFromTokens();
 
@@ -252,7 +257,7 @@ void DOMTokenList::updateAssociatedAttributeFromTokens()
     }
     AtomicString serializedValue = builder.toAtomicString();
 
-    TemporaryChange<bool> inAttributeUpdate(m_inUpdateAssociatedAttributeFromTokens, true);
+    SetForScope<bool> inAttributeUpdate(m_inUpdateAssociatedAttributeFromTokens, true);
     m_element.setAttribute(m_attributeName, serializedValue);
 }
 

@@ -40,7 +40,6 @@ void RunLoop::performWork(void* context)
 
 RunLoop::RunLoop()
     : m_runLoop(CFRunLoopGetCurrent())
-    , m_nestingLevel(0)
 {
     CFRunLoopSourceContext context = { 0, this, 0, 0, 0, 0, 0, 0, 0, performWork };
     m_runLoopSource = adoptCF(CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &context));
@@ -65,14 +64,8 @@ void RunLoop::wakeUp()
 
 void RunLoop::run()
 {
-    current().m_nestingLevel++;
-    
-    {
-        AutodrainedPool pool;
-        CFRunLoopRun();
-    }
-    
-    current().m_nestingLevel--;
+    AutodrainedPool pool;
+    CFRunLoopRun();
 }
 
 void RunLoop::stop()
@@ -109,7 +102,7 @@ void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
     CFRunLoopTimerContext context = { 0, this, 0, 0, 0 };
     CFTimeInterval repeatInterval = repeat ? nextFireInterval : 0;
     m_timer = adoptCF(CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + nextFireInterval, repeatInterval, 0, 0, timerFired, &context));
-    CFRunLoopAddTimer(m_runLoop.m_runLoop.get(), m_timer.get(), kCFRunLoopCommonModes);
+    CFRunLoopAddTimer(m_runLoop->m_runLoop.get(), m_timer.get(), kCFRunLoopCommonModes);
 }
 
 void RunLoop::TimerBase::stop()
@@ -124,6 +117,13 @@ void RunLoop::TimerBase::stop()
 bool RunLoop::TimerBase::isActive() const
 {
     return m_timer && CFRunLoopTimerIsValid(m_timer.get());
+}
+
+Seconds RunLoop::TimerBase::secondsUntilFire() const
+{
+    if (isActive())
+        return std::max<Seconds>(Seconds { CFRunLoopTimerGetNextFireDate(m_timer.get()) - CFAbsoluteTimeGetCurrent() }, 0_s);
+    return 0_s;
 }
 
 } // namespace WTF

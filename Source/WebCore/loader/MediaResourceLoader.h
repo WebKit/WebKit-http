@@ -31,19 +31,22 @@
 #include "CachedResourceHandle.h"
 #include "ContextDestructionObserver.h"
 #include "PlatformMediaResourceLoader.h"
+#include "ResourceResponse.h"
 #include <wtf/HashSet.h>
 #include <wtf/Ref.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class CachedRawResource;
 class Document;
+class HTMLMediaElement;
 class MediaResource;
 
 class MediaResourceLoader final : public PlatformMediaResourceLoader, public ContextDestructionObserver {
 public:
-    WEBCORE_EXPORT MediaResourceLoader(Document&, const String& crossOriginMode);
+    WEBCORE_EXPORT MediaResourceLoader(Document&, HTMLMediaElement&, const String& crossOriginMode);
     WEBCORE_EXPORT virtual ~MediaResourceLoader();
 
     RefPtr<PlatformMediaResource> requestResource(ResourceRequest&&, LoadOptions) final;
@@ -52,12 +55,20 @@ public:
     Document* document() { return m_document; }
     const String& crossOriginMode() const { return m_crossOriginMode; }
 
+    Vector<ResourceResponse> responsesForTesting() const { return m_responsesForTesting; }
+    void addResponseForTesting(const ResourceResponse&);
+
+    WeakPtr<const MediaResourceLoader> createWeakPtr() { return m_weakFactory.createWeakPtr(*this); }
+
 private:
     void contextDestroyed() override;
 
     Document* m_document;
+    WeakPtr<HTMLMediaElement> m_mediaElement;
     String m_crossOriginMode;
     HashSet<MediaResource*> m_resources;
+    WeakPtrFactory<const MediaResourceLoader> m_weakFactory;
+    Vector<ResourceResponse> m_responsesForTesting;
 };
 
 class MediaResource : public PlatformMediaResource, CachedRawResourceClient {

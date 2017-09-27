@@ -35,9 +35,9 @@
 #include "NotImplemented.h"
 #include "ResourceLoaderOptions.h"
 #include "SharedBuffer.h"
-#include "SoftLinking.h"
-#include <AVFoundationCF/AVFoundationCF.h>
 #include <AVFoundationCF/AVCFAssetResourceLoader.h>
+#include <AVFoundationCF/AVFoundationCF.h>
+#include <wtf/SoftLinking.h>
 #include <wtf/text/CString.h>
 
 // The softlink header files must be included after the AVCF and CoreMedia header files.
@@ -45,11 +45,11 @@
 
 namespace WebCore {
 
-PassRefPtr<WebCoreAVCFResourceLoader> WebCoreAVCFResourceLoader::create(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef avRequest)
+Ref<WebCoreAVCFResourceLoader> WebCoreAVCFResourceLoader::create(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef avRequest)
 {
     ASSERT(avRequest);
     ASSERT(parent);
-    return adoptRef(new WebCoreAVCFResourceLoader(parent, avRequest));
+    return adoptRef(*new WebCoreAVCFResourceLoader(parent, avRequest));
 }
 
 WebCoreAVCFResourceLoader::WebCoreAVCFResourceLoader(MediaPlayerPrivateAVFoundationCF* parent, AVCFAssetResourceLoadingRequestRef avRequest)
@@ -74,10 +74,10 @@ void WebCoreAVCFResourceLoader::startLoading()
     resourceRequest.setPriority(ResourceLoadPriority::Low);
 
     // ContentSecurityPolicyImposition::DoPolicyCheck is a placeholder value. It does not affect the request since Content Security Policy does not apply to raw resources.
-    CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
+    CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, StoredCredentialsPolicy::DoNotUse, ClientCredentialPolicy::CannotAskClientForCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
 
     CachedResourceLoader* loader = m_parent->player()->cachedResourceLoader();
-    m_resource = loader ? loader->requestRawResource(WTFMove(request)) : 0;
+    m_resource = loader ? loader->requestRawResource(WTFMove(request)).valueOr(nullptr) : nullptr;
     if (m_resource)
         m_resource->addClient(*this);
     else {

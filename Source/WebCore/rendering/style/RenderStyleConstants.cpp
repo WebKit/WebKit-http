@@ -26,7 +26,7 @@
 #include "config.h"
 #include "RenderStyleConstants.h"
 
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -100,5 +100,7 @@ bool alwaysPageBreak(BreakBetween between)
 {
     return between >= PageBreakBetween;
 }
+
+const float defaultMiterLimit = 4;
 
 } // namespace WebCore

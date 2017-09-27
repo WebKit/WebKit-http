@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,8 +58,15 @@ Value* InsertionSet::insertBottom(size_t index, Value* likeValue)
     return insertBottom(index, likeValue->origin(), likeValue->type());
 }
 
+Value* InsertionSet::insertClone(size_t index, Value* value)
+{
+    return insertValue(index, m_procedure.clone(value));
+}
+
 void InsertionSet::execute(BasicBlock* block)
 {
+    for (Insertion& insertion : m_insertions)
+        insertion.element()->owner = block;
     bubbleSort(m_insertions.begin(), m_insertions.end());
     executeInsertions(block->m_values, m_insertions);
     m_bottomForType = TypeMap<Value*>();

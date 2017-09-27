@@ -23,26 +23,28 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.IssueTreeElement = class IssueTreeElement extends WebInspector.DebuggerTreeElement
+WI.IssueTreeElement = class IssueTreeElement extends WI.GeneralTreeElement
 {
     constructor(issueMessage)
     {
         var levelStyleClassName;
         switch (issueMessage.level) {
         case "error":
-            levelStyleClassName = WebInspector.IssueTreeElement.ErrorStyleClassName;
+            levelStyleClassName = WI.IssueTreeElement.ErrorStyleClassName;
             break;
         case "warning":
-            levelStyleClassName = WebInspector.IssueTreeElement.WarningStyleClassName;
+            levelStyleClassName = WI.IssueTreeElement.WarningStyleClassName;
             break;
         }
 
-        super([WebInspector.IssueTreeElement.StyleClassName, levelStyleClassName], null, null, issueMessage, false);
+        const title = null;
+        const subtitle = null;
+        super([WI.IssueTreeElement.StyleClassName, levelStyleClassName], title, subtitle, issueMessage);
 
         this._issueMessage = issueMessage;
         this._updateTitles();
 
-        this._issueMessage.addEventListener(WebInspector.IssueMessage.Event.DisplayLocationDidChange, this._updateTitles, this);
+        this._issueMessage.addEventListener(WI.IssueMessage.Event.DisplayLocationDidChange, this._updateTitles, this);
     }
 
     // Public
@@ -60,14 +62,14 @@ WebInspector.IssueTreeElement = class IssueTreeElement extends WebInspector.Debu
         var displayColumnNumber = this._issueMessage.sourceCodeLocation.displayColumnNumber;
         var title;
         if (displayColumnNumber > 0)
-            title = WebInspector.UIString("Line %d:%d").format(displayLineNumber + 1, displayColumnNumber + 1); // The user visible line and column numbers are 1-based.
+            title = WI.UIString("Line %d:%d").format(displayLineNumber + 1, displayColumnNumber + 1); // The user visible line and column numbers are 1-based.
         else
-            title = WebInspector.UIString("Line %d").format(displayLineNumber + 1); // The user visible line number is 1-based.
+            title = WI.UIString("Line %d").format(displayLineNumber + 1); // The user visible line number is 1-based.
 
         this.mainTitle = title + " " + this._issueMessage.text;
     }
 };
 
-WebInspector.IssueTreeElement.StyleClassName = "issue";
-WebInspector.IssueTreeElement.ErrorStyleClassName = "error";
-WebInspector.IssueTreeElement.WarningStyleClassName = "warning";
+WI.IssueTreeElement.StyleClassName = "issue";
+WI.IssueTreeElement.ErrorStyleClassName = "error";
+WI.IssueTreeElement.WarningStyleClassName = "warning";

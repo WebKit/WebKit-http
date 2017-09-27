@@ -25,8 +25,6 @@
 
 #include "Attribute.h"
 #include "ElementIterator.h"
-#include "EventNames.h"
-#include "FormDataList.h"
 #include "HTMLDivElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLNames.h"
@@ -61,7 +59,7 @@ Ref<HTMLMeterElement> HTMLMeterElement::create(const QualifiedName& tagName, Doc
 
 RenderPtr<RenderElement> HTMLMeterElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
-    if (!document().page()->theme().supportsMeter(style.appearance()))
+    if (!RenderTheme::singleton().supportsMeter(style.appearance()))
         return RenderElement::createFor(*this, WTFMove(style));
 
     return createRenderer<RenderMeter>(*this, WTFMove(style));

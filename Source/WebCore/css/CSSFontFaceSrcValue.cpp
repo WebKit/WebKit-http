@@ -33,7 +33,6 @@
 #include "FontCustomPlatformData.h"
 #include "Node.h"
 #include "SVGFontFaceElement.h"
-#include "StyleSheetContents.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -85,7 +84,7 @@ String CSSFontFaceSrcValue::customCSSText() const
     return result.toString();
 }
 
-bool CSSFontFaceSrcValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSFontFaceSrcValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     if (!m_cachedFont)
         return false;
@@ -102,7 +101,7 @@ CachedFont* CSSFontFaceSrcValue::cachedFont(Document* document, bool isSVG, bool
 
     CachedResourceRequest request(ResourceRequest(document->completeURL(m_resource)), options);
     request.setInitiator(cachedResourceRequestInitiators().css);
-    m_cachedFont = document->cachedResourceLoader().requestFont(WTFMove(request), isSVG);
+    m_cachedFont = document->cachedResourceLoader().requestFont(WTFMove(request), isSVG).valueOr(nullptr);
     return m_cachedFont.get();
 }
 

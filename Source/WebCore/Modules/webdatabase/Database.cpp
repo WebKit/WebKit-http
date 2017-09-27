@@ -42,7 +42,6 @@
 #include "Document.h"
 #include "JSDOMWindow.h"
 #include "Logging.h"
-#include "Page.h"
 #include "SQLError.h"
 #include "SQLTransaction.h"
 #include "SQLTransactionCallback.h"
@@ -99,8 +98,7 @@ static const char* fullyQualifiedInfoTableName()
 
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-        strcpy(qualifiedName, qualifier);
-        strcpy(qualifiedName + sizeof(qualifier) - 1, unqualifiedInfoTableName);
+        snprintf(qualifiedName, sizeof(qualifiedName), "%s%s", qualifier, unqualifiedInfoTableName);
     });
 
     return qualifiedName;
@@ -208,7 +206,7 @@ Database::Database(DatabaseContext& context, const String& name, const String& e
     {
         std::lock_guard<StaticLock> locker(guidMutex);
 
-        m_guid = guidForOriginAndName(securityOrigin().toString(), name);
+        m_guid = guidForOriginAndName(securityOrigin().securityOrigin()->toString(), name);
         guidToDatabaseMap().ensure(m_guid, [] {
             return HashSet<Database*>();
         }).iterator->value.add(this);
@@ -229,9 +227,9 @@ Database::~Database()
 {
     // The reference to the ScriptExecutionContext needs to be cleared on the JavaScript thread.  If we're on that thread already, we can just let the RefPtr's destruction do the dereffing.
     if (!m_scriptExecutionContext->isContextThread()) {
-        auto passedContext = m_scriptExecutionContext.copyRef();
+        auto passedContext = WTFMove(m_scriptExecutionContext);
         auto& contextRef = passedContext.get();
-        contextRef.postTask({ScriptExecutionContext::Task::CleanupTask, [passedContext = WTFMove(passedContext)] (ScriptExecutionContext& context) {
+        contextRef.postTask({ScriptExecutionContext::Task::CleanupTask, [passedContext = WTFMove(passedContext), databaseContext = WTFMove(m_databaseContext)] (ScriptExecutionContext& context) {
             ASSERT_UNUSED(context, &context == passedContext.ptr());
         }});
     }
@@ -253,7 +251,7 @@ ExceptionOr<void> Database::openAndVerifyVersion(bool setVersionInNewDatabase)
     DatabaseTaskSynchronizer synchronizer;
     auto& thread = databaseThread();
     if (thread.terminationRequested(&synchronizer))
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     ExceptionOr<void> result;
     auto task = std::make_unique<DatabaseOpenTask>(*this, setVersionInNewDatabase, synchronizer, result);
@@ -350,7 +348,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
     SQLiteTransactionInProgressAutoCounter transactionCounter;
 
     if (!m_sqliteDatabase.open(m_filename, true))
-        return Exception { INVALID_STATE_ERR, formatErrorMessage("unable to open database", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg()) };
+        return Exception { InvalidStateError, formatErrorMessage("unable to open database", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg()) };
     if (!m_sqliteDatabase.turnOnIncrementalAutoVacuum())
         LOG_ERROR("Unable to turn on incremental auto-vacuum (%d %s)", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
 
@@ -373,7 +371,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
             if (!transaction.inProgress()) {
                 String message = formatErrorMessage("unable to open database, failed to start transaction", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                 m_sqliteDatabase.close();
-                return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                return Exception { InvalidStateError, WTFMove(message) };
             }
 
             String tableName(unqualifiedInfoTableName);
@@ -384,13 +382,13 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
                     String message = formatErrorMessage("unable to open database, failed to create 'info' table", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                     transaction.rollback();
                     m_sqliteDatabase.close();
-                return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                return Exception { InvalidStateError, WTFMove(message) };
                 }
             } else if (!getVersionFromDatabase(currentVersion, false)) {
                 String message = formatErrorMessage("unable to open database, failed to read current version", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                 transaction.rollback();
                 m_sqliteDatabase.close();
-                return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                return Exception { InvalidStateError, WTFMove(message) };
             }
 
             if (currentVersion.length()) {
@@ -401,7 +399,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
                     String message = formatErrorMessage("unable to open database, failed to write current version", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                     transaction.rollback();
                     m_sqliteDatabase.close();
-                    return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                    return Exception { InvalidStateError, WTFMove(message) };
                 }
                 currentVersion = m_expectedVersion;
             }
@@ -419,10 +417,10 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
     // If the expected version is the empty string, then we always return with whatever version of the database we have.
     if ((!m_new || shouldSetVersionInNewDatabase) && m_expectedVersion.length() && m_expectedVersion != currentVersion) {
         m_sqliteDatabase.close();
-        return Exception { INVALID_STATE_ERR, "unable to open database, version mismatch, '" + m_expectedVersion + "' does not match the currentVersion of '" + currentVersion + "'" };
+        return Exception { InvalidStateError, "unable to open database, version mismatch, '" + m_expectedVersion + "' does not match the currentVersion of '" + currentVersion + "'" };
     }
 
-    m_sqliteDatabase.setAuthorizer(m_databaseAuthorizer.ptr());
+    m_sqliteDatabase.setAuthorizer(m_databaseAuthorizer.get());
 
     DatabaseTracker::singleton().addOpenDatabase(*this);
     m_opened = true;
@@ -683,7 +681,7 @@ void Database::runTransaction(RefPtr<SQLTransactionCallback>&& callback, RefPtr<
         if (errorCallback) {
             RefPtr<SQLTransactionErrorCallback> errorCallbackProtector = WTFMove(errorCallback);
             m_scriptExecutionContext->postTask([errorCallbackProtector](ScriptExecutionContext&) {
-                errorCallbackProtector->handleEvent(SQLError::create(SQLError::UNKNOWN_ERR, "database has been closed").ptr());
+                errorCallbackProtector->handleEvent(SQLError::create(SQLError::UNKNOWN_ERR, "database has been closed"));
             });
         }
         return;
@@ -766,13 +764,12 @@ Vector<String> Database::tableNames()
     return result;
 }
 
-SecurityOrigin& Database::securityOrigin()
+SecurityOriginData Database::securityOrigin()
 {
     if (m_scriptExecutionContext->isContextThread())
-        return m_contextThreadSecurityOrigin.get();
-    auto& thread = databaseThread();
-    if (currentThread() == thread.getThreadID())
-        return m_databaseThreadSecurityOrigin.get();
+        return SecurityOriginData::fromSecurityOrigin(m_contextThreadSecurityOrigin.get());
+    if (currentThread() == databaseThread().getThreadID())
+        return SecurityOriginData::fromSecurityOrigin(m_databaseThreadSecurityOrigin.get());
     RELEASE_ASSERT_NOT_REACHED();
 }
 

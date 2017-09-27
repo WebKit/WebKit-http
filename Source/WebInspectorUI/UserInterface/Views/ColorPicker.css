@@ -25,9 +25,17 @@
 
 .color-picker {
     position: relative;
-    width: 256px;
-    height: 210px;
+    width: var(--color-picker-width);
+    height: 236px;
     padding: 5px;
+
+    --color-picker-width: 256px;
+    --color-picker-brightness-offset-start: 41px;
+    --color-picker-opacity-offset-start: 18px;
+}
+
+.color-picker.hide-inputs {
+    height: 210px;
 }
 
 .color-picker > * {
@@ -46,10 +54,42 @@
     top: 0;
 }
 
-.color-picker > .brightness {
-    left: 215px;
+body[dir=ltr] .color-picker > .brightness {
+    left: calc(var(--color-picker-width) - var(--color-picker-brightness-offset-start));
 }
 
-.color-picker > .opacity {
-    left: 238px;
+body[dir=rtl] .color-picker > .brightness {
+    left: calc(var(--color-picker-brightness-offset-start) - var(--slider-height));
+}
+
+body[dir=ltr] .color-picker > .opacity {
+    left: calc(var(--color-picker-width) - var(--color-picker-opacity-offset-start));
+}
+
+body[dir=rtl] .color-picker > .opacity {
+    left: calc(var(--color-picker-opacity-offset-start) - var(--slider-height));
+}
+
+.color-picker > .color-inputs {
+    display: flex;
+    justify-content: space-between;
+    top: 212px;
+    right: 0;
+    left: 0;
+}
+
+.color-picker > .color-inputs > div {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 0 4px;
+}
+
+.color-picker > .color-inputs > div[hidden] {
+    display: none;
+}
+
+.color-picker > .color-inputs input {
+    width: 100%;
+    margin: 0 0.25em;
 }

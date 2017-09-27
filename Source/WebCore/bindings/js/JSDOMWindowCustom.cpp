@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2010, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -25,19 +25,26 @@
 #include "Frame.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
+#include "HTMLFrameOwnerElement.h"
+#include "JSDOMBindingSecurity.h"
+#include "JSDOMConvertNullable.h"
+#include "JSDOMConvertNumbers.h"
+#include "JSDOMConvertStrings.h"
+#include "JSDOMWindowProxy.h"
 #include "JSEvent.h"
 #include "JSEventListener.h"
 #include "JSHTMLAudioElement.h"
 #include "JSHTMLCollection.h"
 #include "JSHTMLOptionElement.h"
 #include "JSIDBFactory.h"
-#include "JSImageConstructor.h"
-#include "JSMessagePortCustom.h"
 #include "JSWorker.h"
 #include "Location.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "Settings.h"
+#include "WebCoreJSClientData.h"
+#include <runtime/JSCInlines.h>
+#include <runtime/Lookup.h>
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 #include "JSWebKitNamespace.h"
@@ -53,12 +60,18 @@ void JSDOMWindow::visitAdditionalChildren(SlotVisitor& visitor)
 {
     if (Frame* frame = wrapped().frame())
         visitor.addOpaqueRoot(frame);
+    
+    // Normally JSEventTargetCustom.cpp's JSEventTarget::visitAdditionalChildren() would call this. But
+    // even though DOMWindow is an EventTarget, JSDOMWindow does not subclass JSEventTarget, so we need
+    // to do this here.
+    wrapped().visitJSEventListeners(visitor);
 }
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 static EncodedJSValue jsDOMWindowWebKit(ExecState* exec, EncodedJSValue thisValue, PropertyName)
 {
-    JSDOMWindow* castedThis = toJSDOMWindow(JSValue::decode(thisValue));
+    VM& vm = exec->vm();
+    JSDOMWindow* castedThis = toJSDOMWindow(vm, JSValue::decode(thisValue));
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->wrapped()))
         return JSValue::encode(jsUndefined());
     return JSValue::encode(toJS(exec, castedThis->globalObject(), castedThis->wrapped().webkitNamespace()));
@@ -70,17 +83,19 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
+    auto& builtinNames = static_cast<JSVMClientData*>(vm.clientData)->builtinNames();
+
     // We don't want any properties other than "close" and "closed" on a frameless window
     // (i.e. one whose page got closed, or whose iframe got removed).
     // FIXME: This handling for frameless windows duplicates similar behaviour for cross-origin
     // access below; we should try to find a way to merge the two.
     if (!frame) {
-        if (propertyName == exec->propertyNames().closed) {
-            slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, jsDOMWindowClosed);
+        if (propertyName == builtinNames.closedPublicName()) {
+            slot.setCustom(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontDelete, jsDOMWindowClosed);
             return true;
         }
-        if (propertyName == exec->propertyNames().close) {
-            slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionClose, 0>);
+        if (propertyName == builtinNames.closePublicName()) {
+            slot.setCustom(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontDelete, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionClose, 0>);
             return true;
         }
 
@@ -90,22 +105,28 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
         return true;
     }
 
+    // https://html.spec.whatwg.org/#crossorigingetownpropertyhelper-(-o,-p-)
+    if (propertyName == vm.propertyNames->toStringTagSymbol || propertyName == vm.propertyNames->hasInstanceSymbol || propertyName == vm.propertyNames->isConcatSpreadableSymbol) {
+        slot.setValue(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum, jsUndefined());
+        return true;
+    }
+
     // These are the functions we allow access to cross-origin (DoNotCheckSecurity in IDL).
     // Always provide the original function, on a fresh uncached function object.
-    if (propertyName == exec->propertyNames().blur) {
-        slot.setCustom(thisObject, ReadOnly | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionBlur, 0>);
+    if (propertyName == builtinNames.blurPublicName()) {
+        slot.setCustom(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionBlur, 0>);
         return true;
     }
-    if (propertyName == exec->propertyNames().close) {
-        slot.setCustom(thisObject, ReadOnly | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionClose, 0>);
+    if (propertyName == builtinNames.closePublicName()) {
+        slot.setCustom(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionClose, 0>);
         return true;
     }
-    if (propertyName == exec->propertyNames().focus) {
-        slot.setCustom(thisObject, ReadOnly | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionFocus, 0>);
+    if (propertyName == builtinNames.focusPublicName()) {
+        slot.setCustom(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionFocus, 0>);
         return true;
     }
-    if (propertyName == exec->propertyNames().postMessage) {
-        slot.setCustom(thisObject, ReadOnly | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionPostMessage, 2>);
+    if (propertyName == builtinNames.postMessagePublicName()) {
+        slot.setCustom(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionPostMessage, 2>);
         return true;
     }
 
@@ -114,18 +135,18 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
     // behavior.
     if (auto* entry = JSDOMWindow::info()->staticPropHashTable->entry(propertyName)) {
         // Only allow access to these specific properties.
-        if (propertyName == exec->propertyNames().location
-            || propertyName == exec->propertyNames().closed
-            || propertyName == exec->propertyNames().length
-            || propertyName == exec->propertyNames().self
-            || propertyName == exec->propertyNames().window
-            || propertyName == exec->propertyNames().frames
-            || propertyName == exec->propertyNames().opener
-            || propertyName == exec->propertyNames().parent
-            || propertyName == exec->propertyNames().top) {
-            bool shouldExposeSetter = propertyName == exec->propertyNames().location;
+        if (propertyName == builtinNames.locationPublicName()
+            || propertyName == builtinNames.closedPublicName()
+            || propertyName == vm.propertyNames->length
+            || propertyName == builtinNames.selfPublicName()
+            || propertyName == builtinNames.windowPublicName()
+            || propertyName == builtinNames.framesPublicName()
+            || propertyName == builtinNames.openerPublicName()
+            || propertyName == builtinNames.parentPublicName()
+            || propertyName == builtinNames.topPublicName()) {
+            bool shouldExposeSetter = propertyName == builtinNames.locationPublicName();
             CustomGetterSetter* customGetterSetter = CustomGetterSetter::create(vm, entry->propertyGetter(), shouldExposeSetter ? entry->propertyPutter() : nullptr);
-            slot.setCustomGetterSetter(thisObject, DontEnum | CustomAccessor, customGetterSetter);
+            slot.setCustomGetterSetter(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::CustomAccessor), customGetterSetter);
             return true;
         }
 
@@ -134,7 +155,7 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
         // FIXME comment on prototype search below.)
         throwSecurityError(*exec, scope, errorMessage);
         slot.setUndefined();
-        return true;
+        return false;
     }
 
     // Check for child frames by name before built-in properties to match Mozilla. This does
@@ -142,13 +163,13 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
     // properties that are in Moz but not IE. Since we have some of these, we have to do it
     // the Moz way.
     if (auto* scopedChild = frame->tree().scopedChild(propertyNameToAtomicString(propertyName))) {
-        slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, toJS(exec, scopedChild->document()->domWindow()));
+        slot.setValue(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontDelete, toJS(exec, scopedChild->document()->domWindow()));
         return true;
     }
 
     throwSecurityError(*exec, scope, errorMessage);
     slot.setUndefined();
-    return true;
+    return false;
 }
 
 // Property access sequence is:
@@ -159,7 +180,7 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* state, Propert
 {
     // (1) First, indexed properties.
     // Hand off all indexed access to getOwnPropertySlotByIndex, which supports the indexed getter.
-    if (Optional<unsigned> index = parseIndex(propertyName))
+    if (std::optional<unsigned> index = parseIndex(propertyName))
         return getOwnPropertySlotByIndex(object, state, index.value(), slot);
 
     auto* thisObject = jsCast<JSDOMWindow*>(object);
@@ -178,8 +199,8 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* state, Propert
     PropertySlot slotCopy = slot;
     if (Base::getOwnPropertySlot(thisObject, state, propertyName, slot)) {
         // Detect when we're getting the property 'showModalDialog', this is disabled, and has its original value.
-        bool isShowModalDialogAndShouldHide = propertyName == state->propertyNames().showModalDialog
-            && !DOMWindow::canShowModalDialog(frame)
+        bool isShowModalDialogAndShouldHide = propertyName == static_cast<JSVMClientData*>(state->vm().clientData)->builtinNames().showModalDialogPublicName()
+            && !DOMWindow::canShowModalDialog(*frame)
             && slot.isValue() && isHostFunction(slot.getValue(state, propertyName), jsDOMWindowInstanceFunctionShowModalDialog);
         // Unless we're in the showModalDialog special case, we're done.
         if (!isShowModalDialogAndShouldHide)
@@ -188,8 +209,8 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* state, Propert
     }
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
-    if (propertyName == state->propertyNames().webkit && thisObject->wrapped().shouldHaveWebKitNamespaceForWorld(thisObject->world())) {
-        slot.setCacheableCustom(thisObject, DontDelete | ReadOnly, jsDOMWindowWebKit);
+    if (propertyName == static_cast<JSVMClientData*>(state->vm().clientData)->builtinNames().webkitPublicName() && thisObject->wrapped().shouldHaveWebKitNamespaceForWorld(thisObject->world())) {
+        slot.setCacheableCustom(thisObject, JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly, jsDOMWindowWebKit);
         return true;
     }
 #endif
@@ -212,7 +233,7 @@ bool JSDOMWindow::getOwnPropertySlotByIndex(JSObject* object, ExecState* state, 
     // (1) First, indexed properties.
     // These are also allowed cross-orgin, so come before the access check.
     if (frame && index < frame->tree().scopedChildCount()) {
-        slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, toJS(state, frame->tree().scopedChild(index)->document()->domWindow()));
+        slot.setValue(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), toJS(state, frame->tree().scopedChild(index)->document()->domWindow()));
         return true;
     }
 
@@ -237,7 +258,7 @@ bool JSDOMWindow::put(JSCell* cell, ExecState* state, PropertyName propertyName,
     String errorMessage;
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(*state, thisObject->wrapped(), errorMessage)) {
         // We only allow setting "location" attribute cross-origin.
-        if (propertyName == state->propertyNames().location) {
+        if (propertyName == static_cast<JSVMClientData*>(vm.clientData)->builtinNames().locationPublicName()) {
             bool putResult = false;
             if (lookupPut(state, propertyName, thisObject, value, *s_info.staticPropHashTable, slot, putResult))
                 return putResult;
@@ -277,62 +298,63 @@ bool JSDOMWindow::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned 
     return Base::deletePropertyByIndex(thisObject, exec, propertyName);
 }
 
-uint32_t JSDOMWindow::getEnumerableLength(ExecState* exec, JSObject* object)
+// https://html.spec.whatwg.org/#crossoriginproperties-(-o-)
+static void addCrossOriginWindowPropertyNames(VM& vm, PropertyNameArray& propertyNames)
 {
-    JSDOMWindow* thisObject = jsCast<JSDOMWindow*>(object);
-    // Only allow the window to enumerated by frames in the same origin.
-    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped()))
-        return 0;
-    return Base::getEnumerableLength(exec, thisObject);
-}
-
-void JSDOMWindow::getStructurePropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
-{
-    JSDOMWindow* thisObject = jsCast<JSDOMWindow*>(object);
-    // Only allow the window to enumerated by frames in the same origin.
-    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped()))
-        return;
-    Base::getStructurePropertyNames(thisObject, exec, propertyNames, mode);
-}
-
-void JSDOMWindow::getGenericPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
-{
-    JSDOMWindow* thisObject = jsCast<JSDOMWindow*>(object);
-    // Only allow the window to enumerated by frames in the same origin.
-    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped()))
-        return;
-    Base::getGenericPropertyNames(thisObject, exec, propertyNames, mode);
-}
-
-void JSDOMWindow::getPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
-{
-    JSDOMWindow* thisObject = jsCast<JSDOMWindow*>(object);
-    // Only allow the window to enumerated by frames in the same origin.
-    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped()))
-        return;
-    Base::getPropertyNames(thisObject, exec, propertyNames, mode);
-}
-
-static void addCrossOriginWindowPropertyNames(ExecState& state, PropertyNameArray& propertyNames)
-{
-    // https://html.spec.whatwg.org/#crossoriginproperties-(-o-)
     static const Identifier* const properties[] = {
-        &state.propertyNames().blur, &state.propertyNames().close, &state.propertyNames().closed,
-        &state.propertyNames().focus, &state.propertyNames().frames, &state.propertyNames().length,
-        &state.propertyNames().location, &state.propertyNames().opener, &state.propertyNames().parent,
-        &state.propertyNames().postMessage, &state.propertyNames().self, &state.propertyNames().top,
-        &state.propertyNames().window
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().blurPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().closePublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().closedPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().focusPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().framesPublicName(),
+        &vm.propertyNames->length,
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().locationPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().openerPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().parentPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().postMessagePublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().selfPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().topPublicName(),
+        &static_cast<JSVMClientData*>(vm.clientData)->builtinNames().windowPublicName()
     };
     for (auto* property : properties)
         propertyNames.add(*property);
 }
 
+static void addScopedChildrenIndexes(ExecState& state, DOMWindow& window, PropertyNameArray& propertyNames)
+{
+    auto* document = window.document();
+    if (!document)
+        return;
+
+    auto* frame = document->frame();
+    if (!frame)
+        return;
+
+    unsigned scopedChildCount = frame->tree().scopedChildCount();
+    for (unsigned i = 0; i < scopedChildCount; ++i)
+        propertyNames.add(Identifier::from(&state, i));
+}
+
+// https://html.spec.whatwg.org/#crossoriginownpropertykeys-(-o-)
+static void addCrossOriginWindowOwnPropertyNames(ExecState& state, PropertyNameArray& propertyNames)
+{
+    VM& vm = state.vm();
+    addCrossOriginWindowPropertyNames(vm, propertyNames);
+
+    propertyNames.add(vm.propertyNames->toStringTagSymbol);
+    propertyNames.add(vm.propertyNames->hasInstanceSymbol);
+    propertyNames.add(vm.propertyNames->isConcatSpreadableSymbol);
+}
+
+// https://html.spec.whatwg.org/#windowproxy-ownpropertykeys
 void JSDOMWindow::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     JSDOMWindow* thisObject = jsCast<JSDOMWindow*>(object);
+
+    addScopedChildrenIndexes(*exec, thisObject->wrapped(), propertyNames);
+
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped(), DoNotReportSecurityError)) {
-        if (mode.includeDontEnumProperties())
-            addCrossOriginWindowPropertyNames(*exec, propertyNames);
+        addCrossOriginWindowOwnPropertyNames(*exec, propertyNames);
         return;
     }
     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
@@ -369,31 +391,15 @@ bool JSDOMWindow::preventExtensions(JSObject*, ExecState* exec)
     return false;
 }
 
-// Custom Attributes
-
-void JSDOMWindow::setLocation(ExecState& state, JSValue value)
+String JSDOMWindow::toStringName(const JSObject* object, ExecState* exec)
 {
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-#if ENABLE(DASHBOARD_SUPPORT)
-    // To avoid breaking old widgets, make "var location =" in a top-level frame create
-    // a property named "location" instead of performing a navigation (<rdar://problem/5688039>).
-    if (Frame* activeFrame = activeDOMWindow(&state).frame()) {
-        if (activeFrame->settings().usesDashboardBackwardCompatibilityMode() && !activeFrame->tree().parent()) {
-            if (BindingSecurity::shouldAllowAccessToDOMWindow(&state, wrapped()))
-                putDirect(state.vm(), Identifier::fromString(&state, "location"), value);
-            return;
-        }
-    }
-#endif
-
-    String locationString = value.toString(&state)->value(&state);
-    RETURN_IF_EXCEPTION(scope, void());
-
-    if (Location* location = wrapped().location())
-        location->setHref(activeDOMWindow(&state), firstDOMWindow(&state), locationString);
+    auto* thisObject = jsCast<const JSDOMWindow*>(object);
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped(), DoNotReportSecurityError))
+        return ASCIILiteral("Object");
+    return ASCIILiteral("Window");
 }
+
+// Custom Attributes
 
 JSValue JSDOMWindow::event(ExecState& state) const
 {
@@ -403,31 +409,7 @@ JSValue JSDOMWindow::event(ExecState& state) const
     return toJS(&state, const_cast<JSDOMWindow*>(this), event);
 }
 
-JSValue JSDOMWindow::image(ExecState& state) const
-{
-    return createImageConstructor(state.vm(), *this);
-}
-
 // Custom functions
-
-JSValue JSDOMWindow::open(ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    String urlString = convert<IDLNullable<IDLUSVString>>(state, state.argument(0));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    JSValue targetValue = state.argument(1);
-    AtomicString target = targetValue.isUndefinedOrNull() ? AtomicString("_blank", AtomicString::ConstructFromLiteral) : targetValue.toString(&state)->toAtomicString(&state);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    String windowFeaturesString = convert<IDLNullable<IDLDOMString>>(state, state.argument(2));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    RefPtr<DOMWindow> openedWindow = wrapped().open(urlString, target, windowFeaturesString, activeDOMWindow(&state), firstDOMWindow(&state));
-    if (!openedWindow)
-        return jsNull();
-    return toJS(&state, openedWindow.get());
-}
 
 class DialogHandler {
 public:
@@ -482,102 +464,22 @@ JSValue JSDOMWindow::showModalDialog(ExecState& state)
 
     DialogHandler handler(state);
 
-    wrapped().showModalDialog(urlString, dialogFeaturesString, activeDOMWindow(&state), firstDOMWindow(&state), [&handler](DOMWindow& dialog) {
+    wrapped().showModalDialog(urlString, dialogFeaturesString, activeDOMWindow(state), firstDOMWindow(state), [&handler](DOMWindow& dialog) {
         handler.dialogCreated(dialog);
     });
 
     return handler.returnValue();
 }
 
-static JSValue handlePostMessage(DOMWindow& impl, ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (UNLIKELY(state.argumentCount() < 2))
-        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
-
-    Vector<RefPtr<MessagePort>> messagePorts;
-    Vector<RefPtr<JSC::ArrayBuffer>> arrayBuffers;
-
-    // This function has variable arguments and can be:
-    // Per current spec:
-    //   postMessage(message, targetOrigin)
-    //   postMessage(message, targetOrigin, {sequence of transferrables})
-    // Legacy non-standard implementations in webkit allowed:
-    //   postMessage(message, {sequence of transferrables}, targetOrigin);
-    int targetOriginArgIndex = 1;
-    if (state.argumentCount() > 2) {
-        int transferablesArgIndex = 2;
-        if (state.uncheckedArgument(2).isString()) {
-            targetOriginArgIndex = 2;
-            transferablesArgIndex = 1;
-        }
-        extractTransferables(state, state.argument(transferablesArgIndex), messagePorts, arrayBuffers);
-    }
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    auto message = SerializedScriptValue::create(state, state.uncheckedArgument(0), messagePorts, WTFMove(arrayBuffers));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    String targetOrigin = convert<IDLNullable<IDLUSVString>>(state, state.uncheckedArgument(targetOriginArgIndex));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    propagateException(state, scope, impl.postMessage(message.releaseNonNull(), WTFMove(messagePorts), targetOrigin, callerDOMWindow(&state)));
-
-    return jsUndefined();
-}
-
-JSValue JSDOMWindow::postMessage(ExecState& state)
-{
-    return handlePostMessage(wrapped(), state);
-}
-
-JSValue JSDOMWindow::setTimeout(ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (UNLIKELY(state.argumentCount() < 1))
-        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
-
-    auto* contentSecurityPolicy = wrapped().document() ? wrapped().document()->contentSecurityPolicy() : nullptr;
-    auto action = ScheduledAction::create(&state, globalObject()->world(), contentSecurityPolicy);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    if (!action)
-        return jsNumber(0);
-
-    int delay = state.argument(1).toInt32(&state);
-    return toJS<IDLLong>(state, scope, wrapped().setTimeout(WTFMove(action), delay));
-}
-
-JSValue JSDOMWindow::setInterval(ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (UNLIKELY(state.argumentCount() < 1))
-        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
-
-    auto* contentSecurityPolicy = wrapped().document() ? wrapped().document()->contentSecurityPolicy() : nullptr;
-    auto action = ScheduledAction::create(&state, globalObject()->world(), contentSecurityPolicy);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    if (!action)
-        return jsNumber(0);
-
-    int delay = state.argument(1).toInt32(&state);
-    return toJS<IDLLong>(state, scope, wrapped().setInterval(WTFMove(action), delay));
-}
-
-DOMWindow* JSDOMWindow::toWrapped(JSValue value)
+DOMWindow* JSDOMWindow::toWrapped(VM& vm, JSValue value)
 {
     if (!value.isObject())
         return nullptr;
     JSObject* object = asObject(value);
-    if (object->inherits(JSDOMWindow::info()))
+    if (object->inherits(vm, JSDOMWindow::info()))
         return &jsCast<JSDOMWindow*>(object)->wrapped();
-    if (object->inherits(JSDOMWindowShell::info()))
-        return &jsCast<JSDOMWindowShell*>(object)->wrapped();
+    if (object->inherits(vm, JSDOMWindowProxy::info()))
+        return &jsCast<JSDOMWindowProxy*>(object)->wrapped();
     return nullptr;
 }
 

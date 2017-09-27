@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,7 +69,9 @@ public:
             osrEntry, osrEntry.size(), bytecodeIndex,
             getOSREntryDataBytecodeIndex);
     }
-    
+
+    void finalizeOSREntrypoints();
+
     unsigned appendOSRExit(const OSRExit& exit)
     {
         unsigned result = osrExit.size();
@@ -118,13 +120,13 @@ public:
     RegisterSet liveRegistersToPreserveAtExceptionHandlingCallSite(CodeBlock*, CallSiteIndex) override;
 #if ENABLE(FTL_JIT)
     CodeBlock* osrEntryBlock() { return m_osrEntryBlock.get(); }
-    void setOSREntryBlock(VM& vm, const JSCell* owner, CodeBlock* osrEntryBlock) { m_osrEntryBlock.set(vm, owner, osrEntryBlock); }
+    void setOSREntryBlock(VM&, const JSCell* owner, CodeBlock* osrEntryBlock);
     void clearOSREntryBlock() { m_osrEntryBlock.clear(); }
 #endif
 
     static ptrdiff_t commonDataOffset() { return OBJECT_OFFSETOF(JITCode, common); }
 
-    Optional<CodeOrigin> findPC(CodeBlock*, void* pc) override;
+    std::optional<CodeOrigin> findPC(CodeBlock*, void* pc) override;
     
 private:
     friend class JITCompiler; // Allow JITCompiler to call setCodeRef().
@@ -136,6 +138,7 @@ public:
     Vector<DFG::SpeculationRecovery> speculationRecovery;
     DFG::VariableEventStream variableEventStream;
     DFG::MinifiedGraph minifiedDFG;
+
 #if ENABLE(FTL_JIT)
     uint8_t neverExecutedEntry { 1 };
 
@@ -151,10 +154,16 @@ public:
     // Map each bytecode of CheckTierUpAndOSREnter to its stream index.
     HashMap<unsigned, unsigned, WTF::IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> bytecodeIndexToStreamIndex;
 
+    enum class TriggerReason : uint8_t {
+        DontTrigger,
+        CompilationDone,
+        StartCompilation,
+    };
+
     // Map each bytecode of CheckTierUpAndOSREnter to its trigger forcing OSR Entry.
     // This can never be modified after it has been initialized since the addresses of the triggers
     // are used by the JIT.
-    HashMap<unsigned, uint8_t> tierUpEntryTriggers;
+    HashMap<unsigned, TriggerReason> tierUpEntryTriggers;
 
     // Set of bytecode that were the target of a TierUp operation.
     HashSet<unsigned, WTF::IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> tierUpEntrySeen;

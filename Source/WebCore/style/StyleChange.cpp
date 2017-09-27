@@ -48,24 +48,17 @@ Change determineChange(const RenderStyle& s1, const RenderStyle& s2)
     // https://bugs.webkit.org/show_bug.cgi?id=55069
     if (s1.hasTextCombine() != s2.hasTextCombine())
         return Detach;
-    // We need to reattach the node, so that it is moved to the correct RenderFlowThread.
-    if (s1.flowThread() != s2.flowThread())
-        return Detach;
-    // When the region thread has changed, we need to prepare a separate render region object.
-    if (s1.regionThread() != s2.regionThread())
-        return Detach;
-    // FIXME: Multicolumn regions not yet supported (http://dev.w3.org/csswg/css-regions/#multi-column-regions)
-    // When the node has region style and changed its multicol style, we have to prepare
-    // a separate render region object.
-    if (s1.hasFlowFrom() && (s1.specifiesColumns() != s2.specifiesColumns()))
-        return Detach;
 
     if (s1 != s2) {
         if (s1.inheritedNotEqual(&s2))
             return Inherit;
 
+        if (s1.alignItems() != s2.alignItems() || s1.justifyItems() != s2.justifyItems())
+            return Inherit;
+
         return NoInherit;
     }
+
     // If the pseudoStyles have changed, we want any StyleChange that is not NoChange
     // because setStyle will do the right thing with anything else.
     if (s1.hasAnyPublicPseudoStyles()) {

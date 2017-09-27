@@ -30,8 +30,8 @@
 
 #include "Document.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "FileSystem.h"
+#include "Page.h"
 #include "SecurityOriginData.h"
 #include "Settings.h"
 #include "WebKitMediaKeyError.h"
@@ -85,7 +85,7 @@ const String& WebKitMediaKeySession::sessionId() const
 void WebKitMediaKeySession::generateKeyRequest(const String& mimeType, Ref<Uint8Array>&& initData)
 {
     m_pendingKeyRequests.append({ mimeType, WTFMove(initData) });
-    m_keyRequestTimer.startOneShot(0);
+    m_keyRequestTimer.startOneShot(0_s);
 }
 
 void WebKitMediaKeySession::keyRequestTimerFired()
@@ -135,14 +135,14 @@ ExceptionOr<void> WebKitMediaKeySession::update(Ref<Uint8Array>&& key)
 {
     // From <http://dvcs.w3.org/hg/html-media/raw-file/tip/encrypted-media/encrypted-media.html#dom-addkey>:
     // The addKey(key) method must run the following steps:
-    // 1. If the first or second argument [sic] is an empty array, throw an INVALID_ACCESS_ERR.
+    // 1. If the first or second argument [sic] is an empty array, throw an InvalidAccessError.
     // NOTE: the reference to a "second argument" is a spec bug.
     if (!key->length())
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
     // 2. Schedule a task to handle the call, providing key.
     m_pendingKeys.append(WTFMove(key));
-    m_addKeyTimer.startOneShot(0);
+    m_addKeyTimer.startOneShot(0_s);
 
     return { };
 }
@@ -223,19 +223,15 @@ String WebKitMediaKeySession::mediaKeysStorageDirectory() const
     if (!document)
         return emptyString();
 
-    auto* settings = document->settings();
-    if (!settings)
+    auto* page = document->page();
+    if (!page || page->usesEphemeralSession())
         return emptyString();
 
-    auto storageDirectory = settings->mediaKeysStorageDirectory();
+    auto storageDirectory = document->settings().mediaKeysStorageDirectory();
     if (storageDirectory.isEmpty())
         return emptyString();
 
-    auto* origin = document->securityOrigin();
-    if (!origin)
-        return emptyString();
-
-    return pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
+    return pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(document->securityOrigin()).databaseIdentifier());
 }
 
 bool WebKitMediaKeySession::hasPendingActivity() const

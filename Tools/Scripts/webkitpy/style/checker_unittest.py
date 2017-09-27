@@ -223,8 +223,6 @@ class GlobalVariablesTest(unittest.TestCase):
                       "readability/naming")
         assertCheck("random_path.cpp",
                     "readability/naming")
-        assertNoCheck(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'efl', 'ewk_view.h'),
-                      "readability/naming")
         assertNoCheck(os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp'),
                       "readability/naming")
 
@@ -248,6 +246,18 @@ class GlobalVariablesTest(unittest.TestCase):
 
         # Javascript keywords.
         assertCheck(os.path.join('Source', 'JavaScriptCore', 'parser', 'Keywords.table'), "whitespace/carriage_return")
+
+        # Test if the exception for DataDetectorsCoreSPI.h is in place.
+        assertNoCheck(os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi', 'cocoa', 'DataDetectorsCoreSPI.h'),
+                      "runtime/enum_bitfields")
+
+        # Test if the exception for PassKitSPI.h is in place.
+        assertNoCheck(os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi', 'cocoa', 'PassKitSPI.h'),
+                      "build/include")
+
+        # Test if the exception for pal/spi is in place.
+        assertNoCheck(os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi'),
+                      "readability/naming/underscores")
 
     def test_max_reports_per_category(self):
         """Check that _MAX_REPORTS_PER_CATEGORY is valid."""
@@ -283,9 +293,9 @@ class CheckerDispatcherSkipTest(unittest.TestCase):
         # Check skipped files.
         paths_to_skip = [
            os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'WebKitGtk', 'testatk.c'),
-           os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
-           os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'WebKitWebView.h'),
-           os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'WebKitLoader.h'),
+           os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
+           os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'WebKitWebView.h'),
+           os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'WebKitLoader.h'),
             ]
 
         for path in paths_to_skip:
@@ -295,10 +305,10 @@ class CheckerDispatcherSkipTest(unittest.TestCase):
         # Verify that some files are not skipped.
         paths_not_to_skip = [
            "foo.txt",
-           os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'HelperClass.cpp'),
-           os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'HelperClass.h'),
-           os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'WebKitWebView.cpp'),
-           os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'WebKitWebViewPrivate.h'),
+           os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'HelperClass.cpp'),
+           os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'HelperClass.h'),
+           os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'WebKitWebView.cpp'),
+           os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'WebKitWebViewPrivate.h'),
            os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'WebKit2Gtk', 'WebViewTest.cpp'),
            os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'WebKit2Gtk', 'WebViewTest.h'),
             ]

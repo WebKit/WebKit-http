@@ -27,9 +27,10 @@
 #pragma once
 
 #include "Glyph.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Forward.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
+#include <wtf/RefPtr.h>
 
 #if !ENABLE(OPENTYPE_MATH) && USE(HARFBUZZ)
 #include <hb-ot.h>
@@ -43,9 +44,9 @@ class Font;
 
 class OpenTypeMathData : public RefCounted<OpenTypeMathData> {
 public:
-    static PassRefPtr<OpenTypeMathData> create(const FontPlatformData& font)
+    static Ref<OpenTypeMathData> create(const FontPlatformData& font)
     {
-        return adoptRef(new OpenTypeMathData(font));
+        return adoptRef(*new OpenTypeMathData(font));
     }
     ~OpenTypeMathData();
 

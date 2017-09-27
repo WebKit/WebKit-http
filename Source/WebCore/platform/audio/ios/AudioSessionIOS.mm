@@ -29,10 +29,12 @@
 #if USE(AUDIO_SESSION) && PLATFORM(IOS)
 
 #import "Logging.h"
-#import "SoftLinking.h"
 #import <AVFoundation/AVAudioSession.h>
 #import <objc/runtime.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/SoftLinking.h>
+
+typedef AVAudioSession AVAudioSessionType;
 
 SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVAudioSession)
@@ -43,7 +45,8 @@ SOFT_LINK_POINTER(AVFoundation, AVAudioSessionCategoryPlayback, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVAudioSessionCategoryRecord, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVAudioSessionCategoryPlayAndRecord, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVAudioSessionCategoryAudioProcessing, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
+SOFT_LINK_POINTER(AVFoundation, AVAudioSessionModeDefault, NSString *)
+SOFT_LINK_POINTER(AVFoundation, AVAudioSessionModeVideoChat, NSString *)
 
 #define AVAudioSession getAVAudioSessionClass()
 #define AVAudioSessionCategoryAmbient getAVAudioSessionCategoryAmbient()
@@ -52,7 +55,8 @@ SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
 #define AVAudioSessionCategoryRecord getAVAudioSessionCategoryRecord()
 #define AVAudioSessionCategoryPlayAndRecord getAVAudioSessionCategoryPlayAndRecord()
 #define AVAudioSessionCategoryAudioProcessing getAVAudioSessionCategoryAudioProcessing()
-#define AVAudioSessionInterruptionTypeKey getAVAudioSessionInterruptionTypeKey()
+#define AVAudioSessionModeDefault getAVAudioSessionModeDefault()
+#define AVAudioSessionModeVideoChat getAVAudioSessionModeVideoChat()
 
 namespace WebCore {
 
@@ -105,6 +109,9 @@ void AudioSession::setCategory(CategoryType newCategory)
     }
 
     NSString *categoryString;
+    NSString *categoryMode = AVAudioSessionModeDefault;
+    AVAudioSessionCategoryOptions options = 0;
+
     switch (newCategory) {
     case AmbientSound:
         categoryString = AVAudioSessionCategoryAmbient;
@@ -120,6 +127,8 @@ void AudioSession::setCategory(CategoryType newCategory)
         break;
     case PlayAndRecord:
         categoryString = AVAudioSessionCategoryPlayAndRecord;
+        categoryMode = AVAudioSessionModeVideoChat;
+        options |= AVAudioSessionCategoryOptionAllowBluetooth | AVAudioSessionCategoryOptionAllowBluetoothA2DP | AVAudioSessionCategoryOptionDefaultToSpeaker | AVAudioSessionCategoryOptionAllowAirPlay;
         break;
     case AudioProcessing:
         categoryString = AVAudioSessionCategoryAudioProcessing;
@@ -129,8 +138,9 @@ void AudioSession::setCategory(CategoryType newCategory)
         categoryString = nil;
         break;
     }
+
     NSError *error = nil;
-    [[AVAudioSession sharedInstance] setCategory:categoryString error:&error];
+    [[AVAudioSession sharedInstance] setCategory:categoryString mode:categoryMode options:options error:&error];
     ASSERT(!error);
 }
 
@@ -169,6 +179,11 @@ AudioSession::CategoryType AudioSession::categoryOverride() const
 float AudioSession::sampleRate() const
 {
     return [[AVAudioSession sharedInstance] sampleRate];
+}
+
+size_t AudioSession::bufferSize() const
+{
+    return [[AVAudioSession sharedInstance] IOBufferDuration] * sampleRate();
 }
 
 size_t AudioSession::numberOfOutputChannels() const

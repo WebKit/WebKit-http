@@ -31,7 +31,6 @@
 
 #include "LayerFragment.h"
 #include "RenderBlockFlow.h"
-#include "StyleInheritedData.h"
 #include "VisiblePosition.h"
 #include <memory>
 
@@ -41,7 +40,6 @@ class Element;
 class RenderBox;
 class RenderBoxRegionInfo;
 class RenderFlowThread;
-class RenderNamedFlowThread;
 
 class RenderRegion : public RenderBlockFlow {
 public:
@@ -56,7 +54,6 @@ public:
     virtual void attachRegion();
     virtual void detachRegion();
 
-    RenderNamedFlowThread* parentNamedFlowThread() const { return m_parentNamedFlowThread; }
     RenderFlowThread* flowThread() const { return m_flowThread; }
 
     // Valid regions do not create circular dependencies with other flows.
@@ -121,8 +118,6 @@ public:
     bool canHaveGeneratedChildren() const override { return true; }
     VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
 
-    virtual bool hasAutoLogicalHeight() const { return false; }
-
     virtual void absoluteQuadsForBoxInRegion(Vector<FloatQuad>&, bool*, const RenderBox*, float, float) { }
 
 protected:
@@ -159,10 +154,6 @@ protected:
     RenderFlowThread* m_flowThread;
 
 private:
-    // If this RenderRegion is displayed as part of another named flow,
-    // we need to create a dependency tree, so that layout of the
-    // regions is always done before the regions themselves.
-    RenderNamedFlowThread* m_parentNamedFlowThread;
     LayoutRect m_flowThreadPortionRect;
 
     // This map holds unique information about a block that is split across regions.

@@ -1528,6 +1528,22 @@ class CppStyleTest(CppStyleTestBase):
                          ' for improved thread safety.'
                          '  [runtime/threadsafe_fn] [2]')
 
+    # Test for insecure string functions like strcpy()/strcat().
+    def test_insecure_string_operations(self):
+        self.assert_lint(
+            'sprintf(destination, "%s", arg)',
+            'Never use sprintf.  Use snprintf instead.'
+            '  [security/printf] [5]')
+        self.assert_lint(
+            'strcat(destination, append)',
+            'Almost always, snprintf is better than strcat.'
+            '  [security/printf] [4]')
+        self.assert_lint(
+            'strcpy(destination, source)',
+            'Almost always, snprintf is better than strcpy.'
+            '  [security/printf] [4]')
+        self.assert_lint('strstr(haystack, "needle")', '')
+
     # Test potential format string bugs like printf(foo).
     def test_format_strings(self):
         self.assert_lint('printf("foo")', '')
@@ -1536,22 +1552,31 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint(
             'printf(foo)',
             'Potential format string bug. Do printf("%s", foo) instead.'
-            '  [runtime/printf] [4]')
+            '  [security/printf] [4]')
         self.assert_lint(
             'printf(foo.c_str())',
             'Potential format string bug. '
             'Do printf("%s", foo.c_str()) instead.'
-            '  [runtime/printf] [4]')
+            '  [security/printf] [4]')
         self.assert_lint(
             'printf(foo->c_str())',
             'Potential format string bug. '
             'Do printf("%s", foo->c_str()) instead.'
-            '  [runtime/printf] [4]')
+            '  [security/printf] [4]')
         self.assert_lint(
             'StringPrintf(foo)',
             'Potential format string bug. Do StringPrintf("%s", foo) instead.'
             ''
-            '  [runtime/printf] [4]')
+            '  [security/printf] [4]')
+
+    # Test for insecure temp file creation.
+    def test_insecure_temp_file(self):
+        self.assert_lint(
+            'mktemp(template);',
+            'Never use mktemp.  Use mkstemp or mkostemp instead.'
+            '  [security/temp_file] [5]')
+        self.assert_lint('mkstemp(template);', '')
+        self.assert_lint('mkostemp(template);', '')
 
     # Variable-length arrays are not permitted.
     def test_variable_length_array_detection(self):
@@ -1767,12 +1792,23 @@ class CppStyleTest(CppStyleTestBase):
             'int foo() override {',
             'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
+            'int foo() const final {',
+            'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'int foo() final {',
+            'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
             'int foo() const\n'
             '{\n'
             '}\n',
             '')
         self.assert_multi_line_lint(
             'int foo() override\n'
+            '{\n'
+            '}\n',
+            '')
+        self.assert_multi_line_lint(
+            'int foo() final\n'
             '{\n'
             '}\n',
             '')
@@ -1793,6 +1829,11 @@ class CppStyleTest(CppStyleTestBase):
             '')
         self.assert_multi_line_lint(
             'int foo() const override\n'
+            '{\n'
+            '}\n',
+            '')
+        self.assert_multi_line_lint(
+            'int foo() const final\n'
             '{\n'
             '}\n',
             '')
@@ -1992,6 +2033,8 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_multi_line_lint('#include <sys/io.h>\n', '')
         self.assert_multi_line_lint('#import <foo/bar.h>\n', '')
         self.assert_multi_line_lint('#if __has_include(<ApplicationServices/ApplicationServicesPriv.h>)\n', '')
+        self.assert_multi_line_lint('#elif __has_include(<ApplicationServices/ApplicationServicesPriv.h>)\n', '')
+        self.assert_multi_line_lint('#endif // __has_include(<ApplicationServices/ApplicationServicesPriv.h>)\n', '')
         self.assert_lint('Foo&& a = bar();', '')
 
     def test_operator_methods(self):
@@ -2891,7 +2934,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
         self.assert_language_rules_check('FooSoftLink.cpp',
                                          '#include "config.h"\n'
                                          '\n'
-                                         '#include "SoftLinking.h"\n',
+                                         '#include <wtf/SoftLinking.h>\n',
                                          '')
         # Having include for existing primary header -> no error.
         self.assert_language_rules_check('foo.cpp',
@@ -4451,6 +4494,18 @@ class WebKitStyleTest(CppStyleTestBase):
             '}\n',
             'This { should be at the end of the previous line  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
+            'typedef CF_OPTIONS(NSInteger, type)\n'
+            '{\n'
+            '    0,\n'
+            '    1\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef CF_OPTIONS(NSInteger, type) {\n'
+            '    0,\n'
+            '    1\n'
+            '};', '')
+        self.assert_multi_line_lint(
             'typedef NS_ENUM(NSInteger, type)\n'
             '{\n'
             '    0,\n'
@@ -4459,6 +4514,30 @@ class WebKitStyleTest(CppStyleTestBase):
             'This { should be at the end of the previous line  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
             'typedef NS_ENUM(NSInteger, type) {\n'
+            '    0,\n'
+            '    1\n'
+            '};', '')
+        self.assert_multi_line_lint(
+            'typedef NS_ERROR_ENUM(NSInteger, type)\n'
+            '{\n'
+            '    0,\n'
+            '    1\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef NS_ERROR_ENUM(NSInteger, type) {\n'
+            '    0,\n'
+            '    1\n'
+            '};', '')
+        self.assert_multi_line_lint(
+            'typedef NS_OPTIONS(NSInteger, type)\n'
+            '{\n'
+            '    0,\n'
+            '    1\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef NS_OPTIONS(NSInteger, type) {\n'
             '    0,\n'
             '    1\n'
             '};', '')

@@ -33,33 +33,18 @@
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(COCOA)
-OBJC_CLASS NSString;
-OBJC_CLASS NSURL;
-#endif
-
-#if PLATFORM(IOS)
-OBJC_CLASS NSArray;
-OBJC_CLASS NSDictionary;
-#endif
-
 namespace WebCore {
 
-class ArchiveResource;
 class DocumentFragment;
-class Editor;
 class Element;
 class Frame;
-class HTMLElement;
 class KeyboardEvent;
-class LayoutRect;
 class Node;
 class Range;
 class SharedBuffer;
 class StyleProperties;
 class TextCheckerClient;
 class VisibleSelection;
-class VisiblePosition;
 
 struct GapRects;
 struct GrammarDetail;
@@ -70,7 +55,7 @@ public:
 
     virtual bool shouldDeleteRange(Range*) = 0;
     virtual bool smartInsertDeleteEnabled() = 0; 
-    virtual bool isSelectTrailingWhitespaceEnabled() = 0;
+    virtual bool isSelectTrailingWhitespaceEnabled() const = 0;
     virtual bool isContinuousSpellCheckingEnabled() = 0;
     virtual void toggleContinuousSpellChecking() = 0;
     virtual bool isGrammarCheckingEnabled() = 0;
@@ -90,7 +75,7 @@ public:
     virtual void didBeginEditing() = 0;
     virtual void respondToChangedContents() = 0;
     virtual void respondToChangedSelection(Frame*) = 0;
-    virtual void didChangeSelectionAndUpdateLayout() = 0;
+    virtual void didEndUserTriggeredSelectionChanges() = 0;
     virtual void updateEditorStateAfterLayoutIfEditabilityChanged() = 0;
     virtual void didEndEditing() = 0;
     virtual void willWriteSelectionToPasteboard(Range*) = 0;
@@ -103,9 +88,10 @@ public:
     // This function is not called when a composition is closed per a request from an input method.
     virtual void discardedComposition(Frame*) = 0;
     virtual void canceledComposition() = 0;
+    virtual void didUpdateComposition() = 0;
 
-    virtual void registerUndoStep(PassRefPtr<UndoStep>) = 0;
-    virtual void registerRedoStep(PassRefPtr<UndoStep>) = 0;
+    virtual void registerUndoStep(UndoStep&) = 0;
+    virtual void registerRedoStep(UndoStep&) = 0;
     virtual void clearUndoRedoOperations() = 0;
 
     virtual bool canCopyCut(Frame*, bool defaultValue) const = 0;
@@ -130,21 +116,14 @@ public:
 #if PLATFORM(IOS)
     virtual void startDelayingAndCoalescingContentChangeNotifications() = 0;
     virtual void stopDelayingAndCoalescingContentChangeNotifications() = 0;
-    virtual void writeDataToPasteboard(NSDictionary*) = 0;
-    virtual NSArray* supportedPasteboardTypesForCurrentSelection() = 0;
-    virtual NSArray* readDataFromPasteboard(NSString* type, int index) = 0;
     virtual bool hasRichlyEditableSelection() = 0;
     virtual int getPasteboardItemsCount() = 0;
     virtual RefPtr<DocumentFragment> documentFragmentFromDelegate(int index) = 0;
     virtual bool performsTwoStepPaste(DocumentFragment*) = 0;
-    virtual int pasteboardChangeCount() = 0;
 #endif
 
 #if PLATFORM(COCOA)
-    virtual NSString *userVisibleString(NSURL *) = 0;
     virtual void setInsertionPasteboard(const String& pasteboardName) = 0;
-    virtual NSURL *canonicalizeURL(NSURL *) = 0;
-    virtual NSURL *canonicalizeURLString(NSString *) = 0;
 #endif
 
 #if USE(APPKIT)
@@ -185,6 +164,8 @@ public:
     // Support for global selections, used on platforms like the X Window System that treat
     // selection as a type of clipboard.
     virtual bool supportsGlobalSelection() { return false; }
+
+    virtual bool performTwoStepDrop(DocumentFragment&, Range& destination, bool isMove) = 0;
 };
 
 }

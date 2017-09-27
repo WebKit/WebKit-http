@@ -30,6 +30,7 @@
 #include "AXObjectCache.h"
 #include "Chrome.h"
 #include "Document.h"
+#include "Editing.h"
 #include "Editor.h"
 #include "EditorClient.h"
 #include "Element.h"
@@ -58,7 +59,6 @@
 #include "ShadowRoot.h"
 #include "SpatialNavigation.h"
 #include "Widget.h"
-#include "htmlediting.h" // For firstPositionInOrBeforeNode
 #include <limits>
 #include <wtf/CurrentTime.h>
 #include <wtf/Ref.h>
@@ -130,17 +130,13 @@ Node* FocusNavigationScope::lastChildInScope(const Node& node) const
 
 Node* FocusNavigationScope::parentInScope(const Node& node) const
 {
-    if (is<Element>(node) && isFocusScopeOwner(downcast<Element>(node)))
+    if (m_rootTreeScope && &m_rootTreeScope->rootNode() == &node)
         return nullptr;
 
     if (UNLIKELY(m_slotElement && m_slotElement == node.assignedSlot()))
         return nullptr;
 
-    ContainerNode* parent = node.parentNode();
-    if (parent && is<Element>(parent) && isFocusScopeOwner(downcast<Element>(*parent)))
-        return nullptr;
-
-    return parent;
+    return node.parentNode();
 }
 
 Node* FocusNavigationScope::nextSiblingInScope(const Node& node) const
@@ -320,7 +316,7 @@ FocusController::FocusController(Page& page, ActivityState::Flags activityState)
 {
 }
 
-void FocusController::setFocusedFrame(PassRefPtr<Frame> frame)
+void FocusController::setFocusedFrame(Frame* frame)
 {
     ASSERT(!frame || frame->page() == &m_page);
     if (m_focusedFrame == frame || m_isChangingFocusedFrame)
@@ -382,8 +378,9 @@ Element* FocusController::findFocusableElementDescendingDownIntoFrameDocument(Fo
     // 2) the deepest-nested HTMLFrameOwnerElement.
     while (is<HTMLFrameOwnerElement>(element)) {
         HTMLFrameOwnerElement& owner = downcast<HTMLFrameOwnerElement>(*element);
-        if (!owner.contentFrame())
+        if (!owner.contentFrame() || !owner.contentFrame()->document())
             break;
+        owner.contentFrame()->document()->updateLayoutIgnorePendingStylesheets();
         Element* foundElement = findFocusableElementWithinScope(direction, FocusNavigationScope::scopeOwnedByIFrame(owner), nullptr, event);
         if (!foundElement)
             break;
@@ -769,8 +766,32 @@ static void clearSelectionIfNeeded(Frame* oldFocusedFrame, Frame* newFocusedFram
     oldFocusedFrame->selection().clear();
 }
 
-bool FocusController::setFocusedElement(Element* element, PassRefPtr<Frame> newFocusedFrame, FocusDirection direction)
+static bool shouldClearSelectionWhenChangingFocusedElement(const Page& page, RefPtr<Element> oldFocusedElement, RefPtr<Element> newFocusedElement)
 {
+#if ENABLE(DATA_INTERACTION)
+    if (newFocusedElement || !oldFocusedElement)
+        return true;
+
+    // FIXME: These additional checks should not be necessary. We should consider generally keeping the selection whenever the
+    // focused element is blurred, with no new element taking focus.
+    if (!oldFocusedElement->isRootEditableElement() && !is<HTMLInputElement>(oldFocusedElement.get()) && !is<HTMLTextAreaElement>(oldFocusedElement.get()))
+        return true;
+
+    for (auto ancestor = page.mainFrame().eventHandler().draggedElement(); ancestor; ancestor = ancestor->parentOrShadowHostElement()) {
+        if (ancestor == oldFocusedElement)
+            return false;
+    }
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(oldFocusedElement);
+    UNUSED_PARAM(newFocusedElement);
+#endif
+    return true;
+}
+
+bool FocusController::setFocusedElement(Element* element, Frame& newFocusedFrame, FocusDirection direction)
+{
+    Ref<Frame> protectedNewFocusedFrame = newFocusedFrame;
     RefPtr<Frame> oldFocusedFrame = focusedFrame();
     RefPtr<Document> oldDocument = oldFocusedFrame ? oldFocusedFrame->document() : nullptr;
     
@@ -784,7 +805,8 @@ bool FocusController::setFocusedElement(Element* element, PassRefPtr<Frame> newF
 
     m_page.editorClient().willSetInputMethodState();
 
-    clearSelectionIfNeeded(oldFocusedFrame.get(), newFocusedFrame.get(), element);
+    if (shouldClearSelectionWhenChangingFocusedElement(m_page, oldFocusedElement, element))
+        clearSelectionIfNeeded(oldFocusedFrame.get(), &newFocusedFrame, element);
 
     if (!element) {
         if (oldDocument)
@@ -803,11 +825,11 @@ bool FocusController::setFocusedElement(Element* element, PassRefPtr<Frame> newF
     if (oldDocument && oldDocument != newDocument.ptr())
         oldDocument->setFocusedElement(nullptr);
 
-    if (newFocusedFrame && !newFocusedFrame->page()) {
+    if (!newFocusedFrame.page()) {
         setFocusedFrame(nullptr);
         return false;
     }
-    setFocusedFrame(newFocusedFrame);
+    setFocusedFrame(&newFocusedFrame);
 
     Ref<Element> protect(*element);
 
@@ -1092,7 +1114,7 @@ bool FocusController::advanceFocusDirectionally(FocusDirection direction, Keyboa
 
 void FocusController::setFocusedElementNeedsRepaint()
 {
-    m_focusRepaintTimer.startOneShot(0.033);
+    m_focusRepaintTimer.startOneShot(33_ms);
 }
 
 void FocusController::focusRepaintTimerFired()

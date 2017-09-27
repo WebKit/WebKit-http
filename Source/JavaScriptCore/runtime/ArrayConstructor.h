@@ -22,7 +22,6 @@
 
 #include "InternalFunction.h"
 #include "ProxyObject.h"
-#include "ThrowScope.h"
 
 namespace JSC {
 
@@ -80,14 +79,6 @@ inline bool isArray(ExecState* exec, JSValue argumentValue)
     if (argument->type() != ProxyObjectType)
         return false;
     return isArraySlow(exec, jsCast<ProxyObject*>(argument));
-}
-
-inline bool isArrayConstructor(JSValue argumentValue)
-{
-    if (!argumentValue.isObject())
-        return false;
-
-    return jsCast<JSObject*>(argumentValue)->classInfo() == ArrayConstructor::info();
 }
 
 } // namespace JSC

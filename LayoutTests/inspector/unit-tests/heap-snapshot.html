@@ -7,7 +7,7 @@ function test()
 {
     // Simple HeapSnapshot representation.
 
-    WebInspector.TestHeapSnapshotNode = class TestHeapSnapshotNode
+    WI.TestHeapSnapshotNode = class TestHeapSnapshotNode
     {
         constructor(identifier, className, size, internal)
         {
@@ -21,7 +21,7 @@ function test()
         }
     }
 
-    WebInspector.TestHeapSnapshotEdge = class TestHeapSnapshotEdge
+    WI.TestHeapSnapshotEdge = class TestHeapSnapshotEdge
     {
         constructor(from, to, type, data)
         {
@@ -32,12 +32,12 @@ function test()
         }
     };
 
-    WebInspector.TestHeapSnapshot = class TestHeapSnapshot
+    WI.TestHeapSnapshot = class TestHeapSnapshot
     {
         constructor(rootNode, nodes, nodeMap)
         {
-            console.assert(rootNode instanceof WebInspector.TestHeapSnapshotNode);
-            console.assert(nodes.every((n) => n instanceof WebInspector.TestHeapSnapshotNode));
+            console.assert(rootNode instanceof WI.TestHeapSnapshotNode);
+            console.assert(nodes.every((n) => n instanceof WI.TestHeapSnapshotNode));
 
             this.rootNode = rootNode;
             this.nodes = nodes;
@@ -61,7 +61,7 @@ function test()
                 let classNameIndex = nodes[i++];
                 let internal = nodes[i++];
 
-                let node = new WebInspector.TestHeapSnapshotNode(id, nodeClassNames[classNameIndex], size, !!internal);
+                let node = new WI.TestHeapSnapshotNode(id, nodeClassNames[classNameIndex], size, !!internal);
                 nodeMap.set(id, node);
                 processedNodes.push(node);
             }
@@ -79,7 +79,7 @@ function test()
                 if (type === "Property" || type === "Variable")
                     data = edgeNames[data];
 
-                let edge = new WebInspector.TestHeapSnapshotEdge(from, to, type, data);
+                let edge = new WI.TestHeapSnapshotEdge(from, to, type, data);
                 from.outgoingEdges.push(edge);
                 to.incomingEdges.push(edge);
             }
@@ -95,7 +95,7 @@ function test()
             for (let i = 0, length = rootNodeEdges.length; i < length; ++i)
                 rootNodeEdges[i].to.gcRoot = true;
 
-            return new WebInspector.TestHeapSnapshot(rootNode, processedNodes, nodeMap);
+            return new WI.TestHeapSnapshot(rootNode, processedNodes, nodeMap);
         }
 
         // Public
@@ -132,13 +132,13 @@ function test()
 
     suite.addTestCase({
         name: "HeapSnapshotProxy data",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             HeapAgent.snapshot((error, timestamp, snapshotStringData) => {
                 InspectorTest.expectThat(!error, "Should not have an error creating a snapshot.");
-                testSnapshot = WebInspector.TestHeapSnapshot.fromPayload(JSON.parse(snapshotStringData));
-                let workerProxy = WebInspector.HeapSnapshotWorkerProxy.singleton();
+                testSnapshot = WI.TestHeapSnapshot.fromPayload(JSON.parse(snapshotStringData));
+                let workerProxy = WI.HeapSnapshotWorkerProxy.singleton();
                 workerProxy.createSnapshot(snapshotStringData, ({objectId, snapshot: serializedSnapshot}) => {
-                    snapshot = WebInspector.HeapSnapshotProxy.deserialize(objectId, serializedSnapshot);
+                    snapshot = WI.HeapSnapshotProxy.deserialize(objectId, serializedSnapshot);
                     InspectorTest.assert(testSnapshot, "Created TestHeapSnapshot");
                     InspectorTest.assert(snapshot, "Created HeapSnapshotProxy");
                     InspectorTest.expectThat(snapshot.totalSize === testSnapshot.totalSize, "Snapshots totalSize should match.");
@@ -151,7 +151,7 @@ function test()
 
     suite.addTestCase({
         name: "HeapSnapshotProxy.prototype.instancesWithClassName",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let windowObjects = testSnapshot.instancesWithClassName("Window")
             let windowObjectCount = windowObjects.length;
             let functionObjectCount = testSnapshot.instancesWithClassName("Function").length;
@@ -183,7 +183,7 @@ function test()
 
     suite.addTestCase({
         name: "HeapSnapshotProxy.prototype.nodeWithIdentifier and HeapSnapshotNodeProxy data",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             snapshot.nodeWithIdentifier(testSnapshotNodeForWindowObject.id, (heapSnapshotNode) => {
                 InspectorTest.expectThat(heapSnapshotNode.className === "Window", "Node className should be 'Window'.");
                 InspectorTest.expectThat(heapSnapshotNode.id === testSnapshotNodeForWindowObject.id, "Node identifier should match.")
@@ -198,7 +198,7 @@ function test()
 
     suite.addTestCase({
         name: "HeapSnapshotProxy.prototype.allocationBucketCounts",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let testSmall = 0, testMedium = 0, testLarge = 0;
             const smallSize = 32, mediumSize = 128;
             // Skip <root>.
@@ -225,7 +225,7 @@ function test()
 
     suite.addTestCase({
         name: "HeapSnapshotNodeProxy.prototype.retainedNodes",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let expectedNodes = testSnapshotNodeForWindowObject.outgoingEdges.map((edge) => edge.to);
             expectedNodes.sort((a, b) => a.id - b.id);
 
@@ -242,7 +242,7 @@ function test()
 
     suite.addTestCase({
         name: "HeapSnapshotNodeProxy.prototype.retainers",
-        test: (resolve, reject) => {
+        test(resolve, reject) {
             let expectedNodes = testSnapshotNodeForWindowObject.incomingEdges.map((edge) => edge.from);
             expectedNodes.sort((a, b) => a.id - b.id);
 

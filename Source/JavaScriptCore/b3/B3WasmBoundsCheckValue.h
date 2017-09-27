@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,8 +46,19 @@ public:
     
     ~WasmBoundsCheckValue();
 
-    GPRReg pinnedGPR() const { return m_pinnedGPR; }
+    enum class Type {
+        Pinned,
+        Maximum,
+    };
+
+    union Bounds {
+        GPRReg pinned;
+        size_t maximum;
+    };
+
     unsigned offset() const { return m_offset; }
+    Type boundsType() const { return m_boundsType; }
+    Bounds bounds() const { return m_bounds; }
 
 protected:
     void dumpMeta(CommaPrinter&, PrintStream&) const override;
@@ -57,10 +68,12 @@ protected:
 private:
     friend class Procedure;
 
-    JS_EXPORT_PRIVATE WasmBoundsCheckValue(Origin, Value* ptr, GPRReg pinnedGPR, unsigned offset);
+    JS_EXPORT_PRIVATE WasmBoundsCheckValue(Origin, GPRReg pinnedGPR, Value* ptr, unsigned offset);
+    JS_EXPORT_PRIVATE WasmBoundsCheckValue(Origin, Value* ptr, unsigned offset, size_t maximum);
 
-    GPRReg m_pinnedGPR;
     unsigned m_offset;
+    Type m_boundsType;
+    Bounds m_bounds;
 };
 
 } } // namespace JSC::B3

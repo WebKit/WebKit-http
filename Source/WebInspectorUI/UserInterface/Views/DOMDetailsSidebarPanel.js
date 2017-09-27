@@ -23,11 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DOMDetailsSidebarPanel = class DOMDetailsSidebarPanel extends WebInspector.DetailsSidebarPanel
+WI.DOMDetailsSidebarPanel = class DOMDetailsSidebarPanel extends WI.DetailsSidebarPanel
 {
-    constructor(identifier, displayName, singularDisplayName, element, dontCreateNavigationItem)
+    constructor(identifier, displayName, dontCreateNavigationItem)
     {
-        super(identifier, displayName, singularDisplayName, element, dontCreateNavigationItem);
+        super(identifier, displayName, dontCreateNavigationItem);
 
         this.element.addEventListener("click", this._mouseWasClicked.bind(this), true);
 
@@ -44,9 +44,9 @@ WebInspector.DOMDetailsSidebarPanel = class DOMDetailsSidebarPanel extends WebIn
 
         var nodeToInspect = null;
 
-        // Iterate over the objects to find a WebInspector.DOMNode to inspect.
+        // Iterate over the objects to find a WI.DOMNode to inspect.
         for (var i = 0; i < objects.length; ++i) {
-            if (objects[i] instanceof WebInspector.DOMNode) {
+            if (objects[i] instanceof WI.DOMNode) {
                 nodeToInspect = objects[i];
                 break;
             }
@@ -102,11 +102,15 @@ WebInspector.DOMDetailsSidebarPanel = class DOMDetailsSidebarPanel extends WebIn
     _mouseWasClicked(event)
     {
         if (this._domNode && this._domNode.ownerDocument) {
-            var mainResource = WebInspector.frameResourceManager.resourceForURL(this._domNode.ownerDocument.documentURL);
+            var mainResource = WI.frameResourceManager.resourceForURL(this._domNode.ownerDocument.documentURL);
             if (mainResource)
                 var parentFrame = mainResource.parentFrame;
         }
 
-        WebInspector.handlePossibleLinkClick(event, parentFrame);
+        const options = {
+            ignoreNetworkTab: true,
+            ignoreSearchTab: true,
+        };
+        WI.handlePossibleLinkClick(event, parentFrame, options);
     }
 };

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -59,6 +59,7 @@ Animation::Animation()
 Animation::Animation(const Animation& o)
     : RefCounted<Animation>()
     , m_name(o.m_name)
+    , m_nameStyleScopeOrdinal(o.m_nameStyleScopeOrdinal)
     , m_property(o.m_property)
     , m_mode(o.m_mode)
     , m_iterationCount(o.m_iterationCount)
@@ -90,6 +91,7 @@ Animation::Animation(const Animation& o)
 Animation& Animation::operator=(const Animation& o)
 {
     m_name = o.m_name;
+    m_nameStyleScopeOrdinal = o.m_nameStyleScopeOrdinal;
     m_property = o.m_property;
     m_mode = o.m_mode;
     m_iterationCount = o.m_iterationCount;
@@ -130,6 +132,7 @@ Animation::~Animation()
 bool Animation::animationsMatch(const Animation& other, bool matchPlayStates) const
 {
     bool result = m_name == other.m_name
+        && m_nameStyleScopeOrdinal == other.m_nameStyleScopeOrdinal
         && m_property == other.m_property
         && m_mode == other.m_mode
         && m_iterationCount == other.m_iterationCount
@@ -162,7 +165,7 @@ bool Animation::animationsMatch(const Animation& other, bool matchPlayStates) co
 
 const String& Animation::initialName()
 {
-    static NeverDestroyed<String> initialValue(ASCIILiteral("none"));
+    static NeverDestroyed<String> initialValue(MAKE_STATIC_STRING_IMPL("none"));
     return initialValue;
 }
 

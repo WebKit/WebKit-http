@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,64 +29,70 @@
 
 #include "CompilationResult.h"
 #include "VM.h"
-#include "WasmFormat.h"
+#include "WasmB3IRGenerator.h"
+#include "WasmModuleInformation.h"
+#include <wtf/Bag.h>
+#include <wtf/SharedTask.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
 
-namespace JSC { namespace Wasm {
-class Memory;
+namespace JSC {
 
-class Plan {
+class CallLinkInfo;
+class JSGlobalObject;
+class JSPromiseDeferred;
+
+namespace Wasm {
+
+class Plan : public ThreadSafeRefCounted<Plan> {
 public:
-    JS_EXPORT_PRIVATE Plan(VM*, Vector<uint8_t>);
-    JS_EXPORT_PRIVATE Plan(VM*, const uint8_t*, size_t);
-    JS_EXPORT_PRIVATE ~Plan();
+    typedef void CallbackType(VM*, Plan&);
+    using CompletionTask = RefPtr<SharedTask<CallbackType>>;
+    static CompletionTask dontFinalize() { return createSharedTask<CallbackType>([](VM*, Plan&) { }); }
+    Plan(VM*, Ref<ModuleInformation>, CompletionTask&&);
 
-    JS_EXPORT_PRIVATE void run();
+    // Note: This constructor should only be used if you are not actually building a module e.g. validation/function tests
+    JS_EXPORT_PRIVATE Plan(VM*, const uint8_t*, size_t, CompletionTask&&);
+    virtual JS_EXPORT_PRIVATE ~Plan();
 
-    bool WARN_UNUSED_RETURN failed() const { return m_failed; }
-    const String& errorMessage() const
-    {
-        RELEASE_ASSERT(failed());
-        return m_errorMessage;
-    }
-    
-    std::unique_ptr<ModuleInformation>& getModuleInformation()
-    {
-        RELEASE_ASSERT(!failed());
-        return m_moduleInformation;
-    }
-    const Memory* memory() const
-    {
-        RELEASE_ASSERT(!failed());
-        return m_moduleInformation->memory.get();
-    }
-    size_t compiledFunctionCount() const
-    {
-        RELEASE_ASSERT(!failed());
-        return m_compiledFunctions.size();
-    }
-    const FunctionCompilation* compiledFunction(size_t i) const
-    {
-        RELEASE_ASSERT(!failed());
-        return m_compiledFunctions.at(i).get();
-    }
-    CompiledFunctions& getCompiledFunctions()
-    {
-        RELEASE_ASSERT(!failed());
-        return m_compiledFunctions;
-    }
+    // If you guarantee the ordering here, you can rely on FIFO of the
+    // completion tasks being called.
+    void addCompletionTask(VM&, CompletionTask&&);
 
-private:
-    std::unique_ptr<ModuleInformation> m_moduleInformation;
-    CompiledFunctions m_compiledFunctions;
+    void setMode(MemoryMode mode) { m_mode = mode; }
+    MemoryMode mode() const { return m_mode; }
 
-    VM* m_vm;
+    const String& errorMessage() const { return m_errorMessage; }
+
+    bool WARN_UNUSED_RETURN failed() const { return !errorMessage().isNull(); }
+    virtual bool hasWork() const = 0;
+    enum CompilationEffort { All, Partial };
+    virtual void work(CompilationEffort = All) = 0;
+    virtual bool multiThreaded() const = 0;
+
+    void waitForCompletion();
+    // Returns true if it cancelled the plan.
+    bool tryRemoveVMAndCancelIfLast(VM&);
+
+protected:
+    void runCompletionTasks(const AbstractLocker&);
+    void fail(const AbstractLocker&, String&& errorMessage);
+
+    virtual bool isComplete() const = 0;
+    virtual void complete(const AbstractLocker&) = 0;
+
+    Ref<ModuleInformation> m_moduleInformation;
+
+    Vector<std::pair<VM*, CompletionTask>, 1> m_completionTasks;
+
     const uint8_t* m_source;
     const size_t m_sourceLength;
-    bool m_failed { true };
     String m_errorMessage;
+    MemoryMode m_mode { MemoryMode::BoundsChecking };
+    Lock m_lock;
+    Condition m_completed;
 };
+
 
 } } // namespace JSC::Wasm
 

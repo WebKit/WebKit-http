@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,23 +39,30 @@ JSArray* createEmptyRegExpMatchesArray(JSGlobalObject* globalObject, JSString* i
     GCDeferralContext deferralContext(vm.heap);
     
     if (UNLIKELY(globalObject->isHavingABadTime())) {
-        array = JSArray::tryCreateUninitialized(vm, &deferralContext, globalObject->regExpMatchesArrayStructure(), regExp->numSubpatterns() + 1);
-        
-        array->initializeIndexWithoutBarrier(0, jsEmptyString(&vm));
+        ObjectInitializationScope scope(vm);
+        array = JSArray::tryCreateUninitializedRestricted(scope, &deferralContext, globalObject->regExpMatchesArrayStructure(), regExp->numSubpatterns() + 1);
+        // FIXME: we should probably throw an out of memory error here, but
+        // when making this change we should check that all clients of this
+        // function will correctly handle an exception being thrown from here.
+        // https://bugs.webkit.org/show_bug.cgi?id=169786
+        RELEASE_ASSERT(array);
+
+        array->initializeIndexWithoutBarrier(scope, 0, jsEmptyString(&vm));
         
         if (unsigned numSubpatterns = regExp->numSubpatterns()) {
             for (unsigned i = 1; i <= numSubpatterns; ++i)
-                array->initializeIndexWithoutBarrier(i, jsUndefined());
+                array->initializeIndexWithoutBarrier(scope, i, jsUndefined());
         }
     } else {
-        array = tryCreateUninitializedRegExpMatchesArray(vm, &deferralContext, globalObject->regExpMatchesArrayStructure(), regExp->numSubpatterns() + 1);
+        ObjectInitializationScope scope(vm);
+        array = tryCreateUninitializedRegExpMatchesArray(scope, &deferralContext, globalObject->regExpMatchesArrayStructure(), regExp->numSubpatterns() + 1);
         RELEASE_ASSERT(array);
         
-        array->initializeIndexWithoutBarrier(0, jsEmptyString(&vm), ArrayWithContiguous);
+        array->initializeIndexWithoutBarrier(scope, 0, jsEmptyString(&vm), ArrayWithContiguous);
         
         if (unsigned numSubpatterns = regExp->numSubpatterns()) {
             for (unsigned i = 1; i <= numSubpatterns; ++i)
-                array->initializeIndexWithoutBarrier(i, jsUndefined(), ArrayWithContiguous);
+                array->initializeIndexWithoutBarrier(scope, i, jsUndefined(), ArrayWithContiguous);
         }
     }
 
@@ -64,7 +71,9 @@ JSArray* createEmptyRegExpMatchesArray(JSGlobalObject* globalObject, JSString* i
     return array;
 }
 
-static Structure* createStructureImpl(VM& vm, JSGlobalObject* globalObject, IndexingType indexingType)
+enum class ShouldCreateGroups { No, Yes };
+
+static Structure* createStructureImpl(VM& vm, JSGlobalObject* globalObject, IndexingType indexingType, ShouldCreateGroups shouldCreateGroups = ShouldCreateGroups::No)
 {
     Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(indexingType);
     PropertyOffset offset;
@@ -72,6 +81,14 @@ static Structure* createStructureImpl(VM& vm, JSGlobalObject* globalObject, Inde
     ASSERT(offset == RegExpMatchesArrayIndexPropertyOffset);
     structure = Structure::addPropertyTransition(vm, structure, vm.propertyNames->input, 0, offset);
     ASSERT(offset == RegExpMatchesArrayInputPropertyOffset);
+    switch (shouldCreateGroups) {
+    case ShouldCreateGroups::Yes:
+        structure = Structure::addPropertyTransition(vm, structure, vm.propertyNames->groups, 0, offset);
+        ASSERT(offset == RegExpMatchesArrayGroupsPropertyOffset);
+        break;
+    case ShouldCreateGroups::No:
+        break;
+    }
     return structure;
 }
 
@@ -83,6 +100,16 @@ Structure* createRegExpMatchesArrayStructure(VM& vm, JSGlobalObject* globalObjec
 Structure* createRegExpMatchesArraySlowPutStructure(VM& vm, JSGlobalObject* globalObject)
 {
     return createStructureImpl(vm, globalObject, ArrayWithSlowPutArrayStorage);
+}
+
+Structure* createRegExpMatchesArrayWithGroupsStructure(VM& vm, JSGlobalObject* globalObject)
+{
+    return createStructureImpl(vm, globalObject, ArrayWithContiguous, ShouldCreateGroups::Yes);
+}
+
+Structure* createRegExpMatchesArrayWithGroupsSlowPutStructure(VM& vm, JSGlobalObject* globalObject)
+{
+    return createStructureImpl(vm, globalObject, ArrayWithSlowPutArrayStorage, ShouldCreateGroups::Yes);
 }
 
 } // namespace JSC

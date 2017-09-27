@@ -30,6 +30,7 @@
 
 #include "IDBCursorInfo.h"
 #include "IDBGetAllRecordsData.h"
+#include "IDBGetRecordData.h"
 #include "IDBGetResult.h"
 #include "IDBIndexInfo.h"
 #include "IDBIterateCursorData.h"
@@ -65,7 +66,7 @@ IDBError MemoryIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info
         m_databaseInfo = std::make_unique<IDBDatabaseInfo>(m_identifier.databaseName(), 0);
 
     info = *m_databaseInfo;
-    return { };
+    return IDBError { };
 }
 
 void MemoryIDBBackingStore::setDatabaseInfo(const IDBDatabaseInfo& info)
@@ -81,7 +82,7 @@ IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
     LOG(IndexedDB, "MemoryIDBBackingStore::beginTransaction");
 
     if (m_transactions.contains(info.identifier()))
-        return { IDBDatabaseException::InvalidStateError, "Backing store asked to create transaction it already has a record of" };
+        return IDBError { InvalidStateError, "Backing store asked to create transaction it already has a record of" };
 
     auto transaction = MemoryBackingStoreTransaction::create(*this, info);
 
@@ -98,7 +99,7 @@ IDBError MemoryIDBBackingStore::beginTransaction(const IDBTransactionInfo& info)
 
     m_transactions.set(info.identifier(), WTFMove(transaction));
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::abortTransaction(const IDBResourceIdentifier& transactionIdentifier)
@@ -107,11 +108,11 @@ IDBError MemoryIDBBackingStore::abortTransaction(const IDBResourceIdentifier& tr
 
     auto transaction = m_transactions.take(transactionIdentifier);
     if (!transaction)
-        return { IDBDatabaseException::InvalidStateError, "Backing store asked to abort transaction it didn't have record of" };
+        return IDBError { InvalidStateError, "Backing store asked to abort transaction it didn't have record of" };
 
     transaction->abort();
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::commitTransaction(const IDBResourceIdentifier& transactionIdentifier)
@@ -120,11 +121,11 @@ IDBError MemoryIDBBackingStore::commitTransaction(const IDBResourceIdentifier& t
 
     auto transaction = m_transactions.take(transactionIdentifier);
     if (!transaction)
-        return { IDBDatabaseException::InvalidStateError, "Backing store asked to commit transaction it didn't have record of" };
+        return IDBError { InvalidStateError, "Backing store asked to commit transaction it didn't have record of" };
 
     transaction->commit();
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& info)
@@ -133,7 +134,7 @@ IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& t
 
     ASSERT(m_databaseInfo);
     if (m_databaseInfo->hasObjectStore(info.name()))
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     ASSERT(!m_objectStoresByIdentifier.contains(info.identifier()));
     auto objectStore = MemoryObjectStore::create(info);
@@ -147,7 +148,7 @@ IDBError MemoryIDBBackingStore::createObjectStore(const IDBResourceIdentifier& t
     rawTransaction->addNewObjectStore(objectStore.get());
     registerObjectStore(WTFMove(objectStore));
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier)
@@ -156,7 +157,7 @@ IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& t
 
     ASSERT(m_databaseInfo);
     if (!m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier))
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     auto transaction = m_transactions.get(transactionIdentifier);
     ASSERT(transaction);
@@ -165,12 +166,12 @@ IDBError MemoryIDBBackingStore::deleteObjectStore(const IDBResourceIdentifier& t
     auto objectStore = takeObjectStoreByIdentifier(objectStoreIdentifier);
     ASSERT(objectStore);
     if (!objectStore)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     m_databaseInfo->deleteObjectStore(objectStore->info().name());
     transaction->objectStoreDeleted(*objectStore);
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const String& newName)
@@ -179,7 +180,7 @@ IDBError MemoryIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& t
 
     ASSERT(m_databaseInfo);
     if (!m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier))
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     auto transaction = m_transactions.get(transactionIdentifier);
     ASSERT(transaction);
@@ -188,7 +189,7 @@ IDBError MemoryIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& t
     auto objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     ASSERT(objectStore);
     if (!objectStore)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     String oldName = objectStore->info().name();
     objectStore->rename(newName);
@@ -196,7 +197,7 @@ IDBError MemoryIDBBackingStore::renameObjectStore(const IDBResourceIdentifier& t
 
     m_databaseInfo->renameObjectStore(objectStoreIdentifier, newName);
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier)
@@ -213,11 +214,11 @@ IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& tr
 
     auto objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     if (!objectStore)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     objectStore->clear();
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transactionIdentifier, const IDBIndexInfo& info)
@@ -230,7 +231,7 @@ IDBError MemoryIDBBackingStore::createIndex(const IDBResourceIdentifier& transac
 
     auto* objectStore = m_objectStoresByIdentifier.get(info.objectStoreIdentifier());
     if (!objectStore)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     return objectStore->createIndex(*rawTransaction, info);
 }
@@ -245,7 +246,7 @@ IDBError MemoryIDBBackingStore::deleteIndex(const IDBResourceIdentifier& transac
 
     auto* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     if (!objectStore)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     return objectStore->deleteIndex(*rawTransaction, indexIdentifier);
 }
@@ -257,11 +258,11 @@ IDBError MemoryIDBBackingStore::renameIndex(const IDBResourceIdentifier& transac
     ASSERT(m_databaseInfo);
     auto* objectStoreInfo = m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier);
     if (!objectStoreInfo)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     auto* indexInfo = objectStoreInfo->infoForExistingIndex(indexIdentifier);
     if (!indexInfo)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     auto transaction = m_transactions.get(transactionIdentifier);
     ASSERT(transaction);
@@ -270,12 +271,12 @@ IDBError MemoryIDBBackingStore::renameIndex(const IDBResourceIdentifier& transac
     auto objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     ASSERT(objectStore);
     if (!objectStore)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     auto* index = objectStore->indexForIdentifier(indexIdentifier);
     ASSERT(index);
     if (!index)
-        return { IDBDatabaseException::ConstraintError };
+        return IDBError { ConstraintError };
 
     String oldName = index->info().name();
     objectStore->renameIndex(*index, newName);
@@ -283,7 +284,7 @@ IDBError MemoryIDBBackingStore::renameIndex(const IDBResourceIdentifier& transac
 
     indexInfo->rename(newName);
 
-    return { };
+    return IDBError { };
 }
 
 void MemoryIDBBackingStore::removeObjectStoreForVersionChangeAbort(MemoryObjectStore& objectStore)
@@ -313,7 +314,7 @@ IDBError MemoryIDBBackingStore::keyExistsInObjectStore(const IDBResourceIdentifi
     RELEASE_ASSERT(objectStore);
 
     keyExists = objectStore->containsRecord(keyData);
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::deleteRange(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range)
@@ -323,14 +324,14 @@ IDBError MemoryIDBBackingStore::deleteRange(const IDBResourceIdentifier& transac
     ASSERT(objectStoreIdentifier);
 
     if (!m_transactions.contains(transactionIdentifier))
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found to delete from") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found to delete from") };
 
     MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     if (!objectStore)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store object store found") };
 
     objectStore->deleteRange(range);
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const IDBValue& value)
@@ -341,30 +342,38 @@ IDBError MemoryIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
 
     auto transaction = m_transactions.get(transactionIdentifier);
     if (!transaction)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found to put record") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found to put record") };
 
     MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreInfo.identifier());
     if (!objectStore)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found to put record") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store object store found to put record") };
 
     return objectStore->addRecord(*transaction, keyData, value);
 }
 
-IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range, IDBGetResult& outValue)
+IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, const IDBKeyRangeData& range, IDBGetRecordDataType type, IDBGetResult& outValue)
 {
     LOG(IndexedDB, "MemoryIDBBackingStore::getRecord");
 
     ASSERT(objectStoreIdentifier);
 
     if (!m_transactions.contains(transactionIdentifier))
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found to get record") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found to get record") };
 
     MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     if (!objectStore)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store object store found") };
 
-    outValue = objectStore->valueForKeyRange(range);
-    return { };
+    switch (type) {
+    case IDBGetRecordDataType::KeyAndValue:
+        outValue = objectStore->valueForKeyRange(range);
+        break;
+    case IDBGetRecordDataType::KeyOnly:
+        outValue = objectStore->lowestKeyWithRecordInRange(range);
+        break;
+    }
+
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::getAllRecords(const IDBResourceIdentifier& transactionIdentifier, const IDBGetAllRecordsData& getAllRecordsData, IDBGetAllResult& result)
@@ -374,22 +383,22 @@ IDBError MemoryIDBBackingStore::getAllRecords(const IDBResourceIdentifier& trans
     ASSERT(getAllRecordsData.objectStoreIdentifier);
 
     if (!m_transactions.contains(transactionIdentifier))
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found to get all records") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found to get all records") };
 
     auto* objectStore = m_objectStoresByIdentifier.get(getAllRecordsData.objectStoreIdentifier);
     if (!objectStore)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store object store found") };
 
     if (getAllRecordsData.indexIdentifier) {
         auto* index = objectStore->indexForIdentifier(getAllRecordsData.indexIdentifier);
         if (!index)
-            return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store index found") };
+            return IDBError { UnknownError, ASCIILiteral("No backing store index found") };
 
         index->getAllRecords(getAllRecordsData.keyRangeData, getAllRecordsData.count, getAllRecordsData.getAllType, result);
     } else
         objectStore->getAllRecords(getAllRecordsData.keyRangeData, getAllRecordsData.count, getAllRecordsData.getAllType, result);
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, IndexedDB::IndexRecordType recordType, const IDBKeyRangeData& range, IDBGetResult& outValue)
@@ -399,14 +408,14 @@ IDBError MemoryIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& tran
     ASSERT(objectStoreIdentifier);
 
     if (!m_transactions.contains(transactionIdentifier))
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found to get record") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found to get record") };
 
     MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     if (!objectStore)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store object store found") };
 
     outValue = objectStore->indexValueForKeyRange(indexIdentifier, recordType, range);
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const IDBKeyRangeData& range, uint64_t& outCount)
@@ -416,15 +425,15 @@ IDBError MemoryIDBBackingStore::getCount(const IDBResourceIdentifier& transactio
     ASSERT(objectStoreIdentifier);
 
     if (!m_transactions.contains(transactionIdentifier))
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found to get count") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found to get count") };
 
     MemoryObjectStore* objectStore = m_objectStoresByIdentifier.get(objectStoreIdentifier);
     if (!objectStore)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store object store found") };
 
     outCount = objectStore->countForKeyRange(indexIdentifier, range);
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::generateKeyNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t& keyNumber)
@@ -439,11 +448,11 @@ IDBError MemoryIDBBackingStore::generateKeyNumber(const IDBResourceIdentifier& t
 
     keyNumber = objectStore->currentKeyGeneratorValue();
     if (keyNumber > maxGeneratedKeyValue)
-        return { IDBDatabaseException::ConstraintError, "Cannot generate new key value over 2^53 for object store operation" };
+        return IDBError { ConstraintError, "Cannot generate new key value over 2^53 for object store operation" };
 
     objectStore->setKeyGeneratorValue(keyNumber + 1);
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::revertGeneratedKeyNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, uint64_t keyNumber)
@@ -458,7 +467,7 @@ IDBError MemoryIDBBackingStore::revertGeneratedKeyNumber(const IDBResourceIdenti
 
     objectStore->setKeyGeneratorValue(keyNumber);
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreIdentifier, double newKeyNumber)
@@ -472,7 +481,7 @@ IDBError MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber(const IDBResourceI
     RELEASE_ASSERT(objectStore);
 
     if (newKeyNumber < objectStore->currentKeyGeneratorValue())
-        return { };
+        return IDBError { };
 
     uint64_t newKeyInteger(newKeyNumber);
     if (newKeyInteger <= uint64_t(newKeyNumber))
@@ -482,7 +491,7 @@ IDBError MemoryIDBBackingStore::maybeUpdateKeyGeneratorNumber(const IDBResourceI
 
     objectStore->setKeyGeneratorValue(newKeyInteger);
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::openCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBCursorInfo& info, IDBGetResult& outData)
@@ -492,17 +501,17 @@ IDBError MemoryIDBBackingStore::openCursor(const IDBResourceIdentifier& transact
     ASSERT(!MemoryCursor::cursorForIdentifier(info.identifier()));
 
     if (!m_transactions.contains(transactionIdentifier))
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found in which to open a cursor") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found in which to open a cursor") };
 
     switch (info.cursorSource()) {
     case IndexedDB::CursorSource::ObjectStore: {
         auto* objectStore = m_objectStoresByIdentifier.get(info.sourceIdentifier());
         if (!objectStore)
-            return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found") };
+            return IDBError { UnknownError, ASCIILiteral("No backing store object store found") };
 
         MemoryCursor* cursor = objectStore->maybeOpenCursor(info);
         if (!cursor)
-            return { IDBDatabaseException::UnknownError, ASCIILiteral("Could not create object store cursor in backing store") };
+            return IDBError { UnknownError, ASCIILiteral("Could not create object store cursor in backing store") };
 
         cursor->currentData(outData);
         break;
@@ -510,21 +519,21 @@ IDBError MemoryIDBBackingStore::openCursor(const IDBResourceIdentifier& transact
     case IndexedDB::CursorSource::Index:
         auto* objectStore = m_objectStoresByIdentifier.get(info.objectStoreIdentifier());
         if (!objectStore)
-            return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store object store found") };
+            return IDBError { UnknownError, ASCIILiteral("No backing store object store found") };
 
         auto* index = objectStore->indexForIdentifier(info.sourceIdentifier());
         if (!index)
-            return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store index found") };
+            return IDBError { UnknownError, ASCIILiteral("No backing store index found") };
 
         MemoryCursor* cursor = index->maybeOpenCursor(info);
         if (!cursor)
-            return { IDBDatabaseException::UnknownError, ASCIILiteral("Could not create index cursor in backing store") };
+            return IDBError { UnknownError, ASCIILiteral("Could not create index cursor in backing store") };
 
         cursor->currentData(outData);
         break;
     }
 
-    return { };
+    return IDBError { };
 }
 
 IDBError MemoryIDBBackingStore::iterateCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBIterateCursorData& data, IDBGetResult& outData)
@@ -532,15 +541,15 @@ IDBError MemoryIDBBackingStore::iterateCursor(const IDBResourceIdentifier& trans
     LOG(IndexedDB, "MemoryIDBBackingStore::iterateCursor");
 
     if (!m_transactions.contains(transactionIdentifier))
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store transaction found in which to iterate cursor") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store transaction found in which to iterate cursor") };
 
     auto* cursor = MemoryCursor::cursorForIdentifier(cursorIdentifier);
     if (!cursor)
-        return { IDBDatabaseException::UnknownError, ASCIILiteral("No backing store cursor found in which to iterate cursor") };
+        return IDBError { UnknownError, ASCIILiteral("No backing store cursor found in which to iterate cursor") };
 
     cursor->iterate(data.keyData, data.primaryKeyData, data.count, outData);
 
-    return { };
+    return IDBError { };
 }
 
 void MemoryIDBBackingStore::registerObjectStore(Ref<MemoryObjectStore>&& objectStore)

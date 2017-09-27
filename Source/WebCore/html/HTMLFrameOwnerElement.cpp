@@ -22,7 +22,6 @@
 #include "HTMLFrameOwnerElement.h"
 
 #include "DOMWindow.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "RenderWidget.h"
@@ -55,7 +54,7 @@ void HTMLFrameOwnerElement::setContentFrame(Frame* frame)
     ASSERT(!m_contentFrame || m_contentFrame->ownerElement() != this);
     ASSERT(frame);
     // Disconnected frames should not be allowed to load.
-    ASSERT(inDocument());
+    ASSERT(isConnected());
     m_contentFrame = frame;
 
     for (ContainerNode* node = this; node; node = node->parentOrShadowHostNode())
@@ -118,10 +117,10 @@ ExceptionOr<Document&> HTMLFrameOwnerElement::getSVGDocument() const
     if (is<SVGDocument>(document))
         return *document;
     // Spec: http://www.w3.org/TR/SVG/struct.html#InterfaceGetSVGDocument
-    return Exception { NOT_SUPPORTED_ERR };
+    return Exception { NotSupportedError };
 }
 
-void HTMLFrameOwnerElement::scheduleinvalidateStyleAndLayerComposition()
+void HTMLFrameOwnerElement::scheduleInvalidateStyleAndLayerComposition()
 {
     if (Style::postResolutionCallbacksAreSuspended()) {
         RefPtr<HTMLFrameOwnerElement> element = this;

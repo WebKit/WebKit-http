@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,69 +30,64 @@
 
 #include "FunctionPrototype.h"
 #include "JSCInlines.h"
+#include "JSModuleEnvironment.h"
 #include "JSModuleNamespaceObject.h"
-#include "JSModuleRecord.h"
+#include "JSWebAssemblyHelpers.h"
 #include "JSWebAssemblyInstance.h"
+#include "JSWebAssemblyLinkError.h"
+#include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyModule.h"
+#include "WasmPlan.h"
+#include "WasmWorklist.h"
+#include "WebAssemblyFunction.h"
 #include "WebAssemblyInstancePrototype.h"
+#include "WebAssemblyModuleRecord.h"
 
 #include "WebAssemblyInstanceConstructor.lut.h"
 
 namespace JSC {
 
-const ClassInfo WebAssemblyInstanceConstructor::s_info = { "Function", &Base::s_info, &constructorTableWebAssemblyInstance, CREATE_METHOD_TABLE(WebAssemblyInstanceConstructor) };
+const ClassInfo WebAssemblyInstanceConstructor::s_info = { "Function", &Base::s_info, &constructorTableWebAssemblyInstance, nullptr, CREATE_METHOD_TABLE(WebAssemblyInstanceConstructor) };
 
 /* Source for WebAssemblyInstanceConstructor.lut.h
  @begin constructorTableWebAssemblyInstance
  @end
  */
 
-static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* state)
+using Wasm::Plan;
+
+static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* exec)
 {
-    auto& vm = state->vm();
+    VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    auto* globalObject = state->lexicalGlobalObject();
 
     // If moduleObject is not a WebAssembly.Module instance, a TypeError is thrown.
-    JSWebAssemblyModule* module = jsDynamicCast<JSWebAssemblyModule*>(state->argument(0));
+    JSWebAssemblyModule* module = jsDynamicCast<JSWebAssemblyModule*>(vm, exec->argument(0));
     if (!module)
-        return JSValue::encode(throwException(state, scope, createTypeError(state, ASCIILiteral("first argument to WebAssembly.Instance must be a WebAssembly.Module"), defaultSourceAppender, runtimeTypeForValue(state->argument(0)))));
+        return JSValue::encode(throwException(exec, scope, createTypeError(exec, ASCIILiteral("first argument to WebAssembly.Instance must be a WebAssembly.Module"), defaultSourceAppender, runtimeTypeForValue(exec->argument(0)))));
 
     // If the importObject parameter is not undefined and Type(importObject) is not Object, a TypeError is thrown.
-    JSValue importArgument = state->argument(1);
+    JSValue importArgument = exec->argument(1);
     JSObject* importObject = importArgument.getObject();
     if (!importArgument.isUndefined() && !importObject)
-        return JSValue::encode(throwException(state, scope, createTypeError(state, ASCIILiteral("second argument to WebAssembly.Instance must be undefined or an Object"), defaultSourceAppender, runtimeTypeForValue(importArgument))));
+        return JSValue::encode(throwException(exec, scope, createTypeError(exec, ASCIILiteral("second argument to WebAssembly.Instance must be undefined or an Object"), defaultSourceAppender, runtimeTypeForValue(importArgument))));
+    
+    Structure* instanceStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->WebAssemblyInstanceStructure());
+    RETURN_IF_EXCEPTION(scope, { });
 
-    // If the list of module.imports is not empty and Type(importObject) is not Object, a TypeError is thrown.
-    if (module->moduleInformation()->imports.size() && !importObject)
-        return JSValue::encode(throwException(state, scope, createTypeError(state, ASCIILiteral("second argument to WebAssembly.Instance must be Object because the WebAssembly.Module has imports"), defaultSourceAppender, runtimeTypeForValue(importArgument))));
+    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, module, importObject, instanceStructure);
+    RETURN_IF_EXCEPTION(scope, { });
 
-    // FIXME String things from https://bugs.webkit.org/show_bug.cgi?id=164023
-    // Let exports be a list of (string, JS value) pairs that is mapped from each external value e in instance.exports as follows:
-    IdentifierSet instanceExports;
-    for (const auto& name : instanceExports) {
-        // FIXME validate according to Module.Instance spec.
-        (void)name;
-    }
-    Identifier moduleKey;
-    SourceCode sourceCode;
-    VariableEnvironment declaredVariables;
-    VariableEnvironment lexicalVariables;
-    auto* moduleRecord = JSModuleRecord::create(state, vm, globalObject->moduleRecordStructure(), moduleKey, sourceCode, declaredVariables, lexicalVariables);
-    auto* moduleNamespaceObject = JSModuleNamespaceObject::create(state, globalObject, globalObject->moduleNamespaceObjectStructure(), moduleRecord, instanceExports);
-
-    auto* structure = InternalFunction::createSubclassStructure(state, state->newTarget(), globalObject->WebAssemblyInstanceStructure());
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
-
-    return JSValue::encode(JSWebAssemblyInstance::create(vm, structure, moduleNamespaceObject));
+    instance->finalizeCreation(vm, exec, module->module().compileSync(instance->memoryMode()));
+    RETURN_IF_EXCEPTION(scope, { });
+    return JSValue::encode(instance);
 }
 
-static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyInstance(ExecState* state)
+static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyInstance(ExecState* exec)
 {
-    VM& vm = state->vm();
+    VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(state, scope, "WebAssembly.Instance"));
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "WebAssembly.Instance"));
 }
 
 WebAssemblyInstanceConstructor* WebAssemblyInstanceConstructor::create(VM& vm, Structure* structure, WebAssemblyInstancePrototype* thisPrototype)
@@ -110,8 +105,8 @@ Structure* WebAssemblyInstanceConstructor::createStructure(VM& vm, JSGlobalObjec
 void WebAssemblyInstanceConstructor::finishCreation(VM& vm, WebAssemblyInstancePrototype* prototype)
 {
     Base::finishCreation(vm, ASCIILiteral("Instance"));
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum | DontDelete);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }
 
 WebAssemblyInstanceConstructor::WebAssemblyInstanceConstructor(VM& vm, Structure* structure)
@@ -129,13 +124,6 @@ CallType WebAssemblyInstanceConstructor::getCallData(JSCell*, CallData& callData
 {
     callData.native.function = callJSWebAssemblyInstance;
     return CallType::Host;
-}
-
-void WebAssemblyInstanceConstructor::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    auto* thisObject = jsCast<WebAssemblyInstanceConstructor*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Base::visitChildren(thisObject, visitor);
 }
 
 } // namespace JSC

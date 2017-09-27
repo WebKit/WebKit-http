@@ -1,7 +1,9 @@
 This test requires JavaScript.
 
 PASS Selectors-API Level 2 Test Suite: HTML with Selectors Level 3 
+PASS Document should not support matches 
 PASS Detached Element supports matches 
+PASS Fragment should not support matches 
 PASS In-document Element supports matches 
 PASS DIV Element.matches(null) 
 PASS DIV Element.matches(undefined) 
@@ -43,6 +45,7 @@ PASS Detached Element.matches: Undeclared namespace: ns|div
 PASS Detached Element.matches: Undeclared namespace: :not(ns|div) 
 PASS Detached Element.matches: Invalid namespace: ^|div 
 PASS Detached Element.matches: Invalid namespace: $|div 
+PASS Detached Element.matches: Relative selector: >* 
 PASS In-document Element.matches: Empty String:  
 PASS In-document Element.matches: Invalid character: [ 
 PASS In-document Element.matches: Invalid character: ] 
@@ -74,6 +77,7 @@ PASS In-document Element.matches: Undeclared namespace: ns|div
 PASS In-document Element.matches: Undeclared namespace: :not(ns|div) 
 PASS In-document Element.matches: Invalid namespace: ^|div 
 PASS In-document Element.matches: Invalid namespace: $|div 
+PASS In-document Element.matches: Relative selector: >* 
 PASS In-document Element.matches: Type selector, matching html element (with no refNodes): html 
 PASS In-document Element.matches: Type selector, matching body element (with no refNodes): body 
 PASS In-document Element.matches: Universal selector, matching all children of element with specified ID (with no refNodes): #universal>* 
@@ -81,7 +85,7 @@ PASS In-document Element.matches: Universal selector, matching all grandchildren
 PASS In-document Element.matches: Universal selector, matching all descendants of element with specified ID (with no refNodes): #universal * 
 PASS In-document Element.matches: Attribute presence selector, matching align attribute with value (with no refNodes): .attr-presence-div1[align] 
 PASS In-document Element.matches: Attribute presence selector, matching align attribute with empty value (with no refNodes): .attr-presence-div2[align] 
-PASS In-document Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [TiTlE] 
+PASS In-document Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE] 
 PASS In-document Element.matches: Attribute presence selector, matching custom data-* attribute (with no refNodes): [data-attr-presence] 
 PASS In-document Element.matches: Attribute presence selector, matching attribute with non-ASCII characters (with no refNodes): ul[data-中文] 
 PASS In-document Element.matches: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected] 
@@ -137,7 +141,7 @@ PASS In-document Element.matches: :nth-last-child selector, matching every fourt
 PASS In-document Element.matches: :nth-of-type selector, matching the third em element (with no refNodes): #pseudo-nth-p1 em:nth-of-type(3) 
 PASS In-document Element.matches: :nth-of-type selector, matching every second element of their type (with no refNodes): #pseudo-nth-p1 :nth-of-type(2n) 
 PASS In-document Element.matches: :nth-of-type selector, matching every second elemetn of their type, starting from the first (with no refNodes): #pseudo-nth-p1 span:nth-of-type(2n-1) 
-PASS In-document Element.matches: :nth-last-of-type selector, matching the thrid last em element (with no refNodes): #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS In-document Element.matches: :nth-last-of-type selector, matching the third last em element (with no refNodes): #pseudo-nth-p1 em:nth-last-of-type(3) 
 PASS In-document Element.matches: :nth-last-of-type selector, matching every second last element of their type (with no refNodes): #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS In-document Element.matches: :nth-last-of-type selector, matching every second last element of their type, starting from the last (with no refNodes): #pseudo-nth-p1 span:nth-last-of-type(2n-1) 
 PASS In-document Element.matches: :first-of-type selector, matching the first em element (with no refNodes): #pseudo-nth-p1 em:first-of-type 
@@ -190,12 +194,6 @@ PASS In-document Element.matches: Descendant combinator, matching element with c
 PASS In-document Element.matches: Descendant combinator, matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1 .descendant-div3 
 PASS In-document Element.matches: Descendant combinator, whitespace characters (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS In-document Element.matches: Descendant combinator '>>', matching element that is a descendant of an element with id (with no refNodes): #descendant>>div 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): body>>#descendant-div1 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): div>>#descendant-div1 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element with id (with no refNodes): #descendant>>#descendant-div2 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with class that is a descendant of an element with id (with no refNodes): #descendant>>.descendant-div2 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS In-document Element.matches: Child combinator, matching element that is a child of an element with id (with no refNodes): #child>div 
 PASS In-document Element.matches: Child combinator, matching element with id that is a child of an element (with no refNodes): div>#child-div1 
 PASS In-document Element.matches: Child combinator, matching element with id that is a child of an element with id (with no refNodes): #child>#child-div1 
@@ -249,7 +247,7 @@ PASS Detached Element.matches: Universal selector, matching all grandchildren of
 PASS Detached Element.matches: Universal selector, matching all descendants of element with specified ID (with no refNodes): #universal * 
 PASS Detached Element.matches: Attribute presence selector, matching align attribute with value (with no refNodes): .attr-presence-div1[align] 
 PASS Detached Element.matches: Attribute presence selector, matching align attribute with empty value (with no refNodes): .attr-presence-div2[align] 
-PASS Detached Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [TiTlE] 
+PASS Detached Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE] 
 PASS Detached Element.matches: Attribute presence selector, matching custom data-* attribute (with no refNodes): [data-attr-presence] 
 PASS Detached Element.matches: Attribute presence selector, matching attribute with non-ASCII characters (with no refNodes): ul[data-中文] 
 PASS Detached Element.matches: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected] 
@@ -304,7 +302,7 @@ PASS Detached Element.matches: :nth-last-child selector, matching every fourth e
 PASS Detached Element.matches: :nth-of-type selector, matching the third em element (with no refNodes): #pseudo-nth-p1 em:nth-of-type(3) 
 PASS Detached Element.matches: :nth-of-type selector, matching every second element of their type (with no refNodes): #pseudo-nth-p1 :nth-of-type(2n) 
 PASS Detached Element.matches: :nth-of-type selector, matching every second elemetn of their type, starting from the first (with no refNodes): #pseudo-nth-p1 span:nth-of-type(2n-1) 
-PASS Detached Element.matches: :nth-last-of-type selector, matching the thrid last em element (with no refNodes): #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Detached Element.matches: :nth-last-of-type selector, matching the third last em element (with no refNodes): #pseudo-nth-p1 em:nth-last-of-type(3) 
 PASS Detached Element.matches: :nth-last-of-type selector, matching every second last element of their type (with no refNodes): #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Detached Element.matches: :nth-last-of-type selector, matching every second last element of their type, starting from the last (with no refNodes): #pseudo-nth-p1 span:nth-last-of-type(2n-1) 
 PASS Detached Element.matches: :first-of-type selector, matching the first em element (with no refNodes): #pseudo-nth-p1 em:first-of-type 
@@ -353,11 +351,6 @@ PASS Detached Element.matches: Descendant combinator, matching element with clas
 PASS Detached Element.matches: Descendant combinator, matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1 .descendant-div3 
 PASS Detached Element.matches: Descendant combinator, whitespace characters (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS Detached Element.matches: Descendant combinator '>>', matching element that is a descendant of an element with id (with no refNodes): #descendant>>div 
-PASS Detached Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): div>>#descendant-div1 
-PASS Detached Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element with id (with no refNodes): #descendant>>#descendant-div2 
-PASS Detached Element.matches: Descendant combinator '>>', matching element with class that is a descendant of an element with id (with no refNodes): #descendant>>.descendant-div2 
-PASS Detached Element.matches: Descendant combinator '>>', matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS Detached Element.matches: Child combinator, matching element that is a child of an element with id (with no refNodes): #child>div 
 PASS Detached Element.matches: Child combinator, matching element with id that is a child of an element (with no refNodes): div>#child-div1 
 PASS Detached Element.matches: Child combinator, matching element with id that is a child of an element with id (with no refNodes): #child>#child-div1 
@@ -411,7 +404,7 @@ PASS Fragment Element.matches: Universal selector, matching all grandchildren of
 PASS Fragment Element.matches: Universal selector, matching all descendants of element with specified ID (with no refNodes): #universal * 
 PASS Fragment Element.matches: Attribute presence selector, matching align attribute with value (with no refNodes): .attr-presence-div1[align] 
 PASS Fragment Element.matches: Attribute presence selector, matching align attribute with empty value (with no refNodes): .attr-presence-div2[align] 
-PASS Fragment Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [TiTlE] 
+PASS Fragment Element.matches: Attribute presence selector, matching title attribute, case insensitivity (with no refNodes): #attr-presence [*|TiTlE] 
 PASS Fragment Element.matches: Attribute presence selector, matching custom data-* attribute (with no refNodes): [data-attr-presence] 
 PASS Fragment Element.matches: Attribute presence selector, matching attribute with non-ASCII characters (with no refNodes): ul[data-中文] 
 PASS Fragment Element.matches: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected] 
@@ -466,7 +459,7 @@ PASS Fragment Element.matches: :nth-last-child selector, matching every fourth e
 PASS Fragment Element.matches: :nth-of-type selector, matching the third em element (with no refNodes): #pseudo-nth-p1 em:nth-of-type(3) 
 PASS Fragment Element.matches: :nth-of-type selector, matching every second element of their type (with no refNodes): #pseudo-nth-p1 :nth-of-type(2n) 
 PASS Fragment Element.matches: :nth-of-type selector, matching every second elemetn of their type, starting from the first (with no refNodes): #pseudo-nth-p1 span:nth-of-type(2n-1) 
-PASS Fragment Element.matches: :nth-last-of-type selector, matching the thrid last em element (with no refNodes): #pseudo-nth-p1 em:nth-last-of-type(3) 
+PASS Fragment Element.matches: :nth-last-of-type selector, matching the third last em element (with no refNodes): #pseudo-nth-p1 em:nth-last-of-type(3) 
 PASS Fragment Element.matches: :nth-last-of-type selector, matching every second last element of their type (with no refNodes): #pseudo-nth-p1 :nth-last-of-type(2n) 
 PASS Fragment Element.matches: :nth-last-of-type selector, matching every second last element of their type, starting from the last (with no refNodes): #pseudo-nth-p1 span:nth-last-of-type(2n-1) 
 PASS Fragment Element.matches: :first-of-type selector, matching the first em element (with no refNodes): #pseudo-nth-p1 em:first-of-type 
@@ -515,11 +508,6 @@ PASS Fragment Element.matches: Descendant combinator, matching element with clas
 PASS Fragment Element.matches: Descendant combinator, matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1 .descendant-div3 
 PASS Fragment Element.matches: Descendant combinator, whitespace characters (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS Fragment Element.matches: Descendant combinator '>>', matching element that is a descendant of an element with id (with no refNodes): #descendant>>div 
-PASS Fragment Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): div>>#descendant-div1 
-PASS Fragment Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element with id (with no refNodes): #descendant>>#descendant-div2 
-PASS Fragment Element.matches: Descendant combinator '>>', matching element with class that is a descendant of an element with id (with no refNodes): #descendant>>.descendant-div2 
-PASS Fragment Element.matches: Descendant combinator '>>', matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS Fragment Element.matches: Child combinator, matching element that is a child of an element with id (with no refNodes): #child>div 
 PASS Fragment Element.matches: Child combinator, matching element with id that is a child of an element (with no refNodes): div>#child-div1 
 PASS Fragment Element.matches: Child combinator, matching element with id that is a child of an element with id (with no refNodes): #child>#child-div1 
@@ -568,8 +556,6 @@ PASS Fragment Element.matches: Syntax, group of selectors separator, whitespace 
 PASS Fragment Element.matches: Syntax, group of selectors separator, whitespace before (with no refNodes): #group em	\r
 ,#group strong 
 PASS Fragment Element.matches: Syntax, group of selectors separator, no whitespace (with no refNodes): #group em,#group strong 
-FAIL In-document Element.matches: Universal selector, matching all children of the specified reference element (with refNode Element): >* The string did not match the expected pattern.
-FAIL In-document Element.matches: Universal selector, matching all grandchildren of the specified reference element (with refNode Element): >*>* The string did not match the expected pattern.
 FAIL In-document Element.matches: Universal selector, matching all descendants of the specified reference element (with refNode Element): * assert_false: The element #universal should not match the selector. expected false got true
 PASS In-document Element.matches: Attribute presence selector, matching align attribute with value (with refNode Element): .attr-presence-div1[align] 
 PASS In-document Element.matches: Attribute presence selector, matching align attribute with empty value (with refNode Element): .attr-presence-div2[align] 
@@ -628,7 +614,7 @@ PASS In-document Element.matches: :nth-last-child selector, matching every fourt
 PASS In-document Element.matches: :nth-of-type selector, matching the third em element (with refNode Element): em:nth-of-type(3) 
 PASS In-document Element.matches: :nth-of-type selector, matching every second element of their type (with refNode Element): :nth-of-type(2n) 
 PASS In-document Element.matches: :nth-of-type selector, matching every second elemetn of their type, starting from the first (with refNode Element): span:nth-of-type(2n-1) 
-PASS In-document Element.matches: :nth-last-of-type selector, matching the thrid last em element (with refNode Element): em:nth-last-of-type(3) 
+PASS In-document Element.matches: :nth-last-of-type selector, matching the third last em element (with refNode Element): em:nth-last-of-type(3) 
 PASS In-document Element.matches: :nth-last-of-type selector, matching every second last element of their type (with refNode Element): :nth-last-of-type(2n) 
 PASS In-document Element.matches: :nth-last-of-type selector, matching every second last element of their type, starting from the last (with refNode Element): span:nth-last-of-type(2n-1) 
 PASS In-document Element.matches: :first-of-type selector, matching the first em element (with refNode Element): em:first-of-type 
@@ -680,12 +666,6 @@ PASS In-document Element.matches: Descendant combinator, matching element with c
 PASS In-document Element.matches: Descendant combinator, matching element with class that is a descendant of an element with class (1) (with no refNodes): .descendant-div1 .descendant-div3 
 PASS In-document Element.matches: Descendant combinator, whitespace characters (1) (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS In-document Element.matches: Descendant combinator '>>', matching element that is a descendant of an element with id (1) (with no refNodes): #descendant>>div 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element (1) (with no refNodes): body>>#descendant-div1 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element (1) (with no refNodes): div>>#descendant-div1 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with id that is a descendant of an element with id (1) (with no refNodes): #descendant>>#descendant-div2 
-PASS In-document Element.matches: Descendant combinator '>>', matching element with class that is a descendant of an element with id (1) (with no refNodes): #descendant>>.descendant-div2 
-PASS In-document Element.matches: Descendant combinator, '>>', matching element with class that is a descendant of an element with class (1) (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS In-document Element.matches: Child combinator, matching element that is a child of an element with id (1) (with no refNodes): #child>div 
 PASS In-document Element.matches: Child combinator, matching element with id that is a child of an element (1) (with no refNodes): div>#child-div1 
 PASS In-document Element.matches: Child combinator, matching element with id that is a child of an element with id (1) (with no refNodes): #child>#child-div1 

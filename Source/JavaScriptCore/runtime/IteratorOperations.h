@@ -32,29 +32,38 @@
 
 namespace JSC {
 
-JSValue iteratorNext(ExecState*, JSValue iterator, JSValue);
-JSValue iteratorNext(ExecState*, JSValue iterator);
-JS_EXPORT_PRIVATE JSValue iteratorValue(ExecState*, JSValue iterator);
-bool iteratorComplete(ExecState*, JSValue iterator);
-JS_EXPORT_PRIVATE JSValue iteratorStep(ExecState*, JSValue iterator);
-JS_EXPORT_PRIVATE void iteratorClose(ExecState*, JSValue iterator);
+struct IterationRecord {
+    JSValue iterator;
+    JSValue nextMethod;
+};
+
+JSValue iteratorNext(ExecState*, IterationRecord, JSValue argument = JSValue());
+JS_EXPORT_PRIVATE JSValue iteratorValue(ExecState*, JSValue iterResult);
+bool iteratorComplete(ExecState*, JSValue iterResult);
+JS_EXPORT_PRIVATE JSValue iteratorStep(ExecState*, IterationRecord);
+JS_EXPORT_PRIVATE void iteratorClose(ExecState*, IterationRecord);
 JS_EXPORT_PRIVATE JSObject* createIteratorResultObject(ExecState*, JSValue, bool done);
 
 Structure* createIteratorResultObjectStructure(VM&, JSGlobalObject&);
 
-JS_EXPORT_PRIVATE JSValue iteratorForIterable(ExecState*, JSValue iterable);
+JS_EXPORT_PRIVATE JSValue iteratorMethod(ExecState&, JSObject*);
+JS_EXPORT_PRIVATE IterationRecord iteratorForIterable(ExecState&, JSObject*, JSValue iteratorMethod);
+JS_EXPORT_PRIVATE IterationRecord iteratorForIterable(ExecState*, JSValue iterable);
 
-template <typename CallBackType>
+JS_EXPORT_PRIVATE JSValue iteratorMethod(ExecState&, JSObject*);
+JS_EXPORT_PRIVATE bool hasIteratorMethod(ExecState&, JSValue);
+
+template<typename CallBackType>
 void forEachInIterable(ExecState* exec, JSValue iterable, const CallBackType& callback)
 {
     auto& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSValue iterator = iteratorForIterable(exec, iterable);
+    IterationRecord iterationRecord = iteratorForIterable(exec, iterable);
     RETURN_IF_EXCEPTION(scope, void());
     while (true) {
-        JSValue next = iteratorStep(exec, iterator);
-        if (next.isFalse() || UNLIKELY(scope.exception()))
+        JSValue next = iteratorStep(exec, iterationRecord);
+        if (UNLIKELY(scope.exception()) || next.isFalse())
             return;
 
         JSValue nextValue = iteratorValue(exec, next);
@@ -62,7 +71,33 @@ void forEachInIterable(ExecState* exec, JSValue iterable, const CallBackType& ca
 
         callback(vm, exec, nextValue);
         if (UNLIKELY(scope.exception())) {
-            iteratorClose(exec, iterator);
+            scope.release();
+            iteratorClose(exec, iterationRecord);
+            return;
+        }
+    }
+}
+
+template<typename CallBackType>
+void forEachInIterable(ExecState& state, JSObject* iterable, JSValue iteratorMethod, const CallBackType& callback)
+{
+    auto& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    auto iterationRecord = iteratorForIterable(state, iterable, iteratorMethod);
+    RETURN_IF_EXCEPTION(scope, void());
+    while (true) {
+        JSValue next = iteratorStep(&state, iterationRecord);
+        if (UNLIKELY(scope.exception()) || next.isFalse())
+            return;
+
+        JSValue nextValue = iteratorValue(&state, next);
+        RETURN_IF_EXCEPTION(scope, void());
+
+        callback(vm, state, nextValue);
+        if (UNLIKELY(scope.exception())) {
+            scope.release();
+            iteratorClose(&state, iterationRecord);
             return;
         }
     }

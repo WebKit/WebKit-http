@@ -29,6 +29,10 @@
 
 #include <wtf/Forward.h>
 
+#if USE(GLIB) && defined(GETTEXT_PACKAGE)
+#include <glib/gi18n-lib.h>
+#endif
+
 namespace WebCore {
 
     class IntSize;
@@ -54,7 +58,7 @@ namespace WebCore {
     String contextMenuItemTagOpenImageInNewWindow();
     String contextMenuItemTagDownloadImageToDisk();
     String contextMenuItemTagCopyImageToClipboard();
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     String contextMenuItemTagCopyImageUrlToClipboard();
 #endif
     String contextMenuItemTagOpenFrameInNewWindow();
@@ -80,7 +84,7 @@ namespace WebCore {
     String contextMenuItemTagUnicodeInsertZWJMark();
     String contextMenuItemTagUnicodeInsertZWNJMark();
 #endif
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
     String contextMenuItemTagSelectAll();
 #endif
     String contextMenuItemTagNoGuessesFound();
@@ -171,12 +175,17 @@ namespace WebCore {
     String AXAttachmentRoleText();
     String AXDetailsText();
     String AXSummaryText();
+    String AXFeedText();
     String AXFigureText();
     String AXEmailFieldText();
     String AXTelephoneFieldText();
     String AXURLFieldText();
     String AXDateFieldText();
     String AXTimeFieldText();
+    String AXDateTimeFieldText();
+    String AXMonthFieldText();
+    String AXNumberFieldText();
+    String AXWeekFieldText();
     
     String AXButtonActionVerb();
     String AXRadioButtonActionVerb();
@@ -224,8 +233,6 @@ namespace WebCore {
     WEBCORE_EXPORT String builtInPDFPluginName();
     WEBCORE_EXPORT String pdfDocumentTypeDescription();
     WEBCORE_EXPORT String postScriptDocumentTypeDescription();
-    String keygenMenuItem512();
-    String keygenMenuItem1024();
     String keygenMenuItem2048();
     String keygenKeychainItemName(const String& host);
 #endif
@@ -305,10 +312,28 @@ namespace WebCore {
     WEBCORE_EXPORT String exitFullScreenButtonAccessibilityTitle();
 #endif
 
+#if USE(GLIB) && defined(GETTEXT_PACKAGE)
+#define WEB_UI_STRING(string, description) WebCore::localizedString(_(string))
+#define WEB_UI_STRING_KEY(string, key, description) WebCore::localizedString(C_(key, string))
+#define WEB_UI_STRING_WITH_MNEMONIC(string, mnemonic, description) WebCore::localizedString(_(mnemonic))
+#else
 #define WEB_UI_STRING(string, description) WebCore::localizedString(string)
 #define WEB_UI_STRING_KEY(string, key, description) WebCore::localizedString(key)
+#define WEB_UI_STRING_WITH_MNEMONIC(string, mnemonic, description) WebCore::localizedString(string)
+#endif
+
+#if USE(CF)
+// This is exactly as WEB_UI_STRING, but renamed to ensure the string is not scanned by non-CF ports.
+#define WEB_UI_CFSTRING(string, description) WebCore::localizedString(string)
+#endif
 
     WEBCORE_EXPORT String localizedString(const char* key);
+    String formatLocalizedString(String format, ...);
+
+#ifdef __OBJC__
+#define WEB_UI_NSSTRING(string, description) WebCore::localizedNSString(string)
+    WEBCORE_EXPORT NSString *localizedNSString(NSString *key) NS_FORMAT_ARGUMENT(1);
+#endif
 
 } // namespace WebCore
 

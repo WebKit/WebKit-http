@@ -29,7 +29,7 @@
 #include "FloatRect.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -61,7 +61,7 @@ static void drawCrossfadeSubimage(GraphicsContext& context, Image& image, Compos
         context.setAlpha(opacity);
 
     if (targetSize != imageSize)
-        context.scale(FloatSize(targetSize.width() / imageSize.width(), targetSize.height() / imageSize.height()));
+        context.scale(targetSize / imageSize);
 
     context.drawImage(image, IntPoint(), ImagePaintingOptions(drawImageOperation));
 
@@ -72,7 +72,7 @@ static void drawCrossfadeSubimage(GraphicsContext& context, Image& image, Compos
 void CrossfadeGeneratedImage::drawCrossfade(GraphicsContext& context)
 {
     // Draw nothing if either of the images hasn't loaded yet.
-    if (m_fromImage.ptr() == Image::nullImage() || m_toImage.ptr() == Image::nullImage())
+    if (m_fromImage.ptr() == &Image::nullImage() || m_toImage.ptr() == &Image::nullImage())
         return;
 
     GraphicsContextStateSaver stateSaver(context);
@@ -86,17 +86,18 @@ void CrossfadeGeneratedImage::drawCrossfade(GraphicsContext& context)
     context.endTransparencyLayer();
 }
 
-void CrossfadeGeneratedImage::draw(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator compositeOp, BlendMode blendMode, ImageOrientationDescription)
+ImageDrawResult CrossfadeGeneratedImage::draw(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator compositeOp, BlendMode blendMode, DecodingMode, ImageOrientationDescription)
 {
     GraphicsContextStateSaver stateSaver(context);
     context.setCompositeOperation(compositeOp, blendMode);
     context.clip(dstRect);
-    context.translate(dstRect.x(), dstRect.y());
+    context.translate(dstRect.location());
     if (dstRect.size() != srcRect.size())
-        context.scale(FloatSize(dstRect.width() / srcRect.width(), dstRect.height() / srcRect.height()));
-    context.translate(-srcRect.x(), -srcRect.y());
+        context.scale(dstRect.size() / srcRect.size());
+    context.translate(-srcRect.location());
     
     drawCrossfade(context);
+    return ImageDrawResult::DidDraw;
 }
 
 void CrossfadeGeneratedImage::drawPattern(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator compositeOp, BlendMode blendMode)

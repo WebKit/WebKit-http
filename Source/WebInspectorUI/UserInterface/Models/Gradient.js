@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Gradient = class Gradient
+WI.Gradient = class Gradient
 {
     constructor(type, stops)
     {
@@ -38,10 +38,10 @@ WebInspector.Gradient = class Gradient
         var type;
         var openingParenthesisIndex = cssString.indexOf("(");
         var typeString = cssString.substring(0, openingParenthesisIndex);
-        if (typeString.indexOf(WebInspector.Gradient.Types.Linear) !== -1)
-            type = WebInspector.Gradient.Types.Linear;
-        else if (typeString.indexOf(WebInspector.Gradient.Types.Radial) !== -1)
-            type = WebInspector.Gradient.Types.Radial;
+        if (typeString.indexOf(WI.Gradient.Types.Linear) !== -1)
+            type = WI.Gradient.Types.Linear;
+        else if (typeString.indexOf(WI.Gradient.Types.Radial) !== -1)
+            type = WI.Gradient.Types.Radial;
         else
             return null;
 
@@ -85,11 +85,14 @@ WebInspector.Gradient = class Gradient
             ch++;
         }
 
+        if (openParentheses !== -1)
+            return null;
+
         var gradient;
-        if (type === WebInspector.Gradient.Types.Linear)
-            gradient = WebInspector.LinearGradient.fromComponents(components);
+        if (type === WI.Gradient.Types.Linear)
+            gradient = WI.LinearGradient.fromComponents(components);
         else
-            gradient = WebInspector.RadialGradient.fromComponents(components);
+            gradient = WI.RadialGradient.fromComponents(components);
 
         if (gradient)
             gradient.repeats = typeString.startsWith("repeating");
@@ -102,7 +105,7 @@ WebInspector.Gradient = class Gradient
         // FIXME: handle lengths.
         var stops = components.map(function(component) {
             while (component.length) {
-                var color = WebInspector.Color.fromString(component.shift());
+                var color = WI.Color.fromString(component.shift());
                 if (!color)
                     continue;
 
@@ -157,99 +160,125 @@ WebInspector.Gradient = class Gradient
     }
 };
 
-WebInspector.Gradient.Types = {
+WI.Gradient.Types = {
     Linear: "linear-gradient",
     Radial: "radial-gradient"
 };
 
-WebInspector.LinearGradient = class LinearGradient extends WebInspector.Gradient
+WI.LinearGradient = class LinearGradient extends WI.Gradient
 {
     constructor(angle, stops)
     {
-        super(WebInspector.Gradient.Types.Linear, stops);
-        this.angle = angle;
+        super(WI.Gradient.Types.Linear, stops);
+        this._angle = angle;
     }
 
     // Static
 
     static fromComponents(components)
     {
-        var angle = 180;
+        let angle = {value: 180, units: WI.LinearGradient.AngleUnits.DEG};
 
-        if (components[0].length === 1 && components[0][0].substr(-3) === "deg") {
-            angle = (parseFloat(components[0][0]) % 360 + 360) % 360;
+        if (components[0].length === 1 && !WI.Color.fromString(components[0][0])) {
+            let match = components[0][0].match(/([-\d\.]+)(\w+)/);
+            if (!match || !Object.values(WI.LinearGradient.AngleUnits).includes(match[2]))
+                return null;
+
+            angle.value = parseFloat(match[1]);
+            angle.units = match[2];
+
             components.shift();
         } else if (components[0][0] === "to") {
             components[0].shift();
             switch (components[0].sort().join(" ")) {
             case "top":
-                angle = 0;
+                angle.value = 0;
                 break;
             case "right top":
-                angle = 45;
+                angle.value = 45;
                 break;
             case "right":
-                angle = 90;
+                angle.value = 90;
                 break;
             case "bottom right":
-                angle = 135;
+                angle.value = 135;
                 break;
             case "bottom":
-                angle = 180;
+                angle.value = 180;
                 break;
             case "bottom left":
-                angle = 225;
+                angle.value = 225;
                 break;
             case "left":
-                angle = 270;
+                angle.value = 270;
                 break;
             case "left top":
-                angle = 315;
+                angle.value = 315;
                 break;
             default:
                 return null;
             }
+
             components.shift();
-        } else if (components[0].length !== 1 && !WebInspector.Color.fromString(components[0][0])) {
+        } else if (components[0].length !== 1 && !WI.Color.fromString(components[0][0])) {
             // If the first component is not a color, then we're dealing with a
             // legacy linear gradient format that we don't support.
             return null;
         }
 
-        var stops = WebInspector.Gradient.stopsWithComponents(components);
+        var stops = WI.Gradient.stopsWithComponents(components);
         if (!stops)
             return null;
 
-        return new WebInspector.LinearGradient(angle, stops);
+        return new WI.LinearGradient(angle, stops);
     }
 
     // Public
 
+    set angleValue(value) { this._angle.value = value; }
+
+    get angleValue()
+    {
+        return this._angle.value.maxDecimals(2);
+    }
+
+    set angleUnits(units)
+    {
+        if (units === this._angle.units)
+            return;
+
+        this._angle.value = this._angleValueForUnits(units);
+        this._angle.units = units;
+    }
+
+    get angleUnits() { return this._angle.units; }
+
     copy()
     {
-        return new WebInspector.LinearGradient(this.angle, this.stops.concat());
+        return new WI.LinearGradient(this._angle, this.stops.concat());
     }
 
     toString()
     {
-        var str = "";
+        let str = "";
 
-        if (this.angle === 0)
+        let deg = this._angleValueForUnits(WI.LinearGradient.AngleUnits.DEG);
+        if (deg === 0)
             str += "to top";
-        else if (this.angle === 45)
+        else if (deg === 45)
             str += "to top right";
-        else if (this.angle === 90)
+        else if (deg === 90)
             str += "to right";
-        else if (this.angle === 135)
+        else if (deg === 135)
             str += "to bottom right";
-        else if (this.angle === 225)
+        else if (deg === 225)
             str += "to bottom left";
-        else if (this.angle === 270)
+        else if (deg === 270)
             str += "to left";
-        else if (this.angle === 315)
+        else if (deg === 315)
             str += "to top left";
-        else if (this.angle !== 180)
-            str += this.angle + "deg";
+        else if (deg !== 180)
+            str += this.angleValue + this.angleUnits;
 
         if (str !== "")
             str += ", ";
@@ -258,13 +287,74 @@ WebInspector.LinearGradient = class LinearGradient extends WebInspector.Gradient
 
         return (this.repeats ? "repeating-" : "") + this.type + "(" + str + ")";
     }
+
+    // Private
+
+    _angleValueForUnits(units)
+    {
+        if (units === this._angle.units)
+            return this._angle.value;
+
+        let deg = 0;
+
+        switch (this._angle.units) {
+        case WI.LinearGradient.AngleUnits.DEG:
+            deg = this._angle.value;
+            break;
+
+        case WI.LinearGradient.AngleUnits.RAD:
+            deg = this._angle.value * 180 / Math.PI;
+            break;
+
+        case WI.LinearGradient.AngleUnits.GRAD:
+            deg = this._angle.value / 400 * 360;
+            break;
+
+        case WI.LinearGradient.AngleUnits.TURN:
+            deg = this._angle.value * 360;
+            break;
+
+        default:
+            WI.reportInternalError(`Unknown angle units "${this._angle.units}"`);
+            return 0;
+        }
+
+        let value = 0;
+
+        switch (units) {
+        case WI.LinearGradient.AngleUnits.DEG:
+            value = deg;
+            break;
+
+        case WI.LinearGradient.AngleUnits.RAD:
+            value = deg * Math.PI / 180;
+            break;
+
+        case WI.LinearGradient.AngleUnits.GRAD:
+            value = deg / 360 * 400;
+            break;
+
+        case WI.LinearGradient.AngleUnits.TURN:
+            value = deg / 360;
+            break;
+        }
+
+        return value;
+    }
 };
 
-WebInspector.RadialGradient = class RadialGradient extends WebInspector.Gradient
+WI.LinearGradient.AngleUnits = {
+    DEG: "deg",
+    RAD: "rad",
+    GRAD: "grad",
+    TURN: "turn",
+};
+
+WI.RadialGradient = class RadialGradient extends WI.Gradient
 {
     constructor(sizing, stops)
     {
-        super(WebInspector.Gradient.Types.Radial, stops);
+        super(WI.Gradient.Types.Radial, stops);
         this.sizing = sizing;
     }
 
@@ -272,20 +362,20 @@ WebInspector.RadialGradient = class RadialGradient extends WebInspector.Gradient
 
     static fromComponents(components)
     {
-        var sizing = !WebInspector.Color.fromString(components[0].join(" ")) ? components.shift().join(" ") : "";
+        var sizing = !WI.Color.fromString(components[0].join(" ")) ? components.shift().join(" ") : "";
 
-        var stops = WebInspector.Gradient.stopsWithComponents(components);
+        var stops = WI.Gradient.stopsWithComponents(components);
         if (!stops)
             return null;
 
-        return new WebInspector.RadialGradient(sizing, stops);
+        return new WI.RadialGradient(sizing, stops);
     }
 
     // Public
 
     copy()
     {
-        return new WebInspector.RadialGradient(this.sizing, this.stops.concat());
+        return new WI.RadialGradient(this.sizing, this.stops.concat());
     }
 
     toString()

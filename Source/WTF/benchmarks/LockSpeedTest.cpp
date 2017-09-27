@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,7 +24,7 @@
  */
 
 // On Mac, you can build this like so:
-// xcrun clang++ -o LockSpeedTest Source/WTF/benchmarks/LockSpeedTest.cpp -O3 -W -ISource/WTF -ISource/WTF/benchmarks -LWebKitBuild/Release -lWTF -framework Foundation -licucore -std=c++11 -fvisibility=hidden
+// xcrun clang++ -o LockSpeedTest Source/WTF/benchmarks/LockSpeedTest.cpp -O3 -W -ISource/WTF -ISource/WTF/icu -ISource/WTF/benchmarks -LWebKitBuild/Release -lWTF -framework Foundation -licucore -std=c++14 -fvisibility=hidden
 
 #include "config.h"
 
@@ -53,7 +53,7 @@ double secondsPerTest;
     
 NO_RETURN void usage()
 {
-    printf("Usage: LockSpeedTest yieldspinlock|pausespinlock|wordlock|lock|barginglock|bargingwordlock|thunderlock|thunderwordlock|cascadelock|cascadewordlockhandofflock|mutex|all <num thread groups> <num threads per group> <work per critical section> <work between critical sections> <spin limit> <seconds per test>\n");
+    printf("Usage: LockSpeedTest yieldspinlock|pausespinlock|wordlock|lock|barginglock|bargingwordlock|thunderlock|thunderwordlock|cascadelock|cascadewordlock|handofflock|unfairlock|mutex|all <num thread groups> <num threads per group> <work per critical section> <work between critical sections> <spin limit> <seconds per test>\n");
     exit(1);
 }
 
@@ -77,7 +77,7 @@ struct Benchmark {
     {
         std::unique_ptr<WithPadding<LockType>[]> locks = std::make_unique<WithPadding<LockType>[]>(numThreadGroups);
         std::unique_ptr<WithPadding<double>[]> words = std::make_unique<WithPadding<double>[]>(numThreadGroups);
-        std::unique_ptr<ThreadIdentifier[]> threads = std::make_unique<ThreadIdentifier[]>(numThreadGroups * numThreadsPerGroup);
+        std::unique_ptr<RefPtr<Thread>[]> threads = std::make_unique<RefPtr<Thread>[]>(numThreadGroups * numThreadsPerGroup);
 
         volatile bool keepGoing = true;
 
@@ -90,7 +90,7 @@ struct Benchmark {
             words[threadGroupIndex].value = 0;
 
             for (unsigned threadIndex = numThreadsPerGroup; threadIndex--;) {
-                threads[threadGroupIndex * numThreadsPerGroup + threadIndex] = createThread(
+                threads[threadGroupIndex * numThreadsPerGroup + threadIndex] = Thread::create(
                     "Benchmark thread",
                     [threadGroupIndex, &locks, &words, &keepGoing, &numIterationsLock, &numIterations] () {
                         double localWord = 0;
@@ -100,13 +100,11 @@ struct Benchmark {
                             locks[threadGroupIndex].value.lock();
                             for (unsigned j = workPerCriticalSection; j--;) {
                                 words[threadGroupIndex].value += value;
-                                words[threadGroupIndex].value *= 1.01;
                                 value = words[threadGroupIndex].value;
                             }
                             locks[threadGroupIndex].value.unlock();
                             for (unsigned j = workBetweenCriticalSections; j--;) {
                                 localWord += value;
-                                localWord *= 1.01;
                                 value = localWord;
                             }
                             myNumIterations++;
@@ -121,7 +119,7 @@ struct Benchmark {
         keepGoing = false;
     
         for (unsigned threadIndex = numThreadGroups * numThreadsPerGroup; threadIndex--;)
-            waitForThreadCompletion(threads[threadIndex]);
+            threads[threadIndex]->waitForCompletion();
 
         double after = monotonicallyIncreasingTime();
     

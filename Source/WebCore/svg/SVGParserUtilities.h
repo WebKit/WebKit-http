@@ -21,8 +21,9 @@
 
 #pragma once
 
-#include "ParserUtilities.h"
 #include <wtf/HashSet.h>
+#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 typedef std::pair<unsigned, unsigned> UnicodeRange;
 typedef Vector<UnicodeRange> UnicodeRanges;
@@ -31,7 +32,7 @@ namespace WebCore {
 
 class FloatPoint;
 class FloatRect;
-class SVGPointList;
+class SVGPointListValues;
 
 template <typename CharacterType>
 bool parseSVGNumber(CharacterType* ptr, size_t length, double& number);
@@ -80,9 +81,32 @@ inline bool skipOptionalSVGSpacesOrDelimiter(const CharacterType*& ptr, const Ch
     return ptr < end;
 }
 
-bool pointsListFromSVGData(SVGPointList& pointsList, const String& points);
+bool pointsListFromSVGData(SVGPointListValues&, const String& points);
 Vector<String> parseDelimitedString(const String& input, const char seperator);
 bool parseKerningUnicodeString(const String& input, UnicodeRanges&, HashSet<String>& stringList);
 bool parseGlyphName(const String& input, HashSet<String>& values);
+
+inline bool skipString(const UChar*& ptr, const UChar* end, const UChar* name, int length)
+{
+    if (end - ptr < length)
+        return false;
+    if (memcmp(name, ptr, sizeof(UChar) * length))
+        return false;
+    ptr += length;
+    return true;
+}
+
+inline bool skipString(const UChar*& ptr, const UChar* end, const char* str)
+{
+    int length = strlen(str);
+    if (end - ptr < length)
+        return false;
+    for (int i = 0; i < length; ++i) {
+        if (ptr[i] != str[i])
+            return false;
+    }
+    ptr += length;
+    return true;
+}
 
 } // namespace WebCore

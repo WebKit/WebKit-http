@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include "CatchScope.h"
 #include "ErrorInstance.h"
 #include "JSObject.h"
 #include "ThrowScope.h"
@@ -40,16 +39,17 @@ typedef JSObject* (*ErrorFactory)(ExecState*, const String&, ErrorInstance::Sour
 String defaultSourceAppender(const String&, const String&, RuntimeType, ErrorInstance::SourceTextWhereErrorOccurred);
 
 JSObject* createTerminatedExecutionException(VM*);
-JS_EXPORT_PRIVATE bool isTerminatedExecutionException(Exception*);
+JS_EXPORT_PRIVATE bool isTerminatedExecutionException(VM&, Exception*);
 JS_EXPORT_PRIVATE JSObject* createError(ExecState*, JSValue, const String&, ErrorInstance::SourceAppender);
 JS_EXPORT_PRIVATE JSObject* createStackOverflowError(ExecState*);
+JSObject* createStackOverflowError(ExecState*, JSGlobalObject*);
 JSObject* createUndefinedVariableError(ExecState*, const Identifier&);
 JSObject* createTDZError(ExecState*);
 JSObject* createNotAnObjectError(ExecState*, JSValue);
 JSObject* createInvalidFunctionApplyParameterError(ExecState*, JSValue);
 JSObject* createInvalidInParameterError(ExecState*, JSValue);
 JSObject* createInvalidInstanceofParameterErrorNotFunction(ExecState*, JSValue);
-JSObject* createInvalidInstanceofParameterErrorhasInstanceValueNotFunction(ExecState*, JSValue);
+JSObject* createInvalidInstanceofParameterErrorHasInstanceValueNotFunction(ExecState*, JSValue);
 JSObject* createNotAConstructorError(ExecState*, JSValue);
 JSObject* createNotAFunctionError(ExecState*, JSValue);
 JSObject* createErrorForInvalidGlobalAssignment(ExecState*, const String&);

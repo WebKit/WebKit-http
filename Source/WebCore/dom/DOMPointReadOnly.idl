@@ -28,7 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// The DOMPointInit constructor exists in https://www.w3.org/TR/geometry-1/ but is removed in https://drafts.fxtf.org/geometry/
 [
+    Constructor(DOMPointInit point),
     Constructor(optional unrestricted double x = 0, optional unrestricted double y = 0,
         optional unrestricted double z = 0, optional unrestricted double w = 1),
     Exposed=(Window,Worker),
@@ -42,8 +44,7 @@ interface DOMPointReadOnly {
     readonly attribute unrestricted double z;
     readonly attribute unrestricted double w;
 
-    // FIXME: No support for DOMMatrix yet (webkit.org/b/110001)
-    // DOMPoint matrixTransform(optional DOMMatrixInit matrix);
+    [MayThrowException] DOMPoint matrixTransform(optional DOMMatrixInit matrix);
 
     serializer = { attribute };
 };

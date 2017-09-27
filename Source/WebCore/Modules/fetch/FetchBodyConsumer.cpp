@@ -29,10 +29,7 @@
 #include "config.h"
 #include "FetchBodyConsumer.h"
 
-#if ENABLE(FETCH_API)
-
 #include "JSBlob.h"
-#include "JSDOMPromise.h"
 #include "TextResourceDecoder.h"
 
 namespace WebCore {
@@ -59,42 +56,85 @@ static String textFromUTF8(const unsigned char* data, unsigned length)
     return decoder->decodeAndFlush(reinterpret_cast<const char*>(data), length);
 }
 
-void FetchBodyConsumer::resolveWithData(Ref<DeferredPromise>&& promise, const unsigned char* data, unsigned length)
+static void resolveWithTypeAndData(Ref<DeferredPromise>&& promise, FetchBodyConsumer::Type type, const String& contentType, const unsigned char* data, unsigned length)
 {
-    switch (m_type) {
-    case Type::ArrayBuffer:
+    switch (type) {
+    case FetchBodyConsumer::Type::ArrayBuffer:
         fulfillPromiseWithArrayBuffer(WTFMove(promise), data, length);
         return;
-    case Type::Blob:
-        promise->resolveWithNewlyCreated(blobFromData(data, length, m_contentType));
+    case FetchBodyConsumer::Type::Blob:
+        promise->resolveWithNewlyCreated<IDLInterface<Blob>>(blobFromData(data, length, contentType).get());
         return;
-    case Type::JSON:
+    case FetchBodyConsumer::Type::JSON:
         fulfillPromiseWithJSON(WTFMove(promise), textFromUTF8(data, length));
         return;
-    case Type::Text:
-        promise->resolve(textFromUTF8(data, length));
+    case FetchBodyConsumer::Type::Text:
+        promise->resolve<IDLDOMString>(textFromUTF8(data, length));
         return;
-    case Type::None:
+    case FetchBodyConsumer::Type::None:
         ASSERT_NOT_REACHED();
         return;
     }
 }
 
-void FetchBodyConsumer::resolve(Ref<DeferredPromise>&& promise)
+void FetchBodyConsumer::clean()
 {
+    m_buffer = nullptr;
+    m_consumePromise = nullptr;
+    if (m_sink) {
+        m_sink->clearCallback();
+        return;
+    }
+}
+
+void FetchBodyConsumer::resolveWithData(Ref<DeferredPromise>&& promise, const unsigned char* data, unsigned length)
+{
+    resolveWithTypeAndData(WTFMove(promise), m_type, m_contentType, data, length);
+}
+
+void FetchBodyConsumer::extract(ReadableStream& stream, ReadableStreamToSharedBufferSink::Callback&& callback)
+{
+    ASSERT(!m_sink);
+    m_sink = ReadableStreamToSharedBufferSink::create(WTFMove(callback));
+    m_sink->pipeFrom(stream);
+}
+
+void FetchBodyConsumer::resolve(Ref<DeferredPromise>&& promise, ReadableStream* stream)
+{
+    if (stream) {
+        ASSERT(!m_sink);
+        m_sink = ReadableStreamToSharedBufferSink::create([promise = WTFMove(promise), type = m_type, contentType = m_contentType](ExceptionOr<RefPtr<SharedBuffer>>&& result) mutable {
+            if (result.hasException()) {
+                promise->reject(result.releaseException());
+                return;
+            }
+
+            auto* data = result.returnValue() && result.returnValue()->data() ? reinterpret_cast<const unsigned char*>(result.returnValue()->data()) : nullptr;
+            auto size = data ? result.returnValue()->size() : 0;
+            resolveWithTypeAndData(WTFMove(promise), type, contentType, data, size);
+        });
+        m_sink->pipeFrom(*stream);
+        return;
+    }
+
+    if (m_isLoading) {
+        m_consumePromise = WTFMove(promise);
+        return;
+    }
+
     ASSERT(m_type != Type::None);
     switch (m_type) {
     case Type::ArrayBuffer:
         fulfillPromiseWithArrayBuffer(WTFMove(promise), takeAsArrayBuffer().get());
         return;
     case Type::Blob:
-        promise->resolveWithNewlyCreated(takeAsBlob());
+        promise->resolveWithNewlyCreated<IDLInterface<Blob>>(takeAsBlob().get());
         return;
     case Type::JSON:
         fulfillPromiseWithJSON(WTFMove(promise), takeAsText());
         return;
     case Type::Text:
-        promise->resolve(takeAsText());
+        promise->resolve<IDLDOMString>(takeAsText());
         return;
     case Type::None:
         ASSERT_NOT_REACHED();
@@ -102,18 +142,22 @@ void FetchBodyConsumer::resolve(Ref<DeferredPromise>&& promise)
     }
 }
 
-void FetchBodyConsumer::append(const char* data, unsigned length)
+void FetchBodyConsumer::append(const char* data, unsigned size)
 {
-    if (!m_buffer) {
-        m_buffer = SharedBuffer::create(data, length);
+    if (m_source) {
+        m_source->enqueue(ArrayBuffer::tryCreate(data, size));
         return;
     }
-    m_buffer->append(data, length);
+    if (!m_buffer) {
+        m_buffer = SharedBuffer::create(data, size);
+        return;
+    }
+    m_buffer->append(data, size);
 }
 
-void FetchBodyConsumer::append(const unsigned char* data, unsigned length)
+void FetchBodyConsumer::append(const unsigned char* data, unsigned size)
 {
-    append(reinterpret_cast<const char*>(data), length);
+    append(reinterpret_cast<const char*>(data), size);
 }
 
 RefPtr<SharedBuffer> FetchBodyConsumer::takeData()
@@ -126,7 +170,7 @@ RefPtr<JSC::ArrayBuffer> FetchBodyConsumer::takeAsArrayBuffer()
     if (!m_buffer)
         return ArrayBuffer::tryCreate(nullptr, 0);
 
-    auto arrayBuffer = m_buffer->createArrayBuffer();
+    auto arrayBuffer = m_buffer->tryCreateArrayBuffer();
     m_buffer = nullptr;
     return arrayBuffer;
 }
@@ -151,6 +195,44 @@ String FetchBodyConsumer::takeAsText()
     return text;
 }
 
-} // namespace WebCore
+void FetchBodyConsumer::setConsumePromise(Ref<DeferredPromise>&& promise)
+{
+    ASSERT(!m_consumePromise);
+    m_consumePromise = WTFMove(promise);
+}
 
-#endif // ENABLE(FETCH_API)
+void FetchBodyConsumer::setSource(Ref<FetchBodySource>&& source)
+{
+    m_source = WTFMove(source);
+    if (m_buffer) {
+        m_source->enqueue(m_buffer->tryCreateArrayBuffer());
+        m_buffer = nullptr;
+    }
+}
+
+void FetchBodyConsumer::loadingFailed()
+{
+    m_isLoading = false;
+    if (m_consumePromise) {
+        m_consumePromise->reject();
+        m_consumePromise = nullptr;
+    }
+    if (m_source) {
+        m_source->error(ASCIILiteral("Loading failed"));
+        m_source = nullptr;
+    }
+}
+
+void FetchBodyConsumer::loadingSucceeded()
+{
+    m_isLoading = false;
+
+    if (m_consumePromise)
+        resolve(m_consumePromise.releaseNonNull(), nullptr);
+    if (m_source) {
+        m_source->close();
+        m_source = nullptr;
+    }
+}
+
+} // namespace WebCore

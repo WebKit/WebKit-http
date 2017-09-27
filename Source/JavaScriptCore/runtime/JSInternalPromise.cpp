@@ -31,7 +31,7 @@
 
 namespace JSC {
 
-const ClassInfo JSInternalPromise::s_info = { "InternalPromise", &Base::s_info, nullptr, CREATE_METHOD_TABLE(JSInternalPromise) };
+const ClassInfo JSInternalPromise::s_info = { "InternalPromise", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInternalPromise) };
 
 JSInternalPromise* JSInternalPromise::create(VM& vm, Structure* structure)
 {
@@ -52,7 +52,11 @@ JSInternalPromise::JSInternalPromise(VM& vm, Structure* structure)
 
 JSInternalPromise* JSInternalPromise::then(ExecState* exec, JSFunction* onFulfilled, JSFunction* onRejected)
 {
-    JSObject* function = jsCast<JSObject*>(get(exec, exec->propertyNames().builtinNames().thenPublicName()));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().thenPublicName()));
+    RETURN_IF_EXCEPTION(scope, nullptr);
     CallData callData;
     CallType callType = JSC::getCallData(function, callData);
     ASSERT(callType != CallType::None);
@@ -61,6 +65,7 @@ JSInternalPromise* JSInternalPromise::then(ExecState* exec, JSFunction* onFulfil
     arguments.append(onFulfilled ? onFulfilled : jsUndefined());
     arguments.append(onRejected ? onRejected : jsUndefined());
 
+    scope.release();
     return jsCast<JSInternalPromise*>(call(exec, function, callType, callData, this, arguments));
 }
 

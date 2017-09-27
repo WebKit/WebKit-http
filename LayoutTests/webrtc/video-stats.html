@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Testing basic video exchange from offerer to receiver</title>
+        <script src="../resources/testharness.js"></script>
+        <script src="../resources/testharnessreport.js"></script>
+    </head>
+    <body>
+        <script src ="routines.js"></script>
+        <script>
+function getStatsType(connection)
+{
+    return connection.getStats().then((report) => {
+        var reportTypes = [];
+        report.forEach((statItem) => {
+            if (reportTypes.indexOf(statItem.type) === -1)
+                reportTypes.push(statItem.type);
+        });
+        return reportTypes.sort();
+    });
+}
+
+function checkStatsReportIterator(report)
+{
+    assert_equals(Object.getOwnPropertyDescriptor(report.__proto__, Symbol.iterator).value, Object.getOwnPropertyDescriptor(report.__proto__, 'entries').value);
+    assert_equals(Object.getOwnPropertyDescriptor(report.__proto__, Symbol.iterator).value.name, "entries");
+    for (let pair of report)
+        assert_equals(pair.length, 2);
+}
+
+function getInboundRTPStats(connection)
+{
+    return connection.getStats().then((report) => {
+        checkStatsReportIterator(report);
+        var stats;
+        report.forEach((statItem) => {
+            if (statItem.type === "inbound-rtp") {
+                stats = statItem;
+            }
+        });
+        return stats;
+    });
+}
+
+function getOutboundRTPStats(connection)
+{
+    return connection.getStats().then((report) => {
+        checkStatsReportIterator(report);
+        var stats;
+        report.forEach((statItem) => {
+            if (statItem.type === "outbound-rtp") {
+                stats = statItem;
+            }
+        });
+        return stats;
+    });
+}
+
+function testTimestampDifference(timeStampDifference, numberOfFrames)
+{
+    // Let's ensure timestamp is not in microseconds but milliseconds.
+    return timeStampDifference > 100000 * (numberOfFrames / 30.0);
+}
+
+function checkInboundFramesNumberIncreased(secondConnection, statsSecondConnection, count)
+{
+    return getInboundRTPStats(secondConnection).then((stats) => {
+        if (stats.framesDecoded > statsSecondConnection.framesDecoded) {
+            if (testTimestampDifference(stats.timestamp - statsSecondConnection.timestamp, stats.framesDecoded - statsSecondConnection.framesDecoded))
+                return Promise.reject("timestamp and frames increment do not match");
+            return;
+        }
+        if (++count === 20)
+            return Promise.reject("checking inbound stats frame number increasing timed out");
+        return waitFor(50).then(() => {
+            return checkInboundFramesNumberIncreased(secondConnection, statsSecondConnection, count)
+        });
+    });
+}
+
+function checkOutboundFramesNumberIncreased(firstConnection, statsFirstConnection, count)
+{
+    return getOutboundRTPStats(firstConnection).then((stats) => {
+        if (stats.framesEncoded > statsFirstConnection.framesEncoded) {
+            if (testTimestampDifference(stats.timestamp - statsFirstConnection.timestamp, stats.framesEncoded - statsFirstConnection.framesEncoded))
+                return Promise.reject("timestamp and frames increment do not match");
+            return;
+        }
+        if (++count === 20)
+            return Promise.reject("checking outbound stats frame number increasing timed out");
+        return waitFor(50).then(() => {
+            return checkOutboundFramesNumberIncreased(firstConnection, statsFirstConnection, count)
+        });
+    });
+}
+
+var firstConnection, secondConnection;
+promise_test((test) => {
+    if (window.testRunner)
+        testRunner.setUserMediaPermission(true);
+
+    var localStream, remoteStream;
+    return navigator.mediaDevices.getUserMedia({ video: true}).then((stream) => {
+        localStream = stream;
+        return new Promise((resolve, reject) => {
+            createConnections((connection) => {
+                firstConnection = connection;
+                firstConnection.addTrack(stream.getVideoTracks()[0], stream);
+            }, (connection) => {
+                secondConnection = connection;
+                secondConnection.ontrack = (trackEvent) => {
+                    remoteStream = trackEvent.streams[0];
+                    resolve();
+                };
+            });
+            setTimeout(() => reject("Test timed out"), 5000);
+        });
+    }).then(() => {
+        return getOutboundRTPStats(firstConnection);
+    }).then((stats) => {
+        assert_true(!!stats, "outbound-rtp stats should not be null");
+        assert_true(Number.isInteger(stats.framesEncoded), "framesEncoded should be an integer");
+        assert_true(Number.isInteger(stats.qpSum), "outbound qpSum should be an integer");
+        assert_true(typeof stats.timestamp === "number", "timestamp should be a double");
+        statsFirstConnection = stats;
+        return getInboundRTPStats(secondConnection);
+    }).then((stats) => {
+        assert_true(!!stats, "inbound-rtp stats should not be null");
+        assert_true(Number.isInteger(stats.framesDecoded), "framesDecoded should be an integer");
+        assert_true(Number.isInteger(stats.qpSum), "inbound qpSum should be an integer");
+        assert_true(typeof stats.timestamp === "number", "timestamp should be a double");
+        statsSecondConnection = stats;
+    }).then(() => {
+        return checkInboundFramesNumberIncreased(secondConnection, statsSecondConnection, 0);
+    }).then(() => {
+        return checkOutboundFramesNumberIncreased(firstConnection, statsFirstConnection, 0);
+    }).then(() => {
+        return getStatsType(firstConnection);
+    }).then((types) => {
+        assert_array_equals(types, ["candidate-pair", "certificate", "outbound-rtp"]);
+    }).then(() => {
+        return getStatsType(secondConnection);
+    }).then((types) => {
+        assert_array_equals(types, ["candidate-pair", "certificate", "inbound-rtp", "track"]);
+    });
+}, "Basic video stats");
+        </script>
+    </body>
+</html>

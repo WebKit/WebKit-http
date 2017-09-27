@@ -1,7 +1,9 @@
 /*
  * Copyright (C) 2004, 2006 Apple Inc.  All rights reserved.
  * Copyright (C) 2005, 2006 Michael Emmel mike.emmel@gmail.com
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
  * All rights reserved.
+ * Copyright (C) 2017 NAVER Corp.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,72 +34,36 @@
 
 #include "CachedResourceLoader.h"
 #include "CredentialStorage.h"
+#include "CurlCacheManager.h"
+#include "CurlContext.h"
+#include "CurlJobManager.h"
+#include "CurlSSLHandle.h"
 #include "FileSystem.h"
 #include "Logging.h"
+#include "MIMETypeRegistry.h"
 #include "NetworkingContext.h"
-#include "NotImplemented.h"
 #include "ResourceHandleInternal.h"
-#include "ResourceHandleManager.h"
-#include "SSLHandle.h"
+#include "SynchronousLoaderClient.h"
+#include <wtf/text/Base64.h>
 
 namespace WebCore {
 
-class WebCoreSynchronousLoader : public ResourceHandleClient {
-public:
-    WebCoreSynchronousLoader();
-
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int encodedDataLength);
-    virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/);
-    virtual void didFail(ResourceHandle*, const ResourceError&);
-
-    ResourceResponse resourceResponse() const { return m_response; }
-    ResourceError resourceError() const { return m_error; }
-    Vector<char> data() const { return m_data; }
-
-private:
-    ResourceResponse m_response;
-    ResourceError m_error;
-    Vector<char> m_data;
-};
-
-WebCoreSynchronousLoader::WebCoreSynchronousLoader()
-{
-}
-
-void WebCoreSynchronousLoader::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
-{
-    m_response = response;
-}
-
-void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int)
-{
-    m_data.append(data, length);
-}
-
-void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*, double)
-{
-}
-
-void WebCoreSynchronousLoader::didFail(ResourceHandle*, const ResourceError& error)
-{
-    m_error = error;
-}
-
 ResourceHandleInternal::~ResourceHandleInternal()
 {
-    fastFree(m_url);
-    if (m_customHeaders)
-        curl_slist_free_all(m_customHeaders);
+    if (m_delegate)
+        m_delegate->releaseHandle();
 }
 
 ResourceHandle::~ResourceHandle()
 {
-    cancel();
 }
 
 bool ResourceHandle::start()
 {
+    ASSERT(isMainThread());
+
+    CurlContext::singleton();
+
     // The frame could be null if the ResourceHandle is not associated to any
     // Frame, e.g. if we are downloading a file.
     // If the frame is not null but the page is null this must be an attempted
@@ -106,33 +72,37 @@ bool ResourceHandle::start()
     if (d->m_context && !d->m_context->isValid())
         return false;
 
-    ResourceHandleManager::sharedInstance()->add(this);
-    return true;
+    d->m_delegate = adoptRef(new ResourceHandleCurlDelegate(this));
+    return d->m_delegate->start();
 }
 
 void ResourceHandle::cancel()
 {
-    ResourceHandleManager::sharedInstance()->cancel(this);
+    d->m_delegate->cancel();
 }
 
-#if PLATFORM(WIN)
+#if OS(WINDOWS)
 
 void ResourceHandle::setHostAllowsAnyHTTPSCertificate(const String& host)
 {
-    allowsAnyHTTPSCertificateHosts(host);
+    ASSERT(isMainThread());
+
+    CurlContext::singleton().sslHandle().setHostAllowsAnyHTTPSCertificate(host);
 }
 
 void ResourceHandle::setClientCertificateInfo(const String& host, const String& certificate, const String& key)
 {
+    ASSERT(isMainThread());
+
     if (fileExists(certificate))
-        addAllowedClientCertificate(host, certificate, key);
+        CurlContext::singleton().sslHandle().setClientCertificateInfo(host, certificate, key);
     else
         LOG(Network, "Invalid client certificate file: %s!\n", certificate.latin1().data());
 }
 
 #endif
 
-#if PLATFORM(WIN) && USE(CF)
+#if OS(WINDOWS) && USE(CF)
 
 void ResourceHandle::setClientCertificate(const String&, CFDataRef)
 {
@@ -142,20 +112,9 @@ void ResourceHandle::setClientCertificate(const String&, CFDataRef)
 
 void ResourceHandle::platformSetDefersLoading(bool defers)
 {
-    if (!d->m_handle)
-        return;
+    ASSERT(isMainThread());
 
-    if (defers) {
-        CURLcode error = curl_easy_pause(d->m_handle, CURLPAUSE_ALL);
-        // If we could not defer the handle, so don't do it.
-        if (error != CURLE_OK)
-            return;
-    } else {
-        CURLcode error = curl_easy_pause(d->m_handle, CURLPAUSE_CONT);
-        if (error != CURLE_OK)
-            // Restarting the handle has failed so just cancel it.
-            cancel();
-    }
+    d->m_delegate->setDefersLoading(defers);
 }
 
 bool ResourceHandle::shouldUseCredentialStorage()
@@ -163,32 +122,21 @@ bool ResourceHandle::shouldUseCredentialStorage()
     return (!client() || client()->shouldUseCredentialStorage(this)) && firstRequest().url().protocolIsInHTTPFamily();
 }
 
-void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
-{
-    WebCoreSynchronousLoader syncLoader;
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false));
-
-    ResourceHandleManager* manager = ResourceHandleManager::sharedInstance();
-
-    manager->dispatchSynchronousJob(handle.get());
-
-    error = syncLoader.resourceError();
-    data = syncLoader.data();
-    response = syncLoader.resourceResponse();
-}
-
 void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
+    ASSERT(isMainThread());
+
+    String partition = firstRequest().cachePartition();
+
     if (!d->m_user.isNull() && !d->m_pass.isNull()) {
         Credential credential(d->m_user, d->m_pass, CredentialPersistenceNone);
 
         URL urlToStore;
         if (challenge.failureResponse().httpStatusCode() == 401)
             urlToStore = challenge.failureResponse().url();
-        CredentialStorage::defaultCredentialStorage().set(credential, challenge.protectionSpace(), urlToStore);
+        CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
         
-        String userpass = credential.user() + ":" + credential.password();
-        curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
+        d->m_delegate->setAuthentication(credential.user(), credential.password());
 
         d->m_user = String();
         d->m_pass = String();
@@ -201,19 +149,19 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
             // The stored credential wasn't accepted, stop using it.
             // There is a race condition here, since a different credential might have already been stored by another ResourceHandle,
             // but the observable effect should be very minor, if any.
-            CredentialStorage::defaultCredentialStorage().remove(challenge.protectionSpace());
+            CredentialStorage::defaultCredentialStorage().remove(partition, challenge.protectionSpace());
         }
 
         if (!challenge.previousFailureCount()) {
-            Credential credential = CredentialStorage::defaultCredentialStorage().get(challenge.protectionSpace());
+            Credential credential = CredentialStorage::defaultCredentialStorage().get(partition, challenge.protectionSpace());
             if (!credential.isEmpty() && credential != d->m_initialCredential) {
                 ASSERT(credential.persistence() == CredentialPersistenceNone);
                 if (challenge.failureResponse().httpStatusCode() == 401) {
                     // Store the credential back, possibly adding it as a default for this directory.
-                    CredentialStorage::defaultCredentialStorage().set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                    CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
                 }
-                String userpass = credential.user() + ":" + credential.password();
-                curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
+
+                d->m_delegate->setAuthentication(credential.user(), credential.password());
                 return;
             }
         }
@@ -227,6 +175,8 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
 
 void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
 {
+    ASSERT(isMainThread());
+
     if (challenge != d->m_currentWebChallenge)
         return;
 
@@ -235,32 +185,34 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
         return;
     }
 
+    String partition = firstRequest().cachePartition();
+
     if (shouldUseCredentialStorage()) {
         if (challenge.failureResponse().httpStatusCode() == 401) {
             URL urlToStore = challenge.failureResponse().url();
-            CredentialStorage::defaultCredentialStorage().set(credential, challenge.protectionSpace(), urlToStore);
+            CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
         }
     }
 
-    String userpass = credential.user() + ":" + credential.password();
-    curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
-
+    d->m_delegate->setAuthentication(credential.user(), credential.password());
     clearAuthentication();
 }
 
 void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
 {
+    ASSERT(isMainThread());
+
     if (challenge != d->m_currentWebChallenge)
         return;
 
-    String userpass = emptyString();
-    curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
-
+    d->m_delegate->setAuthentication("", "");
     clearAuthentication();
 }
 
 void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challenge)
 {
+    ASSERT(isMainThread());
+
     if (challenge != d->m_currentWebChallenge)
         return;
 
@@ -276,6 +228,21 @@ void ResourceHandle::receivedRequestToPerformDefaultHandling(const Authenticatio
 void ResourceHandle::receivedChallengeRejection(const AuthenticationChallenge&)
 {
     ASSERT_NOT_REACHED();
+}
+
+void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentialsPolicy, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+{
+    ASSERT(isMainThread());
+
+    SynchronousLoaderClient client;
+    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &client, false, false));
+
+    handle->d->m_delegate = adoptRef(new ResourceHandleCurlDelegate(handle.get()));
+    handle->d->m_delegate->dispatchSynchronousJob();
+
+    error = client.error();
+    data.swap(client.mutableData());
+    response = client.response();
 }
 
 } // namespace WebCore

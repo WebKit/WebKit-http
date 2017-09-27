@@ -24,6 +24,7 @@
 #include <limits>
 #include <utility>
 #include <wtf/HashFunctions.h>
+#include <wtf/KeyValuePair.h>
 #include <wtf/Optional.h>
 #include <wtf/StdLibExtras.h>
 
@@ -188,8 +189,8 @@ template<typename P> struct HashTraits<Ref<P>> : SimpleClassHashTraits<Ref<P>> {
     static PeekType peek(const Ref<P>& value) { return const_cast<PeekType>(value.ptrAllowingHashTableEmptyValue()); }
     static PeekType peek(P* value) { return value; }
 
-    typedef Optional<Ref<P>> TakeType;
-    static TakeType take(Ref<P>&& value) { return isEmptyValue(value) ? Nullopt : Optional<Ref<P>>(WTFMove(value)); }
+    typedef std::optional<Ref<P>> TakeType;
+    static TakeType take(Ref<P>&& value) { return isEmptyValue(value) ? std::nullopt : std::optional<Ref<P>>(WTFMove(value)); }
 };
 
 template<> struct HashTraits<String> : SimpleClassHashTraits<String> {
@@ -256,31 +257,28 @@ struct PairHashTraits : GenericHashTraits<std::pair<typename FirstTraitsArg::Tra
 template<typename First, typename Second>
 struct HashTraits<std::pair<First, Second>> : public PairHashTraits<HashTraits<First>, HashTraits<Second>> { };
 
-template<typename KeyTypeArg, typename ValueTypeArg>
-struct KeyValuePair {
-    typedef KeyTypeArg KeyType;
+template<typename FirstTrait, typename... Traits>
+struct TupleHashTraits : GenericHashTraits<std::tuple<typename FirstTrait::TraitType, typename Traits::TraitType...>> {
+    typedef std::tuple<typename FirstTrait::TraitType, typename Traits::TraitType...> TraitType;
+    typedef std::tuple<typename FirstTrait::EmptyValueType, typename Traits::EmptyValueType...> EmptyValueType;
 
-    KeyValuePair()
-    {
-    }
+    // We should use emptyValueIsZero = Traits::emptyValueIsZero &&... whenever we switch to C++17. We can't do anything
+    // better here right now because GCC can't do C++.
+    template<typename BoolType>
+    static constexpr bool allTrue(BoolType value) { return value; }
+    template<typename BoolType, typename... BoolTypes>
+    static constexpr bool allTrue(BoolType value, BoolTypes... values) { return value && allTrue(values...); }
+    static const bool emptyValueIsZero = allTrue(FirstTrait::emptyValueIsZero, Traits::emptyValueIsZero...);
+    static EmptyValueType emptyValue() { return std::make_tuple(FirstTrait::emptyValue(), Traits::emptyValue()...); }
 
-    template<typename K, typename V>
-    KeyValuePair(K&& key, V&& value)
-        : key(std::forward<K>(key))
-        , value(std::forward<V>(value))
-    {
-    }
+    static const unsigned minimumTableSize = FirstTrait::minimumTableSize;
 
-    template <typename OtherKeyType, typename OtherValueType>
-    KeyValuePair(KeyValuePair<OtherKeyType, OtherValueType>&& other)
-        : key(std::forward<OtherKeyType>(other.key))
-        , value(std::forward<OtherValueType>(other.value))
-    {
-    }
-
-    KeyTypeArg key;
-    ValueTypeArg value;
+    static void constructDeletedValue(TraitType& slot) { FirstTrait::constructDeletedValue(std::get<0>(slot)); }
+    static bool isDeletedValue(const TraitType& value) { return FirstTrait::isDeletedValue(std::get<0>(value)); }
 };
+
+template<typename... Traits>
+struct HashTraits<std::tuple<Traits...>> : public TupleHashTraits<HashTraits<Traits>...> { };
 
 template<typename KeyTraitsArg, typename ValueTraitsArg>
 struct KeyValuePairHashTraits : GenericHashTraits<KeyValuePair<typename KeyTraitsArg::TraitType, typename ValueTraitsArg::TraitType>> {
@@ -348,6 +346,7 @@ struct CustomHashTraits : public GenericHashTraits<T> {
 } // namespace WTF
 
 using WTF::HashTraits;
+using WTF::KeyValuePair;
 using WTF::PairHashTraits;
 using WTF::NullableHashTraits;
 using WTF::SimpleClassHashTraits;

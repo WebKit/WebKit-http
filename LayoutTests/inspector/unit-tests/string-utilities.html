@@ -9,7 +9,7 @@ function test()
 
     suite.addTestCase({
         name: "String.format",
-        test: () => {
+        test() {
             InspectorTest.expectThat("%f".format(1.23456789) === "1.234568", "float format specifier with no sub-specifier should show 6 decimal digits");
             InspectorTest.expectThat("%.0f".format(1.23456789) === "1", "float format specifier with precision 0 should show 0 decimal digits");
             InspectorTest.expectThat("%.1f".format(1.23456789) === "1.2", "float format specifier with precision 1 should show 1 decimal digit");
@@ -29,6 +29,51 @@ function test()
             InspectorTest.expectThat("%d".format("137") === "137", "integer format specifier with string argument should attempt conversion to integer");
             InspectorTest.expectThat("%d".format(Infinity) === "NaN", "integer format specifier with Infinity argument should show \"NaN\"");
             InspectorTest.expectThat("%d".format(NaN) === "NaN", "integer format specifier with NaN argument should show \"NaN\"");
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "String.prototype.extendedLocaleCompare",
+        test() {
+            InspectorTest.expectEqual("1".extendedLocaleCompare("2"), -1, `"1" < "2"`);
+            InspectorTest.expectEqual("2".extendedLocaleCompare("1"), 1, `"2" > "1"`);
+            InspectorTest.expectEqual("2".extendedLocaleCompare("10"), -1, `"2" < "10"`);
+            InspectorTest.expectEqual("10".extendedLocaleCompare("2"), 1, `"10" > "2"`);
+            InspectorTest.expectEqual("1".extendedLocaleCompare("10"), -1, `"1" < "10"`);
+            InspectorTest.expectEqual("10".extendedLocaleCompare("1"), 1, `"10" > "1"`);
+
+            InspectorTest.expectEqual("a1".extendedLocaleCompare("a2"), -1, `"a1" < "a2"`);
+            InspectorTest.expectEqual("a2".extendedLocaleCompare("a1"), 1, `"a2" > "a1"`);
+            InspectorTest.expectEqual("a2".extendedLocaleCompare("a10"), -1, `"a2" < "a10"`);
+            InspectorTest.expectEqual("a10".extendedLocaleCompare("a2"), 1, `"a10" > "a2"`);
+            InspectorTest.expectEqual("a1".extendedLocaleCompare("a10"), -1, `"a1" < "a10"`);
+            InspectorTest.expectEqual("a10".extendedLocaleCompare("a1"), 1, `"a10" > "a1"`);
+            return true;
+        }
+    });
+
+
+    suite.addTestCase({
+        name: "String.prototype.get lineCount",
+        test() {
+            InspectorTest.expectEqual("1\n2\n3".lineCount, 3, "A string with two line breaks should have three lines.");
+            InspectorTest.expectEqual("1\n\n3".lineCount, 3, "A string with two consecutive line breaks should have three lines.");
+            InspectorTest.expectEqual("1\n".lineCount, 2, "A string with a traling line breaks should have two lines.");
+            InspectorTest.expectEqual("".lineCount, 1, "An empty string is one line.");
+
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "String.prototype.get lastLine",
+        test() {
+            InspectorTest.expectEqual("single line".lastLine, "single line", "Last line of one line string is the same string.");
+            InspectorTest.expectEqual("1\n2\n3".lastLine, "3", "Last line of a three line string should be the third line.");
+            InspectorTest.expectEqual("1\n".lastLine, "", "Last line of a string with a traling line break should be empty.");
+            InspectorTest.expectEqual("".lastLine, "", "Last line of an empty string is the same empty string.");
+
             return true;
         }
     });

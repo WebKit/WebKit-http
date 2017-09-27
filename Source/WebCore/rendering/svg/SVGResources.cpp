@@ -28,7 +28,6 @@
 #include "RenderSVGRoot.h"
 #include "SVGGradientElement.h"
 #include "SVGNames.h"
-#include "SVGPaint.h"
 #include "SVGPatternElement.h"
 #include "SVGRenderStyle.h"
 #include "SVGURIReference.h"
@@ -40,7 +39,6 @@
 namespace WebCore {
 
 SVGResources::SVGResources()
-    : m_linkedResource(0)
 {
 }
 
@@ -155,9 +153,24 @@ static inline String targetReferenceFromResource(SVGElement& element)
     return SVGURIReference::fragmentIdentifierFromIRIString(target, element.document());
 }
 
-static inline RenderSVGResourceContainer* paintingResourceFromSVGPaint(Document& document, const SVGPaint::SVGPaintType& paintType, const String& paintUri, AtomicString& id, bool& hasPendingResource)
+static inline bool isChainableResource(const SVGElement& element, const SVGElement& linkedResource)
 {
-    if (paintType != SVGPaint::SVG_PAINTTYPE_URI && paintType != SVGPaint::SVG_PAINTTYPE_URI_RGBCOLOR)
+    if (is<SVGPatternElement>(element))
+        return is<SVGPatternElement>(linkedResource);
+
+    if (is<SVGGradientElement>(element))
+        return is<SVGGradientElement>(linkedResource);
+    
+    if (is<SVGFilterElement>(element))
+        return is<SVGFilterElement>(linkedResource);
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
+static inline RenderSVGResourceContainer* paintingResourceFromSVGPaint(Document& document, const SVGPaintType& paintType, const String& paintUri, AtomicString& id, bool& hasPendingResource)
+{
+    if (paintType != SVG_PAINTTYPE_URI && paintType != SVG_PAINTTYPE_URI_RGBCOLOR && paintType != SVG_PAINTTYPE_URI_CURRENTCOLOR)
         return 0;
 
     id = SVGURIReference::fragmentIdentifierFromIRIString(paintUri, document);
@@ -275,10 +288,13 @@ bool SVGResources::buildCachedResources(const RenderElement& renderer, const Ren
 
     if (chainableResourceTags().contains(tagName)) {
         AtomicString id(targetReferenceFromResource(element));
-        if (setLinkedResource(getRenderSVGResourceContainerById(document, id)))
-            foundResources = true;
-        else
+        auto* linkedResource = getRenderSVGResourceContainerById(document, id);
+        if (!linkedResource)
             registerPendingResource(extensions, id, element);
+        else if (isChainableResource(element, linkedResource->element())) {
+            setLinkedResource(linkedResource);
+            foundResources = true;
+        }
     }
 
     return foundResources;

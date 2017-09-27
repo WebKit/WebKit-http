@@ -31,7 +31,7 @@
 #include "HTMLFormattingElementList.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -41,7 +41,7 @@ struct HTMLConstructionSiteTask {
         Insert,
         InsertAlreadyParsedChild,
         Reparent,
-        TakeAllChildren,
+        TakeAllChildrenAndReparent,
     };
 
     explicit HTMLConstructionSiteTask(Operation op)
@@ -80,6 +80,7 @@ enum WhitespaceMode {
 };
 
 class AtomicHTMLToken;
+struct CustomElementConstructionData;
 class Document;
 class Element;
 class HTMLFormElement;
@@ -97,40 +98,39 @@ public:
     void setDefaultCompatibilityMode();
     void finishedParsing();
 
-    void insertDoctype(AtomicHTMLToken&);
-    void insertComment(AtomicHTMLToken&);
-    void insertCommentOnDocument(AtomicHTMLToken&);
-    void insertCommentOnHTMLHtmlElement(AtomicHTMLToken&);
-    void insertHTMLElement(AtomicHTMLToken&);
-    JSCustomElementInterface* insertHTMLElementOrFindCustomElementInterface(AtomicHTMLToken&);
-    void insertCustomElement(Ref<Element>&&, const AtomicString& localName, Vector<Attribute>&);
-    void insertSelfClosingHTMLElement(AtomicHTMLToken&);
-    void insertFormattingElement(AtomicHTMLToken&);
-    void insertHTMLHeadElement(AtomicHTMLToken&);
-    void insertHTMLBodyElement(AtomicHTMLToken&);
-    void insertHTMLFormElement(AtomicHTMLToken&, bool isDemoted = false);
-    void insertScriptElement(AtomicHTMLToken&);
+    void insertDoctype(AtomicHTMLToken&&);
+    void insertComment(AtomicHTMLToken&&);
+    void insertCommentOnDocument(AtomicHTMLToken&&);
+    void insertCommentOnHTMLHtmlElement(AtomicHTMLToken&&);
+    void insertHTMLElement(AtomicHTMLToken&&);
+    std::unique_ptr<CustomElementConstructionData> insertHTMLElementOrFindCustomElementInterface(AtomicHTMLToken&&);
+    void insertCustomElement(Ref<Element>&&, const AtomicString& localName, Vector<Attribute>&&);
+    void insertSelfClosingHTMLElement(AtomicHTMLToken&&);
+    void insertFormattingElement(AtomicHTMLToken&&);
+    void insertHTMLHeadElement(AtomicHTMLToken&&);
+    void insertHTMLBodyElement(AtomicHTMLToken&&);
+    void insertHTMLFormElement(AtomicHTMLToken&&, bool isDemoted = false);
+    void insertScriptElement(AtomicHTMLToken&&);
     void insertTextNode(const String&, WhitespaceMode = WhitespaceUnknown);
-    void insertForeignElement(AtomicHTMLToken&, const AtomicString& namespaceURI);
+    void insertForeignElement(AtomicHTMLToken&&, const AtomicString& namespaceURI);
 
-    void insertHTMLHtmlStartTagBeforeHTML(AtomicHTMLToken&);
-    void insertHTMLHtmlStartTagInBody(AtomicHTMLToken&);
-    void insertHTMLBodyStartTagInBody(AtomicHTMLToken&);
+    void insertHTMLHtmlStartTagBeforeHTML(AtomicHTMLToken&&);
+    void insertHTMLHtmlStartTagInBody(AtomicHTMLToken&&);
+    void insertHTMLBodyStartTagInBody(AtomicHTMLToken&&);
 
     void reparent(HTMLElementStack::ElementRecord& newParent, HTMLElementStack::ElementRecord& child);
-    void reparent(HTMLElementStack::ElementRecord& newParent, HTMLStackItem& child);
     // insertAlreadyParsedChild assumes that |child| has already been parsed (i.e., we're just
     // moving it around in the tree rather than parsing it for the first time). That means
     // this function doesn't call beginParsingChildren / finishParsingChildren.
     void insertAlreadyParsedChild(HTMLStackItem& newParent, HTMLElementStack::ElementRecord& child);
-    void takeAllChildren(HTMLStackItem& newParent, HTMLElementStack::ElementRecord& oldParent);
+    void takeAllChildrenAndReparent(HTMLStackItem& newParent, HTMLElementStack::ElementRecord& oldParent);
 
     Ref<HTMLStackItem> createElementFromSavedToken(HTMLStackItem&);
 
     bool shouldFosterParent() const;
     void fosterParent(Ref<Node>&&);
 
-    Optional<unsigned> indexOfFirstUnopenFormattingElement() const;
+    std::optional<unsigned> indexOfFirstUnopenFormattingElement() const;
     void reconstructTheActiveFormattingElements();
 
     void generateImpliedEndTags();
@@ -169,7 +169,7 @@ public:
         { }
 
     private:
-        TemporaryChange<bool> m_redirectAttachToFosterParentChange;
+        SetForScope<bool> m_redirectAttachToFosterParentChange;
     };
 
     static bool isFormattingTag(const AtomicString&);
@@ -190,7 +190,7 @@ private:
     Ref<Element> createHTMLElement(AtomicHTMLToken&);
     Ref<Element> createElement(AtomicHTMLToken&, const AtomicString& namespaceURI);
 
-    void mergeAttributesFromTokenIntoElement(AtomicHTMLToken&, Element&);
+    void mergeAttributesFromTokenIntoElement(AtomicHTMLToken&&, Element&);
     void dispatchDocumentElementAvailableIfNeeded();
 
     Document& m_document;

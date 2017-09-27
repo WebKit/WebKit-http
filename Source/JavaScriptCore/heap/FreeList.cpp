@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,70 @@
 #include "config.h"
 #include "FreeList.h"
 
+#include "FreeListInlines.h"
+#include "MarkedBlock.h"
+#include <wtf/CommaPrinter.h>
+
 namespace JSC {
+
+FreeList::FreeList(unsigned cellSize)
+    : m_cellSize(cellSize)
+{
+}
+
+FreeList::~FreeList()
+{
+}
+
+void FreeList::clear()
+{
+    m_scrambledHead = 0;
+    m_secret = 0;
+    m_payloadEnd = nullptr;
+    m_remaining = 0;
+    m_originalSize = 0;
+}
+
+void FreeList::initializeList(FreeCell* head, uintptr_t secret, unsigned bytes)
+{
+    // It's *slightly* more optimal to use a scrambled head. It saves a register on the fast path.
+    m_scrambledHead = FreeCell::scramble(head, secret);
+    m_secret = secret;
+    m_payloadEnd = nullptr;
+    m_remaining = 0;
+    m_originalSize = bytes;
+}
+
+void FreeList::initializeBump(char* payloadEnd, unsigned remaining)
+{
+    m_scrambledHead = 0;
+    m_secret = 0;
+    m_payloadEnd = payloadEnd;
+    m_remaining = remaining;
+    m_originalSize = remaining;
+}
+
+bool FreeList::contains(HeapCell* target) const
+{
+    if (m_remaining) {
+        const void* start = (m_payloadEnd - m_remaining);
+        const void* end = m_payloadEnd;
+        return (start <= target) && (target < end);
+    }
+
+    FreeCell* candidate = head();
+    while (candidate) {
+        if (bitwise_cast<HeapCell*>(candidate) == target)
+            return true;
+        candidate = candidate->next(m_secret);
+    }
+
+    return false;
+}
 
 void FreeList::dump(PrintStream& out) const
 {
-    out.print("{head = ", RawPointer(head), ", payloadEnd = ", RawPointer(payloadEnd), ", remaining = ", remaining, ", originalSize = ", originalSize, "}");
+    out.print("{head = ", RawPointer(head()), ", secret = ", m_secret, ", payloadEnd = ", RawPointer(m_payloadEnd), ", remaining = ", m_remaining, ", originalSize = ", m_originalSize, "}");
 }
 
 } // namespace JSC

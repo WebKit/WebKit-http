@@ -26,6 +26,7 @@
 #pragma once
 
 #include "ScriptExecutable.h"
+#include "SourceCode.h"
 
 namespace JSC {
 
@@ -38,9 +39,9 @@ public:
 
     static FunctionExecutable* create(
         VM& vm, const SourceCode& source, UnlinkedFunctionExecutable* unlinkedExecutable, 
-        unsigned firstLine, unsigned lastLine, unsigned startColumn, unsigned endColumn, Intrinsic intrinsic)
+        unsigned lastLine, unsigned endColumn, Intrinsic intrinsic)
     {
-        FunctionExecutable* executable = new (NotNull, allocateCell<FunctionExecutable>(vm.heap)) FunctionExecutable(vm, source, unlinkedExecutable, firstLine, lastLine, startColumn, endColumn, intrinsic);
+        FunctionExecutable* executable = new (NotNull, allocateCell<FunctionExecutable>(vm.heap)) FunctionExecutable(vm, source, unlinkedExecutable, lastLine, endColumn, intrinsic);
         executable->finishCreation(vm);
         return executable;
     }
@@ -123,7 +124,8 @@ public:
     bool isArrowFunction() const { return parseMode() == SourceParseMode::ArrowFunctionMode; }
     bool isGetter() const { return parseMode() == SourceParseMode::GetterMode; }
     bool isSetter() const { return parseMode() == SourceParseMode::SetterMode; }
-    bool isGenerator() const { return SourceParseModeSet(SourceParseMode::GeneratorBodyMode, SourceParseMode::GeneratorWrapperFunctionMode).contains(parseMode()); }
+    bool isGenerator() const { return isGeneratorParseMode(parseMode()); }
+    bool isAsyncGenerator() const { return SourceParseModeSet(SourceParseMode::AsyncGeneratorWrapperFunctionMode, SourceParseMode::AsyncGeneratorBodyMode).contains(parseMode()); }
     bool isMethod() const { return parseMode() == SourceParseMode::MethodMode; }
     bool hasCallerAndArgumentsProperties() const
     {
@@ -136,7 +138,10 @@ public:
         return SourceParseModeSet(
             SourceParseMode::NormalFunctionMode,
             SourceParseMode::GeneratorBodyMode,
-            SourceParseMode::GeneratorWrapperFunctionMode
+            SourceParseMode::GeneratorWrapperFunctionMode,
+            SourceParseMode::GeneratorWrapperMethodMode,
+            SourceParseMode::AsyncGeneratorWrapperFunctionMode,
+            SourceParseMode::AsyncGeneratorBodyMode
         ).contains(parseMode()) || isClass();
     }
     DerivedContextType derivedContextType() const { return m_unlinkedExecutable->derivedContextType(); }
@@ -145,7 +150,6 @@ public:
     const Identifier& ecmaName() { return m_unlinkedExecutable->ecmaName(); }
     const Identifier& inferredName() { return m_unlinkedExecutable->inferredName(); }
     unsigned parameterCount() const { return m_unlinkedExecutable->parameterCount(); } // Excluding 'this'!
-    unsigned functionLength() const { return m_unlinkedExecutable->functionLength(); }
     SourceParseMode parseMode() const { return m_unlinkedExecutable->parseMode(); }
     JSParserScriptMode scriptMode() const { return m_unlinkedExecutable->scriptMode(); }
     const SourceCode& classSource() const { return m_unlinkedExecutable->classSource(); }
@@ -172,8 +176,8 @@ public:
 private:
     friend class ExecutableBase;
     FunctionExecutable(
-        VM&, const SourceCode&, UnlinkedFunctionExecutable*, unsigned firstLine, 
-        unsigned lastLine, unsigned startColumn, unsigned endColumn, Intrinsic);
+        VM&, const SourceCode&, UnlinkedFunctionExecutable*,
+        unsigned lastLine, unsigned endColumn, Intrinsic);
     
     void finishCreation(VM&);
 

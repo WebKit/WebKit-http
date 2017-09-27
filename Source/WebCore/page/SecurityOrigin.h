@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,16 +50,10 @@ public:
     };
 
     WEBCORE_EXPORT static Ref<SecurityOrigin> create(const URL&);
-    static Ref<SecurityOrigin> createUnique();
-
-    WEBCORE_EXPORT static Ref<SecurityOrigin> createFromDatabaseIdentifier(const String&);
-    // Alternate form of createFromDatabaseIdentifier that returns a nullptr on failure, instead of an empty origin.
-    // FIXME: Many users of createFromDatabaseIdentifier seem to expect maybeCreateFromDatabaseIdentifier behavior,
-    // but they aren't getting it so they might be buggy.
-    WEBCORE_EXPORT static RefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> createUnique();
 
     WEBCORE_EXPORT static Ref<SecurityOrigin> createFromString(const String&);
-    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, Optional<uint16_t> port);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, std::optional<uint16_t> port);
 
     // Some URL schemes use nested URLs for their security context. For example,
     // filesystem URLs look like the following:
@@ -87,7 +81,7 @@ public:
     const String& protocol() const { return m_protocol; }
     const String& host() const { return m_host; }
     const String& domain() const { return m_domain; }
-    Optional<uint16_t> port() const { return m_port; }
+    std::optional<uint16_t> port() const { return m_port; }
 
     // Returns true if a given URL is secure, based either directly on its
     // own protocol, or, when relevant, on the protocol of its "inner URL"
@@ -98,17 +92,17 @@ public:
     // SecurityOrigin. For example, call this function before allowing
     // script from one security origin to read or write objects from
     // another SecurityOrigin.
-    WEBCORE_EXPORT bool canAccess(const SecurityOrigin*) const;
+    WEBCORE_EXPORT bool canAccess(const SecurityOrigin&) const;
 
     // Returns true if this SecurityOrigin can read content retrieved from
     // the given URL. For example, call this function before issuing
     // XMLHttpRequests.
-    bool canRequest(const URL&) const;
+    WEBCORE_EXPORT bool canRequest(const URL&) const;
 
     // Returns true if this SecurityOrigin can receive drag content from the
     // initiator. For example, call this function before allowing content to be
     // dropped onto a target.
-    bool canReceiveDragData(const SecurityOrigin* dragInitiator) const;    
+    bool canReceiveDragData(const SecurityOrigin& dragInitiator) const;
 
     // Returns true if |document| can display content from the given URL (e.g.,
     // in an iframe or as an image). For example, web sites generally cannot
@@ -144,15 +138,13 @@ public:
     void grantStorageAccessFromFileURLsQuirk();
     bool needsStorageAccessFromFileURLsQuirk() const { return m_needsStorageAccessFromFileURLsQuirk; }
 
-#if ENABLE(CACHE_PARTITIONING)
     WEBCORE_EXPORT String domainForCachePartition() const;
-#endif
 
-    bool canAccessDatabase(const SecurityOrigin* topOrigin = nullptr) const { return canAccessStorage(topOrigin); };
-    bool canAccessSessionStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin, AlwaysAllowFromThirdParty); }
+    bool canAccessDatabase(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin); };
+    bool canAccessSessionStorage(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin, AlwaysAllowFromThirdParty); }
     bool canAccessLocalStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); };
-    bool canAccessPluginStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
-    bool canAccessApplicationCache(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
+    bool canAccessPluginStorage(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin); }
+    bool canAccessApplicationCache(const SecurityOrigin& topOrigin) const { return canAccessStorage(&topOrigin); }
     bool canAccessCookies() const { return !isUnique(); }
     bool canRequestGeolocation() const { return !isUnique(); }
     Policy canShowNotifications() const;
@@ -200,9 +192,17 @@ public:
 
     // This method checks for equality, ignoring the value of document.domain
     // (and whether it was set) but considering the host. It is used for postMessage.
-    WEBCORE_EXPORT bool isSameSchemeHostPort(const SecurityOrigin*) const;
+    WEBCORE_EXPORT bool isSameSchemeHostPort(const SecurityOrigin&) const;
+
+    // This method implements the "same origin" algorithm from the HTML Standard:
+    // https://html.spec.whatwg.org/multipage/browsers.html#same-origin
+    WEBCORE_EXPORT bool isSameOriginAs(const SecurityOrigin&) const;
 
     static URL urlWithUniqueSecurityOrigin();
+
+    bool isPotentiallyTrustworthy() const { return m_isPotentiallyTrustworthy; }
+
+    static bool isLocalHostOrLoopbackIPAddress(const URL&);
 
 private:
     SecurityOrigin();
@@ -210,8 +210,7 @@ private:
     explicit SecurityOrigin(const SecurityOrigin*);
 
     // FIXME: Rename this function to something more semantic.
-    bool passesFileCheck(const SecurityOrigin*) const;
-    bool isThirdParty(const SecurityOrigin*) const;
+    bool passesFileCheck(const SecurityOrigin&) const;
 
     // This method checks that the scheme for this origin is an HTTP-family
     // scheme, e.g. HTTP and HTTPS.
@@ -224,7 +223,7 @@ private:
     String m_host;
     String m_domain;
     String m_filePath;
-    Optional<uint16_t> m_port;
+    std::optional<uint16_t> m_port;
     bool m_isUnique { false };
     bool m_universalAccess { false };
     bool m_domainWasSetInDOM { false };
@@ -232,7 +231,10 @@ private:
     StorageBlockingPolicy m_storageBlockingPolicy { AllowAllStorage };
     bool m_enforceFilePathSeparation { false };
     bool m_needsStorageAccessFromFileURLsQuirk { false };
+    bool m_isPotentiallyTrustworthy { false };
 };
+
+bool shouldTreatAsPotentiallyTrustworthy(const URL&);
 
 // Returns true if the Origin header values serialized from these two origins would be the same.
 bool originsMatch(const SecurityOrigin&, const SecurityOrigin&);

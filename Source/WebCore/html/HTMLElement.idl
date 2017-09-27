@@ -20,42 +20,54 @@
 
 [
     CustomConstructor(),
+    CustomPushEventHandlerScope,
     ExportMacro=WEBCORE_EXPORT,
-    JSCustomPushEventHandlerScope,
     JSGenerateToNativeObject,
 ] interface HTMLElement : Element {
+    // Metadata attributes.
     [CEReactions, Reflect] attribute DOMString title;
     [CEReactions, Reflect] attribute DOMString lang;
     [CEReactions] attribute boolean translate;
     [CEReactions] attribute DOMString dir;
+    readonly attribute DOMStringMap dataset; // FIXME: Should be [SameObject].
 
-    [CEReactions] attribute long tabIndex;
-    [CEReactions] attribute boolean draggable;
-
-    [CEReactions, Reflect] attribute DOMString webkitdropzone;
-    // FIXME: Support the standard HTML equivalent.
-    // [PutForwards=value] readonly attribute DOMTokenList dropzone;
-
+    // User interaction.
     [CEReactions, Reflect] attribute boolean hidden;
-    [CEReactions, Reflect] attribute DOMString accessKey;
-
-    [CEReactions, SetterMayThrowException, TreatNullAs=EmptyString] attribute DOMString innerText;
-    [CEReactions, SetterMayThrowException, TreatNullAs=EmptyString] attribute DOMString outerText;
-
-    [CEReactions, SetterMayThrowException] attribute DOMString contentEditable;
-    readonly attribute boolean isContentEditable;
-
-    [CEReactions] attribute boolean spellcheck;
-
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=EmptyString] attribute DOMString autocapitalize;
-
     void click();
-
+    [CEReactions] attribute long tabIndex;
     void focus();
     void blur();
+    [CEReactions, Reflect] attribute DOMString accessKey;
+    // readonly attribute DOMString accessKeyLabel; // FIXME: Not supported.
+    [CEReactions] attribute boolean draggable;
+    // [CEReactions] attribute HTMLMenuElement? contextMenu; // FIXME: Not supported.
+    [CEReactions] attribute boolean spellcheck;
+    // void forceSpellCheck(); // FIXME: Not supported.
 
-    readonly attribute DOMStringMap dataset;
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString innerText;
+
+    // FIXME: Should be in a separate ElementContentEditable interface.
+    // https://html.spec.whatwg.org/#elementcontenteditable
+    [CEReactions] attribute DOMString contentEditable;
+    readonly attribute boolean isContentEditable;
+
+    // Extensions from CSSOM-view specification (https://drafts.csswg.org/cssom-view/#extensions-to-the-htmlelement-interface).
+    [ImplementedAs=bindingsOffsetParent] readonly attribute Element? offsetParent;
+    readonly attribute double offsetTop; // FIXME: Should be of type long.
+    readonly attribute double offsetLeft; // FIXME: Should be of type long.
+    readonly attribute double offsetWidth; // FIXME: Should be of type long.
+    readonly attribute double offsetHeight; // FIXME: Should be of type long.
+
+    // Non Standard but may get added to the specification (https://github.com/whatwg/html/issues/668).
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString outerText;
+
+    // iOS autocorrect / autocapitalization extensions.
+    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
+    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute [TreatNullAs=EmptyString] DOMString autocapitalize;
+
+    // FIXME: We are the only browser to support this now that Blink dropped it (http://crbug.com/688943).
+    [CEReactions, Reflect] attribute DOMString webkitdropzone;
 };
 
+HTMLElement implements ElementCSSInlineStyle;
 HTMLElement implements GlobalEventHandlers;

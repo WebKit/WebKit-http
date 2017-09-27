@@ -43,10 +43,11 @@ public:
     RenderMultiColumnSet* firstMultiColumnSet() const;
     RenderMultiColumnSet* lastMultiColumnSet() const;
     RenderBox* firstColumnSetOrSpanner() const;
+    bool hasColumnSpanner() const { return !m_spannerMap.isEmpty(); }
     static RenderBox* nextColumnSetOrSpannerSiblingOf(const RenderBox*);
     static RenderBox* previousColumnSetOrSpannerSiblingOf(const RenderBox*);
 
-    RenderMultiColumnSpannerPlaceholder* findColumnSpannerPlaceholder(RenderBox* spanner) const { return m_spannerMap.get(spanner); }
+    RenderMultiColumnSpannerPlaceholder* findColumnSpannerPlaceholder(RenderBox* spanner) const { return m_spannerMap.get(spanner).get(); }
 
     void layout() override;
 
@@ -113,7 +114,7 @@ private:
     void flowThreadDescendantInserted(RenderObject&) override;
     void flowThreadRelativeWillBeRemoved(RenderObject&) override;
     void flowThreadDescendantBoxLaidOut(RenderBox*) override;
-    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
     LayoutUnit initialLogicalWidth() const override;
     void setPageBreak(const RenderBlock*, LayoutUnit offset, LayoutUnit spaceShortage) override;
     void updateMinimumPageHeight(const RenderBlock*, LayoutUnit offset, LayoutUnit minHeight) override;
@@ -126,7 +127,7 @@ private:
     RenderObject* processPossibleSpannerDescendant(RenderObject*& subtreeRoot, RenderObject& descendant);
     
 private:
-    typedef HashMap<RenderBox*, RenderMultiColumnSpannerPlaceholder*> SpannerMap;
+    typedef HashMap<RenderBox*, WeakPtr<RenderMultiColumnSpannerPlaceholder>> SpannerMap;
     SpannerMap m_spannerMap;
 
     // The last set we worked on. It's not to be used as the "current set". The concept of a

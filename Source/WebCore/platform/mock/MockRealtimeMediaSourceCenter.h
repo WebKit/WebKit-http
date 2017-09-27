@@ -24,11 +24,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MockRealtimeMediaSourceCenter_h
-#define MockRealtimeMediaSourceCenter_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "CaptureDeviceManager.h"
+#include "MockRealtimeAudioSource.h"
+#include "MockRealtimeVideoSource.h"
 #include "RealtimeMediaSourceCenter.h"
 
 namespace WebCore {
@@ -38,16 +40,27 @@ public:
     WEBCORE_EXPORT static void setMockRealtimeMediaSourceCenterEnabled(bool);
 
 private:
+    MockRealtimeMediaSourceCenter() = default;
     friend NeverDestroyed<MockRealtimeMediaSourceCenter>;
-    MockRealtimeMediaSourceCenter();
 
-    void validateRequestConstraints(ValidConstraintsHandler validHandler, InvalidConstraintsHandler invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints) final;
-    Vector<CaptureDevice> getMediaStreamDevices() final;
-    void createMediaStream(NewMediaStreamHandler, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* audioConstraints, const MediaConstraints* videoConstraints) final;
+    RealtimeMediaSource::AudioCaptureFactory& defaultAudioFactory() final { return MockRealtimeAudioSource::factory(); }
+    RealtimeMediaSource::VideoCaptureFactory& defaultVideoFactory() final { return MockRealtimeVideoSource::factory(); }
+    CaptureDeviceManager& defaultAudioCaptureDeviceManager() final { return m_defaultAudioCaptureDeviceManager; }
+    CaptureDeviceManager& defaultVideoCaptureDeviceManager() final { return m_defaultVideoCaptureDeviceManager; }
+
+    class MockAudioCaptureDeviceManager final : public CaptureDeviceManager {
+    private:
+        Vector<CaptureDevice>& captureDevices() final { return MockRealtimeMediaSource::audioDevices(); }
+    };
+    class MockVideoCaptureDeviceManager final : public CaptureDeviceManager {
+    private:
+        Vector<CaptureDevice>& captureDevices() final { return MockRealtimeMediaSource::videoDevices(); }
+    };
+
+    MockAudioCaptureDeviceManager m_defaultAudioCaptureDeviceManager;
+    MockVideoCaptureDeviceManager m_defaultVideoCaptureDeviceManager;
 };
 
 }
 
 #endif // MockRealtimeMediaSourceCenter_h
-
-#endif

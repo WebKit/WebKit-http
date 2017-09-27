@@ -1,7 +1,7 @@
 [
     {
-        "section" : "Bytecodes", "emitInHFile" : true, "emitInASMFile" : true, 
-        "macroNameComponent" : "BYTECODE", "asmPrefix" : "llint_", 
+        "section" : "Bytecodes", "emitInHFile" : true, "emitInStructsFile" : true, "emitInASMFile" : true,
+        "emitOpcodeIDStringValuesInHFile" : true, "macroNameComponent" : "BYTECODE", "asmPrefix" : "llint_",
         "bytecodes" : [
             { "name" : "op_enter", "length" : 1 },
             { "name" : "op_get_scope", "length" : 2 },
@@ -50,9 +50,20 @@
             { "name" : "op_bitand", "length" : 5 },
             { "name" : "op_bitxor", "length" : 5 },
             { "name" : "op_bitor", "length" : 5 },
-            { "name" : "op_overrides_has_instance", "length" : 4 },
-            { "name" : "op_instanceof", "length" : 4 },
-            { "name" : "op_instanceof_custom", "length" : 5 },
+            { "name" : "op_identity_with_profile", "length" : 4 },
+            { "name" : "op_overrides_has_instance", "offsets" :
+                       [{"dst" : "int"},
+                        {"constructor" : "int"},
+                        {"hasInstanceValue" : "int"}] },
+            { "name" : "op_instanceof", "offsets" :
+                       [{"dst" : "int"},
+                        {"value" : "int"},
+                        {"prototype" : "int"}] },
+            { "name" : "op_instanceof_custom", "offsets" :
+                       [{"dst" : "int"},
+                        {"value" : "int"},
+                        {"constructor" : "int"},
+                        {"hasInstanceValue" : "int"}] },
             { "name" : "op_typeof", "length" : 3 },
             { "name" : "op_is_empty", "length" : 3 },
             { "name" : "op_is_undefined", "length" : 3 },
@@ -62,7 +73,7 @@
             { "name" : "op_is_object_or_null", "length" : 3 },
             { "name" : "op_is_function", "length" : 3 },
             { "name" : "op_is_cell_with_type", "length" : 4 },
-            { "name" : "op_in", "length" : 4 },
+            { "name" : "op_in", "length" : 5 },
             { "name" : "op_get_array_length", "length" : 9 },
             { "name" : "op_get_by_id", "length" : 9  },
             { "name" : "op_get_by_id_proto_load", "length" : 9 },
@@ -110,6 +121,8 @@
             { "name" : "op_new_generator_func_exp", "length" : 4 },
             { "name" : "op_new_async_func", "length" : 4 },
             { "name" : "op_new_async_func_exp", "length" : 4 },
+            { "name" : "op_new_async_generator_func", "length" : 4 },
+            { "name" : "op_new_async_generator_func_exp", "length" : 4 },
             { "name" : "op_set_function_name", "length" : 3 },
             { "name" : "op_call", "length" : 9 },
             { "name" : "op_tail_call", "length" : 9 },
@@ -130,7 +143,7 @@
             { "name" : "op_push_with_scope", "length" : 4 },
             { "name" : "op_create_lexical_environment", "length" : 5 },
             { "name" : "op_get_parent_scope", "length" : 3 },
-            { "name" : "op_catch", "length" : 3 },
+            { "name" : "op_catch", "length" : 4 },
             { "name" : "op_throw", "length" : 2 },
             { "name" : "op_throw_static_error", "length" : 3 },
             { "name" : "op_debug", "length" : 3 },
@@ -147,17 +160,20 @@
             { "name" : "op_enumerator_generic_pname", "length" : 4 },
             { "name" : "op_to_index_string", "length" : 3 },
             { "name" : "op_assert", "length" : 3 },
+            { "name" : "op_unreachable", "length" : 1 },
             { "name" : "op_create_rest", "length": 4 },
             { "name" : "op_get_rest_length", "length": 3 },
             { "name" : "op_yield", "length" : 4 },
-            { "name" : "op_watchdog", "length" : 1 },
+            { "name" : "op_check_traps", "length" : 1 },
             { "name" : "op_log_shadow_chicken_prologue", "length" : 2},
-            { "name" : "op_log_shadow_chicken_tail", "length" : 3}
+            { "name" : "op_log_shadow_chicken_tail", "length" : 3},
+            { "name" : "op_resolve_scope_for_hoisting_func_decl_in_eval", "length" : 4 },
+            { "name" : "op_nop", "length" : 1 }
         ]
     },
     {
-        "section" : "CLoopHelpers", "emitInHFile" : true, "emitInASMFile" : false, "defaultLength" : 1,
-        "macroNameComponent" : "CLOOP_BYTECODE_HELPER",
+        "section" : "CLoopHelpers", "emitInHFile" : true, "emitInStructsFile" : false, "emitInASMFile" : false,
+        "emitOpcodeIDStringValuesInHFile" : false, "defaultLength" : 1, "macroNameComponent" : "CLOOP_BYTECODE_HELPER",
         "bytecodes" : [
             { "name" : "llint_entry" },
             { "name" : "getHostCallReturnValue" },
@@ -179,8 +195,8 @@
         ]
     },
     {
-        "section" : "NativeHelpers", "emitInHFile" : true, "emitInASMFile" : true, "defaultLength" : 1,
-        "macroNameComponent" : "BYTECODE_HELPER",
+        "section" : "NativeHelpers", "emitInHFile" : true, "emitInStructsFile" : false, "emitInASMFile" : true,
+        "emitOpcodeIDStringValuesInHFile" : false, "defaultLength" : 1, "macroNameComponent" : "BYTECODE_HELPER",
         "bytecodes" : [
             { "name" : "llint_program_prologue" },
             { "name" : "llint_eval_prologue" },

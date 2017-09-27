@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IntRect_h
-#define IntRect_h
+#pragma once
 
 #include "IntPoint.h"
 #include "LayoutUnit.h"
@@ -61,11 +60,14 @@ typedef D2D_RECT_F D2D1_RECT_F;
 typedef struct _cairo_rectangle_int cairo_rectangle_int_t;
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class FloatRect;
 class LayoutRect;
-class TextStream;
 
 class IntRect {
     WTF_MAKE_FAST_ALLOCATED;
@@ -181,9 +183,6 @@ public:
     IntRect(const D2D1_RECT_U&);
     operator D2D1_RECT_F() const;
     operator D2D1_RECT_U() const;
-#elif PLATFORM(EFL)
-    explicit IntRect(const Eina_Rectangle&);
-    operator Eina_Rectangle() const;
 #endif
 
 #if USE(CAIRO)
@@ -248,8 +247,7 @@ WEBCORE_EXPORT IntRect enclosingIntRect(const CGRect&);
 WEBCORE_EXPORT IntRect enclosingIntRect(const NSRect&);
 #endif
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const IntRect&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const IntRect&);
 
 } // namespace WebCore
 
-#endif // IntRect_h

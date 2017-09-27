@@ -45,9 +45,10 @@ PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const Tes
 
 PlatformWebView::~PlatformWebView()
 {
+    delete m_window;
 }
 
-void PlatformWebView::resizeTo(unsigned, unsigned)
+void PlatformWebView::resizeTo(unsigned, unsigned, WebViewSizingMode)
 {
 }
 
@@ -62,10 +63,10 @@ void PlatformWebView::focus()
 
 WKRect PlatformWebView::windowFrame()
 {
-    return WKRect{ 0, 0, 1, 1 };
+    return WKRect { 0, 0, 1, 1 };
 }
 
-void PlatformWebView::setWindowFrame(WKRect)
+void PlatformWebView::setWindowFrame(WKRect, WebViewSizingMode)
 {
 }
 
@@ -81,6 +82,14 @@ void PlatformWebView::removeChromeInputField()
 {
 }
 
+void PlatformWebView::addToWindow()
+{
+}
+
+void PlatformWebView::removeFromWindow()
+{
+}
+
 void PlatformWebView::setWindowIsKey(bool windowIsKey)
 {
     m_windowIsKey = windowIsKey;
@@ -90,7 +99,7 @@ void PlatformWebView::makeWebViewFirstResponder()
 {
 }
 
-WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
+cairo_surface_t* PlatformWebView::windowSnapshotImage()
 {
     {
         struct TimeoutTimer {
@@ -108,9 +117,7 @@ WKRetainPtr<WKImageRef> PlatformWebView::windowSnapshotImage()
     }
 
     cairo_surface_t* imageSurface = m_window->createSnapshot();
-    WKRetainPtr<WKImageRef> wkImage = adoptWK(WKImageCreateFromCairoSurface(imageSurface, kWKImageOptionsShareable));
-    cairo_surface_destroy(imageSurface);
-    return wkImage;
+    return imageSurface;
 }
 
 void PlatformWebView::changeWindowScaleIfNeeded(float)
@@ -119,11 +126,6 @@ void PlatformWebView::changeWindowScaleIfNeeded(float)
 
 void PlatformWebView::setNavigationGesturesEnabled(bool)
 {
-}
-
-bool PlatformWebView::viewSupportsOptions(const TestOptions&) const
-{
-    return true;
 }
 
 void PlatformWebView::forceWindowFramesChanged()

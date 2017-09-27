@@ -44,7 +44,6 @@
 #include "RenderElement.h"
 #include "SelectorCheckerTestFunctions.h"
 #include "ShadowRoot.h"
-#include "StyledElement.h"
 #include "Text.h"
 
 namespace WebCore {
@@ -74,7 +73,7 @@ struct SelectorChecker::LocalContext {
     bool pseudoElementEffective { true };
     bool hasScrollbarPseudo { false };
     bool hasSelectionPseudo { false };
-    bool didMoveToShadowHost { false };
+    bool mayMatchHostPseudoClass { false };
 
 };
 
@@ -182,6 +181,12 @@ bool SelectorChecker::match(const CSSSelector& selector, const Element& element,
     specificity = 0;
 
     LocalContext context(selector, element, checkingContext.resolvingMode == SelectorChecker::Mode::QueryingRules ? VisitedMatchType::Disabled : VisitedMatchType::Enabled, checkingContext.pseudoId);
+
+    if (checkingContext.isMatchingHostPseudoClass) {
+        ASSERT(element.shadowRoot());
+        context.mayMatchHostPseudoClass = true;
+    }
+
     PseudoIdSet pseudoIdSet;
     MatchResult result = matchRecursively(checkingContext, context, pseudoIdSet, specificity);
     if (result.match != Match::SelectorMatches)
@@ -208,10 +213,6 @@ bool SelectorChecker::matchHostPseudoClass(const CSSSelector& selector, const El
 
     specificity = selector.simpleSelectorSpecificity();
 
-    // :host doesn't combine with any other selectors.
-    if (selector.tagHistory())
-        return false;
-    
     if (auto* selectorList = selector.selectorList()) {
         LocalContext context(*selectorList->first(), element, VisitedMatchType::Enabled, NOPSEUDO);
         context.inFunctionalPseudoClass = true;
@@ -245,7 +246,7 @@ static SelectorChecker::LocalContext localContextForParent(const SelectorChecker
 
     updatedContext.isMatchElement = false;
 
-    if (updatedContext.didMoveToShadowHost) {
+    if (updatedContext.mayMatchHostPseudoClass) {
         updatedContext.element = nullptr;
         return updatedContext;
     }
@@ -253,7 +254,7 @@ static SelectorChecker::LocalContext localContextForParent(const SelectorChecker
     // Move to the shadow host if matching :host and the parent is the shadow root.
     if (context.selector->match() == CSSSelector::PseudoClass && context.selector->pseudoClassType() == CSSSelector::PseudoClassHost && is<ShadowRoot>(context.element->parentNode())) {
         updatedContext.element = downcast<ShadowRoot>(*context.element->parentNode()).host();
-        updatedContext.didMoveToShadowHost = true;
+        updatedContext.mayMatchHostPseudoClass = true;
         return updatedContext;
     }
 
@@ -331,9 +332,6 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
 
     switch (relation) {
     case CSSSelector::DescendantSpace:
-#if ENABLE_CSS_SELECTORS_LEVEL4
-    case CSSSelector::DescendantDoubleChild:
-#endif
         nextContext = localContextForParent(nextContext);
         nextContext.firstSelectorOfTheFragment = nextContext.selector;
         for (; nextContext.element; nextContext = localContextForParent(nextContext)) {
@@ -642,10 +640,10 @@ static inline bool tagMatches(const Element& element, const CSSSelector& simpleS
 
     const AtomicString& localName = (element.isHTMLElement() && element.document().isHTMLDocument()) ? simpleSelector.tagLowercaseLocalName() : tagQName.localName();
 
-    if (localName != starAtom && localName != element.localName())
+    if (localName != starAtom() && localName != element.localName())
         return false;
     const AtomicString& namespaceURI = tagQName.namespaceURI();
-    return namespaceURI == starAtom || namespaceURI == element.namespaceURI();
+    return namespaceURI == starAtom() || namespaceURI == element.namespaceURI();
 }
 
 bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalContext& context, PseudoIdSet& dynamicPseudoIdSet, MatchType& matchType, unsigned& specificity) const
@@ -654,6 +652,14 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
     const CSSSelector& selector = *context.selector;
 
     specificity = CSSSelector::addSpecificities(specificity, selector.simpleSelectorSpecificity());
+
+    if (context.mayMatchHostPseudoClass) {
+        // :host doesn't combine with anything except pseudo elements.
+        bool isHostPseudoClass = selector.match() == CSSSelector::PseudoClass && selector.pseudoClassType() == CSSSelector::PseudoClassHost;
+        bool isPseudoElement = selector.match() == CSSSelector::PseudoElement;
+        if (!isHostPseudoClass && !isPseudoElement)
+            return false;
+    }
 
     if (selector.match() == CSSSelector::Tag)
         return tagMatches(element, selector);
@@ -1039,7 +1045,7 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
             break;
         }
         case CSSSelector::PseudoClassHost: {
-            if (!context.didMoveToShadowHost)
+            if (!context.mayMatchHostPseudoClass)
                 return false;
             unsigned hostSpecificity;
             if (!matchHostPseudoClass(selector, element, checkingContext, hostSpecificity))

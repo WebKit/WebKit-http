@@ -31,6 +31,7 @@
 #include "FontDescription.h"
 
 #include "LocaleToScriptMapping.h"
+#include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
@@ -42,6 +43,7 @@ struct SameSizeAsFontCascadeDescription {
     char c;
 #endif
     AtomicString string;
+    int16_t fontSelectionRequest[3];
     float size;
     unsigned bitfields1;
     unsigned bitfields2 : 22;
@@ -53,15 +55,14 @@ struct SameSizeAsFontCascadeDescription {
 COMPILE_ASSERT(sizeof(FontCascadeDescription) == sizeof(SameSizeAsFontCascadeDescription), FontCascadeDescription_should_stay_small);
 
 FontDescription::FontDescription()
-    : m_orientation(Horizontal)
+    : m_fontSelectionRequest(FontCascadeDescription::initialWeight(), FontCascadeDescription::initialStretch(), FontCascadeDescription::initialItalic())
+    , m_orientation(Horizontal)
     , m_nonCJKGlyphOrientation(static_cast<unsigned>(NonCJKGlyphOrientation::Mixed))
     , m_widthVariant(RegularWidth)
-    , m_italic(FontItalicOff)
-    , m_weight(FontWeightNormal)
     , m_renderingMode(static_cast<unsigned>(FontRenderingMode::Normal))
     , m_textRendering(AutoTextRendering)
     , m_script(USCRIPT_COMMON)
-    , m_fontSynthesis(FontSynthesisWeight | FontSynthesisStyle)
+    , m_fontSynthesis(FontSynthesisWeight | FontSynthesisStyle | FontSynthesisSmallCaps)
     , m_variantCommonLigatures(static_cast<unsigned>(FontVariantLigatures::Normal))
     , m_variantDiscretionaryLigatures(static_cast<unsigned>(FontVariantLigatures::Normal))
     , m_variantHistoricalLigatures(static_cast<unsigned>(FontVariantLigatures::Normal))
@@ -77,14 +78,9 @@ FontDescription::FontDescription()
     , m_variantEastAsianVariant(static_cast<unsigned>(FontVariantEastAsianVariant::Normal))
     , m_variantEastAsianWidth(static_cast<unsigned>(FontVariantEastAsianWidth::Normal))
     , m_variantEastAsianRuby(static_cast<unsigned>(FontVariantEastAsianRuby::Normal))
+    , m_opticalSizing(static_cast<unsigned>(FontOpticalSizing::Enabled))
+    , m_fontStyleAxis(FontCascadeDescription::initialFontStyleAxis() == FontStyleAxis::ital)
 {
-}
-
-FontTraitsMask FontDescription::traitsMask() const
-{
-    return static_cast<FontTraitsMask>((m_italic ? FontStyleItalicMask : FontStyleNormalMask)
-        | (FontWeight100Mask << (m_weight - FontWeight100)));
-    
 }
 
 void FontDescription::setLocale(const AtomicString& locale)
@@ -102,48 +98,42 @@ FontCascadeDescription::FontCascadeDescription()
 {
 }
 
-FontWeight FontCascadeDescription::lighterWeight(void) const
+#if !USE_PLATFORM_SYSTEM_FALLBACK_LIST
+void FontDescription::invalidateCaches()
 {
-    switch (weight()) {
-    case FontWeight100:
-    case FontWeight200:
-    case FontWeight300:
-    case FontWeight400:
-    case FontWeight500:
-        return FontWeight100;
-
-    case FontWeight600:
-    case FontWeight700:
-        return FontWeight400;
-
-    case FontWeight800:
-    case FontWeight900:
-        return FontWeight700;
-    }
-    ASSERT_NOT_REACHED();
-    return FontWeightNormal;
 }
 
-FontWeight FontCascadeDescription::bolderWeight(void) const
+unsigned FontCascadeDescription::effectiveFamilyCount() const
 {
-    switch (weight()) {
-    case FontWeight100:
-    case FontWeight200:
-    case FontWeight300:
-        return FontWeight400;
+    return familyCount();
+}
 
-    case FontWeight400:
-    case FontWeight500:
-        return FontWeight700;
+FontFamilySpecification FontCascadeDescription::effectiveFamilyAt(unsigned i) const
+{
+    return familyAt(i);
+}
+#endif
 
-    case FontWeight600:
-    case FontWeight700:
-    case FontWeight800:
-    case FontWeight900:
-        return FontWeight900;
-    }
-    ASSERT_NOT_REACHED();
-    return FontWeightNormal;
+FontSelectionValue FontCascadeDescription::lighterWeight(FontSelectionValue weight)
+{
+    if (weight < FontSelectionValue(100))
+        return weight;
+    if (weight < FontSelectionValue(550))
+        return FontSelectionValue(100);
+    if (weight < FontSelectionValue(750))
+        return FontSelectionValue(400);
+    return FontSelectionValue(700);
+}
+
+FontSelectionValue FontCascadeDescription::bolderWeight(FontSelectionValue weight)
+{
+    if (weight < FontSelectionValue(350))
+        return FontSelectionValue(400);
+    if (weight < FontSelectionValue(550))
+        return FontSelectionValue(700);
+    if (weight < FontSelectionValue(900))
+        return FontSelectionValue(900);
+    return weight;
 }
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -165,5 +155,32 @@ bool FontCascadeDescription::familiesEqualForTextAutoSizing(const FontCascadeDes
 }
 
 #endif // ENABLE(TEXT_AUTOSIZING)
+
+bool FontCascadeDescription::familyNamesAreEqual(const AtomicString& family1, const AtomicString& family2)
+{
+    // FIXME: <rdar://problem/33594253> CoreText matches dot-prefixed font names case sensitively. We should
+    // always take the case insensitive patch once this radar is fixed.
+    if (family1.startsWith('.'))
+        return StringHash::equal(family1.string(), family2.string());
+    return ASCIICaseInsensitiveHash::equal(family1, family2);
+}
+
+unsigned FontCascadeDescription::familyNameHash(const AtomicString& family)
+{
+    // FIXME: <rdar://problem/33594253> CoreText matches dot-prefixed font names case sensitively. We should
+    // always take the case insensitive patch once this radar is fixed.
+    if (family.startsWith('.'))
+        return StringHash::hash(family.string());
+    return ASCIICaseInsensitiveHash::hash(family);
+}
+
+String FontCascadeDescription::foldedFamilyName(const AtomicString& family)
+{
+    // FIXME: <rdar://problem/33594253> CoreText matches dot-prefixed font names case sensitively. We should
+    // always take the case insensitive patch once this radar is fixed.
+    if (family.startsWith('.'))
+        return family.string();
+    return family.string().foldCase();
+}
 
 } // namespace WebCore

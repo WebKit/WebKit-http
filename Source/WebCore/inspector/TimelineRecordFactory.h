@@ -33,6 +33,7 @@
 
 #include <inspector/InspectorValues.h>
 #include <wtf/Forward.h>
+#include <wtf/Seconds.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -53,7 +54,7 @@ public:
     static Ref<Inspector::InspectorObject> createProbeSampleData(const Inspector::ScriptBreakpointAction&, unsigned sampleId);
     static Ref<Inspector::InspectorObject> createEventDispatchData(const Event&);
     static Ref<Inspector::InspectorObject> createGenericTimerData(int timerId);
-    static Ref<Inspector::InspectorObject> createTimerInstallData(int timerId, std::chrono::milliseconds timeout, bool singleShot);
+    static Ref<Inspector::InspectorObject> createTimerInstallData(int timerId, Seconds timeout, bool singleShot);
     static Ref<Inspector::InspectorObject> createEvaluateScriptData(const String&, double lineNumber);
     static Ref<Inspector::InspectorObject> createTimeStampData(const String&);
     static Ref<Inspector::InspectorObject> createAnimationFrameData(int callbackId);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,18 +27,18 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "CodeOrigin.h"
-#include "DFGCommon.h"
-#include "DFGExitProfile.h"
 #include "DFGOSRExitBase.h"
 #include "GPRInfo.h"
 #include "MacroAssembler.h"
 #include "MethodOfGettingAValueProfile.h"
 #include "Operands.h"
-#include "ValueProfile.h"
 #include "ValueRecovery.h"
 
-namespace JSC { namespace DFG {
+namespace JSC {
+
+class CCallHelpers;
+
+namespace DFG {
 
 class SpeculativeJIT;
 struct BasicBlock;
@@ -98,6 +98,8 @@ private:
 struct OSRExit : public OSRExitBase {
     OSRExit(ExitKind, JSValueSource, MethodOfGettingAValueProfile, SpeculativeJIT*, unsigned streamIndex, unsigned recoveryIndex = UINT_MAX);
 
+    static void JIT_OPERATION compileOSRExit(ExecState*) WTF_INTERNAL;
+
     unsigned m_patchableCodeOffset { 0 };
     
     MacroAssemblerCodeRef m_code;
@@ -117,6 +119,11 @@ struct OSRExit : public OSRExitBase {
     {
         OSRExitBase::considerAddingAsFrequentExitSite(profiledCodeBlock, ExitFromDFG);
     }
+
+private:
+    static void compileExit(CCallHelpers&, VM&, const OSRExit&, const Operands<ValueRecovery>&, SpeculationRecovery*);
+    static void emitRestoreArguments(CCallHelpers&, const Operands<ValueRecovery>&);
+    static void JIT_OPERATION debugOperationPrintSpeculationFailure(ExecState*, void*, void*) WTF_INTERNAL;
 };
 
 struct SpeculationFailureDebugInfo {

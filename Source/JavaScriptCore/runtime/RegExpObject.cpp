@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007-2008, 2012, 2016 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -35,7 +35,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(RegExpObject);
 
-const ClassInfo RegExpObject::s_info = { "RegExp", &Base::s_info, nullptr, CREATE_METHOD_TABLE(RegExpObject) };
+const ClassInfo RegExpObject::s_info = { "RegExp", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(RegExpObject) };
 
 RegExpObject::RegExpObject(VM& vm, Structure* structure, RegExp* regExp)
     : JSNonFinalObject(vm, structure)
@@ -48,7 +48,7 @@ RegExpObject::RegExpObject(VM& vm, Structure* structure, RegExp* regExp)
 void RegExpObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 void RegExpObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -56,15 +56,16 @@ void RegExpObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     RegExpObject* thisObject = jsCast<RegExpObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_regExp);
-    visitor.append(&thisObject->m_lastIndex);
+    visitor.append(thisObject->m_regExp);
+    visitor.append(thisObject->m_lastIndex);
 }
 
 bool RegExpObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    if (propertyName == exec->propertyNames().lastIndex) {
+    VM& vm = exec->vm();
+    if (propertyName == vm.propertyNames->lastIndex) {
         RegExpObject* regExp = asRegExpObject(object);
-        unsigned attributes = regExp->m_lastIndexIsWritable ? DontDelete | DontEnum : DontDelete | DontEnum | ReadOnly;
+        unsigned attributes = regExp->m_lastIndexIsWritable ? PropertyAttribute::DontDelete | PropertyAttribute::DontEnum : PropertyAttribute::DontDelete | PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly;
         slot.setValue(regExp, attributes, regExp->getLastIndex());
         return true;
     }
@@ -73,29 +74,33 @@ bool RegExpObject::getOwnPropertySlot(JSObject* object, ExecState* exec, Propert
 
 bool RegExpObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
-    if (propertyName == exec->propertyNames().lastIndex)
+    VM& vm = exec->vm();
+    if (propertyName == vm.propertyNames->lastIndex)
         return false;
     return Base::deleteProperty(cell, exec, propertyName);
 }
 
 void RegExpObject::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
+    VM& vm = exec->vm();
     if (mode.includeDontEnumProperties())
-        propertyNames.add(exec->propertyNames().lastIndex);
+        propertyNames.add(vm.propertyNames->lastIndex);
     Base::getOwnNonIndexPropertyNames(object, exec, propertyNames, mode);
 }
 
 void RegExpObject::getPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
+    VM& vm = exec->vm();
     if (mode.includeDontEnumProperties())
-        propertyNames.add(exec->propertyNames().lastIndex);
+        propertyNames.add(vm.propertyNames->lastIndex);
     Base::getPropertyNames(object, exec, propertyNames, mode);
 }
 
 void RegExpObject::getGenericPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
+    VM& vm = exec->vm();
     if (mode.includeDontEnumProperties())
-        propertyNames.add(exec->propertyNames().lastIndex);
+        propertyNames.add(vm.propertyNames->lastIndex);
     Base::getGenericPropertyNames(object, exec, propertyNames, mode);
 }
 
@@ -119,13 +124,16 @@ bool RegExpObject::defineOwnProperty(JSObject* object, ExecState* exec, Property
                 return typeError(exec, scope, shouldThrow, ASCIILiteral(ReadonlyPropertyChangeError));
             return true;
         }
-        if (descriptor.value())
+        if (descriptor.value()) {
             regExp->setLastIndex(exec, descriptor.value(), false);
+            RETURN_IF_EXCEPTION(scope, false);
+        }
         if (descriptor.writablePresent() && !descriptor.writable())
             regExp->m_lastIndexIsWritable = false;
         return true;
     }
 
+    scope.release();
     return Base::defineOwnProperty(object, exec, propertyName, descriptor, shouldThrow);
 }
 
@@ -141,12 +149,13 @@ static bool regExpObjectSetLastIndexNonStrict(ExecState* exec, EncodedJSValue th
 
 bool RegExpObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
+    VM& vm = exec->vm();
     RegExpObject* thisObject = jsCast<RegExpObject*>(cell);
 
     if (UNLIKELY(isThisValueAltered(slot, thisObject)))
         return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
 
-    if (propertyName == exec->propertyNames().lastIndex) {
+    if (propertyName == vm.propertyNames->lastIndex) {
         bool result = asRegExpObject(cell)->setLastIndex(exec, value, slot.isStrictMode());
         slot.setCustomValue(asRegExpObject(cell), slot.isStrictMode()
             ? regExpObjectSetLastIndexStrict
@@ -179,12 +188,17 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
     static unsigned maxSizeForDirectPath = 100000;
     
     JSArray* array = constructEmptyArray(exec, nullptr);
-    RETURN_IF_EXCEPTION(scope, JSValue());
+    RETURN_IF_EXCEPTION(scope, { });
 
+    bool hasException = false;
     auto iterate = [&] () {
         size_t end = result.end;
         size_t length = end - result.start;
         array->push(exec, JSRopeString::createSubstringOfResolved(vm, string, result.start, length));
+        if (UNLIKELY(scope.exception())) {
+            hasException = true;
+            return;
+        }
         if (!length)
             end = fixEnd(end);
         result = constructor->performMatch(vm, regExp, string, s, end);
@@ -196,7 +210,7 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
             unsigned matchCount = 0;
             MatchResult savedResult = result;
             do {
-                if (array->length() + matchCount >= MAX_STORAGE_VECTOR_LENGTH) {
+                if (array->length() + matchCount > MAX_STORAGE_VECTOR_LENGTH) {
                     throwOutOfMemoryError(exec, scope);
                     return jsUndefined();
                 }
@@ -216,9 +230,12 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
             
             // OK, we have a sensible number of matches. Now we can create them for reals.
             result = savedResult;
-            do
+            do {
                 iterate();
-            while (result);
+                EXCEPTION_ASSERT(!!scope.exception() == hasException);
+                if (UNLIKELY(hasException))
+                    return { };
+            } while (result);
             
             return array;
         }
@@ -238,20 +255,22 @@ JSValue RegExpObject::matchGlobal(ExecState* exec, JSGlobalObject* globalObject,
     ASSERT(regExp->global());
 
     setLastIndex(exec, 0);
-    RETURN_IF_EXCEPTION(scope, JSValue());
+    RETURN_IF_EXCEPTION(scope, { });
 
     String s = string->value(exec);
     RegExpConstructor* regExpConstructor = globalObject->regExpConstructor();
     
     if (regExp->unicode()) {
         unsigned stringLength = s.length();
+        scope.release();
         return collectMatches(
             vm, exec, string, s, regExpConstructor, regExp,
             [&] (size_t end) -> size_t {
                 return advanceStringUnicode(s, stringLength, end);
             });
     }
-    
+
+    scope.release();
     return collectMatches(
         vm, exec, string, s, regExpConstructor, regExp,
         [&] (size_t end) -> size_t {

@@ -465,23 +465,22 @@ Vector<UChar> String::charactersWithNullTermination() const
     return result;
 }
 
-String String::format(const char *format, ...)
+WTF_ATTRIBUTE_PRINTF(1, 0)
+static String createWithFormatAndArguments(const char *format, va_list args)
 {
-    va_list args;
-    va_start(args, format);
-
-#if USE(CF) && !OS(WINDOWS)
-    if (strstr(format, "%@")) {
-        RetainPtr<CFStringRef> cfFormat = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, format, kCFStringEncodingUTF8));
+    va_list argsCopy;
+    va_copy(argsCopy, args);
 
 #if COMPILER(CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
 #endif
+
+#if USE(CF) && !OS(WINDOWS)
+    if (strstr(format, "%@")) {
+        RetainPtr<CFStringRef> cfFormat = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, format, kCFStringEncodingUTF8));
+
         RetainPtr<CFStringRef> result = adoptCF(CFStringCreateWithFormatAndArguments(kCFAllocatorDefault, nullptr, cfFormat.get(), args));
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
 
         va_end(args);
         return result.get();
@@ -505,14 +504,31 @@ String String::format(const char *format, ...)
     Vector<char, 256> buffer;
     unsigned len = result;
     buffer.grow(len + 1);
-    
-    va_start(args, format);
-    // Now do the formatting again, guaranteed to fit.
-    vsnprintf(buffer.data(), buffer.size(), format, args);
 
+    // Now do the formatting again, guaranteed to fit.
+    vsnprintf(buffer.data(), buffer.size(), format, argsCopy);
+    va_end(argsCopy);
+
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
+
+    return StringImpl::create(reinterpret_cast<const LChar*>(buffer.data()), len);
+}
+
+String String::formatWithArguments(const char *format, va_list args)
+{
+    return createWithFormatAndArguments(format, args);
+}
+
+String String::format(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    String result = createWithFormatAndArguments(format, args);
     va_end(args);
     
-    return StringImpl::create(reinterpret_cast<const LChar*>(buffer.data()), len);
+    return result;
 }
 
 String String::number(int number)
@@ -743,19 +759,27 @@ void String::split(const String& separator, bool allowEmptyEntries, Vector<Strin
         result.append(substring(startPos));
 }
 
-void String::split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const
+void String::split(UChar separator, bool allowEmptyEntries, const SplitFunctor& functor) const
 {
-    result.clear();
+    StringView view(*this);
 
     unsigned startPos = 0;
     size_t endPos;
     while ((endPos = find(separator, startPos)) != notFound) {
         if (allowEmptyEntries || startPos != endPos)
-            result.append(substring(startPos, endPos - startPos));
+            functor(view.substring(startPos, endPos - startPos));
         startPos = endPos + 1;
     }
     if (allowEmptyEntries || startPos != length())
-        result.append(substring(startPos));
+        functor(view.substring(startPos));
+}
+
+void String::split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const
+{
+    result.clear();
+    split(separator, allowEmptyEntries, [&result](StringView item) {
+        result.append(item.toString());
+    });
 }
 
 CString String::ascii() const

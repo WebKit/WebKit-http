@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,13 +31,13 @@
 #import "AuthenticationChallenge.h"
 #import "AuthenticationMac.h"
 #import "Logging.h"
-#import "NSURLRequestSPI.h"
 #import "ResourceHandle.h"
 #import "ResourceHandleClient.h"
 #import "ResourceRequest.h"
 #import "ResourceResponse.h"
 #import "SharedBuffer.h"
 #import "WebCoreURLResponse.h"
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/MainThread.h>
 
 using namespace WebCore;
@@ -58,7 +58,7 @@ using namespace WebCore;
 
 - (void)detachHandle
 {
-    m_handle = 0;
+    m_handle = nullptr;
 
     m_requestResult = nullptr;
     m_cachedResponseResult = nullptr;
@@ -192,39 +192,15 @@ using namespace WebCore;
 
         if ([m_handle->firstRequest().nsURLRequest(DoNotUpdateHTTPBody) _propertyForKey:@"ForceHTMLMIMEType"])
             [r _setMIMEType:@"text/html"];
-        
+
         ResourceResponse resourceResponse(r);
-#if ENABLE(WEB_TIMING)
-        ResourceHandle::getConnectionTimingData(connection, resourceResponse.networkLoadTiming());
-#else
-        UNUSED_PARAM(connection);
-#endif
-        m_handle->client()->didReceiveResponseAsync(m_handle, WTFMove(resourceResponse));
+        ResourceHandle::getConnectionTimingData(connection, resourceResponse.deprecatedNetworkLoadMetrics());
+
+        m_handle->didReceiveResponse(WTFMove(resourceResponse));
     });
 
     dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
 }
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-- (void)connection:(NSURLConnection *)connection didReceiveDataArray:(NSArray *)dataArray
-{
-    ASSERT(!isMainThread());
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p didReceiveDataArray:%p arraySize:%d", m_handle, connection, dataArray, [dataArray count]);
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (!dataArray)
-            return;
-
-        if (!m_handle || !m_handle->client())
-            return;
-
-        m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::wrapCFDataArray(reinterpret_cast<CFArrayRef>(dataArray)), -1);
-        // The call to didReceiveData above can cancel a load, and if so, the delegate (self) could have been deallocated by this point.
-    });
-}
-#endif
 
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data lengthReceived:(long long)lengthReceived
 {
@@ -244,7 +220,7 @@ using namespace WebCore;
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
         // -1 means we do not provide any data about transfer size to inspector so it would use
         // Content-Length headers or content size to show transfer size.
-        m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::wrapNSData(data), -1);
+        m_handle->client()->didReceiveBuffer(m_handle, SharedBuffer::create(data), -1);
     });
 }
 
@@ -274,7 +250,7 @@ using namespace WebCore;
         if (!m_handle || !m_handle->client())
             return;
 
-        m_handle->client()->didFinishLoading(m_handle, 0);
+        m_handle->client()->didFinishLoading(m_handle);
     });
 }
 

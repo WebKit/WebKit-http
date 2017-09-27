@@ -35,6 +35,7 @@
 #include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Threading.h>
 
 namespace JSC {
 class VM;
@@ -58,11 +59,10 @@ private:
     void notifyObservers(ResourceUsageData&&);
 
     void createThreadIfNeeded();
-    static void threadCallback(void* scrollingThread);
     void threadBody();
     void platformThreadBody(JSC::VM*, ResourceUsageData&);
 
-    ThreadIdentifier m_threadIdentifier { 0 };
+    RefPtr<Thread> m_thread;
     Lock m_lock;
     Condition m_condition;
     HashMap<void*, std::function<void (const ResourceUsageData&)>> m_observers;
@@ -80,6 +80,7 @@ struct TagInfo {
 };
 
 const char* displayNameForVMTag(unsigned);
+size_t vmPageSize();
 std::array<TagInfo, 256> pagesPerVMTag();
 void logFootprintComparison(const std::array<TagInfo, 256>&, const std::array<TagInfo, 256>&);
 #endif

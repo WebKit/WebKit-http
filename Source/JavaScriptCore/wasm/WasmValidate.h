@@ -27,11 +27,14 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "WasmFormat.h"
+#include "WasmModuleInformation.h"
+#include <wtf/Expected.h>
 
-namespace JSC { namespace Wasm {
+namespace JSC {
 
-String validateFunction(const uint8_t*, size_t, const Signature*, const Vector<FunctionInformation>&);
+namespace Wasm {
+
+Expected<void, String> validateFunction(const uint8_t*, size_t, const Signature&, const ModuleInformation&);
 
 } } // namespace JSC::Wasm
 

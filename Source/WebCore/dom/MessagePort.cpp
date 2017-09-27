@@ -29,9 +29,7 @@
 
 #include "Document.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "MessageEvent.h"
-#include "SecurityOrigin.h"
 #include "WorkerGlobalScope.h"
 
 namespace WebCore {
@@ -51,8 +49,13 @@ MessagePort::~MessagePort()
         m_scriptExecutionContext->destroyedMessagePort(*this);
 }
 
-ExceptionOr<void> MessagePort::postMessage(RefPtr<SerializedScriptValue>&& message, Vector<RefPtr<MessagePort>>&& ports)
+ExceptionOr<void> MessagePort::postMessage(JSC::ExecState& state, JSC::JSValue messageValue, Vector<JSC::Strong<JSC::JSObject>>&& transfer)
 {
+    Vector<RefPtr<MessagePort>> ports;
+    auto message = SerializedScriptValue::create(state, messageValue, WTFMove(transfer), ports);
+    if (message.hasException())
+        return message.releaseException();
+
     if (!isEntangled())
         return { };
     ASSERT(m_scriptExecutionContext);
@@ -62,14 +65,14 @@ ExceptionOr<void> MessagePort::postMessage(RefPtr<SerializedScriptValue>&& messa
     if (!ports.isEmpty()) {
         for (auto& dataPort : ports) {
             if (dataPort == this || m_entangledChannel->isConnectedTo(dataPort.get()))
-                return Exception { DATA_CLONE_ERR };
+                return Exception { DataCloneError };
         }
         auto disentangleResult = MessagePort::disentanglePorts(WTFMove(ports));
         if (disentangleResult.hasException())
             return disentangleResult.releaseException();
         channels = disentangleResult.releaseReturnValue();
     }
-    m_entangledChannel->postMessageToRemote(WTFMove(message), WTFMove(channels));
+    m_entangledChannel->postMessageToRemote(message.releaseReturnValue(), WTFMove(channels));
     return { };
 }
 
@@ -142,16 +145,19 @@ void MessagePort::dispatchMessages()
     // The HTML5 spec specifies that any messages sent to a document that is not fully active should be dropped, so this behavior is OK.
     ASSERT(started());
 
-    RefPtr<SerializedScriptValue> message;
-    std::unique_ptr<MessagePortChannelArray> channels;
-    while (m_entangledChannel && m_entangledChannel->tryGetMessageFromRemote(message, channels)) {
+    if (!m_entangledChannel)
+        return;
 
+    bool contextIsWorker = is<WorkerGlobalScope>(*m_scriptExecutionContext);
+
+    auto pendingMessages = m_entangledChannel->takeAllMessagesFromRemote();
+    for (auto& message : pendingMessages) {
         // close() in Worker onmessage handler should prevent next message from dispatching.
-        if (is<WorkerGlobalScope>(*m_scriptExecutionContext) && downcast<WorkerGlobalScope>(*m_scriptExecutionContext).isClosing())
+        if (contextIsWorker && downcast<WorkerGlobalScope>(*m_scriptExecutionContext).isClosing())
             return;
 
-        auto ports = MessagePort::entanglePorts(*m_scriptExecutionContext, WTFMove(channels));
-        dispatchEvent(MessageEvent::create(WTFMove(ports), WTFMove(message)));
+        auto ports = MessagePort::entanglePorts(*m_scriptExecutionContext, WTFMove(message->channels));
+        dispatchEvent(MessageEvent::create(WTFMove(ports), WTFMove(message->message)));
     }
 }
 
@@ -180,7 +186,7 @@ ExceptionOr<std::unique_ptr<MessagePortChannelArray>> MessagePort::disentanglePo
     HashSet<MessagePort*> portSet;
     for (auto& port : ports) {
         if (!port || port->isNeutered() || !portSet.add(port.get()).isNewEntry)
-            return Exception { DATA_CLONE_ERR };
+            return Exception { DataCloneError };
     }
 
     // Passed-in ports passed validity checks, so we can disentangle them.

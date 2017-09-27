@@ -43,12 +43,6 @@ var PLATFORMS = {
             'MAC': {
                 expectationsDirectory: 'mac',
                 subPlatforms: {
-                    'YOSEMITE': {
-                        subPlatforms: {
-                            'WK1': { fallbackPlatforms: ['APPLE_MAC_YOSEMITE', 'APPLE_MAC'] },
-                            'WK2': { fallbackPlatforms: ['APPLE_MAC_YOSEMITE', 'APPLE_MAC', 'WK2'], expectationsDirectory: 'mac-wk2'}
-                        }
-                    },
                     'ELCAPITAN': {
                         subPlatforms: {
                             'WK1': { fallbackPlatforms: ['APPLE_MAC_ELCAPITAN', 'APPLE_MAC'] },
@@ -59,6 +53,12 @@ var PLATFORMS = {
                         subPlatforms: {
                             'WK1': { fallbackPlatforms: ['APPLE_MAC_SIERRA', 'APPLE_MAC'] },
                             'WK2': { fallbackPlatforms: ['APPLE_MAC_SIERRA', 'APPLE_MAC', 'WK2'], expectationsDirectory: 'mac-wk2'}
+                        }
+                    },
+                    'HIGHSIERRA': {
+                        subPlatforms: {
+                            'WK1': { fallbackPlatforms: ['APPLE_MAC_HIGHSIERRA', 'APPLE_MAC'] },
+                            'WK2': { fallbackPlatforms: ['APPLE_MAC_HIGHSIERRA', 'APPLE_MAC', 'WK2'], expectationsDirectory: 'mac-wk2'}
                         }
                     },
                 }
@@ -83,19 +83,15 @@ var PLATFORMS = {
             }
         }
     },
-    'EFL': {
-        expectationsDirectory: 'efl',
-        subPlatforms: {
-            'LINUX': {
-                subPlatforms: {
-                    'WK2': { fallbackPlatforms: ['EFL', 'WK2'], expectationsDirectory: 'efl-wk2' }
-                }
-            }
-        }
-    },
     'WK2': {
         basePlatform: true,
         expectationsDirectory: 'wk2'
+    },
+    'WPE': {
+        expectationsDirectory: 'wpe',
+        subPlatforms: {
+            'LINUX': { fallbackPlatforms: ['WPE'] }
+        }
     }
 };
 
@@ -354,22 +350,22 @@ function determineBuilderPlatform(builderNameUpperCase)
     if (string.contains(builderNameUpperCase, 'WIN XP'))
         return 'APPLE_WIN_XP';
 
+    if (string.contains(builderNameUpperCase, 'HIGHSIERRA'))
+        return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_HIGHSIERRA');
     if (string.contains(builderNameUpperCase, 'SIERRA'))
-        return determineWKPlatform(builderNameUpperCase, 'SIERRA');
+        return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_SIERRA');
     if (string.contains(builderNameUpperCase, 'EL CAPITAN'))
-        return determineWKPlatform(builderNameUpperCase, 'APPLE_ELCAPITAN');
-    if (string.contains(builderNameUpperCase, 'YOSEMITE'))
-        return determineWKPlatform(builderNameUpperCase, 'APPLE_YOSEMITE');
+        return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_ELCAPITAN');
     if (string.contains(builderNameUpperCase, 'MAVERICKS'))
-        return determineWKPlatform(builderNameUpperCase, 'APPLE_MAVERICKS');
+        return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_MAVERICKS');
     if (string.contains(builderNameUpperCase, 'LION'))
         return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_LION');
     if (string.contains(builderNameUpperCase, ' IOS ') && string.contains(builderNameUpperCase, 'SIMULATOR'))
         return determineWKPlatform(builderNameUpperCase, 'APPLE_IOS_SIMULATOR');
     if (string.contains(builderNameUpperCase, 'GTK LINUX'))
         return determineWKPlatform(builderNameUpperCase, 'GTK_LINUX');
-    if (string.contains(builderNameUpperCase, 'EFL'))
-        return determineWKPlatform(builderNameUpperCase, 'EFL_LINUX');
+    if (string.contains(builderNameUpperCase, 'WPE LINUX'))
+        return determineWKPlatform(builderNameUpperCase, 'WPE_LINUX');
 }
 
 function platformAndBuildType(builderName)
@@ -707,6 +703,7 @@ function getParsedExpectations(data)
             'Yosemite': 'YOSEMITE',
             'ElCapitan': 'ELCAPITAN',
             'Sierra': 'SIERRA',
+            'HighSierra': 'HIGHSIERRA',
             'Win7': 'WIN7',
             'XP': 'XP',
             'Vista': 'VISTA',

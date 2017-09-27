@@ -34,3 +34,19 @@
 .content-view.network-grid > .data-grid th {
     border-top: none;
 }
+
+.content-view.network-grid > .data-grid .preserved:not(.selected) .cell-content {
+    opacity: 0.5;
+}
+
+.content-view.network-grid > .data-grid .preserved:not(.selected) .cell-content .timeline-record-bar > .segment {
+    filter: grayscale();
+}
+
+.content-view:matches(.network, .network-grid) > .data-grid .cache-type {
+    color: gray;
+}
+
+.content-view:matches(.network, .network-grid) > .data-grid:matches(:focus, .force-focus) tr.selected .cache-type {
+    color: var(--selected-foreground-color) !important;
+}

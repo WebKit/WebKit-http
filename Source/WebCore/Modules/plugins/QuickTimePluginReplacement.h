@@ -49,7 +49,7 @@ private:
     static bool supportsMimeType(const String&);
     static bool supportsFileExtension(const String&);
     static bool supportsURL(const URL&) { return true; }
-    static bool isEnabledBySettings(const Settings*);
+    static bool isEnabledBySettings(const Settings&);
 
     bool installReplacement(ShadowRoot&) final;
     JSC::JSObject* scriptObject() final { return m_scriptObject; }
@@ -64,7 +64,7 @@ private:
     RefPtr<HTMLVideoElement> m_mediaElement;
     const Vector<String> m_names;
     const Vector<String> m_values;
-    JSC::JSObject* m_scriptObject; // FIXME: Why is it safe to have this pointer here? What keeps it alive during GC?
+    JSC::JSObject* m_scriptObject { nullptr }; // FIXME: Why is it safe to have this pointer here? What keeps it alive during GC?
 };
 
 }

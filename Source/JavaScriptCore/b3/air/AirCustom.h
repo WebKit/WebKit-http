@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,14 +57,13 @@ namespace JSC { namespace B3 { namespace Air {
 // Definition of Patch instruction. Patch is used to delegate the behavior of the instruction to the
 // Special object, which will be the first argument to the instruction.
 struct PatchCustom {
-    template<typename Functor>
-    static void forEachArg(Inst& inst, const Functor& functor)
+    static void forEachArg(Inst& inst, ScopedLambda<Inst::EachArgCallback> lambda)
     {
         // This is basically bogus, but it works for analyses that model Special as an
         // immediate.
-        functor(inst.args[0], Arg::Use, Arg::GP, Arg::pointerWidth());
+        lambda(inst.args[0], Arg::Use, GP, pointerWidth());
         
-        inst.args[0].special()->forEachArg(inst, scopedLambda<Inst::EachArgCallback>(functor));
+        inst.args[0].special()->forEachArg(inst, lambda);
     }
 
     template<typename... Arguments>
@@ -82,7 +81,14 @@ struct PatchCustom {
         return inst.args[0].special()->admitsStack(inst, argIndex);
     }
 
-    static Optional<unsigned> shouldTryAliasingDef(Inst& inst)
+    static bool admitsExtendedOffsetAddr(Inst& inst, unsigned argIndex)
+    {
+        if (!argIndex)
+            return false;
+        return inst.args[0].special()->admitsExtendedOffsetAddr(inst, argIndex);
+    }
+
+    static std::optional<unsigned> shouldTryAliasingDef(Inst& inst)
     {
         return inst.args[0].special()->shouldTryAliasingDef(inst);
     }
@@ -128,21 +134,21 @@ struct CCallCustom : public CommonCustomBase<CCallCustom> {
 
         unsigned index = 0;
 
-        functor(inst.args[index++], Arg::Use, Arg::GP, Arg::pointerWidth()); // callee
+        functor(inst.args[index++], Arg::Use, GP, pointerWidth()); // callee
         
         if (value->type() != Void) {
             functor(
                 inst.args[index++], Arg::Def,
-                Arg::typeForB3Type(value->type()),
-                Arg::widthForB3Type(value->type()));
+                bankForType(value->type()),
+                widthForType(value->type()));
         }
 
         for (unsigned i = 1; i < value->numChildren(); ++i) {
             Value* child = value->child(i);
             functor(
                 inst.args[index++], Arg::Use,
-                Arg::typeForB3Type(child->type()),
-                Arg::widthForB3Type(child->type()));
+                bankForType(child->type()),
+                widthForType(child->type()));
         }
     }
 
@@ -157,6 +163,11 @@ struct CCallCustom : public CommonCustomBase<CCallCustom> {
     static bool admitsStack(Inst&, unsigned)
     {
         return true;
+    }
+
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
+    {
+        return false;
     }
     
     static bool isTerminal(Inst&)
@@ -180,8 +191,8 @@ struct ColdCCallCustom : CCallCustom {
         // This is just like a call, but uses become cold.
         CCallCustom::forEachArg(
             inst,
-            [&] (Arg& arg, Arg::Role role, Arg::Type type, Arg::Width width) {
-                functor(arg, Arg::cooled(role), type, width);
+            [&] (Arg& arg, Arg::Role role, Bank bank, Width width) {
+                functor(arg, Arg::cooled(role), bank, width);
             });
     }
 };
@@ -195,11 +206,11 @@ struct ShuffleCustom : public CommonCustomBase<ShuffleCustom> {
             Arg& src = inst.args[i + 0];
             Arg& dst = inst.args[i + 1];
             Arg& widthArg = inst.args[i + 2];
-            Arg::Width width = widthArg.width();
-            Arg::Type type = src.isGP() && dst.isGP() ? Arg::GP : Arg::FP;
-            functor(src, Arg::Use, type, width);
-            functor(dst, Arg::Def, type, width);
-            functor(widthArg, Arg::Use, Arg::GP, Arg::Width8);
+            Width width = widthArg.width();
+            Bank bank = src.isGP() && dst.isGP() ? GP : FP;
+            functor(src, Arg::Use, bank, width);
+            functor(dst, Arg::Def, bank, width);
+            functor(widthArg, Arg::Use, GP, Width8);
         }
     }
 
@@ -220,6 +231,11 @@ struct ShuffleCustom : public CommonCustomBase<ShuffleCustom> {
         default:
             return false;
         }
+    }
+
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
+    {
+        return false;
     }
 
     static bool isTerminal(Inst&)
@@ -256,6 +272,11 @@ struct EntrySwitchCustom : public CommonCustomBase<EntrySwitchCustom> {
     {
         return false;
     }
+
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
+    {
+        return false;
+    }
     
     static bool isTerminal(Inst&)
     {
@@ -280,8 +301,8 @@ struct WasmBoundsCheckCustom : public CommonCustomBase<WasmBoundsCheckCustom> {
     template<typename Func>
     static void forEachArg(Inst& inst, const Func& functor)
     {
-        functor(inst.args[0], Arg::Use, Arg::GP, Arg::Width64);
-        functor(inst.args[1], Arg::Use, Arg::GP, Arg::Width64);
+        functor(inst.args[0], Arg::Use, GP, Width64);
+        functor(inst.args[1], Arg::Use, GP, Width64);
     }
 
     template<typename... Arguments>
@@ -293,6 +314,11 @@ struct WasmBoundsCheckCustom : public CommonCustomBase<WasmBoundsCheckCustom> {
     static bool isValidForm(Inst&);
 
     static bool admitsStack(Inst&, unsigned)
+    {
+        return false;
+    }
+
+    static bool admitsExtendedOffsetAddr(Inst&, unsigned)
     {
         return false;
     }
@@ -313,9 +339,17 @@ struct WasmBoundsCheckCustom : public CommonCustomBase<WasmBoundsCheckCustom> {
         CCallHelpers::Jump outOfBounds = Inst(Air::Branch64, value, Arg::relCond(CCallHelpers::AboveOrEqual), inst.args[0], inst.args[1]).generate(jit, context);
 
         context.latePaths.append(createSharedTask<GenerationContext::LatePathFunction>(
-            [=] (CCallHelpers& jit, Air::GenerationContext&) {
+            [outOfBounds, value] (CCallHelpers& jit, Air::GenerationContext& context) {
                 outOfBounds.link(&jit);
-                context.code->wasmBoundsCheckGenerator()->run(jit, value->pinnedGPR(), value->offset());
+                switch (value->boundsType()) {
+                case WasmBoundsCheckValue::Type::Pinned:
+                    context.code->wasmBoundsCheckGenerator()->run(jit, value->bounds().pinned);
+                    break;
+
+                case WasmBoundsCheckValue::Type::Maximum:
+                    context.code->wasmBoundsCheckGenerator()->run(jit, InvalidGPRReg);
+                    break;
+                }
             }));
 
         // We said we were not a terminal.

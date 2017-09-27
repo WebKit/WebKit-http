@@ -39,11 +39,16 @@ namespace JSC { namespace B3 { namespace Air {
 class Code;
 
 struct GenerationContext {
+    WTF_MAKE_NONCOPYABLE(GenerationContext);
+public:
+
+    GenerationContext() = default;
+
     typedef void LatePathFunction(CCallHelpers&, GenerationContext&);
     typedef SharedTask<LatePathFunction> LatePath;
 
     Vector<RefPtr<LatePath>> latePaths;
-    IndexMap<BasicBlock, Box<CCallHelpers::Label>> blockLabels;
+    IndexMap<BasicBlock*, Box<CCallHelpers::Label>> blockLabels;
     BasicBlock* currentBlock { nullptr };
     unsigned indexInBlock { UINT_MAX };
     Code* code { nullptr };

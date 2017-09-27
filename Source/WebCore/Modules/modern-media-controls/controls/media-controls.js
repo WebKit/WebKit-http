@@ -28,63 +28,239 @@ class MediaControls extends LayoutNode
 
     constructor({ width = 300, height = 150, layoutTraits = LayoutTraits.Unknown } = {})
     {
-        super(`<div class="media-controls">`);
+        super(`<div class="media-controls"></div>`);
+
+        this._scaleFactor = 1;
+        this._shouldCenterControlsVertically = false;
 
         this.width = width;
         this.height = height;
         this.layoutTraits = layoutTraits;
 
-        this.startButton = new StartButton(this);
-
         this.playPauseButton = new PlayPauseButton(this);
-        this.skipBackButton = new SkipBackButton(this);
         this.airplayButton = new AirplayButton(this);
         this.pipButton = new PiPButton(this);
         this.fullscreenButton = new FullscreenButton(this);
+        this.muteButton = new MuteButton(this);
+        this.tracksButton = new TracksButton(this);
 
-        this.statusLabel = new StatusLabel(this)
+        this.statusLabel = new StatusLabel(this);
         this.timeControl = new TimeControl(this);
 
-        this.controlsBar = new LayoutItem({
-            element: `<div class="controls-bar">`,
-            layoutDelegate: this
-        });
+        this.tracksPanel = new TracksPanel;
 
+        this.bottomControlsBar = new ControlsBar("bottom");
+
+        this.autoHideController = new AutoHideController(this);
+        this.autoHideController.fadesWhileIdle = false;
+        this.autoHideController.hasSecondaryUIAttached = false;
+
+        this._placard = null;
         this.airplayPlacard = new AirplayPlacard(this);
+        this.invalidPlacard = new InvalidPlacard(this);
         this.pipPlacard = new PiPPlacard(this);
 
-        this.showsStartButton = false;
+        this.element.addEventListener("focusin", this);
+        window.addEventListener("dragstart", this, true);
     }
 
     // Public
 
-    get showsStartButton()
+    get visible()
     {
-        return this.children.includes(this.startButton);
+        return super.visible;
     }
 
-    set showsStartButton(showsStartButton)
+    set visible(flag)
     {
-        this.children = [showsStartButton ? this.startButton : this.controlsBar];
+        if (this.visible === flag)
+            return;
+
+        // If we just got made visible again, let's fade the controls in.
+        if (flag && !this.visible)
+            this.faded = false;
+        else if (!flag)
+            this.autoHideController.mediaControlsBecameInvisible();
+
+        super.visible = flag;
+
+        if (flag)
+            this.layout();
     }
 
-    get showsPlacard()
+    get faded()
     {
-        return this.children.includes(this.airplayPlacard) || this.children.includes(this.pipPlacard);
+        return !!this._faded;
     }
 
-    showPlacard(placard)
+    set faded(flag)
     {
-        const children = [placard];
-        if (placard === this.airplayPlacard)
-            children.push(this.controlsBar);
+        if (this._faded === flag)
+            return;
 
-        this.children = children;
+        this._faded = flag;
+        this.markDirtyProperty("faded");
+
+        this.autoHideController.mediaControlsFadedStateDidChange();
+        if (this.delegate && typeof this.delegate.mediaControlsFadedStateDidChange === "function")
+            this.delegate.mediaControlsFadedStateDidChange();
     }
 
-    hidePlacard()
+    get usesLTRUserInterfaceLayoutDirection()
     {
-        this.children = [this.controlsBar];
+        return this.element.classList.contains("uses-ltr-user-interface-layout-direction");
+    }
+
+    set usesLTRUserInterfaceLayoutDirection(flag)
+    {
+        this.needsLayout = this.usesLTRUserInterfaceLayoutDirection !== flag;
+        this.element.classList.toggle("uses-ltr-user-interface-layout-direction", flag);
+    }
+
+    get scaleFactor()
+    {
+        return this._scaleFactor;
+    }
+
+    set scaleFactor(scaleFactor)
+    {
+        if (this._scaleFactor === scaleFactor)
+            return;
+
+        this._scaleFactor = scaleFactor;
+        this.markDirtyProperty("scaleFactor");
+    }
+
+    get shouldCenterControlsVertically()
+    {
+        return this._shouldCenterControlsVertically;
+    }
+
+    set shouldCenterControlsVertically(flag)
+    {
+        if (this._shouldCenterControlsVertically === flag)
+            return;
+
+        this._shouldCenterControlsVertically = flag;
+        this.markDirtyProperty("scaleFactor");
+    }
+
+    get placard()
+    {
+        return this._placard;
+    }
+
+    set placard(placard)
+    {
+        if (this._placard === placard)
+            return;
+
+        this._placard = placard;
+        this.layout();
+    }
+
+    placardPreventsControlsBarDisplay()
+    {
+        return this._placard && this._placard !== this.airplayPlacard;
+    }
+
+    showTracksPanel()
+    {
+        this.element.classList.add("shows-tracks-panel");
+
+        this.tracksButton.on = true;
+        this.tracksButton.element.blur();
+        this.autoHideController.hasSecondaryUIAttached = true;
+        this.tracksPanel.presentInParent(this);
+
+        const controlsBounds = this.element.getBoundingClientRect();
+        const controlsBarBounds = this.bottomControlsBar.element.getBoundingClientRect();
+        const tracksButtonBounds = this.tracksButton.element.getBoundingClientRect();
+        this.tracksPanel.rightX = this.width - (tracksButtonBounds.right - controlsBounds.left);
+        this.tracksPanel.bottomY = this.height - (controlsBarBounds.top - controlsBounds.top) + 1;
+        this.tracksPanel.maxHeight = this.height - this.tracksPanel.bottomY - 10;
+    }
+
+    hideTracksPanel()
+    {
+        this.element.classList.remove("shows-tracks-panel");
+
+        let shouldFadeControlsBar = true;
+        if (window.event instanceof MouseEvent)
+            shouldFadeControlsBar = !this.isPointInControls(new DOMPoint(event.clientX, event.clientY), true);
+
+        this.tracksButton.on = false;
+        this.tracksButton.element.focus();
+        this.autoHideController.hasSecondaryUIAttached = false;
+        this.faded = this.autoHideController.fadesWhileIdle && shouldFadeControlsBar;
+        this.tracksPanel.hide();
+    }
+
+    fadeIn()
+    {
+        this.element.classList.add("fade-in");
+    }
+
+    isPointInControls(point, includeContainer)
+    {
+        let ancestor = this.element.parentNode;
+        while (ancestor && !(ancestor instanceof ShadowRoot))
+            ancestor = ancestor.parentNode;
+
+        const shadowRoot = ancestor;
+        if (!shadowRoot)
+            return false;
+
+        const tappedElement = shadowRoot.elementFromPoint(point.x, point.y);
+
+        if (includeContainer && this.element === tappedElement)
+            return true;
+
+        return this.children.some(child => child.element.contains(tappedElement));
+    }
+
+    // Protected
+
+    handleEvent(event)
+    {
+        if (event.type === "focusin" && event.currentTarget === this.element)
+            this.faded = false;
+        else if (event.type === "dragstart" && this.isPointInControls(new DOMPoint(event.clientX, event.clientY)))
+            event.preventDefault();
+    }
+
+    layout()
+    {
+        super.layout();
+
+        if (this._placard) {
+            this._placard.width = this.width;
+            this._placard.height = this.height;
+        }
+    }
+
+    commitProperty(propertyName)
+    {
+        if (propertyName === "scaleFactor") {
+            const zoom = 1 / this._scaleFactor;
+            // We want to maintain the controls at a constant device height. To do so, we invert the page scale
+            // factor using a scale transform when scaling down, when the result will not appear pixelated and
+            // where the CSS zoom property produces incorrect text rendering due to enforcing the minimum font
+            // size. When we would end up scaling up, which would yield pixelation, we use the CSS zoom property
+            // which will not run into the font size issue.
+            if (zoom < 1) {
+                this.element.style.transform = `scale(${zoom})`;
+                this.element.style.removeProperty("zoom");
+            } else {
+                this.element.style.zoom = zoom;
+                this.element.style.removeProperty("transform");
+            }
+            // We also want to optionally center them vertically compared to their container.
+            this.element.style.top = this._shouldCenterControlsVertically ? `${(this.height / 2) * (zoom - 1)}px` : "auto"; 
+        } else if (propertyName === "faded")
+            this.element.classList.toggle("faded", this.faded);
+        else
+            super.commitProperty(propertyName);
     }
 
 }

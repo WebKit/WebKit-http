@@ -260,7 +260,6 @@ void RenderTableCell::setCellLogicalWidth(LayoutUnit tableLayoutLogicalWidth)
 void RenderTableCell::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
-    updateFirstLetter();
 
     int oldCellBaseline = cellBaselinePosition();
     layoutBlock(cellWidthChanged());
@@ -276,6 +275,11 @@ void RenderTableCell::layout()
         layoutBlock(cellWidthChanged());
     }
     invalidateHasEmptyCollapsedBorders();
+    
+    // FIXME: This value isn't the intrinsic content logical height, but we need
+    // to update the value as its used by flexbox layout. crbug.com/367324
+    cacheIntrinsicContentLogicalHeightForFlexItem(contentLogicalHeight());
+
     setCellWidthChanged(false);
 }
 
@@ -401,7 +405,7 @@ LayoutUnit RenderTableCell::cellBaselinePosition() const
     // <http://www.w3.org/TR/2007/CR-CSS21-20070719/tables.html#height-layout>: The baseline of a cell is the baseline of
     // the first in-flow line box in the cell, or the first in-flow table-row in the cell, whichever comes first. If there
     // is no such line box or table-row, the baseline is the bottom of content edge of the cell box.
-    return firstLineBaseline().valueOr(borderAndPaddingBefore() + contentLogicalHeight());
+    return firstLineBaseline().value_or(borderAndPaddingBefore() + contentLogicalHeight());
 }
 
 static inline void markCellDirtyWhenCollapsedBorderChanges(RenderTableCell* cell)
@@ -1276,9 +1280,9 @@ void RenderTableCell::paintBackgroundsBehindCell(PaintInfo& paintInfo, const Lay
         adjustedPaintOffset.moveBy(location());
 
     Color c = backgroundObject->style().visitedDependentColor(CSSPropertyBackgroundColor);
-    const FillLayer* bgLayer = backgroundObject->style().backgroundLayers();
+    auto& bgLayer = backgroundObject->style().backgroundLayers();
 
-    if (bgLayer->hasImage() || c.isValid()) {
+    if (bgLayer.hasImage() || c.isValid()) {
         // We have to clip here because the background would paint
         // on top of the borders otherwise.  This only matters for cells and rows.
         bool shouldClip = backgroundObject->hasLayer() && (backgroundObject == this || backgroundObject == parent()) && tableElt->collapseBorders();
@@ -1302,6 +1306,8 @@ void RenderTableCell::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoin
         return;
 
     LayoutRect paintRect = LayoutRect(paintOffset, frameRect().size());
+    adjustBorderBoxRectForPainting(paintRect);
+
     paintBoxShadow(paintInfo, paintRect, style(), Normal);
     
     // Paint our cell background.
@@ -1324,7 +1330,10 @@ void RenderTableCell::paintMask(PaintInfo& paintInfo, const LayoutPoint& paintOf
     if (!tableElt->collapseBorders() && style().emptyCells() == HIDE && !firstChild())
         return;
    
-    paintMaskImages(paintInfo, LayoutRect(paintOffset, frameRect().size()));
+    LayoutRect paintRect = LayoutRect(paintOffset, frameRect().size());
+    adjustBorderBoxRectForPainting(paintRect);
+
+    paintMaskImages(paintInfo, paintRect);
 }
 
 bool RenderTableCell::boxShadowShouldBeAppliedToBackground(const LayoutPoint&, BackgroundBleedAvoidance, InlineFlowBox*) const

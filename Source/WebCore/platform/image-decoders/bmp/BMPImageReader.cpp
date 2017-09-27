@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-BMPImageReader::BMPImageReader(ImageDecoder* parent, size_t decodedAndHeaderOffset, size_t imgDataOffset, bool usesAndMask)
+BMPImageReader::BMPImageReader(ScalableImageDecoder* parent, size_t decodedAndHeaderOffset, size_t imgDataOffset, bool usesAndMask)
     : m_parent(parent)
     , m_buffer(0)
     , m_decodedOffset(decodedAndHeaderOffset)
@@ -77,11 +77,11 @@ bool BMPImageReader::decodeBMP(bool onlySize)
 
     // Initialize the framebuffer if needed.
     ASSERT(m_buffer);  // Parent should set this before asking us to decode!
-    if (m_buffer->isEmpty()) {
+    if (m_buffer->isInvalid()) {
         if (!m_buffer->initialize(m_parent->size(), m_parent->premultiplyAlpha()))
             return m_parent->setFailed(); // Unable to allocate.
 
-        m_buffer->setDecoding(ImageFrame::Decoding::Partial);
+        m_buffer->setDecodingStatus(DecodingStatus::Partial);
         m_buffer->setHasAlpha(false);
 
         if (!m_isTopDown)
@@ -117,7 +117,7 @@ bool BMPImageReader::decodeBMP(bool onlySize)
     }
 
     // Done!
-    m_buffer->setDecoding(ImageFrame::Decoding::Complete);
+    m_buffer->setDecodingStatus(DecodingStatus::Complete);
     return true;
 }
 

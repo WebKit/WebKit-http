@@ -25,25 +25,21 @@
 
 #pragma once
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-
-#include "DOMTimeStamp.h"
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-#include "Chrome.h"
-#include "ChromeClient.h"
-#include "DisplayRefreshMonitorClient.h"
-#endif
-#include "Timer.h"
-#endif
 #include "PlatformScreen.h"
+#include "Timer.h"
+#include <wtf/OptionSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#include "DisplayRefreshMonitorClient.h"
+#endif
+
 namespace WebCore {
 
 class Document;
+class Page;
 class RequestAnimationFrameCallback;
 
 class ScriptedAnimationController : public RefCounted<ScriptedAnimationController>
@@ -52,7 +48,7 @@ class ScriptedAnimationController : public RefCounted<ScriptedAnimationControlle
 #endif
 {
 public:
-    static Ref<ScriptedAnimationController> create(Document* document, PlatformDisplayID displayID)
+    static Ref<ScriptedAnimationController> create(Document& document, PlatformDisplayID displayID)
     {
         return adoptRef(*new ScriptedAnimationController(document, displayID));
     }
@@ -62,19 +58,30 @@ public:
 
     typedef int CallbackId;
 
-    CallbackId registerCallback(PassRefPtr<RequestAnimationFrameCallback>);
+    CallbackId registerCallback(Ref<RequestAnimationFrameCallback>&&);
     void cancelCallback(CallbackId);
     void serviceScriptedAnimations(double timestamp);
 
     void suspend();
     void resume();
-    void setThrottled(bool);
+
+    enum class ThrottlingReason {
+        VisuallyIdle                    = 1 << 0,
+        OutsideViewport                 = 1 << 1,
+        LowPowerMode                    = 1 << 2,
+        NonInteractedCrossOriginFrame   = 1 << 3,
+    };
+    void addThrottlingReason(ThrottlingReason);
+    void removeThrottlingReason(ThrottlingReason);
     WEBCORE_EXPORT bool isThrottled() const;
+    WEBCORE_EXPORT Seconds interval() const;
 
     void windowScreenDidChange(PlatformDisplayID);
 
 private:
-    ScriptedAnimationController(Document*, PlatformDisplayID);
+    ScriptedAnimationController(Document&, PlatformDisplayID);
+
+    Page* page() const;
 
     typedef Vector<RefPtr<RequestAnimationFrameCallback>> CallbackList;
     CallbackList m_callbacks;
@@ -84,8 +91,6 @@ private:
     int m_suspendCount { 0 };
 
     void scheduleAnimation();
-
-#if USE(REQUEST_ANIMATION_FRAME_TIMER)
     void animationTimerFired();
     Timer m_animationTimer;
     double m_lastAnimationFrameTimestamp { 0 };
@@ -96,11 +101,9 @@ private:
     RefPtr<DisplayRefreshMonitor> createDisplayRefreshMonitor(PlatformDisplayID) const override;
 
     bool m_isUsingTimer { false };
-    bool m_isThrottled { false };
-#endif
+
+    OptionSet<ThrottlingReason> m_throttlingReasons;
 #endif
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(REQUEST_ANIMATION_FRAME)

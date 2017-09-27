@@ -23,12 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GeometryUtilities_h
-#define GeometryUtilities_h
+#pragma once
 
 #include "FloatRect.h"
 #include "IntRect.h"
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
@@ -48,9 +47,10 @@ FloatRect mapRect(const FloatRect&, const FloatRect& srcRect, const FloatRect& d
 WEBCORE_EXPORT FloatRect largestRectWithAspectRatioInsideRect(float aspectRatio, const FloatRect&);
 WEBCORE_EXPORT FloatRect smallestRectWithAspectRatioAroundRect(float aspectRatio, const FloatRect&);
 
+FloatSize sizeWithAreaAndAspectRatio(float area, float aspectRatio);
+
 // Compute a rect that encloses all points covered by the given rect if it were rotated a full turn around (0,0).
 FloatRect boundsOfRotatingRect(const FloatRect&);
 
+bool ellipseContainsPoint(const FloatPoint& center, const FloatSize& radii, const FloatPoint&);
 }
-
-#endif // GeometryUtilities_h

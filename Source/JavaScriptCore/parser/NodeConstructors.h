@@ -21,9 +21,7 @@
 #pragma once
 
 #include "Nodes.h"
-#include "Lexer.h"
 #include "Opcode.h"
-#include "Parser.h"
 
 namespace JSC {
 
@@ -111,7 +109,7 @@ namespace JSC {
         previous->m_next = this;
     }
 
-    inline TemplateStringNode::TemplateStringNode(const JSTokenLocation& location, const Identifier& cooked, const Identifier& raw)
+    inline TemplateStringNode::TemplateStringNode(const JSTokenLocation& location, const Identifier* cooked, const Identifier* raw)
         : ExpressionNode(location)
         , m_cooked(cooked)
         , m_raw(raw)
@@ -164,6 +162,12 @@ namespace JSC {
 
     inline SuperNode::SuperNode(const JSTokenLocation& location)
         : ExpressionNode(location)
+    {
+    }
+
+    inline ImportNode::ImportNode(const JSTokenLocation& location, ExpressionNode* expr)
+        : ExpressionNode(location)
+        , m_expr(expr)
     {
     }
 
@@ -228,9 +232,19 @@ namespace JSC {
         , m_isClassProperty(isClassProperty)
     {
     }
+    
+    inline PropertyNode::PropertyNode(ExpressionNode* assign, Type type, PutType putType, SuperBinding superBinding, bool isClassProperty)
+        : m_name(nullptr)
+        , m_assign(assign)
+        , m_type(type)
+        , m_needsSuperBinding(superBinding == SuperBinding::Needed)
+        , m_putType(putType)
+        , m_isClassProperty(isClassProperty)
+    {
+    }
 
     inline PropertyNode::PropertyNode(ExpressionNode* name, ExpressionNode* assign, Type type, PutType putType, SuperBinding superBinding, bool isClassProperty)
-        : m_name(0)
+        : m_name(nullptr)
         , m_expression(name)
         , m_assign(assign)
         , m_type(type)
@@ -284,6 +298,12 @@ namespace JSC {
     
     
     inline SpreadExpressionNode::SpreadExpressionNode(const JSTokenLocation& location, ExpressionNode* expression)
+        : ExpressionNode(location)
+        , m_expression(expression)
+    {
+    }
+    
+    inline ObjectSpreadExpressionNode::ObjectSpreadExpressionNode(const JSTokenLocation& location, ExpressionNode* expression)
         : ExpressionNode(location)
         , m_expression(expression)
     {
@@ -381,13 +401,15 @@ namespace JSC {
     {
     }
 
-    inline CallFunctionCallDotNode::CallFunctionCallDotNode(const JSTokenLocation& location, ExpressionNode* base, const Identifier& ident, ArgumentsNode* args, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+    inline CallFunctionCallDotNode::CallFunctionCallDotNode(const JSTokenLocation& location, ExpressionNode* base, const Identifier& ident, ArgumentsNode* args, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, size_t distanceToInnermostCallOrApply)
         : FunctionCallDotNode(location, base, ident, args, divot, divotStart, divotEnd)
+        , m_distanceToInnermostCallOrApply(distanceToInnermostCallOrApply)
     {
     }
 
-    inline ApplyFunctionCallDotNode::ApplyFunctionCallDotNode(const JSTokenLocation& location, ExpressionNode* base, const Identifier& ident, ArgumentsNode* args, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+    inline ApplyFunctionCallDotNode::ApplyFunctionCallDotNode(const JSTokenLocation& location, ExpressionNode* base, const Identifier& ident, ArgumentsNode* args, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, size_t distanceToInnermostCallOrApply)
         : FunctionCallDotNode(location, base, ident, args, divot, divotStart, divotEnd)
+        , m_distanceToInnermostCallOrApply(distanceToInnermostCallOrApply)
     {
     }
 
@@ -1018,8 +1040,9 @@ namespace JSC {
     {
     }
     
-    inline ForOfNode::ForOfNode(const JSTokenLocation& location, ExpressionNode* lexpr, ExpressionNode* expr, StatementNode* statement, VariableEnvironment& lexicalVariables)
+    inline ForOfNode::ForOfNode(bool isForAwait, const JSTokenLocation& location, ExpressionNode* lexpr, ExpressionNode* expr, StatementNode* statement, VariableEnvironment& lexicalVariables)
         : EnumerationNode(location, lexpr, expr, statement, lexicalVariables)
+        , m_isForAwait(isForAwait)
     {
     }
     

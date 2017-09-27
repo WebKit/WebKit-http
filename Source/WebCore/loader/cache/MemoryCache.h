@@ -26,9 +26,10 @@
 
 #include "NativeImage.h"
 #include "SecurityOriginHash.h"
-#include "SessionID.h"
 #include "Timer.h"
+#include <pal/SessionID.h>
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
@@ -91,7 +92,7 @@ public:
 
     WEBCORE_EXPORT static MemoryCache& singleton();
 
-    WEBCORE_EXPORT CachedResource* resourceForRequest(const ResourceRequest&, SessionID);
+    WEBCORE_EXPORT CachedResource* resourceForRequest(const ResourceRequest&, PAL::SessionID);
 
     bool add(CachedResource&);
     void remove(CachedResource&);
@@ -102,9 +103,9 @@ public:
     void revalidationSucceeded(CachedResource& revalidatingResource, const ResourceResponse&);
     void revalidationFailed(CachedResource& revalidatingResource);
 
-    void forEachResource(const std::function<void(CachedResource&)>&);
-    void forEachSessionResource(SessionID, const std::function<void(CachedResource&)>&);
-    void destroyDecodedDataForAllImages();
+    void forEachResource(const WTF::Function<void(CachedResource&)>&);
+    void forEachSessionResource(PAL::SessionID, const WTF::Function<void(CachedResource&)>&);
+    WEBCORE_EXPORT void destroyDecodedDataForAllImages();
 
     // Sets the cache's memory capacities, in bytes. These will hold only approximately,
     // since the decoded cost of resources like scripts and stylesheets is not known.
@@ -119,14 +120,14 @@ public:
     bool disabled() const { return m_disabled; }
 
     WEBCORE_EXPORT void evictResources();
-    WEBCORE_EXPORT void evictResources(SessionID);
+    WEBCORE_EXPORT void evictResources(PAL::SessionID);
 
     void prune();
     void pruneSoon();
     unsigned size() const { return m_liveSize + m_deadSize; }
 
-    void setDeadDecodedDataDeletionInterval(std::chrono::milliseconds interval) { m_deadDecodedDataDeletionInterval = interval; }
-    std::chrono::milliseconds deadDecodedDataDeletionInterval() const { return m_deadDecodedDataDeletionInterval; }
+    void setDeadDecodedDataDeletionInterval(Seconds interval) { m_deadDecodedDataDeletionInterval = interval; }
+    Seconds deadDecodedDataDeletionInterval() const { return m_deadDecodedDataDeletionInterval; }
 
     // Calls to put the cached resource into and out of LRU lists.
     void insertInLRUList(CachedResource&);
@@ -152,9 +153,9 @@ public:
 
     typedef HashSet<RefPtr<SecurityOrigin>> SecurityOriginSet;
     WEBCORE_EXPORT void removeResourcesWithOrigin(SecurityOrigin&);
-    WEBCORE_EXPORT void removeResourcesWithOrigins(SessionID, const HashSet<RefPtr<SecurityOrigin>>&);
+    WEBCORE_EXPORT void removeResourcesWithOrigins(PAL::SessionID, const HashSet<RefPtr<SecurityOrigin>>&);
     WEBCORE_EXPORT void getOriginsWithCache(SecurityOriginSet& origins);
-    WEBCORE_EXPORT HashSet<RefPtr<SecurityOrigin>> originsWithCache(SessionID) const;
+    WEBCORE_EXPORT HashSet<RefPtr<SecurityOrigin>> originsWithCache(PAL::SessionID) const;
 
     WEBCORE_EXPORT bool addImageToCache(NativeImagePtr&&, const URL&, const String& domainForCachePartition);
     WEBCORE_EXPORT void removeImageFromCache(const URL&, const String& domainForCachePartition);
@@ -168,11 +169,7 @@ public:
     WEBCORE_EXPORT void pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestroyDecodedDataForAllLiveResources = false);
 
 private:
-#if ENABLE(CACHE_PARTITIONING)
     typedef HashMap<std::pair<URL, String /* partitionName */>, CachedResource*> CachedResourceMap;
-#else
-    typedef HashMap<URL, CachedResource*> CachedResourceMap;
-#endif
     typedef ListHashSet<CachedResource*> LRUList;
 
     MemoryCache();
@@ -190,8 +187,8 @@ private:
 
     CachedResource* resourceForRequestImpl(const ResourceRequest&, CachedResourceMap&);
 
-    CachedResourceMap& ensureSessionResourceMap(SessionID);
-    CachedResourceMap* sessionResourceMap(SessionID) const;
+    CachedResourceMap& ensureSessionResourceMap(PAL::SessionID);
+    CachedResourceMap* sessionResourceMap(PAL::SessionID) const;
 
     bool m_disabled;  // Whether or not the cache is enabled.
     bool m_inPruneResources;
@@ -199,7 +196,7 @@ private:
     unsigned m_capacity;
     unsigned m_minDeadCapacity;
     unsigned m_maxDeadCapacity;
-    std::chrono::milliseconds m_deadDecodedDataDeletionInterval;
+    Seconds m_deadDecodedDataDeletionInterval;
 
     unsigned m_liveSize; // The number of bytes currently consumed by "live" resources in the cache.
     unsigned m_deadSize; // The number of bytes currently consumed by "dead" resources in the cache.
@@ -214,7 +211,7 @@ private:
     
     // A URL-based map of all resources that are in the cache (including the freshest version of objects that are currently being 
     // referenced by a Web page).
-    typedef HashMap<SessionID, std::unique_ptr<CachedResourceMap>> SessionCachedResourceMap;
+    typedef HashMap<PAL::SessionID, std::unique_ptr<CachedResourceMap>> SessionCachedResourceMap;
     SessionCachedResourceMap m_sessionResources;
 
     Timer m_pruneTimer;

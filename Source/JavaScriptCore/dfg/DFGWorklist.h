@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if ENABLE(DFG_JIT)
-
 #include "DFGPlan.h"
 #include "DFGThreadData.h"
 #include <wtf/AutomaticThread.h>
@@ -34,13 +32,14 @@
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
-#include <wtf/Noncopyable.h>
 
 namespace JSC {
 
 class SlotVisitor;
 
 namespace DFG {
+
+#if ENABLE(DFG_JIT)
 
 class Worklist : public RefCounted<Worklist> {
 public:
@@ -50,14 +49,15 @@ public:
     
     static Ref<Worklist> create(CString worklistName, unsigned numberOfThreads, int relativePriority = 0);
     
-    void enqueue(PassRefPtr<Plan>);
+    void enqueue(Ref<Plan>&&);
     
     // This is equivalent to:
     // worklist->waitUntilAllPlansForVMAreReady(vm);
     // worklist->completeAllReadyPlansForVM(vm);
     void completeAllPlansForVM(VM&);
 
-    void rememberCodeBlocks(VM&);
+    template<typename Func>
+    void iterateCodeBlocksForGC(VM&, const Func&);
 
     void waitUntilAllPlansForVMAreReady(VM&);
     State completeAllReadyPlansForVM(VM&, CompilationKey = CompilationKey());
@@ -92,7 +92,7 @@ private:
     
     void removeAllReadyPlansForVM(VM&, Vector<RefPtr<Plan>, 8>&);
 
-    void dump(const LockHolder&, PrintStream&) const;
+    void dump(const AbstractLocker&, PrintStream&) const;
     
     CString m_threadName;
     
@@ -131,41 +131,18 @@ Worklist* existingGlobalFTLWorklistOrNull();
 Worklist& ensureGlobalWorklistFor(CompilationMode);
 
 // Simplify doing things for all worklists.
-inline unsigned numberOfWorklists() { return 2; }
-inline Worklist& ensureWorklistForIndex(unsigned index)
-{
-    switch (index) {
-    case 0:
-        return ensureGlobalDFGWorklist();
-    case 1:
-        return ensureGlobalFTLWorklist();
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        return ensureGlobalDFGWorklist();
-    }
-}
-inline Worklist* existingWorklistForIndexOrNull(unsigned index)
-{
-    switch (index) {
-    case 0:
-        return existingGlobalDFGWorklistOrNull();
-    case 1:
-        return existingGlobalFTLWorklistOrNull();
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        return 0;
-    }
-}
-inline Worklist& existingWorklistForIndex(unsigned index)
-{
-    Worklist* result = existingWorklistForIndexOrNull(index);
-    RELEASE_ASSERT(result);
-    return *result;
-}
+unsigned numberOfWorklists();
+Worklist& ensureWorklistForIndex(unsigned index);
+Worklist* existingWorklistForIndexOrNull(unsigned index);
+Worklist& existingWorklistForIndex(unsigned index);
+
+#endif // ENABLE(DFG_JIT)
 
 void completeAllPlansForVM(VM&);
-void rememberCodeBlocks(VM&);
+void markCodeBlocks(VM&, SlotVisitor&);
+
+template<typename Func>
+void iterateCodeBlocksForGC(VM&, const Func&);
 
 } } // namespace JSC::DFG
 
-#endif // ENABLE(DFG_JIT)

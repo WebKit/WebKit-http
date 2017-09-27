@@ -1134,80 +1134,6 @@
 }
 ,
 {
-    "domain": "DOMDebugger",
-    "description": "DOM debugging allows setting breakpoints on particular DOM operations and events. JavaScript execution will stop on these operations as if there was a regular breakpoint set.",
-    "availability": "web",
-    "types": [
-        {
-            "id": "DOMBreakpointType",
-            "type": "string",
-            "enum": ["subtree-modified", "attribute-modified", "node-removed"],
-            "description": "DOM breakpoint type."
-        }
-    ],
-    "commands": [
-        {
-            "name": "setDOMBreakpoint",
-            "parameters": [
-                { "name": "nodeId", "$ref": "DOM.NodeId", "description": "Identifier of the node to set breakpoint on." },
-                { "name": "type", "$ref": "DOMBreakpointType", "description": "Type of the operation to stop upon." }
-            ],
-            "description": "Sets breakpoint on particular operation with DOM."
-        },
-        {
-            "name": "removeDOMBreakpoint",
-            "parameters": [
-                { "name": "nodeId", "$ref": "DOM.NodeId", "description": "Identifier of the node to remove breakpoint from." },
-                { "name": "type", "$ref": "DOMBreakpointType", "description": "Type of the breakpoint to remove." }
-            ],
-            "description": "Removes DOM breakpoint that was set using <code>setDOMBreakpoint</code>."
-        },
-        {
-            "name": "setEventListenerBreakpoint",
-            "parameters": [
-                { "name": "eventName", "type": "string", "description": "DOM Event name to stop on (any DOM event will do)." }
-            ],
-            "description": "Sets breakpoint on particular DOM event."
-        },
-        {
-            "name": "removeEventListenerBreakpoint",
-            "parameters": [
-                { "name": "eventName", "type": "string", "description": "Event name." }
-            ],
-            "description": "Removes breakpoint on particular DOM event."
-        },
-        {
-            "name": "setInstrumentationBreakpoint",
-            "parameters": [
-                { "name": "eventName", "type": "string", "description": "Instrumentation name to stop on." }
-            ],
-            "description": "Sets breakpoint on particular native event."
-        },
-        {
-            "name": "removeInstrumentationBreakpoint",
-            "parameters": [
-                { "name": "eventName", "type": "string", "description": "Instrumentation name to stop on." }
-            ],
-            "description": "Sets breakpoint on particular native event."
-        },
-        {
-            "name": "setXHRBreakpoint",
-            "parameters": [
-                { "name": "url", "type": "string", "description": "Resource URL substring. All XHRs having this substring in the URL will get stopped upon." }
-            ],
-            "description": "Sets breakpoint on XMLHttpRequest."
-        },
-        {
-            "name": "removeXHRBreakpoint",
-            "parameters": [
-                { "name": "url", "type": "string", "description": "Resource URL substring." }
-            ],
-            "description": "Removes breakpoint from XMLHttpRequest."
-        }
-    ]
-}
-,
-{
     "domain": "DOMStorage",
     "description": "Query and modify DOM storage.",
     "availability": "web",
@@ -1911,10 +1837,6 @@
             "parameters": [
                 { "name": "domains", "type": "array", "items": { "type": "string" }, "description": "Domain names that need activation" }
             ]
-        },
-        {
-            "name": "targetCrashed",
-            "description": "Fired when debugging target has crashed"
         }
     ]
 }
@@ -2184,13 +2106,6 @@
                 { "name": "body", "type": "string", "description": "Response body." },
                 { "name": "base64Encoded", "type": "boolean", "description": "True, if content was sent as base64." }
             ]
-        },
-        {
-            "name": "setCacheDisabled",
-            "parameters": [
-                { "name": "cacheDisabled", "type": "boolean", "description": "Cache disabled state." }
-            ],
-            "description": "Toggles ignoring cache for each request. If <code>true</code>, cache will not be used."
         },
         {
             "name": "loadResource",
@@ -2573,21 +2488,6 @@
             "description": "Disables page domain notifications."
         },
         {
-            "name": "addScriptToEvaluateOnLoad",
-            "parameters": [
-                { "name": "scriptSource", "type": "string" }
-            ],
-            "returns": [
-                { "name": "identifier", "$ref": "ScriptIdentifier", "description": "Identifier of the added script." }
-            ]
-        },
-        {
-            "name": "removeScriptToEvaluateOnLoad",
-            "parameters": [
-                { "name": "identifier", "$ref": "ScriptIdentifier" }
-            ]
-        },
-        {
             "name": "reload",
             "parameters": [
                 { "name": "ignoreCache", "type": "boolean", "optional": true, "description": "If true, browser cache is ignored (as if the user pressed Shift+refresh)." },
@@ -2692,13 +2592,6 @@
             ]
         },
         {
-            "name": "setTouchEmulationEnabled",
-            "parameters": [
-                { "name": "enabled", "type": "boolean", "description": "Whether the touch event emulation should be enabled." }
-            ],
-            "description": "Toggles mouse event-based touch event emulation."
-        },
-        {
             "name": "setEmulatedMedia",
             "parameters": [
                 { "name": "media", "type": "string", "description": "Media type to emulate. Empty string disables the override." }
@@ -2741,14 +2634,6 @@
             ],
             "returns": [
                 { "name": "dataURL", "type": "string", "description": "Base64-encoded image data (PNG)." }
-            ]
-        },
-        {
-            "name": "handleJavaScriptDialog",
-            "description": "Accepts or dismisses a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload).",
-            "parameters": [
-                { "name": "accept", "type": "boolean", "description": "Whether to accept or dismiss the dialog." },
-                { "name": "promptText", "type": "string", "optional": true, "description": "The text to enter into the dialog prompt before accepting. Used only if this is a prompt dialog." }
             ]
         },
         {

@@ -463,6 +463,9 @@ class TestPort(Port):
     def _driver_class(self):
         return TestDriver
 
+    def path_to_crash_logs(self):
+        return self.results_directory()
+
     def start_http_server(self, additional_dirs=None):
         pass
 
@@ -579,7 +582,7 @@ class TestDriver(Driver):
 
         crash_log = ''
         if crashed_process_name:
-            crash_logs = CrashLogs(self._port.host)
+            crash_logs = CrashLogs(self._port.host, self._port.path_to_crash_logs())
             crash_log = crash_logs.find_newest_log(crashed_process_name, None) or ''
 
         if stop_when_done:

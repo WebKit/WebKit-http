@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InbandTextTrackPrivateClient_h
-#define InbandTextTrackPrivateClient_h
+#pragma once
+
+#if ENABLE(VIDEO_TRACK)
 
 #include "Color.h"
 #include "TrackPrivateBase.h"
@@ -34,8 +35,6 @@
 #include "SerializedPlatformRepresentation.h"
 #endif
 
-#if ENABLE(VIDEO_TRACK)
-
 namespace WebCore {
 
 class InbandTextTrackPrivate;
@@ -43,9 +42,7 @@ class ISOWebVTTCue;
 
 class GenericCueData : public RefCounted<GenericCueData> {
 public:
-
-    static PassRefPtr<GenericCueData> create() { return adoptRef(new GenericCueData()); }
-    virtual ~GenericCueData() { }
+    static Ref<GenericCueData> create() { return adoptRef(*new GenericCueData); }
 
     MediaTime startTime() const { return m_startTime; }
     void setStartTime(const MediaTime& startTime) { m_startTime = startTime; }
@@ -53,11 +50,11 @@ public:
     MediaTime endTime() const { return m_endTime; }
     void setEndTime(const MediaTime& endTime) { m_endTime = endTime; }
 
-    String id() const { return m_id; }
-    void setId(String id) { m_id = id; }
+    const String& id() const { return m_id; }
+    void setId(const String& id) { m_id = id; }
 
-    String content() const { return m_content; }
-    void setContent(String content) { m_content = content; }
+    const String& content() const { return m_content; }
+    void setContent(const String& content) { m_content = content; }
 
     double line() const { return m_line; }
     void setLine(double line) { m_line = line; }
@@ -68,17 +65,12 @@ public:
     double size() const { return m_size; }
     void setSize(double size) { m_size = size; }
 
-    enum Alignment {
-        None,
-        Start,
-        Middle,
-        End
-    };
+    enum Alignment { None, Start, Middle, End };
     Alignment align() const { return m_align; }
     void setAlign(Alignment align) { m_align = align; }
 
-    String fontName() const { return m_fontName; }
-    void setFontName(String fontName) { m_fontName = fontName; }
+    const String& fontName() const { return m_fontName; }
+    void setFontName(const String& fontName) { m_fontName = fontName; }
 
     double baseFontSize() const { return m_baseFontSize; }
     void setBaseFontSize(double baseFontSize) { m_baseFontSize = baseFontSize; }
@@ -95,44 +87,129 @@ public:
     const Color& highlightColor() const { return m_highlightColor; }
     void setHighlightColor(const Color& color) { m_highlightColor = color; }
 
-    enum Status {
-        Uninitialized,
-        Partial,
-        Complete,
-    };
+    enum Status { Uninitialized, Partial, Complete };
     Status status() { return m_status; }
     void setStatus(Status status) { m_status = status; }
 
     bool doesExtendCueData(const GenericCueData&) const;
 
+    String toString() const;
+
 private:
-    GenericCueData()
-        : m_line(-1)
-        , m_position(-1)
-        , m_size(-1)
-        , m_align(None)
-        , m_baseFontSize(0)
-        , m_relativeFontSize(0)
-        , m_status(Uninitialized)
-    {
-    }
+    GenericCueData() = default;
 
     MediaTime m_startTime;
     MediaTime m_endTime;
     String m_id;
     String m_content;
-    double m_line;
-    double m_position;
-    double m_size;
-    Alignment m_align;
+    double m_line { -1 };
+    double m_position { -1 };
+    double m_size { -1 };
+    Alignment m_align { None };
     String m_fontName;
-    double m_baseFontSize;
-    double m_relativeFontSize;
+    double m_baseFontSize { 0 };
+    double m_relativeFontSize { 0 };
     Color m_foregroundColor;
     Color m_backgroundColor;
     Color m_highlightColor;
-    Status m_status;
+    Status m_status { Uninitialized };
 };
+
+inline String GenericCueData::toString() const
+{
+    StringBuilder builder;
+
+    builder.appendLiteral("start = ");
+    builder.append(m_startTime.toString());
+
+    builder.appendLiteral(", end = ");
+    builder.append(m_endTime.toString());
+
+    const char* status;
+    switch (m_status) {
+    case GenericCueData::Uninitialized:
+        status = "Uninitialized";
+        break;
+    case GenericCueData::Partial:
+        status = "Partial";
+        break;
+    case GenericCueData::Complete:
+        status = "Complete";
+        break;
+    }
+    builder.appendLiteral(", status = ");
+    builder.append(status);
+
+    builder.appendLiteral(", id = ");
+    builder.append(m_id);
+
+    if (m_line > 0) {
+        builder.appendLiteral(", line = ");
+        builder.appendNumber(m_line);
+    }
+
+    if (m_size > 0) {
+        builder.appendLiteral(", size = ");
+        builder.appendNumber(m_size);
+    }
+
+    if (m_position > 0) {
+        builder.appendLiteral(", position = ");
+        builder.appendNumber(m_position);
+    }
+
+    if (m_align != None) {
+        const char* align;
+        switch (m_align) {
+        case GenericCueData::Start:
+            align = "Start";
+            break;
+        case GenericCueData::Middle:
+            align = "Middle";
+            break;
+        case GenericCueData::End:
+            align = "End";
+            break;
+        case GenericCueData::None:
+            align = "None";
+            break;
+        }
+        builder.appendLiteral(", align = ");
+        builder.append(align);
+    }
+
+    if (m_foregroundColor.isValid()) {
+        builder.appendLiteral(", foreground color = ");
+        builder.append(m_foregroundColor.serialized());
+    }
+
+    if (m_backgroundColor.isValid()) {
+        builder.appendLiteral(", background color = ");
+        builder.append(m_backgroundColor.serialized());
+    }
+
+    if (m_highlightColor.isValid()) {
+        builder.appendLiteral(", hilight color = ");
+        builder.append(m_highlightColor.serialized());
+    }
+
+    if (m_baseFontSize) {
+        builder.appendLiteral(", base font size = ");
+        builder.appendNumber(m_baseFontSize);
+    }
+
+    if (m_relativeFontSize) {
+        builder.appendLiteral(", relative font size = ");
+        builder.appendNumber(m_relativeFontSize);
+    }
+
+    if (!m_fontName.isEmpty()) {
+        builder.appendLiteral(", font = ");
+        builder.append(m_fontName);
+    }
+
+    return builder.toString();
+}
 
 inline bool GenericCueData::doesExtendCueData(const GenericCueData& other) const
 {
@@ -168,24 +245,38 @@ class InbandTextTrackPrivateClient : public TrackPrivateBaseClient {
 public:
     virtual ~InbandTextTrackPrivateClient() { }
 
-    virtual void addDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, const void*, unsigned) = 0;
+    virtual void addDataCue(const MediaTime& start, const MediaTime& end, const void*, unsigned) = 0;
 
 #if ENABLE(DATACUE_VALUE)
-    virtual void addDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation>, const String&) = 0;
-    virtual void updateDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation>) = 0;
-    virtual void removeDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation>) = 0;
+    virtual void addDataCue(const MediaTime& start, const MediaTime& end, Ref<SerializedPlatformRepresentation>&&, const String&) = 0;
+    virtual void updateDataCue(const MediaTime& start, const MediaTime& end, SerializedPlatformRepresentation&) = 0;
+    virtual void removeDataCue(const MediaTime& start, const MediaTime& end, SerializedPlatformRepresentation&) = 0;
 #endif
 
-    virtual void addGenericCue(InbandTextTrackPrivate*, PassRefPtr<GenericCueData>) = 0;
-    virtual void updateGenericCue(InbandTextTrackPrivate*, GenericCueData*) = 0;
-    virtual void removeGenericCue(InbandTextTrackPrivate*, GenericCueData*) = 0;
+    virtual void addGenericCue(GenericCueData&) = 0;
+    virtual void updateGenericCue(GenericCueData&) = 0;
+    virtual void removeGenericCue(GenericCueData&) = 0;
 
-    virtual void parseWebVTTFileHeader(InbandTextTrackPrivate*, String) { ASSERT_NOT_REACHED(); }
-    virtual void parseWebVTTCueData(InbandTextTrackPrivate*, const char* data, unsigned length) = 0;
-    virtual void parseWebVTTCueData(InbandTextTrackPrivate*, const ISOWebVTTCue&) = 0;
+    virtual void parseWebVTTFileHeader(String&&) { ASSERT_NOT_REACHED(); }
+    virtual void parseWebVTTCueData(const char* data, unsigned length) = 0;
+    virtual void parseWebVTTCueData(const ISOWebVTTCue&) = 0;
 };
 
 } // namespace WebCore
 
-#endif
+namespace PAL {
+
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<WebCore::GenericCueData> {
+    static String toString(const WebCore::GenericCueData& cue)
+    {
+        return cue.toString();
+    }
+};
+
+}
+
 #endif

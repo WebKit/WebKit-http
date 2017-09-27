@@ -39,7 +39,7 @@ namespace JSC {
 
 using namespace Bindings;
 
-WEBCORE_EXPORT const ClassInfo RuntimeMethod::s_info = { "RuntimeMethod", &InternalFunction::s_info, 0, CREATE_METHOD_TABLE(RuntimeMethod) };
+WEBCORE_EXPORT const ClassInfo RuntimeMethod::s_info = { "RuntimeMethod", &InternalFunction::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(RuntimeMethod) };
 
 RuntimeMethod::RuntimeMethod(JSGlobalObject* globalObject, Structure* structure, Method* method)
     // Callers will need to pass in the right global object corresponding to this native object "method".
@@ -51,7 +51,7 @@ RuntimeMethod::RuntimeMethod(JSGlobalObject* globalObject, Structure* structure,
 void RuntimeMethod::finishCreation(VM& vm, const String& ident)
 {
     Base::finishCreation(vm, ident);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 }
 
 EncodedJSValue RuntimeMethod::lengthGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName)
@@ -59,7 +59,7 @@ EncodedJSValue RuntimeMethod::lengthGetter(ExecState* exec, EncodedJSValue thisV
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    RuntimeMethod* thisObject = jsDynamicDowncast<RuntimeMethod*>(JSValue::decode(thisValue));
+    RuntimeMethod* thisObject = jsDynamicDowncast<RuntimeMethod*>(vm, JSValue::decode(thisValue));
     if (!thisObject)
         return throwVMTypeError(exec, scope);
     return JSValue::encode(jsNumber(thisObject->m_method->numParameters()));
@@ -67,9 +67,10 @@ EncodedJSValue RuntimeMethod::lengthGetter(ExecState* exec, EncodedJSValue thisV
 
 bool RuntimeMethod::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
 {
+    VM& vm = exec->vm();
     RuntimeMethod* thisObject = jsCast<RuntimeMethod*>(object);
-    if (propertyName == exec->propertyNames().length) {
-        slot.setCacheableCustom(thisObject, DontDelete | ReadOnly | DontEnum, thisObject->lengthGetter);
+    if (propertyName == vm.propertyNames->length) {
+        slot.setCacheableCustom(thisObject, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum, thisObject->lengthGetter);
         return true;
     }
     
@@ -81,7 +82,7 @@ static EncodedJSValue JSC_HOST_CALL callRuntimeMethod(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    RuntimeMethod* method = static_cast<RuntimeMethod*>(exec->callee());
+    RuntimeMethod* method = static_cast<RuntimeMethod*>(exec->jsCallee());
 
     if (!method->method())
         return JSValue::encode(jsUndefined());
@@ -89,14 +90,14 @@ static EncodedJSValue JSC_HOST_CALL callRuntimeMethod(ExecState* exec)
     RefPtr<Instance> instance;
 
     JSValue thisValue = exec->thisValue();
-    if (thisValue.inherits(RuntimeObject::info())) {
+    if (thisValue.inherits(vm, RuntimeObject::info())) {
         RuntimeObject* runtimeObject = static_cast<RuntimeObject*>(asObject(thisValue));
         instance = runtimeObject->getInternalInstance();
         if (!instance) 
             return JSValue::encode(RuntimeObject::throwInvalidAccessError(exec, scope));
     } else {
         // Calling a runtime object of a plugin element?
-        if (thisValue.inherits(JSHTMLElement::info()))
+        if (thisValue.inherits(vm, JSHTMLElement::info()))
             instance = pluginInstance(jsCast<JSHTMLElement*>(asObject(thisValue))->wrapped());
         if (!instance)
             return throwVMTypeError(exec, scope);

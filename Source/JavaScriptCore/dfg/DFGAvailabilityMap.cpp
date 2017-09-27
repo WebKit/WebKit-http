@@ -40,11 +40,11 @@ void AvailabilityMap::pruneHeap()
     if (m_heap.isEmpty())
         return;
     
-    HashSet<Node*> possibleNodes;
+    NodeSet possibleNodes;
     
     for (unsigned i = m_locals.size(); i--;) {
         if (m_locals[i].hasNode())
-            possibleNodes.add(m_locals[i].node());
+            possibleNodes.addVoid(m_locals[i].node());
     }
 
     closeOverNodes(
@@ -60,7 +60,7 @@ void AvailabilityMap::pruneHeap()
         if (possibleNodes.contains(pair.key.base()))
             newHeap.add(pair.key, pair.value);
     }
-    m_heap = newHeap;
+    m_heap = WTFMove(newHeap);
 }
 
 void AvailabilityMap::pruneByLiveness(Graph& graph, CodeOrigin where)
@@ -71,7 +71,7 @@ void AvailabilityMap::pruneByLiveness(Graph& graph, CodeOrigin where)
         [&] (VirtualRegister reg) {
             localsCopy.operand(reg) = m_locals.operand(reg);
         });
-    m_locals = localsCopy;
+    m_locals = WTFMove(localsCopy);
     pruneHeap();
 }
 

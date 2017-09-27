@@ -31,8 +31,6 @@
 #include "Animation.h"
 #include "CSSPropertyNames.h"
 #include "RenderStyleConstants.h"
-#include <wtf/RefCounted.h>
-#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
@@ -40,6 +38,7 @@ class CompositeAnimation;
 class Element;
 class FloatRect;
 class LayoutRect;
+class RenderBoxModelObject;
 class RenderElement;
 class RenderStyle;
 class TimingFunction;
@@ -49,16 +48,13 @@ class AnimationBase : public RefCounted<AnimationBase> {
     friend class CSSPropertyAnimation;
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    AnimationBase(const Animation& transition, RenderElement*, CompositeAnimation*);
-    virtual ~AnimationBase() { }
+    AnimationBase(const Animation& transition, Element&, CompositeAnimation&);
+    virtual ~AnimationBase();
 
-    RenderElement* renderer() const { return m_object; }
-    void clear()
-    {
-        endAnimation();
-        m_object = nullptr;
-        m_compositeAnimation = nullptr;
-    }
+    Element* element() const { return m_element.get(); }
+    RenderElement* renderer() const;
+    RenderBoxModelObject* compositedRenderer() const;
+    void clear();
 
     double duration() const;
 
@@ -122,7 +118,7 @@ public:
     bool fillingForwards() const { return m_animationState == AnimationState::FillingForwards; }
     bool active() const { return !postActive() && !preActive(); }
     bool running() const { return !isNew() && !postActive(); }
-    bool paused() const { return m_pauseTime >= 0 || m_animationState == AnimationState::PausedNew; }
+    bool paused() const { return m_pauseTime || m_animationState == AnimationState::PausedNew; }
     bool inPausedState() const { return m_animationState >= AnimationState::PausedNew && m_animationState <= AnimationState::PausedRun; }
     bool isNew() const { return m_animationState == AnimationState::New || m_animationState == AnimationState::PausedNew; }
     bool waitingForStartTime() const { return m_animationState == AnimationState::StartWaitResponse; }
@@ -130,12 +126,10 @@ public:
 
     bool isAccelerated() const { return m_isAccelerated; }
 
-    virtual double timeToNextService();
+    virtual std::optional<Seconds> timeToNextService();
 
     double progress(double scale = 1, double offset = 0, const TimingFunction* = nullptr) const;
 
-    // Returns true if the animation state changed.
-    virtual bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* /*currentStyle*/, const RenderStyle* /*targetStyle*/, std::unique_ptr<RenderStyle>& /*animatedStyle*/, bool& didBlendStyle) = 0;
     virtual void getAnimatedStyle(std::unique_ptr<RenderStyle>& /*animatedStyle*/) = 0;
 
     virtual bool computeExtentOfTransformAnimation(LayoutRect&) const = 0;
@@ -233,7 +227,7 @@ protected:
 
     static void setNeedsStyleRecalc(Element*);
     
-    void getTimeToNextEvent(double& time, bool& isLooping) const;
+    void getTimeToNextEvent(Seconds& time, bool& isLooping) const;
 
     double fractionalTime(double scale, double elapsedTime, double offset) const;
 
@@ -241,15 +235,18 @@ protected:
     bool computeTransformedExtentViaTransformList(const FloatRect& rendererBox, const RenderStyle&, LayoutRect& bounds) const;
     bool computeTransformedExtentViaMatrix(const FloatRect& rendererBox, const RenderStyle&, LayoutRect& bounds) const;
 
-    RenderElement* m_object;
+private:
+    RefPtr<Element> m_element;
+
+protected:
     CompositeAnimation* m_compositeAnimation; // Ideally this would be a reference, but it has to be cleared if an animation is destroyed inside an event callback.
     Ref<Animation> m_animation;
 
-    double m_startTime { 0 };
-    double m_pauseTime { -1 };
+    std::optional<double> m_startTime;
+    std::optional<double> m_pauseTime;
     double m_requestedStartTime { 0 };
-    double m_totalDuration { -1 };
-    double m_nextIterationDuration { -1 };
+    std::optional<double> m_totalDuration;
+    std::optional<double> m_nextIterationDuration;
 
     AnimationState m_animationState { AnimationState::New };
     bool m_isAccelerated { false };

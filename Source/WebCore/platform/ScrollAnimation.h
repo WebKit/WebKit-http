@@ -36,10 +36,10 @@ class ScrollableArea;
 class ScrollAnimation {
 public:
     virtual ~ScrollAnimation() { };
-    virtual bool scroll(ScrollbarOrientation, ScrollGranularity, float step, float multiplier) = 0;
+    virtual bool scroll(ScrollbarOrientation, ScrollGranularity, float /* step */, float /* multiplier */) { return true; };
     virtual void stop() = 0;
-    virtual void updateVisibleLengths() = 0;
-    virtual void setCurrentPosition(const FloatPoint&) = 0;
+    virtual void updateVisibleLengths() { };
+    virtual void setCurrentPosition(const FloatPoint&) { };
     virtual void serviceAnimation() { };
 
 protected:

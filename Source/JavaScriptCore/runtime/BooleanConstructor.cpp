@@ -29,7 +29,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(BooleanConstructor);
 
-const ClassInfo BooleanConstructor::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(BooleanConstructor) };
+const ClassInfo BooleanConstructor::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(BooleanConstructor) };
 
 BooleanConstructor::BooleanConstructor(VM& vm, Structure* structure)
     : InternalFunction(vm, structure)
@@ -39,10 +39,8 @@ BooleanConstructor::BooleanConstructor(VM& vm, Structure* structure)
 void BooleanConstructor::finishCreation(VM& vm, BooleanPrototype* booleanPrototype)
 {
     Base::finishCreation(vm, booleanPrototype->classInfo()->className);
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, booleanPrototype, DontEnum | DontDelete | ReadOnly);
-
-    // no. of arguments for constructor
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontDelete | DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, booleanPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 // ECMA 15.6.2
@@ -51,7 +49,7 @@ static EncodedJSValue JSC_HOST_CALL constructWithBooleanConstructor(ExecState* e
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue boolean = jsBoolean(exec->argument(0).toBoolean(exec));
-    Structure* booleanStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), asInternalFunction(exec->callee())->globalObject()->booleanObjectStructure());
+    Structure* booleanStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), asInternalFunction(exec->jsCallee())->globalObject()->booleanObjectStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     BooleanObject* obj = BooleanObject::create(vm, booleanStructure);
     obj->setInternalValue(vm, boolean);
@@ -78,8 +76,9 @@ CallType BooleanConstructor::getCallData(JSCell*, CallData& callData)
 
 JSObject* constructBooleanFromImmediateBoolean(ExecState* exec, JSGlobalObject* globalObject, JSValue immediateBooleanValue)
 {
-    BooleanObject* obj = BooleanObject::create(exec->vm(), globalObject->booleanObjectStructure());
-    obj->setInternalValue(exec->vm(), immediateBooleanValue);
+    VM& vm = exec->vm();
+    BooleanObject* obj = BooleanObject::create(vm, globalObject->booleanObjectStructure());
+    obj->setInternalValue(vm, immediateBooleanValue);
     return obj;
 }
 

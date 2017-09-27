@@ -36,7 +36,6 @@
 
 namespace Inspector {
 class DOMStorageFrontendDispatcher;
-class InspectorArray;
 }
 
 namespace WebCore {
@@ -66,10 +65,10 @@ public:
     void removeDOMStorageItem(ErrorString&, const Inspector::InspectorObject& storageId, const String& key) override;
 
     // Called from the injected script.
-    String storageId(Storage*);
+    String storageId(Storage&);
     RefPtr<Inspector::Protocol::DOMStorage::StorageId> storageId(SecurityOrigin*, bool isLocalStorage);
 
-    // Called from InspectorInstrumentation
+    // InspectorInstrumentation
     void didDispatchDOMStorageEvent(const String& key, const String& oldValue, const String& newValue, StorageType, SecurityOrigin*);
 
 private:

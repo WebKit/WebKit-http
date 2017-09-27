@@ -28,9 +28,8 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "FetchBodyOwner.h"
+#include "FetchHeaders.h"
 #include "ResourceResponse.h"
 #include <runtime/TypedArrays.h>
 
@@ -41,7 +40,6 @@ class JSValue;
 
 namespace WebCore {
 
-class Dictionary;
 class FetchRequest;
 class ReadableStreamSource;
 
@@ -49,22 +47,26 @@ class FetchResponse final : public FetchBodyOwner {
 public:
     using Type = ResourceResponse::Type;
 
-    static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, Nullopt, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
+    struct Init {
+        unsigned short status { 200 };
+        String statusText { ASCIILiteral("OK") };
+        std::optional<FetchHeaders::Init> headers;
+    };
+
+    static Ref<FetchResponse> create(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
+
+    static ExceptionOr<Ref<FetchResponse>> create(ScriptExecutionContext&, std::optional<FetchBody::Init>&&, Init&&);
     static Ref<FetchResponse> error(ScriptExecutionContext&);
     static ExceptionOr<Ref<FetchResponse>> redirect(ScriptExecutionContext&, const String& url, int status);
 
-    using FetchPromise = DOMPromise<FetchResponse>;
-    static void fetch(ScriptExecutionContext&, FetchRequest&, FetchPromise&&);
+    using NotificationCallback = WTF::Function<void(ExceptionOr<FetchResponse&>&&)>;
+    static void fetch(ScriptExecutionContext&, FetchRequest&, NotificationCallback&&);
 
-    void consume(unsigned, Ref<DeferredPromise>&&);
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
     void startConsumingStream(unsigned);
     void consumeChunk(Ref<JSC::Uint8Array>&&);
     void finishConsumingStream(Ref<DeferredPromise>&&);
 #endif
-
-    ExceptionOr<void> setStatus(int status, const String& statusText);
-    void initializeWith(JSC::ExecState&, JSC::JSValue);
 
     Type type() const { return m_response.type(); }
     const String& url() const;
@@ -73,61 +75,74 @@ public:
     bool ok() const { return m_response.isSuccessful(); }
     const String& statusText() const { return m_response.httpStatusText(); }
 
+    const FetchHeaders& headers() const { return m_headers; }
     FetchHeaders& headers() { return m_headers; }
-    Ref<FetchResponse> cloneForJS();
+    ExceptionOr<Ref<FetchResponse>> clone(ScriptExecutionContext&);
 
-#if ENABLE(READABLE_STREAM_API)
-    ReadableStreamSource* createReadableStreamSource();
-    void consumeBodyAsStream();
-    void feedStream();
-    void cancel();
+#if ENABLE(STREAMS_API)
+    void consumeBodyAsStream() final;
+    void feedStream() final;
+    void cancel() final;
 #endif
+
+    using ResponseData = Variant<std::nullptr_t, Ref<FormData>, Ref<SharedBuffer>>;
+    ResponseData consumeBody();
+    void setBodyData(ResponseData&&);
 
     bool isLoading() const { return !!m_bodyLoader; }
 
-private:
-    FetchResponse(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
+    using ConsumeDataCallback = WTF::Function<void(ExceptionOr<RefPtr<SharedBuffer>>&&)>;
+    void consumeBodyWhenLoaded(ConsumeDataCallback&&);
+    void consumeBodyFromReadableStream(ConsumeDataCallback&&);
 
-    static void startFetching(ScriptExecutionContext&, const FetchRequest&, FetchPromise&&);
+    const ResourceResponse& resourceResponse() const { return m_response; }
+
+private:
+    FetchResponse(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
 
     void stop() final;
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
 
-#if ENABLE(READABLE_STREAM_API)
+#if ENABLE(STREAMS_API)
     void closeStream();
 #endif
 
     class BodyLoader final : public FetchLoaderClient {
     public:
-        BodyLoader(FetchResponse&, FetchPromise&&);
+        BodyLoader(FetchResponse&, NotificationCallback&&);
+        ~BodyLoader();
 
         bool start(ScriptExecutionContext&, const FetchRequest&);
         void stop();
 
-#if ENABLE(READABLE_STREAM_API)
+        void setConsumeDataCallback(ConsumeDataCallback&& consumeDataCallback) { m_consumeDataCallback = WTFMove(consumeDataCallback); }
+
+#if ENABLE(STREAMS_API)
         RefPtr<SharedBuffer> startStreaming();
 #endif
 
     private:
         // FetchLoaderClient API
         void didSucceed() final;
-        void didFail() final;
+        void didFail(const ResourceError&) final;
         void didReceiveResponse(const ResourceResponse&) final;
         void didReceiveData(const char*, size_t) final;
 
         FetchResponse& m_response;
-        Optional<FetchPromise> m_promise;
+        NotificationCallback m_responseCallback;
+        ConsumeDataCallback m_consumeDataCallback;
         std::unique_ptr<FetchLoader> m_loader;
     };
 
     ResourceResponse m_response;
-    Optional<BodyLoader> m_bodyLoader;
+    std::optional<BodyLoader> m_bodyLoader;
     mutable String m_responseURL;
-
-    FetchBodyConsumer m_consumer { FetchBodyConsumer::Type::ArrayBuffer  };
 };
 
-} // namespace WebCore
+inline Ref<FetchResponse> FetchResponse::create(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceResponse&& response)
+{
+    return adoptRef(*new FetchResponse(context, WTFMove(body), WTFMove(headers), WTFMove(response)));
+}
 
-#endif // ENABLE(FETCH_API)
+} // namespace WebCore

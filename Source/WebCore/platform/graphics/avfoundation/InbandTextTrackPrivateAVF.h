@@ -86,13 +86,18 @@ protected:
     void processNativeSamples(CFArrayRef, const MediaTime&);
     void removeCompletedCues();
 
+    Vector<char> m_sampleInputBuffer;
+
+private:
+#if !RELEASE_LOG_DISABLED
+    const char* logClassName() const final { return "InbandTextTrackPrivateAVF"; }
+#endif
+
     MediaTime m_currentCueStartTime;
     MediaTime m_currentCueEndTime;
 
     Vector<RefPtr<GenericCueData>> m_cues;
     AVFInbandTrackParent* m_owner;
-
-    Vector<char> m_sampleInputBuffer;
 
     enum PendingCueStatus {
         None,

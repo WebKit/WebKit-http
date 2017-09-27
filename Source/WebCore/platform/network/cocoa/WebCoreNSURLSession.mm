@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WebCoreNSURLSession.h"
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
-
 #import "CachedResourceRequest.h"
 #import "PlatformMediaResourceLoader.h"
 #import "SubresourceLoader.h"
@@ -551,7 +549,7 @@ void WebCoreNSURLSessionDataTaskClient::loadFinished(PlatformMediaResource& reso
 
 - (void)resource:(PlatformMediaResource&)resource receivedResponse:(const ResourceResponse&)response
 {
-    ASSERT(response.source() == ResourceResponse::Source::Network);
+    ASSERT(response.source() == ResourceResponse::Source::Network || response.source() == ResourceResponse::Source::DiskCache || response.source() == ResourceResponse::Source::DiskCacheAfterValidation);
     ASSERT_UNUSED(resource, &resource == _resource);
     ASSERT(isMainThread());
     [self.session task:self didReceiveCORSAccessCheckResult:resource.didPassAccessControlCheck()];
@@ -659,5 +657,3 @@ void WebCoreNSURLSessionDataTaskClient::loadFinished(PlatformMediaResource& reso
     [self _resource:resource loadFinishedWithError:nil];
 }
 @end
-
-#endif // PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100

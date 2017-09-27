@@ -33,32 +33,34 @@
 #if ENABLE(MEDIA_STREAM)
 #include "RealtimeMediaSourceCenterMac.h"
 
+#include "AVAudioSessionCaptureDeviceManager.h"
 #include "AVCaptureDeviceManager.h"
+#include "AVVideoCaptureSource.h"
+#include "CoreAudioCaptureDeviceManager.h"
+#include "CoreAudioCaptureSource.h"
 #include "Logging.h"
 #include "MediaStreamPrivate.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
-RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::platformCenter()
+RealtimeMediaSourceCenterMac& RealtimeMediaSourceCenterMac::singleton()
 {
     ASSERT(isMainThread());
     static NeverDestroyed<RealtimeMediaSourceCenterMac> center;
     return center;
 }
 
+RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::platformCenter()
+{
+    return RealtimeMediaSourceCenterMac::singleton();
+}
+
 RealtimeMediaSourceCenterMac::RealtimeMediaSourceCenterMac()
 {
-    m_supportedConstraints.setSupportsWidth(true);
-    m_supportedConstraints.setSupportsHeight(true);
-    m_supportedConstraints.setSupportsAspectRatio(true);
-    m_supportedConstraints.setSupportsFrameRate(true);
-    m_supportedConstraints.setSupportsFacingMode(true);
-    m_supportedConstraints.setSupportsVolume(true);
     m_supportedConstraints.setSupportsSampleRate(false);
     m_supportedConstraints.setSupportsSampleSize(false);
     m_supportedConstraints.setSupportsEchoCancellation(false);
-    m_supportedConstraints.setSupportsDeviceId(true);
     m_supportedConstraints.setSupportsGroupId(true);
 }
 
@@ -66,66 +68,29 @@ RealtimeMediaSourceCenterMac::~RealtimeMediaSourceCenterMac()
 {
 }
 
-void RealtimeMediaSourceCenterMac::validateRequestConstraints(ValidConstraintsHandler validHandler, InvalidConstraintsHandler invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints)
+
+RealtimeMediaSource::AudioCaptureFactory& RealtimeMediaSourceCenterMac::defaultAudioFactory()
 {
-    Vector<String> audioSourceUIDs;
-    Vector<String> videoSourceUIDs;
-    String invalidConstraint;
-
-    if (audioConstraints.isValid()) {
-        audioSourceUIDs = AVCaptureDeviceManager::singleton().bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type::Audio, audioConstraints, invalidConstraint);
-        if (!invalidConstraint.isEmpty()) {
-            invalidHandler(invalidConstraint);
-            return;
-        }
-    }
-
-    if (videoConstraints.isValid()) {
-        videoSourceUIDs = AVCaptureDeviceManager::singleton().bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type::Video, videoConstraints, invalidConstraint);
-        if (!invalidConstraint.isEmpty()) {
-            invalidHandler(invalidConstraint);
-            return;
-        }
-    }
-
-    validHandler(WTFMove(audioSourceUIDs), WTFMove(videoSourceUIDs));
+    return CoreAudioCaptureSource::factory();
 }
 
-void RealtimeMediaSourceCenterMac::createMediaStream(NewMediaStreamHandler completionHandler, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* audioConstraints, const MediaConstraints* videoConstraints)
+RealtimeMediaSource::VideoCaptureFactory& RealtimeMediaSourceCenterMac::defaultVideoFactory()
 {
-    Vector<Ref<RealtimeMediaSource>> audioSources;
-    Vector<Ref<RealtimeMediaSource>> videoSources;
-    String invalidConstraint;
-
-    if (!audioDeviceID.isEmpty()) {
-        auto audioSource = AVCaptureDeviceManager::singleton().sourceWithUID(audioDeviceID, RealtimeMediaSource::Audio, audioConstraints, invalidConstraint);
-#if !LOG_DISABLED
-        if (!invalidConstraint.isEmpty())
-            LOG(Media, "RealtimeMediaSourceCenterMac::createMediaStream(%p), audio constraints failed to apply: %s", this, invalidConstraint.utf8().data());
-#endif
-
-        if (audioSource)
-            audioSources.append(audioSource.releaseNonNull());
-    }
-    if (!videoDeviceID.isEmpty()) {
-        auto videoSource = AVCaptureDeviceManager::singleton().sourceWithUID(videoDeviceID, RealtimeMediaSource::Video, videoConstraints, invalidConstraint);
-#if !LOG_DISABLED
-        if (!invalidConstraint.isEmpty())
-            LOG(Media, "RealtimeMediaSourceCenterMac::createMediaStream(%p), video constraints failed to apply: %s", this, invalidConstraint.utf8().data());
-#endif
-        if (videoSource)
-            videoSources.append(videoSource.releaseNonNull());
-    }
-
-    if (videoSources.isEmpty() && audioSources.isEmpty())
-        completionHandler(nullptr);
-    else
-        completionHandler(MediaStreamPrivate::create(audioSources, videoSources));
+    return AVVideoCaptureSource::factory();
 }
 
-Vector<CaptureDevice> RealtimeMediaSourceCenterMac::getMediaStreamDevices()
+CaptureDeviceManager& RealtimeMediaSourceCenterMac::defaultAudioCaptureDeviceManager()
 {
-    return AVCaptureDeviceManager::singleton().getSourcesInfo();
+#if PLATFORM(MAC)
+    return CoreAudioCaptureDeviceManager::singleton();
+#else
+    return AVAudioSessionCaptureDeviceManager::singleton();
+#endif
+}
+
+CaptureDeviceManager& RealtimeMediaSourceCenterMac::defaultVideoCaptureDeviceManager()
+{
+    return AVCaptureDeviceManager::singleton();
 }
 
 } // namespace WebCore

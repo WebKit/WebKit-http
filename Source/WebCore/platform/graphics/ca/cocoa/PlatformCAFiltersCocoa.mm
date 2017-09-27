@@ -29,8 +29,8 @@
 #import "FloatConversion.h"
 #import "LengthFunctions.h" // This is a layering violation.
 #import "PlatformCALayerCocoa.h"
-#import "QuartzCoreSPI.h"
 #import <QuartzCore/QuartzCore.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <wtf/BlockObjCExceptions.h>
 
 using namespace WebCore;
@@ -68,9 +68,10 @@ void PlatformCAFilters::setFiltersOnLayer(PlatformLayer* layer, const FilterOper
     BEGIN_BLOCK_OBJC_EXCEPTIONS
     
     RetainPtr<NSMutableArray> array = adoptNS([[NSMutableArray alloc] init]);
-    
+    static NeverDestroyed<String> filterNamePrefix(MAKE_STATIC_STRING_IMPL("filter_"));
+
     for (unsigned i = 0; i < filters.size(); ++i) {
-        String filterName = String::format("filter_%d", i);
+        String filterName = filterNamePrefix.get() + String::number(i);
         const FilterOperation& filterOperation = *filters.at(i);
         switch (filterOperation.type()) {
         case FilterOperation::DEFAULT:
@@ -158,7 +159,7 @@ void PlatformCAFilters::setFiltersOnLayer(PlatformLayer* layer, const FilterOper
             [filter setValue:[NSNumber numberWithFloat:floatValueForLength(blurOperation.stdDeviation(), 0)] forKey:@"inputRadius"];
 #if ENABLE(FILTERS_LEVEL_2)
             if ([layer isKindOfClass:[CABackdropLayer class]])
-                [filter setValue:[NSNumber numberWithBool:YES] forKey:@"inputNormalizeEdges"];
+                [filter setValue:@YES forKey:@"inputNormalizeEdges"];
 #endif
             [filter setName:filterName];
             [array.get() addObject:filter];

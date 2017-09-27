@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-class FormDataList;
+class DOMFormData;
 class HTMLFieldSetElement;
 class HTMLFormElement;
 class HTMLLegendElement;
@@ -46,7 +46,7 @@ class HTMLFormControlElement : public LabelableElement, public FormAssociatedEle
 public:
     virtual ~HTMLFormControlElement();
 
-    HTMLFormElement* form() const { return FormAssociatedElement::form(); }
+    HTMLFormElement* form() const final { return FormAssociatedElement::form(); }
 
     WEBCORE_EXPORT String formEnctype() const;
     WEBCORE_EXPORT void setFormEnctype(const String&);
@@ -85,7 +85,7 @@ public:
 
     // Override in derived classes to get the encoded name=value pair for submitting.
     // Return true for a successful control (see HTML4-17.13.2).
-    bool appendFormData(FormDataList&, bool) override { return false; }
+    bool appendFormData(DOMFormData&, bool) override { return false; }
 
     virtual bool isSuccessfulSubmitButton() const { return false; }
     virtual bool isActivatedSubmit() const { return false; }
@@ -102,6 +102,7 @@ public:
     WEBCORE_EXPORT bool checkValidity(Vector<RefPtr<HTMLFormControlElement>>* unhandledInvalidControls = nullptr);
     bool reportValidity();
     void focusAndShowValidationMessage();
+    bool isShowingValidationMessage() const;
     // This must be called when a validation constraint or control value is changed.
     void updateValidity();
     void setCustomValidity(const String&) override;
@@ -138,7 +139,7 @@ protected:
     InsertionNotificationRequest insertedInto(ContainerNode&) override;
     void finishedInsertingSubtree() override;
     void removedFrom(ContainerNode&) override;
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
     bool supportsFocus() const override;
     bool isKeyboardFocusable(KeyboardEvent&) const override;
@@ -169,7 +170,6 @@ private:
 
     int tabIndex() const final;
 
-    HTMLFormElement* virtualForm() const override;
     bool isValidFormControlElement() const;
 
     bool computeIsDisabledByFieldsetAncestor() const;

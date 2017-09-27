@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,9 +25,10 @@
 
 .toolbar .dashboard-container {
     position: relative;
+    margin: 4px;
+    height: 22px;
 
     border-radius: 4px;
-    margin: 4px;
     overflow: hidden;
 }
 
@@ -46,25 +47,7 @@ body.javascript .toolbar .dashboard-container {
     width: 175px !important;
 }
 
-.toolbar.icon-and-label-vertical:matches(.small-size, .normal-size) .dashboard-container {
-    margin-top: 6px;
-}
-
-/* Styles for the extra short style, one row with quite a small y-margin */
-
-.toolbar.label-only .dashboard-container,
-.toolbar.small-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard-container {
-    height: 22px;
-}
-
-/* Styles for the fairly short style, one row with quite a bit of y-margin */
-
-.toolbar.normal-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard-container {
-    height: 30px;
-}
-
 /* Default styles for dashboards */
-
 .toolbar .dashboard {
     position: absolute;
     top: 0;
@@ -72,9 +55,20 @@ body.javascript .toolbar .dashboard-container {
     left: 0;
     right: 0;
 
-    padding: 0 10px 0 5px;
-
     animation-duration: 0.4s;
+
+    --dashboard-padding-start: 10px;
+    --dashboard-padding-end: 5px;
+}
+
+body[dir=ltr] .toolbar .dashboard {
+    padding-left: var(--dashboard-padding-start);
+    padding-right: var(--dashboard-padding-end);
+}
+
+body[dir=rtl] .toolbar .dashboard {
+    padding-left: var(--dashboard-padding-end);
+    padding-right: var(--dashboard-padding-start);
 }
 
 .toolbar .dashboard.visible {
@@ -123,7 +117,6 @@ body.javascript .toolbar .dashboard-container {
 
 .dashboard-container .advance-arrow {
     position: absolute;
-    right: 0;
     width: 19px;
     top: 0;
     bottom: 0;
@@ -138,6 +131,16 @@ body.javascript .toolbar .dashboard-container {
     transition-property: opacity;
     transition-duration: 0.2s;
     background-clip: content-box;
+
+    --dashboard-advance-arrow-offset-end: 0px;
+}
+
+body[dir=ltr] .dashboard-container .advance-arrow {
+    right: var(--dashboard-advance-arrow-offset-end);
+}
+
+body[dir=rtl] .dashboard-container .advance-arrow {
+    left: var(--dashboard-advance-arrow-offset-end);
 }
 
 .dashboard-container .advance-arrow:hover {
@@ -151,13 +154,6 @@ body.javascript .toolbar .dashboard-container {
 .dashboard-container .advance-arrow.inactive {
     opacity: 0;
     pointer-events: none;
-}
-
-.toolbar.label-only .dashboard-container .advance-arrow {
-    width: 8px;
-    height: 8px;
-    margin: 2px 4px 2px 2px;
-    background-size: 6px;
 }
 
 .dashboard-container .advance-arrow.advance-forward {

@@ -30,7 +30,7 @@ import string
 from string import Template
 
 from generator import Generator
-from models import EnumType
+from models import EnumType, Frameworks, Platforms
 from objc_generator import ObjCGenerator
 from objc_generator_templates import ObjCGeneratorTemplates as ObjCTemplates
 
@@ -44,19 +44,19 @@ def add_newline(lines):
 
 
 class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
-    def __init__(self, model, input_filepath):
-        ObjCGenerator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        ObjCGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
         return '%sTypeConversions.h' % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(ObjCGenerator.should_generate_domain_types_filter(self.model()), Generator.domains_to_generate(self))
+        return filter(self.should_generate_types_for_domain, Generator.domains_to_generate(self))
 
     def generate_output(self):
         headers = [
             '"%s.h"' % self.protocol_name(),
-            '"%sArrayConversions.h"' % ObjCGenerator.OBJC_STATIC_PREFIX,
+            Generator.string_for_file_include('%sArrayConversions.h' % ObjCGenerator.OBJC_STATIC_PREFIX, Frameworks.WebInspector, self.model().framework),
         ]
         headers.sort()
 
@@ -69,6 +69,7 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
         sections.append(self.generate_license())
         sections.append(Template(ObjCTemplates.TypeConversionsHeaderPrelude).substitute(None, **header_args))
         sections.append(Template(ObjCTemplates.TypeConversionsHeaderStandard).substitute(None))
+        sections.append(self._generate_enum_conversion_for_platforms())
         sections.extend(map(self._generate_enum_conversion_functions, domains))
         sections.append(Template(ObjCTemplates.TypeConversionsHeaderPostlude).substitute(None, **header_args))
         return '\n\n'.join(sections)
@@ -77,7 +78,7 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
         lines = []
 
         # Type enums and member enums.
-        for declaration in domain.type_declarations:
+        for declaration in self.type_declarations_for_domain(domain):
             if isinstance(declaration.type, EnumType):
                 add_newline(lines)
                 lines.append(self._generate_anonymous_enum_conversion_for_declaration(domain, declaration))
@@ -88,7 +89,7 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
                         lines.append(self._generate_anonymous_enum_conversion_for_member(domain, declaration, member))
 
         # Anonymous command enums.
-        for command in domain.commands:
+        for command in self.commands_for_domain(domain):
             for parameter in command.call_parameters:
                 if (isinstance(parameter.type, EnumType) and parameter.type.is_anonymous):
                     add_newline(lines)
@@ -99,13 +100,21 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
                     lines.append(self._generate_anonymous_enum_conversion_for_parameter(domain, command.command_name, parameter))
 
         # Anonymous event enums.
-        for event in domain.events:
+        for event in self.events_for_domain(domain):
             for parameter in event.event_parameters:
                 if (isinstance(parameter.type, EnumType) and parameter.type.is_anonymous):
                     add_newline(lines)
                     lines.append(self._generate_anonymous_enum_conversion_for_parameter(domain, event.event_name, parameter))
 
         return '\n'.join(lines)
+
+    def _generate_enum_conversion_for_platforms(self):
+        objc_enum_name = '%sPlatform' % self.objc_prefix()
+        enum_values = [platform.name for platform in Platforms]
+        lines = []
+        lines.append(self._generate_enum_objc_to_protocol_string(objc_enum_name, enum_values))
+        lines.append(self._generate_enum_from_protocol_string(objc_enum_name, enum_values))
+        return '\n\n'.join(lines)
 
     def _generate_anonymous_enum_conversion_for_declaration(self, domain, declaration):
         objc_enum_name = self.objc_enum_name_for_anonymous_enum_declaration(declaration)
@@ -146,12 +155,11 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
     def _generate_enum_from_protocol_string(self, objc_enum_name, enum_values):
         lines = []
         lines.append('template<>')
-        lines.append('inline %s fromProtocolString(const String& value)' % objc_enum_name)
+        lines.append('inline std::optional<%s> fromProtocolString(const String& value)' % objc_enum_name)
         lines.append('{')
         for enum_value in enum_values:
             lines.append('    if (value == "%s")' % enum_value)
             lines.append('        return %s%s;' % (objc_enum_name, Generator.stylized_name_for_enum_value(enum_value)))
-        lines.append('    ASSERT_NOT_REACHED();')
-        lines.append('    return %s%s;' % (objc_enum_name, Generator.stylized_name_for_enum_value(enum_values[0])))
+        lines.append('    return std::nullopt;')
         lines.append('}')
         return '\n'.join(lines)

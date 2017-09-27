@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.IndexedDatabase = class IndexedDatabase extends WebInspector.Object
+WI.IndexedDatabase = class IndexedDatabase
 {
     constructor(name, securityOrigin, version, objectStores)
     {
-        super();
-
         this._name = name;
         this._securityOrigin = securityOrigin;
         this._host = parseSecurityOrigin(securityOrigin).host;
@@ -49,11 +47,11 @@ WebInspector.IndexedDatabase = class IndexedDatabase extends WebInspector.Object
 
     saveIdentityToCookie(cookie)
     {
-        cookie[WebInspector.IndexedDatabase.NameCookieKey] = this._name;
-        cookie[WebInspector.IndexedDatabase.HostCookieKey] = this._host;
+        cookie[WI.IndexedDatabase.NameCookieKey] = this._name;
+        cookie[WI.IndexedDatabase.HostCookieKey] = this._host;
     }
 };
 
-WebInspector.IndexedDatabase.TypeIdentifier = "indexed-database";
-WebInspector.IndexedDatabase.NameCookieKey = "indexed-database-name";
-WebInspector.IndexedDatabase.HostCookieKey = "indexed-database-host";
+WI.IndexedDatabase.TypeIdentifier = "indexed-database";
+WI.IndexedDatabase.NameCookieKey = "indexed-database-name";
+WI.IndexedDatabase.HostCookieKey = "indexed-database-host";

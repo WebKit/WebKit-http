@@ -34,6 +34,7 @@ namespace WebCore {
 
     class ResourceError;
     class ResourceResponse;
+    class ResourceTiming;
 
     class ThreadableLoaderClient {
         WTF_MAKE_NONCOPYABLE(ThreadableLoaderClient); WTF_MAKE_FAST_ALLOCATED;
@@ -42,8 +43,9 @@ namespace WebCore {
 
         virtual void didReceiveResponse(unsigned long /*identifier*/, const ResourceResponse&) { }
         virtual void didReceiveData(const char*, int /*dataLength*/) { }
-        virtual void didFinishLoading(unsigned long /*identifier*/, double /*finishTime*/) { }
+        virtual void didFinishLoading(unsigned long /*identifier*/) { }
         virtual void didFail(const ResourceError&) { }
+        virtual void didFinishTiming(const ResourceTiming&) { }
 
     protected:
         ThreadableLoaderClient() { }

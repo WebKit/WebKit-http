@@ -30,7 +30,6 @@
 
 #include "AudioSourceProvider.h"
 #include <atomic>
-#include <wtf/Lock.h>
 #include <wtf/MediaTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
@@ -78,7 +77,7 @@ private:
     void finalize();
     void prepare(CMItemCount maxFrames, const AudioStreamBasicDescription *processingFormat);
     void unprepare();
-    void process(CMItemCount numberFrames, MTAudioProcessingTapFlags flagsIn, AudioBufferList *bufferListInOut, CMItemCount *numberFramesOut, MTAudioProcessingTapFlags *flagsOut);
+    void process(MTAudioProcessingTapRef, CMItemCount numberFrames, MTAudioProcessingTapFlags flagsIn, AudioBufferList *bufferListInOut, CMItemCount *numberFramesOut, MTAudioProcessingTapFlags *flagsOut);
 
     RetainPtr<AVPlayerItem> m_avPlayerItem;
     RetainPtr<AVAssetTrack> m_avAssetTrack;
@@ -90,7 +89,6 @@ private:
     std::unique_ptr<AudioStreamBasicDescription> m_outputDescription;
     std::unique_ptr<CARingBuffer> m_ringBuffer;
 
-    Lock m_mutex;
     MediaTime m_startTimeAtLastProcess;
     MediaTime m_endTimeAtLastProcess;
     std::atomic<uint64_t> m_writeAheadCount { 0 };
@@ -99,6 +97,9 @@ private:
     std::atomic<uint64_t> m_seekTo { NoSeek };
     bool m_paused { true };
     AudioSourceProviderClient* m_client { nullptr };
+
+    struct TapStorage;
+    TapStorage* m_tapStorage { nullptr };
 };
     
 }

@@ -20,7 +20,7 @@
 #include "DOMParser.h"
 
 #include "DOMImplementation.h"
-#include "ExceptionCode.h"
+#include "SecurityOriginPolicy.h"
 
 namespace WebCore {
 
@@ -42,6 +42,10 @@ ExceptionOr<Ref<Document>> DOMParser::parseFromString(const String& string, cons
     if (m_contextDocument)
         document->setContextDocument(*m_contextDocument.get());
     document->setContent(string);
+    if (m_contextDocument) {
+        document->setURL(m_contextDocument->url());
+        document->setSecurityOriginPolicy(m_contextDocument->securityOriginPolicy());
+    }
     return WTFMove(document);
 }
 

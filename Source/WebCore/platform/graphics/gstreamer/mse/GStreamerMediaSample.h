@@ -26,6 +26,7 @@
 #include "GRefPtrGStreamer.h"
 #include "MediaSample.h"
 #include <gst/gst.h>
+#include <wtf/PrintStream.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/PrintStream.h>
 

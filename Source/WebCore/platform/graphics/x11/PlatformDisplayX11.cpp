@@ -42,15 +42,18 @@
 
 namespace WebCore {
 
-PlatformDisplayX11::PlatformDisplayX11()
-    : m_display(XOpenDisplay(nullptr))
+std::unique_ptr<PlatformDisplay> PlatformDisplayX11::create()
 {
-    m_ownedDisplay = m_display != nullptr;
+    Display* display = XOpenDisplay(getenv("DISPLAY"));
+    if (!display)
+        return nullptr;
+
+    return std::make_unique<PlatformDisplayX11>(display, NativeDisplayOwned::Yes);
 }
 
-PlatformDisplayX11::PlatformDisplayX11(Display* display)
-    : m_display(display)
-    , m_ownedDisplay(false)
+PlatformDisplayX11::PlatformDisplayX11(Display* display, NativeDisplayOwned displayOwned)
+    : PlatformDisplay(displayOwned)
+    , m_display(display)
 {
 }
 
@@ -60,7 +63,7 @@ PlatformDisplayX11::~PlatformDisplayX11()
     // Clear the sharing context before releasing the display.
     m_sharingGLContext = nullptr;
 #endif
-    if (m_ownedDisplay)
+    if (m_nativeDisplayOwned == NativeDisplayOwned::Yes)
         XCloseDisplay(m_display);
 }
 
@@ -95,7 +98,7 @@ bool PlatformDisplayX11::supportsXComposite() const
     return m_supportsXComposite.value();
 }
 
-bool PlatformDisplayX11::supportsXDamage(Optional<int>& damageEventBase) const
+bool PlatformDisplayX11::supportsXDamage(std::optional<int>& damageEventBase, std::optional<int>& damageErrorBase) const
 {
     if (!m_supportsXDamage) {
         m_supportsXDamage = false;
@@ -103,13 +106,16 @@ bool PlatformDisplayX11::supportsXDamage(Optional<int>& damageEventBase) const
         if (m_display) {
             int eventBase, errorBase;
             m_supportsXDamage = XDamageQueryExtension(m_display, &eventBase, &errorBase);
-            if (m_supportsXDamage.value())
+            if (m_supportsXDamage.value()) {
                 m_damageEventBase = eventBase;
+                m_damageErrorBase = errorBase;
+            }
         }
 #endif
     }
 
     damageEventBase = m_damageEventBase;
+    damageErrorBase = m_damageErrorBase;
     return m_supportsXDamage.value();
 }
 

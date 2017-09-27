@@ -35,7 +35,7 @@ class HTMLOptionElement final : public HTMLElement {
 public:
     static Ref<HTMLOptionElement> create(Document&);
     static Ref<HTMLOptionElement> create(const QualifiedName&, Document&);
-    static ExceptionOr<Ref<HTMLOptionElement>> createForJSConstructor(Document&, const String& data, const String& value, bool defaultSelected, bool selected);
+    static ExceptionOr<Ref<HTMLOptionElement>> createForJSConstructor(Document&, const String& text, const String& value, bool defaultSelected, bool selected);
 
     WEBCORE_EXPORT String text() const;
     void setText(const String&);
@@ -49,16 +49,17 @@ public:
     WEBCORE_EXPORT void setSelected(bool);
 
 #if ENABLE(DATALIST_ELEMENT)
-    HTMLDataListElement* ownerDataListElement() const;
+    WEBCORE_EXPORT HTMLDataListElement* ownerDataListElement() const;
 #endif
-    HTMLSelectElement* ownerSelectElement() const;
+    WEBCORE_EXPORT HTMLSelectElement* ownerSelectElement() const;
 
     WEBCORE_EXPORT String label() const;
+    String displayLabel() const;
     WEBCORE_EXPORT void setLabel(const String&);
 
     bool ownElementDisabled() const { return m_disabled; }
 
-    bool isDisabledFormControl() const final;
+    WEBCORE_EXPORT bool isDisabledFormControl() const final;
 
     String textIndentedToRespectGroupLabel() const;
 

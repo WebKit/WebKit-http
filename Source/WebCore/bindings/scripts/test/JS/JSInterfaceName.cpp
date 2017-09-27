@@ -22,8 +22,11 @@
 #include "JSInterfaceName.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMConstructorNotConstructable.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMWrapperCache.h"
 #include <runtime/FunctionPrototype.h>
+#include <runtime/JSCInlines.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -38,7 +41,7 @@ bool setJSInterfaceNameConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::En
 class JSInterfaceNamePrototype : public JSC::JSNonFinalObject {
 public:
     using Base = JSC::JSNonFinalObject;
-    static JSInterfaceNamePrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
+    static JSInterfaceNamePrototype* create(JSC::VM& vm, JSDOMGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSInterfaceNamePrototype* ptr = new (NotNull, JSC::allocateCell<JSInterfaceNamePrototype>(vm.heap)) JSInterfaceNamePrototype(vm, globalObject, structure);
         ptr->finishCreation(vm);
@@ -70,29 +73,29 @@ template<> JSValue JSInterfaceNameConstructor::prototypeForStructure(JSC::VM& vm
 
 template<> void JSInterfaceNameConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    putDirect(vm, vm.propertyNames->prototype, JSInterfaceName::prototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("InterfaceName"))), ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSInterfaceName::prototype(vm, globalObject), JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("InterfaceName"))), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(0), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
 }
 
-template<> const ClassInfo JSInterfaceNameConstructor::s_info = { "InterfaceName", &Base::s_info, 0, CREATE_METHOD_TABLE(JSInterfaceNameConstructor) };
+template<> const ClassInfo JSInterfaceNameConstructor::s_info = { "InterfaceName", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInterfaceNameConstructor) };
 
 /* Hash table for prototype */
 
 static const HashTableValue JSInterfaceNamePrototypeTableValues[] =
 {
-    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsInterfaceNameConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSInterfaceNameConstructor) } },
+    { "constructor", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsInterfaceNameConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSInterfaceNameConstructor) } },
 };
 
-const ClassInfo JSInterfaceNamePrototype::s_info = { "InterfaceNamePrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSInterfaceNamePrototype) };
+const ClassInfo JSInterfaceNamePrototype::s_info = { "InterfaceNamePrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInterfaceNamePrototype) };
 
 void JSInterfaceNamePrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSInterfaceNamePrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSInterfaceName::info(), JSInterfaceNamePrototypeTableValues, *this);
 }
 
-const ClassInfo JSInterfaceName::s_info = { "InterfaceName", &Base::s_info, 0, CREATE_METHOD_TABLE(JSInterfaceName) };
+const ClassInfo JSInterfaceName::s_info = { "InterfaceName", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInterfaceName) };
 
 JSInterfaceName::JSInterfaceName(Structure* structure, JSDOMGlobalObject& globalObject, Ref<InterfaceName>&& impl)
     : JSDOMWrapper<InterfaceName>(structure, globalObject, WTFMove(impl))
@@ -102,18 +105,23 @@ JSInterfaceName::JSInterfaceName(Structure* structure, JSDOMGlobalObject& global
 void JSInterfaceName::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
-JSObject* JSInterfaceName::createPrototype(VM& vm, JSGlobalObject* globalObject)
+JSObject* JSInterfaceName::createPrototype(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    return JSInterfaceNamePrototype::create(vm, globalObject, JSInterfaceNamePrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
+    return JSInterfaceNamePrototype::create(vm, &globalObject, JSInterfaceNamePrototype::createStructure(vm, &globalObject, globalObject.objectPrototype()));
 }
 
-JSObject* JSInterfaceName::prototype(VM& vm, JSGlobalObject* globalObject)
+JSObject* JSInterfaceName::prototype(VM& vm, JSDOMGlobalObject& globalObject)
 {
     return getDOMPrototype<JSInterfaceName>(vm, globalObject);
+}
+
+JSValue JSInterfaceName::getConstructor(VM& vm, const JSGlobalObject* globalObject)
+{
+    return getDOMConstructor<JSInterfaceNameConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
 void JSInterfaceName::destroy(JSC::JSCell* cell)
@@ -126,29 +134,23 @@ EncodedJSValue jsInterfaceNameConstructor(ExecState* state, EncodedJSValue thisV
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject))
+    auto* prototype = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
-    return JSValue::encode(JSInterfaceName::getConstructor(state->vm(), domObject->globalObject()));
+    return JSValue::encode(JSInterfaceName::getConstructor(state->vm(), prototype->globalObject()));
 }
 
 bool setJSInterfaceNameConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSValue value = JSValue::decode(encodedValue);
-    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
-    if (UNLIKELY(!domObject)) {
+    auto* prototype = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
+    if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
-    return domObject->putDirect(state->vm(), state->propertyNames().constructor, value);
-}
-
-JSValue JSInterfaceName::getConstructor(VM& vm, const JSGlobalObject* globalObject)
-{
-    return getDOMConstructor<JSInterfaceNameConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
+    return prototype->putDirect(vm, vm.propertyNames->constructor, JSValue::decode(encodedValue));
 }
 
 void JSInterfaceName::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -174,7 +176,7 @@ bool JSInterfaceNameOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> 
 
 void JSInterfaceNameOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    auto* jsInterfaceName = jsCast<JSInterfaceName*>(handle.slot()->asCell());
+    auto* jsInterfaceName = static_cast<JSInterfaceName*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsInterfaceName->wrapped(), jsInterfaceName);
 }
@@ -197,12 +199,12 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7InterfaceName@WebCore@@6B@"));
 #else
     void* expectedVTablePointer = &_ZTVN7WebCore13InterfaceNameE[2];
-#if COMPILER(CLANG)
+#endif
+
     // If this fails InterfaceName does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    static_assert(__is_polymorphic(InterfaceName), "InterfaceName is not polymorphic");
-#endif
-#endif
+    static_assert(std::is_polymorphic<InterfaceName>::value, "InterfaceName is not polymorphic");
+
     // If you hit this assertion you either have a use after free bug, or
     // InterfaceName has subclasses. If InterfaceName has subclasses that get passed
     // to toJS() we currently require InterfaceName you to opt out of binding hardening
@@ -218,9 +220,9 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, Interf
     return wrap(state, globalObject, impl);
 }
 
-InterfaceName* JSInterfaceName::toWrapped(JSC::JSValue value)
+InterfaceName* JSInterfaceName::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSInterfaceName*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSInterfaceName*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

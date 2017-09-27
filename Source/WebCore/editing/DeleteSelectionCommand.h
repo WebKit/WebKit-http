@@ -48,13 +48,13 @@ protected:
 private:
     DeleteSelectionCommand(const VisibleSelection&, bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements, bool sanitizeMarkup, EditAction);
 
-    virtual void doApply();
+    void doApply() override;
     
-    virtual bool preservesTypingStyle() const;
+    bool preservesTypingStyle() const override;
 
     void initializeStartEnd(Position&, Position&);
     void setStartingSelectionOnSmartDelete(const Position&, const Position&);
-    void initializePositionData();
+    bool initializePositionData();
     void saveTypingStyleState();
     void insertPlaceholderForAncestorBlockContent();
     bool handleSpecialCaseBRDelete();
@@ -66,12 +66,15 @@ private:
     void calculateTypingStyleAfterDelete();
     void clearTransientState();
     void makeStylingElementsDirectChildrenOfEditableRootToPreventStyleLoss();
-    virtual void removeNode(PassRefPtr<Node>, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable);
-    virtual void deleteTextFromNode(PassRefPtr<Text>, unsigned, unsigned);
+    void removeNode(Node&, ShouldAssumeContentIsAlwaysEditable = DoNotAssumeContentIsAlwaysEditable) override;
+    void deleteTextFromNode(Text&, unsigned, unsigned) override;
     void removeRedundantBlocks();
 
     // This function provides access to original string after the correction has been deleted.
     String originalStringForAutocorrectionAtBeginningOfSelection();
+
+    void removeNodeUpdatingStates(Node&, ShouldAssumeContentIsAlwaysEditable);
+    void insertBlockPlaceholderForTableCellIfNeeded(Element&);
 
     bool m_hasSelectionToDelete;
     bool m_smartDelete;

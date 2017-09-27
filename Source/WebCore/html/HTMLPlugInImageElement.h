@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2011, 2012, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,26 +25,17 @@
 namespace WebCore {
 
 class HTMLImageLoader;
-class FrameLoader;
-class Image;
 class MouseEvent;
-class RenderStyle;
-class Widget;
 
-enum class CreatePlugins {
-    No,
-    Yes,
-};
+enum class CreatePlugins { No, Yes };
 
 // Base class for HTMLAppletElement, HTMLEmbedElement, and HTMLObjectElement.
-// FIXME: Should HTMLAppletElement inherit from HTMLPlugInElement directly instead?
+// FIXME: Perhaps HTMLAppletElement should inherit from HTMLPlugInElement directly instead.
 class HTMLPlugInImageElement : public HTMLPlugInElement {
 public:
     virtual ~HTMLPlugInImageElement();
 
     RenderEmbeddedObject* renderEmbeddedObject() const;
-
-    void setDisplayState(DisplayState) override;
 
     virtual void updateWidget(CreatePlugins) = 0;
 
@@ -52,7 +43,7 @@ public:
     const String& url() const { return m_url; }
     const URL& loadedUrl() const { return m_loadedUrl; }
 
-    const String loadedMimeType() const
+    String loadedMimeType() const
     {
         String mimeType = serviceType();
         if (mimeType.isEmpty())
@@ -64,7 +55,7 @@ public:
     bool needsWidgetUpdate() const { return m_needsWidgetUpdate; }
     void setNeedsWidgetUpdate(bool needsWidgetUpdate) { m_needsWidgetUpdate = needsWidgetUpdate; }
     
-    void userDidClickSnapshot(PassRefPtr<MouseEvent>, bool forwardEvent);
+    void userDidClickSnapshot(MouseEvent&, bool forwardEvent);
     void checkSnapshotStatus();
     Image* snapshotImage() const { return m_snapshotImage.get(); }
     WEBCORE_EXPORT void restartSnapshottedPlugIn();
@@ -90,21 +81,24 @@ public:
     SnapshotDecision snapshotDecision() const { return m_snapshotDecision; }
 
 protected:
-    HTMLPlugInImageElement(const QualifiedName& tagName, Document&, bool createdByParser);
+    HTMLPlugInImageElement(const QualifiedName& tagName, Document&);
+    void finishCreating();
 
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
+
     bool requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues) final;
 
     bool isImageType();
     HTMLImageLoader* imageLoader() { return m_imageLoader.get(); }
+    void updateImageLoaderWithNewURLSoon();
 
     bool allowedToLoadFrameURL(const String& url);
     bool wouldLoadAsPlugIn(const String& url, const String& serviceType);
 
+    void scheduleUpdateForAfterStyleResolution();
+
     String m_serviceType;
     String m_url;
-
-    std::unique_ptr<HTMLImageLoader> m_imageLoader;
 
 private:
     bool isPlugInImageElement() const final { return true; }
@@ -112,12 +106,12 @@ private:
 
     bool allowedToLoadPluginContent(const String& url, const String& mimeType) const;
 
-    void finishParsingChildren() final;
     void didAddUserAgentShadowRoot(ShadowRoot*) final;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
     bool childShouldCreateRenderer(const Node&) const override;
-    bool willRecalcStyle(Style::Change) final;
+    void willRecalcStyle(Style::Change) final;
+    void didRecalcStyle(Style::Change) final;
     void didAttachRenderers() final;
     void willDetachRenderers() final;
 
@@ -127,10 +121,9 @@ private:
     void defaultEventHandler(Event&) final;
     void dispatchPendingMouseClick() final;
 
-    void updateSnapshot(PassRefPtr<Image>) final;
+    void updateSnapshot(Image*) final;
 
-    void startLoadingImage();
-    void updateWidgetIfNecessary();
+    void updateAfterStyleResolution();
 
     void simulatedMouseClickTimerFired();
 
@@ -138,21 +131,26 @@ private:
     void removeSnapshotTimerFired();
     bool isTopLevelFullPagePlugin(const RenderEmbeddedObject&) const;
 
+    void setDisplayState(DisplayState) final;
+
     URL m_loadedUrl;
-    bool m_needsWidgetUpdate;
-    bool m_needsDocumentActivationCallbacks;
+    bool m_needsWidgetUpdate { false };
+    bool m_needsDocumentActivationCallbacks { false };
     RefPtr<MouseEvent> m_pendingClickEventFromSnapshot;
     DeferrableOneShotTimer m_simulatedMouseClickTimer;
     Timer m_removeSnapshotTimer;
     RefPtr<Image> m_snapshotImage;
-    bool m_createdDuringUserGesture;
-    bool m_isRestartedPlugin;
-    bool m_needsCheckForSizeChange;
-    bool m_plugInWasCreated;
-    bool m_deferredPromotionToPrimaryPlugIn;
+    bool m_createdDuringUserGesture { false };
+    bool m_isRestartedPlugin { false };
+    bool m_needsCheckForSizeChange { false };
+    bool m_plugInWasCreated { false };
+    bool m_deferredPromotionToPrimaryPlugIn { false };
     IntSize m_sizeWhenSnapshotted;
-    SnapshotDecision m_snapshotDecision;
-    bool m_plugInDimensionsSpecified;
+    SnapshotDecision m_snapshotDecision { SnapshotNotYetDecided };
+    bool m_plugInDimensionsSpecified { false };
+    std::unique_ptr<HTMLImageLoader> m_imageLoader;
+    bool m_needsImageReload { false };
+    bool m_hasUpdateScheduledForAfterStyleResolution { false };
 };
 
 } // namespace WebCore

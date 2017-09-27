@@ -37,7 +37,9 @@
 
 namespace JSC {
 
+namespace TypeProfilerLogInternal {
 static const bool verbose = false;
+}
 
 void TypeProfilerLog::initializeLog()
 {
@@ -56,7 +58,7 @@ TypeProfilerLog::~TypeProfilerLog()
 void TypeProfilerLog::processLogEntries(const String& reason)
 {
     double before = 0;
-    if (verbose) {
+    if (TypeProfilerLogInternal::verbose) {
         dataLog("Process caller:'", reason, "'");
         before = currentTimeMS();
     }
@@ -82,8 +84,8 @@ void TypeProfilerLog::processLogEntries(const String& reason)
         TypeLocation* location = entry->location;
         location->m_lastSeenType = type;
         if (location->m_globalTypeSet)
-            location->m_globalTypeSet->addTypeInformation(type, shape, structure);
-        location->m_instructionTypeSet->addTypeInformation(type, shape, structure);
+            location->m_globalTypeSet->addTypeInformation(type, shape.copyRef(), structure);
+        location->m_instructionTypeSet->addTypeInformation(type, WTFMove(shape), structure);
 
         entry++;
     }
@@ -95,7 +97,7 @@ void TypeProfilerLog::processLogEntries(const String& reason)
     // pauses and causes the collector to mark the log.
     m_currentLogEntryPtr = m_logStartPtr;
 
-    if (verbose) {
+    if (TypeProfilerLogInternal::verbose) {
         double after = currentTimeMS();
         dataLogF(" Processing the log took: '%f' ms\n", after - before);
     }
@@ -104,10 +106,10 @@ void TypeProfilerLog::processLogEntries(const String& reason)
 void TypeProfilerLog::visit(SlotVisitor& visitor)
 {
     for (LogEntry* entry = m_logStartPtr; entry != m_currentLogEntryPtr; ++entry) {
-        visitor.appendUnbarrieredReadOnlyValue(entry->value);
+        visitor.appendUnbarriered(entry->value);
         if (StructureID id = entry->structureID) {
             Structure* structure = visitor.heap()->structureIDTable().get(id); 
-            visitor.appendUnbarrieredReadOnlyPointer(structure);
+            visitor.appendUnbarriered(structure);
         }
     }
 }

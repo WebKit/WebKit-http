@@ -31,8 +31,6 @@
 #include "Filter.h"
 #include "FilterEffect.h"
 #include "LightSource.h"
-#include "PointLightSource.h"
-#include "SpotLightSource.h"
 #include <runtime/Uint8ClampedArray.h>
 
 // Common base class for FEDiffuseLighting and FESpecularLighting
@@ -43,9 +41,9 @@ struct FELightingPaintingDataForNeon;
 
 class FELighting : public FilterEffect {
 public:
-    virtual void platformApplySoftware();
+    void platformApplySoftware() override;
 
-    virtual void determineAbsolutePaintRect() { setAbsolutePaintRect(enclosingIntRect(maxEffectRect())); }
+    void determineAbsolutePaintRect() override { setAbsolutePaintRect(enclosingIntRect(maxEffectRect())); }
 
 protected:
     static const int s_minimalRectDimension = 100 * 100; // Empirical data limit for parallel jobs
@@ -88,7 +86,7 @@ protected:
     static void platformApplyGenericWorker(PlatformApplyGenericParameters*);
     static void platformApplyNeonWorker(FELightingPaintingDataForNeon*);
 
-    FELighting(Filter&, LightingType, const Color&, float, float, float, float, float, float, PassRefPtr<LightSource>);
+    FELighting(Filter&, LightingType, const Color&, float, float, float, float, float, float, Ref<LightSource>&&);
 
     bool drawLighting(Uint8ClampedArray*, int, int);
     inline void inlineSetPixel(int offset, LightingData&, LightSource::PaintingData&,
@@ -107,7 +105,7 @@ protected:
     inline void platformApplyNeon(LightingData&, LightSource::PaintingData&);
 
     LightingType m_lightingType;
-    RefPtr<LightSource> m_lightSource;
+    Ref<LightSource> m_lightSource;
 
     Color m_lightingColor;
     float m_surfaceScale;

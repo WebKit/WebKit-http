@@ -25,14 +25,12 @@
 #include "SVGLengthContext.h"
 
 #include "CSSHelper.h"
-#include "ExceptionCode.h"
 #include "FontMetrics.h"
 #include "Frame.h"
 #include "LengthFunctions.h"
 #include "RenderSVGRoot.h"
 #include "RenderSVGViewportContainer.h"
 #include "RenderView.h"
-#include "SVGNames.h"
 #include "SVGSVGElement.h"
 
 namespace WebCore {
@@ -48,7 +46,7 @@ SVGLengthContext::SVGLengthContext(const SVGElement* context, const FloatRect& v
 {
 }
 
-FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport, const SVGLength& x, const SVGLength& y, const SVGLength& width, const SVGLength& height)
+FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport, const SVGLengthValue& x, const SVGLengthValue& y, const SVGLengthValue& width, const SVGLengthValue& height)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
@@ -63,7 +61,7 @@ FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitT
                      height.value(lengthContext));
 }
 
-FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLength& x, const SVGLength& y)
+FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x, const SVGLengthValue& y)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
@@ -75,7 +73,7 @@ FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitType
     return FloatPoint(x.valueAsPercentage(), y.valueAsPercentage());
 }
 
-float SVGLengthContext::resolveLength(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLength& x)
+float SVGLengthContext::resolveLength(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
@@ -124,7 +122,7 @@ ExceptionOr<float> SVGLengthContext::convertValueToUserUnits(float value, SVGLen
 
     switch (fromUnit) {
     case LengthTypeUnknown:
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
     case LengthTypeNumber:
         return value;
     case LengthTypePX:
@@ -155,7 +153,7 @@ ExceptionOr<float> SVGLengthContext::convertValueFromUserUnits(float value, SVGL
 {
     switch (toUnit) {
     case LengthTypeUnknown:
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
     case LengthTypeNumber:
         return value;
     case LengthTypePercentage:
@@ -186,7 +184,7 @@ ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToPercentage(float
 {
     FloatSize viewportSize;
     if (!determineViewport(viewportSize))
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     switch (mode) {
     case LengthModeWidth:
@@ -205,7 +203,7 @@ ExceptionOr<float> SVGLengthContext::convertValueFromPercentageToUserUnits(float
 {
     FloatSize viewportSize;
     if (!determineViewport(viewportSize))
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     switch (mode) {
     case LengthModeWidth:
@@ -241,11 +239,11 @@ ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToEMS(float value)
 {
     auto* style = renderStyleForLengthResolving(m_context);
     if (!style)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
-    float fontSize = style->fontSize();
+    float fontSize = style->computedFontPixelSize();
     if (!fontSize)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     return value / fontSize;
 }
@@ -254,22 +252,22 @@ ExceptionOr<float> SVGLengthContext::convertValueFromEMSToUserUnits(float value)
 {
     auto* style = renderStyleForLengthResolving(m_context);
     if (!style)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
-    return value * style->fontSize();
+    return value * style->computedFontPixelSize();
 }
 
 ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToEXS(float value) const
 {
     auto* style = renderStyleForLengthResolving(m_context);
     if (!style)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     // Use of ceil allows a pixel match to the W3Cs expected output of coords-units-03-b.svg
     // if this causes problems in real world cases maybe it would be best to remove this
     float xHeight = std::ceil(style->fontMetrics().xHeight());
     if (!xHeight)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     return value / xHeight;
 }
@@ -278,7 +276,7 @@ ExceptionOr<float> SVGLengthContext::convertValueFromEXSToUserUnits(float value)
 {
     auto* style = renderStyleForLengthResolving(m_context);
     if (!style)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     // Use of ceil allows a pixel match to the W3Cs expected output of coords-units-03-b.svg
     // if this causes problems in real world cases maybe it would be best to remove this

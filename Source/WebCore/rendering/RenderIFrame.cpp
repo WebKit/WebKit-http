@@ -30,7 +30,6 @@
 #include "FrameView.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
-#include "Page.h"
 #include "RenderView.h"
 #include "Settings.h"
 #include <wtf/StackStats.h>
@@ -70,20 +69,27 @@ RenderView* RenderIFrame::contentRootRenderer() const
     return childFrameView ? childFrameView->frame().contentRenderer() : 0;
 }
 
+bool RenderIFrame::isFullScreenIFrame() const
+{
+    // Some authors implement fullscreen popups as out-of-flow iframes with size set to full viewport (using vw/vh units).
+    // The size used may not perfectly match the viewport size so the following heuristic uses a relaxed constraint.
+    return style().hasOutOfFlowPosition() && style().hasViewportUnits();
+}
+
 bool RenderIFrame::flattenFrame() const
 {
-    Frame* frame = iframeElement().document().frame();
-
-    bool enabled = frame && frame->settings().frameFlatteningEnabled();
-
-    if (!enabled || !frame->page())
+    if (settings().frameFlattening() == FrameFlatteningDisabled)
         return false;
 
     if (style().width().isFixed() && style().height().isFixed()) {
         // Do not flatten iframes with scrolling="no".
         if (iframeElement().scrollingMode() == ScrollbarAlwaysOff)
             return false;
+        // Do not flatten iframes that have zero size, as flattening might make them visible.
         if (style().width().value() <= 0 || style().height().value() <= 0)
+            return false;
+        // Do not flatten "fullscreen" iframes or they could become larger than the viewport.
+        if (settings().frameFlattening() <= FrameFlatteningEnabledForNonFullScreenIFrames && isFullScreenIFrame())
             return false;
     }
 

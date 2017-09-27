@@ -27,27 +27,28 @@
     "extends": "eslint:recommended",
     "env": {
         "browser": true,
-        "es6": true,
         "worker": true,
+        "ecmaVersion": 2017,
     },
     "globals": {
         // Agents
         "ApplicationCacheAgent": true,
         "CSSAgent": true,
+        "CanvasAgent": true,
         "ConsoleAgent": true,
         "DOMAgent": true,
         "DOMDebuggerAgent": true,
         "DOMStorageAgent": true,
         "DatabaseAgent": true,
         "DebuggerAgent": true,
-        "HeapAgent",
+        "HeapAgent": true,
         "IndexedDBAgent": true,
         "InspectorAgent": true,
         "LayerTreeAgent": true,
         "MemoryAgent": true,
         "NetworkAgent": true,
         "PageAgent": true,
-        "ReplayAgent": true,
+        "RecordingAgent": true,
         "RuntimeAgent": true,
         "ScriptProfilerAgent": true,
         "TimelineAgent": true,
@@ -71,7 +72,7 @@
         "SyncTestSuite": true,
         "TestHarness": true,
         "TestSuite": true,
-        "WebInspector": true,
+        "WI": true,
 
         // Externals
         "CodeMirror": true,
@@ -80,7 +81,6 @@
         // DOM
         "CSSPrimitiveValue": true,
         "Exception": true,
-        "SQLException": true,
         "WebKitPoint": true,
 
         // Utilities

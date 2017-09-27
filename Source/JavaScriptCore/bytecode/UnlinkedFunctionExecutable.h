@@ -25,29 +25,23 @@
 
 #pragma once
 
-#include "BytecodeConventions.h"
 #include "CodeSpecializationKind.h"
-#include "CodeType.h"
 #include "ConstructAbility.h"
 #include "ExecutableInfo.h"
 #include "ExpressionRangeInfo.h"
-#include "HandlerInfo.h"
 #include "Identifier.h"
 #include "Intrinsic.h"
 #include "JSCell.h"
-#include "JSString.h"
 #include "ParserModes.h"
 #include "RegExp.h"
-#include "SpecialPointer.h"
+#include "SourceCode.h"
 #include "VariableEnvironment.h"
-#include "VirtualRegister.h"
 
 namespace JSC {
 
 class FunctionMetadataNode;
 class FunctionExecutable;
 class ParserError;
-class SourceCode;
 class SourceProvider;
 class UnlinkedFunctionCodeBlock;
 
@@ -64,10 +58,10 @@ public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    static UnlinkedFunctionExecutable* create(VM* vm, const SourceCode& source, FunctionMetadataNode* node, UnlinkedFunctionKind unlinkedFunctionKind, ConstructAbility constructAbility, JSParserScriptMode scriptMode, VariableEnvironment& parentScopeTDZVariables, DerivedContextType derivedContextType, RefPtr<SourceProvider>&& sourceOverride = nullptr)
+    static UnlinkedFunctionExecutable* create(VM* vm, const SourceCode& source, FunctionMetadataNode* node, UnlinkedFunctionKind unlinkedFunctionKind, ConstructAbility constructAbility, JSParserScriptMode scriptMode, VariableEnvironment& parentScopeTDZVariables, DerivedContextType derivedContextType, SourceCode&& parentSourceOverride = SourceCode())
     {
         UnlinkedFunctionExecutable* instance = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(vm->heap))
-            UnlinkedFunctionExecutable(vm, vm->unlinkedFunctionExecutableStructure.get(), source, WTFMove(sourceOverride), node, unlinkedFunctionKind, constructAbility, scriptMode, parentScopeTDZVariables, derivedContextType);
+            UnlinkedFunctionExecutable(vm, vm->unlinkedFunctionExecutableStructure.get(), source, WTFMove(parentSourceOverride), node, unlinkedFunctionKind, constructAbility, scriptMode, parentScopeTDZVariables, derivedContextType);
         instance->finishCreation(*vm);
         return instance;
     }
@@ -77,7 +71,6 @@ public:
     void setEcmaName(const Identifier& name) { m_ecmaName = name; }
     const Identifier& inferredName() const { return m_inferredName; }
     unsigned parameterCount() const { return m_parameterCount; }; // Excluding 'this'!
-    unsigned functionLength() const { return m_functionLength; }
     SourceParseMode parseMode() const { return static_cast<SourceParseMode>(m_sourceParseMode); };
 
     const SourceCode& classSource() const { return m_classSource; };
@@ -87,6 +80,10 @@ public:
     FunctionMode functionMode() const { return static_cast<FunctionMode>(m_functionMode); }
     ConstructorKind constructorKind() const { return static_cast<ConstructorKind>(m_constructorKind); }
     SuperBinding superBinding() const { return static_cast<SuperBinding>(m_superBinding); }
+
+    unsigned lineCount() const { return m_lineCount; }
+    unsigned linkedStartColumn(unsigned parentStartColumn) const { return m_unlinkedBodyStartColumn + (!m_firstLineOffset ? parentStartColumn : 1); }
+    unsigned linkedEndColumn(unsigned startColumn) const { return m_unlinkedBodyEndColumn + (!m_lineCount ? startColumn : 1); }
 
     unsigned unlinkedFunctionNameStart() const { return m_unlinkedFunctionNameStart; }
     unsigned unlinkedBodyStartColumn() const { return m_unlinkedBodyStartColumn; }
@@ -106,7 +103,7 @@ public:
         const Identifier&, ExecState&, const SourceCode&, JSObject*& exception, 
         int overrideLineNumber);
 
-    JS_EXPORT_PRIVATE FunctionExecutable* link(VM&, const SourceCode&, Optional<int> overrideLineNumber = Nullopt, Intrinsic = NoIntrinsic);
+    JS_EXPORT_PRIVATE FunctionExecutable* link(VM&, const SourceCode& parentSource, std::optional<int> overrideLineNumber = std::nullopt, Intrinsic = NoIntrinsic);
 
     void clearCode()
     {
@@ -142,7 +139,7 @@ public:
     void setSourceMappingURLDirective(const String& sourceMappingURL) { m_sourceMappingURLDirective = sourceMappingURL; }
 
 private:
-    UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, RefPtr<SourceProvider>&& sourceOverride, FunctionMetadataNode*, UnlinkedFunctionKind, ConstructAbility, JSParserScriptMode, VariableEnvironment&,  JSC::DerivedContextType);
+    UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, SourceCode&& parentSourceOverride, FunctionMetadataNode*, UnlinkedFunctionKind, ConstructAbility, JSParserScriptMode, VariableEnvironment&,  JSC::DerivedContextType);
 
     unsigned m_firstLineOffset;
     unsigned m_lineCount;
@@ -155,7 +152,6 @@ private:
     unsigned m_typeProfilingStartOffset;
     unsigned m_typeProfilingEndOffset;
     unsigned m_parameterCount;
-    unsigned m_functionLength;
     CodeFeatures m_features;
     SourceParseMode m_sourceParseMode;
     unsigned m_isInStrictContext : 1;
@@ -174,7 +170,7 @@ private:
     Identifier m_name;
     Identifier m_ecmaName;
     Identifier m_inferredName;
-    RefPtr<SourceProvider> m_sourceOverride;
+    SourceCode m_parentSourceOverride;
     SourceCode m_classSource;
 
     String m_sourceURLDirective;

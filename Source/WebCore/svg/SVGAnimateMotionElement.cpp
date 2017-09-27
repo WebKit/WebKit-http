@@ -33,7 +33,6 @@
 #include "SVGPathData.h"
 #include "SVGPathElement.h"
 #include "SVGPathUtilities.h"
-#include "SVGTransformList.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringView.h>
@@ -222,7 +221,7 @@ void SVGAnimateMotionElement::buildTransformForProgress(AffineTransform* transfo
     FloatPoint position = traversalState.current();
     float angle = traversalState.normalAngle();
 
-    transform->translate(position.x(), position.y());
+    transform->translate(position);
     RotateMode rotateMode = this->rotateMode();
     if (rotateMode != RotateAuto && rotateMode != RotateAutoReverse)
         return;

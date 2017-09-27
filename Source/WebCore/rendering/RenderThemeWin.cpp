@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2013 Apple Inc.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Kenneth Rohde Christiansen
  *
  * This library is free software; you can redistribute it and/or
@@ -24,6 +24,7 @@
 
 #include "CSSValueKeywords.h"
 #include "Element.h"
+#include "FileSystem.h"
 #include "FontMetrics.h"
 #include "Frame.h"
 #include "FrameSelection.h"
@@ -34,10 +35,10 @@
 #include "RenderMeter.h"
 #include "RenderSlider.h"
 #include "Settings.h"
-#include "SoftLinking.h"
 #include "SystemInfo.h"
 #include "UserAgentStyleSheets.h"
 #include "WebCoreBundleWin.h"
+#include <wtf/SoftLinking.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/win/GDIObject.h>
 
@@ -183,15 +184,10 @@ void RenderThemeWin::setWebKitIsBeingUnloaded()
     gWebKitIsBeingUnloaded = true;
 }
 
-Ref<RenderTheme> RenderThemeWin::create()
+RenderTheme& RenderTheme::singleton()
 {
-    return adoptRef(*new RenderThemeWin);
-}
-
-Ref<RenderTheme> RenderTheme::themeForPage(Page* page)
-{
-    static RenderTheme& winTheme = RenderThemeWin::create().leakRef();
-    return winTheme;
+    static NeverDestroyed<RenderThemeWin> theme;
+    return theme;
 }
 
 RenderThemeWin::RenderThemeWin()
@@ -324,7 +320,7 @@ static void fillFontDescription(FontCascadeDescription& fontDescription, LOGFONT
     fontDescription.setIsAbsoluteSize(true);
     fontDescription.setOneFamily(String(logFont.lfFaceName));
     fontDescription.setSpecifiedSize(fontSize);
-    fontDescription.setWeight(logFont.lfWeight >= 700 ? FontWeightBold : FontWeightNormal); // FIXME: Use real weight.
+    fontDescription.setWeight(logFont.lfWeight >= 700 ? boldWeightValue() : normalWeightValue()); // FIXME: Use real weight.
     fontDescription.setIsItalic(logFont.lfItalic);
 }
 
@@ -890,16 +886,16 @@ bool RenderThemeWin::paintSearchFieldCancelButton(const RenderBox& o, const Pain
     // be one pixel closer to the bottom of the field.  This tends to look better with the text.
     bounds.setY(parentBox.y() + (parentBox.height() - bounds.height() + 1) / 2);
 
-    static Image* cancelImage = Image::loadPlatformResource("searchCancel").leakRef();
-    static Image* cancelPressedImage = Image::loadPlatformResource("searchCancelPressed").leakRef();
-    paintInfo.context().drawImage(isPressed(o) ? *cancelPressedImage : *cancelImage, bounds);
+    static Image& cancelImage = Image::loadPlatformResource("searchCancel").leakRef();
+    static Image& cancelPressedImage = Image::loadPlatformResource("searchCancelPressed").leakRef();
+    paintInfo.context().drawImage(isPressed(o) ? cancelPressedImage : cancelImage, bounds);
     return false;
 }
 
 void RenderThemeWin::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the button size based on the font size
-    float fontScale = style.fontSize() / defaultControlFontPixelSize;
+    float fontScale = style.computedFontPixelSize() / defaultControlFontPixelSize;
     int cancelButtonSize = lroundf(min(max(minCancelButtonSize, defaultCancelButtonSize * fontScale), maxCancelButtonSize));
     style.setWidth(Length(cancelButtonSize, Fixed));
     style.setHeight(Length(cancelButtonSize, Fixed));
@@ -915,7 +911,7 @@ void RenderThemeWin::adjustSearchFieldDecorationPartStyle(StyleResolver&, Render
 void RenderThemeWin::adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the decoration size based on the font size
-    float fontScale = style.fontSize() / defaultControlFontPixelSize;
+    float fontScale = style.computedFontPixelSize() / defaultControlFontPixelSize;
     int magnifierSize = lroundf(min(max(minSearchFieldResultsDecorationSize, defaultSearchFieldResultsDecorationSize * fontScale), 
                                      maxSearchFieldResultsDecorationSize));
     style.setWidth(Length(magnifierSize, Fixed));
@@ -939,15 +935,15 @@ bool RenderThemeWin::paintSearchFieldResultsDecorationPart(const RenderBox& o, c
     // be one pixel closer to the bottom of the field.  This tends to look better with the text.
     bounds.setY(parentBox.y() + (parentBox.height() - bounds.height() + 1) / 2);
     
-    static Image* magnifierImage = Image::loadPlatformResource("searchMagnifier").leakRef();
-    paintInfo.context().drawImage(*magnifierImage, bounds);
+    static Image& magnifierImage = Image::loadPlatformResource("searchMagnifier").leakRef();
+    paintInfo.context().drawImage(magnifierImage, bounds);
     return false;
 }
 
 void RenderThemeWin::adjustSearchFieldResultsButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Scale the button size based on the font size
-    float fontScale = style.fontSize() / defaultControlFontPixelSize;
+    float fontScale = style.computedFontPixelSize() / defaultControlFontPixelSize;
     int magnifierHeight = lroundf(min(max(minSearchFieldResultsDecorationSize, defaultSearchFieldResultsDecorationSize * fontScale), 
                                    maxSearchFieldResultsDecorationSize));
     int magnifierWidth = lroundf(magnifierHeight * defaultSearchFieldResultsButtonWidth / defaultSearchFieldResultsDecorationSize);
@@ -974,8 +970,8 @@ bool RenderThemeWin::paintSearchFieldResultsButton(const RenderBox& o, const Pai
     // be one pixel closer to the bottom of the field.  This tends to look better with the text.
     bounds.setY(parentBox.y() + (parentBox.height() - bounds.height() + 1) / 2);
 
-    static Image* magnifierImage = Image::loadPlatformResource("searchMagnifierResults").leakRef();
-    paintInfo.context().drawImage(*magnifierImage, bounds);
+    static Image& magnifierImage = Image::loadPlatformResource("searchMagnifierResults").leakRef();
+    paintInfo.context().drawImage(magnifierImage, bounds);
     return false;
 }
 

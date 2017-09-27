@@ -41,7 +41,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ArrayConstructor);
 
-const ClassInfo ArrayConstructor::s_info = { "Function", &InternalFunction::s_info, &arrayConstructorTable, CREATE_METHOD_TABLE(ArrayConstructor) };
+const ClassInfo ArrayConstructor::s_info = { "Function", &InternalFunction::s_info, &arrayConstructorTable, nullptr, CREATE_METHOD_TABLE(ArrayConstructor) };
 
 /* Source for ArrayConstructor.lut.h
 @begin arrayConstructorTable
@@ -57,11 +57,11 @@ ArrayConstructor::ArrayConstructor(VM& vm, Structure* structure)
 
 void ArrayConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject, ArrayPrototype* arrayPrototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, arrayPrototype->classInfo()->className);
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, arrayPrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum | DontDelete);
-    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->isArray, arrayConstructorIsArrayCodeGenerator, DontEnum);
+    Base::finishCreation(vm, arrayPrototype->classInfo(vm)->className);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, arrayPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->isArray, arrayConstructorIsArrayCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
 
 // ------------------------------ Functions ---------------------------
@@ -70,18 +70,21 @@ JSValue constructArrayWithSizeQuirk(ExecState* exec, ArrayAllocationProfile* pro
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    if (!length.isNumber())
+    if (!length.isNumber()) {
+        scope.release();
         return constructArrayNegativeIndexed(exec, profile, globalObject, &length, 1, newTarget);
+    }
     
     uint32_t n = length.toUInt32(exec);
     if (n != length.toNumber(exec))
         return throwException(exec, scope, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer.")));
+    scope.release();
     return constructEmptyArray(exec, profile, globalObject, n, newTarget);
 }
 
 static inline JSValue constructArrayWithSizeQuirk(ExecState* exec, const ArgList& args, JSValue newTarget)
 {
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
 
     // a single numeric argument denotes the array size (!)
     if (args.size() == 1)
@@ -149,13 +152,14 @@ bool isArraySlow(ExecState* exec, ProxyObject* argument)
 // https://tc39.github.io/ecma262/#sec-isarray
 EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArraySlow(ExecState* exec)
 {
-    ASSERT(jsDynamicCast<ProxyObject*>(exec->argument(0)));
+    ASSERT(jsDynamicCast<ProxyObject*>(exec->vm(), exec->argument(0)));
     return JSValue::encode(jsBoolean(isArraySlowInline(exec, jsCast<ProxyObject*>(exec->uncheckedArgument(0)))));
 }
 
 EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArrayConstructor(ExecState* exec)
 {
-    return JSValue::encode(jsBoolean(jsDynamicCast<ArrayConstructor*>(exec->uncheckedArgument(0))));
+    VM& vm = exec->vm();
+    return JSValue::encode(jsBoolean(jsDynamicCast<ArrayConstructor*>(vm, exec->uncheckedArgument(0))));
 }
 
 } // namespace JSC

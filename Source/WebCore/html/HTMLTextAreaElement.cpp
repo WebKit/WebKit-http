@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2008, 2010, 2014, 2016 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
  *
@@ -28,13 +28,13 @@
 
 #include "BeforeTextInsertedEvent.h"
 #include "CSSValueKeywords.h"
+#include "DOMFormData.h"
 #include "Document.h"
 #include "Editor.h"
+#include "ElementChildIterator.h"
 #include "Event.h"
-#include "EventHandler.h"
 #include "EventNames.h"
 #include "FormController.h"
-#include "FormDataList.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLNames.h"
@@ -43,7 +43,6 @@
 #include "RenderTextControlMultiLine.h"
 #include "ShadowRoot.h"
 #include "Text.h"
-#include <wtf/text/TextBreakIterator.h>
 #include "TextControlInnerElements.h"
 #include "TextIterator.h"
 #include "TextNodeTraversal.h"
@@ -218,19 +217,19 @@ RenderPtr<RenderElement> HTMLTextAreaElement::createElementRenderer(RenderStyle&
     return createRenderer<RenderTextControlMultiLine>(*this, WTFMove(style));
 }
 
-bool HTMLTextAreaElement::appendFormData(FormDataList& encoding, bool)
+bool HTMLTextAreaElement::appendFormData(DOMFormData& formData, bool)
 {
     if (name().isEmpty())
         return false;
 
     document().updateLayout();
 
-    const String& text = (m_wrap == HardWrap) ? valueWithHardLineBreaks() : value();
-    encoding.appendData(name(), text);
+    formData.append(name(), m_wrap == HardWrap ? valueWithHardLineBreaks() : value());
 
-    const AtomicString& dirnameAttrValue = attributeWithoutSynchronization(dirnameAttr);
+    auto& dirnameAttrValue = attributeWithoutSynchronization(dirnameAttr);
     if (!dirnameAttrValue.isNull())
-        encoding.appendData(dirnameAttrValue, directionForFormData());
+        formData.append(dirnameAttrValue, directionForFormData());
+
     return true;    
 }
 
@@ -328,7 +327,11 @@ String HTMLTextAreaElement::sanitizeUserInputValue(const String& proposedValue, 
 
 TextControlInnerTextElement* HTMLTextAreaElement::innerTextElement() const
 {
-    return downcast<TextControlInnerTextElement>(userAgentShadowRoot()->firstChild());
+    ShadowRoot* root = userAgentShadowRoot();
+    if (!root)
+        return nullptr;
+    
+    return childrenOfType<TextControlInnerTextElement>(*root).first();
 }
 
 void HTMLTextAreaElement::rendererWillBeDestroyed()
@@ -401,30 +404,12 @@ void HTMLTextAreaElement::setValueCommon(const String& newValue)
 
 String HTMLTextAreaElement::defaultValue() const
 {
-    return TextNodeTraversal::contentsAsString(*this);
+    return TextNodeTraversal::childTextContent(*this);
 }
 
 void HTMLTextAreaElement::setDefaultValue(const String& defaultValue)
 {
-    Ref<HTMLTextAreaElement> protectedThis(*this);
-
-    // To preserve comments, remove only the text nodes, then add a single text node.
-    Vector<Ref<Text>> textNodes;
-    for (Text* textNode = TextNodeTraversal::firstChild(*this); textNode; textNode = TextNodeTraversal::nextSibling(*textNode))
-        textNodes.append(*textNode);
-
-    for (auto& textNode : textNodes)
-        removeChild(textNode.get());
-
-    // Normalize line endings.
-    String value = defaultValue;
-    value.replace("\r\n", "\n");
-    value.replace('\r', '\n');
-
-    insertBefore(document().createTextNode(value), firstChild());
-
-    if (!m_isDirty)
-        setNonDirtyValue(value);
+    setTextContent(defaultValue);
 }
 
 String HTMLTextAreaElement::validationMessage() const
@@ -564,7 +549,7 @@ bool HTMLTextAreaElement::willRespondToMouseClickEvents()
 RenderStyle HTMLTextAreaElement::createInnerTextStyle(const RenderStyle& style) const
 {
     auto textBlockStyle = RenderStyle::create();
-    textBlockStyle.inheritFrom(&style);
+    textBlockStyle.inheritFrom(style);
     adjustInnerTextStyle(style, textBlockStyle);
     textBlockStyle.setDisplay(BLOCK);
 

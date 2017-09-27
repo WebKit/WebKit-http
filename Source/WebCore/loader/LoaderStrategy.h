@@ -25,15 +25,18 @@
 
 #pragma once
 
-#include "ResourceHandleTypes.h"
 #include "ResourceLoadPriority.h"
 #include "ResourceLoaderOptions.h"
-#include <wtf/Vector.h>
+#include "StoredCredentialsPolicy.h"
+#include <wtf/Forward.h>
+#include <wtf/SHA1.h>
 
 namespace WebCore {
 
 class CachedResource;
+class ContentSecurityPolicy;
 class Frame;
+class HTTPHeaderMap;
 class NetscapePlugInStreamLoader;
 class NetscapePlugInStreamLoaderClient;
 class NetworkingContext;
@@ -41,13 +44,17 @@ class ResourceError;
 class ResourceLoader;
 class ResourceRequest;
 class ResourceResponse;
+class SecurityOrigin;
+class SharedBuffer;
 class SubresourceLoader;
 class URL;
+
+struct FetchOptions;
 
 class WEBCORE_EXPORT LoaderStrategy {
 public:
     virtual RefPtr<SubresourceLoader> loadResource(Frame&, CachedResource&, const ResourceRequest&, const ResourceLoaderOptions&) = 0;
-    virtual void loadResourceSynchronously(NetworkingContext*, unsigned long identifier, const ResourceRequest&, StoredCredentials, ClientCredentialPolicy, ResourceError&, ResourceResponse&, Vector<char>& data) = 0;
+    virtual void loadResourceSynchronously(NetworkingContext*, unsigned long identifier, const ResourceRequest&, StoredCredentialsPolicy, ClientCredentialPolicy, ResourceError&, ResourceResponse&, Vector<char>& data) = 0;
 
     virtual void remove(ResourceLoader*) = 0;
     virtual void setDefersLoading(ResourceLoader*, bool) = 0;
@@ -57,7 +64,12 @@ public:
     virtual void suspendPendingRequests() = 0;
     virtual void resumePendingRequests() = 0;
 
-    virtual void createPingHandle(NetworkingContext*, ResourceRequest&, bool shouldUseCredentialStorage, bool shouldFollowRedirects) = 0;
+    using PingLoadCompletionHandler = WTF::Function<void(const ResourceError&)>;
+    virtual void startPingLoad(Frame&, ResourceRequest&, const HTTPHeaderMap& originalRequestHeaders, const FetchOptions&, PingLoadCompletionHandler&& = { }) = 0;
+
+    virtual void storeDerivedDataToCache(const SHA1::Digest& bodyKey, const String& type, const String& partition, WebCore::SharedBuffer&) = 0;
+
+    virtual void setCaptureExtraNetworkLoadMetricsEnabled(bool) = 0;
 
 protected:
     virtual ~LoaderStrategy();

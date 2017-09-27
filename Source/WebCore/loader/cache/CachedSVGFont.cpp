@@ -46,47 +46,49 @@
 
 namespace WebCore {
 
-CachedSVGFont::CachedSVGFont(CachedResourceRequest&& request, SessionID sessionID)
+CachedSVGFont::CachedSVGFont(CachedResourceRequest&& request, PAL::SessionID sessionID)
     : CachedFont(WTFMove(request), sessionID, SVGFontResource)
     , m_externalSVGFontElement(nullptr)
 {
 }
 
-RefPtr<Font> CachedSVGFont::createFont(const FontDescription& fontDescription, const AtomicString& remoteURI, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings)
+RefPtr<Font> CachedSVGFont::createFont(const FontDescription& fontDescription, const AtomicString& remoteURI, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
 {
-    if (firstFontFace(remoteURI))
-        return CachedFont::createFont(fontDescription, remoteURI, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings);
-    return nullptr;
+    ASSERT(firstFontFace(remoteURI));
+    return CachedFont::createFont(fontDescription, remoteURI, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities);
 }
 
-FontPlatformData CachedSVGFont::platformDataFromCustomData(const FontDescription& fontDescription, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings)
+FontPlatformData CachedSVGFont::platformDataFromCustomData(const FontDescription& fontDescription, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
 {
     if (m_externalSVGDocument)
         return FontPlatformData(fontDescription.computedPixelSize(), bold, italic);
-    return CachedFont::platformDataFromCustomData(fontDescription, bold, italic, fontFaceFeatures, fontFaceVariantSettings);
+    return CachedFont::platformDataFromCustomData(fontDescription, bold, italic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities);
 }
 
 bool CachedSVGFont::ensureCustomFontData(const AtomicString& remoteURI)
 {
     if (!m_externalSVGDocument && !errorOccurred() && !isLoading() && m_data) {
-        // We may get here during render tree updates when events are forbidden.
-        // Frameless document can't run scripts or call back to the client so this is safe.
-        auto count = NoEventDispatchAssertion::dropTemporarily();
+        bool sawError = false;
+        {
+            // We may get here during render tree updates when events are forbidden.
+            // Frameless document can't run scripts or call back to the client so this is safe.
+            m_externalSVGDocument = SVGDocument::create(nullptr, URL());
+            auto decoder = TextResourceDecoder::create("application/xml");
 
-        m_externalSVGDocument = SVGDocument::create(nullptr, URL());
-        RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("application/xml");
-        m_externalSVGDocument->setContent(decoder->decodeAndFlush(m_data->data(), m_data->size()));
+            NoEventDispatchAssertion::EventAllowedScope allowedScope(*m_externalSVGDocument);
 
-        NoEventDispatchAssertion::restoreDropped(count);
+            m_externalSVGDocument->setContent(decoder->decodeAndFlush(m_data->data(), m_data->size()));
+            sawError = decoder->sawError();
+        }
 
-        if (decoder->sawError())
+        if (sawError)
             m_externalSVGDocument = nullptr;
         if (m_externalSVGDocument)
             maybeInitializeExternalSVGFontElement(remoteURI);
-        if (!m_externalSVGFontElement)
+        if (!m_externalSVGFontElement || !firstFontFace(remoteURI))
             return false;
         if (auto convertedFont = convertSVGToOTFFont(*m_externalSVGFontElement))
-            m_convertedFont = SharedBuffer::adoptVector(convertedFont.value());
+            m_convertedFont = SharedBuffer::create(WTFMove(convertedFont.value()));
         else {
             m_externalSVGDocument = nullptr;
             m_externalSVGFontElement = nullptr;

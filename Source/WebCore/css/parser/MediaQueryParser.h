@@ -31,10 +31,9 @@
 
 #include "CSSParserToken.h"
 #include "CSSParserTokenRange.h"
-#include "MediaList.h"
 #include "MediaQuery.h"
 #include "MediaQueryBlockWatcher.h"
-#include "MediaQueryExp.h"
+#include "MediaQueryExpression.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {

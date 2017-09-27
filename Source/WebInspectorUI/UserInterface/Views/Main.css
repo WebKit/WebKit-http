@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,9 +48,7 @@ body {
     cursor: default;
 
     -webkit-font-smoothing: subpixel-antialiased;
-}
 
-body:not(.mavericks) {
     background-color: white;
 }
 
@@ -62,6 +60,10 @@ body.docked.right {
     border-left: 1px solid var(--border-color);
 }
 
+body.docked.left {
+    border-right: 1px solid var(--border-color);
+}
+
 #docked-resizer {
     display: none;
 
@@ -70,11 +72,12 @@ body.docked.right {
 
 body.docked #docked-resizer {
     display: block;
+
+    position: absolute;
+    top: 0;
 }
 
 body.docked.bottom #docked-resizer {
-    position: absolute;
-    top: 0;
     left: 0;
     right: 0;
     height: 3px;
@@ -83,9 +86,15 @@ body.docked.bottom #docked-resizer {
 }
 
 body.docked.right #docked-resizer {
-    position: absolute;
-    top: 0;
     left: 0;
+    bottom: 0;
+    width: 3px;
+
+    cursor: col-resize;
+}
+
+body.docked.left #docked-resizer {
+    right: 0;
     bottom: 0;
     width: 3px;
 
@@ -104,12 +113,14 @@ input[type=range] {
     -webkit-appearance: none;
 }
 
-input[type=range]::-webkit-slider-runnable-track::before {
-    content: "";
-    display: block;
-    background: var(--selected-background-color);
+input[type=range]::-webkit-slider-thumb {
+    margin-top: -7px;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
     height: 1px;
-    margin: 8px 2px -8px 2px;
+    margin-top: 1px;
+    background-color: var(--selected-background-color);
 }
 
 #main {
@@ -132,7 +143,7 @@ input[type=range]::-webkit-slider-runnable-track::before {
     height: 100%;
 }
 
-body.docked.right #navigation-sidebar.collapsed > .resizer {
+body.docked:matches(.right, .left) #navigation-sidebar.collapsed > .resizer {
     pointer-events: none;
 }
 
@@ -146,46 +157,6 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
 
 #tab-browser {
     flex: 1;
-}
-
-#split-content-browser {
-    border-top: 1px solid var(--border-color);
-}
-
-#split-content-browser > .navigation-bar {
-    cursor: row-resize;
-
-    background-color: var(--panel-background-color);
-}
-
-#split-content-browser > .navigation-bar .item {
-    height: 100%;
-}
-
-#split-content-browser > .navigation-bar .item:not(.flexible-space) {
-    cursor: default;
-}
-
-#split-content-browser .hierarchical-path-component.log-icon .icon {
-    margin-left: 6px;
-    margin-right: 6px;
-    opacity: 0.7;
-}
-
-#split-content-browser .hierarchical-path-component.log-icon .title {
-    color: hsla(0, 0%, 0%, 0.75);
-}
-
-#split-content-browser .hierarchical-path-component.log-icon select {
-    display: none;
-}
-
-#split-content-browser > .navigation-bar > :matches(.hierarchical-path, .log-scope-bar) {
-    pointer-events: none;
-}
-
-#split-content-browser > .navigation-bar > .log-scope-bar > li {
-    pointer-events: all;
 }
 
 #details-sidebar {
@@ -229,6 +200,7 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
 
     width: 20px;
     height: 20px;
+    flex-shrink: 0;
     margin-right: 4px;
     vertical-align: bottom;
 
@@ -250,15 +222,26 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
     color: hsl(0, 0%, 33%);
     text-decoration: underline;
     cursor: pointer;
+    -webkit-user-select: none;
 }
 
 .go-to-link:not(.dont-float) {
-    float: right;
-    margin-left: 5px;
     max-width: 100%;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
+
+    --go-to-link-margin-start: 5px;
+}
+
+body[dir=ltr] .go-to-link:not(.dont-float) {
+    float: right;
+    margin-left: var(--go-to-link-margin-start);
+}
+
+body[dir=rtl] .go-to-link:not(.dont-float) {
+    float: left;
+    margin-right: var(--go-to-link-margin-start);
 }
 
 .go-to-arrow {
@@ -285,6 +268,10 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
 
 .go-to-arrow:active {
     background-image: url(../Images/GoToArrow.svg#active);
+}
+
+body[dir=rtl] .go-to-arrow {
+    transform: scaleX(-1);
 }
 
 :matches(:focus, .force-focus) .selected .go-to-arrow {
@@ -339,10 +326,8 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
     z-index: var(--z-index-highlight);
 
     box-shadow: inset hsl(50, 91%, 76%) 0 -1px 0, hsl(52, 56%, 60%) 0 1px 1px, hsla(0, 0%, 0%, 0.33) 0 1px 2px 1px;
-    text-shadow: white 0 0 2px;
 
-    background: linear-gradient(to bottom, hsl(54, 93%, 70%), hsl(50, 84%, 67%));
-    border-radius: 7px;
+    background-color: hsl(54, 93%, 70%);
 
     padding: 2px 4px;
     margin-top: -2px;
@@ -379,4 +364,13 @@ body.docked.right #navigation-sidebar.collapsed > .resizer {
     100% {
         opacity: 0;
     }
+}
+
+:matches(img, canvas).show-grid {
+    background-image: linear-gradient(315deg, transparent 75%, hsl(0, 0%, 95%) 75%),
+                      linear-gradient(45deg, transparent 75%, hsl(0, 0%, 95%) 75%),
+                      linear-gradient(315deg, hsl(0, 0%, 95%) 25%, transparent 25%),
+                      linear-gradient(45deg, hsl(0, 0%, 95%) 25%, transparent 25%);
+    background-size: 20px 20px;
+    background-position: 10px 10px, 10px 0px, 0 0, 0 10px;
 }

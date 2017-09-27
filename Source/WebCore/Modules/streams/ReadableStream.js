@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(READABLE_STREAM_API)
+// @conditional=ENABLE(STREAMS_API)
 
 function initializeReadableStream(underlyingSource, strategy)
 {
@@ -33,7 +33,7 @@ function initializeReadableStream(underlyingSource, strategy)
      if (underlyingSource === @undefined)
          underlyingSource = { };
      if (strategy === @undefined)
-         strategy = { highWaterMark: 1, size: function() { return 1; } };
+         strategy = { };
 
     if (!@isObject(underlyingSource))
         @throwTypeError("ReadableStream constructor takes an object as first argument");
@@ -52,16 +52,13 @@ function initializeReadableStream(underlyingSource, strategy)
     const typeString = @String(type);
 
     if (typeString === "bytes") {
+        if (!@readableByteStreamAPIEnabled())
+            @throwTypeError("ReadableByteStreamController is not implemented");
+
         if (strategy.highWaterMark === @undefined)
             strategy.highWaterMark = 0;
-        // FIXME: When ReadableByteStreamController is no more dependent on a compile flag, specific error handling can be removed.
-        // Constructor is not necessarily available if the byteStream part of Readeable Stream API is not activated. Therefore, a
-        // specific handling of error is done.
-        try {
-            let readableByteStreamControllerConstructor = @ReadableByteStreamController;
-        } catch (e) {
-            @throwTypeError("ReadableByteStreamController is not implemented");
-        }
+
+        let readableByteStreamControllerConstructor = @ReadableByteStreamController;
         this.@readableStreamController = new @ReadableByteStreamController(this, underlyingSource, strategy.highWaterMark);
     } else if (type === @undefined) {
         if (strategy.highWaterMark === @undefined)
@@ -96,13 +93,12 @@ function getReader(options)
     if (options === @undefined)
          options = { };
 
-    if (options.mode === 'byob') {
-        // FIXME: Update once ReadableByteStreamContoller and ReadableStreamBYOBReader are implemented.
-        @throwTypeError("ReadableStreamBYOBReader is not implemented");
-    }
-
     if (options.mode === @undefined)
         return new @ReadableStreamDefaultReader(this);
+
+    // String conversion is required by spec, hence double equals.
+    if (options.mode == 'byob')
+        return new @ReadableStreamBYOBReader(this);
 
     @throwRangeError("Invalid mode is specified");
 }
@@ -113,7 +109,9 @@ function pipeThrough(streams, options)
 
     const writable = streams.writable;
     const readable = streams.readable;
-    this.pipeTo(writable, options);
+    const promise = this.pipeTo(writable, options);
+    if (@isPromise(promise))
+        promise.@promiseIsHandled = true;
     return readable;
 }
 
@@ -218,6 +216,7 @@ function tee()
     return @readableStreamTee(this, false);
 }
 
+@getter
 function locked()
 {
     "use strict";

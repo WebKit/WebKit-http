@@ -36,8 +36,8 @@ public:
         return ptr;
     }
 
-    static JSC::JSObject* createPrototype(JSC::VM&, JSC::JSGlobalObject*);
-    static JSC::JSObject* prototype(JSC::VM&, JSC::JSGlobalObject*);
+    static JSC::JSObject* createPrototype(JSC::VM&, JSDOMGlobalObject&);
+    static JSC::JSObject* prototype(JSC::VM&, JSDOMGlobalObject&);
 
     DECLARE_INFO;
 
@@ -47,8 +47,7 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
-    static void visitChildren(JSCell*, JSC::SlotVisitor&);
-
+    static JSC::JSObject* serialize(JSC::ExecState&, JSTestNode& thisObject, JSDOMGlobalObject&, JSC::ThrowScope&);
     TestNode& wrapped() const
     {
         return static_cast<TestNode&>(Base::wrapped());

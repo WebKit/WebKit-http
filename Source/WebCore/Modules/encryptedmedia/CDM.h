@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,57 +25,89 @@
 
 #pragma once
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA)
 
-#include "CDMSession.h"
-#include <runtime/Uint8Array.h>
-#include <wtf/Forward.h>
+#include "ContextDestructionObserver.h"
+#include "MediaKeySessionType.h"
+#include "MediaKeySystemConfiguration.h"
+#include "MediaKeySystemMediaCapability.h"
+#include "MediaKeysRestrictions.h"
+#include "SharedBuffer.h"
+#include <wtf/Function.h>
+#include <wtf/HashSet.h>
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class CDM;
-class CDMPrivateInterface;
-class MediaPlayer;
+class CDMFactory;
+class CDMInstance;
+class CDMPrivate;
+class Document;
+class ScriptExecutionContext;
+class SharedBuffer;
 
-typedef std::function<std::unique_ptr<CDMPrivateInterface> (CDM*)> CreateCDM;
-typedef bool (*CDMSupportsKeySystem)(const String&);
-typedef bool (*CDMSupportsKeySystemAndMimeType)(const String&, const String&);
-
-class CDMClient {
+class CDM : public RefCounted<CDM>, private ContextDestructionObserver {
 public:
-    virtual ~CDMClient() { }
-
-    virtual MediaPlayer* cdmMediaPlayer(const CDM*) const = 0;
-};
-
-class CDM {
-public:
-    explicit CDM(const String& keySystem);
-
-    enum CDMErrorCode { NoError, UnknownError, ClientError, ServiceError, OutputError, HardwareChangeError, DomainError };
     static bool supportsKeySystem(const String&);
-    static bool keySystemSupportsMimeType(const String& keySystem, const String& mimeType);
-    static std::unique_ptr<CDM> create(const String& keySystem);
-    WEBCORE_EXPORT static void registerCDMFactory(CreateCDM, CDMSupportsKeySystem, CDMSupportsKeySystemAndMimeType);
+    static bool isPersistentType(MediaKeySessionType);
+
+    static Ref<CDM> create(Document&, const String& keySystem);
     ~CDM();
 
-    bool supportsMIMEType(const String&) const;
-    std::unique_ptr<CDMSession> createSession(CDMSessionClient&);
+    using SupportedConfigurationCallback = WTF::Function<void(std::optional<MediaKeySystemConfiguration>)>;
+    void getSupportedConfiguration(MediaKeySystemConfiguration&& candidateConfiguration, SupportedConfigurationCallback&&);
 
     const String& keySystem() const { return m_keySystem; }
 
-    CDMClient* client() const { return m_client; }
-    void setClient(CDMClient* client) { m_client = client; }
+    void loadAndInitialize();
+    RefPtr<CDMInstance> createInstance();
+    bool supportsServerCertificates() const;
+    bool supportsSessions() const;
+    bool supportsInitDataType(const AtomicString&) const;
 
-    MediaPlayer* mediaPlayer() const;
+    RefPtr<SharedBuffer> sanitizeInitData(const AtomicString& initDataType, const SharedBuffer&);
+    bool supportsInitData(const AtomicString& initDataType, const SharedBuffer&);
+
+    RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&);
+
+    std::optional<String> sanitizeSessionId(const String& sessionId);
 
 private:
+    CDM(Document&, const String& keySystem);
+
+    enum class ConfigurationStatus {
+        Supported,
+        NotSupported,
+        ConsentDenied,
+    };
+
+    enum class ConsentStatus {
+        ConsentDenied,
+        InformUser,
+        Allowed,
+    };
+
+    enum class AudioVideoType {
+        Audio,
+        Video,
+    };
+
+    void doSupportedConfigurationStep(MediaKeySystemConfiguration&& candidateConfiguration, MediaKeysRestrictions&&, SupportedConfigurationCallback&&);
+    std::optional<MediaKeySystemConfiguration>  getSupportedConfiguration(const MediaKeySystemConfiguration& candidateConfiguration, MediaKeysRestrictions&);
+    std::optional<Vector<MediaKeySystemMediaCapability>> getSupportedCapabilitiesForAudioVideoType(AudioVideoType, const Vector<MediaKeySystemMediaCapability>& requestedCapabilities, const MediaKeySystemConfiguration& partialConfiguration, MediaKeysRestrictions&);
+
+    WeakPtr<CDM> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
+
+    using ConsentStatusCallback = WTF::Function<void(ConsentStatus, MediaKeySystemConfiguration&&, MediaKeysRestrictions&&)>;
+    void getConsentStatus(MediaKeySystemConfiguration&& accumulatedConfiguration, MediaKeysRestrictions&&, ConsentStatusCallback&&);
     String m_keySystem;
-    std::unique_ptr<CDMPrivateInterface> m_private;
-    CDMClient* m_client;
+    std::unique_ptr<CDMPrivate> m_private;
+    WeakPtrFactory<CDM> m_weakPtrFactory;
 };
 
 }
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#endif

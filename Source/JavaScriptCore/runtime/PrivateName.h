@@ -26,13 +26,14 @@
 #pragma once
 
 #include <wtf/text/SymbolImpl.h>
+#include <wtf/text/WTFString.h>
 
 namespace JSC {
 
 class PrivateName {
 public:
     PrivateName()
-        : m_uid(StringImpl::createNullSymbol())
+        : m_uid(SymbolImpl::createNullSymbol())
     {
     }
 
@@ -43,7 +44,13 @@ public:
 
     enum DescriptionTag { Description };
     explicit PrivateName(DescriptionTag, const String& description)
-        : m_uid(StringImpl::createSymbol(*description.impl()))
+        : m_uid(SymbolImpl::create(*description.impl()))
+    {
+    }
+
+    enum PrivateSymbolTag { PrivateSymbol };
+    explicit PrivateName(PrivateSymbolTag, const String& description)
+        : m_uid(PrivateSymbolImpl::create(*description.impl()))
     {
     }
 
@@ -54,7 +61,7 @@ public:
 
     PrivateName(PrivateName&&) = default;
 
-    SymbolImpl& uid() const { return const_cast<SymbolImpl&>(m_uid.get()); }
+    SymbolImpl& uid() const { return m_uid; }
 
     bool operator==(const PrivateName& other) const { return &uid() == &other.uid(); }
     bool operator!=(const PrivateName& other) const { return &uid() != &other.uid(); }

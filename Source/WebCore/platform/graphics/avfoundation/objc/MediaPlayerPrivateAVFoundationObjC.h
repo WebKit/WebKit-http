@@ -30,6 +30,7 @@
 
 #include "MediaPlaybackTarget.h"
 #include "MediaPlayerPrivateAVFoundation.h"
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
 
 OBJC_CLASS AVAssetImageGenerator;
@@ -157,7 +158,7 @@ public:
     void removeSession(CDMSession&);
 #endif
 
-    WeakPtr<MediaPlayerPrivateAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<MediaPlayerPrivateAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
 private:
     // engine support
@@ -185,7 +186,7 @@ private:
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
     PlatformLayer* platformLayer() const override;
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    void setVideoFullscreenLayer(PlatformLayer*, std::function<void()> completionHandler) override;
+    void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) override;
     void setVideoFullscreenFrame(FloatRect) override;
     void setVideoFullscreenGravity(MediaPlayer::VideoGravity) override;
     void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) override;
@@ -208,6 +209,9 @@ private:
     MediaPlayerPrivateAVFoundation::ItemStatus playerItemStatus() const override;
     MediaPlayerPrivateAVFoundation::AssetStatus assetStatus() const override;
     long assetErrorCode() const override;
+
+    double seekableTimeRangesLastModifiedTime() const override;
+    double liveUpdateInterval() const override;
 
     void checkPlayability() override;
     void setRateDouble(double) override;
@@ -332,6 +336,10 @@ private:
 
     void setShouldDisableSleep(bool) override;
 
+#if !RELEASE_LOG_DISABLED
+    const char* logClassName() const final { return "MediaPlayerPrivateAVFoundationObjC"; }
+#endif
+
     WeakPtrFactory<MediaPlayerPrivateAVFoundationObjC> m_weakPtrFactory;
 
     RetainPtr<AVURLAsset> m_avAsset;
@@ -424,6 +432,7 @@ private:
     bool m_cachedCanPlayFastForward;
     bool m_cachedCanPlayFastReverse;
     bool m_muted { false };
+    mutable std::optional<bool> m_tracksArePlayable;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     mutable bool m_allowsWirelessVideoPlayback;
     bool m_shouldPlayToPlaybackTarget { false };

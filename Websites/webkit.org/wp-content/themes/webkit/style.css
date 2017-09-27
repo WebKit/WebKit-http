@@ -94,6 +94,11 @@ strong {
 em {
     font-weight: 200;
 }
+sup {
+    vertical-align: super;
+    font-size: smaller;
+    line-height: 1;
+}
 code {
     font-family: Menlo, monospace;
     background: #f2f2f2;
@@ -170,7 +175,6 @@ input[type=submit] {
     text-align: center;
     border: 0;
 }
-
 
 .admin-bar a[name] {
     top: calc(-32px - 3rem);
@@ -438,6 +442,11 @@ footer .menu {
     background-color: #8e56b1;
 }
 
+.tile.category-accessibility .background-image {
+    background-color: #08c;
+    background-position: 50% 89.2%;
+}
+
 .tile.tag-console .background-image,
 .tile.tag-debugger .background-image,
 .tile.tag-shortcuts .background-image,
@@ -653,12 +662,18 @@ footer .menu {
     position: relative;
     box-sizing: border-box;
     font-size: 2rem;
+    text-align: center;
 }
 
 .twitter-tile.text-only {
     display: -webkit-flex;
     display: flex;
     justify-content: center;
+    text-align: left;
+}
+
+.twitter-tile .media {
+    text-align: center;
 }
 
 .twitter-tile.text-only .tile-content {
@@ -670,8 +685,10 @@ footer .menu {
 }
 
 .twitter-tile img {
-    width: 100%;
+    display: inline-block;
+    width: auto;
     height: auto;
+    max-width: 100%;
     max-height: 256px;
 }
 
@@ -699,6 +716,7 @@ footer .menu {
     display: inline-block;
     margin: 0 1.3rem;
 }
+
 .twitter-controls a {
     opacity: 0.66;
     transition: opacity 300ms ease-out;
@@ -1164,6 +1182,7 @@ article figure > img {
     max-width: 100%;
     max-height: 540px;
     height: auto;
+    width: auto;
 }
 
 figure.widescreen {
@@ -1391,14 +1410,6 @@ article,
     content: "";
     background: url('images/menu-down.svg') no-repeat 50%;
     background-size: 2rem;
-    width: 2rem;
-    height: 2rem;
-    position: absolute;
-    right: 0;
-    top: 0.5rem;
-    -webkit-transition: transform 0.3s ease-out;
-    -moz-transition: transform 0.3s ease-out;
-    transition: transform 0.3s ease-out;
 }
 
 .feature.opened .feature-header:after {
@@ -1922,6 +1933,7 @@ header .menu-item { /* add bottom dimension to main menu items */
     footer nav li {
         padding: 0 3rem 3rem 0;
     }
+    
 }
 
 @media only screen and (max-width: 690px) {
@@ -2028,37 +2040,6 @@ header .menu-item { /* add bottom dimension to main menu items */
     header nav .main-menu.label-toggle {
         margin-top: 2rem;
         margin-bottom: 2rem;
-    }
-
-    .feature-filters {
-        height: 6rem;
-        overflow: hidden;
-    }
-
-    .feature-filters.opened {
-        height: auto;
-    }
-
-    .feature-filters:after {
-        display: inline-block;
-        content: "";
-        background: url('images/menu-down.svg') no-repeat 50%;
-        background-size: 2rem;
-        width: 2rem;
-        height: 2rem;
-        position: absolute;
-        right: 1rem;
-        top: 2rem;
-        -webkit-transition: transform 0.3s ease-out;
-        -moz-transition: transform 0.3s ease-out;
-        transition: transform 0.3s ease-out;
-        perspective: 600;
-    }
-
-    .feature-filters.opened:after {
-        -webkit-transform: rotateX(-180deg);
-        -moz-transform: rotateX(-180deg);
-        transform: rotateX(-180deg);
     }
 
     #wpadminbar {

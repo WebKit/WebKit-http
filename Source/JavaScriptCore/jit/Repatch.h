@@ -27,16 +27,15 @@
 
 #if ENABLE(JIT)
 
-#include "CCallHelpers.h"
 #include "CallVariant.h"
-#include "JITOperations.h"
 #include "PutKind.h"
 
 namespace JSC {
 
 enum class GetByIDKind {
     Normal,
-    Pure
+    Try,
+    WithThis
 };
 
 void repatchGetByID(ExecState*, JSValue, const Identifier&, const PropertySlot&, StructureStubInfo&, GetByIDKind);

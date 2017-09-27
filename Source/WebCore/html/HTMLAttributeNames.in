@@ -15,6 +15,7 @@ alt
 archive
 aria-activedescendant
 aria-atomic
+aria-autocomplete
 aria-busy
 aria-checked
 aria-colcount
@@ -23,8 +24,10 @@ aria-colspan
 aria-controls
 aria-current
 aria-describedby
+aria-details
 aria-disabled
 aria-dropeffect
+aria-errormessage
 aria-expanded
 aria-flowto
 aria-grabbed
@@ -116,6 +119,7 @@ end
 event
 expanded
 face
+filename
 focused
 for
 form
@@ -137,6 +141,7 @@ http_equiv
 id
 incremental
 indeterminate
+integrity
 is
 ismap
 itemid
@@ -174,6 +179,7 @@ multiple
 muted
 name
 nohref
+nomodule
 nonce
 noresize
 noshade
@@ -201,6 +207,7 @@ oncontextmenu
 oncopy
 oncut
 ondblclick
+ondevicechange
 ondrag
 ondragend
 ondragenter
@@ -374,6 +381,7 @@ vlink
 vspace
 webkitallowfullscreen
 webkitattachmentpath
+webkitdirectory
 width
 wrap
 
@@ -391,3 +399,5 @@ x-itunes-inherit-uri-query-component
 x-apple-data-detectors
 x-apple-data-detectors-type
 x-apple-data-detectors-result
+
+x-apple-pdf-annotation

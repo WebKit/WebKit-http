@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #if ENABLE(FTL_JIT)
 
 #include "B3ArgumentRegValue.h"
+#include "B3AtomicValue.h"
 #include "B3BasicBlockInlines.h"
 #include "B3CCallValue.h"
 #include "B3Const32Value.h"
@@ -124,6 +125,11 @@ LValue Output::constDouble(double value)
 LValue Output::phi(LType type)
 {
     return m_block->appendNew<B3::Value>(m_proc, B3::Phi, type, origin());
+}
+
+LValue Output::opaque(LValue value)
+{
+    return m_block->appendNew<Value>(m_proc, Opaque, origin(), value);
 }
 
 LValue Output::add(LValue left, LValue right)
@@ -288,22 +294,10 @@ LValue Output::doubleTrunc(LValue value)
     return callWithoutSideEffects(Double, truncDouble, value);
 }
 
-LValue Output::doubleSin(LValue value)
+LValue Output::doubleUnary(DFG::Arith::UnaryType type, LValue value)
 {
-    double (*sinDouble)(double) = sin;
-    return callWithoutSideEffects(B3::Double, sinDouble, value);
-}
-
-LValue Output::doubleCos(LValue value)
-{
-    double (*cosDouble)(double) = cos;
-    return callWithoutSideEffects(B3::Double, cosDouble, value);
-}
-
-LValue Output::doubleTan(LValue value)
-{
-    double (*tanDouble)(double) = tan;
-    return callWithoutSideEffects(B3::Double, tanDouble, value);
+    double (*unaryFunction)(double) = DFG::arithUnaryFunction(type);
+    return callWithoutSideEffects(B3::Double, unaryFunction, value);
 }
 
 LValue Output::doublePow(LValue xOperand, LValue yOperand)
@@ -325,17 +319,6 @@ LValue Output::doublePowi(LValue x, LValue y)
 LValue Output::doubleSqrt(LValue value)
 {
     return m_block->appendNew<B3::Value>(m_proc, B3::Sqrt, origin(), value);
-}
-
-LValue Output::doubleLog(LValue value)
-{
-    double (*logDouble)(double) = log;
-    return callWithoutSideEffects(B3::Double, logDouble, value);
-}
-
-bool Output::hasSensibleDoubleToInt()
-{
-    return optimizeForX86();
 }
 
 LValue Output::doubleToInt(LValue value)
@@ -365,6 +348,11 @@ LValue Output::doubleToUInt(LValue value)
 LValue Output::signExt32To64(LValue value)
 {
     return m_block->appendNew<B3::Value>(m_proc, B3::SExt32, origin(), value);
+}
+
+LValue Output::signExt32ToPtr(LValue value)
+{
+    return signExt32To64(value);
 }
 
 LValue Output::zeroExt(LValue value, LType type)
@@ -440,27 +428,33 @@ LValue Output::load16ZeroExt32(TypedPointer pointer)
     return load;
 }
 
-void Output::store(LValue value, TypedPointer pointer)
+LValue Output::store(LValue value, TypedPointer pointer)
 {
     LValue store = m_block->appendNew<MemoryValue>(m_proc, Store, origin(), value, pointer.value());
     m_heaps->decorateMemory(pointer.heap(), store);
+    return store;
 }
 
-FenceValue* Output::fence()
+FenceValue* Output::fence(const AbstractHeap* read, const AbstractHeap* write)
 {
-    return m_block->appendNew<FenceValue>(m_proc, origin());
+    FenceValue* result = m_block->appendNew<FenceValue>(m_proc, origin());
+    m_heaps->decorateFenceRead(read, result);
+    m_heaps->decorateFenceWrite(write, result);
+    return result;
 }
 
-void Output::store32As8(LValue value, TypedPointer pointer)
+LValue Output::store32As8(LValue value, TypedPointer pointer)
 {
     LValue store = m_block->appendNew<MemoryValue>(m_proc, Store8, origin(), value, pointer.value());
     m_heaps->decorateMemory(pointer.heap(), store);
+    return store;
 }
 
-void Output::store32As16(LValue value, TypedPointer pointer)
+LValue Output::store32As16(LValue value, TypedPointer pointer)
 {
     LValue store = m_block->appendNew<MemoryValue>(m_proc, Store16, origin(), value, pointer.value());
     m_heaps->decorateMemory(pointer.heap(), store);
+    return store;
 }
 
 LValue Output::baseIndex(LValue base, LValue index, Scale scale, ptrdiff_t offset)
@@ -660,6 +654,55 @@ LValue Output::select(LValue value, LValue taken, LValue notTaken)
     return m_block->appendNew<B3::Value>(m_proc, B3::Select, origin(), value, taken, notTaken);
 }
 
+LValue Output::atomicXchgAdd(LValue operand, TypedPointer pointer, Width width)
+{
+    LValue result = m_block->appendNew<AtomicValue>(m_proc, AtomicXchgAdd, origin(), width, operand, pointer.value(), 0, HeapRange(), HeapRange());
+    m_heaps->decorateMemory(pointer.heap(), result);
+    return result;
+}
+
+LValue Output::atomicXchgAnd(LValue operand, TypedPointer pointer, Width width)
+{
+    LValue result = m_block->appendNew<AtomicValue>(m_proc, AtomicXchgAnd, origin(), width, operand, pointer.value(), 0, HeapRange(), HeapRange());
+    m_heaps->decorateMemory(pointer.heap(), result);
+    return result;
+}
+
+LValue Output::atomicXchgOr(LValue operand, TypedPointer pointer, Width width)
+{
+    LValue result = m_block->appendNew<AtomicValue>(m_proc, AtomicXchgOr, origin(), width, operand, pointer.value(), 0, HeapRange(), HeapRange());
+    m_heaps->decorateMemory(pointer.heap(), result);
+    return result;
+}
+
+LValue Output::atomicXchgSub(LValue operand, TypedPointer pointer, Width width)
+{
+    LValue result = m_block->appendNew<AtomicValue>(m_proc, AtomicXchgSub, origin(), width, operand, pointer.value(), 0, HeapRange(), HeapRange());
+    m_heaps->decorateMemory(pointer.heap(), result);
+    return result;
+}
+
+LValue Output::atomicXchgXor(LValue operand, TypedPointer pointer, Width width)
+{
+    LValue result = m_block->appendNew<AtomicValue>(m_proc, AtomicXchgXor, origin(), width, operand, pointer.value(), 0, HeapRange(), HeapRange());
+    m_heaps->decorateMemory(pointer.heap(), result);
+    return result;
+}
+
+LValue Output::atomicXchg(LValue operand, TypedPointer pointer, Width width)
+{
+    LValue result = m_block->appendNew<AtomicValue>(m_proc, AtomicXchg, origin(), width, operand, pointer.value(), 0, HeapRange(), HeapRange());
+    m_heaps->decorateMemory(pointer.heap(), result);
+    return result;
+}
+
+LValue Output::atomicStrongCAS(LValue expected, LValue newValue, TypedPointer pointer, Width width)
+{
+    LValue result = m_block->appendNew<AtomicValue>(m_proc, AtomicStrongCAS, origin(), width, expected, newValue, pointer.value(), 0, HeapRange(), HeapRange());
+    m_heaps->decorateMemory(pointer.heap(), result);
+    return result;
+}
+
 void Output::jump(LBasicBlock destination)
 {
     m_block->appendNewControlValue(m_proc, B3::Jump, origin(), B3::FrequentedBlock(destination));
@@ -773,32 +816,26 @@ LValue Output::load(TypedPointer pointer, LoadType type)
     return nullptr;
 }
 
-void Output::store(LValue value, TypedPointer pointer, StoreType type)
+LValue Output::store(LValue value, TypedPointer pointer, StoreType type)
 {
     switch (type) {
     case Store32As8:
-        store32As8(value, pointer);
-        return;
+        return store32As8(value, pointer);
     case Store32As16:
-        store32As16(value, pointer);
-        return;
+        return store32As16(value, pointer);
     case Store32:
-        store32(value, pointer);
-        return;
+        return store32(value, pointer);
     case Store64:
-        store64(value, pointer);
-        return;
+        return store64(value, pointer);
     case StorePtr:
-        storePtr(value, pointer);
-        return;
+        return storePtr(value, pointer);
     case StoreFloat:
-        storeFloat(value, pointer);
-        return;
+        return storeFloat(value, pointer);
     case StoreDouble:
-        storeDouble(value, pointer);
-        return;
+        return storeDouble(value, pointer);
     }
     RELEASE_ASSERT_NOT_REACHED();
+    return nullptr;
 }
 
 TypedPointer Output::absolute(const void* address)
@@ -822,6 +859,14 @@ void Output::addIncomingToPhi(LValue phi, ValueFromBlock value)
 {
     if (value)
         value.value()->as<B3::UpsilonValue>()->setPhi(phi);
+}
+
+void Output::entrySwitch(const Vector<LBasicBlock>& cases)
+{
+    RELEASE_ASSERT(cases.size() == m_proc.numEntrypoints());
+    m_block->appendNew<Value>(m_proc, EntrySwitch, origin());
+    for (LBasicBlock block : cases)
+        m_block->appendSuccessor(FrequentedBlock(block));
 }
 
 } } // namespace JSC::FTL

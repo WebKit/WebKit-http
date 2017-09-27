@@ -30,10 +30,7 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -58,5 +55,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

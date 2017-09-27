@@ -29,13 +29,14 @@
 #include "AsyncAudioDecoder.h"
 #include "AudioBus.h"
 #include "AudioDestinationNode.h"
-#include "EventListener.h"
 #include "EventTarget.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "MediaCanStartListener.h"
 #include "MediaProducer.h"
 #include "PlatformMediaSession.h"
+#include "VisibilityChangeClient.h"
 #include <atomic>
+#include <runtime/Float32Array.h>
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
 #include <wtf/RefPtr.h>
@@ -75,7 +76,7 @@ class WaveShaperNode;
 // AudioContext is the cornerstone of the web audio API and all AudioNodes are created from it.
 // For thread safety between the audio thread and the main thread, it has a rendering graph locking mechanism. 
 
-class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public MediaProducer, private PlatformMediaSessionClient {
+class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public MediaProducer, private PlatformMediaSessionClient, private VisibilityChangeClient {
 public:
     // Create an AudioContext for rendering to the audio hardware.
     static RefPtr<AudioContext> create(Document&);
@@ -110,9 +111,9 @@ public:
     using ActiveDOMObject::suspend;
     using ActiveDOMObject::resume;
 
-    void suspend(DOMPromise<void>&&);
-    void resume(DOMPromise<void>&&);
-    void close(DOMPromise<void>&&);
+    void suspend(DOMPromiseDeferred<void>&&);
+    void resume(DOMPromiseDeferred<void>&&);
+    void close(DOMPromiseDeferred<void>&&);
 
     enum class State { Suspended, Running, Interrupted, Closed };
     State state() const;
@@ -317,6 +318,11 @@ private:
     bool supportsSeeking() const override { return false; }
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override { return false; }
     String sourceApplicationIdentifier() const override;
+    bool canProduceAudio() const final { return true; }
+    bool isSuspended() const final;
+    bool processingUserGestureForMedia() const final;
+
+    void visibilityStateChanged() final;
 
     // EventTarget
     void refEventTarget() override { ref(); }
@@ -325,7 +331,7 @@ private:
     void handleDirtyAudioSummingJunctions();
     void handleDirtyAudioNodeOutputs();
 
-    void addReaction(State, DOMPromise<void>&&);
+    void addReaction(State, DOMPromiseDeferred<void>&&);
     void updateAutomaticPullNodes();
 
     // Only accessed in the audio thread.
@@ -362,7 +368,7 @@ private:
     Vector<AudioNode*> m_renderingAutomaticPullNodes;
     // Only accessed in the audio thread.
     Vector<AudioNode*> m_deferredFinishDerefList;
-    Vector<Vector<DOMPromise<void>>> m_stateReactions;
+    Vector<Vector<DOMPromiseDeferred<void>>> m_stateReactions;
 
     std::unique_ptr<PlatformMediaSession> m_mediaSession;
     std::unique_ptr<GenericEventQueue> m_eventQueue;

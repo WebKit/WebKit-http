@@ -45,22 +45,15 @@
 
 namespace JSC { namespace DFG {
 
-namespace {
-
-struct LoopData {
-    LoopData()
-        : preHeader(nullptr)
-    {
-    }
-    
-    ClobberSet writes;
-    BasicBlock* preHeader;
-};
-
-} // anonymous namespace
-
 class LICMPhase : public Phase {
     static const bool verbose = false;
+
+    using NaturalLoop = SSANaturalLoop;
+
+    struct LoopData {
+        ClobberSet writes;
+        BasicBlock* preHeader { nullptr };
+    };
     
 public:
     LICMPhase(Graph& graph)
@@ -74,8 +67,8 @@ public:
     {
         DFG_ASSERT(m_graph, nullptr, m_graph.m_form == SSA);
         
-        m_graph.ensureDominators();
-        m_graph.ensureNaturalLoops();
+        m_graph.ensureSSADominators();
+        m_graph.ensureSSANaturalLoops();
         m_graph.ensureControlEquivalenceAnalysis();
 
         if (verbose) {
@@ -83,7 +76,7 @@ public:
             m_graph.dump();
         }
         
-        m_data.resize(m_graph.m_naturalLoops->numLoops());
+        m_data.resize(m_graph.m_ssaNaturalLoops->numLoops());
         
         // Figure out the set of things each loop writes to, not including blocks that
         // belong to inner loops. We fix this later.
@@ -98,13 +91,11 @@ public:
             if (!block->cfaHasVisited)
                 continue;
             
-            const NaturalLoop* loop = m_graph.m_naturalLoops->innerMostLoopOf(block);
+            const NaturalLoop* loop = m_graph.m_ssaNaturalLoops->innerMostLoopOf(block);
             if (!loop)
                 continue;
             LoopData& data = m_data[loop->index()];
-            for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
-                Node* node = block->at(nodeIndex);
-                
+            for (auto* node : *block) {
                 // Don't look beyond parts of the code that definitely always exit.
                 // FIXME: This shouldn't be needed.
                 // https://bugs.webkit.org/show_bug.cgi?id=128584
@@ -118,14 +109,14 @@ public:
         // For each loop:
         // - Identify its pre-header.
         // - Make sure its outer loops know what it clobbers.
-        for (unsigned loopIndex = m_graph.m_naturalLoops->numLoops(); loopIndex--;) {
-            const NaturalLoop& loop = m_graph.m_naturalLoops->loop(loopIndex);
+        for (unsigned loopIndex = m_graph.m_ssaNaturalLoops->numLoops(); loopIndex--;) {
+            const NaturalLoop& loop = m_graph.m_ssaNaturalLoops->loop(loopIndex);
             LoopData& data = m_data[loop.index()];
             
             for (
-                const NaturalLoop* outerLoop = m_graph.m_naturalLoops->innerMostOuterLoop(loop);
+                const NaturalLoop* outerLoop = m_graph.m_ssaNaturalLoops->innerMostOuterLoop(loop);
                 outerLoop;
-                outerLoop = m_graph.m_naturalLoops->innerMostOuterLoop(*outerLoop))
+                outerLoop = m_graph.m_ssaNaturalLoops->innerMostOuterLoop(*outerLoop))
                 m_data[outerLoop->index()].writes.addAll(data.writes);
             
             BasicBlock* header = loop.header();
@@ -139,7 +130,7 @@ public:
             
             for (unsigned i = header->predecessors.size(); i--;) {
                 BasicBlock* predecessor = header->predecessors[i];
-                if (m_graph.m_dominators->dominates(header, predecessor))
+                if (m_graph.m_ssaDominators->dominates(header, predecessor))
                     continue;
 
                 preHeader = predecessor;
@@ -193,15 +184,15 @@ public:
         Vector<const NaturalLoop*> loopStack;
         bool changed = false;
         for (BasicBlock* block : m_graph.blocksInPreOrder()) {
-            const NaturalLoop* loop = m_graph.m_naturalLoops->innerMostLoopOf(block);
+            const NaturalLoop* loop = m_graph.m_ssaNaturalLoops->innerMostLoopOf(block);
             if (!loop)
                 continue;
             
-            loopStack.resize(0);
+            loopStack.shrink(0);
             for (
                 const NaturalLoop* current = loop;
                 current;
-                current = m_graph.m_naturalLoops->innerMostOuterLoop(*current))
+                current = m_graph.m_ssaNaturalLoops->innerMostOuterLoop(*current))
                 loopStack.append(current);
             
             // Remember: the loop stack has the inner-most loop at index 0, so if we want
@@ -320,7 +311,7 @@ private:
         // because most loops are small and most blocks belong to few loops.
         for (unsigned bodyIndex = loop->size(); bodyIndex--;) {
             BasicBlock* subBlock = loop->at(bodyIndex);
-            const NaturalLoop* subLoop = m_graph.m_naturalLoops->headerOf(subBlock);
+            const NaturalLoop* subLoop = m_graph.m_ssaNaturalLoops->headerOf(subBlock);
             if (!subLoop)
                 continue;
             BasicBlock* subPreHeader = m_data[subLoop->index()].preHeader;

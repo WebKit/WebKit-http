@@ -53,11 +53,13 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case LazyJSConstant:
     case Int52Constant:
     case MovHint:
+    case InitializeEntrypointArguments:
     case SetLocal:
     case Flush:
     case Phantom:
     case Check:
     case Identity:
+    case IdentityWithProfile:
     case GetLocal:
     case LoopHint:
     case Phi:
@@ -77,12 +79,14 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case PhantomLocal:
     case CountExecution:
     case Jump:
+    case EntrySwitch:
     case Branch:
     case Unreachable:
     case DoubleRep:
     case Int52Rep:
     case ValueRep:
     case ExtractOSREntryLocal:
+    case ExtractCatchLocal:
     case LogicalNot:
     case NotifyWrite:
     case PutStructure:
@@ -91,6 +95,7 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case PutByOffset:
     case PutClosureVar:
     case RecordRegExpCachedResult:
+    case NukeStructureAndSetButterfly:
         break;
 
     case StrCat:
@@ -106,6 +111,8 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case MaterializeNewObject:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
+    case NewAsyncGeneratorFunction:
     case NewStringObject:
     case ToNumber:
         result = ExitsForExceptions;

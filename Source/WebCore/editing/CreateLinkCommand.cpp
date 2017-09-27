@@ -25,17 +25,17 @@
 
 #include "config.h"
 #include "CreateLinkCommand.h"
-#include "htmlediting.h"
-#include "Text.h"
 
+#include "Editing.h"
 #include "HTMLAnchorElement.h"
+#include "Text.h"
 
 namespace WebCore {
 
 CreateLinkCommand::CreateLinkCommand(Document& document, const String& url)
     : CompositeEditCommand(document)
+    , m_url(url)
 {
-    m_url = url;
 }
 
 void CreateLinkCommand::doApply()
@@ -49,9 +49,8 @@ void CreateLinkCommand::doApply()
     if (endingSelection().isRange())
         applyStyledElement(WTFMove(anchorElement));
     else {
-        insertNodeAt(anchorElement.ptr(), endingSelection().start());
-        auto textNode = Text::create(document(), m_url);
-        appendNode(WTFMove(textNode), anchorElement.ptr());
+        insertNodeAt(anchorElement.copyRef(), endingSelection().start());
+        appendNode(Text::create(document(), m_url), anchorElement.copyRef());
         setEndingSelection(VisibleSelection(positionInParentBeforeNode(anchorElement.ptr()), positionInParentAfterNode(anchorElement.ptr()), DOWNSTREAM, endingSelection().isDirectional()));
     }
 }

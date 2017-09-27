@@ -27,7 +27,7 @@
 
 #pragma once
 
-#include "MediaQueryExp.h"
+#include "MediaQueryExpression.h"
 
 namespace WebCore {
 
@@ -69,6 +69,8 @@ public:
 
     // Evaluates a list of media queries and fills in a vector with any viewport-dependent results found.
     bool evaluate(const MediaQuerySet&, Vector<MediaQueryResult>&) const;
+
+    static bool mediaAttributeMatches(Document&, const String& attributeValue);
 
 private:
     String m_mediaType;

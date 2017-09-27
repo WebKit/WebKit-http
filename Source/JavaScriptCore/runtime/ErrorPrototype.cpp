@@ -41,7 +41,7 @@ static EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState*);
 
 namespace JSC {
 
-const ClassInfo ErrorPrototype::s_info = { "Object", &Base::s_info, &errorPrototypeTable, CREATE_METHOD_TABLE(ErrorPrototype) };
+const ClassInfo ErrorPrototype::s_info = { "Object", &Base::s_info, &errorPrototypeTable, nullptr, CREATE_METHOD_TABLE(ErrorPrototype) };
 
 /* Source for ErrorPrototype.lut.h
 @begin errorPrototypeTable
@@ -57,9 +57,9 @@ ErrorPrototype::ErrorPrototype(VM& vm, Structure* structure)
 void ErrorPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("Error"))), DontEnum);
-    putDirect(vm, vm.propertyNames->message, jsEmptyString(&vm), DontEnum);
+    ASSERT(inherits(vm, info()));
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("Error"))), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirect(vm, vm.propertyNames->message, jsEmptyString(&vm), static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
 
 // ------------------------------ Functions ---------------------------
@@ -80,11 +80,12 @@ EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState* exec)
 
     // Guard against recursion!
     StringRecursionChecker checker(exec, thisObj);
+    EXCEPTION_ASSERT(!scope.exception() || checker.earlyReturnValue());
     if (JSValue earlyReturnValue = checker.earlyReturnValue())
         return JSValue::encode(earlyReturnValue);
 
     // 3. Let name be the result of calling the [[Get]] internal method of O with argument "name".
-    JSValue name = thisObj->get(exec, exec->propertyNames().name);
+    JSValue name = thisObj->get(exec, vm.propertyNames->name);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // 4. If name is undefined, then let name be "Error"; else let name be ToString(name).
@@ -92,12 +93,12 @@ EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState* exec)
     if (name.isUndefined())
         nameString = ASCIILiteral("Error");
     else {
-        nameString = name.toString(exec)->value(exec);
+        nameString = name.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
     // 5. Let msg be the result of calling the [[Get]] internal method of O with argument "message".
-    JSValue message = thisObj->get(exec, exec->propertyNames().message);
+    JSValue message = thisObj->get(exec, vm.propertyNames->message);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     // (sic)
@@ -107,7 +108,7 @@ EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState* exec)
     if (message.isUndefined())
         messageString = String();
     else {
-        messageString = message.toString(exec)->value(exec);
+        messageString = message.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 

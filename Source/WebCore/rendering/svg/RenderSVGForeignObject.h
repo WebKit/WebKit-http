@@ -62,15 +62,15 @@ private:
     const char* renderName() const override { return "RenderSVGForeignObject"; }
 
     void updateLogicalWidth() override;
-    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
     const AffineTransform& localToParentTransform() const override;
     AffineTransform localTransform() const override { return m_localTransform; }
 
-    bool m_needsTransformUpdate : 1;
-    FloatRect m_viewport;
     AffineTransform m_localTransform;
     mutable AffineTransform m_localToParentTransform;
+    FloatRect m_viewport;
+    bool m_needsTransformUpdate { true };
 };
 
 } // namespace WebCore

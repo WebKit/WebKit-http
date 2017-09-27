@@ -24,11 +24,41 @@
  */
 
 (function() {
-    if (WebInspector.dontLocalizeUserInterface)
+    if (WI.dontLocalizeUserInterface)
         return;
 
-    var localizedStringsURL = InspectorFrontendHost.localizedStringsURL();
+    let localizedStringsURL = InspectorFrontendHost.localizedStringsURL();
     console.assert(localizedStringsURL);
     if (localizedStringsURL)
         document.write("<script src=\"" + localizedStringsURL + "\"></script>");
 })();
+
+WI.unlocalizedString = function(string)
+{
+    // Intentionally do nothing, since this is for engineering builds
+    // (such as in Debug UI) or in text that is standardized in English.
+    // For example, CSS property names and values are never localized.
+    return string;
+};
+
+WI.UIString = function(string)
+{
+    if (WI.dontLocalizeUserInterface)
+        return string;
+
+    if (window.localizedStrings && string in window.localizedStrings)
+        return window.localizedStrings[string];
+
+    if (!window.localizedStrings)
+        console.error(`Attempted to load localized string "${string}" before localizedStrings was initialized.`);
+
+    if (!this._missingLocalizedStrings)
+        this._missingLocalizedStrings = {};
+
+    if (!(string in this._missingLocalizedStrings)) {
+        console.error("Localized string \"" + string + "\" was not found.");
+        this._missingLocalizedStrings[string] = true;
+    }
+
+    return "LOCALIZED STRING NOT FOUND";
+};

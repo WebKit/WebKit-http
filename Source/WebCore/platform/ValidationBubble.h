@@ -38,6 +38,7 @@ OBJC_CLASS NSPopover;
 #elif PLATFORM(IOS)
 OBJC_CLASS UIViewController;
 OBJC_CLASS WebValidationBubbleDelegate;
+OBJC_CLASS WebValidationBubbleTapRecognizer;
 #endif
 
 #if PLATFORM(MAC)
@@ -52,27 +53,40 @@ using PlatformView = void;
 
 namespace WebCore {
 
-class ValidationBubble {
+class ValidationBubble : public RefCounted<ValidationBubble> {
 public:
-    WEBCORE_EXPORT ValidationBubble(PlatformView*, const String& message);
+    struct Settings {
+        double minimumFontSize { 0 };
+    };
+
+    static Ref<ValidationBubble> create(PlatformView* view, const String& message, const Settings& settings)
+    {
+        return adoptRef(*new ValidationBubble(view, message, settings));
+    }
+
     WEBCORE_EXPORT ~ValidationBubble();
 
     const String& message() const { return m_message; }
+    double fontSize() const { return m_fontSize; }
 
 #if PLATFORM(IOS)
-    WEBCORE_EXPORT void setAnchorRect(const IntRect& anchorRect, UIViewController* presentingViewController);
+    WEBCORE_EXPORT void setAnchorRect(const IntRect& anchorRect, UIViewController* presentingViewController = nullptr);
     WEBCORE_EXPORT void show();
 #else
     WEBCORE_EXPORT void showRelativeTo(const IntRect& anchorRect);
 #endif
 
 private:
+    WEBCORE_EXPORT ValidationBubble(PlatformView*, const String& message, const Settings&);
+
     PlatformView* m_view;
     String m_message;
+    double m_fontSize { 0 };
 #if PLATFORM(MAC)
     RetainPtr<NSPopover> m_popover;
 #elif PLATFORM(IOS)
     RetainPtr<UIViewController> m_popoverController;
+    RetainPtr<WebValidationBubbleTapRecognizer> m_tapRecognizer;
     RetainPtr<WebValidationBubbleDelegate> m_popoverDelegate;
     UIViewController *m_presentingViewController;
 #endif

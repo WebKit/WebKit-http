@@ -140,7 +140,7 @@ sub main()
     my $gitCommit = 0;
     my $gitIndex = "";
     my $gitReviewer = "";
-    my $checkWebKitStyle;
+    my $checkWebKitStyle = 0;
     my $openChangeLogs = 0;
     my $writeChangeLogs = 1;
     my $delimiters = 0;
@@ -174,7 +174,7 @@ sub main()
         print STDERR "  --git-reviewer  When populating the ChangeLogs from a git commit claim that the spcified name reviewed the change.\n";
         print STDERR "                  This option is useful when the git commit lacks a Signed-Off-By: line\n";
         print STDERR "  -h|--help       Show this help message\n";
-        print STDERR "  --[no-]style    Run check-webkit-style script when done (default: style)\n";
+        print STDERR "  --[no-]style    Run check-webkit-style script when done (default: no-style)\n";
         print STDERR "  -o|--open       Open ChangeLogs in an editor when done\n";
         print STDERR "  --[no-]update   Update ChangeLogs from svn before adding entry (default: update)\n";
         print STDERR "  --[no-]write    Write ChangeLogs to disk (otherwise send new entries to stdout) (default: write)\n";
@@ -673,17 +673,22 @@ sub generateNewChangeLogs($$$$$$$$$$$$$$)
         my ($reviewer, $description) = reviewerAndDescriptionForGitCommit($gitCommit, $gitReviewer) if $gitCommit;
         $reviewer = "NOBODY (OO" . "PS!)" if !$reviewer;
 
-        print CHANGE_LOG normalizeLineEndings($description . "\n", $endl) if $description;
+        ($bugDescription, $description) =
+            ($description =~ /^(?:\s*(.*)\n)?(?:\s*\n)*((?:\n|.)*)/)
+            if !$bugDescription && $description;
 
-        $bugDescription = "Need a short description (OOPS!).\n        Need the bug URL (OOPS!)." unless $bugDescription;
+        $bugDescription = "Need a short description (OOPS!)." unless $bugDescription;
+        $bugURL = "Need the bug URL (OOPS!)." unless $bugURL;
+
         print CHANGE_LOG normalizeLineEndings("        $bugDescription\n", $endl) if $bugDescription;
         print CHANGE_LOG normalizeLineEndings("        $bugURL\n", $endl) if $bugURL;
         print CHANGE_LOG normalizeLineEndings("        $bugRadarURL\n", $endl) if $bugRadarURL;
         print CHANGE_LOG normalizeLineEndings("\n", $endl);
 
         print CHANGE_LOG normalizeLineEndings("        Reviewed by $reviewer.\n\n", $endl);
+        print CHANGE_LOG normalizeLineEndings($description . "\n", $endl) if $description;
 
-        if ($prefix =~ m/WebCore/ || `pwd` =~ m/WebCore/ || @$requiresTests) {
+        if (unixPath($prefix) =~ m|/WebCore/$| || @$requiresTests) {
             if (@$addedRegressionTests) {
                 print CHANGE_LOG normalizeLineEndings(testListForChangeLog(sort @$addedRegressionTests), $endl);
             } else {
@@ -1002,9 +1007,25 @@ sub get_function_line_ranges_for_cpp($$)
                 next;
             }
 
+            if ($1 eq "const" and !$in_parentheses) {
+                $potential_name .= " const";
+                next;
+            }
+
+            if ($1 eq "volatile" and !$in_parentheses) {
+                $potential_name .= " volatile";
+                next;
+            }
+
+            # C++ auto function() -> type
+            if ($1 eq ">") {
+                $skip_til_brace_or_semicolon = 1 unless ($in_parentheses || $in_braces);
+                next;
+            }
+
             # C++ constructor initializers
             if ($1 eq ":") {
-                  $skip_til_brace_or_semicolon = 1 unless ($in_parentheses || $in_braces);
+                $skip_til_brace_or_semicolon = 1 unless ($in_parentheses || $in_braces);
             }
 
             # Open brace.

@@ -22,20 +22,25 @@
 
 #include <stddef.h>
 
+namespace std {
+template<typename T> class optional;
+}
+
 namespace WTF {
+
+struct FastMalloc;
+class CrashOnOverflow;
 
 template<typename T> class Function;
 template<typename T> class LazyNeverDestroyed;
 template<typename T> class NeverDestroyed;
 template<typename T> class OptionSet;
-template<typename T> class Optional;
-template<typename T> class PassRefPtr;
 template<typename T> class Ref;
 template<typename T> class RefPtr;
 template<typename T> class StringBuffer;
 
 template<typename... T> class Variant;
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> class Vector;
+template<typename T, size_t inlineCapacity = 0, typename OverflowHandler = CrashOnOverflow, size_t minCapacity = 16, typename Malloc = FastMalloc> class Vector;
 
 class AtomicString;
 class AtomicStringImpl;
@@ -61,9 +66,7 @@ using WTF::FunctionDispatcher;
 using WTF::LazyNeverDestroyed;
 using WTF::NeverDestroyed;
 using WTF::OptionSet;
-using WTF::Optional;
 using WTF::OrdinalNumber;
-using WTF::PassRefPtr;
 using WTF::PrintStream;
 using WTF::Ref;
 using WTF::RefPtr;

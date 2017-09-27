@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
+ * Copyright (C) 2016 Devin Rousso <webkit@devinrousso.com>. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Collection = class Collection extends WebInspector.Object
+WI.Collection = class Collection extends WI.Object
 {
     constructor(typeVerifier)
     {
@@ -32,7 +32,7 @@ WebInspector.Collection = class Collection extends WebInspector.Object
         this._items = new Set;
 
         console.assert(!typeVerifier || typeof typeVerifier === "function");
-        this._typeVerifier = typeVerifier || WebInspector.Collection.TypeVerifier.Any;
+        this._typeVerifier = typeVerifier || WI.Collection.TypeVerifier.Any;
     }
 
      // Public
@@ -52,7 +52,7 @@ WebInspector.Collection = class Collection extends WebInspector.Object
 
         this.itemAdded(item);
 
-        this.dispatchEventToListeners(WebInspector.Collection.Event.ItemAdded, {item});
+        this.dispatchEventToListeners(WI.Collection.Event.ItemAdded, {item});
     }
 
     remove(item)
@@ -62,7 +62,7 @@ WebInspector.Collection = class Collection extends WebInspector.Object
 
         this.itemRemoved(item);
 
-        this.dispatchEventToListeners(WebInspector.Collection.Event.ItemRemoved, {item});
+        this.dispatchEventToListeners(WI.Collection.Event.ItemRemoved, {item});
     }
 
     clear()
@@ -74,7 +74,7 @@ WebInspector.Collection = class Collection extends WebInspector.Object
         this.itemsCleared(items);
 
         for (let item of items)
-            this.dispatchEventToListeners(WebInspector.Collection.Event.ItemRemoved, {item});
+            this.dispatchEventToListeners(WI.Collection.Event.ItemRemoved, {item});
     }
 
     toArray()
@@ -105,15 +105,17 @@ WebInspector.Collection = class Collection extends WebInspector.Object
     }
 };
 
- WebInspector.Collection.Event = {
+ WI.Collection.Event = {
     ItemAdded: "collection-item-added",
     ItemRemoved: "collection-item-removed",
 };
 
- WebInspector.Collection.TypeVerifier = {
+ WI.Collection.TypeVerifier = {
     Any: (object) => true,
-    ContentFlow: (object) => object instanceof WebInspector.ContentFlow,
-    Frame: (object) => object instanceof WebInspector.Frame,
-    Resource: (object) => object instanceof WebInspector.Resource,
-    Script: (object) => object instanceof WebInspector.Script,
+    Frame: (object) => object instanceof WI.Frame,
+    Resource: (object) => object instanceof WI.Resource,
+    Script: (object) => object instanceof WI.Script,
+    CSSStyleSheet: (object) => object instanceof WI.CSSStyleSheet,
+    Canvas: (object) => object instanceof WI.Canvas,
+    ShaderProgram: (object) => object instanceof WI.ShaderProgram,
 };

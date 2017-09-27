@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2011, 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,11 +47,11 @@ namespace WebCore {
 
 class BeforeTextInsertedEvent;
 class Chrome;
+class DOMFormData;
 class DateComponents;
 class DragData;
 class Event;
 class FileList;
-class FormDataList;
 class HTMLElement;
 class HTMLFormElement;
 class HTMLInputElement;
@@ -60,8 +60,8 @@ class KeyboardEvent;
 class MouseEvent;
 class Node;
 class RenderStyle;
-class TouchEvent;
 class TextControlInnerTextElement;
+class TouchEvent;
 
 struct InputElementClickState;
 
@@ -120,7 +120,7 @@ public:
     virtual FormControlState saveFormControlState() const;
     virtual void restoreFormControlState(const FormControlState&);
     virtual bool isFormDataAppendable() const;
-    virtual bool appendFormData(FormDataList&, bool multipart) const;
+    virtual bool appendFormData(DOMFormData&, bool multipart) const;
 
     // DOM property functions.
 
@@ -192,7 +192,6 @@ public:
     // Helpers for event handlers.
 
     virtual bool shouldSubmitImplicitly(Event&);
-    virtual PassRefPtr<HTMLFormElement> formForSubmission() const;
     virtual bool hasCustomFocusLogic() const;
     virtual bool isKeyboardFocusable(KeyboardEvent&) const;
     virtual bool isMouseFocusable() const;
@@ -203,6 +202,8 @@ public:
     virtual bool canBeSuccessfulSubmitButton();
     virtual void subtreeHasChanged();
     virtual void blur();
+
+    virtual void elementDidBlur() { }
 
 #if ENABLE(TOUCH_EVENTS)
     virtual bool hasTouchEventHandler() const;
@@ -239,7 +240,7 @@ public:
     virtual void maxResultsAttributeChanged();
     virtual bool shouldRespectAlignAttribute();
     virtual FileList* files();
-    virtual void setFiles(PassRefPtr<FileList>);
+    virtual void setFiles(RefPtr<FileList>&&);
     virtual Icon* icon() const;
     virtual bool shouldSendChangeEventAfterCheckedChanged();
     virtual bool canSetValue(const String&);
@@ -295,7 +296,7 @@ public:
 
 #if ENABLE(DATALIST_ELEMENT)
     virtual void listAttributeTargetChanged();
-    virtual Optional<Decimal> findClosestTickMarkValue(const Decimal&);
+    virtual std::optional<Decimal> findClosestTickMarkValue(const Decimal&);
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -304,8 +305,8 @@ public:
 
 #if PLATFORM(IOS)
     virtual DateComponents::Type dateType() const;
-    virtual String displayString() const;
 #endif
+    virtual String displayString() const;
 
 protected:
     explicit InputType(HTMLInputElement& element) : m_element(element) { }
@@ -322,3 +323,8 @@ private:
 };
 
 } // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_INPUT_TYPE(ToValueTypeName, predicate) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
+static bool isType(const WebCore::InputType& input) { return input.predicate; } \
+SPECIALIZE_TYPE_TRAITS_END()

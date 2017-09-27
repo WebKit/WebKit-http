@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if ENABLE(WEB_TIMING)
-
 #include "CachedResourceHandle.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
@@ -34,27 +32,24 @@
 namespace WebCore {
 
 class CachedResource;
-class CachedResourceRequest;
 class Document;
 class Frame;
-class LoadTiming;
+class ResourceTiming;
 
 class ResourceTimingInformation {
 public:
+    static bool shouldAddResourceTiming(CachedResource&);
 
-    void addResourceTiming(CachedResource*, Document&, const LoadTiming&);
+    void addResourceTiming(CachedResource&, Document&, ResourceTiming&&);
     void storeResourceTimingInitiatorInformation(const CachedResourceHandle<CachedResource>&, const AtomicString&, Frame*);
 
 private:
     enum AlreadyAdded { NotYetAdded, Added };
     struct InitiatorInfo {
         AtomicString name;
-        double startTime;
         AlreadyAdded added;
     };
     HashMap<CachedResource*, InitiatorInfo> m_initiatorMap;
 };
 
 }
-
-#endif // ENABLE(WEB_TIMING)

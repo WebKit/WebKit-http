@@ -39,7 +39,9 @@ namespace JSC { namespace B3 {
 
 namespace {
 
-bool verbose = false;
+namespace B3ReduceDoubleToFloatInternal {
+static const bool verbose = false;
+}
 bool printRemainingConversions = false;
 
 class DoubleToFloatReduction {
@@ -128,7 +130,7 @@ private:
             }
         } while (changedPhiState);
 
-        if (verbose) {
+        if (B3ReduceDoubleToFloatInternal::verbose) {
             dataLog("Conversion candidates:\n");
             for (BasicBlock* block : m_procedure) {
                 for (Value* value : *block) {
@@ -192,7 +194,7 @@ private:
             }
         } while (changedPhiState);
 
-        if (verbose) {
+        if (B3ReduceDoubleToFloatInternal::verbose) {
             dataLog("Phis containing float values:\n");
             for (BasicBlock* block : m_procedure) {
                 for (Value* value : *block) {
@@ -231,7 +233,9 @@ private:
             return insertionSet.insert<ConstFloatValue>(valueIndex, value->origin(), static_cast<float>(value->asDouble()));
 
         if (value->opcode() == Phi) {
-            convertPhi(value);
+            ASSERT(value->type() == Double || value->type() == Float);
+            if (value->type() == Double)
+                convertPhi(value);
             return value;
         }
         RELEASE_ASSERT_NOT_REACHED();
@@ -241,6 +245,7 @@ private:
     void convertPhi(Value* phi)
     {
         ASSERT(phi->opcode() == Phi);
+        ASSERT(phi->type() == Double);
         phi->setType(Float);
         m_convertedPhis.add(phi);
     }
@@ -251,6 +256,17 @@ private:
         Value* right = candidate->child(1);
         if (!canBeTransformedToFloat(left) || !canBeTransformedToFloat(right))
             return false;
+
+        if (left->hasDouble() && right->hasDouble()) {
+            // If both inputs are constants, converting them to floats and performing
+            // the same operation is incorrect. It may produce a different value
+            // depending on the operation and the inputs. There are inputs where
+            // casting to float and performing the operation would result in the
+            // same value. Regardless, we don't prove when that is legal here since
+            // it isn't profitable to do. We leave it to strength reduction to handle
+            // reduce these cases.
+            return false;
+        }
 
         m_convertedValue.add(candidate);
         candidate->child(0) = transformToFloat(left, candidateIndex, insertionSet);
@@ -421,18 +437,18 @@ private:
 
     // Set of all the Double values that are actually used as Double.
     // Converting any of them to Float would lose precision.
-    IndexSet<Value> m_valuesUsedAsDouble;
+    IndexSet<Value*> m_valuesUsedAsDouble;
 
     // Set of all the Phi of type Double that really contains a Double.
     // Any Double Phi not in the set can be converted to Float without losing precision.
-    IndexSet<Value> m_phisContainingDouble;
+    IndexSet<Value*> m_phisContainingDouble;
 
     // Any value that was converted from producing a Double to producing a Float.
     // This set does not include Phi-Upsilons.
-    IndexSet<Value> m_convertedValue;
+    IndexSet<Value*> m_convertedValue;
 
     // Any value that previously produced Double and now produce Float.
-    IndexSet<Value> m_convertedPhis;
+    IndexSet<Value*> m_convertedPhis;
 };
 
 void printGraphIfConverting(Procedure& procedure)
@@ -475,13 +491,13 @@ void reduceDoubleToFloat(Procedure& procedure)
 {
     PhaseScope phaseScope(procedure, "reduceDoubleToFloat");
 
-    if (verbose)
+    if (B3ReduceDoubleToFloatInternal::verbose)
         dataLog("Before DoubleToFloatReduction:\n", procedure, "\n");
 
     DoubleToFloatReduction doubleToFloatReduction(procedure);
     doubleToFloatReduction.run();
 
-    if (verbose)
+    if (B3ReduceDoubleToFloatInternal::verbose)
         dataLog("After DoubleToFloatReduction:\n", procedure, "\n");
 
     printGraphIfConverting(procedure);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 #include "AirArgInlines.h"
 #include "AirCode.h"
 #include "AirInstInlines.h"
-#include "AirLiveness.h"
+#include "AirRegLiveness.h"
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -58,7 +58,7 @@ void logRegisterPressure(Code& code)
             set.setAll(localCalc.live());
             Inst::forEachDefWithExtraClobberedRegs<Reg>(
                 prevInst, &inst,
-                [&] (Reg reg, Arg::Role, Arg::Type, Arg::Width) {
+                [&] (Reg reg, Arg::Role, Bank, Width) {
                     set.set(reg);
                 });
 

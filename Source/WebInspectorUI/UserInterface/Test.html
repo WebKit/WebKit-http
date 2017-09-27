@@ -36,7 +36,6 @@
     <script src="External/Esprima/esprima.js"></script>
 
     <script src="Base/WebInspector.js"></script>
-    <script src="Base/InspectorFrontendHostStub.js"></script>
     <script src="Base/Platform.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
@@ -47,10 +46,14 @@
     <script src="Test/TestSuite.js"></script>
 
     <script src="Test/Test.js"></script>
+    <script src="Controllers/AppControllerBase.js"></script>
+    <script src="Test/TestAppController.js"></script>
 
     <script src="Base/DOMUtilities.js"></script>
     <script src="Base/EventListener.js"></script>
     <script src="Base/EventListenerSet.js"></script>
+    <script src="Base/MIMETypeUtilities.js"></script>
+    <script src="Base/TextUtilities.js"></script>
     <script src="Base/URLUtilities.js"></script>
     <script src="Base/Utilities.js"></script>
     <script src="Base/Setting.js"></script>
@@ -66,18 +69,23 @@
     <script src="Protocol/MessageDispatcher.js"></script>
     <script src="Protocol/Target.js"></script>
 
+    <script src="Protocol/MainTarget.js"></script>
+    <script src="Protocol/WorkerTarget.js"></script>
+
     <script src="Protocol/InspectorObserver.js"></script>
     <script src="Protocol/CSSObserver.js"></script>
+    <script src="Protocol/CanvasObserver.js"></script>
     <script src="Protocol/ConsoleObserver.js"></script>
     <script src="Protocol/DOMObserver.js"></script>
     <script src="Protocol/DOMStorageObserver.js"></script>
     <script src="Protocol/DebuggerObserver.js"></script>
     <script src="Protocol/HeapObserver.js"></script>
+    <script src="Protocol/MemoryObserver.js"></script>
     <script src="Protocol/NetworkObserver.js"></script>
     <script src="Protocol/PageObserver.js"></script>
     <script src="Protocol/RemoteObject.js"></script>
-    <script src="Protocol/ReplayObserver.js"></script>
     <script src="Protocol/RuntimeObserver.js"></script>
+    <script src="Protocol/ScriptProfilerObserver.js"></script>
     <script src="Protocol/TimelineObserver.js"></script>
     <script src="Protocol/WorkerObserver.js"></script>
 
@@ -102,13 +110,14 @@
     <script src="Models/CallFrame.js"></script>
     <script src="Models/CallingContextTree.js"></script>
     <script src="Models/CallingContextTreeNode.js"></script>
+    <script src="Models/Canvas.js"></script>
     <script src="Models/Collection.js"></script>
     <script src="Models/CollectionEntry.js"></script>
     <script src="Models/CollectionEntryPreview.js"></script>
     <script src="Models/Color.js"></script>
     <script src="Models/ConsoleCommandResultMessage.js"></script>
-    <script src="Models/ContentFlow.js"></script>
     <script src="Models/CookieStorageObject.js"></script>
+    <script src="Models/DOMBreakpoint.js"></script>
     <script src="Models/DOMNode.js"></script>
     <script src="Models/DOMNodeStyles.js"></script>
     <script src="Models/DOMStorageObject.js"></script>
@@ -120,6 +129,7 @@
     <script src="Models/Frame.js"></script>
     <script src="Models/GarbageCollection.js"></script>
     <script src="Models/Geometry.js"></script>
+    <script src="Models/Gradient.js"></script>
     <script src="Models/HeapAllocationsInstrument.js"></script>
     <script src="Models/HeapAllocationsTimelineRecord.js"></script>
     <script src="Models/IndexedDatabase.js"></script>
@@ -131,6 +141,7 @@
     <script src="Models/LazySourceCodeLocation.js"></script>
     <script src="Models/MemoryCategory.js"></script>
     <script src="Models/MemoryInstrument.js"></script>
+    <script src="Models/MemoryPressureEvent.js"></script>
     <script src="Models/MemoryTimeline.js"></script>
     <script src="Models/MemoryTimelineRecord.js"></script>
     <script src="Models/NetworkInstrument.js"></script>
@@ -145,9 +156,11 @@
     <script src="Models/ProfileNodeCall.js"></script>
     <script src="Models/PropertyDescriptor.js"></script>
     <script src="Models/PropertyPreview.js"></script>
+    <script src="Models/Recording.js"></script>
+    <script src="Models/RecordingAction.js"></script>
+    <script src="Models/RecordingFrame.js"></script>
+    <script src="Models/RecordingInitialStateAction.js"></script>
     <script src="Models/RenderingFrameTimelineRecord.js"></script>
-    <script src="Models/ReplaySession.js"></script>
-    <script src="Models/ReplaySessionSegment.js"></script>
     <script src="Models/Resource.js"></script>
     <script src="Models/ResourceCollection.js"></script>
     <script src="Models/ResourceQueryMatch.js"></script>
@@ -160,6 +173,7 @@
     <script src="Models/ScriptInstrument.js"></script>
     <script src="Models/ScriptSyntaxTree.js"></script>
     <script src="Models/ScriptTimelineRecord.js"></script>
+    <script src="Models/ShaderProgram.js"></script>
     <script src="Models/SourceCodeRevision.js"></script>
     <script src="Models/SourceCodeTimeline.js"></script>
     <script src="Models/SourceMapResource.js"></script>
@@ -167,7 +181,9 @@
     <script src="Models/TextRange.js"></script>
     <script src="Models/TimelineMarker.js"></script>
     <script src="Models/TimelineRecording.js"></script>
+    <script src="Models/WebSocketResource.js"></script>
     <script src="Models/WrappedPromise.js"></script>
+    <script src="Models/XHRBreakpoint.js"></script>
 
     <script src="Proxies/FormatterWorkerProxy.js"></script>
     <script src="Proxies/HeapSnapshotDiffProxy.js"></script>
@@ -176,7 +192,10 @@
     <script src="Proxies/HeapSnapshotProxy.js"></script>
     <script src="Proxies/HeapSnapshotWorkerProxy.js"></script>
 
+    <script src="Controllers/BreakpointLogMessageLexer.js"></script>
     <script src="Controllers/CSSStyleManager.js"></script>
+    <script src="Controllers/CanvasManager.js"></script>
+    <script src="Controllers/DOMDebuggerManager.js"></script>
     <script src="Controllers/DOMTreeManager.js"></script>
     <script src="Controllers/DebuggerManager.js"></script>
     <script src="Controllers/FrameResourceManager.js"></script>
@@ -185,7 +204,6 @@
     <script src="Controllers/LogManager.js"></script>
     <script src="Controllers/MemoryManager.js"></script>
     <script src="Controllers/ProbeManager.js"></script>
-    <script src="Controllers/ReplayManager.js"></script>
     <script src="Controllers/RuntimeManager.js"></script>
     <script src="Controllers/StorageManager.js"></script>
     <script src="Controllers/TargetManager.js"></script>
@@ -199,7 +217,8 @@
     <script src="Views/CodeMirrorFormatters.js"></script>
 
     <script type="text/javascript">
-        WebInspector.loaded();
+        WI.sharedApp = new WI.TestAppController;
+        WI.sharedApp.initialize();
 
         // Debug logging is synchronous on the test page.
         InspectorTest.forceDebugLogging = false;

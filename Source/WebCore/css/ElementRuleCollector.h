@@ -32,7 +32,6 @@ namespace WebCore {
 
 class DocumentRuleSets;
 class MatchRequest;
-class RenderRegion;
 class RuleData;
 class RuleSet;
 class SelectorFilter;
@@ -40,7 +39,7 @@ class SelectorFilter;
 struct MatchedRule {
     const RuleData* ruleData;
     unsigned specificity;   
-    int treeContextOrdinal;
+    Style::ScopeOrdinal styleScopeOrdinal;
 };
 
 class ElementRuleCollector {
@@ -56,7 +55,6 @@ public:
     void setMode(SelectorChecker::Mode mode) { m_mode = mode; }
     void setPseudoStyleRequest(const PseudoStyleRequest& request) { m_pseudoStyleRequest = request; }
     void setSameOriginOnly(bool f) { m_sameOriginOnly = f; } 
-    void setRegionForStyling(const RenderRegion* regionForStyling) { m_regionForStyling = regionForStyling; }
     void setMedium(const MediaQueryEvaluator* medium) { m_isPrintStyle = medium->mediaTypeMatchSpecific("print"); }
 
     bool hasAnyMatchingRules(const RuleSet*);
@@ -75,22 +73,21 @@ private:
     void addElementStyleProperties(const StyleProperties*, bool isCacheable = true);
 
     void matchUARules(RuleSet*);
-    void matchAuthorShadowPseudoElementRules(const MatchRequest&, StyleResolver::RuleRange&);
-    void matchHostPseudoClassRules(MatchRequest&, StyleResolver::RuleRange&);
-    void matchSlottedPseudoElementRules(MatchRequest&, StyleResolver::RuleRange&);
+    void matchAuthorShadowPseudoElementRules(bool includeEmptyRules, StyleResolver::RuleRange&);
+    void matchHostPseudoClassRules(bool includeEmptyRules, StyleResolver::RuleRange&);
+    void matchSlottedPseudoElementRules(bool includeEmptyRules, StyleResolver::RuleRange&);
 
     void collectMatchingShadowPseudoElementRules(const MatchRequest&, StyleResolver::RuleRange&);
     std::unique_ptr<RuleSet::RuleDataVector> collectSlottedPseudoElementRulesForSlot(bool includeEmptyRules);
 
     void collectMatchingRules(const MatchRequest&, StyleResolver::RuleRange&);
-    void collectMatchingRulesForRegion(const MatchRequest&, StyleResolver::RuleRange&);
     void collectMatchingRulesForList(const RuleSet::RuleDataVector*, const MatchRequest&, StyleResolver::RuleRange&);
     bool ruleMatches(const RuleData&, unsigned &specificity);
 
     void sortMatchedRules();
     void sortAndTransferMatchedRules();
 
-    void addMatchedRule(const RuleData&, unsigned specificity, int treeContextOrdinal, StyleResolver::RuleRange&);
+    void addMatchedRule(const RuleData&, unsigned specificity, Style::ScopeOrdinal, StyleResolver::RuleRange&);
 
     const Element& m_element;
     const RuleSet& m_authorStyle;
@@ -98,11 +95,11 @@ private:
     const SelectorFilter* m_selectorFilter { nullptr };
 
     bool m_isPrintStyle { false };
-    const RenderRegion* m_regionForStyling { nullptr };
     PseudoStyleRequest m_pseudoStyleRequest { NOPSEUDO };
     bool m_sameOriginOnly { false };
     SelectorChecker::Mode m_mode { SelectorChecker::Mode::ResolvingStyle };
     bool m_isMatchingSlottedPseudoElements { false };
+    bool m_isMatchingHostPseudoClass { false };
     Vector<std::unique_ptr<RuleSet::RuleDataVector>> m_keepAliveSlottedPseudoElementRules;
 
     Vector<MatchedRule, 64> m_matchedRules;

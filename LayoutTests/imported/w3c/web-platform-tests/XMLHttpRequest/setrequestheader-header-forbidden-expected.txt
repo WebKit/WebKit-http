@@ -16,9 +16,10 @@ CONSOLE MESSAGE: line 30: Refused to set unsafe header "Transfer-Encoding"
 CONSOLE MESSAGE: line 31: Refused to set unsafe header "Upgrade"
 CONSOLE MESSAGE: line 32: Refused to set unsafe header "Via"
 CONSOLE MESSAGE: line 33: Refused to set unsafe header "Proxy-"
-CONSOLE MESSAGE: line 34: Refused to set unsafe header "Proxy-Authorization"
-CONSOLE MESSAGE: line 35: Refused to set unsafe header "Sec-"
-CONSOLE MESSAGE: line 36: Refused to set unsafe header "Sec-X"
+CONSOLE MESSAGE: line 34: Refused to set unsafe header "Proxy-LIES"
+CONSOLE MESSAGE: line 35: Refused to set unsafe header "Proxy-Authorization"
+CONSOLE MESSAGE: line 36: Refused to set unsafe header "Sec-"
+CONSOLE MESSAGE: line 37: Refused to set unsafe header "Sec-X"
 
 PASS XMLHttpRequest: setRequestHeader() - headers that are forbidden 
 

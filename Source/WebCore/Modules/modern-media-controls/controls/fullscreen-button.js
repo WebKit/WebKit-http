@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-class FullscreenButton extends IconButton
+class FullscreenButton extends Button
 {
 
     constructor(layoutDelegate)
@@ -32,7 +32,7 @@ class FullscreenButton extends IconButton
             cssClassName: "fullscreen",
             layoutDelegate
         });
-        
+
         this.iconName = this.layoutTraits & LayoutTraits.Fullscreen ? Icons.ExitFullscreen : Icons.EnterFullscreen;
     }
 

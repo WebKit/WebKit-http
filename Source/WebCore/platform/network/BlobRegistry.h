@@ -34,7 +34,6 @@
 #include <functional>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -53,7 +52,7 @@ public:
     virtual void registerFileBlobURL(const URL&, Ref<BlobDataFileReference>&&, const String& contentType) = 0;
 
     // Registers a blob URL referring to the specified blob data.
-    virtual void registerBlobURL(const URL&, Vector<BlobPart>, const String& contentType) = 0;
+    virtual void registerBlobURL(const URL&, Vector<BlobPart>&&, const String& contentType) = 0;
     
     // Registers a new blob URL referring to the blob data identified by the specified srcURL.
     virtual void registerBlobURL(const URL&, const URL& srcURL) = 0;

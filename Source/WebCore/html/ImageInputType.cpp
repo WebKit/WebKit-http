@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
@@ -24,7 +24,7 @@
 #include "ImageInputType.h"
 
 #include "CachedImage.h"
-#include "FormDataList.h"
+#include "DOMFormData.h"
 #include "HTMLFormElement.h"
 #include "HTMLImageLoader.h"
 #include "HTMLInputElement.h"
@@ -54,24 +54,25 @@ bool ImageInputType::isFormDataAppendable() const
     return true;
 }
 
-bool ImageInputType::appendFormData(FormDataList& encoding, bool) const
+bool ImageInputType::appendFormData(DOMFormData& formData, bool) const
 {
     if (!element().isActivatedSubmit())
         return false;
-    const AtomicString& name = element().name();
+
+    auto& name = element().name();
     if (name.isEmpty()) {
-        encoding.appendData("x", m_clickLocation.x());
-        encoding.appendData("y", m_clickLocation.y());
+        formData.append(ASCIILiteral("x"), String::number(m_clickLocation.x()));
+        formData.append(ASCIILiteral("y"), String::number(m_clickLocation.y()));
         return true;
     }
 
-    static NeverDestroyed<String> dotXString(ASCIILiteral(".x"));
-    static NeverDestroyed<String> dotYString(ASCIILiteral(".y"));
-    encoding.appendData(name + dotXString.get(), m_clickLocation.x());
-    encoding.appendData(name + dotYString.get(), m_clickLocation.y());
+    formData.append(makeString(name, ".x"), String::number(m_clickLocation.x()));
+    formData.append(makeString(name, ".y"), String::number(m_clickLocation.y()));
 
-    if (!element().value().isEmpty())
-        encoding.appendData(name, element().value());
+    auto value = element().value();
+    if (!value.isEmpty())
+        formData.append(name, value);
+
     return true;
 }
 
@@ -177,42 +178,42 @@ unsigned ImageInputType::height() const
 {
     Ref<HTMLInputElement> element(this->element());
 
-    if (!element->renderer()) {
-        // Check the attribute first for an explicit pixel value.
-        if (Optional<unsigned> height = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(heightAttr)))
-            return height.value();
-
-        // If the image is available, use its height.
-        HTMLImageLoader* imageLoader = element->imageLoader();
-        if (imageLoader && imageLoader->image())
-            return imageLoader->image()->imageSizeForRenderer(element->renderer(), 1).height().toUnsigned();
-    }
-
     element->document().updateLayout();
 
-    RenderBox* box = element->renderBox();
-    return box ? adjustForAbsoluteZoom(box->contentHeight(), *box) : 0;
+    if (auto* renderer = element->renderer())
+        return adjustForAbsoluteZoom(downcast<RenderBox>(*renderer).contentHeight(), *renderer);
+
+    // Check the attribute first for an explicit pixel value.
+    if (auto optionalHeight = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(heightAttr)))
+        return optionalHeight.value();
+
+    // If the image is available, use its height.
+    auto* imageLoader = element->imageLoader();
+    if (imageLoader && imageLoader->image())
+        return imageLoader->image()->imageSizeForRenderer(element->renderer(), 1).height().toUnsigned();
+
+    return 0;
 }
 
 unsigned ImageInputType::width() const
 {
     Ref<HTMLInputElement> element(this->element());
 
-    if (!element->renderer()) {
-        // Check the attribute first for an explicit pixel value.
-        if (Optional<unsigned> width = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(widthAttr)))
-            return width.value();
-
-        // If the image is available, use its width.
-        HTMLImageLoader* imageLoader = element->imageLoader();
-        if (imageLoader && imageLoader->image())
-            return imageLoader->image()->imageSizeForRenderer(element->renderer(), 1).width().toUnsigned();
-    }
-
     element->document().updateLayout();
 
-    RenderBox* box = element->renderBox();
-    return box ? adjustForAbsoluteZoom(box->contentWidth(), *box) : 0;
+    if (auto* renderer = element->renderer())
+        return adjustForAbsoluteZoom(downcast<RenderBox>(*renderer).contentWidth(), *renderer);
+
+    // Check the attribute first for an explicit pixel value.
+    if (auto optionalWidth = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(widthAttr)))
+        return optionalWidth.value();
+
+    // If the image is available, use its width.
+    auto* imageLoader = element->imageLoader();
+    if (imageLoader && imageLoader->image())
+        return imageLoader->image()->imageSizeForRenderer(element->renderer(), 1).width().toUnsigned();
+
+    return 0;
 }
 
 } // namespace WebCore

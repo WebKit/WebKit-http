@@ -26,14 +26,11 @@
 #import "config.h"
 #import "DiskCacheMonitorCocoa.h"
 
-#import "CFNetworkSPI.h"
 #import "CachedResource.h"
 #import "MemoryCache.h"
-#import "ResourceRequest.h"
-#import "SessionID.h"
 #import "SharedBuffer.h"
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/MainThread.h>
-#import <wtf/PassRefPtr.h>
 #import <wtf/RefPtr.h>
 
 #if USE(WEB_THREAD)
@@ -45,16 +42,16 @@ namespace WebCore {
 // The maximum number of seconds we'll try to wait for a resource to be disk cached before we forget the request.
 static const double diskCacheMonitorTimeout = 20;
 
-PassRefPtr<SharedBuffer> DiskCacheMonitor::tryGetFileBackedSharedBufferFromCFURLCachedResponse(CFCachedURLResponseRef cachedResponse)
+RefPtr<SharedBuffer> DiskCacheMonitor::tryGetFileBackedSharedBufferFromCFURLCachedResponse(CFCachedURLResponseRef cachedResponse)
 {
-    CFDataRef data = _CFCachedURLResponseGetMemMappedData(cachedResponse);
+    auto data = _CFCachedURLResponseGetMemMappedData(cachedResponse);
     if (!data)
         return nullptr;
 
-    return SharedBuffer::wrapCFData(data);
+    return SharedBuffer::create(data);
 }
 
-void DiskCacheMonitor::monitorFileBackingStoreCreation(const ResourceRequest& request, SessionID sessionID, CFCachedURLResponseRef cachedResponse)
+void DiskCacheMonitor::monitorFileBackingStoreCreation(const ResourceRequest& request, PAL::SessionID sessionID, CFCachedURLResponseRef cachedResponse)
 {
     if (!cachedResponse)
         return;
@@ -63,7 +60,7 @@ void DiskCacheMonitor::monitorFileBackingStoreCreation(const ResourceRequest& re
     new DiskCacheMonitor(request, sessionID, cachedResponse); // Balanced by delete and unique_ptr in the blocks set up in the constructor, one of which is guaranteed to run.
 }
 
-DiskCacheMonitor::DiskCacheMonitor(const ResourceRequest& request, SessionID sessionID, CFCachedURLResponseRef cachedResponse)
+DiskCacheMonitor::DiskCacheMonitor(const ResourceRequest& request, PAL::SessionID sessionID, CFCachedURLResponseRef cachedResponse)
     : m_resourceRequest(request)
     , m_sessionID(sessionID)
 {
@@ -87,8 +84,7 @@ DiskCacheMonitor::DiskCacheMonitor(const ResourceRequest& request, SessionID ses
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC * diskCacheMonitorTimeout), dispatch_get_main_queue(), cancelMonitorBlockToRun);
 
     // Set up the disk caching callback to create the ShareableResource and send it to the WebProcess.
-    CFCachedURLResponseCallBackBlock block = ^(CFCachedURLResponseRef cachedResponse)
-    {
+    auto block = ^(CFCachedURLResponseRef cachedResponse) {
         ASSERT(isMainThread());
         // If the monitor isn't there then it timed out before this resource was cached to disk.
         if (!rawMonitor)
@@ -97,7 +93,7 @@ DiskCacheMonitor::DiskCacheMonitor(const ResourceRequest& request, SessionID ses
         auto monitor = std::unique_ptr<DiskCacheMonitor>(rawMonitor); // Balanced by "new DiskCacheMonitor" in monitorFileBackingStoreCreation.
         rawMonitor = nullptr;
 
-        RefPtr<SharedBuffer> fileBackedBuffer = DiskCacheMonitor::tryGetFileBackedSharedBufferFromCFURLCachedResponse(cachedResponse);
+        auto fileBackedBuffer = DiskCacheMonitor::tryGetFileBackedSharedBufferFromCFURLCachedResponse(cachedResponse);
         if (!fileBackedBuffer)
             return;
 
@@ -105,8 +101,7 @@ DiskCacheMonitor::DiskCacheMonitor(const ResourceRequest& request, SessionID ses
     };
 
 #if USE(WEB_THREAD)
-    CFCachedURLResponseCallBackBlock blockToRun = ^(CFCachedURLResponseRef response)
-    {
+    auto blockToRun = ^(CFCachedURLResponseRef response) {
         CFRetain(response);
         WebThreadRun(^{
             block(response);
@@ -114,14 +109,14 @@ DiskCacheMonitor::DiskCacheMonitor(const ResourceRequest& request, SessionID ses
         });
     };
 #else
-    CFCachedURLResponseCallBackBlock blockToRun = block;
+    auto blockToRun = block;
 #endif
     _CFCachedURLResponseSetBecameFileBackedCallBackBlock(cachedResponse, blockToRun, dispatch_get_main_queue());
 }
 
 void DiskCacheMonitor::resourceBecameFileBacked(SharedBuffer& fileBackedBuffer)
 {
-    CachedResource* resource = MemoryCache::singleton().resourceForRequest(m_resourceRequest, m_sessionID);
+    auto* resource = MemoryCache::singleton().resourceForRequest(m_resourceRequest, m_sessionID);
     if (!resource)
         return;
 

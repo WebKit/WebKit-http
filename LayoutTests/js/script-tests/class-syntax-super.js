@@ -105,6 +105,12 @@ shouldThrow('x = class extends Base { constructor() { super(); } method() { retu
 shouldNotThrow('x = class extends Base { constructor() { super(); } method1() { delete (super.foo) } method2() { delete super["foo"] } }');
 shouldThrow('(new x).method1()', '"ReferenceError: Cannot delete a super property"');
 shouldThrow('(new x).method2()', '"ReferenceError: Cannot delete a super property"');
+shouldBeTrue('(new (class { constructor() { super.property = "ABC"; } })).property === "ABC"');
+shouldBeTrue('(new (class extends Base { constructor() { super(); super.property = "ABC"; } })).property === "ABC"');
+shouldBeTrue('(new (class { constructor() { var arr = () => super.property = "ABC"; arr(); } })).property === "ABC"');
+shouldBeTrue('(new (class { constructor() { var async_arr = async () => super.property = "ABC"; async_arr(); } })).property === "ABC"');
+shouldBeTrue('(new (class { constructor() { eval(\'super.property = "ABC"\'); } })).property === "ABC"');
+shouldBeTrue('(new (class { constructor() { var arr = () => eval(\'super.property = "ABC"\'); arr(); } })).property === "ABC"');
 shouldBeTrue('new (class { constructor() { return undefined; } }) instanceof Object');
 shouldBeTrue('new (class { constructor() { return 1; } }) instanceof Object');
 shouldThrow('new (class extends Base { constructor() { return undefined } })');
@@ -113,12 +119,12 @@ shouldBe('x = { }; new (class extends Base { constructor() { return x } });', 'x
 shouldBeFalse('x instanceof Base');
 shouldThrow('new (class extends Base { constructor() { } })', '"ReferenceError: Cannot access uninitialized variable."');
 shouldThrow('new (class extends Base { constructor() { return 1; } })', '"TypeError: Cannot return a non-object type in the constructor of a derived class."');
-shouldNotThrow('new (class extends null { constructor() { return undefined } })');
+shouldThrow('new (class extends null { constructor() { return undefined } })');
 shouldThrow('new (class extends null { constructor() { super(); return undefined } })', '"TypeError: function is not a constructor (evaluating \'super()\')"');
 shouldBe('x = { }; new (class extends null { constructor() { return x } });', 'x');
 shouldBeTrue('x instanceof Object');
-shouldNotThrow('new (class extends null { constructor() { } })');
-shouldNotThrow('new (class extends null { constructor() { return 1; } })');
+shouldThrow('new (class extends null { constructor() { } })');
+shouldThrow('new (class extends null { constructor() { return 1; } })');
 shouldThrow('new (class extends null { constructor() { super() } })', '"TypeError: function is not a constructor (evaluating \'super()\')"');
 shouldThrow('new (class { constructor() { super() } })', '"SyntaxError: super is not valid in this context."');
 shouldThrow('function x() { super(); }', '"SyntaxError: super is not valid in this context."');

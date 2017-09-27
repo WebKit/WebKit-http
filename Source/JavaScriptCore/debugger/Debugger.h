@@ -50,7 +50,7 @@ public:
 
     VM& vm() { return m_vm; }
 
-    JSC::DebuggerCallFrame* currentDebuggerCallFrame();
+    JSC::DebuggerCallFrame& currentDebuggerCallFrame();
     bool hasHandlerForExceptionCallback() const
     {
         ASSERT(m_reasonForPause == PausedForException);
@@ -138,7 +138,7 @@ public:
 
     class ProfilingClient {
     public:
-        virtual ~ProfilingClient() { }
+        virtual ~ProfilingClient();
         virtual bool isAlreadyProfiling() const = 0;
         virtual double willEvaluateScript() = 0;
         virtual void didEvaluateScript(double startTime, ProfilingReason) = 0;

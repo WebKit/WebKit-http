@@ -31,13 +31,26 @@
 #import <AppKit/AppKit.h>
 #import <wtf/text/WTFString.h>
 
+@interface WebValidationPopover : NSPopover
+@end
+
+@implementation WebValidationPopover
+
+- (void)mouseDown:(NSEvent *)event
+{
+    UNUSED_PARAM(event);
+    [self close];
+}
+
+@end
+
 namespace WebCore {
 
 static const CGFloat horizontalPadding = 5;
 static const CGFloat verticalPadding = 5;
 static const CGFloat maxLabelWidth = 300;
 
-ValidationBubble::ValidationBubble(NSView* view, const String& message)
+ValidationBubble::ValidationBubble(NSView* view, const String& message, const Settings& settings)
     : m_view(view)
     , m_message(message)
 {
@@ -51,12 +64,16 @@ ValidationBubble::ValidationBubble(NSView* view, const String& message)
     [label setDrawsBackground:NO];
     [label setBordered:NO];
     [label setStringValue:message];
+    m_fontSize = std::max(settings.minimumFontSize, 13.0);
+    [label setFont:[NSFont systemFontOfSize:m_fontSize]];
+    [label setMaximumNumberOfLines:4];
+    [[label cell] setTruncatesLastVisibleLine:YES];
     [popoverView addSubview:label.get()];
     NSSize labelSize = [label sizeThatFits:NSMakeSize(maxLabelWidth, CGFLOAT_MAX)];
     [label setFrame:NSMakeRect(horizontalPadding, verticalPadding, labelSize.width, labelSize.height)];
     [popoverView setFrame:NSMakeRect(0, 0, labelSize.width + horizontalPadding * 2, labelSize.height + verticalPadding * 2)];
 
-    m_popover = adoptNS([[NSPopover alloc] init]);
+    m_popover = adoptNS([[WebValidationPopover alloc] init]);
     [m_popover setContentViewController:controller.get()];
     [m_popover setBehavior:NSPopoverBehaviorTransient];
     [m_popover setAnimates:NO];

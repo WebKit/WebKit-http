@@ -42,6 +42,13 @@ private:
     void finishCreation(VM&, JSFunction* callee, ScopedArgumentsTable*, JSLexicalEnvironment*);
 
 public:
+    template<typename CellType>
+    static Subspace* subspaceFor(VM& vm)
+    {
+        RELEASE_ASSERT(!CellType::needsDestruction);
+        return &vm.jsValueGigacageCellSpace;
+    }
+
     // Creates an arguments object but leaves it uninitialized. This is dangerous if we GC right
     // after allocation.
     static ScopedArguments* createUninitialized(VM&, Structure*, JSFunction* callee, ScopedArgumentsTable*, JSLexicalEnvironment*, unsigned totalLength);
@@ -65,12 +72,13 @@ public:
     
     uint32_t length(ExecState* exec) const
     {
+        VM& vm = exec->vm();
         if (UNLIKELY(m_overrodeThings))
-            return get(exec, exec->propertyNames().length).toUInt32(exec);
+            return get(exec, vm.propertyNames->length).toUInt32(exec);
         return internalLength();
     }
     
-    bool canAccessIndexQuickly(uint32_t i) const
+    bool isMappedArgument(uint32_t i) const
     {
         if (i >= m_totalLength)
             return false;
@@ -80,14 +88,14 @@ public:
         return !!overflowStorage()[i - namedLength].get();
     }
 
-    bool canAccessArgumentIndexQuicklyInDFG(uint32_t i) const
+    bool isMappedArgumentInDFG(uint32_t i) const
     {
-        return canAccessIndexQuickly(i);
+        return isMappedArgument(i);
     }
     
     JSValue getIndexQuickly(uint32_t i) const
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(canAccessIndexQuickly(i));
+        ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
         unsigned namedLength = m_table->length();
         if (i < namedLength)
             return m_scope->variableAt(m_table->get(i)).get();
@@ -96,7 +104,7 @@ public:
 
     void setIndexQuickly(VM& vm, uint32_t i, JSValue value)
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(canAccessIndexQuickly(i));
+        ASSERT_WITH_SECURITY_IMPLICATION(isMappedArgument(i));
         unsigned namedLength = m_table->length();
         if (i < namedLength)
             m_scope->variableAt(m_table->get(i)).set(vm, m_scope.get(), value);
@@ -108,12 +116,27 @@ public:
     {
         return m_callee;
     }
-    
+
     bool overrodeThings() const { return m_overrodeThings; }
     void overrideThings(VM&);
     void overrideThingsIfNecessary(VM&);
-    void overrideArgument(VM&, uint32_t index);
+    void unmapArgument(VM&, uint32_t index);
     
+    void initModifiedArgumentsDescriptorIfNecessary(VM& vm)
+    {
+        GenericArguments<ScopedArguments>::initModifiedArgumentsDescriptorIfNecessary(vm, m_table->length());
+    }
+
+    void setModifiedArgumentDescriptor(VM& vm, unsigned index)
+    {
+        GenericArguments<ScopedArguments>::setModifiedArgumentDescriptor(vm, index, m_table->length());
+    }
+
+    bool isModifiedArgumentDescriptor(unsigned index)
+    {
+        return GenericArguments<ScopedArguments>::isModifiedArgumentDescriptor(index, m_table->length());
+    }
+
     void copyToArguments(ExecState*, VirtualRegister firstElementDest, unsigned offset, unsigned length);
 
     DECLARE_INFO;
@@ -130,18 +153,17 @@ public:
         return WTF::roundUpToMultipleOf<sizeof(WriteBarrier<Unknown>)>(sizeof(ScopedArguments));
     }
     
-    static size_t allocationSize(unsigned overflowArgumentsLength)
+    static size_t allocationSize(Checked<size_t> overflowArgumentsLength)
     {
-        return overflowStorageOffset() + sizeof(WriteBarrier<Unknown>) * overflowArgumentsLength;
+        return (overflowStorageOffset() + sizeof(WriteBarrier<Unknown>) * overflowArgumentsLength).unsafeGet();
     }
 
 private:
     WriteBarrier<Unknown>* overflowStorage() const
     {
         return bitwise_cast<WriteBarrier<Unknown>*>(
-            bitwise_cast<char*>(this) + overflowStorageOffset());
+            bitwise_cast<char*>(Gigacage::caged(Gigacage::JSValue, this)) + overflowStorageOffset());
     }
-    
     
     bool m_overrodeThings; // True if length, callee, and caller are fully materialized in the object.
     unsigned m_totalLength; // The length of declared plus overflow arguments.

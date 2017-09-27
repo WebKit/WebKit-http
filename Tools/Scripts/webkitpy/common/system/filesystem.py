@@ -246,19 +246,19 @@ class FileSystem(object):
                                              codecs.getwriter('utf8'),
                                              'replace')
 
-    def read_text_file(self, path):
+    def read_text_file(self, path, errors='strict'):
         """Return the contents of the file at the given path as a Unicode string.
 
         The file is read assuming it is a UTF-8 encoded file with no BOM."""
-        with codecs.open(path, 'r', 'utf8') as f:
+        with codecs.open(path, 'r', 'utf8', errors=errors) as f:
             return f.read()
 
-    def write_text_file(self, path, contents):
+    def write_text_file(self, path, contents, errors='strict'):
         """Write the contents to the file at the given location.
 
         The file is written encoded as UTF-8 with no BOM."""
-        with codecs.open(path, 'w', 'utf-8') as f:
-            f.write(contents.decode('utf-8') if type(contents) == str else contents)
+        with codecs.open(path, 'w', 'utf-8', errors=errors) as f:
+            f.write(contents.decode('utf-8', errors=errors) if type(contents) == str else contents)
 
     def sha1(self, path):
         contents = self.read_binary_file(path)
@@ -310,3 +310,34 @@ class FileSystem(object):
 
     def compare(self, path1, path2):
         return filecmp.cmp(path1, path2)
+
+    def map_base_host_path(self, path):
+        """Returns a path from the base host localized for this host. By default,
+        this host assumes it is the base host and maps the path to itself"""
+        return path
+
+    def move_to_base_host(self, source, destination):
+        """Moves a file from this host to the base host. By default, this host
+        assumes it is the base host and will just execute a move."""
+        self.move(source, destination)
+
+    def move_from_base_host(self, source, destination):
+        """Moves a file from the base host to this host. By default, this host
+        assumes it is the base host and will just execute a move."""
+        self.move(source, destination)
+
+    def copy_to_base_host(self, source, destination):
+        """Copy a file from this host to the base host. By default, this host
+        assumes it is the base host and will just execute a copytree/copyfile."""
+        if self.isdir(source):
+            self.copytree(source, destination)
+        else:
+            self.copyfile(source, destination)
+
+    def copy_from_base_host(self, source, destination):
+        """Copy a file from the base host to this host. By default, this host
+        assumes it is the base host and will just execute a copytree/copyfile."""
+        if self.isdir(source):
+            self.copytree(source, destination)
+        else:
+            self.copyfile(source, destination)

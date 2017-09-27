@@ -30,8 +30,6 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
 #include "URL.h"
 #include "ResourceResponse.h"
 #include "WebSocketExtensionDispatcher.h"
@@ -64,8 +62,8 @@ public:
     String clientOrigin() const;
     String clientLocation() const;
 
-    CString clientHandshakeMessage() const;
-    ResourceRequest clientHandshakeRequest() const;
+    CString clientHandshakeMessage();
+    ResourceRequest clientHandshakeRequest();
 
     void reset();
     void clearDocument();
@@ -116,5 +114,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

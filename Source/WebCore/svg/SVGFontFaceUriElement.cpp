@@ -105,8 +105,8 @@ void SVGFontFaceUriElement::loadFont()
 
         CachedResourceLoader& cachedResourceLoader = document().cachedResourceLoader();
         CachedResourceRequest request(ResourceRequest(document().completeURL(href)), options);
-        request.setInitiator(this);
-        m_cachedFont = cachedResourceLoader.requestFont(WTFMove(request), isSVGFontTarget(*this));
+        request.setInitiator(*this);
+        m_cachedFont = cachedResourceLoader.requestFont(WTFMove(request), isSVGFontTarget(*this)).valueOr(nullptr);
         if (m_cachedFont) {
             m_cachedFont->addClient(*this);
             m_cachedFont->beginLoadIfNeeded(cachedResourceLoader);

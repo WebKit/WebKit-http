@@ -27,19 +27,18 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/AtomicString.h>
-#include <wtf/text/CString.h>
+#include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
 
 enum AddRuleFlags {
     RuleHasNoSpecialState         = 0,
     RuleHasDocumentSecurityOrigin = 1,
-    RuleIsInRegionRule            = 1 << 1,
 };
     
 enum PropertyWhitelistType {
     PropertyWhitelistNone   = 0,
-    PropertyWhitelistRegion,
+    PropertyWhitelistMarker,
 #if ENABLE(VIDEO_TRACK)
     PropertyWhitelistCue
 #endif
@@ -50,7 +49,6 @@ class ContainerNode;
 class MediaQueryEvaluator;
 class Node;
 class StyleResolver;
-class StyleRuleRegion;
 class StyleSheetContents;
 
 enum class MatchBasedOnRuleHash : unsigned {
@@ -158,24 +156,23 @@ public:
     ~RuleSet();
 
     typedef Vector<RuleData, 1> RuleDataVector;
-    typedef HashMap<AtomicStringImpl*, std::unique_ptr<RuleDataVector>> AtomRuleMap;
+    typedef HashMap<AtomicString, std::unique_ptr<RuleDataVector>> AtomRuleMap;
 
     void addRulesFromSheet(StyleSheetContents&, const MediaQueryEvaluator&, StyleResolver* = 0);
 
     void addStyleRule(StyleRule*, AddRuleFlags);
     void addRule(StyleRule*, unsigned selectorIndex, AddRuleFlags);
     void addPageRule(StyleRulePage*);
-    void addToRuleSet(AtomicStringImpl* key, AtomRuleMap&, const RuleData&);
-    void addRegionRule(StyleRuleRegion*, bool hasDocumentSecurityOrigin);
+    void addToRuleSet(const AtomicString& key, AtomRuleMap&, const RuleData&);
     void shrinkToFit();
     void disableAutoShrinkToFit() { m_autoShrinkToFitEnabled = false; }
 
     const RuleFeatureSet& features() const { return m_features; }
 
-    const RuleDataVector* idRules(AtomicStringImpl& key) const { return m_idRules.get(&key); }
-    const RuleDataVector* classRules(AtomicStringImpl* key) const { return m_classRules.get(key); }
-    const RuleDataVector* tagRules(AtomicStringImpl* key, bool isHTMLName) const;
-    const RuleDataVector* shadowPseudoElementRules(AtomicStringImpl* key) const { return m_shadowPseudoElementRules.get(key); }
+    const RuleDataVector* idRules(const AtomicString& key) const { return m_idRules.get(key); }
+    const RuleDataVector* classRules(const AtomicString& key) const { return m_classRules.get(key); }
+    const RuleDataVector* tagRules(const AtomicString& key, bool isHTMLName) const;
+    const RuleDataVector* shadowPseudoElementRules(const AtomicString& key) const { return m_shadowPseudoElementRules.get(key); }
     const RuleDataVector* linkPseudoClassRules() const { return &m_linkPseudoClassRules; }
 #if ENABLE(VIDEO_TRACK)
     const RuleDataVector* cuePseudoRules() const { return &m_cuePseudoRules; }
@@ -186,11 +183,11 @@ public:
     const RuleDataVector* universalRules() const { return &m_universalRules; }
 
     const Vector<StyleRulePage*>& pageRules() const { return m_pageRules; }
-    const Vector<RuleSetSelectorPair>& regionSelectorsAndRuleSets() const { return m_regionSelectorsAndRuleSets; }
 
     unsigned ruleCount() const { return m_ruleCount; }
 
     bool hasShadowPseudoElementRules() const;
+    bool hasHostPseudoClassRulesMatchingInShadowTree() const { return m_hasHostPseudoClassRulesMatchingInShadowTree; }
 
 private:
     void addChildRules(const Vector<RefPtr<StyleRuleBase>>&, const MediaQueryEvaluator& medium, StyleResolver*, bool hasDocumentSecurityOrigin, bool isInitiatingElementInUserAgentShadowTree, AddRuleFlags);
@@ -210,12 +207,12 @@ private:
     RuleDataVector m_universalRules;
     Vector<StyleRulePage*> m_pageRules;
     unsigned m_ruleCount { 0 };
-    bool m_autoShrinkToFitEnabled { false };
+    bool m_hasHostPseudoClassRulesMatchingInShadowTree { false };
+    bool m_autoShrinkToFitEnabled { true };
     RuleFeatureSet m_features;
-    Vector<RuleSetSelectorPair> m_regionSelectorsAndRuleSets;
 };
 
-inline const RuleSet::RuleDataVector* RuleSet::tagRules(AtomicStringImpl* key, bool isHTMLName) const
+inline const RuleSet::RuleDataVector* RuleSet::tagRules(const AtomicString& key, bool isHTMLName) const
 {
     const AtomRuleMap* tagRules;
     if (isHTMLName)

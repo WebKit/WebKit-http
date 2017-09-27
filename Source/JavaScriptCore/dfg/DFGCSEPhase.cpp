@@ -48,7 +48,9 @@ namespace JSC { namespace DFG {
 
 namespace {
 
-const bool verbose = false;
+namespace DFGCSEPhaseInternal {
+static const bool verbose = false;
+}
 
 class ImpureDataSlot {
     WTF_MAKE_NONCOPYABLE(ImpureDataSlot);
@@ -446,7 +448,7 @@ private:
                 m_node = block->at(nodeIndex);
                 m_graph.performSubstitution(m_node);
             
-                if (m_node->op() == Identity) {
+                if (m_node->op() == Identity || m_node->op() == IdentityWithProfile) {
                     m_node->replaceWith(m_node->child1().node());
                     m_changed = true;
                 } else {
@@ -460,6 +462,7 @@ private:
                         
                         Node* base = m_graph.varArgChild(m_node, 0).node();
                         Node* index = m_graph.varArgChild(m_node, 1).node();
+                        LocationKind indexedPropertyLoc = indexedPropertyLocForResultType(m_node->result());
                         
                         ArrayMode mode = m_node->arrayMode();
                         switch (mode.type()) {
@@ -467,21 +470,21 @@ private:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, IndexedInt32Properties, base, index);
+                                indexedPropertyLoc, IndexedInt32Properties, base, index);
                             break;
                             
                         case Array::Double:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, IndexedDoubleProperties, base, index);
+                                indexedPropertyLoc, IndexedDoubleProperties, base, index);
                             break;
                             
                         case Array::Contiguous:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, IndexedContiguousProperties, base, index);
+                                indexedPropertyLoc, IndexedContiguousProperties, base, index);
                             break;
                             
                         case Array::Int8Array:
@@ -496,7 +499,7 @@ private:
                             if (!mode.isInBounds())
                                 break;
                             heap = HeapLocation(
-                                IndexedPropertyLoc, TypedArrayProperties, base, index);
+                                indexedPropertyLoc, TypedArrayProperties, base, index);
                             break;
                             
                         default:
@@ -597,7 +600,7 @@ public:
         ASSERT(m_graph.m_form == SSA);
         
         m_graph.initializeNodeOwners();
-        m_graph.ensureDominators();
+        m_graph.ensureSSADominators();
         
         m_preOrder = m_graph.blocksInPreOrder();
         
@@ -626,7 +629,7 @@ public:
     
     bool iterate()
     {
-        if (verbose)
+        if (DFGCSEPhaseInternal::verbose)
             dataLog("Performing iteration.\n");
         
         m_changed = false;
@@ -637,18 +640,18 @@ public:
             m_impureData = &m_impureDataMap[m_block];
             m_writesSoFar.clear();
             
-            if (verbose)
+            if (DFGCSEPhaseInternal::verbose)
                 dataLog("Processing block ", *m_block, ":\n");
 
             for (unsigned nodeIndex = 0; nodeIndex < m_block->size(); ++nodeIndex) {
                 m_nodeIndex = nodeIndex;
                 m_node = m_block->at(nodeIndex);
-                if (verbose)
+                if (DFGCSEPhaseInternal::verbose)
                     dataLog("  Looking at node ", m_node, ":\n");
                 
                 m_graph.performSubstitution(m_node);
                 
-                if (m_node->op() == Identity) {
+                if (m_node->op() == Identity || m_node->op() == IdentityWithProfile) {
                     m_node->replaceWith(m_node->child1().node());
                     m_changed = true;
                 } else
@@ -689,7 +692,7 @@ public:
         
         for (unsigned i = result.iterator->value.size(); i--;) {
             Node* candidate = result.iterator->value[i];
-            if (m_graph.m_dominators->dominates(candidate->owner, m_block)) {
+            if (m_graph.m_ssaDominators->dominates(candidate->owner, m_block)) {
                 m_node->replaceWith(candidate);
                 m_changed = true;
                 return;
@@ -706,7 +709,7 @@ public:
         // a global search.
         LazyNode match = m_impureData->availableAtTail.get(location);
         if (!!match) {
-            if (verbose)
+            if (DFGCSEPhaseInternal::verbose)
                 dataLog("      Found local match: ", match, "\n");
             return match;
         }
@@ -714,7 +717,7 @@ public:
         // If it's not available at this point in the block, and at some prior point in the block
         // we have clobbered this heap location, then there is no point in doing a global search.
         if (m_writesSoFar.overlaps(location.heap())) {
-            if (verbose)
+            if (DFGCSEPhaseInternal::verbose)
                 dataLog("      Not looking globally because of local clobber: ", m_writesSoFar, "\n");
             return nullptr;
         }
@@ -771,20 +774,20 @@ public:
             BasicBlock* block = worklist.takeLast();
             seenList.append(block);
             
-            if (verbose)
+            if (DFGCSEPhaseInternal::verbose)
                 dataLog("      Searching in block ", *block, "\n");
             ImpureBlockData& data = m_impureDataMap[block];
             
             // We require strict domination because this would only see things in our own block if
             // they came *after* our position in the block. Clearly, while our block dominates
             // itself, the things in the block after us don't dominate us.
-            if (m_graph.m_dominators->strictlyDominates(block, m_block)) {
-                if (verbose)
+            if (m_graph.m_ssaDominators->strictlyDominates(block, m_block)) {
+                if (DFGCSEPhaseInternal::verbose)
                     dataLog("        It strictly dominates.\n");
                 DFG_ASSERT(m_graph, m_node, data.didVisit);
                 DFG_ASSERT(m_graph, m_node, !match);
                 match = data.availableAtTail.get(location);
-                if (verbose)
+                if (DFGCSEPhaseInternal::verbose)
                     dataLog("        Availability: ", match, "\n");
                 if (!!match) {
                     // Don't examine the predecessors of a match. At this point we just want to
@@ -794,10 +797,10 @@ public:
                 }
             }
             
-            if (verbose)
+            if (DFGCSEPhaseInternal::verbose)
                 dataLog("        Dealing with write set ", data.writes, "\n");
             if (data.writes.overlaps(location.heap())) {
-                if (verbose)
+                if (DFGCSEPhaseInternal::verbose)
                     dataLog("        Clobbered.\n");
                 return nullptr;
             }
@@ -829,16 +832,16 @@ public:
     
     void def(HeapLocation location, LazyNode value)
     {
-        if (verbose)
+        if (DFGCSEPhaseInternal::verbose)
             dataLog("    Got heap location def: ", location, " -> ", value, "\n");
         
         LazyNode match = findReplacement(location);
         
-        if (verbose)
+        if (DFGCSEPhaseInternal::verbose)
             dataLog("      Got match: ", match, "\n");
         
         if (!match) {
-            if (verbose)
+            if (DFGCSEPhaseInternal::verbose)
                 dataLog("      Adding at-tail mapping: ", location, " -> ", value, "\n");
             auto result = m_impureData->availableAtTail.add(location, value);
             ASSERT_UNUSED(result, !result);
@@ -855,7 +858,7 @@ public:
                 if (!result.isNewEntry) {
                     for (unsigned i = result.iterator->value.size(); i--;) {
                         Node* candidate = result.iterator->value[i];
-                        if (m_graph.m_dominators->dominates(candidate->owner, m_block)) {
+                        if (m_graph.m_ssaDominators->dominates(candidate->owner, m_block)) {
                             ASSERT(candidate);
                             match->replaceWith(candidate);
                             match.setNode(candidate);

@@ -29,19 +29,23 @@
 #include "CacheValidation.h"
 #include "CertificateInfo.h"
 #include "HTTPHeaderMap.h"
-#include "NetworkLoadTiming.h"
+#include "NetworkLoadMetrics.h"
 #include "ParsedContentRange.h"
 #include "URL.h"
+#include <wtf/SHA1.h>
 
 namespace WebCore {
 
 class ResourceResponse;
 
+bool isScriptAllowedByNosniff(const ResourceResponse&);
+
 // Do not use this class directly, use the class ResponseResponse instead
 class ResourceResponseBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum class Type;
+    enum class Type { Basic, Cors, Default, Error, Opaque, Opaqueredirect };
+    enum class Tainting { Basic, Cors, Opaque, Opaqueredirect };
 
     struct CrossThreadData {
         CrossThreadData(const CrossThreadData&) = delete;
@@ -57,16 +61,14 @@ public:
         String httpStatusText;
         String httpVersion;
         HTTPHeaderMap httpHeaderFields;
-        NetworkLoadTiming networkLoadTiming;
+        NetworkLoadMetrics networkLoadMetrics;
         Type type;
+        Tainting tainting;
         bool isRedirected;
     };
 
     CrossThreadData crossThreadData() const;
     static ResourceResponse fromCrossThreadData(CrossThreadData&&);
-
-    enum class Tainting { Basic, Cors, Opaque };
-    static ResourceResponse filterResponse(const ResourceResponse&, Tainting);
 
     bool isNull() const { return m_isNull; }
     WEBCORE_EXPORT bool isHTTP() const;
@@ -92,7 +94,7 @@ public:
 
     WEBCORE_EXPORT const String& httpVersion() const;
     WEBCORE_EXPORT void setHTTPVersion(const String&);
-    bool isHttpVersion0_9() const;
+    WEBCORE_EXPORT bool isHTTP09() const;
 
     WEBCORE_EXPORT const HTTPHeaderMap& httpHeaderFields() const;
 
@@ -112,30 +114,37 @@ public:
     bool isMultipart() const { return mimeType() == "multipart/x-mixed-replace"; }
 
     WEBCORE_EXPORT bool isAttachment() const;
+    WEBCORE_EXPORT bool isAttachmentWithFilename() const;
     WEBCORE_EXPORT String suggestedFilename() const;
+    WEBCORE_EXPORT static String sanitizeSuggestedFilename(const String&);
 
     WEBCORE_EXPORT void includeCertificateInfo() const;
-    const Optional<CertificateInfo>& certificateInfo() const { return m_certificateInfo; };
+    const std::optional<CertificateInfo>& certificateInfo() const { return m_certificateInfo; };
     
     // These functions return parsed values of the corresponding response headers.
-    // NaN means that the header was not present or had invalid value.
     WEBCORE_EXPORT bool cacheControlContainsNoCache() const;
     WEBCORE_EXPORT bool cacheControlContainsNoStore() const;
     WEBCORE_EXPORT bool cacheControlContainsMustRevalidate() const;
+    WEBCORE_EXPORT bool cacheControlContainsImmutable() const;
     WEBCORE_EXPORT bool hasCacheValidatorFields() const;
-    WEBCORE_EXPORT Optional<std::chrono::microseconds> cacheControlMaxAge() const;
-    WEBCORE_EXPORT Optional<std::chrono::system_clock::time_point> date() const;
-    WEBCORE_EXPORT Optional<std::chrono::microseconds> age() const;
-    WEBCORE_EXPORT Optional<std::chrono::system_clock::time_point> expires() const;
-    WEBCORE_EXPORT Optional<std::chrono::system_clock::time_point> lastModified() const;
+    WEBCORE_EXPORT std::optional<std::chrono::microseconds> cacheControlMaxAge() const;
+    WEBCORE_EXPORT std::optional<std::chrono::system_clock::time_point> date() const;
+    WEBCORE_EXPORT std::optional<std::chrono::microseconds> age() const;
+    WEBCORE_EXPORT std::optional<std::chrono::system_clock::time_point> expires() const;
+    WEBCORE_EXPORT std::optional<std::chrono::system_clock::time_point> lastModified() const;
     ParsedContentRange& contentRange() const;
 
-    // This is primarily for testing support. It is not necessarily accurate in all scenarios.
     enum class Source { Unknown, Network, DiskCache, DiskCacheAfterValidation, MemoryCache, MemoryCacheAfterValidation };
     WEBCORE_EXPORT Source source() const;
-    WEBCORE_EXPORT void setSource(Source);
+    void setSource(Source source) { m_source = source; }
 
-    NetworkLoadTiming& networkLoadTiming() const { return m_networkLoadTiming; }
+    const std::optional<SHA1::Digest>& cacheBodyKey() const { return m_cacheBodyKey; }
+    void setCacheBodyKey(const SHA1::Digest& key) { m_cacheBodyKey = key; }
+
+    // FIXME: This should be eliminated from ResourceResponse.
+    // Network loading metrics should be delivered via didFinishLoad
+    // and should not be part of the ResourceResponse.
+    NetworkLoadMetrics& deprecatedNetworkLoadMetrics() const { return m_networkLoadMetrics; }
 
     // The ResourceResponse subclass may "shadow" this method to provide platform-specific memory usage information
     unsigned memoryUsage() const
@@ -144,11 +153,16 @@ public:
         return 1280;
     }
 
-    enum class Type { Basic, Cors, Default, Error, Opaque, Opaqueredirect };
+    void setType(Type);
     Type type() const { return m_type; }
-    void setType(Type type) { m_type = type; }
-    bool isRedirected() const { return m_isRedirected; }
+
     void setRedirected(bool isRedirected) { m_isRedirected = isRedirected; }
+    bool isRedirected() const { return m_isRedirected; }
+
+    void setTainting(Tainting tainting) { m_tainting = tainting; }
+    Tainting tainting() const { return m_tainting; }
+
+    static ResourceResponse filter(const ResourceResponse&);
 
     static bool compare(const ResourceResponse&, const ResourceResponse&);
 
@@ -187,17 +201,17 @@ protected:
     AtomicString m_httpStatusText;
     AtomicString m_httpVersion;
     HTTPHeaderMap m_httpHeaderFields;
-    mutable NetworkLoadTiming m_networkLoadTiming;
+    mutable NetworkLoadMetrics m_networkLoadMetrics;
 
-    mutable Optional<CertificateInfo> m_certificateInfo;
+    mutable std::optional<CertificateInfo> m_certificateInfo;
 
     int m_httpStatusCode;
 
 private:
-    mutable Optional<std::chrono::microseconds> m_age;
-    mutable Optional<std::chrono::system_clock::time_point> m_date;
-    mutable Optional<std::chrono::system_clock::time_point> m_expires;
-    mutable Optional<std::chrono::system_clock::time_point> m_lastModified;
+    mutable std::optional<std::chrono::microseconds> m_age;
+    mutable std::optional<std::chrono::system_clock::time_point> m_date;
+    mutable std::optional<std::chrono::system_clock::time_point> m_expires;
+    mutable std::optional<std::chrono::system_clock::time_point> m_lastModified;
     mutable ParsedContentRange m_contentRange;
     mutable CacheControlDirectives m_cacheControlDirectives;
 
@@ -210,8 +224,11 @@ private:
 
     Source m_source { Source::Unknown };
 
+    std::optional<SHA1::Digest> m_cacheBodyKey;
+
     Type m_type { Type::Default };
     bool m_isRedirected { false };
+    Tainting m_tainting { Tainting::Basic };
 };
 
 inline bool operator==(const ResourceResponse& a, const ResourceResponse& b) { return ResourceResponseBase::compare(a, b); }
@@ -233,15 +250,17 @@ void ResourceResponseBase::encode(Encoder& encoder) const
     encoder << m_httpVersion;
     encoder << m_httpHeaderFields;
 
-    // We don't want to put the networkLoadTiming info
+    // We don't want to put the networkLoadMetrics info
     // into the disk cache, because we will never use the old info.
     if (Encoder::isIPCEncoder)
-        encoder << m_networkLoadTiming;
+        encoder << m_networkLoadMetrics;
 
     encoder << m_httpStatusCode;
     encoder << m_certificateInfo;
     encoder.encodeEnum(m_source);
+    encoder << m_cacheBodyKey;
     encoder.encodeEnum(m_type);
+    encoder.encodeEnum(m_tainting);
     encoder << m_isRedirected;
 }
 
@@ -271,8 +290,8 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
         return false;
     if (!decoder.decode(response.m_httpHeaderFields))
         return false;
-    // The networkLoadTiming info is only send over IPC and not stored in disk cache.
-    if (Decoder::isIPCDecoder && !decoder.decode(response.m_networkLoadTiming))
+    // The networkLoadMetrics info is only send over IPC and not stored in disk cache.
+    if (Decoder::isIPCDecoder && !decoder.decode(response.m_networkLoadMetrics))
         return false;
     if (!decoder.decode(response.m_httpStatusCode))
         return false;
@@ -280,7 +299,11 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
         return false;
     if (!decoder.decodeEnum(response.m_source))
         return false;
+    if (!decoder.decode(response.m_cacheBodyKey))
+        return false;
     if (!decoder.decodeEnum(response.m_type))
+        return false;
+    if (!decoder.decodeEnum(response.m_tainting))
         return false;
     if (!decoder.decode(response.m_isRedirected))
         return false;

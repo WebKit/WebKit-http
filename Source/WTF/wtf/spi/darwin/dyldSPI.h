@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,12 +29,16 @@
 
 #include <mach-o/dyld_priv.h>
 
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000
-#define DYLD_IOS_VERSION_10_0 0x000A0000
-#endif
-
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
 #define DYLD_MACOSX_VERSION_10_12 0x000A0C00
+#endif
+
+#ifndef DYLD_IOS_VERSION_11_0
+#define DYLD_IOS_VERSION_11_0 0x000B0000
+#endif
+
+#ifndef DYLD_MACOSX_VERSION_10_13
+#define DYLD_MACOSX_VERSION_10_13 0x000A0D00
 #endif
 
 #else
@@ -46,8 +50,11 @@
 #define DYLD_IOS_VERSION_7_0 0x00070000
 #define DYLD_IOS_VERSION_9_0 0x00090000
 #define DYLD_IOS_VERSION_10_0 0x000A0000
+#define DYLD_IOS_VERSION_11_0 0x000B0000
 
+#define DYLD_MACOSX_VERSION_10_11 0x000A0B00
 #define DYLD_MACOSX_VERSION_10_12 0x000A0C00
+#define DYLD_MACOSX_VERSION_10_13 0x000A0D00
 
 #endif
 

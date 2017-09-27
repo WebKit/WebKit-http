@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -93,24 +93,9 @@ public:
     static const char* debugName(FPRReg reg)
     {
         ASSERT(reg != InvalidFPRReg);
-#if CPU(X86_64)
-        ASSERT(static_cast<int>(reg) < 16);
-        static const char* nameForRegister[16] = {
-            "xmm0", "xmm1", "xmm2", "xmm3",
-            "xmm4", "xmm5", "xmm6", "xmm7",
-            "xmm8", "xmm9", "xmm10", "xmm11",
-            "xmm12", "xmm13", "xmm14", "xmm15"
-        };
-#elif CPU(X86)
-        ASSERT(static_cast<int>(reg) < 8);
-        static const char* nameForRegister[8] = {
-            "xmm0", "xmm1", "xmm2", "xmm3",
-            "xmm4", "xmm5", "xmm6", "xmm7"
-        };
-#endif
-        return nameForRegister[reg];
+        return MacroAssembler::fprName(reg);
     }
-    
+
     static const unsigned InvalidIndex = 0xffffffff;
 };
 
@@ -161,18 +146,7 @@ public:
     static const char* debugName(FPRReg reg)
     {
         ASSERT(reg != InvalidFPRReg);
-        ASSERT(static_cast<int>(reg) < 32);
-        static const char* nameForRegister[32] = {
-            "d0", "d1", "d2", "d3",
-            "d4", "d5", "d6", "d7",
-            "d8", "d9", "d10", "d11",
-            "d12", "d13", "d14", "d15",
-            "d16", "d17", "d18", "d19",
-            "d20", "d21", "d22", "d23",
-            "d24", "d25", "d26", "d27",
-            "d28", "d29", "d30", "d31"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::fprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
@@ -267,14 +241,7 @@ public:
     static const char* debugName(FPRReg reg)
     {
         ASSERT(reg != InvalidFPRReg);
-        ASSERT(static_cast<int>(reg) < 32);
-        static const char* nameForRegister[32] = {
-            "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7",
-            "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15",
-            "q16", "q17", "q18", "q19", "q20", "q21", "q22", "q23",
-            "q24", "q25", "q26", "q27", "q28", "q29", "q30", "q31"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::fprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
@@ -330,85 +297,13 @@ public:
     static const char* debugName(FPRReg reg)
     {
         ASSERT(reg != InvalidFPRReg);
-        ASSERT(reg < 32);
-        static const char* nameForRegister[32] = {
-            "f0", "f1", "f2", "f3",
-            "f4", "f5", "f6", "f7",
-            "f8", "f9", "f10", "f11",
-            "f12", "f13", "f14", "f15"
-            "f16", "f17", "f18", "f19"
-            "f20", "f21", "f22", "f23"
-            "f24", "f25", "f26", "f27"
-            "f28", "f29", "f30", "f31"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::fprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
 };
 
 #endif // CPU(MIPS)
-
-#if CPU(SH4)
-
-class FPRInfo {
-public:
-    typedef FPRReg RegisterType;
-    static const unsigned numberOfRegisters = 6;
-
-    // Temporary registers.
-    static const FPRReg fpRegT0 = SH4Registers::dr0;
-    static const FPRReg fpRegT1 = SH4Registers::dr2;
-    static const FPRReg fpRegT2 = SH4Registers::dr4;
-    static const FPRReg fpRegT3 = SH4Registers::dr6;
-    static const FPRReg fpRegT4 = SH4Registers::dr8;
-    static const FPRReg fpRegT5 = SH4Registers::dr10;
-
-    static const FPRReg returnValueFPR = SH4Registers::dr0;
-
-    static const FPRReg argumentFPR0 = SH4Registers::dr4;
-    static const FPRReg argumentFPR1 = SH4Registers::dr6;
-
-    static FPRReg toRegister(unsigned index)
-    {
-        static const FPRReg registerForIndex[numberOfRegisters] = {
-            fpRegT0, fpRegT1, fpRegT2, fpRegT3, fpRegT4, fpRegT5 };
-
-        ASSERT(index < numberOfRegisters);
-        return registerForIndex[index];
-    }
-
-    static unsigned toIndex(FPRReg reg)
-    {
-        ASSERT(reg != InvalidFPRReg);
-        ASSERT(reg < 16);
-        static const unsigned indexForRegister[16] = {
-            0, InvalidIndex, 1, InvalidIndex,
-            2, InvalidIndex, 3, InvalidIndex,
-            4, InvalidIndex, 5, InvalidIndex,
-            InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex
-        };
-        unsigned result = indexForRegister[reg];
-        return result;
-    }
-
-    static const char* debugName(FPRReg reg)
-    {
-        ASSERT(reg != InvalidFPRReg);
-        ASSERT(reg < 16);
-        static const char* nameForRegister[16] = {
-            "dr0", "fr1", "dr2", "fr3",
-            "dr4", "fr5", "dr6", "fr7",
-            "dr8", "fr9", "dr10", "fr11",
-            "dr12", "fr13", "dr14", "fr15"
-        };
-        return nameForRegister[reg];
-    }
-
-    static const unsigned InvalidIndex = 0xffffffff;
-};
-
-#endif // CPU(SH4)
 
 #endif // ENABLE(JIT)
 

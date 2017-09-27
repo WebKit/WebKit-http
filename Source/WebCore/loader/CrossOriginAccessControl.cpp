@@ -27,6 +27,7 @@
 #include "config.h"
 #include "CrossOriginAccessControl.h"
 
+#include "CrossOriginPreflightResultCache.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "ResourceRequest.h"
@@ -45,68 +46,32 @@ bool isOnAccessControlSimpleRequestMethodWhitelist(const String& method)
     return method == "GET" || method == "HEAD" || method == "POST";
 }
 
-bool isOnAccessControlSimpleRequestHeaderWhitelist(HTTPHeaderName name, const String& value)
-{
-    switch (name) {
-    case HTTPHeaderName::Accept:
-    case HTTPHeaderName::AcceptLanguage:
-    case HTTPHeaderName::ContentLanguage:
-        return true;
-    case HTTPHeaderName::ContentType: {
-        // Preflight is required for MIME types that can not be sent via form submission.
-        String mimeType = extractMIMETypeFromMediaType(value);
-        return equalIgnoringASCIICase(mimeType, "application/x-www-form-urlencoded")
-            || equalIgnoringASCIICase(mimeType, "multipart/form-data")
-            || equalIgnoringASCIICase(mimeType, "text/plain");
-    }
-    default:
-        return false;
-    }
-}
-
 bool isSimpleCrossOriginAccessRequest(const String& method, const HTTPHeaderMap& headerMap)
 {
     if (!isOnAccessControlSimpleRequestMethodWhitelist(method))
         return false;
 
     for (const auto& header : headerMap) {
-        if (!header.keyAsHTTPHeaderName || !isOnAccessControlSimpleRequestHeaderWhitelist(header.keyAsHTTPHeaderName.value(), header.value))
+        if (!header.keyAsHTTPHeaderName || !isCrossOriginSafeRequestHeader(header.keyAsHTTPHeaderName.value(), header.value))
             return false;
     }
 
     return true;
 }
 
-bool isOnAccessControlResponseHeaderWhitelist(const String& name)
-{
-    static std::once_flag onceFlag;
-    static LazyNeverDestroyed<HTTPHeaderSet> allowedCrossOriginResponseHeaders;
-
-    std::call_once(onceFlag, []{
-        allowedCrossOriginResponseHeaders.construct<std::initializer_list<String>>({
-            "cache-control",
-            "content-language",
-            "content-type",
-            "expires",
-            "last-modified",
-            "pragma"
-        });
-    });
-
-    return allowedCrossOriginResponseHeaders.get().contains(name);
-}
-
-void updateRequestForAccessControl(ResourceRequest& request, SecurityOrigin& securityOrigin, StoredCredentials allowCredentials)
+void updateRequestForAccessControl(ResourceRequest& request, SecurityOrigin& securityOrigin, StoredCredentialsPolicy storedCredentialsPolicy)
 {
     request.removeCredentials();
-    request.setAllowCookies(allowCredentials == AllowStoredCredentials);
+    request.setAllowCookies(storedCredentialsPolicy == StoredCredentialsPolicy::Use);
     request.setHTTPOrigin(securityOrigin.toString());
 }
 
 ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& request, SecurityOrigin& securityOrigin, const String& referrer)
 {
     ResourceRequest preflightRequest(request.url());
-    updateRequestForAccessControl(preflightRequest, securityOrigin, DoNotAllowStoredCredentials);
+    static const double platformDefaultTimeout = 0;
+    preflightRequest.setTimeoutInterval(platformDefaultTimeout);
+    updateRequestForAccessControl(preflightRequest, securityOrigin, StoredCredentialsPolicy::DoNotUse);
     preflightRequest.setHTTPMethod("OPTIONS");
     preflightRequest.setHTTPHeaderField(HTTPHeaderName::AccessControlRequestMethod, request.httpMethod());
     preflightRequest.setPriority(request.priority());
@@ -137,7 +102,8 @@ ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& reque
 
             headerBuffer.append(headerField);
         }
-        preflightRequest.setHTTPHeaderField(HTTPHeaderName::AccessControlRequestHeaders, headerBuffer.toString());
+        if (!headerBuffer.isEmpty())
+            preflightRequest.setHTTPHeaderField(HTTPHeaderName::AccessControlRequestHeaders, headerBuffer.toString());
     }
 
     return preflightRequest;
@@ -161,24 +127,26 @@ void cleanRedirectedRequestForAccessControl(ResourceRequest& request)
     request.clearHTTPAcceptEncoding();
 }
 
-bool passesAccessControlCheck(const ResourceResponse& response, StoredCredentials includeCredentials, SecurityOrigin& securityOrigin, String& errorDescription)
+bool passesAccessControlCheck(const ResourceResponse& response, StoredCredentialsPolicy storedCredentialsPolicy, SecurityOrigin& securityOrigin, String& errorDescription)
 {
     // A wildcard Access-Control-Allow-Origin can not be used if credentials are to be sent,
     // even with Access-Control-Allow-Credentials set to true.
     const String& accessControlOriginString = response.httpHeaderField(HTTPHeaderName::AccessControlAllowOrigin);
-    if (accessControlOriginString == "*" && includeCredentials == DoNotAllowStoredCredentials)
+    if (accessControlOriginString == "*" && storedCredentialsPolicy == StoredCredentialsPolicy::DoNotUse)
         return true;
 
-    // FIXME: Access-Control-Allow-Origin can contain a list of origins.
-    if (accessControlOriginString != securityOrigin.toString()) {
+    String securityOriginString = securityOrigin.toString();
+    if (accessControlOriginString != securityOriginString) {
         if (accessControlOriginString == "*")
-            errorDescription = "Cannot use wildcard in Access-Control-Allow-Origin when credentials flag is true.";
+            errorDescription = ASCIILiteral("Cannot use wildcard in Access-Control-Allow-Origin when credentials flag is true.");
+        else if (accessControlOriginString.find(',') != notFound)
+            errorDescription = ASCIILiteral("Access-Control-Allow-Origin cannot contain more than one origin.");
         else
-            errorDescription =  "Origin " + securityOrigin.toString() + " is not allowed by Access-Control-Allow-Origin.";
+            errorDescription = makeString("Origin ", securityOriginString, " is not allowed by Access-Control-Allow-Origin.");
         return false;
     }
 
-    if (includeCredentials == AllowStoredCredentials) {
+    if (storedCredentialsPolicy == StoredCredentialsPolicy::Use) {
         const String& accessControlCredentialsString = response.httpHeaderField(HTTPHeaderName::AccessControlAllowCredentials);
         if (accessControlCredentialsString != "true") {
             errorDescription = "Credentials flag is true, but Access-Control-Allow-Credentials is not \"true\".";
@@ -186,6 +154,27 @@ bool passesAccessControlCheck(const ResourceResponse& response, StoredCredential
         }
     }
 
+    return true;
+}
+
+bool validatePreflightResponse(const ResourceRequest& request, const ResourceResponse& response, StoredCredentialsPolicy storedCredentialsPolicy, SecurityOrigin& securityOrigin, String& errorDescription)
+{
+    if (!response.isSuccessful()) {
+        errorDescription = ASCIILiteral("Preflight response is not successful");
+        return false;
+    }
+
+    if (!passesAccessControlCheck(response, storedCredentialsPolicy, securityOrigin, errorDescription))
+        return false;
+
+    auto result = std::make_unique<CrossOriginPreflightResultCacheItem>(storedCredentialsPolicy);
+    if (!result->parse(response, errorDescription)
+        || !result->allowsCrossOriginMethod(request.httpMethod(), errorDescription)
+        || !result->allowsCrossOriginHeaders(request.httpHeaderFields(), errorDescription)) {
+        return false;
+    }
+
+    CrossOriginPreflightResultCache::singleton().appendEntry(securityOrigin.toString(), request.url(), WTFMove(result));
     return true;
 }
 

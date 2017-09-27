@@ -27,12 +27,16 @@
 #define FontRanges_h
 
 #include "Font.h"
-#include <wtf/TypeCasts.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 class FontAccessor;
+
+enum class ExternalResourceDownloadPolicy {
+    Forbid,
+    Allow
+};
 
 class FontRanges {
 public:
@@ -57,7 +61,7 @@ public:
 
         UChar32 from() const { return m_from; }
         UChar32 to() const { return m_to; }
-        const Font* font() const;
+        const Font* font(ExternalResourceDownloadPolicy) const;
         const FontAccessor& fontAccessor() const { return m_fontAccessor; }
 
     private:
@@ -79,7 +83,7 @@ public:
     unsigned size() const { return m_ranges.size(); }
     const Range& rangeAt(unsigned i) const { return m_ranges[i]; }
 
-    GlyphData glyphDataForCharacter(UChar32) const;
+    GlyphData glyphDataForCharacter(UChar32, ExternalResourceDownloadPolicy) const;
     WEBCORE_EXPORT const Font* fontForCharacter(UChar32) const;
     WEBCORE_EXPORT const Font& fontForFirstRange() const;
     bool isLoading() const;

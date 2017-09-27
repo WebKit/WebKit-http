@@ -86,6 +86,9 @@ ESTreeWalker = class ESTreeWalker
             this._walk(node.left, node);
             this._walk(node.right, node);
             break;
+        case "AwaitExpression":
+            this._walk(node.argument, node);
+            break;
         case "BlockStatement":
             this._walkArray(node.body, node);
             break;
@@ -137,9 +140,7 @@ ESTreeWalker = class ESTreeWalker
         case "FunctionExpression":
         case "ArrowFunctionExpression":
             this._walk(node.id, node);
-            // FIXME: This should probably iterate params/defaults in special order.
             this._walkArray(node.params, node);
-            this._walkArray(node.defaults, node);
             this._walk(node.body, node);
             break;
         case "IfStatement":
@@ -181,6 +182,9 @@ ESTreeWalker = class ESTreeWalker
         case "RestElement":
             this._walk(node.argument, node);
             break;
+        case "RestProperty":
+            this._walk(node.argument, node);
+            break;
         case "ReturnStatement":
             this._walk(node.argument, node);
             break;
@@ -188,6 +192,9 @@ ESTreeWalker = class ESTreeWalker
             this._walkArray(node.expressions, node);
             break;
         case "SpreadElement":
+            this._walk(node.argument, node);
+            break;
+        case "SpreadProperty":
             this._walk(node.argument, node);
             break;
         case "SwitchStatement":
@@ -269,6 +276,10 @@ ESTreeWalker = class ESTreeWalker
             this._walk(node.imported, node);
             this._walk(node.local, node);
             break;
+        case "MetaProperty":
+            this._walk(node.meta, node);
+            this._walk(node.property, node);
+            break;
 
         // Special case. We want to walk in program order,
         // so walk quasi, expression, quasi, expression, etc.
@@ -283,8 +294,8 @@ ESTreeWalker = class ESTreeWalker
         case "DebuggerStatement":
         case "EmptyStatement":
         case "Identifier":
+        case "Import":
         case "Literal":
-        case "MetaProperty":
         case "Super":
         case "ThisExpression":
         case "TemplateElement":

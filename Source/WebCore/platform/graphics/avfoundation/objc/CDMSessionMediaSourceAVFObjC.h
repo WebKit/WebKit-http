@@ -26,7 +26,7 @@
 #ifndef CDMSessionMediaSourceAVFObjC_h
 #define CDMSessionMediaSourceAVFObjC_h
 
-#include "CDMSession.h"
+#include "LegacyCDMSession.h"
 #include "SourceBufferPrivateAVFObjC.h"
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
@@ -54,7 +54,11 @@ public:
 
     // SourceBufferPrivateAVFObjCErrorClient
     void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *, bool& shouldIgnore) override;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *, bool& shouldIgnore) override;
+#pragma clang diagnostic pop
 
     void addSourceBuffer(SourceBufferPrivateAVFObjC*);
     void removeSourceBuffer(SourceBufferPrivateAVFObjC*);

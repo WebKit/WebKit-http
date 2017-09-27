@@ -44,6 +44,7 @@
 #include <wtf/Condition.h>
 #include <wtf/Lock.h>
 #include <wtf/MainThread.h>
+#include <wtf/SoftLinking.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(WIN)
@@ -54,21 +55,29 @@
 #endif
 
 #if PLATFORM(IOS) || PLATFORM(MAC)
+extern "C" const CFStringRef kCFStreamPropertySourceApplication;
 extern "C" const CFStringRef _kCFStreamSocketSetNoDelay;
 #endif
 
 #if PLATFORM(COCOA)
-#import <CFNetworkSPI.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
+#endif
+
+#if PLATFORM(WIN)
+SOFT_LINK_LIBRARY(CFNetwork);
+SOFT_LINK_OPTIONAL(CFNetwork, _CFHTTPMessageSetResponseProxyURL, void, __cdecl, (CFHTTPMessageRef, CFURLRef));
 #endif
 
 namespace WebCore {
 
-SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client, SessionID sessionID)
+SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client, PAL::SessionID sessionID, const String& credentialPartition, SourceApplicationAuditToken&& auditData)
     : SocketStreamHandle(url, client)
     , m_connectingSubstate(New)
     , m_connectionType(Unknown)
     , m_sentStoredCredentials(false)
     , m_sessionID(sessionID)
+    , m_credentialPartition(credentialPartition)
+    , m_auditData(WTFMove(auditData))
 {
     LOG(Network, "SocketStreamHandle %p new client %p", this, &m_client);
 
@@ -83,7 +92,10 @@ SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandl
     if (url.protocolIs("ws")
         && !sessionID.isEphemeral()
         && _CFNetworkIsKnownHSTSHostWithSession(m_httpsURL.get(), nullptr)) {
-        m_client.didFailSocketStream(*this, SocketStreamError(0, m_url.string(), "WebSocket connection failed because it violates HTTP Strict Transport Security."));
+        // Call this asynchronously because the socket stream is not fully constructed at this point.
+        callOnMainThread([this, protectedThis = makeRef(*this)] {
+            m_client.didFailSocketStream(*this, SocketStreamError(0, m_url.string(), "WebSocket connection failed because it violates HTTP Strict Transport Security."));
+        });
         return;
     }
 #endif
@@ -141,7 +153,7 @@ CFStringRef SocketStreamHandleImpl::copyPACExecutionDescription(void*)
     return CFSTR("WebSocket proxy PAC file execution");
 }
 
-static void callOnMainThreadAndWait(std::function<void()> function)
+static void callOnMainThreadAndWait(WTF::Function<void()>&& function)
 {
     if (isMainThread()) {
         function();
@@ -153,7 +165,7 @@ static void callOnMainThreadAndWait(std::function<void()> function)
 
     bool isFinished = false;
 
-    callOnMainThread([&] {
+    callOnMainThread([&, function = WTFMove(function)] {
         function();
 
         std::lock_guard<Lock> lock(mutex);
@@ -296,6 +308,13 @@ void SocketStreamHandleImpl::chooseProxyFromArray(CFArrayRef proxyArray)
     m_connectionType = Direct;
 }
 
+static void setCONNECTProxyForStream(CFReadStreamRef stream, CFStringRef proxyHost, CFNumberRef proxyPort)
+{
+    const void* proxyKeys[] = { kCFStreamPropertyCONNECTProxyHost, kCFStreamPropertyCONNECTProxyPort };
+    const void* proxyValues[] = { proxyHost, proxyPort };
+    auto connectDictionary = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, proxyKeys, proxyValues, sizeof(proxyKeys) / sizeof(*proxyKeys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    CFReadStreamSetProperty(stream, kCFStreamPropertyCONNECTProxy, connectDictionary.get());
+}
 
 void SocketStreamHandleImpl::createStreams()
 {
@@ -312,9 +331,14 @@ void SocketStreamHandleImpl::createStreams()
     CFReadStreamRef readStream = 0;
     CFWriteStreamRef writeStream = 0;
     CFStreamCreatePairWithSocketToHost(0, host.get(), port(), &readStream, &writeStream);
-#if PLATFORM(IOS) || PLATFORM(MAC)
+#if PLATFORM(COCOA)
     // <rdar://problem/12855587> _kCFStreamSocketSetNoDelay is not exported on Windows
     CFWriteStreamSetProperty(writeStream, _kCFStreamSocketSetNoDelay, kCFBooleanTrue);
+    if (m_auditData.sourceApplicationAuditData && m_auditData.sourceApplicationAuditData.get()) {
+        CFReadStreamSetProperty(readStream, kCFStreamPropertySourceApplication, m_auditData.sourceApplicationAuditData.get());
+        CFWriteStreamSetProperty(writeStream, kCFStreamPropertySourceApplication, m_auditData.sourceApplicationAuditData.get());
+    }
+    
 #endif
 
     m_readStream = adoptCF(readStream);
@@ -336,7 +360,7 @@ void SocketStreamHandleImpl::createStreams()
         break;
         }
     case CONNECTProxy:
-        wkSetCONNECTProxyForStream(m_readStream.get(), m_proxyHost.get(), m_proxyPort.get());
+        setCONNECTProxyForStream(m_readStream.get(), m_proxyHost.get(), m_proxyPort.get());
         break;
     }
 
@@ -359,7 +383,7 @@ bool SocketStreamHandleImpl::getStoredCONNECTProxyCredentials(const ProtectionSp
     if (auto* storageSession = NetworkStorageSession::storageSession(m_sessionID)) {
         storedCredential = storageSession->credentialStorage().getFromPersistentStorage(protectionSpace);
         if (storedCredential.isEmpty())
-            storedCredential = storageSession->credentialStorage().get(protectionSpace);
+            storedCredential = storageSession->credentialStorage().get(m_credentialPartition, protectionSpace);
     }
 
     if (storedCredential.isEmpty())
@@ -383,6 +407,19 @@ static ProtectionSpaceAuthenticationScheme authenticationSchemeFromAuthenticatio
         return ProtectionSpaceAuthenticationSchemeNegotiate;
     ASSERT_NOT_REACHED();
     return ProtectionSpaceAuthenticationSchemeUnknown;
+}
+    
+static void setCONNECTProxyAuthorizationForStream(CFReadStreamRef stream, CFStringRef proxyAuthorizationString)
+{
+    auto originalCONNECTDictionary = adoptCF((CFDictionaryRef)CFReadStreamCopyProperty(stream, kCFStreamPropertyCONNECTProxy));
+    auto connectDictionary = adoptCF(CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, originalCONNECTDictionary.get()));
+
+    const void* headerFieldNames[] = { CFSTR("Proxy-Authorization") };
+    const void* headerFieldValues[] = { proxyAuthorizationString };
+    auto additionalHeaderFields = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, headerFieldNames, headerFieldValues, sizeof(headerFieldNames) / sizeof(*headerFieldValues), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+
+    CFDictionarySetValue(connectDictionary.get(), kCFStreamPropertyCONNECTAdditionalHeaders, additionalHeaderFields.get());
+    CFReadStreamSetProperty(stream, kCFStreamPropertyCONNECTProxy, connectDictionary.get());
 }
 
 void SocketStreamHandleImpl::addCONNECTCredentials(CFHTTPMessageRef proxyResponse)
@@ -426,7 +463,7 @@ void SocketStreamHandleImpl::addCONNECTCredentials(CFHTTPMessageRef proxyRespons
         }
 
         // Setting the authorization results in a new connection attempt.
-        wkSetCONNECTProxyAuthorizationForStream(m_readStream.get(), proxyAuthorizationString.get());
+        setCONNECTProxyAuthorizationForStream(m_readStream.get(), proxyAuthorizationString.get());
         m_sentStoredCredentials = true;
         return;
     }
@@ -482,6 +519,38 @@ void SocketStreamHandleImpl::writeStreamCallback(CFWriteStreamRef stream, CFStre
 #endif
 }
 
+#if !PLATFORM(IOS)
+static void setResponseProxyURL(CFHTTPMessageRef message, CFURLRef proxyURL)
+{
+#if PLATFORM(WIN)
+    if (_CFHTTPMessageSetResponseProxyURLPtr())
+        _CFHTTPMessageSetResponseProxyURLPtr()(message, proxyURL);
+#else
+    _CFHTTPMessageSetResponseProxyURL(message, proxyURL);
+#endif
+}
+#endif
+
+static RetainPtr<CFHTTPMessageRef> copyCONNECTProxyResponse(CFReadStreamRef stream, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort)
+{
+    auto message = adoptCF((CFHTTPMessageRef)CFReadStreamCopyProperty(stream, kCFStreamPropertyCONNECTResponse));
+    // CFNetwork needs URL to be set on response in order to handle authentication - even though it doesn't seem to make sense to provide ultimate target URL when authenticating to a proxy.
+    // This is set by CFNetwork internally for normal HTTP responses, but not for proxies.
+    _CFHTTPMessageSetResponseURL(message.get(), responseURL);
+
+#if !PLATFORM(IOS)
+    // Ditto for proxy URL.
+    auto proxyURLString = adoptCF(CFStringCreateWithFormat(kCFAllocatorDefault, nullptr, CFSTR("https://%@:%@"), proxyHost, proxyPort));
+    auto proxyURL = adoptCF(CFURLCreateWithString(kCFAllocatorDefault, proxyURLString.get(), nullptr));
+    setResponseProxyURL(message.get(), proxyURL.get());
+#else
+    UNUSED_PARAM(proxyHost);
+    UNUSED_PARAM(proxyPort);
+#endif
+
+    return message;
+}
+
 void SocketStreamHandleImpl::readStreamCallback(CFStreamEventType type)
 {
     switch (type) {
@@ -495,7 +564,7 @@ void SocketStreamHandleImpl::readStreamCallback(CFStreamEventType type)
 
         if (m_connectingSubstate == WaitingForConnect) {
             if (m_connectionType == CONNECTProxy) {
-                RetainPtr<CFHTTPMessageRef> proxyResponse = adoptCF(wkCopyCONNECTProxyResponse(m_readStream.get(), m_httpsURL.get(), m_proxyHost.get(), m_proxyPort.get()));
+                RetainPtr<CFHTTPMessageRef> proxyResponse = copyCONNECTProxyResponse(m_readStream.get(), m_httpsURL.get(), m_proxyHost.get(), m_proxyPort.get());
                 if (!proxyResponse)
                     return;
 
@@ -536,11 +605,10 @@ void SocketStreamHandleImpl::readStreamCallback(CFStreamEventType type)
         if (!length)
             return;
 
-        Optional<size_t> optionalLength;
-        if (length != -1)
-            optionalLength = length;
-        
-        m_client.didReceiveSocketStreamData(*this, reinterpret_cast<const char*>(ptr), optionalLength);
+        if (length == -1)
+            m_client.didFailToReceiveSocketStreamData(*this);
+        else
+            m_client.didReceiveSocketStreamData(*this, reinterpret_cast<const char*>(ptr), length);
 
         return;
     }
@@ -578,7 +646,7 @@ void SocketStreamHandleImpl::writeStreamCallback(CFStreamEventType type)
 
         if (m_connectingSubstate == WaitingForConnect) {
             if (m_connectionType == CONNECTProxy) {
-                RetainPtr<CFHTTPMessageRef> proxyResponse = adoptCF(wkCopyCONNECTProxyResponse(m_readStream.get(), m_httpsURL.get(), m_proxyHost.get(), m_proxyPort.get()));
+                RetainPtr<CFHTTPMessageRef> proxyResponse = copyCONNECTProxyResponse(m_readStream.get(), m_httpsURL.get(), m_proxyHost.get(), m_proxyPort.get());
                 if (!proxyResponse)
                     return;
 
@@ -653,14 +721,17 @@ SocketStreamHandleImpl::~SocketStreamHandleImpl()
     ASSERT(!m_pacRunLoopSource);
 }
 
-Optional<size_t> SocketStreamHandleImpl::platformSend(const char* data, size_t length)
+std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const char* data, size_t length)
 {
+    if (!m_writeStream)
+        return 0;
+
     if (!CFWriteStreamCanAcceptBytes(m_writeStream.get()))
-        return Nullopt;
+        return 0;
 
     CFIndex result = CFWriteStreamWrite(m_writeStream.get(), reinterpret_cast<const UInt8*>(data), length);
     if (result == -1)
-        return Nullopt;
+        return std::nullopt;
 
     ASSERT(result >= 0);
     return static_cast<size_t>(result);

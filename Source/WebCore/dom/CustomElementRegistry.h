@@ -25,10 +25,9 @@
 
 #pragma once
 
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "QualifiedName.h"
 #include <wtf/HashMap.h>
-#include <wtf/TemporaryChange.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -76,7 +75,7 @@ private:
 
     bool m_elementDefinitionIsRunning { false };
 
-    friend class ElementDefinitionIsRunningTemporaryChange;
+    friend class ElementDefinitionIsRunningSetForScope;
 };
 
 }

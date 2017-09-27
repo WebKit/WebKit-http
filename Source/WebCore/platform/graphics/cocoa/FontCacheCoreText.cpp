@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,8 @@
 #include "config.h"
 #include "FontCache.h"
 
-#include "CoreTextSPI.h"
 #include "Font.h"
+#include <pal/spi/cocoa/CoreTextSPI.h>
 
 #include <CoreText/SFNTLayoutTypes.h>
 
@@ -35,15 +35,18 @@
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 
+#define SHOULD_USE_CORE_TEXT_FONT_LOOKUP (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
+#define HAS_CORE_TEXT_WIDTH_ATTRIBUTE ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000))
+
 namespace WebCore {
 
 static inline void appendRawTrueTypeFeature(CFMutableArrayRef features, int type, int selector)
 {
-    RetainPtr<CFNumberRef> typeNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &type));
-    RetainPtr<CFNumberRef> selectorNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &selector));
+    auto typeNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &type));
+    auto selectorNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &selector));
     CFTypeRef featureKeys[] = { kCTFontFeatureTypeIdentifierKey, kCTFontFeatureSelectorIdentifierKey };
     CFTypeRef featureValues[] = { typeNumber.get(), selectorNumber.get() };
-    RetainPtr<CFDictionaryRef> feature = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, featureKeys, featureValues, WTF_ARRAY_LENGTH(featureKeys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    auto feature = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, featureKeys, featureValues, WTF_ARRAY_LENGTH(featureKeys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     CFArrayAppendValue(features, feature.get());
 }
 
@@ -133,12 +136,12 @@ static inline void appendTrueTypeFeature(CFMutableArrayRef features, const FontF
 
 static inline void appendOpenTypeFeature(CFMutableArrayRef features, const FontFeature& feature)
 {
-    RetainPtr<CFStringRef> featureKey = adoptCF(CFStringCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(feature.tag().data()), feature.tag().size() * sizeof(FontTag::value_type), kCFStringEncodingASCII, false));
+    auto featureKey = adoptCF(CFStringCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(feature.tag().data()), feature.tag().size() * sizeof(FontTag::value_type), kCFStringEncodingASCII, false));
     int rawFeatureValue = feature.value();
-    RetainPtr<CFNumberRef> featureValue = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &rawFeatureValue));
+    auto featureValue = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &rawFeatureValue));
     CFTypeRef featureDictionaryKeys[] = { kCTFontOpenTypeFeatureTag, kCTFontOpenTypeFeatureValue };
     CFTypeRef featureDictionaryValues[] = { featureKey.get(), featureValue.get() };
-    RetainPtr<CFDictionaryRef> featureDictionary = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, featureDictionaryKeys, featureDictionaryValues, WTF_ARRAY_LENGTH(featureDictionaryValues), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    auto featureDictionary = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, featureDictionaryKeys, featureDictionaryValues, WTF_ARRAY_LENGTH(featureDictionaryValues), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     CFArrayAppendValue(features, featureDictionary.get());
 }
 
@@ -363,9 +366,177 @@ static FeaturesMap computeFeatureSettingsFromVariants(const FontVariantSettings&
     return result;
 }
 
-RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMode textRenderingMode, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, const FontFeatureSettings& features, const FontVariantSettings& variantSettings, const FontVariationSettings& variations)
+#if ENABLE(VARIATION_FONTS)
+struct VariationDefaults {
+    float defaultValue;
+    float minimumValue;
+    float maximumValue;
+};
+
+typedef HashMap<FontTag, VariationDefaults, FourCharacterTagHash, FourCharacterTagHashTraits> VariationDefaultsMap;
+
+static VariationDefaultsMap defaultVariationValues(CTFontRef font)
 {
-    if (!originalFont || (!features.size() && variations.isEmpty() && (textRenderingMode == AutoTextRendering) && variantSettings.isAllNormal()
+    VariationDefaultsMap result;
+    auto axes = adoptCF(CTFontCopyVariationAxes(font));
+    if (!axes)
+        return result;
+    auto size = CFArrayGetCount(axes.get());
+    for (CFIndex i = 0; i < size; ++i) {
+        CFDictionaryRef axis = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(axes.get(), i));
+        CFNumberRef axisIdentifier = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisIdentifierKey));
+        CFNumberRef defaultValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisDefaultValueKey));
+        CFNumberRef minimumValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisMinimumValueKey));
+        CFNumberRef maximumValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisMaximumValueKey));
+        uint32_t rawAxisIdentifier = 0;
+        Boolean success = CFNumberGetValue(axisIdentifier, kCFNumberSInt32Type, &rawAxisIdentifier);
+        ASSERT_UNUSED(success, success);
+        float rawDefaultValue = 0;
+        float rawMinimumValue = 0;
+        float rawMaximumValue = 0;
+        CFNumberGetValue(defaultValue, kCFNumberFloatType, &rawDefaultValue);
+        CFNumberGetValue(minimumValue, kCFNumberFloatType, &rawMinimumValue);
+        CFNumberGetValue(maximumValue, kCFNumberFloatType, &rawMaximumValue);
+
+        if (rawMinimumValue > rawMaximumValue)
+            std::swap(rawMinimumValue, rawMaximumValue);
+
+        auto b1 = rawAxisIdentifier >> 24;
+        auto b2 = (rawAxisIdentifier & 0xFF0000) >> 16;
+        auto b3 = (rawAxisIdentifier & 0xFF00) >> 8;
+        auto b4 = rawAxisIdentifier & 0xFF;
+        FontTag resultKey = {{ static_cast<char>(b1), static_cast<char>(b2), static_cast<char>(b3), static_cast<char>(b4) }};
+        VariationDefaults resultValues = { rawDefaultValue, rawMinimumValue, rawMaximumValue };
+        result.set(resultKey, resultValues);
+    }
+    return result;
+}
+
+static inline bool fontIsSystemFont(CTFontRef font)
+{
+    if (CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(font)).get()))
+        return true;
+    auto name = adoptCF(CTFontCopyPostScriptName(font));
+    return CFStringGetLength(name.get()) > 0 && CFStringGetCharacterAtIndex(name.get(), 0) == '.';
+}
+
+// These values were calculated by performing a linear regression on the CSS weights/widths/slopes and Core Text weights/widths/slopes of San Francisco.
+// FIXME: <rdar://problem/31312602> Get the real values from Core Text.
+static inline float normalizeWeight(float value)
+{
+    return 523.7 * value - 109.3;
+}
+
+static inline float normalizeSlope(float value)
+{
+    return value * 300;
+}
+
+static inline float denormalizeWeight(float value)
+{
+    return (value + 109.3) / 523.7;
+}
+
+static inline float denormalizeSlope(float value)
+{
+    return value / 300;
+}
+
+static inline float denormalizeVariationWidth(float value)
+{
+    if (value <= 125)
+        return value / 100;
+    if (value <= 150)
+        return (value + 125) / 200;
+    return (value + 400) / 400;
+}
+#endif
+
+#if ENABLE(VARIATION_FONTS) || !HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+static inline float normalizeVariationWidth(float value)
+{
+    if (value <= 1.25)
+        return value * 100;
+    if (value <= 1.375)
+        return value * 200 - 125;
+    return value * 400 - 400;
+}
+#endif
+
+#if !HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+static inline float normalizeWidth(float value)
+{
+    return normalizeVariationWidth(value + 1);
+}
+#endif
+
+struct FontType {
+    FontType(CTFontRef font)
+    {
+        auto tables = adoptCF(CTFontCopyAvailableTables(font, kCTFontTableOptionNoOptions));
+        if (!tables)
+            return;
+        auto size = CFArrayGetCount(tables.get());
+        for (CFIndex i = 0; i < size; ++i) {
+            // This is so yucky.
+            // https://developer.apple.com/reference/coretext/1510774-ctfontcopyavailabletables
+            // "The returned set will contain unboxed values, which can be extracted like so:"
+            // "CTFontTableTag tag = (CTFontTableTag)(uintptr_t)CFArrayGetValueAtIndex(tags, index);"
+            CTFontTableTag tableTag = static_cast<CTFontTableTag>(reinterpret_cast<uintptr_t>(CFArrayGetValueAtIndex(tables.get(), i)));
+            switch (tableTag) {
+            case 'fvar':
+                if (variationType == VariationType::NotVariable)
+                    variationType = VariationType::TrueTypeGX;
+                break;
+            case 'STAT':
+                variationType = VariationType::OpenType18;
+                break;
+            case 'morx':
+            case 'mort':
+                aatShaping = true;
+                break;
+            case 'GPOS':
+            case 'GSUB':
+                openTypeShaping = true;
+                break;
+            }
+        }
+    }
+
+    enum class VariationType {
+        NotVariable,
+        TrueTypeGX,
+        OpenType18
+    };
+    VariationType variationType { VariationType::NotVariable };
+    bool openTypeShaping { false };
+    bool aatShaping { false };
+};
+
+RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, const FontDescription& fontDescription, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, float size, bool applyWeightWidthSlopeVariations)
+{
+    bool alwaysAddVariations = false;
+
+    // FIXME: Remove when <rdar://problem/29859207> is fixed
+#if ENABLE(VARIATION_FONTS)
+    auto defaultValues = defaultVariationValues(originalFont);
+    alwaysAddVariations = !defaultValues.isEmpty();
+
+    auto fontSelectionRequest = fontDescription.fontSelectionRequest();
+    auto fontOpticalSizing = fontDescription.opticalSizing();
+    auto fontStyleAxis = fontDescription.fontStyleAxis();
+#else
+    UNUSED_PARAM(fontFaceCapabilities);
+    UNUSED_PARAM(size);
+    UNUSED_PARAM(applyWeightWidthSlopeVariations);
+#endif
+
+    const auto& features = fontDescription.featureSettings();
+    const auto& variantSettings = fontDescription.variantSettings();
+    const auto& variations = fontDescription.variationSettings();
+    auto textRenderingMode = fontDescription.textRenderingMode();
+
+    if (!originalFont || (!features.size() && (!alwaysAddVariations && variations.isEmpty()) && (textRenderingMode == AutoTextRendering) && variantSettings.isAllNormal()
         && (!fontFaceFeatures || !fontFaceFeatures->size()) && (!fontFaceVariantSettings || fontFaceVariantSettings->isAllNormal())))
         return originalFont;
 
@@ -401,19 +572,64 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMo
     for (auto& newFeature : features)
         featuresToBeApplied.set(newFeature.tag(), newFeature.value());
 
+    FontType fontType(originalFont);
+
 #if ENABLE(VARIATION_FONTS)
     VariationsMap variationsToBeApplied;
-    for (auto& newVariation : variations)
-        variationsToBeApplied.set(newVariation.tag(), newVariation.value());
-#endif
 
-    RetainPtr<CFMutableDictionaryRef> attributes = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    bool needsConversion = fontType.variationType == FontType::VariationType::TrueTypeGX;
+
+    auto applyVariation = [&](const FontTag& tag, float value) {
+        auto iterator = defaultValues.find(tag);
+        if (iterator == defaultValues.end())
+            return;
+        float valueToApply = clampTo(value, iterator->value.minimumValue, iterator->value.maximumValue);
+        variationsToBeApplied.set(tag, valueToApply);
+    };
+
+    // The system font is somewhat magical. Don't mess with its variations.
+    if (applyWeightWidthSlopeVariations && !fontIsSystemFont(originalFont)) {
+        float weight = fontSelectionRequest.weight;
+        float width = fontSelectionRequest.width;
+        float slope = fontSelectionRequest.slope;
+        if (auto weightValue = fontFaceCapabilities.weight)
+            weight = std::max(std::min(weight, static_cast<float>(weightValue->maximum)), static_cast<float>(weightValue->minimum));
+        if (auto widthValue = fontFaceCapabilities.width)
+            width = std::max(std::min(width, static_cast<float>(widthValue->maximum)), static_cast<float>(widthValue->minimum));
+        if (auto slopeValue = fontFaceCapabilities.weight)
+            slope = std::max(std::min(slope, static_cast<float>(slopeValue->maximum)), static_cast<float>(slopeValue->minimum));
+        if (needsConversion) {
+            weight = denormalizeWeight(weight);
+            width = denormalizeVariationWidth(width);
+            slope = denormalizeSlope(slope);
+        }
+        applyVariation({{'w', 'g', 'h', 't'}}, weight);
+        applyVariation({{'w', 'd', 't', 'h'}}, width);
+        if (fontStyleAxis == FontStyleAxis::ital)
+            applyVariation({{'i', 't', 'a', 'l'}}, 1);
+        else
+            applyVariation({{'s', 'l', 'n', 't'}}, slope);
+    }
+
+    if (fontOpticalSizing == FontOpticalSizing::Enabled) {
+        const float pxToPtRatio = 3.0f / 4;
+        applyVariation({{'o', 'p', 's', 'z'}}, size * pxToPtRatio);
+    }
+
+    for (auto& newVariation : variations)
+        applyVariation(newVariation.tag(), newVariation.value());
+
+#endif // ENABLE(VARIATION_FONTS)
+
+    auto attributes = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     if (!featuresToBeApplied.isEmpty()) {
-        RetainPtr<CFMutableArrayRef> featureArray = adoptCF(CFArrayCreateMutable(kCFAllocatorDefault, features.size(), &kCFTypeArrayCallBacks));
+        auto featureArray = adoptCF(CFArrayCreateMutable(kCFAllocatorDefault, features.size(), &kCFTypeArrayCallBacks));
         for (auto& p : featuresToBeApplied) {
             auto feature = FontFeature(p.key, p.value);
-            appendTrueTypeFeature(featureArray.get(), feature);
-            appendOpenTypeFeature(featureArray.get(), feature);
+            if (fontType.aatShaping)
+                appendTrueTypeFeature(featureArray.get(), feature);
+            if (fontType.openTypeShaping)
+                appendOpenTypeFeature(featureArray.get(), feature);
         }
         CFDictionaryAddValue(attributes.get(), kCTFontFeatureSettingsAttribute, featureArray.get());
     }
@@ -433,89 +649,12 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMo
 
     if (textRenderingMode == OptimizeLegibility) {
         CGFloat size = CTFontGetSize(originalFont);
-        RetainPtr<CFNumberRef> sizeNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberCGFloatType, &size));
+        auto sizeNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberCGFloatType, &size));
         CFDictionaryAddValue(attributes.get(), kCTFontOpticalSizeAttribute, sizeNumber.get());
     }
-    RetainPtr<CTFontDescriptorRef> descriptor = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
+    auto descriptor = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
     auto result = adoptCF(CTFontCreateCopyWithAttributes(originalFont, CTFontGetSize(originalFont), nullptr, descriptor.get()));
     return result;
-}
-
-FontWeight fontWeightFromCoreText(CGFloat weight)
-{
-    if (weight < -0.6)
-        return FontWeight100;
-    if (weight < -0.365)
-        return FontWeight200;
-    if (weight < -0.115)
-        return FontWeight300;
-    if (weight <  0.130)
-        return FontWeight400;
-    if (weight <  0.235)
-        return FontWeight500;
-    if (weight <  0.350)
-        return FontWeight600;
-    if (weight <  0.500)
-        return FontWeight700;
-    if (weight <  0.700)
-        return FontWeight800;
-    return FontWeight900;
-}
-
-static inline FontTraitsMask toTraitsMask(CTFontSymbolicTraits ctFontTraits, CGFloat weight)
-{
-    FontTraitsMask weightMask;
-    switch (fontWeightFromCoreText(weight)) {
-    case FontWeight100:
-        weightMask = FontWeight100Mask;
-        break;
-    case FontWeight200:
-        weightMask = FontWeight200Mask;
-        break;
-    case FontWeight300:
-        weightMask = FontWeight300Mask;
-        break;
-    case FontWeight400:
-        weightMask = FontWeight400Mask;
-        break;
-    case FontWeight500:
-        weightMask = FontWeight500Mask;
-        break;
-    case FontWeight600:
-        weightMask = FontWeight600Mask;
-        break;
-    case FontWeight700:
-        weightMask = FontWeight700Mask;
-        break;
-    case FontWeight800:
-        weightMask = FontWeight800Mask;
-        break;
-    case FontWeight900:
-        weightMask = FontWeight900Mask;
-        break;
-    }
-    return static_cast<FontTraitsMask>(((ctFontTraits & kCTFontTraitItalic) ? FontStyleItalicMask : FontStyleNormalMask) | weightMask);
-}
-
-bool isFontWeightBold(FontWeight fontWeight)
-{
-    return fontWeight >= FontWeight600;
-}
-
-uint16_t toCoreTextFontWeight(FontWeight fontWeight)
-{
-    static const int coreTextFontWeights[] = {
-        100, // FontWeight100
-        200, // FontWeight200
-        300, // FontWeight300
-        400, // FontWeight400
-        500, // FontWeight500
-        600, // FontWeight600
-        700, // FontWeight700
-        800, // FontWeight800
-        900, // FontWeight900
-    };
-    return coreTextFontWeights[fontWeight];
 }
 
 RefPtr<Font> FontCache::similarFont(const FontDescription& description, const AtomicString& family)
@@ -539,9 +678,9 @@ RefPtr<Font> FontCache::similarFont(const FontDescription& description, const At
     }
 #endif
 
-    static NeverDestroyed<String> arabic(ASCIILiteral("Arabic"));
-    static NeverDestroyed<String> pashto(ASCIILiteral("Pashto"));
-    static NeverDestroyed<String> urdu(ASCIILiteral("Urdu"));
+    static NeverDestroyed<String> arabic(MAKE_STATIC_STRING_IMPL("Arabic"));
+    static NeverDestroyed<String> pashto(MAKE_STATIC_STRING_IMPL("Pashto"));
+    static NeverDestroyed<String> urdu(MAKE_STATIC_STRING_IMPL("Urdu"));
     static String* matchWords[3] = { &arabic.get(), &pashto.get(), &urdu.get() };
     static NeverDestroyed<AtomicString> geezaPlain("GeezaPro", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<AtomicString> geezaBold("GeezaPro-Bold", AtomicString::ConstructFromLiteral);
@@ -552,69 +691,47 @@ RefPtr<Font> FontCache::similarFont(const FontDescription& description, const At
     return nullptr;
 }
 
-Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString& familyName)
+#if !HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+static float stretchFromCoreTextTraits(CFDictionaryRef traits)
 {
-    RetainPtr<CFStringRef> familyNameStr = familyName.string().createCFString();
-    CFTypeRef keys[] = { kCTFontFamilyNameAttribute };
-    CFTypeRef values[] = { familyNameStr.get() };
-    RetainPtr<CFDictionaryRef> attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-    RetainPtr<CTFontDescriptorRef> fontDescriptor = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
-    RetainPtr<CFArrayRef> matchedDescriptors = adoptCF(CTFontDescriptorCreateMatchingFontDescriptors(fontDescriptor.get(), nullptr));
-    if (!matchedDescriptors)
-        return { };
+    auto widthNumber = static_cast<CFNumberRef>(CFDictionaryGetValue(traits, kCTFontWidthTrait));
+    if (!widthNumber)
+        return normalStretchValue();
 
-    CFIndex numMatches = CFArrayGetCount(matchedDescriptors.get());
-    if (!numMatches)
-        return { };
-
-    Vector<FontTraitsMask> traitsMasks;
-    traitsMasks.reserveInitialCapacity(numMatches);
-    for (CFIndex i = 0; i < numMatches; ++i) {
-        RetainPtr<CFDictionaryRef> traits = adoptCF((CFDictionaryRef)CTFontDescriptorCopyAttribute((CTFontDescriptorRef)CFArrayGetValueAtIndex(matchedDescriptors.get(), i), kCTFontTraitsAttribute));
-        CFNumberRef resultRef = (CFNumberRef)CFDictionaryGetValue(traits.get(), kCTFontSymbolicTrait);
-        CFNumberRef weightRef = (CFNumberRef)CFDictionaryGetValue(traits.get(), kCTFontWeightTrait);
-        if (resultRef && weightRef) {
-            CTFontSymbolicTraits symbolicTraits;
-            CFNumberGetValue(resultRef, kCFNumberIntType, &symbolicTraits);
-            CGFloat weight = 0;
-            CFNumberGetValue(weightRef, kCFNumberCGFloatType, &weight);
-            traitsMasks.uncheckedAppend(toTraitsMask(symbolicTraits, weight));
-        }
-    }
-    return traitsMasks;
+    float ctWidth;
+    auto success = CFNumberGetValue(widthNumber, kCFNumberFloatType, &ctWidth);
+    ASSERT_UNUSED(success, success);
+    return normalizeWidth(ctWidth);
 }
+#endif
 
-static void invalidateFontCache()
-{
-    if (!isMainThread()) {
-        callOnMainThread([] {
-            invalidateFontCache();
-        });
-        return;
-    }
+static void invalidateFontCache();
 
-    FontCache::singleton().invalidate();
-
-    platformInvalidateFontCache();
-}
-
-static void fontCacheRegisteredFontsChangedNotificationCallback(CFNotificationCenterRef, void* observer, CFStringRef name, const void *, CFDictionaryRef)
+static void fontCacheRegisteredFontsChangedNotificationCallback(CFNotificationCenterRef, void* observer, CFStringRef, const void *, CFDictionaryRef)
 {
     ASSERT_UNUSED(observer, observer == &FontCache::singleton());
-    ASSERT_UNUSED(name, CFEqual(name, kCTFontManagerRegisteredFontsChangedNotification));
 
     invalidateFontCache();
 }
 
 void FontCache::platformInit()
 {
-    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, fontCacheRegisteredFontsChangedNotificationCallback, kCTFontManagerRegisteredFontsChangedNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, &fontCacheRegisteredFontsChangedNotificationCallback, kCTFontManagerRegisteredFontsChangedNotification, nullptr, CFNotificationSuspensionBehaviorDeliverImmediately);
+
+#if PLATFORM(MAC)
+    CFNotificationCenterRef center = CFNotificationCenterGetLocalCenter();
+    const CFStringRef notificationName = kCFLocaleCurrentLocaleDidChangeNotification;
+#else
+    CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
+    const CFStringRef notificationName = CFSTR("com.apple.language.changed");
+#endif
+    CFNotificationCenterAddObserver(center, this, &fontCacheRegisteredFontsChangedNotificationCallback, notificationName, nullptr, CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
 Vector<String> FontCache::systemFontFamilies()
 {
     // FIXME: <rdar://problem/21890188>
-    RetainPtr<CFDictionaryRef> attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, nullptr, nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, nullptr, nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     auto emptyFontDescriptor = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
     auto matchedDescriptors = adoptCF(CTFontDescriptorCreateMatchingFontDescriptors(emptyFontDescriptor.get(), nullptr));
     if (!matchedDescriptors)
@@ -659,7 +776,7 @@ SynthesisPair computeNecessarySynthesis(CTFontRef font, const FontDescription& f
     CTFontSymbolicTraits desiredTraits = computeTraits(fontDescription);
 
     CTFontSymbolicTraits actualTraits = 0;
-    if (isFontWeightBold(fontDescription.weight()) || fontDescription.italic())
+    if (isFontWeightBold(fontDescription.weight()) || isItalic(fontDescription.italic()))
         actualTraits = CTFontGetSymbolicTraits(font);
 
     bool needsSyntheticBold = (fontDescription.fontSynthesis() & FontSynthesisWeight) && (desiredTraits & kCTFontTraitBold) && !(actualTraits & kCTFontTraitBold);
@@ -683,36 +800,424 @@ void FontCache::setFontWhitelist(const Vector<String>& inputWhitelist)
         whitelist.add(item);
 }
 
-#if ENABLE(PLATFORM_FONT_LOOKUP)
-static bool isSystemFont(const AtomicString& family)
+static inline bool isSystemFont(const AtomicString& family)
 {
-    return family.length() >= 1 && family[0] == '.';
+    // AtomicString's operator[] handles out-of-bounds by returning 0.
+    return family[0] == '.';
 }
 
-static RetainPtr<CTFontRef> platformFontLookupWithFamily(const AtomicString& family, CTFontSymbolicTraits requestedTraits, FontWeight weight, float size)
+#if SHOULD_USE_CORE_TEXT_FONT_LOOKUP
+static float fontWeightFromCoreText(CGFloat weight)
 {
-    const auto& whitelist = fontWhitelist();
-    if (!isSystemFont(family) && whitelist.size() && !whitelist.contains(family))
-        return nullptr;
-
-    return adoptCF(CTFontCreateForCSS(family.string().createCFString().get(), toCoreTextFontWeight(weight), requestedTraits, size));
+    if (weight < -0.6)
+        return 100;
+    if (weight < -0.365)
+        return 200;
+    if (weight < -0.115)
+        return 300;
+    if (weight <  0.130)
+        return 400;
+    if (weight <  0.235)
+        return 500;
+    if (weight <  0.350)
+        return 600;
+    if (weight <  0.500)
+        return 700;
+    if (weight <  0.700)
+        return 800;
+    return 900;
 }
 #endif
 
-static RetainPtr<CTFontRef> fontWithFamily(const AtomicString& family, CTFontSymbolicTraits desiredTraits, FontWeight weight, const FontFeatureSettings& featureSettings, const FontVariantSettings& variantSettings, const FontVariationSettings& variationSettings, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, const TextRenderingMode& textRenderingMode, float size)
+class FontDatabase {
+public:
+    static FontDatabase& singleton()
+    {
+        static NeverDestroyed<FontDatabase> database;
+        return database;
+    }
+
+    FontDatabase(const FontDatabase&) = delete;
+    FontDatabase& operator=(const FontDatabase&) = delete;
+
+    struct InstalledFont {
+        InstalledFont() = default;
+
+        InstalledFont(CTFontDescriptorRef fontDescriptor)
+            : fontDescriptor(fontDescriptor)
+            , capabilities(capabilitiesForFontDescriptor(fontDescriptor))
+        {
+        }
+
+        RetainPtr<CTFontDescriptorRef> fontDescriptor;
+        FontSelectionCapabilities capabilities;
+    };
+
+    struct InstalledFontFamily {
+        InstalledFontFamily() = default;
+
+        explicit InstalledFontFamily(Vector<InstalledFont>&& installedFonts)
+            : installedFonts(WTFMove(installedFonts))
+        {
+            for (auto& font : this->installedFonts)
+                expand(font);
+        }
+
+        void expand(const InstalledFont& installedFont)
+        {
+            capabilities.expand(installedFont.capabilities);
+        }
+
+        bool isEmpty() const
+        {
+            return installedFonts.isEmpty();
+        }
+
+        size_t size() const
+        {
+            return installedFonts.size();
+        }
+
+        Vector<InstalledFont> installedFonts;
+        FontSelectionCapabilities capabilities;
+    };
+
+    const InstalledFontFamily& collectionForFamily(const String& familyName)
+    {
+        auto folded = familyName.foldCase();
+        return m_familyNameToFontDescriptors.ensure(folded, [&] {
+            auto familyNameString = folded.createCFString();
+            CFTypeRef keys[] = { kCTFontFamilyNameAttribute };
+            CFTypeRef values[] = { familyNameString.get() };
+            auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+            auto fontDescriptorToMatch = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
+            if (auto matches = adoptCF(CTFontDescriptorCreateMatchingFontDescriptors(fontDescriptorToMatch.get(), nullptr))) {
+                auto count = CFArrayGetCount(matches.get());
+                Vector<InstalledFont> result;
+                result.reserveInitialCapacity(count);
+                for (CFIndex i = 0; i < count; ++i) {
+                    InstalledFont installedFont(static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(matches.get(), i)));
+                    result.uncheckedAppend(WTFMove(installedFont));
+                }
+                return InstalledFontFamily(WTFMove(result));
+            }
+            return InstalledFontFamily();
+        }).iterator->value;
+    }
+
+    const InstalledFont& fontForPostScriptName(const AtomicString& postScriptName)
+    {
+        const auto& folded = FontCascadeDescription::foldedFamilyName(postScriptName);
+        return m_postScriptNameToFontDescriptors.ensure(folded, [&] {
+            auto postScriptNameString = folded.createCFString();
+#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
+            CFStringRef nameAttribute = kCTFontPostScriptNameAttribute;
+#else
+            CFStringRef nameAttribute = kCTFontNameAttribute;
+#endif
+            CFTypeRef keys[] = { kCTFontEnabledAttribute, nameAttribute };
+            CFTypeRef values[] = { kCFBooleanTrue, postScriptNameString.get() };
+            auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+            auto fontDescriptorToMatch = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
+            auto match = adoptCF(static_cast<CTFontDescriptorRef>(CTFontDescriptorCreateMatchingFontDescriptor(fontDescriptorToMatch.get(), nullptr)));
+            return InstalledFont(match.get());
+        }).iterator->value;
+    }
+
+    void clear()
+    {
+        m_familyNameToFontDescriptors.clear();
+        m_postScriptNameToFontDescriptors.clear();
+    }
+
+private:
+    friend class NeverDestroyed<FontDatabase>;
+
+    FontDatabase() = default;
+
+    HashMap<String, InstalledFontFamily> m_familyNameToFontDescriptors;
+    HashMap<String, InstalledFont> m_postScriptNameToFontDescriptors;
+};
+
+// Because this struct holds intermediate values which may be in the compressed -1 - 1 GX range, we don't want to use the relatively large
+// quantization of FontSelectionValue. Instead, do this logic with floats.
+struct MinMax {
+    float minimum;
+    float maximum;
+};
+
+struct VariationCapabilities {
+    std::optional<MinMax> weight;
+    std::optional<MinMax> width;
+    std::optional<MinMax> slope;
+};
+
+#if ENABLE(VARIATION_FONTS)
+static std::optional<MinMax> extractVariationBounds(CFDictionaryRef axis)
+{
+    CFNumberRef minimumValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisMinimumValueKey));
+    CFNumberRef maximumValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisMaximumValueKey));
+    float rawMinimumValue = 0;
+    float rawMaximumValue = 0;
+    CFNumberGetValue(minimumValue, kCFNumberFloatType, &rawMinimumValue);
+    CFNumberGetValue(maximumValue, kCFNumberFloatType, &rawMaximumValue);
+    if (rawMinimumValue < rawMaximumValue)
+        return {{ rawMinimumValue, rawMaximumValue }};
+    return std::nullopt;
+}
+#endif
+
+static VariationCapabilities variationCapabilitiesForFontDescriptor(CTFontDescriptorRef fontDescriptor)
+{
+    VariationCapabilities result;
+
+#if ENABLE(VARIATION_FONTS)
+    if (!adoptCF(CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontVariationAttribute)))
+        return result;
+
+    auto font = adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor, 0, nullptr));
+    auto variations = adoptCF(CTFontCopyVariationAxes(font.get()));
+    if (!variations)
+        return result;
+
+    auto axisCount = CFArrayGetCount(variations.get());
+    if (!axisCount)
+        return result;
+
+    for (CFIndex i = 0; i < axisCount; ++i) {
+        CFDictionaryRef axis = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(variations.get(), i));
+        CFNumberRef axisIdentifier = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisIdentifierKey));
+        uint32_t rawAxisIdentifier = 0;
+        Boolean success = CFNumberGetValue(axisIdentifier, kCFNumberSInt32Type, &rawAxisIdentifier);
+        ASSERT_UNUSED(success, success);
+        if (rawAxisIdentifier == 0x77676874) // 'wght'
+            result.weight = extractVariationBounds(axis);
+        else if (rawAxisIdentifier == 0x77647468) // 'wdth'
+            result.width = extractVariationBounds(axis);
+        else if (rawAxisIdentifier == 0x736C6E74) // 'slnt'
+            result.slope = extractVariationBounds(axis);
+    }
+
+    bool optOutFromGXNormalization = false;
+#if ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000))
+    optOutFromGXNormalization = CTFontDescriptorIsSystemUIFont(fontDescriptor);
+#endif
+
+    if (FontType(font.get()).variationType == FontType::VariationType::TrueTypeGX && !optOutFromGXNormalization) {
+        if (result.weight)
+            result.weight = {{ normalizeWeight(result.weight.value().minimum), normalizeWeight(result.weight.value().maximum) }};
+        if (result.width)
+            result.width = {{ normalizeVariationWidth(result.width.value().minimum), normalizeVariationWidth(result.width.value().maximum) }};
+        if (result.slope)
+            result.slope = {{ normalizeSlope(result.slope.value().minimum), normalizeSlope(result.slope.value().maximum) }};
+    }
+
+    auto minimum = static_cast<float>(FontSelectionValue::minimumValue());
+    auto maximum = static_cast<float>(FontSelectionValue::maximumValue());
+    if (result.weight && (result.weight.value().minimum < minimum || result.weight.value().maximum > maximum))
+        result.weight = { };
+    if (result.width && (result.width.value().minimum < minimum || result.width.value().maximum > maximum))
+        result.width = { };
+    if (result.slope && (result.slope.value().minimum < minimum || result.slope.value().maximum > maximum))
+        result.slope = { };
+#else
+    UNUSED_PARAM(fontDescriptor);
+#endif
+
+    return result;
+}
+
+#if !SHOULD_USE_CORE_TEXT_FONT_LOOKUP || HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+static float getCSSAttribute(CTFontDescriptorRef fontDescriptor, const CFStringRef attribute, float fallback)
+{
+    auto number = adoptCF(static_cast<CFNumberRef>(CTFontDescriptorCopyAttribute(fontDescriptor, attribute)));
+    if (!number)
+        return fallback;
+    float cssValue;
+    auto success = CFNumberGetValue(number.get(), kCFNumberFloatType, &cssValue);
+    ASSERT_UNUSED(success, success);
+    return cssValue;
+}
+#endif
+
+FontSelectionCapabilities capabilitiesForFontDescriptor(CTFontDescriptorRef fontDescriptor)
+{
+    if (!fontDescriptor)
+        return { };
+
+    VariationCapabilities variationCapabilities = variationCapabilitiesForFontDescriptor(fontDescriptor);
+
+#if SHOULD_USE_CORE_TEXT_FONT_LOOKUP || !HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+    bool weightOrWidthComeFromTraits = !variationCapabilities.weight || !variationCapabilities.width;
+#else
+    bool weightOrWidthComeFromTraits = false;
+#endif
+
+    if (!variationCapabilities.slope || weightOrWidthComeFromTraits) {
+        auto traits = adoptCF(static_cast<CFDictionaryRef>(CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontTraitsAttribute)));
+        if (traits) {
+#if !HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+            if (!variationCapabilities.width) {
+                auto widthValue = stretchFromCoreTextTraits(traits.get());
+                variationCapabilities.width = {{ widthValue, widthValue }};
+            }
+#endif
+
+            if (!variationCapabilities.slope) {
+                auto symbolicTraitsNumber = static_cast<CFNumberRef>(CFDictionaryGetValue(traits.get(), kCTFontSymbolicTrait));
+                if (symbolicTraitsNumber) {
+                    int32_t symbolicTraits;
+                    auto success = CFNumberGetValue(symbolicTraitsNumber, kCFNumberSInt32Type, &symbolicTraits);
+                    ASSERT_UNUSED(success, success);
+                    auto slopeValue = static_cast<float>(symbolicTraits & kCTFontTraitItalic ? italicValue() : normalItalicValue());
+                    variationCapabilities.slope = {{ slopeValue, slopeValue }};
+                } else
+                    variationCapabilities.slope = {{ static_cast<float>(normalItalicValue()), static_cast<float>(normalItalicValue()) }};
+            }
+
+#if SHOULD_USE_CORE_TEXT_FONT_LOOKUP
+            if (!variationCapabilities.weight) {
+                auto weightNumber = static_cast<CFNumberRef>(CFDictionaryGetValue(traits.get(), kCTFontWeightTrait));
+                if (weightNumber) {
+                    CGFloat ctWeight;
+                    auto success = CFNumberGetValue(weightNumber, kCFNumberCGFloatType, &ctWeight);
+                    ASSERT_UNUSED(success, success);
+                    auto weightValue = fontWeightFromCoreText(ctWeight);
+                    variationCapabilities.weight = {{ weightValue, weightValue }};
+                } else
+                    variationCapabilities.weight = {{ static_cast<float>(normalWeightValue()), static_cast<float>(normalWeightValue()) }};
+            }
+#endif
+        }
+    }
+
+#if !SHOULD_USE_CORE_TEXT_FONT_LOOKUP
+    if (!variationCapabilities.weight) {
+        auto value = getCSSAttribute(fontDescriptor, kCTFontCSSWeightAttribute, static_cast<float>(normalWeightValue()));
+        variationCapabilities.weight = {{ value, value }};
+    }
+#endif
+
+#if HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+    if (!variationCapabilities.width) {
+        auto value = getCSSAttribute(fontDescriptor, kCTFontCSSWidthAttribute, static_cast<float>(normalStretchValue()));
+        variationCapabilities.width = {{ value, value }};
+    }
+#endif
+
+    FontSelectionCapabilities result = {{ FontSelectionValue(variationCapabilities.weight.value().minimum), FontSelectionValue(variationCapabilities.weight.value().maximum) },
+        { FontSelectionValue(variationCapabilities.width.value().minimum), FontSelectionValue(variationCapabilities.width.value().maximum) },
+        { FontSelectionValue(variationCapabilities.slope.value().minimum), FontSelectionValue(variationCapabilities.slope.value().maximum) }};
+    ASSERT(result.weight.isValid());
+    ASSERT(result.width.isValid());
+    ASSERT(result.slope.isValid());
+    return result;
+}
+
+#if !SHOULD_USE_CORE_TEXT_FONT_LOOKUP
+static const FontDatabase::InstalledFont* findClosestFont(const FontDatabase::InstalledFontFamily& familyFonts, FontSelectionRequest fontSelectionRequest)
+{
+    Vector<FontSelectionCapabilities> capabilities;
+    capabilities.reserveInitialCapacity(familyFonts.size());
+    for (auto& font : familyFonts.installedFonts)
+        capabilities.uncheckedAppend(font.capabilities);
+    FontSelectionAlgorithm fontSelectionAlgorithm(fontSelectionRequest, capabilities, familyFonts.capabilities);
+    return &familyFonts.installedFonts[fontSelectionAlgorithm.indexOfBestCapabilities()];
+}
+#endif
+
+Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomicString& familyName)
+{
+    const auto& fonts = FontDatabase::singleton().collectionForFamily(familyName.string());
+    if (fonts.isEmpty())
+        return { };
+
+    Vector<FontSelectionCapabilities> result;
+    result.reserveInitialCapacity(fonts.size());
+    for (const auto& font : fonts.installedFonts)
+        result.uncheckedAppend(font.capabilities);
+    return result;
+}
+
+struct FontLookup {
+    RetainPtr<CTFontRef> result;
+    bool createdFromPostScriptName { false };
+};
+
+static FontLookup platformFontLookupWithFamily(const AtomicString& family, FontSelectionRequest request, float size)
+{
+    const auto& whitelist = fontWhitelist();
+    if (!isSystemFont(family) && whitelist.size() && !whitelist.contains(family))
+        return { nullptr };
+
+#if SHOULD_USE_CORE_TEXT_FONT_LOOKUP
+    CTFontSymbolicTraits traits = (isFontWeightBold(request.weight) ? kCTFontTraitBold : 0) | (isItalic(request.slope) ? kCTFontTraitItalic : 0);
+    return { adoptCF(CTFontCreateForCSS(family.string().createCFString().get(), static_cast<float>(request.weight), traits, size)) };
+#else
+    const auto& familyFonts = FontDatabase::singleton().collectionForFamily(family.string());
+    if (familyFonts.isEmpty()) {
+        // The CSS spec states that font-family only accepts a name of an actual font family. However, in WebKit, we claim to also
+        // support supplying a PostScript name instead. However, this creates problems when the other properties (font-weight,
+        // font-style) disagree with the traits of the PostScript-named font. The solution we have come up with is, when the default
+        // values for font-weight and font-style are supplied, honor the PostScript name, but if font-weight specifies bold or
+        // font-style specifies italic, then we run the regular matching algorithm on the family of the PostScript font. This way,
+        // if content simply states "font-family: PostScriptName;" without specifying the other font properties, it will be honored,
+        // but if a <b> appears as a descendent element, it will be honored too.
+        const auto& postScriptFont = FontDatabase::singleton().fontForPostScriptName(family);
+        if (!postScriptFont.fontDescriptor)
+            return { nullptr };
+        if ((isItalic(request.slope) && !isItalic(postScriptFont.capabilities.slope.maximum))
+            || (isFontWeightBold(request.weight) && !isFontWeightBold(postScriptFont.capabilities.weight.maximum))) {
+            auto postScriptFamilyName = adoptCF(static_cast<CFStringRef>(CTFontDescriptorCopyAttribute(postScriptFont.fontDescriptor.get(), kCTFontFamilyNameAttribute)));
+            if (!postScriptFamilyName)
+                return { nullptr };
+            const auto& familyFonts = FontDatabase::singleton().collectionForFamily(String(postScriptFamilyName.get()));
+            if (familyFonts.isEmpty())
+                return { nullptr };
+            if (const auto* installedFont = findClosestFont(familyFonts, request)) {
+                if (!installedFont->fontDescriptor)
+                    return { nullptr };
+                return { adoptCF(CTFontCreateWithFontDescriptor(installedFont->fontDescriptor.get(), size, nullptr)), true };
+            }
+            return { nullptr };
+        }
+        return { adoptCF(CTFontCreateWithFontDescriptor(postScriptFont.fontDescriptor.get(), size, nullptr)), true };
+    }
+
+    if (const auto* installedFont = findClosestFont(familyFonts, request))
+        return { adoptCF(CTFontCreateWithFontDescriptor(installedFont->fontDescriptor.get(), size, nullptr)), false };
+
+    return { nullptr };
+#endif
+}
+
+static void invalidateFontCache()
+{
+    if (!isMainThread()) {
+        callOnMainThread([] {
+            invalidateFontCache();
+        });
+        return;
+    }
+
+    FontDescription::invalidateCaches();
+
+    FontDatabase::singleton().clear();
+
+    FontCache::singleton().invalidate();
+}
+
+static RetainPtr<CTFontRef> fontWithFamily(const AtomicString& family, const FontDescription& fontDescription, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, float size)
 {
     if (family.isEmpty())
         return nullptr;
 
-    RetainPtr<CTFontRef> foundFont = platformFontWithFamilySpecialCase(family, weight, desiredTraits, size);
-    if (!foundFont) {
-#if ENABLE(PLATFORM_FONT_LOOKUP)
-        foundFont = platformFontLookupWithFamily(family, desiredTraits, weight, size);
-#else
-        foundFont = platformFontWithFamily(family, desiredTraits, weight, textRenderingMode, size);
-#endif
-    }
-    return preparePlatformFont(foundFont.get(), textRenderingMode, fontFaceFeatures, fontFaceVariantSettings, featureSettings, variantSettings, variationSettings);
+    const auto& request = fontDescription.fontSelectionRequest();
+    FontLookup fontLookup;
+    fontLookup.result = platformFontWithFamilySpecialCase(family, request, size);
+    if (!fontLookup.result)
+        fontLookup = platformFontLookupWithFamily(family, request, size);
+    return preparePlatformFont(fontLookup.result.get(), fontDescription, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, size, !fontLookup.createdFromPostScriptName);
 }
 
 #if PLATFORM(MAC)
@@ -747,12 +1252,11 @@ static void autoActivateFont(const String& name, CGFloat size)
 }
 #endif
 
-std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings)
+std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
 {
-    CTFontSymbolicTraits traits = computeTraits(fontDescription);
     float size = fontDescription.computedPixelSize();
 
-    RetainPtr<CTFontRef> font = fontWithFamily(family, traits, fontDescription.weight(), fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.variationSettings(), fontFaceFeatures, fontFaceVariantSettings, fontDescription.textRenderingMode(), size);
+    auto font = fontWithFamily(family, fontDescription, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, size);
 
 #if PLATFORM(MAC)
     if (!font) {
@@ -763,7 +1267,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
         // Ignore the result because we want to use our own algorithm to actually find the font.
         autoActivateFont(family.string(), size);
 
-        font = fontWithFamily(family, traits, fontDescription.weight(), fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.variationSettings(), fontFaceFeatures, fontFaceVariantSettings, fontDescription.textRenderingMode(), size);
+        font = fontWithFamily(family, fontDescription, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, size);
     }
 #endif
 
@@ -794,6 +1298,55 @@ void FontCache::platformPurgeInactiveFontData()
         fallbackDedupSet().remove(font);
 }
 
+#if PLATFORM(IOS)
+static inline bool isArabicCharacter(UChar character)
+{
+    return character >= 0x0600 && character <= 0x06FF;
+}
+#endif
+
+static RetainPtr<CTFontRef> lookupFallbackFont(CTFontRef font, FontSelectionValue fontWeight, const AtomicString& locale, const UChar* characters, unsigned length)
+{
+    ASSERT(length > 0);
+
+    RetainPtr<CFStringRef> localeString;
+#if (PLATFORM(IOS) && TARGET_OS_IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+    if (!locale.isNull())
+        localeString = locale.string().createCFString();
+#else
+    UNUSED_PARAM(locale);
+#endif
+
+    CFIndex coveredLength = 0;
+    RetainPtr<CTFontRef> result;
+#if !USE_PLATFORM_SYSTEM_FALLBACK_LIST && ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && TARGET_OS_IOS))
+    result = adoptCF(CTFontCreatePhysicalFontForCharactersWithLanguage(font, characters, length, localeString.get(), &coveredLength));
+#else
+    result = adoptCF(CTFontCreateForCharactersWithLanguage(font, characters, length, localeString.get(), &coveredLength));
+#endif
+
+#if PLATFORM(IOS)
+    // Callers of this function won't include multiple code points. "Length" is to know how many code units
+    // are in the code point.
+    UChar firstCharacter = characters[0];
+    if (isArabicCharacter(firstCharacter)) {
+        auto familyName = adoptCF(static_cast<CFStringRef>(CTFontCopyAttribute(result.get(), kCTFontFamilyNameAttribute)));
+        if (fontFamilyShouldNotBeUsedForArabic(familyName.get())) {
+            CFStringRef newFamilyName = isFontWeightBold(fontWeight) ? CFSTR("GeezaPro-Bold") : CFSTR("GeezaPro");
+            CFTypeRef keys[] = { kCTFontNameAttribute };
+            CFTypeRef values[] = { newFamilyName };
+            auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+            auto modification = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
+            result = adoptCF(CTFontCreateCopyWithAttributes(result.get(), CTFontGetSize(result.get()), nullptr, modification.get()));
+        }
+    }
+#else
+    UNUSED_PARAM(fontWeight);
+#endif
+
+    return result;
+}
+
 RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* originalFontData, bool isPlatformFont, const UChar* characters, unsigned length)
 {
 #if PLATFORM(IOS)
@@ -806,8 +1359,8 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
 #endif
 
     const FontPlatformData& platformData = originalFontData->platformData();
-    RetainPtr<CTFontRef> result = platformLookupFallbackFont(platformData.font(), description.weight(), description.locale(), characters, length);
-    result = preparePlatformFont(result.get(), description.textRenderingMode(), nullptr, nullptr, description.featureSettings(), description.variantSettings(), description.variationSettings());
+    auto result = lookupFallbackFont(platformData.font(), description.weight(), description.locale(), characters, length);
+    result = preparePlatformFont(result.get(), description, nullptr, nullptr, { }, description.computedSize());
     if (!result)
         return lastResortFallbackFont(description);
 
@@ -834,13 +1387,8 @@ const AtomicString& FontCache::platformAlternateFamilyName(const AtomicString& f
 
     static NeverDestroyed<AtomicString> songtiSC("Songti SC", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<AtomicString> songtiTC("Songti TC", AtomicString::ConstructFromLiteral);
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
-    static NeverDestroyed<AtomicString> heitiSCReplacement("Heiti SC", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<AtomicString> heitiTCReplacement("Heiti TC", AtomicString::ConstructFromLiteral);
-#else
     static NeverDestroyed<AtomicString> heitiSCReplacement("PingFang SC", AtomicString::ConstructFromLiteral);
     static NeverDestroyed<AtomicString> heitiTCReplacement("PingFang TC", AtomicString::ConstructFromLiteral);
-#endif
 
     switch (familyName.length()) {
     case 2:
@@ -869,19 +1417,13 @@ const AtomicString& FontCache::platformAlternateFamilyName(const AtomicString& f
         if (equalIgnoringASCIICase(familyName, "\\5b8b\\4f53"))
             return songtiSC;
         break;
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
-    case 15:
-        if (equalLettersIgnoringASCIICase(familyName, "microsoft yahei"))
-            return heitiSCReplacement;
-        break;
-#endif
     case 18:
         if (equalLettersIgnoringASCIICase(familyName, "microsoft jhenghei"))
             return heitiTCReplacement;
         break;
     }
 
-    return nullAtom;
+    return nullAtom();
 }
 
 }

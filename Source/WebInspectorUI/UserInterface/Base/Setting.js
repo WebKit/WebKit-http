@@ -29,7 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Setting = class Setting extends WebInspector.Object
+WI.Setting = class Setting extends WI.Object
 {
     constructor(name, defaultValue)
     {
@@ -88,7 +88,7 @@ WebInspector.Setting = class Setting extends WebInspector.Object
             }
         }
 
-        this.dispatchEventToListeners(WebInspector.Setting.Event.Changed, this._value, {name: this._name});
+        this.dispatchEventToListeners(WI.Setting.Event.Changed, this._value, {name: this._name});
     }
 
     reset()
@@ -98,15 +98,35 @@ WebInspector.Setting = class Setting extends WebInspector.Object
     }
 };
 
-WebInspector.Setting.Event = {
+WI.Setting.Event = {
     Changed: "setting-changed"
 };
 
-WebInspector.settings = {
-    enableLineWrapping: new WebInspector.Setting("enable-line-wrapping", false),
-    indentUnit: new WebInspector.Setting("indent-unit", 4),
-    tabSize: new WebInspector.Setting("tab-size", 4),
-    indentWithTabs: new WebInspector.Setting("indent-with-tabs", false),
-    showWhitespaceCharacters: new WebInspector.Setting("show-whitespace-characters", false),
-    showInvalidCharacters: new WebInspector.Setting("show-invalid-characters", false),
+WI.settings = {
+    autoLogProtocolMessages: new WI.Setting("auto-collect-protocol-messages", false),
+    autoLogTimeStats: new WI.Setting("auto-collect-time-stats", false),
+    enableUncaughtExceptionReporter: new WI.Setting("enable-uncaught-exception-reporter", true),
+    enableLayoutFlashing: new WI.Setting("enable-layout-flashing", false),
+    enableLineWrapping: new WI.Setting("enable-line-wrapping", false),
+    indentUnit: new WI.Setting("indent-unit", 4),
+    tabSize: new WI.Setting("tab-size", 4),
+    indentWithTabs: new WI.Setting("indent-with-tabs", false),
+    showWhitespaceCharacters: new WI.Setting("show-whitespace-characters", false),
+    showInvalidCharacters: new WI.Setting("show-invalid-characters", false),
+    clearLogOnNavigate: new WI.Setting("clear-log-on-navigate", true),
+    clearNetworkOnNavigate: new WI.Setting("clear-network-on-navigate", true),
+    zoomFactor: new WI.Setting("zoom-factor", 1),
+    layoutDirection: new WI.Setting("layout-direction-override", "system"),
+    stylesShowInlineWarnings: new WI.Setting("styles-show-inline-warning", true),
+    stylesInsertNewline: new WI.Setting("styles-insert-newline", true),
+    stylesSelectOnFirstClick: new WI.Setting("styles-select-on-first-click", true),
+    showScopeChainOnPause: new WI.Setting("show-scope-chain-sidebar", true),
+    showImageGrid: new WI.Setting("show-image-grid", false),
+    showCanvasPath: new WI.Setting("show-canvas-path", false),
+
+    // Experimental
+    experimentalShowCanvasContextsInResources: new WI.Setting("experimental-show-canvas-contexts-in-resources", false),
+    experimentalSpreadsheetStyleEditor: new WI.Setting("experimental-spreadsheet-style-editor", false),
+    experimentalEnableLayersTab: new WI.Setting("experimental-enable-layers-tab", false),
+    experimentalEnableNewNetworkTab: new WI.Setting("experimental-enable-new-network-tab", false),
 };

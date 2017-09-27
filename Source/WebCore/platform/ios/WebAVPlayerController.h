@@ -25,11 +25,11 @@
 
 #if PLATFORM(IOS) && HAVE(AVKIT)
 
-#import "AVKitSPI.h"
+#import <pal/spi/cocoa/AVKitSPI.h>
 
 namespace WebCore {
-class WebPlaybackSessionModel;
-class WebPlaybackSessionInterfaceAVKit;
+class PlaybackSessionModel;
+class PlaybackSessionInterfaceAVKit;
 }
 
 @interface WebAVMediaSelectionOption : NSObject
@@ -40,11 +40,12 @@ class WebPlaybackSessionInterfaceAVKit;
     WebAVMediaSelectionOption *_currentAudioMediaSelectionOption;
     WebAVMediaSelectionOption *_currentLegibleMediaSelectionOption;
     BOOL _pictureInPictureInterrupted;
+    BOOL _muted;
 }
 
 @property (retain) AVPlayerController* playerControllerProxy;
-@property (assign) WebCore::WebPlaybackSessionModel* delegate;
-@property (assign) WebCore::WebPlaybackSessionInterfaceAVKit* playbackSessionInterface;
+@property (assign) WebCore::PlaybackSessionModel* delegate;
+@property (assign) WebCore::PlaybackSessionInterfaceAVKit* playbackSessionInterface;
 
 @property (readonly) BOOL canScanForward;
 @property BOOL canScanBackward;
@@ -61,13 +62,15 @@ class WebPlaybackSessionInterfaceAVKit;
 @property CGSize contentDimensions;
 @property BOOL hasEnabledAudio;
 @property BOOL hasEnabledVideo;
-@property NSTimeInterval minTime;
-@property NSTimeInterval maxTime;
+@property BOOL hasVideo;
+@property (readonly) NSTimeInterval minTime;
+@property (readonly) NSTimeInterval maxTime;
 @property NSTimeInterval contentDurationWithinEndTimes;
 @property (retain) NSArray *loadedTimeRanges;
 @property AVPlayerControllerStatus status;
 @property (retain) AVValueTiming *timing;
 @property (retain) NSArray *seekableTimeRanges;
+@property (getter=isMuted) BOOL muted;
 
 @property (readonly) BOOL hasMediaSelectionOptions;
 @property (readonly) BOOL hasAudioMediaSelectionOptions;
@@ -85,6 +88,14 @@ class WebPlaybackSessionInterfaceAVKit;
 @property BOOL allowsExternalPlayback;
 @property (getter=isPictureInPicturePossible) BOOL pictureInPicturePossible;
 @property (getter=isPictureInPictureInterrupted) BOOL pictureInPictureInterrupted;
+
+@property NSTimeInterval seekableTimeRangesLastModifiedTime;
+@property NSTimeInterval liveUpdateInterval;
+
+@property (NS_NONATOMIC_IOSONLY, retain, readwrite) AVValueTiming *minTiming;
+@property (NS_NONATOMIC_IOSONLY, retain, readwrite) AVValueTiming *maxTiming;
+
+- (void)resetMediaState;
 @end
 
 #endif

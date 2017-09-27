@@ -62,8 +62,7 @@ MediaSourcePrivate::AddStatus MockMediaSourcePrivate::addSourceBuffer(const Cont
 {
     MediaEngineSupportParameters parameters;
     parameters.isMediaSource = true;
-    parameters.type = contentType.type();
-    parameters.codecs = contentType.parameter(ASCIILiteral("codecs"));
+    parameters.type = contentType;
     if (MockMediaPlayerMediaSource::supportsType(parameters) == MediaPlayer::IsNotSupported)
         return NotSupported;
 
@@ -144,9 +143,9 @@ void MockMediaSourcePrivate::sourceBufferPrivateDidChangeActiveState(MockSourceB
     }
 }
 
-static bool MockSourceBufferPrivateHasAudio(PassRefPtr<MockSourceBufferPrivate> prpSourceBuffer)
+static bool MockSourceBufferPrivateHasAudio(MockSourceBufferPrivate* sourceBuffer)
 {
-    return prpSourceBuffer->hasAudio();
+    return sourceBuffer->hasAudio();
 }
 
 bool MockMediaSourcePrivate::hasAudio() const
@@ -154,9 +153,9 @@ bool MockMediaSourcePrivate::hasAudio() const
     return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), MockSourceBufferPrivateHasAudio);
 }
 
-static bool MockSourceBufferPrivateHasVideo(PassRefPtr<MockSourceBufferPrivate> prpSourceBuffer)
+static bool MockSourceBufferPrivateHasVideo(MockSourceBufferPrivate* sourceBuffer)
 {
-    return prpSourceBuffer->hasVideo();
+    return sourceBuffer->hasVideo();
 }
 
 bool MockMediaSourcePrivate::hasVideo() const
@@ -182,6 +181,16 @@ MediaTime MockMediaSourcePrivate::seekToTime(const MediaTime& targetTime, const 
         (*it)->seekToTime(seekTime);
     
     return seekTime;
+}
+
+std::optional<PlatformVideoPlaybackQualityMetrics> MockMediaSourcePrivate::videoPlaybackQualityMetrics()
+{
+    return PlatformVideoPlaybackQualityMetrics(
+        m_totalVideoFrames,
+        m_droppedVideoFrames,
+        m_corruptedVideoFrames,
+        m_totalFrameDelay.toDouble()
+    );
 }
 
 };

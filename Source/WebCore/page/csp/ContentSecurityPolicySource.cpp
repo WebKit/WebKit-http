@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, Optional<uint16_t> port, const String& path, bool hostHasWildcard, bool portHasWildcard)
+ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, std::optional<uint16_t> port, const String& path, bool hostHasWildcard, bool portHasWildcard)
     : m_policy(policy)
     , m_scheme(scheme)
     , m_host(host)
@@ -56,6 +56,8 @@ bool ContentSecurityPolicySource::schemeMatches(const URL& url) const
 {
     if (m_scheme.isEmpty())
         return m_policy.protocolMatchesSelf(url);
+    if (equalLettersIgnoringASCIICase(m_scheme, "http"))
+        return url.protocolIsInHTTPFamily();
     return equalIgnoringASCIICase(url.protocol(), m_scheme);
 }
 
@@ -86,9 +88,12 @@ bool ContentSecurityPolicySource::portMatches(const URL& url) const
     if (m_portHasWildcard)
         return true;
 
-    Optional<uint16_t> port = url.port();
+    std::optional<uint16_t> port = url.port();
 
     if (port == m_port)
+        return true;
+
+    if (isDefaultPortForProtocol(m_port.value(), "http") && ((!port && url.protocolIs("https")) || isDefaultPortForProtocol(port.value(), "https")))
         return true;
 
     if (!port)

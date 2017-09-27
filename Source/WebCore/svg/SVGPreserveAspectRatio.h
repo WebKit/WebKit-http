@@ -22,9 +22,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #pragma once
 
-#include "ExceptionCode.h"
 #include "SVGPreserveAspectRatioValue.h"
 #include "SVGPropertyTearOff.h"
 
@@ -32,9 +32,8 @@ namespace WebCore {
 
 class SVGPreserveAspectRatio : public SVGPropertyTearOff<SVGPreserveAspectRatioValue> {
 public:
-    static Ref<SVGPreserveAspectRatio> create(SVGAnimatedProperty* animatedProperty, SVGPropertyRole role, SVGPreserveAspectRatioValue& value)
+    static Ref<SVGPreserveAspectRatio> create(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, SVGPreserveAspectRatioValue& value)
     {
-        ASSERT(animatedProperty);
         return adoptRef(*new SVGPreserveAspectRatio(animatedProperty, role, value));
     }
 
@@ -63,7 +62,7 @@ public:
     ExceptionOr<void> setAlign(float value)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().setAlign(value);
         if (result.hasException())
@@ -81,7 +80,7 @@ public:
     ExceptionOr<void> setMeetOrSlice(float value)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().setMeetOrSlice(value);
         if (result.hasException())
@@ -92,8 +91,8 @@ public:
     }
 
 private:
-    SVGPreserveAspectRatio(SVGAnimatedProperty* animatedProperty, SVGPropertyRole role, SVGPreserveAspectRatioValue& value)
-        : SVGPropertyTearOff<SVGPreserveAspectRatioValue>(animatedProperty, role, value)
+    SVGPreserveAspectRatio(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, SVGPreserveAspectRatioValue& value)
+        : SVGPropertyTearOff<SVGPreserveAspectRatioValue>(&animatedProperty, role, value)
     {
     }
 

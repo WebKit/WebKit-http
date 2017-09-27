@@ -21,15 +21,16 @@
 
 #include "SVGAnimatedListPropertyTearOff.h"
 #include "SVGAnimatedTypeAnimator.h"
+#include "SVGNumber.h"
 #include "SVGNumberList.h"
 
 namespace WebCore {
 
-typedef SVGAnimatedListPropertyTearOff<SVGNumberList> SVGAnimatedNumberList;
+using SVGAnimatedNumberList = SVGAnimatedListPropertyTearOff<SVGNumberListValues>;
 
 // Helper macros to declare/define a SVGAnimatedNumberList object
 #define DECLARE_ANIMATED_NUMBER_LIST(UpperProperty, LowerProperty) \
-DECLARE_ANIMATED_LIST_PROPERTY(SVGAnimatedNumberList, SVGNumberList, UpperProperty, LowerProperty)
+DECLARE_ANIMATED_LIST_PROPERTY(SVGAnimatedNumberList, SVGNumberListValues, UpperProperty, LowerProperty)
 
 #define DEFINE_ANIMATED_NUMBER_LIST(OwnerType, DOMAttribute, UpperProperty, LowerProperty) \
 DEFINE_ANIMATED_PROPERTY(AnimatedNumberList, OwnerType, DOMAttribute, DOMAttribute.localName(), UpperProperty, LowerProperty)

@@ -26,9 +26,9 @@
 #ifndef SoupNetworkSession_h
 #define SoupNetworkSession_h
 
-#include <functional>
+#include <glib-object.h>
+#include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/Vector.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/text/WTFString.h>
 #include "Proxy.h"
@@ -43,11 +43,12 @@ namespace WebCore {
 
 class CertificateInfo;
 class ResourceError;
+struct SoupNetworkProxySettings;
 
 class SoupNetworkSession {
     WTF_MAKE_NONCOPYABLE(SoupNetworkSession); WTF_MAKE_FAST_ALLOCATED;
 public:
-    SoupNetworkSession(SoupCookieJar* = nullptr);
+    explicit SoupNetworkSession(SoupCookieJar* = nullptr);
     ~SoupNetworkSession();
 
     SoupSession* soupSession() const { return m_soupSession.get(); }
@@ -59,7 +60,11 @@ public:
     SoupCache* cache() const;
     static void clearCache(const String& cacheDirectory);
 
-    void setupHTTPProxyFromEnvironment();
+#if PLATFORM(WPE)
+    static void setProxySettingsFromEnvironment();
+#endif
+    static void setProxySettings(const SoupNetworkProxySettings&);
+    void setupProxy();
 
     void setProxies(const Vector<WebCore::Proxy>&);
 
@@ -67,8 +72,11 @@ public:
     void setAcceptLanguages(const CString&);
 
     static void setShouldIgnoreTLSErrors(bool);
-    static void checkTLSErrors(SoupRequest*, SoupMessage*, std::function<void (const ResourceError&)>&&);
+    static void checkTLSErrors(SoupRequest*, SoupMessage*, WTF::Function<void (const ResourceError&)>&&);
     static void allowSpecificHTTPSCertificateForHost(const CertificateInfo&, const String& host);
+
+    static void setCustomProtocolRequestType(GType);
+    void setupCustomProtocols();
 
 private:
     void setHTTPProxy(const char* httpProxy, const char* httpProxyExceptions);

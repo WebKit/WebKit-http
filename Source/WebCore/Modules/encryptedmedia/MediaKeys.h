@@ -31,13 +31,18 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "ExceptionOr.h"
-#include "JSDOMPromise.h"
+#include "GenericTaskQueue.h"
+#include "JSDOMPromiseDeferred.h"
 #include "MediaKeySessionType.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
+class CDM;
+class CDMClient;
+class CDMInstance;
 class BufferSource;
 class MediaKeySession;
 
@@ -45,19 +50,36 @@ class MediaKeys : public RefCounted<MediaKeys> {
 public:
     using KeySessionType = MediaKeySessionType;
 
-    static Ref<MediaKeys> create()
+    static Ref<MediaKeys> create(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>& supportedSessionTypes, Ref<CDM>&& implementation, Ref<CDMInstance>&& instance)
     {
-        return adoptRef(*new MediaKeys);
+        return adoptRef(*new MediaKeys(useDistinctiveIdentifier, persistentStateAllowed, supportedSessionTypes, WTFMove(implementation), WTFMove(instance)));
     }
 
-    virtual ~MediaKeys();
+    ~MediaKeys();
 
-    ExceptionOr<Ref<MediaKeySession>> createSession(MediaKeySessionType);
-
+    ExceptionOr<Ref<MediaKeySession>> createSession(ScriptExecutionContext&, MediaKeySessionType);
     void setServerCertificate(const BufferSource&, Ref<DeferredPromise>&&);
 
+    void attachCDMClient(CDMClient&);
+    void detachCDMClient(CDMClient&);
+    void attemptToResumePlaybackOnClients();
+
+    bool hasOpenSessions() const;
+    const CDMInstance& cdmInstance() const { return m_instance; }
+
 protected:
-    MediaKeys();
+    MediaKeys(bool useDistinctiveIdentifier, bool persistentStateAllowed, const Vector<MediaKeySessionType>&, Ref<CDM>&&, Ref<CDMInstance>&&);
+
+    bool m_useDistinctiveIdentifier;
+    bool m_persistentStateAllowed;
+    Vector<MediaKeySessionType> m_supportedSessionTypes;
+    Ref<CDM> m_implementation;
+    Ref<CDMInstance> m_instance;
+
+    WeakPtrFactory<MediaKeys> m_weakPtrFactory;
+    Vector<Ref<MediaKeySession>> m_sessions;
+    Vector<CDMClient*> m_cdmClients;
+    GenericTaskQueue<Timer> m_taskQueue;
 };
 
 } // namespace WebCore

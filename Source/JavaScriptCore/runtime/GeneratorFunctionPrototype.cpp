@@ -40,7 +40,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(GeneratorFunctionPrototype);
 
-const ClassInfo GeneratorFunctionPrototype::s_info = { "GeneratorFunction", &Base::s_info, nullptr, CREATE_METHOD_TABLE(GeneratorFunctionPrototype) };
+const ClassInfo GeneratorFunctionPrototype::s_info = { "GeneratorFunction", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(GeneratorFunctionPrototype) };
 
 GeneratorFunctionPrototype::GeneratorFunctionPrototype(VM& vm, Structure* structure)
     : JSNonFinalObject(vm, structure)
@@ -50,9 +50,9 @@ GeneratorFunctionPrototype::GeneratorFunctionPrototype(VM& vm, Structure* struct
 void GeneratorFunctionPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "GeneratorFunction"), DontEnum | ReadOnly);
+    ASSERT(inherits(vm, info()));
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "GeneratorFunction"), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     vm.prototypeMap.addPrototype(this);
 }
 

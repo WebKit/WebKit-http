@@ -58,6 +58,7 @@ GST_DEBUG_CATEGORY_STATIC(webkitVideoSinkDebug);
 
 enum {
     REPAINT_REQUESTED,
+    REPAINT_CANCELLED,
     LAST_SIGNAL
 };
 
@@ -68,17 +69,6 @@ static GRefPtr<GstSample> webkitVideoSinkRequestRender(WebKitVideoSink*, GstBuff
 
 class VideoRenderRequestScheduler {
 public:
-    VideoRenderRequestScheduler()
-#if !USE(COORDINATED_GRAPHICS_THREADED)
-        : m_timer(RunLoop::main(), this, &VideoRenderRequestScheduler::render)
-#endif
-    {
-#if PLATFORM(GTK) && !USE(COORDINATED_GRAPHICS_THREADED)
-        // Use a higher priority than WebCore timers (G_PRIORITY_HIGH_IDLE + 20).
-        m_timer.setPriority(G_PRIORITY_HIGH_IDLE + 19);
-#endif
-    }
-
     void start()
     {
         LockHolder locker(m_sampleMutex);
@@ -90,10 +80,6 @@ public:
         LockHolder locker(m_sampleMutex);
         m_sample = nullptr;
         m_unlocked = true;
-#if !USE(COORDINATED_GRAPHICS_THREADED)
-        m_timer.stop();
-        m_dataCondition.notifyOne();
-#endif
     }
 
     void drain()
@@ -112,40 +98,17 @@ public:
         if (!m_sample)
             return false;
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-        if (LIKELY(GST_IS_SAMPLE(m_sample.get())))
-            webkitVideoSinkRepaintRequested(sink, m_sample.get());
-        m_sample = nullptr;
-#else
-        m_sink = sink;
-        m_timer.startOneShot(0);
-        m_dataCondition.wait(m_sampleMutex);
-#endif
+        auto sample = WTFMove(m_sample);
+        locker.unlockEarly();
+        if (LIKELY(GST_IS_SAMPLE(sample.get())))
+            webkitVideoSinkRepaintRequested(sink, sample.get());
+
         return true;
     }
 
 private:
-
-#if !USE(COORDINATED_GRAPHICS_THREADED)
-    void render()
-    {
-        LockHolder locker(m_sampleMutex);
-        GRefPtr<GstSample> sample = WTFMove(m_sample);
-        GRefPtr<WebKitVideoSink> sink = WTFMove(m_sink);
-        if (sample && !m_unlocked && LIKELY(GST_IS_SAMPLE(sample.get())))
-            webkitVideoSinkRepaintRequested(sink.get(), sample.get());
-        m_dataCondition.notifyOne();
-    }
-#endif
-
     Lock m_sampleMutex;
     GRefPtr<GstSample> m_sample;
-
-#if !USE(COORDINATED_GRAPHICS_THREADED)
-    RunLoop::Timer<VideoRenderRequestScheduler> m_timer;
-    Condition m_dataCondition;
-    GRefPtr<WebKitVideoSink> m_sink;
-#endif
 
     // If this is true all processing should finish ASAP
     // This is necessary because there could be a race between
@@ -182,13 +145,18 @@ G_DEFINE_TYPE_WITH_CODE(WebKitVideoSink, webkit_video_sink, GST_TYPE_VIDEO_SINK,
 static void webkit_video_sink_init(WebKitVideoSink* sink)
 {
     sink->priv = G_TYPE_INSTANCE_GET_PRIVATE(sink, WEBKIT_TYPE_VIDEO_SINK, WebKitVideoSinkPrivate);
-    g_object_set(GST_BASE_SINK(sink), "enable-last-sample", FALSE, NULL);
+    g_object_set(GST_BASE_SINK(sink), "enable-last-sample", FALSE, nullptr);
     new (sink->priv) WebKitVideoSinkPrivate();
 }
 
 static void webkitVideoSinkRepaintRequested(WebKitVideoSink* sink, GstSample* sample)
 {
     g_signal_emit(sink, webkitVideoSinkSignals[REPAINT_REQUESTED], 0, sample);
+}
+
+static void webkitVideoSinkRepaintCancelled(WebKitVideoSink* sink)
+{
+    g_signal_emit(sink, webkitVideoSinkSignals[REPAINT_CANCELLED], 0);
 }
 
 static GRefPtr<GstSample> webkitVideoSinkRequestRender(WebKitVideoSink* sink, GstBuffer* buffer)
@@ -200,68 +168,6 @@ static GRefPtr<GstSample> webkitVideoSinkRequestRender(WebKitVideoSink* sink, Gs
     GstVideoFormat format = GST_VIDEO_INFO_FORMAT(&priv->info);
     if (format == GST_VIDEO_FORMAT_UNKNOWN)
         return nullptr;
-
-#if !(USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS))
-    // Cairo's ARGB has pre-multiplied alpha while GStreamer's doesn't.
-    // Here we convert to Cairo's ARGB.
-    if (format == GST_VIDEO_FORMAT_ARGB || format == GST_VIDEO_FORMAT_BGRA) {
-        // Because GstBaseSink::render() only owns the buffer reference in the
-        // method scope we can't use gst_buffer_make_writable() here. Also
-        // The buffer content should not be changed here because the same buffer
-        // could be passed multiple times to this method (in theory).
-
-        GstBuffer* newBuffer = WebCore::createGstBuffer(buffer);
-
-        // Check if allocation failed.
-        if (UNLIKELY(!newBuffer))
-            return nullptr;
-
-        // We don't use Color::premultipliedARGBFromColor() here because
-        // one function call per video pixel is just too expensive:
-        // For 720p/PAL for example this means 1280*720*25=23040000
-        // function calls per second!
-        GstVideoFrame sourceFrame;
-        GstVideoFrame destinationFrame;
-
-        if (!gst_video_frame_map(&sourceFrame, &priv->info, buffer, GST_MAP_READ)) {
-            gst_buffer_unref(newBuffer);
-            return nullptr;
-        }
-        if (!gst_video_frame_map(&destinationFrame, &priv->info, newBuffer, GST_MAP_WRITE)) {
-            gst_video_frame_unmap(&sourceFrame);
-            gst_buffer_unref(newBuffer);
-            return nullptr;
-        }
-
-        const guint8* source = static_cast<guint8*>(GST_VIDEO_FRAME_PLANE_DATA(&sourceFrame, 0));
-        guint8* destination = static_cast<guint8*>(GST_VIDEO_FRAME_PLANE_DATA(&destinationFrame, 0));
-
-        for (int x = 0; x < GST_VIDEO_FRAME_HEIGHT(&sourceFrame); x++) {
-            for (int y = 0; y < GST_VIDEO_FRAME_WIDTH(&sourceFrame); y++) {
-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
-                unsigned short alpha = source[3];
-                destination[0] = (source[0] * alpha + 128) / 255;
-                destination[1] = (source[1] * alpha + 128) / 255;
-                destination[2] = (source[2] * alpha + 128) / 255;
-                destination[3] = alpha;
-#else
-                unsigned short alpha = source[0];
-                destination[0] = alpha;
-                destination[1] = (source[1] * alpha + 128) / 255;
-                destination[2] = (source[2] * alpha + 128) / 255;
-                destination[3] = (source[3] * alpha + 128) / 255;
-#endif
-                source += 4;
-                destination += 4;
-            }
-        }
-
-        gst_video_frame_unmap(&sourceFrame);
-        gst_video_frame_unmap(&destinationFrame);
-        sample = adoptGRef(gst_sample_new(newBuffer, priv->currentCaps, nullptr, nullptr));
-        gst_buffer_unref(newBuffer);
-    }
-#endif
 
     return sample;
 }
@@ -283,6 +189,7 @@ static gboolean webkitVideoSinkUnlock(GstBaseSink* baseSink)
     WebKitVideoSinkPrivate* priv = WEBKIT_VIDEO_SINK(baseSink)->priv;
 
     priv->scheduler.stop();
+    webkitVideoSinkRepaintCancelled(WEBKIT_VIDEO_SINK(baseSink));
 
     return GST_CALL_PARENT_WITH_DEFAULT(GST_BASE_SINK_CLASS, unlock, (baseSink), TRUE);
 }
@@ -301,6 +208,7 @@ static gboolean webkitVideoSinkStop(GstBaseSink* baseSink)
     WebKitVideoSinkPrivate* priv = WEBKIT_VIDEO_SINK(baseSink)->priv;
 
     priv->scheduler.stop();
+    webkitVideoSinkRepaintCancelled(WEBKIT_VIDEO_SINK(baseSink));
     if (priv->currentCaps) {
         gst_caps_unref(priv->currentCaps);
         priv->currentCaps = nullptr;
@@ -340,7 +248,7 @@ static gboolean webkitVideoSinkSetCaps(GstBaseSink* baseSink, GstCaps* caps)
 static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery* query)
 {
     GstCaps* caps;
-    gst_query_parse_allocation(query, &caps, 0);
+    gst_query_parse_allocation(query, &caps, nullptr);
     if (!caps)
         return FALSE;
 
@@ -348,9 +256,9 @@ static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery
     if (!gst_video_info_from_caps(&sink->priv->info, caps))
         return FALSE;
 
-    gst_query_add_allocation_meta(query, GST_VIDEO_META_API_TYPE, 0);
-    gst_query_add_allocation_meta(query, GST_VIDEO_CROP_META_API_TYPE, 0);
-    gst_query_add_allocation_meta(query, GST_VIDEO_GL_TEXTURE_UPLOAD_META_API_TYPE, 0);
+    gst_query_add_allocation_meta(query, GST_VIDEO_META_API_TYPE, nullptr);
+    gst_query_add_allocation_meta(query, GST_VIDEO_CROP_META_API_TYPE, nullptr);
+    gst_query_add_allocation_meta(query, GST_VIDEO_GL_TEXTURE_UPLOAD_META_API_TYPE, nullptr);
     return TRUE;
 }
 
@@ -402,12 +310,22 @@ static void webkit_video_sink_class_init(WebKitVideoSinkClass* klass)
             G_TYPE_NONE, // Return type
             1, // Only one parameter
             GST_TYPE_SAMPLE);
+    webkitVideoSinkSignals[REPAINT_CANCELLED] = g_signal_new("repaint-cancelled",
+        G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_LAST,
+        0, // Class offset
+        nullptr, // Accumulator
+        nullptr, // Accumulator data
+        g_cclosure_marshal_generic,
+        G_TYPE_NONE, // Return type
+        0, // No parameters
+        G_TYPE_NONE);
 }
 
 
 GstElement* webkitVideoSinkNew()
 {
-    return GST_ELEMENT(g_object_new(WEBKIT_TYPE_VIDEO_SINK, 0));
+    return GST_ELEMENT(g_object_new(WEBKIT_TYPE_VIDEO_SINK, nullptr));
 }
 
 #endif // ENABLE(VIDEO) && USE(GSTREAMER)

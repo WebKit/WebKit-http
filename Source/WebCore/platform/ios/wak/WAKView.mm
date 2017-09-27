@@ -505,7 +505,7 @@ static CGInterpolationQuality toCGInterpolationQuality(WebCore::InterpolationQua
     sInterpolationQuality = toCGInterpolationQuality((WebCore::InterpolationQuality)quality);
 }
 
-- (void)_drawRect:(NSRect)dirtyRect context:(CGContextRef)context lockFocus:(bool)lockFocus
+- (void)_drawRect:(NSRect)dirtyRect context:(CGContextRef)context lockFocus:(BOOL)lockFocus
 {
     if (_isHidden)
         return;
@@ -673,7 +673,9 @@ static CGInterpolationQuality toCGInterpolationQuality(WebCore::InterpolationQua
 
 - (BOOL)mouse:(NSPoint)aPoint inRect:(NSRect)aRect 
 { 
-    return WKMouseInRect (aPoint, aRect);
+    return aPoint.x >= aRect.origin.x
+        && aPoint.x < (aRect.origin.x + aRect.size.width)
+        && aPoint.y >= aRect.origin.y && aPoint.y < (aRect.origin.y + aRect.size.height);
 }
 
 - (BOOL)needsPanelToBecomeKey

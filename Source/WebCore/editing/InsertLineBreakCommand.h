@@ -39,12 +39,10 @@ public:
 private:
     explicit InsertLineBreakCommand(Document&);
 
-    virtual void doApply();
+    void doApply() override;
 
-    virtual bool preservesTypingStyle() const;
+    bool preservesTypingStyle() const override;
 
-    void insertNodeAfterPosition(Node*, const Position&);
-    void insertNodeBeforePosition(Node*, const Position&);
     bool shouldUseBreakElement(const Position&);
 };
 

@@ -17,6 +17,14 @@ body {
     grid-template-columns: 100px 25%;
     grid-template-rows: 50% 150px;
 }
+
+.definiteGridWithPercentageGaps {
+    grid-template: 5px 5px / auto;
+    grid-row-gap: 80%;
+    grid-column-gap: 20%;
+    height: 200px;
+    width: 100px;
+}
 </style>
 <script src="../../resources/check-layout.js"></script>
 <body onload="checkLayout('.grid')">
@@ -24,7 +32,7 @@ body {
 
 <p>HORIZONTAL-TB container with VERTICAL-LR items.</p>
 <div class="container">
-    <div class="grid itemsStart contentStart fit-content" data-expected-width="110" data-expected-height="260">
+    <div class="grid itemsStart contentStart fit-content" data-expected-width="120" data-expected-height="260">
         <div class="firstRowFirstColumn   verticalLR" data-offset-x="0"  data-offset-y="0"  data-expected-width="10" data-expected-height="50">X X X</div>
         <div class="firstRowSecondColumn  verticalLR" data-offset-x="100" data-offset-y="0"  data-expected-width="10" data-expected-height="110">X X X X X X</div>
         <div class="secondRowFirstColumn  verticalLR" data-offset-x="0"  data-offset-y="110" data-expected-width="10" data-expected-height="110">X X X X X X</div>
@@ -34,7 +42,7 @@ body {
 
 <p>HORIZONTAL-TB container with VERTICAL-RL items.</p>
 <div class="container">
-    <div class="grid itemsStart contentStart fit-content" data-expected-width="110" data-expected-height="260">
+    <div class="grid itemsStart contentStart fit-content" data-expected-width="120" data-expected-height="260">
         <div class="firstRowFirstColumn   verticalRL" data-offset-x="0"  data-offset-y="0"  data-expected-width="10" data-expected-height="50">X X X</div>
         <div class="firstRowSecondColumn  verticalRL" data-offset-x="100" data-offset-y="0"  data-expected-width="10" data-expected-height="110">X X X X X X</div>
         <div class="secondRowFirstColumn  verticalRL" data-offset-x="0"  data-offset-y="110" data-expected-width="10" data-expected-height="110">X X X X X X</div>
@@ -44,7 +52,7 @@ body {
 
 <p>VERTICAL-LR container with HORIZONTAL-TB items.</p>
 <div class="container">
-    <div class="grid itemsStart contentStart verticalLR fit-content" data-expected-width="260" data-expected-height="110">
+    <div class="grid itemsStart contentStart verticalLR fit-content" data-expected-width="260" data-expected-height="120">
         <div class="firstRowFirstColumn   horizontalTB" data-offset-x="0"   data-offset-y="0"  data-expected-width="50" data-expected-height="10">X X X</div>
         <div class="firstRowSecondColumn  horizontalTB" data-offset-x="0" data-offset-y="100" data-expected-width="110" data-expected-height="10">X X X X X X</div>
         <div class="secondRowFirstColumn  horizontalTB" data-offset-x="110"   data-offset-y="0"  data-expected-width="110" data-expected-height="10">X X X X X X</div>
@@ -54,11 +62,17 @@ body {
 
 <p>VERTICAL-RL container with HORIZONTAL-TB items.</p>
 <div class="container">
-    <div class="grid itemsStart contentStart verticalRL fit-content" data-expected-width="260" data-expected-height="110">
+    <div class="grid itemsStart contentStart verticalRL fit-content" data-expected-width="260" data-expected-height="120">
         <div class="firstRowFirstColumn   horizontalTB" data-offset-x="210"   data-offset-y="0"  data-expected-width="50" data-expected-height="10">X X X</div>
         <div class="firstRowSecondColumn  horizontalTB" data-offset-x="150" data-offset-y="100" data-expected-width="110" data-expected-height="10">X X X X X X</div>
         <div class="secondRowFirstColumn  horizontalTB" data-offset-x="40"   data-offset-y="0"  data-expected-width="110" data-expected-height="10">X X X X X X</div>
         <div class="secondRowSecondColumn horizontalTB" data-offset-x="0" data-offset-y="100" data-expected-width="150" data-expected-height="20">X X X X X X X X X X X X</div>
     </div>
 </div>
+
+<p>HORIZONTAL-TB container with VERTICAL-LR item with percentage gaps.</p>
+<div class="grid definiteGridWithPercentageGaps contentStart" data-expected-width="100" data-expected-height="200">
+    <div class="bothRowFirstColumn verticalLR" style="background: cyan;" data-expected-width="10" data-expected-height="170">XXXX XXXXX</div>
+</div>
+
 </body>

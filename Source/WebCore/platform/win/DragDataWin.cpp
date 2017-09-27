@@ -136,20 +136,22 @@ unsigned DragData::numberOfFiles() const
 #endif
 }
 
-void DragData::asFilenames(Vector<String>& result) const
+Vector<String> DragData::asFilenames() const
 {
+    Vector<String> result;
+
 #if USE(CF)
     if (m_platformDragData) {
         WCHAR filename[MAX_PATH];
 
         STGMEDIUM medium;
         if (FAILED(m_platformDragData->GetData(cfHDropFormat(), &medium)))
-            return;
+            return result;
 
         HDROP hdrop = reinterpret_cast<HDROP>(GlobalLock(medium.hGlobal)); 
 
         if (!hdrop)
-            return;
+            return result;
 
         const unsigned numFiles = DragQueryFileW(hdrop, 0xFFFFFFFF, 0, 0);
         for (unsigned i = 0; i < numFiles; i++) {
@@ -162,10 +164,12 @@ void DragData::asFilenames(Vector<String>& result) const
         DragFinish(hdrop);
 
         GlobalUnlock(medium.hGlobal);
-        return;
+        return result;
     }
     result = m_dragDataMap.get(cfHDropFormat()->cfFormat);
 #endif
+
+    return result;
 }
 
 bool DragData::containsPlainText() const
@@ -193,7 +197,7 @@ bool DragData::canSmartReplace() const
     return m_dragDataMap.contains(smartPasteFormat()->cfFormat);
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(DraggingPurpose) const
 {
     return containsPlainText() || containsURL()
         || ((m_platformDragData) ? (containsHTML(m_platformDragData) || containsFilenames(m_platformDragData))

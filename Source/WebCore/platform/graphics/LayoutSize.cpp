@@ -26,9 +26,17 @@
 #include "config.h"
 #include "LayoutSize.h"
 
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
+
+LayoutSize LayoutSize::constrainedBetween(const LayoutSize& min, const LayoutSize& max) const
+{
+    return {
+        std::max(min.width(), std::min(max.width(), m_width)),
+        std::max(min.height(), std::min(max.height(), m_height))
+    };
+}
 
 TextStream& operator<<(TextStream& ts, const LayoutSize& size)
 {

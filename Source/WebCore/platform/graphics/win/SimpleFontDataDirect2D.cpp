@@ -28,7 +28,6 @@
 
 #if USE(DIRECT2D)
 
-#include "CoreTextSPIWin.h"
 #include "FloatRect.h"
 #include "FontCache.h"
 #include "FontDescription.h"
@@ -38,6 +37,7 @@
 #include <comutil.h>
 #include <dwrite.h>
 #include <mlang.h>
+#include <pal/spi/win/CoreTextSPIWin.h>
 #include <unicode/uchar.h>
 #include <unicode/unorm.h>
 #include <winsock2.h>
@@ -134,7 +134,7 @@ void Font::platformInit()
     float fCapHeight = scaleEmToUnits(iCapHeight, unitsPerEm) * pointSize;
     float fLineGap = scaleEmToUnits(iLineGap, unitsPerEm) * pointSize;
 
-    if (!isCustomFont()) {
+    if (origin() == Origin::Local) {
         Vector<WCHAR> faceName = getFaceName(font);
         fAscent = ascentConsideringMacAscentHack(faceName.data(), fAscent, fDescent);
     }

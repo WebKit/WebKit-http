@@ -1,7 +1,7 @@
 set(JavaScriptCore_OUTPUT_NAME javascriptcoregtk-${WEBKITGTK_API_VERSION})
 
 list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
-    "${WTF_DIR}"
+    "${JAVASCRIPTCORE_DIR}/inspector/remote/glib"
 )
 
 configure_file(javascriptcoregtk.pc.in ${CMAKE_BINARY_DIR}/Source/JavaScriptCore/javascriptcoregtk-${WEBKITGTK_API_VERSION}.pc @ONLY)

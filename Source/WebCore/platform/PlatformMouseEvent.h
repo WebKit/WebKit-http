@@ -35,12 +35,6 @@ typedef struct _GdkEventButton GdkEventButton;
 typedef struct _GdkEventMotion GdkEventMotion;
 #endif
 
-#if PLATFORM(EFL)
-typedef struct _Evas_Event_Mouse_Down Evas_Event_Mouse_Down;
-typedef struct _Evas_Event_Mouse_Up Evas_Event_Mouse_Up;
-typedef struct _Evas_Event_Mouse_Move Evas_Event_Mouse_Move;
-#endif
-
 namespace WebCore {
 
 const double ForceAtClick = 1;
@@ -67,7 +61,7 @@ const double ForceAtForceClick = 2;
         }
 
         PlatformMouseEvent(const IntPoint& position, const IntPoint& globalPosition, MouseButton button, PlatformEvent::Type type,
-                           int clickCount, bool shiftKey, bool ctrlKey, bool altKey, bool metaKey, double timestamp, double force, SyntheticClickType syntheticClickType)
+                           int clickCount, bool shiftKey, bool ctrlKey, bool altKey, bool metaKey, WallTime timestamp, double force, SyntheticClickType syntheticClickType)
             : PlatformEvent(type, shiftKey, ctrlKey, altKey, metaKey, timestamp)
             , m_position(position)
             , m_globalPosition(globalPosition)
@@ -101,13 +95,6 @@ const double ForceAtForceClick = 2;
         explicit PlatformMouseEvent(GdkEventButton*);
         explicit PlatformMouseEvent(GdkEventMotion*);
         void setClickCount(int count) { m_clickCount = count; }
-#endif
-
-#if PLATFORM(EFL)
-        void setClickCount(unsigned int);
-        PlatformMouseEvent(const Evas_Event_Mouse_Down*, IntPoint);
-        PlatformMouseEvent(const Evas_Event_Mouse_Up*, IntPoint);
-        PlatformMouseEvent(const Evas_Event_Mouse_Move*, IntPoint);
 #endif
 
 #if PLATFORM(MAC)

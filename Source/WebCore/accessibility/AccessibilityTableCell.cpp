@@ -318,7 +318,13 @@ void AccessibilityTableCell::rowIndexRange(std::pair<unsigned, unsigned>& rowRan
         return;
     
     RenderTableCell& renderCell = downcast<RenderTableCell>(*m_renderer);
-    rowRange.second = renderCell.rowSpan();
+
+    // ARIA 1.1's aria-rowspan attribute is intended for cells and gridcells which are not contained
+    // in a native table. But if we have a valid author-provided value and do not have an explicit
+    // native host language value for the rowspan, expose the ARIA value.
+    rowRange.second = ariaRowSpan();
+    if (static_cast<int>(rowRange.second) == -1)
+        rowRange.second = renderCell.rowSpan();
     
     if (AccessibilityTableRow* parentRow = this->parentRow())
         rowRange.first = parentRow->rowIndex();
@@ -331,6 +337,14 @@ void AccessibilityTableCell::columnIndexRange(std::pair<unsigned, unsigned>& col
     
     const RenderTableCell& cell = downcast<RenderTableCell>(*m_renderer);
     columnRange.first = cell.table()->colToEffCol(cell.col());
+
+    // ARIA 1.1's aria-colspan attribute is intended for cells and gridcells which are not contained
+    // in a native table. But if we have a valid author-provided value and do not have an explicit
+    // native host language value for the colspan, expose the ARIA value.
+    columnRange.second = ariaColumnSpan();
+    if (static_cast<int>(columnRange.second) != -1)
+        return;
+
     columnRange.second = cell.table()->colToEffCol(cell.col() + cell.colSpan()) - columnRange.first;
 }
     
@@ -401,18 +415,28 @@ int AccessibilityTableCell::ariaRowIndex() const
     return -1;
 }
 
-unsigned AccessibilityTableCell::ariaColumnSpan() const
+int AccessibilityTableCell::ariaColumnSpan() const
 {
+    // According to the ARIA spec, "If aria-colpan is used on an element for which the host language
+    // provides an equivalent attribute, user agents must ignore the value of aria-colspan."
+    if (hasAttribute(colspanAttr))
+        return -1;
+
     const AtomicString& colSpanValue = getAttribute(aria_colspanAttr);
     // ARIA 1.1: Authors must set the value of aria-colspan to an integer greater than or equal to 1.
     if (colSpanValue.toInt() >= 1)
         return colSpanValue.toInt();
     
-    return 1;
+    return -1;
 }
 
-unsigned AccessibilityTableCell::ariaRowSpan() const
+int AccessibilityTableCell::ariaRowSpan() const
 {
+    // According to the ARIA spec, "If aria-rowspan is used on an element for which the host language
+    // provides an equivalent attribute, user agents must ignore the value of aria-rowspan."
+    if (hasAttribute(rowspanAttr))
+        return -1;
+
     const AtomicString& rowSpanValue = getAttribute(aria_rowspanAttr);
     
     // ARIA 1.1: Authors must set the value of aria-rowspan to an integer greater than or equal to 0.
@@ -422,7 +446,7 @@ unsigned AccessibilityTableCell::ariaRowSpan() const
     if (rowSpanValue.toInt() >= 1)
         return rowSpanValue.toInt();
     
-    return 1;
+    return -1;
 }
     
 } // namespace WebCore

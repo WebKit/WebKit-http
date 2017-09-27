@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -105,7 +105,7 @@ RefPtr<ResourceHandle> ResourceHandle::create(NetworkingContext* context, const 
 void ResourceHandle::scheduleFailure(FailureType type)
 {
     d->m_scheduledFailureType = type;
-    d->m_failureTimer.startOneShot(0);
+    d->m_failureTimer.startOneShot(0_s);
 }
 
 void ResourceHandle::failureTimerFired()
@@ -130,14 +130,14 @@ void ResourceHandle::failureTimerFired()
     ASSERT_NOT_REACHED();
 }
 
-void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentialsPolicy storedCredentialsPolicy, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     if (auto constructor = builtinResourceHandleSynchronousLoaderMap().get(request.url().protocol().toStringWithoutCopying())) {
-        constructor(context, request, storedCredentials, error, response, data);
+        constructor(context, request, storedCredentialsPolicy, error, response, data);
         return;
     }
 
-    platformLoadResourceSynchronously(context, request, storedCredentials, error, response, data);
+    platformLoadResourceSynchronously(context, request, storedCredentialsPolicy, error, response, data);
 }
 
 ResourceHandleClient* ResourceHandle::client() const
@@ -148,6 +148,26 @@ ResourceHandleClient* ResourceHandle::client() const
 void ResourceHandle::clearClient()
 {
     d->m_client = nullptr;
+}
+
+void ResourceHandle::didReceiveResponse(ResourceResponse&& response)
+{
+    if (response.isHTTP09()) {
+        auto url = response.url();
+        std::optional<uint16_t> port = url.port();
+        if (port && !isDefaultPortForProtocol(port.value(), url.protocol())) {
+            cancel();
+            String message = "Cancelled load from '" + url.stringCenterEllipsizedToLength() + "' because it is using HTTP/0.9.";
+            d->m_client->didFail(this, { String(), 0, url, message });
+            return;
+        }
+    }
+    if (d->m_usesAsyncCallbacks)
+        d->m_client->didReceiveResponseAsync(this, WTFMove(response));
+    else {
+        d->m_client->didReceiveResponse(this, WTFMove(response));
+        platformContinueSynchronousDidReceiveResponse();
+    }
 }
 
 #if !PLATFORM(COCOA) && !USE(CFURLCONNECTION) && !USE(SOUP)
@@ -168,6 +188,13 @@ void ResourceHandle::continueCanAuthenticateAgainstProtectionSpace(bool)
     notImplemented();
 }
 #endif
+#endif
+
+#if !USE(SOUP)
+void ResourceHandle::platformContinueSynchronousDidReceiveResponse()
+{
+    // Do nothing.
+}
 #endif
 
 ResourceRequest& ResourceHandle::firstRequest()
@@ -231,7 +258,7 @@ void ResourceHandle::setDefersLoading(bool defers)
             d->m_failureTimer.stop();
     } else if (d->m_scheduledFailureType != NoFailure) {
         ASSERT(!d->m_failureTimer.isActive());
-        d->m_failureTimer.startOneShot(0);
+        d->m_failureTimer.startOneShot(0_s);
     }
 
     platformSetDefersLoading(defers);

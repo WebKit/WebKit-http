@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,17 +48,20 @@
 
 namespace JSC { namespace B3 {
 
+class BackwardsCFG;
+class BackwardsDominators;
 class BasicBlock;
 class BlockInsertionSet;
 class CFG;
 class Dominators;
+class NaturalLoops;
 class StackSlot;
 class Value;
 class Variable;
 
 namespace Air { class Code; }
 
-typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
+typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg);
 typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
 
 // This represents B3's view of a piece of code. Note that this object must exist in a 1:1
@@ -117,6 +120,10 @@ public:
     Value* addIntConstant(Origin, Type, int64_t value);
     Value* addIntConstant(Value*, int64_t value);
 
+    // bits is a bitwise_cast of the constant you want.
+    Value* addConstant(Origin, Type, uint64_t bits);
+
+    // You're guaranteed that bottom is zero.
     Value* addBottom(Origin, Type);
     Value* addBottom(Value*);
 
@@ -171,13 +178,16 @@ public:
     CFG& cfg() const { return *m_cfg; }
 
     Dominators& dominators();
+    NaturalLoops& naturalLoops();
+    BackwardsCFG& backwardsCFG();
+    BackwardsDominators& backwardsDominators();
 
     void addFastConstant(const ValueKey&);
     bool isFastConstant(const ValueKey&);
     
     unsigned numEntrypoints() const { return m_numEntrypoints; }
-    void setNumEntrypoints(unsigned numEntrypoints) { m_numEntrypoints = numEntrypoints; }
-    
+    JS_EXPORT_PRIVATE void setNumEntrypoints(unsigned);
+
     // Only call this after code generation is complete. Note that the label for the 0th entrypoint
     // should point to exactly where the code generation cursor was before you started generating
     // code.
@@ -195,6 +205,17 @@ public:
     // alive. Great for compiler-generated data sections, like switch jump tables and constant pools.
     // This returns memory that has been zero-initialized.
     JS_EXPORT_PRIVATE void* addDataSection(size_t);
+    
+    // Some operations are specified in B3 IR to behave one way but on this given CPU they behave a
+    // different way. When true, those B3 IR ops switch to behaving the CPU way, and the optimizer may
+    // start taking advantage of it.
+    //
+    // One way to think of it is like this. Imagine that you find that the cleanest way of lowering
+    // something in lowerMacros is to unconditionally replace one opcode with another. This is a shortcut
+    // where you instead keep the same opcode, but rely on the opcode's meaning changes once lowerMacros
+    // sets hasQuirks.
+    bool hasQuirks() const { return m_hasQuirks; }
+    void setHasQuirks(bool value) { m_hasQuirks = value; }
 
     OpaqueByproducts& byproducts() { return *m_byproducts; }
 
@@ -217,9 +238,18 @@ public:
 
     // This tells the register allocators to stay away from this register.
     JS_EXPORT_PRIVATE void pinRegister(Reg);
+    
+    JS_EXPORT_PRIVATE void setOptLevel(unsigned value);
+    unsigned optLevel() const { return m_optLevel; }
+    
+    // You can turn off used registers calculation. This may speed up compilation a bit. But if
+    // you turn it off then you cannot use StackmapGenerationParams::usedRegisters() or
+    // StackmapGenerationParams::unavailableRegisters().
+    void setNeedsUsedRegisters(bool value) { m_needsUsedRegisters = value; }
+    bool needsUsedRegisters() const { return m_needsUsedRegisters; }
 
     JS_EXPORT_PRIVATE unsigned frameSize() const;
-    JS_EXPORT_PRIVATE const RegisterAtOffsetList& calleeSaveRegisters() const;
+    JS_EXPORT_PRIVATE RegisterAtOffsetList calleeSaveRegisterAtOffsetList() const;
 
     PCToOriginMap& pcToOriginMap() { return m_pcToOriginMap; }
     PCToOriginMap releasePCToOriginMap() { return WTFMove(m_pcToOriginMap); }
@@ -231,6 +261,9 @@ public:
     {
         setWasmBoundsCheckGenerator(RefPtr<WasmBoundsCheckGenerator>(createSharedTask<WasmBoundsCheckGeneratorFunction>(functor)));
     }
+
+    JS_EXPORT_PRIVATE RegisterSet mutableGPRs();
+    JS_EXPORT_PRIVATE RegisterSet mutableFPRs();
 
 private:
     friend class BlockInsertionSet;
@@ -244,6 +277,9 @@ private:
     SparseCollection<Value> m_values;
     std::unique_ptr<CFG> m_cfg;
     std::unique_ptr<Dominators> m_dominators;
+    std::unique_ptr<NaturalLoops> m_naturalLoops;
+    std::unique_ptr<BackwardsCFG> m_backwardsCFG;
+    std::unique_ptr<BackwardsDominators> m_backwardsDominators;
     HashSet<ValueKey> m_fastConstants;
     unsigned m_numEntrypoints { 1 };
     const char* m_lastPhaseName;
@@ -252,6 +288,9 @@ private:
     RefPtr<SharedTask<void(PrintStream&, Origin)>> m_originPrinter;
     const void* m_frontendData;
     PCToOriginMap m_pcToOriginMap;
+    unsigned m_optLevel { defaultOptLevel() };
+    bool m_needsUsedRegisters { true };
+    bool m_hasQuirks { false };
 };
 
 } } // namespace JSC::B3

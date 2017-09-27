@@ -43,15 +43,17 @@
 
 #if !PLATFORM(IOS)
 #import <Carbon/Carbon.h> // for GetCurrentEventTime()
+#import <WebKit/WebHTMLView.h>
+#import <objc/runtime.h>
 #import <wtf/mac/AppKitCompatibilityDeclarations.h>
 #endif
 
 #if PLATFORM(IOS)
-#import <WebCore/GraphicsServicesSPI.h> // for GSCurrentEventTimestamp()
+#import <UIKit/UIKit.h>
 #import <WebKit/KeyEventCodesIOS.h>
 #import <WebKit/WAKWindow.h>
 #import <WebKit/WebEvent.h>
-#import <UIKit/UIKit.h>
+#import <pal/spi/ios/GraphicsServicesSPI.h> // for GSCurrentEventTimestamp()
 #endif
 
 #if !PLATFORM(IOS)
@@ -138,6 +140,35 @@ BOOL replayingSavedEvents;
 
 @implementation EventSendingController
 
+#if PLATFORM(MAC)
+static NSDraggingSession *drt_WebHTMLView_beginDraggingSessionWithItemsEventSource(WebHTMLView *self, id _cmd, NSArray<NSDraggingItem *> *items, NSEvent *event, id<NSDraggingSource> source)
+{
+    ASSERT(!draggingInfo);
+
+    WebFrameView *webFrameView = ^ {
+        for (NSView *superview = self.superview; superview; superview = superview.superview) {
+            if ([superview isKindOfClass:WebFrameView.class])
+                return (WebFrameView *)superview;
+        }
+
+        ASSERT_NOT_REACHED();
+        return (WebFrameView *)nil;
+    }();
+
+    WebView *webView = webFrameView.webFrame.webView;
+
+    NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:NSDragPboard];
+    for (NSDraggingItem *item in items)
+        [pasteboard writeObjects:@[ item.item ]];
+
+    draggingInfo = [[DumpRenderTreeDraggingInfo alloc] initWithImage:nil offset:NSZeroSize pasteboard:pasteboard source:source];
+    [webView draggingUpdated:draggingInfo];
+    [EventSendingController replaySavedEvents];
+
+    return nullptr;
+}
+#endif
+
 + (void)initialize
 {
     webkitDomEventNames = [[NSArray alloc] initWithObjects:
@@ -188,6 +219,15 @@ BOOL replayingSavedEvents;
         @"unload",
         @"zoom",
         nil];
+
+#if PLATFORM(MAC)
+    // Add an implementation of -[WebHTMLView beginDraggingSessionWithItems:event:source:].
+    SEL selector = @selector(beginDraggingSessionWithItems:event:source:);
+    const char* typeEncoding = method_getTypeEncoding(class_getInstanceMethod(NSView.class, selector));
+
+    if (!class_addMethod(WebHTMLView.class, selector, reinterpret_cast<IMP>(drt_WebHTMLView_beginDraggingSessionWithItemsEventSource), typeEncoding))
+        ASSERT_NOT_REACHED();
+#endif
 }
 
 + (BOOL)isSelectorExcludedFromWebScript:(SEL)aSelector
@@ -643,9 +683,9 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
 
     NSView *view = [mainFrame webView];
 #if !PLATFORM(IOS)
-    lastMousePosition = [view convertPoint:NSMakePoint(x, [view frame].size.height - y) toView:nil];
+    NSPoint newMousePosition = [view convertPoint:NSMakePoint(x, [view frame].size.height - y) toView:nil];
     NSEvent *event = [NSEvent mouseEventWithType:(leftMouseButtonDown ? NSEventTypeLeftMouseDragged : NSEventTypeMouseMoved)
-                                        location:lastMousePosition 
+                                        location:newMousePosition
                                    modifierFlags:0 
                                        timestamp:[self currentEventTime]
                                     windowNumber:[[view window] windowNumber] 
@@ -653,6 +693,11 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
                                      eventNumber:++eventNumber 
                                       clickCount:(leftMouseButtonDown ? clickCount : 0) 
                                         pressure:0.0];
+    CGEventRef cgEvent = event.CGEvent;
+    CGEventSetIntegerValueField(cgEvent, kCGMouseEventDeltaX, newMousePosition.x - lastMousePosition.x);
+    CGEventSetIntegerValueField(cgEvent, kCGMouseEventDeltaY, newMousePosition.y - lastMousePosition.y);
+    event = [NSEvent eventWithCGEvent:cgEvent];
+    lastMousePosition = newMousePosition;
 #else
     lastMousePosition = [view convertPoint:NSMakePoint(x, y) toView:nil];
     WebEvent *event = [[WebEvent alloc] initWithMouseEventType:WebEventMouseMoved
@@ -889,6 +934,10 @@ static int buildModifierFlags(const WebScriptObject* modifiers)
         const unichar ch = NSDeleteFunctionKey;
         eventCharacter = [NSString stringWithCharacters:&ch length:1];
         keyCode = 0x75;
+    } else if ([character isEqualToString:@"escape"]) {
+        const unichar ch = 0x1B;
+        eventCharacter = [NSString stringWithCharacters:&ch length:1];
+        keyCode = 0x35;
     } else if ([character isEqualToString:@"printScreen"]) {
         const unichar ch = NSPrintScreenFunctionKey;
         eventCharacter = [NSString stringWithCharacters:&ch length:1];

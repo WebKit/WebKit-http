@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,28 +24,24 @@
  */
 
 #include "config.h"
+#include "WebGLBuffer.h"
 
 #if ENABLE(WEBGL)
-
-#include "WebGLBuffer.h"
 
 #include "WebGLContextGroup.h"
 #include "WebGLRenderingContextBase.h"
 
 namespace WebCore {
 
-Ref<WebGLBuffer> WebGLBuffer::create(WebGLRenderingContextBase* ctx)
+Ref<WebGLBuffer> WebGLBuffer::create(WebGLRenderingContextBase& ctx)
 {
     return adoptRef(*new WebGLBuffer(ctx));
 }
 
-WebGLBuffer::WebGLBuffer(WebGLRenderingContextBase* ctx)
+WebGLBuffer::WebGLBuffer(WebGLRenderingContextBase& ctx)
     : WebGLSharedObject(ctx)
-    , m_target(0)
-    , m_byteLength(0)
-    , m_nextAvailableCacheEntry(0)
 {
-    setObject(ctx->graphicsContext3D()->createBuffer());
+    setObject(ctx.graphicsContext3D()->createBuffer());
     clearCachedMaxIndices();
 }
 
@@ -56,7 +52,7 @@ WebGLBuffer::~WebGLBuffer()
 
 void WebGLBuffer::deleteObjectImpl(GraphicsContext3D* context3d, Platform3DObject object)
 {
-      context3d->deleteBuffer(object);
+    context3d->deleteBuffer(object);
 }
 
 bool WebGLBuffer::associateBufferDataImpl(const void* data, GC3Dsizeiptr byteLength)
@@ -232,16 +228,16 @@ GC3Dsizeiptr WebGLBuffer::byteLength() const
     return m_byteLength;
 }
 
-int WebGLBuffer::getCachedMaxIndex(GC3Denum type)
+std::optional<unsigned> WebGLBuffer::getCachedMaxIndex(GC3Denum type)
 {
     for (auto& cache : m_maxIndexCache) {
         if (cache.type == type)
             return cache.maxIndex;
     }
-    return -1;
+    return std::nullopt;
 }
 
-void WebGLBuffer::setCachedMaxIndex(GC3Denum type, int value)
+void WebGLBuffer::setCachedMaxIndex(GC3Denum type, unsigned value)
 {
     for (auto& cache : m_maxIndexCache) {
         if (cache.type == type) {

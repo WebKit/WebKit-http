@@ -21,11 +21,13 @@
 [
     ExportMacro=WEBCORE_EXPORT,
     JSGenerateToNativeObject,
+    ConstructorCallWith=Document,
+    NamedConstructor=Image(optional unsigned long width, optional unsigned long height)
 ] interface HTMLImageElement : HTMLElement {
     [Reflect] attribute DOMString name;
     [Reflect] attribute DOMString align;
     [Reflect] attribute DOMString alt;
-    [Reflect, TreatNullAs=EmptyString] attribute DOMString border;
+    [Reflect] attribute [TreatNullAs=EmptyString] DOMString border;
     attribute DOMString? crossOrigin;
     attribute unsigned long height;
     [Reflect] attribute unsigned long hspace;
@@ -38,6 +40,7 @@
     [Reflect] attribute DOMString useMap;
     [Reflect] attribute unsigned long vspace;
     attribute unsigned long width;
+    [Reflect] attribute boolean async;
 
     // Extensions
     readonly attribute boolean complete;
@@ -46,5 +49,7 @@
     readonly attribute long naturalWidth;
     readonly attribute long x;
     readonly attribute long y;
+
+    Promise<void> decode();
 };
 

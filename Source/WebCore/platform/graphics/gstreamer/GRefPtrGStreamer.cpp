@@ -220,6 +220,26 @@ template<> void derefGPtr<GstBufferList>(GstBufferList* ptr)
         gst_buffer_list_unref(ptr);
 }
 
+template<> GRefPtr<GstBufferPool> adoptGRef(GstBufferPool* ptr)
+{
+    ASSERT(!ptr || !g_object_is_floating(ptr));
+    return GRefPtr<GstBufferPool>(ptr, GRefPtrAdopt);
+}
+
+template<> GstBufferPool* refGPtr<GstBufferPool>(GstBufferPool* ptr)
+{
+    if (ptr)
+        gst_object_ref_sink(GST_OBJECT(ptr));
+
+    return ptr;
+}
+
+template<> void derefGPtr<GstBufferPool>(GstBufferPool* ptr)
+{
+    if (ptr)
+        gst_object_unref(ptr);
+}
+
 template<> GRefPtr<GstSample> adoptGRef(GstSample* ptr)
 {
     return GRefPtr<GstSample>(ptr, GRefPtrAdopt);
@@ -382,6 +402,50 @@ template <> void derefGPtr<WebKitWebSrc>(WebKitWebSrc* ptr)
     if (ptr)
         gst_object_unref(GST_OBJECT(ptr));
 }
+
+#if USE(GSTREAMER_GL)
+
+template<> GRefPtr<GstGLDisplay> adoptGRef(GstGLDisplay* ptr)
+{
+    ASSERT(!ptr || !g_object_is_floating(ptr));
+    return GRefPtr<GstGLDisplay>(ptr, GRefPtrAdopt);
+}
+
+template<> GstGLDisplay* refGPtr<GstGLDisplay>(GstGLDisplay* ptr)
+{
+    if (ptr)
+        gst_object_ref_sink(GST_OBJECT(ptr));
+
+    return ptr;
+}
+
+template<> void derefGPtr<GstGLDisplay>(GstGLDisplay* ptr)
+{
+    if (ptr)
+        gst_object_unref(GST_OBJECT(ptr));
+}
+
+template<> GRefPtr<GstGLContext> adoptGRef(GstGLContext* ptr)
+{
+    ASSERT(!ptr || !g_object_is_floating(ptr));
+    return GRefPtr<GstGLContext>(ptr, GRefPtrAdopt);
+}
+
+template<> GstGLContext* refGPtr<GstGLContext>(GstGLContext* ptr)
+{
+    if (ptr)
+        gst_object_ref_sink(GST_OBJECT(ptr));
+
+    return ptr;
+}
+
+template<> void derefGPtr<GstGLContext>(GstGLContext* ptr)
+{
+    if (ptr)
+        gst_object_unref(GST_OBJECT(ptr));
+}
+
+#endif // USE(GSTREAMER_GL)
 
 } // namespace WTF
 

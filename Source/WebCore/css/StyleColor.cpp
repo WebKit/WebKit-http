@@ -43,14 +43,14 @@ Color StyleColor::colorFromKeyword(CSSValueID keyword)
         if (const NamedColor* namedColor = findColor(valueName, strlen(valueName)))
             return Color(namedColor->ARGBValue);
     }
-    return RenderTheme::defaultTheme()->systemColor(keyword);
+    return RenderTheme::singleton().systemColor(keyword);
 }
 
 bool StyleColor::isColorKeyword(CSSValueID id)
 {
     return (id >= CSSValueAlpha && id <= CSSValueWebkitText)
         || (id >= CSSValueAliceblue && id <= CSSValueYellowgreen)
-        || id == CSSValueMenu;
+        || id == CSSValueMenu || isSystemColor(id);
 }
 
 bool StyleColor::isSystemColor(CSSValueID id)

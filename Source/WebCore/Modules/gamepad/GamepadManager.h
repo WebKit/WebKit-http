@@ -30,7 +30,6 @@
 #include "GamepadProviderClient.h"
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/RefPtr.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -47,7 +46,7 @@ public:
 
     void platformGamepadConnected(PlatformGamepad&) final;
     void platformGamepadDisconnected(PlatformGamepad&) final;
-    void platformGamepadInputActivity() final;
+    void platformGamepadInputActivity(bool shouldMakeGamepadVisible) final;
 
     void registerNavigator(NavigatorGamepad*);
     void unregisterNavigator(NavigatorGamepad*);

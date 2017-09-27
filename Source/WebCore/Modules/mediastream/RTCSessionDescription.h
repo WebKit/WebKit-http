@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,33 +34,30 @@
 #if ENABLE(WEB_RTC)
 
 #include "ExceptionOr.h"
+#include "RTCSdpType.h"
 #include "ScriptWrappable.h"
 
 namespace WebCore {
 
-class Dictionary;
-
 class RTCSessionDescription : public RefCounted<RTCSessionDescription>, public ScriptWrappable {
 public:
-    enum class SdpType {
-        Offer,
-        Pranswer,
-        Answer,
-        Rollback
+
+    struct Init {
+        RTCSdpType type;
+        String sdp;
     };
+    static Ref<RTCSessionDescription> create(Init&&);
+    static Ref<RTCSessionDescription> create(RTCSdpType, String&& sdp);
 
-    static ExceptionOr<Ref<RTCSessionDescription>> create(const Dictionary&);
-    static Ref<RTCSessionDescription> create(SdpType, const String& sdp);
-
-    SdpType type() const { return m_type; }
+    RTCSdpType type() const { return m_type; }
 
     const String& sdp() const { return m_sdp; }
-    void setSdp(const String& sdp) { m_sdp = sdp; }
+    void setSdp(String&& sdp) { m_sdp = WTFMove(sdp); }
 
 private:
-    explicit RTCSessionDescription(SdpType, const String& sdp);
+    RTCSessionDescription(RTCSdpType, String&& sdp);
 
-    SdpType m_type;
+    RTCSdpType m_type;
     String m_sdp;
 };
 

@@ -36,20 +36,22 @@ static void assertUserAgentForURLHasChromeBrowserQuirk(const char* url)
 {
     String uaString = standardUserAgentForURL(URL(ParsedURLString, url));
 
-#if !OS(MAC_OS_X)
-    EXPECT_FALSE(uaString.contains("Macintosh"));
-    EXPECT_FALSE(uaString.contains("Mac OS X"));
-#endif
-#if OS(LINUX)
-    EXPECT_TRUE(uaString.contains("Linux"));
-#endif
-#if OS(WINDOWS)
-    EXPECT_TRUE(uaString.contains("Windows"));
-#endif
-
     EXPECT_TRUE(uaString.contains("Chrome"));
     EXPECT_TRUE(uaString.contains("Safari"));
     EXPECT_FALSE(uaString.contains("Chromium"));
+    EXPECT_FALSE(uaString.contains("Firefox"));
+}
+
+static void assertUserAgentForURLHasLinuxPlatformQuirk(const char* url)
+{
+    String uaString = standardUserAgentForURL(URL(ParsedURLString, url));
+
+    EXPECT_TRUE(uaString.contains("Linux"));
+    EXPECT_FALSE(uaString.contains("Macintosh"));
+    EXPECT_FALSE(uaString.contains("Mac OS X"));
+    EXPECT_FALSE(uaString.contains("Windows"));
+    EXPECT_FALSE(uaString.contains("Chrome"));
+    EXPECT_FALSE(uaString.contains("FreeBSD"));
 }
 
 static void assertUserAgentForURLHasMacPlatformQuirk(const char* url)
@@ -61,6 +63,7 @@ static void assertUserAgentForURLHasMacPlatformQuirk(const char* url)
     EXPECT_FALSE(uaString.contains("Linux"));
     EXPECT_FALSE(uaString.contains("Windows"));
     EXPECT_FALSE(uaString.contains("Chrome"));
+    EXPECT_FALSE(uaString.contains("FreeBSD"));
 }
 
 TEST(UserAgentTest, Quirks)
@@ -69,19 +72,19 @@ TEST(UserAgentTest, Quirks)
     String uaString = standardUserAgentForURL(URL(ParsedURLString, "http://www.webkit.org/"));
     EXPECT_TRUE(uaString.isNull());
 
+#if !OS(LINUX) || !CPU(X86_64)
     // Google quirk should not affect sites with similar domains.
     uaString = standardUserAgentForURL(URL(ParsedURLString, "http://www.googleblog.com/"));
-    EXPECT_FALSE(uaString.contains("Chrome"));
+    EXPECT_FALSE(uaString.contains("Linux x86_64"));
+#endif
 
     assertUserAgentForURLHasChromeBrowserQuirk("http://typekit.com/");
     assertUserAgentForURLHasChromeBrowserQuirk("http://typekit.net/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://www.google.com/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://www.google.es/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://calendar.google.com/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://maps.google.com/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://plus.google.com/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://www.youtube.com/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://www.slack.com/");
+
+    assertUserAgentForURLHasLinuxPlatformQuirk("http://www.google.com/");
+    assertUserAgentForURLHasLinuxPlatformQuirk("http://www.google.es/");
+    assertUserAgentForURLHasLinuxPlatformQuirk("http://calendar.google.com/");
+    assertUserAgentForURLHasLinuxPlatformQuirk("http://plus.google.com/");
 
     assertUserAgentForURLHasMacPlatformQuirk("http://www.yahoo.com/");
     assertUserAgentForURLHasMacPlatformQuirk("http://finance.yahoo.com/");

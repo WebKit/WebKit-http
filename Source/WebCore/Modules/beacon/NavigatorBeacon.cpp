@@ -1,21 +1,61 @@
+/*
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "config.h"
 #include "NavigatorBeacon.h"
 
+#include "CachedRawResource.h"
+#include "CachedResourceLoader.h"
+#include "Document.h"
+#include "Frame.h"
+#include "HTTPParsers.h"
 #include "Navigator.h"
-#include "BeaconLoader.h"
-#include "runtime/ArrayBufferView.h"
-#include "DOMFormData.h"
-#include "ContentSecurityPolicy.h"
+#include "URL.h"
 
 namespace WebCore {
 
-NavigatorBeacon::NavigatorBeacon(Frame* frame)
-: DOMWindowProperty(frame)
+NavigatorBeacon::NavigatorBeacon(Navigator& navigator)
+    : m_navigator(navigator)
 {
 }
 
 NavigatorBeacon::~NavigatorBeacon()
 {
+    for (auto& beacon : m_inflightBeacons)
+        beacon->removeClient(*this);
+}
+
+NavigatorBeacon* NavigatorBeacon::from(Navigator& navigator)
+{
+    auto* supplement = static_cast<NavigatorBeacon*>(Supplement<Navigator>::from(&navigator, supplementName()));
+    if (!supplement) {
+        auto newSupplement = std::make_unique<NavigatorBeacon>(navigator);
+        supplement = newSupplement.get();
+        provideTo(&navigator, supplementName(), WTFMove(newSupplement));
+    }
+    return supplement;
 }
 
 const char* NavigatorBeacon::supplementName()
@@ -23,114 +63,100 @@ const char* NavigatorBeacon::supplementName()
     return "NavigatorBeacon";
 }
 
-NavigatorBeacon& NavigatorBeacon::from(Navigator& navigator)
+void NavigatorBeacon::notifyFinished(CachedResource& resource)
 {
-    NavigatorBeacon* supplement = static_cast<NavigatorBeacon*>(Supplement<Navigator>::from(&navigator, supplementName()));
-    if (!supplement) {
-        auto newSupplement = std::make_unique<NavigatorBeacon>(navigator.frame());
-        supplement = newSupplement.get();
-        provideTo(&navigator, supplementName(), WTFMove(newSupplement));
-    }
-    return *supplement;
+    if (!resource.resourceError().isNull())
+        logError(resource.resourceError());
+
+    resource.removeClient(*this);
+    bool wasRemoved = m_inflightBeacons.removeFirst(&resource);
+    ASSERT_UNUSED(wasRemoved, wasRemoved);
+    ASSERT(!m_inflightBeacons.contains(&resource));
 }
 
-bool NavigatorBeacon::canSendBeacon(ScriptExecutionContext& context, const URL& url, ExceptionCode& ec)
+void NavigatorBeacon::logError(const ResourceError& error)
 {
-    if (!url.isValid()) {
-        ec = SYNTAX_ERR;
+    ASSERT(!error.isNull());
+
+    auto* frame = m_navigator.frame();
+    if (!frame)
+        return;
+
+    auto* document = frame->document();
+    if (!document)
+        return;
+
+    const char* messageMiddle = ". ";
+    String description = error.localizedDescription();
+    if (description.isEmpty()) {
+        if (error.isAccessControl())
+            messageMiddle = " due to access control checks.";
+        else
+            messageMiddle = ".";
+    }
+
+    document->addConsoleMessage(MessageSource::Network, MessageLevel::Error, makeString(ASCIILiteral("Beacon API cannot load "), error.failingURL().string(), ASCIILiteral(messageMiddle), description));
+}
+
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Document& document, const String& url, std::optional<FetchBody::Init>&& body)
+{
+    URL parsedUrl = document.completeURL(url);
+
+    // Set parsedUrl to the result of the URL parser steps with url and base. If the algorithm returns an error, or if
+    // parsedUrl's scheme is not "http" or "https", throw a " TypeError" exception and terminate these steps.
+    if (!parsedUrl.isValid())
+        return Exception { TypeError, ASCIILiteral("This URL is invalid") };
+    if (!parsedUrl.protocolIsInHTTPFamily())
+        return Exception { TypeError, ASCIILiteral("Beacons can only be sent over HTTP(S)") };
+
+    if (!document.frame())
+        return false;
+
+    auto& contentSecurityPolicy = *document.contentSecurityPolicy();
+    if (!document.shouldBypassMainWorldContentSecurityPolicy() && !contentSecurityPolicy.allowConnectToSource(parsedUrl)) {
+        // We simulate a network error so we return true here. This is consistent with Blink.
+        return true;
+    }
+
+    ResourceRequest request(parsedUrl);
+    request.setHTTPMethod(ASCIILiteral("POST"));
+
+    FetchOptions options;
+    options.credentials = FetchOptions::Credentials::Include;
+    options.cache = FetchOptions::Cache::NoCache;
+    options.keepAlive = true;
+    if (body) {
+        options.mode = FetchOptions::Mode::Cors;
+        String mimeType;
+        auto fetchBody = FetchBody::extract(document, WTFMove(body.value()), mimeType);
+
+        if (fetchBody.hasReadableStream())
+            return Exception { TypeError, ASCIILiteral("Beacons cannot send ReadableStream body") };
+
+        request.setHTTPBody(fetchBody.bodyAsFormData(document));
+        if (!mimeType.isEmpty()) {
+            request.setHTTPContentType(mimeType);
+            if (isCrossOriginSafeRequestHeader(HTTPHeaderName::ContentType, mimeType))
+                options.mode = FetchOptions::Mode::NoCors;
+        }
+    }
+
+    auto cachedResource = document.cachedResourceLoader().requestBeaconResource({ WTFMove(request), options });
+    if (!cachedResource) {
+        logError(cachedResource.error());
         return false;
     }
 
-    // For now, only support HTTP and related.
-    if (!url.protocolIsInHTTPFamily()) {
-        ec = SECURITY_ERR;
-        return false;
-    }
-
-    if (!context.shouldBypassMainWorldContentSecurityPolicy() && !context.contentSecurityPolicy()->allowConnectToSource(url)) {
-        ec = SECURITY_ERR;
-        return false;
-    }
-
-    // If detached from frame, do not allow sending a Beacon.
-    if (!frame())
-        return false;
-
+    ASSERT(!m_inflightBeacons.contains(cachedResource.value().get()));
+    m_inflightBeacons.append(cachedResource.value().get());
+    cachedResource.value()->addClient(*this);
     return true;
 }
 
-int NavigatorBeacon::maxAllowance() const
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator& navigator, Document& document, const String& url, std::optional<FetchBody::Init>&& body)
 {
-    return m_transmittedBytes;
+    return NavigatorBeacon::from(navigator)->sendBeacon(document, url, WTFMove(body));
 }
 
-bool NavigatorBeacon::beaconResult(ScriptExecutionContext&, bool allowed, int sentBytes)
-{
-    if (allowed) {
-        ASSERT(sentBytes >= 0);
-        m_transmittedBytes += sentBytes;
-    }
-    return allowed;
 }
 
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, Blob* data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data, bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, const RefPtr<JSC::ArrayBufferView>& data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data.get(), bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, DOMFormData* data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data, bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-bool NavigatorBeacon::sendBeacon(Navigator& navigator, ScriptExecutionContext& context, const String& urlstring, const String& data, ExceptionCode& ec)
-{
-    NavigatorBeacon& impl = NavigatorBeacon::from(navigator);
-
-    URL url = context.completeURL(urlstring);
-    if (!impl.canSendBeacon(context, url, ec))
-        return false;
-
-    int allowance = impl.maxAllowance();
-    int bytes = 0;
-    bool allowed = BeaconLoader::sendBeacon(*impl.frame(), allowance, url, data, bytes);
-
-    return impl.beaconResult(context, allowed, bytes);
-}
-
-} // namespace WebCore

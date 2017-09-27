@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  * Copyright (C) 2009 Google Inc. All rights reserved.
  *
@@ -42,6 +42,8 @@
     void setZoomFactor(unrestricted float zoom);
     float zoomFactor();
 
+    DOMString userInterfaceLayoutDirection();
+
     void requestSetDockSide(DOMString side);
 
     void setAttachedWindowHeight(unsigned long height);
@@ -66,12 +68,22 @@
     DOMString platform();
     DOMString port();
 
-    [Custom] void showContextMenu(MouseEvent event, any items);
-    void dispatchEventAsContextMenuEvent(Event? event);
+    void showContextMenu(Event event, sequence<ContextMenuItem> items);
+    void dispatchEventAsContextMenuEvent(Event event);
     void sendMessageToBackend(DOMString message);
     void unbufferedLog(DOMString message);
 
     boolean isUnderTest();
 
     void beep();
+    void inspectInspector();
+};
+
+dictionary ContextMenuItem {
+    DOMString type;
+    DOMString label;
+    long id;
+    boolean enabled;
+    boolean checked;
+    sequence<ContextMenuItem> subItems;
 };

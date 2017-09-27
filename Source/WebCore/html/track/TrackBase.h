@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,9 +27,9 @@
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "EventTarget.h"
-#include <wtf/RefCounted.h>
-#include <wtf/TypeCasts.h>
+#include <pal/Logger.h>
+#include <pal/LoggerHelper.h>
+#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
@@ -37,14 +37,19 @@ class Element;
 class HTMLMediaElement;
 class SourceBuffer;
 
-class TrackBase : public RefCounted<TrackBase> {
+class TrackBase
+    : public RefCounted<TrackBase>
+#if !RELEASE_LOG_DISABLED
+    , private PAL::LoggerHelper
+#endif
+{
 public:
-    virtual ~TrackBase();
+    virtual ~TrackBase() = default;
 
     enum Type { BaseTrack, TextTrack, AudioTrack, VideoTrack };
     Type type() const { return m_type; }
 
-    void setMediaElement(HTMLMediaElement* element) { m_mediaElement = element; }
+    virtual void setMediaElement(HTMLMediaElement*);
     HTMLMediaElement* mediaElement() { return m_mediaElement; }
     virtual Element* element();
 
@@ -54,8 +59,9 @@ public:
     AtomicString label() const { return m_label; }
     void setLabel(const AtomicString& label) { m_label = label; }
 
+    AtomicString validBCP47Language() const;
     AtomicString language() const { return m_language; }
-    virtual void setLanguage(const AtomicString& language) { m_language = language; }
+    virtual void setLanguage(const AtomicString&);
 
     virtual void clearClient() = 0;
 
@@ -67,6 +73,12 @@ public:
 #endif
 
     virtual bool enabled() const = 0;
+
+#if !RELEASE_LOG_DISABLED
+    const PAL::Logger& logger() const final { ASSERT(m_logger); return *m_logger.get(); }
+    const void* logIdentifier() const final { return m_logIdentifier; }
+    WTFLogChannel& logChannel() const final;
+#endif
 
 protected:
     TrackBase(Type, const AtomicString& id, const AtomicString& label, const AtomicString& language);
@@ -83,6 +95,11 @@ private:
     AtomicString m_id;
     AtomicString m_label;
     AtomicString m_language;
+    AtomicString m_validBCP47Language;
+#if !RELEASE_LOG_DISABLED
+    RefPtr<const PAL::Logger> m_logger;
+    const void* m_logIdentifier;
+#endif
 };
 
 class MediaTrackBase : public TrackBase {
@@ -97,7 +114,6 @@ protected:
 
 private:
     virtual bool isValidKind(const AtomicString&) const = 0;
-    virtual const AtomicString& defaultKindKeyword() const = 0;
 
     AtomicString m_kind;
 };

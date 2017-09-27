@@ -28,7 +28,7 @@
 namespace WTF {
 
 #if !defined(NDEBUG)
-void fastSetMaxSingleAllocationSize(size_t);
+WTF_EXPORT_PRIVATE void fastSetMaxSingleAllocationSize(size_t);
 #endif
 
 class TryMallocReturnValue {
@@ -45,11 +45,11 @@ private:
 WTF_EXPORT_PRIVATE bool isFastMallocEnabled();
 
 // These functions call CRASH() if an allocation fails.
-WTF_EXPORT_PRIVATE void* fastMalloc(size_t);
-WTF_EXPORT_PRIVATE void* fastZeroedMalloc(size_t);
-WTF_EXPORT_PRIVATE void* fastCalloc(size_t numElements, size_t elementSize);
-WTF_EXPORT_PRIVATE void* fastRealloc(void*, size_t);
-WTF_EXPORT_PRIVATE char* fastStrDup(const char*);
+WTF_EXPORT_PRIVATE void* fastMalloc(size_t) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE void* fastZeroedMalloc(size_t) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE void* fastCalloc(size_t numElements, size_t elementSize) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE void* fastRealloc(void*, size_t) RETURNS_NONNULL;
+WTF_EXPORT_PRIVATE char* fastStrDup(const char*) RETURNS_NONNULL;
 
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastMalloc(size_t);
 TryMallocReturnValue tryFastZeroedMalloc(size_t);
@@ -58,7 +58,7 @@ WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastCalloc(size_t numElements, size_t
 WTF_EXPORT_PRIVATE void fastFree(void*);
 
 // Allocations from fastAlignedMalloc() must be freed using fastAlignedFree().
-WTF_EXPORT_PRIVATE void* fastAlignedMalloc(size_t alignment, size_t);
+WTF_EXPORT_PRIVATE void* fastAlignedMalloc(size_t alignment, size_t) RETURNS_NONNULL;
 WTF_EXPORT_PRIVATE void* tryFastAlignedMalloc(size_t alignment, size_t);
 WTF_EXPORT_PRIVATE void fastAlignedFree(void*);
 
@@ -104,12 +104,110 @@ template<typename T> inline bool TryMallocReturnValue::getValue(T*& data)
     return data;
 }
 
+// C++ STL allocator implementation. You can integrate fastMalloc into STL containers.
+// e.g. std::unordered_map<Key, Value, std::hash<Key>, std::equal_to<Key>, FastAllocator<std::pair<const Key, Value>>>.
+template<typename T>
+class FastAllocator {
+public:
+    using value_type = T;
+
+    FastAllocator() = default;
+
+    template<typename U> FastAllocator(const FastAllocator<U>&) { }
+
+    T* allocate(size_t count)
+    {
+        return reinterpret_cast<T*>(fastMalloc(sizeof(T) * count));
+    }
+
+    void deallocate(T* pointer, size_t)
+    {
+        fastFree(pointer);
+    }
+
+#if defined(__GLIBCXX__) && (!defined(_GLIBCXX_RELEASE) || _GLIBCXX_RELEASE < 6)
+    // This allocator also supports pre-C++11 STL allocator interface. This is a workaround for GCC < 6, which std::list
+    // does not support C++11 allocator. Note that _GLIBCXX_RELEASE is only defined after GCC 7 release. So currently
+    // this workaround is enabled in GCC 6 too.
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=55409
+
+    using pointer = value_type*;
+    using const_pointer = typename std::pointer_traits<pointer>::template rebind<value_type const>;
+    using void_pointer = typename std::pointer_traits<pointer>::template rebind<void>;
+    using const_void_pointer = typename std::pointer_traits<pointer>::template rebind<const void>;
+
+    using reference = T&;
+    using const_reference = const T&;
+
+    using difference_type = typename std::pointer_traits<pointer>::difference_type;
+    using size_type = std::make_unsigned_t<difference_type>;
+
+    template <class U> struct rebind {
+        using other = FastAllocator<U>;
+    };
+
+    value_type* allocate(std::size_t count, const_void_pointer)
+    {
+        return allocate(count);
+    }
+
+    template <class U, class ...Args>
+    void construct(U* p, Args&& ...args)
+    {
+        new (const_cast<void*>(static_cast<const void*>(p))) U(std::forward<Args>(args)...);
+    }
+
+    template <class U>
+    void destroy(U* p)
+    {
+        p->~U();
+    }
+
+    std::size_t max_size() const
+    {
+        return std::numeric_limits<size_type>::max();
+    }
+
+    FastAllocator<T> select_on_container_copy_construction() const
+    {
+        return *this;
+    }
+
+    using propagate_on_container_copy_assignment = std::false_type;
+    using propagate_on_container_move_assignment = std::false_type;
+    using propagate_on_container_swap = std::false_type;
+    using is_always_equal = std::is_empty<FastAllocator>;
+#endif // defined(__GLIBCXX__) && (!defined(_GLIBCXX_RELEASE) || _GLIBCXX_RELEASE < 6)
+};
+
+template<typename T, typename U> inline bool operator==(const FastAllocator<T>&, const FastAllocator<U>&) { return true; }
+template<typename T, typename U> inline bool operator!=(const FastAllocator<T>&, const FastAllocator<U>&) { return false; }
+
+struct FastMalloc {
+    static void* malloc(size_t size) { return fastMalloc(size); }
+    
+    static void* tryMalloc(size_t size)
+    {
+        auto result = tryFastMalloc(size);
+        void* realResult;
+        if (result.getValue(realResult))
+            return realResult;
+        return nullptr;
+    }
+    
+    static void* realloc(void* p, size_t size) { return fastRealloc(p, size); }
+    
+    static void free(void* p) { fastFree(p); }
+};
+
 } // namespace WTF
 
 #if !defined(NDEBUG)
 using WTF::fastSetMaxSingleAllocationSize;
 #endif
 
+using WTF::FastAllocator;
+using WTF::FastMalloc;
 using WTF::isFastMallocEnabled;
 using WTF::fastCalloc;
 using WTF::fastFree;

@@ -27,7 +27,6 @@
 #define ScrollbarThemeGtk_h
 
 #include "ScrollbarThemeComposite.h"
-#include <wtf/glib/GRefPtr.h>
 
 namespace WebCore {
 
@@ -48,12 +47,12 @@ public:
 
     bool paint(Scrollbar&, GraphicsContext&, const IntRect& damageRect) override;
     ScrollbarButtonPressAction handleMousePressEvent(Scrollbar&, const PlatformMouseEvent&, ScrollbarPart) override;
-    int scrollbarThickness(ScrollbarControlSize) override;
+    int scrollbarThickness(ScrollbarControlSize, ScrollbarExpansionState = ScrollbarExpansionState::Expanded) override;
     int minimumThumbLength(Scrollbar&) override;
 
     // TODO: These are the default GTK+ values. At some point we should pull these from the theme itself.
-    double initialAutoscrollTimerDelay() override { return 0.20; }
-    double autoscrollTimerDelay() override { return 0.02; }
+    Seconds initialAutoscrollTimerDelay() override { return 200_ms; }
+    Seconds autoscrollTimerDelay() override { return 20_ms; }
     void themeChanged() override;
     bool usesOverlayScrollbars() const override { return m_usesOverlayScrollbars; }
     // When using overlay scrollbars, always invalidate the whole scrollbar when entering/leaving.

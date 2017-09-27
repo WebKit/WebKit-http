@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2013, 2015, 2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,19 +52,25 @@ namespace WebCore {
     M(Fullscreen) \
     M(Gamepad) \
     M(History) \
+    M(IOSurface) \
     M(IconDatabase) \
     M(Images) \
     M(IndexedDB) \
+    M(IndexedDBOperations) \
     M(Layers) \
     M(Layout) \
     M(Loading) \
     M(Media) \
+    M(MediaCaptureSamples) \
+    M(MediaQueries) \
     M(MediaSource) \
+    M(MediaStream) \
     M(MediaSourceSamples) \
     M(MemoryPressure) \
     M(Network) \
     M(NotYetImplemented) \
     M(PageCache) \
+    M(PerformanceLogging) \
     M(PlatformLeaks) \
     M(Plugins) \
     M(PopupBlocking) \
@@ -72,8 +78,10 @@ namespace WebCore {
     M(RemoteInspector) \
     M(ResourceLoading) \
     M(ResourceLoadObserver) \
+    M(ResourceLoadStatistics) \
     M(Scrolling) \
     M(Services) \
+    M(ServiceWorker) \
     M(SpellingAndGrammar) \
     M(SQLDatabase) \
     M(StorageAPI) \
@@ -84,7 +92,8 @@ namespace WebCore {
     M(URLParser) \
     M(WebAudio) \
     M(WebGL) \
-    M(WebReplay) \
+    M(WebGPU) \
+    M(WebRTC) \
     M(WheelEventTestTriggers) \
 
 #undef DECLARE_LOG_CHANNEL
@@ -97,7 +106,7 @@ String logLevelString();
 bool isLogChannelEnabled(const String& name);
 WEBCORE_EXPORT void setLogChannelToAccumulate(const String& name);
 #ifndef NDEBUG
-void registerNotifyCallback(const String& notifyID, std::function<void()> callback);
+void registerNotifyCallback(const String& notifyID, WTF::Function<void()>&& callback);
 #endif
 
 #endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED

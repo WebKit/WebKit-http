@@ -23,7 +23,6 @@
 #pragma once
 
 #include "RenderBlockFlow.h"
-#include "RenderPtr.h"
 
 namespace WebCore {
 
@@ -55,9 +54,18 @@ public:
     static void updateItemValuesForOrderedList(const HTMLOListElement&);
     static unsigned itemCountForOrderedList(const HTMLOListElement&);
 
-    void didDestroyListMarker() { m_marker = nullptr; }
+    RenderStyle computeMarkerStyle() const;
+
+    RenderListMarker* markerRenderer() { return m_marker; }
+    void setMarkerRenderer(RenderListMarker* marker) { m_marker = marker; }
+
+#if !ASSERT_DISABLED
+    bool inLayout() const { return m_inLayout; }
+#endif
 
 private:
+    void willBeDestroyed() override;
+
     const char* renderName() const override { return "RenderListItem"; }
 
     bool isListItem() const override { return true; }
@@ -71,26 +79,26 @@ private:
 
     void positionListMarker();
 
-    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-
-    bool requiresForcedStyleRecalcPropagation() const override { return true; }
-
     void addOverflowFromChildren() override;
     void computePreferredLogicalWidths() override;
 
-    void insertOrMoveMarkerRendererIfNeeded();
     inline int calcValue() const;
     void updateValueNow() const;
     void explicitValueChanged();
 
+
     int m_explicitValue;
     RenderListMarker* m_marker;
     mutable int m_value;
-
+#if !ASSERT_DISABLED
+    bool m_inLayout { false };
+#endif
     bool m_hasExplicitValue : 1;
     mutable bool m_isValueUpToDate : 1;
     bool m_notInList : 1;
 };
+
+bool isHTMLListElement(const Node&);
 
 } // namespace WebCore
 

@@ -23,30 +23,28 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebInspector.ContentBrowserTabContentView
+WI.ElementsTabContentView = class ElementsTabContentView extends WI.ContentBrowserTabContentView
 {
     constructor(identifier)
     {
-        let {image, title} = WebInspector.ElementsTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
-        let detailsSidebarPanels = [WebInspector.domNodeDetailsSidebarPanel, WebInspector.cssStyleDetailsSidebarPanel];
+        let {image, title} = WI.ElementsTabContentView.tabInfo();
+        let tabBarItem = new WI.GeneralTabBarItem(image, title);
+        let detailsSidebarPanelConstructors = [WI.DOMNodeDetailsSidebarPanel, WI.CSSStyleDetailsSidebarPanel];
 
-        if (WebInspector.layerTreeDetailsSidebarPanel)
-            detailsSidebarPanels.push(WebInspector.layerTreeDetailsSidebarPanel);
+        if (window.LayerTreeAgent && !WI.settings.experimentalEnableLayersTab.value)
+            detailsSidebarPanelConstructors.push(WI.LayerTreeDetailsSidebarPanel);
 
-        super(identifier || "elements", "elements", tabBarItem, null, detailsSidebarPanels, true);
+        super(identifier || "elements", "elements", tabBarItem, null, detailsSidebarPanelConstructors, true);
 
-        WebInspector.frameResourceManager.addEventListener(WebInspector.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
-        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
-
-        this._showDOMTreeContentView();
+        WI.frameResourceManager.addEventListener(WI.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
+        WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
     }
 
     static tabInfo()
     {
         return {
             image: "Images/Elements.svg",
-            title: WebInspector.UIString("Elements"),
+            title: WI.UIString("Elements"),
         };
     }
 
@@ -59,25 +57,29 @@ WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebIn
 
     get type()
     {
-        return WebInspector.ElementsTabContentView.Type;
+        return WI.ElementsTabContentView.Type;
+    }
+
+    get supportsSplitContentBrowser()
+    {
+        return true;
     }
 
     canShowRepresentedObject(representedObject)
     {
-        return representedObject instanceof WebInspector.DOMTree;
+        return representedObject instanceof WI.DOMTree;
     }
 
     showRepresentedObject(representedObject, cookie)
     {
-        var domTreeContentView = this.contentBrowser.currentContentView;
-        console.assert(!domTreeContentView || domTreeContentView instanceof WebInspector.DOMTreeContentView);
-        if (!domTreeContentView || !(domTreeContentView instanceof WebInspector.DOMTreeContentView)) {
-            // FIXME: Remember inspected node for later when _mainFrameDidChange.
-            return;
-        }
+        if (!this.contentBrowser.currentContentView)
+            this._showDOMTreeContentView();
 
         if (!cookie || !cookie.nodeToSelect)
             return;
+
+        let domTreeContentView = this.contentBrowser.currentContentView;
+        console.assert(domTreeContentView instanceof WI.DOMTreeContentView, "Unexpected DOMTreeContentView representedObject.", domTreeContentView);
 
         domTreeContentView.selectAndRevealDOMNode(cookie.nodeToSelect);
 
@@ -86,12 +88,20 @@ WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebIn
         cookie.nodeToSelect = undefined;
     }
 
+    shown()
+    {
+        super.shown();
+
+        if (!this.contentBrowser.currentContentView)
+            this._showDOMTreeContentView();
+    }
+
     closed()
     {
         super.closed();
 
-        WebInspector.frameResourceManager.removeEventListener(null, null, this);
-        WebInspector.Frame.removeEventListener(null, null, this);
+        WI.frameResourceManager.removeEventListener(null, null, this);
+        WI.Frame.removeEventListener(null, null, this);
     }
 
     // Private
@@ -100,7 +110,7 @@ WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebIn
     {
         this.contentBrowser.contentViewContainer.closeAllContentViews();
 
-        var mainFrame = WebInspector.frameResourceManager.mainFrame;
+        var mainFrame = WI.frameResourceManager.mainFrame;
         if (mainFrame)
             this.contentBrowser.showContentViewForRepresentedObject(mainFrame.domTree);
     }
@@ -119,4 +129,4 @@ WebInspector.ElementsTabContentView = class ElementsTabContentView extends WebIn
     }
 };
 
-WebInspector.ElementsTabContentView.Type = "elements";
+WI.ElementsTabContentView.Type = "elements";

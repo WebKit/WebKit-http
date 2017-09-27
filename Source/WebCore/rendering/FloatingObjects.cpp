@@ -36,6 +36,7 @@ struct SameSizeAsFloatingObject {
     void* pointers[2];
     LayoutRect rect;
     int paginationStrut;
+    LayoutSize size;
     uint32_t bitfields : 8;
 };
 
@@ -43,8 +44,6 @@ COMPILE_ASSERT(sizeof(FloatingObject) == sizeof(SameSizeAsFloatingObject), Float
 
 FloatingObject::FloatingObject(RenderBox& renderer)
     : m_renderer(renderer)
-    , m_originatingLine(nullptr)
-    , m_paginationStrut(0)
     , m_shouldPaint(true)
     , m_isDescendant(false)
     , m_isPlaced(false)
@@ -60,11 +59,10 @@ FloatingObject::FloatingObject(RenderBox& renderer)
         m_type = FloatRight;
 }
 
-FloatingObject::FloatingObject(RenderBox& renderer, Type type, const LayoutRect& frameRect, bool shouldPaint, bool isDescendant)
+FloatingObject::FloatingObject(RenderBox& renderer, Type type, const LayoutRect& frameRect, const LayoutSize& marginOffset, bool shouldPaint, bool isDescendant)
     : m_renderer(renderer)
-    , m_originatingLine(nullptr)
     , m_frameRect(frameRect)
-    , m_paginationStrut(0)
+    , m_marginOffset(marginOffset)
     , m_type(type)
     , m_shouldPaint(shouldPaint)
     , m_isDescendant(isDescendant)
@@ -85,16 +83,20 @@ std::unique_ptr<FloatingObject> FloatingObject::create(RenderBox& renderer)
 
 std::unique_ptr<FloatingObject> FloatingObject::copyToNewContainer(LayoutSize offset, bool shouldPaint, bool isDescendant) const
 {
-    return std::make_unique<FloatingObject>(renderer(), type(), LayoutRect(frameRect().location() - offset, frameRect().size()), shouldPaint, isDescendant);
+    return std::make_unique<FloatingObject>(renderer(), type(), LayoutRect(frameRect().location() - offset, frameRect().size()), marginOffset(), shouldPaint, isDescendant);
 }
 
-std::unique_ptr<FloatingObject> FloatingObject::unsafeClone() const
+std::unique_ptr<FloatingObject> FloatingObject::cloneForNewParent() const
 {
-    // FIXME: Use make_unique here, once we can get it to compile on all platforms we support.
-    std::unique_ptr<FloatingObject> cloneObject(new FloatingObject(renderer(), type(), m_frameRect, m_shouldPaint, m_isDescendant));
+    auto cloneObject = std::make_unique<FloatingObject>(renderer(), type(), m_frameRect, m_marginOffset, m_shouldPaint, m_isDescendant);
     cloneObject->m_paginationStrut = m_paginationStrut;
     cloneObject->m_isPlaced = m_isPlaced;
     return cloneObject;
+}
+
+LayoutSize FloatingObject::translationOffsetToAncestor() const
+{
+    return locationOffsetOfBorderBox() - renderer().locationOffset();
 }
 
 inline static bool rangesIntersect(LayoutUnit floatTop, LayoutUnit floatBottom, LayoutUnit objectTop, LayoutUnit objectBottom)
@@ -186,39 +188,35 @@ public:
     FindNextFloatLogicalBottomAdapter(const RenderBlockFlow& renderer, LayoutUnit belowLogicalHeight)
         : m_renderer(renderer)
         , m_belowLogicalHeight(belowLogicalHeight)
-        , m_aboveLogicalHeight(LayoutUnit::max())
-        , m_nextLogicalBottom(LayoutUnit::max())
-        , m_nextShapeLogicalBottom(LayoutUnit::max())
     {
     }
 
     LayoutUnit lowValue() const { return m_belowLogicalHeight; }
-    LayoutUnit highValue() const { return m_aboveLogicalHeight; }
+    LayoutUnit highValue() const { return LayoutUnit::max(); }
     void collectIfNeeded(const IntervalType&);
 
-    LayoutUnit nextLogicalBottom() { return m_nextLogicalBottom == LayoutUnit::max() ? LayoutUnit() : m_nextLogicalBottom; }
-    LayoutUnit nextShapeLogicalBottom() { return m_nextShapeLogicalBottom == LayoutUnit::max() ? nextLogicalBottom() : m_nextShapeLogicalBottom; }
+    LayoutUnit nextLogicalBottom() const { return m_nextLogicalBottom.value_or(0); }
+    LayoutUnit nextShapeLogicalBottom() const { return m_nextShapeLogicalBottom.value_or(nextLogicalBottom()); }
 
 private:
     const RenderBlockFlow& m_renderer;
     LayoutUnit m_belowLogicalHeight;
-    LayoutUnit m_aboveLogicalHeight;
-    LayoutUnit m_nextLogicalBottom;
-    LayoutUnit m_nextShapeLogicalBottom;
+    std::optional<LayoutUnit> m_nextLogicalBottom;
+    std::optional<LayoutUnit> m_nextShapeLogicalBottom;
 };
 
 inline void FindNextFloatLogicalBottomAdapter::collectIfNeeded(const IntervalType& interval)
 {
     const auto& floatingObject = *interval.data();
-    if (!rangesIntersect(interval.low(), interval.high(), m_belowLogicalHeight, m_aboveLogicalHeight))
+    if (!rangesIntersect(interval.low(), interval.high(), m_belowLogicalHeight, LayoutUnit::max()))
         return;
 
     // All the objects returned from the tree should be already placed.
     ASSERT(floatingObject.isPlaced());
-    ASSERT(rangesIntersect(m_renderer.logicalTopForFloat(floatingObject), m_renderer.logicalBottomForFloat(floatingObject), m_belowLogicalHeight, m_aboveLogicalHeight));
+    ASSERT(rangesIntersect(m_renderer.logicalTopForFloat(floatingObject), m_renderer.logicalBottomForFloat(floatingObject), m_belowLogicalHeight, LayoutUnit::max()));
 
     LayoutUnit floatBottom = m_renderer.logicalBottomForFloat(floatingObject);
-    if (m_nextLogicalBottom < floatBottom)
+    if (m_nextLogicalBottom && m_nextLogicalBottom.value() < floatBottom)
         return;
 
     if (ShapeOutsideInfo* shapeOutside = floatingObject.renderer().shapeOutsideInfo()) {
@@ -265,7 +263,7 @@ void FloatingObjects::clearLineBoxTreePointers()
     // Clear references to originating lines, since the lines are being deleted
     for (auto it = m_set.begin(), end = m_set.end(); it != end; ++it) {
         ASSERT(!((*it)->originatingLine()) || &((*it)->originatingLine()->renderer()) == &m_renderer);
-        (*it)->setOriginatingLine(0);
+        (*it)->clearOriginatingLine();
     }
 }
 

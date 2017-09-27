@@ -150,7 +150,7 @@ class ReportProcessor {
 
 
         foreach ($revisions as $repository_name => $revision_data) {
-            $repository_id = $this->db->select_or_insert_row('repositories', 'repository', array('name' => $repository_name));
+            $repository_id = $this->db->select_or_insert_row('repositories', 'repository', array('name' => $repository_name, 'owner' => NULL));
             if (!$repository_id)
                 $this->exit_with_error('FailedToInsertRepository', array('name' => $repository_name));
 
@@ -166,7 +166,7 @@ class ReportProcessor {
                 array('repository' => $repository_id, 'revision' => $revision_data['revision']), $commit_data, '*');
             if (!$commit_row)
                 $this->exit_with_error('FailedToRecordCommit', $commit_data);
-            if ($commit_data['time'] && abs($commit_row['commit_time'] - $commit_data['time']) > 1.0)
+            if ($commit_data['time'] && abs(floatval($commit_row['commit_time']) - floatval($commit_data['time'])) > 1.0)
                 $this->exit_with_error('MismatchingCommitTime', array('existing' => $commit_row, 'new' => $commit_data));
 
             if (!$this->db->select_or_insert_row('build_commits', null,
@@ -309,7 +309,7 @@ class TestRunsGenerator {
                 foreach ($aggregators_and_values as $aggregator_and_values) {
                     if ($aggregator_and_values['aggregator'] == $aggregator) {
                         $values = $aggregator_and_values['values'];
-                        break;                        
+                        break;
                     }
                 }
                 if (!$values) {
@@ -404,7 +404,7 @@ class TestRunsGenerator {
                         }
                         $iteration_value = $iteration_value[1];
                     }
-                    array_push($flattened_value, $iteration_value);                    
+                    array_push($flattened_value, $iteration_value);
                 }
             }
             $this->values_to_commit[$i]['mean'] = $this->aggregate_values('Arithmetic', $flattened_value);

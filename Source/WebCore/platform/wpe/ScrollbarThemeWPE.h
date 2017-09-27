@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollbarThemeWPE_h
-#define ScrollbarThemeWPE_h
+#pragma once
 
 #include "ScrollbarThemeComposite.h"
 
@@ -35,14 +34,12 @@ public:
     ScrollbarThemeWPE() = default;
     virtual ~ScrollbarThemeWPE() = default;
 
-    virtual bool hasButtons(Scrollbar&) override;
-    virtual bool hasThumb(Scrollbar&) override;
+    bool hasButtons(Scrollbar&) override;
+    bool hasThumb(Scrollbar&) override;
 
-    virtual IntRect backButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
-    virtual IntRect forwardButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
-    virtual IntRect trackRect(Scrollbar&, bool painting = false) override;
+    IntRect backButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
+    IntRect forwardButtonRect(Scrollbar&, ScrollbarPart, bool painting = false) override;
+    IntRect trackRect(Scrollbar&, bool painting = false) override;
 };
 
 } // namespace WebCore
-
-#endif // ScrollbarThemeWPE_h

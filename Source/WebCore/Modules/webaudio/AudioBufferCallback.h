@@ -26,16 +26,19 @@
 
 #if ENABLE(WEB_AUDIO)
 
+#include "ActiveDOMCallback.h"
+#include "CallbackResult.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class AudioBuffer;
 
-class AudioBufferCallback : public RefCounted<AudioBufferCallback> {
+class AudioBufferCallback : public RefCounted<AudioBufferCallback>, public ActiveDOMCallback {
 public:
-    virtual ~AudioBufferCallback() { }
-    virtual bool handleEvent(AudioBuffer*) = 0;
+    using ActiveDOMCallback::ActiveDOMCallback;
+
+    virtual CallbackResult<void> handleEvent(AudioBuffer*) = 0;
 };
 
 } // namespace WebCore

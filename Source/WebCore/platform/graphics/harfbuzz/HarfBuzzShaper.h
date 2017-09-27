@@ -36,7 +36,6 @@
 #include "TextRun.h"
 #include "hb.h"
 #include <memory>
-#include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #include <wtf/unicode/CharacterNames.h>
 
@@ -55,10 +54,10 @@ public:
     HarfBuzzShaper(const FontCascade*, const TextRun&);
     virtual ~HarfBuzzShaper();
 
-    bool shape(GlyphBuffer* = 0);
+    bool shape(GlyphBuffer* = nullptr, std::optional<unsigned> from = std::nullopt, std::optional<unsigned> to = std::nullopt);
     FloatPoint adjustStartPoint(const FloatPoint&);
     float totalWidth() { return m_totalWidth; }
-    int offsetForPosition(float targetX);
+    int offsetForPosition(float targetX, bool includePartialGlyphs = true);
     FloatRect selectionRect(const FloatPoint&, int height, unsigned from, unsigned to);
 
 private:
@@ -70,7 +69,7 @@ private:
         void setGlyphAndPositions(unsigned index, uint16_t glyphId, float advance, float offsetX, float offsetY);
         void setWidth(float width) { m_width = width; }
 
-        unsigned characterIndexForXPosition(float targetX);
+        unsigned characterIndexForXPosition(float targetX, bool includePartialGlyphs);
         float xPositionForOffset(unsigned offset);
 
         const Font* fontData() { return m_fontData; }
@@ -114,8 +113,8 @@ private:
 
     bool collectHarfBuzzRuns();
     bool shapeHarfBuzzRuns(bool shouldSetDirection);
-    bool fillGlyphBuffer(GlyphBuffer*);
-    void fillGlyphBufferFromHarfBuzzRun(GlyphBuffer*, HarfBuzzRun*, FloatPoint& firstOffsetOfNextRun);
+    bool fillGlyphBuffer(GlyphBuffer*, unsigned from, unsigned to);
+    void fillGlyphBufferFromHarfBuzzRun(GlyphBuffer*, unsigned from, unsigned to, HarfBuzzRun*, const FloatPoint& firstOffsetOfNextRun);
     void setGlyphPositionsForHarfBuzzRun(HarfBuzzRun*, hb_buffer_t*);
 
     GlyphBufferAdvance createGlyphBufferAdvance(float, float);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SourceBufferPrivateAVFObjC_h
-#define SourceBufferPrivateAVFObjC_h
+#pragma once
 
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
@@ -63,12 +62,17 @@ class AudioTrackPrivate;
 class VideoTrackPrivate;
 class AudioTrackPrivateMediaSourceAVFObjC;
 class VideoTrackPrivateMediaSourceAVFObjC;
+class WebCoreDecompressionSession;
 
 class SourceBufferPrivateAVFObjCErrorClient {
 public:
     virtual ~SourceBufferPrivateAVFObjCErrorClient() { }
     virtual void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *, bool& shouldIgnore) = 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     virtual void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *, bool& shouldIgnore) = 0;
+#pragma clang diagnostic pop
 };
 
 class SourceBufferPrivateAVFObjC final : public SourceBufferPrivate {
@@ -89,6 +93,7 @@ public:
     bool processCodedFrame(int trackID, CMSampleBufferRef, const String& mediaType);
 
     bool hasVideo() const;
+    bool hasSelectedVideo() const;
     bool hasAudio() const;
 
     void trackDidChangeEnabled(VideoTrackPrivateMediaSourceAVFObjC*);
@@ -108,34 +113,47 @@ public:
     void registerForErrorNotifications(SourceBufferPrivateAVFObjCErrorClient*);
     void unregisterForErrorNotifications(SourceBufferPrivateAVFObjCErrorClient*);
     void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *);
+#pragma clang diagnostic pop
+
+    void setVideoLayer(AVSampleBufferDisplayLayer*);
+    void setDecompressionSession(WebCoreDecompressionSession*);
+
+    void bufferWasConsumed();
 
 private:
     explicit SourceBufferPrivateAVFObjC(MediaSourcePrivateAVFObjC*);
 
     // SourceBufferPrivate overrides
-    void setClient(SourceBufferPrivateClient*) override;
-    void append(const unsigned char* data, unsigned length) override;
-    void abort() override;
-    void resetParserState() override;
-    void removedFromMediaSource() override;
-    MediaPlayer::ReadyState readyState() const override;
-    void setReadyState(MediaPlayer::ReadyState) override;
-    void flush(AtomicString trackID) override;
-    void enqueueSample(PassRefPtr<MediaSample>, AtomicString trackID) override;
-    bool isReadyForMoreSamples(AtomicString trackID) override;
-    void setActive(bool) override;
-    void notifyClientWhenReadyForMoreSamples(AtomicString trackID) override;
+    void setClient(SourceBufferPrivateClient*) final;
+    void append(const unsigned char* data, unsigned length) final;
+    void abort() final;
+    void resetParserState() final;
+    void removedFromMediaSource() final;
+    MediaPlayer::ReadyState readyState() const final;
+    void setReadyState(MediaPlayer::ReadyState) final;
+    void flush(const AtomicString& trackID) final;
+    void enqueueSample(Ref<MediaSample>&&, const AtomicString& trackID) final;
+    bool isReadyForMoreSamples(const AtomicString& trackID) final;
+    void setActive(bool) final;
+    void notifyClientWhenReadyForMoreSamples(const AtomicString& trackID) final;
 
     void didBecomeReadyForMoreSamples(int trackID);
     void appendCompleted();
     void destroyParser();
     void destroyRenderers();
 
-    void flush(AVSampleBufferDisplayLayer *);
+    void flushVideo();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     void flush(AVSampleBufferAudioRenderer *);
+#pragma clang diagnostic pop
 
-    WeakPtr<SourceBufferPrivateAVFObjC> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
+    WeakPtr<SourceBufferPrivateAVFObjC> createWeakPtr() { return m_weakFactory.createWeakPtr(*this); }
 
     Vector<RefPtr<VideoTrackPrivateMediaSourceAVFObjC>> m_videoTracks;
     Vector<RefPtr<AudioTrackPrivateMediaSourceAVFObjC>> m_audioTracks;
@@ -147,27 +165,32 @@ private:
     RetainPtr<AVStreamDataParser> m_parser;
     RetainPtr<AVAsset> m_asset;
     RetainPtr<AVSampleBufferDisplayLayer> m_displayLayer;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     HashMap<int, RetainPtr<AVSampleBufferAudioRenderer>> m_audioRenderers;
+#pragma clang diagnostic pop
     RetainPtr<WebAVStreamDataParserListener> m_delegate;
     RetainPtr<WebAVSampleBufferErrorListener> m_errorListener;
     RetainPtr<NSError> m_hdcpError;
     OSObjectPtr<dispatch_semaphore_t> m_hasSessionSemaphore;
     OSObjectPtr<dispatch_group_t> m_isAppendingGroup;
+    RefPtr<WebCoreDecompressionSession> m_decompressionSession;
 
     MediaSourcePrivateAVFObjC* m_mediaSource;
-    SourceBufferPrivateClient* m_client;
+    SourceBufferPrivateClient* m_client { nullptr };
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     CDMSessionMediaSourceAVFObjC* m_session { nullptr };
+#endif
 
-    Optional<FloatSize> m_cachedSize;
+    std::optional<FloatSize> m_cachedSize;
     FloatSize m_currentSize;
-    bool m_parsingSucceeded;
+    bool m_parsingSucceeded { true };
     bool m_parserStateWasReset { false };
-    int m_enabledVideoTrackID;
-    int m_protectedTrackID;
+    int m_enabledVideoTrackID { -1 };
+    int m_protectedTrackID { -1 };
 };
 
 }
 
 #endif // ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
-
-#endif

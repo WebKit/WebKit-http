@@ -29,7 +29,6 @@
 
 #include "DFGEdge.h"
 #include "DFGNodeOrigin.h"
-#include "DFGOpInfo.h"
 #include <wtf/HashTable.h>
 #include <wtf/PrintStream.h>
 
@@ -61,7 +60,9 @@ enum PromotedLocationKind {
     NamedPropertyPLoc,
     PublicLengthPLoc,
     StructurePLoc,
-    VectorLengthPLoc
+    VectorLengthPLoc,
+    SpreadPLoc,
+    NewArrayWithSpreadArgumentPLoc,
 };
 
 class PromotedLocationDescriptor {

@@ -34,6 +34,7 @@
 #include "IdentifiersFactory.h"
 #include "InjectedScript.h"
 #include "InjectedScriptManager.h"
+#include "InspectorFrontendDispatchers.h"
 #include "InspectorValues.h"
 #include "ScriptArguments.h"
 #include "ScriptCallFrame.h"
@@ -66,16 +67,15 @@ ConsoleMessage::ConsoleMessage(MessageSource source, MessageType type, MessageLe
     autogenerateMetadata(state);
 }
 
-ConsoleMessage::ConsoleMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtr<ScriptCallStack> callStack, unsigned long requestIdentifier)
+ConsoleMessage::ConsoleMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, Ref<ScriptCallStack>&& callStack, unsigned long requestIdentifier)
     : m_source(source)
     , m_type(type)
     , m_level(level)
     , m_message(message)
+    , m_callStack(WTFMove(callStack))
     , m_url()
     , m_requestId(IdentifiersFactory::requestId(requestIdentifier))
 {
-    m_callStack = callStack;
-
     const ScriptCallFrame* frame = m_callStack ? m_callStack->firstNonNativeCallFrame() : nullptr;
     if (frame) {
         m_url = frame->sourceURL();
@@ -84,12 +84,12 @@ ConsoleMessage::ConsoleMessage(MessageSource source, MessageType type, MessageLe
     }
 }
 
-ConsoleMessage::ConsoleMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, PassRefPtr<ScriptArguments> arguments, JSC::ExecState* state, unsigned long requestIdentifier)
+ConsoleMessage::ConsoleMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, Ref<ScriptArguments>&& arguments, JSC::ExecState* state, unsigned long requestIdentifier)
     : m_source(source)
     , m_type(type)
     , m_level(level)
     , m_message(message)
-    , m_arguments(arguments)
+    , m_arguments(WTFMove(arguments))
     , m_url()
     , m_requestId(IdentifiersFactory::requestId(requestIdentifier))
 {

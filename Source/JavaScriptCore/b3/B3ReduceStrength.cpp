@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +28,13 @@
 
 #if ENABLE(B3_JIT)
 
+#include "B3AtomicValue.h"
 #include "B3BasicBlockInlines.h"
 #include "B3BlockInsertionSet.h"
 #include "B3ComputeDivisionMagic.h"
 #include "B3Dominators.h"
 #include "B3InsertionSetInlines.h"
-#include "B3MemoryValue.h"
+#include "B3MemoryValueInlines.h"
 #include "B3PhaseScope.h"
 #include "B3PhiChildren.h"
 #include "B3ProcedureInlines.h"
@@ -87,7 +88,9 @@ namespace {
 // constants then the canonical form involves the lower-indexed value first. Given Add(x, y), it's
 // canonical if x->index() <= y->index().
 
-bool verbose = false;
+namespace B3ReduceStrengthInternal {
+static const bool verbose = false;
+}
 
 // FIXME: This IntRange stuff should be refactored into a general constant propagator. It's weird
 // that it's just sitting here in this file.
@@ -413,7 +416,7 @@ public:
 
             if (first)
                 first = false;
-            else if (verbose) {
+            else if (B3ReduceStrengthInternal::verbose) {
                 dataLog("B3 after iteration #", index - 1, " of reduceStrength:\n");
                 dataLog(m_proc);
             }
@@ -441,38 +444,42 @@ public:
             
             simplifySSA();
             
-            m_proc.resetValueOwners();
-            m_dominators = &m_proc.dominators(); // Recompute if necessary.
-            m_pureCSE.clear();
+            if (m_proc.optLevel() >= 2) {
+                m_proc.resetValueOwners();
+                m_dominators = &m_proc.dominators(); // Recompute if necessary.
+                m_pureCSE.clear();
+            }
 
             for (BasicBlock* block : m_proc.blocksInPreOrder()) {
                 m_block = block;
                 
                 for (m_index = 0; m_index < block->size(); ++m_index) {
-                    if (verbose) {
+                    if (B3ReduceStrengthInternal::verbose) {
                         dataLog(
                             "Looking at ", *block, " #", m_index, ": ",
                             deepDump(m_proc, block->at(m_index)), "\n");
                     }
                     m_value = m_block->at(m_index);
                     m_value->performSubstitution();
-                    
                     reduceValueStrength();
-                    replaceIfRedundant();
+                    if (m_proc.optLevel() >= 2)
+                        replaceIfRedundant();
                 }
                 m_insertionSet.execute(m_block);
             }
 
             m_changedCFG |= m_blockInsertionSet.execute();
-            if (m_changedCFG) {
-                m_proc.resetReachability();
-                m_proc.invalidateCFG();
-                m_dominators = nullptr; // Dominators are not valid anymore, and we don't need them yet.
-                m_changed = true;
-            }
+            handleChangedCFGIfNecessary();
             
             result |= m_changed;
-        } while (m_changed);
+        } while (m_changed && m_proc.optLevel() >= 2);
+        
+        if (m_proc.optLevel() < 2) {
+            m_changedCFG = false;
+            simplifyCFG();
+            handleChangedCFGIfNecessary();
+        }
+        
         return result;
     }
     
@@ -480,6 +487,15 @@ private:
     void reduceValueStrength()
     {
         switch (m_value->opcode()) {
+        case Opaque:
+            // Turn this: Opaque(Opaque(value))
+            // Into this: Opaque(value)
+            if (m_value->child(0)->opcode() == Opaque) {
+                replaceWithIdentity(m_value->child(0));
+                break;
+            }
+            break;
+            
         case Add:
             handleCommutativity();
             
@@ -602,7 +618,7 @@ private:
             }
 
             break;
-
+            
         case Neg:
             // Turn this: Neg(constant)
             // Into this: -constant
@@ -725,6 +741,9 @@ private:
 
                     if (m_value->type() != Int32)
                         break;
+                    
+                    if (m_proc.optLevel() < 2)
+                        break;
 
                     int32_t divisor = m_value->child(1)->asInt32();
                     DivisionMagic<int32_t> magic = computeDivisionMagic(divisor);
@@ -772,6 +791,35 @@ private:
             }
             break;
 
+        case UDiv:
+            // Turn this: UDiv(constant1, constant2)
+            // Into this: constant1 / constant2
+            if (replaceWithNewValue(m_value->child(0)->uDivConstant(m_proc, m_value->child(1))))
+                break;
+
+            if (m_value->child(1)->hasInt()) {
+                switch (m_value->child(1)->asInt()) {
+                case 0:
+                    // Turn this: UDiv(value, 0)
+                    // Into this: 0
+                    // We can do whatever we want here so we might as well do the chill thing,
+                    // in case we add chill versions of UDiv in the future.
+                    replaceWithIdentity(m_value->child(1));
+                    break;
+
+                case 1:
+                    // Turn this: UDiv(value, 1)
+                    // Into this: value
+                    replaceWithIdentity(m_value->child(0));
+                    break;
+                default:
+                    // FIXME: We should do comprehensive strength reduction for unsigned numbers. Likely,
+                    // we will just want copy what llvm does. https://bugs.webkit.org/show_bug.cgi?id=164809
+                    break;
+                }
+            }
+            break;
+
         case Mod:
             // Turn this: Mod(constant1, constant2)
             // Into this: constant1 / constant2
@@ -791,6 +839,9 @@ private:
                     break;
 
                 default:
+                    if (m_proc.optLevel() < 2)
+                        break;
+                    
                     // Turn this: Mod(N, D)
                     // Into this: Sub(N, Mul(Div(N, D), D))
                     //
@@ -827,6 +878,14 @@ private:
                 break;
             }
             
+            break;
+
+        case UMod:
+            // Turn this: UMod(constant1, constant2)
+            // Into this: constant1 / constant2
+            replaceWithNewValue(m_value->child(0)->uModConstant(m_proc, m_value->child(1)));
+            // FIXME: We should do what we do for Mod since the same principle applies here.
+            // https://bugs.webkit.org/show_bug.cgi?id=164809
             break;
 
         case BitAnd:
@@ -1032,9 +1091,7 @@ private:
                 break;
             }
 
-            if (handleShiftAmount())
-                break;
-
+            handleShiftAmount();
             break;
 
         case SShr:
@@ -1094,9 +1151,7 @@ private:
                     break;
             }
 
-            if (handleShiftAmount())
-                break;
-
+            handleShiftAmount();
             break;
 
         case ZShr:
@@ -1107,9 +1162,29 @@ private:
                 break;
             }
 
-            if (handleShiftAmount())
-                break;
+            handleShiftAmount();
+            break;
 
+        case RotR:
+            // Turn this: RotR(constant1, constant2)
+            // Into this: (constant1 >> constant2) | (constant1 << sizeof(constant1) * 8 - constant2)
+            if (Value* constant = m_value->child(0)->rotRConstant(m_proc, m_value->child(1))) {
+                replaceWithNewValue(constant);
+                break;
+            }
+
+            handleShiftAmount();
+            break;
+
+        case RotL:
+            // Turn this: RotL(constant1, constant2)
+            // Into this: (constant1 << constant2) | (constant1 >> sizeof(constant1) * 8 - constant2)
+            if (Value* constant = m_value->child(0)->rotLConstant(m_proc, m_value->child(1))) {
+                replaceWithNewValue(constant);
+                break;
+            }
+
+            handleShiftAmount();
             break;
 
         case Abs:
@@ -1242,6 +1317,16 @@ private:
                     break;
                 }
             }
+            
+            if (!m_proc.hasQuirks()) {
+                // Turn this: SExt8(AtomicXchg___)
+                // Into this: AtomicXchg___
+                if (isAtomicXchg(m_value->child(0)->opcode())
+                    && m_value->child(0)->as<AtomicValue>()->accessWidth() == Width8) {
+                    replaceWithIdentity(m_value->child(0));
+                    break;
+                }
+            }
             break;
 
         case SExt16:
@@ -1287,6 +1372,16 @@ private:
                             BitAnd, m_value->origin(), input,
                             m_insertionSet.insert<Const32Value>(
                                 m_index, m_value->origin(), mask & 0x7fff)));
+                    break;
+                }
+            }
+
+            if (!m_proc.hasQuirks()) {
+                // Turn this: SExt16(AtomicXchg___)
+                // Into this: AtomicXchg___
+                if (isAtomicXchg(m_value->child(0)->opcode())
+                    && m_value->child(0)->as<AtomicValue>()->accessWidth() == Width16) {
+                    replaceWithIdentity(m_value->child(0));
                     break;
                 }
             }
@@ -1471,7 +1566,7 @@ private:
                 intptr_t offset = address->child(1)->asIntPtr();
                 if (!sumOverflows<intptr_t>(offset, memory->offset())) {
                     offset += memory->offset();
-                    int32_t smallOffset = static_cast<int32_t>(offset);
+                    Value::OffsetType smallOffset = static_cast<Value::OffsetType>(offset);
                     if (smallOffset == offset) {
                         address = address->child(0);
                         memory->lastChild() = address;
@@ -1767,6 +1862,9 @@ private:
                 checkValue->child(0) = checkValue->child(0)->child(0);
                 m_changed = true;
             }
+            
+            if (m_proc.optLevel() < 2)
+                break;
 
             // If we are checking some bounded-size SSA expression that leads to a Select that
             // has a constant as one of its results, then turn the Select into a Branch and split
@@ -1873,17 +1971,19 @@ private:
                 break;
             }
 
-            // If a check for the same property dominates us, we can kill the branch. This sort
-            // of makes sense here because it's cheap, but hacks like this show that we're going
-            // to need SCCP.
-            Value* check = m_pureCSE.findMatch(
-                ValueKey(Check, Void, m_value->child(0)), m_block, *m_dominators);
-            if (check) {
-                // The Check would have side-exited if child(0) was non-zero. So, it must be
-                // zero here.
-                m_block->taken().block()->removePredecessor(m_block);
-                m_value->replaceWithJump(m_block, m_block->notTaken());
-                m_changedCFG = true;
+            if (m_proc.optLevel() >= 2) {
+                // If a check for the same property dominates us, we can kill the branch. This sort
+                // of makes sense here because it's cheap, but hacks like this show that we're going
+                // to need SCCP.
+                Value* check = m_pureCSE.findMatch(
+                    ValueKey(Check, Void, m_value->child(0)), m_block, *m_dominators);
+                if (check) {
+                    // The Check would have side-exited if child(0) was non-zero. So, it must be
+                    // zero here.
+                    m_block->taken().block()->removePredecessor(m_block);
+                    m_value->replaceWithJump(m_block, m_block->notTaken());
+                    m_changedCFG = true;
+                }
             }
             break;
         }
@@ -1937,7 +2037,7 @@ private:
     // early.
     void specializeSelect(Value* source)
     {
-        if (verbose)
+        if (B3ReduceStrengthInternal::verbose)
             dataLog("Specializing select: ", deepDump(m_proc, source), "\n");
 
         // This mutates startIndex to account for the fact that m_block got the front of it
@@ -2048,22 +2148,25 @@ private:
         ASSERT(m_value->numChildren() >= 2);
         
         // Leave it alone if the right child is a constant.
-        if (m_value->child(1)->isConstant())
+        if (m_value->child(1)->isConstant()
+            || m_value->child(0)->opcode() == AtomicStrongCAS)
             return;
         
-        if (m_value->child(0)->isConstant()) {
+        auto swap = [&] () {
             std::swap(m_value->child(0), m_value->child(1));
             m_changed = true;
-            return;
-        }
-
+        };
+        
+        if (m_value->child(0)->isConstant())
+            return swap();
+        
+        if (m_value->child(1)->opcode() == AtomicStrongCAS)
+            return swap();
+        
         // Sort the operands. This is an important canonicalization. We use the index instead of
         // the address to make this at least slightly deterministic.
-        if (m_value->child(0)->index() > m_value->child(1)->index()) {
-            std::swap(m_value->child(0), m_value->child(1));
-            m_changed = true;
-            return;
-        }
+        if (m_value->child(0)->index() > m_value->child(1)->index())
+            return swap();
     }
 
     // FIXME: This should really be a forward analysis. Instead, we uses a bounded-search backwards
@@ -2147,12 +2250,12 @@ private:
         m_changed = true;
     }
 
-    bool handleShiftAmount()
+    void handleShiftAmount()
     {
         // Shift anything by zero is identity.
         if (m_value->child(1)->isInt32(0)) {
             replaceWithIdentity(m_value->child(0));
-            return true;
+            return;
         }
 
         // The shift already masks its shift amount. If the shift amount is being masked by a
@@ -2165,11 +2268,7 @@ private:
             && (m_value->child(1)->child(1)->asInt32() & mask) == mask) {
             m_value->child(1) = m_value->child(1)->child(0);
             m_changed = true;
-            // Don't need to return true, since we're still the same shift, and we can still cascade
-            // through other optimizations.
         }
-        
-        return false;
     }
 
     void replaceIfRedundant()
@@ -2179,7 +2278,7 @@ private:
 
     void simplifyCFG()
     {
-        if (verbose) {
+        if (B3ReduceStrengthInternal::verbose) {
             dataLog("Before simplifyCFG:\n");
             dataLog(m_proc);
         }
@@ -2204,7 +2303,7 @@ private:
         // iterations needed to kill a lot of code.
 
         for (BasicBlock* block : m_proc) {
-            if (verbose)
+            if (B3ReduceStrengthInternal::verbose)
                 dataLog("Considering block ", *block, ":\n");
 
             checkPredecessorValidity();
@@ -2220,7 +2319,7 @@ private:
                     && successor->last()->opcode() == Jump) {
                     BasicBlock* newSuccessor = successor->successorBlock(0);
                     if (newSuccessor != successor) {
-                        if (verbose) {
+                        if (B3ReduceStrengthInternal::verbose) {
                             dataLog(
                                 "Replacing ", pointerDump(block), "->", pointerDump(successor),
                                 " with ", pointerDump(block), "->", pointerDump(newSuccessor),
@@ -2251,7 +2350,7 @@ private:
                         }
                     }
                     if (allSame) {
-                        if (verbose) {
+                        if (B3ReduceStrengthInternal::verbose) {
                             dataLog(
                                 "Changing ", pointerDump(block), "'s terminal to a Jump.\n");
                         }
@@ -2282,7 +2381,7 @@ private:
                     
                     // Make sure that the successor has nothing left in it. Make sure that the block
                     // has a terminal so that nobody chokes when they look at it.
-                    successor->values().resize(0);
+                    successor->values().shrink(0);
                     successor->appendNew<Value>(m_proc, Oops, jumpOrigin);
                     successor->clearSuccessors();
                     
@@ -2290,7 +2389,7 @@ private:
                     for (BasicBlock* newSuccessor : block->successorBlocks())
                         newSuccessor->replacePredecessor(successor, block);
 
-                    if (verbose) {
+                    if (B3ReduceStrengthInternal::verbose) {
                         dataLog(
                             "Merged ", pointerDump(block), "->", pointerDump(successor), "\n");
                     }
@@ -2300,9 +2399,19 @@ private:
             }
         }
 
-        if (m_changedCFG && verbose) {
+        if (m_changedCFG && B3ReduceStrengthInternal::verbose) {
             dataLog("B3 after simplifyCFG:\n");
             dataLog(m_proc);
+        }
+    }
+    
+    void handleChangedCFGIfNecessary()
+    {
+        if (m_changedCFG) {
+            m_proc.resetReachability();
+            m_proc.invalidateCFG();
+            m_dominators = nullptr; // Dominators are not valid anymore, and we don't need them yet.
+            m_changed = true;
         }
     }
 
@@ -2319,7 +2428,7 @@ private:
 
     void killDeadCode()
     {
-        GraphNodeWorklist<Value*, IndexSet<Value>> worklist;
+        GraphNodeWorklist<Value*, IndexSet<Value*>> worklist;
         Vector<UpsilonValue*, 64> upsilons;
         for (BasicBlock* block : m_proc) {
             for (Value* value : *block) {
@@ -2356,7 +2465,7 @@ private:
                 break;
         }
 
-        IndexSet<Variable> liveVariables;
+        IndexSet<Variable*> liveVariables;
         
         for (BasicBlock* block : m_proc) {
             size_t sourceIndex = 0;

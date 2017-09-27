@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #include "CodeBlock.h"
 #include "FunctionCodeBlock.h"
-#include "HeapStatistics.h"
 #include "JSCInlines.h"
 #include "LLIntData.h"
 
@@ -36,11 +35,15 @@ namespace JSC {
 
 FunctionExecutable* getExecutableForFunction(JSValue theFunctionValue)
 {
-    JSFunction* theFunction = jsDynamicCast<JSFunction*>(theFunctionValue);
+    if (!theFunctionValue.isCell())
+        return nullptr;
+
+    VM& vm = *theFunctionValue.asCell()->vm();
+    JSFunction* theFunction = jsDynamicCast<JSFunction*>(vm, theFunctionValue);
     if (!theFunction)
-        return 0;
+        return nullptr;
     
-    FunctionExecutable* executable = jsDynamicCast<FunctionExecutable*>(
+    FunctionExecutable* executable = jsDynamicCast<FunctionExecutable*>(vm, 
         theFunction->executable());
     return executable;
 }
@@ -156,8 +159,6 @@ JSValue optimizeNextInvocation(ExecState* exec)
 // This is a hook called at the bitter end of some of our tests.
 void finalizeStatsAtEndOfTesting()
 {
-    if (Options::logHeapStatisticsAtExit())
-        HeapStatistics::reportSuccess();
     if (Options::reportLLIntStats())
         LLInt::Data::finalizeStats();
 }

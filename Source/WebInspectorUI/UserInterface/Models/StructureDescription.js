@@ -23,16 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.StructureDescription = class StructureDescription extends WebInspector.Object
+WI.StructureDescription = class StructureDescription
 {
     constructor(fields, optionalFields, constructorName, prototypeStructure, imprecise)
     {
-        super();
-
         console.assert(!fields || fields.every((x) => typeof x === "string"));
         console.assert(!optionalFields || optionalFields.every((x) => typeof x === "string"));
         console.assert(!constructorName || typeof constructorName === "string");
-        console.assert(!prototypeStructure || prototypeStructure instanceof WebInspector.StructureDescription);
+        console.assert(!prototypeStructure || prototypeStructure instanceof WI.StructureDescription);
 
         this._fields = fields || null;
         this._optionalFields = optionalFields || null;
@@ -47,9 +45,9 @@ WebInspector.StructureDescription = class StructureDescription extends WebInspec
     static fromPayload(payload)
     {
         if (payload.prototypeStructure)
-            payload.prototypeStructure = WebInspector.StructureDescription.fromPayload(payload.prototypeStructure);
+            payload.prototypeStructure = WI.StructureDescription.fromPayload(payload.prototypeStructure);
 
-        return new WebInspector.StructureDescription(payload.fields, payload.optionalFields, payload.constructorName, payload.prototypeStructure, payload.imprecise);
+        return new WI.StructureDescription(payload.fields, payload.optionalFields, payload.constructorName, payload.prototypeStructure, payload.imprecise);
     }
 
     // Public

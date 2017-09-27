@@ -27,7 +27,7 @@
 #include "Pattern.h"
 #include "RenderTreeAsText.h"
 #include "SVGRenderingContext.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -76,10 +76,10 @@ void FETile::platformApplySoftware()
     if (!tileImageCopy)
         return;
 
-    auto pattern = Pattern::create(WTFMove(tileImageCopy), true, true);
+    auto pattern = Pattern::create(tileImageCopy.releaseNonNull(), true, true);
 
     AffineTransform patternTransform;
-    patternTransform.translate(inMaxEffectLocation.x() - maxEffectLocation.x(), inMaxEffectLocation.y() - maxEffectLocation.y());
+    patternTransform.translate(inMaxEffectLocation - maxEffectLocation);
     pattern.get().setPatternSpaceTransform(patternTransform);
     GraphicsContext& filterContext = resultImage->context();
     filterContext.setFillPattern(WTFMove(pattern));

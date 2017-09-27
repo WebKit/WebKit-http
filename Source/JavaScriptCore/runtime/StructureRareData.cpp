@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 
 namespace JSC {
 
-const ClassInfo StructureRareData::s_info = { "StructureRareData", 0, 0, CREATE_METHOD_TABLE(StructureRareData) };
+const ClassInfo StructureRareData::s_info = { "StructureRareData", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(StructureRareData) };
 
 Structure* StructureRareData::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
@@ -67,9 +67,9 @@ void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
     JSCell::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_previous);
-    visitor.append(&thisObject->m_objectToStringValue);
-    visitor.append(&thisObject->m_cachedPropertyNameEnumerator);
+    visitor.append(thisObject->m_previous);
+    visitor.append(thisObject->m_objectToStringValue);
+    visitor.append(thisObject->m_cachedPropertyNameEnumerator);
 }
 
 JSPropertyNameEnumerator* StructureRareData::cachedPropertyNameEnumerator() const
@@ -90,6 +90,7 @@ public:
     ObjectToStringAdaptiveInferredPropertyValueWatchpoint(const ObjectPropertyCondition&, StructureRareData*);
 
 private:
+    bool isValid() const override;
     void handleFire(const FireDetail&) override;
 
     StructureRareData* m_structureRareData;
@@ -142,7 +143,7 @@ void StructureRareData::setObjectToStringValue(ExecState* exec, VM& vm, Structur
         if (condition.condition().kind() == PropertyCondition::Presence) {
             ASSERT(isValidOffset(condition.offset()));
             condition.object()->structure(vm)->startWatchingPropertyForReplacements(vm, condition.offset());
-            equivCondition = condition.attemptToMakeEquivalenceWithoutBarrier();
+            equivCondition = condition.attemptToMakeEquivalenceWithoutBarrier(vm);
 
             // The equivalence condition won't be watchable if we have already seen a replacement.
             if (!equivCondition.isWatchable()) {
@@ -191,17 +192,15 @@ void ObjectToStringAdaptiveStructureWatchpoint::install()
     m_key.object()->structure()->addTransitionWatchpoint(this);
 }
 
-void ObjectToStringAdaptiveStructureWatchpoint::fireInternal(const FireDetail& detail)
+void ObjectToStringAdaptiveStructureWatchpoint::fireInternal(const FireDetail&)
 {
+    if (!m_structureRareData->isLive())
+        return;
+
     if (m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
         install();
         return;
     }
-
-    StringPrintStream out;
-    out.print("ObjectToStringValue Adaptation of ", m_key, " failed: ", detail);
-
-    StringFireDetail stringDetail(out.toCString().data());
 
     m_structureRareData->clearObjectToStringValue();
 }
@@ -212,13 +211,13 @@ ObjectToStringAdaptiveInferredPropertyValueWatchpoint::ObjectToStringAdaptiveInf
 {
 }
 
-void ObjectToStringAdaptiveInferredPropertyValueWatchpoint::handleFire(const FireDetail& detail)
+bool ObjectToStringAdaptiveInferredPropertyValueWatchpoint::isValid() const
 {
-    StringPrintStream out;
-    out.print("Adaptation of ", key(), " failed: ", detail);
-    
-    StringFireDetail stringDetail(out.toCString().data());
-    
+    return m_structureRareData->isLive();
+}
+
+void ObjectToStringAdaptiveInferredPropertyValueWatchpoint::handleFire(const FireDetail&)
+{
     m_structureRareData->clearObjectToStringValue();
 }
 

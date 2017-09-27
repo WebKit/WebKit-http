@@ -28,9 +28,7 @@
 
 #if OS(WINDOWS)
 #include <windows.h>
-#elif PLATFORM(EFL)
-#include <Ecore.h>
-#elif PLATFORM(GTK) || PLATFORM(WPE)
+#elif USE(GLIB)
 #include <glib.h>
 #endif
 
@@ -67,9 +65,7 @@ void EventLoop::cycle()
     // paused and can still access and evalute script in the JSContext.
     CFTimeInterval timeInterval = 0.05;
     CFRunLoopRunInMode(remoteInspectorRunLoopMode(), timeInterval, true);
-#elif PLATFORM(EFL)
-    ecore_main_loop_iterate();
-#elif PLATFORM(GTK) || PLATFORM(WPE)
+#elif USE(GLIB)
     g_main_context_iteration(NULL, FALSE);
 #endif
 }

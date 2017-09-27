@@ -32,9 +32,7 @@
 
 #include "MutationObserver.h"
 
-#include "Dictionary.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "HTMLSlotElement.h"
 #include "Microtasks.h"
 #include "MutationCallback.h"
@@ -42,6 +40,7 @@
 #include "MutationRecord.h"
 #include <algorithm>
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -80,9 +79,9 @@ ExceptionOr<void> MutationObserver::observe(Node& node, const Init& init)
         options |= ChildList;
     if (init.subtree)
         options |= Subtree;
-    if (init.attributeOldValue.valueOr(false))
+    if (init.attributeOldValue.value_or(false))
         options |= AttributeOldValue;
-    if (init.characterDataOldValue.valueOr(false))
+    if (init.characterDataOldValue.value_or(false))
         options |= CharacterDataOldValue;
 
     HashSet<AtomicString> attributeFilter;
@@ -101,7 +100,7 @@ ExceptionOr<void> MutationObserver::observe(Node& node, const Init& init)
     if (!validateOptions(options))
         return Exception { TypeError };
 
-    node.registerMutationObserver(this, options, attributeFilter);
+    node.registerMutationObserver(*this, options, attributeFilter);
 
     return { };
 }
@@ -118,7 +117,7 @@ void MutationObserver::disconnect()
     m_records.clear();
     HashSet<MutationObserverRegistration*> registrations(m_registrations);
     for (auto* registration : registrations)
-        MutationObserverRegistration::unregisterAndDelete(registration);
+        registration->node().unregisterMutationObserver(*registration);
 }
 
 void MutationObserver::observationStarted(MutationObserverRegistration& registration)
@@ -233,7 +232,7 @@ void MutationObserver::deliver()
     Vector<Ref<MutationRecord>> records;
     records.swap(m_records);
 
-    m_callback->call(records, this);
+    m_callback->handleEvent(*this, records, *this);
 }
 
 void MutationObserver::notifyMutationObservers()

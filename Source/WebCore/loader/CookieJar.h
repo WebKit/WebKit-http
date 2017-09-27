@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2008, 2012, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
 #pragma once
 
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -38,13 +37,12 @@ struct Cookie;
 // Functions in this file take a Document pointer to determine which cookie storage to use. We should merge that into call sites, and use PlatformCookieJar directly.
 
 // These two functions implement document.cookie API, with special rules for HttpOnly cookies.
-WEBCORE_EXPORT String cookies(const Document&, const URL&);
+WEBCORE_EXPORT String cookies(Document&, const URL&);
 WEBCORE_EXPORT void setCookies(Document&, const URL&, const String& cookieString);
 
 WEBCORE_EXPORT bool cookiesEnabled(const Document&);
-WEBCORE_EXPORT String cookieRequestHeaderFieldValue(const Document&, const URL&);
+WEBCORE_EXPORT String cookieRequestHeaderFieldValue(Document&, const URL&);
 WEBCORE_EXPORT bool getRawCookies(const Document&, const URL&, Vector<Cookie>&);
 WEBCORE_EXPORT void deleteCookie(const Document&, const URL&, const String& cookieName);
-WEBCORE_EXPORT void addCookie(const Document&, const URL&, const Cookie&);
 
 } // namespace WebCore

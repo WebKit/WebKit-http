@@ -36,7 +36,7 @@ class PlacardSupport extends MediaControllerSupport
 
     get mediaEvents()
     {
-        return ["webkitpresentationmodechanged", "webkitcurrentplaybacktargetiswirelesschanged"];
+        return ["loadstart", "error", "webkitpresentationmodechanged", "webkitcurrentplaybacktargetiswirelesschanged"];
     }
 
     handleEvent(event)
@@ -49,16 +49,17 @@ class PlacardSupport extends MediaControllerSupport
     _updatePlacard()
     {
         const controls = this.mediaController.controls;
-        if (controls.showsStartButton)
-            return;
-
         const media = this.mediaController.media;
+
+        let placard = null;
         if (media.webkitPresentationMode === "picture-in-picture")
-            controls.showPlacard(controls.pipPlacard);
+            placard = controls.pipPlacard;
         else if (media.webkitCurrentPlaybackTargetIsWireless)
-            controls.showPlacard(controls.airplayPlacard);
-        else
-            controls.hidePlacard();    
+            placard = controls.airplayPlacard;
+        else if (media instanceof HTMLVideoElement && media.error !== null && media.played.length === 0)
+            placard = controls.invalidPlacard;
+
+        controls.placard = placard;
     }
 
 }

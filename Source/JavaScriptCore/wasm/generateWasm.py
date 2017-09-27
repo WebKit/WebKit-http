@@ -1,6 +1,6 @@
 #! /usr/bin/python
 
-# Copyright (C) 2016 Apple Inc. All rights reserved.
+# Copyright (C) 2016-2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,17 +26,22 @@
 # This tool has a couple of helpful macros to process Wasm files from the wasm.json.
 
 import json
+import math
 import re
-
 
 class Wasm:
     def __init__(self, scriptName, jsonPath):
         wasmFile = open(jsonPath, "r")
         wasm = json.load(open(jsonPath, "r"))
         wasmFile.close()
+        for pre in wasm["preamble"]:
+            if pre["name"] == "version":
+                self.expectedVersionNumber = str(pre["value"])
+        self.preamble = wasm["preamble"]
+        self.types = wasm["type"]
         self.opcodes = wasm["opcode"]
         self.header = """/*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,3 +91,15 @@ def isUnary(op):
 
 def isBinary(op):
     return isNormal(op) and len(op["parameter"]) == 2
+
+
+def isSimple(op):
+    return "b3op" in op
+
+
+def memoryLog2Alignment(op):
+    assert op["opcode"]["category"] == "memory"
+    match = re.match(r'^[if]([36][24])\.[^0-9]+([0-9]+)?_?[us]?$', op["name"])
+    memoryBits = int(match.group(2) if match.group(2) else match.group(1))
+    assert 2 ** math.log(memoryBits, 2) == memoryBits
+    return str(int(math.log(memoryBits / 8, 2)))

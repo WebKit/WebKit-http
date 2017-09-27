@@ -47,6 +47,8 @@ enum DeviceType {
     readonly attribute boolean supportsFullscreen;
     readonly attribute boolean isVideoLayerInline;
     readonly attribute boolean userGestureRequired;
+    readonly attribute boolean isInMediaDocument;
+    readonly attribute boolean shouldForceControlsDisplay;
 
     readonly attribute DOMString externalDeviceDisplayName;
     readonly attribute DeviceType externalDeviceType;
@@ -60,5 +62,6 @@ enum DeviceType {
     DOMString generateUUID();
 
     [EnabledAtRuntime=ModernMediaControls] readonly attribute DOMString shadowRootCSSText;
-    [EnabledAtRuntime=ModernMediaControls] DOMString base64StringForIconAndPlatform(DOMString iconName, DOMString platform);
+    [EnabledAtRuntime=ModernMediaControls] DOMString base64StringForIconNameAndType(DOMString iconName, DOMString iconType);
+    [EnabledAtRuntime=ModernMediaControls] DOMString formattedStringForDuration(unrestricted double durationInSeconds);
 };

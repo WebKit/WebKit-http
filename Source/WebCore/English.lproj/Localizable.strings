@@ -1,12 +1,3 @@
-/* File Upload multiple photos label */
-"# Photos (file upload on page label for multiple photos)" = "%@ Photos";
-
-/* File Upload images and videos label */
-"# Photos and # Videos (file upload on page label for image and videos)" = "%@ and %@";
-
-/* File Upload multiple videos label */
-"# Videos (file upload on page label for multiple videos)" = "%@ Videos";
-
 /* accessibility help text for media controller time value >= 1 day */
 "%1$d days %2$d hours %3$d minutes %4$d seconds" = "%1$d days %2$d hours %3$d minutes %4$d seconds";
 
@@ -37,9 +28,6 @@
 /* Text track contains closed captions */
 "%@ CC" = "%@ CC";
 
-/* visible name of the database process. The argument is the application name. */
-"%@ Database Storage" = "%@ Database Storage";
-
 /* Text track contains simplified (3rd grade level) subtitles */
 "%@ Easy Reader" = "%@ Easy Reader";
 
@@ -51,6 +39,9 @@
 
 /* Text track contains subtitles for the deaf and hard of hearing */
 "%@ SDH" = "%@ SDH";
+
+/* visible name of the storage process. The argument is the application name. */
+"%@ Storage" = "%@ Storage";
 
 /* Visible name of the web process. The argument is the application name. */
 "%@ Web Content" = "%@ Web Content";
@@ -67,6 +58,15 @@
 /* Label for PDF page number indicator. */
 "%d of %d" = "%d of %d";
 
+/* label next to file upload control; parameters are the number of photos and the number of videos */
+"%lu photo(s) and %lu video(s)" = "%lu photo(s) and %lu video(s)";
+
+/* window title for a standalone image (uses multiplication symbol, not x) */
+"%s %d×%d pixels" = "%s %d×%d pixels";
+
+/* Name of application's single WebCrypto master key in Keychain */
+"%s WebCrypto Master Key" = "%s WebCrypto Master Key";
+
 /* Present the number of selected <option> items in a <select multiple> element (iOS only) */
 "%zu Items" = "%zu Items";
 
@@ -76,23 +76,11 @@
 /* Present the element <select multiple> when a single <option> is selected (iOS only) */
 "1 Item" = "1 Item";
 
-/* File Upload single photo label */
-"1 Photo (file upload on page label for one photo)" = "1 Photo";
-
-/* File Upload single video label */
-"1 Video (file upload on page label for one video)" = "1 Video";
-
 /* Option in segmented control for choosing list type in text editing */
 "1. 2. 3." = "1. 2. 3.";
 
 /* Menu item title for KEYGEN pop-up menu */
-"1024 (Medium Grade)" = "1024 (Medium Grade)";
-
-/* Menu item title for KEYGEN pop-up menu */
 "2048 (High Grade)" = "2048 (High Grade)";
-
-/* Menu item title for KEYGEN pop-up menu */
-"512 (Low Grade)" = "512 (Low Grade)";
 
 /* window title for a standalone image (uses multiplication symbol, not x) */
 "<filename> %d×%d pixels" = "<filename> %d×%d pixels";
@@ -132,9 +120,6 @@
 
 /* Option in segmented control for inserting a bulleted list in text editing */
 "Bulleted list" = "Bulleted list";
-
-/* menu item title for phone number */
-"Call Using iPhone:" = "Call Using iPhone:";
 
 /* Title for Cancel button label in button bar */
 "Cancel button label in button bar" = "Cancel";
@@ -180,6 +165,9 @@
 
 /* Subtitle of the label to show on a snapshotted plug-in */
 "Click to restart" = "Click to restart";
+
+/* WKErrorContentRuleListStoreCompileFailed description */
+"Compiling a WKContentRuleList failed" = "Compiling a WKContentRuleList failed";
 
 /* WebKitErrorCannotShowMIMEType description */
 "Content with specified MIME type can’t be shown" = "Content with specified MIME type can’t be shown";
@@ -250,14 +238,32 @@
 /* menu item */
 "Enter Picture in Picture" = "Enter Picture in Picture";
 
-/* Video Exit Fullscreen context menu item */
+/* Validation message for input form controls of type 'url' that have an invalid value */
+"Enter a URL" = "Enter a URL";
+
+/* Validation message for number fields where the user entered a non-number string */
+"Enter a number" = "Enter a number";
+
+/* Validation message for input form controls with value not respecting the step attribute */
+"Enter a valid value" = "Enter a valid value";
+
+/* Validation message for input form controls of type 'email' that have an invalid value */
+"Enter an email address" = "Enter an email address";
+
+/* Button for exiting full screen when in full screen media playback */
 "Exit Full Screen" = "Exit Full Screen";
 
-/* Button for exiting fullscreen when in fullscreen media playback */
-"Exit Fullscreen" = "Exit Fullscreen";
+/* Video Exit Fullscreen context menu item */
+"Exit Full Screen (context menu)" = "Exit Full Screen";
 
 /* menu item */
 "Exit Picture in Picture" = "Exit Picture in Picture";
+
+/* The requested file doesn't exist */
+"File does not exist" = "File does not exist";
+
+/* Validation message for required form control elements that have no value */
+"Fill out this field" = "Fill out this field";
 
 /* Default application name for Open With context menu */
 "Finder" = "Finder";
@@ -305,7 +311,7 @@
 "Inspect Element" = "Inspect Element";
 
 /* Validation message for input form controls with a value not matching type */
-"Invalid value." = "Invalid value.";
+"Invalid value" = "Invalid value";
 
 /* Italic context menu item */
 "Italic" = "Italic";
@@ -337,8 +343,11 @@
 /* Media controller status message when watching a live broadcast */
 "Live Broadcast" = "Live Broadcast";
 
+/* Load request cancelled */
+"Load request cancelled" = "Load request cancelled";
+
 /* Media controller status message when the media is loading */
-"Loading..." = "Loading...";
+"Loading…" = "Loading…";
 
 /* 'Website' name displayed when local documents have stored local data */
 "Local documents on your computer" = "Local documents on your computer";
@@ -350,7 +359,16 @@
 "Look Up “%@”" = "Look Up “%@”";
 
 /* Look Up context menu item with selected word */
+"Look Up “%s”" = "Look Up “%s”";
+
+/* Look Up context menu item with selected word */
 "Look Up “<selection>”" = "Look Up “<selection>”";
+
+/* WKErrorContentRuleListStoreLookupFailed description */
+"Looking up a WKContentRuleList failed" = "Looking up a WKContentRuleList failed";
+
+/* WKErrorContentRuleListStoreVersionMismatch description */
+"Looking up a WKContentRuleList found a binary that is incompatible" = "Looking up a WKContentRuleList found a binary that is incompatible";
 
 /* Media Loop context menu item */
 "Loop" = "Loop";
@@ -366,6 +384,9 @@
 
 /* Make Upper Case context menu item */
 "Make Upper Case" = "Make Upper Case";
+
+/* Validation message for input form controls requiring a constrained value according to pattern */
+"Match the requested format" = "Match the requested format";
 
 /* Label text to be used when a plugin is missing */
 "Missing Plug-in" = "Missing Plug-in";
@@ -391,8 +412,8 @@
 /* Option in segmented control for inserting a numbered list in text editing */
 "Numbered list" = "Numbered list";
 
-/* OK button label in PDF password failure alert */
-"OK (PDF password failure alert)" = "OK";
+/* OK button label in document password failure alert */
+"OK (document password failure alert)" = "OK";
 
 /* Menu item label for the track that represents disabling closed captions */
 "Off" = "Off";
@@ -463,42 +484,6 @@
 /* accessibility help text for enter fullscreen button */
 "Play movie in fullscreen mode" = "Play movie in fullscreen mode";
 
-/* Validation message for required checkboxes that have not be checked */
-"Please check this box if you want to proceed." = "Please check this box if you want to proceed.";
-
-/* Validation message for input form controls of type 'url' that have an invalid value */
-"Please enter a URL." = "Please enter a URL.";
-
-/* Validation message for number fields where the user entered a non-number string */
-"Please enter a number." = "Please enter a number.";
-
-/* Validation message for input form controls with value not respecting the step attribute */
-"Please enter a valid value." = "Please enter a valid value.";
-
-/* Validation message for input form controls of type 'email' that have an invalid value */
-"Please enter an email address." = "Please enter an email address.";
-
-/* Validation message for required form control elements that have no value */
-"Please fill out this field." = "Please fill out this field.";
-
-/* Validation message for input form controls requiring a constrained value according to pattern */
-"Please match the requested format." = "Please match the requested format.";
-
-/* Validation message for required file inputs that have no value */
-"Please select a file." = "Please select a file.";
-
-/* Validation message for required menu list controls that have no selection */
-"Please select an item in the list." = "Please select an item in the list.";
-
-/* Validation message for required radio boxes that have no selection */
-"Please select one of these options." = "Please select one of these options.";
-
-/* Validation message for form control elements with a value shorter than minimum allowed length */
-"Please use at least %d characters." = "Please use at least %d characters.";
-
-/* Validation message for form control elements with a value shorter than maximum allowed length */
-"Please use no more than %d characters." = "Please use no more than %d characters.";
-
 /* Label text to be used if plugin host process has crashed */
 "Plug-in Failure" = "Plug-in Failure";
 
@@ -523,6 +508,9 @@
 /* Reload context menu item */
 "Reload" = "Reload";
 
+/* WKErrorContentRuleListStoreRemoveFailed description */
+"Removing a WKContentRuleList failed" = "Removing a WKContentRuleList failed";
+
 /* default label for Reset buttons in forms on web pages */
 "Reset" = "Reset";
 
@@ -540,6 +528,18 @@
 
 /* Search with Google context menu item */
 "Search with Google" = "Search with Google";
+
+/* Validation message for required file inputs that have no value */
+"Select a file" = "Select a file";
+
+/* Validation message for required menu list controls that have no selection */
+"Select an item in the list" = "Select an item in the list";
+
+/* Validation message for required radio boxes that have no selection */
+"Select one of these options" = "Select one of these options";
+
+/* Validation message for required checkboxes that have not be selected */
+"Select this checkbox" = "Select this checkbox";
 
 /* Selection direction context sub-menu item */
 "Selection Direction" = "Selection Direction";
@@ -623,7 +623,7 @@
 "Stop Speaking" = "Stop Speaking";
 
 /* Styles context menu item */
-"Styles..." = "Styles...";
+"Styles…" = "Styles…";
 
 /* default label for Submit buttons in forms on web pages */
 "Submit" = "Submit";
@@ -673,7 +673,7 @@
 /* WebKitErrorGeolocationLocationUnknown description */
 "The current location cannot be found." = "The current location cannot be found.";
 
-/* PDF password failure alert message */
+/* document password failure alert message */
 "The document could not be opened with that password." = "The document could not be opened with that password.";
 
 /* WebKitErrorCannotFindPlugin description */
@@ -751,14 +751,32 @@
 /* Undo action name */
 "Use Standard Ligatures (Undo action name)" = "Use Standard Ligatures";
 
+/* Validation message for form control elements with a value shorter than minimum allowed length */
+"Use at least %d characters" = "Use at least %d characters";
+
+/* Validation message for form control elements with a value shorter than maximum allowed length */
+"Use no more than %d character(s)" = "Use no more than %d character(s)";
+
+/* Validation message for form control elements with a value shorter than maximum allowed length */
+"Use no more than %d characters" = "Use no more than %d characters";
+
 /* Description of WebCrypto master keys in Keychain */
 "Used to encrypt WebCrypto keys in persistent storage, such as IndexedDB" = "Used to encrypt WebCrypto keys in persistent storage, such as IndexedDB";
 
+/* The download was cancelled by the user */
+"User cancelled the download" = "User cancelled the download";
+
 /* Validation message for input form controls with value lower than allowed minimum */
-"Value must be greater than or equal to %@." = "Value must be greater than or equal to %@.";
+"Value must be greater than or equal to %@" = "Value must be greater than or equal to %@";
+
+/* Validation message for input form controls with value lower than allowed minimum */
+"Value must be greater than or equal to %s" = "Value must be greater than or equal to %s";
 
 /* Validation message for input form controls with value higher than allowed maximum */
-"Value must be less than or equal to %@." = "Value must be less than or equal to %@.";
+"Value must be less than or equal to %@" = "Value must be less than or equal to %@";
+
+/* Validation message for input form controls with value higher than allowed maximum */
+"Value must be less than or equal to %s" = "Value must be less than or equal to %s";
 
 /* Web Inspector window title when inspecting Web Inspector */
 "Web Inspector [%d] — %@" = "Web Inspector [%d] — %@";
@@ -844,11 +862,17 @@
 /* HTTP result code string */
 "created" = "created";
 
+/* The less good value description for a meter element. */
+"critical value" = "critical value";
+
 /* accessibility help text for movie status display */
 "current movie status" = "current movie status";
 
 /* accessibility help text for elapsed time display */
 "current movie time in seconds" = "current movie time in seconds";
+
+/* accessibility role description for a date and time field. */
+"date and time field" = "date and time field";
 
 /* accessibility role description for a date field. */
 "date field" = "date field";
@@ -874,11 +898,11 @@
 /* accessibility role description for an email field. */
 "email field" = "email field";
 
-/* accessibility label for enter fullscreen button */
-"enter fullscreen" = "enter fullscreen";
+/* accessibility label for enter full screen button */
+"enter full screen" = "enter full screen";
 
-/* accessibility label for exit fullscreen button */
-"exit fullscreen" = "exit fullscreen";
+/* accessibility label for exit full screen button */
+"exit full screen" = "exit full screen";
 
 /* HTTP result code string */
 "expectation failed" = "expectation failed";
@@ -888,6 +912,9 @@
 
 /* accessibility label for fast reverse button */
 "fast reverse" = "fast reverse";
+
+/* accessibility role description for a group containing a scrollable list of articles. */
+"feed" = "feed";
 
 /* accessibility role description for a figure element. */
 "figure" = "figure";
@@ -934,9 +961,6 @@
 /* HTTP result code string */
 "length required" = "length required";
 
-/* The less good value description for a meter element. */
-"critical value" = "critical value";
-
 /* accessibility role description for link */
 "link" = "link";
 
@@ -957,6 +981,9 @@
 
 /* HTTP result code string */
 "method not allowed" = "method not allowed";
+
+/* accessibility role description for a month field. */
+"month and year field" = "month and year field";
 
 /* HTTP result code string */
 "moved permanently" = "moved permanently";
@@ -1017,6 +1044,9 @@
 
 /* An ARIA accessibility group that acts as a note in a document. */
 "note" = "note";
+
+/* accessibility role description for a number field. */
+"number field" = "number field";
 
 /* accessibility help text for remaining time display */
 "number of seconds of movie remaining" = "number of seconds of movie remaining";
@@ -1090,6 +1120,9 @@
 /* accessibility label for return to real time button */
 "return to realtime" = "return to realtime";
 
+/* accessibility role description for a horizontal rule [<hr>] */
+"rule" = "rule";
+
 /* An ARIA accessibility group that contains a search feature of a website. */
 "search" = "search";
 
@@ -1107,9 +1140,6 @@
 
 /* Verb stating the action that will occur when a radio button is clicked, as used by accessibility */
 "select" = "select";
-
-/* accessibility role description for a horizontal rule [<hr>] */
-"separator" = "separator";
 
 /* HTTP result code string */
 "server error" = "server error";
@@ -1206,6 +1236,9 @@
 
 /* An ARIA accessibility group that acts as an dialog. */
 "web dialog" = "web dialog";
+
+/* accessibility role description for a time field. */
+"week and year field" = "week and year field";
 
 /* Option in segmented control for choosing list type in text editing */
 "•" = "•";

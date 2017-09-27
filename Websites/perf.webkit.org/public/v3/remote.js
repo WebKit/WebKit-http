@@ -1,66 +1,59 @@
 "use strict";
 
-var RemoteAPI = {};
+class BrowserRemoteAPI extends CommonRemoteAPI {
 
-RemoteAPI.postJSON = function (path, data)
-{
-    return this.getJSON(path, data || {});
-}
+    url(path)
+    {
+        if (path.charAt(0) != '/')
+            path = '/' + path;
+        return `${location.protocol}//${location.host}${path}`;
+    }
 
-RemoteAPI.postJSONWithStatus = function (path, data)
-{
-    return this.getJSONWithStatus(path, data || {});
-}
+    sendHttpRequest(path, method, contentType, content, options = {})
+    {
+        console.assert(!path.startsWith('http:') && !path.startsWith('https:') && !path.startsWith('file:'));
 
-RemoteAPI.getJSON = function(path, data)
-{
-    console.assert(!path.startsWith('http:') && !path.startsWith('https:') && !path.startsWith('file:'));
+        return new Promise((resolve, reject) => {
+            Instrumentation.startMeasuringTime('Remote', 'sendHttpRequest');
 
-    return new Promise(function (resolve, reject) {
-        Instrumentation.startMeasuringTime('Remote', 'getJSON');
+            function onload() {
+                Instrumentation.endMeasuringTime('Remote', 'sendHttpRequest');
+                if (xhr.status != 200)
+                    return reject(xhr.status);
+                resolve({statusCode: xhr.status, responseText: xhr.responseText});
+            };
 
-        var xhr = new XMLHttpRequest;
-        xhr.onload = function () {
-            Instrumentation.endMeasuringTime('Remote', 'getJSON');
-
-            if (xhr.status != 200) {
+            function onerror() {
+                Instrumentation.endMeasuringTime('Remote', 'sendHttpRequest');
                 reject(xhr.status);
-                return;
             }
 
-            try {
-                var parsed = JSON.parse(xhr.responseText);
-                resolve(parsed);
-            } catch (error) {
-                console.error(xhr.responseText);
-                reject(xhr.status + ', ' + error);
+            const xhr = new XMLHttpRequest;
+            xhr.onload = onload;
+            xhr.onabort = onerror;
+            xhr.onerror = onerror;
+
+            if (content && options.uploadProgressCallback) {
+                xhr.upload.onprogress = (event) => {
+                    options.uploadProgressCallback(event.lengthComputable ? {total: event.total, loaded: event.loaded} : null);
+                }
             }
-        };
 
-        function onerror() {
-            Instrumentation.endMeasuringTime('Remote', 'getJSON');
-            reject(xhr.status);
-        }
+            xhr.open(method, path, true);
+            if (contentType)
+                xhr.setRequestHeader('Content-Type', contentType);
+            if (content)
+                xhr.send(content);
+            else
+                xhr.send();
+        });
+    }
 
-        xhr.onabort = onerror;
-        xhr.onerror = onerror;
+    sendHttpRequestWithFormData(path, formData, options)
+    {
+        return this.sendHttpRequest(path, 'POST', null, formData, options); // Content-type is set by the browser.
+    }
 
-        if (data) {
-            xhr.open('POST', path, true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.send(JSON.stringify(data));
-        } else {
-            xhr.open('GET', path, true);
-            xhr.send();
-        }
-    });
 }
 
-RemoteAPI.getJSONWithStatus = function(path, data)
-{
-    return this.getJSON(path, data).then(function (content) {
-        if (content['status'] != 'OK')
-            return Promise.reject(content['status']);
-        return content;
-    });
-}
+const RemoteAPI = new BrowserRemoteAPI;

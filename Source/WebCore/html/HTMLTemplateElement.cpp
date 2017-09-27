@@ -56,6 +56,11 @@ Ref<HTMLTemplateElement> HTMLTemplateElement::create(const QualifiedName& tagNam
     return adoptRef(*new HTMLTemplateElement(tagName, document));
 }
 
+DocumentFragment* HTMLTemplateElement::contentIfAvailable() const
+{
+    return m_content.get();
+}
+
 DocumentFragment& HTMLTemplateElement::content() const
 {
     if (!m_content)
@@ -82,12 +87,13 @@ Ref<Node> HTMLTemplateElement::cloneNodeInternal(Document& targetDocument, Cloni
     return clone.releaseNonNull();
 }
 
-void HTMLTemplateElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLTemplateElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
-    HTMLElement::didMoveToNewDocument(oldDocument);
+    HTMLElement::didMoveToNewDocument(oldDocument, newDocument);
     if (!m_content)
         return;
-    document().ensureTemplateDocument().adoptIfNeeded(m_content.get());
+    ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
+    m_content->setTreeScopeRecursively(newDocument.ensureTemplateDocument());
 }
 
 } // namespace WebCore

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +31,7 @@
 
 #include "ExceptionOr.h"
 #include <runtime/Float32Array.h>
+#include <wtf/Lock.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -69,8 +71,11 @@ private:
     AudioBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
     explicit AudioBuffer(AudioBus&);
 
+    void invalidate();
+
     double m_gain { 1.0 }; // scalar gain
     float m_sampleRate;
+    mutable Lock m_channelsLock;
     size_t m_length;
     Vector<RefPtr<Float32Array>> m_channels;
 };

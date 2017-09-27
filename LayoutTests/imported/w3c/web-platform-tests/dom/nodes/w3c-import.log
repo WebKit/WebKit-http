@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -40,6 +39,8 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-URL.sub.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-adoptNode.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-characterSet-normalization.html
+/LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg
+/LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-constructor-xml.xml
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-constructor.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-createAttribute.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Document-createComment-createTextNode.js
@@ -93,6 +94,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-insertAdjacentText.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-lastElementChild-xhtml.xhtml
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-lastElementChild.html
+/LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-matches-init.js
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-matches.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-matches.js
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-nextElementSibling-xhtml.xhtml
@@ -104,6 +106,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-siblingElement-null-xhtml.xhtml
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-siblingElement-null.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-tagName.html
+/LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-webkitMatchesSelector.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/MutationObserver-attributes.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/MutationObserver-characterData.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/MutationObserver-childList.html

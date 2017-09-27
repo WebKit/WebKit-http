@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2013 Google Inc. All rights reserved.
- * Copyright (C) 2013, 2014, 2016 Igalia S.L.
+ * Copyright (C) 2013-2017 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,16 +31,11 @@
 
 #pragma once
 
-#if ENABLE(CSS_GRID_LAYOUT)
-
-#include "GridPositionsResolver.h"
+#include "GridPosition.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
-
-// Recommended maximum size for both explicit and implicit grids.
-const int kGridMaxTracks = 1000000;
 
 // A span in a single direction (either rows or columns). Note that |startLine|
 // and |endLine| are grid lines' indexes.
@@ -161,8 +156,8 @@ private:
         }
 #endif
 
-        m_startLine = std::max(-kGridMaxTracks, std::min(startLine, kGridMaxTracks - 1));
-        m_endLine = std::max(-kGridMaxTracks + 1, std::min(endLine, kGridMaxTracks));
+        m_startLine = std::max(GridPosition::min(), std::min(startLine, GridPosition::max() - 1));
+        m_endLine = std::max(GridPosition::min() + 1, std::min(endLine, GridPosition::max()));
     }
 
     int m_startLine;
@@ -205,5 +200,3 @@ public:
 typedef HashMap<String, GridArea> NamedGridAreaMap;
 
 } // namespace WebCore
-
-#endif // ENABLE(CSS_GRID_LAYOUT)

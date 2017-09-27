@@ -34,7 +34,7 @@
 
 namespace JSC {
 
-const ClassInfo JSPromise::s_info = { "Promise", &Base::s_info, 0, CREATE_METHOD_TABLE(JSPromise) };
+const ClassInfo JSPromise::s_info = { "Promise", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSPromise) };
 
 JSPromise* JSPromise::create(VM& vm, Structure* structure)
 {
@@ -57,8 +57,7 @@ void JSPromise::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     putDirect(vm, vm.propertyNames->builtinNames().promiseStatePrivateName(), jsNumber(static_cast<unsigned>(Status::Pending)));
-    putDirect(vm, vm.propertyNames->builtinNames().promiseFulfillReactionsPrivateName(), jsUndefined());
-    putDirect(vm, vm.propertyNames->builtinNames().promiseRejectReactionsPrivateName(), jsUndefined());
+    putDirect(vm, vm.propertyNames->builtinNames().promiseReactionsPrivateName(), jsUndefined());
     putDirect(vm, vm.propertyNames->builtinNames().promiseResultPrivateName(), jsUndefined());
 }
 
@@ -84,6 +83,32 @@ auto JSPromise::status(VM& vm) const -> Status
 JSValue JSPromise::result(VM& vm) const
 {
     return getDirect(vm, vm.propertyNames->builtinNames().promiseResultPrivateName());
+}
+
+bool JSPromise::isHandled(VM& vm) const
+{
+    JSValue value = getDirect(vm, vm.propertyNames->builtinNames().promiseIsHandledPrivateName());
+    ASSERT(value.isBoolean());
+    return value.asBoolean();
+}
+
+JSPromise* JSPromise::resolve(JSGlobalObject& globalObject, JSValue value)
+{
+    auto* exec = globalObject.globalExec();
+    auto& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    auto* promiseResolveFunction = globalObject.promiseResolveFunction();
+    CallData callData;
+    auto callType = JSC::getCallData(promiseResolveFunction, callData);
+    ASSERT(callType != CallType::None);
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(value);
+    auto result = call(exec, promiseResolveFunction, callType, callData, globalObject.promiseConstructor(), arguments);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    ASSERT(result.inherits(vm, JSPromise::info()));
+    return jsCast<JSPromise*>(result);
 }
 
 } // namespace JSC

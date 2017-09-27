@@ -27,6 +27,7 @@
 #include "JSRemoteInspector.h"
 
 #include "JSGlobalObjectConsoleClient.h"
+#include <wtf/ProcessID.h>
 
 #if ENABLE(REMOTE_INSPECTOR)
 #include "RemoteInspector.h"
@@ -50,9 +51,9 @@ void JSRemoteInspectorStart(void)
 #endif
 }
 
-void JSRemoteInspectorSetParentProcessInformation(pid_t pid, const UInt8* auditData, size_t auditLength)
+void JSRemoteInspectorSetParentProcessInformation(ProcessID pid, const uint8_t* auditData, size_t auditLength)
 {
-#if ENABLE(REMOTE_INSPECTOR)
+#if ENABLE(REMOTE_INSPECTOR) && PLATFORM(COCOA)
     RetainPtr<CFDataRef> auditDataRef = adoptCF(CFDataCreate(kCFAllocatorDefault, auditData, auditLength));
     RemoteInspector::singleton().setParentProcessInformation(pid, auditDataRef);
 #else

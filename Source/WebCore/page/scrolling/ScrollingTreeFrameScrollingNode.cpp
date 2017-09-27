@@ -32,7 +32,7 @@
 #include "Logging.h"
 #include "ScrollingStateTree.h"
 #include "ScrollingTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -102,23 +102,16 @@ FloatRect ScrollingTreeFrameScrollingNode::layoutViewportForScrollPosition(const
 {
     ASSERT(scrollingTree().visualViewportEnabled());
 
-    FloatSize visibleContentSize = scrollableAreaSize();
-#if PLATFORM(MAC)
-    // On Mac, FrameView.visibleContentRect(), which was used to set scrollableAreaSize(), returns a rect with scale applied (so it's not really a "content rect"),
-    // so we have to convert back to unscaled coordinates here.
-    visibleContentSize.scale(1 / scale);
-#else
-    UNUSED_PARAM(scale);
-#endif
-    FloatRect visualViewport(visibleContentOrigin, visibleContentSize);
+    FloatRect visibleContentRect(visibleContentOrigin, scrollableAreaSize());
+    LayoutRect visualViewport(FrameView::visibleDocumentRect(visibleContentRect, headerHeight(), footerHeight(), totalContentsSize(), scale));
     LayoutRect layoutViewport(m_layoutViewport);
 
-    LOG_WITH_STREAM(Scrolling, stream << "\nScrolling thread: " << "(visibleContentOrigin " << visibleContentOrigin << ")");
-    LOG_WITH_STREAM(Scrolling, stream << "layoutViewport: " << layoutViewport);
-    LOG_WITH_STREAM(Scrolling, stream << "visualViewport: " << visualViewport);
-    LOG_WITH_STREAM(Scrolling, stream << "scroll positions: min: " << minLayoutViewportOrigin() << " max: "<< maxLayoutViewportOrigin());
+    LOG_WITH_STREAM(Scrolling, stream << "\nScrolling thread: " << "(visibleContentOrigin " << visibleContentOrigin << ") fixed behavior " << m_behaviorForFixed);
+    LOG_WITH_STREAM(Scrolling, stream << "  layoutViewport: " << layoutViewport);
+    LOG_WITH_STREAM(Scrolling, stream << "  visualViewport: " << visualViewport);
+    LOG_WITH_STREAM(Scrolling, stream << "  scroll positions: min: " << minLayoutViewportOrigin() << " max: "<< maxLayoutViewportOrigin());
 
-    LayoutPoint newLocation = FrameView::computeLayoutViewportOrigin(LayoutRect(visualViewport), LayoutPoint(minLayoutViewportOrigin()), LayoutPoint(maxLayoutViewportOrigin()), layoutViewport);
+    LayoutPoint newLocation = FrameView::computeLayoutViewportOrigin(LayoutRect(visualViewport), LayoutPoint(minLayoutViewportOrigin()), LayoutPoint(maxLayoutViewportOrigin()), layoutViewport, m_behaviorForFixed);
 
     if (layoutViewport.location() != newLocation) {
         layoutViewport.setLocation(newLocation);
@@ -133,9 +126,10 @@ FloatSize ScrollingTreeFrameScrollingNode::viewToContentsOffset(const FloatPoint
     return toFloatSize(scrollPosition) - FloatSize(0, headerHeight() + topContentInset());
 }
 
-void ScrollingTreeFrameScrollingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior) const
+void ScrollingTreeFrameScrollingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
 {
     ts << "frame scrolling node";
+    ScrollingTreeScrollingNode::dumpProperties(ts, behavior);
 
     ts.dumpProperty("layout viewport", m_layoutViewport);
     ts.dumpProperty("min layoutViewport origin", m_minLayoutViewportOrigin);

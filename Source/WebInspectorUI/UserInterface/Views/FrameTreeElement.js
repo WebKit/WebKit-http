@@ -23,39 +23,48 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.ResourceTreeElement
+WI.FrameTreeElement = class FrameTreeElement extends WI.ResourceTreeElement
 {
-    constructor(frame, representedObject)
+    constructor(frame)
     {
-        console.assert(frame instanceof WebInspector.Frame);
+        console.assert(frame instanceof WI.Frame);
 
-        super(frame.mainResource, representedObject || frame);
+        super(frame.mainResource, frame);
 
         this._frame = frame;
 
         this._updateExpandedSetting();
 
-        frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
-        frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
-        frame.addEventListener(WebInspector.Frame.Event.ResourceWasRemoved, this._resourceWasRemoved, this);
-        frame.addEventListener(WebInspector.Frame.Event.ExtraScriptAdded, this._extraScriptAdded, this);
-        frame.addEventListener(WebInspector.Frame.Event.ChildFrameWasAdded, this._childFrameWasAdded, this);
-        frame.addEventListener(WebInspector.Frame.Event.ChildFrameWasRemoved, this._childFrameWasRemoved, this);
-
-        frame.domTree.addEventListener(WebInspector.DOMTree.Event.ContentFlowWasAdded, this._childContentFlowWasAdded, this);
-        frame.domTree.addEventListener(WebInspector.DOMTree.Event.ContentFlowWasRemoved, this._childContentFlowWasRemoved, this);
-        frame.domTree.addEventListener(WebInspector.DOMTree.Event.RootDOMNodeInvalidated, this._rootDOMNodeInvalidated, this);
+        frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
+        frame.addEventListener(WI.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
+        frame.addEventListener(WI.Frame.Event.ResourceWasRemoved, this._resourceWasRemoved, this);
+        frame.addEventListener(WI.Frame.Event.ExtraScriptAdded, this._extraScriptAdded, this);
+        frame.addEventListener(WI.Frame.Event.ChildFrameWasAdded, this._childFrameWasAdded, this);
+        frame.addEventListener(WI.Frame.Event.ChildFrameWasRemoved, this._childFrameWasRemoved, this);
 
         this.shouldRefreshChildren = true;
         this.folderSettingsKey = this._frame.url.hash;
 
-        this.registerFolderizeSettings("frames", WebInspector.UIString("Frames"), this._frame.childFrameCollection, WebInspector.FrameTreeElement);
-        this.registerFolderizeSettings("flows", WebInspector.UIString("Flows"), this._frame.domTree.contentFlowCollection, WebInspector.ContentFlowTreeElement);
-        this.registerFolderizeSettings("extra-scripts", WebInspector.UIString("Extra Scripts"), this._frame.extraScriptCollection, WebInspector.ScriptTreeElement);
+        this.registerFolderizeSettings("frames", WI.UIString("Frames"), this._frame.childFrameCollection, WI.FrameTreeElement);
+        this.registerFolderizeSettings("extra-scripts", WI.UIString("Extra Scripts"), this._frame.extraScriptCollection, WI.ScriptTreeElement);
 
-        for (let [key, value] of Object.entries(WebInspector.Resource.Type)) {
-            let folderName = WebInspector.Resource.displayNameForType(value, true);
-            this.registerFolderizeSettings(key, folderName, this._frame.resourceCollectionForType(value), WebInspector.ResourceTreeElement);
+        if (window.CanvasAgent && WI.settings.experimentalShowCanvasContextsInResources.value)
+            this.registerFolderizeSettings("canvases", WI.UIString("Canvases"), this._frame.canvasCollection, WI.CanvasTreeElement);
+
+        function forwardingConstructor(representedObject, ...extraArguments) {
+            if (representedObject instanceof WI.CSSStyleSheet)
+                return new WI.CSSStyleSheetTreeElement(representedObject, ...extraArguments);
+            return new WI.ResourceTreeElement(representedObject, ...extraArguments);
+        }
+
+        for (let [key, value] of Object.entries(WI.Resource.Type)) {
+            let folderName = WI.Resource.displayNameForType(value, true);
+
+            let treeElementConstructor = forwardingConstructor;
+            if (value === WI.Resource.Type.WebSocket)
+                treeElementConstructor = WI.WebSocketResourceTreeElement;
+
+            this.registerFolderizeSettings(key, folderName, this._frame.resourceCollectionForType(value), treeElementConstructor);
         }
 
         this.updateParentStatus();
@@ -107,9 +116,26 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
     onattach()
     {
         // Immediate superclasses are skipped, since Frames handle their own SourceMapResources.
-        WebInspector.GeneralTreeElement.prototype.onattach.call(this);
+        WI.GeneralTreeElement.prototype.onattach.call(this);
 
-        this.element.addEventListener("contextmenu", this._handleContextMenuEvent.bind(this));
+        WI.cssStyleManager.addEventListener(WI.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+
+        if (window.CanvasAgent && WI.settings.experimentalShowCanvasContextsInResources.value) {
+            this._frame.canvasCollection.addEventListener(WI.Collection.Event.ItemAdded, this._canvasWasAdded, this);
+            this._frame.canvasCollection.addEventListener(WI.Collection.Event.ItemRemoved, this._canvasWasRemoved, this);
+        }
+    }
+
+    ondetach()
+    {
+        WI.cssStyleManager.removeEventListener(WI.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+
+        if (window.CanvasAgent && WI.settings.experimentalShowCanvasContextsInResources.value) {
+            this._frame.canvasCollection.removeEventListener(WI.Collection.Event.ItemAdded, this._canvasWasAdded, this);
+            this._frame.canvasCollection.removeEventListener(WI.Collection.Event.ItemRemoved, this._canvasWasRemoved, this);
+        }
+
+        super.ondetach();
     }
 
     // Overrides from FolderizedTreeElement (Protected).
@@ -119,11 +145,11 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         if (a === b)
             return 0;
 
-        var aIsResource = a instanceof WebInspector.ResourceTreeElement;
-        var bIsResource = b instanceof WebInspector.ResourceTreeElement;
+        var aIsResource = a instanceof WI.ResourceTreeElement;
+        var bIsResource = b instanceof WI.ResourceTreeElement;
 
         if (aIsResource && bIsResource)
-            return WebInspector.ResourceTreeElement.compareResourceTreeElements(a, b);
+            return WI.ResourceTreeElement.compareResourceTreeElements(a, b);
 
         if (!aIsResource && !bIsResource) {
             // When both components are not resources then default to base class comparison.
@@ -160,19 +186,23 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
                 this.addChildForRepresentedObject(sourceMap.resources[j]);
         }
 
-        for (let contentFlow of this._frame.domTree.contentFlowCollection.items)
-            this.addChildForRepresentedObject(contentFlow);
-
         for (let extraScript of this._frame.extraScriptCollection.items) {
             if (extraScript.sourceURL || extraScript.sourceMappingURL)
                 this.addChildForRepresentedObject(extraScript);
         }
+
+        if (window.CanvasAgent && WI.settings.experimentalShowCanvasContextsInResources.value) {
+            for (let canvas of this._frame.canvasCollection.items)
+                this.addChildForRepresentedObject(canvas);
+        }
+
+        const doNotCreateIfMissing = true;
+        WI.cssStyleManager.preferredInspectorStyleSheetForFrame(this._frame, this.addRepresentedObjectToNewChildQueue.bind(this), doNotCreateIfMissing);
     }
 
     onexpand()
     {
         this._expandedSetting.value = true;
-        this._frame.domTree.requestContentFlowList();
     }
 
     oncollapse()
@@ -187,7 +217,7 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
 
     _updateExpandedSetting()
     {
-        this._expandedSetting = new WebInspector.Setting("frame-expanded-" + this._frame.url.hash, this._frame.isMainFrame() ? true : false);
+        this._expandedSetting = new WI.Setting("frame-expanded-" + this._frame.url.hash, this._frame.isMainFrame() ? true : false);
         if (this._expandedSetting.value)
             this.expand();
         else
@@ -235,19 +265,21 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         this.removeChildForRepresentedObject(event.data.childFrame);
     }
 
-    _childContentFlowWasAdded(event)
+    _styleSheetAdded(event)
     {
-        this.addRepresentedObjectToNewChildQueue(event.data.flow);
+        if (!event.data.styleSheet.isInspectorStyleSheet())
+            return;
+
+        this.addRepresentedObjectToNewChildQueue(event.data.styleSheet);
     }
 
-    _childContentFlowWasRemoved(event)
+    _canvasWasAdded(event)
     {
-        this.removeChildForRepresentedObject(event.data.flow);
+        this.addRepresentedObjectToNewChildQueue(event.data.item);
     }
 
-    _rootDOMNodeInvalidated()
+    _canvasWasRemoved(event)
     {
-        if (this.expanded)
-            this._frame.domTree.requestContentFlowList();
+        this.removeChildForRepresentedObject(event.data.item);
     }
 };

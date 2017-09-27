@@ -52,6 +52,7 @@ UIScriptContext::UIScriptContext(UIScriptContextDelegate& delegate)
 
 UIScriptContext::~UIScriptContext()
 {
+    m_controller->checkForOutstandingCallbacks();
     m_controller->contextDestroyed();
 }
 
@@ -66,7 +67,8 @@ void UIScriptContext::runUIScript(const String& script, unsigned scriptCallbackI
     
     if (!hasOutstandingAsyncTasks()) {
         JSValueRef stringifyException = nullptr;
-        requestUIScriptCompletion(JSValueToStringCopy(m_context.get(), result, &stringifyException));
+        JSRetainPtr<JSStringRef> stringified(Adopt, JSValueToStringCopy(m_context.get(), result, &stringifyException));
+        requestUIScriptCompletion(stringified.get());
         tryToCompleteUIScriptForCurrentParentCallback();
     }
 }
@@ -117,6 +119,9 @@ unsigned UIScriptContext::registerCallback(JSValueRef taskCallback, CallbackType
     if (m_callbacks.contains(type))
         unregisterCallback(type);
 
+    if (JSValueIsUndefined(m_context.get(), taskCallback))
+        return 0;
+
     return prepareForAsyncTask(taskCallback, type);
 }
 
@@ -166,9 +171,15 @@ void UIScriptContext::tryToCompleteUIScriptForCurrentParentCallback()
         return;
 
     JSStringRef result = m_uiScriptResultsPendingCompletion.take(m_currentScriptCallbackID);
-    String scriptResult(JSStringGetCharactersPtr(result), JSStringGetLength(result));
+    String scriptResult(reinterpret_cast<const UChar*>(JSStringGetCharactersPtr(result)), JSStringGetLength(result));
 
     m_delegate.uiScriptDidComplete(scriptResult, m_currentScriptCallbackID);
+    
+    // Unregister tasks associated with this callback
+    m_callbacks.removeIf([&](auto& keyAndValue) {
+        return keyAndValue.value.parentScriptCallbackID == m_currentScriptCallbackID;
+    });
+    
     m_currentScriptCallbackID = 0;
     if (result)
         JSStringRelease(result);

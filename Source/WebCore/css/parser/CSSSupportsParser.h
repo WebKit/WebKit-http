@@ -29,11 +29,13 @@
 
 #pragma once
 
+#include "CSSParserToken.h"
+
 namespace WebCore {
 
 class CSSParserImpl;
 class CSSParserTokenRange;
-
+    
 class CSSSupportsParser {
 public:
     enum SupportsResult {
@@ -42,7 +44,12 @@ public:
         Invalid
     };
 
-    static SupportsResult supportsCondition(CSSParserTokenRange, CSSParserImpl&);
+    enum SupportsParsingMode {
+        ForAtRule,
+        ForWindowCSS,
+    };
+
+    static SupportsResult supportsCondition(CSSParserTokenRange, CSSParserImpl&, SupportsParsingMode);
 
 private:
     CSSSupportsParser(CSSParserImpl& parser)
@@ -50,8 +57,9 @@ private:
 
     SupportsResult consumeCondition(CSSParserTokenRange);
     SupportsResult consumeNegation(CSSParserTokenRange);
+    SupportsResult consumeDeclarationConditionOrGeneralEnclosed(CSSParserTokenRange&);
 
-    SupportsResult consumeConditionInParenthesis(CSSParserTokenRange&);
+    SupportsResult consumeConditionInParenthesis(CSSParserTokenRange&, CSSParserTokenType);
 
     CSSParserImpl& m_parser;
 };

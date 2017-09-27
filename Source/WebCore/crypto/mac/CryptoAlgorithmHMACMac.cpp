@@ -28,15 +28,13 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmHmacParamsDeprecated.h"
 #include "CryptoKeyHMAC.h"
-#include "ExceptionCode.h"
 #include <CommonCrypto/CommonHMAC.h>
 #include <wtf/CryptographicUtilities.h>
 
 namespace WebCore {
 
-static Optional<CCHmacAlgorithm> commonCryptoHMACAlgorithm(CryptoAlgorithmIdentifier hashFunction)
+static std::optional<CCHmacAlgorithm> commonCryptoHMACAlgorithm(CryptoAlgorithmIdentifier hashFunction)
 {
     switch (hashFunction) {
     case CryptoAlgorithmIdentifier::SHA_1:
@@ -50,11 +48,11 @@ static Optional<CCHmacAlgorithm> commonCryptoHMACAlgorithm(CryptoAlgorithmIdenti
     case CryptoAlgorithmIdentifier::SHA_512:
         return kCCHmacAlgSHA512;
     default:
-        return Nullopt;
+        return std::nullopt;
     }
 }
 
-static Vector<uint8_t> calculateSignature(CCHmacAlgorithm algorithm, const Vector<uint8_t>& key, const CryptoOperationData& data)
+static Vector<uint8_t> calculateSignature(CCHmacAlgorithm algorithm, const Vector<uint8_t>& key, const Vector<uint8_t>& data)
 {
     size_t digestLength;
     switch (algorithm) {
@@ -79,34 +77,28 @@ static Vector<uint8_t> calculateSignature(CCHmacAlgorithm algorithm, const Vecto
     }
 
     Vector<uint8_t> result(digestLength);
-    const void* keyData = key.data() ? key.data() : reinterpret_cast<const uint8_t*>(""); // <rdar://problem/15467425> HMAC crashes when key pointer is null.
-    CCHmac(algorithm, keyData, key.size(), data.first, data.second, result.data());
+    CCHmac(algorithm, key.data(), key.size(), data.data(), data.size(), result.data());
     return result;
 }
 
-ExceptionOr<void> CryptoAlgorithmHMAC::platformSign(const CryptoAlgorithmHmacParamsDeprecated& parameters, const CryptoKeyHMAC& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&&)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmHMAC::platformSign(const CryptoKeyHMAC& key, const Vector<uint8_t>& data)
 {
-    auto algorithm = commonCryptoHMACAlgorithm(parameters.hash);
+    auto algorithm = commonCryptoHMACAlgorithm(key.hashAlgorithmIdentifier());
     if (!algorithm)
-        return Exception { NOT_SUPPORTED_ERR };
-    callback(calculateSignature(*algorithm, key.key(), data));
-    return { };
+        return Exception { OperationError };
+
+    return calculateSignature(*algorithm, key.key(), data);
 }
 
-ExceptionOr<void> CryptoAlgorithmHMAC::platformVerify(const CryptoAlgorithmHmacParamsDeprecated& parameters, const CryptoKeyHMAC& key, const CryptoOperationData& expectedSignature, const CryptoOperationData& data, BoolCallback&& callback, VoidCallback&&)
+ExceptionOr<bool> CryptoAlgorithmHMAC::platformVerify(const CryptoKeyHMAC& key, const Vector<uint8_t>& signature, const Vector<uint8_t>& data)
 {
-    auto algorithm = commonCryptoHMACAlgorithm(parameters.hash);
+    auto algorithm = commonCryptoHMACAlgorithm(key.hashAlgorithmIdentifier());
     if (!algorithm)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { OperationError };
 
-    auto signature = calculateSignature(*algorithm, key.key(), data);
-
+    auto expectedSignature = calculateSignature(*algorithm, key.key(), data);
     // Using a constant time comparison to prevent timing attacks.
-    bool result = signature.size() == expectedSignature.second && !constantTimeMemcmp(signature.data(), expectedSignature.first, signature.size());
-
-    callback(result);
-
-    return { };
+    return signature.size() == expectedSignature.size() && !constantTimeMemcmp(expectedSignature.data(), signature.data(), expectedSignature.size());
 }
 
 }

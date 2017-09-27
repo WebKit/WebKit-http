@@ -15,20 +15,22 @@ function sampleBuildRequestData()
             "platform": "31",
             "testGroup": "2128",
             "order": "0",
-            "rootSet": "4255",
+            "commitSet": "4255",
             "status": "pending",
             "url": null,
             "build": null,
             "createdAt": 1458688514000
         }],
-        "rootSets": [{
+        "commitSets": [{
             "id": "4255",
-            "roots": ["87832", "93116"]
+            "revisionItems": [{"commit": "87832"}, {"commit": "93116"}],
+            "customRoots": [],
         }, {
             "id": "4256",
-            "roots": ["87832", "96336"]
+            "revisionItems": [{"commit": "87832"}, {"commit": "96336"}],
+            "customRoots": [],
         }],
-        "roots": [{
+        "commits": [{
             "id": "87832",
             "repository": "9",
             "revision": "10.11 15A284",
@@ -49,11 +51,12 @@ function sampleBuildRequestData()
             "revision": "192736",
             "time": 1448225325650
         }],
+        "uploadedFiles": [],
         "status": "OK"
     };
 }
 
-describe('TestGroup', function () {
+describe('BuildRequest', function () {
     MockModels.inject();
 
     describe('waitingTime', function () {

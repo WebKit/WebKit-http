@@ -19,105 +19,15 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef LengthBox_h
-#define LengthBox_h
+#pragma once
 
 #include "Length.h"
+#include "RectEdges.h"
 #include "WritingMode.h"
-#include <array>
 
 namespace WebCore {
 
-template<typename T> class BoxExtent {
-public:
-    BoxExtent()
-        : m_sides({{ T(0), T(0), T(0), T(0) }})
-    {
-    }
-
-    BoxExtent(const T& top, const T& right, const T& bottom, const T& left)
-        : m_sides({{ top, right, bottom, left }})
-    {
-    }
-
-    T& at(PhysicalBoxSide side) { return m_sides[side]; }
-    T& top() { return at(TopSide); }
-    T& right() { return at(RightSide); }
-    T& bottom() { return at(BottomSide); }
-    T& left() { return at(LeftSide); }
-
-    const T& at(PhysicalBoxSide side) const { return m_sides[side]; }
-    const T& top() const { return at(TopSide); }
-    const T& right() const { return at(RightSide); }
-    const T& bottom() const { return at(BottomSide); }
-    const T& left() const { return at(LeftSide); }
-
-    void setAt(PhysicalBoxSide side, const T& v) { at(side) = v; }
-    void setTop(const T& top) { setAt(TopSide, top); }
-    void setRight(const T& right) { setAt(RightSide, right); }
-    void setBottom(const T& bottom) { setAt(BottomSide, bottom); }
-    void setLeft(const T& left) { setAt(LeftSide, left); }
-
-    T& before(WritingMode writingMode)
-    {
-        return at(mapLogicalSideToPhysicalSide(writingMode, BeforeSide));
-    }
-
-    T& after(WritingMode writingMode)
-    {
-        return at(mapLogicalSideToPhysicalSide(writingMode, AfterSide));
-    }
-
-    T& start(WritingMode writingMode, TextDirection direction = LTR)
-    {
-        return at(mapLogicalSideToPhysicalSide(makeTextFlow(writingMode, direction), StartSide));
-    }
-
-    T& end(WritingMode writingMode, TextDirection direction = LTR)
-    {
-        return at(mapLogicalSideToPhysicalSide(makeTextFlow(writingMode, direction), EndSide));
-    }
-
-    const T& before(WritingMode writingMode) const
-    {
-        return at(mapLogicalSideToPhysicalSide(writingMode, BeforeSide));
-    }
-
-    const T& after(WritingMode writingMode) const
-    {
-        return at(mapLogicalSideToPhysicalSide(writingMode, AfterSide));
-    }
-
-    const T& start(WritingMode writingMode, TextDirection direction = LTR) const
-    {
-        return at(mapLogicalSideToPhysicalSide(makeTextFlow(writingMode, direction), StartSide));
-    }
-
-    const T& end(WritingMode writingMode, TextDirection direction = LTR) const
-    {
-        return at(mapLogicalSideToPhysicalSide(makeTextFlow(writingMode, direction), EndSide));
-    }
-
-    void setBefore(const T& before, WritingMode writingMode) { this->before(writingMode) = before; }
-    void setAfter(const T& after, WritingMode writingMode) { this->after(writingMode) = after; }
-    void setStart(const T& start, WritingMode writingMode, TextDirection direction = LTR) { this->start(writingMode, direction) = start; }
-    void setEnd(const T& end, WritingMode writingMode, TextDirection direction = LTR) { this->end(writingMode, direction) = end; }
-
-    bool operator==(const BoxExtent& other) const
-    {
-        return m_sides == other.m_sides;
-    }
-
-    bool operator!=(const BoxExtent& other) const
-    {
-        return m_sides != other.m_sides;
-    }
-
-protected:
-    std::array<T, 4> m_sides;
-};
-
-class LengthBox : public BoxExtent<Length> {
+class LengthBox : public RectEdges<Length> {
 public:
     LengthBox()
         : LengthBox(Auto)
@@ -125,22 +35,22 @@ public:
     }
 
     explicit LengthBox(LengthType type)
-        : BoxExtent(Length(type), Length(type), Length(type), Length(type))
+        : RectEdges(Length(type), Length(type), Length(type), Length(type))
     {
     }
 
     explicit LengthBox(int v)
-        : BoxExtent(Length(v, Fixed), Length(v, Fixed), Length(v, Fixed), Length(v, Fixed))
+        : RectEdges(Length(v, Fixed), Length(v, Fixed), Length(v, Fixed), Length(v, Fixed))
     {
     }
 
     LengthBox(int top, int right, int bottom, int left)
-        : BoxExtent(Length(top, Fixed), Length(right, Fixed), Length(bottom, Fixed), Length(left, Fixed))
+        : RectEdges(Length(top, Fixed), Length(right, Fixed), Length(bottom, Fixed), Length(left, Fixed))
     {
     }
 
-    LengthBox(const Length& top, const Length& right, const Length& bottom, const Length& left)
-        : BoxExtent(top, right, bottom, left)
+    LengthBox(Length&& top, Length&& right, Length&& bottom, Length&& left)
+        : RectEdges { WTFMove(top), WTFMove(right), WTFMove(bottom), WTFMove(left) }
     {
     }
 
@@ -150,11 +60,10 @@ public:
     }
 };
 
-typedef BoxExtent<LayoutUnit> LayoutBoxExtent;
-typedef BoxExtent<float> FloatBoxExtent;
+using LayoutBoxExtent = RectEdges<LayoutUnit>;
+using FloatBoxExtent = RectEdges<float>;
 
-TextStream& operator<<(TextStream&, const LengthBox&);
+WTF::TextStream& operator<<(WTF::TextStream&, const LengthBox&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const FloatBoxExtent&);
 
 } // namespace WebCore
-
-#endif // LengthBox_h

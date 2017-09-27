@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -19,6 +18,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/images/anim-gr.gif
 /LayoutTests/imported/w3c/web-platform-tests/images/anim-gr.png
 /LayoutTests/imported/w3c/web-platform-tests/images/anim-poster-gr.png
+/LayoutTests/imported/w3c/web-platform-tests/images/apng.png
 /LayoutTests/imported/w3c/web-platform-tests/images/background.png
 /LayoutTests/imported/w3c/web-platform-tests/images/black-rectangle.png
 /LayoutTests/imported/w3c/web-platform-tests/images/blue-area.png
@@ -38,6 +38,8 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/images/green.svg
 /LayoutTests/imported/w3c/web-platform-tests/images/grgr-256x256.png
 /LayoutTests/imported/w3c/web-platform-tests/images/movie_300_frame_0.png
+/LayoutTests/imported/w3c/web-platform-tests/images/pattern.ogv
+/LayoutTests/imported/w3c/web-platform-tests/images/pattern.png
 /LayoutTests/imported/w3c/web-platform-tests/images/red-16x16.png
 /LayoutTests/imported/w3c/web-platform-tests/images/red-zeroheight.svg
 /LayoutTests/imported/w3c/web-platform-tests/images/red-zerosize.svg
@@ -47,6 +49,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/images/rgrg-256x256.png
 /LayoutTests/imported/w3c/web-platform-tests/images/rrgg-256x256.png
 /LayoutTests/imported/w3c/web-platform-tests/images/smiley.png
+/LayoutTests/imported/w3c/web-platform-tests/images/smiley.png.headers
 /LayoutTests/imported/w3c/web-platform-tests/images/threecolors.png
 /LayoutTests/imported/w3c/web-platform-tests/images/transparent.png
 /LayoutTests/imported/w3c/web-platform-tests/images/transparent50.png

@@ -46,6 +46,17 @@ function endfullscreen()
     setTimeout(openNextMovie, 10);
 }
 
+function fullscreenerror()
+{
+    var movie = movieInfo.movies[movieInfo.current];
+    if (movie.inline) {
+        failTest("Unexpected fullscreenerror event");
+    } else {
+        testExpected("mediaElement.webkitDisplayingFullscreen", false);
+        openNextMovie();
+    }
+}
+
 function canplaythrough()
 {
     var movie = movieInfo.movies[movieInfo.current];
@@ -54,9 +65,12 @@ function canplaythrough()
 
     if (movie.type == 'video') {
         testExpected("mediaElement.webkitSupportsFullscreen", movie.supportsFS);
+        if (mediaElement.webkitSupportsPresentationMode)
+            testExpected("mediaElement.webkitSupportsPresentationMode('fullscreen')", movie.supportsFS);
         testExpected("mediaElement.webkitDisplayingFullscreen", false);
     } else {
         testExpected("mediaElement.webkitSupportsFullscreen", undefined);
+        testExpected("mediaElement.webkitSupportsPresentationMode", undefined);
         testExpected("mediaElement.webkitDisplayingFullscreen", undefined);
     }
     
@@ -123,5 +137,6 @@ function addEventListeners(elem)
     waitForEvent('webkitbeginfullscreen', beginfullscreen);
     waitForEvent('webkitendfullscreen', endfullscreen);
     waitForEvent('webkitfullscreenchange', fullscreenchange);
+    waitForEvent('webkitfullscreenerror', fullscreenerror);
 }
 

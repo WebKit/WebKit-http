@@ -28,7 +28,6 @@
 #include "TextureMapperLayer.h"
 #include "TextureMapperPlatformLayer.h"
 #include "TextureMapperTiledBackingStore.h"
-#include "Timer.h"
 
 namespace WebCore {
 
@@ -83,8 +82,8 @@ public:
     void setDebugBorder(const Color&, float width) override;
     void setShowRepaintCounter(bool) override;
 
-    void flushCompositingState(const FloatRect&, bool) override;
-    void flushCompositingStateForThisLayerOnly(bool) override;
+    void flushCompositingState(const FloatRect&) override;
+    void flushCompositingStateForThisLayerOnly() override;
 
     void updateBackingStoreIncludingSubLayers();
 

@@ -31,6 +31,7 @@
 #import "TestRunner.h"
 
 #import "DefaultPolicyDelegate.h"
+#import "DumpRenderTreeSpellChecker.h"
 #import "EditingDelegate.h"
 #import "MockGeolocationProvider.h"
 #import "MockWebNotificationProvider.h"
@@ -78,8 +79,7 @@
 #import <wtf/RetainPtr.h>
 
 #if !PLATFORM(IOS)
-#import <WebCore/SoftLinking.h>
-#import <WebKit/WebIconDatabasePrivate.h>
+#import <wtf/SoftLinking.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -210,6 +210,11 @@ void TestRunner::setStorageDatabaseIdleInterval(double interval)
     [WebStorageManager setStorageDatabaseIdleInterval:interval];
 }
 
+void TestRunner::setSpellCheckerLoggingEnabled(bool enabled)
+{
+    ::setSpellCheckerLoggingEnabled(enabled);
+}
+
 void TestRunner::closeIdleLocalStorageDatabases()
 {
     [WebStorageManager closeIdleLocalStorageDatabases];
@@ -249,6 +254,11 @@ void TestRunner::display()
     displayWebView();
 }
 
+void TestRunner::displayAndTrackRepaints()
+{
+    displayAndTrackRepaintsWebView();
+}
+
 void TestRunner::keepWebHistory()
 {
     if (![WebHistory optionalSharedHistory]) {
@@ -276,6 +286,13 @@ size_t TestRunner::webHistoryItemCount()
 void TestRunner::notifyDone()
 {
     if (m_waitToDump && !topLoadingFrame && !WorkQueue::singleton().count())
+        dump();
+    m_waitToDump = false;
+}
+
+void TestRunner::forceImmediateCompletion()
+{
+    if (m_waitToDump && !WorkQueue::singleton().count())
         dump();
     m_waitToDump = false;
 }
@@ -454,18 +471,7 @@ void TestRunner::setGeolocationPermission(bool allow)
 
 void TestRunner::setIconDatabaseEnabled(bool iconDatabaseEnabled)
 {
-#if ENABLE(ICONDATABASE)
-    // FIXME: Workaround <rdar://problem/6480108>
-    static WebIconDatabase *sharedWebIconDatabase = NULL;
-    if (!sharedWebIconDatabase) {
-        if (!iconDatabaseEnabled)
-            return;
-        sharedWebIconDatabase = [WebIconDatabase sharedIconDatabase];
-        if ([sharedWebIconDatabase isEnabled] == iconDatabaseEnabled)
-            return;
-    }
-    [sharedWebIconDatabase setEnabled:iconDatabaseEnabled];
-#endif
+    [WebView _setIconLoadingEnabled:iconDatabaseEnabled];
 }
 
 void TestRunner::setMainFrameIsFirstResponder(bool flag)
@@ -574,11 +580,6 @@ void TestRunner::setValueForUser(JSContextRef context, JSValueRef nodeObject, JS
 
     RetainPtr<CFStringRef> valueCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, value));
     [(DOMHTMLInputElement *)element setValueForUser:(NSString *)valueCF.get()];
-}
-
-void TestRunner::setViewModeMediaFeature(JSStringRef mode)
-{
-    // FIXME: implement
 }
 
 void TestRunner::dispatchPendingLoadRequests()

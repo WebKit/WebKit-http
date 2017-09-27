@@ -27,6 +27,7 @@
 #pragma once
 
 #include "ClipboardAccessPolicy.h"
+#include "ContentType.h"
 #include "EditingBehaviorTypes.h"
 #include "IntSize.h"
 #include "SecurityOrigin.h"
@@ -35,7 +36,6 @@
 #include "Timer.h"
 #include "URL.h"
 #include "WritingMode.h"
-#include <chrono>
 #include <runtime/RuntimeFlags.h>
 #include <unicode/uscript.h>
 #include <wtf/HashMap.h>
@@ -88,6 +88,12 @@ enum PDFImageCachingPolicy {
 #endif
 };
 
+enum FrameFlattening {
+    FrameFlatteningDisabled,
+    FrameFlatteningEnabledForNonFullScreenIFrames,
+    FrameFlatteningFullyEnabled
+};
+
 typedef unsigned DebugOverlayRegions;
 
 class Settings : public RefCounted<Settings> {
@@ -98,8 +104,10 @@ public:
 
     void pageDestroyed() { m_page = nullptr; }
 
-    enum class ForcedPrefersReducedMotionValue { System, On, Off };
-    static const Settings::ForcedPrefersReducedMotionValue defaultForcedPrefersReducedMotionValue = ForcedPrefersReducedMotionValue::System;
+    enum class ForcedAccessibilityValue { System, On, Off };
+    static const Settings::ForcedAccessibilityValue defaultForcedColorsAreInvertedAccessibilityValue = ForcedAccessibilityValue::System;
+    static const Settings::ForcedAccessibilityValue defaultForcedDisplayIsMonochromeAccessibilityValue = ForcedAccessibilityValue::System;
+    static const Settings::ForcedAccessibilityValue defaultForcedPrefersReducedMotionAccessibilityValue = ForcedAccessibilityValue::System;
 
     WEBCORE_EXPORT void setStandardFontFamily(const AtomicString&, UScriptCode = USCRIPT_COMMON);
     WEBCORE_EXPORT const AtomicString& standardFontFamily(UScriptCode = USCRIPT_COMMON) const;
@@ -167,11 +175,11 @@ public:
     WEBCORE_EXPORT void setNeedsAdobeFrameReloadingQuirk(bool);
     bool needsAcrobatFrameReloadingQuirk() const { return m_needsAdobeFrameReloadingQuirk; }
 
-    WEBCORE_EXPORT void setMinimumDOMTimerInterval(std::chrono::milliseconds); // Initialized to DOMTimer::defaultMinimumInterval().
-    std::chrono::milliseconds minimumDOMTimerInterval() const { return m_minimumDOMTimerInterval; }
+    WEBCORE_EXPORT void setMinimumDOMTimerInterval(Seconds); // Initialized to DOMTimer::defaultMinimumInterval().
+    Seconds minimumDOMTimerInterval() const { return m_minimumDOMTimerInterval; }
 
-    WEBCORE_EXPORT void setLayoutInterval(std::chrono::milliseconds);
-    std::chrono::milliseconds layoutInterval() const { return m_layoutInterval; }
+    WEBCORE_EXPORT void setLayoutInterval(Seconds);
+    Seconds layoutInterval() const { return m_layoutInterval; }
 
     bool hiddenPageDOMTimerThrottlingEnabled() const { return m_hiddenPageDOMTimerThrottlingEnabled; }
     WEBCORE_EXPORT void setHiddenPageDOMTimerThrottlingEnabled(bool);
@@ -196,6 +204,13 @@ public:
     static void setShouldUseHighResolutionTimers(bool);
     static bool shouldUseHighResolutionTimers() { return gShouldUseHighResolutionTimers; }
 #endif
+
+    static bool isPostLoadCPUUsageMeasurementEnabled();
+    static bool isPostBackgroundingCPUUsageMeasurementEnabled();
+    static bool isPerActivityStateCPUUsageMeasurementEnabled();
+
+    static bool isPostLoadMemoryUsageMeasurementEnabled();
+    static bool isPostBackgroundingMemoryUsageMeasurementEnabled();
 
     static bool globalConstRedeclarationShouldThrow();
 
@@ -247,8 +262,8 @@ public:
     WEBCORE_EXPORT static void setShouldRespectPriorityInCSSAttributeSetters(bool);
     static bool shouldRespectPriorityInCSSAttributeSetters();
 
-    void setTimeWithoutMouseMovementBeforeHidingControls(double time) { m_timeWithoutMouseMovementBeforeHidingControls = time; }
-    double timeWithoutMouseMovementBeforeHidingControls() const { return m_timeWithoutMouseMovementBeforeHidingControls; }
+    void setTimeWithoutMouseMovementBeforeHidingControls(Seconds time) { m_timeWithoutMouseMovementBeforeHidingControls = time; }
+    Seconds timeWithoutMouseMovementBeforeHidingControls() const { return m_timeWithoutMouseMovementBeforeHidingControls; }
 
     bool hiddenPageCSSAnimationSuspensionEnabled() const { return m_hiddenPageCSSAnimationSuspensionEnabled; }
     WEBCORE_EXPORT void setHiddenPageCSSAnimationSuspensionEnabled(bool);
@@ -282,7 +297,9 @@ public:
 
     static void setShouldOptOutOfNetworkStateObservation(bool flag) { gShouldOptOutOfNetworkStateObservation = flag; }
     static bool shouldOptOutOfNetworkStateObservation() { return gShouldOptOutOfNetworkStateObservation; }
+#endif
 
+#if USE(AUDIO_SESSION)
     static void setShouldManageAudioSessionCategory(bool flag) { gManageAudioSession = flag; }
     static bool shouldManageAudioSessionCategory() { return gManageAudioSession; }
 #endif
@@ -317,6 +334,11 @@ public:
     WEBCORE_EXPORT static void setAllowsAnySSLCertificate(bool);
     static bool allowsAnySSLCertificate();
 
+    WEBCORE_EXPORT static const String& defaultMediaContentTypesRequiringHardwareSupport();
+    WEBCORE_EXPORT void setMediaContentTypesRequiringHardwareSupport(const Vector<ContentType>&);
+    WEBCORE_EXPORT void setMediaContentTypesRequiringHardwareSupport(const String&);
+    const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const { return m_mediaContentTypesRequiringHardwareSupport; }
+
 private:
     explicit Settings(Page*);
 
@@ -328,8 +350,8 @@ private:
     URL m_userStyleSheetLocation;
     const std::unique_ptr<FontGenericFamilies> m_fontGenericFamilies;
     SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
-    std::chrono::milliseconds m_layoutInterval;
-    std::chrono::milliseconds m_minimumDOMTimerInterval;
+    Seconds m_layoutInterval;
+    Seconds m_minimumDOMTimerInterval;
 
     SETTINGS_MEMBER_VARIABLES
 
@@ -352,7 +374,7 @@ private:
 #endif
     bool m_scrollingPerformanceLoggingEnabled : 1;
 
-    double m_timeWithoutMouseMovementBeforeHidingControls;
+    Seconds m_timeWithoutMouseMovementBeforeHidingControls;
 
     Timer m_setImageLoadingSettingsTimer;
     void imageLoadingSettingsTimerFired();
@@ -395,8 +417,8 @@ private:
     static bool gNetworkDataUsageTrackingEnabled;
     WEBCORE_EXPORT static bool gAVKitEnabled;
     WEBCORE_EXPORT static bool gShouldOptOutOfNetworkStateObservation;
-    WEBCORE_EXPORT static bool gManageAudioSession;
 #endif
+    WEBCORE_EXPORT static bool gManageAudioSession;
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     String m_mediaKeysStorageDirectory;
@@ -416,6 +438,53 @@ private:
     static bool gLowPowerVideoAudioBufferSizeEnabled;
     static bool gResourceLoadStatisticsEnabledEnabled;
     static bool gAllowsAnySSLCertificate;
+
+    Vector<ContentType> m_mediaContentTypesRequiringHardwareSupport;
 };
+
+inline bool Settings::isPostLoadCPUUsageMeasurementEnabled()
+{
+#if PLATFORM(COCOA)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPostBackgroundingCPUUsageMeasurementEnabled()
+{
+#if PLATFORM(MAC)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPerActivityStateCPUUsageMeasurementEnabled()
+{
+#if PLATFORM(MAC)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPostLoadMemoryUsageMeasurementEnabled()
+{
+#if PLATFORM(COCOA)
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline bool Settings::isPostBackgroundingMemoryUsageMeasurementEnabled()
+{
+#if PLATFORM(MAC)
+    return true;
+#else
+    return false;
+#endif
+}
 
 } // namespace WebCore

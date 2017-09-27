@@ -37,11 +37,12 @@
 #include <winsock2.h>
 #endif
 
-#include "SessionID.h"
 #include <curl/curl.h>
+#include <pal/SessionID.h>
 #include <wtf/Deque.h>
 #include <wtf/Lock.h>
 #include <wtf/RefCounted.h>
+#include <wtf/StreamBuffer.h>
 #include <wtf/Threading.h>
 
 namespace WebCore {
@@ -50,15 +51,18 @@ class SocketStreamHandleClient;
 
 class SocketStreamHandleImpl : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID, const String&, SourceApplicationAuditToken&&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
 
     virtual ~SocketStreamHandleImpl();
 
+    void platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
+    void platformClose() final;
 private:
     SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
 
-    Optional<size_t> platformSend(const char* data, size_t length) final;
-    void platformClose() final;
+    size_t bufferedAmount() final;
+    std::optional<size_t> platformSendInternal(const char*, size_t);
+    bool sendPendingData();
 
     bool readData(CURL*);
     bool sendData(CURL*);
@@ -88,12 +92,15 @@ private:
         size_t size { 0 };
     };
 
-    ThreadIdentifier m_workerThread { 0 };
+    RefPtr<Thread> m_workerThread;
     std::atomic<bool> m_stopThread { false };
     Lock m_mutexSend;
     Lock m_mutexReceive;
     Deque<SocketData> m_sendData;
     Deque<SocketData> m_receiveData;
+
+    StreamBuffer<char, 1024 * 1024> m_buffer;
+    static const unsigned maxBufferSize = 100 * 1024 * 1024;
 };
 
 } // namespace WebCore

@@ -1,4 +1,3 @@
-CONSOLE MESSAGE: line 1: Calling CSSStyleSheet.insertRule() with one argument is deprecated. Please pass the index argument as well: insertRule(x, 0).
 This tests the behavior of non-numeric values in contexts where the DOM has a numeric parameter.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -20,10 +19,8 @@ PASS nonNumericPolicy('createCSSStyleSheet().deleteRule(x)') is 'any type allowe
 PASS nonNumericPolicy('createCSSStyleSheet().addRule(selector, styleText, x)') is 'any type allowed'
 PASS nonNumericPolicy('createCSSStyleSheet().removeRule(x)') is 'any type allowed'
 PASS nonNumericPolicy('createCSSValueList().item(x)') is 'any type allowed (but not omitted)'
-PASS nonNumericPolicy('document.elementFromPoint(x, 0)') is 'any type allowed'
-PASS nonNumericPolicy('document.elementFromPoint(0, x)') is 'any type allowed'
-PASS nonNumericPolicy('document.body.scrollByLines(x)') is 'any type allowed'
-PASS nonNumericPolicy('document.body.scrollByPages(x)') is 'any type allowed'
+PASS nonNumericPolicy('document.elementFromPoint(x, 0)') is 'mixed'
+PASS nonNumericPolicy('document.elementFromPoint(0, x)') is 'mixed'
 PASS nonNumericPolicy('document.body.scrollLeft = x') is 'any type allowed'
 PASS nonNumericPolicy('document.body.scrollTop = x') is 'any type allowed'
 PASS nonNumericPolicy('document.images.item(x)') is 'any type allowed (but not omitted)'

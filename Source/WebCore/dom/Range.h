@@ -25,7 +25,6 @@
 #pragma once
 
 #include "FloatRect.h"
-#include "FragmentScriptingPermission.h"
 #include "IntRect.h"
 #include "RangeBoundaryPoint.h"
 #include <wtf/Forward.h>
@@ -34,14 +33,15 @@
 
 namespace WebCore {
 
-class ClientRect;
-class ClientRectList;
 class ContainerNode;
+class DOMRect;
+class DOMRectList;
 class Document;
 class DocumentFragment;
 class FloatQuad;
 class Node;
 class NodeWithIndex;
+class RenderText;
 class SelectionRect;
 class Text;
 class VisiblePosition;
@@ -49,12 +49,12 @@ class VisiblePosition;
 class Range : public RefCounted<Range> {
 public:
     WEBCORE_EXPORT static Ref<Range> create(Document&);
-    WEBCORE_EXPORT static Ref<Range> create(Document&, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset);
+    WEBCORE_EXPORT static Ref<Range> create(Document&, RefPtr<Node>&& startContainer, int startOffset, RefPtr<Node>&& endContainer, int endOffset);
     WEBCORE_EXPORT static Ref<Range> create(Document&, const Position&, const Position&);
     WEBCORE_EXPORT static Ref<Range> create(Document&, const VisiblePosition&, const VisiblePosition&);
     WEBCORE_EXPORT ~Range();
 
-    Document& ownerDocument() const { return const_cast<Document&>(m_ownerDocument.get()); }
+    Document& ownerDocument() const { return m_ownerDocument; }
 
     Node& startContainer() const { ASSERT(m_start.container()); return *m_start.container(); }
     unsigned startOffset() const { return m_start.offset(); }
@@ -117,14 +117,16 @@ public:
     };
 
     // Not transform-friendly
-    WEBCORE_EXPORT void absoluteTextRects(Vector<IntRect>&, bool useSelectionHeight = false, RangeInFixedPosition* = nullptr) const;
+    enum class RespectClippingForTextRects { No, Yes };
+    WEBCORE_EXPORT void absoluteTextRects(Vector<IntRect>&, bool useSelectionHeight = false, RangeInFixedPosition* = nullptr, RespectClippingForTextRects = RespectClippingForTextRects::No) const;
     WEBCORE_EXPORT IntRect absoluteBoundingBox() const;
 
     // Transform-friendly
     WEBCORE_EXPORT void absoluteTextQuads(Vector<FloatQuad>&, bool useSelectionHeight = false, RangeInFixedPosition* = nullptr) const;
-    WEBCORE_EXPORT FloatRect absoluteBoundingRect() const;
+    WEBCORE_EXPORT FloatRect absoluteBoundingRect(RespectClippingForTextRects = RespectClippingForTextRects::No) const;
 #if PLATFORM(IOS)
-    WEBCORE_EXPORT void collectSelectionRects(Vector<SelectionRect>&);
+    WEBCORE_EXPORT void collectSelectionRects(Vector<SelectionRect>&) const;
+    WEBCORE_EXPORT int collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>&) const;
 #endif
 
     void nodeChildrenChanged(ContainerNode&);
@@ -141,8 +143,8 @@ public:
     // for details.
     WEBCORE_EXPORT ExceptionOr<void> expand(const String&);
 
-    Ref<ClientRectList> getClientRects() const;
-    Ref<ClientRect> getBoundingClientRect() const;
+    Ref<DOMRectList> getClientRects() const;
+    Ref<DOMRect> getBoundingClientRect() const;
 
 #if ENABLE(TREE_DEBUGGING)
     void formatForDebugger(char* buffer, unsigned length) const;
@@ -155,15 +157,17 @@ public:
 
 private:
     explicit Range(Document&);
-    Range(Document&, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset);
+    Range(Document&, Node* startContainer, int startOffset, Node* endContainer, int endOffset);
 
     void setDocument(Document&);
     ExceptionOr<Node*> checkNodeWOffset(Node&, unsigned offset) const;
     ExceptionOr<RefPtr<DocumentFragment>> processContents(ActionType);
 
     enum class CoordinateSpace { Absolute, Client };
-    Vector<FloatQuad> borderAndTextQuads(CoordinateSpace) const;
-    FloatRect boundingRect(CoordinateSpace) const;
+    Vector<FloatRect> borderAndTextRects(CoordinateSpace, RespectClippingForTextRects = RespectClippingForTextRects::No) const;
+    FloatRect boundingRect(CoordinateSpace, RespectClippingForTextRects = RespectClippingForTextRects::No) const;
+
+    Vector<FloatRect> absoluteRectsForRangeInText(Node*, RenderText&, bool useSelectionHeight, bool& isFixed, RespectClippingForTextRects) const;
 
     Ref<Document> m_ownerDocument;
     RangeBoundaryPoint m_start;
@@ -179,10 +183,13 @@ inline bool documentOrderComparator(const Node* a, const Node* b)
 {
     return Range::compareBoundaryPoints(const_cast<Node*>(a), 0, const_cast<Node*>(b), 0).releaseReturnValue() < 0;
 }
+    
+WTF::TextStream& operator<<(WTF::TextStream&, const RangeBoundaryPoint&);
+WTF::TextStream& operator<<(WTF::TextStream&, const Range&);
 
 } // namespace
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showTree(const WebCore::Range*);
 #endif

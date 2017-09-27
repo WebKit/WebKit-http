@@ -52,7 +52,7 @@ class PlatformInfo(object):
         self.os_name = self._determine_os_name(sys_module.platform)
         if self.os_name == 'linux':
             self.os_version = self._determine_linux_version()
-        if self.os_name == 'freebsd' or self.os_name == 'openbsd' or self.os_name == 'netbsd':
+        if self.os_name == 'freebsd' or self.os_name == 'openbsd' or self.os_name == 'netbsd' or self.os_name == 'ios':
             self.os_version = platform_module.release()
         if self.os_name.startswith('mac'):
             self.os_version = self._determine_mac_version(platform_module.mac_ver()[0])
@@ -62,6 +62,9 @@ class PlatformInfo(object):
 
     def is_mac(self):
         return self.os_name == 'mac'
+
+    def is_ios(self):
+        return self.os_name == 'ios'
 
     def is_win(self):
         return self.os_name == 'win'
@@ -133,9 +136,16 @@ class PlatformInfo(object):
         output = self._executive.run_command(['xcrun', 'simctl', 'list'], return_stderr=False)
         return (line for line in output.splitlines())
 
+    def xcode_version(self):
+        if not self.is_mac():
+            raise NotImplementedError
+        return self._executive.run_command(['xcodebuild', '-version']).split()[1]
+
     def _determine_os_name(self, sys_platform):
         if sys_platform == 'darwin':
             return 'mac'
+        if sys_platform == 'ios':
+            return 'ios'
         if sys_platform.startswith('linux'):
             return 'linux'
         if sys_platform.startswith('win') or sys_platform == 'cygwin':
@@ -159,6 +169,7 @@ class PlatformInfo(object):
             10: 'yosemite',
             11: 'elcapitan',
             12: 'sierra',
+            13: 'highsierra',
         }
         assert release_version >= min(version_strings.keys())
         return version_strings.get(release_version, 'future')

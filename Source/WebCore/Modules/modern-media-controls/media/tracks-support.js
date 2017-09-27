@@ -33,24 +33,8 @@ class TracksSupport extends MediaControllerSupport
         if (!this.control)
             return;
 
-        const media = mediaController.media;
-        for (let tracks of [media.audioTracks, media.textTracks]) {
-            for (let eventType of ["addtrack", "removetrack"])
-                tracks.addEventListener(eventType, this);
-        }
-    }
-
-    // Public
-
-    destroy()
-    {
-        super.destroy();
-
-        const media = mediaController.media;
-        for (let tracks of [media.audioTracks, media.textTracks]) {
-            for (let eventType of ["addtrack", "removetrack"])
-                tracks.removeEventListener(eventType, this);
-        }
+        this.mediaController.controls.tracksPanel.dataSource = this;
+        this.mediaController.controls.tracksPanel.uiDelegate = this;
     }
 
     // Protected
@@ -65,20 +49,113 @@ class TracksSupport extends MediaControllerSupport
         return ["loadedmetadata"];
     }
 
-    buttonWasClicked(control)
+    get tracksToMonitor()
     {
-        // FIXME: Show tracks menu.
+        return [this.mediaController.media.audioTracks, this.mediaController.media.textTracks];
+    }
+
+    buttonWasPressed(control)
+    {
+        this.mediaController.controls.showTracksPanel();
+    }
+
+    tracksPanelNumberOfSections()
+    {
+        let numberOfSections = 0;
+        if (this._canPickAudioTracks())
+            numberOfSections++;
+        if (this._canPickTextTracks())
+            numberOfSections++;
+        return numberOfSections;
+    }
+
+    tracksPanelTitleForSection(sectionIndex)
+    {
+        if (sectionIndex == 0 && this._canPickAudioTracks())
+            return UIString("Audio");
+        return UIString("Subtitles");
+    }
+
+    tracksPanelNumberOfTracksInSection(sectionIndex)
+    {
+        if (sectionIndex == 0 && this._canPickAudioTracks())
+            return this._audioTracks().length;
+        return this._textTracks().length;
+    }
+
+    tracksPanelTitleForTrackInSection(trackIndex, sectionIndex)
+    {
+        let track;
+        if (sectionIndex == 0 && this._canPickAudioTracks())
+            track = this._audioTracks()[trackIndex];
+        else
+            track = this._textTracks()[trackIndex];
+
+        if (this.mediaController.host)
+            return this.mediaController.host.displayNameForTrack(track);
+        return track.label;
+    }
+
+    tracksPanelIsTrackInSectionSelected(trackIndex, sectionIndex)
+    {
+        if (sectionIndex == 0 && this._canPickAudioTracks())
+            return this._audioTracks()[trackIndex].enabled;
+
+        const trackItem = this._textTracks()[trackIndex];
+        const host = this.mediaController.host;
+        const usesAutomaticTrack = host ? host.captionDisplayMode === "automatic" : false;
+
+        if (host && trackItem === host.captionMenuOffItem && (host.captionDisplayMode === "forced-only" || host.captionDisplayMode === "manual"))
+            return true;
+        if (host && trackItem === host.captionMenuAutomaticItem && usesAutomaticTrack)
+            return true;
+        return !usesAutomaticTrack && trackItem.mode !== "disabled";
+    }
+
+    tracksPanelSelectionDidChange(trackIndex, sectionIndex)
+    {
+        if (sectionIndex == 0 && this._canPickAudioTracks())
+            this._audioTracks().forEach((audioTrack, index) => audioTrack.enabled = index === trackIndex);
+        else if (this.mediaController.host)
+            this.mediaController.host.setSelectedTextTrack(this._textTracks()[trackIndex]);
+        else
+            this._textTracks().forEach((textTrack, index) => textTrack.mode = index === trackIndex ? "showing" : "disabled");
+
+        this.mediaController.controls.hideTracksPanel();
     }
 
     syncControl()
     {
-        const media = this.mediaController.media;
-        const host = this.mediaController.host;
+        this.control.enabled = (this.mediaController.layoutTraits & LayoutTraits.macOS) && (this._canPickAudioTracks() || this._canPickTextTracks());
+    }
 
-        const textTracks = host ? host.sortedTrackListForMenu(media.textTracks) : media.textTracks;
-        const audioTracks = host ? host.sortedTrackListForMenu(media.audioTracks) : media.audioTracks;
+    // Private
 
-        this.control.enabled = (textTracks && textTracks.length > 0) || (audioTracks && audioTracks.length > 1);
+    _textTracks()
+    {
+        return this._sortedTrackList(this.mediaController.media.textTracks);
+    }
+
+    _audioTracks()
+    {
+        return this._sortedTrackList(this.mediaController.media.audioTracks);
+    }
+
+    _canPickAudioTracks()
+    {
+        const audioTracks = this._audioTracks();
+        return audioTracks && audioTracks.length > 1;
+    }
+
+    _canPickTextTracks()
+    {
+        const textTracks = this._textTracks();
+        return textTracks && textTracks.length > 0;
+    }
+
+    _sortedTrackList(tracks)
+    {
+        return Array.from(this.mediaController.host ? this.mediaController.host.sortedTrackListForMenu(tracks) : tracks);
     }
 
 }

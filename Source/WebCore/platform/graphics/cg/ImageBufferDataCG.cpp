@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,8 +42,8 @@
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
 #include "IOSurface.h"
-#include "IOSurfaceSPI.h"
 #include <dispatch/dispatch.h>
+#include <pal/spi/cocoa/IOSurfaceSPI.h>
 #endif
 
 // CA uses ARGB32 for textures and ARGB32 -> ARGB32 resampling is optimized.
@@ -83,12 +83,64 @@ static void premultiplyBufferData(const vImage_Buffer& src, const vImage_Buffer&
 #if !PLATFORM(IOS_SIMULATOR)
 static void affineWarpBufferData(const vImage_Buffer& src, const vImage_Buffer& dest, float scale)
 {
+    ASSERT(src.data);
+    ASSERT(dest.data);
+
     vImage_AffineTransform scaleTransform = { scale, 0, 0, scale, 0, 0 }; // FIXME: Add subpixel translation.
     Pixel_8888 backgroundColor;
     vImageAffineWarp_ARGB8888(&src, &dest, 0, &scaleTransform, backgroundColor, kvImageEdgeExtend);
 }
 #endif // !PLATFORM(IOS_SIMULATOR)
 #endif // USE(ACCELERATE)
+
+static inline void transferData(void* output, void* input, int width, int height, size_t inputBytesPerRow)
+{
+#if USE(ACCELERATE)
+    ASSERT(input);
+    ASSERT(output);
+
+    vImage_Buffer src;
+    src.width = width;
+    src.height = height;
+    src.rowBytes = inputBytesPerRow;
+    src.data = input;
+
+    vImage_Buffer dest;
+    dest.width = width;
+    dest.height = height;
+    dest.rowBytes = width * 4;
+    dest.data = output;
+
+    vImageUnpremultiplyData_BGRA8888(&src, &dest, kvImageNoFlags);
+#else
+    UNUSED_PARAM(output);
+    UNUSED_PARAM(input);
+    UNUSED_PARAM(width);
+    UNUSED_PARAM(height);
+    // FIXME: Add support for not ACCELERATE.
+    ASSERT_NOT_REACHED();
+#endif
+}
+
+Vector<uint8_t> ImageBufferData::toBGRAData(bool accelerateRendering, int width, int height) const
+{
+    Vector<uint8_t> result(4 * width * height);
+
+    if (!accelerateRendering) {
+        transferData(result.data(), data, width, height, 4 * backingStoreSize.width());
+        return result;
+    }
+#if USE(IOSURFACE_CANVAS_BACKING_STORE)
+    IOSurfaceRef surfaceRef = surface->surface();
+    IOSurfaceLock(surfaceRef, kIOSurfaceLockReadOnly, nullptr);
+    transferData(result.data(), IOSurfaceGetBaseAddress(surfaceRef), width, height, IOSurfaceGetBytesPerRow(surfaceRef));
+    IOSurfaceUnlock(surfaceRef, kIOSurfaceLockReadOnly, nullptr);
+#else
+    ASSERT_NOT_REACHED();
+#endif
+    return result;
+}
+
 
 RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const IntSize& size, bool accelerateRendering, bool unmultiplied, float resolutionScale) const
 {
@@ -148,6 +200,9 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const In
     unsigned char* srcRows;
     
     if (!accelerateRendering) {
+        if (!data)
+            return result;
+
         srcBytesPerRow = bytesPerRow.unsafeGet();
         srcRows = reinterpret_cast<unsigned char*>(data) + originy * srcBytesPerRow + originx * 4;
 
@@ -391,6 +446,9 @@ void ImageBufferData::putData(Uint8ClampedArray*& source, const IntSize& sourceS
     unsigned char* destRows;
     
     if (!accelerateRendering) {
+        if (!data)
+            return;
+
         destBytesPerRow = bytesPerRow.unsafeGet();
         destRows = reinterpret_cast<unsigned char*>(data) + (desty * destBytesPerRow + destx * 4).unsafeGet();
 

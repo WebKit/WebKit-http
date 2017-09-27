@@ -34,7 +34,7 @@
 
 namespace JSC {
 
-const ClassInfo NullSetterFunction::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(NullSetterFunction) };
+const ClassInfo NullSetterFunction::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(NullSetterFunction) };
 
 
 class GetCallerStrictnessFunctor {
@@ -70,6 +70,7 @@ static bool callerIsStrict(ExecState* exec)
     return iter.callerIsStrict();
 }
 
+namespace NullSetterFunctionInternal {
 static EncodedJSValue JSC_HOST_CALL callReturnUndefined(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -79,10 +80,11 @@ static EncodedJSValue JSC_HOST_CALL callReturnUndefined(ExecState* exec)
         return JSValue::encode(throwTypeError(exec, scope, ASCIILiteral("Setting a property that has only a getter")));
     return JSValue::encode(jsUndefined());
 }
+}
 
 CallType NullSetterFunction::getCallData(JSCell*, CallData& callData)
 {
-    callData.native.function = callReturnUndefined;
+    callData.native.function = NullSetterFunctionInternal::callReturnUndefined;
     return CallType::Host;
 }
 

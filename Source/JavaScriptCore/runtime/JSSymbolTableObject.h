@@ -81,7 +81,7 @@ inline bool symbolTableGet(
     SymbolTableObjectType* object, PropertyName propertyName, PropertySlot& slot)
 {
     SymbolTable& symbolTable = *object->symbolTable();
-    ConcurrentJITLocker locker(symbolTable.m_lock);
+    ConcurrentJSLocker locker(symbolTable.m_lock);
     SymbolTable::Map::iterator iter = symbolTable.find(locker, propertyName.uid());
     if (iter == symbolTable.end(locker))
         return false;
@@ -93,7 +93,7 @@ inline bool symbolTableGet(
     if (!object->isValidScopeOffset(offset))
         return false;
 
-    slot.setValue(object, entry.getAttributes() | DontDelete, object->variableAt(offset).get());
+    slot.setValue(object, entry.getAttributes() | PropertyAttribute::DontDelete, object->variableAt(offset).get());
     return true;
 }
 
@@ -102,7 +102,7 @@ inline bool symbolTableGet(
     SymbolTableObjectType* object, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     SymbolTable& symbolTable = *object->symbolTable();
-    ConcurrentJITLocker locker(symbolTable.m_lock);
+    ConcurrentJSLocker locker(symbolTable.m_lock);
     SymbolTable::Map::iterator iter = symbolTable.find(locker, propertyName.uid());
     if (iter == symbolTable.end(locker))
         return false;
@@ -114,7 +114,7 @@ inline bool symbolTableGet(
     if (!object->isValidScopeOffset(offset))
         return false;
 
-    descriptor.setDescriptor(object->variableAt(offset).get(), entry.getAttributes() | DontDelete);
+    descriptor.setDescriptor(object->variableAt(offset).get(), entry.getAttributes() | PropertyAttribute::DontDelete);
     return true;
 }
 
@@ -124,7 +124,7 @@ inline bool symbolTableGet(
     bool& slotIsWriteable)
 {
     SymbolTable& symbolTable = *object->symbolTable();
-    ConcurrentJITLocker locker(symbolTable.m_lock);
+    ConcurrentJSLocker locker(symbolTable.m_lock);
     SymbolTable::Map::iterator iter = symbolTable.find(locker, propertyName.uid());
     if (iter == symbolTable.end(locker))
         return false;
@@ -136,7 +136,7 @@ inline bool symbolTableGet(
     if (!object->isValidScopeOffset(offset))
         return false;
 
-    slot.setValue(object, entry.getAttributes() | DontDelete, object->variableAt(offset).get());
+    slot.setValue(object, entry.getAttributes() | PropertyAttribute::DontDelete, object->variableAt(offset).get());
     slotIsWriteable = !entry.isReadOnly();
     return true;
 }
@@ -174,7 +174,7 @@ inline bool symbolTablePut(SymbolTableObjectType* object, ExecState* exec, Prope
         SymbolTable& symbolTable = *object->symbolTable();
         // FIXME: This is very suspicious. We shouldn't need a GC-safe lock here.
         // https://bugs.webkit.org/show_bug.cgi?id=134601
-        GCSafeConcurrentJITLocker locker(symbolTable.m_lock, vm.heap);
+        GCSafeConcurrentJSLocker locker(symbolTable.m_lock, vm.heap);
         SymbolTable::Map::iterator iter = symbolTable.find(locker, propertyName.uid());
         if (iter == symbolTable.end(locker))
             return false;

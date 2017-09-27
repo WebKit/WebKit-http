@@ -37,6 +37,7 @@
 namespace WebCore {
 
 class CSSValue;
+class StyleSheetContents;
 
 class CSSParserFastPaths {
 public:

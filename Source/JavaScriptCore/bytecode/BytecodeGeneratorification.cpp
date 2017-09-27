@@ -27,6 +27,7 @@
 #include "config.h"
 #include "BytecodeGeneratorification.h"
 
+#include "BytecodeDumper.h"
 #include "BytecodeLivenessAnalysisInlines.h"
 #include "BytecodeRewriter.h"
 #include "BytecodeUseDef.h"
@@ -66,7 +67,7 @@ public:
                 }
 
                 case op_yield: {
-                    unsigned liveCalleeLocalsIndex = pc[2].u.index;
+                    unsigned liveCalleeLocalsIndex = pc[2].u.unsignedValue;
                     if (liveCalleeLocalsIndex >= m_yields.size())
                         m_yields.resize(liveCalleeLocalsIndex + 1);
                     YieldData& data = m_yields[liveCalleeLocalsIndex];
@@ -117,7 +118,7 @@ private:
 
         if (m_storages.size() <= index)
             m_storages.resize(index + 1);
-        if (Optional<Storage> storage = m_storages[index])
+        if (std::optional<Storage> storage = m_storages[index])
             return *storage;
 
         UnlinkedCodeBlock* codeBlock = m_graph.codeBlock();
@@ -138,29 +139,17 @@ private:
 
     unsigned m_enterPoint { 0 };
     BytecodeGraph<UnlinkedCodeBlock> m_graph;
-    Vector<Optional<Storage>> m_storages;
+    Vector<std::optional<Storage>> m_storages;
     Yields m_yields;
     Strong<SymbolTable> m_generatorFrameSymbolTable;
     int m_generatorFrameSymbolTableIndex;
 };
 
-class GeneratorLivenessAnalysis : public BytecodeLivenessPropagation<GeneratorLivenessAnalysis> {
+class GeneratorLivenessAnalysis : public BytecodeLivenessPropagation {
 public:
     GeneratorLivenessAnalysis(BytecodeGeneratorification& generatorification)
         : m_generatorification(generatorification)
     {
-    }
-
-    template<typename Functor>
-    void computeDefsForBytecodeOffset(UnlinkedCodeBlock* codeBlock, OpcodeID opcodeID, UnlinkedInstruction* instruction, FastBitVector&, const Functor& functor)
-    {
-        JSC::computeDefsForBytecodeOffset(codeBlock, opcodeID, instruction, functor);
-    }
-
-    template<typename Functor>
-    void computeUsesForBytecodeOffset(UnlinkedCodeBlock* codeBlock, OpcodeID opcodeID, UnlinkedInstruction* instruction, FastBitVector&, const Functor& functor)
-    {
-        JSC::computeUsesForBytecodeOffset(codeBlock, opcodeID, instruction, functor);
     }
 
     void run()
@@ -261,6 +250,9 @@ void BytecodeGeneratorification::run()
 
 void performGeneratorification(UnlinkedCodeBlock* codeBlock, UnlinkedCodeBlock::UnpackedInstructions& instructions, SymbolTable* generatorFrameSymbolTable, int generatorFrameSymbolTableIndex)
 {
+    if (Options::dumpBytecodesBeforeGeneratorification())
+        BytecodeDumper<UnlinkedCodeBlock>::dumpBlock(codeBlock, instructions, WTF::dataFile());
+
     BytecodeGeneratorification pass(codeBlock, instructions, generatorFrameSymbolTable, generatorFrameSymbolTableIndex);
     pass.run();
 }

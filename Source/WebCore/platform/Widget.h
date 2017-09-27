@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Widget_h
-#define Widget_h
+#pragma once
 
 #if PLATFORM(IOS)
 #ifndef NSView
@@ -59,10 +58,6 @@ typedef HWND PlatformWidget;
 typedef struct _GtkWidget GtkWidget;
 typedef struct _GtkContainer GtkContainer;
 typedef GtkWidget* PlatformWidget;
-#endif
-
-#if PLATFORM(EFL)
-typedef Evas_Object* PlatformWidget;
 #endif
 
 #if PLATFORM(WPE)
@@ -122,7 +117,9 @@ public:
     void move(int x, int y) { setFrameRect(IntRect(x, y, width(), height())); }
     void move(const IntPoint& p) { setFrameRect(IntRect(p, size())); }
 
-    WEBCORE_EXPORT virtual void paint(GraphicsContext&, const IntRect&);
+    enum class SecurityOriginPaintPolicy { AnyOrigin, AccessibleOriginOnly };
+
+    WEBCORE_EXPORT virtual void paint(GraphicsContext&, const IntRect&, SecurityOriginPaintPolicy = SecurityOriginPaintPolicy::AnyOrigin);
     void invalidate() { invalidateRect(boundsRect()); }
     virtual void invalidateRect(const IntRect&) = 0;
 
@@ -152,7 +149,7 @@ public:
     ScrollView* parent() const { return m_parent; }
     FrameView* root() const;
 
-    virtual void handleEvent(Event*) { }
+    virtual void handleEvent(Event&) { }
 
     virtual void notifyWidget(WidgetNotification) { }
 
@@ -196,7 +193,7 @@ public:
     WEBCORE_EXPORT virtual IntPoint convertToContainingView(const IntPoint&) const;
     WEBCORE_EXPORT virtual IntPoint convertFromContainingView(const IntPoint&) const;
 
-    WeakPtr<Widget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<Widget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
 private:
     void init(PlatformWidget); // Must be called by all Widget constructors to initialize cross-platform data.
@@ -219,7 +216,7 @@ private:
 #else
     RetainPtr<NSView> m_widget;
 #endif
-    WeakPtrFactory<Widget> m_weakPtrFactory { this };
+    WeakPtrFactory<Widget> m_weakPtrFactory;
     bool m_selfVisible;
     bool m_parentVisible;
 
@@ -263,4 +260,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::Widget& widget) { return widget.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
 
-#endif // Widget_h

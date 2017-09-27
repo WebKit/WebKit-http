@@ -23,16 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.CallFrame = class CallFrame extends WebInspector.Object
+WI.CallFrame = class CallFrame
 {
     constructor(target, id, sourceCodeLocation, functionName, thisObject, scopeChain, nativeCode, programCode, isTailDeleted)
     {
-        super();
-
-        console.assert(target instanceof WebInspector.Target);
-        console.assert(!sourceCodeLocation || sourceCodeLocation instanceof WebInspector.SourceCodeLocation);
-        console.assert(!thisObject || thisObject instanceof WebInspector.RemoteObject);
+        console.assert(target instanceof WI.Target);
+        console.assert(!sourceCodeLocation || sourceCodeLocation instanceof WI.SourceCodeLocation);
+        console.assert(!thisObject || thisObject instanceof WI.RemoteObject);
         console.assert(!scopeChain || scopeChain instanceof Array);
+
+        this._isConsoleEvaluation = sourceCodeLocation && isWebInspectorConsoleEvaluationScript(sourceCodeLocation.sourceCode.sourceURL);
+        if (this._isConsoleEvaluation) {
+            functionName = WI.UIString("Console Evaluation");
+            programCode = true;
+        }
 
         this._target = target;
         this._id = id || null;
@@ -56,6 +60,7 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
     get thisObject() { return this._thisObject; }
     get scopeChain() { return this._scopeChain; }
     get isTailDeleted() { return this._isTailDeleted; }
+    get isConsoleEvaluation() { return this._isConsoleEvaluation; }
 
     saveIdentityToCookie()
     {
@@ -103,7 +108,7 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
         function markAsBaseIfNeeded(scope) {
             if (!scope.hash)
                 return false;
-            if (scope.type !== WebInspector.ScopeChainNode.Type.Closure)
+            if (scope.type !== WI.ScopeChainNode.Type.Closure)
                 return false;
             if (scope.hash === lastMarkedHash)
                 return false;
@@ -121,9 +126,9 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
                 return false;
 
             // Only merge closure scopes.
-            if (youngScope.type !== WebInspector.ScopeChainNode.Type.Closure)
+            if (youngScope.type !== WI.ScopeChainNode.Type.Closure)
                 return false;
-            if (oldScope.type !== WebInspector.ScopeChainNode.Type.Closure)
+            if (oldScope.type !== WI.ScopeChainNode.Type.Closure)
                 return false;
 
             // Don't merge if they are not the same.
@@ -144,9 +149,9 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
             markAsBaseIfNeeded(scope);
             if (shouldMergeClosureScopes(scope, lastScope, lastMerge)) {
                 console.assert(lastScope.__baseClosureScope);
-                let type = WebInspector.ScopeChainNode.Type.Closure;
+                let type = WI.ScopeChainNode.Type.Closure;
                 let objects = lastScope.objects.concat(scope.objects);
-                let merged = new WebInspector.ScopeChainNode(type, objects, scope.name, scope.location);
+                let merged = new WI.ScopeChainNode(type, objects, scope.name, scope.location);
                 merged.__baseClosureScope = true;
                 console.assert(objects.length === 2);
 
@@ -167,7 +172,7 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
 
         // Mark the first Closure as Local if the name matches this call frame.
         for (let scope of mergedScopes) {
-            if (scope.type === WebInspector.ScopeChainNode.Type.Closure) {
+            if (scope.type === WI.ScopeChainNode.Type.Closure) {
                 if (scope.name === this._functionName)
                     scope.convertToLocalScope();
                 break;
@@ -183,11 +188,11 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
     {
         let functionName = payload.functionName;
         if (functionName === "global code")
-            return WebInspector.UIString("Global Code");
+            return WI.UIString("Global Code");
         if (functionName === "eval code")
-            return WebInspector.UIString("Eval Code");
+            return WI.UIString("Eval Code");
         if (functionName === "module code")
-            return WebInspector.UIString("Module Code");
+            return WI.UIString("Module Code");
         return functionName;
     }
 
@@ -199,18 +204,12 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
     static fromDebuggerPayload(target, payload, scopeChain, sourceCodeLocation)
     {
         let id = payload.callFrameId;
-        let thisObject = WebInspector.RemoteObject.fromPayload(payload.this, target);
-        let functionName = WebInspector.CallFrame.functionNameFromPayload(payload);
+        let thisObject = WI.RemoteObject.fromPayload(payload.this, target);
+        let functionName = WI.CallFrame.functionNameFromPayload(payload);
         let nativeCode = false;
-        let programCode = WebInspector.CallFrame.programCodeFromPayload(payload);
+        let programCode = WI.CallFrame.programCodeFromPayload(payload);
         let isTailDeleted = payload.isTailDeleted;
-
-        if (sourceCodeLocation && isWebInspectorConsoleEvaluationScript(sourceCodeLocation.sourceCode.sourceURL)) {
-            functionName = WebInspector.UIString("Console Evaluation");
-            programCode = true;
-        }
-
-        return new WebInspector.CallFrame(target, id, sourceCodeLocation, functionName, thisObject, scopeChain, nativeCode, programCode, isTailDeleted);
+        return new WI.CallFrame(target, id, sourceCodeLocation, functionName, thisObject, scopeChain, nativeCode, programCode, isTailDeleted);
     }
 
     static fromPayload(target, payload)
@@ -220,8 +219,8 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
         let {url, scriptId} = payload;
         let nativeCode = false;
         let sourceCodeLocation = null;
-        let functionName = WebInspector.CallFrame.functionNameFromPayload(payload);
-        let programCode = WebInspector.CallFrame.programCodeFromPayload(payload);
+        let functionName = WI.CallFrame.functionNameFromPayload(payload);
+        let programCode = WI.CallFrame.programCodeFromPayload(payload);
 
         if (url === "[native code]") {
             nativeCode = true;
@@ -229,14 +228,14 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
         } else if (url || scriptId) {
             let sourceCode = null;
             if (scriptId) {
-                sourceCode = WebInspector.debuggerManager.scriptForIdentifier(scriptId, target);
+                sourceCode = WI.debuggerManager.scriptForIdentifier(scriptId, target);
                 if (sourceCode && sourceCode.resource)
                     sourceCode = sourceCode.resource;
             }
             if (!sourceCode)
-                sourceCode = WebInspector.frameResourceManager.resourceForURL(url);
+                sourceCode = WI.frameResourceManager.resourceForURL(url);
             if (!sourceCode)
-                sourceCode = WebInspector.debuggerManager.scriptsForURL(url, target)[0];
+                sourceCode = WI.debuggerManager.scriptsForURL(url, target)[0];
 
             if (sourceCode) {
                 // The lineNumber is 1-based, but we expect 0-based.
@@ -250,11 +249,10 @@ WebInspector.CallFrame = class CallFrame extends WebInspector.Object
             }
         }
 
-        if (sourceCodeLocation && isWebInspectorConsoleEvaluationScript(sourceCodeLocation.sourceCode.sourceURL)) {
-            functionName = WebInspector.UIString("Console Evaluation");
-            programCode = true;
-        }
-
-        return new WebInspector.CallFrame(target, null, sourceCodeLocation, functionName, null, null, nativeCode, programCode);
+        const id = null;
+        const thisObject = null;
+        const scopeChain = null;
+        const isTailDeleted = false;
+        return new WI.CallFrame(target, id, sourceCodeLocation, functionName, thisObject, scopeChain, nativeCode, programCode, isTailDeleted);
     }
 };

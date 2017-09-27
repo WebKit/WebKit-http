@@ -28,12 +28,12 @@
 
 #include "AnimationUtilities.h"
 #include "HashTools.h"
-#include "TextStream.h"
 #include <wtf/Assertions.h>
 #include <wtf/DecimalNumber.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -49,9 +49,9 @@ const RGBA32 Color::transparent;
 static const RGBA32 lightenedBlack = 0xFF545454;
 static const RGBA32 darkenedWhite = 0xFFABABAB;
 
-static inline unsigned premultipliedChannel(unsigned c, unsigned a)
+static inline unsigned premultipliedChannel(unsigned c, unsigned a, bool ceiling = true)
 {
-    return fastDivideBy255(c * a + 254);
+    return fastDivideBy255(ceiling ? c * a + 254 : c * a);
 }
 
 static inline unsigned unpremultipliedChannel(unsigned c, unsigned a)
@@ -69,9 +69,9 @@ RGBA32 makeRGBA(int r, int g, int b, int a)
     return std::max(0, std::min(a, 255)) << 24 | std::max(0, std::min(r, 255)) << 16 | std::max(0, std::min(g, 255)) << 8 | std::max(0, std::min(b, 255));
 }
 
-RGBA32 makePremultipliedRGBA(int r, int g, int b, int a)
+RGBA32 makePremultipliedRGBA(int r, int g, int b, int a, bool ceiling)
 {
-    return makeRGBA(premultipliedChannel(r, a), premultipliedChannel(g, a), premultipliedChannel(b, a), a);
+    return makeRGBA(premultipliedChannel(r, a, ceiling), premultipliedChannel(g, a, ceiling), premultipliedChannel(b, a, ceiling), a);
 }
 
 RGBA32 makeUnPremultipliedRGBA(int r, int g, int b, int a)
@@ -307,12 +307,6 @@ Color::Color(float r, float g, float b, float a, ColorSpace colorSpace)
     ASSERT(isExtended());
 }
 
-Color::~Color()
-{
-    if (isExtended())
-        m_colorData.extendedColor->deref();
-}
-
 Color& Color::operator=(const Color& other)
 {
     if (*this == other)
@@ -332,6 +326,9 @@ Color& Color::operator=(Color&& other)
 {
     if (*this == other)
         return *this;
+
+    if (isExtended())
+        m_colorData.extendedColor->deref();
 
     m_colorData = other.m_colorData;
     other.m_colorData.rgbaAndFlags = invalidRGBAColor;
@@ -613,15 +610,16 @@ Color colorFromPremultipliedARGB(RGBA32 pixelColor)
 
 RGBA32 premultipliedARGBFromColor(const Color& color)
 {
-    unsigned pixelColor;
+    if (color.isOpaque()) {
+        if (color.isExtended())
+            return makeRGB(color.asExtended().red() * 255, color.asExtended().green() * 255, color.asExtended().blue() * 255);
+        return color.rgb();
+    }
 
-    unsigned alpha = color.alpha();
-    if (alpha < 255)
-        pixelColor = makePremultipliedRGBA(color.red(), color.green(), color.blue(), alpha);
-    else
-        pixelColor = color.rgb();
+    if (color.isExtended())
+        return makePremultipliedRGBA(color.asExtended().red() * 255, color.asExtended().green() * 255, color.asExtended().blue() * 255, color.asExtended().alpha() * 255);
 
-    return pixelColor;
+    return makePremultipliedRGBA(color.red(), color.green(), color.blue(), color.alpha());
 }
 
 Color blend(const Color& from, const Color& to, double progress, bool blendPremultiplied)
@@ -659,11 +657,6 @@ TextStream& operator<<(TextStream& ts, const Color& color)
 void Color::tagAsValid()
 {
     m_colorData.rgbaAndFlags |= validRGBAColor;
-}
-
-bool Color::isExtended() const
-{
-    return !(m_colorData.rgbaAndFlags & invalidRGBAColor);
 }
 
 ExtendedColor& Color::asExtended() const

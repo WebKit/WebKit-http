@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "ArrayBufferNeuteringWatchpoint.h"
 #include "JSArrayBufferView.h"
 #include "JSCInlines.h"
+#include <wtf/Gigacage.h>
 
 namespace JSC {
 
@@ -40,7 +41,7 @@ SharedArrayBufferContents::SharedArrayBufferContents(void* data, ArrayBufferDest
 
 SharedArrayBufferContents::~SharedArrayBufferContents()
 {
-    m_destructor(m_data);
+    m_destructor(m_data.getMayBeNull());
 }
 
 ArrayBufferContents::ArrayBufferContents()
@@ -80,7 +81,7 @@ void ArrayBufferContents::clear()
 
 void ArrayBufferContents::destroy()
 {
-    m_destructor(m_data);
+    m_destructor(m_data.getMayBeNull());
 }
 
 void ArrayBufferContents::reset()
@@ -102,25 +103,25 @@ void ArrayBufferContents::tryAllocate(unsigned numElements, unsigned elementByte
             return;
         }
     }
-    bool allocationSucceeded = false;
-    if (policy == ZeroInitialize)
-        allocationSucceeded = WTF::tryFastCalloc(numElements, elementByteSize).getValue(m_data);
-    else {
-        ASSERT(policy == DontInitialize);
-        allocationSucceeded = WTF::tryFastMalloc(numElements * elementByteSize).getValue(m_data);
-    }
-
-    if (allocationSucceeded) {
-        m_sizeInBytes = numElements * elementByteSize;
-        m_destructor = [] (void* p) { fastFree(p); };
+    size_t size = static_cast<size_t>(numElements) * static_cast<size_t>(elementByteSize);
+    if (!size)
+        size = 1; // Make sure malloc actually allocates something, but not too much. We use null to mean that the buffer is neutered.
+    m_data = Gigacage::tryMalloc(Gigacage::Primitive, size);
+    if (!m_data) {
+        reset();
         return;
     }
-    reset();
+    
+    if (policy == ZeroInitialize)
+        memset(m_data.get(), 0, size);
+
+    m_sizeInBytes = numElements * elementByteSize;
+    m_destructor = [] (void* p) { Gigacage::free(Gigacage::Primitive, p); };
 }
 
 void ArrayBufferContents::makeShared()
 {
-    m_shared = adoptRef(new SharedArrayBufferContents(m_data, WTFMove(m_destructor)));
+    m_shared = adoptRef(new SharedArrayBufferContents(m_data.getMayBeNull(), WTFMove(m_destructor)));
     m_destructor = [] (void*) { };
 }
 
@@ -131,7 +132,7 @@ void ArrayBufferContents::transferTo(ArrayBufferContents& other)
     other.m_sizeInBytes = m_sizeInBytes;
     other.m_destructor = WTFMove(m_destructor);
     other.m_shared = m_shared;
-    clear();
+    reset();
 }
 
 void ArrayBufferContents::copyTo(ArrayBufferContents& other)
@@ -140,7 +141,7 @@ void ArrayBufferContents::copyTo(ArrayBufferContents& other)
     other.tryAllocate(m_sizeInBytes, sizeof(char), ArrayBufferContents::DontInitialize);
     if (!other.m_data)
         return;
-    memcpy(other.m_data, m_data, m_sizeInBytes);
+    memcpy(other.m_data.get(), m_data.get(), m_sizeInBytes);
     other.m_sizeInBytes = m_sizeInBytes;
 }
 
@@ -180,13 +181,26 @@ Ref<ArrayBuffer> ArrayBuffer::create(ArrayBufferContents&& contents)
     return adoptRef(*new ArrayBuffer(WTFMove(contents)));
 }
 
+// FIXME: We cannot use this except if the memory comes from the cage.
+// Current this is only used from:
+// - JSGenericTypedArrayView<>::slowDownAndWasteMemory. But in that case, the memory should have already come
+//   from the cage.
 Ref<ArrayBuffer> ArrayBuffer::createAdopted(const void* data, unsigned byteLength)
 {
-    return createFromBytes(data, byteLength, [] (void* p) { fastFree(p); });
+    return createFromBytes(data, byteLength, [] (void* p) { Gigacage::free(Gigacage::Primitive, p); });
 }
 
+// FIXME: We cannot use this except if the memory comes from the cage.
+// Currently this is only used from:
+// - The C API. We could support that by either having the system switch to a mode where typed arrays are no
+//   longer caged, or we could introduce a new set of typed array types that are uncaged and get accessed
+//   differently.
+// - WebAssembly. Wasm should allocate from the cage.
 Ref<ArrayBuffer> ArrayBuffer::createFromBytes(const void* data, unsigned byteLength, ArrayBufferDestructorFunction&& destructor)
 {
+    if (data && !Gigacage::isCaged(Gigacage::Primitive, data))
+        Gigacage::disablePrimitiveGigacage();
+    
     ArrayBufferContents contents(const_cast<void*>(data), byteLength, WTFMove(destructor));
     return create(WTFMove(contents));
 }
@@ -204,7 +218,7 @@ RefPtr<ArrayBuffer> ArrayBuffer::tryCreate(ArrayBuffer& other)
 RefPtr<ArrayBuffer> ArrayBuffer::tryCreate(const void* source, unsigned byteLength)
 {
     ArrayBufferContents contents;
-    contents.tryAllocate(byteLength, 1, ArrayBufferContents::ZeroInitialize);
+    contents.tryAllocate(byteLength, 1, ArrayBufferContents::DontInitialize);
     if (!contents.m_data)
         return nullptr;
     return createInternal(WTFMove(contents), source, byteLength);
@@ -248,6 +262,7 @@ RefPtr<ArrayBuffer> ArrayBuffer::tryCreate(unsigned numElements, unsigned elemen
 ArrayBuffer::ArrayBuffer(ArrayBufferContents&& contents)
     : m_contents(WTFMove(contents))
     , m_pinCount(0)
+    , m_isWasmMemory(false)
     , m_locked(false)
 {
 }
@@ -273,6 +288,13 @@ RefPtr<ArrayBuffer> ArrayBuffer::sliceImpl(unsigned begin, unsigned end) const
 void ArrayBuffer::makeShared()
 {
     m_contents.makeShared();
+    m_locked = true;
+}
+
+void ArrayBuffer::makeWasmMemory()
+{
+    m_locked = true;
+    m_isWasmMemory = true;
 }
 
 void ArrayBuffer::setSharingMode(ArrayBufferSharingMode newSharingMode)
@@ -284,12 +306,23 @@ void ArrayBuffer::setSharingMode(ArrayBufferSharingMode newSharingMode)
     makeShared();
 }
 
-bool ArrayBuffer::transferTo(ArrayBufferContents& result)
+bool ArrayBuffer::shareWith(ArrayBufferContents& result)
+{
+    if (!m_contents.m_data || !isShared()) {
+        result.m_data = nullptr;
+        return false;
+    }
+    
+    m_contents.shareWith(result);
+    return true;
+}
+
+bool ArrayBuffer::transferTo(VM& vm, ArrayBufferContents& result)
 {
     Ref<ArrayBuffer> protect(*this);
 
     if (!m_contents.m_data) {
-        result.m_data = 0;
+        result.m_data = nullptr;
         return false;
     }
     
@@ -308,14 +341,38 @@ bool ArrayBuffer::transferTo(ArrayBufferContents& result)
     }
 
     m_contents.transferTo(result);
+    notifyIncommingReferencesOfTransfer(vm);
+    return true;
+}
+
+// We allow neutering wasm memory ArrayBuffers even though they are locked.
+void ArrayBuffer::neuter(VM& vm)
+{
+    ASSERT(isWasmMemory());
+    ArrayBufferContents unused;
+    m_contents.transferTo(unused);
+    notifyIncommingReferencesOfTransfer(vm);
+}
+
+void ArrayBuffer::notifyIncommingReferencesOfTransfer(VM& vm)
+{
     for (size_t i = numberOfIncomingReferences(); i--;) {
         JSCell* cell = incomingReferenceAt(i);
-        if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(cell))
+        if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(vm, cell))
             view->neuter();
-        else if (ArrayBufferNeuteringWatchpoint* watchpoint = jsDynamicCast<ArrayBufferNeuteringWatchpoint*>(cell))
+        else if (ArrayBufferNeuteringWatchpoint* watchpoint = jsDynamicCast<ArrayBufferNeuteringWatchpoint*>(vm, cell))
             watchpoint->fireAll();
     }
-    return true;
+}
+
+ASCIILiteral errorMesasgeForTransfer(ArrayBuffer* buffer)
+{
+    ASSERT(buffer->isLocked());
+    if (buffer->isShared())
+        return ASCIILiteral("Cannot transfer a SharedArrayBuffer");
+    if (buffer->isWasmMemory())
+        return ASCIILiteral("Cannot transfer a WebAssembly.Memory");
+    return ASCIILiteral("Cannot transfer an ArrayBuffer whose backing store has been accessed by the JavaScriptCore C API");
 }
 
 } // namespace JSC

@@ -27,10 +27,8 @@
 #include "FontFaceSet.h"
 
 #include "Document.h"
-#include "ExceptionCodeDescription.h"
 #include "FontFace.h"
 #include "JSDOMBinding.h"
-#include "JSDOMCoreException.h"
 #include "JSFontFace.h"
 #include "JSFontFaceSet.h"
 
@@ -53,6 +51,7 @@ Ref<FontFaceSet> FontFaceSet::create(Document& document, CSSFontFaceSet& backing
 FontFaceSet::FontFaceSet(Document& document, const Vector<RefPtr<FontFace>>& initialFaces)
     : ActiveDOMObject(&document)
     , m_backing(CSSFontFaceSet::create())
+    , m_readyPromise(*this, &FontFaceSet::readyPromiseResolve)
 {
     m_backing->addClient(*this);
     for (auto& face : initialFaces)
@@ -62,7 +61,10 @@ FontFaceSet::FontFaceSet(Document& document, const Vector<RefPtr<FontFace>>& ini
 FontFaceSet::FontFaceSet(Document& document, CSSFontFaceSet& backing)
     : ActiveDOMObject(&document)
     , m_backing(backing)
+    , m_readyPromise(*this, &FontFaceSet::readyPromiseResolve)
 {
+    if (!backing.hasActiveFontFaces())
+        m_readyPromise.resolve(*this);
     m_backing->addClient(*this);
 }
 
@@ -133,7 +135,7 @@ void FontFaceSet::load(const String& font, const String& text, LoadPromise&& pro
     auto matchingFaces = matchingFacesResult.releaseReturnValue();
 
     if (matchingFaces.isEmpty()) {
-        promise.resolve(Vector<RefPtr<FontFace>>());
+        promise.resolve({ });
         return;
     }
 
@@ -142,7 +144,7 @@ void FontFaceSet::load(const String& font, const String& text, LoadPromise&& pro
 
     for (auto& face : matchingFaces) {
         if (face.get().status() == CSSFontFace::Status::Failure) {
-            promise.reject(NETWORK_ERR);
+            promise.reject(NetworkError);
             return;
         }
     }
@@ -155,7 +157,8 @@ void FontFaceSet::load(const String& font, const String& text, LoadPromise&& pro
         if (face.get().status() == CSSFontFace::Status::Success)
             continue;
         waiting = true;
-        m_pendingPromises.add(&face.get(), Vector<Ref<PendingPromise>>()).iterator->value.append(pendingPromise.copyRef());
+        ASSERT(face.get().existingWrapper());
+        m_pendingPromises.add(face.get().existingWrapper(), Vector<Ref<PendingPromise>>()).iterator->value.append(pendingPromise.copyRef());
     }
 
     if (!waiting)
@@ -165,16 +168,6 @@ void FontFaceSet::load(const String& font, const String& text, LoadPromise&& pro
 ExceptionOr<bool> FontFaceSet::check(const String& family, const String& text)
 {
     return m_backing->check(family, text);
-}
-
-void FontFaceSet::registerReady(ReadyPromise&& promise)
-{
-    ASSERT(!m_promise);
-    if (m_isReady) {
-        promise.resolve(*this);
-        return;
-    }
-    m_promise = WTFMove(promise);
 }
     
 auto FontFaceSet::status() const -> LoadStatus
@@ -197,19 +190,20 @@ bool FontFaceSet::canSuspendForDocumentSuspension() const
 void FontFaceSet::startedLoading()
 {
     // FIXME: Fire a "loading" event asynchronously.
-    m_isReady = false;
+    m_readyPromise.clear();
 }
 
 void FontFaceSet::completedLoading()
 {
-    if (m_promise)
-        std::exchange(m_promise, Nullopt)->resolve(*this);
-    m_isReady = true;
+    m_readyPromise.resolve(*this);
 }
 
 void FontFaceSet::faceFinished(CSSFontFace& face, CSSFontFace::Status newStatus)
 {
-    auto iterator = m_pendingPromises.find(&face);
+    if (!face.existingWrapper())
+        return;
+
+    auto iterator = m_pendingPromises.find(face.existingWrapper());
     if (iterator == m_pendingPromises.end())
         return;
 
@@ -223,12 +217,17 @@ void FontFaceSet::faceFinished(CSSFontFace& face, CSSFontFace::Status newStatus)
             }
         } else {
             ASSERT(newStatus == CSSFontFace::Status::Failure);
-            pendingPromise->promise.reject(NETWORK_ERR);
+            pendingPromise->promise.reject(NetworkError);
             pendingPromise->hasReachedTerminalState = true;
         }
     }
 
     m_pendingPromises.remove(iterator);
+}
+
+FontFaceSet& FontFaceSet::readyPromiseResolve()
+{
+    return *this;
 }
 
 }

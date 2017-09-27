@@ -31,6 +31,7 @@
 #include "CSSKeyframeRule.h"
 #include "CSSKeyframesRule.h"
 #include "CSSMediaRule.h"
+#include "CSSNamespaceRule.h"
 #include "CSSPageRule.h"
 #include "CSSStyleRule.h"
 #include "CSSSupportsRule.h"
@@ -39,14 +40,13 @@
 #include "JSCSSKeyframeRule.h"
 #include "JSCSSKeyframesRule.h"
 #include "JSCSSMediaRule.h"
+#include "JSCSSNamespaceRule.h"
 #include "JSCSSPageRule.h"
 #include "JSCSSStyleRule.h"
 #include "JSCSSSupportsRule.h"
 #include "JSNode.h"
 #include "JSStyleSheetCustom.h"
-#include "JSWebKitCSSRegionRule.h"
 #include "JSWebKitCSSViewportRule.h"
-#include "WebKitCSSRegionRule.h"
 #include "WebKitCSSViewportRule.h"
 
 using namespace JSC;
@@ -71,6 +71,8 @@ JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<CSSRul
         return createWrapper<CSSPageRule>(globalObject, WTFMove(rule));
     case CSSRule::IMPORT_RULE:
         return createWrapper<CSSImportRule>(globalObject, WTFMove(rule));
+    case CSSRule::NAMESPACE_RULE:
+        return createWrapper<CSSNamespaceRule>(globalObject, WTFMove(rule));
     case CSSRule::KEYFRAME_RULE:
         return createWrapper<CSSKeyframeRule>(globalObject, WTFMove(rule));
     case CSSRule::KEYFRAMES_RULE:
@@ -80,10 +82,6 @@ JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<CSSRul
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     case CSSRule::WEBKIT_VIEWPORT_RULE:
         return createWrapper<WebKitCSSViewportRule>(globalObject, WTFMove(rule));
-#endif
-#if ENABLE(CSS_REGIONS)
-    case CSSRule::WEBKIT_REGION_RULE:
-        return createWrapper<WebKitCSSRegionRule>(globalObject, WTFMove(rule));
 #endif
     default:
         return createWrapper<CSSRule>(globalObject, WTFMove(rule));

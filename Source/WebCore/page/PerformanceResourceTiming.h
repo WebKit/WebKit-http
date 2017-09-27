@@ -31,31 +31,24 @@
 
 #pragma once
 
-#if ENABLE(WEB_TIMING)
-
 #include "LoadTiming.h"
-#include "NetworkLoadTiming.h"
+#include "NetworkLoadMetrics.h"
 #include "PerformanceEntry.h"
-#include <wtf/RefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class Document;
-class URL;
-class NetworkLoadTiming;
-class ResourceRequest;
-class ResourceResponse;
+class ResourceTiming;
 
 class PerformanceResourceTiming final : public PerformanceEntry {
 public:
-    static Ref<PerformanceResourceTiming> create(const AtomicString& initiatorType, const URL& originalURL, const ResourceResponse& response, LoadTiming loadTiming, Document* requestingDocument)
-    {
-        return adoptRef(*new PerformanceResourceTiming(initiatorType, originalURL, response, loadTiming, requestingDocument));
-    }
+    static Ref<PerformanceResourceTiming> create(MonotonicTime timeOrigin, ResourceTiming&&);
 
-    AtomicString initiatorType() const;
+    AtomicString initiatorType() const { return m_initiatorType; }
+    String nextHopProtocol() const;
 
+    double workerStart() const;
     double redirectStart() const;
     double redirectEnd() const;
     double fetchStart() const;
@@ -68,19 +61,17 @@ public:
     double responseStart() const;
     double responseEnd() const;
 
-    bool isResource() const override { return true; }
-
 private:
-    PerformanceResourceTiming(const AtomicString& initatorType, const URL& originalURL, const ResourceResponse&, LoadTiming, Document*);
+    PerformanceResourceTiming(MonotonicTime timeOrigin, ResourceTiming&&);
     ~PerformanceResourceTiming();
 
-    double resourceTimeToDocumentMilliseconds(double deltaMilliseconds) const;
+    double networkLoadTimeToDOMHighResTimeStamp(Seconds) const;
 
     AtomicString m_initiatorType;
-    NetworkLoadTiming m_timing;
+    MonotonicTime m_timeOrigin;
     LoadTiming m_loadTiming;
+    NetworkLoadMetrics m_networkLoadMetrics;
     bool m_shouldReportDetails;
-    RefPtr<Document> m_requestingDocument;
 };
 
 } // namespace WebCore
@@ -88,5 +79,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::PerformanceResourceTiming)
     static bool isType(const WebCore::PerformanceEntry& entry) { return entry.isResource(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // ENABLE(WEB_TIMING)

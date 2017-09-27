@@ -23,13 +23,21 @@
 
 #include "GraphicsContext3D.h"
 #include "PlatformDisplay.h"
+
+#if USE(LIBEPOXY)
+#include "EpoxyEGL.h"
+#else
 #include <EGL/egl.h>
+#endif
 
 #if USE(CAIRO)
 #include <cairo.h>
 #endif
 
-#if USE(OPENGL_ES_2)
+#if USE(LIBEPOXY)
+#include <epoxy/gl.h>
+#elif USE(OPENGL_ES_2)
+#define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #else
@@ -114,6 +122,9 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(GLNativeWindowTy
     if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
         surface = createWindowSurfaceWayland(display, config, window);
 #endif
+#elif PLATFORM(WPE)
+    if (platformDisplay.type() == PlatformDisplay::Type::WPE)
+        surface = createWindowSurfaceWPE(display, config, window);
 #else
     surface = eglCreateWindowSurface(display, config, static_cast<EGLNativeWindowType>(window), nullptr);
 #endif
@@ -167,7 +178,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSurfacelessContext(PlatformDis
     return std::unique_ptr<GLContextEGL>(new GLContextEGL(platformDisplay, context, EGL_NO_SURFACE, Surfaceless));
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay, std::unique_ptr<GLContext::Data>&& contextData)
+std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;
@@ -188,16 +199,18 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType win
         if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
             context = createWaylandContext(platformDisplay, eglSharingContext);
 #endif
+#if PLATFORM(WPE)
+        if (platformDisplay.type() == PlatformDisplay::Type::WPE)
+            context = createWPEContext(platformDisplay, eglSharingContext);
+#endif
     }
     if (!context)
         context = createPbufferContext(platformDisplay, eglSharingContext);
 
-    if (context)
-        context->m_contextData = WTFMove(contextData);
     return context;
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay& platformDisplay, std::unique_ptr<GLContext::Data>&& contextData)
+std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay& platformDisplay)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;
@@ -215,12 +228,14 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay
         if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
             context = createWaylandContext(platformDisplay);
 #endif
+#if PLATFORM(WPE)
+        if (platformDisplay.type() == PlatformDisplay::Type::WPE)
+            context = createWPEContext(platformDisplay);
+#endif
     }
     if (!context)
         context = createPbufferContext(platformDisplay);
 
-    if (context)
-        context->m_contextData = WTFMove(contextData);
     return context;
 }
 
@@ -253,6 +268,9 @@ GLContextEGL::~GLContextEGL()
 
 #if PLATFORM(WAYLAND)
     destroyWaylandWindow();
+#endif
+#if PLATFORM(WPE)
+    destroyWPETarget();
 #endif
 }
 
@@ -310,7 +328,7 @@ cairo_device_t* GLContextEGL::cairoDevice()
         return m_cairoDevice;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    m_cairoDevice = cairo_egl_device_create_for_egl_surface(m_display.eglDisplay(), m_context, m_surface);
+    m_cairoDevice = cairo_egl_device_create(m_display.eglDisplay(), m_context);
 #endif
 
     return m_cairoDevice;

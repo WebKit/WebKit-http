@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,31 @@
 #include "config.h"
 #include "NavigationAction.h"
 
+#include "Document.h"
 #include "Event.h"
 #include "FrameLoader.h"
-#include "ScriptController.h"
 
 namespace WebCore {
+
+NavigationAction::NavigationAction() = default;
+NavigationAction::~NavigationAction() = default;
+
+NavigationAction::NavigationAction(const NavigationAction&) = default;
+NavigationAction::NavigationAction(NavigationAction&&) = default;
+
+NavigationAction& NavigationAction::operator=(const NavigationAction&) = default;
+NavigationAction& NavigationAction::operator=(NavigationAction&&) = default;
+
+NavigationAction::NavigationAction(Document& source, const ResourceRequest& resourceRequest, InitiatedByMainFrame initiatedByMainFrame, NavigationType type, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, Event* event, const AtomicString& downloadAttribute)
+    : m_sourceDocument { makeRefPtr(source) }
+    , m_resourceRequest { resourceRequest }
+    , m_type { type }
+    , m_shouldOpenExternalURLsPolicy { shouldOpenExternalURLsPolicy }
+    , m_initiatedByMainFrame { initiatedByMainFrame }
+    , m_event { event }
+    , m_downloadAttribute { downloadAttribute }
+{
+}
 
 static NavigationType navigationType(FrameLoadType frameLoadType, bool isFormSubmission, bool haveEvent)
 {
@@ -41,75 +61,21 @@ static NavigationType navigationType(FrameLoadType frameLoadType, bool isFormSub
         return NavigationType::FormSubmitted;
     if (haveEvent)
         return NavigationType::LinkClicked;
-    if (frameLoadType == FrameLoadType::Reload || frameLoadType == FrameLoadType::ReloadFromOrigin)
+    if (isReload(frameLoadType))
         return NavigationType::Reload;
     if (isBackForwardLoadType(frameLoadType))
         return NavigationType::BackForward;
     return NavigationType::Other;
 }
 
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, Event* event, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute)
-    : m_resourceRequest(resourceRequest)
-    , m_type(type)
-    , m_event(event)
-    , m_userGestureToken(UserGestureIndicator::currentUserGesture())
-    , m_shouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicy)
-    , m_downloadAttribute(downloadAttribute)
-{
-}
-
-NavigationAction::NavigationAction()
-    : NavigationAction(ResourceRequest(), NavigationType::Other, nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest)
-    : NavigationAction(resourceRequest, NavigationType::Other, nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
-    : NavigationAction(resourceRequest, NavigationType::Other, nullptr, shouldOpenExternalURLsPolicy, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type)
-    : NavigationAction(resourceRequest, type, nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, Event* event, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
-    : NavigationAction(resourceRequest, type, event, shouldOpenExternalURLsPolicy, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType, bool isFormSubmission)
-    : NavigationAction(resourceRequest, navigationType(frameLoadType, isFormSubmission, 0), nullptr, ShouldOpenExternalURLsPolicy::ShouldNotAllow, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, Event* event)
-    : NavigationAction(resourceRequest, type, event, ShouldOpenExternalURLsPolicy::ShouldNotAllow, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, NavigationType type, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
-    : NavigationAction(resourceRequest, type, nullptr, shouldOpenExternalURLsPolicy, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType, bool isFormSubmission, Event* event)
-    : NavigationAction(resourceRequest, navigationType(frameLoadType, isFormSubmission, event), event, ShouldOpenExternalURLsPolicy::ShouldNotAllow, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType, bool isFormSubmission, Event* event, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
-    : NavigationAction(resourceRequest, navigationType(frameLoadType, isFormSubmission, event), event, shouldOpenExternalURLsPolicy, nullAtom)
-{
-}
-
-NavigationAction::NavigationAction(const ResourceRequest& resourceRequest, FrameLoadType frameLoadType, bool isFormSubmission, Event* event, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute)
-    : NavigationAction(resourceRequest, navigationType(frameLoadType, isFormSubmission, event), event, shouldOpenExternalURLsPolicy, downloadAttribute)
+NavigationAction::NavigationAction(Document& source, const ResourceRequest& resourceRequest, InitiatedByMainFrame initiatedByMainFrame, FrameLoadType frameLoadType, bool isFormSubmission, Event* event, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute)
+    : m_sourceDocument { makeRefPtr(source) }
+    , m_resourceRequest { resourceRequest }
+    , m_type { navigationType(frameLoadType, isFormSubmission, !!event) }
+    , m_shouldOpenExternalURLsPolicy { shouldOpenExternalURLsPolicy }
+    , m_initiatedByMainFrame { initiatedByMainFrame }
+    , m_event { event }
+    , m_downloadAttribute { downloadAttribute }
 {
 }
 

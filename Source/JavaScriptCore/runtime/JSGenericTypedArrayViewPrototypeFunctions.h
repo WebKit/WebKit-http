@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,9 +25,7 @@
 
 #pragma once
 
-#include "ArrayPrototype.h"
 #include "Error.h"
-#include "ExceptionHelpers.h"
 #include "JSArrayBufferViewInlines.h"
 #include "JSCBuiltins.h"
 #include "JSCJSValueInlines.h"
@@ -53,8 +51,10 @@ inline JSArrayBufferView* speciesConstruct(ExecState* exec, JSObject* exemplar, 
     JSValue constructor = exemplar->get(exec, vm.propertyNames->constructor);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    if (constructor.isUndefined())
+    if (constructor.isUndefined()) {
+        scope.release();
         return defaultConstructor();
+    }
     if (!constructor.isObject()) {
         throwTypeError(exec, scope, ASCIILiteral("constructor Property should not be null"));
         return nullptr;
@@ -63,13 +63,15 @@ inline JSArrayBufferView* speciesConstruct(ExecState* exec, JSObject* exemplar, 
     JSValue species = constructor.get(exec, vm.propertyNames->speciesSymbol);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    if (species.isUndefinedOrNull())
+    if (species.isUndefinedOrNull()) {
+        scope.release();
         return defaultConstructor();
+    }
 
     JSValue result = construct(exec, species, args, "species is not a constructor");
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(result)) {
+    if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(vm, result)) {
         if (!view->isNeutered())
             return view;
 
@@ -119,22 +121,26 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSet(VM& vm, ExecState
     if (UNLIKELY(thisObject->isNeutered()))
         return throwVMTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
 
-    JSObject* sourceArray = jsDynamicCast<JSObject*>(exec->uncheckedArgument(0));
+    JSObject* sourceArray = jsDynamicCast<JSObject*>(vm, exec->uncheckedArgument(0));
     if (UNLIKELY(!sourceArray))
         return throwVMTypeError(exec, scope, ASCIILiteral("First argument should be an object"));
 
     unsigned length;
-    if (isTypedView(sourceArray->classInfo()->typedArrayStorageType)) {
+    if (isTypedView(sourceArray->classInfo(vm)->typedArrayStorageType)) {
         JSArrayBufferView* sourceView = jsCast<JSArrayBufferView*>(sourceArray);
         if (UNLIKELY(sourceView->isNeutered()))
             return throwVMTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
 
         length = jsCast<JSArrayBufferView*>(sourceArray)->length();
-    } else
-        length = sourceArray->get(exec, vm.propertyNames->length).toUInt32(exec);
+    } else {
+        JSValue lengthValue = sourceArray->get(exec, vm.propertyNames->length);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        length = lengthValue.toUInt32(exec);
+    }
 
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
+    scope.release();
     thisObject->set(exec, offset, sourceArray, 0, length, CopyType::Unobservable);
     return JSValue::encode(jsUndefined());
 }
@@ -198,7 +204,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncIncludes(VM& vm, Exec
     if (!targetOption)
         return JSValue::encode(jsBoolean(false));
 
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     RELEASE_ASSERT(!thisObject->isNeutered());
 
     if (std::isnan(static_cast<double>(*targetOption))) {
@@ -242,7 +248,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncIndexOf(VM& vm, ExecS
     auto targetOption = ViewClass::toAdaptorNativeFromValueWithoutCoercion(valueToFind);
     if (!targetOption)
         return JSValue::encode(jsNumber(-1));
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     RELEASE_ASSERT(!thisObject->isNeutered());
 
     for (; index < length; ++index) {
@@ -273,6 +279,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncJoin(VM& vm, ExecStat
             joiner.append(*exec, thisObject->getIndexQuickly(i));
             RETURN_IF_EXCEPTION(scope, encodedJSValue());
         }
+        scope.release();
         return JSValue::encode(joiner.join(*exec));
     };
 
@@ -287,7 +294,9 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncJoin(VM& vm, ExecStat
 
     if (thisObject->isNeutered())
         return throwVMTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
-    return joinWithSeparator(separatorString->view(exec).get());
+    auto viewWithString = separatorString->viewWithUnderlyingString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    return joinWithSeparator(viewWithString.view);
 }
 
 template<typename ViewClass>
@@ -330,7 +339,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncLastIndexOf(VM& vm, E
         return JSValue::encode(jsNumber(-1));
 
     typename ViewClass::ElementType* array = thisObject->typedVector();
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     RELEASE_ASSERT(!thisObject->isNeutered());
 
     for (; index >= 0; --index) {
@@ -416,7 +425,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSlice(VM& vm, ExecSta
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     // 22.2.3.26
-    JSFunction* callee = jsCast<JSFunction*>(exec->callee());
+    JSFunction* callee = jsCast<JSFunction*>(exec->jsCallee());
 
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
     if (thisObject->isNeutered())
@@ -457,39 +466,46 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSlice(VM& vm, ExecSta
 
     // The species constructor may return an array with any arbitrary length.
     length = std::min(length, result->length());
-    switch (result->classInfo()->typedArrayStorageType) {
+    switch (result->classInfo(vm)->typedArrayStorageType) {
     case TypeInt8:
+        scope.release();
         jsCast<JSInt8Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeInt16:
+        scope.release();
         jsCast<JSInt16Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeInt32:
+        scope.release();
         jsCast<JSInt32Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeUint8:
+        scope.release();
         jsCast<JSUint8Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeUint8Clamped:
+        scope.release();
         jsCast<JSUint8ClampedArray*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeUint16:
+        scope.release();
         jsCast<JSUint16Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeUint32:
+        scope.release();
         jsCast<JSUint32Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeFloat32:
+        scope.release();
         jsCast<JSFloat32Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     case TypeFloat64:
+        scope.release();
         jsCast<JSFloat64Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
-        break;
+        return JSValue::encode(result);
     default:
         RELEASE_ASSERT_NOT_REACHED();
     }
-
-    return JSValue::encode(result);
 }
 
 template<typename ViewClass>
@@ -498,7 +514,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewPrivateFuncSubarrayCreate(VM&v
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     // 22.2.3.23
-    JSFunction* callee = jsCast<JSFunction*>(exec->callee());
+    JSFunction* callee = jsCast<JSFunction*>(exec->jsCallee());
 
     ViewClass* thisObject = jsCast<ViewClass*>(exec->thisValue());
     if (thisObject->isNeutered())
@@ -513,9 +529,9 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewPrivateFuncSubarrayCreate(VM&v
     ASSERT(exec->argument(0).isNumber());
     ASSERT(exec->argument(1).isUndefined() || exec->argument(1).isNumber());
     unsigned begin = argumentClampedIndexFromStartOrEnd(exec, 0, thisLength);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     unsigned end = argumentClampedIndexFromStartOrEnd(exec, 1, thisLength, thisLength);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
 
     RELEASE_ASSERT(!thisObject->isNeutered());
 
@@ -536,8 +552,9 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewPrivateFuncSubarrayCreate(VM&v
     if (species == defaultConstructor) {
         Structure* structure = callee->globalObject()->typedArrayStructure(ViewClass::TypedArrayStorageType);
 
+        scope.release();
         return JSValue::encode(ViewClass::create(
-            exec, structure, arrayBuffer,
+            exec, structure, WTFMove(arrayBuffer),
             thisObject->byteOffset() + offset * ViewClass::elementSize,
             length));
     }
@@ -550,7 +567,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewPrivateFuncSubarrayCreate(VM&v
     JSObject* result = construct(exec, species, args, "species is not a constructor");
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    if (jsDynamicCast<JSArrayBufferView*>(result))
+    if (jsDynamicCast<JSArrayBufferView*>(vm, result))
         return JSValue::encode(result);
 
     throwTypeError(exec, scope, ASCIILiteral("species constructor did not return a TypedArray View"));

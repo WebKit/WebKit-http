@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef XPCSPI_h
-#define XPCSPI_h
+#pragma once
 
 #include <dispatch/dispatch.h>
 #include <os/object.h>
@@ -77,6 +76,10 @@ typedef void (*xpc_connection_handler_t)(xpc_connection_t connection);
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <xpc/private.h>
+#else
+enum {
+    DISPATCH_MACH_SEND_POSSIBLE = 0x8,
+};
 #endif
 
 WTF_EXTERN_C_BEGIN
@@ -149,7 +152,7 @@ xpc_object_t xpc_retain(xpc_object_t);
 #endif
 
 #if OS_OBJECT_USE_OBJC_RETAIN_RELEASE
-#if !defined(xpc_retain)
+#if !defined(xpc_release)
 #define xpc_release(object) ({ xpc_object_t _o = (object); _xpc_object_validate(_o); [_o release]; })
 #endif
 #else
@@ -157,5 +160,3 @@ void xpc_release(xpc_object_t);
 #endif
 
 WTF_EXTERN_C_END
-
-#endif // XPCSPI_h

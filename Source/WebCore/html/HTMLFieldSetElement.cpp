@@ -31,7 +31,7 @@
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
 #include "NodeRareData.h"
-#include "RenderFieldset.h"
+#include "RenderElement.h"
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
@@ -122,13 +122,13 @@ void HTMLFieldSetElement::childrenChanged(const ChildChange& change)
         updateFromControlElementsAncestorDisabledStateUnder(*legend, true);
 }
 
-void HTMLFieldSetElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLFieldSetElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
-    HTMLFormControlElement::didMoveToNewDocument(oldDocument);
+    ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
+    HTMLFormControlElement::didMoveToNewDocument(oldDocument, newDocument);
     if (m_hasDisabledAttribute) {
-        if (oldDocument)
-            oldDocument->removeDisabledFieldsetElement();
-        document().addDisabledFieldsetElement();
+        oldDocument.removeDisabledFieldsetElement();
+        newDocument.addDisabledFieldsetElement();
     }
 }
 
@@ -155,7 +155,7 @@ const AtomicString& HTMLFieldSetElement::formControlType() const
 
 RenderPtr<RenderElement> HTMLFieldSetElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
-    return createRenderer<RenderFieldset>(*this, WTFMove(style));
+    return RenderElement::createFor(*this, WTFMove(style), RenderElement::OnlyCreateBlockAndFlexboxRenderers);
 }
 
 HTMLLegendElement* HTMLFieldSetElement::legend() const

@@ -1,6 +1,3 @@
-// This test requires ENABLE_ES2017_ASYNCFUNCTION_SYNTAX to be enabled at build time.
-//@ skip
-
 function shouldThrow(func, errorMessage) {
     var errorThrown = false;
     var error = null;
@@ -22,22 +19,22 @@ function checkModuleSyntaxError(source, errorMessage) {
 
 checkModuleSyntaxError(String.raw`
 var await;
-`, `SyntaxError: Can't use 'await' as a variable name in a module.:2`);
+`, `SyntaxError: Cannot use 'await' as a variable name in a module.:2`);
 checkModuleSyntaxError(`
 export var await;
-`, `SyntaxError: Can't use 'await' as a variable name in a module.:2`);
+`, `SyntaxError: Cannot use 'await' as a variable name in a module.:2`);
 checkModuleSyntaxError(String.raw`
 let await;
-`, `SyntaxError: Can't use 'await' as a lexical variable name in a module.:2`);
+`, `SyntaxError: Cannot use 'await' as a lexical variable name in a module.:2`);
 checkModuleSyntaxError(String.raw`
 export let await;
-`, `SyntaxError: Can't use 'await' as a lexical variable name in a module.:2`);
+`, `SyntaxError: Cannot use 'await' as a lexical variable name in a module.:2`);
 checkModuleSyntaxError(String.raw`
 const await = 1
-`, `SyntaxError: Can't use 'await' as a lexical variable name in a module.:2`);
+`, `SyntaxError: Cannot use 'await' as a lexical variable name in a module.:2`);
 checkModuleSyntaxError(String.raw`
 export const await = 1
-`, `SyntaxError: Can't use 'await' as a lexical variable name in a module.:2`);
+`, `SyntaxError: Cannot use 'await' as a lexical variable name in a module.:2`);
 
 checkModuleSyntaxError(String.raw`
 function await() {}

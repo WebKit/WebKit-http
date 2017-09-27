@@ -35,16 +35,16 @@ use warnings;
 use File::Spec::Functions qw/catdir/;
 use FindBin;
 use lib $FindBin::Bin;
-use Getopt::Long;
 use webkitdirs;
 
+my $launcherName;
 my $launcherPath;
 my @jhbuildWrapper;
 
 prohibitUnknownPort();
 setConfiguration();
 
-if (isGtk() || isEfl()) {
+if (isGtk()) {
     # Check to see that all the frameworks are built.
     checkFrameworks();
 
@@ -53,7 +53,17 @@ if (isGtk() || isEfl()) {
     @jhbuildWrapper = wrapperPrefixIfNeeded();
     print "Starting MiniBrowser.\n";
     exec @jhbuildWrapper, $launcherPath, @ARGV or die;
-} elsif (isAppleMacWebKit()) {
+} elsif (isWPE()) {
+    # Check to see that all the frameworks are built.
+    checkFrameworks();
+
+    $launcherName = launcherName();
+    @jhbuildWrapper = wrapperPrefixIfNeeded();
+    $ENV{"WEBKIT_EXEC_PATH"} = catdir(productDir(), "bin");
+    $ENV{"LD_LIBRARY_PATH"} = catdir(productDir(), "lib") . (defined $ENV{"LD_LIBRARY_PATH"} ? ":" . $ENV{"LD_LIBRARY_PATH"} : "" );
+    print "Starting $launcherName \n";
+    exec @jhbuildWrapper, $launcherName, @ARGV or die;
+} elsif (isAppleCocoaWebKit()) {
     printHelpAndExitForRunAndDebugWebKitAppIfNeeded();
     exit exitStatus(runMiniBrowser());
 } else {

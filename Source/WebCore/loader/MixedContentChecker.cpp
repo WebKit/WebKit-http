@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +30,7 @@
 #include "config.h"
 #include "MixedContentChecker.h"
 
+#include "ContentSecurityPolicy.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -51,48 +53,58 @@ FrameLoaderClient& MixedContentChecker::client() const
 }
 
 // static
-bool MixedContentChecker::isMixedContent(SecurityOrigin* securityOrigin, const URL& url)
+bool MixedContentChecker::isMixedContent(SecurityOrigin& securityOrigin, const URL& url)
 {
-    if (securityOrigin->protocol() != "https")
+    if (securityOrigin.protocol() != "https")
         return false; // We only care about HTTPS security origins.
 
     // We're in a secure context, so |url| is mixed content if it's insecure.
     return !SecurityOrigin::isSecure(url);
 }
 
-bool MixedContentChecker::canDisplayInsecureContent(SecurityOrigin* securityOrigin, ContentType type, const URL& url) const
+bool MixedContentChecker::canDisplayInsecureContent(SecurityOrigin& securityOrigin, ContentType type, const URL& url, AlwaysDisplayInNonStrictMode alwaysDisplayInNonStrictMode) const
 {
     if (!isMixedContent(securityOrigin, url))
         return true;
 
-    bool allowed = (m_frame.settings().allowDisplayOfInsecureContent() || type == ContentType::ActiveCanWarn) && !m_frame.document()->geolocationAccessed();
+    if (!m_frame.document()->contentSecurityPolicy()->allowRunningOrDisplayingInsecureContent(url))
+        return false;
+
+    bool isStrictMode = m_frame.document()->isStrictMixedContentMode();
+    if (!isStrictMode && alwaysDisplayInNonStrictMode == AlwaysDisplayInNonStrictMode::Yes)
+        return true;
+
+    bool allowed = !isStrictMode && (m_frame.settings().allowDisplayOfInsecureContent() || type == ContentType::ActiveCanWarn) && !m_frame.document()->geolocationAccessed();
     logWarning(allowed, "display", url);
 
     if (allowed) {
-        m_frame.document()->setFoundMixedContent();
+        m_frame.document()->setFoundMixedContent(SecurityContext::MixedContentType::Inactive);
         client().didDisplayInsecureContent();
     }
 
     return allowed;
 }
 
-bool MixedContentChecker::canRunInsecureContent(SecurityOrigin* securityOrigin, const URL& url) const
+bool MixedContentChecker::canRunInsecureContent(SecurityOrigin& securityOrigin, const URL& url) const
 {
     if (!isMixedContent(securityOrigin, url))
         return true;
 
-    bool allowed = m_frame.settings().allowRunningOfInsecureContent() && !m_frame.document()->geolocationAccessed();
+    if (!m_frame.document()->contentSecurityPolicy()->allowRunningOrDisplayingInsecureContent(url))
+        return false;
+
+    bool allowed = !m_frame.document()->isStrictMixedContentMode() && m_frame.settings().allowRunningOfInsecureContent() && !m_frame.document()->geolocationAccessed() && !m_frame.document()->secureCookiesAccessed();
     logWarning(allowed, "run", url);
 
     if (allowed) {
-        m_frame.document()->setFoundMixedContent();
+        m_frame.document()->setFoundMixedContent(SecurityContext::MixedContentType::Active);
         client().didRunInsecureContent(securityOrigin, url);
     }
 
     return allowed;
 }
 
-void MixedContentChecker::checkFormForMixedContent(SecurityOrigin* securityOrigin, const URL& url) const
+void MixedContentChecker::checkFormForMixedContent(SecurityOrigin& securityOrigin, const URL& url) const
 {
     // Unconditionally allow javascript: URLs as form actions as some pages do this and it does not introduce
     // a mixed content issue.

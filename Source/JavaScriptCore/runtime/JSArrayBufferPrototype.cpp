@@ -40,9 +40,9 @@ static EncodedJSValue JSC_HOST_CALL arrayBufferProtoFuncSlice(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSFunction* callee = jsCast<JSFunction*>(exec->callee());
+    JSFunction* callee = jsCast<JSFunction*>(exec->jsCallee());
     
-    JSArrayBuffer* thisObject = jsDynamicCast<JSArrayBuffer*>(exec->thisValue());
+    JSArrayBuffer* thisObject = jsDynamicCast<JSArrayBuffer*>(vm, exec->thisValue());
     if (!thisObject)
         return throwVMTypeError(exec, scope, ASCIILiteral("Receiver of slice must be an array buffer."));
     
@@ -65,13 +65,53 @@ static EncodedJSValue JSC_HOST_CALL arrayBufferProtoFuncSlice(ExecState* exec)
     
     Structure* structure = callee->globalObject()->arrayBufferStructure(newBuffer->sharingMode());
     
-    JSArrayBuffer* result = JSArrayBuffer::create(vm, structure, newBuffer);
+    JSArrayBuffer* result = JSArrayBuffer::create(vm, structure, WTFMove(newBuffer));
     
     return JSValue::encode(result);
 }
 
+// http://tc39.github.io/ecmascript_sharedmem/shmem.html#sec-get-arraybuffer.prototype.bytelength
+static EncodedJSValue JSC_HOST_CALL arrayBufferProtoGetterFuncByteLength(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSValue thisValue = exec->thisValue();
+    if (!thisValue.isObject())
+        return throwVMTypeError(exec, scope, ASCIILiteral("Receiver should be an array buffer but was not an object"));
+
+    auto* thisObject = jsDynamicCast<JSArrayBuffer*>(vm, thisValue);
+    if (!thisObject)
+        return throwVMTypeError(exec, scope, ASCIILiteral("Receiver should be an array buffer"));
+    if (thisObject->isShared())
+        return throwVMTypeError(exec, scope, ASCIILiteral("Receiver should not be a shared array buffer"));
+
+    scope.release();
+
+    return JSValue::encode(jsNumber(thisObject->impl()->byteLength()));
+}
+
+// http://tc39.github.io/ecmascript_sharedmem/shmem.html#StructuredData.SharedArrayBuffer.prototype.get_byteLength
+static EncodedJSValue JSC_HOST_CALL sharedArrayBufferProtoGetterFuncByteLength(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSValue thisValue = exec->thisValue();
+    if (!thisValue.isObject())
+        return throwVMTypeError(exec, scope, ASCIILiteral("Receiver should be an array buffer but was not an object"));
+
+    auto* thisObject = jsDynamicCast<JSArrayBuffer*>(vm, thisValue);
+    if (!thisObject)
+        return throwVMTypeError(exec, scope, ASCIILiteral("Receiver should be an array buffer"));
+    if (!thisObject->isShared())
+        return throwVMTypeError(exec, scope, ASCIILiteral("Receiver should be a shared array buffer"));
+
+    scope.release();
+
+    return JSValue::encode(jsNumber(thisObject->impl()->byteLength()));
+}
+
 const ClassInfo JSArrayBufferPrototype::s_info = {
-    "ArrayBufferPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSArrayBufferPrototype)
+    "ArrayBufferPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSArrayBufferPrototype)
 };
 
 JSArrayBufferPrototype::JSArrayBufferPrototype(VM& vm, Structure* structure, ArrayBufferSharingMode sharingMode)
@@ -84,8 +124,12 @@ void JSArrayBufferPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject
 {
     Base::finishCreation(vm);
     
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->slice, arrayBufferProtoFuncSlice, DontEnum, 2);
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, arrayBufferSharingModeName(m_sharingMode)), DontEnum | ReadOnly);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->slice, arrayBufferProtoFuncSlice, static_cast<unsigned>(PropertyAttribute::DontEnum), 2);
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, arrayBufferSharingModeName(m_sharingMode)), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    if (m_sharingMode == ArrayBufferSharingMode::Default)
+        JSC_NATIVE_GETTER(vm.propertyNames->byteLength, arrayBufferProtoGetterFuncByteLength, PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    else
+        JSC_NATIVE_GETTER(vm.propertyNames->byteLength, sharedArrayBufferProtoGetterFuncByteLength, PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
 }
 
 JSArrayBufferPrototype* JSArrayBufferPrototype::create(VM& vm, JSGlobalObject* globalObject, Structure* structure, ArrayBufferSharingMode sharingMode)

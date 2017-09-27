@@ -33,9 +33,24 @@
 #include "DFGNaturalLoops.h"
 #include "DFGPhase.h"
 #include "FTLCapabilities.h"
+#include "FunctionWhitelist.h"
 #include "JSCInlines.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace JSC { namespace DFG {
+
+static FunctionWhitelist& ensureGlobalFTLWhitelist()
+{
+    static LazyNeverDestroyed<FunctionWhitelist> ftlWhitelist;
+    static std::once_flag initializeWhitelistFlag;
+    std::call_once(initializeWhitelistFlag, [] {
+        const char* functionWhitelistFile = Options::ftlWhitelist();
+        ftlWhitelist.construct(functionWhitelistFile);
+    });
+    return ftlWhitelist;
+}
+
+using NaturalLoop = CPSNaturalLoop;
 
 class TierUpCheckInjectionPhase : public Phase {
 public:
@@ -57,6 +72,9 @@ public:
         if (!Options::bytecodeRangeToFTLCompile().isInRange(m_graph.m_profiledBlock->instructionCount()))
             return false;
 
+        if (!ensureGlobalFTLWhitelist().contains(m_graph.m_profiledBlock))
+            return false;
+
 #if ENABLE(FTL_JIT)
         FTL::CapabilityLevel level = FTL::canCompile(m_graph);
         if (level == FTL::CannotCompile)
@@ -64,9 +82,9 @@ public:
         
         if (!Options::useOSREntryToFTL())
             level = FTL::CanCompile;
-
-        m_graph.ensureNaturalLoops();
-        NaturalLoops& naturalLoops = *m_graph.m_naturalLoops;
+        
+        m_graph.ensureCPSNaturalLoops();
+        CPSNaturalLoops& naturalLoops = *m_graph.m_cpsNaturalLoops;
         HashMap<const NaturalLoop*, unsigned> naturalLoopToLoopHint = buildNaturalLoopToLoopHintMap(naturalLoops);
 
         HashMap<unsigned, LoopHintDescriptor> tierUpHierarchy;
@@ -166,7 +184,7 @@ private:
         return true;
     }
 
-    HashMap<const NaturalLoop*, unsigned> buildNaturalLoopToLoopHintMap(const NaturalLoops& naturalLoops)
+    HashMap<const NaturalLoop*, unsigned> buildNaturalLoopToLoopHintMap(const CPSNaturalLoops& naturalLoops)
     {
         HashMap<const NaturalLoop*, unsigned> naturalLoopsToLoopHint;
 

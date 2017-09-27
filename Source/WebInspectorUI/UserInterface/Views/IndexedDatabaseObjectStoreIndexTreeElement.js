@@ -23,13 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.IndexedDatabaseObjectStoreIndexTreeElement = class IndexedDatabaseObjectStoreIndexTreeElement extends WebInspector.GeneralTreeElement
+WI.IndexedDatabaseObjectStoreIndexTreeElement = class IndexedDatabaseObjectStoreIndexTreeElement extends WI.GeneralTreeElement
 {
     constructor(objectStoreIndex)
     {
-        console.assert(objectStoreIndex instanceof WebInspector.IndexedDatabaseObjectStoreIndex);
+        console.assert(objectStoreIndex instanceof WI.IndexedDatabaseObjectStoreIndex);
 
-        super("database-table-icon", objectStoreIndex.name, null, objectStoreIndex, false);
+        const subtitle = null;
+        super("database-table-icon", objectStoreIndex.name, subtitle, objectStoreIndex);
 
         this._objectStoreIndex = objectStoreIndex;
     }

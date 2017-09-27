@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004-2010, 2012-2013, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2010, 2012-2013, 2015-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2011 Google Inc. All rights reserved.
@@ -30,7 +30,7 @@
 #include "Timer.h"
 #include <memory>
 #include <wtf/FastMalloc.h>
-#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -40,7 +40,9 @@ namespace WebCore {
 
 class CSSStyleSheet;
 class Document;
+class Element;
 class Node;
+class ProcessingInstruction;
 class StyleResolver;
 class StyleSheet;
 class StyleSheetContents;
@@ -49,6 +51,15 @@ class ShadowRoot;
 class TreeScope;
 
 namespace Style {
+
+// This is used to identify style scopes that can affect an element.
+// Scopes are in tree-of-trees order. Styles from earlier scopes win over later ones (modulo !important).
+enum class ScopeOrdinal : int {
+    ContainingHost = -1, // Author-exposed UA pseudo classes from the host tree scope.
+    Element = 0, // Normal rules in the same tree where the element is.
+    FirstSlot = 1, // ::slotted rules in the parent's shadow tree. Values greater than FirstSlot indicate subsequent slots in the chain.
+    Shadow = std::numeric_limits<int>::max(), // :host rules in element's own shadow tree.
+};
 
 class Scope {
     WTF_MAKE_FAST_ALLOCATED;
@@ -71,14 +82,16 @@ public:
     void setPreferredStylesheetSetName(const String&);
     void setSelectedStylesheetSetName(const String&);
 
-    void addPendingSheet() { m_pendingStyleSheetCount++; }
-    enum RemovePendingSheetNotificationType {
-        RemovePendingSheetNotifyImmediately,
-        RemovePendingSheetNotifyLater
-    };
-    void removePendingSheet(RemovePendingSheetNotificationType = RemovePendingSheetNotifyImmediately);
-
-    bool hasPendingSheets() const { return m_pendingStyleSheetCount > 0; }
+    void addPendingSheet(const Element&);
+    void removePendingSheet(const Element&);
+    void addPendingSheet(const ProcessingInstruction&);
+    void removePendingSheet(const ProcessingInstruction&);
+    bool hasPendingSheets() const;
+    bool hasPendingSheetsBeforeBody() const;
+    bool hasPendingSheetsInBody() const;
+    bool hasPendingSheet(const Element&) const;
+    bool hasPendingSheetInBody(const Element&) const;
+    bool hasPendingSheet(const ProcessingInstruction&) const;
 
     bool usesStyleBasedEditability() { return m_usesStyleBasedEditability; }
 
@@ -99,10 +112,15 @@ public:
     StyleResolver* resolverIfExists();
     void clearResolver();
 
+    const Document& document() const { return m_document; }
+
     static Scope& forNode(Node&);
+    static Scope* forOrdinal(Element&, ScopeOrdinal);
 
 private:
     bool shouldUseSharedUserAgentShadowTreeStyleResolver() const;
+
+    void didRemovePendingStylesheet();
 
     enum class UpdateType { ActiveSet, ContentsOrInterpretation };
     void updateActiveStyleSheets(UpdateType);
@@ -136,14 +154,15 @@ private:
 
     mutable std::unique_ptr<HashSet<const CSSStyleSheet*>> m_weakCopyOfActiveStyleSheetListForFastLookup;
 
-    // Track the number of currently loading top-level stylesheets needed for rendering.
+    // Track the currently loading top-level stylesheets needed for rendering.
     // Sheets loaded using the @import directive are not included in this count.
     // We use this count of pending sheets to detect when we can begin attaching
     // elements and when it is safe to execute scripts.
-    int m_pendingStyleSheetCount { 0 };
-    bool m_didUpdateActiveStyleSheets { false };
+    HashSet<const ProcessingInstruction*> m_processingInstructionsWithPendingSheets;
+    HashSet<const Element*> m_elementsInHeadWithPendingSheets;
+    HashSet<const Element*> m_elementsInBodyWithPendingSheets;
 
-    Optional<UpdateType> m_pendingUpdate;
+    std::optional<UpdateType> m_pendingUpdate;
     bool m_hasDescendantWithPendingUpdate { false };
 
     ListHashSet<Node*> m_styleSheetCandidateNodes;
@@ -152,7 +171,23 @@ private:
     String m_selectedStylesheetSetName;
 
     bool m_usesStyleBasedEditability { false };
+    bool m_isUpdatingStyleResolver { false };
 };
+
+inline bool Scope::hasPendingSheets() const
+{
+    return hasPendingSheetsBeforeBody() || !m_elementsInBodyWithPendingSheets.isEmpty();
+}
+
+inline bool Scope::hasPendingSheetsBeforeBody() const
+{
+    return !m_elementsInHeadWithPendingSheets.isEmpty() || !m_processingInstructionsWithPendingSheets.isEmpty();
+}
+
+inline bool Scope::hasPendingSheetsInBody() const
+{
+    return !m_elementsInBodyWithPendingSheets.isEmpty();
+}
 
 inline void Scope::flushPendingUpdate()
 {
@@ -160,6 +195,12 @@ inline void Scope::flushPendingUpdate()
         flushPendingDescendantUpdates();
     if (m_pendingUpdate)
         flushPendingSelfUpdate();
+}
+
+inline ScopeOrdinal& operator++(ScopeOrdinal& ordinal)
+{
+    ASSERT(ordinal < ScopeOrdinal::Shadow);
+    return ordinal = static_cast<ScopeOrdinal>(static_cast<int>(ordinal) + 1);
 }
 
 }

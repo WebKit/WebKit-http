@@ -23,11 +23,13 @@
  */
 
 [
+    ActiveDOMObject,
     Conditional=MEDIA_STREAM,
     Constructor,
     Constructor(MediaStream stream),
     Constructor(sequence<MediaStreamTrack> tracks),
     ConstructorCallWith=ScriptExecutionContext,
+    ExportToWrappedFunction,
     PrivateIdentifier,
     PublicIdentifier
 ] interface MediaStream : EventTarget {
@@ -46,8 +48,6 @@
 
     readonly attribute boolean active;
 
-    attribute EventHandler onactive;
-    attribute EventHandler oninactive;
     attribute EventHandler onaddtrack;
     attribute EventHandler onremovetrack;
 };

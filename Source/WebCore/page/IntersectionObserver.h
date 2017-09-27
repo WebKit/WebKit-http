@@ -29,7 +29,6 @@
 
 #include "IntersectionObserverCallback.h"
 #include "IntersectionObserverEntry.h"
-#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Variant.h>
 #include <wtf/text/WTFString.h>

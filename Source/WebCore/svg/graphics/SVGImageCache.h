@@ -21,7 +21,6 @@
 
 #include "FloatSize.h"
 #include "Image.h"
-#include "IntSize.h"
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 
@@ -34,6 +33,7 @@ class LayoutSize;
 class SVGImage;
 class SVGImageForContainer;
 class RenderObject;
+class URL;
 
 class SVGImageCache {
     WTF_MAKE_FAST_ALLOCATED;
@@ -43,7 +43,7 @@ public:
 
     void removeClientFromCache(const CachedImageClient*);
 
-    void setContainerSizeForRenderer(const CachedImageClient*, const LayoutSize&, float);
+    void setContainerContextForClient(const CachedImageClient&, const LayoutSize&, float, const URL&);
     FloatSize imageSizeForRenderer(const RenderObject*) const;
 
     Image* imageForRenderer(const RenderObject*) const;

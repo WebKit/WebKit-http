@@ -89,22 +89,24 @@ debug("Invalid transition-property values.");
 style.transitionProperty = "";
 
 style.transitionProperty = "solid, font-size";
-shouldBe("style.transitionProperty", "''");
-shouldBe("computedStyle.transitionProperty", "'all'");
-shouldBe("style.webkitTransitionProperty", "''");
-shouldBe("computedStyle.webkitTransitionProperty", "'all'");
+shouldBe("style.transitionProperty", "'solid, font-size'");
+shouldBe("computedStyle.transitionProperty", "'solid, font-size'");
+shouldBe("style.webkitTransitionProperty", "'solid, font-size'");
+shouldBe("computedStyle.webkitTransitionProperty", "'solid, font-size'");
 
 style.transitionProperty = "solid, left";
-shouldBe("style.transitionProperty", "''");
-shouldBe("computedStyle.transitionProperty", "'all'");
-shouldBe("style.webkitTransitionProperty", "''");
-shouldBe("computedStyle.webkitTransitionProperty", "'all'");
+shouldBe("style.transitionProperty", "'solid, left'");
+shouldBe("computedStyle.transitionProperty", "'solid, left'");
+shouldBe("style.webkitTransitionProperty", "'solid, left'");
+shouldBe("computedStyle.webkitTransitionProperty", "'solid, left'");
 
 style.transitionProperty = "solid";
-shouldBe("style.transitionProperty", "''");
-shouldBe("computedStyle.transitionProperty", "'all'");
-shouldBe("style.webkitTransitionProperty", "''");
-shouldBe("computedStyle.webkitTransitionProperty", "'all'");
+shouldBe("style.transitionProperty", "'solid'");
+shouldBe("computedStyle.transitionProperty", "'solid'");
+shouldBe("style.webkitTransitionProperty", "'solid'");
+shouldBe("computedStyle.webkitTransitionProperty", "'solid'");
+
+style.transitionProperty = '';
 
 style.transitionProperty = "20px";
 shouldBe("style.transitionProperty", "''");
@@ -665,10 +667,12 @@ shouldBe("style.webkitTransition", "''");
 shouldBe("computedStyle.webkitTransition", "'all 0s ease 0s'");
 
 style.transition = "widthFoo";
-shouldBe("style.transition", "''");
-shouldBe("computedStyle.transition", "'all 0s ease 0s'");
-shouldBe("style.webkitTransition", "''");
-shouldBe("computedStyle.webkitTransition", "'all 0s ease 0s'");
+shouldBe("style.transition", "'widthFoo'");
+shouldBe("computedStyle.transition", "'widthFoo 0s ease 0s'");
+shouldBe("style.webkitTransition", "'widthFoo'");
+shouldBe("computedStyle.webkitTransition", "'widthFoo 0s ease 0s'");
+
+style.transition = '';
 
 style.transition = "all 30s width ease-in";
 shouldBe("style.transition", "''");

@@ -35,7 +35,6 @@
 #include "WeakHandleOwner.h"
 #include <tuple>
 #include <wtf/HashMap.h>
-#include <wtf/ThreadingPrimitives.h>
 #include <wtf/text/StringHash.h>
 
 namespace JSC {
@@ -58,6 +57,7 @@ public:
     MacroAssemblerCodePtr ctiNativeTailCallWithoutSavedTags(VM*);    
 
     MacroAssemblerCodeRef ctiStub(VM*, ThunkGenerator);
+    MacroAssemblerCodeRef existingCTIStub(ThunkGenerator);
 
     NativeExecutable* hostFunctionStub(VM*, NativeFunction, NativeFunction constructor, const String& name);
     NativeExecutable* hostFunctionStub(VM*, NativeFunction, NativeFunction constructor, ThunkGenerator, Intrinsic, const DOMJIT::Signature*, const String& name);

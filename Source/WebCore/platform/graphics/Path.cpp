@@ -34,9 +34,9 @@
 #include "FloatRoundedRect.h"
 #include "PathTraversalState.h"
 #include "RoundedRect.h"
-#include "TextStream.h"
 #include <math.h>
 #include <wtf/MathExtras.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -81,7 +81,7 @@ void Path::addRoundedRect(const FloatRect& rect, const FloatSize& roundingRadii,
         return;
 
     FloatSize radius(roundingRadii);
-    FloatSize halfSize(rect.width() / 2, rect.height() / 2);
+    FloatSize halfSize = rect.size() / 2;
 
     // Apply the SVG corner radius constraints, per the rect section of the SVG shapes spec: if
     // one of rx,ry is negative, then the other corner radius value is used. If both values are

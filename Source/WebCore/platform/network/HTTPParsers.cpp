@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Torch Mobile Inc. http://www.torchmobile.com/
  * Copyright (C) 2009 Google Inc. All rights reserved.
  * Copyright (C) 2011 Apple Inc. All Rights Reserved.
@@ -35,6 +35,7 @@
 
 #include "HTTPHeaderNames.h"
 #include <wtf/DateMath.h>
+#include <wtf/Language.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
@@ -127,6 +128,47 @@ bool isValidHTTPHeaderValue(const String& value)
 }
 
 // See RFC 7230, Section 3.2.6.
+static bool isDelimiterCharacter(const UChar c)
+{
+    // DQUOTE and "(),/:;<=>?@[\]{}"
+    return (c == '"' || c == '(' || c == ')' || c == ',' || c == '/' || c == ':' || c == ';'
+        || c == '<' || c == '=' || c == '>' || c == '?' || c == '@' || c == '[' || c == '\\'
+        || c == ']' || c == '{' || c == '}');
+}
+
+// See RFC 7231, Section 5.3.2.
+bool isValidAcceptHeaderValue(const String& value)
+{
+    for (unsigned i = 0; i < value.length(); ++i) {
+        UChar c = value[i];
+        // First check for alphanumeric for performance reasons then whitelist four delimiter characters.
+        if (isASCIIAlphanumeric(c) || c == ',' || c == '/' || c == ';' || c == '=')
+            continue;
+        if (isDelimiterCharacter(c))
+            return false;
+    }
+    
+    return true;
+}
+
+// See RFC 7231, Section 5.3.5 and 3.1.3.2.
+bool isValidLanguageHeaderValue(const String& value)
+{
+    for (unsigned i = 0; i < value.length(); ++i) {
+        UChar c = value[i];
+        if (isASCIIAlphanumeric(c) || c == ' ' || c == '*' || c == ',' || c == '-' || c == '.' || c == ';' || c == '=')
+            continue;
+        return false;
+    }
+    
+    // FIXME: Validate further by splitting into language tags and optional quality
+    // values (q=) and then check each language tag.
+    // Language tags https://tools.ietf.org/html/rfc7231#section-3.1.3.1
+    // Language tag syntax https://tools.ietf.org/html/bcp47#section-2.1
+    return true;
+}
+
+// See RFC 7230, Section 3.2.6.
 bool isValidHTTPToken(const String& value)
 {
     if (value.isEmpty())
@@ -211,7 +253,7 @@ bool parseHTTPRefresh(const String& refresh, double& delay, String& url)
     }
 }
 
-Optional<std::chrono::system_clock::time_point> parseHTTPDate(const String& value)
+std::optional<std::chrono::system_clock::time_point> parseHTTPDate(const String& value)
 {
     double dateInMillisecondsSinceEpoch = parseDateFromNullTerminatedCharacters(value.utf8().data());
     if (!std::isfinite(dateInMillisecondsSinceEpoch))
@@ -342,14 +384,14 @@ void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, u
 
 XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& failureReason, unsigned& failurePosition, String& reportURL)
 {
-    static NeverDestroyed<String> failureReasonInvalidToggle(ASCIILiteral("expected 0 or 1"));
-    static NeverDestroyed<String> failureReasonInvalidSeparator(ASCIILiteral("expected semicolon"));
-    static NeverDestroyed<String> failureReasonInvalidEquals(ASCIILiteral("expected equals sign"));
-    static NeverDestroyed<String> failureReasonInvalidMode(ASCIILiteral("invalid mode directive"));
-    static NeverDestroyed<String> failureReasonInvalidReport(ASCIILiteral("invalid report directive"));
-    static NeverDestroyed<String> failureReasonDuplicateMode(ASCIILiteral("duplicate mode directive"));
-    static NeverDestroyed<String> failureReasonDuplicateReport(ASCIILiteral("duplicate report directive"));
-    static NeverDestroyed<String> failureReasonInvalidDirective(ASCIILiteral("unrecognized directive"));
+    static NeverDestroyed<String> failureReasonInvalidToggle(MAKE_STATIC_STRING_IMPL("expected 0 or 1"));
+    static NeverDestroyed<String> failureReasonInvalidSeparator(MAKE_STATIC_STRING_IMPL("expected semicolon"));
+    static NeverDestroyed<String> failureReasonInvalidEquals(MAKE_STATIC_STRING_IMPL("expected equals sign"));
+    static NeverDestroyed<String> failureReasonInvalidMode(MAKE_STATIC_STRING_IMPL("invalid mode directive"));
+    static NeverDestroyed<String> failureReasonInvalidReport(MAKE_STATIC_STRING_IMPL("invalid report directive"));
+    static NeverDestroyed<String> failureReasonDuplicateMode(MAKE_STATIC_STRING_IMPL("duplicate mode directive"));
+    static NeverDestroyed<String> failureReasonDuplicateReport(MAKE_STATIC_STRING_IMPL("duplicate report directive"));
+    static NeverDestroyed<String> failureReasonInvalidDirective(MAKE_STATIC_STRING_IMPL("unrecognized directive"));
 
     unsigned pos = 0;
 
@@ -429,21 +471,25 @@ XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& 
     }
 }
 
-#if ENABLE(NOSNIFF)
 ContentTypeOptionsDisposition parseContentTypeOptionsHeader(const String& header)
 {
     if (equalLettersIgnoringASCIICase(header.stripWhiteSpace(), "nosniff"))
         return ContentTypeOptionsNosniff;
     return ContentTypeOptionsNone;
 }
-#endif
 
+// For example: "HTTP/1.1 200 OK" => "OK".
+// Note that HTTP/2 does not include a reason phrase, so we return the empty atom.
 AtomicString extractReasonPhraseFromHTTPStatusLine(const String& statusLine)
 {
     StringView view = statusLine;
     size_t spacePos = view.find(' ');
+
     // Remove status code from the status line.
     spacePos = view.find(' ', spacePos + 1);
+    if (spacePos == notFound)
+        return emptyAtom();
+
     return view.substring(spacePos + 1).toAtomicString();
 }
 
@@ -732,7 +778,7 @@ void parseAccessControlExposeHeadersAllowList(const String& headerValue, HTTPHea
     }
 }
 
-// Implememtnation of https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name
+// Implementation of https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name
 bool isForbiddenHeaderName(const String& name)
 {
     HTTPHeaderName headerName;
@@ -776,18 +822,7 @@ bool isSimpleHeader(const String& name, const String& value)
     HTTPHeaderName headerName;
     if (!findHTTPHeaderName(name, headerName))
         return false;
-    switch (headerName) {
-    case HTTPHeaderName::Accept:
-    case HTTPHeaderName::AcceptLanguage:
-    case HTTPHeaderName::ContentLanguage:
-        return true;
-    case HTTPHeaderName::ContentType: {
-        String mimeType = extractMIMETypeFromMediaType(value);
-        return equalLettersIgnoringASCIICase(mimeType, "application/x-www-form-urlencoded") || equalLettersIgnoringASCIICase(mimeType, "multipart/form-data") || equalLettersIgnoringASCIICase(mimeType, "text/plain");
-    }
-    default:
-        return false;
-    }
+    return isCrossOriginSafeRequestHeader(headerName, value);
 }
 
 bool isCrossOriginSafeHeader(HTTPHeaderName name, const HTTPHeaderSet& accessControlExposeHeaderSet)
@@ -824,10 +859,12 @@ bool isCrossOriginSafeRequestHeader(HTTPHeaderName name, const String& value)
 {
     switch (name) {
     case HTTPHeaderName::Accept:
+        return isValidAcceptHeaderValue(value);
     case HTTPHeaderName::AcceptLanguage:
     case HTTPHeaderName::ContentLanguage:
-        return true;
+        return isValidLanguageHeaderValue(value);
     case HTTPHeaderName::ContentType: {
+        // Preflight is required for MIME types that can not be sent via form submission.
         String mimeType = extractMIMETypeFromMediaType(value);
         return equalLettersIgnoringASCIICase(mimeType, "application/x-www-form-urlencoded") || equalLettersIgnoringASCIICase(mimeType, "multipart/form-data") || equalLettersIgnoringASCIICase(mimeType, "text/plain");
     }

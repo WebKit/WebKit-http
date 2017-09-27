@@ -44,7 +44,9 @@ namespace JSC { namespace B3 {
 
 namespace {
 
-const bool verbose = false;
+namespace B3DuplicateTailsInternal {
+static const bool verbose = false;
+}
 
 class DuplicateTails {
 public:
@@ -68,7 +70,7 @@ public:
 
         m_proc.resetValueOwners();
 
-        IndexSet<BasicBlock> candidates;
+        IndexSet<BasicBlock*> candidates;
 
         for (BasicBlock* block : m_proc) {
             if (block->size() > m_maxSize)
@@ -82,7 +84,7 @@ public:
         }
 
         // Collect the set of values that must be de-SSA'd.
-        IndexSet<Value> valuesToDemote;
+        IndexSet<Value*> valuesToDemote;
         for (BasicBlock* block : m_proc) {
             for (Value* value : *block) {
                 if (value->opcode() == Phi && candidates.contains(block))
@@ -94,7 +96,7 @@ public:
             }
         }
         demoteValues(m_proc, valuesToDemote);
-        if (verbose) {
+        if (B3DuplicateTailsInternal::verbose) {
             dataLog("Procedure after value demotion:\n");
             dataLog(m_proc);
         }
@@ -116,7 +118,7 @@ public:
             // point.
             candidates.remove(block);
 
-            if (verbose)
+            if (B3DuplicateTailsInternal::verbose)
                 dataLog("Duplicating ", *tail, " into ", *block, "\n");
 
             block->removeLast(m_proc);

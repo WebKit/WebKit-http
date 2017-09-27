@@ -20,3 +20,29 @@ PASS: integer format specifier with string argument should attempt conversion to
 PASS: integer format specifier with Infinity argument should show "NaN"
 PASS: integer format specifier with NaN argument should show "NaN"
 
+-- Running test case: String.prototype.extendedLocaleCompare
+PASS: "1" < "2"
+PASS: "2" > "1"
+PASS: "2" < "10"
+PASS: "10" > "2"
+PASS: "1" < "10"
+PASS: "10" > "1"
+PASS: "a1" < "a2"
+PASS: "a2" > "a1"
+PASS: "a2" < "a10"
+PASS: "a10" > "a2"
+PASS: "a1" < "a10"
+PASS: "a10" > "a1"
+
+-- Running test case: String.prototype.get lineCount
+PASS: A string with two line breaks should have three lines.
+PASS: A string with two consecutive line breaks should have three lines.
+PASS: A string with a traling line breaks should have two lines.
+PASS: An empty string is one line.
+
+-- Running test case: String.prototype.get lastLine
+PASS: Last line of one line string is the same string.
+PASS: Last line of a three line string should be the third line.
+PASS: Last line of a string with a traling line break should be empty.
+PASS: Last line of an empty string is the same empty string.
+

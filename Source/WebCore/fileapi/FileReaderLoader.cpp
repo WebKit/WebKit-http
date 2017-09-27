@@ -61,7 +61,6 @@ FileReaderLoader::FileReaderLoader(ReadType readType, FileReaderLoaderClient* cl
     , m_variableLength(false)
     , m_bytesLoaded(0)
     , m_totalBytes(0)
-    , m_errorCode(0)
 {
 }
 
@@ -215,7 +214,7 @@ void FileReaderLoader::didReceiveData(const char* data, int dataLength)
         m_client->didReceiveData();
 }
 
-void FileReaderLoader::didFinishLoading(unsigned long, double)
+void FileReaderLoader::didFinishLoading(unsigned long)
 {
     if (m_variableLength && m_totalBytes > m_bytesLoaded) {
         RefPtr<ArrayBuffer> newData = m_rawData->slice(0, m_bytesLoaded);
@@ -237,7 +236,7 @@ void FileReaderLoader::didFail(const ResourceError& error)
     failed(toErrorCode(static_cast<BlobResourceHandle::Error>(error.errorCode())));
 }
 
-void FileReaderLoader::failed(int errorCode)
+void FileReaderLoader::failed(FileError::ErrorCode errorCode)
 {
     m_errorCode = errorCode;
     cleanup();

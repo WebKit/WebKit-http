@@ -26,11 +26,11 @@
 #import "config.h"
 #import "PlatformScreen.h"
 
-#import "CoreGraphicsSPI.h"
 #import "FloatRect.h"
 #import "FrameView.h"
 #import "HostWindow.h"
 #import <ColorSync/ColorSync.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
 
 extern "C" {
 bool CGDisplayUsesInvertedPolarity(void);
@@ -134,23 +134,23 @@ NSScreen *screen(PlatformDisplayID displayID)
     return firstScreen();
 }
 
+CGColorSpaceRef screenColorSpace(Widget* widget)
+{
+    return screen(widget).colorSpace.CGColorSpace;
+}
+
 bool screenSupportsExtendedColor(Widget* widget)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
-    UNUSED_PARAM(widget);
-    return false;
-#else
     if (!widget)
         return false;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     return [screen(widget) canRepresentDisplayGamut:NSDisplayGamutP3];
 #else
-    auto colorSpace = screen(widget).colorSpace.CGColorSpace;
+    auto colorSpace = screenColorSpace(widget);
     auto iccData = adoptCF(CGColorSpaceCopyICCProfile(colorSpace));
     auto profile = adoptCF(ColorSyncProfileCreate(iccData.get(), nullptr));
     return profile && ColorSyncProfileIsWideGamut(profile.get());
-#endif
 #endif
 }
 

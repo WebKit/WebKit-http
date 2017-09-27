@@ -23,12 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+typedef double TestTimeStamp;
+
 interface TestSerialization {
     attribute DOMString             firstStringAttribute;
     attribute long                  secondLongAttribute;
-    attribute TestNode              thirdUnserializableAttribute;
+    attribute TestException         thirdUnserializableAttribute;
     attribute unrestricted double   fourthUnrestrictedDoubleAttribute;
     attribute long                  fifthLongAttribute;
+    attribute TestTimeStamp         sixthTypedefAttribute;
+
+    attribute TestSerializationInheritFinal seventhDirectlySerializableAttribute;
+    attribute TestSerializationIndirectInheritance eighthIndirectlyAttribute;
 
     serializer = { attribute };
 };

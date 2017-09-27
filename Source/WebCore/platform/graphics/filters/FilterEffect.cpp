@@ -26,10 +26,10 @@
 
 #include "Filter.h"
 #include "ImageBuffer.h"
-#include "TextStream.h"
 #include <runtime/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/Uint8ClampedArray.h>
+#include <wtf/text/TextStream.h>
 
 #if HAVE(ARM_NEON_INTRINSICS)
 #include <arm_neon.h>
@@ -232,24 +232,24 @@ ImageBuffer* FilterEffect::asImageBuffer()
     return m_imageBufferResult.get();
 }
 
-PassRefPtr<Uint8ClampedArray> FilterEffect::asUnmultipliedImage(const IntRect& rect)
+RefPtr<Uint8ClampedArray> FilterEffect::asUnmultipliedImage(const IntRect& rect)
 {
     IntSize scaledSize(rect.size());
     ASSERT(!ImageBuffer::sizeNeedsClamping(scaledSize));
     scaledSize.scale(m_filter.filterScale());
     auto imageData = Uint8ClampedArray::createUninitialized((scaledSize.area() * 4).unsafeGet());
     copyUnmultipliedImage(imageData.get(), rect);
-    return WTFMove(imageData);
+    return imageData;
 }
 
-PassRefPtr<Uint8ClampedArray> FilterEffect::asPremultipliedImage(const IntRect& rect)
+RefPtr<Uint8ClampedArray> FilterEffect::asPremultipliedImage(const IntRect& rect)
 {
     IntSize scaledSize(rect.size());
     ASSERT(!ImageBuffer::sizeNeedsClamping(scaledSize));
     scaledSize.scale(m_filter.filterScale());
     auto imageData = Uint8ClampedArray::createUninitialized((scaledSize.area() * 4).unsafeGet());
     copyPremultipliedImage(imageData.get(), rect);
-    return WTFMove(imageData);
+    return imageData;
 }
 
 inline void FilterEffect::copyImageBytes(Uint8ClampedArray* source, Uint8ClampedArray* destination, const IntRect& rect)

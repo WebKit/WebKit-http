@@ -14,20 +14,20 @@ set(TestWebKitAPI_LIBRARIES
     WTF${DEBUG_SUFFIX}
 )
 
-if (ENABLE_WEBKIT2)
-    set(test_webkit2_api_LIBRARIES
+if (ENABLE_WEBKIT)
+    set(test_webkit_api_LIBRARIES
         JavaScriptCore
         TestWebKitAPIBase
         WTF
-        WebKit2
+        WebKit
         gtest
     )
     list(APPEND TestWebKitAPI_LIBRARIES
-        WebKit2
+        WebKit
     )
 else ()
     list(APPEND TestWebKitAPI_LIBRARIES
-        WebKit${DEBUG_SUFFIX}
+        WebKitLegacy${DEBUG_SUFFIX}
     )
 endif ()
 
@@ -42,29 +42,34 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/AtomicString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/BloomFilter.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WTF/Consume.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WTF/CrossThreadTask.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CheckedArithmeticOperations.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Condition.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/CrossThreadTask.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/DateMath.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/EnumTraits.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Expected.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Function.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashCountedSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/IntegerToStringConversion.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/LEBDecoder.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/LifecycleLogger.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/ListHashSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Lock.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Logger.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MD5.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MathExtras.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MediaTime.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/MetaAllocator.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/NakedPtr.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/NeverDestroyed.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Optional.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/OptionSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/ParkingLot.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/PriorityQueue.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/RedBlackTree.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Ref.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/RefCounter.cpp
@@ -74,12 +79,17 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/SaturatedArithmeticOperations.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Scope.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/ScopedLambda.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/SetForScope.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringBuilder.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/StringConcatenate.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringHasher.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringImpl.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringOperators.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringView.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WTF/TemporaryChange.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/SynchronizedFixedQueue.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/TextBreakIterator.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/ThreadGroup.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/ThreadMessages.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Time.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/UniqueRef.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Variant.cpp
@@ -98,73 +108,61 @@ include_directories(
     ${TESTWEBKITAPI_DIR}
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
-    ${DERIVED_SOURCES_WEBCORE_DIR}
     ${JAVASCRIPTCORE_DIR}
-    ${JAVASCRIPTCORE_DIR}/API
-    ${JAVASCRIPTCORE_DIR}/ForwardingHeaders
+    ${PAL_DIR}
     ${THIRDPARTY_DIR}/gtest/include
-    ${WEBCORE_DIR}/css
-    ${WEBCORE_DIR}/css/parser
-    ${WEBCORE_DIR}/dom
-    ${WEBCORE_DIR}/editing
-    ${WEBCORE_DIR}/loader/cache
-    ${WEBCORE_DIR}/page
-    ${WEBCORE_DIR}/platform
-    ${WEBCORE_DIR}/platform/animation
-    ${WEBCORE_DIR}/platform/graphics
-    ${WEBCORE_DIR}/platform/text
-    ${WEBCORE_DIR}/platform/network
-    ${WEBCORE_DIR}/platform/network/soup
-    ${WEBCORE_DIR}/rendering/style
-    ${WEBKIT2_DIR}/Platform/IPC
-    ${WEBKIT2_DIR}/Shared
-    ${WEBKIT2_DIR}/Shared/API
-    ${WEBKIT2_DIR}/Shared/API/c
-    ${WEBKIT2_DIR}/Shared/Plugins
-    ${WEBKIT2_DIR}/UIProcess
-    ${WEBKIT2_DIR}/UIProcess/API
-    ${WEBKIT2_DIR}/WebProcess/InjectedBundle
-    ${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/c
-    ${WTF_DIR}
+    ${WEBKIT_DIR}/Platform/IPC
+    ${WEBKIT_DIR}/Shared
+    ${WEBKIT_DIR}/Shared/API
+    ${WEBKIT_DIR}/Shared/API/c
+    ${WEBKIT_DIR}/Shared/Plugins
+    ${WEBKIT_DIR}/UIProcess
+    ${WEBKIT_DIR}/UIProcess/API
+    ${WEBKIT_DIR}/WebProcess/InjectedBundle
+    ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/c
 )
 
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     add_library(TestWebKitAPIInjectedBundle SHARED
         ${bundle_harness_SOURCES}
         ${TESTWEBKITAPI_DIR}/InjectedBundleController.cpp
         ${TESTWEBKITAPI_DIR}/InjectedBundleMain.cpp
         ${TESTWEBKITAPI_DIR}/PlatformUtilities.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/CanHandleRequest_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DidAssociateFormControls_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionBasic_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionNoCache_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DocumentStartUserScriptAlertCrash_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/GetInjectedBundleInitializationUserDataCallback_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/HitTestResultNodeHandle_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/InjectedBundleBasic_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/InjectedBundleFrameHitTest_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/InjectedBundleInitializationUserDataCallbackWins_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/LoadCanceledNoServerRedirectCallback_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/MouseMoveAfterCrash_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFails_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutForImages_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFrames_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayout_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ParentFrame_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ProvisionalURLAfterWillSendRequestCallback_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ResponsivenessTimerDoesntFireEarly_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ShouldGoToBackForwardListItem_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/TextFieldDidBeginAndEndEditing_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/UserMessage_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WillLoad_Bundle.cpp
-        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WillSendSubmitEvent_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/CanHandleRequest_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DidAssociateFormControls_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DOMWindowExtensionBasic_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DOMWindowExtensionNoCache_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DocumentStartUserScriptAlertCrash_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/GetInjectedBundleInitializationUserDataCallback_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/HitTestResultNodeHandle_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleBasic_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleFrameHitTest_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleInitializationUserDataCallbackWins_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/LoadCanceledNoServerRedirectCallback_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/MouseMoveAfterCrash_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFails_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutForImages_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFrames_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayout_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ParentFrame_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ProvisionalURLAfterWillSendRequestCallback_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ResponsivenessTimerDoesntFireEarly_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ShouldGoToBackForwardListItem_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/TextFieldDidBeginAndEndEditing_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/UserMessage_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WillLoad_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WillSendSubmitEvent_Bundle.cpp
     )
 
     target_link_libraries(TestWebKitAPIInjectedBundle ${TestWebKitAPI_LIBRARIES})
     add_dependencies(TestWebKitAPIInjectedBundle WTF ${ForwardingHeadersForTestWebKitAPI_NAME})
 
-    get_property(TestWebKitAPIInjectedBundle_PATH TARGET TestWebKitAPIInjectedBundle PROPERTY LOCATION)
+    if (COMPILER_IS_GCC_OR_CLANG)
+        WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebKitAPIInjectedBundle -Wno-dangling-else
+                                                                -Wno-sign-compare
+                                                                -Wno-undef
+                                                                -Wno-unused-parameter)
+    endif ()
 endif ()
 
 if (WIN32)
@@ -174,8 +172,7 @@ else ()
 endif ()
 
 add_definitions(-DGTEST_HAS_RTTI=0
-    -DTEST_WEBKIT2_RESOURCES_DIR=\"${TESTWEBKITAPI_DIR}/Tests/WebKit2\"
-    -DTEST_INJECTED_BUNDLE_PATH=\"${TestWebKitAPIInjectedBundle_PATH}\"
+    -DTEST_WEBKIT2_RESOURCES_DIR=\"${TESTWEBKITAPI_DIR}/Tests/WebKit\"
 )
 
 # FIXME: This works around compatibility problems in the old version of the third-pary
@@ -201,47 +198,35 @@ set_target_properties(TestWTF PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF}
 )
 
-# FIXME: EFL is the only port that separates the WebCore binaries. Each port ought to do closer to the same thing.
-foreach (testName ${test_webcore_BINARIES})
-    add_executable(${testName} ${test_main_SOURCES} ${TESTWEBKITAPI_DIR}/TestsController.cpp ${TESTWEBKITAPI_DIR}/Tests/WebCore/${testName}.cpp)
-    add_test(${testName} ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore/${testName})
-    set_tests_properties(${testName} PROPERTIES TIMEOUT 60)
-    target_link_libraries(${testName} ${test_webcore_LIBRARIES})
-    set_target_properties(${testName} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore
-    )
-endforeach ()
+if (COMPILER_IS_GCC_OR_CLANG)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(TestWTF -Wno-dangling-else
+                                        -Wno-sign-compare
+                                        -Wno-undef
+                                        -Wno-unused-parameter)
+endif ()
 
-if (ENABLE_WEBKIT2)
+# FIXME: This works around compatibility problems in the old version of the third-pary
+# googletest source code checkout. It should be removed once we upgrade to a newer version.
+if (COMPILER_IS_CLANG)
+    add_definitions(-DGTEST_HAS_TR1_TUPLE=0)
+endif ()
+
+if (ENABLE_WEBKIT)
     add_library(TestWebKitAPIBase
         ${test_main_SOURCES}
-        ${webkit2_api_harness_SOURCES}
+        ${webkit_api_harness_SOURCES}
         ${TESTWEBKITAPI_DIR}/JavaScriptTest.cpp
         ${TESTWEBKITAPI_DIR}/PlatformUtilities.cpp
         ${TESTWEBKITAPI_DIR}/TestsController.cpp
     )
 
-    add_dependencies(TestWebKitAPIBase WebKit2 ${ForwardingHeadersForTestWebKitAPI_NAME} ${ForwardingNetworkHeadersForTestWebKitAPI_NAME})
+    target_link_libraries(TestWebKitAPIBase JavaScriptCore WTF WebKit gtest)
 
-    foreach (testName ${test_webkit2_api_BINARIES})
-        get_filename_component(testBaseName ${testName} NAME)
-        add_executable(${testBaseName} ${TESTWEBKITAPI_DIR}/Tests/WebKit2/${testName}.cpp)
-        add_test(${testBaseName} ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/${testBaseName})
-        set_tests_properties(${testBaseName} PROPERTIES TIMEOUT 60)
-        target_link_libraries(${testBaseName} ${test_webkit2_api_LIBRARIES})
-        set_target_properties(${testBaseName} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2
-        )
-    endforeach ()
+    add_dependencies(TestWebKitAPIBase WebKit ${ForwardingHeadersForTestWebKitAPI_NAME} ${ForwardingNetworkHeadersForTestWebKitAPI_NAME})
 
-    # We don't run tests that are expected to fail. We could use the WILL_FAIL
-    # property, but it reports failure when the test crashes or timeouts and would
-    # make the bot red.
-    foreach (testName ${test_webkit2_api_fail_BINARIES})
-        add_executable(${testName} ${TESTWEBKITAPI_DIR}/Tests/WebKit2/${testName}.cpp)
-        target_link_libraries(${testName} ${test_webkit2_api_LIBRARIES})
-        set_target_properties(${testName} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/failure
-        )
-    endforeach ()
+    if (COMPILER_IS_GCC_OR_CLANG)
+        WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebKitAPIBase -Wno-sign-compare
+                                                      -Wno-undef
+                                                      -Wno-unused-parameter)
+    endif ()
 endif ()

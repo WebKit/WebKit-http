@@ -25,8 +25,8 @@
 
 #pragma once
 
+#include "CollectionScope.h"
 #include "TypeofType.h"
-#include "WriteBarrier.h"
 #include <wtf/Noncopyable.h>
 
 #define JSC_COMMON_STRINGS_EACH_NAME(macro) \
@@ -71,7 +71,7 @@ public:
         return m_singleCharacterStrings[character];
     }
 
-    JS_EXPORT_PRIVATE WTF::StringImpl* singleCharacterStringRep(unsigned char character);
+    JS_EXPORT_PRIVATE WTF::StringImpl& singleCharacterStringRep(unsigned char character);
 
     JSString** singleCharacterStrings() { return &m_singleCharacterStrings[0]; }
 

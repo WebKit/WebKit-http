@@ -1,0 +1,42 @@
+The tests in this directory were imported from the W3C repository.
+Do NOT modify these tests directly in WebKit.
+Instead, create a pull request on the WPT github:
+	https://github.com/w3c/web-platform-tests
+
+Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
+
+Do NOT modify or remove this file.
+
+------------------------------------------------------------------------
+Properties requiring vendor prefixes:
+None
+Property values requiring vendor prefixes:
+None
+------------------------------------------------------------------------
+List of files:
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/OWNERS
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/algorithms-manual.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/change-shipping-option-manual.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/historical.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/interfaces.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-canmakepayment-method.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-constructor-crash.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-constructor.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-ctor-currency-code-checks.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-ctor-pmi-handling.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-id-attribute.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-onshippingaddresschange-attribute.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-onshippingoptionchange-attribute.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-response-id.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-shippingAddress-attribute.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-shippingOption-attribute.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-shippingType-attribute.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-update-event-constructor.http.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-update-event-constructor.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/payment-request-update-event-updatewith-method.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/shipping-address-changed-manual.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-manual.https.html
+/LayoutTests/imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html

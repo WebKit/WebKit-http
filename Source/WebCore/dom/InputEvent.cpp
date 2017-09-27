@@ -28,10 +28,7 @@
 
 #include "DOMWindow.h"
 #include "DataTransfer.h"
-#include "EventNames.h"
 #include "Node.h"
-#include "NotImplemented.h"
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {

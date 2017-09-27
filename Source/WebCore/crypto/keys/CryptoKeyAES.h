@@ -27,6 +27,7 @@
 
 #include "CryptoAlgorithmIdentifier.h"
 #include "CryptoKey.h"
+#include "ExceptionOr.h"
 #include <wtf/Function.h>
 #include <wtf/Vector.h>
 
@@ -34,23 +35,9 @@
 
 namespace WebCore {
 
+class CryptoAlgorithmParameters;
+
 struct JsonWebKey;
-
-class AesKeyAlgorithm final : public KeyAlgorithm {
-public:
-    AesKeyAlgorithm(const String& name, size_t length)
-        : KeyAlgorithm(name)
-        , m_length(length)
-    {
-    }
-
-    KeyAlgorithmClass keyAlgorithmClass() const final { return KeyAlgorithmClass::AES; }
-
-    size_t length() const { return m_length; }
-
-private:
-    size_t m_length;
-};
 
 class CryptoKeyAES final : public CryptoKey {
 public:
@@ -68,19 +55,21 @@ public:
 
     static RefPtr<CryptoKeyAES> generate(CryptoAlgorithmIdentifier, size_t lengthBits, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyAES> importRaw(CryptoAlgorithmIdentifier, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
-    using CheckAlgCallback = WTF::Function<bool(size_t, const Optional<String>&)>;
+    using CheckAlgCallback = Function<bool(size_t, const String&)>;
     static RefPtr<CryptoKeyAES> importJwk(CryptoAlgorithmIdentifier, JsonWebKey&&, bool extractable, CryptoKeyUsageBitmap, CheckAlgCallback&&);
 
     CryptoKeyClass keyClass() const final { return CryptoKeyClass::AES; }
 
     const Vector<uint8_t>& key() const { return m_key; }
+    JsonWebKey exportJwk() const;
+
+    static ExceptionOr<size_t> getKeyLength(const CryptoAlgorithmParameters&);
 
 private:
     CryptoKeyAES(CryptoAlgorithmIdentifier, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsageBitmap);
     CryptoKeyAES(CryptoAlgorithmIdentifier, Vector<uint8_t>&& key, bool extractable, CryptoKeyUsageBitmap);
 
-    std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
-    std::unique_ptr<CryptoKeyData> exportData() const final;
+    KeyAlgorithm algorithm() const final;
 
     Vector<uint8_t> m_key;
 };
@@ -88,7 +77,5 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(CryptoKeyAES, CryptoKeyClass::AES)
-
-SPECIALIZE_TYPE_TRAITS_KEY_ALGORITHM(AesKeyAlgorithm, KeyAlgorithmClass::AES)
 
 #endif // ENABLE(SUBTLE_CRYPTO)

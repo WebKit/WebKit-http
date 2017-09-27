@@ -14,16 +14,19 @@
       location = "group:Source/ThirdParty/ANGLE/ANGLE.xcodeproj">
    </FileRef>
    <FileRef
+      location = "group:Source/ThirdParty/libwebrtc/libwebrtc.xcodeproj">
+   </FileRef>
+   <FileRef
       location = "group:Source/WebCore/WebCore.xcodeproj">
    </FileRef>
    <FileRef
       location = "group:Source/WebInspectorUI/WebInspectorUI.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:Source/WebKit/WebKit.xcodeproj">
+      location = "group:Source/WebKitLegacy/WebKitLegacy.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:Source/WebKit2/WebKit2.xcodeproj">
+      location = "group:Source/WebKit/WebKit.xcodeproj">
    </FileRef>
    <FileRef
       location = "group:Source/ThirdParty/gtest/xcode/gtest.xcodeproj">

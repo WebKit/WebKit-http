@@ -32,8 +32,8 @@ namespace WebCore {
 
 class PlatformCALayerWin final : public PlatformCALayer {
 public:
-    static PassRefPtr<PlatformCALayer> create(LayerType, PlatformCALayerClient*);
-    static PassRefPtr<PlatformCALayer> create(PlatformLayer*, PlatformCALayerClient*);
+    static Ref<PlatformCALayer> create(LayerType, PlatformCALayerClient*);
+    static Ref<PlatformCALayer> create(PlatformLayer*, PlatformCALayerClient*);
     
     ~PlatformCALayerWin();
 
@@ -54,7 +54,7 @@ public:
 
     void addAnimationForKey(const String& key, PlatformCAAnimation&) override;
     void removeAnimationForKey(const String& key) override;
-    PassRefPtr<PlatformCAAnimation> animationForKey(const String& key) override;
+    RefPtr<PlatformCAAnimation> animationForKey(const String& key) override;
     void animationStarted(const String& key, CFTimeInterval beginTime) override;
     void animationEnded(const String& key) override;
 
@@ -101,6 +101,12 @@ public:
 
     bool acceleratesDrawing() const override;
     void setAcceleratesDrawing(bool) override;
+
+    bool wantsDeepColorBackingStore() const override;
+    void setWantsDeepColorBackingStore(bool) override;
+
+    bool supportsSubpixelAntialiasedText() const override;
+    void setSupportsSubpixelAntialiasedText(bool) override;
 
     CFTypeRef contents() const override;
     void setContents(CFTypeRef) override;
@@ -155,13 +161,13 @@ public:
     PlatformCALayer* rootLayer() const override;
     void setNeedsLayout() override;
     void setNeedsCommit() override;
-    void drawTextAtPoint(CGContextRef, CGFloat x, CGFloat y, CGSize scale, CGFloat fontSize, const char* text, size_t length) const override;
+    void drawTextAtPoint(CGContextRef, CGFloat x, CGFloat y, CGSize scale, CGFloat fontSize, const char* text, size_t length, CGFloat strokeWidth, Color strokeColor) const override;
 
     String layerTreeAsString() const override;
 
-    PassRefPtr<PlatformCALayer> clone(PlatformCALayerClient* owner) const override;
+    Ref<PlatformCALayer> clone(PlatformCALayerClient* owner) const override;
 
-    PassRefPtr<PlatformCALayer> createCompatibleLayer(PlatformCALayer::LayerType, PlatformCALayerClient*) const override;
+    Ref<PlatformCALayer> createCompatibleLayer(PlatformCALayer::LayerType, PlatformCALayerClient*) const override;
 
 private:
     PlatformCALayerWin(LayerType, PlatformLayer*, PlatformCALayerClient* owner);

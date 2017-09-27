@@ -227,6 +227,9 @@ Vector<String> PageOverlay::copyAccessibilityAttributeNames(bool parameterizedNa
 
 void PageOverlay::startFadeInAnimation()
 {
+    if (m_fadeAnimationType == FadeInAnimation && m_fadeAnimationTimer.isActive())
+        return;
+
     m_fractionFadedIn = 0;
     m_fadeAnimationType = FadeInAnimation;
 
@@ -235,6 +238,9 @@ void PageOverlay::startFadeInAnimation()
 
 void PageOverlay::startFadeOutAnimation()
 {
+    if (m_fadeAnimationType == FadeOutAnimation && m_fadeAnimationTimer.isActive())
+        return;
+
     m_fractionFadedIn = 1;
     m_fadeAnimationType = FadeOutAnimation;
 
@@ -250,7 +256,7 @@ void PageOverlay::stopFadeOutAnimation()
 void PageOverlay::startFadeAnimation()
 {
     m_fadeAnimationStartTime = currentTime();
-    m_fadeAnimationTimer.startRepeating(1 / fadeAnimationFrameRate);
+    m_fadeAnimationTimer.startRepeating(1_s / fadeAnimationFrameRate);
 }
 
 void PageOverlay::fadeAnimationTimerFired()
@@ -274,7 +280,7 @@ void PageOverlay::fadeAnimationTimerFired()
 
         // If this was a fade out, uninstall the page overlay.
         if (wasFadingOut)
-            controller()->uninstallPageOverlay(this, PageOverlay::FadeMode::DoNotFade);
+            controller()->uninstallPageOverlay(*this, PageOverlay::FadeMode::DoNotFade);
     }
 }
 

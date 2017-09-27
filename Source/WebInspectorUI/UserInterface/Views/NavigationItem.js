@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.NavigationItem = class NavigationItem extends WebInspector.Object
+WI.NavigationItem = class NavigationItem extends WI.Object
 {
     constructor(identifier, role, label)
     {
@@ -33,6 +33,9 @@ WebInspector.NavigationItem = class NavigationItem extends WebInspector.Object
 
         this._element = document.createElement("div");
         this._hidden = false;
+        this._parentNavigationBar = null;
+        this._visibilityPriority = WI.NavigationItem.VisibilityPriority.Normal;
+        this._cachedWidth = NaN;
 
         if (role)
             this._element.setAttribute("role", role);
@@ -45,29 +48,26 @@ WebInspector.NavigationItem = class NavigationItem extends WebInspector.Object
 
     // Public
 
-    get identifier()
+    get identifier() { return this._identifier; }
+    get element() { return this._element; }
+    get minimumWidth() { return this.width; }
+    get parentNavigationBar() { return this._parentNavigationBar; }
+
+    get width()
     {
-        return this._identifier;
+        if (isNaN(this._cachedWidth))
+            this._cachedWidth = this._element.realOffsetWidth;
+        return this._cachedWidth;
     }
 
-    get element()
-    {
-        return this._element;
-    }
-
-    get parentNavigationBar()
-    {
-        return this._parentNavigationBar;
-    }
-
-    get minimumWidth()
-    {
-        return this._element.realOffsetWidth;
-    }
+    get visibilityPriority() { return this._visibilityPriority; }
+    set visibilityPriority(priority) { this._visibilityPriority = priority; }
 
     updateLayout(expandOnly)
     {
         // Implemented by subclasses.
+
+        this._cachedWidth = NaN;
     }
 
     get hidden()
@@ -88,6 +88,20 @@ WebInspector.NavigationItem = class NavigationItem extends WebInspector.Object
             this._parentNavigationBar.needsLayout();
     }
 
+    // Protected
+
+    didAttach(navigationBar)
+    {
+        console.assert(navigationBar instanceof WI.NavigationBar);
+        this._parentNavigationBar = navigationBar;
+    }
+
+    didDetach()
+    {
+        this._cachedWidth = NaN;
+        this._parentNavigationBar = null;
+    }
+
     // Private
 
     get _classNames()
@@ -99,4 +113,10 @@ WebInspector.NavigationItem = class NavigationItem extends WebInspector.Object
             classNames = classNames.concat(this.additionalClassNames);
         return classNames;
     }
+};
+
+WI.NavigationItem.VisibilityPriority = {
+    Low: -100,
+    Normal: 0,
+    High: 100,
 };

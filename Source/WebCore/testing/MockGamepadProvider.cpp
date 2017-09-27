@@ -31,6 +31,7 @@
 #include "GamepadProviderClient.h"
 #include "MockGamepad.h"
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -132,6 +133,7 @@ bool MockGamepadProvider::setMockGamepadButtonValue(unsigned index, unsigned but
     }
 
     m_mockGamepadVector[index]->setButtonValue(buttonIndex, value);
+    setShouldMakeGamepadsVisibile();
     gamepadInputActivity();
     return true;
 }
@@ -143,8 +145,7 @@ void MockGamepadProvider::gamepadInputActivity()
 
     m_shouldScheduleActivityCallback = false;
     callOnMainThread([this]() {
-        for (auto& client : m_clients)
-            client->platformGamepadInputActivity();
+        dispatchPlatformGamepadInputActivity();
 
         m_shouldScheduleActivityCallback = true;
     });

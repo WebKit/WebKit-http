@@ -35,13 +35,14 @@ function isPromise(promise)
 }
 
 @globalPrivate
-function newPromiseReaction(capability, handler)
+function newPromiseReaction(capability, onFulfilled, onRejected)
 {
     "use strict";
 
     return {
         @capabilities: capability,
-        @handler: handler
+        @onFulfilled: onFulfilled,
+        @onRejected: onRejected,
     };
 }
 
@@ -59,7 +60,7 @@ function newPromiseCapability(constructor)
         @reject: @undefined
     };
 
-    function executor(resolve, reject)
+    function @executor(resolve, reject)
     {
         if (promiseCapability.@resolve !== @undefined)
             @throwTypeError("resolve function is already set");
@@ -70,7 +71,7 @@ function newPromiseCapability(constructor)
         promiseCapability.@reject = reject;
     }
 
-    var promise = new constructor(executor);
+    var promise = new constructor(@executor);
 
     if (typeof promiseCapability.@resolve !== "function")
         @throwTypeError("executor did not take a resolve function");
@@ -84,12 +85,20 @@ function newPromiseCapability(constructor)
 }
 
 @globalPrivate
-function triggerPromiseReactions(reactions, argument)
+function newHandledRejectedPromise(error)
+{
+    let promise = @Promise.@reject(error);
+    promise.@promiseIsHandled = true;
+    return promise;
+}
+
+@globalPrivate
+function triggerPromiseReactions(state, reactions, argument)
 {
     "use strict";
 
     for (var index = 0, length = reactions.length; index < length; ++index)
-        @enqueueJob(@promiseReactionJob, [reactions[index], argument]);
+        @enqueueJob(@promiseReactionJob, [state, reactions[index], argument]);
 }
 
 @globalPrivate
@@ -97,15 +106,17 @@ function rejectPromise(promise, reason)
 {
     "use strict";
 
-    var reactions = promise.@promiseRejectReactions;
+    var reactions = promise.@promiseReactions;
     promise.@promiseResult = reason;
-    promise.@promiseFulfillReactions = @undefined;
-    promise.@promiseRejectReactions = @undefined;
+    promise.@promiseReactions = @undefined;
     promise.@promiseState = @promiseStateRejected;
 
     @InspectorInstrumentation.promiseRejected(promise, reason, reactions);
 
-    @triggerPromiseReactions(reactions, reason);
+    if (!promise.@promiseIsHandled)
+        @hostPromiseRejectionTracker(promise, @promiseRejectionReject);
+
+    @triggerPromiseReactions(@promiseStateRejected, reactions, reason);
 }
 
 @globalPrivate
@@ -113,15 +124,14 @@ function fulfillPromise(promise, value)
 {
     "use strict";
 
-    var reactions = promise.@promiseFulfillReactions;
+    var reactions = promise.@promiseReactions;
     promise.@promiseResult = value;
-    promise.@promiseFulfillReactions = @undefined;
-    promise.@promiseRejectReactions = @undefined;
+    promise.@promiseReactions = @undefined;
     promise.@promiseState = @promiseStateFulfilled;
 
     @InspectorInstrumentation.promiseFulfilled(promise, value, reactions);
 
-    @triggerPromiseReactions(reactions, value);
+    @triggerPromiseReactions(@promiseStateFulfilled, reactions, value);
 }
 
 @globalPrivate
@@ -131,7 +141,7 @@ function createResolvingFunctions(promise)
 
     var alreadyResolved = false;
 
-    var resolve = function (resolution) {
+    function @resolve(resolution) {
         if (alreadyResolved)
             return @undefined;
         alreadyResolved = true;
@@ -155,32 +165,30 @@ function createResolvingFunctions(promise)
         @enqueueJob(@promiseResolveThenableJob, [promise, resolution, then]);
 
         return @undefined;
-    };
+    }
 
-    var reject = function (reason) {
+    function @reject(reason) {
         if (alreadyResolved)
             return @undefined;
         alreadyResolved = true;
 
         return @rejectPromise(promise, reason);
-    };
+    }
 
-    return {
-        @resolve: resolve,
-        @reject: reject
-    };
+    return { @resolve, @reject };
 }
 
 @globalPrivate
-function promiseReactionJob(reaction, argument)
+function promiseReactionJob(state, reaction, argument)
 {
     "use strict";
 
     var promiseCapability = reaction.@capabilities;
 
     var result;
+    var handler = (state === @promiseStateFulfilled) ? reaction.@onFulfilled: reaction.@onRejected;
     try {
-        result = reaction.@handler.@call(@undefined, argument);
+        result = handler(argument);
     } catch (error) {
         return promiseCapability.@reject.@call(@undefined, error);
     }
@@ -211,8 +219,8 @@ function initializePromise(executor)
         @throwTypeError("Promise constructor takes a function argument");
 
     this.@promiseState = @promiseStatePending;
-    this.@promiseFulfillReactions = [];
-    this.@promiseRejectReactions = [];
+    this.@promiseReactions = [];
+    this.@promiseIsHandled = false;
 
     var resolvingFunctions = @createResolvingFunctions(this);
     try {

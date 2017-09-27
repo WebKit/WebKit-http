@@ -108,6 +108,7 @@ $tarball = false
 $tarFileName = "payload.tar.gz"
 $copyVM = false
 $testRunnerType = nil
+$testWriter = "default"
 $remoteUser = nil
 $remoteHost = nil
 $remotePort = nil
@@ -116,9 +117,9 @@ $architecture = nil
 $hostOS = nil
 $filter = nil
 $envVars = []
-$quickMode = false
+$mode = "full"
 $buildType = "release"
-
+$forceCollectContinuously = false
 
 def usage
     puts "run-jsc-stress-tests -j <shell path> <collections path> [<collections path> ...]"
@@ -127,8 +128,10 @@ def usage
     puts "--no-copy                   Do not copy the JavaScriptCore build product before testing."
     puts "                            --jsc specifies an already present JavaScriptCore to test."
     puts "--memory-limited            Indicate that we are targeting the test for a memory limited device."
-    puts "                            Skip tests tagged with //@largeHeap"
+    puts "                            Skip tests tagged with //@skip if $memoryLimited"
     puts "--no-jit                    Do not run JIT specific tests."
+    puts "--force-collectContinuously Enable the collectContinuously mode even if disabled on this"
+    puts "                            platform."
     puts "--output-dir         (-o)   Path where to put results. Default is #{$outputDir}."
     puts "--verbose            (-v)   Print more things while running."
     puts "--run-bundle                Runs a bundle previously created by run-jsc-stress-tests."
@@ -140,6 +143,10 @@ def usage
     puts "--shell-runner              Uses the shell-based test runner instead of the default make-based runner."
     puts "                            In general the shell runner is slower than the make runner."
     puts "--make-runner               Uses the faster make-based runner."
+    puts "--ruby-runner               Uses the ruby runner for machines without unix shell or make."
+    puts "--test-writer [writer]      Specifies the test script format."
+    puts "                            default is to use shell scripts to run the tests"
+    puts "                            \"ruby\" to use ruby scripts for systems without a unix shell."
     puts "--remote                    Specify a remote host on which to run tests from command line argument."
     puts "--remote-config-file        Specify a remote host on which to run tests from JSON file."
     puts "--child-processes    (-c)   Specify the number of child processes."
@@ -150,6 +157,10 @@ def usage
     puts "                            e.g. \"foo=bar x=y\" (no quotes). Note, if you pass DYLD_FRAMEWORK_PATH"
     puts "                            it will override the default value."
     puts "--quick              (-q)   Only run with the default and no-cjit-validate modes."
+    puts "--basic                     Run with default and these additional modes: no-llint,"
+    puts "                            no-cjit-validate-phases, no-cjit-collect-continuously, dfg-eager"
+    puts "                            and for FTL platforms: no-ftl, ftl-eager-no-cjit and"
+    puts "                            ftl-no-cjit-small-pool."
     exit 1
 end
 
@@ -160,6 +171,7 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
                ['--no-copy', GetoptLong::NO_ARGUMENT],
                ['--memory-limited', GetoptLong::NO_ARGUMENT],
                ['--no-jit', GetoptLong::NO_ARGUMENT],
+               ['--force-collectContinuously', GetoptLong::NO_ARGUMENT],
                ['--output-dir', '-o', GetoptLong::REQUIRED_ARGUMENT],
                ['--run-bundle', GetoptLong::REQUIRED_ARGUMENT],
                ['--tarball', GetoptLong::OPTIONAL_ARGUMENT],
@@ -168,6 +180,8 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
                ['--os', GetoptLong::REQUIRED_ARGUMENT],
                ['--shell-runner', GetoptLong::NO_ARGUMENT],
                ['--make-runner', GetoptLong::NO_ARGUMENT],
+               ['--ruby-runner', GetoptLong::NO_ARGUMENT],
+               ['--test-writer', GetoptLong::REQUIRED_ARGUMENT],
                ['--remote', GetoptLong::REQUIRED_ARGUMENT],
                ['--remote-config-file', GetoptLong::REQUIRED_ARGUMENT],
                ['--child-processes', '-c', GetoptLong::REQUIRED_ARGUMENT],
@@ -176,7 +190,8 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
                ['--env-vars', GetoptLong::REQUIRED_ARGUMENT],
                ['--debug', GetoptLong::NO_ARGUMENT],
                ['--release', GetoptLong::NO_ARGUMENT],
-               ['--quick', '-q', GetoptLong::NO_ARGUMENT]).each {
+               ['--quick', '-q', GetoptLong::NO_ARGUMENT],
+               ['--basic', GetoptLong::NO_ARGUMENT]).each {
     | opt, arg |
     case opt
     when '--help'
@@ -191,6 +206,8 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
         $memoryLimited = true
     when '--no-jit'
         $jitTests = false
+    when '--force-collectContinuously'
+        $forceCollectContinuously = true;
     when '--verbose'
         $verbosity += 1
     when '--run-bundle'
@@ -205,6 +222,10 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
         $testRunnerType = :shell
     when '--make-runner'
         $testRunnerType = :make
+    when '--ruby-runner'
+        $testRunnerType = :ruby
+    when '--test-writer'
+        $testWriter = arg
     when '--remote'
         $copyVM = true
         $tarball = true
@@ -224,7 +245,9 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
     when '--env-vars'
         $envVars = arg.gsub(/\s+/, ' ').split(' ')
     when '--quick'
-        $quickMode = true
+        $mode = "quick"
+    when '--basic'
+        $mode = "basic"
     when '--debug'
         $buildType = "debug"
     when '--release'
@@ -289,7 +312,7 @@ end
 # Try to determine architecture. Return nil on failure.
 def machOArchitectureCode
     begin 
-        otoolLines = `otool -aSfh #{Shellwords.shellescape($jscPath.to_s)}`.split("\n")
+        otoolLines = `otool -afh #{Shellwords.shellescape($jscPath.to_s)}`.split("\n")
         otoolLines.each_with_index {
             | value, index |
             if value =~ /magic/ and value =~ /cputype/
@@ -335,6 +358,8 @@ def determineArchitectureFromELFBinary
     case code
     when 3
         "x86"
+    when 8
+        "mips"
     when 62
         "x86-64"
     when 40
@@ -406,7 +431,7 @@ end
 
 $hostOS = determineOS unless $hostOS
 $architecture = determineArchitecture unless $architecture
-$isFTLPlatform = !($architecture == "x86" || $architecture == "arm" || $hostOS == "windows" || $hostOS == "linux" && $architecture == "arm64")
+$isFTLPlatform = !($architecture == "x86" || $architecture == "arm" || $architecture == "mips" || $hostOS == "windows")
 
 if !$testRunnerType
     if $remote and $hostOS == "darwin"
@@ -416,14 +441,30 @@ if !$testRunnerType
     end
 end
 
+if $testWriter
+    if /[^-a-zA-Z0-9_]/.match($testWriter)
+        raise "Invalid test writer #{$testWriter} given"
+    end
+end
+
 $numFailures = 0
 $numPasses = 0
 
 # We force all tests to use a smaller (1.5M) stack so that stack overflow tests can run faster.
 BASE_OPTIONS = ["--useFTLJIT=false", "--useFunctionDotArguments=true", "--maxPerThreadStackUsage=1572864"]
 EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20", "--maximumEvalCacheableSourceLength=150000", "--useEagerCodeBlockJettisonTiming=true"]
+# NOTE: Tests rely on this using scribbleFreeCells.
 NO_CJIT_OPTIONS = ["--useConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100", "--scribbleFreeCells=true"]
+B3O1_OPTIONS = ["--defaultB3OptLevel=1"]
 FTL_OPTIONS = ["--useFTLJIT=true"]
+
+require_relative "webkitruby/jsc-stress-test-writer-#{$testWriter}"
+
+def shouldCollectContinuously?
+    $buildType == "release" or $forceCollectContinuously
+end
+
+COLLECT_CONTINUOUSLY_OPTIONS = shouldCollectContinuously? ? ["--collectContinuously=true", "--useGenerationalGC=false"] : []
 
 $runlist = []
 
@@ -456,273 +497,7 @@ def pathToHelpers
     pathToBundleResourceFromBenchmarkDirectory(".helpers")
 end
 
-def prefixCommand(prefix)
-    "awk " + Shellwords.shellescape("{ printf #{(prefix + ': ').inspect}; print }")
-end
-
-def redirectAndPrefixCommand(prefix)
-    prefixCommand(prefix) + " 2>&1"
-end
-
-def pipeAndPrefixCommand(outputFilename, prefix)
-    "tee " + Shellwords.shellescape(outputFilename.to_s) + " | " + prefixCommand(prefix)
-end
-
-# Output handler for tests that are expected to be silent.
-def silentOutputHandler
-    Proc.new {
-        | name |
-        " | " + pipeAndPrefixCommand((Pathname("..") + (name + ".out")).to_s, name)
-    }
-end
-
-# Output handler for tests that are expected to produce meaningful output.
-def noisyOutputHandler
-    Proc.new {
-        | name |
-        " | cat > " + Shellwords.shellescape((Pathname("..") + (name + ".out")).to_s)
-    }
-end
-
-# Error handler for tests that fail exactly when they return non-zero exit status.
-# This is useful when a test is expected to fail.
-def simpleErrorHandler
-    Proc.new {
-        | outp, plan |
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    (echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "else"
-        outp.puts "    " + plan.successCommand
-        outp.puts "fi"
-    }
-end
-
-# Error handler for tests that fail exactly when they return zero exit status.
-def expectedFailErrorHandler
-    Proc.new {
-        | outp, plan |
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    " + plan.successCommand
-        outp.puts "else"
-        outp.puts "    (echo ERROR: Unexpected exit code: 0) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "fi"
-    }
-end
-
-# Error handler for tests that fail exactly when they return non-zero exit status and produce
-# lots of spew. This will echo that spew when the test fails.
-def noisyErrorHandler
-    Proc.new {
-        | outp, plan |
-        outputFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".out")).to_s)
-    
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    (cat #{outputFilename} && echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "else"
-        outp.puts "    " + plan.successCommand
-        outp.puts "fi"
-    }
-end
-
-# Error handler for tests that diff their output with some expectation.
-def diffErrorHandler(expectedFilename)
-    Proc.new {
-        | outp, plan |
-        outputFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".out")).to_s)
-        diffFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".diff")).to_s)
-        
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    (cat #{outputFilename} && echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "elif test -e ../#{Shellwords.shellescape(expectedFilename)}"
-        outp.puts "then"
-        outp.puts "    diff --strip-trailing-cr -u ../#{Shellwords.shellescape(expectedFilename)} #{outputFilename} > #{diffFilename}"
-        outp.puts "    if [ $? -eq 0 ]"
-        outp.puts "    then"
-        outp.puts "    " + plan.successCommand
-        outp.puts "    else"
-        outp.puts "        (echo \"DIFF FAILURE!\" && cat #{diffFilename}) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "        " + plan.failCommand
-        outp.puts "    fi"
-        outp.puts "else"
-        outp.puts "    (echo \"NO EXPECTATION!\" && cat #{outputFilename}) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "fi"
-    }
-end
-
-# Error handler for tests that report error by saying "failed!". This is used by Mozilla
-# tests.
-def mozillaErrorHandler
-    Proc.new {
-        | outp, plan |
-        outputFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".out")).to_s)
-
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    (cat #{outputFilename} && echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "elif grep -i -q failed! #{outputFilename}"
-        outp.puts "then"
-        outp.puts "    (echo Detected failures: && cat #{outputFilename}) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "else"
-        outp.puts "    " + plan.successCommand
-        outp.puts "fi"
-    }
-end
-
-# Error handler for tests that report error by saying "failed!", and are expected to
-# fail. This is used by Mozilla tests.
-def mozillaFailErrorHandler
-    Proc.new {
-        | outp, plan |
-        outputFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".out")).to_s)
-
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    " + plan.successCommand
-        outp.puts "elif grep -i -q failed! #{outputFilename}"
-        outp.puts "then"
-        outp.puts "    " + plan.successCommand
-        outp.puts "else"
-        outp.puts "    (echo NOTICE: You made this test pass, but it was expected to fail) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "fi"
-    }
-end
-
-# Error handler for tests that report error by saying "failed!", and are expected to have
-# an exit code of 3.
-def mozillaExit3ErrorHandler
-    Proc.new {
-        | outp, plan |
-        outputFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".out")).to_s)
-
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    if [ `cat #{plan.failFile}` -eq 3 ]"
-        outp.puts "    then"
-        outp.puts "        if grep -i -q failed! #{outputFilename}"
-        outp.puts "        then"
-        outp.puts "            (echo Detected failures: && cat #{outputFilename}) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "            " + plan.failCommand
-        outp.puts "        else"
-        outp.puts "            " + plan.successCommand
-        outp.puts "        fi"
-        outp.puts "    else"
-        outp.puts "        (cat #{outputFilename} && echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "        " + plan.failCommand
-        outp.puts "    fi"
-        outp.puts "else"
-        outp.puts "    (cat #{outputFilename} && echo ERROR: Test expected to fail, but returned successfully) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "fi"
-    }
-end
-
-# Error handler for tests that report success by saying "Passed" or error by saying "FAILED".
-# This is used by Chakra tests.
-def chakraPassFailErrorHandler
-    Proc.new {
-        | outp, plan |
-        outputFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".out")).to_s)
-
-        outp.puts "if test -e #{plan.failFile}"
-        outp.puts "then"
-        outp.puts "    (cat #{outputFilename} && echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "elif grep -i -q FAILED #{outputFilename}"
-        outp.puts "then"
-        outp.puts "    (echo Detected failures: && cat #{outputFilename}) | " + redirectAndPrefixCommand(plan.name)
-        outp.puts "    " + plan.failCommand
-        outp.puts "else"
-        outp.puts "    " + plan.successCommand
-        outp.puts "fi"
-    }
-end
-
 $runCommandOptions = {}
-
-class Plan
-    attr_reader :directory, :arguments, :family, :name, :outputHandler, :errorHandler
-    attr_accessor :index
-    
-    def initialize(directory, arguments, family, name, outputHandler, errorHandler)
-        @directory = directory
-        @arguments = arguments
-        @family = family
-        @name = name
-        @outputHandler = outputHandler
-        @errorHandler = errorHandler
-        @isSlow = !!$runCommandOptions[:isSlow]
-    end
-    
-    def shellCommand
-        # It's important to remember that the test is actually run in a subshell, so if we change directory
-        # in the subshell when we return we will be in our original directory. This is nice because we don't
-        # have to bend over backwards to do things relative to the root.
-        script = "(cd ../#{Shellwords.shellescape(@directory.to_s)} && ("
-        $envVars.each { |var| script += "export " << var << "; " }
-        script += "\"$@\" " + escapeAll(@arguments) + "))"
-        return script
-    end
-    
-    def reproScriptCommand
-        # We have to find our way back to the .runner directory since that's where all of the relative
-        # paths assume they start out from.
-        script = "CURRENT_DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\n"
-        script += "cd $CURRENT_DIR\n"
-        Pathname.new(@name).dirname.each_filename {
-            | pathComponent |
-            script += "cd ..\n"
-        }
-        script += "cd .runner\n"
-
-        script += "export DYLD_FRAMEWORK_PATH=$(cd #{$testingFrameworkPath.dirname}; pwd)\n"
-        script += "export JSCTEST_timeout=#{Shellwords.shellescape(ENV['JSCTEST_timeout'])}\n"
-        $envVars.each { |var| script += "export " << var << "\n" }
-        script += "#{shellCommand} || exit 1"
-        "echo #{Shellwords.shellescape(script)} > #{Shellwords.shellescape((Pathname.new("..") + @name).to_s)}"
-    end
-    
-    def failCommand
-        "echo FAIL: #{Shellwords.shellescape(@name)} ; touch #{failFile} ; " + reproScriptCommand
-    end
-    
-    def successCommand
-        if $progressMeter or $verbosity >= 2
-            "rm -f #{failFile} ; echo PASS: #{Shellwords.shellescape(@name)}"
-        else
-            "rm -f #{failFile}"
-        end
-    end
-    
-    def failFile
-        "test_fail_#{@index}"
-    end
-    
-    def writeRunScript(filename)
-        File.open(filename, "w") {
-            | outp |
-            outp.puts "echo Running #{Shellwords.shellescape(@name)}"
-            cmd  = "(" + shellCommand + " || (echo $? > #{failFile})) 2>&1 "
-            cmd += @outputHandler.call(@name)
-            if $verbosity >= 3
-                outp.puts "echo #{Shellwords.shellescape(cmd)}"
-            end
-            outp.puts cmd
-            @errorHandler.call(outp, self)
-        }
-    end
-end
 
 $uniqueFilenameCounter = 0
 def uniqueFilename(extension)
@@ -787,8 +562,12 @@ def slow!
     $runCommandOptions[:isSlow] = true
 end
 
+def runWithOutputHandler(kind, outputHandler, *options)
+    addRunCommand(kind, [pathToVM.to_s] + BASE_OPTIONS + options + [$benchmark.to_s], outputHandler, simpleErrorHandler)
+end
+
 def run(kind, *options)
-    addRunCommand(kind, [pathToVM.to_s] + BASE_OPTIONS + options + [$benchmark.to_s], silentOutputHandler, simpleErrorHandler)
+    runWithOutputHandler(kind, silentOutputHandler, *options)
 end
 
 def runNoFTL(*optionalTestSpecificOptions)
@@ -818,12 +597,17 @@ def runNoLLInt(*optionalTestSpecificOptions)
     end
 end
 
+# NOTE: Tests rely on this using scribbleFreeCells.
 def runNoCJITValidate(*optionalTestSpecificOptions)
     run("no-cjit", "--validateBytecode=true", "--validateGraph=true", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runNoCJITValidatePhases(*optionalTestSpecificOptions)
     run("no-cjit-validate-phases", "--validateBytecode=true", "--validateGraphAtEachPhase=true", "--useSourceProviderCache=false", *(NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+end
+
+def runNoCJITCollectContinuously(*optionalTestSpecificOptions)
+    run("no-cjit-collect-continuously", *(NO_CJIT_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runDefault(*optionalTestSpecificOptions)
@@ -834,16 +618,20 @@ def runFTLNoCJIT(*optionalTestSpecificOptions)
     run("misc-ftl-no-cjit", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
+def runFTLNoCJITB3O1(*optionalTestSpecificOptions)
+    run("ftl-no-cjit-b3o1", "--useArrayAllocationProfiling=false", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O1_OPTIONS + optionalTestSpecificOptions))
+end
+
 def runFTLNoCJITValidate(*optionalTestSpecificOptions)
-    run("ftl-no-cjit-validate-sampling-profiler", "--validateGraph=true", "--useSamplingProfiler=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-no-cjit-validate-sampling-profiler", "--validateGraph=true", "--useSamplingProfiler=true", "--airForceIRCAllocator=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITNoPutStackValidate(*optionalTestSpecificOptions)
-    run("ftl-no-cjit-no-put-stack-validate", "--validateGraph=true", "--usePutStackSinking=false", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-no-cjit-no-put-stack-validate", "--validateGraph=true", "--usePutStackSinking=false", "--airForceIRCAllocator=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITNoInlineValidate(*optionalTestSpecificOptions)
-    run("ftl-no-cjit-no-inline-validate", "--validateGraph=true", "--maximumInliningDepth=1", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-no-cjit-no-inline-validate", "--validateGraph=true", "--maximumInliningDepth=1", "--airForceBriggsAllocator=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITOSRValidation(*optionalTestSpecificOptions)
@@ -851,23 +639,32 @@ def runFTLNoCJITOSRValidation(*optionalTestSpecificOptions)
 end
 
 def runDFGEager(*optionalTestSpecificOptions)
-    run("dfg-eager", *(EAGER_OPTIONS + optionalTestSpecificOptions))
+    run("dfg-eager", *(EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runDFGEagerNoCJITValidate(*optionalTestSpecificOptions)
-    run("dfg-eager-no-cjit-validate", "--validateGraph=true", *(NO_CJIT_OPTIONS + EAGER_OPTIONS + optionalTestSpecificOptions))
+    run("dfg-eager-no-cjit-validate", "--validateGraph=true", *(NO_CJIT_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLEager(*optionalTestSpecificOptions)
-    run("ftl-eager", *(FTL_OPTIONS + EAGER_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-eager", "--airForceBriggsAllocator=true", *(FTL_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
+end
+
+def runFTLEagerWatchdog(*optionalTestSpecificOptions)
+    timeout = rand(100)
+    run("ftl-eager-watchdog-#{timeout}", "--watchdog=#{timeout}", "--watchdog-exception-ok", *(FTL_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLEagerNoCJITValidate(*optionalTestSpecificOptions)
-    run("ftl-eager-no-cjit", "--validateGraph=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-eager-no-cjit", "--validateGraph=true", "--airForceIRCAllocator=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
+end
+
+def runFTLEagerNoCJITB3O1(*optionalTestSpecificOptions)
+    run("ftl-eager-no-cjit-b3o1", "--validateGraph=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + B3O1_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLEagerNoCJITOSRValidation(*optionalTestSpecificOptions)
-    run("ftl-eager-no-cjit-osr-validation", "--validateFTLOSRExitLiveness=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + optionalTestSpecificOptions))
+    run("ftl-eager-no-cjit-osr-validation", "--validateFTLOSRExitLiveness=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runNoCJITNoASO(*optionalTestSpecificOptions)
@@ -899,50 +696,65 @@ def runShadowChicken(*optionalTestSpecificOptions)
 end
 
 def defaultRun
-    if $quickMode
+    if $mode == "quick"
         defaultQuickRun
     else
         runDefault
         if $jitTests
             runNoLLInt
             runNoCJITValidatePhases
+            runNoCJITCollectContinuously if shouldCollectContinuously?
             runDFGEager
-            runDFGEagerNoCJITValidate
-            runDFGMaximalFlushPhase
+            if $mode != "basic"
+                runDFGEagerNoCJITValidate
+                runDFGMaximalFlushPhase
+            end
 
             return if !$isFTLPlatform
 
             runNoFTL
-            runFTLNoCJITValidate
-            runFTLNoCJITNoPutStackValidate
-            runFTLNoCJITNoInlineValidate
             runFTLEager
             runFTLEagerNoCJITValidate
             runFTLNoCJITSmallPool
+
+            return if $mode == "basic"
+
+            runFTLNoCJITValidate
+            runFTLNoCJITB3O1
+            runFTLNoCJITNoPutStackValidate
+            runFTLNoCJITNoInlineValidate
+            runFTLEagerNoCJITB3O1
         end
     end
 end
 
 def defaultNoNoLLIntRun
-    if $quickMode
+    if $mode == "quick"
         defaultQuickRun
     else
         runDefault
         if $jitTests
             runNoCJITValidatePhases
+            runNoCJITCollectContinuously if shouldCollectContinuously?
             runDFGEager
-            runDFGEagerNoCJITValidate
-            runDFGMaximalFlushPhase
+            if $mode != "basic"
+                runDFGEagerNoCJITValidate
+                runDFGMaximalFlushPhase
+            end
 
             return if !$isFTLPlatform
 
             runNoFTL
             runFTLNoCJITValidate
+            runFTLNoCJITSmallPool
+
+            return if $mode == "basic"
+
+            runFTLNoCJITB3O1
             runFTLNoCJITNoPutStackValidate
             runFTLNoCJITNoInlineValidate
             runFTLEager
             runFTLEagerNoCJITValidate
-            runFTLNoCJITSmallPool
         end
     end
 end
@@ -952,7 +764,7 @@ def defaultQuickRun
     if $jitTests
         runNoCJITValidate
 
-        return if $isFTLPlatform
+        return if !$isFTLPlatform
 
         runNoFTL
         runFTLNoCJITValidate
@@ -967,6 +779,7 @@ def defaultSpotCheckNoMaximalFlush
 
     runFTLNoCJITOSRValidation
     runFTLNoCJITNoAccessInlining
+    runFTLNoCJITB3O1
 end
 
 def defaultSpotCheck
@@ -982,12 +795,17 @@ def defaultNoEagerRun
     if $jitTests
         runNoLLInt
         runNoCJITValidatePhases
+        runNoCJITCollectContinuously if shouldCollectContinuously?
 
         return if !$isFTLPlatform
 
         runNoFTL
         runFTLNoCJITValidate
+
+        return if $mode == "basic"
+
         runFTLNoCJITNoInlineValidate
+        runFTLNoCJITB3O1
     end
 end
 
@@ -996,6 +814,7 @@ def defaultNoSamplingProfilerRun
     if $jitTests
         runNoLLInt
         runNoCJITValidatePhases
+        runNoCJITCollectContinuously if shouldCollectContinuously?
         runDFGEager
         runDFGEagerNoCJITValidate
         runDFGMaximalFlushPhase
@@ -1091,6 +910,11 @@ def runTest262(mode, exception, includeFiles, flags)
     when :fail
         errorHandler = expectedFailErrorHandler
         outputHandler = noisyOutputHandler
+    when :failDueToOutdatedOrBadTest
+        errorHandler = expectedFailErrorHandler
+        outputHandler = noisyOutputHandler
+    when :skip
+        return
     else
         raise "Invalid mode: #{mode}"
     end
@@ -1122,6 +946,10 @@ def runES6(mode)
         errorHandler = simpleErrorHandler
     when :fail
         errorHandler = expectedFailErrorHandler
+    when :failDueToOutdatedOrBadTest
+        errorHandler = expectedFailErrorHandler
+    when :skip
+        return
     else
         raise "Invalid mode: #{mode}"
     end
@@ -1153,14 +981,69 @@ end
 def runWebAssembly
     return if !$jitTests
     return if !$isFTLPlatform
-    # FIXME: The current WebAssembly implementation includes Darwin specific things.
-    # Once WebAssembly becomes ready to be ported, we will enable it on the other OSes (like Linux) and drop this workaround.
-    # https://bugs.webkit.org/show_bug.cgi?id=164032
-    return if $hostOS != "darwin"
     modules = Dir[WASMTESTS_PATH + "*.js"].map { |f| File.basename(f) }
     prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
     prepareExtraRelativeFiles(modules.map { |f| "../" + f }, $collection)
-    run("default-wasm", "-m", "--useWebAssembly=1")
+    run("default-wasm", "-m", *FTL_OPTIONS)
+    if $mode != "quick"
+        run("wasm-no-cjit-yes-tls-context", "-m", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+        run("wasm-eager-jettison", "-m", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+        run("wasm-no-call-ic", "-m", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+        run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+        run("wasm-slow-memory", "-m", "--useWebAssemblyFastMemory=false", *FTL_OPTIONS)
+    end
+end
+
+def runWebAssemblyEmscripten(mode)
+    case mode
+    when :skip
+        return
+    end
+    return if !$jitTests
+    return if !$isFTLPlatform
+    wasm = $benchmark.to_s.sub! '.js', '.wasm'
+    prepareExtraRelativeFiles([Pathname('..') + wasm], $collection)
+    run("default-wasm", *FTL_OPTIONS)
+    if $mode != "quick"
+        run("wasm-no-cjit-yes-tls-context", "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+        run("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+        run("wasm-no-call-ic", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+        run("wasm-no-tls-context", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+    end
+end
+
+def runWebAssemblySpecTest(mode)
+    case mode
+    when :skip
+        return
+    end
+    return if !$jitTests
+    return if !$isFTLPlatform
+    prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
+
+    modules = Dir[WASMTESTS_PATH + "*.js"].map { |f| File.basename(f) }
+    prepareExtraRelativeFiles(modules.map { |f| "../../" + f }, $collection)
+
+    harness = Dir[WASMTESTS_PATH + "spec-harness/" + "*.js"].map { |f| File.basename(f) }
+    prepareExtraRelativeFiles(harness.map { |f| "../../spec-harness/" + f }, $collection)
+
+    runWithOutputHandler("default-wasm", noisyOutputHandler, "../spec-harness.js", *FTL_OPTIONS)
+    if $mode != "quick"
+      runWithOutputHandler("wasm-no-cjit-yes-tls-context", noisyOutputHandler, "../spec-harness.js",  "--useFastTLSForWasmContext=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+      runWithOutputHandler("wasm-eager-jettison", noisyOutputHandler, "../spec-harness.js", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-no-call-ic", noisyOutputHandler, "../spec-harness.js", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-no-tls-context", noisyOutputHandler, "../spec-harness.js", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+    end
+end
+
+def runWebAssemblyLowExecutableMemory(*optionalTestSpecificOptions)
+    return if !$jitTests
+    return if !$isFTLPlatform
+    modules = Dir[WASMTESTS_PATH + "*.js"].map { |f| File.basename(f) }
+    prepareExtraAbsoluteFiles(WASMTESTS_PATH, ["wasm.json"])
+    prepareExtraRelativeFiles(modules.map { |f| "../" + f }, $collection)
+    # Only let WebAssembly get executable memory.
+    run("default-wasm", "--useConcurrentGC=0" , "--useConcurrentJIT=0", "--jitMemoryReservationSize=15000", "--useBaselineJIT=0", "--useDFGJIT=0", "--useFTLJIT=0", "-m")
 end
 
 def runChakra(mode, exception, baselineFile, extraFiles)
@@ -1186,6 +1069,8 @@ def runChakra(mode, exception, baselineFile, extraFiles)
     when :pass
         errorHandler = chakraPassFailErrorHandler
         outputHandler = noisyOutputHandler
+    when :skipDueToOutdatedOrBadTest
+        return
     when :skip
         return
     else
@@ -1245,6 +1130,10 @@ def runLayoutTestFTLEagerNoCJIT
     runLayoutTest("ftl-eager-no-cjit", "--testTheFTL=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS))
 end
 
+def runLayoutTestFTLEagerNoCJITB3O1
+    runLayoutTest("ftl-eager-no-cjit-b3o1", "--testTheFTL=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + B3O1_OPTIONS))
+end
+
 def noFTLRunLayoutTest
     if !$jitTests
         return
@@ -1269,7 +1158,7 @@ def defaultQuickRunLayoutTest
 end
 
 def defaultRunLayoutTest
-    if $quickMode
+    if $mode == "quick"
         defaultQuickRunLayoutTest
     else
         runLayoutTestDefault
@@ -1354,6 +1243,8 @@ def runMozillaTest(kind, mode, extraFiles, *options)
         errorHandler = mozillaExit3ErrorHandler
     when :fail
         errorHandler = mozillaFailErrorHandler
+    when :failDueToOutdatedOrBadTest
+        errorHandler = mozillaFailErrorHandler
     when :skip
         return
     else
@@ -1399,7 +1290,7 @@ def defaultQuickRunMozillaTest(mode, *extraFiles)
 end
 
 def defaultRunMozillaTest(mode, *extraFiles)
-    if $quickMode
+    if $mode == "quick"
         defaultQuickRunMozillaTest(mode, *extraFiles)
     else
         runMozillaTestNoFTL(mode, *extraFiles)
@@ -1426,11 +1317,15 @@ def runNoisyTestNoFTL
 end
 
 def runNoisyTestNoCJIT
-    runNoisyTest("ftl-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+    runNoisyTest("ftl-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS))
+end
+
+def runNoisyTestNoCJITB3O1
+    runNoisyTest("ftl-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O1_OPTIONS))
 end
 
 def runNoisyTestEagerNoCJIT
-    runNoisyTest("ftl-eager-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS))
+    runNoisyTest("ftl-eager-no-cjit", "--validateBytecode=true", "--validateGraphAtEachPhase=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS + COLLECT_CONTINUOUSLY_OPTIONS))
 end
 
 def defaultRunNoisyTest
@@ -1438,6 +1333,7 @@ def defaultRunNoisyTest
     if $jitTests and $isFTLPlatform
         runNoisyTestNoFTL
         runNoisyTestNoCJIT
+        runNoisyTestNoCJITB3O1
         runNoisyTestEagerNoCJIT
     end
 end
@@ -1445,13 +1341,6 @@ end
 def skip
     $didAddRunCommand = true
     puts "Skipping #{$collectionName}/#{$benchmark}"
-end
-
-def largeHeap
-    if $memoryLimited
-        $didAddRunCommand = true
-        puts "Skipping #{$collectionName}/#{$benchmark}"
-    end
 end
 
 def allJSFiles(path)
@@ -1780,66 +1669,11 @@ def prepareTestRunner
         prepareMakeTestRunner
     when :shell
         prepareShellTestRunner
+    when :ruby
+        prepareRubyTestRunner
     else
         raise "Unknown test runner type: #{$testRunnerType.to_s}"
     end
-end
-
-def prepareShellTestRunner
-    FileUtils.cp SCRIPTS_PATH + "jsc-stress-test-helpers" + "shell-runner.sh", $runnerDir + "runscript"
-end
-
-def prepareMakeTestRunner
-    # The goals of our parallel test runner are scalability and simplicity. The
-    # simplicity part is particularly important. We don't want to have to have
-    # a full-time contributor just philosophising about parallel testing.
-    #
-    # As such, we just pass off all of the hard work to 'make'. This creates a
-    # dummy directory ("$outputDir/.runner") in which we create a dummy
-    # Makefile. The Makefile has an 'all' rule that depends on all of the tests.
-    # That is, for each test we know we will run, there is a rule in the
-    # Makefile and 'all' depends on it. Running 'make -j <whatever>' on this
-    # Makefile results in 'make' doing all of the hard work:
-    #
-    # - Load balancing just works. Most systems have a great load balancer in
-    #   'make'. If your system doesn't then just install a real 'make'.
-    #
-    # - Interruptions just work. For example Ctrl-C handling in 'make' is
-    #   exactly right. You don't have to worry about zombie processes.
-    #
-    # We then do some tricks to make failure detection work and to make this
-    # totally sound. If a test fails, we don't want the whole 'make' job to
-    # stop. We also don't have any facility for makefile-escaping of path names.
-    # We do have such a thing for shell-escaping, though. We fix both problems
-    # by having the actual work for each of the test rules be done in a shell
-    # script on the side. There is one such script per test. The script responds
-    # to failure by printing something on the console and then touching a
-    # failure file for that test, but then still returns 0. This makes 'make'
-    # continue past that failure and complete all the tests anyway.
-    #
-    # In the end, this script collects all of the failures by searching for
-    # files in the .runner directory whose name matches /^test_fail_/, where
-    # the thing after the 'fail_' is the test index. Those are the files that
-    # would be created by the test scripts if they detect failure. We're
-    # basically using the filesystem as a concurrent database of test failures.
-    # Even if two tests fail at the same time, since they're touching different
-    # files we won't miss any failures.
-    runIndices = []
-    $runlist.each {
-        | plan |
-        runIndices << plan.index
-    }
-    
-    File.open($runnerDir + "Makefile", "w") {
-        | outp |
-        outp.puts("all: " + runIndices.map{|v| "test_done_#{v}"}.join(' '))
-        runIndices.each {
-            | index |
-            plan = $runlist[index]
-            outp.puts "test_done_#{index}:"
-            outp.puts "\tsh test_script_#{plan.index}"
-        }
-    }
 end
 
 def cleanRunnerDirectory
@@ -1967,15 +1801,6 @@ def runAndMonitorTestRunnerCommand(*cmd)
 end
 
 def runTestRunner
-    case $testRunnerType
-    when :shell
-        testRunnerCommand = "sh runscript"
-    when :make
-        testRunnerCommand = "make -j #{$numChildProcesses.to_s} -s -f Makefile"
-    else
-        raise "Unknown test runner type: #{$testRunnerType.to_s}"
-    end
-
     if $remote
         if !$remoteDirectory
             $remoteDirectory = JSON::parse(sshRead("cat ~/.bencher"))["tempPath"]

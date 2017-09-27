@@ -30,16 +30,16 @@
 
 namespace WTF {
 
-void WorkQueue::dispatch(Function<void ()>&& function)
+void WorkQueue::dispatch(Function<void()>&& function)
 {
-    dispatch_async(m_dispatchQueue, BlockPtr<void ()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
+    dispatch_async(m_dispatchQueue, BlockPtr<void()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
         function();
     }).get());
 }
 
-void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, Function<void ()>&& function)
+void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
 {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration.count()), m_dispatchQueue, BlockPtr<void ()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration.nanosecondsAs<int64_t>()), m_dispatchQueue, BlockPtr<void()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
         function();
     }).get());
 }
@@ -49,15 +49,15 @@ static dispatch_qos_class_t dispatchQOSClass(WorkQueue::QOS qos)
 {
     switch (qos) {
     case WorkQueue::QOS::UserInteractive:
-        return QOS_CLASS_USER_INTERACTIVE;
+        return Thread::adjustedQOSClass(QOS_CLASS_USER_INTERACTIVE);
     case WorkQueue::QOS::UserInitiated:
-        return QOS_CLASS_USER_INITIATED;
+        return Thread::adjustedQOSClass(QOS_CLASS_USER_INITIATED);
     case WorkQueue::QOS::Default:
-        return QOS_CLASS_DEFAULT;
+        return Thread::adjustedQOSClass(QOS_CLASS_DEFAULT);
     case WorkQueue::QOS::Utility:
-        return QOS_CLASS_UTILITY;
+        return Thread::adjustedQOSClass(QOS_CLASS_UTILITY);
     case WorkQueue::QOS::Background:
-        return QOS_CLASS_BACKGROUND;
+        return Thread::adjustedQOSClass(QOS_CLASS_BACKGROUND);
     }
 }
 #else
@@ -100,11 +100,11 @@ void WorkQueue::platformInvalidate()
     dispatch_release(m_dispatchQueue);
 }
 
-void WorkQueue::concurrentApply(size_t iterations, const std::function<void (size_t index)>& function)
+void WorkQueue::concurrentApply(size_t iterations, WTF::Function<void(size_t index)>&& function)
 {
-    dispatch_apply(iterations, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(size_t index) {
+    dispatch_apply(iterations, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), BlockPtr<void(size_t index)>::fromCallable([function = WTFMove(function)](size_t index) {
         function(index);
-    });
+    }).get());
 }
 
 }

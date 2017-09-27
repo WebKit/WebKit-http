@@ -24,7 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Resource = class Resource extends WebInspector.SourceCode
+WI.Resource = class Resource extends WI.SourceCode
 {
     constructor(url, mimeType, type, loaderIdentifier, targetId, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, initiatorSourceCodeLocation, originalRequestWillBeSentTimestamp)
     {
@@ -32,14 +32,14 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
         console.assert(url);
 
-        if (type in WebInspector.Resource.Type)
-            type = WebInspector.Resource.Type[type];
+        if (type in WI.Resource.Type)
+            type = WI.Resource.Type[type];
 
         this._url = url;
         this._urlComponents = null;
         this._mimeType = mimeType;
         this._mimeTypeComponents = null;
-        this._type = type || WebInspector.Resource.typeFromMIMEType(mimeType);
+        this._type = type || WI.Resource.typeFromMIMEType(mimeType);
         this._loaderIdentifier = loaderIdentifier || null;
         this._requestIdentifier = requestIdentifier || null;
         this._requestMethod = requestMethod || null;
@@ -56,13 +56,35 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         this._lastDataReceivedTimestamp = NaN;
         this._finishedOrFailedTimestamp = NaN;
         this._finishThenRequestContentPromise = null;
-        this._size = NaN;
-        this._transferSize = NaN;
+        this._statusCode = NaN;
+        this._statusText = null;
         this._cached = false;
-        this._timingData = new WebInspector.ResourceTimingData(this);
-        this._target = targetId ? WebInspector.targetManager.targetForIdentifier(targetId) : WebInspector.mainTarget;
+        this._canceled = false;
+        this._failed = false;
+        this._failureReasonText = null;
+        this._receivedNetworkLoadMetrics = false;
+        this._responseSource = WI.Resource.ResponseSource.Unknown;
+        this._timingData = new WI.ResourceTimingData(this);
+        this._protocol = null;
+        this._priority = WI.Resource.NetworkPriority.Unknown;
+        this._remoteAddress = null;
+        this._connectionIdentifier = null;
+        this._target = targetId ? WI.targetManager.targetForIdentifier(targetId) : WI.mainTarget;
 
-        if (this._initiatorSourceCodeLocation && this._initiatorSourceCodeLocation.sourceCode instanceof WebInspector.Resource)
+        // Exact sizes if loaded over the network or cache.
+        this._requestHeadersTransferSize = NaN;
+        this._requestBodyTransferSize = NaN;
+        this._responseHeadersTransferSize = NaN;
+        this._responseBodyTransferSize = NaN;
+        this._responseBodySize = NaN;
+        this._cachedResponseBodySize = NaN;
+
+        // Estimated sizes (if backend does not provide metrics).
+        this._estimatedSize = NaN;
+        this._estimatedTransferSize = NaN;
+        this._estimatedResponseHeadersSize = NaN;
+
+        if (this._initiatorSourceCodeLocation && this._initiatorSourceCodeLocation.sourceCode instanceof WI.Resource)
             this._initiatorSourceCodeLocation.sourceCode.addInitiatedResource(this);
     }
 
@@ -71,66 +93,184 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
     static typeFromMIMEType(mimeType)
     {
         if (!mimeType)
-            return WebInspector.Resource.Type.Other;
+            return WI.Resource.Type.Other;
 
         mimeType = parseMIMEType(mimeType).type;
 
-        if (mimeType in WebInspector.Resource._mimeTypeMap)
-            return WebInspector.Resource._mimeTypeMap[mimeType];
+        if (mimeType in WI.Resource._mimeTypeMap)
+            return WI.Resource._mimeTypeMap[mimeType];
 
         if (mimeType.startsWith("image/"))
-            return WebInspector.Resource.Type.Image;
+            return WI.Resource.Type.Image;
 
         if (mimeType.startsWith("font/"))
-            return WebInspector.Resource.Type.Font;
+            return WI.Resource.Type.Font;
 
-        return WebInspector.Resource.Type.Other;
+        return WI.Resource.Type.Other;
     }
 
     static displayNameForType(type, plural)
     {
         switch (type) {
-        case WebInspector.Resource.Type.Document:
+        case WI.Resource.Type.Document:
             if (plural)
-                return WebInspector.UIString("Documents");
-            return WebInspector.UIString("Document");
-        case WebInspector.Resource.Type.Stylesheet:
+                return WI.UIString("Documents");
+            return WI.UIString("Document");
+        case WI.Resource.Type.Stylesheet:
             if (plural)
-                return WebInspector.UIString("Stylesheets");
-            return WebInspector.UIString("Stylesheet");
-        case WebInspector.Resource.Type.Image:
+                return WI.UIString("Stylesheets");
+            return WI.UIString("Stylesheet");
+        case WI.Resource.Type.Image:
             if (plural)
-                return WebInspector.UIString("Images");
-            return WebInspector.UIString("Image");
-        case WebInspector.Resource.Type.Font:
+                return WI.UIString("Images");
+            return WI.UIString("Image");
+        case WI.Resource.Type.Font:
             if (plural)
-                return WebInspector.UIString("Fonts");
-            return WebInspector.UIString("Font");
-        case WebInspector.Resource.Type.Script:
+                return WI.UIString("Fonts");
+            return WI.UIString("Font");
+        case WI.Resource.Type.Script:
             if (plural)
-                return WebInspector.UIString("Scripts");
-            return WebInspector.UIString("Script");
-        case WebInspector.Resource.Type.XHR:
+                return WI.UIString("Scripts");
+            return WI.UIString("Script");
+        case WI.Resource.Type.XHR:
             if (plural)
-                return WebInspector.UIString("XHRs");
-            return WebInspector.UIString("XHR");
-        case WebInspector.Resource.Type.WebSocket:
+                return WI.UIString("XHRs");
+            return WI.UIString("XHR");
+        case WI.Resource.Type.Fetch:
             if (plural)
-                return WebInspector.UIString("Sockets");
-            return WebInspector.UIString("Socket");
-        case WebInspector.Resource.Type.Other:
-            return WebInspector.UIString("Other");
+                return WI.UIString("Fetches");
+            return WI.UIString("Fetch");
+        case WI.Resource.Type.WebSocket:
+            if (plural)
+                return WI.UIString("Sockets");
+            return WI.UIString("Socket");
+        case WI.Resource.Type.Other:
+            return WI.UIString("Other");
         default:
-            console.error("Unknown resource type: ", type);
+            console.error("Unknown resource type", type);
             return null;
         }
+    }
+
+    static displayNameForProtocol(protocol)
+    {
+        switch (protocol) {
+        case "h2":
+            return "HTTP/2";
+        case "http/1.0":
+            return "HTTP/1.0";
+        case "http/1.1":
+            return "HTTP/1.1";
+        case "spdy/2":
+            return "SPDY/2";
+        case "spdy/3":
+            return "SPDY/3";
+        case "spdy/3.1":
+            return "SPDY/3.1";
+        default:
+            return null;
+        }
+    }
+
+    static comparePriority(a, b)
+    {
+        console.assert(typeof a === "symbol");
+        console.assert(typeof b === "symbol");
+
+        const map = {
+            [WI.Resource.NetworkPriority.Unknown]: 0,
+            [WI.Resource.NetworkPriority.Low]: 1,
+            [WI.Resource.NetworkPriority.Medium]: 2,
+            [WI.Resource.NetworkPriority.High]: 3,
+        };
+
+        let aNum = map[a] || 0;
+        let bNum = map[b] || 0;
+        return aNum - bNum;
+    }
+
+    static displayNameForPriority(priority)
+    {
+        switch (priority) {
+        case WI.Resource.NetworkPriority.Low:
+            return WI.UIString("Low");
+        case WI.Resource.NetworkPriority.Medium:
+            return WI.UIString("Medium");
+        case WI.Resource.NetworkPriority.High:
+            return WI.UIString("High");
+        default:
+            return null;
+        }
+    }
+
+    static responseSourceFromPayload(source)
+    {
+        if (!source)
+            return WI.Resource.ResponseSource.Unknown;
+
+        switch (source) {
+        case NetworkAgent.ResponseSource.Unknown:
+            return WI.Resource.ResponseSource.Unknown;
+        case NetworkAgent.ResponseSource.Network:
+            return WI.Resource.ResponseSource.Network;
+        case NetworkAgent.ResponseSource.MemoryCache:
+            return WI.Resource.ResponseSource.MemoryCache;
+        case NetworkAgent.ResponseSource.DiskCache:
+            return WI.Resource.ResponseSource.DiskCache;
+        default:
+            console.error("Unknown response source type", source);
+            return WI.Resource.ResponseSource.Unknown;
+        }
+    }
+
+    static networkPriorityFromPayload(priority)
+    {
+        switch (priority) {
+        case NetworkAgent.MetricsPriority.Low:
+            return WI.Resource.NetworkPriority.Low;
+        case NetworkAgent.MetricsPriority.Medium:
+            return WI.Resource.NetworkPriority.Medium;
+        case NetworkAgent.MetricsPriority.High:
+            return WI.Resource.NetworkPriority.High;
+        default:
+            console.error("Unknown metrics priority", priority);
+            return WI.Resource.NetworkPriority.Unknown;
+        }
+    }
+
+    static connectionIdentifierFromPayload(connectionIdentifier)
+    {
+        // Map backend connection identifiers to an easier to read number.
+        if (!WI.Resource.connectionIdentifierMap) {
+            WI.Resource.connectionIdentifierMap = new Map;
+            WI.Resource.nextConnectionIdentifier = 1;
+        }
+
+        let id = WI.Resource.connectionIdentifierMap.get(connectionIdentifier);
+        if (id)
+            return id;
+
+        id = WI.Resource.nextConnectionIdentifier++;
+        WI.Resource.connectionIdentifierMap.set(connectionIdentifier, id);
+        return id;
     }
 
     // Public
 
     get target() { return this._target; }
     get type() { return this._type; }
+    get loaderIdentifier() { return this._loaderIdentifier; }
+    get requestIdentifier() { return this._requestIdentifier; }
+    get requestMethod() { return this._requestMethod; }
+    get requestData() { return this._requestData; }
+    get statusCode() { return this._statusCode; }
+    get statusText() { return this._statusText; }
+    get responseSource() { return this._responseSource; }
     get timingData() { return this._timingData; }
+    get protocol() { return this._protocol; }
+    get priority() { return this._priority; }
+    get remoteAddress() { return this._remoteAddress; }
+    get connectionIdentifier() { return this._connectionIdentifier; }
 
     get url()
     {
@@ -146,14 +286,14 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
     get displayName()
     {
-        return WebInspector.displayNameForURL(this._url, this.urlComponents);
+        return WI.displayNameForURL(this._url, this.urlComponents);
     }
 
     get displayURL()
     {
         const isMultiLine = true;
         const dataURIMaxSize = 64;
-        return WebInspector.truncateURL(this._url, isMultiLine, dataURIMaxSize);
+        return WI.truncateURL(this._url, isMultiLine, dataURIMaxSize);
     }
 
     get initiatorSourceCodeLocation()
@@ -186,21 +326,19 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
     get syntheticMIMEType()
     {
         // Resources are often transferred with a MIME-type that doesn't match the purpose the
-        // resource was loaded for, which is what WebInspector.Resource.Type represents.
+        // resource was loaded for, which is what WI.Resource.Type represents.
         // This getter generates a MIME-type, if needed, that matches the resource type.
 
         // If the type matches the Resource.Type of the MIME-type, then return the actual MIME-type.
-        if (this._type === WebInspector.Resource.typeFromMIMEType(this._mimeType))
+        if (this._type === WI.Resource.typeFromMIMEType(this._mimeType))
             return this._mimeType;
 
         // Return the default MIME-types for the Resource.Type, since the current MIME-type
         // does not match what is expected for the Resource.Type.
         switch (this._type) {
-        case WebInspector.Resource.Type.Document:
-            return "text/html";
-        case WebInspector.Resource.Type.Stylesheet:
+        case WI.Resource.Type.Stylesheet:
             return "text/css";
-        case WebInspector.Resource.Type.Script:
+        case WI.Resource.Type.Script:
             return "text/javascript";
         }
 
@@ -212,13 +350,14 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
     {
         // If content is not available, fallback to using original URL.
         // The client may try to revoke it, but nothing will happen.
-        if (!this.content)
+        let content = this.content;
+        if (!content)
             return this._url;
 
-        var content = this.content;
-        console.assert(content instanceof Blob, content);
+        if (content instanceof Blob)
+            return URL.createObjectURL(content);
 
-        return URL.createObjectURL(content);
+        return null;
     }
 
     isMainResource()
@@ -228,27 +367,17 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
     addInitiatedResource(resource)
     {
-        if (!(resource instanceof WebInspector.Resource))
+        if (!(resource instanceof WI.Resource))
             return;
 
         this._initiatedResources.push(resource);
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.InitiatedResourcesDidChange);
+        this.dispatchEventToListeners(WI.Resource.Event.InitiatedResourcesDidChange);
     }
 
     get parentFrame()
     {
         return this._parentFrame;
-    }
-
-    get loaderIdentifier()
-    {
-        return this._loaderIdentifier;
-    }
-
-    get requestIdentifier()
-    {
-        return this._requestIdentifier;
     }
 
     get finished()
@@ -266,14 +395,9 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         return this._canceled;
     }
 
-    get requestMethod()
+    get failureReasonText()
     {
-        return this._requestMethod;
-    }
-
-    get requestData()
-    {
-        return this._requestData;
+        return this._failureReasonText;
     }
 
     get requestDataContentType()
@@ -346,25 +470,59 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         return this._cached;
     }
 
-    get statusCode()
-    {
-        return this._statusCode;
-    }
-
-    get statusText()
-    {
-        return this._statusText;
-    }
+    get requestHeadersTransferSize() { return this._requestHeadersTransferSize; }
+    get requestBodyTransferSize() { return this._requestBodyTransferSize; }
+    get responseHeadersTransferSize() { return this._responseHeadersTransferSize; }
+    get responseBodyTransferSize() { return this._responseBodyTransferSize; }
+    get cachedResponseBodySize() { return this._cachedResponseBodySize; }
 
     get size()
     {
-        return this._size;
+        if (!isNaN(this._cachedResponseBodySize))
+            return this._cachedResponseBodySize;
+
+        if (!isNaN(this._responseBodySize) && this._responseBodySize !== 0)
+            return this._responseBodySize;
+
+        return this._estimatedSize;
     }
 
-    get encodedSize()
+    get networkEncodedSize()
     {
-        if (!isNaN(this._transferSize))
-            return this._transferSize;
+        return this._responseBodyTransferSize;
+    }
+
+    get networkDecodedSize()
+    {
+        return this._responseBodySize;
+    }
+
+    get networkTotalTransferSize()
+    {
+        return this._responseHeadersTransferSize + this._responseBodyTransferSize;
+    }
+
+    get estimatedNetworkEncodedSize()
+    {
+        let exact = this.networkEncodedSize; 
+        if (!isNaN(exact))
+            return exact;
+
+        if (this._cached)
+            return 0;
+
+        // FIXME: <https://webkit.org/b/158463> Network: Correctly report encoded data length (transfer size) from CFNetwork to NetworkResourceLoader
+        // macOS provides the decoded transfer size instead of the encoded size
+        // for estimatedTransferSize. So prefer the "Content-Length" property
+        // on mac if it is available.
+        if (WI.Platform.name === "mac") {
+            let contentLength = Number(this._responseHeaders.valueForCaseInsensitiveKey("Content-Length"));
+            if (!isNaN(contentLength))
+                return contentLength;
+        }
+
+        if (!isNaN(this._estimatedTransferSize))
+            return this._estimatedTransferSize;
 
         // If we did not receive actual transfer size from network
         // stack, we prefer using Content-Length over resourceSize as
@@ -377,24 +535,28 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         // work for chunks with non-trivial encodings. We need a way to
         // get actual transfer size from the network stack.
 
-        return Number(this._responseHeaders.valueForCaseInsensitiveKey("Content-Length") || this._size);
+        return Number(this._responseHeaders.valueForCaseInsensitiveKey("Content-Length") || this._estimatedSize);
     }
 
-    get transferSize()
+    get estimatedTotalTransferSize()
     {
+        let exact = this.networkTotalTransferSize;
+        if (!isNaN(exact))
+            return exact;
+
         if (this.statusCode === 304) // Not modified
-            return this._responseHeadersSize;
+            return this._estimatedResponseHeadersSize;
 
         if (this._cached)
             return 0;
 
-        return this._responseHeadersSize + this.encodedSize;
+        return this._estimatedResponseHeadersSize + this.estimatedNetworkEncodedSize;
     }
 
     get compressed()
     {
-        var contentEncoding = this._responseHeaders.valueForCaseInsensitiveKey("Content-Encoding");
-        return contentEncoding && /\b(?:gzip|deflate)\b/.test(contentEncoding);
+        let contentEncoding = this._responseHeaders.valueForCaseInsensitiveKey("Content-Encoding");
+        return !!(contentEncoding && /\b(?:gzip|deflate)\b/.test(contentEncoding));
     }
 
     get scripts()
@@ -404,7 +566,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
     scriptForLocation(sourceCodeLocation)
     {
-        console.assert(!(this instanceof WebInspector.SourceMapResource));
+        console.assert(!(this instanceof WI.SourceMapResource));
         console.assert(sourceCodeLocation.sourceCode === this, "SourceCodeLocation must be in this Resource");
         if (sourceCodeLocation.sourceCode !== this)
             return null;
@@ -441,74 +603,125 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
             // Delete the URL components so the URL is re-parsed the next time it is requested.
             this._urlComponents = null;
 
-            this.dispatchEventToListeners(WebInspector.Resource.Event.URLDidChange, {oldURL});
+            this.dispatchEventToListeners(WI.Resource.Event.URLDidChange, {oldURL});
         }
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.RequestHeadersDidChange);
-        this.dispatchEventToListeners(WebInspector.Resource.Event.TimestampsDidChange);
+        this.dispatchEventToListeners(WI.Resource.Event.RequestHeadersDidChange);
+        this.dispatchEventToListeners(WI.Resource.Event.TimestampsDidChange);
     }
 
-    updateForResponse(url, mimeType, type, responseHeaders, statusCode, statusText, elapsedTime, timingData)
+    hasResponse()
+    {
+        return !isNaN(this._statusCode);
+    }
+
+    updateForResponse(url, mimeType, type, responseHeaders, statusCode, statusText, elapsedTime, timingData, source)
     {
         console.assert(!this._finished);
         console.assert(!this._failed);
         console.assert(!this._canceled);
 
-        var oldURL = this._url;
-        var oldMIMEType = this._mimeType;
-        var oldType = this._type;
+        let oldURL = this._url;
+        let oldMIMEType = this._mimeType;
+        let oldType = this._type;
 
-        if (type in WebInspector.Resource.Type)
-            type = WebInspector.Resource.Type[type];
+        if (type in WI.Resource.Type)
+            type = WI.Resource.Type[type];
 
         this._url = url;
         this._mimeType = mimeType;
-        this._type = type || WebInspector.Resource.typeFromMIMEType(mimeType);
+        this._type = type || WI.Resource.typeFromMIMEType(mimeType);
         this._statusCode = statusCode;
         this._statusText = statusText;
         this._responseHeaders = responseHeaders || {};
         this._responseReceivedTimestamp = elapsedTime || NaN;
-        this._timingData = WebInspector.ResourceTimingData.fromPayload(timingData, this);
+        this._timingData = WI.ResourceTimingData.fromPayload(timingData, this);
 
-        this._responseHeadersSize = String(this._statusCode).length + this._statusText.length + 12; // Extra length is for "HTTP/1.1 ", " ", and "\r\n".
-        for (var name in this._responseHeaders)
-            this._responseHeadersSize += name.length + this._responseHeaders[name].length + 4; // Extra length is for ": ", and "\r\n".
+        if (source)
+            this._responseSource = WI.Resource.responseSourceFromPayload(source);
 
-        if (statusCode === 304 && !this._cached)
-            this.markAsCached();
+        const headerBaseSize = 12; // Length of "HTTP/1.1 ", " ", and "\r\n".
+        const headerPad = 4; // Length of ": " and "\r\n".
+        this._estimatedResponseHeadersSize = String(this._statusCode).length + this._statusText.length + headerBaseSize;
+        for (let name in this._responseHeaders)
+            this._estimatedResponseHeadersSize += name.length + this._responseHeaders[name].length + headerPad;
+
+        if (!this._cached) {
+            if (statusCode === 304 || (this._responseSource === WI.Resource.ResponseSource.MemoryCache || this._responseSource === WI.Resource.ResponseSource.DiskCache))
+                this.markAsCached();
+        }
 
         if (oldURL !== url) {
             // Delete the URL components so the URL is re-parsed the next time it is requested.
             this._urlComponents = null;
 
-            this.dispatchEventToListeners(WebInspector.Resource.Event.URLDidChange, {oldURL});
+            this.dispatchEventToListeners(WI.Resource.Event.URLDidChange, {oldURL});
         }
 
         if (oldMIMEType !== mimeType) {
             // Delete the MIME-type components so the MIME-type is re-parsed the next time it is requested.
             this._mimeTypeComponents = null;
 
-            this.dispatchEventToListeners(WebInspector.Resource.Event.MIMETypeDidChange, {oldMIMEType});
+            this.dispatchEventToListeners(WI.Resource.Event.MIMETypeDidChange, {oldMIMEType});
         }
 
         if (oldType !== type)
-            this.dispatchEventToListeners(WebInspector.Resource.Event.TypeDidChange, {oldType});
+            this.dispatchEventToListeners(WI.Resource.Event.TypeDidChange, {oldType});
 
-        console.assert(isNaN(this._size));
-        console.assert(isNaN(this._transferSize));
+        console.assert(isNaN(this._estimatedSize));
+        console.assert(isNaN(this._estimatedTransferSize));
 
         // The transferSize becomes 0 when status is 304 or Content-Length is available, so
         // notify listeners of that change.
         if (statusCode === 304 || this._responseHeaders.valueForCaseInsensitiveKey("Content-Length"))
-            this.dispatchEventToListeners(WebInspector.Resource.Event.TransferSizeDidChange);
+            this.dispatchEventToListeners(WI.Resource.Event.TransferSizeDidChange);
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.ResponseReceived);
-        this.dispatchEventToListeners(WebInspector.Resource.Event.TimestampsDidChange);
+        this.dispatchEventToListeners(WI.Resource.Event.ResponseReceived);
+        this.dispatchEventToListeners(WI.Resource.Event.TimestampsDidChange);
     }
 
-    canRequestContent()
+    updateWithMetrics(metrics)
     {
-        return this._finished;
+        this._receivedNetworkLoadMetrics = true;
+
+        if (metrics.protocol)
+            this._protocol = metrics.protocol;
+        if (metrics.priority)
+            this._priority = WI.Resource.networkPriorityFromPayload(metrics.priority);
+        if (metrics.remoteAddress)
+            this._remoteAddress = metrics.remoteAddress;
+        if (metrics.connectionIdentifier)
+            this._connectionIdentifier = WI.Resource.connectionIdentifierFromPayload(metrics.connectionIdentifier);
+        if (metrics.requestHeaders) {
+            this._requestHeaders = metrics.requestHeaders;
+            this.dispatchEventToListeners(WI.Resource.Event.RequestHeadersDidChange);
+        }
+
+        if ("requestHeaderBytesSent" in metrics) {
+            this._requestHeadersTransferSize = metrics.requestHeaderBytesSent;
+            this._requestBodyTransferSize = metrics.requestBodyBytesSent;
+            this._responseHeadersTransferSize = metrics.responseHeaderBytesReceived;
+            this._responseBodyTransferSize = metrics.responseBodyBytesReceived;
+            this._responseBodySize = metrics.responseBodyDecodedSize;
+
+            console.assert(this._requestHeadersTransferSize >= 0);
+            console.assert(this._requestBodyTransferSize >= 0);
+            console.assert(this._responseHeadersTransferSize >= 0);
+            console.assert(this._responseBodyTransferSize >= 0);
+            console.assert(this._responseBodySize >= 0);
+
+            this.dispatchEventToListeners(WI.Resource.Event.SizeDidChange, {previousSize: this._estimatedSize});
+            this.dispatchEventToListeners(WI.Resource.Event.TransferSizeDidChange);
+        }
+    }
+
+    setCachedResponseBodySize(size)
+    {
+        console.assert(!isNaN(size), "Size should be a valid number.");
+        console.assert(isNaN(this._cachedResponseBodySize), "This should only be set once.");
+        console.assert(this._estimatedSize === size, "The legacy path was updated already and matches.");
+
+        this._cachedResponseBodySize = size;
     }
 
     requestContentFromBackend()
@@ -528,43 +741,45 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
     increaseSize(dataLength, elapsedTime)
     {
         console.assert(dataLength >= 0);
+        console.assert(!this._receivedNetworkLoadMetrics, "If we received metrics we don't need to change the estimated size.");
 
-        if (isNaN(this._size))
-            this._size = 0;
+        if (isNaN(this._estimatedSize))
+            this._estimatedSize = 0;
 
-        var previousSize = this._size;
+        let previousSize = this._estimatedSize;
 
-        this._size += dataLength;
+        this._estimatedSize += dataLength;
 
         this._lastDataReceivedTimestamp = elapsedTime || NaN;
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.SizeDidChange, {previousSize});
+        this.dispatchEventToListeners(WI.Resource.Event.SizeDidChange, {previousSize});
 
-        // The transferSize is based off of size when status is not 304 or Content-Length is missing.
-        if (isNaN(this._transferSize) && this._statusCode !== 304 && !this._responseHeaders.valueForCaseInsensitiveKey("Content-Length"))
-            this.dispatchEventToListeners(WebInspector.Resource.Event.TransferSizeDidChange);
+        // The estimatedTransferSize is based off of size when status is not 304 or Content-Length is missing.
+        if (isNaN(this._estimatedTransferSize) && this._statusCode !== 304 && !this._responseHeaders.valueForCaseInsensitiveKey("Content-Length"))
+            this.dispatchEventToListeners(WI.Resource.Event.TransferSizeDidChange);
     }
 
     increaseTransferSize(encodedDataLength)
     {
         console.assert(encodedDataLength >= 0);
+        console.assert(!this._receivedNetworkLoadMetrics, "If we received metrics we don't need to change the estimated transfer size.");
 
-        if (isNaN(this._transferSize))
-            this._transferSize = 0;
-        this._transferSize += encodedDataLength;
+        if (isNaN(this._estimatedTransferSize))
+            this._estimatedTransferSize = 0;
+        this._estimatedTransferSize += encodedDataLength;
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.TransferSizeDidChange);
+        this.dispatchEventToListeners(WI.Resource.Event.TransferSizeDidChange);
     }
 
     markAsCached()
     {
         this._cached = true;
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.CacheStatusDidChange);
+        this.dispatchEventToListeners(WI.Resource.Event.CacheStatusDidChange);
 
-        // The transferSize is starts returning 0 when cached is true, unless status is 304.
+        // The transferSize starts returning 0 when cached is true, unless status is 304.
         if (this._statusCode !== 304)
-            this.dispatchEventToListeners(WebInspector.Resource.Event.TransferSizeDidChange);
+            this.dispatchEventToListeners(WI.Resource.Event.TransferSizeDidChange);
     }
 
     markAsFinished(elapsedTime)
@@ -579,11 +794,11 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         if (this._finishThenRequestContentPromise)
             this._finishThenRequestContentPromise = null;
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.LoadingDidFinish);
-        this.dispatchEventToListeners(WebInspector.Resource.Event.TimestampsDidChange);
+        this.dispatchEventToListeners(WI.Resource.Event.LoadingDidFinish);
+        this.dispatchEventToListeners(WI.Resource.Event.TimestampsDidChange);
     }
 
-    markAsFailed(canceled, elapsedTime)
+    markAsFailed(canceled, elapsedTime, errorText)
     {
         console.assert(!this._finished);
 
@@ -591,8 +806,11 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         this._canceled = canceled;
         this._finishedOrFailedTimestamp = elapsedTime || NaN;
 
-        this.dispatchEventToListeners(WebInspector.Resource.Event.LoadingDidFail);
-        this.dispatchEventToListeners(WebInspector.Resource.Event.TimestampsDidChange);
+        if (!this._failureReasonText)
+            this._failureReasonText = errorText || null;
+
+        this.dispatchEventToListeners(WI.Resource.Event.LoadingDidFail);
+        this.dispatchEventToListeners(WI.Resource.Event.TimestampsDidChange);
     }
 
     revertMarkAsFinished()
@@ -605,15 +823,45 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         this._finishedOrFailedTimestamp = NaN;
     }
 
+    legacyMarkServedFromMemoryCache()
+    {
+        // COMPATIBILITY (iOS 10.3): This is a legacy code path where we know the resource came from the MemoryCache.
+        console.assert(this._responseSource === WI.Resource.ResponseSource.Unknown);
+
+        this._responseSource = WI.Resource.ResponseSource.MemoryCache;
+
+        this.markAsCached();
+    }
+
+    legacyMarkServedFromDiskCache()
+    {
+        // COMPATIBILITY (iOS 10.3): This is a legacy code path where we know the resource came from the DiskCache.
+        console.assert(this._responseSource === WI.Resource.ResponseSource.Unknown);
+
+        this._responseSource = WI.Resource.ResponseSource.DiskCache;
+
+        this.markAsCached();
+    }
+
+    isLoading()
+    {
+        return !this._finished && !this._failed;
+    }
+
+    hadLoadingError()
+    {
+        return this._failed || this._canceled || this._statusCode >= 400;
+    }
+
     getImageSize(callback)
     {
         // Throw an error in the case this resource is not an image.
-        if (this.type !== WebInspector.Resource.Type.Image)
+        if (this.type !== WI.Resource.Type.Image)
             throw "Resource is not an image.";
 
         // See if we've already computed and cached the image size,
         // in which case we can provide them directly.
-        if (this._imageSize) {
+        if (this._imageSize !== undefined) {
             callback(this._imageSize);
             return;
         }
@@ -621,8 +869,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         var objectURL = null;
 
         // Event handler for the image "load" event.
-        function imageDidLoad()
-        {
+        function imageDidLoad() {
             URL.revokeObjectURL(objectURL);
 
             // Cache the image metrics.
@@ -634,15 +881,22 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
             callback(this._imageSize);
         }
 
+        function requestContentFailure() {
+            this._imageSize = null;
+            callback(this._imageSize);
+        }
+
         // Create an <img> element that we'll use to load the image resource
         // so that we can query its intrinsic size.
         var image = new Image;
         image.addEventListener("load", imageDidLoad.bind(this), false);
 
         // Set the image source using an object URL once we've obtained its data.
-        this.requestContent().then(function(content) {
+        this.requestContent().then((content) => {
             objectURL = image.src = content.sourceCode.createObjectURL();
-        });
+            if (!objectURL)
+                requestContentFailure.call(this);
+        }, requestContentFailure.bind(this));
     }
 
     requestContent()
@@ -651,13 +905,13 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
             return super.requestContent();
 
         if (this._failed)
-            return Promise.resolve({error: WebInspector.UIString("An error occurred trying to load the resource.")});
+            return Promise.resolve({error: WI.UIString("An error occurred trying to load the resource.")});
 
         if (!this._finishThenRequestContentPromise) {
             this._finishThenRequestContentPromise = new Promise((resolve, reject) => {
-                this.addEventListener(WebInspector.Resource.Event.LoadingDidFinish, resolve);
-                this.addEventListener(WebInspector.Resource.Event.LoadingDidFail, reject);
-            }).then(WebInspector.SourceCode.prototype.requestContent.bind(this));
+                this.addEventListener(WI.Resource.Event.LoadingDidFinish, resolve);
+                this.addEventListener(WI.Resource.Event.LoadingDidFail, reject);
+            }).then(WI.SourceCode.prototype.requestContent.bind(this));
         }
 
         return this._finishThenRequestContentPromise;
@@ -670,17 +924,17 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
         this._scripts.push(script);
 
-        if (this._type === WebInspector.Resource.Type.Other || this._type === WebInspector.Resource.Type.XHR) {
+        if (this._type === WI.Resource.Type.Other || this._type === WI.Resource.Type.XHR) {
             let oldType = this._type;
-            this._type = WebInspector.Resource.Type.Script;
-            this.dispatchEventToListeners(WebInspector.Resource.Event.TypeDidChange, {oldType});
+            this._type = WI.Resource.Type.Script;
+            this.dispatchEventToListeners(WI.Resource.Event.TypeDidChange, {oldType});
         }
     }
 
     saveIdentityToCookie(cookie)
     {
-        cookie[WebInspector.Resource.URLCookieKey] = this.url.hash;
-        cookie[WebInspector.Resource.MainResourceCookieKey] = this.isMainResource();
+        cookie[WI.Resource.URLCookieKey] = this.url.hash;
+        cookie[WI.Resource.MainResourceCookieKey] = this.isMainResource();
     }
 
     generateCURLCommand()
@@ -726,11 +980,11 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
     }
 };
 
-WebInspector.Resource.TypeIdentifier = "resource";
-WebInspector.Resource.URLCookieKey = "resource-url";
-WebInspector.Resource.MainResourceCookieKey = "resource-is-main-resource";
+WI.Resource.TypeIdentifier = "resource";
+WI.Resource.URLCookieKey = "resource-url";
+WI.Resource.MainResourceCookieKey = "resource-is-main-resource";
 
-WebInspector.Resource.Event = {
+WI.Resource.Event = {
     URLDidChange: "resource-url-did-change",
     MIMETypeDidChange: "resource-mime-type-did-change",
     TypeDidChange: "resource-type-did-change",
@@ -746,54 +1000,69 @@ WebInspector.Resource.Event = {
 };
 
 // Keep these in sync with the "ResourceType" enum defined by the "Page" domain.
-WebInspector.Resource.Type = {
+WI.Resource.Type = {
     Document: "resource-type-document",
     Stylesheet: "resource-type-stylesheet",
     Image: "resource-type-image",
     Font: "resource-type-font",
     Script: "resource-type-script",
     XHR: "resource-type-xhr",
+    Fetch: "resource-type-fetch",
     WebSocket: "resource-type-websocket",
     Other: "resource-type-other"
 };
 
-// This MIME Type map is private, use WebInspector.Resource.typeFromMIMEType().
-WebInspector.Resource._mimeTypeMap = {
-    "text/html": WebInspector.Resource.Type.Document,
-    "text/xml": WebInspector.Resource.Type.Document,
-    "text/plain": WebInspector.Resource.Type.Document,
-    "application/xhtml+xml": WebInspector.Resource.Type.Document,
-    "image/svg+xml": WebInspector.Resource.Type.Document,
+WI.Resource.ResponseSource = {
+    Unknown: Symbol("unknown"),
+    Network: Symbol("network"),
+    MemoryCache: Symbol("memory-cache"),
+    DiskCache: Symbol("disk-cache"),
+};
 
-    "text/css": WebInspector.Resource.Type.Stylesheet,
-    "text/xsl": WebInspector.Resource.Type.Stylesheet,
-    "text/x-less": WebInspector.Resource.Type.Stylesheet,
-    "text/x-sass": WebInspector.Resource.Type.Stylesheet,
-    "text/x-scss": WebInspector.Resource.Type.Stylesheet,
+WI.Resource.NetworkPriority = {
+    Unknown: Symbol("unknown"),
+    Low: Symbol("low"),
+    Medium: Symbol("medium"),
+    High: Symbol("high"),
+};
 
-    "application/pdf": WebInspector.Resource.Type.Image,
+// This MIME Type map is private, use WI.Resource.typeFromMIMEType().
+WI.Resource._mimeTypeMap = {
+    "text/html": WI.Resource.Type.Document,
+    "text/xml": WI.Resource.Type.Document,
+    "text/plain": WI.Resource.Type.Document,
+    "application/xhtml+xml": WI.Resource.Type.Document,
+    "image/svg+xml": WI.Resource.Type.Document,
 
-    "application/x-font-type1": WebInspector.Resource.Type.Font,
-    "application/x-font-ttf": WebInspector.Resource.Type.Font,
-    "application/x-font-woff": WebInspector.Resource.Type.Font,
-    "application/x-truetype-font": WebInspector.Resource.Type.Font,
+    "text/css": WI.Resource.Type.Stylesheet,
+    "text/xsl": WI.Resource.Type.Stylesheet,
+    "text/x-less": WI.Resource.Type.Stylesheet,
+    "text/x-sass": WI.Resource.Type.Stylesheet,
+    "text/x-scss": WI.Resource.Type.Stylesheet,
 
-    "text/javascript": WebInspector.Resource.Type.Script,
-    "text/ecmascript": WebInspector.Resource.Type.Script,
-    "application/javascript": WebInspector.Resource.Type.Script,
-    "application/ecmascript": WebInspector.Resource.Type.Script,
-    "application/x-javascript": WebInspector.Resource.Type.Script,
-    "application/json": WebInspector.Resource.Type.Script,
-    "application/x-json": WebInspector.Resource.Type.Script,
-    "text/x-javascript": WebInspector.Resource.Type.Script,
-    "text/x-json": WebInspector.Resource.Type.Script,
-    "text/javascript1.1": WebInspector.Resource.Type.Script,
-    "text/javascript1.2": WebInspector.Resource.Type.Script,
-    "text/javascript1.3": WebInspector.Resource.Type.Script,
-    "text/jscript": WebInspector.Resource.Type.Script,
-    "text/livescript": WebInspector.Resource.Type.Script,
-    "text/x-livescript": WebInspector.Resource.Type.Script,
-    "text/typescript": WebInspector.Resource.Type.Script,
-    "text/x-clojure": WebInspector.Resource.Type.Script,
-    "text/x-coffeescript": WebInspector.Resource.Type.Script
+    "application/pdf": WI.Resource.Type.Image,
+
+    "application/x-font-type1": WI.Resource.Type.Font,
+    "application/x-font-ttf": WI.Resource.Type.Font,
+    "application/x-font-woff": WI.Resource.Type.Font,
+    "application/x-truetype-font": WI.Resource.Type.Font,
+
+    "text/javascript": WI.Resource.Type.Script,
+    "text/ecmascript": WI.Resource.Type.Script,
+    "application/javascript": WI.Resource.Type.Script,
+    "application/ecmascript": WI.Resource.Type.Script,
+    "application/x-javascript": WI.Resource.Type.Script,
+    "application/json": WI.Resource.Type.Script,
+    "application/x-json": WI.Resource.Type.Script,
+    "text/x-javascript": WI.Resource.Type.Script,
+    "text/x-json": WI.Resource.Type.Script,
+    "text/javascript1.1": WI.Resource.Type.Script,
+    "text/javascript1.2": WI.Resource.Type.Script,
+    "text/javascript1.3": WI.Resource.Type.Script,
+    "text/jscript": WI.Resource.Type.Script,
+    "text/livescript": WI.Resource.Type.Script,
+    "text/x-livescript": WI.Resource.Type.Script,
+    "text/typescript": WI.Resource.Type.Script,
+    "text/x-clojure": WI.Resource.Type.Script,
+    "text/x-coffeescript": WI.Resource.Type.Script
 };

@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ScopeBarItem = class ScopeBarItem extends WebInspector.Object
+WI.ScopeBarItem = class ScopeBarItem extends WI.Object
 {
     constructor(id, label, exclusive, className)
     {
@@ -34,13 +34,13 @@ WebInspector.ScopeBarItem = class ScopeBarItem extends WebInspector.Object
         if (className)
             this._element.classList.add(className);
         this._element.textContent = label;
-        this._element.addEventListener("click", this._clicked.bind(this));
+        this._element.addEventListener("mousedown", this._handleMouseDown.bind(this));
 
         this._id = id;
         this._label = label;
         this._exclusive = exclusive;
 
-        this._selectedSetting = new WebInspector.Setting("scopebaritem-" + id, false);
+        this._selectedSetting = new WI.Setting("scopebaritem-" + id, false);
 
         this._element.classList.toggle("selected", this._selectedSetting.value);
     }
@@ -85,17 +85,21 @@ WebInspector.ScopeBarItem = class ScopeBarItem extends WebInspector.Object
         this._element.classList.toggle("selected", selected);
         this._selectedSetting.value = selected;
 
-        this.dispatchEventToListeners(WebInspector.ScopeBarItem.Event.SelectionChanged, {withModifier});
+        this.dispatchEventToListeners(WI.ScopeBarItem.Event.SelectionChanged, {withModifier});
     }
 
     // Private
 
-    _clicked(event)
+    _handleMouseDown(event)
     {
+        // Only handle left mouse clicks.
+        if (event.button !== 0)
+            return;
+
         this.setSelected(!this.selected, event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey);
     }
 };
 
-WebInspector.ScopeBarItem.Event = {
+WI.ScopeBarItem.Event = {
     SelectionChanged: "scope-bar-item-selection-did-change"
 };

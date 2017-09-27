@@ -47,16 +47,16 @@ def platform_options(use_globs=False):
         optparse.make_option('--ios-simulator', action='store_const', dest='platform',
             const=('ios-simulator'),
             help=('Alias for --platform=ios-simulator')),
-        optparse.make_option('--efl', action='store_const', dest='platform',
-            const=('efl*' if use_globs else 'efl'),
-            help=('Alias for --platform=efl*' if use_globs else 'Alias for --platform=efl')),
+        optparse.make_option('--simulator', action='store_const', dest='platform',
+            const=('ios-simulator'),
+            help=('DEPRECATED alias for --platform=ios-simulator')),
         optparse.make_option('--gtk', action='store_const', dest='platform',
             const=('gtk*' if use_globs else 'gtk'),
             help=('Alias for --platform=gtk*' if use_globs else 'Alias for --platform=gtk')),
         optparse.make_option('--wpe', action='store_const', dest='platform',
             const=('wpe*' if use_globs else 'wpe'),
-            help=('Alias for --platform=wpe*' if use_globs else 'Alias for --platform=wpe')),
-        ]
+            help=('Alias for --platform=wpe')),
+        ] + (config.apple_additions().platform_options() if config.apple_additions() else [])
 
 
 def configuration_options():
@@ -83,17 +83,11 @@ def _builder_options(builder_name):
 class PortFactory(object):
     # Order matters.  For port classes that have a port_name with a
     # common prefix, the more specific port class should be listed
-    # first.  For example, 'ios.IOSSimulatorPort' (port_name='ios-simulator')
-    # should be listed before 'ios.IOSPort' (port_name='ios').  If this
-    # rule is not followed, then `webkit-patch --ios-simulator` will try
-    # to use IOSPort instead of IOSSimulatorPort because 'ios'
-    # (IOSPort.port_name) is a prefix of 'ios-simulator' (port_name
-    # derived from '--ios-simulator' command-line switch), for example.
+    # first.
     PORT_CLASSES = (
-        'efl.EflPort',
         'gtk.GtkPort',
-        'ios.IOSSimulatorPort',
-        'ios.IOSPort',
+        'ios_simulator.IOSSimulatorPort',
+        'ios_device.IOSDevicePort',
         'mac.MacPort',
         'mock_drt.MockDRTPort',
         'test.TestPort',

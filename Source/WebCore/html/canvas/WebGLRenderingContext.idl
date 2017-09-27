@@ -28,5 +28,9 @@
     JSCustomMarkFunction,
     JSGenerateToJSObject,
     DoNotCheckConstants,
-] interface WebGLRenderingContext : WebGLRenderingContextBase {
+    ExportMacro=WEBCORE_EXPORT,
+    CallTracingCallback=recordCanvasAction,
+] interface WebGLRenderingContext {
 };
+
+WebGLRenderingContext implements WebGLRenderingContextBase;

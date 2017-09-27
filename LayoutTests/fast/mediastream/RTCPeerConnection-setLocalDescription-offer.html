@@ -6,6 +6,9 @@
     </head>
     <body>
         <script>
+            if (window.internals)
+                internals.useMockRTCPeerConnectionFactory("");
+
             var stream;
             var audioTrack;
             var videoTrack;
@@ -84,10 +87,10 @@
                 debug("");
 
                 debug("*** Try setting local descriptions with bad types for the current state");
-                return promiseShouldReject("pc.setLocalDescription(new RTCSessionDescription({type:'answer', sdp:firstOffer.sdp}));");
+                return promiseShouldReject("pc.setLocalDescription({type:'answer', sdp:firstOffer.sdp});");
             })
             .then(function () {
-                return promiseShouldReject("pc.setLocalDescription(new RTCSessionDescription({type:'pranswer', sdp:firstOffer.sdp}));");
+                return promiseShouldReject("pc.setLocalDescription({type:'pranswer', sdp:firstOffer.sdp});");
             })
             .then(function () {
                 debug("");

@@ -66,17 +66,12 @@ public:
     // Method for retrieving the native client of the page.
     virtual PlatformPageClient platformPageClient() const = 0;
     
-    // To notify WebKit of scrollbar mode changes.
-    virtual void scrollbarsModeDidChange() const = 0;
-
     // Request that the cursor change.
     virtual void setCursor(const Cursor&) = 0;
 
     virtual void setCursorHiddenUntilMouseMoves(bool) = 0;
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
     virtual void scheduleAnimation() = 0;
-#endif
 
     virtual PlatformDisplayID displayID() const = 0;
     virtual void windowScreenDidChange(PlatformDisplayID) = 0;

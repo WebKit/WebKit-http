@@ -31,6 +31,7 @@
 #include "CodeBlockWithJITType.h"
 #include "DFGGraph.h"
 #include "DFGJITCode.h"
+#include "Disassembler.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
 #include "ProfilerDatabase.h"
@@ -42,7 +43,7 @@ Disassembler::Disassembler(Graph& graph)
     : m_graph(graph)
 {
     m_dumpContext.graph = &m_graph;
-    m_labelForBlockIndex.resize(graph.numBlocks());
+    m_labelForBlockIndex.grow(graph.numBlocks());
 }
 
 void Disassembler::dump(PrintStream& out, LinkBuffer& linkBuffer)
@@ -94,8 +95,8 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
     dumpHeader(out, linkBuffer);
     append(result, out, previousOrigin);
     
-    m_graph.ensureDominators();
-    m_graph.ensureNaturalLoops();
+    m_graph.ensureCPSDominators();
+    m_graph.ensureCPSNaturalLoops();
     
     const char* prefix = "    ";
     const char* disassemblyPrefix = "        ";
@@ -159,7 +160,7 @@ void Disassembler::dumpDisassembly(PrintStream& out, const char* prefix, LinkBuf
     else
         amountOfNodeWhiteSpace = Graph::amountOfNodeWhiteSpace(context);
     auto prefixBuffer = std::make_unique<char[]>(prefixLength + amountOfNodeWhiteSpace + 1);
-    strcpy(prefixBuffer.get(), prefix);
+    memcpy(prefixBuffer.get(), prefix, prefixLength);
     for (int i = 0; i < amountOfNodeWhiteSpace; ++i)
         prefixBuffer[i + prefixLength] = ' ';
     prefixBuffer[prefixLength + amountOfNodeWhiteSpace] = 0;

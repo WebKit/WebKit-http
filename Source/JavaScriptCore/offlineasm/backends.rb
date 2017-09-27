@@ -27,7 +27,6 @@ require "arm64"
 require "ast"
 require "x86"
 require "mips"
-require "sh4"
 require "cloop"
 
 BACKENDS =
@@ -41,7 +40,6 @@ BACKENDS =
      "ARMv7_TRADITIONAL",
      "ARM64",
      "MIPS",
-     "SH4",
      "C_LOOP"
     ]
 
@@ -61,7 +59,6 @@ WORKING_BACKENDS =
      "ARMv7_TRADITIONAL",
      "ARM64",
      "MIPS",
-     "SH4",
      "C_LOOP"
     ]
 
@@ -74,6 +71,21 @@ BACKENDS.each {
     $validBackends[backend] = true
     $allBackends[backend] = true
 }
+
+def canonicalizeBackendNames(backendNames)
+    newBackendNames = []
+    backendNames.each {
+        | backendName |
+        backendName = backendName.upcase
+        if backendName =~ /ARM.*/
+            backendName.sub!(/ARMV7(S?)(.*)/) { | _ | 'ARMv7' + $1.downcase + $2 }
+        end
+        backendName = "X86" if backendName == "I386"
+        newBackendNames << backendName
+        newBackendNames << "ARMv7" if backendName == "ARMv7s"
+    }
+    newBackendNames.uniq
+end
 
 def includeOnlyBackends(list)
     newValidBackends = {}

@@ -27,7 +27,6 @@
 
 #if ENABLE(REMOTE_INSPECTOR)
 
-#include "JSGlobalObjectInspectorController.h"
 #include "RemoteInspectionTarget.h"
 #include <wtf/Noncopyable.h>
 
@@ -52,10 +51,9 @@ public:
     String name() const override;
     bool hasLocalDebugger() const override { return false; }
 
-    void connect(Inspector::FrontendChannel*, bool automaticInspection) override;
+    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false, bool immediatelyPause = false) override;
     void disconnect(Inspector::FrontendChannel*) override;
     void dispatchMessageFromRemote(const String& message) override;
-    void pause() override;
 
     bool automaticInspectionAllowed() const override { return true; }
     void pauseWaitingForAutomaticInspection() override;

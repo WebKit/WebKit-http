@@ -1,12 +1,12 @@
 <!doctype html>
 <html>
 <head>
-<script type="text/javascript" src="../../http/tests/inspector/resources/inspector-test.js"></script>
+<script src="../../http/tests/inspector/resources/inspector-test.js"></script>
 <script>
 function test()
 {
-    WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, function(event) {
-        var url = WebInspector.frameResourceManager.mainFrame.url;
+    WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, function(event) {
+        var url = WI.frameResourceManager.mainFrame.url;
         InspectorTest.log("Main frame: " + url.substring(url.lastIndexOf("/") + 1));
         InspectorTest.completeTest();
     });

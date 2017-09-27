@@ -33,12 +33,27 @@ namespace WebCore {
 
 unsigned SQLResultSetRowList::length() const
 {
-    if (m_result.size() == 0)
+    if (m_result.isEmpty())
         return 0;
 
     ASSERT(m_result.size() % m_columns.size() == 0);
 
     return m_result.size() / m_columns.size();
+}
+
+ExceptionOr<Vector<WTF::KeyValuePair<String, SQLValue>>> SQLResultSetRowList::item(unsigned index) const
+{
+    if (index >= length())
+        return Exception { IndexSizeError };
+
+    Vector<WTF::KeyValuePair<String, SQLValue>> result;
+
+    unsigned numberOfColumns = m_columns.size();
+    unsigned valuesIndex = index * numberOfColumns;
+    for (unsigned i = 0; i < numberOfColumns; i++)
+        result.append({ m_columns[i], m_result[valuesIndex + i] });
+
+    return WTFMove(result);
 }
 
 }

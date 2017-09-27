@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,8 @@
 #if ENABLE(DFG_JIT)
 
 #include "CCallHelpers.h"
-#include "DFGOSRExitCompiler.h"
 #include "DFGJITCode.h"
+#include "DFGOSRExit.h"
 #include "FPRInfo.h"
 #include "GPRInfo.h"
 #include "LinkBuffer.h"
@@ -64,7 +64,7 @@ MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM* vm)
     }
     
     // Tell GC mark phase how much of the scratch buffer is active during call.
-    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::regT0);
     jit.storePtr(MacroAssembler::TrustedImmPtr(scratchSize), MacroAssembler::Address(GPRInfo::regT0));
 
     // Set up one argument.
@@ -76,7 +76,7 @@ MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM* vm)
 
     MacroAssembler::Call functionCall = jit.call();
 
-    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::regT0);
     jit.storePtr(MacroAssembler::TrustedImmPtr(0), MacroAssembler::Address(GPRInfo::regT0));
 
     for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
@@ -93,16 +93,16 @@ MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM* vm)
     
     jit.jump(MacroAssembler::AbsoluteAddress(&vm->osrExitJumpDestination));
     
-    LinkBuffer patchBuffer(*vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     
-    patchBuffer.link(functionCall, compileOSRExit);
+    patchBuffer.link(functionCall, OSRExit::compileOSRExit);
     
     return FINALIZE_CODE(patchBuffer, ("DFG OSR exit generation thunk"));
 }
 
 MacroAssemblerCodeRef osrEntryThunkGenerator(VM* vm)
 {
-    AssemblyHelpers jit(vm, nullptr);
+    AssemblyHelpers jit(nullptr);
 
     // We get passed the address of a scratch buffer. The first 8-byte slot of the buffer
     // is the frame size. The second 8-byte slot is the pointer to where we are supposed to
@@ -135,12 +135,12 @@ MacroAssemblerCodeRef osrEntryThunkGenerator(VM* vm)
     jit.abortWithReason(DFGUnreasonableOSREntryJumpDestination);
 
     ok.link(&jit);
-    jit.restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer();
+    jit.restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(*vm);
     jit.emitMaterializeTagCheckRegisters();
 
     jit.jump(GPRInfo::regT1);
     
-    LinkBuffer patchBuffer(*vm, jit, GLOBAL_THUNK_ID);
+    LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     return FINALIZE_CODE(patchBuffer, ("DFG OSR entry thunk"));
 }
 

@@ -28,6 +28,7 @@
 
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "FrameLoader.h"
 #include "MainFrame.h"
 #include "Page.h"
 
@@ -108,13 +109,22 @@ ContentExtensions::BlockedStatus UserContentProvider::processContentExtensionRul
     return userContentExtensionBackend().processContentExtensionRulesForLoad(url, resourceType, initiatingDocumentLoader);
 }
 
-Vector<ContentExtensions::Action> UserContentProvider::actionsForResourceLoad(const ResourceLoadInfo& resourceLoadInfo, DocumentLoader& initiatingDocumentLoader)
+std::pair<Vector<ContentExtensions::Action>, Vector<String>> UserContentProvider::actionsForResourceLoad(const ResourceLoadInfo& resourceLoadInfo, DocumentLoader& initiatingDocumentLoader)
 {
     if (!contentExtensionsEnabled(initiatingDocumentLoader))
         return { };
 
     return userContentExtensionBackend().actionsForResourceLoad(resourceLoadInfo);
 }
+
+void UserContentProvider::forEachContentExtension(const WTF::Function<void(const String&, ContentExtensions::ContentExtension&)>& apply, DocumentLoader& initiatingDocumentLoader)
+{
+    if (!contentExtensionsEnabled(initiatingDocumentLoader))
+        return;
+
+    userContentExtensionBackend().forEach(apply);
+}
+
 #endif
 
 } // namespace WebCore

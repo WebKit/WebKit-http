@@ -39,10 +39,10 @@ int testJSONParse()
     bool failed = false;
 
     RefPtr<VM> vm = VM::create();
-
+    
     JSLockHolder locker(vm.get());
     JSGlobalObject* globalObject = JSGlobalObject::create(*vm, JSGlobalObject::createStructure(*vm, jsNull()));
-
+    
     ExecState* exec = globalObject->globalExec();
     JSValue v0 = JSONParse(exec, "");
     JSValue v1 = JSONParse(exec, "#$%^");
@@ -51,7 +51,7 @@ int testJSONParse()
     JSValue v3 = JSONParse(exec, String(emptyUCharArray, 0));
     JSValue v4;
     JSValue v5 = JSONParse(exec, "123");
-
+    
     failed = failed || (v0 != v1);
     failed = failed || (v1 != v2);
     failed = failed || (v2 != v3);

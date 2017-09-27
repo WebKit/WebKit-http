@@ -27,7 +27,8 @@
 
 #if PLATFORM(IOS)
 
-#import "AnimationController.h"
+#import "CSSAnimationController.h"
+#import "CommonVM.h"
 #import "DOMWindow.h"
 #import "Document.h"
 #import "DocumentMarkerController.h"
@@ -46,7 +47,6 @@
 #import "HTMLObjectElement.h"
 #import "HitTestRequest.h"
 #import "HitTestResult.h"
-#import "JSDOMWindowBase.h"
 #import "MainFrame.h"
 #import "NodeRenderStyle.h"
 #import "NodeTraversal.h"
@@ -59,6 +59,7 @@
 #import "RenderTextControl.h"
 #import "RenderView.h"
 #import "RenderedDocumentMarker.h"
+#import "ShadowRoot.h"
 #import "TextBoundaries.h"
 #import "TextIterator.h"
 #import "VisiblePosition.h"
@@ -78,7 +79,7 @@ namespace WebCore {
 // Create <html><body (style="...")></body></html> doing minimal amount of work.
 void Frame::initWithSimpleHTMLDocument(const String& style, const URL& url)
 {
-    m_loader.initForSynthesizedDocument(url);
+    m_loader->initForSynthesizedDocument(url);
 
     RefPtr<HTMLDocument> document = HTMLDocument::createSynthesizedDocument(this, url);
     document->setCompatibilityMode(DocumentCompatibilityMode::LimitedQuirksMode);
@@ -258,9 +259,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
         *nodeBounds = IntRect();
 
     Node* pointerCursorNode = nullptr;
-    for (Node* node = hitTestResult.innerNode(); node && node != terminationNode; node = node->parentNode()) {
-        ASSERT(!node->isInShadowTree());
-
+    for (Node* node = hitTestResult.innerNode(); node && node != terminationNode; node = node->parentInComposedTree()) {
         // We only accept pointer nodes before reaching the body tag.
         if (node->hasTagName(HTMLNames::bodyTag)) {
 #if USE(UIKIT_EDITING)
@@ -283,7 +282,7 @@ static Node* ancestorRespondingToClickEvents(const HitTestResult& hitTestResult,
         else if (pointerCursorNode)
             pointerCursorStillValid = false;
 
-        if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents()) {
+        if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents() || (is<Element>(*node) && downcast<Element>(*node).isMouseFocusable())) {
             // If we're at the body or higher, use the pointer cursor node (which may be null).
             if (bodyHasBeenReached)
                 node = pointerCursorNode;
@@ -405,7 +404,7 @@ Node* Frame::qualifyingNodeAtViewportLocation(const FloatPoint& viewportLocation
         Node* failedNode = candidate;
 
         while (candidate && !candidate->isElementNode())
-            candidate = candidate->parentNode();
+            candidate = candidate->parentInComposedTree();
 
         if (candidate)
             failedNode = candidate;
@@ -511,7 +510,7 @@ void Frame::updateLayout() const
         view->adjustViewSize();
 }
 
-NSRect Frame::caretRect() const
+NSRect Frame::caretRect()
 {
     VisibleSelection visibleSelection = selection().selection();
     if (visibleSelection.isNone())
@@ -519,7 +518,7 @@ NSRect Frame::caretRect() const
     return visibleSelection.isCaret() ? selection().absoluteCaretBounds() : VisiblePosition(visibleSelection.end()).absoluteCaretBounds();
 }
 
-NSRect Frame::rectForScrollToVisible() const
+NSRect Frame::rectForScrollToVisible()
 {
     VisibleSelection selection(this->selection().selection());
 
@@ -544,7 +543,7 @@ void Frame::setTimersPaused(bool paused)
 {
     if (!m_page)
         return;
-    JSLockHolder lock(JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
     if (paused)
         m_page->suspendActiveDOMObjectsAndAnimations();
     else
@@ -630,13 +629,13 @@ NSArray *Frame::interpretationsForCurrentRoot() const
 
     auto* root = selection().selection().selectionType() == VisibleSelection::NoSelection ? document()->bodyOrFrameset() : selection().selection().rootEditableElement();
     unsigned rootChildCount = root->countChildNodes();
-    RefPtr<Range> rangeOfRootContents = Range::create(*document(), createLegacyEditingPosition(root, 0), createLegacyEditingPosition(root, rootChildCount));
+    auto rangeOfRootContents = Range::create(*document(), createLegacyEditingPosition(root, 0), createLegacyEditingPosition(root, rootChildCount));
 
-    auto markersInRoot = document()->markers().markersInRange(rangeOfRootContents.get(), DocumentMarker::DictationPhraseWithAlternatives);
+    auto markersInRoot = document()->markers().markersInRange(rangeOfRootContents, DocumentMarker::DictationPhraseWithAlternatives);
 
     // There are no phrases with alternatives, so there is just one interpretation.
     if (markersInRoot.isEmpty())
-        return [NSArray arrayWithObject:plainText(rangeOfRootContents.get())];
+        return [NSArray arrayWithObject:plainText(rangeOfRootContents.ptr())];
 
     // The number of interpretations will be i1 * i2 * ... * iN, where iX is the number of interpretations for the Xth phrase with alternatives.
     size_t interpretationsCount = 1;
@@ -653,7 +652,7 @@ NSArray *Frame::interpretationsForCurrentRoot() const
 
     Node* pastLastNode = rangeOfRootContents->pastLastNode();
     for (Node* node = rangeOfRootContents->firstNode(); node != pastLastNode; node = NodeTraversal::next(*node)) {
-        for (auto* marker : document()->markers().markersFor(node, DocumentMarker::MarkerTypes(DocumentMarker::DictationPhraseWithAlternatives))) {
+        for (auto* marker : document()->markers().markersFor(node, DocumentMarker::DictationPhraseWithAlternatives)) {
             // First, add text that precede the marker.
             if (precedingTextStartPosition != createLegacyEditingPosition(node, marker->startOffset())) {
                 RefPtr<Range> precedingTextRange = Range::create(*document(), precedingTextStartPosition, createLegacyEditingPosition(node, marker->startOffset()));
@@ -719,7 +718,7 @@ void Frame::viewportOffsetChanged(ViewportOffsetChangeType changeType)
 
     if (changeType == CompletedScrollOffset) {
         if (RenderView* root = contentRenderer())
-            root->compositor().updateCompositingLayers(CompositingUpdateOnScroll);
+            root->compositor().updateCompositingLayers(CompositingUpdateType::OnScroll);
     }
 }
 

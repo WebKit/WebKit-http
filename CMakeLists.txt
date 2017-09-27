@@ -1,12 +1,7 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.3)
 project(WebKit)
 
 add_definitions(-DMETROLOGICAL=1)
-
-# This should be removed once we require CMake 3.3.
-if (POLICY CMP0058)
-    cmake_policy(SET CMP0058 NEW)
-endif ()
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Source/cmake")
 
@@ -29,8 +24,8 @@ set(ALL_PORTS
     GTK
     JSCOnly
     Mac
-    WinCairo
     WPE
+    WinCairo
 )
 set(PORT "NOPORT" CACHE STRING "choose which WebKit port to build (one of ${ALL_PORTS})")
 
@@ -48,8 +43,18 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQU
     set(COMPILER_IS_CLANG ON)
 endif ()
 
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "5.0.0")
+        message(FATAL_ERROR "GCC 5.0.0 is required to build WebKitGTK+, use a newer GCC version or clang")
+    endif ()
+endif ()
+
 if (CMAKE_COMPILER_IS_GNUCXX OR COMPILER_IS_CLANG)
     set(COMPILER_IS_GCC_OR_CLANG ON)
+endif ()
+
+if (MSVC AND COMPILER_IS_CLANG)
+    set(COMPILER_IS_CLANG_CL ON)
 endif ()
 
 # -----------------------------------------------------------------------------
@@ -66,6 +71,8 @@ if (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
     set(WTF_CPU_ARM 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64")
     set(WTF_CPU_ARM64 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "alpha*")
+    set(WTF_CPU_ALPHA 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^mips")
     set(WTF_CPU_MIPS 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "sh4")
@@ -108,19 +115,22 @@ endif ()
 # -----------------------------------------------------------------------------
 # Default library types
 # -----------------------------------------------------------------------------
-option(SHARED_CORE "build JavaScriptCore and WebCore as shared libraries")
+option(SHARED_CORE "build WebCore as a shared library")
 
 if (SHARED_CORE)
-    set(JavaScriptCore_LIBRARY_TYPE SHARED)
     set(WebCore_LIBRARY_TYPE SHARED)
 else ()
-    set(JavaScriptCore_LIBRARY_TYPE SHARED)
     set(WebCore_LIBRARY_TYPE STATIC)
 endif ()
 
+set(WTF_LIBRARY_TYPE STATIC)
+set(JavaScriptCore_LIBRARY_TYPE SHARED)
+set(PAL_LIBRARY_TYPE STATIC)
+set(WebKitLegacy_LIBRARY_TYPE SHARED)
 set(WebKit_LIBRARY_TYPE SHARED)
-set(WebKit2_LIBRARY_TYPE SHARED)
 set(WebCoreTestSupport_LIBRARY_TYPE STATIC)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE True)
 
 # -----------------------------------------------------------------------------
 # Install JavaScript shell
@@ -145,11 +155,6 @@ include(WebKitCommon)
 if (ENABLE_API_TESTS)
     enable_testing()
 endif ()
-
-# -----------------------------------------------------------------------------
-# Define packaging
-# -----------------------------------------------------------------------------
-include(WebKitPackaging)
 
 # -----------------------------------------------------------------------------
 # Add module directories

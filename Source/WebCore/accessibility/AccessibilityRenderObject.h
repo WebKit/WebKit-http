@@ -31,6 +31,7 @@
 #include "AccessibilityNodeObject.h"
 #include "LayoutRect.h"
 #include <wtf/Forward.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
     
@@ -152,6 +153,7 @@ public:
     void textChanged() override;
     void addChildren() override;
     bool canHaveChildren() const override;
+    bool canHaveSelectedChildren() const override;
     void selectedChildren(AccessibilityChildrenVector&) override;
     void visibleChildren(AccessibilityChildrenVector&) override;
     void tabChildren(AccessibilityChildrenVector&) override;
@@ -197,11 +199,12 @@ public:
     AccessibilityRole roleValueForMSAA() const override;
 
     String passwordFieldValue() const override;
+    
+    WeakPtr<AccessibilityRenderObject> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
 protected:
     explicit AccessibilityRenderObject(RenderObject*);
     void setRenderObject(RenderObject* renderer) { m_renderer = renderer; }
-    bool needsToUpdateChildren() const { return m_childrenDirty; }
     ScrollableArea* getScrollableAreaIfScrollable() const override;
     void scrollTo(const IntPoint&) const override;
     
@@ -217,6 +220,7 @@ protected:
     RenderObject* m_renderer;
 
 private:
+    WeakPtrFactory<AccessibilityRenderObject> m_weakPtrFactory;
     bool isAccessibilityRenderObject() const final { return true; }
     void ariaListboxSelectedChildren(AccessibilityChildrenVector&);
     void ariaListboxVisibleChildren(AccessibilityChildrenVector&);
@@ -227,6 +231,8 @@ private:
     Element* rootEditableElementForPosition(const Position&) const;
     bool nodeIsTextControl(const Node*) const;
     void setNeedsToUpdateChildren() override { m_childrenDirty = true; }
+    bool needsToUpdateChildren() const override { return m_childrenDirty; }
+    void setNeedsToUpdateSubtree() override { m_subtreeDirty = true; }
     Path elementPath() const override;
     
     bool isTabItemSelected() const;
@@ -273,7 +279,7 @@ private:
     const String ariaLiveRegionStatus() const override;
     const AtomicString& ariaLiveRegionRelevant() const override;
     bool ariaLiveRegionAtomic() const override;
-    bool ariaLiveRegionBusy() const override;
+    bool isBusy() const override;
 
     bool inheritsPresentationalRole() const override;
 

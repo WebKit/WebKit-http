@@ -62,7 +62,13 @@ FAKE_REPOSITORY = {
         "import_options": ["generate_git_submodules_description", "generate_gitignore", "generate_init_py"]
     }
 ]
-''' }
+''',
+    '/mock-checkout/LayoutTests/imported/w3c/resources/import-expectations.json': '''
+{
+    "test1": "import",
+    "test2": "skip"
+}'''
+}
 
 
 class TestImporterTest(unittest.TestCase):
@@ -72,11 +78,13 @@ class TestImporterTest(unittest.TestCase):
         return options
 
     def test_import_dir_with_no_tests_and_no_hg(self):
+        FAKE_FILES.update(FAKE_REPOSITORY)
+
         host = MockHost()
         host.executive = MockExecutive2(exception=OSError())
         host.filesystem = MockFileSystem(files=FAKE_FILES)
 
-        importer = TestImporter(host, FAKE_SOURCE_DIR, self._parse_options(['-n', '-d', 'w3c', '-t', FAKE_TEST_PATH]))
+        importer = TestImporter(host, FAKE_TEST_PATH, self._parse_options(['-n', '-d', 'w3c', '-s', FAKE_SOURCE_DIR]))
 
         oc = OutputCapture()
         oc.capture_output()
@@ -86,11 +94,13 @@ class TestImporterTest(unittest.TestCase):
             oc.restore_output()
 
     def test_import_dir_with_no_tests(self):
+        FAKE_FILES.update(FAKE_REPOSITORY)
+
         host = MockHost()
         host.executive = MockExecutive2(exception=ScriptError("abort: no repository found in '/Volumes/Source/src/wk/Tools/Scripts/webkitpy/w3c' (.hg not found)!"))
         host.filesystem = MockFileSystem(files=FAKE_FILES)
 
-        importer = TestImporter(host, FAKE_SOURCE_DIR, self._parse_options(['-n', '-d', 'w3c', '-t', FAKE_TEST_PATH]))
+        importer = TestImporter(host, FAKE_TEST_PATH, self._parse_options(['-n', '-d', 'w3c', '-s', FAKE_SOURCE_DIR]))
         oc = OutputCapture()
         oc.capture_output()
         try:
@@ -103,11 +113,12 @@ class TestImporterTest(unittest.TestCase):
             '/tests/csswg/test1/__init__.py': '',
             '/tests/csswg/test2/__init__.py': 'NOTEMPTY',
         }
+        FAKE_FILES.update(FAKE_REPOSITORY)
 
         host = MockHost()
         host.filesystem = MockFileSystem(files=FAKE_FILES)
 
-        importer = TestImporter(host, FAKE_SOURCE_DIR, self._parse_options(['-n', '-d', 'w3c', '-t', '/tests/csswg']))
+        importer = TestImporter(host, ['test1', 'test2'], self._parse_options(['-n', '-d', 'w3c', '-s', FAKE_SOURCE_DIR]))
         importer.do_import()
 
         self.assertTrue(host.filesystem.exists("/mock-checkout/LayoutTests/w3c/test1/__init__.py"))
@@ -138,7 +149,7 @@ class TestImporterTest(unittest.TestCase):
         FAKE_FILES = {
             '/mock-checkout/WebKitBuild/w3c-tests/csswg-tests/t/test.html': '<!doctype html><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
             '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/t/test.html': '<!doctype html><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
-            '/mock-checkout/Source/WebCore/css/CSSPropertyNames.in': '',
+            '/mock-checkout/Source/WebCore/css/CSSProperties.json': '',
             '/mock-checkout/Source/WebCore/css/CSSValueKeywords.in': '',
         }
         FAKE_FILES.update(FAKE_REPOSITORY)
@@ -178,11 +189,12 @@ class TestImporterTest(unittest.TestCase):
         "import_options": []
      }
 ]''',
-            '/mock-checkout/LayoutTests/imported/w3c/resources/ImportExpectations': '''
-web-platform-tests/dir-to-skip [ Skip ]
-web-platform-tests/dir-to-skip/dir-to-import [ Pass ]
-web-platform-tests/dir-to-skip/file-to-import.html [ Pass ]
-''',
+            '/mock-checkout/LayoutTests/imported/w3c/resources/import-expectations.json': '''
+{
+"web-platform-tests/dir-to-skip": "skip",
+"web-platform-tests/dir-to-skip/dir-to-import": "import",
+"web-platform-tests/dir-to-skip/file-to-import.html": "import"
+}''',
             '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/dir-to-skip/test-to-skip.html': 'to be skipped',
             '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/dir-to-skip/dir-to-import/test-to-import.html': 'to be imported',
             '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/dir-to-skip/dir-to-not-import/test-to-not-import.html': 'to be skipped',
@@ -255,4 +267,39 @@ web-platform-tests/dir-to-skip/file-to-import.html [ Pass ]
         self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/__init__.py'))
         self.assertTrue(fs.getsize('/mock-checkout/LayoutTests/w3c/web-platform-tests/__init__.py') > 0)
 
-    # FIXME: Needs more tests.
+    def test_remove_obsolete_content(self):
+        FAKE_FILES = {
+            '/mock-checkout/WebKitBuild/w3c-tests/csswg-tests/temp': '',
+            '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/t/new.html': '<!doctype html><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
+            '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/t/w3c-import.log': 'List of files:\n/LayoutTests/w3c/web-platform-tests/t/obsolete.html',
+            '/mock-checkout/LayoutTests/w3c/web-platform-tests/t/obsolete.html': 'obsoleted content',
+            '/mock-checkout/LayoutTests/w3c/web-platform-tests/t/obsolete-expected.txt': 'PASS',
+        }
+
+        FAKE_FILES.update(FAKE_REPOSITORY)
+
+        host = MockHost()
+        host.executive = MockExecutive2()
+        host.filesystem = MockFileSystem(files=FAKE_FILES)
+
+        fs = self.import_downloaded_tests(['--no-fetch', '--import-all', '-d', 'w3c'], FAKE_FILES)
+
+        self.assertFalse(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/obsolete.html'))
+        self.assertFalse(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/obsolete-expected.txt'))
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/new.html'))
+
+    def test_manual_slow_test(self):
+        tests_options = '{"a": ["slow"]}'
+        FAKE_FILES = {
+            '/mock-checkout/WebKitBuild/w3c-tests/csswg-tests/temp': '',
+            '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/t/new-manual.html': '<!doctype html><meta name="timeout" content="long"><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
+            '/mock-checkout/LayoutTests/tests-options.json': tests_options}
+        FAKE_FILES.update(FAKE_REPOSITORY)
+
+        host = MockHost()
+        host.executive = MockExecutive2()
+        host.filesystem = MockFileSystem(files=FAKE_FILES)
+
+        fs = self.import_downloaded_tests(['--no-fetch', '--import-all', '-d', 'w3c'], FAKE_FILES)
+        self.assertFalse(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/new-manual.html'))
+        self.assertEquals(tests_options, fs.read_text_file('/mock-checkout/LayoutTests/tests-options.json'))

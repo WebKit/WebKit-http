@@ -28,63 +28,90 @@
 #include "StructuredClone.h"
 
 #include "JSDOMBinding.h"
+#include "JSDOMExceptionHandling.h"
 #include <runtime/JSTypedArrays.h>
 
 using namespace JSC;
 
 namespace WebCore {
 
-EncodedJSValue JSC_HOST_CALL structuredCloneArrayBuffer(ExecState* execState)
+enum class CloneMode {
+    Full,
+    Partial,
+};
+
+EncodedJSValue JSC_HOST_CALL cloneArrayBufferImpl(ExecState*, CloneMode);
+
+EncodedJSValue JSC_HOST_CALL cloneArrayBufferImpl(ExecState* state, CloneMode mode)
 {
-    ASSERT(execState);
-    ASSERT(execState->argumentCount());
-    ASSERT(execState->lexicalGlobalObject());
+    ASSERT(state);
+    ASSERT(state->argumentCount());
+    ASSERT(state->lexicalGlobalObject());
 
-    ArrayBuffer* buffer = toUnsharedArrayBuffer(execState->uncheckedArgument(0));
+    VM& vm = state->vm();
+    auto* buffer = toUnsharedArrayBuffer(vm, state->uncheckedArgument(0));
     if (!buffer) {
-        setDOMException(execState, DATA_CLONE_ERR);
-        return JSValue::encode(jsUndefined());
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        throwDataCloneError(*state, scope);
+        return { };
     }
-
-    return JSValue::encode(JSArrayBuffer::create(execState->vm(), execState->lexicalGlobalObject()->arrayBufferStructure(ArrayBufferSharingMode::Default), ArrayBuffer::tryCreate(buffer->data(), buffer->byteLength())));
+    if (mode == CloneMode::Partial) {
+        ASSERT(state->argumentCount() == 3);
+        int srcByteOffset = static_cast<int>(state->uncheckedArgument(1).toNumber(state));
+        int srcLength = static_cast<int>(state->uncheckedArgument(2).toNumber(state));
+        return JSValue::encode(JSArrayBuffer::create(state->vm(), state->lexicalGlobalObject()->arrayBufferStructure(ArrayBufferSharingMode::Default), buffer->slice(srcByteOffset, srcByteOffset + srcLength)));
+    }
+    return JSValue::encode(JSArrayBuffer::create(state->vm(), state->lexicalGlobalObject()->arrayBufferStructure(ArrayBufferSharingMode::Default), ArrayBuffer::tryCreate(buffer->data(), buffer->byteLength())));
 }
 
-EncodedJSValue JSC_HOST_CALL structuredCloneArrayBufferView(ExecState* execState)
+EncodedJSValue JSC_HOST_CALL cloneArrayBuffer(ExecState* state)
 {
-    ASSERT(execState);
-    ASSERT(execState->argumentCount());
+    return cloneArrayBufferImpl(state, CloneMode::Partial);
+}
 
-    JSValue value = execState->uncheckedArgument(0);
-    auto* bufferView = jsDynamicDowncast<JSArrayBufferView*>(value);
+EncodedJSValue JSC_HOST_CALL structuredCloneArrayBuffer(ExecState* state)
+{
+    return cloneArrayBufferImpl(state, CloneMode::Full);
+}
+
+EncodedJSValue JSC_HOST_CALL structuredCloneArrayBufferView(ExecState* state)
+{
+    ASSERT(state);
+    ASSERT(state->argumentCount());
+
+    JSValue value = state->uncheckedArgument(0);
+    VM& vm = state->vm();
+    auto* bufferView = jsDynamicDowncast<JSArrayBufferView*>(vm, value);
     ASSERT(bufferView);
 
     auto* buffer = bufferView->unsharedBuffer();
     if (!buffer) {
-        setDOMException(execState, DATA_CLONE_ERR);
-        return JSValue::encode(jsUndefined());
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        throwDataCloneError(*state, scope);
+        return { };
     }
     auto bufferClone = ArrayBuffer::tryCreate(buffer->data(), buffer->byteLength());
 
-    if (jsDynamicDowncast<JSInt8Array*>(value))
-        return JSValue::encode(JSInt8Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSInt16Array*>(value))
-        return JSValue::encode(JSInt16Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSInt32Array*>(value))
-        return JSValue::encode(JSInt32Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSUint8Array*>(value))
-        return JSValue::encode(JSUint8Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSUint8ClampedArray*>(value))
-        return JSValue::encode(JSUint8ClampedArray::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSUint16Array*>(value))
-        return JSValue::encode(JSUint16Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSUint32Array*>(value))
-        return JSValue::encode(JSUint32Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSFloat32Array*>(value))
-        return JSValue::encode(JSFloat32Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSFloat64Array*>(value))
-        return JSValue::encode(JSFloat64Array::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
-    if (jsDynamicDowncast<JSDataView*>(value))
-        return JSValue::encode(JSDataView::create(execState, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSInt8Array*>(vm, value))
+        return JSValue::encode(JSInt8Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSInt16Array*>(vm, value))
+        return JSValue::encode(JSInt16Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSInt32Array*>(vm, value))
+        return JSValue::encode(JSInt32Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSUint8Array*>(vm, value))
+        return JSValue::encode(JSUint8Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSUint8ClampedArray*>(vm, value))
+        return JSValue::encode(JSUint8ClampedArray::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSUint16Array*>(vm, value))
+        return JSValue::encode(JSUint16Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSUint32Array*>(vm, value))
+        return JSValue::encode(JSUint32Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSFloat32Array*>(vm, value))
+        return JSValue::encode(JSFloat32Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSFloat64Array*>(vm, value))
+        return JSValue::encode(JSFloat64Array::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
+    if (jsDynamicDowncast<JSDataView*>(vm, value))
+        return JSValue::encode(JSDataView::create(state, bufferView->structure(), WTFMove(bufferClone), bufferView->byteOffset(), bufferView->length()));
 
     ASSERT_NOT_REACHED();
     return JSValue::encode(jsUndefined());

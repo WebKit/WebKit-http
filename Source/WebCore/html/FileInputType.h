@@ -40,6 +40,7 @@ namespace WebCore {
 
 class DragData;
 class FileList;
+class FileListCreator;
 class Icon;
 
 class FileInputType final : public BaseClickableWithKeyInputType, private FileChooserClient, private FileIconLoaderClient {
@@ -50,59 +51,53 @@ public:
     static Vector<FileChooserFileInfo> filesFromFormControlState(const FormControlState&);
 
 private:
-    const AtomicString& formControlType() const override;
-    FormControlState saveFormControlState() const override;
-    void restoreFormControlState(const FormControlState&) override;
-    bool appendFormData(FormDataList&, bool) const override;
-    bool valueMissing(const String&) const override;
-    String valueMissingText() const override;
-    void handleDOMActivateEvent(Event&) override;
-    RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) override;
-    bool canSetStringValue() const override;
-    FileList* files() override;
-    void setFiles(PassRefPtr<FileList>) override;
-#if PLATFORM(IOS)
-    String displayString() const override;
-#endif
-    bool canSetValue(const String&) override;
-    bool getTypeSpecificValue(String&) override; // Checked first, before internal storage or the value attribute.
-    void setValue(const String&, bool valueChanged, TextFieldEventBehavior) override;
+    const AtomicString& formControlType() const final;
+    FormControlState saveFormControlState() const final;
+    void restoreFormControlState(const FormControlState&) final;
+    bool appendFormData(DOMFormData&, bool) const final;
+    bool valueMissing(const String&) const final;
+    String valueMissingText() const final;
+    void handleDOMActivateEvent(Event&) final;
+    RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) final;
+    bool canSetStringValue() const final;
+    FileList* files() final;
+    void setFiles(RefPtr<FileList>&&) final;
+    enum class RequestIcon { Yes, No };
+    void setFiles(RefPtr<FileList>&&, RequestIcon);
+    String displayString() const final;
+    bool canSetValue(const String&) final;
+    bool getTypeSpecificValue(String&) final; // Checked first, before internal storage or the value attribute.
+    void setValue(const String&, bool valueChanged, TextFieldEventBehavior) final;
 
 #if ENABLE(DRAG_SUPPORT)
-    bool receiveDroppedFiles(const DragData&) override;
+    bool receiveDroppedFiles(const DragData&) final;
 #endif
 
-    Icon* icon() const override;
-    bool isFileUpload() const override;
-    void createShadowSubtree() override;
-    void disabledAttributeChanged() override;
-    void multipleAttributeChanged() override;
-    String defaultToolTip() const override;
+    Icon* icon() const final;
+    bool isFileUpload() const final;
+    void createShadowSubtree() final;
+    void disabledAttributeChanged() final;
+    void multipleAttributeChanged() final;
+    String defaultToolTip() const final;
 
-    // FileChooserClient implementation.
-    void filesChosen(const Vector<FileChooserFileInfo>&) override;
-#if PLATFORM(IOS)
-    void filesChosen(const Vector<FileChooserFileInfo>&, const String& displayString, Icon*) override;
-#endif
+    void filesChosen(const Vector<FileChooserFileInfo>&, const String& displayString = { }, Icon* = nullptr) final;
 
     // FileIconLoaderClient implementation.
-    void updateRendering(PassRefPtr<Icon>) override;
+    void iconLoaded(RefPtr<Icon>&&) final;
 
-    PassRefPtr<FileList> createFileList(const Vector<FileChooserFileInfo>& files) const;
     void requestIcon(const Vector<String>&);
 
     void applyFileChooserSettings(const FileChooserSettings&);
 
-    RefPtr<FileChooser> m_fileChooser;
-#if !PLATFORM(IOS)
-    std::unique_ptr<FileIconLoader> m_fileIconLoader;
-#endif
+    bool allowsDirectories() const;
 
-    RefPtr<FileList> m_fileList;
+    RefPtr<FileChooser> m_fileChooser;
+    std::unique_ptr<FileIconLoader> m_fileIconLoader;
+
+    Ref<FileList> m_fileList;
+    RefPtr<FileListCreator> m_fileListCreator;
     RefPtr<Icon> m_icon;
-#if PLATFORM(IOS)
     String m_displayString;
-#endif
 };
 
 } // namespace WebCore

@@ -33,12 +33,10 @@
 #include "HTMLLinkElement.h"
 #include "HTMLStyleElement.h"
 #include "Page.h"
-#include "PageGroup.h"
 #include "ProcessingInstruction.h"
-#include "SVGNames.h"
 #include "SVGStyleElement.h"
 #include "Settings.h"
-#include "StyleInvalidationAnalysis.h"
+#include "StyleInvalidator.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
 #include "StyleSheetContents.h"
@@ -81,7 +79,7 @@ CSSStyleSheet* ExtensionStyleSheets::pageUserSheet()
     if (userSheetText.isEmpty())
         return 0;
     
-    m_pageUserSheet = createExtensionsStyleSheet(m_document, m_document.settings()->userStyleSheetLocation(), userSheetText, UserStyleUserLevel);
+    m_pageUserSheet = createExtensionsStyleSheet(m_document, m_document.settings().userStyleSheetLocation(), userSheetText, UserStyleUserLevel);
 
     return m_pageUserSheet.get();
 }

@@ -36,13 +36,13 @@ namespace WebCore {
 RefPtr<SharedBuffer> SharedBuffer::createFromReadingFile(const String& filePath)
 {
     if (filePath.isEmpty())
-        return 0;
+        return nullptr;
 
     String nullifiedPath = filePath;
     HANDLE fileHandle = CreateFileW(nullifiedPath.charactersWithNullTermination().data(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     if (fileHandle == INVALID_HANDLE_VALUE) {
         LOG_ERROR("Failed to open file %s to create shared buffer, GetLastError() = %u", filePath.ascii().data(), GetLastError());
-        return 0;
+        return nullptr;
     }
 
     RefPtr<SharedBuffer> result;
@@ -53,14 +53,14 @@ RefPtr<SharedBuffer> SharedBuffer::createFromReadingFile(const String& filePath)
         Vector<char> buffer(bytesToRead);
         DWORD bytesRead;
         if (ReadFile(fileHandle, buffer.data(), bytesToRead, &bytesRead, 0) && bytesToRead == bytesRead)
-            result = SharedBuffer::adoptVector(buffer);
+            result = SharedBuffer::create(WTFMove(buffer));
         else
             LOG_ERROR("Failed to fully read contents of file %s, GetLastError() = %u", filePath.ascii().data(), GetLastError());
     } else
         LOG_ERROR("Failed to get filesize of file %s, GetLastError() = %u", filePath.ascii().data(), lastError);
 
     CloseHandle(fileHandle);
-    return result.release();
+    return result;
 }
 
 } // namespace WebCore

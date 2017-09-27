@@ -575,10 +575,7 @@ void BlobResourceHandle::notifyResponseOnSuccess()
     // as if the response had a Content-Disposition header with the filename parameter set to the File's name attribute.
     // Notably, this will affect a name suggested in "File Save As".
 
-    if (usesAsyncCallbacks())
-        client()->didReceiveResponseAsync(this, WTFMove(response));
-    else
-        client()->didReceiveResponse(this, WTFMove(response));
+    didReceiveResponse(WTFMove(response));
 }
 
 void BlobResourceHandle::notifyResponseOnError()
@@ -601,16 +598,13 @@ void BlobResourceHandle::notifyResponseOnError()
         break;
     }
 
-    if (usesAsyncCallbacks())
-        client()->didReceiveResponseAsync(this, WTFMove(response));
-    else
-        client()->didReceiveResponse(this, WTFMove(response));
+    didReceiveResponse(WTFMove(response));
 }
 
 void BlobResourceHandle::notifyReceiveData(const char* data, int bytesRead)
 {
     if (client())
-        client()->didReceiveBuffer(this, SharedBuffer::create(data, bytesRead), bytesRead);
+        client()->didReceiveBuffer(this, SharedBuffer::create(reinterpret_cast<const uint8_t*>(data), bytesRead), bytesRead);
 }
 
 void BlobResourceHandle::notifyFail(Error errorCode)
@@ -627,7 +621,7 @@ static void doNotifyFinish(BlobResourceHandle& handle)
     if (!handle.client())
         return;
 
-    handle.client()->didFinishLoading(&handle, 0);
+    handle.client()->didFinishLoading(&handle);
 }
 
 void BlobResourceHandle::notifyFinish()

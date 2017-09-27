@@ -33,6 +33,7 @@
 #include "config.h"
 #include "InspectorTimelineAgent.h"
 
+#include "DOMWindow.h"
 #include "Event.h"
 #include "Frame.h"
 #include "InspectorMemoryAgent.h"
@@ -53,7 +54,7 @@
 
 #if PLATFORM(IOS)
 #include "RuntimeApplicationChecks.h"
-#include "WebCoreThread.h"
+#include "WebCoreThreadInternal.h"
 #endif
 
 #if PLATFORM(COCOA)
@@ -143,7 +144,7 @@ void InspectorTimelineAgent::setInstruments(ErrorString& errorString, const Insp
             return;
         }
 
-        Optional<Protocol::Timeline::Instrument> instrumentType = Protocol::InspectorHelpers::parseEnumValueFromString<Protocol::Timeline::Instrument>(enumValueString);
+        std::optional<Protocol::Timeline::Instrument> instrumentType = Protocol::InspectorHelpers::parseEnumValueFromString<Protocol::Timeline::Instrument>(enumValueString);
         if (!instrumentType) {
             errorString = makeString("Unexpected enum value: ", enumValueString);
             return;
@@ -291,7 +292,7 @@ void InspectorTimelineAgent::stopFromConsole(JSC::ExecState*, const String& titl
     if (WebConsoleAgent* consoleAgent = m_instrumentingAgents.webConsoleAgent()) {
         // FIXME: Send an enum to the frontend for localization?
         String warning = title.isEmpty() ? ASCIILiteral("No profiles exist") : makeString("Profile \"", title, "\" does not exist");
-        consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::ProfileEnd, MessageLevel::Warning, warning));    
+        consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::ProfileEnd, MessageLevel::Warning, warning));
     }
 }
 
@@ -384,7 +385,7 @@ void InspectorTimelineAgent::didPaint(RenderObject& renderer, const LayoutRect& 
     didCompleteCurrentRecord(TimelineRecordType::Paint);
 }
 
-void InspectorTimelineAgent::didInstallTimer(int timerId, std::chrono::milliseconds timeout, bool singleShot, Frame* frame)
+void InspectorTimelineAgent::didInstallTimer(int timerId, Seconds timeout, bool singleShot, Frame* frame)
 {
     appendRecord(TimelineRecordFactory::createTimerInstallData(timerId, timeout, singleShot), TimelineRecordType::TimerInstall, true, frame);
 }

@@ -31,14 +31,8 @@ find_path(FREETYPE2_HEADER_DIR
     PATH_SUFFIXES freetype
 )
 
-find_path(FREETYPE2_ROOT_DIR
-    NAMES ft2build.h
-    HINTS ${PC_FREETYPE2_INCLUDE_DIRS}
-          ${PC_FREETYPE2_INCLUDEDIR}
-)
-
-find_path(FREETYPE2_INCLUDE_DIRS
-    NAMES freetype/freetype.h ft2build.h
+find_path(FREETYPE2_ROOT_INCLUDE_DIR
+    NAMES freetype/freetype.h
     HINTS ${PC_FREETYPE2_INCLUDE_DIRS}
           ${PC_FREETYPE2_INCLUDEDIR}
 )
@@ -49,8 +43,11 @@ find_library(FREETYPE2_LIBRARIES
           ${PC_FREETYPE2_LIBRARY_DIRS}
 )
 
-if (FREETYPE2_ROOT_DIR)
-    list(APPEND FREETYPE2_INCLUDE_DIRS ${FREETYPE2_ROOT_DIR})
+set(FREETYPE2_INCLUDE_DIRS ${FREETYPE2_HEADER_DIR})
+
+# Since Freetype 2.5.1 there is no freetype/freetype.h, so this variable can be null
+if (FREETYPE2_ROOT_INCLUDE_DIR)
+    list(APPEND FREETYPE2_INCLUDE_DIRS ${FREETYPE2_ROOT_INCLUDE_DIR})
 endif ()
 
 # Inspired in the original FindFreetype.cmake
@@ -88,7 +85,6 @@ if (FREETYPE2_VERSION_STRING)
     endif ()
 endif ()
 
-include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(Freetype2 DEFAULT_MSG FREETYPE2_INCLUDE_DIRS FREETYPE2_LIBRARIES VERSION_OK)
 
 mark_as_advanced(

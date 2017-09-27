@@ -27,13 +27,13 @@
 #include "InsertTextCommand.h"
 
 #include "Document.h"
+#include "Editing.h"
 #include "Editor.h"
 #include "Frame.h"
 #include "HTMLElement.h"
 #include "HTMLInterchange.h"
 #include "Text.h"
 #include "VisibleUnits.h"
-#include "htmlediting.h"
 
 namespace WebCore {
 
@@ -45,12 +45,12 @@ InsertTextCommand::InsertTextCommand(Document& document, const String& text, boo
 {
 }
 
-InsertTextCommand::InsertTextCommand(Document& document, const String& text, PassRefPtr<TextInsertionMarkerSupplier> markerSupplier, EditAction editingAction)
+InsertTextCommand::InsertTextCommand(Document& document, const String& text, Ref<TextInsertionMarkerSupplier>&& markerSupplier, EditAction editingAction)
     : CompositeEditCommand(document, editingAction)
     , m_text(text)
     , m_selectInsertedText(false)
     , m_rebalanceType(RebalanceLeadingAndTrailingWhitespaces)
-    , m_markerSupplier(markerSupplier)
+    , m_markerSupplier(WTFMove(markerSupplier))
 {
 }
 
@@ -58,17 +58,19 @@ Position InsertTextCommand::positionInsideTextNode(const Position& p)
 {
     Position pos = p;
     if (isTabSpanTextNode(pos.anchorNode())) {
-        RefPtr<Node> textNode = document().createEditingTextNode(emptyString());
-        insertNodeAtTabSpanPosition(textNode.get(), pos);
-        return firstPositionInNode(textNode.get());
+        auto textNode = document().createEditingTextNode(emptyString());
+        auto* textNodePtr = textNode.ptr();
+        insertNodeAtTabSpanPosition(WTFMove(textNode), pos);
+        return firstPositionInNode(textNodePtr);
     }
 
     // Prepare for text input by looking at the specified position.
     // It may be necessary to insert a text node to receive characters.
     if (!pos.containerNode()->isTextNode()) {
-        RefPtr<Node> textNode = document().createEditingTextNode(emptyString());
-        insertNodeAt(textNode.get(), pos);
-        return firstPositionInNode(textNode.get());
+        auto textNode = document().createEditingTextNode(emptyString());
+        auto* textNodePtr = textNode.ptr();
+        insertNodeAt(WTFMove(textNode), pos);
+        return firstPositionInNode(textNodePtr);
     }
 
     return pos;
@@ -118,9 +120,9 @@ bool InsertTextCommand::performOverwrite(const String& text, bool selectInserted
     if (!count)
         return false;
 
-    replaceTextInNode(textNode, start.offsetInContainerNode(), count, text);
+    replaceTextInNode(*textNode, start.offsetInContainerNode(), count, text);
 
-    Position endPosition = Position(WTFMove(textNode), start.offsetInContainerNode() + text.length());
+    Position endPosition = Position(textNode.get(), start.offsetInContainerNode() + text.length());
     setEndingSelectionWithoutValidation(start, endPosition);
     if (!selectInsertedText)
         setEndingSelection(VisibleSelection(endingSelection().visibleEnd(), endingSelection().isDirectional()));
@@ -176,7 +178,7 @@ void InsertTextCommand::doApply()
     // and so deleteInsignificantText could remove it.  Save the position before the node in case that happens.
     Position positionBeforeStartNode(positionInParentBeforeNode(startPosition.containerNode()));
     deleteInsignificantText(startPosition.upstream(), startPosition.downstream());
-    if (!startPosition.anchorNode()->inDocument())
+    if (!startPosition.anchorNode()->isConnected())
         startPosition = positionBeforeStartNode;
     if (!startPosition.isCandidate())
         startPosition = startPosition.downstream();
@@ -201,8 +203,8 @@ void InsertTextCommand::doApply()
         RefPtr<Text> textNode = startPosition.containerText();
         const unsigned offset = startPosition.offsetInContainerNode();
 
-        insertTextIntoNode(textNode, offset, m_text);
-        endPosition = Position(textNode, offset + m_text.length());
+        insertTextIntoNode(*textNode, offset, m_text);
+        endPosition = Position(textNode.get(), offset + m_text.length());
         if (m_markerSupplier)
             m_markerSupplier->addMarkersToTextNode(textNode.get(), offset, m_text);
 
@@ -215,7 +217,7 @@ void InsertTextCommand::doApply()
         } else {
             ASSERT(m_rebalanceType == RebalanceAllWhitespaces);
             if (canRebalance(startPosition) && canRebalance(endPosition))
-                rebalanceWhitespaceOnTextSubstring(textNode, startPosition.offsetInContainerNode(), endPosition.offsetInContainerNode());
+                rebalanceWhitespaceOnTextSubstring(*textNode, startPosition.offsetInContainerNode(), endPosition.offsetInContainerNode());
         }
     }
 
@@ -243,21 +245,22 @@ Position InsertTextCommand::insertTab(const Position& pos)
 
     // keep tabs coalesced in tab span
     if (isTabSpanTextNode(node)) {
-        RefPtr<Text> textNode = downcast<Text>(node);
+        Ref<Text> textNode = downcast<Text>(*node);
         insertTextIntoNode(textNode, offset, "\t");
-        return Position(WTFMove(textNode), offset + 1);
+        return Position(textNode.ptr(), offset + 1);
     }
     
     // create new tab span
     auto spanNode = createTabSpanElement(document());
+    auto* spanNodePtr = spanNode.ptr();
     
     // place it
     if (!is<Text>(*node))
-        insertNodeAt(spanNode.ptr(), insertPos);
+        insertNodeAt(WTFMove(spanNode), insertPos);
     else {
-        RefPtr<Text> textNode = downcast<Text>(node);
+        Ref<Text> textNode = downcast<Text>(*node);
         if (offset >= textNode->length())
-            insertNodeAfter(spanNode.copyRef(), WTFMove(textNode));
+            insertNodeAfter(WTFMove(spanNode), textNode);
         else {
             // split node to make room for the span
             // NOTE: splitTextNode uses textNode for the
@@ -265,12 +268,12 @@ Position InsertTextCommand::insertTab(const Position& pos)
             // insert the span before it.
             if (offset > 0)
                 splitTextNode(textNode, offset);
-            insertNodeBefore(spanNode.copyRef(), WTFMove(textNode));
+            insertNodeBefore(WTFMove(spanNode), textNode);
         }
     }
 
     // return the position following the new tab
-    return lastPositionInNode(spanNode.ptr());
+    return lastPositionInNode(spanNodePtr);
 }
 
 }

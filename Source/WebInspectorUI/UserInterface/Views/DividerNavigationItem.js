@@ -23,13 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DividerNavigationItem = class DividerNavigationItem extends WebInspector.NavigationItem
+WI.DividerNavigationItem = class DividerNavigationItem extends WI.NavigationItem
 {
-    constructor(identifier)
-    {
-        super(identifier);
-    }
-
     // Protected
 
     get additionalClassNames()

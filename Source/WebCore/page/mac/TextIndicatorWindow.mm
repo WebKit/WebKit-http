@@ -28,13 +28,13 @@
 
 #if PLATFORM(MAC)
 
-#import "CoreGraphicsSPI.h"
 #import "GeometryUtilities.h"
 #import "GraphicsContext.h"
 #import "PathUtilities.h"
-#import "QuartzCoreSPI.h"
 #import "TextIndicator.h"
 #import "WebActionDisablingCALayerDelegate.h"
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 
 const CFTimeInterval bounceAnimationDuration = 0.12;
 const CFTimeInterval bounceWithCrossfadeAnimationDuration = 0.3;
@@ -64,7 +64,7 @@ using namespace WebCore;
     BOOL _fadingOut;
 }
 
-- (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin offset:(NSPoint)offset;
+- (instancetype)initWithFrame:(NSRect)frame textIndicator:(TextIndicator&)textIndicator margin:(NSSize)margin offset:(NSPoint)offset;
 
 - (void)present;
 - (void)hideWithCompletionHandler:(void(^)(void))completionHandler;
@@ -147,12 +147,12 @@ static bool indicatorWantsManualAnimation(const TextIndicator& indicator)
     return false;
 }
 
-- (instancetype)initWithFrame:(NSRect)frame textIndicator:(PassRefPtr<TextIndicator>)textIndicator margin:(NSSize)margin offset:(NSPoint)offset
+- (instancetype)initWithFrame:(NSRect)frame textIndicator:(TextIndicator&)textIndicator margin:(NSSize)margin offset:(NSPoint)offset
 {
     if (!(self = [super initWithFrame:frame]))
         return nil;
 
-    _textIndicator = textIndicator;
+    _textIndicator = &textIndicator;
     _margin = margin;
 
     self.wantsLayer = YES;
@@ -183,7 +183,7 @@ static bool indicatorWantsManualAnimation(const TextIndicator& indicator)
 
         Path translatedPath;
         AffineTransform transform;
-        transform.translate(-pathBoundingRect.x(), -pathBoundingRect.y());
+        transform.translate(-pathBoundingRect.location());
         translatedPath.addPath(path, transform);
 
         FloatRect offsetTextRect = pathBoundingRect;
@@ -465,7 +465,8 @@ void TextIndicatorWindow::setTextIndicator(Ref<TextIndicator> textIndicator, CGR
     [m_textIndicatorWindow setOpaque:NO];
     [m_textIndicatorWindow setIgnoresMouseEvents:YES];
 
-    m_textIndicatorView = adoptNS([[WebTextIndicatorView alloc] initWithFrame:NSMakeRect(0, 0, [m_textIndicatorWindow frame].size.width, [m_textIndicatorWindow frame].size.height) textIndicator:m_textIndicator margin:NSMakeSize(horizontalMargin, verticalMargin) offset:fractionalTextOffset]);
+    m_textIndicatorView = adoptNS([[WebTextIndicatorView alloc] initWithFrame:NSMakeRect(0, 0, [m_textIndicatorWindow frame].size.width, [m_textIndicatorWindow frame].size.height)
+        textIndicator:*m_textIndicator margin:NSMakeSize(horizontalMargin, verticalMargin) offset:fractionalTextOffset]);
     [m_textIndicatorWindow setContentView:m_textIndicatorView.get()];
 
     [[m_targetView window] addChildWindow:m_textIndicatorWindow.get() ordered:NSWindowAbove];
@@ -475,7 +476,7 @@ void TextIndicatorWindow::setTextIndicator(Ref<TextIndicator> textIndicator, CGR
         [m_textIndicatorView present];
 
     if (lifetime == TextIndicatorWindowLifetime::Temporary)
-        m_temporaryTextIndicatorTimer.startOneShot(timeBeforeFadeStarts);
+        m_temporaryTextIndicatorTimer.startOneShot(1_s * timeBeforeFadeStarts);
 }
 
 void TextIndicatorWindow::closeWindow()

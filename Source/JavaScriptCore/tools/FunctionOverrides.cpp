@@ -26,6 +26,7 @@
 #include "config.h"
 #include "FunctionOverrides.h"
 
+#include "Options.h"
 #include <stdio.h>
 #include <string.h>
 #include <wtf/DataLog.h>
@@ -125,7 +126,7 @@ static void initializeOverrideInfo(const SourceCode& origCode, const String& new
     newProviderStr.append(origHeader);
     newProviderStr.append(newBody);
 
-    auto newProvider = StringSourceProvider::create(newProviderStr, "<overridden>");
+    Ref<SourceProvider> newProvider = StringSourceProvider::create(newProviderStr, SourceOrigin { "<overridden>" }, "<overridden>");
 
     info.firstLine = 1;
     info.lineCount = 1; // Faking it. This doesn't really matter for now.
@@ -202,7 +203,7 @@ static String parseClause(const char* keyword, size_t keywordLength, FILE* file,
         FAIL_WITH_ERROR(SYNTAX_ERROR, ("Delimiter '", delimiter, "' cannot have '{', '}', or whitespace:\n", line, "\n"));
     
     String terminatorString;
-    terminatorString.append("}");
+    terminatorString.append('}');
     terminatorString.append(delimiter);
 
     CString terminatorCString = terminatorString.ascii();

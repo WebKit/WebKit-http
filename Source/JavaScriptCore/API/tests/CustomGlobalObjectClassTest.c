@@ -26,8 +26,10 @@
 #include "CustomGlobalObjectClassTest.h"
 
 #include <JavaScriptCore/JSObjectRefPrivate.h>
-#include <JavaScriptCore/JavaScriptCore.h>
+#include <JavaScriptCore/JavaScript.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern bool assertTrue(bool value, const char* message);
 
@@ -108,19 +110,11 @@ void globalObjectSetPrototypeTest()
     JSGlobalContextRef context = JSGlobalContextCreate(global);
     JSObjectRef object = JSContextGetGlobalObject(context);
 
+    JSValueRef originalPrototype = JSObjectGetPrototype(context, object);
     JSObjectRef above = JSObjectMake(context, 0, 0);
-    JSStringRef test = JSStringCreateWithUTF8CString("test");
-    JSValueRef value = JSValueMakeString(context, test);
-    JSObjectSetProperty(context, above, test, value, kJSPropertyAttributeDontEnum, 0);
-
     JSObjectSetPrototype(context, object, above);
-    JSStringRef script = JSStringCreateWithUTF8CString("test === \"test\"");
-    JSValueRef result = JSEvaluateScript(context, script, 0, 0, 0, 0);
-
-    assertTrue(JSValueToBoolean(context, result), "test === \"test\"");
-
-    JSStringRelease(test);
-    JSStringRelease(script);
+    JSValueRef prototypeAfterChangingAttempt = JSObjectGetPrototype(context, object);
+    assertTrue(JSValueIsStrictEqual(context, prototypeAfterChangingAttempt, originalPrototype), "Global object's [[Prototype]] cannot be changed after instantiating it");
 }
 
 void globalObjectPrivatePropertyTest()

@@ -61,8 +61,6 @@ private:
     static ScrollingThread& singleton();
 
     void createThreadIfNeeded();
-    static void threadCallback(void* scrollingThread);
-    void threadBody();
     void dispatchFunctionsFromScrollingThread();
 
     void initializeRunLoop();
@@ -73,7 +71,7 @@ private:
     void threadRunLoopSourceCallback();
 #endif
 
-    ThreadIdentifier m_threadIdentifier;
+    RefPtr<Thread> m_thread;
 
     Condition m_initializeRunLoopConditionVariable;
     Lock m_initializeRunLoopMutex;

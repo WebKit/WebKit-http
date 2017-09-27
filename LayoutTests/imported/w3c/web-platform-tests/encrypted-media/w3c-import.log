@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -114,4 +113,5 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/encrypted-media/drm-mp4-waiting-for-a-key.html
 /LayoutTests/imported/w3c/web-platform-tests/encrypted-media/drm-not-callable-after-createsession.html
 /LayoutTests/imported/w3c/web-platform-tests/encrypted-media/drm-temporary-license-type.html
+/LayoutTests/imported/w3c/web-platform-tests/encrypted-media/encrypted-media-default-feature-policy.https.sub.html
 /LayoutTests/imported/w3c/web-platform-tests/encrypted-media/idlharness.html

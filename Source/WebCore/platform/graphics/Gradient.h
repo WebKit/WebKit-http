@@ -29,6 +29,7 @@
 #define Gradient_h
 
 #include "AffineTransform.h"
+#include "Color.h"
 #include "FloatPoint.h"
 #include "GraphicsTypes.h"
 #include <wtf/RefCounted.h>
@@ -135,15 +136,17 @@ namespace WebCore {
 
         // FIXME: ExtendedColor - A color stop needs a notion of color space.
         struct ColorStop {
-            float stop;
-            float red;
-            float green;
-            float blue;
-            float alpha;
+            float offset { 0 };
+            Color color;
 
-            ColorStop() : stop(0), red(0), green(0), blue(0), alpha(0) { }
-            ColorStop(float s, float r, float g, float b, float a) : stop(s), red(r), green(g), blue(b), alpha(a) { }
+            ColorStop() { }
+            ColorStop(float offset, const Color& color)
+                : offset(offset)
+                , color(color)
+                { }
         };
+
+        const Vector<ColorStop, 2>& stops() const { return m_stops; }
 
         void setStopsSorted(bool s) { m_stopsSorted = s; }
         

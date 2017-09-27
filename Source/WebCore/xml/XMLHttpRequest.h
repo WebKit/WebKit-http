@@ -26,13 +26,16 @@
 #include "FormData.h"
 #include "ResourceResponse.h"
 #include "ThreadableLoaderClient.h"
+#include "URL.h"
 #include "XMLHttpRequestEventTarget.h"
 #include "XMLHttpRequestProgressEventThrottle.h"
+#include <wtf/Variant.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace JSC {
 class ArrayBuffer;
 class ArrayBufferView;
+class ExecState;
 }
 
 namespace WebCore {
@@ -45,6 +48,7 @@ class SharedBuffer;
 class TextResourceDecoder;
 class ThreadableLoader;
 class XMLHttpRequestUpload;
+struct OwnedString;
 
 class XMLHttpRequest final : public RefCounted<XMLHttpRequest>, public XMLHttpRequestEventTarget, private ThreadableLoaderClient, public ActiveDOMObject {
     WTF_MAKE_FAST_ALLOCATED;
@@ -65,6 +69,8 @@ public:
     EventTargetInterface eventTargetInterface() const override { return XMLHttpRequestEventTargetInterfaceType; }
     ScriptExecutionContext* scriptExecutionContext() const override { return ActiveDOMObject::scriptExecutionContext(); }
 
+    using SendTypes = Variant<RefPtr<Document>, RefPtr<Blob>, RefPtr<JSC::ArrayBufferView>, RefPtr<JSC::ArrayBuffer>, RefPtr<DOMFormData>, String>;
+
     const URL& url() const { return m_url; }
     String statusText() const;
     int status() const;
@@ -74,19 +80,14 @@ public:
     ExceptionOr<void> open(const String& method, const String& url);
     ExceptionOr<void> open(const String& method, const URL&, bool async);
     ExceptionOr<void> open(const String& method, const String&, bool async, const String& user, const String& password);
-    ExceptionOr<void> send(Document&);
-    ExceptionOr<void> send(const String& = { });
-    ExceptionOr<void> send(Blob&);
-    ExceptionOr<void> send(DOMFormData&);
-    ExceptionOr<void> send(JSC::ArrayBuffer&);
-    ExceptionOr<void> send(JSC::ArrayBufferView&);
+    ExceptionOr<void> send(JSC::ExecState&, std::optional<SendTypes>&&);
     void abort();
     ExceptionOr<void> setRequestHeader(const String& name, const String& value);
     ExceptionOr<void> overrideMimeType(const String& override);
     bool doneWithoutErrors() const { return !m_error && m_state == DONE; }
     String getAllResponseHeaders() const;
     String getResponseHeader(const String& name) const;
-    ExceptionOr<String> responseText();
+    ExceptionOr<OwnedString> responseText();
     String responseTextIgnoringResponseType() const { return m_responseBuilder.toStringPreserveCapacity(); }
     String responseMIMEType() const;
 
@@ -145,15 +146,22 @@ private:
     bool usesDashboardBackwardCompatibilityMode() const;
 #endif
 
+    // ThreadableLoaderClient
     void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
     void didReceiveResponse(unsigned long identifier, const ResourceResponse&) override;
     void didReceiveData(const char* data, int dataLength) override;
-    void didFinishLoading(unsigned long identifier, double finishTime) override;
+    void didFinishLoading(unsigned long identifier) override;
     void didFail(const ResourceError&) override;
 
     bool responseIsXML() const;
 
-    Optional<ExceptionOr<void>> prepareToSend();
+    std::optional<ExceptionOr<void>> prepareToSend();
+    ExceptionOr<void> send(Document&);
+    ExceptionOr<void> send(const String& = { });
+    ExceptionOr<void> send(Blob&);
+    ExceptionOr<void> send(DOMFormData&);
+    ExceptionOr<void> send(JSC::ArrayBuffer&);
+    ExceptionOr<void> send(JSC::ArrayBufferView&);
     ExceptionOr<void> sendBytesData(const void*, size_t);
 
     void changeState(State);
@@ -213,6 +221,7 @@ private:
     bool m_uploadComplete { false };
 
     bool m_sameOriginRequest { true };
+    bool m_wasAbortedByClient { false };
 
     // Used for progress event tracking.
     long long m_receivedLength { 0 };
@@ -220,12 +229,13 @@ private:
     unsigned m_lastSendLineNumber { 0 };
     unsigned m_lastSendColumnNumber { 0 };
     String m_lastSendURL;
-    ExceptionCode m_exceptionCode { 0 };
+    std::optional<ExceptionCode> m_exceptionCode;
 
     XMLHttpRequestProgressEventThrottle m_progressEventThrottle;
 
     ResponseType m_responseType { ResponseType::EmptyString };
     bool m_responseCacheIsValid { false };
+    mutable String m_allResponseHeaders;
 
     Timer m_resumeTimer;
     bool m_dispatchErrorOnResuming { false };
@@ -234,7 +244,7 @@ private:
     void networkErrorTimerFired();
 
     unsigned m_timeoutMilliseconds { 0 };
-    std::chrono::steady_clock::time_point m_sendingTime;
+    MonotonicTime m_sendingTime;
     Timer m_timeoutTimer;
 };
 

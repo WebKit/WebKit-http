@@ -30,6 +30,7 @@
 #import "ScrollingCoordinatorMac.h"
 
 #include "FrameView.h"
+#include "Logging.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "PlatformWheelEvent.h"
@@ -54,7 +55,7 @@ ScrollingCoordinatorMac::ScrollingCoordinatorMac(Page* page)
     : AsyncScrollingCoordinator(page)
     , m_scrollingStateTreeCommitterTimer(*this, &ScrollingCoordinatorMac::commitTreeState)
 {
-    setScrollingTree(ScrollingTreeMac::create(this));
+    setScrollingTree(ScrollingTreeMac::create(*this));
 }
 
 ScrollingCoordinatorMac::~ScrollingCoordinatorMac()
@@ -103,14 +104,20 @@ void ScrollingCoordinatorMac::scheduleTreeStateCommit()
     if (m_scrollingStateTreeCommitterTimer.isActive())
         return;
 
-    m_scrollingStateTreeCommitterTimer.startOneShot(0);
+    LOG(Scrolling, "ScrollingCoordinatorMac::scheduleTreeStateCommit");
+    m_scrollingStateTreeCommitterTimer.startOneShot(0_s);
 }
 
 void ScrollingCoordinatorMac::commitTreeState()
 {
     willCommitTree();
+
+    LOG(Scrolling, "ScrollingCoordinatorMac::commitTreeState, has changes %d", scrollingStateTree()->hasChangedProperties());
+
     if (!scrollingStateTree()->hasChangedProperties())
         return;
+
+    LOG(Scrolling, "%s", scrollingStateTreeAsText(ScrollingStateTreeAsTextBehaviorDebug).utf8().data());
 
     RefPtr<ThreadedScrollingTree> threadedScrollingTree = downcast<ThreadedScrollingTree>(scrollingTree());
     ScrollingStateTree* unprotectedTreeState = scrollingStateTree()->commit(LayerRepresentation::PlatformLayerRepresentation).release();

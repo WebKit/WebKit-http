@@ -28,6 +28,8 @@
 
 #if ENABLE(WEB_AUDIO) && USE(MEDIATOOLBOX)
 
+#include "CAAudioStreamDescription.h"
+#include <Accelerate/Accelerate.h>
 #include <CoreAudio/CoreAudioTypes.h>
 #include <wtf/MathExtras.h>
 
@@ -37,91 +39,110 @@ const uint32_t kGeneralRingTimeBoundsQueueMask = kGeneralRingTimeBoundsQueueSize
 namespace WebCore {
 
 CARingBuffer::CARingBuffer()
-    : m_channelCount(0)
-    , m_frameCount(0)
-    , m_capacityBytes(0)
+    : m_buffers(makeUniqueRef<CARingBufferStorageVector>())
     , m_timeBoundsQueue(kGeneralRingTimeBoundsQueueSize)
-    , m_timeBoundsQueuePtr(0)
 {
 }
 
-CARingBuffer::~CARingBuffer()
+CARingBuffer::CARingBuffer(UniqueRef<CARingBufferStorage>&& storage)
+    : m_buffers(WTFMove(storage))
+    , m_timeBoundsQueue(kGeneralRingTimeBoundsQueueSize)
 {
-    deallocate();
 }
 
-void CARingBuffer::allocate(uint32_t channelCount, size_t bytesPerFrame, size_t frameCount)
+void CARingBuffer::allocate(const CAAudioStreamDescription& format, size_t frameCount)
 {
+    m_description = format;
     deallocate();
 
     frameCount = WTF::roundUpToPowerOfTwo(frameCount);
 
-    m_channelCount = channelCount;
-    m_bytesPerFrame = bytesPerFrame;
+    m_channelCount = format.numberOfChannelStreams();
+    m_bytesPerFrame = format.bytesPerFrame();
     m_frameCount = frameCount;
     m_frameCountMask = frameCount - 1;
-    m_capacityBytes = bytesPerFrame * frameCount;
+    m_capacityBytes = m_bytesPerFrame * frameCount;
 
-    size_t pointersSize = channelCount * sizeof(Byte*);
-    size_t allocSize = pointersSize + (m_capacityBytes * channelCount);
-    m_buffers = ArrayBuffer::create(allocSize, 1);
+    m_buffers->allocate(m_capacityBytes * m_channelCount);
 
-    Byte** pointers = static_cast<Byte**>(m_buffers->data());
-    Byte* channelData = static_cast<Byte*>(m_buffers->data()) + pointersSize;
+    m_pointers.resize(m_channelCount);
+    Byte* channelData = static_cast<Byte*>(m_buffers->data());
 
-    for (unsigned i = 0; i < channelCount; ++i) {
-        pointers[i] = channelData;
+    for (auto& pointer : m_pointers) {
+        pointer = channelData;
         channelData += m_capacityBytes;
     }
 
-    for (auto timeBounds : m_timeBoundsQueue) {
-        timeBounds.m_startFrame = 0;
-        timeBounds.m_endFrame = 0;
-        timeBounds.m_updateCounter = 0;
-    }
-    m_timeBoundsQueuePtr = 0;
+    flush();
 }
 
 void CARingBuffer::deallocate()
 {
-    if (m_buffers)
-        m_buffers = nullptr;
-
+    m_buffers->deallocate();
+    m_pointers.clear();
     m_channelCount = 0;
     m_capacityBytes = 0;
     m_frameCount = 0;
 }
 
-static void ZeroRange(Byte** buffers, int channelCount, size_t offset, size_t nbytes)
+static void ZeroRange(Vector<Byte*>& pointers, size_t offset, size_t nbytes)
 {
-    while (--channelCount >= 0) {
-        memset(*buffers + offset, 0, nbytes);
-        ++buffers;
-    }
+    for (auto& pointer : pointers)
+        memset(pointer + offset, 0, nbytes);
 }
 
-static void StoreABL(Byte** buffers, size_t destOffset, const AudioBufferList* list, size_t srcOffset, size_t nbytes)
+static void StoreABL(Vector<Byte*>& pointers, size_t destOffset, const AudioBufferList* list, size_t srcOffset, size_t nbytes)
 {
-    int channelCount = list->mNumberBuffers;
+    ASSERT(list->mNumberBuffers == pointers.size());
     const AudioBuffer* src = list->mBuffers;
-    while (--channelCount >= 0) {
+    for (auto& pointer : pointers) {
         if (srcOffset > src->mDataByteSize)
             continue;
-        memcpy(*buffers + destOffset, static_cast<Byte*>(src->mData) + srcOffset, std::min<size_t>(nbytes, src->mDataByteSize - srcOffset));
-        ++buffers;
+        memcpy(pointer + destOffset, static_cast<Byte*>(src->mData) + srcOffset, std::min<size_t>(nbytes, src->mDataByteSize - srcOffset));
         ++src;
     }
 }
 
-static void FetchABL(AudioBufferList* list, size_t destOffset, Byte** buffers, size_t srcOffset, size_t nbytes)
+static void FetchABL(AudioBufferList* list, size_t destOffset, Vector<Byte*>& pointers, size_t srcOffset, size_t nbytes, AudioStreamDescription::PCMFormat format, CARingBuffer::FetchMode mode)
 {
-    int channelCount = list->mNumberBuffers;
+    ASSERT(list->mNumberBuffers == pointers.size());
     AudioBuffer* dest = list->mBuffers;
-    while (--channelCount >= 0) {
+    for (auto& pointer : pointers) {
         if (destOffset > dest->mDataByteSize)
             continue;
-        memcpy(static_cast<Byte*>(dest->mData) + destOffset, *buffers + srcOffset, std::min<size_t>(nbytes, dest->mDataByteSize - destOffset));
-        ++buffers;
+
+        nbytes = std::min<size_t>(nbytes, dest->mDataByteSize - destOffset);
+        if (mode == CARingBuffer::Copy)
+            memcpy(static_cast<Byte*>(dest->mData) + destOffset, pointer + srcOffset, nbytes);
+        else {
+            switch (format) {
+            case AudioStreamDescription::Int16: {
+                int16_t* destination = static_cast<int16_t*>(dest->mData);
+                int16_t* source = reinterpret_cast<int16_t*>(pointer + srcOffset);
+                for (size_t i = 0; i < nbytes / sizeof(int16_t); i++)
+                    destination[i] += source[i];
+                break;
+            }
+            case AudioStreamDescription::Int32: {
+                int32_t* destination = static_cast<int32_t*>(dest->mData);
+                vDSP_vaddi(destination, 1, reinterpret_cast<int32_t*>(pointer + srcOffset), 1, destination, 1, nbytes / sizeof(int32_t));
+                break;
+            }
+            case AudioStreamDescription::Float32: {
+                float* destination = static_cast<float*>(dest->mData);
+                vDSP_vadd(destination, 1, reinterpret_cast<float*>(pointer + srcOffset), 1, destination, 1, nbytes / sizeof(float));
+                break;
+            }
+            case AudioStreamDescription::Float64: {
+                double* destination = static_cast<double*>(dest->mData);
+                vDSP_vaddD(destination, 1, reinterpret_cast<double*>(pointer + srcOffset), 1, destination, 1, nbytes / sizeof(double));
+                break;
+            }
+            case AudioStreamDescription::None:
+                ASSERT_NOT_REACHED();
+                break;
+            }
+        }
         ++dest;
     }
 }
@@ -136,6 +157,17 @@ inline void ZeroABL(AudioBufferList* list, size_t destOffset, size_t nbytes)
         memset(static_cast<Byte*>(dest->mData) + destOffset, 0, std::min<size_t>(nbytes, dest->mDataByteSize - destOffset));
         ++dest;
     }
+}
+
+void CARingBuffer::flush()
+{
+    LockHolder locker(m_currentFrameBoundsLock);
+    for (auto& timeBounds : m_timeBoundsQueue) {
+        timeBounds.m_startFrame = 0;
+        timeBounds.m_endFrame = 0;
+        timeBounds.m_updateCounter = 0;
+    }
+    m_timeBoundsQueuePtr = 0;
 }
 
 CARingBuffer::Error CARingBuffer::store(const AudioBufferList* list, size_t framesToWrite, uint64_t startFrame)
@@ -163,7 +195,6 @@ CARingBuffer::Error CARingBuffer::store(const AudioBufferList* list, size_t fram
     }
 
     // Write the new frames.
-    Byte** buffers = static_cast<Byte**>(m_buffers->data());
     size_t offset0;
     size_t offset1;
     uint64_t curEnd = currentEndFrame();
@@ -173,10 +204,10 @@ CARingBuffer::Error CARingBuffer::store(const AudioBufferList* list, size_t fram
         offset0 = frameOffset(curEnd);
         offset1 = frameOffset(startFrame);
         if (offset0 < offset1)
-            ZeroRange(buffers, m_channelCount, offset0, offset1 - offset0);
+            ZeroRange(m_pointers, offset0, offset1 - offset0);
         else {
-            ZeroRange(buffers, m_channelCount, offset0, m_capacityBytes - offset0);
-            ZeroRange(buffers, m_channelCount, 0, offset1);
+            ZeroRange(m_pointers, offset0, m_capacityBytes - offset0);
+            ZeroRange(m_pointers, 0, offset1);
         }
         offset0 = offset1;
     } else
@@ -184,11 +215,11 @@ CARingBuffer::Error CARingBuffer::store(const AudioBufferList* list, size_t fram
 
     offset1 = frameOffset(endFrame);
     if (offset0 < offset1)
-        StoreABL(buffers, offset0, list, 0, offset1 - offset0);
+        StoreABL(m_pointers, offset0, list, 0, offset1 - offset0);
     else {
         size_t nbytes = m_capacityBytes - offset0;
-        StoreABL(buffers, offset0, list, 0, nbytes);
-        StoreABL(buffers, 0, list, nbytes, offset1);
+        StoreABL(m_pointers, offset0, list, 0, nbytes);
+        StoreABL(m_pointers, 0, list, nbytes, offset1);
     }
 
     // Now update the end time.
@@ -211,7 +242,6 @@ void CARingBuffer::setCurrentFrameBounds(uint64_t startTime, uint64_t endTime)
 
 void CARingBuffer::getCurrentFrameBounds(uint64_t &startTime, uint64_t &endTime)
 {
-    LockHolder locker(m_currentFrameBoundsLock);
     uint32_t curPtr = m_timeBoundsQueuePtr.load();
     uint32_t index = curPtr & kGeneralRingTimeBoundsQueueMask;
     CARingBuffer::TimeBounds& bounds = m_timeBoundsQueue[index];
@@ -249,7 +279,7 @@ uint64_t CARingBuffer::currentEndFrame() const
     return m_timeBoundsQueue[index].m_endFrame;
 }
 
-CARingBuffer::Error CARingBuffer::fetch(AudioBufferList* list, size_t nFrames, uint64_t startRead)
+CARingBuffer::Error CARingBuffer::fetch(AudioBufferList* list, size_t nFrames, uint64_t startRead, FetchMode mode)
 {
     if (!nFrames)
         return Ok;
@@ -279,18 +309,18 @@ CARingBuffer::Error CARingBuffer::fetch(AudioBufferList* list, size_t nFrames, u
     if (destEndSize > 0)
         ZeroABL(list, destStartByteOffset + byteSize, destEndSize * m_bytesPerFrame);
 
-    Byte **buffers = static_cast<Byte**>(m_buffers->data());
     size_t offset0 = frameOffset(startRead);
     size_t offset1 = frameOffset(endRead);
     size_t nbytes;
     
     if (offset0 < offset1) {
         nbytes = offset1 - offset0;
-        FetchABL(list, destStartByteOffset, buffers, offset0, nbytes);
+        FetchABL(list, destStartByteOffset, m_pointers, offset0, nbytes, m_description.format(), mode);
     } else {
         nbytes = m_capacityBytes - offset0;
-        FetchABL(list, destStartByteOffset, buffers, offset0, nbytes);
-        FetchABL(list, destStartByteOffset + nbytes, buffers, 0, offset1);
+        FetchABL(list, destStartByteOffset, m_pointers, offset0, nbytes, m_description.format(), mode);
+        if (offset1)
+            FetchABL(list, destStartByteOffset + nbytes, m_pointers, 0, offset1, m_description.format(), mode);
         nbytes += offset1;
     }
     

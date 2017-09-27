@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -16,7 +15,15 @@ None
 ------------------------------------------------------------------------
 List of files:
 /LayoutTests/imported/w3c/web-platform-tests/streams/OWNERS
-/LayoutTests/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.https.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/README.md
+/LayoutTests/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.dedicatedworker.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.html
 /LayoutTests/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.js
-/LayoutTests/imported/w3c/web-platform-tests/streams/count-queuing-strategy.https.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.serviceworker.https.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.sharedworker.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/count-queuing-strategy.dedicatedworker.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/count-queuing-strategy.html
 /LayoutTests/imported/w3c/web-platform-tests/streams/count-queuing-strategy.js
+/LayoutTests/imported/w3c/web-platform-tests/streams/count-queuing-strategy.serviceworker.https.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/count-queuing-strategy.sharedworker.html
+/LayoutTests/imported/w3c/web-platform-tests/streams/generate-test-wrappers.js

@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CairoUtilities_h
-#define CairoUtilities_h
+#pragma once
 
 #if USE(CAIRO)
 
@@ -71,6 +70,8 @@ private:
     cairo_scaled_font_t* m_scaledFont { nullptr };
     FT_Face m_ftFace { nullptr };
 };
+
+const cairo_font_options_t* getDefaultCairoFontOptions();
 #endif
 
 void copyContextProperties(cairo_t* srcCr, cairo_t* dstCr);
@@ -79,8 +80,7 @@ void appendPathToCairoContext(cairo_t* to, cairo_t* from);
 void setPathOnCairoContext(cairo_t* to, cairo_t* from);
 void appendWebCorePathToCairoContext(cairo_t* context, const Path& path);
 void appendRegionToCairoContext(cairo_t*, const cairo_region_t*);
-cairo_operator_t toCairoOperator(CompositeOperator op);
-cairo_operator_t toCairoOperator(BlendMode blendOp);
+cairo_operator_t toCairoOperator(CompositeOperator, BlendMode = BlendModeNormal);
 void drawPatternToCairoContext(cairo_t* cr, cairo_surface_t* image, const IntSize& imageSize, const FloatRect& tileRect,
                                const AffineTransform& patternTransform, const FloatPoint& phase, cairo_operator_t op, const FloatRect& destRect);
 RefPtr<cairo_surface_t> copyCairoImageSurface(cairo_surface_t*);
@@ -98,5 +98,3 @@ RefPtr<cairo_region_t> toCairoRegion(const Region&);
 } // namespace WebCore
 
 #endif // USE(CAIRO)
-
-#endif // CairoUtilities_h

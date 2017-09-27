@@ -97,6 +97,20 @@ TimeWithDynamicClockType dtm(double value)
 
 } // anonymous namespace
 
+TEST(WTF_Time, units)
+{
+    EXPECT_EQ(s(60), Seconds::fromMinutes(1));
+    EXPECT_EQ(s(0.001), Seconds::fromMilliseconds(1));
+    EXPECT_EQ(s(0.000001), Seconds::fromMicroseconds(1));
+    EXPECT_EQ(s(0.0000005), Seconds::fromNanoseconds(500));
+
+    EXPECT_EQ(s(120).minutes(), 2);
+    EXPECT_EQ(s(2).seconds(), 2);
+    EXPECT_EQ(s(2).milliseconds(), 2000);
+    EXPECT_EQ(s(2).microseconds(), 2000000);
+    EXPECT_EQ(s(2).nanoseconds(), 2000000000);
+}
+
 TEST(WTF_Time, plus)
 {
     EXPECT_EQ(s(6), s(1) + s(5));
@@ -167,117 +181,209 @@ TEST(WTF_Time, divide)
 
 TEST(WTF_Time, less)
 {
-    EXPECT_EQ(false, s(2) < s(1));
-    EXPECT_EQ(false, s(2) < s(2));
-    EXPECT_EQ(true, s(2) < s(3));
-    EXPECT_EQ(false, wt(2) < wt(1));
-    EXPECT_EQ(false, wt(2) < wt(2));
-    EXPECT_EQ(true, wt(2) < wt(3));
-    EXPECT_EQ(false, mt(2) < mt(1));
-    EXPECT_EQ(false, mt(2) < mt(2));
-    EXPECT_EQ(true, mt(2) < mt(3));
-    EXPECT_EQ(false, dtw(2) < dtw(1));
-    EXPECT_EQ(false, dtw(2) < dtw(2));
-    EXPECT_EQ(true, dtw(2) < dtw(3));
-    EXPECT_EQ(false, dtm(2) < dtm(1));
-    EXPECT_EQ(false, dtm(2) < dtm(2));
-    EXPECT_EQ(true, dtm(2) < dtm(3));
+    EXPECT_FALSE(s(2) < s(1));
+    EXPECT_FALSE(s(2) < s(2));
+    EXPECT_TRUE(s(2) < s(3));
+    EXPECT_FALSE(wt(2) < wt(1));
+    EXPECT_FALSE(wt(2) < wt(2));
+    EXPECT_TRUE(wt(2) < wt(3));
+    EXPECT_FALSE(mt(2) < mt(1));
+    EXPECT_FALSE(mt(2) < mt(2));
+    EXPECT_TRUE(mt(2) < mt(3));
+    EXPECT_FALSE(dtw(2) < dtw(1));
+    EXPECT_FALSE(dtw(2) < dtw(2));
+    EXPECT_TRUE(dtw(2) < dtw(3));
+    EXPECT_FALSE(dtm(2) < dtm(1));
+    EXPECT_FALSE(dtm(2) < dtm(2));
+    EXPECT_TRUE(dtm(2) < dtm(3));
 }
 
 TEST(WTF_Time, lessEqual)
 {
-    EXPECT_EQ(false, s(2) <= s(1));
-    EXPECT_EQ(true, s(2) <= s(2));
-    EXPECT_EQ(true, s(2) <= s(3));
-    EXPECT_EQ(false, wt(2) <= wt(1));
-    EXPECT_EQ(true, wt(2) <= wt(2));
-    EXPECT_EQ(true, wt(2) <= wt(3));
-    EXPECT_EQ(false, mt(2) <= mt(1));
-    EXPECT_EQ(true, mt(2) <= mt(2));
-    EXPECT_EQ(true, mt(2) <= mt(3));
-    EXPECT_EQ(false, dtw(2) <= dtw(1));
-    EXPECT_EQ(true, dtw(2) <= dtw(2));
-    EXPECT_EQ(true, dtw(2) <= dtw(3));
-    EXPECT_EQ(false, dtm(2) <= dtm(1));
-    EXPECT_EQ(true, dtm(2) <= dtm(2));
-    EXPECT_EQ(true, dtm(2) <= dtm(3));
+    EXPECT_FALSE(s(2) <= s(1));
+    EXPECT_TRUE(s(2) <= s(2));
+    EXPECT_TRUE(s(2) <= s(3));
+    EXPECT_FALSE(wt(2) <= wt(1));
+    EXPECT_TRUE(wt(2) <= wt(2));
+    EXPECT_TRUE(wt(2) <= wt(3));
+    EXPECT_FALSE(mt(2) <= mt(1));
+    EXPECT_TRUE(mt(2) <= mt(2));
+    EXPECT_TRUE(mt(2) <= mt(3));
+    EXPECT_FALSE(dtw(2) <= dtw(1));
+    EXPECT_TRUE(dtw(2) <= dtw(2));
+    EXPECT_TRUE(dtw(2) <= dtw(3));
+    EXPECT_FALSE(dtm(2) <= dtm(1));
+    EXPECT_TRUE(dtm(2) <= dtm(2));
+    EXPECT_TRUE(dtm(2) <= dtm(3));
 }
 
 TEST(WTF_Time, greater)
 {
-    EXPECT_EQ(true, s(2) > s(1));
-    EXPECT_EQ(false, s(2) > s(2));
-    EXPECT_EQ(false, s(2) > s(3));
-    EXPECT_EQ(true, wt(2) > wt(1));
-    EXPECT_EQ(false, wt(2) > wt(2));
-    EXPECT_EQ(false, wt(2) > wt(3));
-    EXPECT_EQ(true, mt(2) > mt(1));
-    EXPECT_EQ(false, mt(2) > mt(2));
-    EXPECT_EQ(false, mt(2) > mt(3));
-    EXPECT_EQ(true, dtw(2) > dtw(1));
-    EXPECT_EQ(false, dtw(2) > dtw(2));
-    EXPECT_EQ(false, dtw(2) > dtw(3));
-    EXPECT_EQ(true, dtm(2) > dtm(1));
-    EXPECT_EQ(false, dtm(2) > dtm(2));
-    EXPECT_EQ(false, dtm(2) > dtm(3));
+    EXPECT_TRUE(s(2) > s(1));
+    EXPECT_FALSE(s(2) > s(2));
+    EXPECT_FALSE(s(2) > s(3));
+    EXPECT_TRUE(wt(2) > wt(1));
+    EXPECT_FALSE(wt(2) > wt(2));
+    EXPECT_FALSE(wt(2) > wt(3));
+    EXPECT_TRUE(mt(2) > mt(1));
+    EXPECT_FALSE(mt(2) > mt(2));
+    EXPECT_FALSE(mt(2) > mt(3));
+    EXPECT_TRUE(dtw(2) > dtw(1));
+    EXPECT_FALSE(dtw(2) > dtw(2));
+    EXPECT_FALSE(dtw(2) > dtw(3));
+    EXPECT_TRUE(dtm(2) > dtm(1));
+    EXPECT_FALSE(dtm(2) > dtm(2));
+    EXPECT_FALSE(dtm(2) > dtm(3));
 }
 
 TEST(WTF_Time, greaterEqual)
 {
-    EXPECT_EQ(true, s(2) >= s(1));
-    EXPECT_EQ(true, s(2) >= s(2));
-    EXPECT_EQ(false, s(2) >= s(3));
-    EXPECT_EQ(true, wt(2) >= wt(1));
-    EXPECT_EQ(true, wt(2) >= wt(2));
-    EXPECT_EQ(false, wt(2) >= wt(3));
-    EXPECT_EQ(true, mt(2) >= mt(1));
-    EXPECT_EQ(true, mt(2) >= mt(2));
-    EXPECT_EQ(false, mt(2) >= mt(3));
-    EXPECT_EQ(true, dtw(2) >= dtw(1));
-    EXPECT_EQ(true, dtw(2) >= dtw(2));
-    EXPECT_EQ(false, dtw(2) >= dtw(3));
-    EXPECT_EQ(true, dtm(2) >= dtm(1));
-    EXPECT_EQ(true, dtm(2) >= dtm(2));
-    EXPECT_EQ(false, dtm(2) >= dtm(3));
+    EXPECT_TRUE(s(2) >= s(1));
+    EXPECT_TRUE(s(2) >= s(2));
+    EXPECT_FALSE(s(2) >= s(3));
+    EXPECT_TRUE(wt(2) >= wt(1));
+    EXPECT_TRUE(wt(2) >= wt(2));
+    EXPECT_FALSE(wt(2) >= wt(3));
+    EXPECT_TRUE(mt(2) >= mt(1));
+    EXPECT_TRUE(mt(2) >= mt(2));
+    EXPECT_FALSE(mt(2) >= mt(3));
+    EXPECT_TRUE(dtw(2) >= dtw(1));
+    EXPECT_TRUE(dtw(2) >= dtw(2));
+    EXPECT_FALSE(dtw(2) >= dtw(3));
+    EXPECT_TRUE(dtm(2) >= dtm(1));
+    EXPECT_TRUE(dtm(2) >= dtm(2));
+    EXPECT_FALSE(dtm(2) >= dtm(3));
 }
 
 TEST(WTF_Time, equal)
 {
-    EXPECT_EQ(false, s(2) == s(1));
-    EXPECT_EQ(true, s(2) == s(2));
-    EXPECT_EQ(false, s(2) == s(3));
-    EXPECT_EQ(false, wt(2) == wt(1));
-    EXPECT_EQ(true, wt(2) == wt(2));
-    EXPECT_EQ(false, wt(2) == wt(3));
-    EXPECT_EQ(false, mt(2) == mt(1));
-    EXPECT_EQ(true, mt(2) == mt(2));
-    EXPECT_EQ(false, mt(2) == mt(3));
-    EXPECT_EQ(false, dtw(2) == dtw(1));
-    EXPECT_EQ(true, dtw(2) == dtw(2));
-    EXPECT_EQ(false, dtw(2) == dtw(3));
-    EXPECT_EQ(false, dtm(2) == dtm(1));
-    EXPECT_EQ(true, dtm(2) == dtm(2));
-    EXPECT_EQ(false, dtm(2) == dtm(3));
+    EXPECT_FALSE(s(2) == s(1));
+    EXPECT_TRUE(s(2) == s(2));
+    EXPECT_FALSE(s(2) == s(3));
+    EXPECT_FALSE(wt(2) == wt(1));
+    EXPECT_TRUE(wt(2) == wt(2));
+    EXPECT_FALSE(wt(2) == wt(3));
+    EXPECT_FALSE(mt(2) == mt(1));
+    EXPECT_TRUE(mt(2) == mt(2));
+    EXPECT_FALSE(mt(2) == mt(3));
+    EXPECT_FALSE(dtw(2) == dtw(1));
+    EXPECT_TRUE(dtw(2) == dtw(2));
+    EXPECT_FALSE(dtw(2) == dtw(3));
+    EXPECT_FALSE(dtm(2) == dtm(1));
+    EXPECT_TRUE(dtm(2) == dtm(2));
+    EXPECT_FALSE(dtm(2) == dtm(3));
 }
 
 TEST(WTF_Time, notEqual)
 {
-    EXPECT_EQ(true, s(2) != s(1));
-    EXPECT_EQ(false, s(2) != s(2));
-    EXPECT_EQ(true, s(2) != s(3));
-    EXPECT_EQ(true, wt(2) != wt(1));
-    EXPECT_EQ(false, wt(2) != wt(2));
-    EXPECT_EQ(true, wt(2) != wt(3));
-    EXPECT_EQ(true, mt(2) != mt(1));
-    EXPECT_EQ(false, mt(2) != mt(2));
-    EXPECT_EQ(true, mt(2) != mt(3));
-    EXPECT_EQ(true, dtw(2) != dtw(1));
-    EXPECT_EQ(false, dtw(2) != dtw(2));
-    EXPECT_EQ(true, dtw(2) != dtw(3));
-    EXPECT_EQ(true, dtm(2) != dtm(1));
-    EXPECT_EQ(false, dtm(2) != dtm(2));
-    EXPECT_EQ(true, dtm(2) != dtm(3));
+    EXPECT_TRUE(s(2) != s(1));
+    EXPECT_FALSE(s(2) != s(2));
+    EXPECT_TRUE(s(2) != s(3));
+    EXPECT_TRUE(wt(2) != wt(1));
+    EXPECT_FALSE(wt(2) != wt(2));
+    EXPECT_TRUE(wt(2) != wt(3));
+    EXPECT_TRUE(mt(2) != mt(1));
+    EXPECT_FALSE(mt(2) != mt(2));
+    EXPECT_TRUE(mt(2) != mt(3));
+    EXPECT_TRUE(dtw(2) != dtw(1));
+    EXPECT_FALSE(dtw(2) != dtw(2));
+    EXPECT_TRUE(dtw(2) != dtw(3));
+    EXPECT_TRUE(dtm(2) != dtm(1));
+    EXPECT_FALSE(dtm(2) != dtm(2));
+    EXPECT_TRUE(dtm(2) != dtm(3));
 }
+
+TEST(WTF_Time, literals)
+{
+    EXPECT_TRUE(s(120) == 2_min);
+    EXPECT_TRUE(s(2) == 2_s);
+    EXPECT_TRUE(s(2) == 2000_ms);
+    EXPECT_TRUE(s(2) - 1000_ms == s(1));
+    EXPECT_TRUE(2_s - s(1) == 1000_ms);
+
+    EXPECT_TRUE(Seconds::fromMinutes(2) == 2_min);
+    EXPECT_TRUE(Seconds(2) == 2_s);
+    EXPECT_TRUE(Seconds::fromMilliseconds(2) == 2_ms);
+    EXPECT_TRUE(Seconds::fromMicroseconds(2) == 2_us);
+    EXPECT_TRUE(Seconds::fromNanoseconds(2) == 2_ns);
+
+    EXPECT_TRUE(Seconds::fromMinutes(2.5) == 2.5_min);
+    EXPECT_TRUE(Seconds(2.5) == 2.5_s);
+    EXPECT_TRUE(Seconds::fromMilliseconds(2.5) == 2.5_ms);
+    EXPECT_TRUE(Seconds::fromMicroseconds(2.5) == 2.5_us);
+    EXPECT_TRUE(Seconds::fromNanoseconds(2.5) == 2.5_ns);
+}
+
+TEST(WTF_Time, clamp)
+{
+    Seconds positiveInfinity = Seconds::infinity();
+    EXPECT_TRUE(positiveInfinity.secondsAs<int32_t>() == INT32_MAX);
+    EXPECT_TRUE(positiveInfinity.secondsAs<uint32_t>() == UINT32_MAX);
+    EXPECT_TRUE(positiveInfinity.secondsAs<int64_t>() == INT64_MAX);
+    EXPECT_TRUE(positiveInfinity.secondsAs<uint64_t>() == UINT64_MAX);
+    EXPECT_TRUE(positiveInfinity.millisecondsAs<int32_t>() == INT32_MAX);
+    EXPECT_TRUE(positiveInfinity.millisecondsAs<uint32_t>() == UINT32_MAX);
+    EXPECT_TRUE(positiveInfinity.millisecondsAs<int64_t>() == INT64_MAX);
+    EXPECT_TRUE(positiveInfinity.millisecondsAs<uint64_t>() == UINT64_MAX);
+    EXPECT_TRUE(positiveInfinity.microsecondsAs<int32_t>() == INT32_MAX);
+    EXPECT_TRUE(positiveInfinity.microsecondsAs<uint32_t>() == UINT32_MAX);
+    EXPECT_TRUE(positiveInfinity.microsecondsAs<int64_t>() == INT64_MAX);
+    EXPECT_TRUE(positiveInfinity.microsecondsAs<uint64_t>() == UINT64_MAX);
+    EXPECT_TRUE(positiveInfinity.nanosecondsAs<int32_t>() == INT32_MAX);
+    EXPECT_TRUE(positiveInfinity.nanosecondsAs<uint32_t>() == UINT32_MAX);
+    EXPECT_TRUE(positiveInfinity.nanosecondsAs<int64_t>() == INT64_MAX);
+    EXPECT_TRUE(positiveInfinity.nanosecondsAs<uint64_t>() == UINT64_MAX);
+
+    Seconds negativeInfinity = -Seconds::infinity();
+    EXPECT_TRUE(negativeInfinity.secondsAs<int32_t>() == INT32_MIN);
+    EXPECT_TRUE(negativeInfinity.secondsAs<uint32_t>() == 0);
+    EXPECT_TRUE(negativeInfinity.secondsAs<int64_t>() == INT64_MIN);
+    EXPECT_TRUE(negativeInfinity.secondsAs<uint64_t>() == 0);
+    EXPECT_TRUE(negativeInfinity.millisecondsAs<int32_t>() == INT32_MIN);
+    EXPECT_TRUE(negativeInfinity.millisecondsAs<uint32_t>() == 0);
+    EXPECT_TRUE(negativeInfinity.millisecondsAs<int64_t>() == INT64_MIN);
+    EXPECT_TRUE(negativeInfinity.millisecondsAs<uint64_t>() == 0);
+    EXPECT_TRUE(negativeInfinity.microsecondsAs<int32_t>() == INT32_MIN);
+    EXPECT_TRUE(negativeInfinity.microsecondsAs<uint32_t>() == 0);
+    EXPECT_TRUE(negativeInfinity.microsecondsAs<int64_t>() == INT64_MIN);
+    EXPECT_TRUE(negativeInfinity.microsecondsAs<uint64_t>() == 0);
+    EXPECT_TRUE(negativeInfinity.nanosecondsAs<int32_t>() == INT32_MIN);
+    EXPECT_TRUE(negativeInfinity.nanosecondsAs<uint32_t>() == 0);
+    EXPECT_TRUE(negativeInfinity.nanosecondsAs<int64_t>() == INT64_MIN);
+    EXPECT_TRUE(negativeInfinity.nanosecondsAs<uint64_t>() == 0);
+}
+
+// Test MonotonicTime constexpr features. If they are not calculated in constexpr,
+// they invokes global constructors and becomes compile errors.
+static const MonotonicTime NaN = MonotonicTime::nan();
+static const MonotonicTime Infinity = MonotonicTime::infinity();
+static const MonotonicTime Zero = MonotonicTime::fromRawSeconds(0);
+static const MonotonicTime One = Zero + Seconds(1);
+static const MonotonicTime NegativeOne = Zero - Seconds(1);
+static const bool ZeroIsFalse = !!Zero;
+static const bool Equal = Zero == Zero;
+static const bool NotEqual = Zero != One;
+static const bool LessThan = Zero < One;
+static const bool GreaterThan = One > Zero;
+static const bool LessThanOrEqual = Zero <= Zero;
+static const bool GreaterThanOrEqual = Zero >= Zero;
+
+TEST(WTF_Time, constexprMonotonicTime)
+{
+    EXPECT_TRUE(std::isnan(NaN));
+    EXPECT_TRUE(std::isinf(Infinity));
+    EXPECT_TRUE(Zero.secondsSinceEpoch().value() == 0.0);
+    EXPECT_TRUE(One.secondsSinceEpoch().value() == 1.0);
+    EXPECT_TRUE(NegativeOne.secondsSinceEpoch().value() == -1.0);
+    EXPECT_FALSE(ZeroIsFalse);
+    EXPECT_TRUE(Equal);
+    EXPECT_TRUE(NotEqual);
+    EXPECT_TRUE(LessThan);
+    EXPECT_TRUE(GreaterThan);
+    EXPECT_TRUE(LessThanOrEqual);
+    EXPECT_TRUE(GreaterThanOrEqual);
+}
+
 
 } // namespace TestWebKitAPI
 

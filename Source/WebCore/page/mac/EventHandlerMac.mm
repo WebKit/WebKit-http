@@ -33,7 +33,6 @@
 #include "DictionaryLookup.h"
 #include "DragController.h"
 #include "Editor.h"
-#include "EventNames.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -62,6 +61,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "WebCoreSystemInterface.h"
+#include "WheelEventDeltaFilter.h"
 #include "WheelEventTestTrigger.h"
 #include <wtf/BlockObjCExceptions.h>
 #include <wtf/MainThread.h>
@@ -74,11 +74,7 @@
 
 namespace WebCore {
 
-#if ENABLE(DRAG_SUPPORT)
-const double EventHandler::TextDragDelay = 0.15;
-#endif
-
-const double resetLatchedStateTimeout = 0.1;
+static const Seconds resetLatchedStateTimeout { 100_ms };
 
 static RetainPtr<NSEvent>& currentNSEventSlot()
 {
@@ -724,18 +720,21 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
 
 #if ENABLE(DRAG_SUPPORT)
 
-PassRefPtr<DataTransfer> EventHandler::createDraggingDataTransfer() const
+Ref<DataTransfer> EventHandler::createDraggingDataTransfer() const
 {
     // Must be done before ondragstart adds types and data to the pboard,
     // also done for security, as it erases data from the last drag.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     auto pasteboard = std::make_unique<Pasteboard>(NSDragPboard);
+#pragma clang diagnostic pop
     pasteboard->clear();
-    return DataTransfer::createForDragAndDrop();
+    return DataTransfer::createForDrag();
 }
 
 #endif
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent& event) const
 {
     Page* page = m_frame.page();
     if (!page)
@@ -972,10 +971,10 @@ void EventHandler::platformPrepareForWheelEvents(const PlatformWheelEvent& wheel
                 m_frame.mainFrame().pushNewLatchingState();
                 latchingState = m_frame.mainFrame().latchingState();
                 latchingState->setStartedGestureAtScrollLimit(false);
-                latchingState->setWheelEventElement(wheelEventTarget);
+                latchingState->setWheelEventElement(wheelEventTarget.get());
                 latchingState->setFrame(&m_frame);
                 // FIXME: What prevents us from deleting this scrollable container while still holding a pointer to it?
-                latchingState->setScrollableContainer(scrollableContainer);
+                latchingState->setScrollableContainer(scrollableContainer.get());
                 latchingState->setWidgetIsLatched(result.isOverWidget());
                 isOverWidget = latchingState->widgetIsLatched();
                 m_frame.mainFrame().wheelEventDeltaFilter()->beginFilteringDeltas();

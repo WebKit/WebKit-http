@@ -26,19 +26,21 @@
 class StartSupport extends MediaControllerSupport
 {
 
-    // Protected
-
-    get control()
+    constructor(mediaController)
     {
-        return this.mediaController.controls.startButton;
+        super(mediaController);
+
+        this.mediaController.controls.showsStartButton = this._shouldShowStartButton();
     }
+
+    // Protected
 
     get mediaEvents()
     {
-        return ["loadedmetadata", "play", "error", "webkitfullscreenchange"];
+        return ["loadedmetadata", "play", "error", this.mediaController.fullscreenChangeEventType];
     }
 
-    buttonWasClicked(control)
+    buttonWasPressed(control)
     {
         this.mediaController.media.play();
     }
@@ -46,14 +48,11 @@ class StartSupport extends MediaControllerSupport
     handleEvent(event)
     {
         if (event.type === "play")
-            this._hasPlayed = true;
+            this.mediaController.hasPlayed = true;
+
+        this.mediaController.controls.showsStartButton = this._shouldShowStartButton();
 
         super.handleEvent(event);
-    }
-
-    syncControl()
-    {
-        this.mediaController.controls.showsStartButton = this._shouldShowStartButton();
     }
 
     // Private
@@ -61,8 +60,12 @@ class StartSupport extends MediaControllerSupport
     _shouldShowStartButton()
     {
         const media = this.mediaController.media;
+        const host = this.mediaController.host;
 
-        if (this._hasPlayed)
+        if (host && host.shouldForceControlsDisplay)
+            return true;
+
+        if (this.mediaController.hasPlayed || media.played.length)
             return false;
 
         if (!media.paused)
@@ -74,16 +77,12 @@ class StartSupport extends MediaControllerSupport
         if (media instanceof HTMLAudioElement)
             return false;
 
-        if (media.webkitDisplayingFullscreen)
-            return false;
-
-        if (!media.currentSrc)
+        if (this.mediaController.isFullscreen)
             return false;
 
         if (media.error)
             return false;
 
-        const host = this.mediaController.host;
         if (!media.controls && host && host.allowsInlineMediaPlayback)
             return false;
 

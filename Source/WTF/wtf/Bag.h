@@ -26,6 +26,9 @@
 #ifndef Bag_h
 #define Bag_h
 
+#include <wtf/FastMalloc.h>
+#include <wtf/Noncopyable.h>
+
 namespace WTF {
 
 template<typename T>
@@ -43,7 +46,7 @@ private:
         }
         
         T m_item;
-        Node* m_next;
+        Node* m_next { nullptr };
     };
     
 public:

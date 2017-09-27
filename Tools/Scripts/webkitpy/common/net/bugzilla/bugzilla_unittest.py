@@ -238,8 +238,9 @@ Ignore this bug.  Just for testing failure modes of webkit-patch and the commit-
   <head>
     <title>
   Attachment 41073 Details for Bug 27314</title>
-<link rel="Top" href="https://bugs.webkit.org/">
-    <link rel="Up" href="show_bug.cgi?id=27314">
+<div id="bug_title">
+  Attachment 41073 Details for
+  <a class="bz_bug_link bz_status_ASSIGNED " title="Sample bug" href="show_bug.cgi?id=27314">Bug 27314</a>: Sample bug</div>
 """
 
     def test_attachment_detail_bug_parsing(self):
@@ -340,6 +341,18 @@ Ignore this bug.  Just for testing failure modes of webkit-patch and the commit-
 
         title_html_bugzilla_425 = "<title>Bug 101640 Submitted &ndash; Testing webkit-patch again</title>"
         self.assertEqual(bugzilla._check_create_bug_response(title_html_bugzilla_425), '101640')
+
+    def test__parse_attachment_id_from_add_patch_to_bug_response(self):
+        bugzilla = Bugzilla()
+
+        title_html = '<title>Attachment 317591 added to Bug 175247</title>'
+        self.assertEqual(bugzilla._parse_attachment_id_from_add_patch_to_bug_response(title_html), '317591')
+
+        title_html = '<title>Attachment 317591; malformed</title>'
+        self.assertEqual(bugzilla._parse_attachment_id_from_add_patch_to_bug_response(title_html), None)
+
+        title_html = '<title>Attachment A added to Bug 175247</title>'
+        self.assertEqual(bugzilla._parse_attachment_id_from_add_patch_to_bug_response(title_html), None)
 
 
 class BugzillaQueriesTest(unittest.TestCase):

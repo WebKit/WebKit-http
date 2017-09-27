@@ -31,7 +31,6 @@
 
 #if USE(CG)
 
-#include "CoreTextSPIWin.h"
 #include "FloatRect.h"
 #include "FontCache.h"
 #include "FontDescription.h"
@@ -41,6 +40,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #include <mlang.h>
+#include <pal/spi/win/CoreTextSPIWin.h>
 #include <unicode/uchar.h>
 #include <unicode/unorm.h>
 #include <winsock2.h>
@@ -83,7 +83,7 @@ void Font::platformInit()
     float fCapHeight = scaleEmToUnits(iCapHeight, unitsPerEm) * pointSize;
     float fLineGap = scaleEmToUnits(iLineGap, unitsPerEm) * pointSize;
 
-    if (!isCustomFont()) {
+    if (origin() == Origin::Local) {
         HWndDC dc(0);
         HGDIOBJ oldFont = SelectObject(dc, m_platformData.hfont());
         int faceLength = GetTextFace(dc, 0, 0);

@@ -28,13 +28,9 @@
 
 #pragma once
 
-#include "ConcurrentJITLock.h"
-#include "Heap.h"
-#include "JSArray.h"
+#include "ConcurrentJSLock.h"
 #include "SpeculatedType.h"
 #include "Structure.h"
-#include "TagRegistersMode.h"
-#include "WriteBarrier.h"
 #include <wtf/PrintStream.h>
 #include <wtf/StringPrintStream.h>
 
@@ -106,7 +102,7 @@ struct ValueProfileBase {
         return false;
     }
     
-    CString briefDescription(const ConcurrentJITLocker& locker)
+    CString briefDescription(const ConcurrentJSLocker& locker)
     {
         computeUpdatedPrediction(locker);
         
@@ -134,7 +130,7 @@ struct ValueProfileBase {
     
     // Updates the prediction and returns the new one. Never call this from any thread
     // that isn't executing the code.
-    SpeculatedType computeUpdatedPrediction(const ConcurrentJITLocker&)
+    SpeculatedType computeUpdatedPrediction(const ConcurrentJSLocker&)
     {
         for (unsigned i = 0; i < totalNumberOfBuckets; ++i) {
             JSValue value = JSValue::decode(m_buckets[i]);
@@ -178,8 +174,8 @@ struct ValueProfileWithLogNumberOfBuckets : public ValueProfileBase<1 << logNumb
 };
 
 struct ValueProfile : public ValueProfileWithLogNumberOfBuckets<0> {
-    ValueProfile(): ValueProfileWithLogNumberOfBuckets<0>() { }
-    ValueProfile(int bytecodeOffset): ValueProfileWithLogNumberOfBuckets<0>(bytecodeOffset) { }
+    ValueProfile() : ValueProfileWithLogNumberOfBuckets<0>() { }
+    ValueProfile(int bytecodeOffset) : ValueProfileWithLogNumberOfBuckets<0>(bytecodeOffset) { }
 };
 
 template<typename T>
@@ -205,5 +201,39 @@ inline int getRareCaseProfileBytecodeOffset(RareCaseProfile* rareCaseProfile)
 {
     return rareCaseProfile->m_bytecodeOffset;
 }
+
+struct ValueProfileAndOperand {
+    ValueProfile m_profile;
+    int m_operand;
+};
+
+struct ValueProfileAndOperandBuffer {
+    ValueProfileAndOperandBuffer(unsigned size)
+        : m_size(size)
+    {
+        // FIXME: ValueProfile has more stuff than we need. We could optimize these value profiles
+        // to be more space efficient.
+        // https://bugs.webkit.org/show_bug.cgi?id=175413
+        m_buffer = MallocPtr<ValueProfileAndOperand>::malloc(m_size * sizeof(ValueProfileAndOperand));
+        for (unsigned i = 0; i < m_size; ++i)
+            new (&m_buffer.get()[i]) ValueProfileAndOperand();
+    }
+
+    ~ValueProfileAndOperandBuffer()
+    {
+        for (unsigned i = 0; i < m_size; ++i)
+            m_buffer.get()[i].~ValueProfileAndOperand();
+    }
+
+    template <typename Function>
+    void forEach(Function function)
+    {
+        for (unsigned i = 0; i < m_size; ++i)
+            function(m_buffer.get()[i]);
+    }
+
+    unsigned m_size;
+    MallocPtr<ValueProfileAndOperand> m_buffer;
+};
 
 } // namespace JSC

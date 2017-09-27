@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -52,10 +51,13 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_no_argument-1.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_no_argument.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_plus.html
+/LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_to_uri-1.html
+/LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_to_uri.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_undefined-1.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_undefined.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_zero-1.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_zero.html
+/LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_properties_only_fully_active.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_pushstate.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_pushstate_err.html
 /LayoutTests/imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_pushstate_nooptionalparam.html

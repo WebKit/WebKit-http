@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,10 @@
 #include "ExceptionScope.h"
 
 #include "Exception.h"
+#include "ExceptionHelpers.h"
+#include <wtf/StackTrace.h>
+#include <wtf/StringPrintStream.h>
+#include <wtf/Threading.h>
 
 namespace JSC {
     
@@ -45,6 +49,23 @@ ExceptionScope::~ExceptionScope()
 {
     RELEASE_ASSERT(m_vm.m_topExceptionScope);
     m_vm.m_topExceptionScope = m_previousScope;
+}
+
+CString ExceptionScope::unexpectedExceptionMessage()
+{
+    StringPrintStream out;
+
+    out.println("Unexpected exception observed on thread ", currentThread(), " at:");
+    auto currentStack = StackTrace::captureStackTrace(Options::unexpectedExceptionStackTraceLimit(), 1);
+    currentStack->dump(out, "    ");
+
+    if (!m_vm.nativeStackTraceOfLastThrow())
+        return CString();
+    
+    out.println("The exception was thrown from thread ", m_vm.throwingThread(), " at:");
+    m_vm.nativeStackTraceOfLastThrow()->dump(out, "    ");
+
+    return out.toCString();
 }
 
 #endif // ENABLE(EXCEPTION_SCOPE_VERIFICATION)

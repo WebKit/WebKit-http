@@ -23,14 +23,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(READABLE_STREAM_API) && ENABLE(READABLE_BYTE_STREAM_API)
+// @conditional=ENABLE(STREAMS_API)
 
 function enqueue(chunk)
 {
     "use strict";
 
-    //FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableByteStreamController enqueue() is not implemented");
+    if (!@isReadableByteStreamController(this))
+        throw @makeThisTypeError("ReadableByteStreamController", "enqueue");
+
+    if (this.@closeRequested)
+        @throwTypeError("ReadableByteStreamController is requested to close");
+
+    if (this.@controlledReadableStream.@state !== @streamReadable)
+        @throwTypeError("ReadableStream is not readable");
+
+    if (!@isObject(chunk))
+        @throwTypeError("Provided chunk is not an object");
+
+    if (!@ArrayBuffer.@isView(chunk))
+        @throwTypeError("Provided chunk is not an ArrayBuffer view");
+
+    return @readableByteStreamControllerEnqueue(this, chunk);
 }
 
 function error(error)
@@ -50,23 +64,44 @@ function close()
 {
     "use strict";
 
-    //FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableByteStreamController close() is not implemented");
+    if (!@isReadableByteStreamController(this))
+        throw @makeThisTypeError("ReadableByteStreamController", "close");
+
+    if (this.@closeRequested)
+        @throwTypeError("Close has already been requested");
+
+    if (this.@controlledReadableStream.@state !== @streamReadable)
+        @throwTypeError("ReadableStream is not readable");
+
+    @readableByteStreamControllerClose(this);
 }
 
+@getter
 function byobRequest()
 {
     "use strict";
 
-    //FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableByteStreamController byobRequest is not implemented");
+    if (!@isReadableByteStreamController(this))
+        throw @makeGetterTypeError("ReadableByteStreamController", "byobRequest");
+
+    if (this.@byobRequest === @undefined && this.@pendingPullIntos.length) {
+        const firstDescriptor = this.@pendingPullIntos[0];
+        const view = new @Uint8Array(firstDescriptor.buffer,
+            firstDescriptor.byteOffset + firstDescriptor.bytesFilled,
+            firstDescriptor.byteLength - firstDescriptor.bytesFilled);
+        this.@byobRequest = new @ReadableStreamBYOBRequest(this, view);
+    }
+
+    return this.@byobRequest;
 }
 
+@getter
 function desiredSize()
 {
     "use strict";
 
-    //FIXME: Implement appropriate behavior.
-    @throwTypeError("ReadableByteStreamController desiredSize is not implemented");
-}
+    if (!@isReadableByteStreamController(this))
+        throw @makeGetterTypeError("ReadableByteStreamController", "desiredSize");
 
+    return @readableByteStreamControllerGetDesiredSize(this);
+}

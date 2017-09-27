@@ -93,14 +93,28 @@ bool ParallelEnvironment::ThreadPrivate::tryLockFor(ParallelEnvironment* parent)
         return false;
     }
 
-    if (!m_threadID)
-        m_threadID = createThread(&ParallelEnvironment::ThreadPrivate::workerThread, this, "Parallel worker");
+    if (!m_thread) {
+        m_thread = Thread::create("Parallel worker", [this] {
+            LockHolder lock(m_mutex);
 
-    if (m_threadID)
+            while (m_thread) {
+                if (m_running) {
+                    (*m_threadFunction)(m_parameters);
+                    m_running = false;
+                    m_parent = 0;
+                    m_threadCondition.notifyOne();
+                }
+
+                m_threadCondition.wait(m_mutex);
+            }
+        });
+    }
+
+    if (m_thread)
         m_parent = parent;
 
     m_mutex.unlock();
-    return m_threadID;
+    return m_thread;
 }
 
 void ParallelEnvironment::ThreadPrivate::execute(ThreadFunction threadFunction, void* parameters)
@@ -119,23 +133,6 @@ void ParallelEnvironment::ThreadPrivate::waitForFinish()
 
     while (m_running)
         m_threadCondition.wait(m_mutex);
-}
-
-void ParallelEnvironment::ThreadPrivate::workerThread(void* threadData)
-{
-    ThreadPrivate* sharedThread = reinterpret_cast<ThreadPrivate*>(threadData);
-    LockHolder lock(sharedThread->m_mutex);
-
-    while (sharedThread->m_threadID) {
-        if (sharedThread->m_running) {
-            (*sharedThread->m_threadFunction)(sharedThread->m_parameters);
-            sharedThread->m_running = false;
-            sharedThread->m_parent = 0;
-            sharedThread->m_threadCondition.notifyOne();
-        }
-
-        sharedThread->m_threadCondition.wait(sharedThread->m_mutex);
-    }
 }
 
 } // namespace WTF

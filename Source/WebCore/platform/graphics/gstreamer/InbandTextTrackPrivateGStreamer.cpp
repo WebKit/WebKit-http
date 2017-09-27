@@ -75,7 +75,7 @@ void InbandTextTrackPrivateGStreamer::handleSample(GRefPtr<GstSample> sample)
     }
 
     RefPtr<InbandTextTrackPrivateGStreamer> protectedThis(this);
-    m_notifier.notify(MainThreadNotification::NewSample, [protectedThis] {
+    m_notifier->notify(MainThreadNotification::NewSample, [protectedThis] {
         protectedThis->notifyTrackOfSample();
     });
 }
@@ -83,7 +83,7 @@ void InbandTextTrackPrivateGStreamer::handleSample(GRefPtr<GstSample> sample)
 void InbandTextTrackPrivateGStreamer::streamChanged()
 {
     RefPtr<InbandTextTrackPrivateGStreamer> protectedThis(this);
-    m_notifier.notify(MainThreadNotification::StreamChanged, [protectedThis] {
+    m_notifier->notify(MainThreadNotification::StreamChanged, [protectedThis] {
         protectedThis->notifyTrackOfStreamChanged();
     });
 }
@@ -113,7 +113,7 @@ void InbandTextTrackPrivateGStreamer::notifyTrackOfSample()
 
         GST_INFO("Track %d parsing sample: %.*s", m_index, static_cast<int>(info.size),
             reinterpret_cast<char*>(info.data));
-        client()->parseWebVTTCueData(this, reinterpret_cast<char*>(info.data), info.size);
+        client()->parseWebVTTCueData(reinterpret_cast<char*>(info.data), info.size);
         gst_buffer_unmap(buffer, &info);
     }
 }

@@ -37,7 +37,7 @@ namespace JSC {
 
 ModuleAnalyzer::ModuleAnalyzer(ExecState* exec, const Identifier& moduleKey, const SourceCode& sourceCode, const VariableEnvironment& declaredVariables, const VariableEnvironment& lexicalVariables)
     : m_vm(&exec->vm())
-    , m_moduleRecord(exec->vm(), JSModuleRecord::create(exec, exec->vm(), exec->lexicalGlobalObject()->moduleRecordStructure(), moduleKey, sourceCode, declaredVariables, lexicalVariables))
+    , m_moduleRecord(*m_vm, JSModuleRecord::create(exec, *m_vm, exec->lexicalGlobalObject()->moduleRecordStructure(), moduleKey, sourceCode, declaredVariables, lexicalVariables))
 {
 }
 
@@ -82,7 +82,7 @@ void ModuleAnalyzer::exportVariable(ModuleProgramNode& moduleProgramNode, const 
     // Indirectly exported binding.
     // import a from "mod"
     // export { a }
-    Optional<JSModuleRecord::ImportEntry> optionalImportEntry = moduleRecord()->tryGetImportEntry(localName.get());
+    std::optional<JSModuleRecord::ImportEntry> optionalImportEntry = moduleRecord()->tryGetImportEntry(localName.get());
     ASSERT(optionalImportEntry);
     const JSModuleRecord::ImportEntry& importEntry = *optionalImportEntry;
     for (auto& exportName : moduleProgramNode.moduleScopeData().exportedBindings().get(localName.get()))

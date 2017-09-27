@@ -61,21 +61,23 @@ public:
 
     virtual Type type() const = 0;
 
-#if !PLATFORM(EFL) && (USE(EGL) || USE(GLX))
-    // FIXME: This should not have any platform ifdef, but EFL has its own EGLContext class
-    // instead of using the GLContext common API.
+#if USE(EGL) || USE(GLX)
     GLContext* sharingGLContext();
 #endif
 
 #if USE(EGL)
     EGLDisplay eglDisplay() const;
     bool eglCheckVersion(int major, int minor) const;
+    static void shutDownEglDisplays();
 #endif
 
 protected:
-    PlatformDisplay();
+    enum class NativeDisplayOwned { No, Yes };
+    explicit PlatformDisplay(NativeDisplayOwned = NativeDisplayOwned::No);
 
     static void setSharedDisplayForCompositing(PlatformDisplay&);
+
+    NativeDisplayOwned m_nativeDisplayOwned { NativeDisplayOwned::No };
 
 #if USE(EGL)
     virtual void initializeEGLDisplay();

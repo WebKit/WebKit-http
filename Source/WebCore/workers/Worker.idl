@@ -26,13 +26,14 @@
 
 [
     ActiveDOMObject,
-    CustomConstructor(USVString scriptUrl),
+    Constructor(USVString scriptUrl),
+    ConstructorCallWith=ScriptExecutionContext&RuntimeFlags,
+    ConstructorMayThrowException
 ] interface Worker : EventTarget {
-    attribute EventHandler onmessage;
-
-    [Custom, MayThrowException] void postMessage(SerializedScriptValue message, optional Array messagePorts);
-
     void terminate();
+
+    [CallWith=ScriptState, MayThrowException] void postMessage(any message, optional sequence<object> transfer = []);
+    attribute EventHandler onmessage;
 };
 
 Worker implements AbstractWorker;

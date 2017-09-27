@@ -21,6 +21,6 @@
  */
 
 interface SVGNumber {
-    attribute unrestricted float value;
+    [ImplementedAs=valueForBindings] attribute unrestricted float value;
 };
 

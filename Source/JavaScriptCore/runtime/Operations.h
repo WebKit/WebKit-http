@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2002, 2005-2009, 2013-2014, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2002-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -126,7 +126,9 @@ ALWAYS_INLINE JSValue jsStringFromRegisterArray(ExecState* exec, Register* strin
 
     for (unsigned i = 0; i < count; ++i) {
         JSValue v = strings[-static_cast<int>(i)].jsValue();
-        if (!ropeBuilder.append(v.toString(exec)))
+        JSString* string = v.toString(exec);
+        RETURN_IF_EXCEPTION(scope, { });
+        if (!ropeBuilder.append(string))
             return throwOutOfMemoryError(exec, scope);
     }
 
@@ -138,11 +140,15 @@ ALWAYS_INLINE JSValue jsStringFromArguments(ExecState* exec, JSValue thisValue)
     VM* vm = &exec->vm();
     auto scope = DECLARE_THROW_SCOPE(*vm);
     JSRopeString::RopeBuilder ropeBuilder(*vm);
-    ropeBuilder.append(thisValue.toString(exec));
+    JSString* str = thisValue.toString(exec);
+    RETURN_IF_EXCEPTION(scope, { });
+    ropeBuilder.append(str);
 
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
         JSValue v = exec->argument(i);
-        if (!ropeBuilder.append(v.toString(exec)))
+        JSString* str = v.toString(exec);
+        RETURN_IF_EXCEPTION(scope, { });
+        if (UNLIKELY(!ropeBuilder.append(str)))
             return throwOutOfMemoryError(exec, scope);
     }
 
@@ -155,6 +161,9 @@ ALWAYS_INLINE JSValue jsStringFromArguments(ExecState* exec, JSValue thisValue)
 template<bool leftFirst>
 ALWAYS_INLINE bool jsLess(CallFrame* callFrame, JSValue v1, JSValue v2)
 {
+    VM& vm = callFrame->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (v1.isInt32() && v2.isInt32())
         return v1.asInt32() < v2.asInt32();
 
@@ -172,11 +181,14 @@ ALWAYS_INLINE bool jsLess(CallFrame* callFrame, JSValue v1, JSValue v2)
     bool wasNotString2;
     if (leftFirst) {
         wasNotString1 = v1.getPrimitiveNumber(callFrame, n1, p1);
+        RETURN_IF_EXCEPTION(scope, false);
         wasNotString2 = v2.getPrimitiveNumber(callFrame, n2, p2);
     } else {
         wasNotString2 = v2.getPrimitiveNumber(callFrame, n2, p2);
+        RETURN_IF_EXCEPTION(scope, false);
         wasNotString1 = v1.getPrimitiveNumber(callFrame, n1, p1);
     }
+    RETURN_IF_EXCEPTION(scope, false);
 
     if (wasNotString1 | wasNotString2)
         return n1 < n2;
@@ -189,6 +201,9 @@ ALWAYS_INLINE bool jsLess(CallFrame* callFrame, JSValue v1, JSValue v2)
 template<bool leftFirst>
 ALWAYS_INLINE bool jsLessEq(CallFrame* callFrame, JSValue v1, JSValue v2)
 {
+    VM& vm = callFrame->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (v1.isInt32() && v2.isInt32())
         return v1.asInt32() <= v2.asInt32();
 
@@ -206,11 +221,14 @@ ALWAYS_INLINE bool jsLessEq(CallFrame* callFrame, JSValue v1, JSValue v2)
     bool wasNotString2;
     if (leftFirst) {
         wasNotString1 = v1.getPrimitiveNumber(callFrame, n1, p1);
+        RETURN_IF_EXCEPTION(scope, false);
         wasNotString2 = v2.getPrimitiveNumber(callFrame, n2, p2);
     } else {
         wasNotString2 = v2.getPrimitiveNumber(callFrame, n2, p2);
+        RETURN_IF_EXCEPTION(scope, false);
         wasNotString1 = v1.getPrimitiveNumber(callFrame, n1, p1);
     }
+    RETURN_IF_EXCEPTION(scope, false);
 
     if (wasNotString1 | wasNotString2)
         return n1 <= n2;
@@ -243,12 +261,18 @@ inline bool scribbleFreeCells()
     return !ASSERT_DISABLED || Options::scribbleFreeCells();
 }
 
+#define SCRIBBLE_WORD static_cast<intptr_t>(0xbadbeef0)
+
+inline bool isScribbledValue(JSValue value)
+{
+    return JSValue::encode(value) == JSValue::encode(bitwise_cast<JSCell*>(SCRIBBLE_WORD));
+}
+
 inline void scribble(void* base, size_t size)
 {
     for (size_t i = size / sizeof(EncodedJSValue); i--;) {
         // Use a 16-byte aligned value to ensure that it passes the cell check.
-        static_cast<EncodedJSValue*>(base)[i] = JSValue::encode(
-            bitwise_cast<JSCell*>(static_cast<intptr_t>(0xbadbeef0)));
+        static_cast<EncodedJSValue*>(base)[i] = JSValue::encode(bitwise_cast<JSCell*>(SCRIBBLE_WORD));
     }
 }
 

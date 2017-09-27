@@ -1,7 +1,9 @@
 find_library(QUARTZ_LIBRARY Quartz)
 find_library(CARBON_LIBRARY Carbon)
 find_library(CORESERVICES_LIBRARY CoreServices)
-add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks -iframework ${CORESERVICES_LIBRARY}/Frameworks)
+
+# FIXME: We shouldn't need to define NS_RETURNS_RETAINED.
+add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks -iframework ${CORESERVICES_LIBRARY}/Frameworks -DNS_RETURNS_RETAINED=)
 
 if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
 set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
@@ -14,14 +16,14 @@ link_directories(../../WebKitLibraries)
 
 list(APPEND TestNetscapePlugIn_LIBRARIES
     ${QUARTZ_LIBRARY}
-    WebKit2
+    WebKit
 )
 
 list(APPEND DumpRenderTree_LIBRARIES
     ${CARBON_LIBRARY}
     ${QUARTZ_LIBRARY}
     ${WEBKITSYSTEMINTERFACE_LIBRARY}
-    WebKit2
+    WebKit
 )
 
 if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
@@ -40,11 +42,11 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     mac
     mac/InternalHeaders/WebKit
     TestNetscapePlugIn
-    ${DERIVED_SOURCES_DIR}/ForwardingHeaders
-    ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore
-    ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit
-    ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy
-    ${WTF_DIR}/icu
+    ${FORWARDING_HEADERS_DIR}
+    ${FORWARDING_HEADERS_DIR}/WebCore
+    ${FORWARDING_HEADERS_DIR}/WebKit
+    ${FORWARDING_HEADERS_DIR}/WebKitLegacy
+    ${WEBCORE_DIR}/testing/cocoa
 )
 
 # Common ${TestNetscapePlugIn_SOURCES} from CMakeLists.txt are C++ source files.
@@ -71,7 +73,6 @@ list(APPEND DumpRenderTree_ObjC_SOURCES
     DumpRenderTreeFileDraggingSource.m
 
     mac/AppleScriptController.m
-    mac/DumpRenderTreePasteboard.m
     mac/NavigationController.m
     mac/ObjCController.m
     mac/ObjCPlugin.m
@@ -80,14 +81,12 @@ list(APPEND DumpRenderTree_ObjC_SOURCES
 )
 
 list(APPEND DumpRenderTree_Cpp_SOURCES
-    cf/WebArchiveDumpSupport.cpp
-
     cg/PixelDumpSupportCG.cpp
-
-    mac/CheckedMalloc.cpp
 )
 
 list(APPEND DumpRenderTree_ObjCpp_SOURCES
+    TestOptions.mm
+
     mac/AccessibilityCommonMac.mm
     mac/AccessibilityControllerMac.mm
     mac/AccessibilityNotificationHandler.mm
@@ -96,6 +95,8 @@ list(APPEND DumpRenderTree_ObjCpp_SOURCES
     mac/DumpRenderTree.mm
     mac/DumpRenderTreeDraggingInfo.mm
     mac/DumpRenderTreeMain.mm
+    mac/DumpRenderTreePasteboard.mm
+    mac/DumpRenderTreeSpellChecker.mm
     mac/DumpRenderTreeWindow.mm
     mac/EditingDelegate.mm
     mac/EventSendingController.mm
@@ -110,7 +111,6 @@ list(APPEND DumpRenderTree_ObjCpp_SOURCES
     mac/TestRunnerMac.mm
     mac/UIDelegate.mm
     mac/UIScriptControllerMac.mm
-    mac/WebArchiveDumpSupportMac.mm
     mac/WorkQueueItemMac.mm
 )
 

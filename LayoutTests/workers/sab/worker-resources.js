@@ -33,3 +33,54 @@ function wake(memory, index)
     }
 }
 
+function checkBufferSharing(shouldShareBuffer)
+{
+    var set = new Set();
+    for (var i = 1; i < arguments.length; ++i)
+        set.add(arguments[i].buffer);
+    if (shouldShareBuffer) {
+        if (set.size != 1) {
+            postMessage("Error: buffers should be shared but are not shared (set.size == " + set.size + ")");
+            postMessage("error");
+        }
+    } else {
+        if (set.size != arguments.length - 1) {
+            postMessage("Error: buffers should not be shared but are shared");
+            postMessage("error");
+        }
+    }
+}
+
+var cascadeLockUnlocked = 0;
+var cascadeLockLocked = 1;
+var cascadeLockLockedAndParked = 2;
+
+function cascadeLockSlow(memory, index)
+{
+    var desiredState = cascadeLockLocked;
+    for (;;) {
+        if (Atomics.compareExchange(memory, index, cascadeLockUnlocked, desiredState) == cascadeLockUnlocked)
+            return;
+        
+        desiredState = cascadeLockLockedAndParked;
+        Atomics.compareExchange(memory, index, cascadeLockLocked, cascadeLockLockedAndParked);
+        Atomics.wait(memory, index, cascadeLockLockedAndParked);
+    }
+}
+
+function cascadeLock(memory, index)
+{
+    if (Atomics.compareExchange(memory, index, cascadeLockUnlocked, cascadeLockLocked) == cascadeLockUnlocked)
+        return;
+    
+    cascadeLockSlow(memory, index);
+}
+
+function cascadeUnlock(memory, index)
+{
+    if (Atomics.exchange(memory, index, cascadeLockUnlocked) == cascadeLockLocked)
+        return;
+
+    Atomics.wake(memory, index, 1);
+}
+

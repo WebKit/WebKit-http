@@ -1,3 +1,132 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * WebKitPrivateFrameworkStubs/iOS/9: Add Mac architecture for Simulator.
+        * WebKitPrivateFrameworkStubs/iOS/10: Ditto..
+        * WebKitPrivateFrameworkStubs/iOS/11: Added.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * WebKitPrivateFrameworkStubs/iOS/9: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AppSupport.framework/AppSupport.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/AssertionServices.framework/AssertionServices.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/CorePDF.framework/CorePDF.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/GraphicsServices.framework/GraphicsServices.tbd: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework: Removed.
+        * WebKitPrivateFrameworkStubs/iOS/9/IOSurface.framework/IOSurface.tbd: Removed.
+
+2017-06-29  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitSystemInterface for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173936
+
+        Reviewed by Lucas Forschler.
+
+        * libWebKitSystemInterfaceIOSDevice11.a: Added.
+        * libWebKitSystemInterfaceIOSSimulator11.a: Added.
+
+2017-06-21  Andreas Kling  <akling@apple.com>
+
+        [iOS] Ensure that GraphicsServices is initialized before calling GSFontPurgeFontCache().
+        https://bugs.webkit.org/show_bug.cgi?id=173616
+        <rdar://problem/30780050>
+
+        Reviewed by Chris Dumez.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/GraphicsServices.framework/GraphicsServices.tbd:
+
+2017-06-09  Lucas Forschler  <lforschler@apple.com>
+
+        <rdar://problem/32683422>
+        
+        Update existing WebKitSystemInterface libraries.
+        Add macOS 10.13 libraries.
+        Remove macOS 10.10 libraries.
+        Remove iOS 10.9 libraries.
+        
+        Reviewed by Conrad Schultz.
+
+        * libWebKitSystemInterfaceElCapitan.a:
+        * libWebKitSystemInterfaceIOSDevice10.a:
+        * libWebKitSystemInterfaceIOSDevice9.a: Removed.
+        * libWebKitSystemInterfaceIOSSimulator10.a:
+        * libWebKitSystemInterfaceIOSSimulator9.a: Removed.
+        * libWebKitSystemInterfaceOSX10.12.a:
+        * libWebKitSystemInterfaceOSX10.13.a: Added.
+        * libWebKitSystemInterfaceYosemite.a: Removed.
+
+2017-04-11  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] WebKit unnecessarily soft-links CorePrediction
+        https://bugs.webkit.org/show_bug.cgi?id=170644
+
+        Reviewed by Sam Weinig.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework: Added this framework stub.
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework/CorePrediction.tbd: Added.
+
+2017-04-08  Dan Bernstein  <mitz@apple.com>
+
+        Removed an empty directory left behind after r212841.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework: Removed.
+
+2017-02-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r212685.
+
+        This change broke the 32-bit Sierra build.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Add alternate classification
+        method"
+        https://bugs.webkit.org/show_bug.cgi?id=168347
+        http://trac.webkit.org/changeset/212685
+
+2017-02-20  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Add alternate classification method
+        https://bugs.webkit.org/show_bug.cgi?id=168347
+        <rdar://problem/30352793>
+
+        Reviewed by Alex Christensen.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework: Added.
+        * WebKitPrivateFrameworkStubs/iOS/10/CorePrediction.framework/CorePrediction.tbd: Added.
+            Stubs for private framework.
+
+2017-01-12  Andreas Kling  <akling@apple.com>
+
+        [iOS] Purge GraphicsServices font cache on memory warning.
+        <https://webkit.org/b/154343>
+
+        Reviewed by Antti Koivisto.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/GraphicsServices.framework/GraphicsServices.tbd: Add SPI.
+
+2017-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2017
+        https://bugs.webkit.org/show_bug.cgi?id=166278
+
+        Reviewed by Dan Bernstein.
+
+        * win/tools/scripts/COPYRIGHT-END-YEAR:
+
 2016-09-07  Daniel Bates  <dabates@apple.com>
 
         Update WebKitSystemInterface

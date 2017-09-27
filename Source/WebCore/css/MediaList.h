@@ -25,6 +25,10 @@
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class CSSParser;
@@ -39,17 +43,12 @@ public:
     {
         return adoptRef(*new MediaQuerySet);
     }
-    static Ref<MediaQuerySet> create(const String& mediaString)
-    {
-        return adoptRef(*new MediaQuerySet(mediaString, false));
-    }
-    static Ref<MediaQuerySet> createAllowingDescriptionSyntax(const String& mediaString)
-    {
-        return adoptRef(*new MediaQuerySet(mediaString, true));
-    }
+
+    static WEBCORE_EXPORT Ref<MediaQuerySet> create(const String& mediaString);
+
     WEBCORE_EXPORT ~MediaQuerySet();
 
-    bool parse(const String&);
+    bool set(const String&);
     bool add(const String&);
     bool remove(const String&);
 
@@ -68,14 +67,10 @@ public:
 
 private:
     MediaQuerySet();
-    WEBCORE_EXPORT MediaQuerySet(const String& mediaQuery, bool fallbackToDescription);
+    WEBCORE_EXPORT MediaQuerySet(const String& mediaQuery);
     MediaQuerySet(const MediaQuerySet&);
 
-    Optional<MediaQuery> internalParse(CSSParser&, const String&);
-    Optional<MediaQuery> internalParse(const String&);
-
-    unsigned m_fallbackToDescriptor : 1; // true if failed media query parsing should fallback to media description parsing.
-    signed m_lastLine : 31;
+    int m_lastLine { 0 };
     Vector<MediaQuery> m_queries;
 };
 
@@ -129,5 +124,8 @@ inline void reportMediaQueryWarningIfNeeded(Document*, const MediaQuerySet*)
 }
 
 #endif
+
+WTF::TextStream& operator<<(WTF::TextStream&, const MediaQuerySet&);
+WTF::TextStream& operator<<(WTF::TextStream&, const MediaList&);
 
 } // namespace

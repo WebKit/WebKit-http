@@ -130,7 +130,7 @@ RootInlineBox* RenderBlockFlow::createAndAppendRootInlineBox()
 
     if (UNLIKELY(AXObjectCache::accessibilityEnabled()) && firstRootBox() == rootBox) {
         if (AXObjectCache* cache = document().existingAXObjectCache())
-            cache->recomputeIsIgnored(this);
+            cache->deferRecomputeIsIgnored(element());
     }
 
     return rootBox;
@@ -486,9 +486,9 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
     
     // Since we don't cache glyph overflows, we need to re-measure the run if
     // the style is linebox-contain: glyph.
-    
     if (!lineBox->fitsToGlyphs() && canUseSimpleFontCodePath) {
         unsigned lastEndOffset = run->m_start;
+        bool atFirstWordMeasurement = true;
         for (size_t i = 0, size = wordMeasurements.size(); i < size && lastEndOffset < run->m_stop; ++i) {
             WordMeasurement& wordMeasurement = wordMeasurements[i];
             if (wordMeasurement.width <= 0 || wordMeasurement.startOffset == wordMeasurement.endOffset)
@@ -503,10 +503,13 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
                 measuredWidth += renderer.width(wordMeasurement.startOffset, wordLength, xPos + measuredWidth, lineInfo.isFirstLine(),
                     &wordMeasurement.fallbackFonts, &overflow);
                 UChar c = renderer.characterAt(wordMeasurement.startOffset);
-                if (i > 0 && wordLength == 1 && (c == ' ' || c == '\t'))
+                // renderer.width() omits word-spacing value for leading whitespace, so let's just add it back here.
+                if (!atFirstWordMeasurement && (c == ' ' || c == '\t'))
                     measuredWidth += renderer.style().fontCascade().wordSpacing();
             } else
                 measuredWidth += wordMeasurement.width;
+            atFirstWordMeasurement = false;
+
             if (!wordMeasurement.fallbackFonts.isEmpty()) {
                 HashSet<const Font*>::const_iterator end = wordMeasurement.fallbackFonts.end();
                 for (HashSet<const Font*>::const_iterator it = wordMeasurement.fallbackFonts.begin(); it != end; ++it)
@@ -666,16 +669,11 @@ void RenderBlockFlow::updateLogicalWidthForAlignment(const ETextAlign& textAlign
 }
 
 static void updateLogicalInlinePositions(RenderBlockFlow& block, float& lineLogicalLeft, float& lineLogicalRight, float& availableLogicalWidth, bool firstLine,
-    IndentTextOrNot shouldIndentText, LayoutUnit boxLogicalHeight, RootInlineBox* rootBox)
+    IndentTextOrNot shouldIndentText, LayoutUnit boxLogicalHeight)
 {
     LayoutUnit lineLogicalHeight = block.minLineHeightForReplacedRenderer(firstLine, boxLogicalHeight);
-    if (rootBox->hasAnonymousInlineBlock()) {
-        lineLogicalLeft = block.logicalLeftOffsetForContent(block.logicalHeight());
-        lineLogicalRight = block.logicalRightOffsetForContent(block.logicalHeight());
-    } else {
-        lineLogicalLeft = block.logicalLeftOffsetForLine(block.logicalHeight(), shouldIndentText, lineLogicalHeight);
-        lineLogicalRight = block.logicalRightOffsetForLine(block.logicalHeight(), shouldIndentText, lineLogicalHeight);
-    }
+    lineLogicalLeft = block.logicalLeftOffsetForLine(block.logicalHeight(), shouldIndentText, lineLogicalHeight);
+    lineLogicalRight = block.logicalRightOffsetForLine(block.logicalHeight(), shouldIndentText, lineLogicalHeight);
     availableLogicalWidth = lineLogicalRight - lineLogicalLeft;
 }
 
@@ -693,12 +691,12 @@ void RenderBlockFlow::computeInlineDirectionPositionsForLine(RootInlineBox* line
     float lineLogicalLeft;
     float lineLogicalRight;
     float availableLogicalWidth;
-    updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, 0, lineBox);
+    updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, 0);
     bool needsWordSpacing;
 
     if (firstRun && firstRun->renderer().isReplaced()) {
         RenderBox& renderBox = downcast<RenderBox>(firstRun->renderer());
-        updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, renderBox.logicalHeight(), lineBox);
+        updateLogicalInlinePositions(*this, lineLogicalLeft, lineLogicalRight, availableLogicalWidth, isFirstLine, shouldIndentText, renderBox.logicalHeight());
     }
 
     computeInlineDirectionPositionsForSegment(lineBox, lineInfo, textAlign, lineLogicalLeft, availableLogicalWidth, firstRun, trailingSpaceRun, textBoxDataMap, verticalPositionCache, wordMeasurements);
@@ -894,8 +892,9 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
             if (unsigned length = renderText.textLength()) {
                 if (!run->m_start && needsWordSpacing && isSpaceOrNewline(renderText.characterAt(run->m_start)))
                     totalLogicalWidth += lineStyle(*renderText.parent(), lineInfo).fontCascade().wordSpacing();
-                ASSERT(run->m_stop > 0);
-                needsWordSpacing = !isSpaceOrNewline(renderText.characterAt(run->m_stop - 1)) && run->m_stop == length;
+                // run->m_start == run->m_stop should only be true iff the run is a replaced run for bidi: isolate.
+                ASSERT(run->m_stop > 0 || run->m_start == run->m_stop);
+                needsWordSpacing = run->m_stop == length && !isSpaceOrNewline(renderText.characterAt(run->m_stop - 1));
             }
 
             setLogicalWidthForTextRun(lineBox, run, renderText, totalLogicalWidth, lineInfo, textBoxDataMap, verticalPositionCache, wordMeasurements);
@@ -1097,7 +1096,8 @@ inline BidiRun* RenderBlockFlow::handleTrailingSpaces(BidiRunList<BidiRun>& bidi
 void RenderBlockFlow::appendFloatingObjectToLastLine(FloatingObject& floatingObject)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!floatingObject.originatingLine());
-    floatingObject.setOriginatingLine(lastRootBox());
+    ASSERT(lastRootBox());
+    floatingObject.setOriginatingLine(*lastRootBox());
     lastRootBox()->appendFloat(floatingObject.renderer());
 }
 
@@ -1263,9 +1263,6 @@ void RenderBlockFlow::layoutRunsAndFloats(LineLayoutState& layoutState, bool has
     InlineBidiResolver resolver;
     RootInlineBox* startLine = determineStartPosition(layoutState, resolver);
     
-    if (startLine)
-        marginCollapseLinesFromStart(layoutState, startLine);
-
     unsigned consecutiveHyphenatedLines = 0;
     if (startLine) {
         for (RootInlineBox* line = startLine->prevRootBox(); line && line->isHyphenated(); line = line->prevRootBox())
@@ -1277,12 +1274,12 @@ void RenderBlockFlow::layoutRunsAndFloats(LineLayoutState& layoutState, bool has
     // determineStartPosition first will break fast/repaint/line-flow-with-floats-9.html.
     if (layoutState.isFullLayout() && hasInlineChild && !selfNeedsLayout()) {
         setNeedsLayout(MarkOnlyThis); // Mark as needing a full layout to force us to repaint.
-        if (!view().doingFullRepaint() && hasSelfPaintingLayer() && layer()->hasComputedRepaintRect()) {
+        if (!view().doingFullRepaint() && hasSelfPaintingLayer() && hasRepaintLayoutRects()) {
             // Because we waited until we were already inside layout to discover
             // that the block really needed a full layout, we missed our chance to repaint the layer
             // before layout started.  Luckily the layer has cached the repaint rect for its original
             // position and size, and so we can use that to make a repaint happen now.
-            repaintUsingContainer(containerForRepaint(), layer()->repaintRect());
+            repaintUsingContainer(containerForRepaint(), repaintLayoutRects().m_repaintRect);
         }
     }
 
@@ -1365,7 +1362,7 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
         FloatingObject* lastFloatFromPreviousLine = (containsFloats()) ? m_floatingObjects->set().last().get() : nullptr;
 
         WordMeasurements wordMeasurements;
-        end = lineBreaker.nextLineBreak(resolver, layoutState.lineInfo(), layoutState, renderTextInfo, lastFloatFromPreviousLine, consecutiveHyphenatedLines, wordMeasurements);
+        end = lineBreaker.nextLineBreak(resolver, layoutState.lineInfo(), renderTextInfo, lastFloatFromPreviousLine, consecutiveHyphenatedLines, wordMeasurements);
         cachePriorCharactersIfNeeded(renderTextInfo.lineBreakIterator);
         renderTextInfo.lineBreakIterator.resetPriorContext();
         if (resolver.position().atEnd()) {
@@ -1423,21 +1420,7 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
                 LayoutUnit adjustment = 0;
                 bool overflowsRegion = false;
                 
-                // If our previous line was an anonymous block and we are not an anonymous block,
-                // simulate a margin collapse now so that we get the proper
-                // increased height. We also have to simulate a margin collapse to propagate margins
-                // through to the top of our block.
-                if (!lineBox->hasAnonymousInlineBlock()) {
-                    RootInlineBox* prevRoot = lineBox->prevRootBox();
-                    if (prevRoot && prevRoot->hasAnonymousInlineBlock()) {
-                        LayoutUnit currentLogicalHeight = logicalHeight();
-                        setLogicalHeight(oldLogicalHeight);
-                        collapseMarginsWithChildInfo(nullptr, nullptr, layoutState.marginInfo());
-                        adjustment = logicalHeight() - oldLogicalHeight;
-                        setLogicalHeight(currentLogicalHeight);
-                    }
-                    layoutState.marginInfo().setAtBeforeSideOfBlock(false);
-                }
+                layoutState.marginInfo().setAtBeforeSideOfBlock(false);
 
                 if (paginated)
                     adjustLinePositionForPagination(lineBox, adjustment, overflowsRegion, layoutState.flowThread());
@@ -1459,16 +1442,6 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
                 }
                     
                 if (paginated) {
-                    if (RenderFlowThread* flowThread = flowThreadContainingBlock()) {
-                        if (flowThread->isRenderNamedFlowThread() && overflowsRegion && hasNextPage(lineBox->lineTop())) {
-                            // Limit the height of this block to the end of the current region because
-                            // it is also fragmented into the next region.
-                            LayoutUnit remainingLogicalHeight = pageRemainingLogicalHeightForOffset(logicalTop(), ExcludePageBoundary);
-                            if (logicalHeight() > remainingLogicalHeight)
-                                setLogicalHeight(remainingLogicalHeight);
-                        }
-                    }
-
                     if (layoutState.flowThread())
                         updateRegionForLine(lineBox);
                 }
@@ -1585,7 +1558,7 @@ void RenderBlockFlow::reattachCleanLineFloats(RootInlineBox& cleanLine, LayoutUn
             continue;
         }
         ASSERT_WITH_SECURITY_IMPLICATION(!floatingObject->originatingLine());
-        floatingObject->setOriginatingLine(&cleanLine);
+        floatingObject->setOriginatingLine(cleanLine);
         setLogicalHeight(logicalTopForChild(*floatingBox) - marginBeforeForChild(*floatingBox) + delta);
         positionNewFloats();
     }
@@ -1724,13 +1697,17 @@ void RenderBlockFlow::layoutLineBoxes(bool relayoutChildren, LayoutUnit& repaint
                     layoutState.floatList().append(FloatWithRect::create(box));
                 else if (isFullLayout || box.needsLayout()) {
                     // Replaced element.
-                    box.dirtyLineBoxes(isFullLayout);
-                    if (!o.isAnonymousInlineBlock()) {
-                        if (isFullLayout)
-                            replacedChildren.append(&box);
-                        else
-                            box.layoutIfNeeded();
+                    if (isFullLayout && is<RenderRubyRun>(box)) {
+                        // FIXME: This resets the overhanging margins that we set during line layout (see computeInlineDirectionPositionsForSegment)
+                        // Find a more suitable place for this.
+                        setMarginStartForChild(box, 0);
+                        setMarginEndForChild(box, 0);
                     }
+                    box.dirtyLineBoxes(isFullLayout);
+                    if (isFullLayout)
+                        replacedChildren.append(&box);
+                    else
+                        box.layoutIfNeeded();
                 }
             } else if (o.isTextOrLineBreak() || (is<RenderInline>(o) && !walker.atEndOfInline())) {
                 if (is<RenderInline>(o))
@@ -1761,12 +1738,8 @@ void RenderBlockFlow::layoutLineBoxes(bool relayoutChildren, LayoutUnit& repaint
     // determining the correct collapsed bottom margin information. This collapse is only necessary
     // if our last child was an anonymous inline block that might need to propagate margin information out to
     // us.
-    LayoutUnit beforeEdge = borderAndPaddingBefore();
     LayoutUnit afterEdge = borderAndPaddingAfter() + scrollbarLogicalHeight() + lastLineAnnotationsAdjustment;
-    if (lastRootBox() && lastRootBox()->hasAnonymousInlineBlock())
-        handleAfterSideOfBlock(beforeEdge, afterEdge, layoutState.marginInfo());
-    else
-        setLogicalHeight(logicalHeight() + afterEdge);
+    setLogicalHeight(logicalHeight() + afterEdge);
 
     if (!firstRootBox() && hasLineIfEmpty())
         setLogicalHeight(logicalHeight() + lineHeight(true, isHorizontalWritingMode() ? HorizontalLine : VerticalLine, PositionOfInteriorLineBoxes));
@@ -1874,7 +1847,7 @@ RootInlineBox* RenderBlockFlow::determineStartPosition(LineLayoutState& layoutSt
             // We have a dirty line.
             if (RootInlineBox* prevRootBox = currentLine->prevRootBox()) {
                 // We have a previous line.
-                if (!dirtiedByFloat && !currentLine->hasAnonymousInlineBlock() && (!prevRootBox->endsWithBreak()
+                if (!dirtiedByFloat && (!prevRootBox->endsWithBreak()
                     || !prevRootBox->lineBreakObj()
                     || (is<RenderText>(*prevRootBox->lineBreakObj())
                     && prevRootBox->lineBreakPos() >= downcast<RenderText>(*prevRootBox->lineBreakObj()).textLength()))) {
@@ -1898,7 +1871,7 @@ RootInlineBox* RenderBlockFlow::determineStartPosition(LineLayoutState& layoutSt
                     auto* floatingBox = *it;
                     auto* floatingObject = insertFloatingObject(*floatingBox);
                     ASSERT_WITH_SECURITY_IMPLICATION(!floatingObject->originatingLine());
-                    floatingObject->setOriginatingLine(line);
+                    floatingObject->setOriginatingLine(*line);
                     setLogicalHeight(logicalTopForChild(*floatingBox) - marginBeforeForChild(*floatingBox));
                     positionNewFloats();
                     floats.setLastCleanFloat(*floatingBox);
@@ -2052,7 +2025,7 @@ bool RenderBlockFlow::matchedEndLine(LineLayoutState& layoutState, const InlineB
     RootInlineBox* originalEndLine = layoutState.endLine();
     RootInlineBox* line = originalEndLine;
     for (int i = 0; i < numLines && line; i++, line = line->nextRootBox()) {
-        if (line->lineBreakObj() == resolver.position().renderer() && line->lineBreakPos() == resolver.position().offset() && !line->hasAnonymousInlineBlock()) {
+        if (line->lineBreakObj() == resolver.position().renderer() && line->lineBreakPos() == resolver.position().offset()) {
             // We have a match.
             if (line->lineBreakBidiStatus() != resolver.status())
                 return false; // ...but the bidi state doesn't match.
@@ -2259,7 +2232,7 @@ LayoutUnit RenderBlockFlow::startAlignedOffsetForLine(LayoutUnit position, Inden
     // https://bugs.webkit.org/show_bug.cgi?id=124522
     // This quirk is for legacy content that doesn't work properly with the center positioning scheme
     // being honored (e.g., epubs).
-    if (shouldApplyIndentText || document().settings()->useLegacyTextAlignPositionedElementBehavior()) // FIXME: Handle TAEND here
+    if (shouldApplyIndentText || settings().useLegacyTextAlignPositionedElementBehavior()) // FIXME: Handle TAEND here
         return startOffsetForLine(position, shouldIndentText);
 
     // updateLogicalWidthForAlignment() handles the direction of the block so no need to consider it here
@@ -2297,48 +2270,6 @@ void RenderBlockFlow::updateRegionForLine(RootInlineBox* lineBox) const
     // correctly if the line is positioned at the top of the last fragment container.
     if (lineBox->containingRegion() != prevLineBox->containingRegion())
         lineBox->setIsFirstAfterPageBreak(true);
-}
-
-void RenderBlockFlow::marginCollapseLinesFromStart(LineLayoutState& layoutState, RootInlineBox* stopLine)
-{
-    // We have to handle an anonymous inline block streak at the start of the block in order to make sure our own margins are
-    // correct. We only have to do this if the children can propagate margins out to us.
-    bool resetLogicalHeight = false;
-    if (layoutState.marginInfo().canCollapseWithMarginBefore()) {
-        RootInlineBox* startLine = firstRootBox();
-        RootInlineBox* curr;
-        for (curr = startLine; curr && curr->hasAnonymousInlineBlock() && layoutState.marginInfo().canCollapseWithMarginBefore(); curr = curr->nextRootBox()) {
-            if (curr == stopLine)
-                return;
-            if (!resetLogicalHeight) {
-                setLogicalHeight(borderAndPaddingBefore());
-                resetLogicalHeight = true;
-            }
-            layoutBlockChild(*curr->anonymousInlineBlock(), layoutState.marginInfo(),
-                layoutState.prevFloatBottomFromAnonymousInlineBlock(), layoutState.maxFloatBottomFromAnonymousInlineBlock());
-        }
-    }
-    
-    // Now that we've handled the top of the block, if the stopLine isn't an anonymous block, then we're done.
-    if (!stopLine->hasAnonymousInlineBlock())
-        return;
-
-    // We already handled top of block with startLine.
-    if (stopLine == firstRootBox())
-        return;
-
-    // Re-run margin collapsing on the block sequence that stopLine is a part of.
-    // First go backwards to get the entire sequence.
-    RootInlineBox* prev = stopLine;
-    for ( ; prev->hasAnonymousInlineBlock(); prev = prev->prevRootBox()) {
-    };
-
-    // Update the block height to the correct state.
-    setLogicalHeight(prev->lineBottomWithLeading());
-    
-    // Now run margin collapsing on those lines.
-    for (prev = prev->nextRootBox(); prev != stopLine; prev = prev->nextRootBox())
-        layoutBlockChild(*prev->anonymousInlineBlock(), layoutState.marginInfo(), layoutState.prevFloatBottomFromAnonymousInlineBlock(), layoutState.maxFloatBottomFromAnonymousInlineBlock());
 }
 
 }

@@ -25,7 +25,6 @@
 #define Font_h
 
 #include "FloatRect.h"
-#include "FontBaseline.h"
 #include "FontMetrics.h"
 #include "FontPlatformData.h"
 #include "GlyphBuffer.h"
@@ -37,7 +36,6 @@
 #endif
 #include <wtf/BitVector.h>
 #include <wtf/Optional.h>
-#include <wtf/TypeCasts.h>
 #include <wtf/text/StringHash.h>
 
 #if PLATFORM(COCOA)
@@ -54,7 +52,7 @@
 #endif
 
 #if USE(CG)
-#include "CoreGraphicsSPI.h"
+#include <pal/spi/cg/CoreGraphicsSPI.h>
 #endif
 
 #if USE(DIRECT2D)
@@ -76,9 +74,25 @@ enum Pitch { UnknownPitch, FixedPitch, VariablePitch };
 class Font : public RefCounted<Font> {
 public:
     // Used to create platform fonts.
-    static Ref<Font> create(const FontPlatformData& platformData, bool isCustomFont = false, bool isLoading = false, bool isTextOrientationFallback = false)
+    enum class Origin {
+        Remote,
+        Local
+    };
+    enum class Interstitial {
+        Yes,
+        No
+    };
+    enum class Visibility {
+        Visible,
+        Invisible
+    };
+    enum class OrientationFallback {
+        Yes,
+        No
+    };
+    static Ref<Font> create(const FontPlatformData& platformData, Origin origin = Origin::Local, Interstitial interstitial = Interstitial::No, Visibility visibility = Visibility::Visible, OrientationFallback orientationFallback = OrientationFallback::No)
     {
-        return adoptRef(*new Font(platformData, isCustomFont, isLoading, isTextOrientationFallback));
+        return adoptRef(*new Font(platformData, origin, interstitial, visibility, orientationFallback));
     }
 
     WEBCORE_EXPORT ~Font();
@@ -95,7 +109,6 @@ public:
     const Font& noSynthesizableFeaturesFont() const;
     const Font* emphasisMarkFont(const FontDescription&) const;
     const Font& brokenIdeographFont() const;
-    const Font& nonSyntheticItalicFont() const;
 
     const Font* variantFont(const FontDescription& description, FontVariant variant) const
     {
@@ -121,6 +134,7 @@ public:
 
     const Font& verticalRightOrientationFont() const;
     const Font& uprightOrientationFont() const;
+    const Font& invisibleFont() const;
 
     bool hasVerticalGlyphs() const { return m_hasVerticalGlyphs; }
     bool isTextOrientationFallback() const { return m_isTextOrientationFallback; }
@@ -170,8 +184,9 @@ public:
     void determinePitch();
     Pitch pitch() const { return m_treatAsFixedPitch ? FixedPitch : VariablePitch; }
 
-    bool isCustomFont() const { return m_isCustomFont; }
-    bool isLoading() const { return m_isLoading; }
+    Origin origin() const { return m_origin; }
+    bool isInterstitial() const { return m_isInterstitial; }
+    Visibility visibility() const { return m_visibility; }
 
 #ifndef NDEBUG
     String description() const;
@@ -209,7 +224,7 @@ public:
 #endif
 
 private:
-    Font(const FontPlatformData&, bool isCustomFont = false, bool isLoading = false, bool isTextOrientationFallback = false);
+    Font(const FontPlatformData&, Origin, Interstitial, Visibility, OrientationFallback);
 
     void platformInit();
     void platformGlyphInit();
@@ -223,6 +238,9 @@ private:
     RefPtr<Font> platformCreateScaledFont(const FontDescription&, float scaleFactor) const;
 
     void removeFromSystemFallbackCache();
+    
+    struct DerivedFonts;
+    DerivedFonts& ensureDerivedFontData() const;
 
 #if PLATFORM(WIN)
     void initGDIFont();
@@ -259,20 +277,14 @@ private:
         WTF_MAKE_FAST_ALLOCATED;
 #endif
     public:
-        explicit DerivedFonts(bool custom)
-            : forCustomFont(custom)
-        {
-        }
-        ~DerivedFonts();
 
-        bool forCustomFont;
-        RefPtr<Font> smallCaps;
-        RefPtr<Font> noSynthesizableFeatures;
-        RefPtr<Font> emphasisMark;
-        RefPtr<Font> brokenIdeograph;
-        RefPtr<Font> verticalRightOrientation;
-        RefPtr<Font> uprightOrientation;
-        RefPtr<Font> nonSyntheticItalic;
+        RefPtr<Font> smallCapsFont;
+        RefPtr<Font> noSynthesizableFeaturesFont;
+        RefPtr<Font> emphasisMarkFont;
+        RefPtr<Font> brokenIdeographFont;
+        RefPtr<Font> verticalRightOrientationFont;
+        RefPtr<Font> uprightOrientationFont;
+        RefPtr<Font> invisibleFont;
     };
 
     mutable std::unique_ptr<DerivedFonts> m_derivedFontData;
@@ -284,10 +296,10 @@ private:
 #if PLATFORM(COCOA)
     mutable RetainPtr<CFDictionaryRef> m_nonKernedCFStringAttributes;
     mutable RetainPtr<CFDictionaryRef> m_kernedCFStringAttributes;
-    mutable Optional<BitVector> m_glyphsSupportedBySmallCaps;
-    mutable Optional<BitVector> m_glyphsSupportedByAllSmallCaps;
-    mutable Optional<BitVector> m_glyphsSupportedByPetiteCaps;
-    mutable Optional<BitVector> m_glyphsSupportedByAllPetiteCaps;
+    mutable std::optional<BitVector> m_glyphsSupportedBySmallCaps;
+    mutable std::optional<BitVector> m_glyphsSupportedByAllSmallCaps;
+    mutable std::optional<BitVector> m_glyphsSupportedByPetiteCaps;
+    mutable std::optional<BitVector> m_glyphsSupportedByAllPetiteCaps;
 #endif
 
 #if PLATFORM(COCOA) || USE(HARFBUZZ)
@@ -299,9 +311,11 @@ private:
     mutable SCRIPT_FONTPROPERTIES* m_scriptFontProperties;
 #endif
 
+    Origin m_origin; // Whether or not we are custom font loaded via @font-face
+    Visibility m_visibility; // @font-face's internal timer can cause us to show fonts even when a font is being downloaded.
+
     unsigned m_treatAsFixedPitch : 1;
-    unsigned m_isCustomFont : 1; // Whether or not we are custom font loaded via @font-face
-    unsigned m_isLoading : 1; // Whether or not this custom font is still in the act of loading.
+    unsigned m_isInterstitial : 1; // Whether or not this custom font is the last resort placeholder for a loading font
 
     unsigned m_isTextOrientationFallback : 1;
     unsigned m_isBrokenIdeographFallback : 1;
@@ -339,7 +353,11 @@ ALWAYS_INLINE FloatRect Font::boundsForGlyph(Glyph glyph) const
 
 ALWAYS_INLINE float Font::widthForGlyph(Glyph glyph) const
 {
-    if (isZeroWidthSpaceGlyph(glyph))
+    // The optimization of returning 0 for the zero-width-space glyph is incorrect for the LastResort font,
+    // used in place of the actual font when isLoading() is true on both macOS and iOS.
+    // The zero-width-space glyph in that font does not have a width of zero and, further, that glyph is used
+    // for many other characters and must not be zero width when used for them.
+    if (isZeroWidthSpaceGlyph(glyph) && !isInterstitial())
         return 0;
 
     float width = m_glyphToWidthMap.metricsForGlyph(glyph);

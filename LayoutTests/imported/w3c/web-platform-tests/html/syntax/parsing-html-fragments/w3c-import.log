@@ -1,7 +1,6 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
-Instead, create a pull request on the W3C CSS or WPT github:
-	https://github.com/w3c/csswg-test
+Instead, create a pull request on the WPT github:
 	https://github.com/w3c/web-platform-tests
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
@@ -23,8 +22,6 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-007.html.headers
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-009.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-009.html.headers
-/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-015.html
-/LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-015.html.headers
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-016.html
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-016.html.headers
 /LayoutTests/imported/w3c/web-platform-tests/html/syntax/parsing-html-fragments/the-input-byte-stream-018.html

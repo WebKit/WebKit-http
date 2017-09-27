@@ -49,13 +49,17 @@ public:
     Value* checkMulConstant(Procedure&, const Value* other) const override;
     Value* checkNegConstant(Procedure&) const override;
     Value* divConstant(Procedure&, const Value* other) const override;
+    Value* uDivConstant(Procedure&, const Value* other) const override;
     Value* modConstant(Procedure&, const Value* other) const override;
+    Value* uModConstant(Procedure&, const Value* other) const override;
     Value* bitAndConstant(Procedure&, const Value* other) const override;
     Value* bitOrConstant(Procedure&, const Value* other) const override;
     Value* bitXorConstant(Procedure&, const Value* other) const override;
     Value* shlConstant(Procedure&, const Value* other) const override;
     Value* sShrConstant(Procedure&, const Value* other) const override;
     Value* zShrConstant(Procedure&, const Value* other) const override;
+    Value* rotRConstant(Procedure&, const Value* other) const override;
+    Value* rotLConstant(Procedure&, const Value* other) const override;
     Value* bitwiseCastConstant(Procedure&) const override;
     Value* iToDConstant(Procedure&) const override;
     Value* iToFConstant(Procedure&) const override;

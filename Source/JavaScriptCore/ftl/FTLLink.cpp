@@ -36,14 +36,14 @@
 #include "LinkBuffer.h"
 #include "JSCInlines.h"
 #include "ProfilerCompilation.h"
+#include "ThunkGenerators.h"
 #include "VirtualRegister.h"
 
 namespace JSC { namespace FTL {
 
-using namespace DFG;
-
 void link(State& state)
 {
+    using namespace DFG;
     Graph& graph = state.graph;
     CodeBlock* codeBlock = graph.m_codeBlock;
     VM& vm = graph.m_vm;
@@ -60,20 +60,21 @@ void link(State& state)
 
     // Create the entrypoint. Note that we use this entrypoint totally differently
     // depending on whether we're doing OSR entry or not.
-    CCallHelpers jit(&vm, codeBlock);
+    CCallHelpers jit(codeBlock);
     
     std::unique_ptr<LinkBuffer> linkBuffer;
 
     CCallHelpers::Address frame = CCallHelpers::Address(
         CCallHelpers::stackPointerRegister, -static_cast<int32_t>(AssemblyHelpers::prologueStackPointerDelta()));
     
-    if (Profiler::Compilation* compilation = graph.compilation()) {
+    Profiler::Compilation* compilation = graph.compilation();
+    if (UNLIKELY(compilation)) {
         compilation->addDescription(
             Profiler::OriginStack(),
             toCString("Generated FTL JIT code for ", CodeBlockWithJITType(codeBlock, JITCode::FTLJIT), ", instruction count = ", graph.m_codeBlock->instructionCount(), ":\n"));
         
-        graph.ensureDominators();
-        graph.ensureNaturalLoops();
+        graph.ensureSSADominators();
+        graph.ensureSSANaturalLoops();
         
         const char* prefix = "    ";
         
@@ -127,50 +128,52 @@ void link(State& state)
     
     switch (graph.m_plan.mode) {
     case FTLMode: {
-        CCallHelpers::JumpList mainPathJumps;
+        if (codeBlock->codeType() == FunctionCode) {
+            CCallHelpers::JumpList mainPathJumps;
     
-        jit.load32(
-            frame.withOffset(sizeof(Register) * CallFrameSlot::argumentCount),
-            GPRInfo::regT1);
-        mainPathJumps.append(jit.branch32(
-            CCallHelpers::AboveOrEqual, GPRInfo::regT1,
-            CCallHelpers::TrustedImm32(codeBlock->numParameters())));
-        jit.emitFunctionPrologue();
-        jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
-        jit.storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
-        CCallHelpers::Call callArityCheck = jit.call();
+            jit.load32(
+                frame.withOffset(sizeof(Register) * CallFrameSlot::argumentCount),
+                GPRInfo::regT1);
+            mainPathJumps.append(jit.branch32(
+                                     CCallHelpers::AboveOrEqual, GPRInfo::regT1,
+                                     CCallHelpers::TrustedImm32(codeBlock->numParameters())));
+            jit.emitFunctionPrologue();
+            jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+            jit.storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
+            CCallHelpers::Call callArityCheck = jit.call();
 
-        auto noException = jit.branch32(CCallHelpers::GreaterThanOrEqual, GPRInfo::returnValueGPR, CCallHelpers::TrustedImm32(0));
-        jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
-        jit.move(CCallHelpers::TrustedImmPtr(jit.vm()), GPRInfo::argumentGPR0);
-        jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-        CCallHelpers::Call callLookupExceptionHandlerFromCallerFrame = jit.call();
-        jit.jumpToExceptionHandler();
-        noException.link(&jit);
+            auto noException = jit.branch32(CCallHelpers::GreaterThanOrEqual, GPRInfo::returnValueGPR, CCallHelpers::TrustedImm32(0));
+            jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(vm);
+            jit.move(CCallHelpers::TrustedImmPtr(&vm), GPRInfo::argumentGPR0);
+            jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
+            CCallHelpers::Call callLookupExceptionHandlerFromCallerFrame = jit.call();
+            jit.jumpToExceptionHandler(vm);
+            noException.link(&jit);
 
-        if (!ASSERT_DISABLED) {
-            jit.load64(vm.addressOfException(), GPRInfo::regT1);
-            jit.jitAssertIsNull(GPRInfo::regT1);
+            if (!ASSERT_DISABLED) {
+                jit.load64(vm.addressOfException(), GPRInfo::regT1);
+                jit.jitAssertIsNull(GPRInfo::regT1);
+            }
+
+            jit.move(GPRInfo::returnValueGPR, GPRInfo::argumentGPR0);
+            jit.emitFunctionEpilogue();
+            mainPathJumps.append(jit.branchTest32(CCallHelpers::Zero, GPRInfo::argumentGPR0));
+            jit.emitFunctionPrologue();
+            CCallHelpers::Call callArityFixup = jit.call();
+            jit.emitFunctionEpilogue();
+            mainPathJumps.append(jit.jump());
+
+            linkBuffer = std::make_unique<LinkBuffer>(jit, codeBlock, JITCompilationCanFail);
+            if (linkBuffer->didFailToAllocate()) {
+                state.allocationFailed = true;
+                return;
+            }
+            linkBuffer->link(callArityCheck, codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck);
+            linkBuffer->link(callLookupExceptionHandlerFromCallerFrame, lookupExceptionHandlerFromCallerFrame);
+            linkBuffer->link(callArityFixup, FunctionPtr((vm.getCTIStub(arityFixupGenerator)).code().executableAddress()));
+            linkBuffer->link(mainPathJumps, CodeLocationLabel(bitwise_cast<void*>(state.generatedFunction)));
         }
-
-        jit.move(GPRInfo::returnValueGPR, GPRInfo::argumentGPR0);
-        jit.emitFunctionEpilogue();
-        mainPathJumps.append(jit.branchTest32(CCallHelpers::Zero, GPRInfo::argumentGPR0));
-        jit.emitFunctionPrologue();
-        CCallHelpers::Call callArityFixup = jit.call();
-        jit.emitFunctionEpilogue();
-        mainPathJumps.append(jit.jump());
-
-        linkBuffer = std::make_unique<LinkBuffer>(vm, jit, codeBlock, JITCompilationCanFail);
-        if (linkBuffer->didFailToAllocate()) {
-            state.allocationFailed = true;
-            return;
-        }
-        linkBuffer->link(callArityCheck, codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck);
-        linkBuffer->link(callLookupExceptionHandlerFromCallerFrame, lookupExceptionHandlerFromCallerFrame);
-        linkBuffer->link(callArityFixup, FunctionPtr((vm.getCTIStub(arityFixupGenerator)).code().executableAddress()));
-        linkBuffer->link(mainPathJumps, CodeLocationLabel(bitwise_cast<void*>(state.generatedFunction)));
-
+        
         state.jitCode->initializeAddressForCall(MacroAssemblerCodePtr(bitwise_cast<void*>(state.generatedFunction)));
         break;
     }
@@ -184,7 +187,7 @@ void link(State& state)
         jit.emitFunctionEpilogue();
         CCallHelpers::Jump mainPathJump = jit.jump();
         
-        linkBuffer = std::make_unique<LinkBuffer>(vm, jit, codeBlock, JITCompilationCanFail);
+        linkBuffer = std::make_unique<LinkBuffer>(jit, codeBlock, JITCompilationCanFail);
         if (linkBuffer->didFailToAllocate()) {
             state.allocationFailed = true;
             return;

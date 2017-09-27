@@ -27,12 +27,31 @@
 
 #include "config.h"
 #include "ContentType.h"
+#include "HTMLParserIdioms.h"
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+ContentType::ContentType(String&& contentType)
+    : m_type(WTFMove(contentType))
+{
+}
 
 ContentType::ContentType(const String& contentType)
     : m_type(contentType)
 {
+}
+
+const String& ContentType::codecsParameter()
+{
+    static NeverDestroyed<String> codecs { ASCIILiteral("codecs") };
+    return codecs;
+}
+
+const String& ContentType::profilesParameter()
+{
+    static NeverDestroyed<String> profiles { ASCIILiteral("profiles") };
+    return profiles;
 }
 
 String ContentType::parameter(const String& parameterName) const
@@ -64,7 +83,7 @@ String ContentType::parameter(const String& parameterName) const
     return parameterValue;
 }
 
-String ContentType::type() const
+String ContentType::containerType() const
 {
     String strippedType = m_type.stripWhiteSpace();
 
@@ -76,19 +95,22 @@ String ContentType::type() const
     return strippedType;
 }
 
+static inline Vector<String> splitParameters(StringView parametersView)
+{
+    Vector<String> result;
+    for (auto view : parametersView.split(','))
+        result.append(view.stripLeadingAndTrailingMatchedCharacters(isHTMLSpace<UChar>).toString());
+    return result;
+}
+
 Vector<String> ContentType::codecs() const
 {
-    String codecsParameter = parameter(ASCIILiteral("codecs"));
+    return splitParameters(parameter(codecsParameter()));
+}
 
-    if (codecsParameter.isEmpty())
-        return Vector<String>();
-
-    Vector<String> codecs;
-    codecsParameter.split(',', codecs);
-    for (size_t i = 0; i < codecs.size(); ++i)
-        codecs[i] = codecs[i].simplifyWhiteSpace();
-
-    return codecs;
+Vector<String> ContentType::profiles() const
+{
+    return splitParameters(parameter(profilesParameter()));
 }
 
 } // namespace WebCore

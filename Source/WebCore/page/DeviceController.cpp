@@ -29,7 +29,6 @@
 
 #include "DeviceClient.h"
 #include "Document.h"
-#include "Page.h"
 
 namespace WebCore {
 
@@ -48,7 +47,7 @@ void DeviceController::addDeviceEventListener(DOMWindow* window)
     if (hasLastData()) {
         m_lastEventListeners.add(window);
         if (!m_timer.isActive())
-            m_timer.startOneShot(0);
+            m_timer.startOneShot(0_s);
     }
 
     if (wasEmpty)

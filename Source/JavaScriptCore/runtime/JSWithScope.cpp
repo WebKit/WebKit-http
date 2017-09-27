@@ -30,10 +30,10 @@
 
 namespace JSC {
 
-const ClassInfo JSWithScope::s_info = { "WithScope", &Base::s_info, 0, CREATE_METHOD_TABLE(JSWithScope) };
+const ClassInfo JSWithScope::s_info = { "WithScope", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSWithScope) };
 
 JSWithScope* JSWithScope::create(
-    VM& vm, JSGlobalObject* globalObject, JSObject* object, JSScope* next)
+    VM& vm, JSGlobalObject* globalObject, JSScope* next, JSObject* object)
 {
     Structure* structure = globalObject->withScopeStructure();
     JSWithScope* withScope = new (NotNull, allocateCell<JSWithScope>(vm.heap)) JSWithScope(vm, structure, object, next);
@@ -46,7 +46,7 @@ void JSWithScope::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSWithScope* thisObject = jsCast<JSWithScope*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_object);
+    visitor.append(thisObject->m_object);
 }
 
 Structure* JSWithScope::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)

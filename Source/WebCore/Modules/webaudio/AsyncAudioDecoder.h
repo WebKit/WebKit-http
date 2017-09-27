@@ -74,10 +74,9 @@ private:
         RefPtr<AudioBuffer> m_audioBuffer;
     };
     
-    static void threadEntry(void* threadData);
     void runLoop();
 
-    WTF::ThreadIdentifier m_threadID;
+    RefPtr<Thread> m_thread;
     Lock m_threadCreationMutex;
     MessageQueue<DecodingTask> m_queue;
 };

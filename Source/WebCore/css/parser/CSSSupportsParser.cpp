@@ -34,26 +34,35 @@
 
 namespace WebCore {
 
-CSSSupportsParser::SupportsResult CSSSupportsParser::supportsCondition(CSSParserTokenRange range, CSSParserImpl& parser)
+CSSSupportsParser::SupportsResult CSSSupportsParser::supportsCondition(CSSParserTokenRange range, CSSParserImpl& parser, SupportsParsingMode mode)
 {
     // FIXME: The spec allows leading whitespace in @supports but not CSS.supports,
     // but major browser vendors allow it in CSS.supports also.
     range.consumeWhitespace();
-    return CSSSupportsParser(parser).consumeCondition(range);
+    CSSSupportsParser supportsParser(parser);
+    auto result = supportsParser.consumeCondition(range);
+    if (mode != ForWindowCSS || result != Invalid)
+        return result;
+    // window.CSS.supports requires parsing as-if the condition was wrapped in
+    // parenthesis. The only productions that wouldn't have parsed above are the
+    // declaration condition or the general enclosed productions.
+    return supportsParser.consumeDeclarationConditionOrGeneralEnclosed(range);
 }
 
 enum ClauseType { Unresolved, Conjunction, Disjunction };
 
 CSSSupportsParser::SupportsResult CSSSupportsParser::consumeCondition(CSSParserTokenRange range)
 {
-    if (range.peek().type() == IdentToken)
+    if (range.peek().type() == IdentToken || range.peek().type() == FunctionToken)
         return consumeNegation(range);
 
     bool result;
     ClauseType clauseType = Unresolved;
+    
+    auto previousTokenType = IdentToken;
 
     while (true) {
-        SupportsResult nextResult = consumeConditionInParenthesis(range);
+        SupportsResult nextResult = consumeConditionInParenthesis(range, previousTokenType);
         if (nextResult == Invalid)
             return Invalid;
         bool nextSupported = nextResult;
@@ -66,54 +75,64 @@ CSSSupportsParser::SupportsResult CSSSupportsParser::consumeCondition(CSSParserT
 
         if (range.atEnd())
             break;
-        if (range.consumeIncludingWhitespace().type() != WhitespaceToken)
-            return Invalid;
+        range.consumeWhitespace();
         if (range.atEnd())
             break;
 
-        const CSSParserToken& token = range.consume();
-        if (token.type() != IdentToken)
+        const CSSParserToken& token = range.peek();
+        if (token.type() != IdentToken && token.type() != FunctionToken)
             return Invalid;
+        
+        previousTokenType = token.type();
+        
         if (clauseType == Unresolved)
             clauseType = token.value().length() == 3 ? Conjunction : Disjunction;
         if ((clauseType == Conjunction && !equalIgnoringASCIICase(token.value(), "and"))
             || (clauseType == Disjunction && !equalIgnoringASCIICase(token.value(), "or")))
             return Invalid;
 
-        if (range.consumeIncludingWhitespace().type() != WhitespaceToken)
-            return Invalid;
+        if (token.type() == IdentToken)
+            range.consumeIncludingWhitespace();
     }
     return result ? Supported : Unsupported;
 }
 
 CSSSupportsParser::SupportsResult CSSSupportsParser::consumeNegation(CSSParserTokenRange range)
 {
-    ASSERT(range.peek().type() == IdentToken);
-    if (!equalIgnoringASCIICase(range.consume().value(), "not"))
+    ASSERT(range.peek().type() == IdentToken || range.peek().type() == FunctionToken);
+    auto tokenType = range.peek().type();
+    if (!equalIgnoringASCIICase(range.peek().value(), "not"))
         return Invalid;
-    if (range.consumeIncludingWhitespace().type() != WhitespaceToken)
-        return Invalid;
-    SupportsResult result = consumeConditionInParenthesis(range);
+    if (range.peek().type() == IdentToken)
+        range.consumeIncludingWhitespace();
+    SupportsResult result = consumeConditionInParenthesis(range, tokenType);
     range.consumeWhitespace();
     if (!range.atEnd() || result == Invalid)
         return Invalid;
     return result ? Unsupported : Supported;
 }
 
-CSSSupportsParser::SupportsResult CSSSupportsParser::consumeConditionInParenthesis(CSSParserTokenRange& range)
+CSSSupportsParser::SupportsResult CSSSupportsParser::consumeDeclarationConditionOrGeneralEnclosed(CSSParserTokenRange& range)
 {
     if (range.peek().type() == FunctionToken) {
         range.consumeComponentValue();
         return Unsupported;
     }
-    if (range.peek().type() != LeftParenthesisToken)
+
+    return range.peek().type() == IdentToken && m_parser.supportsDeclaration(range) ? Supported : Unsupported;
+}
+
+CSSSupportsParser::SupportsResult CSSSupportsParser::consumeConditionInParenthesis(CSSParserTokenRange& range, CSSParserTokenType startTokenType)
+{
+    if (startTokenType == IdentToken && range.peek().type() != LeftParenthesisToken)
         return Invalid;
+
     CSSParserTokenRange innerRange = range.consumeBlock();
     innerRange.consumeWhitespace();
     SupportsResult result = consumeCondition(innerRange);
     if (result != Invalid)
         return result;
-    return innerRange.peek().type() == IdentToken && m_parser.supportsDeclaration(innerRange) ? Supported : Unsupported;
+    return consumeDeclarationConditionOrGeneralEnclosed(innerRange);
 }
 
 } // namespace WebCore

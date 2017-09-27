@@ -47,12 +47,12 @@ void WheelEventTestTrigger::clearAllTestDeferrals()
 {
     std::lock_guard<Lock> lock(m_testTriggerMutex);
     m_deferTestTriggerReasons.clear();
-    m_testNotificationCallback = std::function<void()>();
+    m_testNotificationCallback = nullptr;
     m_testTriggerTimer.stop();
     LOG(WheelEventTestTriggers, "      (=) WheelEventTestTrigger::clearAllTestDeferrals: cleared all test state.");
 }
 
-void WheelEventTestTrigger::setTestCallbackAndStartNotificationTimer(std::function<void()> functionCallback)
+void WheelEventTestTrigger::setTestCallbackAndStartNotificationTimer(WTF::Function<void()>&& functionCallback)
 {
     {
         std::lock_guard<Lock> lock(m_testTriggerMutex);
@@ -60,7 +60,7 @@ void WheelEventTestTrigger::setTestCallbackAndStartNotificationTimer(std::functi
     }
     
     if (!m_testTriggerTimer.isActive())
-        m_testTriggerTimer.startRepeating(1.0 / 60.0);
+        m_testTriggerTimer.startRepeating(1_s / 60.);
 }
 
 void WheelEventTestTrigger::deferTestsForReason(ScrollableAreaIdentifier identifier, DeferTestTriggerReason reason)
@@ -68,7 +68,7 @@ void WheelEventTestTrigger::deferTestsForReason(ScrollableAreaIdentifier identif
     std::lock_guard<Lock> lock(m_testTriggerMutex);
     auto it = m_deferTestTriggerReasons.find(identifier);
     if (it == m_deferTestTriggerReasons.end())
-        it = m_deferTestTriggerReasons.add(identifier, std::set<DeferTestTriggerReason>()).iterator;
+        it = m_deferTestTriggerReasons.add(identifier, DeferTestTriggerReasonSet()).iterator;
     
     LOG(WheelEventTestTriggers, "      (=) WheelEventTestTrigger::deferTestsForReason: id=%p, reason=%d", identifier, reason);
     it->value.insert(reason);
@@ -89,7 +89,7 @@ void WheelEventTestTrigger::removeTestDeferralForReason(ScrollableAreaIdentifier
 }
 
 #if !LOG_DISABLED
-static void dumpState(WTF::HashMap<WheelEventTestTrigger::ScrollableAreaIdentifier, std::set<WheelEventTestTrigger::DeferTestTriggerReason>> reasons)
+static void dumpState(WTF::HashMap<WheelEventTestTrigger::ScrollableAreaIdentifier, WheelEventTestTrigger::DeferTestTriggerReasonSet> reasons)
 {
     LOG(WheelEventTestTriggers, "   WheelEventTestTrigger::dumpState:");
     for (const auto& scrollRegion : reasons) {
@@ -107,7 +107,7 @@ static void dumpState(WTF::HashMap<WheelEventTestTrigger::ScrollableAreaIdentifi
     
 void WheelEventTestTrigger::triggerTestTimerFired()
 {
-    std::function<void()> functionCallback;
+    WTF::Function<void()> functionCallback;
 
     {
         std::lock_guard<Lock> lock(m_testTriggerMutex);
@@ -120,7 +120,6 @@ void WheelEventTestTrigger::triggerTestTimerFired()
         }
 
         functionCallback = WTFMove(m_testNotificationCallback);
-        m_testNotificationCallback = std::function<void()>();
     }
 
     m_testTriggerTimer.stop();

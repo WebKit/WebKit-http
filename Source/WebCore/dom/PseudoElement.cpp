@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -38,14 +39,14 @@ namespace WebCore {
 
 const QualifiedName& pseudoElementTagName()
 {
-    static NeverDestroyed<QualifiedName> name(nullAtom, "<pseudo>", nullAtom);
+    static NeverDestroyed<QualifiedName> name(nullAtom(), "<pseudo>", nullAtom());
     return name;
 }
 
 String PseudoElement::pseudoElementNameForEvents(PseudoId pseudoId)
 {
-    static NeverDestroyed<const String> after(ASCIILiteral("::after"));
-    static NeverDestroyed<const String> before(ASCIILiteral("::before"));
+    static NeverDestroyed<const String> after(MAKE_STATIC_STRING_IMPL("::after"));
+    static NeverDestroyed<const String> before(MAKE_STATIC_STRING_IMPL("::before"));
     switch (pseudoId) {
     case AFTER:
         return after;
@@ -77,50 +78,9 @@ void PseudoElement::clearHostElement()
     m_hostElement = nullptr;
 }
 
-Optional<ElementStyle> PseudoElement::resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle*)
-{
-    auto* style = m_hostElement->renderer()->getCachedPseudoStyle(m_pseudoId, &parentStyle);
-    if (!style)
-        return Nullopt;
-    return ElementStyle(RenderStyle::clonePtr(*style));
-}
-
-void PseudoElement::didAttachRenderers()
-{
-    RenderElement* renderer = this->renderer();
-    if (!renderer || renderer->style().hasFlowFrom())
-        return;
-
-    const RenderStyle& style = renderer->style();
-    ASSERT(style.contentData());
-
-    for (const ContentData* content = style.contentData(); content; content = content->next()) {
-        auto child = content->createContentRenderer(document(), style);
-        if (renderer->isChildAllowed(*child, style))
-            renderer->addChild(child.leakPtr());
-    }
-}
-
 bool PseudoElement::rendererIsNeeded(const RenderStyle& style)
 {
     return pseudoElementRendererIsNeeded(&style);
-}
-
-void PseudoElement::didRecalcStyle(Style::Change)
-{
-    if (!renderer())
-        return;
-
-    // The renderers inside pseudo elements are anonymous so they don't get notified of recalcStyle and must have
-    // the style propagated downward manually similar to RenderObject::propagateStyleToAnonymousChildren.
-    RenderElement& renderer = *this->renderer();
-    for (RenderObject* child = renderer.nextInPreOrder(&renderer); child; child = child->nextInPreOrder(&renderer)) {
-        // We only manage the style for the generated content which must be images or text.
-        if (!is<RenderImage>(*child) && !is<RenderQuote>(*child))
-            continue;
-        auto createdStyle = RenderStyle::createStyleInheritingFromPseudoStyle(renderer.style());
-        downcast<RenderElement>(*child).setStyle(WTFMove(createdStyle));
-    }
 }
 
 } // namespace

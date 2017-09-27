@@ -54,9 +54,13 @@ namespace WebCore {
 // seconds after receiving an event. Don't let events fire any sooner than
 // s_holdOffMultiplier times the last cleanup processing time. Effectively
 // this is 1 / s_holdOffMultiplier percent of the time.
+// If after releasing the memory we don't free at least s_minimumBytesFreedToUseMinimumHoldOffTime,
+// we wait longer to try again (s_maximumHoldOffTime).
 // These value seems reasonable and testing verifies that it throttles frequent
 // low memory events, greatly reducing CPU usage.
 static const unsigned s_minimumHoldOffTime = 5;
+static const unsigned s_maximumHoldOffTime = 30;
+static const size_t s_minimumBytesFreedToUseMinimumHoldOffTime = 1 * MB;
 static const unsigned s_holdOffMultiplier = 20;
 static const unsigned s_pollTimeSec = 1;
 static const size_t s_memCriticalLimit = 3 * KB * KB; // 3 MB
@@ -135,11 +139,12 @@ MemoryPressureHandler::EventFDPoller::EventFDPoller(int fd, std::function<void (
 
 MemoryPressureHandler::EventFDPoller::~EventFDPoller()
 {
-    m_fd = Nullopt;
-    if (m_source)
-        g_source_destroy(m_source.get());
-    if (m_threadID)
-        detachThread(m_threadID);
+    m_fd = std::nullopt;
+#if USE(GLIB)
+    g_source_destroy(m_source.get());
+#else
+    detachThread(m_threadID);
+#endif
 }
 
 static inline bool isFatalReadError(int error)
@@ -312,11 +317,11 @@ inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
 
     if (m_eventFD) {
         close(m_eventFD.value());
-        m_eventFD = Nullopt;
+        m_eventFD = std::nullopt;
     }
     if (m_pressureLevelFD) {
         close(m_pressureLevelFD.value());
-        m_pressureLevelFD = Nullopt;
+        m_pressureLevelFD = std::nullopt;
     }
 }
 
@@ -409,12 +414,12 @@ void MemoryPressureHandler::uninstall()
 
     if (m_pressureLevelFD) {
         close(m_pressureLevelFD.value());
-        m_pressureLevelFD = Nullopt;
+        m_pressureLevelFD = std::nullopt;
 
         // Only close the eventFD used for cgroups.
         if (m_eventFD) {
             close(m_eventFD.value());
-            m_eventFD = Nullopt;
+            m_eventFD = std::nullopt;
         }
     }
 
@@ -443,22 +448,25 @@ void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchrono
     uninstall();
 
     double startTime = monotonicallyIncreasingTime();
+    int64_t processMemory = processMemoryUsage();
     releaseMemory(critical, synchronous);
-    unsigned holdOffTime = (monotonicallyIncreasingTime() - startTime) * s_holdOffMultiplier;
+    int64_t bytesFreed = processMemory - processMemoryUsage();
+    unsigned holdOffTime = s_maximumHoldOffTime;
+    if (bytesFreed > 0 && static_cast<size_t>(bytesFreed) >= s_minimumBytesFreedToUseMinimumHoldOffTime)
+        holdOffTime = (monotonicallyIncreasingTime() - startTime) * s_holdOffMultiplier;
     holdOff(std::max(holdOffTime, s_minimumHoldOffTime));
 }
 
 void MemoryPressureHandler::platformReleaseMemory(Critical)
 {
 #ifdef __GLIBC__
-    ReliefLogger log("Run malloc_trim");
     malloc_trim(0);
 #endif
 }
 
-size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
+std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
 {
-    return processMemoryUsage();
+    return MemoryUsage {processMemoryUsage(), 0};
 }
 
 void MemoryPressureHandler::setMemoryPressureMonitorHandle(int fd)

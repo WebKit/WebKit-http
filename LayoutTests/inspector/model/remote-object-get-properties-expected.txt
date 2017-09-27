@@ -235,14 +235,14 @@ DISPLAYABLE PROPERTIES:
     target
     currentTarget
     eventPhase
+    cancelBubble
     bubbles
     cancelable
+    defaultPrevented
     composed
     timeStamp
-    defaultPrevented
     srcElement
     returnValue
-    cancelBubble
     __proto__
 
 ALL PROPERTIES:
@@ -252,39 +252,23 @@ ALL PROPERTIES:
     target
     currentTarget
     eventPhase
+    cancelBubble
     bubbles
     cancelable
+    defaultPrevented
     composed
     timeStamp
-    defaultPrevented
     srcElement
     returnValue
-    cancelBubble
     composedPath
     stopPropagation
+    stopImmediatePropagation
     preventDefault
     initEvent
-    stopImmediatePropagation
     NONE
     CAPTURING_PHASE
     AT_TARGET
     BUBBLING_PHASE
-    MOUSEDOWN
-    MOUSEUP
-    MOUSEOVER
-    MOUSEOUT
-    MOUSEMOVE
-    MOUSEDRAG
-    CLICK
-    DBLCLICK
-    KEYDOWN
-    KEYUP
-    KEYPRESS
-    DRAGDROP
-    FOCUS
-    BLUR
-    SELECT
-    CHANGE
     toString
     toLocaleString
     valueOf
@@ -516,19 +500,20 @@ OWN PROPERTIES:
 
 DISPLAYABLE PROPERTIES:
     0
-    selectedIndex
     length
+    selectedIndex
     __proto__
 
 ALL PROPERTIES:
     0
     constructor
-    selectedIndex
     length
-    item
-    namedItem
+    selectedIndex
     add
     remove
+    item
+    namedItem
+    Symbol(Symbol.iterator)
     toString
     toLocaleString
     valueOf

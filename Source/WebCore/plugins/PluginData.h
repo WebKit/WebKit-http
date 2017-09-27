@@ -45,6 +45,8 @@ enum PluginLoadClientPolicy : uint8_t {
 
     // The plug-in module should be loaded irrespective of whether WebKit has asked it to be blocked.
     PluginLoadClientPolicyAllowAlways,
+
+    PluginLoadClientPolicyMaximum = PluginLoadClientPolicyAllowAlways
 };
 
 struct MimeClassInfo {
@@ -98,7 +100,6 @@ public:
     };
 
     WEBCORE_EXPORT bool supportsWebVisibleMimeType(const String& mimeType, const AllowedPluginTypes) const;
-    String pluginNameForWebVisibleMimeType(const String& mimeType) const;
     String pluginFileForWebVisibleMimeType(const String& mimeType) const;
 
     WEBCORE_EXPORT bool supportsMimeType(const String& mimeType, const AllowedPluginTypes) const;

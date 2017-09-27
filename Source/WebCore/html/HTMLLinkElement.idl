@@ -33,12 +33,15 @@
     [PutForwards=value] readonly attribute DOMTokenList sizes;
     [Reflect] attribute DOMString target;
     [Reflect] attribute DOMString type;
-    [Reflect] attribute DOMString as;
+    attribute DOMString as;
     attribute DOMString? crossOrigin;
 
     // DOM Level 2 Style
     readonly attribute StyleSheet sheet;
 
     [PutForwards=value] readonly attribute DOMTokenList relList;
+
+    [Reflect] attribute DOMString nonce;
+    [Reflect, EnabledBySetting=SubresourceIntegrity] attribute DOMString integrity;
 };
 

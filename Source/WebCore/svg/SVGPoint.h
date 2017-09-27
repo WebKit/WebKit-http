@@ -26,9 +26,98 @@
 #pragma once
 
 #include "FloatPoint.h"
+#include "SVGMatrix.h"
+#include "SVGPropertyTearOff.h"
 
 namespace WebCore {
 
-typedef FloatPoint SVGPoint;
+class SVGPoint : public SVGPropertyTearOff<FloatPoint> {
+public:
+    static Ref<SVGPoint> create(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, FloatPoint& value)
+    {
+        return adoptRef(*new SVGPoint(animatedProperty, role, value));
+    }
+
+    static Ref<SVGPoint> create(const FloatPoint& initialValue = { })
+    {
+        return adoptRef(*new SVGPoint(initialValue));
+    }
+
+    static Ref<SVGPoint> create(const FloatPoint* initialValue)
+    {
+        return adoptRef(*new SVGPoint(initialValue));
+    }
+
+    template<typename T> static ExceptionOr<Ref<SVGPoint>> create(ExceptionOr<T>&& initialValue)
+    {
+        if (initialValue.hasException())
+            return initialValue.releaseException();
+        return create(initialValue.releaseReturnValue());
+    }
+
+    float x()
+    {
+        return propertyReference().x();
+    }
+
+    ExceptionOr<void> setX(float xValue)
+    {
+        if (isReadOnly())
+            return Exception { NoModificationAllowedError };
+
+        propertyReference().setX(xValue);
+        commitChange();
+
+        return { };
+    }
+
+    float y()
+    {
+        return propertyReference().y();
+    }
+
+    ExceptionOr<void> setY(float xValue)
+    {
+        if (isReadOnly())
+            return Exception { NoModificationAllowedError };
+
+        propertyReference().setY(xValue);
+        commitChange();
+
+        return { };
+    }
+
+    ExceptionOr<Ref<SVGPoint>> matrixTransform(SVGMatrix& matrix)
+    {
+        if (isReadOnly())
+            return Exception { NoModificationAllowedError };
+
+        auto newPoint = propertyReference().matrixTransform(matrix.propertyReference());
+        commitChange();
+
+        return SVGPoint::create(newPoint);
+    }
+
+protected:
+    SVGPoint(SVGAnimatedProperty& animatedProperty, SVGPropertyRole role, FloatPoint& value)
+        : SVGPropertyTearOff<FloatPoint>(&animatedProperty, role, value)
+    {
+    }
+
+    SVGPoint(SVGPropertyRole role, FloatPoint& value)
+        : SVGPropertyTearOff<FloatPoint>(nullptr, role, value)
+    {
+    }
+
+    explicit SVGPoint(const FloatPoint& initialValue)
+        : SVGPropertyTearOff<FloatPoint>(initialValue)
+    {
+    }
+
+    explicit SVGPoint(const FloatPoint* initialValue)
+        : SVGPropertyTearOff<FloatPoint>(initialValue)
+    {
+    }
+};
 
 } // namespace WebCore

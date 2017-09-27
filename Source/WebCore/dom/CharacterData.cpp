@@ -22,19 +22,20 @@
 #include "config.h"
 #include "CharacterData.h"
 
+#include "Attr.h"
 #include "ElementTraversal.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "FrameSelection.h"
 #include "InspectorInstrumentation.h"
 #include "MutationEvent.h"
 #include "MutationObserverInterestGroup.h"
 #include "MutationRecord.h"
+#include "NoEventDispatchAssertion.h"
 #include "ProcessingInstruction.h"
 #include "RenderText.h"
 #include "StyleInheritedData.h"
+#include <unicode/ubrk.h>
 #include <wtf/Ref.h>
-#include <wtf/text/TextBreakIterator.h>
 
 namespace WebCore {
 
@@ -66,7 +67,7 @@ void CharacterData::setData(const String& data)
 ExceptionOr<String> CharacterData::substringData(unsigned offset, unsigned count)
 {
     if (offset > length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     return m_data.substring(offset, count);
 }
@@ -86,8 +87,8 @@ unsigned CharacterData::parserAppendData(const String& string, unsigned offset, 
     // We need at least two characters look-ahead to account for UTF-16 surrogates.
     if (characterLengthLimit < characterLength) {
         NonSharedCharacterBreakIterator it(StringView(string).substring(offset, (characterLengthLimit + 2 > characterLength) ? characterLength : characterLengthLimit + 2));
-        if (!isTextBreak(it, characterLengthLimit))
-            characterLengthLimit = textBreakPreceding(it, characterLengthLimit);
+        if (!ubrk_isBoundary(it, characterLengthLimit))
+            characterLengthLimit = ubrk_preceding(it, characterLengthLimit);
     }
 
     if (!characterLengthLimit)
@@ -120,7 +121,7 @@ void CharacterData::appendData(const String& data)
 ExceptionOr<void> CharacterData::insertData(unsigned offset, const String& data)
 {
     if (offset > length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     String newStr = m_data;
     newStr.insert(data, offset);
@@ -135,7 +136,7 @@ ExceptionOr<void> CharacterData::insertData(unsigned offset, const String& data)
 ExceptionOr<void> CharacterData::deleteData(unsigned offset, unsigned count)
 {
     if (offset > length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     count = std::min(count, length() - offset);
 
@@ -152,7 +153,7 @@ ExceptionOr<void> CharacterData::deleteData(unsigned offset, unsigned count)
 ExceptionOr<void> CharacterData::replaceData(unsigned offset, unsigned count, const String& data)
 {
     if (offset > length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     count = std::min(count, length() - offset);
 
@@ -218,12 +219,13 @@ void CharacterData::notifyParentAfterChange(ContainerNode::ChildChangeSource sou
         ElementTraversal::nextSibling(*this),
         source
     };
+
     parentNode()->childrenChanged(change);
 }
 
 void CharacterData::dispatchModifiedEvent(const String& oldData)
 {
-    if (std::unique_ptr<MutationObserverInterestGroup> mutationRecipients = MutationObserverInterestGroup::createForCharacterDataMutation(*this))
+    if (auto mutationRecipients = MutationObserverInterestGroup::createForCharacterDataMutation(*this))
         mutationRecipients->enqueueMutationRecord(MutationRecord::createCharacterData(*this, oldData));
 
     if (!isInShadowTree()) {

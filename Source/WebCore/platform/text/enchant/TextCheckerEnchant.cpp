@@ -22,8 +22,9 @@
 
 #if ENABLE(SPELLCHECK)
 
-#include <Language.h>
 #include <glib.h>
+#include <unicode/ubrk.h>
+#include <wtf/Language.h>
 #include <wtf/text/TextBreakIterator.h>
 
 namespace WebCore {
@@ -91,13 +92,13 @@ void TextCheckerEnchant::checkSpellingOfString(const String& string, int& misspe
     if (!hasDictionary())
         return;
 
-    TextBreakIterator* iter = wordBreakIterator(string);
+    UBreakIterator* iter = wordBreakIterator(string);
     if (!iter)
         return;
 
     CString utf8String = string.utf8();
-    int start = textBreakFirst(iter);
-    for (int end = textBreakNext(iter); end != TextBreakDone; end = textBreakNext(iter)) {
+    int start = ubrk_first(iter);
+    for (int end = ubrk_next(iter); end != UBRK_DONE; end = ubrk_next(iter)) {
         if (isWordTextBreak(iter)) {
             checkSpellingOfWord(utf8String, start, end, misspellingLocation, misspellingLength);
             // Stop checking the next words If the current word is misspelled, to do not overwrite its misspelled location and length.
@@ -128,7 +129,7 @@ Vector<String> TextCheckerEnchant::getGuessesForWord(const String& word)
         for (i = 0; i < numberOfSuggestions; i++)
             guesses.append(String::fromUTF8(suggestions[i]));
 
-        enchant_dict_free_suggestions(dictionary, suggestions);
+        enchant_dict_free_string_list(dictionary, suggestions);
     }
 
     return guesses;
