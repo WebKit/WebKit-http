@@ -110,6 +110,7 @@ list(APPEND WebCore_SOURCES
     platform/network/NetworkStorageSessionStub.cpp
     platform/network/MIMESniffing.cpp
 
+    platform/network/qt/BlobUrlConversion.cpp
     platform/network/qt/CookieJarQt.cpp
     platform/network/qt/CredentialStorageQt.cpp
     platform/network/qt/DNSQt.cpp
@@ -181,6 +182,12 @@ if (COMPILER_IS_GCC_OR_CLANG)
         platform/graphics/qt/ImageBufferDataQt.cpp
     PROPERTIES
         COMPILE_FLAGS "-frtti -UQT_NO_DYNAMIC_CAST"
+    )
+
+    set_source_files_properties(
+        platform/network/qt/BlobUrlConversion.cpp
+    PROPERTIES
+        COMPILE_FLAGS "-fexceptions -UQT_NO_EXCEPTIONS"
     )
 endif ()
 
