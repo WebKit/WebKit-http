@@ -28,6 +28,7 @@
 
 #include "NotImplemented.h"
 #include <WebCore/Settings.h>
+#include "RuntimeEnabledFeatures.h"
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
 #include "WindowsKeyboardCodes.h"
@@ -54,6 +55,9 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
     m_page->settings().setAllowRunningOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowRunningOfInsecureContentKey()));
     m_page->settings().setAllowDisplayOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowDisplayOfInsecureContentKey()));
     m_page->settings().setScrollToFocusedElementEnabled(store.getBoolValueForKey(WebPreferencesKey::scrollToFocusedElementEnabledKey()));
+#if ENABLE(INDEXED_DATABASE)
+    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
+#endif
 }
 
 bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboardEvent)
