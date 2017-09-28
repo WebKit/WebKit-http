@@ -38,7 +38,7 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/video/video.h>
 #include <wtf/Condition.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/glib/GLibUtilities.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
 
@@ -255,7 +255,7 @@ void AppendPipeline::flushStartupSamples()
     locker.unlockEarly();
 
     if (!samples.isEmpty() && !m_abortPending) {
-        TemporaryChange<bool> tmpDisableEndOfAppendCheck(m_appsrcNeedDataReceived, false);
+        SetForScope<bool> tmpDisableEndOfAppendCheck(m_appsrcNeedDataReceived, false);
 
         GstCaps *lastSampleCaps = m_appsinkCaps.get();
         for (auto& sample : samples) {

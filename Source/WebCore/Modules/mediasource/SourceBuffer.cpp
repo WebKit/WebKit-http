@@ -70,17 +70,6 @@ static inline bool mediaSourceLogEnabled()
 #endif
 }
 
-
-static inline bool mediaSourceLogEnabled()
-{
-#if !LOG_DISABLED
-    return LOG_CHANNEL(MediaSource).state == WTFLogChannelOn;
-#else
-    return false;
-#endif
-}
-
-
 static const double ExponentialMovingAverageCoefficient = 0.1;
 
 struct SourceBuffer::TrackBuffer {
@@ -560,15 +549,6 @@ ExceptionOr<void> SourceBuffer::appendBufferInternal(const unsigned char* data, 
 
     // 6. Asynchronously run the buffer append algorithm.
     m_appendBufferTimer.startOneShot(0_s);
-
-    // Add microtask to start append right after leaving current script context. Keep the timer active to check if append was aborted.
-    auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *scriptExecutionContext(), [protectedThis = makeRef(*this)]() mutable {
-        if (protectedThis->m_appendBufferTimer.isActive()) {
-            protectedThis->m_appendBufferTimer.stop();
-            protectedThis->appendBufferTimerFired();
-        }
-    });
-    MicrotaskQueue::mainThreadQueue().append(WTFMove(microtask));
 
     // Add microtask to start append right after leaving current script context. Keep the timer active to check if append was aborted.
     auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *scriptExecutionContext(), [protectedThis = makeRef(*this)]() mutable {

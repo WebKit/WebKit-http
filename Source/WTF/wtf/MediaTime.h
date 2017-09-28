@@ -135,8 +135,6 @@ public:
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, MediaTime&);
 
-    MediaTime toTimeScale(int32_t) const;
-
 private:
     void setTimeScale(uint32_t, RoundingFlags = RoundingFlags::HalfAwayFromZero);
 

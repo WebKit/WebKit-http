@@ -966,7 +966,7 @@ void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
 
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
-    MediaTime cachedPosition = MediaTime::createWithFloat(m_cachedPosition);
+    MediaTime cachedPosition = m_cachedPosition;
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
     MediaTime playbackProgress = abs(position - cachedPosition);
 

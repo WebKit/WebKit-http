@@ -70,8 +70,6 @@ public:
 
     bool hasFutureData(const MediaTime& start);
 
-    bool hasFutureData(const MediaTime& start);
-
     GstElement* pipeline();
 private:
     PlaybackPipeline() = default;

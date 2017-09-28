@@ -57,7 +57,7 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
     m_page->settings().setAllowDisplayOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowDisplayOfInsecureContentKey()));
     m_page->settings().setScrollToFocusedElementEnabled(store.getBoolValueForKey(WebPreferencesKey::scrollToFocusedElementEnabledKey()));
 #if ENABLE(INDEXED_DATABASE)
-    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
+    RuntimeEnabledFeatures::sharedFeatures().setIndexedDBEnabled(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
 #endif
 }
 

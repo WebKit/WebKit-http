@@ -92,7 +92,7 @@ bool UpdateAtlas::paintOnAvailableBuffer(const IntSize& size, uint32_t& atlasID,
     m_inactivityInSeconds = 0;
 
     IntRect rect;
-    if (Extensions3DCache::singleton().GL_EXT_unpack_subimage()) {
+    if (Extensions3DCache::singleton().supportsUnpackSubimage()) {
         buildLayoutIfNeeded();
         rect = m_areaAllocator->allocate(size);
 
