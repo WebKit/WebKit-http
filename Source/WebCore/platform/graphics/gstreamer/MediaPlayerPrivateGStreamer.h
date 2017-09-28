@@ -95,7 +95,7 @@ public:
 
     MediaTime durationMediaTime() const override;
     MediaTime currentMediaTime() const override;
-    void seek(const MediaTime&) override;
+    void seek(float) override;
 
     void setRate(float) override;
     double rate() const override;
@@ -143,7 +143,7 @@ private:
 
     GstElement* createAudioSink() override;
 
-    MediaTime playbackPosition() const;
+    double playbackPosition() const;
 
     virtual void updateStates();
     virtual void asyncStateChangeDone();
@@ -172,20 +172,20 @@ private:
 protected:
     bool m_buffering;
     int m_bufferingPercentage;
-    mutable MediaTime m_cachedPosition;
+    mutable float m_cachedPosition;
     bool m_canFallBackToLastFinishedSeekPosition;
     bool m_changingRate;
     bool m_downloadFinished;
     bool m_errorOccured;
     mutable bool m_isStreaming;
-    mutable MediaTime m_durationAtEOS;
+    mutable gdouble m_durationAtEOS;
     bool m_paused;
     float m_playbackRate;
     GstState m_requestedState;
     bool m_resetPipeline;
     bool m_seeking;
     bool m_seekIsPending;
-    MediaTime m_seekTime;
+    float m_seekTime;
     GRefPtr<GstElement> m_source;
     bool m_volumeAndMuteInitialized;
 
@@ -225,7 +225,7 @@ private:
     GstStructure* m_mediaLocations;
     int m_mediaLocationCurrentIndex;
     bool m_playbackRatePause;
-    MediaTime m_timeOfOverlappingSeek;
+    float m_timeOfOverlappingSeek;
     float m_lastPlaybackRate;
     Timer m_fillTimer;
     float m_maxTimeLoaded;
