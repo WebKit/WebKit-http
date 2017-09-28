@@ -65,4 +65,5 @@ unsigned getGstPlayFlag(const char* nick);
 uint64_t toGstUnsigned64Time(const MediaTime&);
 GstClockTime toGstClockTime(const MediaTime&);
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
+GstElement* getPipeline(GstElement*);
 }

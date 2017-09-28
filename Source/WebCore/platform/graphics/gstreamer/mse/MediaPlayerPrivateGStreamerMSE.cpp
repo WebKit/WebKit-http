@@ -59,6 +59,10 @@
 #include "SharedBuffer.h"
 #endif
 
+#if USE(PLAYREADY)
+#include "PlayreadySession.h"
+#endif
+
 #if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
 #include "CDMPrivateOpenCDM.h"
 #include "CDMSessionOpenCDM.h"
@@ -1002,6 +1006,50 @@ float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
 
     return result;
 }
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
+{
+    for (auto it : m_appendPipelinesMap)
+        it.value->dispatchDecryptionKey(buffer);
+}
+
+#if USE(PLAYREADY)
+void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession(PlayreadySession* session)
+{
+    GST_TRACE("emitting session");
+    if (!session->ready())
+        return;
+
+    for (auto it : m_appendPipelinesMap)
+        if (session->hasPipeline(it.value->pipeline())) {
+            gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+                gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
+            it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
+        }
+}
+#endif
+#endif
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+void MediaPlayerPrivateGStreamerMSE::emitOpenCDMSession()
+{
+    CDMSessionOpenCDM* cdmSession = openCDMSession();
+    if (!cdmSession)
+        return;
+
+    const String& sessionId = cdmSession->sessionId();
+    if (sessionId.isEmpty())
+        return;
+
+    for (auto it : m_appendPipelinesMap) {
+            gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+                gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
+            it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
+    }
+    GST_DEBUG("emitted OpenCDM session on pipeline");
+}
+#endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)

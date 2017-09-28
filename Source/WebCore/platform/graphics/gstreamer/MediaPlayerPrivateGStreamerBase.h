@@ -63,6 +63,10 @@ class VideoTextureCopierGStreamer;
 class TextureMapperPlatformLayerProxy;
 #endif
 
+#if USE(PLAYREADY)
+class PlayreadySession;
+#endif
+
 void registerWebKitGStreamerElements();
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
@@ -126,6 +130,36 @@ public:
 #else
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override;
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) override;
+    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override;
+    void needKey(const String&, const String&, const unsigned char*, unsigned);
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    void needKey(RefPtr<Uint8Array>);
+    void setCDMSession(CDMSession*);
+    void keyAdded();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    virtual void dispatchDecryptionKey(GstBuffer*);
+    void handleProtectionEvent(GstEvent*, GstElement*);
+    void receivedGenerateKeyRequest(const String&);
+    void abortEncryptionSetup();
+
+#if USE(PLAYREADY)
+    PlayreadySession* prSession() const;
+    virtual void emitPlayReadySession(PlayreadySession*);
+#endif
+#endif
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+    virtual void emitOpenCDMSession();
+    virtual void resetOpenCDMSession();
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -236,6 +270,45 @@ protected:
     Condition m_drawCondition;
     Lock m_drawMutex;
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+    CDMSessionOpenCDM* openCDMSession();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(PLAYREADY)
+    PlayreadySession* createPlayreadySession(const Vector<uint8_t> &, GstElement* pipeline, bool alreadyLocked = false);
+    PlayreadySession* prSessionByInitData(const Vector<uint8_t>&, bool alreadyLocked = false) const;
+    PlayreadySession* prSessionBySessionId(const String&, bool alreadyLocked = false) const;
+
+    // Maps each pipeline (playback pipeline for normal videos, append pipeline for MSE) to its latest sessionId.
+    HashMap<GstElement*, String> m_prSessionIds;
+
+    Vector<std::unique_ptr<PlayreadySession>> m_prSessions;
+
+    // Protects the previous two HashMaps for concurrent access.
+    mutable Lock m_prSessionsMutex;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(OPENCDM)
+    std::unique_ptr<CDMSession> m_cdmSession;
+    Lock m_cdmSessionMutex;
+#endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
+    CDMSession* m_cdmSession;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    Lock m_protectionMutex;
+    Condition m_protectionCondition;
+    String m_lastGenerateKeyRequestKeySystemUuid;
+    HashSet<uint32_t> m_handledProtectionEvents;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+    HashMap<String, Vector<uint8_t>> m_initDatas;
+    void trimInitData(String, const unsigned char*&, unsigned &);
+#endif
 
 #if USE(TEXTURE_MAPPER_GL)
     RefPtr<GraphicsContext3D> m_context3D;

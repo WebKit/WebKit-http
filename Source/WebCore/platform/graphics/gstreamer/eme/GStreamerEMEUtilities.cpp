@@ -24,7 +24,7 @@
 
 #include "GRefPtrGStreamer.h"
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
 
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
@@ -34,10 +34,12 @@ namespace WebCore {
 const char* GStreamerEMEUtilities::s_ClearKeyUUID = WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID;
 const char* GStreamerEMEUtilities::s_ClearKeyKeySystem = "org.w3.clearkey";
 
-#if USE(OPENCDM)
+#if USE(OPENCDM) || USE(PLAYREADY)
 const char* GStreamerEMEUtilities::s_PlayReadyUUID = WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID;
 std::array<const char*,2> GStreamerEMEUtilities::s_PlayReadyKeySystems = { "com.microsoft.playready", "com.youtube.playready" };
+#endif
 
+#if USE(OPENCDM)
 const char* GStreamerEMEUtilities::s_WidevineUUID = WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID;
 const char* GStreamerEMEUtilities::s_WidevineKeySystem = "com.widevine.alpha";
 #endif
@@ -86,4 +88,4 @@ GstElement* GStreamerEMEUtilities::createDecryptor(const char* protectionSystem)
 
 }
 
-#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
