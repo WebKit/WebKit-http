@@ -46,6 +46,7 @@ WebToDatabaseProcessConnection::WebToDatabaseProcessConnection(IPC::Connection::
 
 WebToDatabaseProcessConnection::~WebToDatabaseProcessConnection()
 {
+    m_connection->invalidate();
 }
 
 void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)

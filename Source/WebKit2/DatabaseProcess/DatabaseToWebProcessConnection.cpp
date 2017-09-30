@@ -50,7 +50,7 @@ DatabaseToWebProcessConnection::DatabaseToWebProcessConnection(IPC::Connection::
 
 DatabaseToWebProcessConnection::~DatabaseToWebProcessConnection()
 {
-
+    m_connection->invalidate();
 }
 
 void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)

@@ -37,7 +37,7 @@ namespace WebKit {
 
 class WebIDBConnectionToClient;
 
-class DatabaseToWebProcessConnection : public RefCounted<DatabaseToWebProcessConnection>, public IPC::Connection::Client, public IPC::MessageSender {
+class DatabaseToWebProcessConnection : public RefCounted<DatabaseToWebProcessConnection>, private IPC::Connection::Client, private IPC::MessageSender {
 public:
     static Ref<DatabaseToWebProcessConnection> create(IPC::Connection::Identifier);
     ~DatabaseToWebProcessConnection();

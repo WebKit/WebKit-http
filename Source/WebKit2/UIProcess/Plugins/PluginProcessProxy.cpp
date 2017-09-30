@@ -76,6 +76,9 @@ PluginProcessProxy::PluginProcessProxy(PluginProcessManager* PluginProcessManage
 
 PluginProcessProxy::~PluginProcessProxy()
 {
+    if (m_connection)
+        m_connection->invalidate();
+
     ASSERT(m_pendingFetchWebsiteDataRequests.isEmpty());
     ASSERT(m_pendingFetchWebsiteDataCallbacks.isEmpty());
     ASSERT(m_pendingDeleteWebsiteDataRequests.isEmpty());

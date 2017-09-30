@@ -41,7 +41,7 @@ class SessionID;
 
 namespace WebKit {
 
-class WebToDatabaseProcessConnection : public RefCounted<WebToDatabaseProcessConnection>, public IPC::Connection::Client, public IPC::MessageSender {
+class WebToDatabaseProcessConnection : public RefCounted<WebToDatabaseProcessConnection>, private IPC::Connection::Client, private IPC::MessageSender {
 public:
     static Ref<WebToDatabaseProcessConnection> create(IPC::Connection::Identifier connectionIdentifier)
     {
