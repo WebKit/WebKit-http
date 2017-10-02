@@ -909,14 +909,25 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 
     // We shouldn't accept media that the player can't actually play. Using AAC audio, 8K and 60 fps limits here.
     // AAC supports up to 96 channels.
-    if (parameters.channels > 96)
+    bool ok;
+    unsigned channels = parameters.type.parameter(ASCIILiteral("channels")).toUInt(&ok);
+    if (ok && channels > 96)
         return result;
+
+    float width = parameters.type.parameter(ASCIILiteral("width")).toFloat(&ok);
+    if (!ok)
+        width = 0;
+
+    float height = parameters.type.parameter(ASCIILiteral("height")).toFloat(&ok);
+    if (!ok)
+        height = 0;
 
     // 8K is up to 7680*4320
-    if (parameters.dimension.width() > 7680.0 || parameters.dimension.height() > 4320.0)
+    if (width > 7680.0 || height > 4320.0)
         return result;
 
-    if (parameters.framerate > 60.0)
+    float framerate = parameters.type.parameter(ASCIILiteral("framerate")).toFloat(&ok);
+    if (ok && framerate > 60.0)
         return result;
 
     // Spec says we should not return "probably" if the codecs string is empty.
