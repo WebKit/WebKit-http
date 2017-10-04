@@ -74,5 +74,4 @@ namespace WebCore {
         mutable RepetitionCount m_repetitionCount { RepetitionCountOnce };
         std::unique_ptr<GIFImageReader> m_reader;
     };
-
 } // namespace WebCore
