@@ -42,11 +42,20 @@
 #include <QNetworkCookie>
 #include <QStringList>
 #include <QVariant>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 static SharedCookieJarQt* s_sharedCookieJarQt = 0;
+
+static void appendCookie(StringBuilder& builder, const QNetworkCookie& cookie)
+{
+    if (!builder.isEmpty())
+        builder.append("; ");
+    QByteArray rawData = cookie.toRawForm(QNetworkCookie::NameAndValueOnly);
+    builder.append(rawData.constData(), rawData.length());
+}
 
 void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, const String& value)
 {
@@ -59,7 +68,8 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
     if (!thirdPartyCookiePolicyPermits(session.context(), urlForCookies, firstPartyUrl))
         return;
 
-    QList<QNetworkCookie> cookies = QNetworkCookie::parseCookies(QString(value).toLatin1());
+    CString cookieString = value.latin1();
+    QList<QNetworkCookie> cookies = QNetworkCookie::parseCookies(QByteArray::fromRawData(cookieString.data(), cookieString.length()));
     QList<QNetworkCookie>::Iterator it = cookies.begin();
     while (it != cookies.end()) {
         if (it->isHttpOnly())
@@ -86,14 +96,13 @@ String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty
     if (cookies.isEmpty())
         return String();
 
-    QStringList resultCookies;
-    foreach (const QNetworkCookie& networkCookie, cookies) {
-        if (networkCookie.isHttpOnly())
+    StringBuilder builder;
+    for (const auto& cookie : cookies) {
+        if (cookie.isHttpOnly())
             continue;
-        resultCookies.append(QString::fromLatin1(networkCookie.toRawForm(QNetworkCookie::NameAndValueOnly).constData()));
+        appendCookie(builder, cookie);
     }
-
-    return resultCookies.join(QLatin1String("; "));
+    return builder.toString();
 }
 
 String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& url)
@@ -106,11 +115,10 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
     if (cookies.isEmpty())
         return String();
 
-    QStringList resultCookies;
-    foreach (QNetworkCookie networkCookie, cookies)
-        resultCookies.append(QString::fromLatin1(networkCookie.toRawForm(QNetworkCookie::NameAndValueOnly).constData()));
-
-    return resultCookies.join(QLatin1String("; "));
+    StringBuilder builder;
+    for (const auto& cookie : cookies)
+        appendCookie(builder, cookie);
+    return builder.toString();
 }
 
 bool cookiesEnabled(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/)
