@@ -377,12 +377,12 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
     priv->paused = false;
 
     priv->offset = 0;
-    priv->seekable = FALSE;
 
     if (!wasSeeking) {
         priv->size = 0;
         priv->requestedOffset = 0;
         priv->player = nullptr;
+        priv->seekable = FALSE;
     }
 
     if (priv->appsrc) {
