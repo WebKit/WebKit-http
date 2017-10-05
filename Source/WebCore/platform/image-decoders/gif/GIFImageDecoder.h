@@ -69,6 +69,7 @@ namespace WebCore {
         // the previous frame's disposal method. Returns true on success. On
         // failure, this will mark the image as failed.
         bool initFrameBuffer(unsigned frameIndex);
+        size_t findFirstRequiredFrameToDecode(size_t);
 
         bool m_currentBufferSawAlpha;
         mutable RepetitionCount m_repetitionCount { RepetitionCountOnce };
