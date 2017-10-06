@@ -492,6 +492,10 @@ void PlaybackPipeline::enqueueSample(Ref<MediaSample>&& mediaSample)
         GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->presentationTime())),
         GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->duration())));
 
+    // No need to lock to access the Stream here because the only chance of conflict with this read and with the usage
+    // of the sample fields done in this method would be the deletion of the stream. However, that operation can only
+    // happen in the main thread, but we're already there. Therefore there's no conflict and locking would only cause
+    // a performance penalty on the readers working in other threads.
     Stream* stream = getStreamByTrackId(m_webKitMediaSrc.get(), trackId);
 
     if (!stream) {
@@ -504,7 +508,10 @@ void PlaybackPipeline::enqueueSample(Ref<MediaSample>&& mediaSample)
         return;
     }
 
+    // This field doesn't change after creation, no need to lock.
     GstElement* appsrc = stream->appsrc;
+
+    // Only modified by the main thread, no need to lock.
     MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
 
     GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(mediaSample.ptr());
