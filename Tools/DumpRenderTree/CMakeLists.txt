@@ -1,3 +1,5 @@
+QTWEBKIT_SKIP_AUTOMOC(DumpRenderTree)
+
 set(DumpRenderTree_SOURCES
     AccessibilityController.cpp
     AccessibilityTextMarker.cpp

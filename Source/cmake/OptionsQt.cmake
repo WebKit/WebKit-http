@@ -60,6 +60,12 @@ macro(QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT target)
     endif ()
 endmacro()
 
+macro(QTWEBKIT_SKIP_AUTOMOC _target)
+    foreach (_src ${${_target}_SOURCES})
+        set_property(SOURCE ${_src} PROPERTY SKIP_AUTOMOC ON)
+    endforeach ()
+endmacro()
+
 macro(QTWEBKIT_GENERATE_MOC_FILES_CPP _target)
     if (${ARGC} LESS 2)
         message(FATAL_ERROR "QTWEBKIT_GENERATE_MOC_FILES_CPP must be called with at least 2 arguments")
