@@ -147,7 +147,7 @@ ImageFrame* GIFImageDecoder::frameBufferAtIndex(size_t index)
     ImageFrame& frame = m_frameBufferCache[index];
     if (!frame.isComplete()) {
         for (auto i = findFirstRequiredFrameToDecode(index); i <= index; i++)
-            decode(i + 1, GIFFullQuery);
+            decode(i + 1, GIFFullQuery, isAllDataReceived());
     }
 
     return &frame;
@@ -204,7 +204,7 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     // Now |i| holds the last frame we need to preserve; clear prior frames.
     for (Vector<ImageFrame>::iterator j(m_frameBufferCache.begin()); j != i; ++j) {
         ASSERT(!j->isPartial());
-        if (!j->isEmpty())
+        if (j->isInvalid())
             j->clear();
     }
 }
