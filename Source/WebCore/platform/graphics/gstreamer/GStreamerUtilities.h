@@ -63,7 +63,12 @@ void unmapGstBuffer(GstBuffer*);
 bool initializeGStreamer();
 unsigned getGstPlayFlag(const char* nick);
 uint64_t toGstUnsigned64Time(const MediaTime&);
-GstClockTime toGstClockTime(const MediaTime&);
+
+inline GstClockTime toGstClockTime(const MediaTime &mediaTime)
+{
+    return static_cast<GstClockTime>(toGstUnsigned64Time(mediaTime));
+}
+
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
 GstElement* getPipeline(GstElement*);
 }
