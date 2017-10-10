@@ -28,9 +28,9 @@
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
+#include "ContentType.h"
 #include "LegacyCDM.h"
 #include "LegacyCDMSessionClearKey.h"
-#include "ContentType.h"
 #include "MediaPlayer.h"
 
 namespace WebCore {

@@ -28,10 +28,10 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #include "ActiveDOMObject.h"
-#include "LegacyCDMSession.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "GenericEventQueue.h"
+#include "LegacyCDMSession.h"
 #include "Timer.h"
 #include <runtime/Uint8Array.h>
 #include <wtf/Deque.h>

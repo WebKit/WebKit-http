@@ -30,6 +30,7 @@
 #include "MediaKeyMessageType.h"
 #include "MediaKeysRequirement.h"
 #include "inspector/InspectorValues.h"
+
 #include <gst/gst.h>
 #include <open_cdm.h>
 #include <wtf/text/Base64.h>
@@ -192,6 +193,7 @@ CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm* session, const String& ke
     , m_keySystem(keySystem)
 {
 }
+
 CDMInstanceOpenCDM::~CDMInstanceOpenCDM() = default;
 
 CDMInstance::SuccessValue CDMInstanceOpenCDM::initializeWithConfiguration(const MediaKeySystemConfiguration&)
@@ -272,56 +274,58 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
             Ref<SharedBuffer> nextMessage = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
             CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
             callback(false, std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded);
-            return;
+        } else {
+            GST_DEBUG("session id %s, update license failed", sessionId.utf8().data());
+            callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
         }
+    } else {
+        SharedBuffer* initData = sessionIdMap.get(sessionId);
+        KeyStatusVector changedKeys;
+        MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
+        changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus> {*initData, keyStatus});
+        callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
     }
-    SharedBuffer* initData = sessionIdMap.get(sessionId);
-    KeyStatusVector changedKeys;
-    MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
-    changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
-    callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
 }
 
 CDMInstance::SessionLoadFailure CDMInstanceOpenCDM::getSessionLoadStatus(std::string& loadStatus)
 {
     if (loadStatus != "None")
         return CDMInstance::SessionLoadFailure::None;
-    else if (loadStatus == "SessionNotFound")
+    if (loadStatus == "SessionNotFound")
         return CDMInstance::SessionLoadFailure::NoSessionData;
-    else if (loadStatus == "MismatchedSessionType")
+    if (loadStatus == "MismatchedSessionType")
         return CDMInstance::SessionLoadFailure::MismatchedSessionType;
-    else if (loadStatus == "QuotaExceeded")
+    if (loadStatus == "QuotaExceeded")
         return CDMInstance::SessionLoadFailure::QuotaExceeded;
-    else
-        return CDMInstance::SessionLoadFailure::Other;
+    return CDMInstance::SessionLoadFailure::Other;
 }
 
 MediaKeyStatus CDMInstanceOpenCDM::getKeyStatus(std::string& keyStatus)
 {
     if (keyStatus == "KeyUsable")
         return MediaKeyStatus::Usable;
-    else if (keyStatus == "KeyExpired")
-        return  MediaKeyStatus::Expired;
-    else if (keyStatus == "KeyOutputRestricted")
+    if (keyStatus == "KeyExpired")
+        return MediaKeyStatus::Expired;
+    if (keyStatus == "KeyOutputRestricted")
         return MediaKeyStatus::OutputRestricted;
-    else if (keyStatus == "KeyStatusPending")
+    if (keyStatus == "KeyStatusPending")
         return MediaKeyStatus::OutputRestricted;
-    else if (keyStatus == "KeyInternalError")
+    if (keyStatus == "KeyInternalError")
         return MediaKeyStatus::InternalError;
-    else if (keyStatus == "KeyReleased")
+    if (keyStatus == "KeyReleased")
         return MediaKeyStatus::Released;
-    else
-        return MediaKeyStatus::InternalError;
+    return MediaKeyStatus::InternalError;
 }
 
-size_t CDMInstanceOpenCDM::checkMessageLength(std::string& message, std::string& request) {
+size_t CDMInstanceOpenCDM::checkMessageLength(std::string& message, std::string& request)
+{
     size_t length = 0;
     std::string delimiter = ":Type:";
     std::string requestType = message.substr(0, message.find(delimiter));
     if (requestType.size() && (requestType.size() == (request.size() + 1)))
-       length = requestType.size() + delimiter.size();
+        length = requestType.size() + delimiter.size();
     else
-       length = request.length();
+        length = request.length();
     GST_TRACE("delimiter.size = %u, delimiter = %s, requestType.size = %u, requestType = %s", delimiter.size(), delimiter.c_str(), requestType.size(), requestType.c_str());
     return length;
 }
@@ -338,20 +342,17 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
             GST_TRACE("message length %u", length);
             auto message = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
             callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
-            // FIXME: Maybe we need to send the message for partially remove scenario.
-            return;
+        } else {
+            SharedBuffer* initData = sessionIdMap.get(sessionId);
+            KeyStatusVector knownKeys;
+            MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
+            knownKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus> {*initData, keyStatus});
+            callback(WTFMove(knownKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
         }
-
-        SharedBuffer* initData = sessionIdMap.get(sessionId);
-        KeyStatusVector knownKeys;
-        MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
-        knownKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
-        callback(WTFMove(knownKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
-        return;
+    } else {
+        sessionFailure = getSessionLoadStatus(responseMessage);
+        callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed, sessionFailure);
     }
-
-    sessionFailure = getSessionLoadStatus(responseMessage);
-    callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed, sessionFailure);
 }
 
 void CDMInstanceOpenCDM::closeSession(const String&, CloseSessionCallback callback)
@@ -375,17 +376,15 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
             SharedBuffer* initData = sessionIdMap.get(sessionId);
             std::string status = "KeyReleased";
             MediaKeyStatus keyStatus = getKeyStatus(status);
-            keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
+            keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus> {*initData, keyStatus});
             callback(WTFMove(keys), std::move(WTFMove(message)), SuccessValue::Succeeded);
-            return;
         }
+    } else {
+        SharedBuffer* initData = sessionIdMap.get(sessionId);
+        MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
+        keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus> {*initData, keyStatus});
+        callback(WTFMove(keys), std::nullopt, SuccessValue::Failed);
     }
-
-    SharedBuffer* initData = sessionIdMap.get(sessionId);
-    MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
-    keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
-    callback(WTFMove(keys), std::nullopt, SuccessValue::Failed);
-    return;
 }
 
 void CDMInstanceOpenCDM::storeRecordOfKeyUsage(const String&)
