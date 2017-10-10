@@ -26,17 +26,23 @@
 #include "config.h"
 #include "EventHandler.h"
 
-#include "Page.h"
-#include "Frame.h"
 #include "FocusController.h"
+#include "Frame.h"
+#include "FrameView.h"
+#include "KeyboardEvent.h"
+#include "MouseEventWithHitTestResults.h"
 #include "NotImplemented.h"
+#include "Page.h"
+#include "PlatformKeyboardEvent.h"
+#include "PlatformWheelEvent.h"
+#include "RenderWidget.h"
 
 namespace WebCore {
 
 bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
 {
-    notImplemented();
-    return false;
+    // We always allow tabs to all controls
+    return true;
 }
 
 void EventHandler::focusDocumentView()
@@ -45,16 +51,18 @@ void EventHandler::focusDocumentView()
         page->focusController().setFocusedFrame(&m_frame);
 }
 
-bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults&)
+bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults& event)
 {
-    notImplemented();
-    return false;
+    // Figure out which view to send the event to.
+    RenderObject* target = event.targetNode() ? event.targetNode()->renderer() : nullptr;
+    if (!is<RenderWidget>(target))
+        return false;
+    return passMouseDownEventToWidget(downcast<RenderWidget>(*target).widget());
 }
 
-bool EventHandler::passWidgetMouseDownEventToWidget(RenderWidget*)
+bool EventHandler::passWidgetMouseDownEventToWidget(RenderWidget* renderWidget)
 {
-    notImplemented();
-    return false;
+    return passMouseDownEventToWidget(renderWidget->widget());
 }
 
 bool EventHandler::passMouseDownEventToWidget(Widget*)
@@ -69,40 +77,37 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
     return false;
 }
 
-bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent&, Widget&)
+bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& event, Widget& widget)
 {
-    notImplemented();
-    return false;
+    if (!is<FrameView>(widget))
+        return false;
+
+    return downcast<FrameView>(widget).frame().eventHandler().handleWheelEvent(event);
 }
 
-bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults&, Frame*)
+bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
 {
-    notImplemented();
-    return false;
+    subframe->eventHandler().handleMousePressEvent(mev.event());
+    return true;
 }
 
-bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults&, Frame*, HitTestResult*)
+bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe, HitTestResult* hoveredNode)
 {
-    notImplemented();
-    return false;
+    subframe->eventHandler().handleMouseMoveEvent(mev.event(), hoveredNode);
+    return true;
 }
 
-bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&, Frame*)
+bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
 {
-    notImplemented();
-    return false;
+    subframe->eventHandler().handleMouseReleaseEvent(mev.event());
+    return true;
 }
 
 OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
-    notImplemented();
     return PlatformEvent::Modifier::AltKey;
 }
 
-// GTK+ must scroll horizontally if the mouse pointer is on top of the
-// horizontal scrollbar while scrolling with the wheel; we need to
-// add the deltas and ticks here so that this behavior is consistent
-// for styled scrollbars.
 bool EventHandler::shouldTurnVerticalTicksIntoHorizontal(const HitTestResult&, const PlatformWheelEvent&) const
 {
     notImplemented();
