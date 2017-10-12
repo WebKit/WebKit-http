@@ -84,7 +84,7 @@ public:
         AllowPrivate = 2
     };
 
-    QtRuntimeMethod(JSContextRef, QObject*, const QByteArray& identifier, int signalIndex, int flags, QtInstance*);
+    QtRuntimeMethod(QObject*, const QByteArray& identifier, int signalIndex, int flags, QtInstance*);
     ~QtRuntimeMethod();
 
     static JSValueRef call(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception);

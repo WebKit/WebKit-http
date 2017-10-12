@@ -1230,7 +1230,7 @@ static JSClassRef prototypeForSignalsAndSlots()
     return cls;
 }
 
-QtRuntimeMethod::QtRuntimeMethod(JSContextRef ctx, QObject* object, const QByteArray& identifier, int index, int flags, QtInstance* instance)
+QtRuntimeMethod::QtRuntimeMethod(QObject* object, const QByteArray& identifier, int index, int flags, QtInstance* instance)
     : m_object(object)
     , m_identifier(identifier)
     , m_index(index)
