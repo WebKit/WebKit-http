@@ -1877,7 +1877,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
             return MediaPlayer::NoError;
         }
 
-        trimInitData(keySystemIdToUuid(keySystem), initDataPtr, initDataLength);
+        trimInitData(keySystemIdToUuid(keySystem.utf8().data()), initDataPtr, initDataLength);
         String mimeType;
         if (equalIgnoringASCIICase(keySystem, WIDEVINE_PROTECTION_SYSTEM_ID))
             mimeType = "video/mp4";
