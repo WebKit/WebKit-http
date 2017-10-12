@@ -558,6 +558,14 @@ if (COMPILER_IS_GCC_OR_CLANG AND UNIX)
     endif ()
 endif ()
 
+# Improvised backport of r222112 - not needed with current WebKit
+# -Wexpansion-to-defined produces false positives with GCC but not Clang
+# https://bugs.webkit.org/show_bug.cgi?id=167643#c13
+if (CMAKE_COMPILER_IS_GNUCXX AND (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "7.0.0"))
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-expansion-to-defined")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-expansion-to-defined")
+endif ()
+
 if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport")
 endif ()
