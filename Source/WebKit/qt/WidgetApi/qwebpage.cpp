@@ -3163,11 +3163,8 @@ bool QWebPage::extension(Extension extension, const ExtensionOption *option, Ext
 
     if (extension == ErrorPageExtension) {
         auto* errorOption = static_cast<const ErrorPageExtensionOption*>(option);
-        auto* pageOutput = static_cast<ErrorPageExtensionReturn*>(output);
-        QString errorCode;
-        QString pageHeader = errorOption->errorString;
-        const QString escapedUrl = errorOption->url.toDisplayString().toHtmlEscaped();
 
+        QString errorCode;
         switch (errorOption->domain) {
         case QWebPage::Http:
             errorCode = tr("HTTP Error %0").arg(errorOption->error);
@@ -3180,12 +3177,15 @@ bool QWebPage::extension(Extension extension, const ExtensionOption *option, Ext
             break;
         }
 
+        QString pageHeader = errorOption->errorString;
         if (pageHeader.isEmpty())
             pageHeader = errorCode;
         else if (pageHeader.endsWith(QLatin1Char('.')))
             pageHeader.chop(1);
 
+        auto* pageOutput = static_cast<ErrorPageExtensionReturn*>(output);
         pageOutput->baseUrl = errorOption->url;
+        QString escapedUrl = errorOption->url.toDisplayString().toHtmlEscaped();
         pageOutput->content = QStringLiteral("<html><head>"
             "<meta charset=\"utf-8\">"
             "<title>%0</title>"
