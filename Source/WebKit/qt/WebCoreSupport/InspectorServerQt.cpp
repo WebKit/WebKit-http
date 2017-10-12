@@ -357,7 +357,7 @@ void InspectorServerRequestHandlerQt::webSocketReadyRead()
         
         if (m_inspectorClient) {
             InspectorController& inspectorController = m_inspectorClient->m_inspectedWebPage->page->inspectorController();
-            inspectorController.dispatchMessageFromFrontend(QString::fromUtf8(payload));
+            inspectorController.dispatchMessageFromFrontend(String::fromUTF8(payload.data(), payload.size()));
         }
     }
 }
