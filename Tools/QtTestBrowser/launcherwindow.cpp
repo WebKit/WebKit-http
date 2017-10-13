@@ -345,6 +345,9 @@ void LauncherWindow::createChrome()
     spatialNavigationAction->setCheckable(true);
     spatialNavigationAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
 
+    QAction* caretBrowsingAction = toolsMenu->addAction("Toggle Caret Browsing", this, SLOT(toggleCaretBrowsing(bool)));
+    caretBrowsingAction->setCheckable(true);
+
     QAction* toggleFrameFlattening = toolsMenu->addAction("Toggle Frame Flattening", this, SLOT(toggleFrameFlattening(bool)));
     toggleFrameFlattening->setCheckable(true);
     toggleFrameFlattening->setChecked(settings->testAttribute(QWebSettings::FrameFlatteningEnabled));
@@ -972,6 +975,11 @@ void LauncherWindow::toggleSpatialNavigation(bool enable)
     page()->settings()->setAttribute(QWebSettings::SpatialNavigationEnabled, enable);
 }
 
+void LauncherWindow::toggleCaretBrowsing(bool enable)
+{
+    page()->settings()->setAttribute(QWebSettings::CaretBrowsingEnabled, enable);
+}
+
 void LauncherWindow::toggleFullScreenMode(bool enable)
 {
     bool alreadyEnabled = windowState() & Qt::WindowFullScreen;
@@ -1164,9 +1172,13 @@ void LauncherWindow::downloadRequest(const QNetworkRequest &request)
 
 void LauncherWindow::fileDownloadFinished()
 {
-    QFileInfo fileInf(m_reply->request().url().toString());
-    QString requestFileName = QDir::homePath() + "/" + fileInf.fileName();
-    QString fileName = QFileDialog::getSaveFileName(this, "Save as...", requestFileName, "All Files (*)");
+    QString suggestedFileName;
+    if (m_reply->request().url().scheme().toLower() != QLatin1String("data")) {
+        QFileInfo fileInf(m_reply->request().url().toString());
+        suggestedFileName = QDir::homePath() + "/" + fileInf.fileName();
+    } else
+        suggestedFileName = QStringLiteral("data");
+    QString fileName = QFileDialog::getSaveFileName(this, "Save as...", suggestedFileName, "All Files (*)");
 
     if (fileName.isEmpty())
         return;

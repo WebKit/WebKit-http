@@ -17,6 +17,8 @@ if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
 endif ()
 
+QTWEBKIT_SKIP_AUTOMOC(WebKit2)
+
 #set(WebKit2_USE_PREFIX_HEADER ON)
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
@@ -280,23 +282,25 @@ list(APPEND WebProcess_SOURCES
     qt/MainQt.cpp
 )
 
+if (NOT SHARED_CORE)
+    set(WebProcess_LIBRARIES
+        WebKit
+    )
+    set(NetworkProcess_LIBRARIES
+        WebKit
+    )
+    set(DatabaseProcess_LIBRARIES
+        WebKit
+    )
+    set(PluginProcess_LIBRARIES
+        WebKit
+    )
+endif ()
+
 # FIXME: Allow building without widgets
-set(WebProcess_LIBRARIES
-    WebKit
+list(APPEND WebProcess_LIBRARIES
     Qt5::Widgets
     WebKitWidgets
-)
-
-set(NetworkProcess_LIBRARIES
-    WebKit
-)
-
-set(DatabaseProcess_LIBRARIES
-    WebKit
-)
-
-set(PluginProcess_LIBRARIES
-    WebKit
 )
 
 list(APPEND NetworkProcess_SOURCES

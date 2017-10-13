@@ -434,6 +434,9 @@ bool QWebPageAdapter::findText(const QString& subString, FindFlag options)
     if (options & FindBeginsInSelection)
         webCoreFindOptions |= WebCore::StartInSelection;
 
+    if (options & FindAtWordEndingsOnly)
+        webCoreFindOptions |= WebCore::AtWordEnds;
+
     if (options & HighlightAllOccurrences) {
         if (subString.isEmpty()) {
             page->unmarkAllTextMatches();

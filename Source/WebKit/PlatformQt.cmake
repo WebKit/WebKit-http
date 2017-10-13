@@ -16,9 +16,21 @@ macro(generate_version_header _file _var _prefix)
     set_source_files_properties(${_file} PROPERTIES GENERATED TRUE)
 endmacro()
 
+macro(append_lib_names_to_list _lib_names_list)
+    foreach (_lib_filename ${ARGN})
+        get_filename_component(_lib_name_we ${_lib_filename} NAME_WE)
+        if (NOT MSVC)
+            string(REGEX REPLACE "^lib" "" _lib_name_we ${_lib_name_we})
+        endif ()
+        list(APPEND ${_lib_names_list} ${_lib_name_we})
+    endforeach ()
+endmacro()
+
 if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
 endif ()
+
+QTWEBKIT_SKIP_AUTOMOC(WebKit)
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
@@ -446,23 +458,21 @@ if (ENABLE_PRINT_SUPPORT)
 endif ()
 
 if (QT_STATIC_BUILD)
-    if (MSVC)
-        set(LIB_PREFIX "lib")
-    endif ()
     set(WEBKITWIDGETS_PKGCONGIG_DEPS "${WEBKITWIDGETS_PKGCONGIG_DEPS} Qt5PrintSupport")
     set(WEBKITWIDGETS_PRI_DEPS "${WEBKITWIDGETS_PRI_DEPS} printsupport")
-    set(EXTRA_LIBS_NAMES WebCore JavaScriptCore WTF xml2)
+    set(EXTRA_LIBS_NAMES WebCore JavaScriptCore WTF)
+    append_lib_names_to_list(EXTRA_LIBS_NAMES ${LIBXML2_LIBRARIES} ${SQLITE_LIBRARIES} ${ZLIB_LIBRARIES})
     if (NOT USE_SYSTEM_MALLOC)
         list(APPEND EXTRA_LIBS_NAMES bmalloc)
     endif ()
     if (ENABLE_XSLT)
-        list(APPEND EXTRA_LIBS_NAMES xslt)
+        append_lib_names_to_list(EXTRA_LIBS_NAMES ${LIBXSLT_LIBRARIES})
     endif ()
     if (USE_LIBHYPHEN)
-        list(APPEND EXTRA_LIBS_NAMES hyphen)
+        append_lib_names_to_list(EXTRA_LIBS_NAMES ${HYPHEN_LIBRARIES})
     endif ()
     if (USE_WEBP)
-        list(APPEND EXTRA_LIBS_NAMES webp)
+        append_lib_names_to_list(EXTRA_LIBS_NAMES ${WEBP_LIBRARIES})
     endif ()
     if (USE_WOFF2)
         list(APPEND EXTRA_LIBS_NAMES woff2 brotli)
@@ -470,6 +480,7 @@ if (QT_STATIC_BUILD)
     if (APPLE)
         list(APPEND EXTRA_LIBS_NAMES icucore)
     endif ()
+    list(REMOVE_DUPLICATES EXTRA_LIBS_NAMES)
     foreach (LIB_NAME ${EXTRA_LIBS_NAMES})
         set(WEBKIT_PKGCONGIG_DEPS "${WEBKIT_PKGCONGIG_DEPS} ${LIB_PREFIX}${LIB_NAME}")
         set(WEBKIT_PRI_EXTRA_LIBS "${WEBKIT_PRI_EXTRA_LIBS} -l${LIB_PREFIX}${LIB_NAME}")
@@ -786,6 +797,7 @@ if (COMPILER_IS_GCC_OR_CLANG)
     set_source_files_properties(
         qt/Api/qwebdatabase.cpp
         qt/Api/qwebelement.cpp
+        qt/Api/qwebfullscreenrequest.cpp
         qt/Api/qwebhistory.cpp
         qt/Api/qwebhistoryinterface.cpp
         qt/Api/qwebpluginfactory.cpp
@@ -795,7 +807,6 @@ if (COMPILER_IS_GCC_OR_CLANG)
 
         qt/WidgetApi/qgraphicswebview.cpp
         qt/WidgetApi/qwebframe.cpp
-        qt/WidgetApi/qwebfullscreenrequest.cpp
         qt/WidgetApi/qwebinspector.cpp
         qt/WidgetApi/qwebpage.cpp
         qt/WidgetApi/qwebview.cpp

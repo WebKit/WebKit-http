@@ -961,6 +961,8 @@ void QWebFrameAdapter::setViewportSize(const QSize& size)
     FrameView* view = frame->view();
     ASSERT(view);
     view->resize(size);
+    if (view->needsLayout())
+        view->layout();
     view->adjustViewSize();
 }
 

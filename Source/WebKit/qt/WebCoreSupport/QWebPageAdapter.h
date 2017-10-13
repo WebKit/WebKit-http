@@ -122,7 +122,8 @@ public:
         HighlightAllOccurrences = 8,
         FindAtWordBeginningsOnly = 16,
         TreatMedialCapitalAsWordBeginning = 32,
-        FindBeginsInSelection = 64
+        FindBeginsInSelection = 64,
+        FindAtWordEndingsOnly = 128
     };
 
     // valid values matching those from ScrollTypes.h

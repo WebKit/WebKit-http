@@ -137,6 +137,7 @@ protected Q_SLOTS:
     void toggleWebAudio(bool toggle);
     void toggleMediaSource(bool toggle);
     void toggleSpatialNavigation(bool enable);
+    void toggleCaretBrowsing(bool enable);
     void toggleFullScreenMode(bool enable);
     void toggleFrameFlattening(bool toggle);
     void toggleJavaScriptEnabled(bool enable);

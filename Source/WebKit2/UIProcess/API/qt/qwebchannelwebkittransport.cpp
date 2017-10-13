@@ -40,9 +40,10 @@
 ****************************************************************************/
 
 #include "config.h"
-#include "qwebchannelwebkittransport_p.h"
 
 #if ENABLE(QT_WEBCHANNEL)
+
+#include "qwebchannelwebkittransport_p.h"
 
 #include "qquickwebview_p.h"
 

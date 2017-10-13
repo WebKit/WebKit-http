@@ -51,9 +51,11 @@ build_pass|!debug_and_release {
     }
 
     !qtConfig(system-zlib):exists($$QTBASE_DIR) {
-        CMAKE_CONFIG += \
-            QT_BUNDLED_ZLIB=1 \
-            ZLIB_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/zlib
+        CMAKE_CONFIG += QT_BUNDLED_ZLIB=1
+
+        exists($$QTBASE_DIR/src/3rdparty/zlib/src/zlib.h): \
+            CMAKE_CONFIG += ZLIB_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/zlib/src
+        else: CMAKE_CONFIG += ZLIB_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/zlib
     }
 
     qtConfig(opengles2):!qtConfig(dynamicgl) {

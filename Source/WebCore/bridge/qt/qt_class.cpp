@@ -108,7 +108,7 @@ JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, PropertyName id
         return jsUndefined();
 
     int flags = metaMethod.methodType() == QMetaMethod::Signal ? QtRuntimeMethod::MethodIsSignal : 0;
-    QtRuntimeMethod* method = new QtRuntimeMethod(context, static_cast<QtInstance*>(inst)->getObject(), normal, index, flags, qtinst);
+    QtRuntimeMethod* method = new QtRuntimeMethod(static_cast<QtInstance*>(inst)->getObject(), normal, index, flags, qtinst);
     qtinst->m_methods.insert(name, method);
     JSValue obj = toJS(method->jsObjectRef(context, &exception));
     if (exception)
