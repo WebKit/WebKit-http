@@ -132,15 +132,16 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(const GdkEvent* event, int cu
     }
 
     return WebMouseEvent(type,
-                         buttonForEvent(event),
-                         IntPoint(x, y),
-                         IntPoint(xRoot, yRoot),
-                         0 /* deltaX */,
-                         0 /* deltaY */,
-                         0 /* deltaZ */,
-                         currentClickCount,
-                         modifiersForEvent(event),
-                         WallTime::fromRawSeconds(gdk_event_get_time(event)));
+        buttonForEvent(event),
+        0,
+        IntPoint(x, y),
+        IntPoint(xRoot, yRoot),
+        0 /* deltaX */,
+        0 /* deltaY */,
+        0 /* deltaZ */,
+        currentClickCount,
+        modifiersForEvent(event),
+        WallTime::fromRawSeconds(gdk_event_get_time(event)));
 }
 
 WebWheelEvent WebEventFactory::createWebWheelEvent(const GdkEvent* event)
