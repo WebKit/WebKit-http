@@ -135,7 +135,7 @@ void LauncherApplication::handleUserOptions()
         qDebug() << "Usage:" << programName.toLatin1().data()
              << "[-graphicsbased]"
              << "[-no-compositing]"
-#if defined(QT_CONFIGURED_WITH_OPENGL)
+#ifdef QT_OPENGL_LIB
              << "[-gl-viewport]"
 #endif
              << "[-opengl-viewport]"
@@ -240,7 +240,7 @@ void LauncherApplication::handleUserOptions()
 
         windowOptions.viewportUpdateMode = static_cast<QGraphicsView::ViewportUpdateMode>(idx);
     }
-#ifdef QT_CONFIGURED_WITH_OPENGL
+#ifdef QT_OPENGL_LIB
     if (args.contains("-gl-viewport") || defaultForAnimations) {
         requiresGraphicsView("-gl-viewport");
         windowOptions.useQGLWidgetViewport = true;
