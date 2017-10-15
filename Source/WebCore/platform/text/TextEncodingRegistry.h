@@ -31,26 +31,26 @@
 
 namespace WebCore {
 
-    class TextCodec;
-    class TextEncoding;
+class TextCodec;
+class TextEncoding;
 
-    // Use TextResourceDecoder::decode to decode resources, since it handles BOMs.
-    // Use TextEncoding::encode to encode, since it takes care of normalization.
-    std::unique_ptr<TextCodec> newTextCodec(const TextEncoding&);
+// Use TextResourceDecoder::decode to decode resources, since it handles BOMs.
+// Use TextEncoding::encode to encode, since it takes care of normalization.
+std::unique_ptr<TextCodec> newTextCodec(const TextEncoding&);
 
-    // Only TextEncoding should use the following functions directly.
-    const char* atomicCanonicalTextEncodingName(const char* alias);
-    template <typename CharacterType>
-    const char* atomicCanonicalTextEncodingName(const CharacterType*, size_t);
-    const char* atomicCanonicalTextEncodingName(const String&);
-    bool noExtendedTextEncodingNameUsed();
-    bool isJapaneseEncoding(const char* canonicalEncodingName);
-    bool shouldShowBackslashAsCurrencySymbolIn(const char* canonicalEncodingName);
+// Only TextEncoding should use the following functions directly.
+const char* atomicCanonicalTextEncodingName(const char* alias);
+template <typename CharacterType>
+const char* atomicCanonicalTextEncodingName(const CharacterType*, size_t);
+const char* atomicCanonicalTextEncodingName(const String&);
+bool noExtendedTextEncodingNameUsed();
+bool isJapaneseEncoding(const char* canonicalEncodingName);
+bool shouldShowBackslashAsCurrencySymbolIn(const char* canonicalEncodingName);
 
-    WEBCORE_EXPORT String defaultTextEncodingNameForSystemLanguage();
+WEBCORE_EXPORT String defaultTextEncodingNameForSystemLanguage();
 
 #ifndef NDEBUG
-    void dumpTextEncodingNameMap();
+void dumpTextEncodingNameMap();
 #endif
 }
 
