@@ -1,3 +1,36 @@
+2017-10-15  Darin Adler  <darin@apple.com>
+
+        UTF-8 decoding produces one replacement character per byte; Encoding standard requires one replacement character per illegal sequence instead
+        https://bugs.webkit.org/show_bug.cgi?id=178207
+
+        Reviewed by Sam Weinig.
+
+        * platform/text/TextCodecUTF8.cpp:
+        (WebCore::TextCodecUTF8::create): Deleted. Use a lambda instead.
+        (WebCore::TextCodecUTF8::registerCodecs): Use a lambda.
+        (WebCore::nonASCIISequenceLength): Changed to return 0 instead of 2 for the range 80-C1 since
+        none of those are valid sequence leading characters.
+        (WebCore::decodeNonASCIISequence): Changed the length argument to be in/out so the caller
+        knows how much of the sequence we decoded for failure cases. Simplified the length 2 section.
+        (WebCore::TextCodecUTF8::handleError): Deleted.
+        (WebCore::TextCodecUTF8::handlePartialSequence): Changed this into a pair of plain functions
+        rather than two template function specializations since the two functions are rather different.
+        For the one-byte version, got rid of the unused arguments. For the two-byte version, got rid
+        of the ignored return value, stopped using the handleError function since each error case
+        needs to be handled differently. In each error case consume the entire incorrect sequence
+        instead of just one byte.
+        (WebCore::TextCodecUTF8::decode): Updated for the above change, and changed the non-partial
+        incorrect sequence to consume the entire incorrect sequence instead of just one byte. Also
+        use WTF prefixes explicitly so we don't  have to do "using namespace".
+        (WebCore::TextCodecUTF8::encode): Got rid of unneeded type punning, and added some inline
+        capacity to save one memory allocation when encoding shorter strings.
+
+        * platform/text/TextCodecUTF8.h: Use pragma once. Intialize m_partialSequenceSize where it
+        is defined and let the compiler generate the constructor. Updated for the changes above.
+
+        * platform/text/TextEncoding.h: Export a constructor now used by a unit test.
+        * platform/text/TextEncodingRegistry.h: Export newTextCodec, now used by a unit test.
+
 2016-04-22  Keith Miller  <keith_miller@apple.com>
 
         buildObjectForEventListener should not call into JSC with a null ExecState

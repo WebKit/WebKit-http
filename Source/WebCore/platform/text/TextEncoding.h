@@ -34,7 +34,7 @@ namespace WebCore {
 class TextEncoding {
 public:
     TextEncoding() : m_name(0) { }
-    TextEncoding(const char* name);
+    WEBCORE_EXPORT TextEncoding(const char* name);
     WEBCORE_EXPORT TextEncoding(const String& name);
 
     bool isValid() const { return m_name; }
