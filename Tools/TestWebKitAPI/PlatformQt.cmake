@@ -46,6 +46,7 @@ add_executable(TestWebCore
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FileSystem.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/TextCodec.cpp
 )
 
 target_link_libraries(TestWebCore ${test_webcore_LIBRARIES})
