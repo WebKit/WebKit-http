@@ -32,6 +32,9 @@ if (USE_MINIMAL_DEBUG_INFO AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     if (TARGET gtest)
         target_compile_options(gtest          PRIVATE -g0 -O1)
     endif ()
+
+    target_compile_options(WebKit            PRIVATE -g1 -O1 -fdebug-types-section)
+    target_compile_options(WebKit2           PRIVATE -g1 -O1 -fdebug-types-section)
 endif ()
 
 if (USE_MINIMAL_DEBUG_INFO_MSVC AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
