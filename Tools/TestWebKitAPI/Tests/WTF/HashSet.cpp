@@ -27,6 +27,7 @@
 
 #include "Counters.h"
 #include "MoveOnly.h"
+#include <functional>
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 
