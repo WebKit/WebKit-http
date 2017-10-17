@@ -74,6 +74,19 @@ target_include_directories(WebKitWidgets INTERFACE
     $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets>
 )
 
+set(QTWEBKIT_PACKAGE_INIT "
+macro(find_dependency_with_major_and_minor _dep _major _minor)
+    find_dependency(\${_dep} \"\${_major}.\${_minor}\")
+    if (NOT(\"\${\${_dep}_VERSION_MAJOR}\" STREQUAL \"\${_major}\" AND \"\${\${_dep}_VERSION_MINOR}\" STREQUAL \"\${_minor}\"))
+        set(\${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE \"\${CMAKE_FIND_PACKAGE_NAME} could not be found because dependency \${dep} is required to have exact version \${_major}.\${_minor}.x.\")
+        set(\${CMAKE_FIND_PACKAGE_NAME}_FOUND False)
+        return()
+    endif ()
+endmacro ()
+
+####################################################################################
+")
+
 set(_package_footer_template "
 ####### Expanded from QTWEBKIT_PACKAGE_FOOTER variable #######
 
