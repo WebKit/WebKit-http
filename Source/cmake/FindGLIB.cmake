@@ -50,13 +50,18 @@ find_library(GLIB_LIBRARY
           ${PC_GLIB_LIBRARY_DIRS}
 )
 
+set (GLIB_LIBRARIES ${GLIB_LIBRARY})
+
 find_library(GLIB_INTL_LIBRARY
     NAMES intl
     HINTS ${PC_GLIB_LIBDIR}
           ${PC_GLIB_LIBRARY_DIRS}
 )
 
-set (GLIB_LIBRARIES ${GLIB_LIBRARY} ${GLIB_INTL_LIBRARY})
+# Libintl is found
+if (GLIB_INTL_LIBRARY)
+set (GLIB_LIBRARIES ${GLIB_LIBRARIES} ${GLIB_INTL_LIBRARY})
+endif ()
 
 # Files in glib's main include path may include glibconfig.h, which,
 # for some odd reason, is normally in $LIBDIR/glib-2.0/include.
