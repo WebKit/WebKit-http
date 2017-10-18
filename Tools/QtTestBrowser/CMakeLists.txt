@@ -55,7 +55,6 @@ if (Qt5OpenGL_FOUND)
     list(APPEND QtTestBrowser_LIBRARIES
         ${Qt5OpenGL_LIBRARIES}
     )
-    add_definitions(-DQT_CONFIGURED_WITH_OPENGL)
 endif ()
 
 if (ENABLE_TEST_SUPPORT)
