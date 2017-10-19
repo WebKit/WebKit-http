@@ -72,6 +72,25 @@ public:
 
 std::unique_ptr<media::OpenCdm> CDMPrivateOpenCDM::s_openCdm;
 
+static media::OpenCdm::LicenseType webKitLicenseTypeToOpenCDM(CDMInstance::LicenseType licenseType)
+{
+    switch (licenseType) {
+    case CDMInstance::LicenseType::Temporary:
+        return media::OpenCdm::Temporary;
+        break;
+    case CDMInstance::LicenseType::PersistentUsageRecord:
+        return media::OpenCdm::PersistentUsageRecord;
+        break;
+    case CDMInstance::LicenseType::PersistentLicense:
+        return media::OpenCdm::PersistentLicense;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        return media::OpenCdm::Temporary;
+        break;
+    }
+}
+
 CDMPrivateOpenCDM::CDMPrivateOpenCDM(const String& keySystem)
     : m_openCdmKeySystem(keySystem)
 {
@@ -229,7 +248,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     else if (GStreamerEMEUtilities::isWidevineKeySystem(m_keySystem))
         mimeType = "video/mp4";
     m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
-        initData->size(), sessionId, (int)licenseType);
+        initData->size(), sessionId, webKitLicenseTypeToOpenCDM(licenseType));
     if (!sessionId.size()) {
         callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
