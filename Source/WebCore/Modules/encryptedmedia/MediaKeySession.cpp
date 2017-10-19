@@ -78,9 +78,6 @@ MediaKeySession::MediaKeySession(ScriptExecutionContext& context, WeakPtr<MediaK
     // 3.8. Let the use distinctive identifier value be this object's use distinctive identifier value.
     // 3.9. Let the cdm implementation value be this object's cdm implementation.
     // 3.10. Let the cdm instance value be this object's cdm instance.
-
-    UNUSED_PARAM(m_sessionType);
-    UNUSED_PARAM(m_useDistinctiveIdentifier);
 }
 
 MediaKeySession::~MediaKeySession()
