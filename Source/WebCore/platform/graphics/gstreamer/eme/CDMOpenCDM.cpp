@@ -247,24 +247,31 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
         mimeType = "video/x-h264";
     else if (GStreamerEMEUtilities::isWidevineKeySystem(m_keySystem))
         mimeType = "video/mp4";
-    m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
+
+    GST_TRACE("Going to request a new session ID");
+
+    bool createdSession = m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
         initData->size(), sessionId, webKitLicenseTypeToOpenCDM(licenseType));
-    if (!sessionId.size()) {
+
+    if (!createdSession) {
         callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
     }
-    sessionIdValue = String::fromUTF8(sessionId.c_str());
 
-    unsigned char temporaryUrl[1024] = {'\0'};
+    sessionIdValue = String::fromUTF8(sessionId.c_str());
+    GST_TRACE("create session succeeded, session ID is %s", sessionIdValue.utf8().data());
+
+    unsigned char temporaryUrl[1024] = { };
     std::string message;
     int messageLength = 0;
     int destinationUrlLength = 0;
-    int returnValue = m_openCdmSession->GetKeyMessage(message,
-        &messageLength, temporaryUrl, &destinationUrlLength);
-    if (returnValue || !messageLength || !destinationUrlLength) {
+    m_openCdmSession->GetKeyMessage(message, &messageLength, temporaryUrl, &destinationUrlLength);
+    if (!messageLength || !destinationUrlLength) {
         callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
     }
+
+    GST_TRACE("successfully called GetKeyMessage");
     bool needIndividualization = false;
     std::string delimiter = ":Type:";
     std::string requestType = message.substr(0, message.find(delimiter));
@@ -283,27 +290,38 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback callback)
 {
     std::string responseMessage;
-    int ret = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
-    GST_DEBUG("session id %s, calling callback %s message", sessionId.utf8().data(), ret ? "with" : "without");
-    if (ret) {
+    // FIXME: This is a realy awful API, why not just take a string& ?
+    int haveMessage = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
+    GST_DEBUG("session id %s, calling callback %s message", sessionId.utf8().data(), haveMessage ? "with" : "without");
+
+    if (haveMessage) {
+        GST_TRACE("OpenCDM::Update has a message for us");
+        // FIXME: Using JSON reponse messages is much cleaner than using string prefixes, I believe there
+        // will even be other parts of the spec where not having structured data will be bad.
         std::string request = "message:";
         if (!responseMessage.compare(0, request.length(), request.c_str())) {
-            size_t length = checkMessageLength(responseMessage, request);
-            GST_TRACE("message length %u", length);
-            Ref<SharedBuffer> nextMessage = SharedBuffer::create((responseMessage.c_str() + length), (responseMessage.length() - length));
+            size_t offset = checkMessageLength(responseMessage, request);
+            unsigned const char* messageStart = reinterpret_cast<unsigned const char*>(responseMessage.c_str() + offset);
+            size_t messageLength = responseMessage.length() - offset;
+            GST_MEMDUMP("Message received from platform update", messageStart, messageLength);
+            Ref<SharedBuffer> nextMessage = SharedBuffer::create(messageStart, messageLength);
             CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
             callback(false, std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded);
         } else {
-            GST_DEBUG("session id %s, update license failed", sessionId.utf8().data());
+            GST_ERROR("OpenCDM::update claimed to have a message, but it was not correctly formatted");
             callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
         }
-    } else {
-        SharedBuffer* initData = sessionIdMap.get(sessionId);
-        KeyStatusVector changedKeys;
-        MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
-        changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus> {*initData, keyStatus});
-        callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
+        return;
     }
+
+    GST_TRACE("No message from update, we have a new key status object to communicate");
+    SharedBuffer* initData = sessionIdMap.get(sessionId);
+    KeyStatusVector changedKeys;
+    // FIXME: When Update returns false, the response message is empty
+    MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
+    // FIXME: Why are we passing initData here, we are supposed to be passing key IDs.
+    changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
+    callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
 }
 
 CDMInstance::SessionLoadFailure CDMInstanceOpenCDM::getSessionLoadStatus(std::string& loadStatus)
@@ -341,11 +359,12 @@ size_t CDMInstanceOpenCDM::checkMessageLength(std::string& message, std::string&
     size_t length = 0;
     std::string delimiter = ":Type:";
     std::string requestType = message.substr(0, message.find(delimiter));
+    // FIXME: What is with this weirdness?
     if (requestType.size() && (requestType.size() == (request.size() + 1)))
         length = requestType.size() + delimiter.size();
     else
-        length = request.length();
-    GST_TRACE("delimiter.size = %u, delimiter = %s, requestType.size = %u, requestType = %s", delimiter.size(), delimiter.c_str(), requestType.size(), requestType.c_str());
+       length = request.length();
+    GST_TRACE("delimiter.size = %u, delimiter = %s, requestType.size = %u, requestType = %s, request.size = %u, request = %s", delimiter.size(), delimiter.c_str(), requestType.size(), requestType.c_str(), request.size(), request.c_str());
     return length;
 }
 
