@@ -1,3 +1,48 @@
+2017-10-23  Miguel Gomez  <magomez@igalia.com>
+
+        [TexMap] Remove GraphicsContext3D usage from TextureMapperShaderProgram
+        https://bugs.webkit.org/show_bug.cgi?id=175425
+
+        Reviewed by Žan Doberšek.
+
+        Remove usage of the GraphicsContext3D class in TextureMapperShaderProgram.
+        Direct OpenGL API calls, types and constants are used instead.
+
+        By removing GraphicsContext3D, we don't use ANGLE anymore to perform the
+        shader adaptation to the used OpenGL/GLES2 version, so we need to do that
+        inside TextureMapperShaderProgram. The main changes required for this are
+        adding the #version directive and use in/out to define input/output parameters
+        when using OpenGL >= 3.2, and defining the default precision only when using
+        GLES2.
+
+        Besides that, now that VideoTextureCopierGStreamer doesn't have its own
+        GraphicsContext3D, we need to add a VAO to it when using OpenGL >= 3.2.
+
+        Based on a previous patch by Žan Doberšek <zdobersek@igalia.com>.
+
+        No behavior change.
+
+        * platform/graphics/gstreamer/VideoTextureCopierGStreamer.cpp:
+        (WebCore::VideoTextureCopierGStreamer::VideoTextureCopierGStreamer):
+        (WebCore::VideoTextureCopierGStreamer::~VideoTextureCopierGStreamer):
+        (WebCore::VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture):
+        * platform/graphics/gstreamer/VideoTextureCopierGStreamer.h:
+        * platform/graphics/texmap/TextureMapperGL.cpp:
+        (WebCore::TextureMapperGLData::getShaderProgram):
+        (WebCore::prepareFilterProgram):
+        (WebCore::TextureMapperGL::drawTexture):
+        (WebCore::TextureMapperGL::drawFiltered):
+        * platform/graphics/texmap/TextureMapperShaderProgram.cpp:
+        (WebCore::TextureMapperShaderProgram::create):
+        (WebCore::getShaderLog):
+        (WebCore::getProgramLog):
+        (WebCore::TextureMapperShaderProgram::TextureMapperShaderProgram):
+        (WebCore::TextureMapperShaderProgram::~TextureMapperShaderProgram):
+        (WebCore::TextureMapperShaderProgram::setMatrix):
+        (WebCore::TextureMapperShaderProgram::getLocation):
+        * platform/graphics/texmap/TextureMapperShaderProgram.h:
+        (WebCore::TextureMapperShaderProgram::programID const):
+
 2017-10-06  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Create Cairo patterns from Gradient objects on-the-fly
