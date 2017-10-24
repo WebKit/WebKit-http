@@ -929,10 +929,12 @@ void FrameLoaderClientQt::convertMainResourceLoadToDownload(DocumentLoader* docu
 
     QNetworkReply* reply = handler->release();
     if (reply) {
-        if (m_webFrame->pageAdapter->forwardUnsupportedContent)
+        if (m_webFrame->pageAdapter->forwardUnsupportedContent) {
             emit unsupportedContent(reply);
-        else
+        } else {
             reply->abort();
+            reply->deleteLater();
+        }
     }
 }
 
