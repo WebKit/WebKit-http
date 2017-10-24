@@ -1,3 +1,20 @@
+2017-10-24  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [MediaFoundation] Videos are always autoplaying for local files
+        https://bugs.webkit.org/show_bug.cgi?id=178693
+
+        Patch by Doug Massay.
+        Reviewed by Alex Christensen.
+
+        r199114 fixes autoplay issue only if starting session invokes
+        buffering stage. However when local files are played, onBufferingStarted
+        and onBufferingStopped are not called, and video is not paused.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::endGetEvent):
+        (WebCore::MediaPlayerPrivateMediaFoundation::onSessionStarted):
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+
 2017-08-19  Sergio Villar Senin  <svillar@igalia.com>
 
         [SVG] Leak in SVGAnimatedListPropertyTearOff
