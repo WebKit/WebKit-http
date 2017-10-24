@@ -1,3 +1,219 @@
+2016-03-23  Saam barati  <sbarati@apple.com>
+
+        We should not disable inlining when the debugger is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=155741
+
+        Reviewed by Oliver Hunt.
+
+        * inspector/debugger/breakpoint-with-inlining-expected.txt: Added.
+        * inspector/debugger/breakpoint-with-inlining.html: Added.
+
+2016-03-22  Darin Adler  <darin@apple.com>
+
+        Tiny tweak to test I just landed.
+
+        * http/tests/security/cross-origin-modal-dialog-base-expected.txt:
+        Fix expected result now that I fixed the less than sign.
+        * http/tests/security/cross-origin-modal-dialog-base.html: Use &lt;
+        so the < character won't create an HTML element instead of text.
+
+2016-03-22  Darin Adler  <darin@apple.com>
+
+        showModalDialog code runs with "first window" set to wrong window
+        https://bugs.webkit.org/show_bug.cgi?id=155710
+
+        Test by John Wilander.
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/cross-origin-modal-dialog-base-expected.txt: Added.
+        * http/tests/security/cross-origin-modal-dialog-base.html: Added.
+        * http/tests/security/resources/cross-origin-modal-dialog-base-1.html: Added.
+        * http/tests/security/resources/cross-origin-modal-dialog-base-2.html: Added.
+        * platform/wk2/TestExpectations: Skip test until we get better showModalDialog support.
+
+2016-03-22  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        userSpaceOnUse patterns are not stroked for empty object bounding box elements
+        https://bugs.webkit.org/show_bug.cgi?id=109758
+
+        Reviewed by Brent Fulgham.
+        
+        Ensure the SVG pattern is drawn correctly if it is used as a stroke for
+        empty objectBoundingBox elements.
+
+        * svg/custom/pattern-units-fill-stroke-expected.svg: Added.
+        * svg/custom/pattern-units-fill-stroke.svg: Added.
+
+2016-03-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Post-review test update after r198560
+        https://bugs.webkit.org/show_bug.cgi?id=155533
+
+        Unreviewed.
+
+        * fast/scrolling/rtl-scrollbars-positioning-expected.html:
+        * fast/scrolling/rtl-scrollbars-positioning.html:
+
+2016-03-22  John Wilander  <wilander@apple.com>
+
+        Restrict WebSockets header parsing according to RFC6455 and RFC7230. Based on Lamarque V. Souza's original patch.
+        https://bugs.webkit.org/show_bug.cgi?id=82714
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/websocket/tests/hybi/error-event-ready-state-expected.txt: Removed.
+            - See comment below on the associated HTML file.
+        * http/tests/websocket/tests/hybi/error-event-ready-state-non-existent-url-with-server-responding-404-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/error-event-ready-state-non-existent-url-with-server-responding-404.html: Added.
+            - Uses PHP to respond with an HTTP 1.1 404. The old (now removed) test case failed once we restricted WebSockets to HTTP 1.1 and above because the test server responded with an HTTP 1.0 404 for non-existing files.
+        * http/tests/websocket/tests/hybi/error-event-ready-state.html: Removed.
+            - This test case was renamed "error-event-ready-state-non-existent-url-with-server-responding-404" to make it clear it now relies on a server responding with HTTP 1.1 404.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-invalid-http-version-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-invalid-http-version.html: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-invalid-http-version_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - Test case for lower than HTTP 1.1 versions.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-more-accept-header-expected.txt:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-more-extensions-header-expected.txt:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-more-protocol-header-expected.txt:
+            - Updated to pass with lowercase 'must not' in the failure reason.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-accept-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-accept.html: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-accept_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - Test case for non-ASCII characters in new HTTP header Sec-WebSocket-Accept.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-extensions-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-extensions.html: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-extensions_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - Test case for non-ASCII characters in new HTTP header Sec-WebSocket-Extensions.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-protocol-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-protocol.html: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-protocol_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - Test case for non-ASCII characters in new HTTP header Sec-WebSocket-Protocol.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-status-line-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-status-line.html: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-status-line_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - Test case for non-ASCII characters in HTTP status line.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-null-char-in-status-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-null-char-in-status.html: Added.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-null-char-in-status_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - Test case for null character in the middle of the HTTP status line.
+        * http/tests/websocket/tests/hybi/handshake-fail-by-prepended-null_wsh.py:
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - This test case was changed to prepend a null character to the actual status line. Previously it used a WebSockets frame with a prepended null before the status line. The Python WebSockets lib uses non-ASCII characters in that frame which meant the test case hit the non-ASCII check before the null check. It was confusing to me that the description and intent of the test was to run with a null in the status line, not in a frame before the status line. I believe the changed test case better reflects the intention of the test.
+        * http/tests/websocket/tests/hybi/handshake-ok-with-http-version-beyond-1_1-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/handshake-ok-with-http-version-beyond-1_1.html: Added.
+        * http/tests/websocket/tests/hybi/handshake-ok-with-http-version-beyond-1_1_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+            - Test case for HTTP versions higher than 1.1.
+        * http/tests/websocket/tests/hybi/resources/status-404-without-body.php: Added.
+            - To use with the error-event-ready-state-non-existent-url-with-server-responding-404.html test described above.
+
+2016-03-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] Position: absolute divs are covered by vertical scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=155533
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations:
+        * fast/scrolling/rtl-scrollbars-positioning-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-positioning.html: Added.
+
+2016-03-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/console/console-api.html as flaky on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=143719
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-03-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fixing a typo in the Mac TestExpectations file.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-03-22  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Implement RegExp.prototype[@@match]
+        https://bugs.webkit.org/show_bug.cgi?id=155711
+
+        Reviewed by Filip Pizlo.
+
+        Updated tests for exception string changes and added Symbol.match.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/string-prototype-properties-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.10_String.prototype.match/S15.5.4.10_A1_T3-expected.txt:
+
+2016-03-22  Daniel Bates  <dabates@apple.com>
+
+        CSP: Should only execute <script> or apply <style> if its hash appears in all policies
+        https://bugs.webkit.org/show_bug.cgi?id=155709
+        <rdar://problem/25263368>
+
+        Reviewed by Darin Adler.
+
+        Add tests to ensure that we only execute/apply a <script>/<style> if its hash is listed in all CSPs
+        delivered with the page.
+
+        * TestExpectations: Mark added tests as PASS so that we run them.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-multiple-policies-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/scripthash-multiple-policies.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-multiple-policies-expected.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/stylehash-multiple-policies.html: Added.
+
+2016-03-22  Nan Wang  <n_wang@apple.com>
+
+        AX: Change "dialog" role description to "web dialog" so users can distinguish from native alerts
+        https://bugs.webkit.org/show_bug.cgi?id=154292
+
+        Reviewed by Chris Fleizach.
+
+        * platform/mac-mavericks/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2016-03-22  Daniel Bates  <dabates@apple.com>
+
+        CSP: Check inline event handlers on each run, not only the first
+        https://bugs.webkit.org/show_bug.cgi?id=115700
+        <rdar://problem/24211159>
+
+        Reviewed by Andy Estes.
+
+        Update expected result for test http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta.html
+        and remove its entry from file LayoutTests/TestExpectations now that it passes.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta-expected.txt:
+
+2016-03-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping media/media-document-audio-repaint.html on El Capitan Debug WK2
+        https://bugs.webkit.org/show_bug.cgi?id=155757
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
 2016-03-22  Ryan Haddad  <ryanhaddad@apple.com>
 
         Marking perf/document-contains.html as flaky on ios-simulator-wk2

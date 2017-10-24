@@ -1,3 +1,364 @@
+2016-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Use Region instead of IntRect in PageClient and WebPageProxy setViewNeedsDisplay method
+        https://bugs.webkit.org/show_bug.cgi?id=155747
+
+        Reviewed by Darin Adler.
+
+        Add helper function to make cairo region out of a WebCore::Region.
+
+        * platform/graphics/cairo/CairoUtilities.cpp:
+        (WebCore::toCairoRegion):
+        * platform/graphics/cairo/CairoUtilities.h:
+
+2016-03-22  Tim Horton  <timothy_horton@apple.com>
+
+        Invoking a link preview on a complex link (e.g. an image) results in an empty TextIndicator
+        https://bugs.webkit.org/show_bug.cgi?id=155779
+        <rdar://problem/22408793>
+
+        Reviewed by Simon Fraser.
+
+        * page/FrameSnapshotting.cpp:
+        (WebCore::snapshotFrameRect):
+        (WebCore::snapshotFrameRectWithClip):
+        * page/FrameSnapshotting.h:
+        * page/TextIndicator.cpp:
+        (WebCore::takeSnapshot):
+        (WebCore::takeSnapshots):
+        (WebCore::initializeIndicator):
+        When snapshotting, clip to the indicated range's rects. This is important
+        to avoid painting into the margins in the non-selection-only painting case.
+        This didn't come up with normal selection-only painting because the text
+        didn't intersect the margin, and the background doesn't paint.
+
+2016-03-22  Darin Adler  <darin@apple.com>
+
+        showModalDialog code runs with "first window" set to wrong window
+        https://bugs.webkit.org/show_bug.cgi?id=155710
+
+        Reviewed by Brent Fulgham.
+
+        Test: http/tests/security/cross-origin-modal-dialog-base.html
+
+        * page/Chrome.cpp:
+        (WebCore::Chrome::runModal): Null out entryScope so that the "first window"
+        checks inside the modal dialog won't run in the context of the original window
+        that presented the dialog.
+
+2016-03-22  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        userSpaceOnUse patterns are not stroked for empty object bounding box elements
+        https://bugs.webkit.org/show_bug.cgi?id=109758
+
+        Reviewed by Brent Fulgham.
+
+        Checking whether the patternUnits is objectBoundingBox needs to be done
+        after calling collectPatternAttributes(). Otherwise the default value
+        will be always checked which is 'objectBoundingBox'.
+
+        Tests: svg/custom/pattern-units-fill-stroke.svg
+
+        * rendering/svg/RenderSVGResourcePattern.cpp:
+        (WebCore::RenderSVGResourcePattern::buildPattern):
+        (WebCore::RenderSVGResourcePattern::applyResource):
+
+2016-03-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use references instead of pointers for absolute positioning code
+        https://bugs.webkit.org/show_bug.cgi?id=155775
+
+        Reviewed by Simon Fraser.
+
+        There are many pointers which will never be null in this code. This patch
+        migrates them to use references.
+
+        No new tests because there is no behavior change.
+
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::layoutBlockChild):
+        (WebCore::RenderBlockFlow::marginBeforeEstimateForChild):
+        (WebCore::RenderBlockFlow::insertFloatingObject):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::constrainLogicalWidthInRegionByMinMax):
+        (WebCore::RenderBox::shrinkLogicalWidthToAvoidFloats):
+        (WebCore::RenderBox::computeLogicalWidthInRegion):
+        (WebCore::RenderBox::computeLogicalWidthInRegionUsing):
+        (WebCore::RenderBox::computeInlineDirectionMargins):
+        (WebCore::RenderBox::renderBoxRegionInfo):
+        (WebCore::RenderBox::computeLogicalHeight):
+        (WebCore::RenderBox::skipContainingBlockForPercentHeightCalculation):
+        (WebCore::RenderBox::computePercentageLogicalHeight):
+        (WebCore::RenderBox::computeReplacedLogicalWidthUsing):
+        (WebCore::RenderBox::computeReplacedLogicalHeightUsing):
+        (WebCore::RenderBox::availableLogicalHeightUsing):
+        (WebCore::RenderBox::computeBlockDirectionMargins):
+        (WebCore::RenderBox::computeAndSetBlockDirectionMargins):
+        (WebCore::RenderBox::containingBlockLogicalWidthForPositioned):
+        (WebCore::RenderBox::containingBlockLogicalHeightForPositioned):
+        (WebCore::computeInlineStaticDistance):
+        (WebCore::RenderBox::computePositionedLogicalWidth):
+        (WebCore::computeLogicalLeftPositionedOffset):
+        (WebCore::RenderBox::computePositionedLogicalWidthUsing):
+        (WebCore::computeBlockStaticDistance):
+        (WebCore::RenderBox::computePositionedLogicalHeight):
+        (WebCore::computeLogicalTopPositionedOffset):
+        (WebCore::RenderBox::computePositionedLogicalHeightUsing):
+        (WebCore::RenderBox::computePositionedLogicalWidthReplaced):
+        (WebCore::RenderBox::computePositionedLogicalHeightReplaced):
+        (WebCore::percentageLogicalHeightIsResolvable):
+        (WebCore::RenderBox::percentageLogicalHeightIsResolvableFromBlock):
+        (WebCore::RenderBox::hasDefiniteLogicalHeight):
+        (WebCore::RenderBox::hasUnsplittableScrollingOverflow):
+        * rendering/RenderBox.h:
+        * rendering/RenderDeprecatedFlexibleBox.cpp:
+        (WebCore::RenderDeprecatedFlexibleBox::layoutHorizontalBox):
+        (WebCore::RenderDeprecatedFlexibleBox::layoutVerticalBox):
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::RenderFlexibleBox::computeMainAxisExtentForChild):
+        (WebCore::RenderFlexibleBox::applyStretchAlignmentToChild):
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::minSizeForChild):
+        (WebCore::RenderGrid::computeMarginLogicalHeightForChild):
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::updateLogicalWidth):
+        * rendering/RenderTableRow.cpp:
+        (WebCore::RenderTableRow::layout):
+
+2016-03-22  Jon Davis  <jond@apple.com>
+
+        Add Download Attribute to the Feature Status page
+        https://bugs.webkit.org/show_bug.cgi?id=155772
+
+        Reviewed by Timothy Hatcher.
+
+        * features.json:
+
+2016-03-22  Jer Noble  <jer.noble@apple.com>
+
+        CachedResource::MediaResource types shouldn't be blocked due to mixed-content.
+        https://bugs.webkit.org/show_bug.cgi?id=155588
+        <rdar://problem/25177795>
+
+        Reviewed by Brent Fulgham.
+
+        Follow-up to address crashes caused by r198549. Rather than destroy MediaResourceLoader on a background thread,
+        migrate the Ref to the main thread before releasing.
+
+        * platform/graphics/PlatformMediaResourceLoader.h:
+        * platform/network/cocoa/WebCoreNSURLSession.mm:
+        (-[WebCoreNSURLSession dealloc]):
+
+2016-03-22  John Wilander  <wilander@apple.com>
+
+        Restrict WebSockets header parsing according to RFC6455 and RFC7230. Based on Lamarque V. Souza's original patch.
+        https://bugs.webkit.org/show_bug.cgi?id=82714
+
+        Reviewed by Brent Fulgham.
+
+        Tests: http/tests/websocket/tests/hybi/error-event-ready-state-non-existent-url-with-server-responding-404.html
+               http/tests/websocket/tests/hybi/handshake-fail-by-invalid-http-version.html
+               http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-accept.html
+               http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-extensions.html
+               http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-header-value-sec-websocket-protocol.html
+               http/tests/websocket/tests/hybi/handshake-fail-by-non-ascii-status-line.html
+               http/tests/websocket/tests/hybi/handshake-fail-by-null-char-in-status.html
+               http/tests/websocket/tests/hybi/handshake-ok-with-http-version-beyond-1_1.html
+
+        * Modules/websockets/WebSocketHandshake.cpp:
+        (WebCore::WebSocketHandshake::httpURLForAuthenticationAndCookies):
+        (WebCore::headerHasValidHTTPVersion):
+            - Check for HTTP version 1.1 and above.
+        (WebCore::WebSocketHandshake::readStatusLine):
+            - Only allow ASCII characters in status line.
+            - Only allow HTTP version 1.1 and above in status line.
+        (WebCore::WebSocketHandshake::readHTTPHeaders):
+            - Only allow ASCII characters in values for new HTTP headers.
+
+2016-03-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] Position: absolute divs are covered by vertical scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=155533
+
+        Reviewed by Darin Adler.
+
+        This patch changes the behavior of position: absolute elements when their
+        containing block has overflow: scroll in RTL scrollbar mode. Previously, we
+        were only adjusting the overflow calculation for such elements (but not
+        their position calculation). This patch updates the position calculation,
+        which automatically makes the overflow calculation work propertly, so the
+        old calculation is no longer necessary.
+
+        This patch also updates iframes to appropriately move their dirty rects
+        and their painting CTM by the scrollbar width when traversing frame
+        boundaries. This fixes all our existing RTL scrollbar RTL tests.
+
+        The RTL scrollbar tests are only marked as passing on certain OSes, so these
+        tests are transitioning from failing to passing in that other repository.
+
+        Test: fast/scrolling/rtl-scrollbars-positioning.html
+              fast/scrolling/rtl-scrollbars-overflow-elementFromPoint.html
+              fast/scrolling/rtl-scrollbars-overflow-position-absolute.html
+              fast/scrolling/rtl-scrollbars-iframe-offset.html
+              fast/scrolling/rtl-scrollbars-iframe-position-absolute.html
+              fast/scrolling/rtl-scrollbars-iframe-scrolled.html
+              fast/scrolling/rtl-scrollbars-iframe.html
+
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::paint):
+        (WebCore::ScrollView::locationOfContents):
+        * platform/ScrollView.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::repaintLayerDirtyRects):
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::addOverflowFromPositionedObjects):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::computePositionedLogicalWidth):
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::repaintViewRectangle):
+
+2016-03-22  Antti Koivisto  <antti@apple.com>
+
+        Non-const DocumentRuleSets::features() does not check default style version
+        https://bugs.webkit.org/show_bug.cgi?id=155766
+
+        Reviewed by Andreas Kling.
+
+        This may leave it out of date when the default stylesheet expands.
+
+        No test, don't know how to hit this with current codebase. With some further optimizations
+        it starts affecting some tests involving UA media control stylesheets.
+
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::mutableFeatures):
+
+            Check the default style version number in non-const case too.
+
+2016-03-22  Daniel Bates  <dabates@apple.com>
+
+        CSP: Should only execute <script> or apply <style> if its hash appears in all policies
+        https://bugs.webkit.org/show_bug.cgi?id=155709
+        <rdar://problem/25263368>
+
+        Reviewed by Darin Adler.
+
+        Fixes an issue where a <script>/<style> was allowed to execute/be applied if its hash is listed
+        in at least one Content Security Policy (CSP) delivered with the page. We should only execute/apply
+        such a script/stylesheet if its hash is listed in all CSPs delivered with the page.
+
+        Tests: http/tests/security/contentSecurityPolicy/1.1/scripthash-multiple-policies.html
+               http/tests/security/contentSecurityPolicy/1.1/stylehash-multiple-policies.html
+
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::isAllowedByAllWithHash): Added. Checks if the specified hash is allowed by all policies.
+        (WebCore::isAllowedByAllWithHashFromContent): Modified to call WebCore::isAllowedByAllWithHash()
+        to determine if the <script>/<style> is allowed by all CSPs delivered with the page.
+
+2016-03-18  Jer Noble  <jer.noble@apple.com>
+
+        CRASH in WebCore::MediaResourceLoader::requestResource + 698
+        https://bugs.webkit.org/show_bug.cgi?id=155651
+        <rdar://problem/25130582>
+
+        Reviewed by Eric Carlson.
+
+        No new tests, fixes existing tests running under GuardMalloc.
+
+        Protect against the Document passed into MediaResourceLoader being destroyed during the MediaResourceLoader's lifetime.
+
+        * loader/MediaResourceLoader.cpp:
+        (WebCore::MediaResourceLoader::MediaResourceLoader):
+        (WebCore::MediaResourceLoader::contextDestroyed):
+        (WebCore::MediaResourceLoader::requestResource):
+        (WebCore::MediaResource::responseReceived):
+        * loader/MediaResourceLoader.h:
+
+2016-03-22  Beth Dakin  <bdakin@apple.com>
+
+        Advanced spell checking should be guarded behind 
+        HAVE(ADVANCED_SPELL_CHECKING)
+        https://bugs.webkit.org/show_bug.cgi?id=155738
+
+        Reviewed by Geoff Garen.
+
+        * config.h:
+        (WebCore::ScrollableArea::systemLanguageIsRTL):
+        * platform/spi/mac/NSSpellCheckerSPI.h:
+
+2016-03-22  Nan Wang  <n_wang@apple.com>
+
+        AX: Change "dialog" role description to "web dialog" so users can distinguish from native alerts
+        https://bugs.webkit.org/show_bug.cgi?id=154292
+
+        Reviewed by Chris Fleizach.
+
+        Changed role descriptions for "dialog" and "alert dialog" roles as required.
+
+        No new tests needed.
+
+        * English.lproj/Localizable.strings:
+
+2016-03-22  Alex Christensen  <achristensen@webkit.org>
+
+        Add null check in CachedResourceLoader::determineRevalidationPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=155758
+        rdar://problem/25108408
+
+        Reviewed by Jer Noble.
+
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::frame):
+        (WebCore::CachedResourceLoader::determineRevalidationPolicy):
+        Null-check frame() before dereferencing it.
+
+2016-03-22  Daniel Bates  <dabates@apple.com>
+
+        CSP: Check inline event handlers on each run, not only the first
+        https://bugs.webkit.org/show_bug.cgi?id=115700
+        <rdar://problem/24211159>
+
+        Reviewed by Andy Estes.
+
+        Fixes an issue where an inline event handler would always be allowed to execute if it
+        executed at least once.
+
+        Currently we query whether the Content Security Policy (CSP) of the page permits inline event
+        handlers each time we register a new handler for an event. And a handler is registered exactly
+        once the first time the event associated with it is dispatched. Once a handler is registered
+        as a listener for an event E then we will always invoke the handler when event E is dispatched
+        regardless of whether the CSP of the page changes (say, as a result of programmatically inserting
+        a <meta http-equiv="Content-Security-Policy">). Instead we should always check the
+        CSP of the page whenever we are going to invoke an event handler.
+
+        * bindings/js/JSEventListener.cpp:
+        (WebCore::JSEventListener::handleEvent): Check the CSP of the page and bail out if the
+        policy does not permit execution of an inline event handler.
+        * bindings/js/JSEventListener.h:
+        (WebCore::JSEventListener::sourceURL): Added. Default implementation that returns an empty string.
+        (WebCore::JSEventListener::sourcePosition): Added. Default implementation that returns a default position.
+        * bindings/js/JSLazyEventListener.cpp:
+        (WebCore::JSLazyEventListener::JSLazyEventListener): Update code following instance variable
+        renaming in JSLazyEventListener.h.
+        (WebCore::JSLazyEventListener::initializeJSFunction): Ditto. 
+        * bindings/js/JSLazyEventListener.h: Override JSEventListener::sourceURL() and JSEventListener::sourcePosition().
+        Changed all mutable instance variables to immutable ones as we do not modify these variables
+        in any const member functions. Also renamed instance variable m_position to m_sourcePosition
+        to better describe that it represents the source code position where the event handler was defined.
+
+2016-03-22  Jer Noble  <jer.noble@apple.com>
+
+        Media elements allowed to play without a user gesture, but requiring fullscreen playback, should not be allowed to autoplay.
+        https://bugs.webkit.org/show_bug.cgi?id=155599
+
+        Reviewed by Darin Adler.
+
+        Test: media/video-autoplay-allowed-but-fullscreen-required.html
+
+        Entering fullscreen should always require a user gesture.
+
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::playbackPermitted):
+
 2016-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] WebInspector broken after r197620

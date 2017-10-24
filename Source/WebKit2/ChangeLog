@@ -1,3 +1,99 @@
+2016-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Use Region instead of IntRect in PageClient and WebPageProxy setViewNeedsDisplay method
+        https://bugs.webkit.org/show_bug.cgi?id=155747
+
+        Reviewed by Darin Adler.
+
+        This way instead of calling setViewNeedsDisplay() for every
+        rectangle in the damage area, we can build a region and call
+        setViewNeedsDisplay() once. GTK+ has API to queue a redraw for a
+        given region, so we also avoid scheduling multiple redraws in GTK+
+        port.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::setViewNeedsDisplay): Convert the Region
+        into a cairo_region_t and use gtk_widget_queue_draw_region()
+        instyead of gtk_widget_queue_draw_area().
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        (WebKit::DrawingAreaProxyImpl::incorporateUpdate): Build a Region
+        with the damage rectangles and call
+        WebPageProxy::setViewNeedsDisplay() once.
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setViewNeedsDisplay):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/efl/WebView.cpp:
+        (WebKit::WebView::setViewNeedsDisplay):
+        * UIProcess/efl/WebView.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::setViewNeedsDisplay):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::setViewNeedsDisplay):
+
+2016-03-22  Tim Horton  <timothy_horton@apple.com>
+
+        Invoking a link preview on a complex link (e.g. an image) results in an empty TextIndicator
+        https://bugs.webkit.org/show_bug.cgi?id=155779
+        <rdar://problem/22408793>
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::dictionaryPopupInfoForRange):
+        (WebKit::WebPage::performImmediateActionHitTestAtLocation):
+        Use the TextIndicator mode where we give up on selection-only snapshotting
+        and just paint all content on Mac, similar to what we do for 3D Touch indicators.
+
+2016-03-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix HTTPS on Mac using NSURLSession after r198457
+        https://bugs.webkit.org/show_bug.cgi?id=155774
+        <rdar://problem/25301027>
+
+        Reviewed by Anders Carlsson.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::NetworkSession::NetworkSession):
+        r198457 was intended to fix an issue on iOS and have no change in behavior on Mac.
+        It did have a subtle change in behavior, setting the source application bundle identifier
+        on iOS and was causing problems with HTTPS connections using NSURLSession, so this patch
+        reverts that change.
+
+2016-03-22  Beth Dakin  <bdakin@apple.com>
+
+        Advanced spell checking should be guarded behind 
+        HAVE(ADVANCED_SPELL_CHECKING)
+        https://bugs.webkit.org/show_bug.cgi?id=155738
+
+        Reviewed by Geoff Garen.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::requestCandidatesForSelectionIfNeeded):
+        (WebKit::WebViewImpl::handleRequestedCandidates):
+        (WebKit::WebViewImpl::insertText):
+        * UIProcess/mac/TextCheckerMac.mm:
+        (WebKit::TextChecker::checkTextOfParagraph):
+        (WebKit::TextChecker::getGuessesForWord):
+        * config.h:
+
+2016-03-22  Chris Dumez  <cdumez@apple.com>
+
+        Add a setting to let the client toggle support for network cache speculative validation
+        https://bugs.webkit.org/show_bug.cgi?id=155622
+        <rdar://problem/25233209>
+
+        Reviewed by Antti Koivisto.
+
+        Copy new m_diskCacheSpeculativeValidationEnabled member introduced
+        in r198470 in ProcessPoolConfiguration::copy().
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+
 2016-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] WebInspector broken after r197620
