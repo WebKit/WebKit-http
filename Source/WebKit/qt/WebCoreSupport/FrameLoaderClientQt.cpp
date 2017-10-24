@@ -1519,12 +1519,6 @@ String FrameLoaderClientQt::overrideMediaType() const
     return String();
 }
 
-QString FrameLoaderClientQt::chooseFile(const QString& oldFile)
-{
-    QStringList result = m_webFrame->pageAdapter->chooseFiles(m_webFrame, /*allowMulti*/ false, (QStringList() << oldFile));
-    return result.isEmpty() ? QString() : result.first();
-}
-
 PassRefPtr<FrameNetworkingContext> FrameLoaderClientQt::createNetworkingContext()
 {
     QVariant value = m_webFrame->pageAdapter->handle()->property("_q_MIMESniffingDisabled");

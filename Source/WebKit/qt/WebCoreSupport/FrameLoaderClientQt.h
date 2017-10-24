@@ -214,8 +214,6 @@ public:
     void updateCachedDocumentLoader(DocumentLoader &) override;
     void prefetchDNS(const WTF::String &) override;
 
-    QString chooseFile(const QString& oldFile);
-
     PassRefPtr<FrameNetworkingContext> createNetworkingContext() override;
 
     const URL& lastRequestedUrl() const { return m_lastRequestedUrl; }
