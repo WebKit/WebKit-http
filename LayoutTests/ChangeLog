@@ -1,3 +1,174 @@
+2016-03-24  Saam barati  <sbarati@apple.com>
+
+        ES6: Implement IsRegExp function and use where needed in String.prototype.* methods
+        https://bugs.webkit.org/show_bug.cgi?id=155854
+
+        Reviewed by Mark Lam.
+
+        * js/string-includes-expected.txt:
+
+2016-03-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198627.
+        https://bugs.webkit.org/show_bug.cgi?id=155856
+
+        Caused use-after-free (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Fetch API] Add basic loading of resources"
+        https://bugs.webkit.org/show_bug.cgi?id=155637
+        http://trac.webkit.org/changeset/198627
+
+2016-03-24  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Separate Debugger enable state from the debugger breakpoints enabled state
+        https://bugs.webkit.org/show_bug.cgi?id=152193
+        <rdar://problem/23867520>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/script-profiler/event-type-API.html:
+        * inspector/script-profiler/event-type-Microtask.html:
+        * inspector/script-profiler/event-type-Other.html:
+
+2016-03-24  Daniel Bates  <dabates@apple.com>
+
+        Update expected results following <http://trac.webkit.org/changeset/198591>
+        (https://bugs.webkit.org/show_bug.cgi?id=155777)
+
+        * http/tests/security/contentSecurityPolicy/audio-redirect-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/video-redirect-blocked-expected.txt:
+
+2016-03-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add basic loading of resources
+        https://bugs.webkit.org/show_bug.cgi?id=155637
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: Removed flaky test expectations.
+        * http/tests/fetch/closing-while-fetching-expected.txt: Added.
+        * http/tests/fetch/closing-while-fetching.html: Added.
+        * http/tests/fetch/get-response-body-while-loading-expected.txt: Added.
+        * http/tests/fetch/get-response-body-while-loading.html: Added.
+        * http/tests/resources/download-json-with-delay.php: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/basic/request-headers-expected.txt: Added.
+
+2016-03-24  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Greedy unicode RegExp's don't properly backtrack past non BMP characters
+        https://bugs.webkit.org/show_bug.cgi?id=155829
+
+        Reviewed by Saam Barati.
+
+        Added new test cases.
+
+        * js/regexp-unicode-expected.txt:
+        * js/script-tests/regexp-unicode.js:
+
+2016-03-24  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening.
+
+        Unskip passing tests, which have been passed a long time ago.
+        Failed to track correct revision on EFL buildbot.
+
+        * platform/efl/TestExpectations:
+
+2016-03-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198538.
+        https://bugs.webkit.org/show_bug.cgi?id=155819
+
+        Broke two API tests on iOS simulator (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Media elements allowed to play without a user gesture, but
+        requiring fullscreen playback, should not be allowed to
+        autoplay."
+        https://bugs.webkit.org/show_bug.cgi?id=155599
+        http://trac.webkit.org/changeset/198538
+
+2016-03-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198582.
+        https://bugs.webkit.org/show_bug.cgi?id=155812
+
+        "It broke debugging in the web inspector" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "We should not disable inlining when the debugger is enabled"
+        https://bugs.webkit.org/show_bug.cgi?id=155741
+        http://trac.webkit.org/changeset/198582
+
+2016-03-23  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: y2 >= y1 in WebCore::RenderElement::drawLineForBoxSide
+        https://bugs.webkit.org/show_bug.cgi?id=155791
+
+        Reviewed by Simon Fraser.
+
+        With certain combination of border rect and adjacent width, we could end up with an empty final rect.
+        This patch ensures that we don't try to paint this empty rect. 
+
+        * fast/borders/empty-outline-border-assert-expected.txt: Added.
+        * fast/borders/empty-outline-border-assert.html: Added.
+
+2016-03-23  Michael Saboff  <msaboff@apple.com>
+
+        JavaScriptCore ArrayPrototype::join shouldn't cache butterfly when it makes effectful calls
+        https://bugs.webkit.org/show_bug.cgi?id=155776
+
+        Reviewed by Saam Barati.
+
+        New test.
+
+        * js/regress-155776-expected.txt: Added.
+        * js/regress-155776.html: Added.
+        * js/script-tests/regress-155776.js: Added.
+        (fillBigArrayViaToString):
+        (Function.prototype.toString):
+
+2016-03-23  Daniel Bates  <dabates@apple.com>
+
+        CSP: Make violation console messages concise and consistent
+        https://bugs.webkit.org/show_bug.cgi?id=155777
+        <rdar://problem/25304031>
+
+        Reviewed by Darin Adler.
+
+        Update expected results to reflect new violation message text.
+
+        * fast/workers/worker-inherits-csp-blocks-xhr-expected.txt:
+        * http/tests/contentextensions/block-cookies-in-csp-report-expected.txt:
+        * http/tests/contentextensions/block-csp-report-expected.txt:
+        * http/tests/contentextensions/hide-on-csp-report-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/base-uri-deny-expected.txt:
+        * http/tests/security/contentSecurityPolicy/1.1/child-src/frame-blocked-expected.txt:
+        ...
+        * http/tests/security/contentSecurityPolicy/xsl-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/xsl-img-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/xsl-redirect-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/xsl-unaffected-by-style-src-1-expected.txt:
+        * http/tests/security/isolatedWorld/bypass-main-world-csp-for-xhr-expected.txt:
+        * http/tests/security/isolatedWorld/image-load-should-not-bypass-main-world-csp-expected.txt:
+        * media/csp-blocks-video-expected.txt:
+
+2016-03-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebGL] Non-power-of-two texture optimization
+        https://bugs.webkit.org/show_bug.cgi?id=118409
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/texture-alternating-npot-expected.txt: Added.
+        * fast/canvas/webgl/texture-alternating-npot.html: Added.
+
 2016-03-23  Saam barati  <sbarati@apple.com>
 
         We should not disable inlining when the debugger is enabled

@@ -1,3 +1,265 @@
+2016-03-24  Saam barati  <sbarati@apple.com>
+
+        ES6: Implement IsRegExp function and use where needed in String.prototype.* methods
+        https://bugs.webkit.org/show_bug.cgi?id=155854
+
+        Reviewed by Mark Lam.
+
+        This patch is a straight forward implementation of IsRegExp
+        in the ES6 spec:
+        https://tc39.github.io/ecma262/#sec-isregexp
+        We now use this IsRegExp function inside String.prototype.(startsWith | endsWith | includes)
+        as is dictated by the spec.
+
+        * runtime/RegExpConstructor.h:
+        (JSC::RegExpConstructor::recordMatch):
+        (JSC::isRegExp):
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncStartsWith):
+        (JSC::stringProtoFuncEndsWith):
+        (JSC::stringProtoFuncIncludes):
+        * tests/es6.yaml:
+        * tests/es6/well-known_symbols_Symbol.match_String.prototype.endsWith.js: Added.
+        (test):
+        * tests/es6/well-known_symbols_Symbol.match_String.prototype.includes.js: Added.
+        (test):
+        * tests/es6/well-known_symbols_Symbol.match_String.prototype.startsWith.js: Added.
+        (test):
+        * tests/stress/string-prototype-methods-endsWith-startsWith-includes-correctness.js: Added.
+        (assert):
+        (test):
+        (test.get let):
+        (get let):
+
+2016-03-24  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Separate Debugger enable state from the debugger breakpoints enabled state
+        https://bugs.webkit.org/show_bug.cgi?id=152193
+        <rdar://problem/23867520>
+
+        Reviewed by Joseph Pecoraro.
+
+        When all breakpoints are disabled, we can recompile all JS
+        code and remove the necessary debugging code that is emitted.
+        This allows for the code that is executing to be almost as fast
+        as it is with the debugger completely disabled. This is in preparation for:
+        https://bugs.webkit.org/show_bug.cgi?id=155809
+        which will introduce a high fidelity profiler. That profiler
+        could be built off the principle that breakpoints are disabled
+        when we're performing a high fidelity profile. Doing so, for example,
+        allows the sampling profiler to better measure the real performance
+        of the JS of a particular application.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::setBreakpointsActivated):
+        (JSC::Debugger::setPauseOnExceptionsState):
+        * debugger/Debugger.h:
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        * inspector/JSGlobalObjectScriptDebugServer.cpp:
+        (Inspector::JSGlobalObjectScriptDebugServer::attachDebugger):
+        (Inspector::JSGlobalObjectScriptDebugServer::detachDebugger):
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::enable):
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::createProgramCodeBlock):
+        (JSC::JSGlobalObject::createEvalCodeBlock):
+        (JSC::JSGlobalObject::createModuleProgramCodeBlock):
+        (JSC::JSGlobalObject::queueMicrotask):
+        (JSC::JSGlobalObject::hasDebugger):
+        (JSC::JSGlobalObject::hasInteractiveDebugger):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::runtimeFlags):
+        (JSC::JSGlobalObject::hasDebugger): Deleted.
+
+2016-03-24  Michael Saboff  <msaboff@apple.com>
+
+        Create private builtin helper advanceStringIndexUnicode() for use by RegExp builtins
+        https://bugs.webkit.org/show_bug.cgi?id=155855
+
+        Reviewed by Mark Lam.
+
+        Moved advanceStringIndexUnicode() as a separate helper.  Added it as a private builtin
+        to the GlobalObject like other private builtins.
+
+        * builtins/RegExpPrototype.js:
+        (advanceStringIndexUnicode):
+        (match):
+        (match.advanceStringIndexUnicode): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2016-03-24  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Add Proxy based tests for RegExp.prototype[@@match]
+        https://bugs.webkit.org/show_bug.cgi?id=155807
+
+        Reviewed by Saam Barati.
+
+        Added new test that uses Proxy to verify RegExp.prototype[@@match] processing
+        conforms to the ES6 standard
+
+        Modified builtin RegExp.prototype[@@match] to be ES6 spec conformant.
+
+        Updated es6.yaml as Proxy_internal_get_calls_RegExp.prototype[Symbol.match].js now passes.
+
+        * builtins/RegExpPrototype.js:
+        (match):
+        * tests/es6.yaml: Updated.
+        * tests/stress/regexp-match-proxy.js: Added.
+        (assert):
+        (let.getProxyNullExec.new.Proxy):
+        (let.getSetProxyNullExec.new.Proxy):
+        (get resetTracking):
+        (let.getSetProxyMatches_s.new.Proxy):
+        (set get getSetProxyNullExec):
+        (let.getSetProxyMatches_tx_Greedy.new.Proxy):
+        (set get getSetProxyMatches_s):
+        (let.getSetProxyMatchesUnicode_digit_nonGreedy.new.Proxy):
+        (set get getSetProxyMatches_tx_Greedy):
+
+2016-03-24  Michael Saboff  <msaboff@apple.com>
+
+        [ES6] Greedy unicode RegExp's don't properly backtrack past non BMP characters
+        https://bugs.webkit.org/show_bug.cgi?id=155829
+
+        Reviewed by Saam Barati.
+
+        When we backup when matching part of a unicode pattern, we can't just backup one character.
+        Instead we need to save our start position before trying to match a character and
+        restore the position if the match fails.  This was done in other places, but wasn't
+        done for all greedy types.
+
+        Fixed matchGlobal() to properly handle advancing past non BMP characters.
+
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::matchGlobal):
+        * runtime/RegExpObjectInlines.h:
+        (JSC::RegExpObject::advanceStringUnicode):
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::matchCharacterClass):
+        (JSC::Yarr::Interpreter::matchDisjunction):
+
+2016-03-24  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] In some cases, the integer range optimization phase never converges
+        https://bugs.webkit.org/show_bug.cgi?id=155828
+        rdar://problem/25155460
+
+        Reviewed by Filip Pizlo.
+
+        In certain conditions, the integer range optimization phase continuously
+        changes the representation of the same truth, preventing it from
+        converging to a stable state.
+
+        The bug starts by having the same ground truth incomming into a block
+        in different valid forms. For example, you can have x < 42 coming as:
+            1) x < 42
+            2) x < 41 + 1
+            3) x < 43 - 1
+
+        Having those 3 alone coming from predecessors would be okay, we would
+        just accumulate them. The problem is when you have a combination
+        of rule that filter out the previously obtained truth, then add a new
+        form of the same truth.
+
+        Let's use the test case as an example. We have two incoming blocks:
+            Block #1:
+              -i < 42
+              -i != 41
+            Block #2:
+              -i < 41
+              -i == 42 - 42 (i == 0 refining the rule above).
+
+        Let say that our conditions at head are now [i < 41, i < 42 - 1].
+
+        If we merge block #2:
+              -i < 42 and i < 41      -> i < 42
+              -i < 42 and i < 42 - 1  -> i < 42
+              -i != 41 and i < 41     -> i < 41
+              -i != 41 and i < 42 - 1 -> nothing
+
+        The new head is: [i < 41, i < 42]
+
+        If we merge block #1:
+              -i < 41 and i < 41       -> i < 41
+              -i < 41 and i < 42       -> i < 42
+              -i == 42 - 42 and i < 41 -> (i < 41 and i < 42 - 1)
+              -i == 42 - 42 and i < 42 -> i < 42
+
+        After filter, we are back to [i < 41, i < 42 - 1].
+
+        There are several variations of this idea where the same truth
+        rotate different forms with each merge().
+
+        One possible solution is to make filter() more aggressive
+        to avoid the better form occuring at merge(). I'll probably
+        do that at some point but that seems fragile since the same
+        problem could reappear if merge() is later improved.
+
+        For this patch, I went with a more generic solution after
+        merge(): if the generated form is equivalent to one that
+        previously existed at head, pick the existing form.
+
+        In the previous example, what happens is we only have
+        either [i < 41] or [i < 42 - 1] but never both simultaneously.
+
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * tests/stress/integer-range-optimization-constant-representation-1.js: Added.
+        * tests/stress/integer-range-optimization-constant-representation-2.js: Added.
+        Two variation. One timeout in release because of the additional flags.
+        The other is gets more type of run but only assert in debug.
+
+2016-03-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198582.
+        https://bugs.webkit.org/show_bug.cgi?id=155812
+
+        "It broke debugging in the web inspector" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "We should not disable inlining when the debugger is enabled"
+        https://bugs.webkit.org/show_bug.cgi?id=155741
+        http://trac.webkit.org/changeset/198582
+
+2016-03-23  Michael Saboff  <msaboff@apple.com>
+
+        JavaScriptCore ArrayPrototype::join shouldn't cache butterfly when it makes effectful calls
+        https://bugs.webkit.org/show_bug.cgi?id=155776
+
+        Reviewed by Saam Barati.
+
+        Array.join ends up calling toString, possibly on some object.  Since these calls
+        could be effectful and could change the array itself, we can't hold the butterfly
+        pointer while making effectful calls.  Changed the code to fall back to the general
+        case when an effectful toString() call might be made.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::join):
+        * runtime/JSStringJoiner.h:
+        (JSC::JSStringJoiner::appendWithoutSideEffects): New helper that doesn't make effectful
+        toString() calls.
+        (JSC::JSStringJoiner::append): Built upon appendWithoutSideEffects.
+
+2016-03-23  Keith Miller  <keith_miller@apple.com>
+
+        Array.prototype native functions' species constructors should work with proxies
+        https://bugs.webkit.org/show_bug.cgi?id=155798
+
+        Reviewed by Mark Lam.
+
+        Before native the species constructors were checking if the this value was a JSArray.
+        Instead they should look check that the this value returns true on Array.isArray.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::speciesConstructArray):
+        * tests/es6.yaml:
+        * tests/stress/proxy-array-prototype-methods.js:
+
 2016-03-23  Saam barati  <sbarati@apple.com>
 
         We should not disable inlining when the debugger is enabled

@@ -1,3 +1,58 @@
+2016-03-24  Enrica Casucci  <enrica@apple.com>
+
+        Adopt new SPI from DataDetectorsCore to decide link behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=155780
+        rdar://problem/25303631
+
+        Reviewed by Sam Weinig.
+
+        Changed use of data detection functions to take
+        a reference to Element instead of a pointer.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::handleTap):
+        (WebKit::WebPage::commitPotentialTap):
+        (WebKit::WebPage::getPositionInformation):
+
+2016-03-24  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Disable network cache speculative validation by default
+        https://bugs.webkit.org/show_bug.cgi?id=155857
+        <rdar://problem/25233210>
+
+        Reviewed by Alex Christensen.
+
+        Disable network cache speculative validation by default. Clients such
+        as Safari now use the API added in r198544 to enable if they want.
+
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+
+2016-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix null dereferencing in NetworkLoad::continueCanAuthenticateAgainstProtectionSpace
+        https://bugs.webkit.org/show_bug.cgi?id=155799
+        rdar://25289012
+
+        Reviewed by Tim Horton.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        Null-check all the things!
+
+2016-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        MiniBrowser doesn't use accelerated drawing in WebKit2 windows if a WebKit1 window was opened first
+        https://bugs.webkit.org/show_bug.cgi?id=141576
+        <rdar://problem/25304548>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences init]):
+        Make the NSUserDefaults key prefix for debug preferences (the only ones read
+        from NSUserDefaults) "WebKitDebug" instead of just "WebKit" so that they
+        don't conflict with the names that WebKit1 registers default values for.
+
 2016-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Use Region instead of IntRect in PageClient and WebPageProxy setViewNeedsDisplay method

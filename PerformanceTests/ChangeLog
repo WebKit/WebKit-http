@@ -1,3 +1,79 @@
+2016-03-23  Jon Lee  <jonlee@apple.com>
+
+        Update focus and leaves tests
+        https://bugs.webkit.org/show_bug.cgi?id=155825
+
+        Reviewed by Simon Fraser.
+
+        Particles would improperly disappear, before they were fully off stage. Update the calculation.
+        * Animometer/tests/dom/resources/leaves.js:
+        * Animometer/tests/master/resources/leaves.js:
+
+        * Animometer/tests/master/focus.html: Update the center element styling.
+        * Animometer/tests/master/resources/focus.js:
+        (FocusElement.Utilities.createClass): Give enough space in the container for each particle for the blur
+        to spread. It should be about 3x more space than the blur radius on each side.
+        (Stage.call.initialize): Ditto for the center element.
+
+2016-03-23  Jon Lee  <jonlee@apple.com>
+
+        Update support for other platforms
+        https://bugs.webkit.org/show_bug.cgi?id=155824
+
+        Reviewed by Simon Fraser.
+
+        * Animometer/resources/debug-runner/animometer.css: Remove extraneous media query. All of it should
+        be handled in the release stylesheet.
+        * Animometer/resources/debug-runner/animometer.js: Add support for browsers that return an HTMLCollection
+        when retrieving radio elements with a name, instead of the selected value.
+        * Animometer/resources/runner/animometer.css: Adjust the queries for devices of varying widths.
+        (.frame-container): Move overflow:hidden to #stage.
+        * Animometer/tests/master/resources/stage.css: Consolidate into tests/resources/stage.css.
+        * Animometer/tests/resources/stage.css:
+        (body): Remove overflow:hidden.
+        (#stage): Set overflow:hidden here.
+        (#center-text): Moved from master/resources/stage.css.
+
+        Update stylesheet hrefs.
+        * Animometer/tests/master/canvas-stage.html:
+        * Animometer/tests/master/focus.html:
+        * Animometer/tests/master/leaves.html:
+        * Animometer/tests/master/multiply.html:
+        * Animometer/tests/master/particles.html:
+        * Animometer/tests/master/text.html: Adjust text size to fit in the device screen.
+
+2016-03-23  Jon Lee  <jonlee@apple.com>
+
+        Make the benchmark require device to be in landscape orientation
+        https://bugs.webkit.org/show_bug.cgi?id=155822
+        rdar://problem/25258650
+
+        Reviewed by Ryosuke Niwa.
+
+        Check that the device is in landscape orientation. If not, disable the button to start it,
+        and show a warning message.
+
+        * Animometer/developer.html: Add a message about how the browser should be set up. Include a
+        warning message that appears if the orientation is incorrect on mobile devices.
+        * Animometer/index.html: Ditto.
+
+        * Animometer/resources/debug-runner/animometer.css: Migrate the .hidden rule into the release
+        stylesheet. Update the style to accommodate the new UI.
+        * Animometer/resources/runner/animometer.css:
+
+        * Animometer/resources/runner/animometer.js:
+        (window.benchmarkController.initialize): Add the orientation listener is needed.
+        (window.benchmarkController.addOrientationListenerIfNecessary): Only mobile devices need this. Check
+        to see for support of window.orientation.
+        (window.benchmarkController._orientationChanged): Toggle the warning based on whether we match the
+        landscape query. Set a state variable, which is needed for the debug harness. Call updateStartButtonState.
+        (window.benchmarkController.updateStartButtonState):
+        * Animometer/resources/debug-runner/animometer.js: Change _updateStartButtonState to return
+        a boolean about whether at least one test is selected. That will be used in
+        benchmarkController.updateStartButtonState(). Move the load event listener to the release version.
+        (window.benchmarkController.updateStartButtonState): Override the release version, and also check
+        that at least one test is selected.
+
 2016-03-22  Geoffrey Garen  <ggaren@apple.com>
 
         MallocBench: consolidate regression testing for aligned allocation

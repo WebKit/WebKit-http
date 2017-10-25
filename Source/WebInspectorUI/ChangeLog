@@ -1,3 +1,250 @@
+2016-03-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce forced layouts
+        https://bugs.webkit.org/show_bug.cgi?id=155852
+        <rdar://problem/25345197>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.layout):
+        (WebInspector.DataGrid.prototype._positionResizerElements):
+        (WebInspector.DataGrid.prototype._positionHeaderViews):
+        In loops, force layout once, calculate values, then set styles.
+
+        * UserInterface/Views/RadioButtonNavigationItem.js:
+        (WebInspector.RadioButtonNavigationItem):
+        (WebInspector.RadioButtonNavigationItem.prototype.updateLayout):
+        Force layout once to calculate the min-width, then never again.
+
+2016-03-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Open Resource Dialog should not system beep when using Enter to select an item
+        https://bugs.webkit.org/show_bug.cgi?id=155853
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WebInspector.OpenResourceDialog.prototype._handleKeydownEvent):
+        Prevent default when handling Enter with a selected result.
+
+2016-03-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Miscellaneous performance fixes in Timeline recording
+        https://bugs.webkit.org/show_bug.cgi?id=155832
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CallingContextTree.js:
+        (WebInspector.CCTNode.prototype.hasChildren):
+        No need to allocate an array with all of the properties, we can just
+        check if there is at least one property using a short circuit for..in.
+        Performance was always faster for empty, small, and large objects
+        in micro benchmarks.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.layout):
+        Avoid causing DOM layout when positioning resizers. They only need
+        a layout if we are resizing the DataGrid, or the initial layout.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar):
+        (WebInspector.NavigationBar.prototype.needsLayout):
+        (WebInspector.NavigationBar.prototype.layout):
+        Avoid causing DOM layout every View layout. In fact, only do a
+        DOM layout when someone has triggered a needsLayout on this
+        navigation bar. A basic dirty layout (triggered by a parent)
+        should not have caused us to resize.
+
+        * UserInterface/Views/HeapAllocationsTimelineOverviewGraph.js:
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WebInspector.LayoutTimelineOverviewGraph.prototype.layout):
+        * UserInterface/Views/MemoryTimelineOverviewGraph.js:
+        (WebInspector.MemoryTimelineOverviewGraph.prototype.reset):
+        (WebInspector.MemoryTimelineOverviewGraph.prototype._updateLegend):
+        * UserInterface/Views/NetworkTimelineOverviewGraph.js:
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype.layout):
+        * UserInterface/Views/ScriptTimelineOverviewGraph.js:
+        Avoid doing any work in non-visible graphs. This was very common
+        because the RenderingFrameTimelineOverviewGraph is never visible
+        when the other timeline graphs are, but was performing lots of work.
+
+        * UserInterface/Views/MemoryCategoryView.js:
+        (WebInspector.MemoryCategoryView.prototype.clear):
+        (WebInspector.MemoryCategoryView.prototype._updateDetails):
+        (WebInspector.MemoryCategoryView):
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WebInspector.MemoryTimelineView.prototype.reset):
+        (WebInspector.MemoryTimelineView.prototype._updateUsageLegend):
+        (WebInspector.MemoryTimelineView.prototype._updateMaxComparisonLegend):
+        Cache values to avoid textContent calls even if the content did not change.
+        This reduces unnecessary work when the values wouldn't change.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WebInspector.TimelineRecordBar.createCombinedBars):
+        (WebInspector.TimelineRecordBar.prototype.set records):
+        Revert to fast loop and as this code path is very hot and for..of iteration
+        was showing up in profiles. Remove assert which seems rather pointless but
+        showed up in profiles.
+
+2016-03-24  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Large repaints while typing in the console tab
+        https://bugs.webkit.org/show_bug.cgi?id=155627
+        <rdar://problem/25234875>
+
+        Reviewed by Timothy Hatcher.
+
+        Use a `position: absolute` workaround to reduce large repaint areas caused by flexbox.
+
+        * UserInterface/Views/LogContentView.css:
+        (body.selected-tab-console #content):
+        This selector must only affect the console tab as it breaks sidebars in other tabs.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._tabBarItemSelected):
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype.set selectedTabBarItem):
+        Add "selected-tab-console" class to <body> when the console tab is selected.
+
+2016-03-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline range selection changes with ProfileView should not cause navigation bar items to flicker
+        https://bugs.webkit.org/show_bug.cgi?id=155834
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ProfileView.js:
+        (WebInspector.ProfileView.prototype._recreate):
+        The only reason our selection path components would change is if we
+        had focus nodes before and do not anymore.
+
+2016-03-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Allow clicking the Timeline in Editing Mode to toggle the checkbox
+        https://bugs.webkit.org/show_bug.cgi?id=155815
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype._startEditingInstruments):
+        Remove unused variable.
+        
+        * UserInterface/Views/TimelineTreeElement.js:
+        (WebInspector.TimelineTreeElement.prototype.onattach):
+        (WebInspector.TimelineTreeElement.prototype._clickHandler):
+        Make clicking on the tree element toggle the checkbox.
+
+2016-03-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline Tab sometimes restores as blank
+        https://bugs.webkit.org/show_bug.cgi?id=155811
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.prototype.restoreFromCookie):
+        When early bailing in restore, if there is no content view to restore,
+        then at least fallback to showing the Overview.
+
+2016-03-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION: Timeline Reset does not clear datagrids
+        https://bugs.webkit.org/show_bug.cgi?id=155804
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WebInspector.HeapAllocationsTimelineView.prototype.shown):
+        (WebInspector.HeapAllocationsTimelineView.prototype.hidden):
+        (WebInspector.HeapAllocationsTimelineView.prototype.closed):
+        (WebInspector.HeapAllocationsTimelineView.prototype.reset):
+        Although we don't use the popover features of TimelineDataGrid,
+        be a good citizen and call methods on the datagrid.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype.reset):
+        Clear the datagrid on reset.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype.reset):
+        Clear the datagrid on reset.
+
+2016-03-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exceptions closing Timeline tab
+        https://bugs.webkit.org/show_bug.cgi?id=155805
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ScriptClusterTimelineView.js:
+        (WebInspector.ScriptClusterTimelineView.prototype._scriptClusterViewCurrentContentViewDidChange):
+        Gracefully handle if there is no content view.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype.closed): Deleted.
+        Fix typo.
+
+2016-03-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Quick Open dialog has fuzzy icons at 1x
+        https://bugs.webkit.org/show_bug.cgi?id=155557
+        <rdar://problem/25200217>
+
+        Reviewed by Timothy Hatcher.
+
+        New resource icons (documents and clippings) for large  tree items,
+        for use in the Quick Open dialog's tree outline.
+
+        * UserInterface/Images/ClippingCSSLarge.png: Added.
+        * UserInterface/Images/ClippingCSSLarge@2x.png: Added.
+        * UserInterface/Images/ClippingGenericLarge.png: Added.
+        * UserInterface/Images/ClippingGenericLarge@2x.png: Added.
+        * UserInterface/Images/ClippingJSLarge.png: Added.
+        * UserInterface/Images/ClippingJSLarge@2x.png: Added.
+        * UserInterface/Images/DocumentCSSLarge.png: Added.
+        * UserInterface/Images/DocumentCSSLarge@2x.png: Added.
+        * UserInterface/Images/DocumentFontLarge.png: Added.
+        * UserInterface/Images/DocumentFontLarge@2x.png: Added.
+        * UserInterface/Images/DocumentGenericLarge.png: Added.
+        * UserInterface/Images/DocumentGenericLarge@2x.png: Added.
+        * UserInterface/Images/DocumentImageLarge.png: Added.
+        * UserInterface/Images/DocumentImageLarge@2x.png: Added.
+        * UserInterface/Images/DocumentJSLarge.png: Added.
+        * UserInterface/Images/DocumentJSLarge@2x.png: Added.
+        * UserInterface/Images/DocumentMarkupLarge.png: Added.
+        * UserInterface/Images/DocumentMarkupLarge@2x.png: Added.
+        32px icons at 1x and 2x.
+
+        * UserInterface/Views/ResourceIcons.css:
+        (.large .resource-icon .icon):
+        (.large .resource-icon.resource-type-document .icon):
+        (.large .resource-icon.resource-type-image .icon):
+        (.large .resource-icon.resource-type-font .icon):
+        (.large .resource-icon.resource-type-stylesheet .icon):
+        (.large .resource-icon.resource-type-script .icon):
+        (.large .anonymous-script-icon .icon):
+        (.large .source-map-resource.resource-icon .icon):
+        (.large .source-map-resource.resource-icon.resource-type-stylesheet .icon):
+        (.large .source-map-resource.resource-icon.resource-type-script .icon):
+        Large icon styles.
+
+2016-03-22  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: String double quoting in the console and elsewhere needs to escape backslash too
+
+        https://bugs.webkit.org/show_bug.cgi?id=155752
+        rdar://problem/25293141
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Utilities.js:
+        (doubleQuotedString): Escape backslashes too.
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.createLinkifiedElementString): Ditto.
+
 2016-03-22  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: REGRESSION: Switching Timelines via Path Component does not work

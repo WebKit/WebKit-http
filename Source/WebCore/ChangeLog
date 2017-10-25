@@ -1,3 +1,603 @@
+2016-03-24  Jer Noble  <jer.noble@apple.com>
+
+        Safari Crashes if audio.src is changed while connected to AudioAnalyserNode
+        https://bugs.webkit.org/show_bug.cgi?id=153593
+        <rdar://problem/23648082>
+
+        Reviewed by Eric Carlson.
+
+        m_ringBuffer is accessed on the high-priority WebAudio thread after it has been cleared (a
+        null-deref). Protect against unsafe access on multiple threads of a non-refcounted object by
+        a simple try_lock.
+
+        Additionally, limit the use of variables in use by both the separate WebAudio thread method
+        (provideInput()) and AVAudioMix thread method (process()) where possible, and convert to
+        std::atomic<> where ivars must be acessed by both threads. m_writeCount is entirely superfluous,
+        as it is a synonym for the endTime returned by m_ringBuffer->getCurrentFrameBounds().
+
+        * platform/graphics/avfoundation/AudioSourceProviderAVFObjC.h:
+        * platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm:
+        (WebCore::AudioSourceProviderAVFObjC::provideInput):
+        (WebCore::AudioSourceProviderAVFObjC::prepare):
+        (WebCore::AudioSourceProviderAVFObjC::unprepare):
+        (WebCore::AudioSourceProviderAVFObjC::process):
+
+2016-03-24  Enrica Casucci  <enrica@apple.com>
+
+        Adopt new SPI from DataDetectorsCore to decide link behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=155780
+        rdar://problem/25303631
+
+        Reviewed by Sam Weinig.
+
+        isDataDetectorLink and shouldCancelDefaultAction now
+        use the SPI provided by DataDetectorsCore to decide
+        what is the link behavior when the user taps on it.
+
+        * editing/cocoa/DataDetection.h:
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::detectItemAtPositionWithRange):
+        (WebCore::DataDetection::isDataDetectorLink):
+        (WebCore::DataDetection::requiresExtendedContext):
+        (WebCore::DataDetection::dataDetectorIdentifier):
+        (WebCore::DataDetection::shouldCancelDefaultAction):
+        * platform/cocoa/DataDetectorsCoreSoftLink.h:
+        * platform/cocoa/DataDetectorsCoreSoftLink.mm:
+        * platform/spi/cocoa/DataDetectorsCoreSPI.h:
+
+2016-03-24  Enrica Casucci  <enrica@apple.com>
+
+        DataDetection creates links that are longer than the actual result.
+        https://bugs.webkit.org/show_bug.cgi?id=155850
+        rdar://problem/25280740
+
+        Reviewed by Anders Carlsson.
+
+        When a data detection result is composed of multiple fragments,
+        the range for the last fragment should take into account the end
+        offset of the query range structure, since there could be additional
+        content in that range that is not part of the result.
+
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::DataDetection::detectContentInRange):
+
+2016-03-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198627.
+        https://bugs.webkit.org/show_bug.cgi?id=155856
+
+        Caused use-after-free (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "[Fetch API] Add basic loading of resources"
+        https://bugs.webkit.org/show_bug.cgi?id=155637
+        http://trac.webkit.org/changeset/198627
+
+2016-03-24  Saam barati  <sbarati@apple.com>
+
+        Web Inspector: Separate Debugger enable state from the debugger breakpoints enabled state
+        https://bugs.webkit.org/show_bug.cgi?id=152193
+        <rdar://problem/23867520>
+
+        Reviewed by Joseph Pecoraro.
+
+        No new tests because this is already tested by inspector tests.
+
+        * inspector/PageScriptDebugServer.cpp:
+        (WebCore::PageScriptDebugServer::attachDebugger):
+        (WebCore::PageScriptDebugServer::detachDebugger):
+
+2016-03-24  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Make calling HTMLMediaElement.buffered less expensive
+        https://bugs.webkit.org/show_bug.cgi?id=155846
+
+        Reviewed by Eric Carlson.
+
+        The MSE specification requires a new TimeRanges object be returned when calling
+        HTMLMediaElement.buffered. Additionally, the requirements for generating the buffered time
+        ranges for MediaSource and its constituent SourceBuffers are specific and expensive. Rather
+        than perform all these steps each time HTMLMediaElement.buffered is queried, cache the final
+        result and only regenerate the cached value if the buffered ranges of the consituent
+        SourceBuffers has changed.
+
+        Also, make copying a PlatformTimeRanges more efficient by doing a straight vector-to-vector
+        copy of the PlatformTimeRange's data.
+
+        * Modules/mediasource/MediaSource.cpp:
+        (WebCore::MediaSource::buffered):
+        (WebCore::MediaSource::regenerateActiveSourceBuffers):
+        * Modules/mediasource/MediaSource.h:
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::removeCodedFrames):
+        (WebCore::SourceBuffer::sourceBufferPrivateDidReceiveSample):
+        * Modules/mediasource/SourceBuffer.h:
+        * platform/graphics/PlatformTimeRanges.cpp:
+        (WebCore::PlatformTimeRanges::PlatformTimeRanges): Deleted.
+        (WebCore::PlatformTimeRanges::operator=): Deleted.
+        (WebCore::PlatformTimeRanges::copy): Deleted.
+        * platform/graphics/PlatformTimeRanges.h:
+
+2016-03-24  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(r189129): <audio> elements do not have playback controls on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=155808
+        <rdar://problem/23822457>
+
+        Reviewed by Eric Carlson.
+
+        Audio elements should never require fullscreen for playback.
+
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::requiresFullscreenForVideoPlayback):
+
+2016-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up cookie jar after r198195
+        https://bugs.webkit.org/show_bug.cgi?id=155484
+
+        Reviewed by Tim Horton.
+
+        Get rid of a now unneeded macro.
+
+        * loader/CookieJar.cpp:
+        (WebCore::storageSession):
+        (WebCore::cookies):
+        (WebCore::setCookies):
+        (WebCore::cookiesEnabled):
+        (WebCore::cookieRequestHeaderFieldValue):
+        (WebCore::getRawCookies):
+        (WebCore::deleteCookie):
+
+2016-03-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add basic loading of resources
+        https://bugs.webkit.org/show_bug.cgi?id=155637
+
+        Reviewed by Darin Adler.
+
+        Adding support for basic fetch for Window (no support for Worker yet).
+        A FetchResponse object is created for every fetch task.
+        But it will only be exposed to JS at promise fulfillment time, i.e. once initial response headers are retrieved.
+
+        Updating Blob resource handle to add Content-Type and Content-Length header and notifying of error in case of erroneous HTTP method.
+
+        Fetch is limited to same origin requests currently due to some WPT tests that would timeout otherwise.
+
+        Tests: http/tests/fetch/closing-while-fetching.html
+               http/tests/fetch/get-response-body-while-loading.html
+        Also covered by rebased tests.
+
+        * Modules/fetch/DOMWindowFetch.cpp: Creating a FetchResponse to start fetching.
+        (WebCore::DOMWindowFetch::fetch):
+        * Modules/fetch/DOMWindowFetch.h:
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::consume):
+        (WebCore::FetchBody::consumeArrayBuffer): Handling of body promises in case of data stored as a buffer.
+        (WebCore::FetchBody::consumeText): Passing the promise as a reference.
+        (WebCore::blobFromArrayBuffer): Helper routine.
+        (WebCore::FetchBody::fulfillTextPromise): Helper routine.
+        (WebCore::FetchBody::loadedAsArrayBuffer): Updated to handle storing of data as a buffer.
+        (WebCore::FetchBody::loadedAsText):
+        (WebCore::FetchBody::bodyForInternalRequest): Helper routine to generate the request body data to be sent as part of the fetch request.
+        (WebCore::FetchBody::extractFromText):
+        * Modules/fetch/FetchBody.h:
+        (WebCore::FetchBody::loadingBody):
+        (WebCore::FetchBody::FetchBody):
+        * Modules/fetch/FetchBodyOwner.cpp:
+        (WebCore::FetchBodyOwner::loadBlob): Updated to cope with the change that FetchLoader::start does not return a boolean anymore
+        but will directly call failure callbacks.
+        (WebCore::FetchBodyOwner::loadedBlobAsText): Moving it closer to other blob loading routines.
+        (WebCore::FetchBodyOwner::finishBlobLoading):
+        * Modules/fetch/FetchBodyOwner.h:
+        (WebCore::FetchBodyOwner::body):
+        (WebCore::FetchBodyOwner::loadedBlobAsArrayBuffer):
+        * Modules/fetch/FetchHeaders.cpp:
+        (WebCore::FetchHeaders::fill):
+        (WebCore::FetchHeaders::filterAndFill): Helper routine to fill headers from a HTTPHeaderMap after being filtered.
+        * Modules/fetch/FetchHeaders.h:
+        (WebCore::FetchHeaders::internalHeaders):
+        * Modules/fetch/FetchLoader.cpp:
+        (WebCore::FetchLoader::start):
+        (WebCore::FetchLoader::didFailRedirectCheck):
+        * Modules/fetch/FetchLoader.h:
+        * Modules/fetch/FetchRequest.cpp:
+        (WebCore::FetchRequest::internalRequest): Routine used to create the ResourceRequest transmitted to ThreadableLoader.
+       * Modules/fetch/FetchRequest.h:
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::fetch): Start fetching by creating a FetchLoader based on passed request.
+        (WebCore::FetchResponse::BodyLoader::didSucceed): FetchLoader callback.
+        (WebCore::FetchResponse::BodyLoader::didFail): Ditto.
+        (WebCore::FetchResponse::BodyLoader::BodyLoader): Ditto.
+        (WebCore::FetchResponse::BodyLoader::didReceiveResponse): Ditto.
+        (WebCore::FetchResponse::BodyLoader::didFinishLoadingAsArrayBuffer): Ditto.
+        (WebCore::FetchResponse::BodyLoader::start): Starting fetch loader.
+        (WebCore::FetchResponse::BodyLoader::stop): Stopping fetch loader.
+        (WebCore::FetchResponse::stop): Stop loader if any.
+        * Modules/fetch/FetchResponse.h:
+        * platform/network/BlobResourceHandle.cpp:
+        (WebCore::BlobResourceHandle::doStart: Notifying the loader with an error if verb is not GET.
+        (WebCore::BlobResourceHandle::notifyResponseOnSuccess): Adding support for Content-Type and Content-Lenth headers.
+        (WebCore::BlobResourceHandle::createAsync): Removing GET verb check.
+
+2016-03-24  Andreas Kling  <akling@apple.com>
+
+        Remove virtual inheritance from SVGTransformable.
+        <https://webkit.org/b/155837>
+
+        Reviewed by Anders Carlsson.
+
+        Nothing else inherits SVGLocatable, so make the inheritance non-virtual.
+
+        * svg/SVGTransformable.h:
+
+2016-03-24  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        Remove DeferredWrapper::resolve<Vector<unsigned char>>
+        https://bugs.webkit.org/show_bug.cgi?id=154849
+
+        Reviewed by Darin Adler.
+
+        Adding fulfillPromiseWithArrayBuffer to resolve a promise with an ArrayBuffer.
+        If the ArrayBuffer is null, the promise is rejected with an OutOfMemory exception.
+
+        Not covered by tests since we would need to make tryCreate return null on failing allocation.
+
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::processIfEmptyOrDisturbed):
+        (WebCore::FetchBody::loadedAsArrayBuffer):
+        * bindings/js/JSDOMPromise.cpp:
+        (WebCore::fulfillPromiseWithArrayBuffer):
+        * bindings/js/JSDOMPromise.h:
+        (WebCore::DeferredWrapper::resolve<JSC::JSValue>): Deleted.
+        (WebCore::DeferredWrapper::resolve): Deleted.
+        * bindings/js/JSSubtleCryptoCustom.cpp:
+        (WebCore::JSSubtleCrypto::encrypt):
+        (WebCore::JSSubtleCrypto::decrypt):
+        (WebCore::JSSubtleCrypto::sign):
+        (WebCore::JSSubtleCrypto::digest):
+        (WebCore::JSSubtleCrypto::exportKey):
+        (WebCore::JSSubtleCrypto::wrapKey):
+
+2016-03-23  Daniel Bates  <dabates@apple.com>
+
+        CSP: Simplify logic for checking policies
+        https://bugs.webkit.org/show_bug.cgi?id=155817
+        <rdar://problem/25326546>
+
+        Reviewed by Zalan Bujtas.
+
+        Consolidate the various static template functions into a single function called ContentSecurityPolicy::allPoliciesAllow()
+        that tests whether a resource request when evaluated with respect to a directive (given as a ContentSecurityPolicyDirectiveList
+        pointer-to-member function) violates any of the CSPs that were delivered with the document.
+
+        No functionality changed. So, no new tests.
+
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::allPoliciesAllowHashFromContent): Formerly name isAllowedByAllWithHash. Made it
+        a member function so that we query for the document encoding instead of taking it as an argument. Modified
+        it to take a predicate function to pass it to allPoliciesAllow().
+        (WebCore::ContentSecurityPolicy::allowJavaScriptURLs): Modified to use ContentSecurityPolicy::allPoliciesAllow().
+        (WebCore::ContentSecurityPolicy::allowInlineEventHandlers): Ditto.
+        (WebCore::ContentSecurityPolicy::allowScriptWithNonce): Ditto.
+        (WebCore::ContentSecurityPolicy::allowStyleWithNonce): Ditto.
+        (WebCore::ContentSecurityPolicy::allowInlineScript): Modified to use ContentSecurityPolicy::allPoliciesAllow() and
+        ContentSecurityPolicy::allPoliciesAllowHashFromContent().
+        (WebCore::ContentSecurityPolicy::allowInlineStyle): Ditto.
+        (WebCore::ContentSecurityPolicy::allowEval): Modified to use ContentSecurityPolicy::allPoliciesAllow().
+        (WebCore::ContentSecurityPolicy::allowFrameAncestors): Ditto.
+        (WebCore::ContentSecurityPolicy::allowPluginType): Ditto.
+        (WebCore::ContentSecurityPolicy::allowScriptFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowObjectFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowChildFrameFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowChildContextFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowImageFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowStyleFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowFontFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowMediaFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowConnectToSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowFormAction): Ditto.
+        (WebCore::ContentSecurityPolicy::allowBaseURI): Ditto.
+        (WebCore::isAllowedByAllWithFrame): Deleted.
+        (WebCore::isAllowedByAll): Deleted.
+        (WebCore::isAllowedByAllWithState): Deleted.
+        (WebCore::isAllowedByAllWithContext): Deleted.
+        (WebCore::isAllowedByAllWithNonce): Deleted.
+        (WebCore::isAllowedByAllWithHash): Deleted.
+        (WebCore::isAllowedByAllWithHashFromContent): Deleted.
+        (WebCore::isAllowedByAllWithURL): Deleted.
+        (WebCore::ContentSecurityPolicy::documentEncoding): Deleted. Incorporated its functionality into ContentSecurityPolicy::allPoliciesAllowHashFromContent().
+        (WebCore::ContentSecurityPolicy::isActive): Deleted. This function has been unused since the removal of the CSP script
+        interface in <http://trac.webkit.org/changeset/197142>.
+        * page/csp/ContentSecurityPolicy.h:
+        (WebCore::ContentSecurityPolicy::allPoliciesAllow): Added. Returns whether the predicate function evaluates to true
+        for all CSP policies.
+
+2016-03-23  Jer Noble  <jer.noble@apple.com>
+
+        Media elements allowed to play without a user gesture, but requiring fullscreen playback, should not be allowed to autoplay.
+        https://bugs.webkit.org/show_bug.cgi?id=155599
+
+        Reviewed by Darin Adler.
+
+        Test: media/video-autoplay-allowed-but-fullscreen-required.html
+
+        Entering fullscreen should always require a user gesture.
+
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::playbackPermitted):
+
+2016-03-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198538.
+        https://bugs.webkit.org/show_bug.cgi?id=155819
+
+        Broke two API tests on iOS simulator (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Media elements allowed to play without a user gesture, but
+        requiring fullscreen playback, should not be allowed to
+        autoplay."
+        https://bugs.webkit.org/show_bug.cgi?id=155599
+        http://trac.webkit.org/changeset/198538
+
+2016-03-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Change the paint count indicator to indicate whether a layer is opaque
+        https://bugs.webkit.org/show_bug.cgi?id=155810
+
+        Reviewed by Tim Horton.
+
+        In non-opaque layers, give the paint count indicator a diagonal top left corner. Being
+        able to see layer opaqueness helps diagnose bugs.
+        
+        Also use CGContextStateSaver, and move the indicator in by a pixel to overlap less
+        with the layer border.
+
+        * platform/graphics/ca/PlatformCALayer.cpp:
+        (WebCore::PlatformCALayer::drawRepaintIndicator):
+
+2016-03-23  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: y2 >= y1 in WebCore::RenderElement::drawLineForBoxSide
+        https://bugs.webkit.org/show_bug.cgi?id=155791
+
+        Reviewed by Simon Fraser.
+
+        With certain combination of border rect and adjacent width, we could end up with an empty final rect.
+        This patch ensures that we don't try to paint this empty rect. 
+
+        Test: fast/borders/empty-outline-border-assert.html
+
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::drawLineForBoxSide):
+
+2016-03-23  Dean Jackson  <dino@apple.com>
+
+        Screen queries should query the exact screen, not a default
+        https://bugs.webkit.org/show_bug.cgi?id=155806
+        <rdar://problem/25322916>
+
+        Reviewed by Simon Fraser.
+
+        Some of our media queries were using helper functions that
+        would query the capabilities of the deepest screen, rather
+        than the currently used screen. I changed them to use
+        the existing helper function (that works with WebKit 2)
+        and comment in some other helpers why a generic check is
+        ok.
+
+        Covered by the existing tests.
+
+        * platform/mac/PlatformScreenMac.mm:
+        (WebCore::screenDepth): Use the helper function.
+        (WebCore::screenDepthPerComponent):
+        (WebCore::screenIsMonochrome): Move these and make a comment.
+        (WebCore::screenHasInvertedColors):
+
+2016-03-23  Daniel Bates  <dabates@apple.com>
+
+        CSP: Make violation console messages concise and consistent
+        https://bugs.webkit.org/show_bug.cgi?id=155777
+        <rdar://problem/25304031>
+
+        Reviewed by Darin Adler.
+
+        As a first step towards making the log messages that are emitted by the ContentSecurityPolicy object
+        concise and consistent with the language and formatting used in other WebKit console messages, including
+        other Content Security Policy messages, make the violation error messages concise and consistent.
+        Being concise and consistent will help make it straightforward for a person to understand the reason
+        for the violation by taking advantage of their familiarity with the language and formatting seen in
+        other WebKit console messages.
+
+        * page/csp/ContentSecurityPolicyDirectiveList.cpp:
+        (WebCore::consoleMessageForViolation): Added. Builds up a console message for violation.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowJavaScriptURLs): Extract logic for logging a console message/reporting
+        a violation from ContentSecurityPolicyDirectiveList::checkInlineAndReportViolation() to here and make use of WebCore::consoleMessageForViolation()
+        to build the actual console message.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineEventHandlers): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineScript): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineStyle): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowEval): Extract logic for logging a console message/reporting
+        a violation from ContentSecurityPolicyDirectiveList::checkEvalAndReportViolation() to here and make use of WebCore::consoleMessageForViolation()
+        to build the actual console message.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowPluginType): Extract logic for logging a console message/reporting
+        a violation from ContentSecurityPolicyDirectiveList::checkMediaTypeAndReportViolation() to here and make use of WebCore::consoleMessageForViolation()
+        to build the actual console message.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowScriptFromSource): Extract logic for logging a console message/reporting
+        a violation from ContentSecurityPolicyDirectiveList::checkSourceAndReportViolation() to here and make use of WebCore::consoleMessageForViolation()
+        to build the actual console message.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowObjectFromSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowChildContextFromSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowChildFrameFromSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowImageFromSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowStyleFromSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowFontFromSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowMediaFromSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowConnectToSource): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowFormAction): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowBaseURI): Ditto.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowFrameAncestors): Extract logic for logging a console message/reporting
+        a violation from ContentSecurityPolicyDirectiveList::checkFrameAncestorsAndReportViolation() to here and make use of WebCore::consoleMessageForViolation()
+        to build the actual console message.
+        (WebCore::ContentSecurityPolicyDirectiveList::addDirective): Add FIXME comment to log that the frame-src directive is
+        deprecated. See <https://bugs.webkit.org/show_bug.cgi?id=155773> for more details.
+        (WebCore::ContentSecurityPolicyDirectiveList::checkEvalAndReportViolation): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::checkMediaTypeAndReportViolation): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::checkInlineAndReportViolation): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::checkSourceAndReportViolation): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::checkFrameAncestorsAndReportViolation): Deleted.
+        * page/csp/ContentSecurityPolicyDirectiveList.h:
+
+2016-03-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebGL] Non-power-of-two texture optimization
+        https://bugs.webkit.org/show_bug.cgi?id=118409
+
+        Reviewed by Dean Jackson.
+
+        Based on a patch by Przemyslaw Szymanski  <p.szymanski3@samsung.com>
+ 
+        This patch optimizes usage of handleNPOTTextures. We do not need to
+        iterate over each texture unit if no black textures were set. This
+        optimization provides a few more frames per seconds for certain
+        draw calls.
+    
+        Tested by:
+        (1) Existing tests: webgl/resources/webgl_test_files/conformance/textures/texture-npot.html
+        (2) New test case: fast/canvas/webgl/texture-alternating-npot.html
+
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::compressedTexImage2D): Use new helper method.
+        (WebCore::WebGLRenderingContextBase::validateNPOTTextureLevel): Added.
+        (WebCore::WebGLRenderingContextBase::drawArrays): Only check texture completeness
+        if a black texture was used.
+        (WebCore::WebGLRenderingContextBase::drawElements): Ditto.
+        (WebCore::WebGLRenderingContextBase::texImage2DBase): Use new helper method.
+        (WebCore::WebGLRenderingContextBase::validateTexFunc): Ditto.
+        (WebCore::WebGLRenderingContextBase::checkTextureCompleteness): Return flag to indicate
+        if a black fallbacktexture was used.
+        * html/canvas/WebGLRenderingContextBase.h:
+
+2016-03-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix for a new warning.
+
+        * editing/VisibleSelection.cpp: (WebCore::makeSearchRange): Don't move when returning,
+        as that prevents copy elision.
+
+2016-03-23  Antti Koivisto  <antti@apple.com>
+
+        Share style by sharing RenderStyle substructures not the object itself
+        https://bugs.webkit.org/show_bug.cgi?id=155787
+
+        Reviewed by Anreas Kling.
+
+        The current approach where we share RenderStyle objects between elements leads to lot of awkward and bug-prone code.
+        Most of the RenderStyle consists of shareable substructures. It is better to just share those.
+
+        With this patch we create shared styles with RenderStyle::clone(). Sharing is traced as state in Style::SharingResolver
+        instead of relying on RenderStyle equality to locate potential sharing cousins.
+
+        * rendering/style/StyleRareNonInheritedData.cpp:
+        (WebCore::StyleRareNonInheritedData::operator==):
+
+            m_altText was missing from operator==
+            This was exposed by TreeResolver::resolveElement change, tested by fast/css/alt-inherit-initial.html
+
+        * style/StyleSharingResolver.cpp:
+        (WebCore::Style::elementHasDirectionAuto):
+        (WebCore::Style::SharingResolver::resolve):
+
+            Save share results to a map.
+
+        (WebCore::Style::SharingResolver::findSibling):
+        (WebCore::Style::SharingResolver::locateCousinList):
+
+            Instead of traversing we can now just do a hash lookup to locate a candidate cousin list.
+            There is no need for recursion anymore, the map covers sharing beyond immediate siblings too.
+            Remove most tests here as they have been already covered when sharing occured.
+
+        (WebCore::Style::canShareStyleWithControl):
+        * style/StyleSharingResolver.h:
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::TreeResolver::styleForElement):
+        (WebCore::Style::TreeResolver::resolveElement):
+
+            No need to do forced setting anymore just to support style sharing.
+
+2016-03-23  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Reduce PassRefPtr uses in editing
+        https://bugs.webkit.org/show_bug.cgi?id=155743
+
+        Reviewed by Darin Adler.
+
+        Use RefPtr<>&&, raw pointer, or reference in arugments instead of PassRefPtr.
+        Besides RefPtr is used if function may be able to return nullptr.
+
+        * dom/Element.cpp:
+        (WebCore::Element::setOuterHTML):
+        (WebCore::Element::setInnerHTML):
+        * dom/Range.cpp:
+        (WebCore::Range::createContextualFragment):
+        * dom/ShadowRoot.cpp:
+        (WebCore::ShadowRoot::setInnerHTML):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::wrapContentsInDummySpan):
+        * editing/CompositeEditCommand.h:
+        * editing/DictationCommand.cpp:
+        (WebCore::DictationCommand::insertText):
+        * editing/SplitTextNodeContainingElementCommand.cpp:
+        (WebCore::SplitTextNodeContainingElementCommand::doApply):
+        * editing/TextInsertionBaseCommand.cpp:
+        (WebCore::TextInsertionBaseCommand::applyTextInsertionCommand):
+        * editing/TextInsertionBaseCommand.h:
+        * editing/TypingCommand.cpp:
+        (WebCore::TypingCommand::deleteSelection):
+        (WebCore::TypingCommand::deleteKeyPressed):
+        (WebCore::TypingCommand::forwardDeleteKeyPressed):
+        (WebCore::TypingCommand::insertText):
+        (WebCore::TypingCommand::insertLineBreak):
+        (WebCore::TypingCommand::insertParagraphSeparatorInQuotedContent):
+        (WebCore::TypingCommand::insertParagraphSeparator):
+        (WebCore::TypingCommand::lastTypingCommandIfStillOpenForTyping):
+        (WebCore::TypingCommand::closeTyping):
+        (WebCore::TypingCommand::ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping):
+        * editing/TypingCommand.h:
+        * editing/VisibleSelection.cpp:
+        (WebCore::VisibleSelection::firstRange):
+        (WebCore::makeSearchRange):
+        * editing/VisibleSelection.h:
+        * editing/WrapContentsInDummySpanCommand.cpp:
+        (WebCore::WrapContentsInDummySpanCommand::WrapContentsInDummySpanCommand):
+        * editing/WrapContentsInDummySpanCommand.h:
+        (WebCore::WrapContentsInDummySpanCommand::create):
+        * editing/atk/FrameSelectionAtk.cpp:
+        (WebCore::maybeEmitTextFocusChange):
+        (WebCore::FrameSelection::notifyAccessibilityForSelectionChange):
+        * editing/htmlediting.cpp:
+        (WebCore::createOrderedListElement):
+        (WebCore::createUnorderedListElement):
+        (WebCore::createListItemElement):
+        (WebCore::createTabSpanElement):
+        * editing/htmlediting.h:
+        * editing/markup.cpp:
+        (WebCore::AttributeChange::AttributeChange):
+        (WebCore::ancestorToRetainStructureAndAppearanceForBlock):
+        (WebCore::styleFromMatchedRulesAndInlineDecl):
+        (WebCore::createFragmentForInnerOuterHTML):
+        (WebCore::createFragmentForTransformToFragment):
+        (WebCore::createContextualFragment):
+        * editing/markup.h:
+        * html/HTMLElement.cpp:
+        (WebCore::HTMLElement::insertAdjacentHTML):
+        * xml/XSLTProcessor.cpp:
+        (WebCore::XSLTProcessor::transformToFragment):
+
 2016-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Use Region instead of IntRect in PageClient and WebPageProxy setViewNeedsDisplay method

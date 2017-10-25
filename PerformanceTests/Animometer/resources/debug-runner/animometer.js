@@ -142,6 +142,14 @@ window.optionsManager =
         var formElement = document.forms["benchmark-options"].elements[name];
         if (formElement.type == "checkbox")
             return formElement.checked;
+        else if (formElement.constructor === HTMLCollection) {
+            for (var i = 0; i < formElement.length; ++i) {
+                var radio = formElement[i];
+                if (radio.checked)
+                    return formElement.value;
+            }
+            return null;
+        }
         return formElement.value;
     },
 
@@ -181,8 +189,19 @@ window.optionsManager =
                 options[name] = +formElement.value;
             else if (type == "checkbox")
                 options[name] = formElement.checked;
-            else if (type == "radio")
-                options[name] = formElements[name].value;
+            else if (type == "radio") {
+                var radios = formElements[name];
+                if (radios.constructor === HTMLCollection) {
+                    for (var j = 0; j < radios.length; ++j) {
+                        var radio = radios[j];
+                        if (radio.checked) {
+                            options[name] = radio.value;
+                            break;
+                        }
+                    }
+                } else
+                    options[name] = formElements[name].value;
+            }
 
             try {
                 localStorage.setItem(name, options[name]);
@@ -242,22 +261,19 @@ window.suitesManager =
         suiteCheckbox.indeterminate = numberEnabledTests > 0 && numberEnabledTests < suiteCheckbox.testsElements.length;
     },
 
-    _updateStartButtonState: function()
+    isAtLeastOneTestSelected: function()
     {
         var suitesElements = this._suitesElements();
-        var startButton = document.querySelector("#intro button");
 
         for (var i = 0; i < suitesElements.length; ++i) {
             var suiteElement = suitesElements[i];
             var suiteCheckbox = this._checkboxElement(suiteElement);
 
-            if (suiteCheckbox.checked) {
-                startButton.disabled = false;
-                return;
-            }
+            if (suiteCheckbox.checked)
+                return true;
         }
 
-        startButton.disabled = true;
+        return false;
     },
 
     _onChangeSuiteCheckbox: function(event)
@@ -267,13 +283,13 @@ window.suitesManager =
             var testCheckbox = this._checkboxElement(testElement);
             testCheckbox.checked = selected;
         }, this);
-        this._updateStartButtonState();
+        benchmarkController.updateStartButtonState();
     },
 
     _onChangeTestCheckbox: function(suiteCheckbox)
     {
         this._updateSuiteCheckboxState(suiteCheckbox);
-        this._updateStartButtonState();
+        benchmarkController.updateStartButtonState();
     },
 
     _createSuiteElement: function(treeElement, suite, id)
@@ -392,7 +408,7 @@ window.suitesManager =
             this._updateSuiteCheckboxState(suiteCheckbox);
         }
 
-        this._updateStartButtonState();
+        benchmarkController.updateStartButtonState();
     },
 
     updateLocalStorageFromUI: function()
@@ -489,6 +505,7 @@ Utilities.extendObject(window.benchmarkController, {
         if (benchmarkController.startBenchmarkImmediatelyIfEncoded())
             return;
 
+        benchmarkController.addOrientationListenerIfNecessary();
         suitesManager.createElements();
         suitesManager.updateUIFromLocalStorage();
         suitesManager.updateEditsElementsState();
@@ -521,6 +538,16 @@ Utilities.extendObject(window.benchmarkController, {
             reader.readAsText(file);
             document.title = "File: " + reader.filename;
         }, false);
+    },
+
+    updateStartButtonState: function()
+    {
+        var startButton = document.getElementById("run-benchmark");
+        if ("isInLandscapeOrientation" in this && !this.isInLandscapeOrientation) {
+            startButton.disabled = true;
+            return;
+        }
+        startButton.disabled = !suitesManager.isAtLeastOneTestSelected();
     },
 
     onBenchmarkOptionsChanged: function(event)
@@ -593,5 +620,3 @@ Utilities.extendObject(window.benchmarkController, {
         this.updateGraphData(testResult, testData, benchmarkRunnerClient.results.options);
     }
 });
-
-window.addEventListener("load", benchmarkController.initialize);

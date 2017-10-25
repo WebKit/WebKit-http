@@ -93,6 +93,7 @@ void* Allocator::allocate(size_t alignment, size_t size)
         size_t unalignedSize = largeMin + alignment - largeAlignment + size;
         if (unalignedSize <= largeMax && alignment <= largeChunkSize / 2) {
             std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+            m_deallocator.processObjectLog(lock);
             return PerProcess<Heap>::getFastCase()->allocateLarge(lock, alignment, size, unalignedSize);
         }
     }
@@ -114,8 +115,8 @@ void* Allocator::reallocate(void* object, size_t newSize)
     size_t oldSize = 0;
     switch (objectType(object)) {
     case Small: {
-        SmallPage* page = SmallPage::get(SmallLine::get(object));
-        oldSize = objectSize(page->sizeClass());
+        size_t sizeClass = Object(object).page()->sizeClass();
+        oldSize = objectSize(sizeClass);
         break;
     }
     case Large: {
@@ -186,6 +187,7 @@ NO_INLINE void Allocator::refillAllocatorSlowCase(BumpAllocator& allocator, size
     BumpRangeCache& bumpRangeCache = m_bumpRangeCaches[sizeClass];
 
     std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+    m_deallocator.processObjectLog(lock);
     PerProcess<Heap>::getFastCase()->allocateSmallBumpRanges(lock, sizeClass, allocator, bumpRangeCache);
 }
 
@@ -200,7 +202,9 @@ INLINE void Allocator::refillAllocator(BumpAllocator& allocator, size_t sizeClas
 NO_INLINE void* Allocator::allocateLarge(size_t size)
 {
     size = roundUpToMultipleOf<largeAlignment>(size);
+
     std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+    m_deallocator.processObjectLog(lock);
     return PerProcess<Heap>::getFastCase()->allocateLarge(lock, size);
 }
 
