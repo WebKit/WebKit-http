@@ -842,7 +842,7 @@ bool MediaPlayer::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, 
     return m_private->copyVideoTextureToPlatformTexture(context, texture, target, level, internalFormat, format, type, premultiplyAlpha, flipY);
 }
 
-PassNativeImagePtr MediaPlayer::nativeImageForCurrentTime()
+NativeImagePtr MediaPlayer::nativeImageForCurrentTime()
 {
     return m_private->nativeImageForCurrentTime();
 }
