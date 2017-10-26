@@ -1,3 +1,146 @@
+2016-03-28  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the build after r198728.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::gestureEvent):
+
+2016-03-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix for the threaded compositor feature after r198655.
+        Adjust the first parameter of ThreadSafeCoordinatedSurface::copyToTexture().
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::copyToTexture):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.h:
+
+2016-03-27  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] REGRESSION(r188793): It made 200 layout tests and Bindings/event-target-wrapper.html performance test fail
+        https://bugs.webkit.org/show_bug.cgi?id=148470
+
+        Reviewed by Darin Adler.
+
+        UI events are suppressed in webPage after r188793.
+        I revert the r136133 for passing the events to WebPage
+
+        * WebProcess/WebPage/WebPage.cpp: Removed the codes which was uploaded at r136133.
+        (WebKit::WebPage::mouseEvent):
+        (WebKit::WebPage::wheelEvent):
+        (WebKit::WebPage::keyEvent):
+        (WebKit::WebPage::touchEvent):
+        (WebKit::WebPage::canHandleUserEvents): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+
+2016-03-26  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the build.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _takeViewSnapshot]):
+
+2016-03-26  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix the build.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _takeViewSnapshot]):
+
+2016-03-26  Dean Jackson  <dino@apple.com>
+
+        Fix build after my most recent commit.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (WebKit::bufferFormat): Delete the WebKitAdditions include.
+
+2016-03-25  Dean Jackson  <dino@apple.com>
+
+        Move extended color detection into Open Source
+        https://bugs.webkit.org/show_bug.cgi?id=155909
+        <rdar://problem/25369754>
+
+        Reviewed by Anders Carlsson.
+
+        The code for detecting extended color displays
+        was hidden while the iPad Pro 9.7" was in development.
+        Now it is public, move the detection to Open Source.
+
+        While doing this, add a new method to PlatformScreen
+        so that we have a more obvious way to detect such
+        displays.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::bufferFormat): No need to use WebKitAdditions any
+        more.
+
+2016-03-26  Dan Bernstein  <mitz@apple.com>
+
+        Treat SHA-1-signed certificates as insecure by default.
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/APIPageConfiguration.h: Initialize m_treatsSHA1SignedCertificatesAsInsecure
+          to true.
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]): Initialize _treatsSHA1SignedCertificatesAsInsecure to YES.
+
+2016-03-25  Dean Jackson  <dino@apple.com>
+
+        Remove use of extern "C" to include QuartzCore files
+        https://bugs.webkit.org/show_bug.cgi?id=155905
+
+        Reviewed by Anders Carlson.
+
+        We can avoid having to wrap constants in extern "C", since they
+        are mangled the same in both C and C++.
+
+        * UIProcess/mac/RemoteLayerTreeHost.mm: Remove the
+        mention of CABackdropLayer.
+
+2016-03-25  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: protocol generator should prefix C++ filenames with the protocol group
+        https://bugs.webkit.org/show_bug.cgi?id=155859
+        <rdar://problem/25349859>
+
+        Reviewed by Alex Christensen and Joseph Pecoraro.
+
+        Adjust header include and build system paths.
+
+        * CMakeLists.txt:
+        Revert the workaround introduced in r198659 since this change fixes the
+        underlying issue.
+
+        * DerivedSources.make:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        * UIProcess/Automation/WebAutomationSession.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused lambda capture after r196984.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+        resourceResponse is not used in the lambda.
+
+2016-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * PlatformMac.cmake:
+
+2016-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * CMakeLists.txt:
+        Temporarily add DERIVED_SOURCES_JAVASCRIPTCORE_DIR after DERIVED_SOURCES_WEBCORE_DIR,
+        because both contain a unique header named InspectorBackendDispatchers.h and this include
+        order includes the correct one for WebKit2 first.
+        * PlatformMac.cmake:
+        Add new files.  Optionally link to AVFAudio.
+
 2016-03-24  Said Abou-Hallawa  <sabouhallawa@apple,com>
 
         Change NativeImagePtr for CG to be RetainPtr<CGImageRef>

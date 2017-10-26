@@ -28,22 +28,24 @@
 
 namespace bmalloc {
 
-class SmallChunk;
+class Chunk;
 class SmallLine;
 class SmallPage;
 
 class Object {
 public:
     Object(void*);
-    Object(SmallChunk*, void*);
+    Object(Chunk*, void*);
     
-    SmallChunk* chunk() { return m_chunk; }
+    Chunk* chunk() { return m_chunk; }
+    void* begin();
+    void* pageBegin();
 
     SmallLine* line();
     SmallPage* page();
 
 private:
-    SmallChunk* m_chunk;
+    Chunk* m_chunk;
     size_t m_offset;
 };
 

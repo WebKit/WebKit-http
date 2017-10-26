@@ -2078,7 +2078,9 @@ set(WebCore_SOURCES
     page/animation/KeyframeAnimation.cpp
 
     page/csp/ContentSecurityPolicy.cpp
+    page/csp/ContentSecurityPolicyDirective.cpp
     page/csp/ContentSecurityPolicyDirectiveList.cpp
+    page/csp/ContentSecurityPolicyDirectiveNames.cpp
     page/csp/ContentSecurityPolicyMediaListDirective.cpp
     page/csp/ContentSecurityPolicyResponseHeaders.cpp
     page/csp/ContentSecurityPolicySource.cpp
@@ -2950,7 +2952,7 @@ if (ENABLE_ALLINONE_BUILD)
         svg/SVGAllInOne.cpp
     )
     foreach (allInOne ${allInOnes})
-        PROCESS_ALLINONE_FILE("${WebCore_SOURCES}" ${allInOne} newSources ${AllInOne})
+        PROCESS_ALLINONE_FILE("${WebCore_SOURCES}" ${allInOne} newSources FALSE)
         set(WebCore_SOURCES
             ${allInOne}
             ${newSources}
@@ -3804,6 +3806,13 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNSNames.cpp)
 
 GENERATE_DOM_NAMES(XML ${WEBCORE_DIR}/xml/xmlattrs.in)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNames.cpp)
+
+if (ENABLE_ALLINONE_BUILD)
+    message(STATUS "All-in-One DerivedSources build is enabled.")
+    PROCESS_ALLINONE_FILE("${WebCore_SOURCES}" DerivedSources.cpp newSources TRUE)
+    set(WebCore_SOURCES DerivedSources.cpp ${newSources})
+    list(APPEND WebCore_SOURCES DerivedSources.cpp)
+endif ()
 
 WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_SOURCES})
 WEBKIT_WRAP_SOURCELIST(${WebCoreTestSupport_IDL_FILES} ${WebCoreTestSupport_SOURCES})

@@ -1,3 +1,358 @@
+2016-03-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, rolling out r198702, r198704.
+
+        Caused a memory regression on PLUM.
+
+        Reverted changeset:
+
+        bmalloc: fix an ASSERT on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=155911
+        http://trac.webkit.org/changeset/198704
+
+        bmalloc: support physical page sizes that don't match the virtual page size
+        https://bugs.webkit.org/show_bug.cgi?id=155898
+        http://trac.webkit.org/changeset/198702
+
+2016-03-25  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: fix an ASSERT on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=155911
+
+        Reviewed by Gavin Barraclough.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmValidatePhysical): Call through to vmValidatePhysical because
+        the vmValidate function validates virtual sizes rather than physical
+        sizes.
+
+2016-03-25  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: support physical page sizes that don't match the virtual page size
+        https://bugs.webkit.org/show_bug.cgi?id=155898
+
+        Reviewed by Gavin Barraclough.
+
+        This is a memory savings on iOS devices where the virtual page size
+        is 16kB but the physical page size is 4kB.
+
+        * bmalloc/Chunk.h:
+        (bmalloc::Chunk::Chunk): smallPageSize is now unrelated to the OS's
+        page size -- it just reflects the optimal unit of memory to recycle
+        between small objects.
+
+        We only need to round up to largeAlignment because small objects allocate
+        as subsets of large objects now.
+
+        (bmalloc::Chunk::page):
+        (bmalloc::Object::pageBegin):
+        (bmalloc::Object::line): Adopt smallPageSize.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::initializeLineMetadata):
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::allocateLarge): Adopt smallPageSize.
+
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::tryAllocateXLarge):
+        (bmalloc::Heap::shrinkXLarge): Adopt vmPageSizePhysical(). We want the
+        physical page size because that's the unit at which the hardware MMU
+        will recycle memory.
+
+        * bmalloc/Sizes.h: Adopt smallPageSize.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmPageSizePhysical):
+        (bmalloc::vmPageSize): Distinguish between page size, which is the virtual
+        memory page size advertised by the OS, and physical page size, which the
+        true hardware page size.
+
+        (bmalloc::vmSize):
+        (bmalloc::vmValidate):
+        (bmalloc::vmValidatePhysical):
+        (bmalloc::tryVMAllocate):
+        (bmalloc::vmDeallocatePhysicalPages):
+        (bmalloc::vmAllocatePhysicalPages):
+        (bmalloc::vmDeallocatePhysicalPagesSloppy):
+        (bmalloc::vmAllocatePhysicalPagesSloppy): Adopt vmPageSize() and
+        vmPageSizePhyiscal().
+
+        * bmalloc/Vector.h:
+        (bmalloc::Vector::initialCapacity):
+        (bmalloc::Vector<T>::shrink):
+        (bmalloc::Vector<T>::shrinkCapacity):
+        (bmalloc::Vector<T>::growCapacity): Adopt vmPageSize(). We'd prefer to
+        use vmPageSizePhysical() but mmap() doesn't support it.
+
+        * bmalloc/XLargeMap.cpp: #include.
+
+2016-03-25  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, rolling in r198679.
+
+        r198679 was just a rename. The regression was caused by r198675 and then
+        fixed in r198693.
+
+        Restored changeset:
+
+        "bmalloc: Renamed LargeChunk => Chunk"
+        https://bugs.webkit.org/show_bug.cgi?id=155894
+        http://trac.webkit.org/changeset/198679
+
+2016-03-25  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, try to fix a crash seen on the bots.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocate): We have to take the lock even if we're
+        only reading our own data becuse LargeObject contains validation code
+        that will read our neighbors' data as well.
+
+2016-03-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r198679.
+
+        This change caused flaky LayoutTest crashes
+
+        Reverted changeset:
+
+        "bmalloc: Renamed LargeChunk => Chunk"
+        https://bugs.webkit.org/show_bug.cgi?id=155894
+        http://trac.webkit.org/changeset/198679
+
+2016-03-25  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: stress_aligned fails when allocating a zero-sized object with XLarge alignment
+        https://bugs.webkit.org/show_bug.cgi?id=155896
+
+        Reviewed by Andreas Kling.
+
+        We normally filter zero-sized allocations into small allocations, but
+        a zero-sized allocation can sneak through if it requires sufficiently
+        large alignment.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::tryAllocateXLarge): Set a floor on allocation size to
+        catch zero-sized allocations.
+
+2016-03-25  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Renamed LargeChunk => Chunk
+        https://bugs.webkit.org/show_bug.cgi?id=155894
+
+        Reviewed by Michael Saboff.
+
+        A Chunk can contain both small and large objects now.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::allocate):
+        * bmalloc/BoundaryTag.h:
+        (bmalloc::BoundaryTag::isFree):
+        * bmalloc/Chunk.h: Copied from Source/bmalloc/bmalloc/LargeChunk.h.
+        (bmalloc::Chunk::pages):
+        (bmalloc::Chunk::begin):
+        (bmalloc::Chunk::end):
+        (bmalloc::Chunk::Chunk):
+        (bmalloc::Chunk::get):
+        (bmalloc::Chunk::beginTag):
+        (bmalloc::Chunk::endTag):
+        (bmalloc::Chunk::offset):
+        (bmalloc::Chunk::object):
+        (bmalloc::Chunk::page):
+        (bmalloc::Chunk::line):
+        (bmalloc::SmallLine::begin):
+        (bmalloc::SmallPage::begin):
+        (bmalloc::SmallPage::end):
+        (bmalloc::Object::Object):
+        (bmalloc::Object::begin):
+        (bmalloc::LargeChunk::pages): Deleted.
+        (bmalloc::LargeChunk::begin): Deleted.
+        (bmalloc::LargeChunk::end): Deleted.
+        (bmalloc::LargeChunk::LargeChunk): Deleted.
+        (bmalloc::LargeChunk::get): Deleted.
+        (bmalloc::LargeChunk::beginTag): Deleted.
+        (bmalloc::LargeChunk::endTag): Deleted.
+        (bmalloc::LargeChunk::offset): Deleted.
+        (bmalloc::LargeChunk::object): Deleted.
+        (bmalloc::LargeChunk::page): Deleted.
+        (bmalloc::LargeChunk::line): Deleted.
+        * bmalloc/Deallocator.cpp:
+        * bmalloc/FreeList.cpp:
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::allocateLarge):
+        * bmalloc/LargeChunk.h: Removed.
+        * bmalloc/LargeObject.h:
+        (bmalloc::LargeObject::LargeObject):
+        (bmalloc::LargeObject::merge):
+        (bmalloc::LargeObject::split):
+        * bmalloc/Object.h:
+        (bmalloc::Object::chunk):
+        * bmalloc/ObjectType.cpp:
+        * bmalloc/Sizes.h:
+        * bmalloc/SmallAllocator.h: Removed.
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::VMHeap):
+        (bmalloc::VMHeap::allocateChunk):
+        (bmalloc::VMHeap::allocateLargeChunk): Deleted.
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateLargeObject):
+        (bmalloc::VMHeap::deallocateLargeObject):
+        * bmalloc/Zone.cpp:
+        (bmalloc::enumerator):
+        * bmalloc/Zone.h:
+        (bmalloc::Zone::chunks):
+        (bmalloc::Zone::addChunk):
+        (bmalloc::Zone::largeChunks): Deleted.
+        (bmalloc::Zone::addLargeChunk): Deleted.
+
+2016-03-24  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: small and large objects should share memory
+        https://bugs.webkit.org/show_bug.cgi?id=155866
+
+        Reviewed by Andreas Kling.
+
+        This patch cuts our VM footprint in half. (VM footprint usually doesn't
+        matter, but on iOS there's an artificial VM limit around 700MB, and if
+        you hit it you jetsam / crash.)
+
+        It's also a step toward honoring the hardware page size at runtime,
+        which will reduce memory usage on iOS.
+
+        This patch is a small improvement in peak memory usage because it allows
+        small and large objects to recycle each other's memory. The tradeoff is
+        that we require more metadata, which causes more memory usage after
+        shrinking down from peak memory usage. In the end, we have some memory
+        wins and some losses, and a small win in the mean on our standard memory
+        benchmarks.
+
+        * bmalloc.xcodeproj/project.pbxproj: Removed SuperChunk.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::reallocate): Adopt a new Heap API for shrinking
+        large objects because it's a little more complicated than it used to be.
+
+        Don't check for equality in the XLarge case because we don't do it in
+        other cases, and it's unlikely that we'll be called for no reason.
+
+        * bmalloc/BumpAllocator.h:
+        (bmalloc::BumpAllocator::allocate): Don't ASSERT isSmall because that's
+        an old concept from when small and large objects were in distinct memory
+        regions.
+
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::deallocateSlowCase): Large objects are not
+        segregated anymore.
+
+        (bmalloc::Deallocator::deallocateLarge): Deleted.
+
+        * bmalloc/Deallocator.h:
+        (bmalloc::Deallocator::deallocateFastCase): Don't ASSERT isSmall(). See
+        above.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::scavenge):
+        (bmalloc::Heap::scavengeSmallPage):
+        (bmalloc::Heap::scavengeSmallPages): New helpers for returning cached
+        small pages to the large object heap.
+
+        (bmalloc::Heap::allocateSmallPage): Allocate small pages from the large
+        object heap. This is how we accomplish sharing.
+
+        (bmalloc::Heap::deallocateSmallLine): Handle large objects since we can
+        encounter them on this code path now.
+
+        (bmalloc::Heap::splitAndAllocate): Fixed a bug where we would sometimes
+        not split even though we could.
+
+        Allocating a large object also requires ref'ing its small line so that
+        we can alias memory between small and large objects.
+
+        (bmalloc::Heap::allocateLarge): Return cached small pages before
+        allocating a large object that would fit in a cached small page. This
+        allows some large allocations to reuse small object memory.
+
+        (bmalloc::Heap::shrinkLarge): New helper.
+
+        (bmalloc::Heap::deallocateLarge): Deleted.
+
+        * bmalloc/Heap.h:
+
+        * bmalloc/LargeChunk.h:
+        (bmalloc::LargeChunk::pageBegin):
+        (bmalloc::LargeChunk::pageEnd):
+        (bmalloc::LargeChunk::lines):
+        (bmalloc::LargeChunk::pages):
+        (bmalloc::LargeChunk::begin):
+        (bmalloc::LargeChunk::end):
+        (bmalloc::LargeChunk::LargeChunk):
+        (bmalloc::LargeChunk::get):
+        (bmalloc::LargeChunk::endTag):
+        (bmalloc::LargeChunk::offset):
+        (bmalloc::LargeChunk::object):
+        (bmalloc::LargeChunk::page):
+        (bmalloc::LargeChunk::line):
+        (bmalloc::SmallLine::begin):
+        (bmalloc::SmallLine::end):
+        (bmalloc::SmallPage::begin):
+        (bmalloc::SmallPage::end):
+        (bmalloc::Object::Object):
+        (bmalloc::Object::begin):
+        (bmalloc::Object::pageBegin):
+        (bmalloc::Object::line):
+        (bmalloc::Object::page): I merged all the SmallChunk metadata and code
+        into LargeChunk. Now we use a single class to track both small and large
+        metadata, so we can share memory between small and large objects.
+
+        I'm going to rename this class to Chunk in a follow-up patch.
+
+        * bmalloc/Object.h:
+        (bmalloc::Object::chunk): Updated for LargeChunk transition.
+
+        * bmalloc/ObjectType.cpp:
+        (bmalloc::objectType):
+        * bmalloc/ObjectType.h:
+        (bmalloc::isXLarge):
+        (bmalloc::isSmall): Deleted. The difference between small and large
+        objects is now stored in metadata and is not a property of their
+        virtual address range.
+
+        * bmalloc/SegregatedFreeList.h: One more entry because we cover all of
+        what used to be the super chunk in a large chunk now.
+
+        * bmalloc/Sizes.h: Removed bit masking helpers because we don't use
+        address masks to distinguish small vs large object type anymore.
+
+        * bmalloc/SmallChunk.h: Removed.
+
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::SmallPage): Store object type per page because any
+        given page can be used for large objects or small objects.
+
+        * bmalloc/SuperChunk.h: Removed.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::VMHeap):
+        (bmalloc::VMHeap::allocateLargeChunk):
+        (bmalloc::VMHeap::allocateSmallChunk): Deleted.
+        (bmalloc::VMHeap::allocateSuperChunk): Deleted.
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateLargeObject):
+        (bmalloc::VMHeap::deallocateLargeObject):
+        (bmalloc::VMHeap::allocateSmallPage): Deleted.
+        (bmalloc::VMHeap::deallocateSmallPage): Deleted. Removed super chunk and
+        small chunk support.
+
+        * bmalloc/Zone.cpp:
+        (bmalloc::enumerator):
+        * bmalloc/Zone.h:
+        (bmalloc::Zone::largeChunks):
+        (bmalloc::Zone::addLargeChunk):
+        (bmalloc::Zone::superChunks): Deleted.
+        (bmalloc::Zone::addSuperChunk): Deleted. Removed super chunk and
+        small chunk support.
+
 2016-03-23  Geoffrey Garen  <ggaren@apple.com>
 
         bmalloc: Added an Object helper class

@@ -1,3 +1,76 @@
+2016-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Sometimes clearing focused nodes in ProfileView leaves a dangling call stack that can never be removed
+        https://bugs.webkit.org/show_bug.cgi?id=155915
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ProfileDataGridTree.js:
+        (WebInspector.ProfileDataGridTree.prototype.addFocusNode):
+        (WebInspector.ProfileDataGridTree.prototype.rollbackFocusNode):
+        (WebInspector.ProfileDataGridTree.prototype.clearFocusNodes):
+        (WebInspector.ProfileDataGridTree.prototype._focusChanged):
+        (WebInspector.ProfileDataGridTree.prototype._saveFocusedNodeOriginalParent):
+        (WebInspector.ProfileDataGridTree.prototype._restoreFocusedNodeToOriginalParent):
+        Be a little more explicit about saving and resotring nodes.
+        When restoring, work around a DataGrid issue by temporarily
+        collapsing and expanding the part of the node we are being
+        reattached to. This is a cheap workaround for an otherwise
+        complex DataGrid / DataGridTree issue.
+
+2016-03-25  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clicking a result in Quick Open dialog dismisses the dialog, does nothing
+        https://bugs.webkit.org/show_bug.cgi?id=155892
+        <rdar://problem/25361220>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WebInspector.OpenResourceDialog):
+        Allow repeat selection so clicking a selected element makes a selection
+        and dismisses the dialog.
+
+        (WebInspector.OpenResourceDialog.prototype._populateResourceTreeOutline):
+        Suppress select and deselect. Only user clicks should cause a selection event.
+
+        (WebInspector.OpenResourceDialog.prototype._handleBlurEvent):
+        Prevent the dialog from being dismissed before tree item selection occurs.
+
+        (WebInspector.OpenResourceDialog.prototype._treeSelectionDidChange):
+        Set the represented object (dialog result) and dismiss.
+
+2016-03-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r198619.
+        https://bugs.webkit.org/show_bug.cgi?id=155902
+
+        Switching to Console tab sometimes results in blank tab.
+        (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Large repaints while typing in the console
+        tab"
+        https://bugs.webkit.org/show_bug.cgi?id=155627
+        http://trac.webkit.org/changeset/198619
+
+2016-03-25  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Scrolling/selection is broken in Quick Open dialog resource tree
+        https://bugs.webkit.org/show_bug.cgi?id=155877
+        <rdar://problem/25356149>
+
+        Reviewed by Timothy Hatcher.
+
+        Dialog and tree outline now use "display: flex", causing the height of the
+        tree outline to be based on the height of the dialog. Overflow scrolling
+        in the tree outline now has the expected behavior.
+
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog):
+        (.open-resource-dialog > .tree-outline):
+
 2016-03-24  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Reduce forced layouts

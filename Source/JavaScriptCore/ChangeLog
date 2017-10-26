@@ -1,3 +1,362 @@
+2016-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Misc. JavaScriptCore built-ins cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=155920
+
+        Reviewed by Mark Lam.
+
+        * builtins/RegExpPrototype.js:
+        (match):
+        No need for an else after an if that always returns.
+
+        * builtins/TypedArrayConstructor.js:
+        (of):
+        Fix error message to use the correct function name.
+
+        (allocateInt8Array):
+        (allocateInt16Array):
+        (allocateInt32Array):
+        (allocateUint32Array):
+        (allocateUint16Array):
+        (allocateUint8Array):
+        (allocateUint8ClampedArray):
+        (allocateFloat32Array):
+        (allocateFloat64Array):
+        Cleanup style to be like all the other code.
+
+        * tests/stress/typedarray-of.js:
+        Test the exception message.
+
+2016-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Date.prototype.toLocaleDateString uses overridable Object.create
+        https://bugs.webkit.org/show_bug.cgi?id=155917
+
+        Reviewed by Mark Lam.
+
+        * builtins/DatePrototype.js:
+        (toLocaleString.toDateTimeOptionsAnyAll):
+        (toLocaleDateString.toDateTimeOptionsDateDate):
+        (toLocaleTimeString.toDateTimeOptionsTimeTime):
+        Switch from @Object.create to @Object.@create to guarentee we are
+        using the built-in create method and not user defined code.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        Setup the @create private symbol.
+
+2016-03-25  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Put the x86 Assembler on a binary diet
+        https://bugs.webkit.org/show_bug.cgi?id=155683
+
+        Reviewed by Darin Adler.
+
+        The MacroAssemblers are heavily inlined. This is unfortunately
+        important for baseline JIT where many branches can be eliminated
+        at compile time.
+
+        This inlining causes a lot of binary bloat. The phases
+        lowering to ASM are massively large.
+
+        This patch improves the situation a bit for x86 through
+        many small improvements:
+
+        -Every instruction starts with ensureSpace(). The slow
+         path realloc the buffer.
+         From that slow path, only fastRealloc() was a function
+         call. What is around does not need to be fast, I moved
+         the whole grow() function out of line for those cases.
+
+        -When testing multiple registers for REX requirements,
+         we had something like this:
+             byteRegRequiresRex(reg) || byteRegRequiresRex(rm)
+             regRequiresRex(index) || regRequiresRex(base)
+         Those were producing multiple test-and-branch. Those branches
+         are effectively random so we don't have to care about individual
+         branches being predictable.
+
+         The new code effectively does:
+             byteRegRequiresRex(reg | rm)
+             regRequiresRex(index | base)
+
+        -Change "ModRmMode" to have the value we can OR directly
+         to the generated ModRm.
+         This is important because some ModRM code is so large
+         that is goes out of line;
+
+        -Finally, a big change on how we write to the AssemblerBuffer.
+
+         Previously, instructions were written byte by byte into
+         the assembler buffer of the MacroAssembler.
+
+         The problem with that is the compiler cannot prove that
+         the buffer pointer and the AssemblerBuffer are not pointing
+         to the same memory.
+
+         Because of that, before any write, all the local register
+         were pushed back to the AssemblerBuffer memory, then everything
+         was read back after the write to compute the next write.
+
+         I attempted to use the "restrict" keyword and wrapper types
+         to help Clang with that but nothing worked.
+
+         The current solution is to keep a local copy of the index
+         and the buffer pointer in the scope of each instruction.
+         That is done by AssemblerBuffer::LocalWriter.
+
+         Since LocalWriter only exists locally, it stays in
+         register and we don't have all the memory churn between
+         each byte writing. This also allows clang to combine
+         obvious cases since there are no longer observable side
+         effects between bytes.
+
+        This patch reduces the binary size by 66k. It is a small
+        speed-up on Sunspider.
+
+        * assembler/AssemblerBuffer.h:
+        (JSC::AssemblerBuffer::ensureSpace):
+        (JSC::AssemblerBuffer::LocalWriter::LocalWriter):
+        (JSC::AssemblerBuffer::LocalWriter::~LocalWriter):
+        (JSC::AssemblerBuffer::LocalWriter::putByteUnchecked):
+        (JSC::AssemblerBuffer::LocalWriter::putShortUnchecked):
+        (JSC::AssemblerBuffer::LocalWriter::putIntUnchecked):
+        (JSC::AssemblerBuffer::LocalWriter::putInt64Unchecked):
+        (JSC::AssemblerBuffer::LocalWriter::putIntegralUnchecked):
+        (JSC::AssemblerBuffer::putIntegral):
+        (JSC::AssemblerBuffer::outOfLineGrow):
+        * assembler/MacroAssemblerX86Common.h:
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::X86InstructionFormatter::byteRegRequiresRex):
+        (JSC::X86Assembler::X86InstructionFormatter::regRequiresRex):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::LocalBufferWriter):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::emitRex):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::emitRexW):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::emitRexIf):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::emitRexIfNeeded):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::putModRm):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::putModRmSib):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::registerModRM):
+        (JSC::X86Assembler::X86InstructionFormatter::LocalBufferWriter::memoryModRM):
+        (JSC::X86Assembler::X86InstructionFormatter::oneByteOp): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::oneByteOp_disp32): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::oneByteOp_disp8): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::twoByteOp): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::threeByteOp): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::oneByteOp64): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::oneByteOp64_disp32): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::oneByteOp64_disp8): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::twoByteOp64): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::oneByteOp8): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::twoByteOp8): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::emitRex): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::emitRexW): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::emitRexIf): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::emitRexIfNeeded): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::putModRm): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::putModRmSib): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::registerModRM): Deleted.
+        (JSC::X86Assembler::X86InstructionFormatter::memoryModRM): Deleted.
+
+2016-03-25  Saam barati  <sbarati@apple.com>
+
+        RegExp.prototype.test should be an intrinsic again
+        https://bugs.webkit.org/show_bug.cgi?id=155861
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+
+2016-03-25  Mark Lam  <mark.lam@apple.com>
+
+        ES6's throwing of TypeErrors on access of RegExp.prototype flag properties breaks websites.
+        https://bugs.webkit.org/show_bug.cgi?id=155904
+
+        Reviewed by Geoffrey Garen.
+
+        There exists a JS library XRegExp (see http://xregexp.com) that extends the regexp
+        implementation.  XRegExp does feature testing by comparing RegExp.prototype.sticky
+        to undefined.  See:
+
+        Example 1. https://github.com/slevithan/xregexp/blob/28a2b033c5951477bed8c7c867ddf7e89c431cd4/tests/perf/index.html
+            ...
+            } else if (knownVersion[version]) {
+                // Hack around ES6 incompatibility in XRegExp versions prior to 3.0.0
+                if (parseInt(version, 10) < 3) {
+                    delete RegExp.prototype.sticky;
+            }
+            ...
+
+        Example 2. https://github.com/slevithan/xregexp/blob/d0e665d4068cec4d15919215b098b2373f1f12e9/tests/perf/versions/xregexp-all-v2.0.0.js
+            ...
+            // Check for flag y support (Firefox 3+)
+                hasNativeY = RegExp.prototype.sticky !== undef,
+            ...
+
+        The ES6 spec states that we should throw a TypeError here because RegExp.prototype
+        is not a RegExp object, and the sticky getter is only allowed to be called on
+        RegExp objects.  See https://tc39.github.io/ecma262/2016/#sec-get-regexp.prototype.sticky.
+        As a result, websites that uses XRegExp can break (e.g. some Atlassian tools).
+
+        As a workaround, we'll return undefined instead of throwing on access of these
+        flag properties that may be used for feature testing.
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoGetterGlobal):
+        (JSC::regExpProtoGetterIgnoreCase):
+        (JSC::regExpProtoGetterMultiline):
+        (JSC::regExpProtoGetterSticky):
+        (JSC::regExpProtoGetterUnicode):
+
+2016-03-25  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] fix divide-by-zero in String.prototype.padStart/padEnd
+        https://bugs.webkit.org/show_bug.cgi?id=155903
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::padString):
+
+2016-03-25  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] materialize-past-butterfly-allocation.js time out in debug
+
+        * tests/stress/materialize-past-butterfly-allocation.js:
+        The test times out on the debug bots. We suspect there is nothing
+        wrong, just overkill loops.
+
+2016-03-25  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: protocol generator should prefix C++ filenames with the protocol group
+        https://bugs.webkit.org/show_bug.cgi?id=155859
+        <rdar://problem/25349859>
+
+        Reviewed by Alex Christensen and Joseph Pecoraro.
+
+        Like for generated Objective-C files, we should use the 'protocol group' name
+        as the prefix for generated C++ files so that headers from different protocol
+        groups have unambiguous names.
+
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator):
+        (CppGenerator.__init__):
+        (CppGenerator.protocol_name):
+        Make all C++ code generators extend the CppGenerator python class and use the
+        protocol_name() instance method. This matches a recent change to the ObjC generator.
+
+        * inspector/scripts/codegen/cpp_generator_templates.py:
+        (CppGeneratorTemplates):
+        Drive-by cleanup to use #pragma once instead of header guards.
+
+        * inspector/scripts/codegen/generate_cpp_alternate_backend_dispatcher_header.py:
+        (CppAlternateBackendDispatcherHeaderGenerator):
+        (CppAlternateBackendDispatcherHeaderGenerator.__init__):
+        (CppAlternateBackendDispatcherHeaderGenerator.output_filename):
+        (CppAlternateBackendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator):
+        (CppBackendDispatcherHeaderGenerator.__init__):
+        (CppBackendDispatcherHeaderGenerator.output_filename):
+        (CppBackendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator):
+        (CppBackendDispatcherImplementationGenerator.__init__):
+        (CppBackendDispatcherImplementationGenerator.output_filename):
+        (CppBackendDispatcherImplementationGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py:
+        (CppFrontendDispatcherHeaderGenerator):
+        (CppFrontendDispatcherHeaderGenerator.__init__):
+        (CppFrontendDispatcherHeaderGenerator.output_filename):
+        (CppFrontendDispatcherHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator):
+        (CppFrontendDispatcherImplementationGenerator.__init__):
+        (CppFrontendDispatcherImplementationGenerator.output_filename):
+        (CppFrontendDispatcherImplementationGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator):
+        (CppProtocolTypesHeaderGenerator.__init__):
+        (CppProtocolTypesHeaderGenerator.output_filename):
+        (CppProtocolTypesHeaderGenerator.generate_output):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator):
+        (CppProtocolTypesImplementationGenerator.__init__):
+        (CppProtocolTypesImplementationGenerator.output_filename):
+        (CppProtocolTypesImplementationGenerator.generate_output):
+        Use the protocol_name() instance method to compute generated protocol file names.
+
+        * inspector/scripts/codegen/models.py:
+        Explicitly set the 'protocol_group' for the Inspector protocol.
+
+        Rebaseline generator test results.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
+2016-03-25  Keith Miller  <keith_miller@apple.com>
+
+        putByIndexBeyondVectorLengthWithoutAttributes should not crash if it can't ensureLength
+        https://bugs.webkit.org/show_bug.cgi?id=155730
+
+        Reviewed by Saam Barati.
+
+        This patch makes ensureLength return a boolean indicating if it was able to set the length.
+        ensureLength also no longer sets the butterfly to null if the allocation of the butterfly
+        fails. All of ensureLengths callers including putByIndexBeyondVectorLengthWithoutAttributes
+        have been adapted to throw an out of memory error if ensureLength fails.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLength):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes):
+        (JSC::JSObject::ensureLengthSlow):
+        * runtime/JSObject.h:
+        (JSC::JSObject::ensureLength):
+
+2016-03-25  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] implement String.prototype.padStart() and String.prototype.padEnd() proposal
+        https://bugs.webkit.org/show_bug.cgi?id=155795
+
+        Reviewed by Darin Adler.
+
+        Implements ECMAScript proposal http://tc39.github.io/proposal-string-pad-start-end/
+        Currently at Stage 3.
+
+        * runtime/JSString.h:
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::repeatCharacter):
+        (JSC::repeatStringPattern):
+        (JSC::padString):
+        (JSC::stringProtoFuncPadEnd):
+        (JSC::stringProtoFuncPadStart):
+        * tests/es6.yaml:
+        * tests/es6/String.prototype_methods_String.prototype.padEnd.js: Added.
+        * tests/es6/String.prototype_methods_String.prototype.padStart.js: Added.
+
+2016-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * PlatformMac.cmake:
+        Link to Security framework.
+
 2016-03-24  Saam barati  <sbarati@apple.com>
 
         ES6: Implement IsRegExp function and use where needed in String.prototype.* methods

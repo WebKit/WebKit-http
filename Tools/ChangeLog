@@ -1,3 +1,48 @@
+2016-03-25  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Dromaeo patch used by run-benchmark should not include an invalid address.
+        https://bugs.webkit.org/show_bug.cgi?id=155910
+
+        Reviewed by Ryosuke Niwa.
+
+        Should not use invalid 'http://127.0.0.1/Icons/w3c_home' in the patched version of test.
+        * Scripts/webkitpy/benchmark_runner/data/patches/Dromaeo.patch:
+
+2016-03-25  Daniel Bates  <dabates@apple.com>
+
+        Add WebKitSystemInterface for iOS 9.3
+        https://bugs.webkit.org/show_bug.cgi?id=155893
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-03-25  Daniel Bates  <dabates@apple.com>
+
+        Use webkitdirs::determineXcodeSDK() instead of webkitdirs::willUseIOSDeviceSDK()
+        in copy-webkitlibraries-to-product-directory
+        https://bugs.webkit.org/show_bug.cgi?id=155869
+
+        Reviewed by Alexey Proskuryakov.
+
+        It is sufficient and more direct to call webkitdirs::determineXcodeSDK() instead of
+        webkitdirs::willUseIOSDeviceSDK() to process the --sdk/--device/--ios-simulator command
+        line argument.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2016-03-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Turned on ENABLE_REQUEST_ANIMATION_FRAME by default for any port.
+        https://bugs.webkit.org/show_bug.cgi?id=155882
+
+        Reviewed by Michael Catanzaro.
+
+        It was already enabled in all trunk ports, and is required for
+        WebInspectorUI to work.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
 2016-03-24  Jeremy Zerfas  <WebKit@JeremyZerfas.com>
 
         Improve update-webkit-dependency script.

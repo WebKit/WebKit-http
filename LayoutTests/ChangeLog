@@ -1,3 +1,212 @@
+2016-03-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Mark failing indexeddb tests to failure
+
+        Unreviewed EFL gardening.
+
+        Additionally a shadow dom test is marked to failure because shadow dom is not enabled on EFL port yet.
+
+        * platform/efl/TestExpectations:
+
+2016-03-28  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Remove the more passed tests after r198728
+
+        Unreviewed EFL gardening. 
+
+        * platform/efl/TestExpectations:
+
+2016-03-27  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] REGRESSION(r188793): It made 200 layout tests and Bindings/event-target-wrapper.html performance test fail
+        https://bugs.webkit.org/show_bug.cgi?id=148470
+
+        Reviewed by Darin Adler.
+
+        * platform/efl/TestExpectations: Unskip the passed tests.
+
+2016-03-27  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL][AX] Mark AX failing tests to failure
+
+        Unreveiwed EFL gardening.
+
+        * platform/efl/TestExpectations:
+
+2016-03-27  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Mark rtl-scrollbar's tests to pass with incorrectly
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations: Though rtl scrollbar isn't supported by EFL yet, it has been passed.
+
+2016-03-26  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove duplicated tests in EFL TextExpectations.
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations: Clean up duplicated pathes.
+
+2016-03-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ES6 Class syntax. Invoking method of parent class in constructor before super() lead to crash
+        https://bugs.webkit.org/show_bug.cgi?id=152108
+
+        Reviewed by Ryosuke Niwa.
+
+        * js/arrowfunction-superproperty-expected.txt:
+        * js/script-tests/arrowfunction-superproperty.js:
+        * js/script-tests/class-syntax-name.js:
+        * js/script-tests/class-syntax-string-and-numeric-names.js:
+        Remove stale FIXMEs from LayoutTests where the bugs have been fixed.
+
+2016-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Date.prototype.toLocaleDateString uses overridable Object.create
+        https://bugs.webkit.org/show_bug.cgi?id=155917
+
+        Reviewed by Mark Lam.
+
+        * js/regress-155917-expected.txt: Added.
+        * js/regress-155917.html: Added.
+        * js/script-tests/regress-155917.js: Added.
+        (Object.create):
+
+2016-03-25  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Audio tracks in alternate groups are not represented correctly as AudioTracks
+        https://bugs.webkit.org/show_bug.cgi?id=155891
+        <rdar://problem/24841372>
+
+        Reviewed by Eric Carlson.
+
+        * media/content/audio-tracks-alternate-group-with-fallback.mp4: Added.
+        * media/content/audio-tracks-no-alternate-group.mp4: Added.
+        * media/content/audio-tracks-some-in-alternate-group.mp4: Added.
+        * media/track/video-track-alternate-groups-expected.txt: Added.
+        * media/track/video-track-alternate-groups.html: Added.
+        * platform/mac-yosemite/media/track/video-track-alternate-groups-expected.txt: Added.
+
+2016-03-25  Mark Lam  <mark.lam@apple.com>
+
+        ES6's throwing of TypeErrors on access of RegExp.prototype flag properties breaks websites.
+        https://bugs.webkit.org/show_bug.cgi?id=155904
+
+        Reviewed by Geoffrey Garen.
+
+        * ietestcenter/Javascript/TestCases/15.10.7.2-1.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.10.7.3-1.js:
+        (ES5Harness.registerTest.test):
+        * ietestcenter/Javascript/TestCases/15.10.7.4-1.js:
+        (ES5Harness.registerTest.test):
+        - updated these tests to not expect a TypeError due to the workaround.
+
+        * js/pic/cached-named-property-getter.html:
+        - updated this test to use the source property (which still throws a TypeError)
+          instead of the ignoreCase property which no longer does.
+
+2016-03-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking compositing/repaint/become-overlay-composited-layer.html as flaky on ios-sim-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=155737
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-03-25  Brady Eidson  <beidson@apple.com>
+
+        Soften push/replaceState frequency restrictions.
+        <rdar://problem/25228439> and https://bugs.webkit.org/show_bug.cgi?id=155901
+
+        Rubber-stamped by Timothy Hatcher.
+
+        * fast/loader/stateobjects/pushstate-frequency-with-user-gesture-expected.txt: Removed.
+        * fast/loader/stateobjects/pushstate-frequency-with-user-gesture.html: Removed.
+        * fast/loader/stateobjects/replacestate-frequency-with-user-gesture-expected.txt: Removed.
+        * fast/loader/stateobjects/replacestate-frequency-with-user-gesture.html: Removed.
+
+2016-03-23  Dave Hyatt  <hyatt@apple.com>
+
+        Implement the allow-end value of the hanging-punctuation CSS property.
+        https://bugs.webkit.org/show_bug.cgi?id=104996
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/hanging-punctuation-allow-end-basic-expected.html: Added.
+        * fast/text/hanging-punctuation-allow-end-basic.html: Added.
+        * fast/text/hanging-punctuation-allow-end-expected.html: Added.
+        * fast/text/hanging-punctuation-allow-end-inlines-expected.html: Added.
+        * fast/text/hanging-punctuation-allow-end-inlines.html: Added.
+        * fast/text/hanging-punctuation-allow-end.html: Added.
+
+2016-03-25  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] implement String.prototype.padStart() and String.prototype.padEnd() proposal
+        https://bugs.webkit.org/show_bug.cgi?id=155795
+
+        Reviewed by Darin Adler.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2016-03-25  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add basic loading of resources
+        https://bugs.webkit.org/show_bug.cgi?id=155637
+
+        Reviewed by Darin Adler.
+
+        * TestExpectations: Removed flaky test expectations.
+        * http/tests/fetch/closing-while-fetching-expected.txt: Added.
+        * http/tests/fetch/closing-while-fetching.html: Added.
+        * http/tests/fetch/get-response-body-while-loading-expected.txt: Added.
+        * http/tests/fetch/get-response-body-while-loading.html: Added.
+        * http/tests/resources/download-json-with-delay.php: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/basic/request-headers-expected.txt: Added.
+
+2016-03-25  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening.
+
+        Mark new failing tests with existing or new bug.
+
+        * platform/efl/TestExpectations:
+
+2016-03-25  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening.
+
+        Mark some blink imported tests to timeout, imageonlyfailure.
+        Besides some AX tests need to have new baseline, which have been tested since r197616.
+
+        * platform/efl/TestExpectations:
+
+2016-03-24  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening. Mark crash tests in proper category.
+
+        * platform/efl/TestExpectations:
+
+2016-03-24  Daniel Bates  <dabates@apple.com>
+
+        CSP: Move logic for reporting a violation from ContentSecurityPolicyDirectiveList to ContentSecurityPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=155842
+        <rdar://problem/25340377>
+        And
+        https://bugs.webkit.org/show_bug.cgi?id=155133
+
+        Reviewed by Brent Fulgham.
+
+        Update expected results to reflect new error message text for an inline event handler violation.
+
+        * http/tests/security/contentSecurityPolicy/inline-event-handler-blocked-after-injecting-meta-expected.txt:
+        * http/tests/security/contentSecurityPolicy/inline-script-blocked-goofy-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-none-inline-event-expected.txt:
+
 2016-03-24  Saam barati  <sbarati@apple.com>
 
         ES6: Implement IsRegExp function and use where needed in String.prototype.* methods

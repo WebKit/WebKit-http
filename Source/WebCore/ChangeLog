@@ -1,3 +1,663 @@
+2016-03-28  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Remove unneeded lines in offsetAndBreadthForPositionedChild()
+        https://bugs.webkit.org/show_bug.cgi?id=155788
+
+        Reviewed by Sergio Villar Senin.
+
+        Just remove 2 lines/variables that were not needed at all in
+        RenderGrid::offsetAndBreadthForPositionedChild().
+
+        No new tests, no change of behavior.
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::offsetAndBreadthForPositionedChild):
+
+2016-03-27  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Removed redundant #if conditions in ANGLEWebKitBridge.h
+        https://bugs.webkit.org/show_bug.cgi?id=155880
+
+        Reviewed by Csaba Osztrogonác.
+
+        GTK, Efl, AppleWin, and WinCairo ports can be built only with cmake,
+        so condition !defined(BUILDING_WITH_CMAKE) implies
+        !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATOFRM(WIN).
+
+        No new tests needed.
+
+        * platform/graphics/ANGLEWebKitBridge.h:
+
+2016-03-26  Alex Christensen  <achristensen@webkit.org>
+
+        Mac CMake build fix.
+
+        * PlatformMac.cmake:
+        Link with AVFoundation libraries.
+
+2016-03-25  Dean Jackson  <dino@apple.com>
+
+        Move extended color detection into Open Source
+        https://bugs.webkit.org/show_bug.cgi?id=155909
+        <rdar://problem/25369754>
+
+        Reviewed by Anders Carlsson.
+
+        The code for detecting extended color displays
+        was hidden while the iPad Pro 9.7" was in development.
+        Now it is public, move the detection to Open Source.
+
+        While doing this, add a new method to PlatformScreen
+        so that we have a more obvious way to detect such
+        displays.
+
+        * platform/PlatformScreen.h: Add screenSupportsExtendedColor.
+
+        * platform/graphics/ca/cocoa/PlatformCALayerCocoa.mm:
+        (PlatformCALayerCocoa::commonInit): Set the backing
+        store format to the RGBA10XR if we're on an extended
+        display.
+        * platform/ios/LegacyTileGridTile.mm:
+        (WebCore::LegacyTileGridTile::LegacyTileGridTile): Ditto.
+        (WebCore::setBackingStoreFormat): Deleted. Now set directly
+        in the constructor.
+
+        * platform/ios/PlatformScreenIOS.mm:
+        (WebCore::screenDepthPerComponent): Cleanup.
+        (WebCore::screenSupportsExtendedColor): Implement the
+        iOS version of this using MobileGestalt.
+
+        * platform/mac/PlatformScreenMac.mm:
+        (WebCore::displayFromWidget): Whitespace cleanup.
+        (WebCore::screenForWidget):
+        (WebCore::screenForWindow):
+        (WebCore::screenSupportsExtendedColor): Default implementation
+        returns false for all screens at the moment.
+
+        * platform/spi/cocoa/QuartzCoreSPI.h: New constant.
+        * platform/spi/ios/MobileGestaltSPI.h: Ditto.
+
+2016-03-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Layout  sometimes flakily assumes overlay scrollbars when clicky-scroll-wheel-mouse is attached and system preference detects scrollbar mode
+        https://bugs.webkit.org/show_bug.cgi?id=155912
+
+        Reviewed by Simon Fraser.
+
+        When the system preference is set to detect the scrollbar type (overlay or
+        always-on, and a clicky scroll wheel mouse is connected, AppKit
+        asynchronously tells all the NSScrollerImpPairs about the kind of scrollbar
+        it should be using. However, when this notification is delivered, it may
+        be in between FrameViews, which means we may not have any
+        NSScrollerImpPairs created to listen to the notification.
+
+        r198444 solved this by asking if we missed any update whenever we create
+        an NSScrollerImpPair. This works partially; however, there is a significant
+        amount of layout which occurs before we create the first ScrollAnimatorMac.
+        This layout will ask the ScrollbarThemeMac if overlay scrollbars are
+        enabled, and the results will be stale (because we haven't created any the
+        NSScrollerImpPairs yet).
+
+        Luckly, AppKit fires a notification when it discovers what kind of
+        scrollbars should be used. We can rely on this notification in the event
+        that we don't have any NSScrollerImpPairs created.
+
+        Covered (as best as possible) by existing RTL scrollbar tests. However,
+        the system preference that governs this is not currently testable.
+
+        * platform/mac/ScrollbarThemeMac.mm:
+        (+[WebScrollbarPrefsObserver registerAsObserver]):
+        * platform/mac/ScrollAnimatorMac.mm:
+        (WebCore::ScrollAnimatorMac::ScrollAnimatorMac):  Remove the old code.
+
+2016-03-25  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Audio tracks in alternate groups are not represented correctly as AudioTracks
+        https://bugs.webkit.org/show_bug.cgi?id=155891
+        <rdar://problem/24841372>
+
+        Reviewed by Eric Carlson.
+
+        Test: media/track/video-track-alternate-groups.html
+
+        Previously, we created an AudioTrack for every AVPlayerItemTrack, and additionally, a
+        AudioTrack for every AVMediaSelectionOption that did not have an associated AVAssetTrack.
+        This caused a number of issues with various types of media, including media with fallback
+        tracks.
+
+        Now, we will create an AudioTrack for every AVMediaSelectionOption, and only create an
+        AudioTrack for every AVPlayerItem track if no AVMediaSelectionGroups (and thus no
+        AVMediaSeletionOptions) exist.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::determineChangedTracksFromNewTracksAndOldItems):
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::updateAudioTracks):
+
+2016-03-25  Zalan Bujtas  <zalan@apple.com>
+
+        RenderImage::repaintOrMarkForLayout fails when the renderer is detached.
+        https://bugs.webkit.org/show_bug.cgi?id=155885
+        <rdar://problem/25359164>
+
+        Reviewed by Simon Fraser.
+
+        Making containingBlockFor* functions standalone ensures that we don't
+        call them on an invalid object. 
+
+        Covered by existing tests.
+
+        * dom/Element.cpp:
+        (WebCore::layoutOverflowRectContainsAllDescendants):
+        * rendering/LogicalSelectionOffsetCaches.h:
+        (WebCore::LogicalSelectionOffsetCaches::LogicalSelectionOffsetCaches):
+        * rendering/RenderElement.cpp:
+        (WebCore::containingBlockForFixedPosition):
+        (WebCore::containingBlockForAbsolutePosition):
+        (WebCore::containingBlockForObjectInFlow):
+        (WebCore::RenderElement::containingBlockForFixedPosition): Deleted.
+        (WebCore::RenderElement::containingBlockForAbsolutePosition): Deleted.
+        (WebCore::isNonRenderBlockInline): Deleted.
+        (WebCore::RenderElement::containingBlockForObjectInFlow): Deleted.
+        * rendering/RenderElement.h:
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::styleWillChange):
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::containingBlock):
+
+2016-03-25  Dean Jackson  <dino@apple.com>
+
+        Remove use of extern "C" to include QuartzCore files
+        https://bugs.webkit.org/show_bug.cgi?id=155905
+        <rdar://problem/25364798>
+
+        Reviewed by Anders Carlson.
+
+        We can avoid having to wrap constants in extern "C", since they
+        are mangled the same in both C and C++.
+
+        * platform/graphics/ca/cocoa/PlatformCAFiltersCocoa.mm: Now that
+        QuartzCoreSPI.h has CABackdropLayer, remove the duplicate entry.
+        * platform/graphics/ca/cocoa/PlatformCALayerCocoa.mm: Ditto.
+        * platform/spi/cocoa/QuartzCoreSPI.h: Include the framework private
+        file. Repace EXTERN_C with "extern".
+
+2016-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Add a compile time flag for using QTKit
+        https://bugs.webkit.org/show_bug.cgi?id=155868
+
+        Reviewed by Daniel Bates.
+
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::buildMediaEnginesVector):
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.mm:
+        * platform/graphics/mac/MediaTimeQTKit.h:
+        * platform/graphics/mac/MediaTimeQTKit.mm:
+        * platform/mac/WebVideoFullscreenController.mm:
+        (SOFT_LINK_CLASS):
+        (-[WebVideoFullscreenController setVideoElement:]):
+        (-[WebVideoFullscreenController updatePowerAssertions]):
+
+2016-03-25  Beth Dakin  <bdakin@apple.com>
+
+        Autoscrolling from a drag selection does not work in full screen, or when the 
+        window is against the screen edge
+        https://bugs.webkit.org/show_bug.cgi?id=155858
+        -and corresponding-
+        rdar://problem/9338465
+
+        Reviewed by Simon Fraser.
+
+        WebKit2 has always had this bug. Since WebKit1 scrolling in handled largely 
+        by AppKit, we did not have this bug because AppKit adjusts the autoscroll 
+        amount whenever the window is at the edge of the screen and the user is 
+        trying to autoscroll in that direction. This patch employs the same technique 
+        in WebCore.
+
+        Instead of using EventHandler::lastKnownMousePosition() as the autoscroll 
+        amount, use EventHandler::effectiveMousePositionForSelectionAutoscroll() 
+        which will adjust the lastKnownMousePosition if the window is at the edge of 
+        the screen.
+        * page/AutoscrollController.cpp:
+        (WebCore::AutoscrollController::autoscrollTimerFired):
+
+        For most ports, effectiveMousePositionForSelectionAutoscroll() will just 
+        return m_lastKnownMousePosition. We override it in EventHandlerMac to return 
+        an adjusted amount.
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::effectiveMousePositionForSelectionAutoscroll):
+        * page/EventHandler.h:
+        * page/mac/EventHandlerMac.mm:
+        (WebCore::autoscrollAdjustmentFactorForScreenBoundaries):
+        (WebCore::EventHandler::effectiveMousePositionForSelectionAutoscroll):
+
+        Make screenForDisplayID available as on PlatformScreen.h instead of just 
+        being a static function in the implementation file.
+        * platform/PlatformScreen.h:
+        * platform/mac/PlatformScreenMac.mm:
+        (WebCore::screenForDisplayID):
+
+2016-03-25  Brady Eidson  <beidson@apple.com>
+
+        Soften push/replaceState frequency restrictions.
+        <rdar://problem/25228439> and https://bugs.webkit.org/show_bug.cgi?id=155901
+
+        Rubber-stamped by Timothy Hatcher.
+
+        Covered by existing LayoutTests and a new Manual Test.
+
+        * page/History.cpp:
+        (WebCore::History::stateObjectAdded): Allow 100 state object operations every 30 seconds.
+        * page/History.h:
+
+2016-03-24  Enrica Casucci  <enrica@apple.com>
+
+        Data Detection creates multiple links even when the detected content is within the same node.
+        https://bugs.webkit.org/show_bug.cgi?id=155860
+        rdar://problem/25319579
+
+        Reviewed by Tim Horton.
+
+        If the detected content spans over multiple query fragments,
+        we need to check if consecutive fragments are all within the
+        same node. This way we can avoid creating multiple ranges and
+        consequntly more links.
+
+        * editing/cocoa/DataDetection.mm:
+        (WebCore::DataDetection::detectContentInRange):
+
+2016-03-23  Dave Hyatt  <hyatt@apple.com>
+
+        Implement the allow-end value of the hanging-punctuation CSS property.
+        https://bugs.webkit.org/show_bug.cgi?id=104996
+
+        Reviewed by Simon Fraser.
+
+        Added new tests in fast/text.
+
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlockFlow::constructLine):
+        Fix a bug where empty RenderInlines were incorrectly excluding their end borders if
+        they occurred at the end of a line. Needed to adequately test allow-end and empty
+        inline borders.
+
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::isHangableStopOrComma):
+        Helper function that identifies the hangable stops and commas.
+
+        * rendering/RenderText.h:
+        Add new isHangableStopOrComma function to RenderText.
+
+        * rendering/line/BreakingContext.h:
+        (WebCore::BreakingContext::lineBreak):
+        (WebCore::BreakingContext::lineWidth):
+        (WebCore::BreakingContext::atEnd):
+        (WebCore::BreakingContext::fitsOnLineOrHangsAtEnd):
+        (WebCore::BreakingContext::clearLineBreakIfFitsOnLine):
+        (WebCore::BreakingContext::commitLineBreakAtCurrentWidth):
+        (WebCore::BreakingContext::handleBR):
+        (WebCore::BreakingContext::handleEmptyInline):
+        (WebCore::BreakingContext::handleReplaced):
+        (WebCore::tryHyphenating):
+        (WebCore::BreakingContext::computeAdditionalBetweenWordsWidth):
+        (WebCore::BreakingContext::handleText):
+        (WebCore::BreakingContext::commitAndUpdateLineBreakIfNeeded):
+        Modified breaking rules to handle allow-end. The basic idea is to see if you can
+        fit without the comma and only hang if you do, and if nothing else gets added to the
+        line after the comma. This involves tracking a new state, m_hangsAtEnd, that can
+        be set/cleared while iterating over the objects that will end up on the line.
+
+2016-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Revert most of r198673.
+
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::buildMediaEnginesVector):
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.mm:
+        * platform/graphics/mac/MediaTimeQTKit.h:
+        * platform/graphics/mac/MediaTimeQTKit.mm:
+        * platform/mac/WebVideoFullscreenController.mm:
+
+2016-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Add a compile time flag for using QTKit
+        https://bugs.webkit.org/show_bug.cgi?id=155868
+
+        Reviewed by Dan Bates.
+
+        * platform/graphics/MediaPlayer.cpp:
+        (WebCore::buildMediaEnginesVector):
+        * platform/graphics/mac/MediaPlayerPrivateQTKit.mm:
+        * platform/graphics/mac/MediaTimeQTKit.h:
+        * platform/graphics/mac/MediaTimeQTKit.mm:
+        * platform/mac/WebVideoFullscreenController.mm:
+
+2016-03-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Improve CMake build performance 
+        https://bugs.webkit.org/show_bug.cgi?id=155871
+        <rdar://problem/24747822>
+
+        Reviewed by Alex Christensen.
+
+        Treat DerivedSources.cpp as an 'All-in-one' file. Pass a flag to the
+        PROCESS_ALLINONE_FILE macro so that it does not remove the contents of
+        the file, since this breaks dependency checking and generation of the
+        sources from the IDL files. Instead, include the header files in the
+        project so that all files get generated.        
+        
+        * CMakeLists.txt: Updated for 'DerivedSources.cpp'
+        * DerivedSources.cpp: Add some generated files that were missing.
+
+2016-03-25  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Add basic loading of resources
+        https://bugs.webkit.org/show_bug.cgi?id=155637
+
+        Reviewed by Darin Adler.
+
+        Adding support for basic fetch for Window (no support for Worker yet).
+        A FetchResponse object is created for every fetch task.
+        But it will only be exposed to JS at promise fulfillment time, i.e. once initial response headers are retrieved.
+
+        Updating Blob resource handle to add Content-Type and Content-Length header and notifying of error in case of erroneous HTTP method.
+
+        Fetch is limited to same origin requests currently due to some WPT tests that would timeout otherwise.
+
+        Tests: http/tests/fetch/closing-while-fetching.html
+               http/tests/fetch/get-response-body-while-loading.html
+        Also covered by rebased tests.
+
+        * Modules/fetch/DOMWindowFetch.cpp: Creating a FetchResponse to start fetching.
+        (WebCore::DOMWindowFetch::fetch):
+        * Modules/fetch/DOMWindowFetch.h:
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::consume):
+        (WebCore::FetchBody::consumeArrayBuffer): Handling of body promises in case of data stored as a buffer.
+        (WebCore::FetchBody::consumeText): Passing the promise as a reference.
+        (WebCore::blobFromArrayBuffer): Helper routine.
+        (WebCore::FetchBody::fulfillTextPromise): Helper routine.
+        (WebCore::FetchBody::loadedAsArrayBuffer): Updated to handle storing of data as a buffer.
+        (WebCore::FetchBody::loadedAsText):
+        (WebCore::FetchBody::bodyForInternalRequest): Helper routine to generate the request body data to be sent as part of the fetch request.
+        (WebCore::FetchBody::extractFromText):
+        * Modules/fetch/FetchBody.h:
+        (WebCore::FetchBody::loadingBody):
+        (WebCore::FetchBody::FetchBody):
+        * Modules/fetch/FetchBodyOwner.cpp:
+        (WebCore::FetchBodyOwner::loadBlob): Updated to cope with the change that FetchLoader::start does not return a boolean anymore
+        but will directly call failure callbacks.
+        (WebCore::FetchBodyOwner::loadedBlobAsText): Moving it closer to other blob loading routines.
+        (WebCore::FetchBodyOwner::finishBlobLoading):
+        * Modules/fetch/FetchBodyOwner.h:
+        (WebCore::FetchBodyOwner::body):
+        (WebCore::FetchBodyOwner::loadedBlobAsArrayBuffer):
+        * Modules/fetch/FetchHeaders.cpp:
+        (WebCore::FetchHeaders::fill):
+        (WebCore::FetchHeaders::filterAndFill): Helper routine to fill headers from a HTTPHeaderMap after being filtered.
+        * Modules/fetch/FetchHeaders.h:
+        (WebCore::FetchHeaders::internalHeaders):
+        * Modules/fetch/FetchLoader.cpp:
+        (WebCore::FetchLoader::start):
+        (WebCore::FetchLoader::didFailRedirectCheck):
+        * Modules/fetch/FetchLoader.h:
+        * Modules/fetch/FetchRequest.cpp:
+        (WebCore::FetchRequest::internalRequest): Routine used to create the ResourceRequest transmitted to ThreadableLoader.
+       * Modules/fetch/FetchRequest.h:
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::fetch): Start fetching by creating a FetchLoader based on passed request.
+        (WebCore::FetchResponse::BodyLoader::didSucceed): FetchLoader callback.
+        (WebCore::FetchResponse::BodyLoader::didFail): Ditto.
+        (WebCore::FetchResponse::BodyLoader::BodyLoader): Ditto.
+        (WebCore::FetchResponse::BodyLoader::didReceiveResponse): Ditto.
+        (WebCore::FetchResponse::BodyLoader::didFinishLoadingAsArrayBuffer): Ditto.
+        (WebCore::FetchResponse::BodyLoader::start): Starting fetch loader.
+        (WebCore::FetchResponse::BodyLoader::stop): Stopping fetch loader.
+        (WebCore::FetchResponse::stop): Stop loader if any.
+        * Modules/fetch/FetchResponse.h:
+        * platform/network/BlobResourceHandle.cpp:
+        (WebCore::BlobResourceHandle::doStart: Notifying the loader with an error if verb is not GET.
+        (WebCore::BlobResourceHandle::notifyResponseOnSuccess): Adding support for Content-Type and Content-Lenth headers.
+        (WebCore::BlobResourceHandle::createAsync): Removing GET verb check.
+
+2016-03-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Removed leftovers of WCHAR_UNICODE code path after r162782.
+        https://bugs.webkit.org/show_bug.cgi?id=155881
+
+        Reviewed by Csaba Osztrogonác.
+
+        No new tests needed.
+
+        * platform/text/TextEncodingDetectorNone.cpp: Removed.
+        * platform/text/wchar/TextBreakIteratorWchar.cpp: Removed.
+
+2016-03-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * PlatformMac.cmake:
+        Add new file and directory.
+
+2016-03-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r198500.
+
+        Roll back in r197552 as it did not seem to cause a PLT
+        regression after all
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r197552."
+        https://bugs.webkit.org/show_bug.cgi?id=154986
+        http://trac.webkit.org/changeset/198500
+
+2016-03-24  Daniel Bates  <dabates@apple.com>
+
+        CSP: Move logic for reporting a violation from ContentSecurityPolicyDirectiveList to ContentSecurityPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=155842
+        <rdar://problem/25340377>
+        And
+        https://bugs.webkit.org/show_bug.cgi?id=155133
+
+        Reviewed by Brent Fulgham.
+
+        Towards associating source file, line-, and column- numbers (https://bugs.webkit.org/show_bug.cgi?id=114317)
+        with a CSP console message we should move the logic for logging the console message/reporting the violation
+        from class ContentSecurityPolicyDirectiveList to class ContentSecurityPolicy so that it is closer to the
+        script execution context that can access such information.
+
+        The responsibilities of the class ContentSecurityPolicyDirectiveList have been reduced. It is responsible
+        for parsing a string representation of the Content Security Policy and providing functions to determine
+        the violated directive (if any) for a given source (e.g. URL). ContentSecurityPolicyDirectiveList no longer
+        takes responsibility logging a console message or sending a violation report (if applicable). Falling out
+        from this decrease in responsibility is the removal of enum ContentSecurityPolicyDirectiveList::ReportingStatus
+        and the need to pass a enumerator of this enum to each ContentSecurityPolicyDirectiveList to suppress
+        the sending of a violation report. The caller of ContentSecurityPolicyDirectiveList is responsible for
+        making this determination.
+
+        With the exception of a change to the error message for an inline event handler violation, there are no
+        other functional changes. When an inline event handler violation occurs we will emit either:
+
+            Refused to execute a script for an inline event handler because 'unsafe-inline' does not appear in the
+            script-src directive of the Content Security Policy.
+
+        Or:
+
+            Refused to execute a script for an inline event handler because 'unsafe-inline' appears in neither the
+            script-src directive nor the default-src directive of the Content Security Policy.
+
+        depending on whether the Content Security Policy contains a script-src directive or not.
+
+        * CMakeLists.txt: Add files ContentSecurityPolicyDirective.cpp and ContentSecurityPolicyDirectiveNames.cpp.
+        * WebCore.xcodeproj/project.pbxproj: Add files ContentSecurityPolicyDirective.cpp and ContentSecurityPolicyDirectiveNames.{cpp, h}.
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::consoleMessageForViolation): Moved from file ContentSecurityPolicyDirectiveList.cpp and
+        incorporates the functionality of ContentSecurityPolicyDirectiveList::reportViolation(). Modified
+        to take a reference to the violated directive (ContentSecurityPolicyDirective object) and removed
+        the boolean parameter violatesDefaultSrc as we can deduce this from the violated directive.
+        (WebCore::ContentSecurityPolicy::didReceiveHeader): Modified to call ContentSecurityPolicyDirectiveList::violatedDirectiveForUnsafeEval().
+        (WebCore::ContentSecurityPolicy::foundHashOfContentInAllPolicies): Renamed; Formerly named allPoliciesAllowHashFromContent.
+        Modified to early return if either no algorithms are given or the specified content to hash is
+        the empty string.
+        (WebCore::ContentSecurityPolicy::allowJavaScriptURLs): Moved logic for reporting a violation from
+        ContentSecurityPolicyDirectiveList member function of the same name to here.
+        (WebCore::ContentSecurityPolicy::allowInlineEventHandlers): Moved logic for reporting a violation from
+        ContentSecurityPolicyDirectiveList member function of the same name to here. Additionally, changed the
+        error message text to better describe the reason for the violation.
+        (WebCore::ContentSecurityPolicy::allowScriptWithNonce): Ditto.
+        (WebCore::ContentSecurityPolicy::allowStyleWithNonce): Ditto.
+        (WebCore::ContentSecurityPolicy::allowInlineScript): Ditto.
+        (WebCore::ContentSecurityPolicy::allowInlineStyle): Ditto.
+        (WebCore::ContentSecurityPolicy::allowEval): Ditto.
+        (WebCore::ContentSecurityPolicy::allowFrameAncestors): Ditto.
+        (WebCore::ContentSecurityPolicy::allowPluginType): Ditto.
+        (WebCore::ContentSecurityPolicy::allowScriptFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowObjectFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowChildFrameFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowChildContextFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowImageFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowStyleFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowFontFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowMediaFromSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowConnectToSource): Ditto.
+        (WebCore::ContentSecurityPolicy::allowFormAction): Ditto.
+        (WebCore::ContentSecurityPolicy::allowBaseURI): Ditto.
+        (WebCore::ContentSecurityPolicy::reportViolation): Simplified signature by having it take a reference to
+        a ContentSecurityPolicyDirective object. Also split functionality into two variants: one variant takes a
+        pointer to a JSC::ExecState, one variant takes a source file, and line and column positions.
+        (WebCore::ContentSecurityPolicy::allPoliciesAllowHashFromContent): Deleted.
+        (WebCore::ContentSecurityPolicy::gatherReportURIs): Deleted.
+        * page/csp/ContentSecurityPolicy.h:
+        (WebCore::ContentSecurityPolicy::violatedDirectiveInAnyPolicy): Formerly named allPoliciesAllow. Modified
+        to return the violated directive.
+        (WebCore::ContentSecurityPolicy::allPoliciesAllow): Deleted.
+        * page/csp/ContentSecurityPolicyDirective.cpp: Added.
+        * page/csp/ContentSecurityPolicyDirective.h: Added.
+        (WebCore::ContentSecurityPolicyDirective::ContentSecurityPolicyDirective): Modified to take a reference to the
+        directive list that contains this directive instead of pointer to a ContentSecurityPolicy object.
+        (WebCore::ContentSecurityPolicyDirective::name): Added.
+        (WebCore::ContentSecurityPolicyDirective::directiveList): Added.
+        (WebCore::ContentSecurityPolicyDirective::isDefaultSrc): Added.
+        (WebCore::ContentSecurityPolicyDirective::policy): Deleted.
+        * page/csp/ContentSecurityPolicyDirectiveList.cpp: Remove unused header <wtf/Optional.h>. Also remove header wtf/text/StringBuilder.h
+        as the function that made use of it, consoleMessageForViolation, was moved to file ContentSecurityPolicy.cpp.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForUnsafeEval): Formerly named allowEval.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForUnsafeInlineScript): Formerly named allowInlineScript.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForUnsafeInlineStyle): Formerly named allowInlineStyle.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForScriptHash): Formerly named allowInlineScriptWithHash.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForStyleHash): Formerly named allowInlineStyleWithHash.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForScriptNonce): Formerly named allowScriptWithNonce.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForStyleNonce): Formerly named allowStyleWithNonce.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForBaseURI): Formerly named allowBaseURI.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForChildContext): Formerly named allowChildContextFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForConnectSource): Formerly named allowConnectToSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForFont): Formerly named allowFontFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForFormAction): Formerly named allowFormAction.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForFrame): Formerly named allowChildFrameFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForFrameAncestor): Formerly named allowFrameAncestors.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForImage): Formerly named allowImageFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForMedia): Formerly named allowMediaFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForObjectSource): Formerly named allowObjectFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForPluginType): Formerly named allowPluginType.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForScript): Formerly named allowScriptFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::violatedDirectiveForStyle): Formerly named allowStyleFromSource.
+        (WebCore::ContentSecurityPolicyDirectiveList::parse): Update code to make use of ContentSecurityPolicyDirectiveNames constants.
+        (WebCore::ContentSecurityPolicyDirectiveList::setCSPDirective): Pass |this| instead of the ContentSecurityPolicy object.
+        (WebCore::ContentSecurityPolicyDirectiveList::addDirective): Update code to make use of ContentSecurityPolicyDirectiveNames constants.
+        (WebCore::isExperimentalDirectiveName): Deleted.
+        (WebCore::isCSPDirectiveName): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::reportViolation): Deleted.
+        (WebCore::consoleMessageForViolation): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowJavaScriptURLs): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineEventHandlers): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineScript): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineScriptWithHash): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowScriptWithNonce): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineStyle): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowInlineStyleWithHash): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowStyleWithNonce): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowEval): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowPluginType): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowScriptFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowObjectFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowChildContextFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowChildFrameFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowImageFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowStyleFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowFontFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowMediaFromSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowConnectToSource): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowFormAction): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowBaseURI): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::allowFrameAncestors): Deleted.
+        * page/csp/ContentSecurityPolicyDirectiveList.h:
+        (WebCore::ContentSecurityPolicyDirectiveList::defaultSrc): Added.
+        (WebCore::ContentSecurityPolicyDirectiveList::policy): Added. Also added FIXME comment to remove this function. This
+        function is only used by ContentSecurityPolicyMediaListDirective so that it can log a console message on a parsing error.
+        (WebCore::ContentSecurityPolicyDirectiveList::denyIfEnforcingPolicy): Deleted.
+        * page/csp/ContentSecurityPolicyDirectiveNames.cpp: Added.
+        * page/csp/ContentSecurityPolicyDirectiveNames.h: Added.
+        * page/csp/ContentSecurityPolicyMediaListDirective.cpp:
+        (WebCore::ContentSecurityPolicyMediaListDirective::ContentSecurityPolicyMediaListDirective): Modified to take a reference to the
+        directive list that contains this directive instead of pointer to a ContentSecurityPolicy object.
+        (WebCore::ContentSecurityPolicyMediaListDirective::parse): Updated code to use ContentSecurityPolicyDirectiveList::policy() instead
+        of ContentSecurityPolicyDirective::policy() as the latter was removed. Ideally this class should not need to use the ContentSecurityPolicy
+        object to log a console message.
+        * page/csp/ContentSecurityPolicyMediaListDirective.h:
+        * page/csp/ContentSecurityPolicySourceList.cpp:
+        (WebCore::isExperimentalDirectiveName): Moved from file ContentSecurityPolicyDirectiveList.cpp because this function is only used
+        in this file.
+        (WebCore::isCSPDirectiveName): Ditto.
+        (WebCore::ContentSecurityPolicySourceList::isProtocolAllowedByStar): Update code to make use of ContentSecurityPolicyDirectiveNames constants.
+        * page/csp/ContentSecurityPolicySourceListDirective.cpp:
+        (WebCore::ContentSecurityPolicySourceListDirective::ContentSecurityPolicySourceListDirective): Modified to take a reference to
+        the directive list that contains this directive instead of pointer to a ContentSecurityPolicy object. 
+        * page/csp/ContentSecurityPolicySourceListDirective.h:
+
+2016-03-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Overflow:scroll scrollbars do not obey overlay/always-on system preference changes
+        https://bugs.webkit.org/show_bug.cgi?id=155830
+
+        Reviewed by Simon Fraser.
+
+        When the scrollbar style changes, the available width of all ScrollableAreas change,
+        and therefore a relayout must occur.
+
+        Each ScrollableArea owns its own ScrollAnimator (if necessary). Upon creation, the
+        ScrollAnimator will start listening for changes to the system preference for
+        overlay / always-on scrollbars. When notified, the ScrollAnimator tells its owning
+        ScrollableArea that scrollbarStyleChanged().
+
+        For main-frame scrolling, FrameView overrides scrollbarStyleChanged and causes a
+        relayout. However, for overflow:scroll elements, no relayout is triggered. This
+        patch overrides availableContentSizeChanged() for RenderLayer (which is used for
+        overflow:scroll elements). This override triggers a relayout.
+
+        It also updates the mechanism in RenderBlock::recomputeLogicalWidth() to ensure that
+        a change in scrollbar size causes RenderBlockFlow::layoutBlock() to relayout its
+        children. This is appropriate because block child positioning is affected by
+        scrollbar size.
+
+        No new tests (for now). Presumably we could mock the message we receive when the
+        system preference is changed. However, I haven't implemented that yet.
+
+        * rendering/RenderBlock.cpp: Rename setHasBorderOrPaddingLogicalWidthChanged().
+        (WebCore::RenderBlock::styleDidChange):
+        (WebCore::RenderBlock::recomputeLogicalWidth):
+        * rendering/RenderBlock.h: Ditto.
+        (WebCore::RenderBlock::setShouldForceRelayoutChildren):
+        (WebCore::RenderBlock::shouldForceRelayoutChildren):
+        * rendering/RenderElement.cpp: Ditto.
+        (WebCore::RenderElement::RenderElement):
+        * rendering/RenderElement.h: Ditto.
+        (WebCore::RenderElement::setRenderBlockShouldForceRelayoutChildren):
+        (WebCore::RenderElement::renderBlockShouldForceRelayoutChildren):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::availableContentSizeChanged): Cause a relayout to occur.
+        * rendering/RenderLayer.h:
+
 2016-03-24  Said Abou-Hallawa  <sabouhallawa@apple,com>
 
         Change NativeImagePtr for CG to be RetainPtr<CGImageRef>
