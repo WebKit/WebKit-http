@@ -484,7 +484,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
     if (!m_resourceHandle)
         return;
 
-    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+    const BHttpResult* httpResult = static_cast<const BHttpResult*>(&result);
 
     WTF::String contentType = result.ContentType();
     int contentLength = result.Length();
@@ -493,11 +493,9 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
-    if (httpRequest) {
-        const BHttpResult& hresult = static_cast<const BHttpResult&>(
-            result);
-        url = URL(hresult.Url());
-        BString location = hresult.Headers()["Location"];
+    if (httpResult) {
+        url = URL(httpResult->Url());
+        BString location = httpResult->Headers()["Location"];
         if (location.Length() > 0) {
             m_redirected = true;
             url = URL(url, location);
@@ -508,29 +506,27 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
 
     ResourceResponse response(url, mimeType, contentLength, encoding);
 
-    if (httpRequest) {
-        const BHttpResult& hresult = static_cast<const BHttpResult&>(
-            result);
-        int statusCode = hresult.StatusCode();
+    if (httpResult) {
+        int statusCode = httpResult->StatusCode();
 
         String suggestedFilename = filenameFromHTTPContentDisposition(
-            hresult.Headers()["Content-Disposition"]);
+            httpResult->Headers()["Content-Disposition"]);
 
         if (!suggestedFilename.isEmpty())
             response.setSuggestedFilename(suggestedFilename);
 
         response.setHTTPStatusCode(statusCode);
-        response.setHTTPStatusText(hresult.StatusText());
+        response.setHTTPStatusText(httpResult->StatusText());
 
         // Add remaining headers.
-        const BHttpHeaders& resultHeaders = hresult.Headers();
+        const BHttpHeaders& resultHeaders = httpResult->Headers();
         for (int i = 0; i < resultHeaders.CountHeaders(); i++) {
             BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
         }
 
         if (statusCode == 401) {
-            AuthenticationNeeded(httpRequest, response);
+            AuthenticationNeeded((BHttpRequest*)m_request, response);
             // AuthenticationNeeded may have aborted the request
             // so we need to make sure we can continue.
             if (!m_resourceHandle)
