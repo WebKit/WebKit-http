@@ -929,10 +929,12 @@ void FrameLoaderClientQt::convertMainResourceLoadToDownload(DocumentLoader* docu
 
     QNetworkReply* reply = handler->release();
     if (reply) {
-        if (m_webFrame->pageAdapter->forwardUnsupportedContent)
+        if (m_webFrame->pageAdapter->forwardUnsupportedContent) {
             emit unsupportedContent(reply);
-        else
+        } else {
             reply->abort();
+            reply->deleteLater();
+        }
     }
 }
 
@@ -1515,12 +1517,6 @@ String FrameLoaderClientQt::overrideMediaType() const
         return m_webFrame->pageAdapter->settings->cssMediaType();
 
     return String();
-}
-
-QString FrameLoaderClientQt::chooseFile(const QString& oldFile)
-{
-    QStringList result = m_webFrame->pageAdapter->chooseFiles(m_webFrame, /*allowMulti*/ false, (QStringList() << oldFile));
-    return result.isEmpty() ? QString() : result.first();
 }
 
 PassRefPtr<FrameNetworkingContext> FrameLoaderClientQt::createNetworkingContext()
