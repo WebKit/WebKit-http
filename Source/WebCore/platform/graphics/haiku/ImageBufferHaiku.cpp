@@ -48,23 +48,23 @@
 namespace WebCore {
 
 ImageBufferData::ImageBufferData(const FloatSize& size)
-    : m_bitmap(BRect(0, 0, size.width() - 1., size.height() - 1.), B_RGBA32, true)
+    : m_bitmap(new BitmapRef(BRect(0, 0, size.width() - 1., size.height() - 1.), B_RGBA32, true))
     , m_view(NULL)
     , m_context(NULL)
 {
     // Always keep the bitmap locked, we are the only client.
-    m_bitmap.Lock();
+    m_bitmap->Lock();
     if(size.isEmpty())
         return;
 
-    if (!m_bitmap.IsLocked() || !m_bitmap.IsValid())
+    if (!m_bitmap->IsLocked() || !m_bitmap->IsValid())
         return;
 
-    m_view = new BView(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0);
-    m_bitmap.AddChild(m_view);
+    m_view = new BView(m_bitmap->Bounds(), "WebKit ImageBufferData", 0, 0);
+    m_bitmap->AddChild(m_view);
 
     // Fill with completely transparent color.
-    memset(m_bitmap.Bits(), 0, m_bitmap.BitsLength());
+    memset(m_bitmap->Bits(), 0, m_bitmap->BitsLength());
 
     // Since ImageBuffer is used mainly for Canvas, explicitly initialize
     // its view's graphics state with the corresponding canvas defaults
@@ -74,7 +74,7 @@ ImageBufferData::ImageBufferData(const FloatSize& size)
     m_view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
     m_context = new GraphicsContext(m_view);
 
-    m_image = StillImage::createForRendering(&m_bitmap);
+    m_image = StillImage::createForRendering(m_bitmap);
 }
 
 ImageBufferData::~ImageBufferData()
@@ -84,7 +84,7 @@ ImageBufferData::~ImageBufferData()
     m_image = nullptr;
     delete m_context;
 
-    m_bitmap.Unlock();
+    m_bitmap->Unlock();
 }
 
 ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
@@ -120,9 +120,9 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavio
         m_data.m_view->Sync();
 
     if (copyBehavior == CopyBackingStore)
-        return StillImage::create(m_data.m_bitmap);
+        return StillImage::create(NativeImagePtr(new BitmapRef(*m_data.m_bitmap.get())));
 
-    return StillImage::createForRendering(&m_data.m_bitmap);
+    return StillImage::createForRendering(m_data.m_bitmap);
 }
 
 BackingStoreCopy ImageBuffer::fastCopyImageMode()
@@ -169,8 +169,8 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& src
 
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 {
-    uint8* rowData = reinterpret_cast<uint8*>(m_data.m_bitmap.Bits());
-    unsigned bytesPerRow = m_data.m_bitmap.BytesPerRow();
+    uint8* rowData = reinterpret_cast<uint8*>(m_data.m_bitmap->Bits());
+    unsigned bytesPerRow = m_data.m_bitmap->BytesPerRow();
     unsigned rows = m_size.height();
     unsigned columns = m_size.width();
     for (unsigned y = 0; y < rows; y++) {
@@ -324,8 +324,8 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
     // intersection rect.
     destRows += destx * 4 + desty * destBytesPerRow;
 
-    const uint8* sourceRows = reinterpret_cast<const uint8*>(imageData.m_bitmap.Bits());
-    uint32 sourceBytesPerRow = imageData.m_bitmap.BytesPerRow();
+    const uint8* sourceRows = reinterpret_cast<const uint8*>(imageData.m_bitmap->Bits());
+    uint32 sourceBytesPerRow = imageData.m_bitmap->BytesPerRow();
     // Offset the source pointer to point at the first pixel of the
     // intersection rect.
     sourceRows += (int)sourceRect.left * 4 + (int)sourceRect.top * sourceBytesPerRow;
@@ -338,14 +338,14 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
     return result.release();
 }
 
-PassRefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view->Sync();
     return getImageData(rect, m_data, m_size, false);
 }
 
-PassRefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view->Sync();
@@ -375,8 +375,8 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
     BRect destRect(destPoint.x(), destPoint.y(), sourceRect.width() - 1, sourceRect.height() - 1);
     destRect = destRect & BRect(0, 0, sourceSize.width() - 1, sourceSize.height() - 1);
 
-    unsigned char* destRows = reinterpret_cast<unsigned char*>(m_data.m_bitmap.Bits());
-    uint32 destBytesPerRow = m_data.m_bitmap.BytesPerRow();
+    unsigned char* destRows = reinterpret_cast<unsigned char*>(m_data.m_bitmap->Bits());
+    uint32 destBytesPerRow = m_data.m_bitmap->BytesPerRow();
     // Offset the source pointer to point at the first pixel of the
     // intersection rect.
     destRows += (int)destRect.left * 4 + (int)destRect.top * destBytesPerRow;
@@ -430,16 +430,16 @@ String ImageBuffer::toDataURL(const String& mimeType, const double* /*quality*/,
 
 
     BMallocIO translatedStream;
-    BBitmap* bitmap = const_cast<BBitmap*>(&m_data.m_bitmap);
         // BBitmapStream doesn't take "const Bitmap*"...
-    BBitmapStream bitmapStream(bitmap);
+    BBitmapStream bitmapStream(m_data.m_bitmap.get());
+	BBitmap* tmp = NULL;
     if (roster->Translate(&bitmapStream, 0, 0, &translatedStream, translatorType,
                           B_TRANSLATOR_BITMAP, mimeType.utf8().data()) != B_OK) {
-        bitmapStream.DetachBitmap(&bitmap);
+        bitmapStream.DetachBitmap(&tmp);
         return "data:,";
     }
 
-    bitmapStream.DetachBitmap(&bitmap);
+    bitmapStream.DetachBitmap(&tmp);
 
     Vector<char> encodedBuffer;
     base64Encode(reinterpret_cast<const char*>(translatedStream.Buffer()),

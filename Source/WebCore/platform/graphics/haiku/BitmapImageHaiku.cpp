@@ -31,7 +31,7 @@
 
 namespace WebCore {
 
-BitmapImage::BitmapImage(BBitmap* nativeImage, ImageObserver* observer)
+BitmapImage::BitmapImage(NativeImagePtr&& nativeImage, ImageObserver* observer)
     : Image(observer)
     , m_size(nativeImage->Bounds().Width(), nativeImage->Bounds().Height())
     , m_minimumSubsamplingLevel(0)
@@ -51,7 +51,7 @@ BitmapImage::BitmapImage(BBitmap* nativeImage, ImageObserver* observer)
 {
     m_frames.grow(1);
     m_frames[0].m_hasAlpha = true; // FIXME
-    m_frames[0].m_frame = nativeImage;
+    m_frames[0].m_image = nativeImage;
     m_frames[0].m_haveMetadata = true;
 
     checkForSolidColor();

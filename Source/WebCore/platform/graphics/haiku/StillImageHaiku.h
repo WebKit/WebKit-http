@@ -35,12 +35,12 @@ namespace WebCore {
 
 class StillImage : public Image {
 public:
-    static PassRefPtr<StillImage> create(const BBitmap& bitmap)
+    static PassRefPtr<StillImage> create(NativeImagePtr bitmap)
     {
         return adoptRef(new StillImage(bitmap));
     }
 
-    static PassRefPtr<StillImage> createForRendering(const BBitmap* bitmap)
+    static PassRefPtr<StillImage> createForRendering(NativeImagePtr bitmap)
     {
         return adoptRef(new StillImage(bitmap));
     }
@@ -54,12 +54,10 @@ public:
     virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
 
 private:
-    StillImage(const BBitmap& bitmap);
-    StillImage(const BBitmap* bitmap);
+    StillImage(NativeImagePtr bitmap);
     ~StillImage();
 
-    const BBitmap* m_bitmap;
-    bool m_ownsBitmap;
+    NativeImagePtr m_bitmap;
 };
 
 } // namespace WebCore

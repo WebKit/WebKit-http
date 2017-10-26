@@ -403,7 +403,7 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
 	reply.RemoveName("icon");
     reply.AddString("url", url);
 
-    BBitmap* icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(url, WebCore::IntSize(16, 16));
+	WebCore::NativeImagePtr icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(url, WebCore::IntSize(16, 16));
     BMessage iconArchive;
     if (icon && icon->Archive(&iconArchive) == B_OK)
         reply.AddMessage("icon", &iconArchive);

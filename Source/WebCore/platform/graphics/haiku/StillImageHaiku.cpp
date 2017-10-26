@@ -34,20 +34,12 @@
 
 namespace WebCore {
 
-StillImage::StillImage(const BBitmap& bitmap)
-    : m_bitmap(new BBitmap(bitmap))
-    , m_ownsBitmap(true)
-{}
-
-StillImage::StillImage(const BBitmap* bitmap)
+StillImage::StillImage(NativeImagePtr bitmap)
     : m_bitmap(bitmap)
-    , m_ownsBitmap(false)
 {}
 
 StillImage::~StillImage()
 {
-    if (m_ownsBitmap)
-        delete m_bitmap;
 }
 
 
@@ -70,7 +62,7 @@ FloatSize StillImage::size() const
 
 NativeImagePtr StillImage::nativeImageForCurrentFrame()
 {
-    return const_cast<NativeImagePtr>(m_bitmap);
+    return m_bitmap;
 }
 
 void StillImage::draw(GraphicsContext& context, const FloatRect& destRect,
@@ -81,7 +73,7 @@ void StillImage::draw(GraphicsContext& context, const FloatRect& destRect,
     
     context.save();
     context.setCompositeOperation(op);
-    context.platformContext()->DrawBitmap(m_bitmap, sourceRect, destRect);
+    context.platformContext()->DrawBitmap(m_bitmap.get(), sourceRect, destRect);
     context.restore();
 }
 

@@ -44,7 +44,7 @@ public:
     ImageBufferData(const FloatSize&);
     ~ImageBufferData();
 
-    BBitmap m_bitmap;
+    NativeImagePtr m_bitmap;
     BView* m_view;
     GraphicsContext* m_context;
     

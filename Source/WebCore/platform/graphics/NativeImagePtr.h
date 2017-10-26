@@ -36,7 +36,9 @@ typedef struct CGImage* CGImageRef;
 #elif USE(WINGDI)
 #include "SharedBitmap.h"
 #elif PLATFORM(HAIKU)
-class BBitmap;
+#include <wtf/RefPtr.h>
+#include <Bitmap.h>
+#include <Referenceable.h>
 #endif
 
 namespace WebCore {
@@ -46,9 +48,32 @@ typedef RetainPtr<CGImageRef> NativeImagePtr;
 #elif USE(CAIRO)
 typedef RefPtr<cairo_surface_t> NativeImagePtr;
 #elif USE(WINGDI)
-typedef RefPtr<SharedBitmap> NativeImagePtr;
+typedef WTF::RefPtr<SharedBitmap> NativeImagePtr;
 #elif PLATFORM(HAIKU)
-typedef BBitmap* NativeImagePtr;
+
+class BitmapRef: public BBitmap, public BReferenceable
+{
+	public:
+		BitmapRef(BRect r, uint32 f, color_space c, int32 b)
+			: BBitmap(r, f, c, b)
+		{
+		}
+
+		BitmapRef(BRect r, color_space c, bool v)
+			: BBitmap(r, c, v)
+		{
+		}
+
+		BitmapRef(BBitmap& other)
+			: BBitmap(other)
+		{
+		}
+
+		void ref() { AcquireReference(); }
+		void deref() { ReleaseReference(); }
+};
+
+typedef RefPtr<BitmapRef> NativeImagePtr;
 #endif
 
 }

@@ -56,9 +56,8 @@ bool FrameData::clear(bool clearMetadata)
     if (clearMetadata)
         m_haveMetadata = false;
 
-    if (m_frame) {
-        delete m_frame;
-        m_frame = 0;
+    if (m_image) {
+        m_image = nullptr;
         return true;
     }
 
@@ -68,11 +67,10 @@ bool FrameData::clear(bool clearMetadata)
 WTF::PassRefPtr<Image> Image::loadPlatformResource(const char* name)
 {
     Vector<char> array = loadResourceIntoArray(name);
-    WTF::PassRefPtr<BitmapImage> image = BitmapImage::create();
-    RefPtr<SharedBuffer> buffer = SharedBuffer::create(array.data(), array.size());
-    image->setData(buffer.release(), true);
+    WTF::RefPtr<BitmapImage> image = BitmapImage::create();
+    image->setData(SharedBuffer::create(array.data(), array.size()), true);
 
-    return image;
+    return image.release();
 }
 
 void BitmapImage::invalidatePlatformData()
@@ -91,7 +89,7 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatR
     // causing flicker and wasting CPU.
     startAnimation();
 
-    BBitmap* image = nativeImageForCurrentFrame();
+    NativeImagePtr image = nativeImageForCurrentFrame();
     if (!image || !image->IsValid()) // If the image hasn't fully loaded.
         return;
 
@@ -114,7 +112,7 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatR
         || ctxt.imageInterpolationQuality() > InterpolationLow) {
         options |= B_FILTER_BITMAP_BILINEAR;
     }
-    ctxt.platformContext()->DrawBitmapAsync(image, srcRect, dstRect, options);
+    ctxt.platformContext()->DrawBitmapAsync(image.get(), srcRect, dstRect, options);
     ctxt.restore();
 
     if (imageObserver())
@@ -126,7 +124,7 @@ void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect,
     const FloatSize& size, CompositeOperator op, const FloatRect& dstRect,
     BlendMode)
 {
-    BBitmap* image = nativeImageForCurrentFrame();
+    NativeImagePtr image = nativeImageForCurrentFrame();
     if (!image || !image->IsValid()) // If the image hasn't fully loaded.
         return;
 
@@ -162,7 +160,7 @@ void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect,
         float currentH = phase.y();
         while (currentH < dstRect.y() + dstRect.height()) {
             BRect bDstRect(currentW, currentH, currentW + width - 1, currentH + height - 1);
-            context.platformContext()->DrawBitmapAsync(image, bTileRect, bDstRect);
+            context.platformContext()->DrawBitmapAsync(image.get(), bTileRect, bDstRect);
             currentH += height;
         }
         currentW += width;
@@ -186,7 +184,7 @@ void BitmapImage::checkForSolidColor()
     if (frameCount() > 1)
         return;
 
-    BBitmap* image = getBBitmap();
+    NativeImagePtr image = getBBitmap();
     if (!image || !image->Bounds().IsValid()
         || image->Bounds().IntegerWidth() > 0 || image->Bounds().IntegerHeight() > 0) {
         return;
@@ -197,16 +195,19 @@ void BitmapImage::checkForSolidColor()
     m_solidColor = Color(bits[2], bits[1], bits[0], bits[3]);
 }
 
-BBitmap* BitmapImage::getBBitmap()
+NativeImagePtr BitmapImage::getBBitmap()
 {
-    return frameAtIndex(0);
+    if (!haveFrameImageAtIndex(0))
+		return NULL;
+
+    return frameImageAtIndex(0);
 }
 
-BBitmap* BitmapImage::getFirstBBitmapOfSize(const IntSize& size)
+NativeImagePtr BitmapImage::getFirstBBitmapOfSize(const IntSize& size)
 {
     size_t count = frameCount();
     for (size_t i = 0; i < count; ++i) {
-        BBitmap* bitmap = frameAtIndex(i);
+        NativeImagePtr bitmap = frameImageAtIndex(i);
         if (bitmap && bitmap->Bounds().IntegerWidth() + 1 == size.width()
             && bitmap->Bounds().IntegerHeight() + 1 == size.height()) {
             return bitmap;

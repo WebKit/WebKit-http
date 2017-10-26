@@ -171,8 +171,8 @@ public:
 #endif
 
 #if PLATFORM(HAIKU)
-    virtual BBitmap* getBBitmap();
-    virtual BBitmap* getFirstBBitmapOfSize(const IntSize&);
+    virtual NativeImagePtr getBBitmap();
+    virtual NativeImagePtr getFirstBBitmapOfSize(const IntSize&);
 #endif
 
 #if PLATFORM(EFL)

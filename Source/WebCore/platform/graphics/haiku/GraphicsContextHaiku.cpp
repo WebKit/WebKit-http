@@ -399,7 +399,7 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
     if (paintingDisabled())
         return;
 
-    BBitmap* surface = &buffer.m_data.m_bitmap;
+    NativeImagePtr surface = buffer.m_data.m_bitmap;
     BPicture picture;
     BView* view = platformContext();
 
@@ -416,7 +416,7 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
     view->SetDrawingMode(B_OP_ALPHA);
     view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
 
-    view->DrawBitmap(surface, destRect);
+    view->DrawBitmap(surface.get(), destRect);
 
     view->PopState();
     view->EndPicture();
@@ -438,7 +438,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect,
         return;
     }
 
-    BBitmap* pixels = image.nativeImageForCurrentFrame();
+    NativeImagePtr pixels = image.nativeImageForCurrentFrame();
     if (!pixels || !pixels->IsValid()) // If the image hasn't fully loaded.
         return;
 
@@ -474,7 +474,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect,
         float currentH = phase.y();
         while (currentH < destRect.y() + destRect.height()) {
             BRect bDstRect(currentW, currentH, currentW + width - 1, currentH + height - 1);
-            platformContext()->DrawBitmapAsync(pixels, bTileRect, bDstRect);
+            platformContext()->DrawBitmapAsync(pixels.get(), bTileRect, bDstRect);
             currentH += height;
         }
         currentW += width;
