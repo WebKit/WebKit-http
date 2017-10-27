@@ -7,7 +7,7 @@ WPEWebKit
 
 For **Ubuntu 16.04 LTS (Xenial Xerus)**, please type:
 
-    $ sudo apt-get install intltool libtool-bin autoconf automake autopoint cmake gcc g++ bison flex gawk gperf ruby git libversion-perl libgnutls-dev libexpat-dev libxml2-dev libxslt-dev libsqlite3-dev libjpeg9-dev libfreetype6-dev libharfbuzz-dev libxcb-xkb-dev libwayland-dev libgbm-dev libgles2-mesa-dev libgstreamer1.0-dev libwebp-dev
+    $ sudo apt-get install intltool libtool-bin autoconf automake autopoint cmake gcc g++ bison flex gawk gperf ruby git libversion-perl libgnutls-dev libexpat-dev libxml2-dev libxslt-dev libsqlite3-dev libjpeg9-dev libfreetype6-dev libharfbuzz-dev libxcb-xkb-dev libwayland-dev libgbm-dev libgles2-mesa-dev libgstreamer1.0-dev libwebp-dev yasm ninja-build libluajit-5.1-dev
 
 
 ## Building
