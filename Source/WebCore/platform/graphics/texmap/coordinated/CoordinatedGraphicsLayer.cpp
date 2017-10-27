@@ -140,6 +140,9 @@ CoordinatedGraphicsLayer::CoordinatedGraphicsLayer(Type layerType, GraphicsLayer
 
 CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
 {
+    if (m_platformLayer)
+        m_platformLayer->setClient(nullptr);
+
     if (m_coordinator) {
         purgeBackingStores();
         m_coordinator->detachLayer(this);
