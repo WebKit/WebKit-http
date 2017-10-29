@@ -2103,6 +2103,7 @@ webkit.org/b/112012 accessibility/svg-bounds.html [ Failure ]
 webkit.org/b/112014 accessibility/textarea-insertion-point-line-number.html [ Failure ]
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
 webkit.org/b/112021 accessibility/visible-elements.html [ Failure Crash ]
+webkit.org/b/133148 accessibility/set-selected-text-range-contenteditable.html [ Skip ]
 
 # New accessibility test added in r151079 that is failing for EFL.
 webkit.org/b/117182 accessibility/text-role-with-aria-hidden-inside.html [ Failure ]
@@ -2769,8 +2770,6 @@ webkit.org/b/151943 imported/blink/fast/box-shadow/basic-shadows-2.html [ ImageO
 webkit.org/b/151943 imported/blink/fast/box-shadow/normal-box-shadow-with-background-image.html [ ImageOnlyFailure ]
 webkit.org/b/151943 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirks-mode.html [ ImageOnlyFailure ]
 
-webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]
-
 webkit.org/b/155505 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Skip ]
 webkit.org/b/155505 webkit.org/b/153866 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-video.html [ Skip ]
 
@@ -2818,3 +2817,23 @@ webkit.org/b/155945 storage/indexeddb/modern/idbobjectstore-delete-1.html [ Fail
 
 # Shadow dom is not enabled on EFL port yet.
 Bug(EFL) fast/shadow-dom/slot-removal-crash-2.html
+
+webkit.org/b/155959 svg/text/kerning.svg [ Failure ]
+webkit.org/b/155959 svg/text/multichar-glyph.svg [ Failure ]
+webkit.org/b/155959 svg/text/text-altglyph-01-b.svg [ Failure ]
+webkit.org/b/155959 svg/text/text-hkern.svg [ Failure ]
+webkit.org/b/155959 svg/text/text-overflow-ellipsis-svgfont-kerning-ligatures.html [ Failure ]
+webkit.org/b/155959 svg/text/text-overflow-ellipsis-svgfont.html [ Failure ]
+webkit.org/b/155959 svg/text/text-text-04-t.svg [ Failure ]
+webkit.org/b/155959 svg/text/text-text-05-t.svg [ Failure ]
+webkit.org/b/155959 svg/text/text-text-06-t.svg [ Failure ]
+webkit.org/b/155959 svg/text/text-vkern.svg [ Failure ]
+
+# Custom element feature is not enabled on EFL yet
+Bug(EFL) fast/custom-elements [ Skip ]
+
+webkit.org/b/155970 http/tests/appcache/auth.html [ Timeout ]
+webkit.org/b/155970 http/tests/media/video-redirect.html [ Timeout ]
+webkit.org/b/155970 http/tests/security/contentSecurityPolicy/audio-redirect-blocked.html [ Timeout ]
+webkit.org/b/155970 http/tests/security/contentSecurityPolicy/video-redirect-blocked.html [ Timeout ]
+webkit.org/b/155970 http/tests/security/inactive-document-with-empty-security-origin.html [ Timeout ]

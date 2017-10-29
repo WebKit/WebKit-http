@@ -20,8 +20,6 @@
 #ifndef TextureMapper_h
 #define TextureMapper_h
 
-#if USE(TEXTURE_MAPPER)
-
 #include "BitmapTexture.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"
@@ -129,7 +127,5 @@ private:
 };
 
 }
-
-#endif
 
 #endif

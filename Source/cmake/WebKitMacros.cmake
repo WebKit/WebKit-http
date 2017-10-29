@@ -25,8 +25,9 @@ endmacro()
 
 macro(ADD_PRECOMPILED_HEADER _header _cpp _source)
     if (MSVC)
-        get_filename_component(PrecompiledBasename ${_header} NAME_WE)
-        set(PrecompiledBinary "${CMAKE_CURRENT_BINARY_DIR}/${PrecompiledBasename}.pch")
+        get_filename_component(PrecompiledBasename ${_cpp} NAME_WE)
+        file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${_source}")
+        set(PrecompiledBinary "${CMAKE_CURRENT_BINARY_DIR}/${_source}/${PrecompiledBasename}.pch")
         set(_sources ${${_source}})
 
         set_source_files_properties(${_cpp}
@@ -90,6 +91,12 @@ macro(GENERATE_BINDINGS _output_source _input_files _base_dir _idl_includes _fea
             set(_no_mm 0)
         endif ()
 
+        if (MSVC)
+            set(_custom_outputs "${_destination}/${_prefix}${_name}.h")
+        else ()
+            set(_custom_outputs "${_destination}/${_prefix}${_name}.${_extension}" "${_destination}/${_prefix}${_name}.h")
+        endif ()
+
         if (${_no_mm})
             add_custom_command(
                 OUTPUT ${_destination}/${_prefix}${_name}.h
@@ -102,7 +109,7 @@ macro(GENERATE_BINDINGS _output_source _input_files _base_dir _idl_includes _fea
             list(APPEND ${_output_source} ${_destination}/${_prefix}${_name}.h)
         else ()
             add_custom_command(
-                OUTPUT ${_destination}/${_prefix}${_name}.${_extension} ${_destination}/${_prefix}${_name}.h
+                OUTPUT ${_custom_outputs}
                 MAIN_DEPENDENCY ${_file}
                 DEPENDS ${COMMON_GENERATOR_DEPENDENCIES}
                 COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${BINDING_GENERATOR} --defines "${_features}" --generator ${_generator} ${_idl_includes} --outputDir "${_destination}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --idlAttributesFile ${_idl_attributes_file} ${_supplemental_dependency} ${_file}
@@ -248,7 +255,6 @@ macro(WEBKIT_FRAMEWORK _target)
     add_library(${_target} ${${_target}_LIBRARY_TYPE}
         ${${_target}_HEADERS}
         ${${_target}_SOURCES}
-        ${${_target}_DERIVED_SOURCES}
     )
     target_link_libraries(${_target} ${${_target}_LIBRARIES})
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "BUILDING_${_target}")

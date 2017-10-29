@@ -1,3 +1,151 @@
+2016-03-29  Eric Carlson  <eric.carlson@apple.com>
+
+        media/track/track-remove-track.html is flaky, crashing and failing
+        https://bugs.webkit.org/show_bug.cgi?id=130971
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac/TestExpectations: Mark crash as flaky only.
+
+2016-03-29  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Skip to test custom element test cases
+
+        Unreviewed EFL gardening.
+
+        Custom element is not supported by EFL yet. Additionally mark 4 security tests to timeout.
+
+        * platform/efl/TestExpectations:
+
+2016-03-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Audit WebCore builtins for user overridable code
+        https://bugs.webkit.org/show_bug.cgi?id=155923
+
+        Reviewed by Youenn Fablet.
+
+        * fetch/builtin-overrides-expected.txt: Added.
+        * fetch/builtin-overrides.html: Added.
+        * streams/builtin-overrides-expected.txt: Added.
+        * streams/builtin-overrides.html: Added.
+
+2016-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        Pixel turds when bordered div is resized on SMF forum software.
+        https://bugs.webkit.org/show_bug.cgi?id=155957
+        <rdar://problem/25010646>
+
+        Reviewed by Simon Fraser.
+
+        Use unmodified, non-snapped bounding box rect when computing dirty rects.
+
+        * fast/repaint/hidpi-box-with-subpixel-height-inflates-expected.txt: Added.
+        * fast/repaint/hidpi-box-with-subpixel-height-inflates.html: Added.
+
+2016-03-28  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Crash when AX trying to create element for an old auto fill element
+        https://bugs.webkit.org/show_bug.cgi?id=155943
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/auto-fill-crash-expected.txt: Added.
+        * accessibility/auto-fill-crash.html: Added.
+
+2016-03-28  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS: Can't navigate inside ContentEditable fields with voiceover enabled
+        https://bugs.webkit.org/show_bug.cgi?id=155942
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/set-selected-text-range-contenteditable-expected.txt: Added.
+        * accessibility/set-selected-text-range-contenteditable.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2016-03-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL gardening on 29th Mar.
+
+        Mark svg text tests to failure. Besides remove duplicated a test.
+
+        * platform/efl/TestExpectations:
+
+2016-03-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] Position:sticky can be positioned under vertical RTL scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=155949
+
+        Reviewed by Simon Fraser.
+
+        * platform/ios-simulator/TestExpectations:
+        * fast/scrolling/rtl-scrollbars-sticky-document-2-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-document-2.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-document-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-document.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-iframe-2-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-iframe-2.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-iframe-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-iframe.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-overflow-scroll-2-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-overflow-scroll-2.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-overflow-scroll-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-sticky-overflow-scroll.html: Added.
+
+2016-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        Setup cloned continuation renderer properly.
+        https://bugs.webkit.org/show_bug.cgi?id=155640
+
+        Reviewed by Simon Fraser.
+
+        Set the "renderer has outline ancestor" flag on the cloned inline renderer when
+        we split the original renderer for continuation.
+        It ensures that when the cloned part of the continuation requests repaint, we properly
+        invalidate the ancestor outline (if needed).
+
+        * fast/inline/outline-with-continuation-assert-expected.txt: Added.
+        * fast/inline/outline-with-continuation-assert.html: Added.
+
+2016-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking transitions/cancel-transition.html as flaky on ios-sim-wk2
+        https://bugs.webkit.org/show_bug.cgi?id=155948
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/loader/scroll-position-restored-on-back.html as flaky on ios-sim debug WK2
+        https://bugs.webkit.org/show_bug.cgi?id=155947
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-03-28  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed rebaselining; Different track IDs are selected in El Capitan.
+
+        * platform/mac/media/track/video-track-alternate-groups-expected.txt: Added.
+
+2016-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Disk cache speculative validation requests do not have the 'Referer' HTTP header set
+        https://bugs.webkit.org/show_bug.cgi?id=155890
+        <rdar://problem/25279962>
+
+        Reviewed by Antti Koivisto.
+
+        Update existing layout test to make sure that speculative validation
+        requests have their HTTP 'Referer' header set.
+
+        * http/tests/cache/disk-cache/speculative-validation/validation-request-expected.txt:
+        * http/tests/cache/disk-cache/speculative-validation/validation-request.html:
+
 2016-03-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
 
         [EFL] Mark failing indexeddb tests to failure

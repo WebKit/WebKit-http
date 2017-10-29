@@ -1,3 +1,175 @@
+2016-03-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r192914): 10% regression on Sunspider's date-format-tofte
+        https://bugs.webkit.org/show_bug.cgi?id=155559
+
+        Reviewed by Saam Barati.
+
+        The fast path of the eval function is the super hot path in date-format-tofte.
+        Any performance regression is not allowed here.
+        Before this patch, we allocated SourceCode in the fast path.
+        This allocation incurs 10% performance regression.
+
+        This patch removes this allocation in the fast path.
+        And change the key of the EvalCodeCache to EvalCodeCache::CacheKey.
+        It combines RefPtr<StringImpl> and isArrowFunctionContext.
+        Since EvalCodeCache does not cache any eval code evaluated under the strict mode,
+        it is unnecessary to include several options (ThisTDZMode, and DerivedContextType) in the cache map's key.
+        But isArrowFunctionContext is necessary since the sloppy mode arrow function exists.
+
+        To validate this change, we add a new test that evaluates the same code
+        under the non-arrow function context and the arrow function context.
+
+        After introducing CacheKey, we observed 1% regression compared to the RefPtr<StringImpl> keyed case.
+        This is because HashMap<RefPtr<T>, ...>::get(T*) is specially optimized; this path is inlined while the normal ::get() is not inlined.
+        To avoid this performance regression, we introduce HashMap::fastGet, that aggressively encourages inlining.
+        The relationship between fastGet() and get() is similar to fastAdd() and add().
+        After applying this change, the evaluation shows no performance regression in comparison with the RefPtr<StringImpl> keyed case.
+
+        * bytecode/EvalCodeCache.h:
+        (JSC::EvalCodeCache::CacheKey::CacheKey):
+        (JSC::EvalCodeCache::CacheKey::hash):
+        (JSC::EvalCodeCache::CacheKey::isEmptyValue):
+        (JSC::EvalCodeCache::CacheKey::operator==):
+        (JSC::EvalCodeCache::CacheKey::isHashTableDeletedValue):
+        (JSC::EvalCodeCache::CacheKey::Hash::hash):
+        (JSC::EvalCodeCache::CacheKey::Hash::equal):
+        (JSC::EvalCodeCache::tryGet):
+        (JSC::EvalCodeCache::getSlow):
+        (JSC::EvalCodeCache::isCacheable):
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        * tests/stress/eval-in-arrow-function.js: Added.
+        (shouldBe):
+        (i):
+
+2016-03-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Audit WebCore builtins for user overridable code
+        https://bugs.webkit.org/show_bug.cgi?id=155923
+
+        Reviewed by Youenn Fablet.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        Expose @Object.@defineProperty to built-ins.
+
+2016-03-28  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] ArithSub should not propagate "UsesAsOther"
+        https://bugs.webkit.org/show_bug.cgi?id=155932
+
+        Reviewed by Mark Lam.
+
+        The node ArithSub was backpropagating UsesAsOther.
+        This causes any GetByVal on a Double Array to have an extra
+        hole check if it flows into an ArithSub.
+
+        The definition of ArithSub (12.8.4.1) has both operands go
+        through ToNumber(). ToNumber() on "undefined" always produces
+        NaN. It is safe to ignore the NaN marker from hole when
+        the DAG flows into ArithSub.
+
+        This patch also adds this change and test coverage to ArithAdd.
+        ArithAdd was not a problem in practice because it is only
+        generated before Fixup if both operands are known to be numerical.
+        The change to ArithAdd is there to protect us of the ArithSub-like
+        problems if we ever improve our support of arithmetic operators.
+
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * tests/stress/arith-add-on-double-array-with-holes.js: Added.
+        (let.testCase.of.testCases.eval.nonObservableHoleOnLhs):
+        (let.testCase.of.testCases.observableHoleOnLhs):
+        (let.testCase.of.testCases.nonObservableHoleOnRhs):
+        (let.testCase.of.testCases.observableHoleOnRhs):
+        * tests/stress/arith-sub-on-double-array-with-holes.js: Added.
+        (let.testCase.of.testCases.eval.nonObservableHoleOnLhs):
+        (let.testCase.of.testCases.observableHoleOnLhs):
+        (let.testCase.of.testCases.nonObservableHoleOnRhs):
+        (let.testCase.of.testCases.observableHoleOnRhs):
+        * tests/stress/value-add-on-double-array-with-holes.js: Added.
+        (let.testCase.of.testCases.eval.nonObservableHoleOnLhs):
+        (let.testCase.of.testCases.observableHoleOnLhs):
+        (let.testCase.of.testCases.nonObservableHoleOnRhs):
+        (let.testCase.of.testCases.observableHoleOnRhs):
+
+2016-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: protocol generator should generate C++ string-to-enum helper functions
+        https://bugs.webkit.org/show_bug.cgi?id=155691
+        <rdar://problem/25258078>
+
+        Reviewed by Timothy Hatcher.
+
+        There's a lot of code throughout the Inspector agents and automation code
+        that needs to convert a raw string into a typed protocol enum. Generate
+        some helpers that do this conversion so clients can move over to using it.
+
+        These helpers are necessary for when we eventually switch to calling backend
+        dispatcher handlers with typed arguments instead of untyped JSON objects.
+
+        To correctly generate a conversion function for an anonymous enum, the
+        generator needs to be able to get the containing object type's declaration.
+        Since the model's Type object each have only one instance, there is a
+        one-to-one association between type and its declaration.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator.generate_output):
+        (CppProtocolTypesHeaderGenerator._generate_forward_declarations):
+        Clean up this method to use methodcaller to sort types by raw name.
+
+        (_generate_declarations_for_enum_conversion_methods):
+        (_generate_declarations_for_enum_conversion_methods.return_type_with_export_macro):
+        (_generate_declarations_for_enum_conversion_methods.type_member_is_anonymous_enum_type):
+        Added. Generates a new section with an unfilled template and specializations of
+        the template for every named and anonymous enum in every domain. Guards for
+        domains wrap the forward declarations. This is added to the end of the header
+        file so that specializations for both types of enums are in the same place.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator.generate_output):
+        (CppProtocolTypesImplementationGenerator._generate_enum_conversion_methods_for_domain):
+        (CppProtocolTypesImplementationGenerator._generate_enum_conversion_methods_for_domain.type_member_is_anonymous_enum_type):
+        (CppProtocolTypesImplementationGenerator._generate_enum_conversion_methods_for_domain.generate_conversion_method_body):
+        Added. Generate a static array of offsets into the enum constant value array.
+        Then, loop over this array of offsets and do string comparisons against the
+        provided string and enum constant values at the relevant offsets for this enum.
+
+        * inspector/scripts/codegen/generator_templates.py:
+        (GeneratorTemplates): Update copyright year in generated files.
+
+        * inspector/scripts/codegen/models.py:
+        (AliasedType.__init__):
+        (EnumType.__init__):
+        (EnumType.enum_values):
+        (EnumType.declaration):
+        (ArrayType.__init__):
+        (ArrayType.declaration):
+        (ObjectType.__init__):
+        (ObjectType.declaration):
+        (Protocol.resolve_types):
+        (Protocol.lookup_type_reference):
+        Pass the type declaration to Type constructors if available. If not,
+        fill in a placeholder name for the type in the constructor instead of caller.
+
+        Rebaseline all the things, mostly for copyright block changes.
+
+        * inspector/scripts/tests/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/expected/enum-values.json-result:
+        * inspector/scripts/tests/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/expected/type-requiring-runtime-casts.json-result:
+
 2016-03-25  Joseph Pecoraro  <pecoraro@apple.com>
 
         Misc. JavaScriptCore built-ins cleanups

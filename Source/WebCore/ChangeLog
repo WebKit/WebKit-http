@@ -1,3 +1,702 @@
+2016-03-29  Eric Carlson  <eric.carlson@apple.com>
+
+        media/track/track-remove-track.html is flaky, crashing and failing
+        https://bugs.webkit.org/show_bug.cgi?id=130971
+
+        Reviewed by Alexey Proskuryakov.
+        
+        Prevent HTMLMediaElement from being collected while it is creating media controls.
+        These changes prevent the test from crashing but they do not fix the flakiness,
+        which is caused by another bug. Fixing that is tracked by 
+        https://bugs.webkit.org/show_bug.cgi?id=155956.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::actionName): New, debugging-only helper function.
+        (WebCore::HTMLMediaElement::HTMLMediaElement): Initialize new variables.
+        (WebCore::HTMLMediaElement::scheduleDelayedAction): Log the flag names to make debugging easier.
+        (WebCore::HTMLMediaElement::scheduleNextSourceChild): Add logging.
+        (WebCore::HTMLMediaElement::updateActiveTextTrackCues): Update logging.
+        (WebCore::HTMLMediaElement::configureTextTrackGroup): Drive-by optimization: don't call 
+          updateCaptionContainer here, call it before exiting configureTextTracks so we only call
+          it once instead of once per track group.
+        (WebCore::controllerJSValue):
+        (WebCore::HTMLMediaElement::ensureMediaControlsShadowRoot): New, wrapper around calling
+          ensureUserAgentShadowRoot so m_creatingControls can be set and cleared appropriately.
+        (WebCore::HTMLMediaElement::updateCaptionContainer): ensureUserAgentShadowRoot -> 
+          ensureMediaControlsShadowRoot. Drive by optimization: set/test m_haveSetupCaptionContainer
+          so we only do this setup once.
+        (WebCore::HTMLMediaElement::configureTextTracks): Call updateCaptionContainer.
+        (WebCore::HTMLMediaElement::clearMediaPlayer): Log flag names.
+        (WebCore::HTMLMediaElement::hasPendingActivity): Return true when creating controls so GC
+          won't happen during controls setup.
+        (WebCore::HTMLMediaElement::updateTextTrackDisplay): ensureUserAgentShadowRoot -> 
+          ensureMediaControlsShadowRoot.
+        (WebCore::HTMLMediaElement::createMediaControls): Ditto.
+        (WebCore::HTMLMediaElement::configureMediaControls): Ditto.
+        (WebCore::HTMLMediaElement::configureTextTrackDisplay): Ditto.
+        * html/HTMLMediaElement.h:
+
+2016-03-29  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed EFL build fix caused by r198773
+
+        * CMakeLists.txt: Append WebCore_DERIVED_SOURCES to WebCore source list.
+
+2016-03-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Audit WebCore builtins for user overridable code
+        https://bugs.webkit.org/show_bug.cgi?id=155923
+
+        Reviewed by Youenn Fablet.
+
+        Tests: fetch/builtin-overrides.html
+               streams/builtin-overrides.html
+
+        * Modules/fetch/FetchHeaders.js:
+        (initializeFetchHeaders):
+        Avoid using an Array.prototype.forEach that could be overriden.
+
+        * Modules/streams/ByteLengthQueuingStrategy.js:
+        (initializeByteLengthQueuingStrategy):
+        * Modules/streams/CountQueuingStrategy.js:
+        (initializeCountQueuingStrategy):
+        Use the private Object.defineProperty not one that could be overriden.
+
+        * Modules/streams/ReadableStreamInternals.js:
+        (finishClosingReadableStream):
+        Fix style.
+
+        * Modules/streams/WritableStream.js:
+        (write):
+        Fix error message to use the correct function name.
+
+2016-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        Pixel turds when bordered div is resized on SMF forum software.
+        https://bugs.webkit.org/show_bug.cgi?id=155957
+        <rdar://problem/25010646>
+
+        Reviewed by Simon Fraser.
+
+        Use unmodified, non-snapped bounding box rect when computing dirty rects.
+
+        Test: fast/repaint/hidpi-box-with-subpixel-height-inflates.html
+
+        * rendering/RenderBox.h:
+        * rendering/RenderBoxModelObject.h:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::getTrailingCorner):
+        * rendering/RenderInline.h:
+        * rendering/RenderLineBreak.cpp:
+        (WebCore::RenderLineBreak::borderBoundingBox): Deleted.
+        * rendering/RenderLineBreak.h:
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::setBestTruncatedAt):
+
+2016-03-28  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Crash when AX trying to create element for an old auto fill element
+        https://bugs.webkit.org/show_bug.cgi?id=155943
+
+        Reviewed by Joanmarie Diggs.
+
+        When an auto-fill element is removed, the Node hangs around but the renderer is gone.
+        In those cases, we can't blindly add the result of getOrCreate to the children array.
+
+        Test: accessibility/auto-fill-crash.html
+
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::addTextFieldChildren):
+
+2016-03-28  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS: Can't navigate inside ContentEditable fields with voiceover enabled
+        https://bugs.webkit.org/show_bug.cgi?id=155942
+
+        Reviewed by Joanmarie Diggs.
+
+        The code to set the selected text range on a non-native text control (like a contenteditable) was either
+        wrong or broke at some point. It assumed that creating a Position with the contenteditable node with the right
+        offset would make a valid Position, but it almost never did.
+
+        Instead we can use this helper method to create a valid Position.
+
+        Test: accessibility/set-selected-text-range-contenteditable.html
+
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::setSelectedTextRange):
+
+2016-03-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Ninja build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=151399
+
+        Reviewed by Darin Adler.
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        This moves WebCoreDerivedSources to a separate static library to reduce linker command 
+        line lengths when using ninja on mac. This also helps Windows builds, which sometimes 
+        regenerate everything every time you build; now you'll be able to just build WebCore
+        and WebKit without all the WebCoreDerivedSources stuff.
+
+2016-03-28  Brady Eidson  <beidson@apple.com>
+
+        Fix build on some stricter compilers by removing unnecessary WTFMove.
+        Opportunistically remove some unnecessary "WebCore::"s
+        Followup to r198762
+
+        * Modules/indexeddb/IDBObjectStore.cpp:
+        (WebCore::IDBObjectStore::keyPathAny):
+        (WebCore::IDBObjectStore::transaction):
+        (WebCore::IDBObjectStore::openCursor):
+        (WebCore::IDBObjectStore::get):
+        (WebCore::IDBObjectStore::add):
+        (WebCore::IDBObjectStore::put):
+        (WebCore::IDBObjectStore::deleteFunction):
+        (WebCore::IDBObjectStore::clear):
+        (WebCore::IDBObjectStore::createIndex):
+        (WebCore::IDBObjectStore::index):
+        (WebCore::IDBObjectStore::count):
+        (WebCore::IDBObjectStore::doCount):
+
+2016-03-28  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB: Remove abstract base classes for all IDB DOM classes.
+        https://bugs.webkit.org/show_bug.cgi?id=155951
+
+        Reviewed by Alex Christensen.
+
+        Refactor - No behavior change.
+
+        * Modules/indexeddb/DOMWindowIndexedDatabase.cpp:
+        (WebCore::DOMWindowIndexedDatabase::indexedDB):
+        * Modules/indexeddb/IDBAny.cpp:
+        (WebCore::IDBAny::IDBAny):
+        (WebCore::IDBAny::~IDBAny):
+        (WebCore::IDBAny::idbDatabase):
+        (WebCore::IDBAny::domStringList):
+        (WebCore::IDBAny::idbCursor):
+        (WebCore::IDBAny::idbCursorWithValue):
+        (WebCore::IDBAny::idbFactory):
+        (WebCore::IDBAny::idbIndex):
+        (WebCore::IDBAny::idbObjectStore):
+        (WebCore::IDBAny::idbTransaction):
+        (WebCore::IDBAny::scriptValue):
+        (WebCore::IDBAny::integer):
+        (WebCore::IDBAny::string):
+        (WebCore::IDBAny::keyPath):
+        * Modules/indexeddb/IDBAny.h:
+        (WebCore::IDBAny::create):
+        (WebCore::IDBAny::createUndefined):
+        (WebCore::IDBAny::type):
+        (WebCore::IDBAny::~IDBAny): Deleted.
+        (WebCore::IDBAny::isLegacy): Deleted.
+        * Modules/indexeddb/IDBCursor.cpp:
+        (WebCore::IDBCursor::create):
+        (WebCore::IDBCursor::IDBCursor):
+        (WebCore::IDBCursor::~IDBCursor):
+        (WebCore::IDBCursor::sourcesDeleted):
+        (WebCore::IDBCursor::effectiveObjectStore):
+        (WebCore::IDBCursor::transaction):
+        (WebCore::IDBCursor::direction):
+        (WebCore::IDBCursor::key):
+        (WebCore::IDBCursor::primaryKey):
+        (WebCore::IDBCursor::value):
+        (WebCore::IDBCursor::source):
+        (WebCore::IDBCursor::update):
+        (WebCore::IDBCursor::advance):
+        (WebCore::IDBCursor::continueFunction):
+        (WebCore::IDBCursor::uncheckedIterateCursor):
+        (WebCore::IDBCursor::deleteFunction):
+        (WebCore::IDBCursor::setGetResult):
+        (WebCore::IDBCursor::activeDOMObjectName):
+        (WebCore::IDBCursor::canSuspendForDocumentSuspension):
+        (WebCore::IDBCursor::hasPendingActivity):
+        (WebCore::IDBCursor::decrementOutstandingRequestCount):
+        * Modules/indexeddb/IDBCursor.h:
+        (WebCore::IDBCursor::info):
+        (WebCore::IDBCursor::setRequest):
+        (WebCore::IDBCursor::clearRequest):
+        (WebCore::IDBCursor::request):
+        (WebCore::IDBCursor::isKeyCursor):
+        (WebCore::IDBCursor::~IDBCursor): Deleted.
+        (WebCore::IDBCursor::continueFunction): Deleted.
+        (WebCore::IDBCursor::isModernCursor): Deleted.
+        (WebCore::IDBCursor::hasPendingActivity): Deleted.
+        * Modules/indexeddb/IDBCursorWithValue.cpp:
+        (WebCore::IDBCursorWithValue::create):
+        (WebCore::IDBCursorWithValue::IDBCursorWithValue):
+        (WebCore::IDBCursorWithValue::~IDBCursorWithValue):
+        * Modules/indexeddb/IDBCursorWithValue.h:
+        (WebCore::IDBCursorWithValue::~IDBCursorWithValue): Deleted.
+        * Modules/indexeddb/IDBDatabase.cpp:
+        (WebCore::IDBDatabase::create):
+        (WebCore::IDBDatabase::IDBDatabase):
+        (WebCore::IDBDatabase::~IDBDatabase):
+        (WebCore::IDBDatabase::hasPendingActivity):
+        (WebCore::IDBDatabase::name):
+        (WebCore::IDBDatabase::version):
+        (WebCore::IDBDatabase::objectStoreNames):
+        (WebCore::IDBDatabase::createObjectStore):
+        (WebCore::IDBDatabase::transaction):
+        (WebCore::IDBDatabase::deleteObjectStore):
+        (WebCore::IDBDatabase::close):
+        (WebCore::IDBDatabase::maybeCloseInServer):
+        (WebCore::IDBDatabase::activeDOMObjectName):
+        (WebCore::IDBDatabase::canSuspendForDocumentSuspension):
+        (WebCore::IDBDatabase::stop):
+        (WebCore::IDBDatabase::startVersionChangeTransaction):
+        (WebCore::IDBDatabase::didStartTransaction):
+        (WebCore::IDBDatabase::willCommitTransaction):
+        (WebCore::IDBDatabase::didCommitTransaction):
+        (WebCore::IDBDatabase::willAbortTransaction):
+        (WebCore::IDBDatabase::didAbortTransaction):
+        (WebCore::IDBDatabase::didCommitOrAbortTransaction):
+        (WebCore::IDBDatabase::fireVersionChangeEvent):
+        (WebCore::IDBDatabase::dispatchEvent):
+        (WebCore::IDBDatabase::didCreateIndexInfo):
+        (WebCore::IDBDatabase::didDeleteIndexInfo):
+        * Modules/indexeddb/IDBDatabase.h:
+        (WebCore::IDBDatabase::info):
+        (WebCore::IDBDatabase::databaseConnectionIdentifier):
+        (WebCore::IDBDatabase::serverConnection):
+        (WebCore::IDBDatabase::isClosingOrClosed):
+        (WebCore::IDBDatabase::~IDBDatabase): Deleted.
+        * Modules/indexeddb/IDBFactory.cpp:
+        (WebCore::shouldThrowSecurityException):
+        (WebCore::IDBFactory::create):
+        (WebCore::IDBFactory::IDBFactory):
+        (WebCore::IDBFactory::getDatabaseNames):
+        (WebCore::IDBFactory::open):
+        (WebCore::IDBFactory::openInternal):
+        (WebCore::IDBFactory::deleteDatabase):
+        (WebCore::IDBFactory::cmp):
+        * Modules/indexeddb/IDBFactory.h:
+        (WebCore::IDBFactory::~IDBFactory): Deleted.
+        * Modules/indexeddb/IDBIndex.cpp:
+        (WebCore::IDBIndex::IDBIndex):
+        (WebCore::IDBIndex::~IDBIndex):
+        (WebCore::IDBIndex::activeDOMObjectName):
+        (WebCore::IDBIndex::canSuspendForDocumentSuspension):
+        (WebCore::IDBIndex::hasPendingActivity):
+        (WebCore::IDBIndex::name):
+        (WebCore::IDBIndex::objectStore):
+        (WebCore::IDBIndex::keyPathAny):
+        (WebCore::IDBIndex::keyPath):
+        (WebCore::IDBIndex::unique):
+        (WebCore::IDBIndex::multiEntry):
+        (WebCore::IDBIndex::openCursor):
+        (WebCore::IDBIndex::count):
+        (WebCore::IDBIndex::doCount):
+        (WebCore::IDBIndex::openKeyCursor):
+        (WebCore::IDBIndex::get):
+        (WebCore::IDBIndex::doGet):
+        (WebCore::IDBIndex::getKey):
+        (WebCore::IDBIndex::doGetKey):
+        (WebCore::IDBIndex::markAsDeleted):
+        (WebCore::IDBIndex::ref):
+        (WebCore::IDBIndex::deref):
+        * Modules/indexeddb/IDBIndex.h:
+        (WebCore::IDBIndex::openCursor):
+        (WebCore::IDBIndex::openKeyCursor):
+        (WebCore::IDBIndex::info):
+        (WebCore::IDBIndex::modernObjectStore):
+        (WebCore::IDBIndex::isDeleted):
+        (WebCore::IDBIndex::~IDBIndex): Deleted.
+        (WebCore::IDBIndex::isModern): Deleted.
+        * Modules/indexeddb/IDBObjectStore.cpp:
+        (WebCore::IDBObjectStore::create):
+        (WebCore::IDBObjectStore::IDBObjectStore):
+        (WebCore::IDBObjectStore::~IDBObjectStore):
+        (WebCore::IDBObjectStore::activeDOMObjectName):
+        (WebCore::IDBObjectStore::canSuspendForDocumentSuspension):
+        (WebCore::IDBObjectStore::hasPendingActivity):
+        (WebCore::IDBObjectStore::name):
+        (WebCore::IDBObjectStore::keyPathAny):
+        (WebCore::IDBObjectStore::keyPath):
+        (WebCore::IDBObjectStore::indexNames):
+        (WebCore::IDBObjectStore::transaction):
+        (WebCore::IDBObjectStore::autoIncrement):
+        (WebCore::IDBObjectStore::openCursor):
+        (WebCore::IDBObjectStore::get):
+        (WebCore::IDBObjectStore::add):
+        (WebCore::IDBObjectStore::put):
+        (WebCore::IDBObjectStore::putForCursorUpdate):
+        (WebCore::IDBObjectStore::putOrAdd):
+        (WebCore::IDBObjectStore::deleteFunction):
+        (WebCore::IDBObjectStore::doDelete):
+        (WebCore::IDBObjectStore::modernDelete):
+        (WebCore::IDBObjectStore::clear):
+        (WebCore::IDBObjectStore::createIndex):
+        (WebCore::IDBObjectStore::index):
+        (WebCore::IDBObjectStore::deleteIndex):
+        (WebCore::IDBObjectStore::count):
+        (WebCore::IDBObjectStore::doCount):
+        (WebCore::IDBObjectStore::markAsDeleted):
+        (WebCore::IDBObjectStore::rollbackInfoForVersionChangeAbort):
+        (WebCore::IDBObjectStore::visitReferencedIndexes):
+        * Modules/indexeddb/IDBObjectStore.h:
+        (WebCore::IDBObjectStore::isDeleted):
+        (WebCore::IDBObjectStore::info):
+        (WebCore::IDBObjectStore::modernTransaction):
+        (WebCore::IDBObjectStore::~IDBObjectStore): Deleted.
+        (WebCore::IDBObjectStore::isModern): Deleted.
+        * Modules/indexeddb/IDBOpenDBRequest.cpp:
+        (WebCore::IDBOpenDBRequest::createDeleteRequest):
+        (WebCore::IDBOpenDBRequest::createOpenRequest):
+        (WebCore::IDBOpenDBRequest::IDBOpenDBRequest):
+        (WebCore::IDBOpenDBRequest::~IDBOpenDBRequest):
+        (WebCore::IDBOpenDBRequest::onError):
+        (WebCore::IDBOpenDBRequest::versionChangeTransactionDidFinish):
+        (WebCore::IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit):
+        (WebCore::IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion):
+        (WebCore::IDBOpenDBRequest::dispatchEvent):
+        (WebCore::IDBOpenDBRequest::onSuccess):
+        (WebCore::IDBOpenDBRequest::onUpgradeNeeded):
+        (WebCore::IDBOpenDBRequest::onDeleteDatabaseSuccess):
+        (WebCore::IDBOpenDBRequest::requestCompleted):
+        (WebCore::IDBOpenDBRequest::requestBlocked):
+        * Modules/indexeddb/IDBOpenDBRequest.h:
+        (WebCore::IDBOpenDBRequest::databaseIdentifier):
+        (WebCore::IDBOpenDBRequest::version):
+        (WebCore::IDBOpenDBRequest::~IDBOpenDBRequest): Deleted.
+        * Modules/indexeddb/IDBRequest.cpp:
+        (WebCore::IDBRequest::create):
+        (WebCore::IDBRequest::createCount):
+        (WebCore::IDBRequest::createGet):
+        (WebCore::IDBRequest::IDBRequest):
+        (WebCore::IDBRequest::~IDBRequest):
+        (WebCore::IDBRequest::result):
+        (WebCore::IDBRequest::errorCode):
+        (WebCore::IDBRequest::error):
+        (WebCore::IDBRequest::source):
+        (WebCore::IDBRequest::setSource):
+        (WebCore::IDBRequest::setVersionChangeTransaction):
+        (WebCore::IDBRequest::transaction):
+        (WebCore::IDBRequest::readyState):
+        (WebCore::IDBRequest::sourceObjectStoreIdentifier):
+        (WebCore::IDBRequest::sourceIndexIdentifier):
+        (WebCore::IDBRequest::requestedIndexRecordType):
+        (WebCore::IDBRequest::eventTargetInterface):
+        (WebCore::IDBRequest::activeDOMObjectName):
+        (WebCore::IDBRequest::canSuspendForDocumentSuspension):
+        (WebCore::IDBRequest::hasPendingActivity):
+        (WebCore::IDBRequest::stop):
+        (WebCore::IDBRequest::enqueueEvent):
+        (WebCore::IDBRequest::dispatchEvent):
+        (WebCore::IDBRequest::uncaughtExceptionInEventHandler):
+        (WebCore::IDBRequest::setResult):
+        (WebCore::IDBRequest::setResultToStructuredClone):
+        (WebCore::IDBRequest::setResultToUndefined):
+        (WebCore::IDBRequest::resultCursor):
+        (WebCore::IDBRequest::willIterateCursor):
+        (WebCore::IDBRequest::didOpenOrIterateCursor):
+        (WebCore::IDBRequest::requestCompleted):
+        (WebCore::IDBRequest::onError):
+        (WebCore::IDBRequest::onSuccess):
+        * Modules/indexeddb/IDBRequest.h:
+        (WebCore::IDBRequest::resourceIdentifier):
+        (WebCore::IDBRequest::connection):
+        (WebCore::IDBRequest::modernResult):
+        (WebCore::IDBRequest::pendingCursor):
+        (WebCore::IDBRequest::requestType):
+        (WebCore::IDBRequest::isOpenDBRequest):
+        (WebCore::IDBRequest::~IDBRequest): Deleted.
+        * Modules/indexeddb/IDBRequestCompletionEvent.cpp:
+        (WebCore::IDBRequestCompletionEvent::IDBRequestCompletionEvent):
+        * Modules/indexeddb/IDBRequestCompletionEvent.h:
+        (WebCore::IDBRequestCompletionEvent::create):
+        * Modules/indexeddb/IDBTransaction.cpp:
+        (WebCore::IDBTransaction::create):
+        (WebCore::IDBTransaction::IDBTransaction):
+        (WebCore::IDBTransaction::~IDBTransaction):
+        (WebCore::IDBTransaction::mode):
+        (WebCore::IDBTransaction::db):
+        (WebCore::IDBTransaction::serverConnection):
+        (WebCore::IDBTransaction::error):
+        (WebCore::IDBTransaction::objectStore):
+        (WebCore::IDBTransaction::abortDueToFailedRequest):
+        (WebCore::IDBTransaction::transitionedToFinishing):
+        (WebCore::IDBTransaction::abort):
+        (WebCore::IDBTransaction::abortOnServerAndCancelRequests):
+        (WebCore::IDBTransaction::activeDOMObjectName):
+        (WebCore::IDBTransaction::canSuspendForDocumentSuspension):
+        (WebCore::IDBTransaction::hasPendingActivity):
+        (WebCore::IDBTransaction::stop):
+        (WebCore::IDBTransaction::isActive):
+        (WebCore::IDBTransaction::isFinishedOrFinishing):
+        (WebCore::IDBTransaction::addRequest):
+        (WebCore::IDBTransaction::removeRequest):
+        (WebCore::IDBTransaction::scheduleOperation):
+        (WebCore::IDBTransaction::scheduleOperationTimer):
+        (WebCore::IDBTransaction::operationTimerFired):
+        (WebCore::IDBTransaction::commit):
+        (WebCore::IDBTransaction::commitOnServer):
+        (WebCore::IDBTransaction::finishAbortOrCommit):
+        (WebCore::IDBTransaction::didStart):
+        (WebCore::IDBTransaction::notifyDidAbort):
+        (WebCore::IDBTransaction::didAbort):
+        (WebCore::IDBTransaction::didCommit):
+        (WebCore::IDBTransaction::fireOnComplete):
+        (WebCore::IDBTransaction::fireOnAbort):
+        (WebCore::IDBTransaction::enqueueEvent):
+        (WebCore::IDBTransaction::dispatchEvent):
+        (WebCore::IDBTransaction::createObjectStore):
+        (WebCore::IDBTransaction::createObjectStoreOnServer):
+        (WebCore::IDBTransaction::didCreateObjectStoreOnServer):
+        (WebCore::IDBTransaction::createIndex):
+        (WebCore::IDBTransaction::createIndexOnServer):
+        (WebCore::IDBTransaction::didCreateIndexOnServer):
+        (WebCore::IDBTransaction::requestOpenCursor):
+        (WebCore::IDBTransaction::doRequestOpenCursor):
+        (WebCore::IDBTransaction::openCursorOnServer):
+        (WebCore::IDBTransaction::didOpenCursorOnServer):
+        (WebCore::IDBTransaction::iterateCursor):
+        (WebCore::IDBTransaction::iterateCursorOnServer):
+        (WebCore::IDBTransaction::didIterateCursorOnServer):
+        (WebCore::IDBTransaction::requestGetRecord):
+        (WebCore::IDBTransaction::requestGetValue):
+        (WebCore::IDBTransaction::requestGetKey):
+        (WebCore::IDBTransaction::requestIndexRecord):
+        (WebCore::IDBTransaction::getRecordOnServer):
+        (WebCore::IDBTransaction::didGetRecordOnServer):
+        (WebCore::IDBTransaction::requestCount):
+        (WebCore::IDBTransaction::getCountOnServer):
+        (WebCore::IDBTransaction::didGetCountOnServer):
+        (WebCore::IDBTransaction::requestDeleteRecord):
+        (WebCore::IDBTransaction::deleteRecordOnServer):
+        (WebCore::IDBTransaction::didDeleteRecordOnServer):
+        (WebCore::IDBTransaction::requestClearObjectStore):
+        (WebCore::IDBTransaction::clearObjectStoreOnServer):
+        (WebCore::IDBTransaction::didClearObjectStoreOnServer):
+        (WebCore::IDBTransaction::requestPutOrAdd):
+        (WebCore::IDBTransaction::putOrAddOnServer):
+        (WebCore::IDBTransaction::didPutOrAddOnServer):
+        (WebCore::IDBTransaction::deleteObjectStore):
+        (WebCore::IDBTransaction::deleteObjectStoreOnServer):
+        (WebCore::IDBTransaction::didDeleteObjectStoreOnServer):
+        (WebCore::IDBTransaction::deleteIndex):
+        (WebCore::IDBTransaction::deleteIndexOnServer):
+        (WebCore::IDBTransaction::didDeleteIndexOnServer):
+        (WebCore::IDBTransaction::operationDidComplete):
+        (WebCore::IDBTransaction::establishOnServer):
+        (WebCore::IDBTransaction::activate):
+        (WebCore::IDBTransaction::deactivate):
+        * Modules/indexeddb/IDBTransaction.h:
+        (WebCore::IDBTransaction::info):
+        (WebCore::IDBTransaction::database):
+        (WebCore::IDBTransaction::originalDatabaseInfo):
+        (WebCore::IDBTransaction::isVersionChange):
+        (WebCore::IDBTransaction::isReadOnly):
+        (WebCore::IDBTransaction::isFinished):
+        (WebCore::TransactionActivator::TransactionActivator):
+        (WebCore::TransactionActivator::~TransactionActivator):
+        (WebCore::IDBTransaction::~IDBTransaction): Deleted.
+        * Modules/indexeddb/IDBVersionChangeEvent.cpp:
+        (WebCore::IDBVersionChangeEvent::IDBVersionChangeEvent):
+        (WebCore::IDBVersionChangeEvent::newVersion):
+        (WebCore::IDBVersionChangeEvent::eventInterface):
+        (WebCore::IDBVersionChangeEvent::create): Deleted.
+        * Modules/indexeddb/IDBVersionChangeEvent.h:
+        (isType):
+        * Modules/indexeddb/client/IDBAnyImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBAnyImpl.h: Removed.
+        * Modules/indexeddb/client/IDBConnectionToServer.cpp:
+        * Modules/indexeddb/client/IDBConnectionToServer.h:
+        * Modules/indexeddb/client/IDBCursorImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBCursorImpl.h: Removed.
+        * Modules/indexeddb/client/IDBCursorWithValueImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBCursorWithValueImpl.h: Removed.
+        * Modules/indexeddb/client/IDBDatabaseImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBDatabaseImpl.h: Removed.
+        * Modules/indexeddb/client/IDBFactoryImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBFactoryImpl.h: Removed.
+        * Modules/indexeddb/client/IDBIndexImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBIndexImpl.h: Removed.
+        * Modules/indexeddb/client/IDBObjectStoreImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBObjectStoreImpl.h: Removed.
+        * Modules/indexeddb/client/IDBOpenDBRequestImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBOpenDBRequestImpl.h: Removed.
+        * Modules/indexeddb/client/IDBRequestImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBRequestImpl.h: Removed.
+        * Modules/indexeddb/client/IDBTransactionImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBTransactionImpl.h: Removed.
+        * Modules/indexeddb/client/IDBVersionChangeEventImpl.cpp: Removed.
+        * Modules/indexeddb/client/IDBVersionChangeEventImpl.h: Removed.
+        * Modules/indexeddb/client/TransactionOperation.cpp:
+        * Modules/indexeddb/client/TransactionOperation.h:
+        * Modules/indexeddb/shared/IDBCursorInfo.cpp:
+        (WebCore::IDBCursorInfo::objectStoreCursor):
+        (WebCore::IDBCursorInfo::indexCursor):
+        (WebCore::IDBCursorInfo::IDBCursorInfo):
+        * Modules/indexeddb/shared/IDBCursorInfo.h:
+        * Modules/indexeddb/shared/IDBRequestData.cpp:
+        (WebCore::IDBRequestData::IDBRequestData):
+        * Modules/indexeddb/shared/IDBRequestData.h:
+        * Modules/indexeddb/shared/IDBResourceIdentifier.cpp:
+        (WebCore::IDBResourceIdentifier::IDBResourceIdentifier):
+        * Modules/indexeddb/shared/IDBResourceIdentifier.h:
+        * Modules/indexeddb/shared/IDBTransactionInfo.cpp:
+        * Modules/indexeddb/shared/InProcessIDBServer.cpp:
+        * Modules/indexeddb/shared/InProcessIDBServer.h:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSIDBCursorCustom.cpp:
+        (WebCore::JSIDBCursor::visitAdditionalChildren):
+        * bindings/js/JSIDBCursorWithValueCustom.cpp:
+        * bindings/js/JSIDBIndexCustom.cpp:
+        (WebCore::JSIDBIndex::visitAdditionalChildren):
+        * bindings/js/JSIDBObjectStoreCustom.cpp:
+        (WebCore::JSIDBObjectStore::visitAdditionalChildren):
+        * inspector/InspectorIndexedDBAgent.cpp:
+
+2016-03-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] Position:sticky can be positioned under vertical RTL scrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=155949
+
+        Reviewed by Simon Fraser.
+
+        When performing sticky positioning logic, we were setting the clip rect's position
+        equal to the scrollPosition of the layer. This computation assumes that the top
+        left of the scroll position is the same as the top left of the clip rect. When
+        using RTL scrollbars, this is not true, so this code simply needs to be made aware
+        of the presence of an RTL scrollbar.
+
+        Tests: fast/scrolling/rtl-scrollbars-sticky-document-2.html
+               fast/scrolling/rtl-scrollbars-sticky-document.html
+               fast/scrolling/rtl-scrollbars-sticky-iframe-2.html
+               fast/scrolling/rtl-scrollbars-sticky-iframe.html
+               fast/scrolling/rtl-scrollbars-sticky-overflow-scroll-2.html
+               fast/scrolling/rtl-scrollbars-sticky-overflow-scroll.html
+
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::constrainingRectForStickyPosition):
+
+2016-03-28  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Rename PlatformWheelEvent::isEndGesture to isEndOfMomentumScroll.
+        https://bugs.webkit.org/show_bug.cgi?id=155940
+
+        Reviewed by Simon Fraser.
+
+        No new tests needed.
+
+        The new name better reflects its purpose. Also it is a preparation to fix bug 155746.
+
+        * platform/PlatformWheelEvent.h:
+        (WebCore::PlatformWheelEvent::shouldResetLatching):
+        (WebCore::PlatformWheelEvent::isEndOfMomentumScroll: Renamed; Formally isEndGesture.
+        * platform/mac/ScrollAnimatorMac.mm:
+        (WebCore::gestureShouldBeginSnap):
+
+2016-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        Setup cloned continuation renderer properly.
+        https://bugs.webkit.org/show_bug.cgi?id=155640
+
+        Reviewed by Simon Fraser.
+
+        Set the "renderer has outline ancestor" flag on the cloned inline renderer when
+        we split the original renderer for continuation.
+        It ensures that when the cloned part of the continuation requests repaint, we properly
+        invalidate the ancestor outline (if needed).
+
+        Test: fast/inline/outline-with-continuation-assert.html
+
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::clone):
+
+2016-03-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Inspector Memory Timeline sometimes encounters unstoppable rAF drawing
+        https://bugs.webkit.org/show_bug.cgi?id=155906
+
+        Reviewed by Anders Carlsson.
+
+        It was possible to get Web Inspector into a state where repeated, expensive
+        requestAnimationFrame calls prevented user events from being handled, making it
+        unresponsive.
+        
+        requestAnimationFrame uses callOnMainThread() to get a notification from the 
+        CVDispayLink thread to the main thread, which is a -performSelectorOnMainThread...
+        Under the hood, this ends up as a CFRunLoopPerformBlock().
+        
+        User events come in via Connection::enqueueIncomingMessage(), which uses RunLoop::main()::dispatch(),
+        which uses a CFRunLoopSource. Evidently, repeated calls to CFRunLoopPerformBlock() can prevent the
+        CFRunLoopSource from being handled.
+        
+        Fix by moving requestAnimationFrame from callOnMainThread() to RunLoop::main()::dispatch().
+
+        * platform/graphics/mac/DisplayRefreshMonitorMac.cpp:
+        (WebCore::DisplayRefreshMonitorMac::displayLinkFired):
+
+2016-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Disk cache speculative validation requests do not have the 'Referer' HTTP header set
+        https://bugs.webkit.org/show_bug.cgi?id=155890
+        <rdar://problem/25279962>
+
+        Reviewed by Antti Koivisto.
+
+        Export a couple more symbols so we can use them from WebKit2.
+
+        * platform/network/HTTPHeaderMap.h:
+        * platform/network/ResourceRequestBase.h:
+
+2016-03-24  Timothy Hatcher  <timothy@apple.com>
+
+        Web Automation: Add commands to compute layout of an element
+
+        https://bugs.webkit.org/show_bug.cgi?id=155841
+        rdar://problem/25340075
+
+        Reviewed by Brian Burg.
+
+        * dom/Element.h: Mark scrollIntoViewIfNeeded() method as exported so WK2 can use it.
+        * platform/ScrollView.h: Mark rootViewToContents(IntRect) method as exported so WK2 can use it.
+
+2016-03-18  Timothy Hatcher  <timothy@apple.com>
+
+        Web Automation: Add Automation protocol commands to resolve frames as handles
+
+        https://bugs.webkit.org/show_bug.cgi?id=155650
+        rdar://problem/25242422
+
+        Reviewed by Brian Burg.
+
+        * page/DOMWindow.h: Marked focus() method as exported so WK2 can use them.
+        * page/FrameTree.h: Marked scopedChild() methods as exported so WK2 can use them.
+
+2016-03-28  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove USE(TEXTURE_MAPPER) guards inside TextureMapper sources.
+        https://bugs.webkit.org/show_bug.cgi?id=155944
+
+        Reviewed by Michael Catanzaro.
+
+        After r196429 TextureMapper sources are built only in ports which actually
+        use TextureMapper, so USE(TEXTURE_MAPPER) guards in them are redundant now.
+
+        No new tests needed.
+
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.cpp:
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.h:
+        * platform/graphics/texmap/TextureMapper.cpp:
+        * platform/graphics/texmap/TextureMapper.h:
+        * platform/graphics/texmap/TextureMapperBackingStore.cpp:
+        * platform/graphics/texmap/TextureMapperBackingStore.h:
+        * platform/graphics/texmap/TextureMapperFPSCounter.cpp:
+        * platform/graphics/texmap/TextureMapperFPSCounter.h:
+        * platform/graphics/texmap/TextureMapperLayer.cpp:
+        * platform/graphics/texmap/TextureMapperLayer.h:
+        * platform/graphics/texmap/TextureMapperTile.cpp:
+        * platform/graphics/texmap/TextureMapperTile.h:
+        * platform/graphics/texmap/TextureMapperTiledBackingStore.cpp:
+        * platform/graphics/texmap/TextureMapperTiledBackingStore.h:
+
 2016-03-28  Manuel Rego Casasnovas  <rego@igalia.com>
 
         [css-grid] Remove unneeded lines in offsetAndBreadthForPositionedChild()
