@@ -869,6 +869,17 @@ const static HashSet<AtomicString>& codecSet()
         gst_plugin_feature_list_free(audioDecoderFactories);
         gst_plugin_feature_list_free(videoDecoderFactories);
 
+#if PLATFORM(BCM_NEXUS)
+        // Nexus decoders only understand custom x-brcm-* formats and filters are used to convert from regular codecs to those formats.
+        // Those filters aren't exposed by the GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_{AUDIO,VIDEO} factories,
+        // so the codec list must be hardcoded.
+        set.add(AtomicString("x-h264"));
+        set.add(AtomicString("avc*"));
+        set.add(AtomicString("audio/mpeg"));
+        set.add(AtomicString("audio/x-mpeg"));
+        set.add(AtomicString("mp4a*"));
+#endif
+
         return set;
     }();
     return codecTypes;
