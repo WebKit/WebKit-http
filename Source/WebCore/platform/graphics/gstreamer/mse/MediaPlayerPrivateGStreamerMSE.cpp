@@ -849,12 +849,6 @@ const static HashSet<AtomicString>& codecSet()
             }
         }
 
-#if PLATFORM(BCM_NEXUS)
-        // Nexus doesn't use regular decoders and the factories don't expose the right caps even though they're supported.
-        set.add(AtomicString("x-h264"));
-        set.add(AtomicString("avc*"));
-#endif
-
         bool audioMpegSupported = false;
         if (gstRegistryHasElementForMediaType(audioDecoderFactories, "audio/mpeg, mpegversion=(int)1, layer=(int)[1, 3]")) {
             audioMpegSupported = true;
