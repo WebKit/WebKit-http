@@ -1,3 +1,159 @@
+2016-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Rename ScrollbarPainter variables to ScrollerImp
+        https://bugs.webkit.org/show_bug.cgi?id=155976
+
+        Reviewed by Simon Fraser.
+
+        This patch continues where r198078 left off. That patch renamed all the types,
+        however, there are some variables which were left as "scrollbarPainter". This
+        patch completes the transition to ScrollerImp.
+
+        No new tests because there is no behavior change.
+
+        * platform/mac/ScrollAnimatorMac.h:
+        * platform/mac/ScrollAnimatorMac.mm:
+        (scrollerImpForScrollbar):
+        (-[WebScrollerImpPairDelegate scrollerImpPair:convertContentPoint:toScrollerImp:]):
+        (-[WebScrollbarPartAnimation startAnimation]):
+        (-[WebScrollbarPartAnimation setCurrentProgress:]):
+        (-[WebScrollerImpDelegate mouseLocationInScrollerForScrollerImp:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateKnobAlphaTo:duration:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateTrackAlphaTo:duration:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateUIStateTransitionWithDuration:]):
+        (-[WebScrollerImpDelegate scrollerImp:animateExpansionTransitionWithDuration:]):
+        (WebCore::ScrollAnimatorMac::ScrollAnimatorMac):
+        (WebCore::ScrollAnimatorMac::~ScrollAnimatorMac):
+        (WebCore::ScrollAnimatorMac::contentAreaWillPaint):
+        (WebCore::ScrollAnimatorMac::mouseEnteredContentArea):
+        (WebCore::ScrollAnimatorMac::mouseExitedContentArea):
+        (WebCore::ScrollAnimatorMac::mouseMovedInContentArea):
+        (WebCore::ScrollAnimatorMac::mouseEnteredScrollbar):
+        (WebCore::ScrollAnimatorMac::mouseExitedScrollbar):
+        (WebCore::ScrollAnimatorMac::mouseIsDownInScrollbar):
+        (WebCore::ScrollAnimatorMac::willStartLiveResize):
+        (WebCore::ScrollAnimatorMac::contentsResized):
+        (WebCore::ScrollAnimatorMac::willEndLiveResize):
+        (WebCore::ScrollAnimatorMac::contentAreaDidShow):
+        (WebCore::ScrollAnimatorMac::contentAreaDidHide):
+        (WebCore::ScrollAnimatorMac::didBeginScrollGesture):
+        (WebCore::ScrollAnimatorMac::didEndScrollGesture):
+        (WebCore::ScrollAnimatorMac::mayBeginScrollGesture):
+        (WebCore::ScrollAnimatorMac::lockOverlayScrollbarStateToHidden):
+        (WebCore::ScrollAnimatorMac::scrollbarsCanBeActive):
+        (WebCore::ScrollAnimatorMac::didAddVerticalScrollbar):
+        (WebCore::ScrollAnimatorMac::willRemoveVerticalScrollbar):
+        (WebCore::ScrollAnimatorMac::didAddHorizontalScrollbar):
+        (WebCore::ScrollAnimatorMac::willRemoveHorizontalScrollbar):
+        (WebCore::ScrollAnimatorMac::invalidateScrollbarPartLayers):
+        (WebCore::ScrollAnimatorMac::verticalScrollbarLayerDidChange):
+        (WebCore::ScrollAnimatorMac::horizontalScrollbarLayerDidChange):
+        (WebCore::ScrollAnimatorMac::shouldScrollbarParticipateInHitTesting):
+        (WebCore::ScrollAnimatorMac::notifyContentAreaScrolled):
+        (WebCore::ScrollAnimatorMac::updateScrollerStyle):
+        (WebCore::ScrollAnimatorMac::initialScrollbarPaintTimerFired):
+        (WebCore::ScrollAnimatorMac::sendContentAreaScrolled):
+        (scrollbarPainterForScrollbar): Deleted.
+        * platform/mac/ScrollbarThemeMac.mm:
+        (WebCore::ScrollbarThemeMac::registerScrollbar):
+        (WebCore::ScrollbarThemeMac::scrollbarThickness):
+        (WebCore::scrollerImpPaint):
+        (WebCore::ScrollbarThemeMac::paint):
+        (WebCore::scrollbarPainterPaint): Deleted.
+
+2016-03-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: We should have a way to capture heap snapshots programatically.
+        https://bugs.webkit.org/show_bug.cgi?id=154407
+        <rdar://problem/24726292>
+
+        Reviewed by Timothy Hatcher.
+
+        Test: inspector/console/heapSnapshot.html
+
+        * page/PageConsoleClient.cpp:
+        (WebCore::PageConsoleClient::takeHeapSnapshot):
+        * page/PageConsoleClient.h:
+        Pass through to Inspector Instrumentation.
+
+        * inspector/InspectorConsoleInstrumentation.h:
+        (WebCore::InspectorInstrumentation::takeHeapSnapshot):
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::takeHeapSnapshotImpl):
+        * inspector/InspectorInstrumentation.h:
+        Pass through to InspectorConsoleAgent.
+
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        * inspector/PageConsoleAgent.cpp:
+        (WebCore::PageConsoleAgent::PageConsoleAgent):
+        * inspector/PageConsoleAgent.h:
+        * inspector/WebConsoleAgent.cpp:
+        (WebCore::WebConsoleAgent::WebConsoleAgent):
+        * inspector/WebConsoleAgent.h:
+        * workers/WorkerConsoleClient.cpp:
+        (WebCore::WorkerConsoleClient::takeHeapSnapshot):
+        * workers/WorkerConsoleClient.h:
+        Provide a HeapAgent to the ConsoleAgent.
+
+2016-03-29  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r196813): Missing plug-in placeholder is missing
+        https://bugs.webkit.org/show_bug.cgi?id=155973
+        <rdar://problem/25068392>
+
+        Reviewed by Andy Estes.
+
+        Show unavailable plugin indicator when UnavailablePluginIndicatorState (uninitialized, hidden, visible) is not set to hidden explicitly.
+        It matches pre-196813 behaviour.
+
+        Unable to test.
+
+        * rendering/RenderEmbeddedObject.h:
+        (WebCore::RenderEmbeddedObject::showsUnavailablePluginIndicator):
+
+2016-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] [RTL Scrollbars] Overlay RTL scrollbars animate in from the wrong side
+        https://bugs.webkit.org/show_bug.cgi?id=155962
+
+        Reviewed by Simon Fraser.
+
+        We can control the animation direction with the NSScrollerImp property
+        userInterfaceLayoutDirection.
+
+        Not testable.
+
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::setScrollbarLayoutDirection):
+        * platform/ScrollableArea.h:
+        (WebCore::ScrollableArea::horizontalScrollbar):
+        (WebCore::ScrollableArea::verticalScrollbar):
+        (WebCore::ScrollableArea::tiledBacking):
+        (WebCore::ScrollableArea::layerForHorizontalScrollbar):
+        (WebCore::ScrollableArea::layerForVerticalScrollbar):
+        (WebCore::ScrollableArea::layerForScrolling):
+        (WebCore::ScrollableArea::layerForScrollCorner):
+        (WebCore::ScrollableArea::layerForOverhangAreas):
+        * platform/mac/ScrollAnimatorMac.mm:
+        (WebCore::ScrollAnimatorMac::updateScrollerStyle):
+        * platform/mac/ScrollableAreaMac.mm:
+        (WebCore::ScrollableArea::setScrollbarDirection):
+        * platform/mac/ScrollbarThemeMac.mm:
+        (WebCore::ScrollbarThemeMac::registerScrollbar):
+        * platform/spi/mac/NSScrollerImpSPI.h:
+
+2016-03-29  Dan Bernstein  <mitz@apple.com>
+
+        Inline WebFullScreenVideoRootViewController.m
+        https://bugs.webkit.org/show_bug.cgi?id=155971
+
+        Reviewed by Anders Carlsson.
+
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (createFullScreenVideoRootViewControllerClass): Replaced with the code from
+          WebFullScreenVideoRootViewController.m.
+
 2016-03-29  Said Abou-Hallawa  <sabouhallawa@apple,com>
 
         Create a CG ImageDecoder class instead of defining it as CGImageSourceRef

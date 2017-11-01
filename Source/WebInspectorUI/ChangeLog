@@ -1,3 +1,67 @@
+2016-03-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION: ⌘E and ⌘G text searching does not work
+        https://bugs.webkit.org/show_bug.cgi?id=155981
+        <rdar://problem/25418983>
+
+        Reviewed by Timothy Hatcher.
+
+        Disable the unused find banner in the RecordingContentView's
+        ContentBrowser. This is a workaround for the background tab
+        thinking it is visible, but still useful since the find
+        banner wouldn't be used in the TimelineContentView anyways so
+        can avoid being created.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser):
+        Add a construction option to not create a FindBanner.
+        
+        (WebInspector.ContentBrowser.prototype.handleFindEvent):
+        (WebInspector.ContentBrowser.prototype.shown):
+        (WebInspector.ContentBrowser.prototype.hidden):
+        (WebInspector.ContentBrowser.prototype._contentViewNumberOfSearchResultsDidChange):
+        (WebInspector.ContentBrowser.prototype._updateFindBanner):
+        Handle when we don't have a find banner.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        Do not create a FindBanner in the RecordingContentView.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        This global content browser can also avoid creating a FindBanner.
+
+2016-03-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: We should have a way to capture heap snapshots programatically.
+        https://bugs.webkit.org/show_bug.cgi?id=154407
+        <rdar://problem/24726292>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Protocol/ConsoleObserver.js:
+        (WebInspector.ConsoleObserver.prototype.heapSnapshot):
+        (WebInspector.ConsoleObserver):
+        Create a HeapSnapshot with an optional title and add to the timeline.
+
+        (WebInspector.HeapAllocationsTimelineDataGridNode):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.displayNameForRecord):
+        Share code for snapshot display names which may now include a title.
+
+        * UserInterface/Proxies/HeapSnapshotProxy.js:
+        (WebInspector.HeapSnapshotProxy):
+        (WebInspector.HeapSnapshotProxy.deserialize):
+        (WebInspector.HeapSnapshotProxy.prototype.get title):
+        * UserInterface/Views/HeapAllocationsTimelineDataGridNode.js:
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js:
+        (HeapSnapshot):
+        (HeapSnapshot.prototype.serialize):
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshotWorker.js:
+        (HeapSnapshotWorker.prototype.createSnapshot):
+        Include an optional title in a HeapSnapshot.
+
 2016-03-28  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Ensure maximum accuracy while profiling
