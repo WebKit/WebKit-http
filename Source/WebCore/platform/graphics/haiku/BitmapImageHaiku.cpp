@@ -34,7 +34,6 @@ namespace WebCore {
 BitmapImage::BitmapImage(NativeImagePtr&& nativeImage, ImageObserver* observer)
     : Image(observer)
     , m_size(nativeImage->Bounds().Width(), nativeImage->Bounds().Height())
-    , m_minimumSubsamplingLevel(0)
     , m_currentFrame(0)
     , m_repetitionCount(cAnimationNone)
     , m_repetitionCountStatus(Unknown)
