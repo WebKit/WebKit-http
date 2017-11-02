@@ -50,6 +50,10 @@
 #include "WebInspectorProxyClient.h"
 #endif
 
+#if ENABLE(INSPECTOR_SERVER)
+#include "WebInspectorServer.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -86,6 +90,11 @@ WebPreferences& WebInspectorProxy::inspectorPagePreferences() const
 
 void WebInspectorProxy::invalidate()
 {
+#if ENABLE(INSPECTOR_SERVER)
+    if (m_remoteInspectionPageId)
+        WebInspectorServer::singleton().unregisterPage(m_remoteInspectionPageId);
+#endif
+
     m_inspectedPage->process().removeMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID());
 
     didClose();
@@ -440,6 +449,30 @@ void WebInspectorProxy::eagerlyCreateInspectorPage()
     m_inspectorPage->process().assumeReadAccessToBaseURL(WebInspectorProxy::inspectorBaseURL());
 }
 
+#if ENABLE(INSPECTOR_SERVER)
+void WebInspectorProxy::enableRemoteInspection()
+{
+    if (!m_remoteInspectionPageId)
+        m_remoteInspectionPageId = WebInspectorServer::singleton().registerPage(this);
+}
+
+void WebInspectorProxy::remoteFrontendConnected()
+{
+    m_inspectedPage->process().send(Messages::WebInspector::RemoteFrontendConnected(), m_inspectedPage->pageID());
+}
+
+void WebInspectorProxy::remoteFrontendDisconnected()
+{
+    m_inspectedPage->process().send(Messages::WebInspector::RemoteFrontendDisconnected(), m_inspectedPage->pageID());
+}
+
+void WebInspectorProxy::dispatchMessageFromRemoteFrontend(const String& message)
+{
+    m_inspectedPage->process().send(Messages::WebInspector::SendMessageToBackend(message), m_inspectedPage->pageID());
+}
+#endif
+
+
 // Called by WebInspectorProxy messages
 void WebInspectorProxy::createInspectorPage(IPC::Attachment connectionIdentifier, bool canAttach, bool underTest)
 {
@@ -604,6 +637,14 @@ bool WebInspectorProxy::shouldOpenAttached()
 {
     return inspectorPagePreferences().inspectorStartsAttached() && canAttach();
 }
+
+#if ENABLE(INSPECTOR_SERVER)
+void WebInspectorProxy::sendMessageToRemoteFrontend(const String& message)
+{
+    ASSERT(m_remoteInspectionPageId);
+    WebInspectorServer::singleton().sendMessageOverConnection(m_remoteInspectionPageId, message);
+}
+#endif
 
 // Unsupported configurations can use the stubs provided here.
 

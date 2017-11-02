@@ -145,6 +145,15 @@ public:
     static String inspectorBaseURL();
     static bool isMainOrTestInspectorPage(const WebCore::URL&);
 
+#if ENABLE(INSPECTOR_SERVER)
+    void enableRemoteInspection();
+    void remoteFrontendConnected();
+    void remoteFrontendDisconnected();
+    void dispatchMessageFromRemoteFrontend(const String& message);
+    int remoteInspectionPageID() const { return m_remoteInspectionPageId; }
+#endif
+
+
     static const unsigned minimumWindowWidth;
     static const unsigned minimumWindowHeight;
 
@@ -198,6 +207,10 @@ private:
     void save(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void append(const String& filename, const String& content);
 
+#if ENABLE(INSPECTOR_SERVER)
+    void sendMessageToRemoteFrontend(const String& message);
+#endif
+
     bool canAttach() const { return m_canAttach; }
     bool shouldOpenAttached();
 
@@ -245,6 +258,10 @@ private:
     GtkWidget* m_headerBar { nullptr };
     String m_inspectedURLString;
 #endif
+#if ENABLE(INSPECTOR_SERVER)
+    int m_remoteInspectionPageId { 0 };
+#endif
+
 };
 
 } // namespace WebKit
