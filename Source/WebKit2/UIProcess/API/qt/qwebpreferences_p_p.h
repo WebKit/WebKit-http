@@ -38,7 +38,6 @@ public:
         DnsPrefetchEnabled,
         DeveloperExtrasEnabled,
         WebGLEnabled,
-        CSSCustomFilterEnabled,
         WebAudioEnabled,
         CaretBrowsingEnabled,
         NotificationsEnabled,
