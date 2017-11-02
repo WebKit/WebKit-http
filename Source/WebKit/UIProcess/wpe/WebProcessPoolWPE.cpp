@@ -32,6 +32,7 @@
 #include "Logging.h"
 #include "NetworkProcessMessages.h"
 #include "WebCookieManagerProxy.h"
+#include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
 #include <JavaScriptCore/RemoteInspectorServer.h>
@@ -68,13 +69,49 @@ static bool initializeRemoteInspectorServer(const char* address)
 }
 #endif
 
+#if ENABLE(INSPECTOR_SERVER)
+static void initializeLegacyInspectorServer()
+{
+    static bool initialized = false;
+    if (initialized)
+        return;
+
+    initialized = true;
+    String serverAddress(g_getenv("WEBKIT_LEGACY_INSPECTOR_SERVER"));
+
+    if (!serverAddress.isNull()) {
+        String bindAddress = "127.0.0.1";
+        unsigned short port = 2999;
+
+        Vector<String> result = serverAddress.split(':');
+        if (result.size() == 2) {
+            bindAddress = result[0];
+            bool ok = false;
+            port = result[1].toInt(&ok);
+            if (!ok) {
+                port = 2999;
+                WTFLogAlways("Couldn't parse the port. Use 2999 instead.");
+            }
+        } else
+            WTFLogAlways("Couldn't parse %s, wrong format? Use 127.0.0.1:2999 instead.", serverAddress.utf8().data());
+
+        if (!WebInspectorServer::singleton().listen(bindAddress, port))
+            WTFLogAlways("Couldn't start listening on: IP address=%s, port=%d.", bindAddress.utf8().data(), port);
+    }
+}
+#endif
+
 void WebProcessPool::platformInitialize()
 {
 #if ENABLE(REMOTE_INSPECTOR)
     if (const char* address = g_getenv("WEBKIT_INSPECTOR_SERVER")) {
-        if (!initializeRemoteInspectorServer(address))
-            g_unsetenv("WEBKIT_INSPECTOR_SERVER");
+        if (initializeRemoteInspectorServer(address))
+            return;
+        g_unsetenv("WEBKIT_INSPECTOR_SERVER");
     }
+#endif
+#if ENABLE(INSPECTOR_SERVER)
+    initializeLegacyInspectorServer();
 #endif
 }
 

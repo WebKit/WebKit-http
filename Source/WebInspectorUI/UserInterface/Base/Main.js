@@ -1665,7 +1665,7 @@ WI._initializeWebSocketIfNeeded = function()
     if (!InspectorFrontendHost.initializeWebSocket)
         return;
 
-    var queryParams = parseLocationQueryParameters();
+    var queryParams = parseQueryString(window.location.search.substring(1));
 
     if ("ws" in queryParams)
         var url = "ws://" + queryParams.ws;

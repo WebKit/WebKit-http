@@ -49,6 +49,7 @@ class SocketStreamHandleClient;
 class SocketStreamHandleImpl final : public SocketStreamHandle {
 public:
     static Ref<SocketStreamHandleImpl> create(const URL&, SocketStreamHandleClient&, PAL::SessionID, const String&, SourceApplicationAuditToken&&);
+    static Ref<SocketStreamHandleImpl> create(GSocketConnection*, SocketStreamHandleClient&);
     virtual ~SocketStreamHandleImpl();
 
     const URL& url() const { return m_url; }

@@ -110,6 +110,14 @@ Ref<SocketStreamHandleImpl> SocketStreamHandleImpl::create(const URL& url, Socke
     return socket;
 }
 
+Ref<SocketStreamHandleImpl> SocketStreamHandleImpl::create(GSocketConnection* socketConnection, SocketStreamHandleClient& client)
+{
+    Ref<SocketStreamHandleImpl> socket = adoptRef(*new SocketStreamHandleImpl(URL(), client));
+    GRefPtr<GIOStream> stream = G_IO_STREAM(socketConnection);
+    socket->connected(WTFMove(stream));
+    return socket;
+}
+
 SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client)
     : SocketStreamHandle(url, client)
     , m_cancellable(adoptGRef(g_cancellable_new()))

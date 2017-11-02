@@ -843,6 +843,11 @@ void WebPageProxy::initializeWebPage()
     }
 #endif
 
+#if ENABLE(INSPECTOR_SERVER)
+    if (m_preferences->developerExtrasEnabled())
+        inspector()->enableRemoteInspection();
+#endif
+
     auto parameters = creationParameters();
 
 #if ENABLE(SERVICE_WORKER)
@@ -3308,6 +3313,11 @@ void WebPageProxy::preferencesDidChange()
 {
     if (!isValid())
         return;
+
+#if ENABLE(INSPECTOR_SERVER)
+    if (m_preferences->developerExtrasEnabled())
+        inspector()->enableRemoteInspection();
+#endif
 
     updateThrottleState();
     updateHiddenPageThrottlingAutoIncreases();
