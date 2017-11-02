@@ -37,16 +37,9 @@ namespace WebCore {
 
 URL::URL(const BUrl& url)
 {
-    setProtocol(url.Protocol());
-    setHost(url.Host());
-    if (url.Port() != 0)
-        setPort(url.Port());
-    setUser(url.UserName());
-    setPass(url.Password());
-    setPath(url.Path());
-    setQuery(url.Request());
-    if (url.Fragment().Length() != 0)
-        setFragmentIdentifier(url.Fragment());
+	// The only way to fully initialize an URL is by parsing it from a string.
+	// So let's do just that.
+	parse(url.UrlString().String());
 }
 
 URL::operator BUrl() const

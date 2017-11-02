@@ -89,6 +89,7 @@ private:
     BFormDataIO* m_postData;
     BUrlRequest* m_request;
     off_t m_position;
+    URL m_baseUrl;
 
     int m_redirectionTries;
 };

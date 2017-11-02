@@ -295,6 +295,8 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
     if (m_request == NULL)
         return;
 
+    m_baseUrl = URL(m_request->Url());
+
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
     if(httpRequest) {
         // TODO maybe we have data to send in other cases ?
@@ -484,17 +486,18 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
     if (!m_resourceHandle)
         return;
 
-    const BHttpResult* httpResult = static_cast<const BHttpResult*>(&result);
+    const BHttpResult* httpResult = dynamic_cast<const BHttpResult*>(&result);
 
     WTF::String contentType = result.ContentType();
     int contentLength = result.Length();
-    URL url(m_request->Url());
+    URL url;
 
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
     if (httpResult) {
         url = URL(httpResult->Url());
+
         BString location = httpResult->Headers()["Location"];
         if (location.Length() > 0) {
             m_redirected = true;
@@ -502,6 +505,8 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
         } else {
             m_redirected = false;
         }
+    } else {
+        url = m_baseUrl;
     }
 
     ResourceResponse response(url, mimeType, contentLength, encoding);
