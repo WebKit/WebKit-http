@@ -1,3 +1,47 @@
+2017-11-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Misc display list and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=179150
+
+        Reviewed by Tim Horton.
+
+        A few functions in GraphicsContext would assert when using display lists, because they
+        had no recording clause. Fix them (ellipse drawing, and focus ring drawing).
+        
+        Use #pragma once in more places.
+
+        Add system trace points for display list recording.
+
+        No behavior change for non-display list code.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::fillEllipse):
+        (WebCore::GraphicsContext::strokeEllipse):
+        * platform/graphics/PlatformLayer.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges):
+        * platform/graphics/ca/cocoa/WebSystemBackdropLayer.h:
+        * platform/graphics/ca/cocoa/WebTiledBackingLayer.h:
+        * platform/graphics/cg/GraphicsContextCG.h:
+        * platform/graphics/cocoa/GraphicsContextCocoa.mm:
+        (WebCore::GraphicsContext::drawFocusRing):
+        * platform/graphics/displaylists/DisplayList.h:
+        * platform/graphics/displaylists/DisplayListItems.h:
+        (WebCore::DisplayList::DrawFocusRingPath::create):
+        (WebCore::DisplayList::DrawFocusRingPath::width const):
+        (WebCore::DisplayList::DrawFocusRingPath::offset const):
+        (WebCore::DisplayList::DrawFocusRingPath::DrawFocusRingPath):
+        (WebCore::DisplayList::DrawFocusRingRects::create):
+        (WebCore::DisplayList::DrawFocusRingRects::width const):
+        (WebCore::DisplayList::DrawFocusRingRects::offset const):
+        (WebCore::DisplayList::DrawFocusRingRects::DrawFocusRingRects):
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::restore):
+        (WebCore::DisplayList::Recorder::drawFocusRing):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+        * platform/graphics/displaylists/DisplayListReplayer.h:
+        * platform/graphics/mac/WebLayer.h:
+
 2017-10-23  Miguel Gomez  <magomez@igalia.com>
 
         [TexMap] Remove GraphicsContext3D usage from TextureMapperShaderProgram
