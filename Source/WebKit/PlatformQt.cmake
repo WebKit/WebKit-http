@@ -418,7 +418,7 @@ install(
     COMPONENT Data
 )
 
-file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h)
+file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h ../WebKit2/UIProcess/API/qt/*_p.h)
 install(
     FILES
         ${WebKit_PRIVATE_HEADERS}
@@ -519,10 +519,18 @@ if (KDE_INSTALL_USE_QT_SYS_PATHS)
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
+        list(APPEND WebKit_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers/${PROJECT_VERSION}/QtWebKit"
+        )
     else ()
         list(APPEND WebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKit"
+        )
+        list(APPEND WebKit_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE/QtWebKit/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKit/${PROJECT_VERSION}/QtWebKit"
         )
     endif ()
 else ()
@@ -534,13 +542,23 @@ else ()
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
+        list(APPEND WebKit_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers/${PROJECT_VERSION}/QtWebKit"
+        )
     else ()
         list(APPEND WebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
             INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
         )
+        list(APPEND WebKit_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit"
+        )
     endif ()
 endif ()
+
+list(APPEND WebKit_Private_PRI_ARGUMENTS MODULE_CONFIG "internal_module no_link")
 
 if (MACOS_BUILD_FRAMEWORKS)
     set(WebKit_OUTPUT_NAME QtWebKit)
@@ -561,7 +579,23 @@ ecm_generate_pri_file(
     FILENAME_VAR WebKit_PRI_FILENAME
     ${WebKit_PRI_ARGUMENTS}
 )
-install(FILES ${WebKit_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR} COMPONENT Data)
+ecm_generate_pri_file(
+    BASE_NAME webkit_private
+    NAME "QtWebKit"
+    LIB_NAME " "
+    DEPS "webkit"
+    RUNTIME_DEPS " "
+    DEFINES " "
+    QT_MODULES webkit
+    EXTRA_LIBS " "
+    FILENAME_VAR WebKit_Private_PRI_FILENAME
+    ${WebKit_Private_PRI_ARGUMENTS}
+)
+install(
+    FILES ${WebKit_PRI_FILENAME} ${WebKit_Private_PRI_FILENAME}
+    DESTINATION ${ECM_MKSPECS_INSTALL_DIR}
+    COMPONENT Data
+)
 
 if (QT_STATIC_BUILD)
     set(WebKit_LIBRARY_TYPE STATIC)
@@ -708,10 +742,18 @@ if (KDE_INSTALL_USE_QT_SYS_PATHS)
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKitWidgets.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
+        list(APPEND WebKitWidgets_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKitWidgets.framework/Headers/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "$$QT_MODULE_LIB_BASE/QtWebKitWidgets.framework/Headers/${PROJECT_VERSION}/QtWebKitWidgets"
+        )
     else ()
         list(APPEND WebKitWidgets_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKitWidgets"
+        )
+        list(APPEND WebKitWidgets_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE/QtWebKitWidgets/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets"
         )
     endif ()
 else ()
@@ -723,13 +765,23 @@ else ()
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKitWidgets.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
+        list(APPEND WebKitWidgets_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKitWidgets.framework/Headers/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "${LIB_INSTALL_DIR}/QtWebKitWidgets.framework/Headers/${PROJECT_VERSION}/QtWebKitWidgets"
+        )
     else ()
         list(APPEND WebKitWidgets_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
             INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
         )
+        list(APPEND WebKitWidgets_Private_PRI_ARGUMENTS
+            INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets/${PROJECT_VERSION}"
+            INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets/${PROJECT_VERSION}/QtWebKitWidgets"
+        )
     endif ()
 endif ()
+
+list(APPEND WebKitWidgets_Private_PRI_ARGUMENTS MODULE_CONFIG "internal_module no_link")
 
 if (MACOS_BUILD_FRAMEWORKS)
     set(WebKitWidgets_OUTPUT_NAME QtWebKitWidgets)
@@ -749,7 +801,23 @@ ecm_generate_pri_file(
     FILENAME_VAR WebKitWidgets_PRI_FILENAME
     ${WebKitWidgets_PRI_ARGUMENTS}
 )
-install(FILES ${WebKitWidgets_PRI_FILENAME} DESTINATION ${ECM_MKSPECS_INSTALL_DIR} COMPONENT Data)
+ecm_generate_pri_file(
+    BASE_NAME webkitwidgets_private
+    NAME "QtWebKitWidgets"
+    LIB_NAME " "
+    DEPS "webkitwidgets"
+    RUNTIME_DEPS " "
+    DEFINES " "
+    QT_MODULES webkitwidgets
+    EXTRA_LIBS " "
+    FILENAME_VAR WebKitWidgets_Private_PRI_FILENAME
+    ${WebKitWidgets_Private_PRI_ARGUMENTS}
+)
+install(
+    FILES ${WebKitWidgets_PRI_FILENAME}  ${WebKitWidgets_Private_PRI_FILENAME}
+    DESTINATION ${ECM_MKSPECS_INSTALL_DIR}
+    COMPONENT Data
+)
 
 if (MSVC)
     if (CMAKE_SIZEOF_VOID_P EQUAL 8)
