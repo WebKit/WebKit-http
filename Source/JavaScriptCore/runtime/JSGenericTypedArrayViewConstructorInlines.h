@@ -32,6 +32,7 @@
 #include "JSCJSValueInlines.h"
 #include "JSDataView.h"
 #include "JSGenericTypedArrayViewConstructor.h"
+#include "JSGenericTypedArrayViewInlines.h"
 #include "JSGlobalObject.h"
 #include "StructureInlines.h"
 
