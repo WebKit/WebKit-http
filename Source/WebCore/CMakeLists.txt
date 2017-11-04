@@ -2442,6 +2442,7 @@ set(WebCore_SOURCES
     platform/graphics/Gradient.cpp
     platform/graphics/GradientImage.cpp
     platform/graphics/GraphicsContext.cpp
+    platform/graphics/GraphicsContextImpl.cpp
     platform/graphics/GraphicsLayer.cpp
     platform/graphics/GraphicsLayerTransform.cpp
     platform/graphics/GraphicsLayerUpdater.cpp

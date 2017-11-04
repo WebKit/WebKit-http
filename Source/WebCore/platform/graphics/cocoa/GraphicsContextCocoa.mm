@@ -119,8 +119,8 @@ void GraphicsContext::drawFocusRing(const Path& path, float width, float offset,
     if (paintingDisabled() || path.isNull())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawFocusRing(path, width, offset, color);
+    if (m_impl) {
+        m_impl->drawFocusRing(path, width, offset, color);
         return;
     }
 
@@ -136,7 +136,7 @@ void GraphicsContext::drawFocusRing(const Path& path, double timeOffset, bool& n
     if (paintingDisabled() || path.isNull())
         return;
 
-    if (isRecording()) // FIXME: implement animated focus ring drawing.
+    if (m_impl) // FIXME: implement animated focus ring drawing.
         return;
 
     needsRedraw = drawFocusRingToContextAtTime(platformContext(), path.platformPath(), timeOffset);
@@ -147,7 +147,7 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, double timeO
     if (paintingDisabled())
         return;
 
-    if (isRecording()) // FIXME: implement animated focus ring drawing.
+    if (m_impl) // FIXME: implement animated focus ring drawing.
         return;
 
     RetainPtr<CGMutablePathRef> focusRingPath = adoptCF(CGPathCreateMutable());
@@ -164,8 +164,8 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawFocusRing(rects, width, offset, color);
+    if (m_impl) {
+        m_impl->drawFocusRing(rects, width, offset, color);
         return;
     }
 

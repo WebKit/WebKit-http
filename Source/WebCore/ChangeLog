@@ -1,3 +1,171 @@
+2017-11-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a GraphicsContextImpl and use it for DispayList::Recorder
+        https://bugs.webkit.org/show_bug.cgi?id=179286
+
+        Reviewed by Sam Weinig.
+
+        Start moving towards a model when GraphicsContext has a pointer to an implementation
+        ("pimpl") by adding GraphicsContextImpl, and converting display list recording to
+        be an implementation of a GraphicsContextImpl.
+
+        No behavior change.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::DisplayListDrawingContext::DisplayListDrawingContext):
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::GraphicsContext):
+        (WebCore::GraphicsContext::save):
+        (WebCore::GraphicsContext::restore):
+        (WebCore::GraphicsContext::setStrokeThickness):
+        (WebCore::GraphicsContext::setStrokeStyle):
+        (WebCore::GraphicsContext::setStrokeColor):
+        (WebCore::GraphicsContext::setShadow):
+        (WebCore::GraphicsContext::setLegacyShadow):
+        (WebCore::GraphicsContext::clearShadow):
+        (WebCore::GraphicsContext::setFillColor):
+        (WebCore::GraphicsContext::setShadowsIgnoreTransforms):
+        (WebCore::GraphicsContext::setShouldAntialias):
+        (WebCore::GraphicsContext::setShouldSmoothFonts):
+        (WebCore::GraphicsContext::setShouldSubpixelQuantizeFonts):
+        (WebCore::GraphicsContext::setImageInterpolationQuality):
+        (WebCore::GraphicsContext::setStrokePattern):
+        (WebCore::GraphicsContext::setFillPattern):
+        (WebCore::GraphicsContext::setStrokeGradient):
+        (WebCore::GraphicsContext::setFillRule):
+        (WebCore::GraphicsContext::setFillGradient):
+        (WebCore::GraphicsContext::beginTransparencyLayer):
+        (WebCore::GraphicsContext::endTransparencyLayer):
+        (WebCore::GraphicsContext::drawGlyphs):
+        (WebCore::GraphicsContext::drawImage):
+        (WebCore::GraphicsContext::drawTiledImage):
+        (WebCore::GraphicsContext::setTextDrawingMode):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::fillRoundedRect):
+        (WebCore::GraphicsContext::setAlpha):
+        (WebCore::GraphicsContext::setCompositeOperation):
+        (WebCore::GraphicsContext::setDrawLuminanceMask):
+        (WebCore::GraphicsContext::applyDeviceScaleFactor):
+        (WebCore::GraphicsContext::fillEllipse):
+        (WebCore::GraphicsContext::strokeEllipse):
+        * platform/graphics/GraphicsContext.h:
+        (WebCore::GraphicsContext::hasPlatformContext const):
+        (WebCore::GraphicsContext::paintingDisabled const):
+        (WebCore::GraphicsContext::setDisplayListRecorder): Deleted.
+        (WebCore::GraphicsContext::isRecording const): Deleted.
+        * platform/graphics/GraphicsContextImpl.cpp: Added.
+        (WebCore::GraphicsContextImpl::GraphicsContextImpl):
+        (WebCore::GraphicsContextImpl::~GraphicsContextImpl):
+        * platform/graphics/GraphicsContextImpl.h: Added.
+        (WebCore::GraphicsContextImpl::graphicsContext const):
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::drawRect):
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::drawLine):
+        (WebCore::GraphicsContext::drawEllipse):
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::drawLinesForText):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::setPlatformStrokeThickness):
+        (WebCore::GraphicsContext::setPlatformStrokeStyle):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::clearRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::setLineCap):
+        (WebCore::GraphicsContext::setLineDash):
+        (WebCore::GraphicsContext::setLineJoin):
+        (WebCore::GraphicsContext::setMiterLimit):
+        (WebCore::GraphicsContext::clipOut):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::scale):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+        (WebCore::GraphicsContext::drawPattern):
+        (WebCore::GraphicsContext::setPlatformShouldAntialias):
+        (WebCore::GraphicsContext::setPlatformImageInterpolationQuality):
+        (WebCore::GraphicsContext::isAcceleratedContext const):
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::drawPattern):
+        (WebCore::GraphicsContext::drawRect):
+        (WebCore::GraphicsContext::drawLine):
+        (WebCore::GraphicsContext::drawEllipse):
+        (WebCore::GraphicsContext::applyStrokePattern):
+        (WebCore::GraphicsContext::applyFillPattern):
+        (WebCore::GraphicsContext::drawPath):
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipOut):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::setPlatformShadow):
+        (WebCore::GraphicsContext::setMiterLimit):
+        (WebCore::GraphicsContext::clearRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::setLineCap):
+        (WebCore::GraphicsContext::setLineDash):
+        (WebCore::GraphicsContext::setLineJoin):
+        (WebCore::GraphicsContext::scale):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        (WebCore::GraphicsContext::drawLinesForText):
+        (WebCore::GraphicsContext::setURLForRect):
+        (WebCore::GraphicsContext::setIsCALayerContext):
+        (WebCore::GraphicsContext::isCALayerContext const):
+        (WebCore::GraphicsContext::setIsAcceleratedContext):
+        (WebCore::GraphicsContext::isAcceleratedContext const):
+        (WebCore::GraphicsContext::setPlatformTextDrawingMode):
+        (WebCore::GraphicsContext::setPlatformStrokeColor):
+        (WebCore::GraphicsContext::setPlatformStrokeThickness):
+        (WebCore::GraphicsContext::setPlatformFillColor):
+        (WebCore::GraphicsContext::setPlatformShouldAntialias):
+        (WebCore::GraphicsContext::setPlatformShouldSmoothFonts):
+        (WebCore::GraphicsContext::setPlatformAlpha):
+        (WebCore::GraphicsContext::setPlatformCompositeOperation):
+        (WebCore::GraphicsContext::platformApplyDeviceScaleFactor):
+        (WebCore::GraphicsContext::platformFillEllipse):
+        (WebCore::GraphicsContext::platformStrokeEllipse):
+        (WebCore::GraphicsContext::setDestinationForRect):
+        (WebCore::GraphicsContext::addDestinationAtPoint):
+        * platform/graphics/cocoa/GraphicsContextCocoa.mm:
+        (WebCore::GraphicsContext::drawFocusRing):
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::Recorder):
+        (WebCore::DisplayList::Recorder::updateItemExtent const):
+        (WebCore::DisplayList::Recorder::extentFromLocalBounds const):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+        (WebCore::DisplayList::Recorder::itemCount const):
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::paint):
+
 2017-11-01  Simon Fraser  <simon.fraser@apple.com>
 
         Misc display list and other cleanup
