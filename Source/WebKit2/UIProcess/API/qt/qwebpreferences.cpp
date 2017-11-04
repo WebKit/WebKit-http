@@ -66,10 +66,6 @@ bool QWebPreferencesPrivate::testAttribute(QWebPreferencesPrivate::WebAttribute 
 #if ENABLE(WEBGL)
     case WebGLEnabled:
         return WKPreferencesGetWebGLEnabled(preferencesRef);
-#if ENABLE(CSS_SHADERS)
-    case CSSCustomFilterEnabled:
-        return WKPreferencesGetCSSCustomFilterEnabled(preferencesRef);
-#endif
 #endif
 #if ENABLE(WEB_AUDIO)
     case WebAudioEnabled:
@@ -135,11 +131,6 @@ void QWebPreferencesPrivate::setAttribute(QWebPreferencesPrivate::WebAttribute a
     case WebGLEnabled:
         WKPreferencesSetWebGLEnabled(preferencesRef, enable);
         break;
-#if ENABLE(CSS_SHADERS)
-    case CSSCustomFilterEnabled:
-        WKPreferencesSetCSSCustomFilterEnabled(preferencesRef, enable);
-        break;
-#endif
 #endif
 #if ENABLE(WEB_AUDIO)
     case WebAudioEnabled:

@@ -173,10 +173,6 @@ void QWebSettingsPrivate::apply()
                                  global->attributes.value(QWebSettings::WebGLEnabled));
 
         settings->setWebGLEnabled(value);
-#if ENABLE(CSS_SHADERS)
-        // For now, enable CSS shaders when WebGL is enabled.
-        settings->setCSSCustomFilterEnabled(value);
-#endif
 #endif
 #if ENABLE(WEB_AUDIO)
         value = attributes.value(QWebSettings::WebAudioEnabled, global->attributes.value(QWebSettings::WebAudioEnabled));

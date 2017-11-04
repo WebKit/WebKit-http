@@ -36,8 +36,10 @@ QWEBKITWIDGETS_EXPORT void initializeWebKitWidgets()
     if (initialized)
         return;
 
-    setWebKitWidgetsInitCallback(QStyleFacadeImp::create);
-    initializeWebKitQt();
+    if (qgetenv("QT_WEBKIT_THEME_NAME") != "mobile") {
+        setWebKitWidgetsInitCallback(QStyleFacadeImp::create);
+        initializeWebKitQt();
+    }
 
     // QWebSettings::SearchCancelButtonGraphic
     setImagePlatformResource("searchCancelButton", QApplication::style()->standardPixmap(QStyle::SP_DialogCloseButton));
