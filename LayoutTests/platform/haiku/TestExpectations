@@ -82,8 +82,10 @@ http/tests/inspector/page/loading-iframe-document-node.html [ Crash ]
 # Ultimately the app_server/interface kit should be made more resilient to that.
 # Unfortunately, when out of ports, we are unable to start the debugger, which
 # makes this a little difficult to debug for me.
-fast/canvas/canvas-composite-stroke-alpha.html [ Skip ]
-fast/canvas/canvas-composite-text-alpha.html [ Skip ]
+fast/canvas/ [ Skip ]
+#fast/canvas/canvas-composite-stroke-alpha.html [ Skip ]
+#fast/canvas/canvas-composite-text-alpha.html [ Skip ]
+css3/filters/ [ Skip ] # Tends to run out of ports somewhere
 
 # Missing features in WebKit port
 #################################
@@ -522,47 +524,6 @@ css3/device-adapt/opera/constrain-003.xhtml [ Pass ]
 css3/device-adapt/opera/constrain-012.xhtml [ Pass ]
 css3/device-adapt/opera/constrain-022.xhtml [ Failure ]
 
-css3/filters/animation-from-initial-values-with-color-matrix.html [ ImageOnlyFailure ]
-css3/filters/backdrop/backdrop-filter-does-not-size-properly-absolute.html [ Failure ]
-css3/filters/backdrop/backdrop-filter-does-not-size-properly-border-and-padding.html [ Failure ]
-css3/filters/backdrop/backdrop-filter-with-cliprect.html [ Failure ]
-css3/filters/backdrop/backdrop-filter-with-mask.html [ Failure ]
-css3/filters/backdrop/backdropfilter-property-computed-style.html [ Failure ]
-css3/filters/backdrop/backdropfilter-property-parsing.html [ Failure ]
-css3/filters/backdrop/backdropfilter-property.html [ Failure ]
-css3/filters/backdrop/effect-hw.html [ ImageOnlyFailure ]
-css3/filters/css-opacity-with-drop-shadow.html [ ImageOnlyFailure ]
-css3/filters/effect-blur-hw.html [ Failure ]
-css3/filters/effect-blur.html [ Failure ]
-css3/filters/effect-brightness-hw.html [ Failure ]
-css3/filters/effect-brightness.html [ Failure ]
-css3/filters/effect-combined-hw.html [ Failure ]
-css3/filters/effect-combined.html [ Failure ]
-css3/filters/effect-contrast-hw.html [ Failure ]
-css3/filters/effect-contrast.html [ Failure ]
-css3/filters/effect-drop-shadow-hw.html [ Failure ]
-css3/filters/effect-drop-shadow.html [ Failure ]
-css3/filters/effect-grayscale-hw.html [ Failure ]
-css3/filters/effect-grayscale.html [ Failure ]
-css3/filters/effect-hue-rotate-hw.html [ Failure ]
-css3/filters/effect-hue-rotate.html [ Failure ]
-css3/filters/effect-invert-hw.html [ Failure ]
-css3/filters/effect-invert.html [ Failure ]
-css3/filters/effect-opacity-hw.html [ Failure ]
-css3/filters/effect-opacity.html [ Failure ]
-css3/filters/effect-reference-hw.html [ Failure ]
-css3/filters/effect-reference.html [ Failure ]
-css3/filters/effect-saturate-hw.html [ Failure ]
-css3/filters/effect-saturate.html [ Failure ]
-css3/filters/effect-sepia-hw.html [ Failure ]
-css3/filters/effect-sepia.html [ Failure ]
-css3/filters/filter-is-on-subpixel-position.html [ ImageOnlyFailure ]
-css3/filters/filter-mask-clip-order.html [ ImageOnlyFailure ]
-css3/filters/filter-repaint-shadow-layer-child.html [ ImageOnlyFailure ]
-css3/filters/filtered-compositing-descendant.html [ Failure ]
-css3/filters/hidpi-filter-is-on-subpixel-position.html [ ImageOnlyFailure ]
-css3/filters/remove-filter-repaint.html [ Pass ImageOnlyFailure ]
-css3/filters/regions-expanding.html [ Failure ]
 
 css3/flexbox/button.html [ Failure ]
 css3/flexbox/csswg/align-content-001.html [ ImageOnlyFailure ]
@@ -987,7 +948,6 @@ editing/pasteboard/clipboard-customData.html [ Failure ]
 editing/pasteboard/contenteditable-pre-2.html [ Failure ]
 editing/pasteboard/contenteditable-pre.html [ Failure ]
 editing/pasteboard/copy-backslash-with-euc.html [ Failure ]
-editing/pasteboard/copy-cut-paste-events-fired-when-disabled.html [ Failure ]
 editing/pasteboard/copy-element-with-conflicting-background-color-from-rule.html [ ImageOnlyFailure ]
 editing/pasteboard/copy-image-with-alt-text.html [ Failure ]
 editing/pasteboard/copy-in-password-field.html [ Failure ]
@@ -1003,7 +963,6 @@ editing/pasteboard/copy-paste-float.html [ Failure ]
 editing/pasteboard/copy-paste-inserts-clearing-div.html [ Failure ]
 editing/pasteboard/copy-paste-pre-line-content.html [ Failure ]
 editing/pasteboard/copy-paste-ruby-text-with-block.html [ Failure ]
-editing/pasteboard/copy-paste-ruby-text.html [ Failure ]
 editing/pasteboard/copy-paste-with-important-rules.html [ Failure ]
 editing/pasteboard/copy-paste-wraps-position-absolute.html [ Failure ]
 editing/pasteboard/copy-text-with-backgroundcolor.html [ Failure ]
@@ -1111,7 +1070,6 @@ editing/pasteboard/preserve-line-break-at-end-of-pasted-content.html [ Failure ]
 editing/pasteboard/preserve-underline-color.html [ Failure ]
 editing/pasteboard/prevent-block-nesting-01.html [ Failure ]
 editing/pasteboard/select-element-1.html [ Failure ]
-editing/pasteboard/set_data_typeof_return.html [ Failure ]
 editing/pasteboard/simplfiying-markup-should-not-strip-content.html [ Failure ]
 editing/pasteboard/smart-paste-001.html [ Failure ]
 editing/pasteboard/smart-paste-002.html [ Failure ]
@@ -1377,8 +1335,6 @@ fast/block/block-with-inline-replaced-child-following-text.html [ Failure ] # 20
 fast/block/collapse-anon-block-with-float-siblings-only.html [ ImageOnlyFailure ]
 fast/block/float/033.html [ Failure ]
 fast/block/float/avoidance-rtl.html [ Failure ]
-fast/block/float/float-not-removed-from-next-sibling.html [ Failure ] # 20170624
-fast/block/float/float-not-removed-from-next-sibling2.html [ Failure ] # 20170624
 fast/block/float/float-with-anonymous-previous-sibling.html [ ImageOnlyFailure ]
 fast/block/float/floats-wrap-inside-inline-007.html [ ImageOnlyFailure ]
 fast/block/float/in-margin.html [ Failure ]
@@ -1692,8 +1648,6 @@ fast/css/style-scoped/style-scoped-with-important-rule.html [ Failure ]
 fast/css/stylesheet-layout-with-pending-paint.html [ ImageOnlyFailure ]
 fast/css/tab-size.html [ ImageOnlyFailure ]
 fast/css/text-overflow-ellipsis-color.html [ ImageOnlyFailure ]
-fast/css/text-overflow-input-focus-placeholder.html [ ImageOnlyFailure ]
-#fast/css/text-overflow-input-focus-value.html [ ImageOnlyFailure ]
 fast/css/user-drag-none.html [ Failure ]
 fast/css/variables/test-suite/096.html [ ImageOnlyFailure ]
 fast/css/variables/test-suite/097.html [ ImageOnlyFailure ]
@@ -3408,15 +3362,6 @@ webgl/1.0.2/conformance/more/glsl/uniformOutOfBounds.html    [ Pass ]
 webgl/1.0.3/conformance/typedarrays/array-large-array-tests.html    [ Pass ]
 
 
-# Crypto - the webCrypto API is still a draft at W3C, and this is disabled in
-# all WebKit ports so far.
-crypto/ [ Failure ]
-crypto/crypto-gc.html [ Pass ]
-crypto/crypto-random-values-limits.html [ Pass ]
-crypto/crypto-random-values.html [ Pass ]
-crypto/crypto-random-values-types.html [ Pass ]
-
-
 perf/accessibility-title-ui-element.html [ Failure ] # Missing accessibility support.
 perf/nested-combined-selectors.html [ Failure ] # The ref is failed, and so is our result (with slightly different timings)
 #perf/show-hide-table-rows.html [ Failure ]
@@ -3458,18 +3403,6 @@ security/autocomplete-cleared-on-back.html [ Failure ]
 #sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.4_T2.html [ Failure ] #F?
 sputnik/Conformance/08_Types/8.5_The_Number_Type/S8.5_A2.1.html [ Failure ]
 sputnik/Conformance/08_Types/8.5_The_Number_Type/S8.5_A2.2.html [ Failure ]
-
-
-# Storage - this may be useful, but right now it isn't working.
-storage/ [ Failure ]
-storage/domstorage/sessionstorage/delete-removal.html [ Pass ]
-storage/domstorage/sessionstorage/enumerate-storage.html [ Pass ]
-storage/domstorage/sessionstorage/enumerate-with-length-and-key.html [ Pass ]
-storage/domstorage/sessionstorage/index-get-and-set.html [ Pass ]
-storage/domstorage/sessionstorage/simple-usage.html [ Pass ]
-storage/domstorage/sessionstorage/string-conversion.html [ Pass ]
-storage/indexeddb/properties-disabled-at-runtime.html [ Pass ]
-storage/websql/open-database-over-quota.html [ Pass ]
 
 
 # SVG
