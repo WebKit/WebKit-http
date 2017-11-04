@@ -979,7 +979,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         GstStructure* structure = gst_structure_new("demuxer-connect-to-appsink", "demuxer-src-pad", G_TYPE_OBJECT, demuxerSrcPad, nullptr);
         GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
         gst_bus_post(m_bus.get(), message);
-        GST_TRACE("demuxer-connect-to-appsink message posted to bus");
+        GST_TRACE("demuxer-connect-to-appsink message posted to bus, waiting...");
 
         m_padAddRemoveCondition.wait(m_padAddRemoveLock);
     }
@@ -989,6 +989,8 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         || (m_streamType == WebCore::MediaSourceStreamTypeGStreamer::Video)
         || (m_streamType == WebCore::MediaSourceStreamTypeGStreamer::Text);
 
+    GST_TRACE("isData = %s", boolForPrinting(isData));
+
     if (isData) {
         // FIXME: Only add appsink one time. This method can be called several times.
         GRefPtr<GstObject> parent = adoptGRef(gst_element_get_parent(m_appsink.get()));
@@ -997,6 +999,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 
 #if ENABLE(ENCRYPTED_MEDIA)
         if (m_decryptor) {
+            GST_TRACE("we have a decryptor");
             gst_object_ref(m_decryptor.get());
             gst_bin_add(GST_BIN(m_pipeline.get()), m_decryptor.get());
 
@@ -1009,9 +1012,12 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
             gst_element_sync_state_with_parent(m_appsink.get());
             gst_element_sync_state_with_parent(m_decryptor.get());
 
-            if (m_pendingDecryptionStructure)
+            if (m_pendingDecryptionStructure) {
+                GST_TRACE("dispatching pending decryption structure");
                 dispatchPendingDecryptionStructure();
+            }
         } else {
+            GST_TRACE("decryptor not linked");
 #endif
             gst_pad_link(demuxerSrcPad, appsinkSinkPad.get());
             gst_element_sync_state_with_parent(m_appsink.get());

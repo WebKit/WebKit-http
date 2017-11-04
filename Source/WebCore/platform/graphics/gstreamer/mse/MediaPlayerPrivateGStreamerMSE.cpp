@@ -58,6 +58,10 @@
 #include "SharedBuffer.h"
 #endif
 
+#if USE(OPENCDM)
+#include "CDMOpenCDM.h"
+#endif
+
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 {
     switch (readyState) {
@@ -1001,6 +1005,7 @@ float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
 void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
     if (is<CDMInstanceClearKey>(instance)) {
+        GST_TRACE("instance is clear key, continuing");
         auto& ckInstance = downcast<CDMInstanceClearKey>(instance);
         if (ckInstance.keys().isEmpty())
             return;
@@ -1031,6 +1036,23 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         for (auto it : m_appendPipelinesMap)
             it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
     }
+#if USE(OPENCDM)
+    else if (is<CDMInstanceOpenCDM>(instance)) {
+        // REVIEW: The class design seems a bit wrong here. This function seems like it should be polymorphic on
+        //  the CDM instance. If you do that though, you'd need the CDM instance to have a handle back to the
+        //  player private, which opens up other issues.
+        //  Also, it's unpleasant that we have duplicated the structure creation code here and in
+        //  MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance, which incidently doesn't support
+        //  ClearKey for some reason.
+        auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(instance);
+        GST_TRACE("instance is OpenCDM, continuing with %s", cdmInstanceOpenCDM.keySystem().utf8().data());
+        String sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+        ASSERT(!sessionId.isEmpty());
+        GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr));
+        for (const auto& it : m_appendPipelinesMap)
+            it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+    }
+#endif // USE(OPENCDM)
 }
 #endif
 

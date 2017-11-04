@@ -49,12 +49,12 @@ private:
     CDMFactoryOpenCDM();
 };
 
-class CDMInstanceOpenCDM : public CDMInstance {
+class CDMInstanceOpenCDM final : public CDMInstance {
 public:
     CDMInstanceOpenCDM(media::OpenCdm*, const String&);
     virtual ~CDMInstanceOpenCDM();
 
-    ImplementationType implementationType() const final { return  ImplementationType::OpenCDM; }
+    ImplementationType implementationType() const { return  ImplementationType::OpenCDM; }
     SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
     SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
     SuccessValue setPersistentStateAllowed(bool) override;
