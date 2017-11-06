@@ -1,3 +1,20 @@
+2017-11-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] CairoGlyphToPathTranslator::path() shouldn't fill out the glyph path
+        https://bugs.webkit.org/show_bug.cgi?id=179159
+
+        Reviewed by Michael Catanzaro.
+
+        In case of non-zero synthetic bold offset in CairoGlyphToPathTranslator::path(),
+        cairo_glyph_path() should be called just like in the generic case.
+        cairo_show_glyphs() performs the actual rasterization of the glyph, but we're
+        only interested in the generated path operations.
+
+        No new tests -- covered by existing tests.
+
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::CairoGlyphToPathTranslator::path):
+
 2017-11-04  Simon Fraser  <simon.fraser@apple.com>
 
         Add a GraphicsContextImpl and use it for DispayList::Recorder
