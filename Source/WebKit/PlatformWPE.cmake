@@ -214,6 +214,15 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/wpe/WPEWebAutomation.cpp
     UIProcess/API/wpe/WPEWebAutomationClient.cpp
 
+    UIProcess/InspectorServer/HTTPRequest.cpp
+    UIProcess/InspectorServer/WebInspectorServer.cpp
+    UIProcess/InspectorServer/WebSocketServer.cpp
+    UIProcess/InspectorServer/WebSocketServerConnection.cpp
+
+    UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
+
+    UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
+
     UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp
 
     UIProcess/Launcher/glib/ProcessLauncherGLib.cpp
@@ -418,6 +427,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/API/C/wpe"
     "${WEBKIT_DIR}/UIProcess/API/glib"
     "${WEBKIT_DIR}/UIProcess/API/wpe"
+    "${WEBKIT_DIR}/UIProcess/InspectorServer"
     "${WEBKIT_DIR}/UIProcess/Network/CustomProtocols/soup"
     "${WEBKIT_DIR}/UIProcess/gstreamer"
     "${WEBKIT_DIR}/UIProcess/linux"
@@ -525,8 +535,17 @@ add_custom_command(
     VERBATIM
 )
 
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
+    DEPENDS ${WEBKIT_DIR}/UIProcess/API/wpe/WebKit2InspectorGResourceBundle.xml
+            ${WEBKIT_DIR}/UIProcess/InspectorServer/front-end/inspectorPageIndex.html
+    COMMAND glib-compile-resources --generate --sourcedir=${WEBKIT_DIR}/UIProcess/InspectorServer/front-end --target=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c ${WEBKIT_DIR}/UIProcess/API/wpe/WebKit2InspectorGResourceBundle.xml
+    VERBATIM
+)
+
 list(APPEND WPEWebInspectorResources_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
+    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
 )
 
 list(APPEND WPEWebInspectorResources_LIBRARIES
