@@ -1,3 +1,28 @@
+2017-11-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move transparency layers Vector to PlatformContextCairo
+        https://bugs.webkit.org/show_bug.cgi?id=179420
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the Vector of transparency layer float values from the
+        GraphicsContextPlatformPrivate class to PlatformContextCairo.
+        It fits better there since it's a platform-specific context
+        state, just like e.g. the ShadowBlur member.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        * platform/graphics/cairo/GraphicsContextPlatformPrivateCairo.h:
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        (WebCore::PlatformContextCairo::layers):
+        * platform/graphics/win/GraphicsContextCairoWin.cpp:
+        (WebCore::drawBitmapToContext):
+        (WebCore::GraphicsContext::releaseWindowsContext):
+        (WebCore::GraphicsContext::drawWindowsBitmap):
+
 2017-11-06  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] CairoGlyphToPathTranslator::path() shouldn't fill out the glyph path
