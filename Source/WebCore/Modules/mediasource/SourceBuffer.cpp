@@ -136,7 +136,7 @@ SourceBuffer::~SourceBuffer()
 MediaTime& SourceBuffer::currentTimeFudgeFactor() const
 {
     static NeverDestroyed<MediaTime> fudgeFactorVideo(2002, 24000);
-    static NeverDestroyed<MediaTime> fudgeFactorAudio(300000, 10000000); // 0.03 in integer form.
+    static NeverDestroyed<MediaTime> fudgeFactorAudio(299999, 10000000); // "Almost" 0.03 in integer form.
 
     return (hasAudio())?fudgeFactorAudio:fudgeFactorVideo;
 }
