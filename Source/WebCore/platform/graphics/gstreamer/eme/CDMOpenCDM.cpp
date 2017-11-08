@@ -91,6 +91,29 @@ static media::OpenCdm::LicenseType webKitLicenseTypeToOpenCDM(CDMInstance::Licen
     }
 }
 
+static CDMInstance::KeyStatus openCDMKeyStatusToWebKit(media::OpenCdm::KeyStatus keyStatus)
+{
+    switch (keyStatus) {
+    case media::OpenCdm::KeyStatus::Usable:
+        return CDMInstance::KeyStatus::Usable;
+    case media::OpenCdm::KeyStatus::Expired:
+        return CDMInstance::KeyStatus::Expired;
+    case media::OpenCdm::KeyStatus::Released:
+        return CDMInstance::KeyStatus::Released;
+    case media::OpenCdm::KeyStatus::OutputRestricted:
+        return CDMInstance::KeyStatus::OutputRestricted;
+    case media::OpenCdm::KeyStatus::OutputDownscaled:
+        return CDMInstance::KeyStatus::OutputDownscaled;
+    case media::OpenCdm::KeyStatus::StatusPending:
+        return CDMInstance::KeyStatus::StatusPending;
+    case media::OpenCdm::KeyStatus::InternalError:
+        return CDMInstance::KeyStatus::InternalError;
+    default:
+        ASSERT_NOT_REACHED();
+        return CDMInstance::KeyStatus::InternalError;
+    }
+}
+
 CDMPrivateOpenCDM::CDMPrivateOpenCDM(const String& keySystem)
     : m_openCdmKeySystem(keySystem)
 {
@@ -289,13 +312,18 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 
 void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback callback)
 {
+    // FIXME: At some point we will probably need to fix the API in OpenCDM, handle a key status vector and probably call the update key statuses algoritm.
     std::string responseMessage;
-    // FIXME: This is a realy awful API, why not just take a string& ?
-    int haveMessage = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
-    GST_DEBUG("session id %s, calling callback %s message", sessionId.utf8().data(), haveMessage ? "with" : "without");
-
-    if (haveMessage) {
-        GST_TRACE("OpenCDM::Update has a message for us");
+    media::OpenCdm::KeyStatus keyStatus = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
+    GST_DEBUG("session id %s, key status is %ld", sessionId.utf8().data(), static_cast<long>(keyStatus));
+    if (keyStatus == media::OpenCdm::KeyStatus::Usable) {
+        SharedBuffer* initData = sessionIdMap.get(sessionId);
+        KeyStatusVector changedKeys;
+        GST_TRACE("OpenCDM::update returned key is usable");
+        // FIXME: Why are we passing initData here, we are supposed to be passing key IDs.
+        changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus> {*initData, openCDMKeyStatusToWebKit(keyStatus)});
+        callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
+    } else if (keyStatus != media::OpenCdm::KeyStatus::InternalError) {
         // FIXME: Using JSON reponse messages is much cleaner than using string prefixes, I believe there
         // will even be other parts of the spec where not having structured data will be bad.
         std::string request = "message:";
@@ -303,7 +331,7 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
             size_t offset = checkMessageLength(responseMessage, request);
             unsigned const char* messageStart = reinterpret_cast<unsigned const char*>(responseMessage.c_str() + offset);
             size_t messageLength = responseMessage.length() - offset;
-            GST_MEMDUMP("Message received from platform update", messageStart, messageLength);
+            GST_MEMDUMP("OpenCDM::update got this message for us", messageStart, messageLength);
             Ref<SharedBuffer> nextMessage = SharedBuffer::create(messageStart, messageLength);
             CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
             callback(false, std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded);
@@ -311,17 +339,10 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
             GST_ERROR("OpenCDM::update claimed to have a message, but it was not correctly formatted");
             callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
         }
-        return;
+    } else {
+        GST_ERROR("OpenCDM::update reported error state, update license failed");
+        callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
     }
-
-    GST_TRACE("No message from update, we have a new key status object to communicate");
-    SharedBuffer* initData = sessionIdMap.get(sessionId);
-    KeyStatusVector changedKeys;
-    // FIXME: When Update returns false, the response message is empty
-    MediaKeyStatus keyStatus = getKeyStatus(responseMessage);
-    // FIXME: Why are we passing initData here, we are supposed to be passing key IDs.
-    changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{*initData, keyStatus});
-    callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
 }
 
 CDMInstance::SessionLoadFailure CDMInstanceOpenCDM::getSessionLoadStatus(std::string& loadStatus)
