@@ -364,14 +364,14 @@ MediaKeyStatus CDMInstanceOpenCDM::getKeyStatus(std::string& keyStatus)
         return MediaKeyStatus::Usable;
     if (keyStatus == "KeyExpired")
         return MediaKeyStatus::Expired;
-    if (keyStatus == "KeyOutputRestricted")
-        return MediaKeyStatus::OutputRestricted;
-    if (keyStatus == "KeyStatusPending")
-        return MediaKeyStatus::OutputRestricted;
-    if (keyStatus == "KeyInternalError")
-        return MediaKeyStatus::InternalError;
     if (keyStatus == "KeyReleased")
         return MediaKeyStatus::Released;
+    if (keyStatus == "KeyOutputRestricted")
+        return MediaKeyStatus::OutputRestricted;
+    if (keyStatus == "KeyOutputDownscaled")
+        return MediaKeyStatus::OutputDownscaled;
+    if (keyStatus == "KeyStatusPending")
+        return MediaKeyStatus::StatusPending;
     return MediaKeyStatus::InternalError;
 }
 
