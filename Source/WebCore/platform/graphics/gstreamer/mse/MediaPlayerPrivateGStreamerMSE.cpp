@@ -30,6 +30,7 @@
 
 #include "AppendPipeline.h"
 #include "AudioTrackPrivateGStreamer.h"
+#include "GStreamerEMEUtilities.h"
 #include "GStreamerUtilities.h"
 #include "InbandTextTrackPrivateGStreamer.h"
 #include "MIMETypeRegistry.h"
@@ -1057,11 +1058,22 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         //  ClearKey for some reason.
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(instance);
         GST_TRACE("instance is OpenCDM, continuing with %s", cdmInstanceOpenCDM.keySystem().utf8().data());
-        String sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
-        ASSERT(!sessionId.isEmpty());
-        GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr));
-        for (const auto& it : m_appendPipelinesMap)
-            it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+
+        for (const auto& it : m_appendPipelinesMap) {
+            if (!(it.value->isDecryptionStructureDispatched())) {
+                String sessionId = cdmInstanceOpenCDM.getSessionIdByInitData(SharedBuffer::create(it.value->getInitData()));
+                // FIXME: If initData is not mapped, then retrieve the current sessionId in case of single initData.
+                if (sessionId.isEmpty()) {
+                    if (m_initDataCount == 1)
+                        sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+                }
+
+                if (!sessionId.isEmpty()) {
+                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, it.value->getKeySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem())), nullptr));
+                    it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+                }
+            }
+        }
     }
 #endif // USE(OPENCDM)
 }

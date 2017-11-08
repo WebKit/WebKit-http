@@ -283,6 +283,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_isEndReached(false)
     , m_usingFallbackVideoSink(false)
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
+    , m_initDataCount(0)
 {
     g_mutex_init(&m_sampleMutex);
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -428,11 +429,15 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         }
         GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
         LockHolder lock(m_protectionMutex);
-        std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = extractEventsAndSystemsFromMessage(message);
+        std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = GStreamerEMEUtilities::extractEventsAndSystemsFromMessage(message);
         GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
         Vector<uint8_t> concatenatedInitDataChunks;
         unsigned concatenatedInitDataChunksNumber = 0;
         String eventKeySystemIdString;
+#if USE(OPENCDM)
+        HashMap<String, uint32_t> keySystemProtectionEventMap;
+        Vector<char> initDataChunks;
+#endif
 
         for (auto& event : streamEncryptionInformation.first) {
             GST_TRACE("handling protection event %u", GST_EVENT_SEQNUM(event.get()));
@@ -448,15 +453,27 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             GST_TRACE("appending init data for %s of size %" G_GSIZE_FORMAT, eventKeySystemId, mapInfo.size);
             GST_MEMDUMP("init data", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
             concatenatedInitDataChunks.append(mapInfo.data, mapInfo.size);
+#if USE(OPENCDM)
+            initDataChunks.append(mapInfo.data, mapInfo.size);
+#endif
             ++concatenatedInitDataChunksNumber;
             eventKeySystemIdString = eventKeySystemId;
             if (streamEncryptionInformation.second.contains(eventKeySystemId)) {
                 GST_TRACE("considering init data handled for %s", eventKeySystemId);
                 m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
+#if USE(OPENCDM)
+                keySystemProtectionEventMap.add(eventKeySystemId, GST_EVENT_SEQNUM(event.get()));
+#endif
             }
             gst_buffer_unmap(data, &mapInfo);
         }
+#if USE(OPENCDM)
+        Ref<SharedBuffer> initData = SharedBuffer::create(WTFMove(initDataChunks));
+        if (!(isInitDataCached(initData)))
+            m_initDataCount++;
 
+        m_initDataProtectionEventsMap.append(std::make_pair(WTFMove(initData), keySystemProtectionEventMap));
+#endif
         if (!concatenatedInitDataChunksNumber)
             return false;
 
@@ -1373,9 +1390,23 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
     if (is<CDMInstanceOpenCDM>(*m_cdmInstance)) {
         GST_DEBUG("handling OpenCDM %s keys", m_cdmInstance->keySystem().utf8().data());
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(*m_cdmInstance);
-        String sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
-        ASSERT(!sessionId.isEmpty());
-        dispatchDecryptionSession(sessionId);
+        size_t index = 0;
+        for (auto& initDataProtectionEventsMap : m_initDataProtectionEventsMap) {
+            // Retrieve SessionId using initData.
+            String sessionId = cdmInstanceOpenCDM.getSessionIdByInitData(initDataProtectionEventsMap.first);
+            // FIXME: If initData is not mapped, then retrieve the current sessionId in case of single initData.
+            if (sessionId.isEmpty()) {
+                if (m_initDataCount == 1)
+                    sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+            }
+
+            if (!sessionId.isEmpty()) {
+                dispatchOrStoreDecryptionSession(sessionId, initDataProtectionEventsMap.second.get(GStreamerEMEUtilities::keySystemToUuid(m_cdmInstance->keySystem())));
+                m_initDataProtectionEventsMap.remove(index);
+                break;
+            }
+            index++;
+        }
     }
 #endif
 }
@@ -1388,30 +1419,46 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
     GST_TRACE("emitted decryption cipher key on pipeline, event handled %s, need to resend credentials %s", boolForPrinting(eventHandled), boolForPrinting(m_needToResendCredentials));
 }
 
-void MediaPlayerPrivateGStreamerBase::dispatchDecryptionSession(const String& sessionId)
+#if USE(OPENCDM)
+bool MediaPlayerPrivateGStreamerBase::isInitDataCached(const Ref<SharedBuffer>& initData)
 {
-    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
-    m_needToResendCredentials = m_handledProtectionEvents.size() > 0;
-    GST_TRACE("emitted decryption session %s on pipeline, event handled %s, need to resend credentials %s", sessionId.utf8().data(), boolForPrinting(eventHandled), boolForPrinting(m_needToResendCredentials));
+    for (auto& initDataProtectionEventsMap : m_initDataProtectionEventsMap) {
+        if (initDataProtectionEventsMap.first->size() == initData->size()) {
+            if (!(memcmp(initDataProtectionEventsMap.first->data(), initData->data(), initData->size())))
+                return true;
+        }
+    }
+
+    return false;
 }
+
+void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, const unsigned& protectionEvent)
+{
+    if (m_handledProtectionEvents.contains(protectionEvent)) {
+        bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+            gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, protectionEvent, nullptr)));
+        GST_TRACE("emitted decryption session %s on pipeline, event handled %s", sessionId.utf8().data(), boolForPrinting(eventHandled));
+        m_handledProtectionEvents.remove(protectionEvent);
+        m_protectionEventSessionMap.remove(protectionEvent);
+    } else
+        m_protectionEventSessionMap.add(protectionEvent, sessionId);
+}
+#endif
 
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
-    if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
-        GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
-        m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
-        if (m_needToResendCredentials) {
-            GST_DEBUG("resending credentials");
-            attemptToDecryptWithLocalInstance();
-        }
-        return;
-    }
+#if USE(OPENCDM)
+    m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event));
 
-    const gchar* eventKeySystemId = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemId, nullptr, nullptr);
-    GST_WARNING("FIXME: unhandled protection event for %s", eventKeySystemId);
-    ASSERT_NOT_REACHED();
+    if (!m_protectionEventSessionMap.isEmpty())
+        dispatchOrStoreDecryptionSession(m_protectionEventSessionMap.get(GST_EVENT_SEQNUM(event)), GST_EVENT_SEQNUM(event));
+    else {
+        const gchar* eventKeySystemId = nullptr;
+        gst_event_parse_protection(event, &eventKeySystemId, nullptr, nullptr);
+        GST_WARNING("FIXME: unhandled protection event for %s", eventKeySystemId);
+        ASSERT_NOT_REACHED();
+    }
+#endif
 }
 #endif
 

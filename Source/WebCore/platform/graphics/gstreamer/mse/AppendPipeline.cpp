@@ -189,6 +189,8 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     , m_appendState(AppendState::NotStarted)
     , m_abortPending(false)
     , m_streamType(Unknown)
+    , m_protectionEventTriggered(false)
+    , m_decryptionStructureDispatched(false)
 {
     ASSERT(WTF::isMainThread());
 
@@ -345,6 +347,26 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
         return;
 
     if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")) {
+#if USE(OPENCDM)
+        std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = GStreamerEMEUtilities::extractEventsAndSystemsFromMessage(message);
+        for (auto& event : streamEncryptionInformation.first) {
+            const char* eventKeySystemId = nullptr;
+            GstBuffer* data = nullptr;
+            gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
+
+            GstMapInfo mapInfo;
+            if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
+                GST_WARNING("cannot map %s protection data", eventKeySystemId);
+                break;
+            }
+
+            m_initData.append(mapInfo.data, mapInfo.size);
+            if (streamEncryptionInformation.second.contains(eventKeySystemId))
+                m_keySystemProtectionEventMap.add(eventKeySystemId, GST_EVENT_SEQNUM(event.get()));
+
+            gst_buffer_unmap(data, &mapInfo);
+        }
+#endif
         if (WTF::isMainThread())
             transitionTo(AppendState::KeyNegotiation, true);
         else {
@@ -440,6 +462,11 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
         GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
         GRefPtr<GstEvent> event;
         gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
+#if USE(OPENCDM)
+        m_protectionEventTriggered = true;
+        if (m_pendingDecryptionStructure)
+            gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
+#endif
         m_playerPrivate->handleProtectionEvent(event.get());
     }
 }
@@ -1342,7 +1369,8 @@ void AppendPipeline::dispatchPendingDecryptionStructure()
 
     // Release the m_pendingDecryptionStructure object since
     // gst_event_new_custom() takes over ownership of it.
-    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
+    if (m_protectionEventTriggered)
+        gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
 
     if (WTF::isMainThread()) {
         transitionTo(AppendState::Ongoing, true);
@@ -1355,6 +1383,7 @@ void AppendPipeline::dispatchPendingDecryptionStructure()
             m_appendStateTransitionCondition.wait(m_appendStateTransitionLock);
         }
     }
+    m_decryptionStructureDispatched = true;
 }
 
 void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
@@ -1368,6 +1397,23 @@ void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& stru
             GST_TRACE("no decryptor yet, waiting for it");
     } else
         GST_TRACE("append pipeline %p not in key negotiation", this);
+}
+#endif
+
+#if USE(OPENCDM)
+bool AppendPipeline::isDecryptionStructureDispatched()
+{
+    return m_decryptionStructureDispatched;
+}
+
+Vector<char> AppendPipeline::getInitData()
+{
+    return m_initData;
+}
+
+HashMap<String, unsigned> AppendPipeline::getKeySystemProtectionEventMap()
+{
+    return m_keySystemProtectionEventMap;
 }
 #endif
 

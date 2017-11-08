@@ -308,6 +308,7 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
 {
     // FIXME: At some point we will probably need to fix the API in OpenCDM, handle a key status vector and probably call the update key statuses algoritm.
     std::string responseMessage;
+    m_openCdmBackend->SelectSession(sessionId.utf8().data());
     media::OpenCdm::KeyStatus keyStatus = m_openCdmBackend->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
     GST_DEBUG("session id %s, key status is %ld", sessionId.utf8().data(), static_cast<long>(keyStatus));
     if (keyStatus == media::OpenCdm::KeyStatus::Usable) {
@@ -460,6 +461,23 @@ String CDMInstanceOpenCDM::getCurrentSessionId() const
         GST_WARNING("more than one session");
 
     return sessionIdMap.begin()->key;
+}
+
+String CDMInstanceOpenCDM::getSessionIdByInitData(const Ref<SharedBuffer>& initData) const
+{
+    if (sessionIdMap.isEmpty()) {
+        GST_WARNING("no sessions");
+        return { };
+    }
+
+    for (auto& sessionIdInitDataMap : sessionIdMap) {
+        if (sessionIdInitDataMap.value->size() == initData->size()) {
+            if (!(memcmp(sessionIdInitDataMap.value->data(), initData->data(), initData->size())))
+                return sessionIdInitDataMap.key;
+        }
+    }
+
+    return { };
 }
 
 } // namespace WebCore

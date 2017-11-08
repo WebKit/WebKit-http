@@ -302,6 +302,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
         GST_TRACE_OBJECT(self, "received protection event for %s", systemId);
 
         if (!g_strcmp0(systemId, klass->protectionSystemId)) {
+            klass->receivedProtectionEvent(self, GST_EVENT_SEQNUM(event));
             GST_DEBUG_OBJECT(self, "sending protection event to the pipeline");
             gst_element_post_message(GST_ELEMENT(self),
                 gst_message_new_element(GST_OBJECT(self),

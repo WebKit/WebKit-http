@@ -23,6 +23,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
+#include "GRefPtrGStreamer.h"
 #include <gst/gst.h>
 #include <wtf/text/WTFString.h>
 
@@ -88,6 +89,7 @@ public:
     }
 
     static GstElement* createDecryptor(const char* protectionSystem);
+    static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSystemsFromMessage(GstMessage*);
 };
 
 }

@@ -34,12 +34,14 @@
 
 struct _WebKitOpenCDMDecryptPrivate {
     String m_session;
+    unsigned m_protectionEvent;
     std::unique_ptr<media::OpenCdm> m_openCdm;
 };
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject*);
 static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt*, GstEvent*);
 static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*, GstBuffer*, unsigned, GstBuffer*);
+static void webKitMediaOpenCDMDecryptorReceivedProtectionEvent(WebKitMediaCommonEncryptionDecrypt*, unsigned);
 
 GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
@@ -66,6 +68,7 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
     cencClass->handleKeyResponse = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleKeyResponse);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
+    cencClass->receivedProtectionEvent = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorReceivedProtectionEvent);
 
     g_type_class_add_private(klass, sizeof(WebKitOpenCDMDecryptPrivate));
 }
@@ -89,24 +92,36 @@ static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
 
 static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent* event)
 {
+    bool returnValue = false;
     const GstStructure* structure = gst_event_get_structure(event);
     if (!gst_structure_has_name(structure, "drm-session"))
-        return false;
+        return returnValue;
 
-    GUniqueOutPtr<char> temporarySession;
-    gst_structure_get(structure, "session", G_TYPE_STRING, &temporarySession.outPtr(), nullptr);
+    GUniqueOutPtr<char> session;
+    unsigned protectionEvent;
+    gst_structure_get(structure, "session", G_TYPE_STRING, &session.outPtr(), "protectionevent", G_TYPE_UINT, &protectionEvent, nullptr);
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
-    ASSERT(temporarySession);
+    ASSERT(session);
+    ASSERT(protectionEvent);
 
-    if (priv->m_session != temporarySession.get() ) {
-        priv->m_session = temporarySession.get();
-        priv->m_openCdm = std::make_unique<media::OpenCdm>();
-        priv->m_openCdm->SelectSession(priv->m_session.utf8().data());
-        GST_DEBUG_OBJECT(self, "selected session %s", priv->m_session.utf8().data());
+    if (priv->m_session != session.get()) {
+        if (priv->m_protectionEvent == protectionEvent) {
+            priv->m_session = session.get();
+            priv->m_openCdm = std::make_unique<media::OpenCdm>();
+            priv->m_openCdm->SelectSession(priv->m_session.utf8().data());
+            GST_DEBUG_OBJECT(self, "selected session %s", priv->m_session.utf8().data());
+            returnValue = true;
+        }
     } else
         GST_DEBUG_OBJECT(self, "session %s already selected!", priv->m_session.utf8().data());
 
-    return true;
+    return returnValue;
+}
+
+void webKitMediaOpenCDMDecryptorReceivedProtectionEvent(WebKitMediaCommonEncryptionDecrypt* self, unsigned protectionEvent)
+{
+    WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
+    priv->m_protectionEvent = protectionEvent;
 }
 
 static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
@@ -200,5 +215,4 @@ beach:
     gst_buffer_unmap(ivBuffer, &ivMap);
     return returnValue;
 }
-
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
