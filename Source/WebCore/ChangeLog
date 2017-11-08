@@ -1,5 +1,48 @@
 2017-11-08  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Improve PlatformContextCairo lifetime management in GraphicsContextPlatformPrivate
+        https://bugs.webkit.org/show_bug.cgi?id=179424
+
+        Reviewed by Carlos Garcia Campos.
+
+        When the PlatformContextCairo object is owned by GraphicsContextPlatformPrivate,
+        the latter should hold it in a std::unique_ptr<>. When PlatformContextCairo is
+        not owned, the std::unique_ptr<> should remain null, and the PlatformContextCairo
+        reference should point to the externally-managed object.
+
+        A new GraphicsContextPlatformPrivate constructor accepts a std::unique_ptr<> that
+        manages a PlatformContextCairo object and moves it into the member variable, tying
+        lifetime of that PlatformContextCairo object to the private object.
+
+        This enables dropping the GraphicsContextPlatformPrivateToplevel class, and the
+        virtual table is no longer required. Small cleanups to the remaining class are
+        also performed.
+
+        No new tests -- no changes in behavior.
+
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::GraphicsContext):
+        (WebCore::GraphicsContext::platformInit):
+        (WebCore::GraphicsContext::platformContext const):
+        * platform/graphics/cairo/GraphicsContextPlatformPrivateCairo.h:
+        (WebCore::GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate):
+        (WebCore::GraphicsContextPlatformPrivate::save):
+        (WebCore::GraphicsContextPlatformPrivate::restore):
+        (WebCore::GraphicsContextPlatformPrivate::flush):
+        (WebCore::GraphicsContextPlatformPrivate::clip):
+        (WebCore::GraphicsContextPlatformPrivate::scale):
+        (WebCore::GraphicsContextPlatformPrivate::rotate):
+        (WebCore::GraphicsContextPlatformPrivate::translate):
+        (WebCore::GraphicsContextPlatformPrivate::concatCTM):
+        (WebCore::GraphicsContextPlatformPrivate::setCTM):
+        (WebCore::GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate): Deleted.
+        (WebCore::GraphicsContextPlatformPrivateToplevel::GraphicsContextPlatformPrivateToplevel): Deleted.
+        (WebCore::GraphicsContextPlatformPrivateToplevel::~GraphicsContextPlatformPrivateToplevel): Deleted.
+        * platform/graphics/win/GraphicsContextCairoWin.cpp:
+        (WebCore::GraphicsContext::platformInit):
+
+2017-11-08  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move transparency layers Vector to PlatformContextCairo
         https://bugs.webkit.org/show_bug.cgi?id=179420
 
