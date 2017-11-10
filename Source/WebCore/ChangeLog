@@ -1,3 +1,46 @@
+2017-11-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Start grouping Cairo GraphicsContext operations behind a separate interface
+        https://bugs.webkit.org/show_bug.cgi?id=179467
+
+        Reviewed by Carlos Garcia Campos.
+
+        Start moving the Cairo operations in GraphicsContext into a separate
+        translation unit, CairoOperations.cpp. This will ease leveraging these
+        operations from a pre-recorded list of GraphicsContext commands, or
+        from a Cairo-specific GraphicsContextImpl, without undermining the
+        current GraphicsContext implementation that we'll want to maintain
+        in a working state until necessary.
+
+        We start with the clipping operations. Each operation is encapsulated
+        in a static function inside the WebCore::Cairo namespace that expects
+        PlatformContextCairo reference as the first argument, which makes sense
+        since we have to utilize the cairo_t state object that's kept there.
+        Other parameters are passed as well, as required for some specific
+        operation.
+
+        In the Cairo implementation of GraphicsContext, the affected methods
+        are changed to assert presence of the platform context (i.e. this is a
+        GraphicsContext that operates on a valid cairo_t object, and is not
+        using an m_impl object or is in non-painting mode) before the
+        PlatformContextCairo object is dereferenced and passed along with
+        other arguments to the Cairo::clip*() function.
+
+        No new tests -- no change in behavior.
+
+        * platform/SourcesCairo.txt:
+        * platform/graphics/cairo/CairoOperations.cpp: Added.
+        (WebCore::Cairo::clip):
+        (WebCore::Cairo::clipOut):
+        (WebCore::Cairo::clipPath):
+        (WebCore::Cairo::clipToImageBuffer):
+        * platform/graphics/cairo/CairoOperations.h: Added.
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::clipToImageBuffer):
+        (WebCore::GraphicsContext::clipOut):
+
 2017-11-08  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Improve PlatformContextCairo lifetime management in GraphicsContextPlatformPrivate
