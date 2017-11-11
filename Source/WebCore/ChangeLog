@@ -1,3 +1,23 @@
+2017-11-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove redundant platform-specific implementations of Image::drawPattern()
+        https://bugs.webkit.org/show_bug.cgi?id=179580
+
+        Reviewed by Sam Weinig.
+
+        Platform-specific Image files had implementations of Image::drawPattern() but they
+        were all effectively identical, so put a single implementation into Image.cpp.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/SourcesCairo.txt:
+        * platform/graphics/Image.cpp:
+        (WebCore::Image::drawPattern):
+        * platform/graphics/cairo/ImageCairo.cpp: Removed.
+        * platform/graphics/cg/ImageCG.cpp: Removed.
+        * platform/graphics/win/ImageDirect2D.cpp:
+        (WebCore::Image::drawPattern): Deleted.
+
 2017-11-10  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Start grouping Cairo GraphicsContext operations behind a separate interface
