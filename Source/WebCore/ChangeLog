@@ -1,5 +1,39 @@
 2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Move state stack, CTM, transparency layer operations in GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179598
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that save and restore state, adjust CTM and modify the
+        transparency layer stack to the CairoOperations file. This limits
+        operations to only work with a PlatformContextCairo object, along with
+        any required parameter, and will help with future work in this area.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::save):
+        (WebCore::Cairo::restore):
+        (WebCore::Cairo::translate):
+        (WebCore::Cairo::rotate):
+        (WebCore::Cairo::scale):
+        (WebCore::Cairo::concatCTM):
+        (WebCore::Cairo::beginTransparencyLayer):
+        (WebCore::Cairo::endTransparencyLayer):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::scale):
+
+2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move line, miter operations in GraphicsContextCairo to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179597
 

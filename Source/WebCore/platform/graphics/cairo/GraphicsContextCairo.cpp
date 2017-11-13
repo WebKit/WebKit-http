@@ -215,14 +215,14 @@ PlatformContextCairo* GraphicsContext::platformContext() const
 void GraphicsContext::savePlatformState()
 {
     ASSERT(hasPlatformContext());
-    platformContext()->save();
+    Cairo::save(*platformContext());
     m_data->save();
 }
 
 void GraphicsContext::restorePlatformState()
 {
     ASSERT(hasPlatformContext());
-    platformContext()->restore();
+    Cairo::restore(*platformContext());
     m_data->restore();
 
     platformContext()->shadowBlur().setShadowValues(FloatSize(m_state.shadowBlur, m_state.shadowBlur),
@@ -732,8 +732,8 @@ void GraphicsContext::translate(float x, float y)
         return;
     }
 
-    cairo_t* cr = platformContext()->cr();
-    cairo_translate(cr, x, y);
+    ASSERT(hasPlatformContext());
+    Cairo::translate(*platformContext(), x, y);
     m_data->translate(x, y);
 }
 
@@ -803,9 +803,8 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
         return;
     }
 
-    cairo_t* cr = platformContext()->cr();
-    const cairo_matrix_t matrix = toCairoMatrix(transform);
-    cairo_transform(cr, &matrix);
+    ASSERT(hasPlatformContext());
+    Cairo::concatCTM(*platformContext(), transform);
     m_data->concatCTM(transform);
 }
 
@@ -857,10 +856,7 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
         return;
 
     ASSERT(hasPlatformContext());
-
-    cairo_t* cr = platformContext()->cr();
-    cairo_push_group(cr);
-    platformContext()->layers().append(opacity);
+    Cairo::beginTransparencyLayer(*platformContext(), opacity);
 }
 
 void GraphicsContext::endPlatformTransparencyLayer()
@@ -869,14 +865,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
         return;
 
     ASSERT(hasPlatformContext());
-
-    cairo_t* cr = platformContext()->cr();
-
-    cairo_pop_group_to_source(cr);
-
-    auto& layers = platformContext()->layers();
-    cairo_paint_with_alpha(cr, layers.last());
-    layers.removeLast();
+    Cairo::endTransparencyLayer(*platformContext());
 }
 
 bool GraphicsContext::supportsTransparencyLayers()
@@ -1020,7 +1009,8 @@ void GraphicsContext::rotate(float radians)
         return;
     }
 
-    cairo_rotate(platformContext()->cr(), radians);
+    ASSERT(hasPlatformContext());
+    Cairo::rotate(*platformContext(), radians);
     m_data->rotate(radians);
 }
 
@@ -1034,7 +1024,8 @@ void GraphicsContext::scale(const FloatSize& size)
         return;
     }
 
-    cairo_scale(platformContext()->cr(), size.width(), size.height());
+    ASSERT(hasPlatformContext());
+    Cairo::scale(*platformContext(), size);
     m_data->scale(size);
 }
 
