@@ -1,3 +1,37 @@
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move focus ring drawing operations from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179603
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform focus ring drawing to the CairoOperations
+        file. This limits operations to only work with a PlatformContextCairo
+        object, along with other required parameters, and will help with future
+        work in this area.
+
+        The Cairo::State namespace is introduced, with the setStrokeStyle()
+        function placed there. The namespace will be used for operations that
+        only change an aspect of the Cairo state. More functions will be added
+        soon, and existing line and miter operations will likely move there as
+        well.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::adjustFocusRingColor):
+        (WebCore::Cairo::adjustFocusRingLineWidth):
+        (WebCore::Cairo::focusRingStrokeStyle):
+        (WebCore::Cairo::State::setStrokeStyle):
+        (WebCore::Cairo::drawFocusRing):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawFocusRing):
+        (WebCore::GraphicsContext::setPlatformStrokeStyle):
+        (WebCore::adjustFocusRingColor): Deleted.
+        (WebCore::adjustFocusRingLineWidth): Deleted.
+        (WebCore::focusRingStrokeStyle): Deleted.
+
 2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Move rectangle and path filling, stroking, clearing operations in GraphicsContextCairo to CairoOperations
