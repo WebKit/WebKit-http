@@ -1,3 +1,30 @@
+2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move line, miter operations in GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179597
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that adjust line cap, line dash, line join and miter
+        limit to the CairoOperations file. This limits operations to only work
+        with a PlatformContextCairo object, along with any required parameter,
+        and will help with future work in this area.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::setLineCap):
+        (WebCore::Cairo::setLineDash):
+        (WebCore::Cairo::setLineJoin):
+        (WebCore::Cairo::setMiterLimit):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::setLineCap):
+        (WebCore::GraphicsContext::setLineDash):
+        (WebCore::GraphicsContext::setLineJoin):
+        (WebCore::GraphicsContext::setMiterLimit):
+        (WebCore::isDashArrayAllZero): Deleted.
+
 2017-11-11  Simon Fraser  <simon.fraser@apple.com>
 
         Remove redundant platform-specific implementations of Image::drawPattern()
