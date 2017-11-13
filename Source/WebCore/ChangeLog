@@ -1,5 +1,45 @@
 2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Move rectangle and path filling, stroking, clearing operations in GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179599
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform filling, stroking and clearing for
+        specified rectangles and paths to the CairoOperations file. This limits
+        operations to only work with a PlatformContextCairo object, along with
+        any required parameter, and will help with future work in this area.
+
+        Helper functions are copied along for the time being, but will later be
+        removed from the GraphicsContextCairo implementation file.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::fillRectWithColor):
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::fillCurrentCairoPath):
+        (WebCore::Cairo::fillRect):
+        (WebCore::Cairo::fillRoundedRect):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::fillPath):
+        (WebCore::Cairo::strokeRect):
+        (WebCore::Cairo::strokePath):
+        (WebCore::Cairo::clearRect):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::fill):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::clearRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+
+2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move state stack, CTM, transparency layer operations in GraphicsContextCairo to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179598
 
