@@ -1,5 +1,33 @@
 2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Remove GraphicsContext::mustUseShadowBlur()
+        https://bugs.webkit.org/show_bug.cgi?id=179612
+
+        Reviewed by Michael Catanzaro.
+
+        Remove the Cairo-specific mustUseShadowBlur() method on the
+        GraphicsContext class. It can now be implemented as a static function
+        in CairoOperations, using only a PlatformContextCairo object and a
+        const reference to the relevant GraphicsContextState.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::mustUseShadowBlur const): Deleted.
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::mustUseShadowBlur):
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::drawGlyphs):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move state change operations from GraphicsContextCairo to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179610
 
