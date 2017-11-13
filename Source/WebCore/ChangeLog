@@ -1,5 +1,33 @@
 2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Move glyph drawing operations from FontCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179609
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform glyph drawing to the CairoOperations file.
+        This limits operations to only work with a PlatformContextCairo object,
+        along with other required parameters, and will help with future work
+        that will rely on isolated Cairo-specific code.
+
+        Along with moving the drawGlyphs() code, the helper functions are moved
+        and adjusted to work specifically on a PlatformContextCairo object and
+        a const GraphicsContextState reference, only using a GraphicsContext
+        reference for any required shadowed glyph drawing.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawGlyphsToContext):
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::drawGlyphs):
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        (WebCore::drawGlyphsToContext): Deleted.
+        (WebCore::drawGlyphsShadow): Deleted.
+
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move focus ring drawing operations from GraphicsContextCairo to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179603
 
