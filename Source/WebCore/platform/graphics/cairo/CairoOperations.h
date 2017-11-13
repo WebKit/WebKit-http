@@ -37,6 +37,7 @@
 #include "DashArray.h"
 #include "GraphicsContext.h"
 #include "GraphicsTypes.h"
+#include <cairo.h>
 
 typedef struct _cairo_pattern cairo_pattern_t;
 
@@ -56,8 +57,27 @@ class PlatformContextCairo;
 namespace Cairo {
 
 namespace State {
+
+void setStrokeThickness(PlatformContextCairo&, float);
 void setStrokeStyle(PlatformContextCairo&, StrokeStyle);
-}
+
+void setGlobalAlpha(PlatformContextCairo&, float);
+void setCompositeOperation(PlatformContextCairo&, CompositeOperator, BlendMode);
+void setShouldAntialias(PlatformContextCairo&, bool);
+void setImageInterpolationQuality(PlatformContextCairo&, InterpolationQuality);
+
+void setCTM(PlatformContextCairo&, const AffineTransform&);
+AffineTransform getCTM(PlatformContextCairo&);
+
+void setShadowValues(PlatformContextCairo&, const FloatSize&, const FloatSize&, const Color&, bool);
+void clearShadow(PlatformContextCairo&);
+
+IntRect getClipBounds(PlatformContextCairo&);
+FloatRect roundToDevicePixels(PlatformContextCairo&, const FloatRect&);
+
+bool isAcceleratedContext(PlatformContextCairo&);
+
+} // namespace State
 
 void setLineCap(PlatformContextCairo&, LineCap);
 void setLineDash(PlatformContextCairo&, const DashArray&, float);
@@ -73,6 +93,8 @@ void fillPath(PlatformContextCairo&, const Path&, const GraphicsContextState&, G
 void strokeRect(PlatformContextCairo&, const FloatRect&, float, const GraphicsContextState&, GraphicsContext&);
 void strokePath(PlatformContextCairo&, const Path&, const GraphicsContextState&, GraphicsContext&);
 void clearRect(PlatformContextCairo&, const FloatRect&);
+
+void drawGlyphs(PlatformContextCairo&, const GraphicsContextState&, bool, const FloatPoint&, cairo_scaled_font_t*, double, const Vector<cairo_glyph_t>&, float, GraphicsContext&);
 
 void drawFocusRing(PlatformContextCairo&, const Path&, float, const Color&);
 void drawFocusRing(PlatformContextCairo&, const Vector<FloatRect>&, float, const Color&);

@@ -1,5 +1,52 @@
 2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Move state change operations from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179610
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform Cairo state changes to the CairoOperations
+        file. This enforces only using the PlatformContextCairo object to
+        achieve the state change, leveraging the cairo_t and ShadowBlur objects
+        that are owned by PlatformContextCairo.
+
+        Along with state modification operations, various state query operations
+        are also placed under the Cairo::State namespace, again limited to the
+        PlatformContextCairo object.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::State::setStrokeThickness):
+        (WebCore::Cairo::State::setGlobalAlpha):
+        (WebCore::Cairo::State::setCompositeOperation):
+        (WebCore::Cairo::State::setShouldAntialias):
+        (WebCore::Cairo::State::setImageInterpolationQuality):
+        (WebCore::Cairo::State::setCTM):
+        (WebCore::Cairo::State::getCTM):
+        (WebCore::Cairo::State::setShadowValues):
+        (WebCore::Cairo::State::clearShadow):
+        (WebCore::Cairo::State::getClipBounds):
+        (WebCore::Cairo::State::roundToDevicePixels):
+        (WebCore::Cairo::State::isAcceleratedContext):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        (WebCore::GraphicsContext::setPlatformStrokeThickness):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::setPlatformShadow):
+        (WebCore::GraphicsContext::clearPlatformShadow):
+        (WebCore::GraphicsContext::setPlatformAlpha):
+        (WebCore::GraphicsContext::setPlatformCompositeOperation):
+        (WebCore::GraphicsContext::setPlatformShouldAntialias):
+        (WebCore::GraphicsContext::setPlatformImageInterpolationQuality):
+        (WebCore::GraphicsContext::isAcceleratedContext const):
+
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move glyph drawing operations from FontCairo to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179609
 

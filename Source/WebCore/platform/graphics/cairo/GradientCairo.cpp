@@ -30,6 +30,7 @@
 #if USE(CAIRO)
 
 #include "CairoUtilities.h"
+#include "CairoOperations.h"
 #include "GraphicsContext.h"
 #include "PlatformContextCairo.h"
 
