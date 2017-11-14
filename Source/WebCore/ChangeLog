@@ -1,5 +1,28 @@
 2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Move native image drawing operation to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179660
+
+        Reviewed by Carlos Garcia Campos.
+
+        Unify the native image drawing operation behavior between the
+        Cairo-specific GraphicsContext and drawNativeImage() implementations and
+        then move the code into the Cairo::drawNativeImage() function, inside
+        the CairoOperations implementation file.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::cairoSurfaceHasAlpha):
+        (WebCore::Cairo::drawNativeImage):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawNativeImage):
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Perform GraphicsContextPlatformPrivate method calls from CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179657
 
