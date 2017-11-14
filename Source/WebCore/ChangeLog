@@ -1,5 +1,36 @@
 2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Move drawLine operation from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179669
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the drawLine operation implementation into the CairoOperations
+        implementation file, with the Cairo::drawLine() function only expecting
+        a PlatformContextCairo object, two FloatingPoints, and a const reference
+        to a GraphicsContextState object.
+
+        As with drawLinesForText(), the drawLine() implementation utilized a few
+        private GraphicsContext methods that we for now reimplement in the
+        Cairo namespace as static functions, providing necessary state values to
+        perform the computations. The GraphicsContext methods should be changed
+        to become static public functions -- after that we'll be able to remove
+        the new duplicated helper functions.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::dashedLineCornerWidthForStrokeWidth):
+        (WebCore::Cairo::dashedLinePatternWidthForStrokeWidth):
+        (WebCore::Cairo::dashedLinePatternOffsetForPatternAndStrokeWidth):
+        (WebCore::Cairo::centerLineAndCutOffCorners):
+        (WebCore::Cairo::drawLine):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawLine):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move drawLinesForText operation from GraphicsContextCairo to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179661
 
