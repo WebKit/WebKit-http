@@ -1,5 +1,53 @@
 2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Perform GraphicsContextPlatformPrivate method calls from CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179657
+
+        Reviewed by Carlos Garcia Campos.
+
+        To enable encapsulating remaining Cairo operations in static functions
+        inside the WebCore::Cairo namespace, we have to work around the
+        GraphicsContextPlatformPrivate methods that are invoked in the current
+        GraphicsContext implementation for Cairo.
+
+        A pointer to the GraphicsContextPlatformPrivate object is now kept on
+        the PlatformContextCairo instance, and we take care of setting it up
+        and clearing it out appropriate to the GraphicsContextPlatformPrivate
+        lifetime (as managed in Cairo-specific GraphicsContext implementation).
+        The GraphicsContextPlatformPrivate method invocations are then moved
+        to the appropriate CairoOperations functions.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::State::setCTM):
+        (WebCore::Cairo::save):
+        (WebCore::Cairo::restore):
+        (WebCore::Cairo::translate):
+        (WebCore::Cairo::rotate):
+        (WebCore::Cairo::scale):
+        (WebCore::Cairo::concatCTM):
+        (WebCore::Cairo::clip):
+        (WebCore::Cairo::clipPath):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::GraphicsContext):
+        (WebCore::GraphicsContext::platformInit):
+        (WebCore::GraphicsContext::platformDestroy):
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::scale):
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        (WebCore::PlatformContextCairo::graphicsContextPrivate):
+        (WebCore::PlatformContextCairo::setGraphicsContextPrivate):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move simpler draw operations from GraphicsContextCairo to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179614
 

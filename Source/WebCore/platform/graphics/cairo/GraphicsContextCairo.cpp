@@ -174,6 +174,7 @@ GraphicsContext::GraphicsContext(cairo_t* cr)
         return;
 
     m_data = new GraphicsContextPlatformPrivate(std::make_unique<PlatformContextCairo>(cr));
+    m_data->platformContext.setGraphicsContextPrivate(m_data);
 }
 
 void GraphicsContext::platformInit(PlatformContextCairo* platformContext)
@@ -182,12 +183,16 @@ void GraphicsContext::platformInit(PlatformContextCairo* platformContext)
         return;
 
     m_data = new GraphicsContextPlatformPrivate(*platformContext);
+    m_data->platformContext.setGraphicsContextPrivate(m_data);
     m_data->syncContext(platformContext->cr());
 }
 
 void GraphicsContext::platformDestroy()
 {
-    delete m_data;
+    if (m_data) {
+        m_data->platformContext.setGraphicsContextPrivate(nullptr);
+        delete m_data;
+    }
 }
 
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
@@ -213,14 +218,12 @@ void GraphicsContext::savePlatformState()
 {
     ASSERT(hasPlatformContext());
     Cairo::save(*platformContext());
-    m_data->save();
 }
 
 void GraphicsContext::restorePlatformState()
 {
     ASSERT(hasPlatformContext());
     Cairo::restore(*platformContext());
-    m_data->restore();
 
     Cairo::State::setShadowValues(*platformContext(), FloatSize { m_state.shadowBlur, m_state.shadowBlur },
         m_state.shadowOffset, m_state.shadowColor, m_state.shadowsIgnoreTransforms);
@@ -433,7 +436,6 @@ void GraphicsContext::clip(const FloatRect& rect)
 
     ASSERT(hasPlatformContext());
     Cairo::clip(*platformContext(), rect);
-    m_data->clip(rect);
 }
 
 void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
@@ -448,7 +450,6 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
 
     ASSERT(hasPlatformContext());
     Cairo::clipPath(*platformContext(), path, clipRule);
-    m_data->clip(path);
 }
 
 void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& destRect)
@@ -594,7 +595,6 @@ void GraphicsContext::translate(float x, float y)
 
     ASSERT(hasPlatformContext());
     Cairo::translate(*platformContext(), x, y);
-    m_data->translate(x, y);
 }
 
 void GraphicsContext::setPlatformFillColor(const Color&)
@@ -644,7 +644,6 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
 
     ASSERT(hasPlatformContext());
     Cairo::concatCTM(*platformContext(), transform);
-    m_data->concatCTM(transform);
 }
 
 void GraphicsContext::setCTM(const AffineTransform& transform)
@@ -659,7 +658,6 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
 
     ASSERT(hasPlatformContext());
     Cairo::State::setCTM(*platformContext(), transform);
-    m_data->setCTM(transform);
 }
 
 void GraphicsContext::setPlatformShadow(const FloatSize& offset, float blur, const Color& color)
@@ -834,7 +832,6 @@ void GraphicsContext::rotate(float radians)
 
     ASSERT(hasPlatformContext());
     Cairo::rotate(*platformContext(), radians);
-    m_data->rotate(radians);
 }
 
 void GraphicsContext::scale(const FloatSize& size)
@@ -849,7 +846,6 @@ void GraphicsContext::scale(const FloatSize& size)
 
     ASSERT(hasPlatformContext());
     Cairo::scale(*platformContext(), size);
-    m_data->scale(size);
 }
 
 void GraphicsContext::clipOut(const FloatRect& rect)
