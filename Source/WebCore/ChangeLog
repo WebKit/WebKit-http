@@ -1,5 +1,36 @@
 2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Move drawLinesForText operation from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179661
+
+        Reviewed by Carlos Garcia Campos.
+
+        Encapsulate the drawLinesForText() operation in the WebCore::Cairo
+        namespace. Apart from moving gist of the code from GraphicsContextCairo
+        to CairoOperations, we also (for the moment) have to duplicate the
+        GraphicsContext::computeLineBoundsAndAntialiasingModeForText() code.
+        This is necessary because the given method is private on the
+        GraphicsContext class, and relies on an underlying GraphicsContext
+        object to retrieve the current CTM and stroke thickness values.
+
+        The adjusted reimplementation uses PlatformContextCairo to retrieve
+        the CTM (just like Cairo's GraphicsContext::getCTM() does), and
+        requires the stroke thickness value to be passed in as an argument.
+        Similar modifications will be proposed for the existing
+        GraphicsContext::computeLineBoundsAndAntialiasingModeForText() code,
+        and once that's approved the duplicated code will be eliminated.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::computeLineBoundsAndAntialiasingModeForText):
+        (WebCore::Cairo::drawLinesForText):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawLinesForText):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Move native image drawing operation to CairoOperations
         https://bugs.webkit.org/show_bug.cgi?id=179660
 
