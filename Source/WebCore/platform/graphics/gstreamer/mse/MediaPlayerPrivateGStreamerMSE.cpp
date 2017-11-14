@@ -50,6 +50,7 @@
 #include <wtf/Condition.h>
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/StringPrintStream.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -60,6 +61,15 @@
 
 #if USE(OPENCDM)
 #include "CDMOpenCDM.h"
+#endif
+
+#if USE(PLAYREADY)
+#include "PlayreadySession.h"
+#endif
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#include "CDMPrivateOpenCDM.h"
+#include "CDMSessionOpenCDM.h"
 #endif
 
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
@@ -121,6 +131,9 @@ MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
 {
     GST_TRACE("destroying the player (%p)", this);
 
+    if (m_mediaSourceClient)
+        m_mediaSourceClient->clearPlayerPrivate();
+
     for (auto iterator : m_appendPipelinesMap)
         iterator.value->clearPlayerPrivate();
 
@@ -171,15 +184,15 @@ MediaTime MediaPlayerPrivateGStreamerMSE::durationMediaTime() const
     return m_mediaTimeDuration;
 }
 
-void MediaPlayerPrivateGStreamerMSE::seek(float time)
+void MediaPlayerPrivateGStreamerMSE::seek(const MediaTime& time)
 {
     if (UNLIKELY(!m_pipeline || m_errorOccured))
         return;
 
-    GST_INFO("[Seek] seek attempt to %f secs", time);
+    GST_INFO("[Seek] seek attempt to %s secs", toString(time).utf8().data());
 
     // Avoid useless seeking.
-    float current = currentMediaTime().toFloat();
+    MediaTime current = currentMediaTime();
     if (time == current) {
         if (!m_seeking)
             timeChanged();
@@ -194,14 +207,14 @@ void MediaPlayerPrivateGStreamerMSE::seek(float time)
         return;
     }
 
-    GST_DEBUG("Seeking from %f to %f seconds", current, time);
+    GST_DEBUG("Seeking from %s to %s seconds", toString(current).utf8().data(), toString(time).utf8().data());
 
-    float prevSeekTime = m_seekTime;
+    MediaTime previousSeekTime = m_seekTime;
     m_seekTime = time;
 
     if (!doSeek()) {
-        m_seekTime = prevSeekTime;
-        GST_WARNING("Seeking to %f failed", time);
+        m_seekTime = previousSeekTime;
+        GST_WARNING("Seeking to %s failed", toString(time).utf8().data());
         return;
     }
 
@@ -237,7 +250,7 @@ void MediaPlayerPrivateGStreamerMSE::notifySeekNeedsDataForTime(const MediaTime&
     // Reenqueue samples needed to resume playback in the new position.
     m_mediaSource->seekToTime(seekTime);
 
-    GST_DEBUG("MSE seek to %f finished", seekTime.toDouble());
+    GST_DEBUG("MSE seek to %s finished", toString(seekTime).utf8().data());
 
     if (!m_gstSeekCompleted) {
         m_gstSeekCompleted = true;
@@ -245,7 +258,7 @@ void MediaPlayerPrivateGStreamerMSE::notifySeekNeedsDataForTime(const MediaTime&
     }
 }
 
-bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64, float, GstSeekFlags)
+bool MediaPlayerPrivateGStreamerMSE::doSeek(const MediaTime&, float, GstSeekFlags)
 {
     // Use doSeek() instead. If anybody is calling this version of doSeek(), something is wrong.
     ASSERT_NOT_REACHED();
@@ -254,8 +267,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek(gint64, float, GstSeekFlags)
 
 bool MediaPlayerPrivateGStreamerMSE::doSeek()
 {
-    GstClockTime position = toGstClockTime(m_seekTime);
-    MediaTime seekTime = MediaTime::createWithDouble(m_seekTime);
+    MediaTime seekTime = m_seekTime;
     double rate = m_player->rate();
     GstSeekFlags seekType = static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | hardwareDependantSeekFlags());
 
@@ -312,10 +324,10 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     if (!isTimeBuffered(seekTime)) {
         // Look if a near future time (<0.1 sec.) is buffered and change the seek target time.
         if (m_mediaSource) {
-            const MediaTime miniGap = MediaTime::createWithDouble(0.1);
+            const MediaTime miniGap = MediaTime(1, 10);
             MediaTime nearest = m_mediaSource->buffered()->nearest(seekTime);
             if (nearest.isValid() && nearest > seekTime && (nearest - seekTime) <= miniGap && isTimeBuffered(nearest + miniGap)) {
-                GST_DEBUG("[Seek] Changed the seek target time from %f to %f, a near point in the future", seekTime.toFloat(), nearest.toFloat());
+                GST_DEBUG("[Seek] Changed the seek target time from %s to %s, a near point in the future", toString(seekTime).utf8().data(), toString(nearest).utf8().data());
                 seekTime = nearest;
             }
         }
@@ -325,6 +337,8 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     // This condition on m_readyState must match the conditions which trigger completeSeek() in
     // MediaSource::monitorSourceBuffers().
     if (!isTimeBuffered(seekTime) || m_readyState < MediaPlayer::HaveCurrentData) {
+        m_mediaSourceClient->setStartupBufferingComplete(false);
+
         // Media source may trigger seek completion even when the target time is not yet buffered,
         // in this case it is better continue the seek and wait for the app to provide media data.
         m_mseSeekCompleted = true;
@@ -354,22 +368,23 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
 
     GST_DEBUG("We can seek now");
 
-    gint64 startTime = position, endTime = GST_CLOCK_TIME_NONE;
+    MediaTime startTime = seekTime, endTime = MediaTime::invalidTime();
+
     if (rate < 0) {
-        startTime = 0;
-        endTime = position;
+        startTime = MediaTime::zeroTime();
+        endTime = seekTime;
     }
 
     if (!rate)
         rate = 1;
 
-    GST_DEBUG("Actual seek to %" GST_TIME_FORMAT ", end time:  %" GST_TIME_FORMAT ", rate: %f", GST_TIME_ARGS(startTime), GST_TIME_ARGS(endTime), rate);
+    GST_DEBUG("Actual seek to %s, end time:  %s, rate: %f", toString(startTime).utf8().data(), toString(endTime).utf8().data(), rate);
 
     // This will call notifySeekNeedsData() after some time to tell that the pipeline is ready for sample enqueuing.
     webKitMediaSrcPrepareSeek(WEBKIT_MEDIA_SRC(m_source.get()), seekTime);
 
     m_gstSeekCompleted = false;
-    if (!gst_element_seek(m_pipeline.get(), rate, GST_FORMAT_TIME, seekType, GST_SEEK_TYPE_SET, startTime, GST_SEEK_TYPE_SET, endTime)) {
+    if (!gst_element_seek(m_pipeline.get(), rate, GST_FORMAT_TIME, seekType, GST_SEEK_TYPE_SET, toGstClockTime(startTime), GST_SEEK_TYPE_SET, toGstClockTime(endTime))) {
         webKitMediaSrcSetReadyForSamples(WEBKIT_MEDIA_SRC(m_source.get()), true);
         m_seeking = false;
         m_gstSeekCompleted = true;
@@ -397,20 +412,20 @@ void MediaPlayerPrivateGStreamerMSE::maybeFinishSeek()
     }
 
     if (m_seekIsPending) {
-        GST_DEBUG("[Seek] Committing pending seek to %f", m_seekTime);
+        GST_DEBUG("[Seek] Committing pending seek to %s", toString(m_seekTime).utf8().data());
         m_seekIsPending = false;
         if (!doSeek()) {
-            GST_WARNING("[Seek] Seeking to %f failed", m_seekTime);
-            m_cachedPosition = -1;
+            GST_WARNING("[Seek] Seeking to %s failed", toString(m_seekTime).utf8().data());
+            m_cachedPosition = MediaTime::invalidTime();
         }
         return;
     }
 
-    GST_DEBUG("[Seek] Seeked to %f", m_seekTime);
+    GST_DEBUG("[Seek] Seeked to %s", toString(m_seekTime).utf8().data());
 
     webKitMediaSrcSetReadyForSamples(WEBKIT_MEDIA_SRC(m_source.get()), true);
     m_seeking = false;
-    m_cachedPosition = -1;
+    m_cachedPosition = MediaTime::invalidTime();
     // The pipeline can still have a pending state. In this case a position query will fail.
     // Right now we can use m_seekTime as a fallback.
     m_canFallBackToLastFinishedSeekPosition = true;
@@ -434,15 +449,15 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState ready
     if (readyState == m_readyState)
         return;
 
-    if (seeking()) {
-        GST_DEBUG("Skip ready state change(%s -> %s) due to seek\n", dumpReadyState(m_readyState), dumpReadyState(readyState));
-        return;
-    }
-
     GST_DEBUG("Ready State Changed manually from %u to %u", m_readyState, readyState);
     MediaPlayer::ReadyState oldReadyState = m_readyState;
     m_readyState = readyState;
     GST_DEBUG("m_readyState: %s -> %s", dumpReadyState(oldReadyState), dumpReadyState(m_readyState));
+
+    if (seeking()) {
+        GST_DEBUG("Skip reaction to ready state change due to seek");
+        return;
+    }
 
     if (oldReadyState < MediaPlayer::HaveCurrentData && m_readyState >= MediaPlayer::HaveCurrentData) {
         GST_DEBUG("[Seek] Reporting load state changed to trigger seek continuation");
@@ -459,6 +474,9 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState ready
         bool ok = changePipelineState(GST_STATE_PAUSED);
         GST_TRACE("Changed pipeline to PAUSED: %s", ok ? "Success" : "Error");
     }
+
+    if (m_readyState == MediaPlayer::HaveEnoughData && m_mediaSourceClient)
+        m_mediaSourceClient->setStartupBufferingComplete(true);
 }
 
 void MediaPlayerPrivateGStreamerMSE::waitForSeekCompleted()
@@ -689,7 +707,7 @@ void MediaPlayerPrivateGStreamerMSE::asyncStateChangeDone()
 bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
 {
     bool result = m_mediaSource && m_mediaSource->buffered()->contain(time);
-    GST_DEBUG("Time %f buffered? %s", time.toDouble(), result ? "Yes" : "No");
+    GST_DEBUG("Time %s buffered? %s", toString(time).utf8().data(), result ? "true" : "false");
     return result;
 }
 
@@ -704,6 +722,9 @@ bool MediaPlayerPrivateGStreamerMSE::playbackPipelineHasFutureData() const
 
 void MediaPlayerPrivateGStreamerMSE::setMediaSourceClient(Ref<MediaSourceClientGStreamerMSE> client)
 {
+    if (m_mediaSourceClient)
+        m_mediaSourceClient->clearPlayerPrivate();
+
     m_mediaSourceClient = client.ptr();
 }
 
@@ -722,7 +743,7 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
     MediaTime previousDuration = m_mediaTimeDuration;
     m_mediaTimeDuration = m_mediaSourceClient->duration();
 
-    GST_TRACE("previous=%f, new=%f", previousDuration.toFloat(), m_mediaTimeDuration.toFloat());
+    GST_TRACE("previous=%s, new=%s", toString(previousDuration).utf8().data(), toString(m_mediaTimeDuration).utf8().data());
 
     // Avoid emiting durationchanged in the case where the previous duration was 0 because that case is already handled
     // by the HTMLMediaElement.
@@ -852,6 +873,17 @@ const static HashSet<AtomicString>& codecSet()
         gst_plugin_feature_list_free(audioDecoderFactories);
         gst_plugin_feature_list_free(videoDecoderFactories);
 
+#if PLATFORM(BCM_NEXUS)
+        // Nexus decoders only understand custom x-brcm-* formats and filters are used to convert from regular codecs to those formats.
+        // Those filters aren't exposed by the GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_{AUDIO,VIDEO} factories,
+        // so the codec list must be hardcoded.
+        set.add(AtomicString("x-h264"));
+        set.add(AtomicString("avc*"));
+        set.add(AtomicString("audio/mpeg"));
+        set.add(AtomicString("audio/x-mpeg"));
+        set.add(AtomicString("mp4a*"));
+#endif
+
         return set;
     }();
     return codecTypes;
@@ -964,7 +996,7 @@ void MediaPlayerPrivateGStreamerMSE::unmarkEndOfStream()
 
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
-    MediaTime cachedPosition = MediaTime::createWithFloat(m_cachedPosition);
+    MediaTime cachedPosition = m_cachedPosition;
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
     MediaTime playbackProgress = abs(position - cachedPosition);
 
@@ -977,29 +1009,73 @@ MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
         m_eosPending = false;
         m_isEndReached = true;
         position = m_mediaTimeDuration;
-        m_cachedPosition = position.toFloat();
-        m_durationAtEOS = m_mediaTimeDuration.toFloat();
+        m_cachedPosition = position;
+        m_durationAtEOS = m_mediaTimeDuration;
         m_player->timeChanged();
     }
     return position;
 }
 
-float MediaPlayerPrivateGStreamerMSE::maxTimeSeekable() const
+MediaTime MediaPlayerPrivateGStreamerMSE::maxMediaTimeSeekable() const
 {
     if (UNLIKELY(m_errorOccured))
-        return 0;
+        return MediaTime::zeroTime();
 
-    GST_DEBUG("maxTimeSeekable");
-    float result = durationMediaTime().toFloat();
+    GST_DEBUG("maxMediaTimeSeekable");
+    MediaTime result = durationMediaTime();
     // Infinite duration means live stream.
-    if (std::isinf(result)) {
+    if (result.isPositiveInfinite()) {
         MediaTime maxBufferedTime = buffered()->maximumBufferedTime();
         // Return the highest end time reported by the buffered attribute.
-        result = maxBufferedTime.isValid() ? maxBufferedTime.toFloat() : 0;
+        result = maxBufferedTime.isValid() ? maxBufferedTime : MediaTime::zeroTime();
     }
 
     return result;
 }
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
+{
+    for (auto it : m_appendPipelinesMap)
+        it.value->dispatchDecryptionKey(buffer);
+}
+
+#if USE(PLAYREADY)
+void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession(PlayreadySession* session)
+{
+    GST_TRACE("emitting session");
+    if (!session->ready())
+        return;
+
+    for (auto it : m_appendPipelinesMap)
+        if (session->hasPipeline(it.value->pipeline())) {
+            gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+                gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
+            it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
+        }
+}
+#endif
+#endif
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+void MediaPlayerPrivateGStreamerMSE::emitOpenCDMSession()
+{
+    CDMSessionOpenCDM* cdmSession = openCDMSession();
+    if (!cdmSession)
+        return;
+
+    const String& sessionId = cdmSession->sessionId();
+    if (sessionId.isEmpty())
+        return;
+
+    for (auto it : m_appendPipelinesMap) {
+            gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+                gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
+            it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
+    }
+    GST_DEBUG("emitted OpenCDM session on pipeline");
+}
+#endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)

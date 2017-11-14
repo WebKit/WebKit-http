@@ -83,6 +83,12 @@ public:
 
     void sendMessageToBackend(const String&);
 
+#if ENABLE(INSPECTOR_SERVER)
+    void remoteFrontendConnected();
+    void remoteFrontendDisconnected();
+#endif
+
+
     void disconnectFromPage() { close(); }
 
 private:
@@ -105,6 +111,9 @@ private:
 
     bool m_attached { false };
     bool m_previousCanAttach { false };
+#if ENABLE(INSPECTOR_SERVER)
+    bool m_remoteFrontendConnected { false };
+#endif
 };
 
 } // namespace WebKit

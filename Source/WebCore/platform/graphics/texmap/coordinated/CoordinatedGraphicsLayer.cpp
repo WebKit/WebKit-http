@@ -140,6 +140,9 @@ CoordinatedGraphicsLayer::CoordinatedGraphicsLayer(Type layerType, GraphicsLayer
 
 CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
 {
+    if (m_platformLayer)
+        m_platformLayer->setClient(nullptr);
+
     if (m_coordinator) {
         purgeBackingStores();
         m_coordinator->detachLayer(this);
@@ -391,10 +394,17 @@ void CoordinatedGraphicsLayer::setContentsNeedsDisplay()
 void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platformLayer, ContentsLayerPurpose)
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    if (m_platformLayer != platformLayer)
+    if (m_platformLayer != platformLayer) {
+        if (m_platformLayer)
+            m_platformLayer->setClient(nullptr);
         m_shouldSyncPlatformLayer = true;
+    }
 
     m_platformLayer = platformLayer;
+
+    if (m_platformLayer)
+        m_platformLayer->setClient(this);
+
     notifyFlushRequired();
 #else
     UNUSED_PARAM(platformLayer);
@@ -532,7 +542,7 @@ void CoordinatedGraphicsLayer::setNeedsDisplay()
 void CoordinatedGraphicsLayer::setNeedsDisplayInRect(const FloatRect& rect, ShouldClipToLayer)
 {
     if (m_mainBackingStore)
-        m_mainBackingStore->invalidate(IntRect(rect));
+        m_mainBackingStore->invalidate(enclosingIntRect(rect));
 
     didChangeLayerState();
 
@@ -1176,6 +1186,7 @@ void CoordinatedGraphicsLayer::animationStartedTimerFired()
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsLayer::platformLayerWillBeDestroyed()
 {
+    setContentsToPlatformLayer(nullptr, NoContentsLayer);
 }
 
 void CoordinatedGraphicsLayer::setPlatformLayerNeedsDisplay()

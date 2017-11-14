@@ -28,6 +28,7 @@
 #include <gst/gst.h>
 #include <wtf/PrintStream.h>
 #include <wtf/text/AtomicString.h>
+#include <wtf/PrintStream.h>
 
 namespace WebCore {
 

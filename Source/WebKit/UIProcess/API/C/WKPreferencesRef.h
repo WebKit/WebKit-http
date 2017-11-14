@@ -153,6 +153,10 @@ WK_EXPORT void WKPreferencesSetPrivateBrowsingEnabled(WKPreferencesRef preferenc
 WK_EXPORT bool WKPreferencesGetPrivateBrowsingEnabled(WKPreferencesRef preferencesRef);
 
 // Defaults to false.
+WK_EXPORT void WKPreferencesSetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef);
+
+// Defaults to false.
 WK_EXPORT void WKPreferencesSetDeveloperExtrasEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetDeveloperExtrasEnabled(WKPreferencesRef preferencesRef);
 
@@ -335,6 +339,10 @@ WK_EXPORT bool WKPreferencesGetAllowScriptsToCloseWindow(WKPreferencesRef prefer
 // Defaults to true.
 WK_EXPORT void WKPreferencesSetWebSecurityEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetWebSecurityEnabled(WKPreferencesRef preferences);
+
+//Defaults to true
+WK_EXPORT void WKPreferencesSetScrollToFocusedElementEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetScrollToFocusedElementEnabled(WKPreferencesRef preferences);
 
 #ifdef __cplusplus
 }

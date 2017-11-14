@@ -40,6 +40,10 @@
 #include "TextureMapperPlatformLayerProxyProvider.h"
 #endif
 
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#include "CDMSessionOpenCDM.h"
+#endif
+
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
@@ -57,6 +61,10 @@ class VideoTextureCopierGStreamer;
 
 #if USE(TEXTURE_MAPPER_GL)
 class TextureMapperPlatformLayerProxy;
+#endif
+
+#if USE(PLAYREADY)
+class PlayreadySession;
 #endif
 
 void registerWebKitGStreamerElements();
@@ -94,10 +102,25 @@ public:
     void setPosition(const IntPoint&) override;
     void sizeChanged();
 
+    // Prefer MediaTime based methods over float based.
+    float duration() const override { return durationMediaTime().toFloat(); }
+    double durationDouble() const override { return durationMediaTime().toDouble(); }
+    MediaTime durationMediaTime() const override { return MediaTime::zeroTime(); }
+    float currentTime() const override { return currentMediaTime().toFloat(); }
+    double currentTimeDouble() const override { return currentMediaTime().toDouble(); }
+    MediaTime currentMediaTime() const override { return MediaTime::zeroTime(); }
+    void seek(float time) override { seek(MediaTime::createWithFloat(time)); }
+    void seekDouble(double time) override { seek(MediaTime::createWithDouble(time)); }
+    void seek(const MediaTime&) override { }
+    float maxTimeSeekable() const override { return maxMediaTimeSeekable().toFloat(); }
+    MediaTime maxMediaTimeSeekable() const override { return MediaTime::zeroTime(); }
+    double minTimeSeekable() const override { return minMediaTimeSeekable().toFloat(); }
+    MediaTime minMediaTimeSeekable() const override { return MediaTime::zeroTime(); }
+
     void paint(GraphicsContext&, const FloatRect&) override;
 
     bool hasSingleSecurityOrigin() const override { return true; }
-    virtual float maxTimeLoaded() const { return 0.0; }
+    virtual MediaTime maxTimeLoaded() const { return MediaTime::zeroTime(); }
 
     bool supportsFullscreen() const override;
     PlatformMedia platformMedia() const override;
@@ -122,6 +145,36 @@ public:
 #else
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override;
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) override;
+    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override;
+    void needKey(const String&, const String&, const unsigned char*, unsigned);
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    void needKey(RefPtr<Uint8Array>);
+    void setCDMSession(CDMSession*);
+    void keyAdded();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    virtual void dispatchDecryptionKey(GstBuffer*);
+    void handleProtectionEvent(GstEvent*, GstElement*);
+    void receivedGenerateKeyRequest(const String&);
+    void abortEncryptionSetup();
+
+#if USE(PLAYREADY)
+    PlayreadySession* prSession() const;
+    virtual void emitPlayReadySession(PlayreadySession*);
+#endif
+#endif
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+    virtual void emitOpenCDMSession();
+    virtual void resetOpenCDMSession();
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -208,7 +261,6 @@ protected:
         SizeChanged = 1 << 6
     };
 
-    WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
     Ref<MainThreadNotifier<MainThreadNotification>> m_notifier;
     MediaPlayer* m_player;
     GRefPtr<GstElement> m_pipeline;
@@ -234,6 +286,45 @@ protected:
     Lock m_drawMutex;
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+    CDMSessionOpenCDM* openCDMSession();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(PLAYREADY)
+    PlayreadySession* createPlayreadySession(const Vector<uint8_t> &, GstElement* pipeline, bool alreadyLocked = false);
+    PlayreadySession* prSessionByInitData(const Vector<uint8_t>&, bool alreadyLocked = false) const;
+    PlayreadySession* prSessionBySessionId(const String&, bool alreadyLocked = false) const;
+
+    // Maps each pipeline (playback pipeline for normal videos, append pipeline for MSE) to its latest sessionId.
+    HashMap<GstElement*, String> m_prSessionIds;
+
+    Vector<std::unique_ptr<PlayreadySession>> m_prSessions;
+
+    // Protects the previous two HashMaps for concurrent access.
+    mutable Lock m_prSessionsMutex;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(OPENCDM)
+    std::unique_ptr<CDMSession> m_cdmSession;
+    Lock m_cdmSessionMutex;
+#endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
+    CDMSession* m_cdmSession;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    Lock m_protectionMutex;
+    Condition m_protectionCondition;
+    String m_lastGenerateKeyRequestKeySystemUuid;
+    HashSet<uint32_t> m_handledProtectionEvents;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+    HashMap<String, Vector<uint8_t>> m_initDatas;
+    void trimInitData(String, const unsigned char*&, unsigned &);
+#endif
+
 #if USE(TEXTURE_MAPPER_GL)
     RefPtr<GraphicsContext3D> m_context3D;
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
@@ -258,6 +349,8 @@ protected:
     HashSet<uint32_t> m_handledProtectionEvents;
     bool m_needToResendCredentials { false };
 #endif
+
+    WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
 };
 
 }

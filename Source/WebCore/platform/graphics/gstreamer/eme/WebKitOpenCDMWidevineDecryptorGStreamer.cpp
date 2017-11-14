@@ -23,9 +23,9 @@
 #include "config.h"
 #include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
-
 #include "GStreamerEMEUtilities.h"
+
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER) && USE(OPENCDM)
 
 static void webKitMediaOpenCDMWidevineDecryptorFinalize(GObject*);
 
@@ -81,4 +81,4 @@ static void webKitMediaOpenCDMWidevineDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
-#endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER) && USE(OPENCDM)

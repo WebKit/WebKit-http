@@ -290,6 +290,16 @@ void PlaybackPipeline::attachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBu
 
     if (signal != -1)
         g_signal_emit(G_OBJECT(stream->parent), webKitMediaSrcSignals[signal], 0, nullptr);
+
+    if (caps) {
+        // Set caps to trigger early pipeline initialization
+        gst_app_src_set_caps(GST_APP_SRC(stream->appsrc), caps);
+
+        // Change the 'max_bytes' to signal internal condition and send caps down the stream
+        guint64 maxBytes = gst_app_src_get_max_bytes (GST_APP_SRC(stream->appsrc));
+        gst_app_src_set_max_bytes(GST_APP_SRC(stream->appsrc), maxBytes + 1);
+        gst_app_src_set_max_bytes(GST_APP_SRC(stream->appsrc), maxBytes);
+    }
 }
 
 void PlaybackPipeline::reattachTrack(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate, RefPtr<TrackPrivateBase> trackPrivate, const char* mediaType)
@@ -479,9 +489,13 @@ void PlaybackPipeline::enqueueSample(Ref<MediaSample>&& mediaSample)
     GST_TRACE("enqueing sample trackId=%s PTS=%f presentationSize=%.0fx%.0f at %" GST_TIME_FORMAT " duration: %" GST_TIME_FORMAT,
         trackId.string().utf8().data(), mediaSample->presentationTime().toFloat(),
         mediaSample->presentationSize().width(), mediaSample->presentationSize().height(),
-        GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->presentationTime().toDouble())),
-        GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->duration().toDouble())));
+        GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->presentationTime())),
+        GST_TIME_ARGS(WebCore::toGstClockTime(mediaSample->duration())));
 
+    // No need to lock to access the Stream here because the only chance of conflict with this read and with the usage
+    // of the sample fields done in this method would be the deletion of the stream. However, that operation can only
+    // happen in the main thread, but we're already there. Therefore there's no conflict and locking would only cause
+    // a performance penalty on the readers working in other threads.
     Stream* stream = getStreamByTrackId(m_webKitMediaSrc.get(), trackId);
 
     if (!stream) {
@@ -494,7 +508,10 @@ void PlaybackPipeline::enqueueSample(Ref<MediaSample>&& mediaSample)
         return;
     }
 
+    // This field doesn't change after creation, no need to lock.
     GstElement* appsrc = stream->appsrc;
+
+    // Only modified by the main thread, no need to lock.
     MediaTime lastEnqueuedTime = stream->lastEnqueuedTime;
 
     GStreamerMediaSample* sample = static_cast<GStreamerMediaSample*>(mediaSample.ptr());

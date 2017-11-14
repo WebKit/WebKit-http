@@ -44,15 +44,28 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_GLIB QUIET glib-2.0)
 
-find_library(GLIB_LIBRARIES
+find_library(GLIB_LIBRARY
     NAMES glib-2.0
     HINTS ${PC_GLIB_LIBDIR}
           ${PC_GLIB_LIBRARY_DIRS}
 )
 
+set (GLIB_LIBRARIES ${GLIB_LIBRARY})
+
+find_library(GLIB_INTL_LIBRARY
+    NAMES intl
+    HINTS ${PC_GLIB_LIBDIR}
+          ${PC_GLIB_LIBRARY_DIRS}
+)
+
+# Libintl is found
+if (GLIB_INTL_LIBRARY)
+set (GLIB_LIBRARIES ${GLIB_LIBRARIES} ${GLIB_INTL_LIBRARY})
+endif ()
+
 # Files in glib's main include path may include glibconfig.h, which,
 # for some odd reason, is normally in $LIBDIR/glib-2.0/include.
-get_filename_component(_GLIB_LIBRARY_DIR ${GLIB_LIBRARIES} PATH)
+get_filename_component(_GLIB_LIBRARY_DIR ${GLIB_LIBRARY} PATH)
 find_path(GLIBCONFIG_INCLUDE_DIR
     NAMES glibconfig.h
     HINTS ${PC_LIBDIR} ${PC_LIBRARY_DIRS} ${_GLIB_LIBRARY_DIR}

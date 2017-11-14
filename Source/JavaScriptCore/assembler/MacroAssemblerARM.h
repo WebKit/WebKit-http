@@ -1502,11 +1502,6 @@ public:
 #endif
     }
 
-    void storeFence()
-    {
-        m_assembler.dmbISHST();
-    }
-
     static FunctionPtr readCallTarget(CodeLocationCall call)
     {
         return FunctionPtr(reinterpret_cast<void(*)()>(ARMAssembler::readCallTarget(call.dataLocation())));

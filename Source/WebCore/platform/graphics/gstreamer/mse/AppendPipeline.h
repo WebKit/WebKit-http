@@ -50,7 +50,7 @@ public:
 
     void handleNeedContextSyncMessage(GstMessage*);
     void handleApplicationMessage(GstMessage*);
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     void handleElementMessage(GstMessage*);
 #endif
 
@@ -60,6 +60,9 @@ public:
 
     GstFlowReturn handleNewAppsinkSample(GstElement*);
     GstFlowReturn pushNewBuffer(GstBuffer*);
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    void dispatchDecryptionKey(GstBuffer*);
+#endif
 #if ENABLE(ENCRYPTED_MEDIA)
     void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
 #endif
@@ -93,6 +96,9 @@ public:
     void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
 
+    void flushStartupSamples();
+    void setStartupBufferingComplete(bool);
+
 private:
     void resetPipeline();
     void checkEndOfAppend();
@@ -100,9 +106,13 @@ private:
     void handleAppsrcNeedDataReceived();
     void removeAppsrcDataLeavingProbe();
     void setAppsrcDataLeavingProbe();
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    void dispatchPendingDecryptionKey();
+#endif
 #if ENABLE(ENCRYPTED_MEDIA)
     void dispatchPendingDecryptionStructure();
 #endif
+    void notifyReceivedAllPendingSamples();
 
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     Ref<SourceBufferPrivateGStreamer> m_sourceBufferPrivate;
@@ -119,7 +129,7 @@ private:
     GRefPtr<GstBus> m_bus;
     GRefPtr<GstElement> m_appsrc;
     GRefPtr<GstElement> m_demux;
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     GRefPtr<GstElement> m_decryptor;
 #endif
     // The demuxer has one src stream only, so only one appsink is needed and linked to it.
@@ -158,9 +168,14 @@ private:
     RefPtr<WebCore::TrackPrivateBase> m_track;
 
     GRefPtr<GstBuffer> m_pendingBuffer;
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    GRefPtr<GstBuffer> m_pendingKey;
+#endif
 #if ENABLE(ENCRYPTED_MEDIA)
     GUniquePtr<GstStructure> m_pendingDecryptionStructure;
 #endif
+    Vector< GRefPtr<GstSample> > m_startupSamples;
+    bool m_startupBufferingComplete { false };
 };
 
 } // namespace WebCore.

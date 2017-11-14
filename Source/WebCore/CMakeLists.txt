@@ -3246,7 +3246,7 @@ set(WebCore_LIBRARIES
     PAL${DEBUG_SUFFIX}
 )
 
-if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
+if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
         Modules/encryptedmedia/legacy/LegacyCDM.cpp
         Modules/encryptedmedia/legacy/LegacyCDMPrivateClearKey.cpp
@@ -3257,6 +3257,8 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.cpp
         Modules/encryptedmedia/legacy/WebKitMediaKeySession.cpp
         Modules/encryptedmedia/legacy/WebKitMediaKeys.cpp
+
+        html/MediaKeyEvent.cpp
     )
     list(APPEND WebCoreTestSupport_SOURCES
         testing/LegacyMockCDM.cpp
@@ -3268,6 +3270,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/legacy/WebKitMediaKeys.idl
 
         html/WebKitMediaKeyError.idl
+        html/MediaKeyEvent.idl
     )
 endif ()
 
@@ -4063,7 +4066,7 @@ list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNSNames.cp
 GENERATE_DOM_NAMES(XML ${WEBCORE_DIR}/xml/xmlattrs.in)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XMLNames.cpp)
 
-if (ENABLE_ALLINONE_BUILD AND WIN32)
+if (ENABLE_ALLINONE_BUILD)
     message(STATUS "All-in-One DerivedSources build is enabled.")
     PROCESS_ALLINONE_FILE("${WebCore_DERIVED_SOURCES}" DerivedSources.cpp newSources TRUE)
     set(WebCore_DERIVED_SOURCES DerivedSources.cpp ${newSources})

@@ -50,6 +50,9 @@ WI.LayoutDirection = {
 
 WI.loaded = function()
 {
+    // Initialize WebSocket to communication.
+    this._initializeWebSocketIfNeeded();
+
     // Register observers for events from the InspectorBackend.
     if (InspectorBackend.registerInspectorDispatcher)
         InspectorBackend.registerInspectorDispatcher(new WI.InspectorObserver);
@@ -1619,6 +1622,27 @@ WI._tabBrowserSelectedTabContentViewDidChange = function(event)
 
     this._shouldRevealSpitConsoleIfSupported = this.isShowingSplitConsole();
     this.hideSplitConsole();
+};
+
+WI._initializeWebSocketIfNeeded = function()
+{
+    if (!InspectorFrontendHost.initializeWebSocket)
+        return;
+
+    var queryParams = parseLocationQueryParameters();
+
+    if ("ws" in queryParams)
+        var url = "ws://" + queryParams.ws;
+    else if ("page" in queryParams) {
+        var page = queryParams.page;
+        var host = "host" in queryParams ? queryParams.host : window.location.host;
+        var url = "ws://" + host + "/devtools/page/" + page;
+    }
+
+    if (!url)
+        return;
+
+    InspectorFrontendHost.initializeWebSocket(url);
 };
 
 WI._toolbarMouseDown = function(event)

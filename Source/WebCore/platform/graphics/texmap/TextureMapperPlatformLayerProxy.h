@@ -72,7 +72,7 @@ public:
     void swapBuffer();
     void dropCurrentBufferWhilePreservingTexture();
 
-    bool scheduleUpdateOnCompositorThread(Function<void()>&&);
+    bool scheduleUpdateOnCompositorThread(WTF::Function<void()>&&);
 
 private:
     void appendToUnusedBuffers(std::unique_ptr<TextureMapperPlatformLayerBuffer>);
@@ -96,7 +96,7 @@ private:
 
     void compositorThreadUpdateTimerFired();
     std::unique_ptr<RunLoop::Timer<TextureMapperPlatformLayerProxy>> m_compositorThreadUpdateTimer;
-    Function<void()> m_compositorThreadUpdateFunction;
+    WTF::Function<void()> m_compositorThreadUpdateFunction;
 };
 
 } // namespace WebCore

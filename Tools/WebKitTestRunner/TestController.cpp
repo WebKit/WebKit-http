@@ -291,6 +291,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
         checkUserMediaPermissionForOrigin,
         0, // runBeforeUnloadConfirmPanel
         0, // fullscreenMayReturnToInline
+        0, // willAddDetailedMessageToConsole
         requestPointerLock,
         0,
     };
@@ -565,6 +566,7 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         checkUserMediaPermissionForOrigin,
         0, // runBeforeUnloadConfirmPanel
         0, // fullscreenMayReturnToInline
+        0, // willAddDetailedMessageToConsole
         requestPointerLock,
         0,
     };

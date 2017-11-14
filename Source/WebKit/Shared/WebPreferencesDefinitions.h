@@ -157,6 +157,7 @@
     macro(DatabasesEnabled, databasesEnabled, Bool, bool, true, "", "") \
     macro(XSSAuditorEnabled, xssAuditorEnabled, Bool, bool, true, "", "") \
     macro(PrivateBrowsingEnabled, privateBrowsingEnabled, Bool, bool, false, "", "") \
+    macro(ConsoleLogWithPrivateBrowsingEnabled, consoleLogWithPrivateBrowsingEnabled, Bool, bool, false, "", "") \
     macro(TextAreasAreResizable, textAreasAreResizable, Bool, bool, DEFAULT_TEXT_AREAS_ARE_RESIZABLE, "", "") \
     macro(JavaScriptCanOpenWindowsAutomatically, javaScriptCanOpenWindowsAutomatically, Bool, bool, DEFAULT_JAVASCRIPT_CAN_OPEN_WINDOWS_AUTOMATICALLY, "", "") \
     macro(HyperlinkAuditingEnabled, hyperlinkAuditingEnabled, Bool, bool, true, "", "") \
@@ -296,7 +297,6 @@
     macro(InputEventsEnabled, inputEventsEnabled, Bool, bool, true, "Input Events", "Enable InputEvents support") \
     macro(CredentialManagementEnabled, credentialManagementEnabled, Bool, bool, false, "Credential Management", "Enable Credential Management support") \
     macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED, "Modern Media Controls", "Use modern media controls look") \
-    macro(AllowScriptsToCloseWindows, allowScriptsToCloseWindows, Bool, bool, false, "", "") \
     macro(ResourceTimingEnabled, resourceTimingEnabled, Bool, bool, DEFAULT_RESOURCE_TIMING_ENABLED, "Resource Timing", "Enable ResourceTiming API") \
     macro(UserTimingEnabled, userTimingEnabled, Bool, bool, true, "User Timing", "Enable UserTiming API") \
     macro(BeaconAPIEnabled, beaconAPIEnabled, Bool, bool, true, "Beacon API", "Beacon API") \
@@ -307,6 +307,8 @@
     macro(DataTransferItemsEnabled, dataTransferItemsEnabled, Bool, bool, DEFAULT_DATA_TRANSFER_ITEMS_ENABLED, "Data Transfer Items", "Enables DataTransferItem in the clipboard API") \
     macro(WebVREnabled, webVREnabled, Bool, bool, false, "WebVR", "WebVR Module support") \
     macro(ViewportFitEnabled, viewportFitEnabled, Bool, bool, true, "Viewport Fit", "Enable viewport-fit viewport parameter") \
+    macro(AllowScriptsToCloseWindows, allowScriptsToCloseWindows, Bool, bool, false, "", "") \
+    macro(ScrollToFocusedElementEnabled, scrollToFocusedElementEnabled, Bool, bool, true, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \

@@ -232,7 +232,10 @@ void MediaSource::seekToTime(const MediaTime& time)
     // ↳ Otherwise
     // Continue
 
+// https://bugs.webkit.org/show_bug.cgi?id=125157 broke seek on MediaPlayerPrivateGStreamerMSE
+#if !USE(GSTREAMER)
     m_private->waitForSeekCompleted();
+#endif
     completeSeek();
 }
 
@@ -508,7 +511,7 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
     // on all objects in sourceBuffers.
     if (m_duration.isValid() && newDuration < m_duration) {
         for (auto& sourceBuffer : *m_sourceBuffers) {
-            unsigned length = sourceBuffer->bufferedInternal().length();
+            auto length = sourceBuffer->bufferedInternal().length();
             if (length && newDuration < sourceBuffer->bufferedInternal().ranges().end(length - 1))
                 sourceBuffer->rangeRemoval(newDuration, sourceBuffer->bufferedInternal().ranges().end(length - 1));
         }
