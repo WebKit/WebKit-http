@@ -310,7 +310,7 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
 
     if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")) {
         if (WTF::isMainThread())
-            transitionTo(AppendState::KeyNegotiation);
+            transitionTo(AppendState::KeyNegotiation, true);
         else {
             GstStructure* structure = gst_structure_new("transition-main-thread", "transition", G_TYPE_INT, AppendState::KeyNegotiation, nullptr);
             GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
@@ -354,7 +354,7 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         GST_TRACE("Received transition-main-thread in main thread");
         AppendState nextState;
         gst_structure_get(structure, "transition", G_TYPE_INT, &nextState, nullptr);
-        transitionTo(nextState);
+        transitionTo(nextState, false);
         return;
     }
 
@@ -1111,11 +1111,11 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
     }
 }
 
-void AppendPipeline::transitionTo(AppendState nextState)
+void AppendPipeline::transitionTo(AppendState nextState, bool isAlreadyLocked)
 {
     ASSERT(WTF::isMainThread());
 
-    LockHolder locker(m_appendStateTransitionLock);
+    LockHolder locker(isAlreadyLocked ? nullptr : &m_appendStateTransitionLock);
 
     if (m_appendState == AppendState::Invalid || m_appendState == nextState || !m_playerPrivate) {
         m_appendStateTransitionCondition.notifyOne();
@@ -1232,7 +1232,7 @@ void AppendPipeline::dispatchPendingDecryptionKey()
 
     LockHolder locker(m_appendStateTransitionLock);
     if (WTF::isMainThread())
-        transitionTo(AppendState::Ongoing);
+        transitionTo(AppendState::Ongoing, true);
     else {
         GstStructure* structure = gst_structure_new("transition-main-thread",
                                                     "transition",

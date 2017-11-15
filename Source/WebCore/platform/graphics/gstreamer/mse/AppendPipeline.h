@@ -91,7 +91,7 @@ public:
     void connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad*);
     void connectDemuxerSrcPadToAppsink(GstPad*);
 
-    void transitionTo(AppendState);
+    void transitionTo(AppendState, bool isAlreadyLocked);
 
     void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
