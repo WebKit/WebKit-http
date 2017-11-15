@@ -1,5 +1,13 @@
 2017-11-14  Michael Catanzaro  <mcatanzaro@igalia.com>
 
+        Another attempt to fix GTK/WPE debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=179660
+
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage):
+
+2017-11-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
         Unreviewed, fix GTK/WPE debug builds even better after r224813
         https://bugs.webkit.org/show_bug.cgi?id=179660
 
