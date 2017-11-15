@@ -1,3 +1,20 @@
+2017-11-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] GraphicsContext::setPlatformShadow() has to update state's shadow offset when ignoring transforms
+        https://bugs.webkit.org/show_bug.cgi?id=179725
+
+        Reviewed by Carlos Garcia Campos.
+
+        In r224753, GraphicsContext::setPlatformShadow() stopped updating the
+        shadow offset value that's kept in GraphicsContextState. This regressed
+        a few tests, so the adjustment of the shadow offset value in the
+        GraphicsContext state is brought back.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::State::setShadowValues):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::setPlatformShadow):
+
 2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Add GraphicsContextImplCairo stub
