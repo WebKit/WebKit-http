@@ -1195,28 +1195,29 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
 void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad* demuxerSrcPad)
 {
     // Must be done in the thread we were called from (usually streaming thread).
-    if (!gst_pad_is_linked(demuxerSrcPad)) {
-        gulong probeId = GPOINTER_TO_ULONG(g_object_get_data(G_OBJECT(demuxerSrcPad), "blackHoleProbeId"));
-        if (probeId) {
-            GST_DEBUG("Disconnecting black hole probe.");
-            g_object_set_data(G_OBJECT(demuxerSrcPad), "blackHoleProbeId", nullptr);
-            gst_pad_remove_probe(demuxerSrcPad, probeId);
-        } else
-            GST_WARNING("Not disconnecting demuxer src pad because it wasn't linked");
-        return;
-    }
-
-    GST_DEBUG("Disconnecting appsink");
-
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     if (m_decryptor) {
+        GST_DEBUG("Disconnecting appsink from decryptor");
         gst_element_unlink(m_decryptor.get(), m_appsink.get());
-        gst_element_unlink(m_demux.get(), m_decryptor.get());
+        if (gst_pad_is_linked(demuxerSrcPad))
+            gst_element_unlink(m_demux.get(), m_decryptor.get());
         gst_element_set_state(m_decryptor.get(), GST_STATE_NULL);
         gst_bin_remove(GST_BIN(m_pipeline.get()), m_decryptor.get());
-    } else
+        m_decryptor = nullptr;
+    }
 #endif
+    // Must be done in the thread we were called from (usually streaming thread).
+    gulong probeId = GPOINTER_TO_ULONG(g_object_get_data(G_OBJECT(demuxerSrcPad), "blackHoleProbeId"));
+    if (probeId) {
+        GST_DEBUG("Disconnecting black hole probe.");
+        g_object_set_data(G_OBJECT(demuxerSrcPad), "blackHoleProbeId", nullptr);
+        gst_pad_remove_probe(demuxerSrcPad, probeId);
+    }
+
+    if (gst_pad_is_linked(demuxerSrcPad)) {
+        GST_DEBUG("Disconnecting appsink from demuxer");
         gst_element_unlink(m_demux.get(), m_appsink.get());
+    }
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
