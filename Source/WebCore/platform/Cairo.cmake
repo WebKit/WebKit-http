@@ -12,6 +12,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cairo/GradientCairo.cpp
     platform/graphics/cairo/GraphicsContext3DCairo.cpp
     platform/graphics/cairo/GraphicsContextCairo.cpp
+    platform/graphics/cairo/GraphicsContextImplCairo.cpp
     platform/graphics/cairo/ImageBufferCairo.cpp
     platform/graphics/cairo/IntRectCairo.cpp
     platform/graphics/cairo/NativeImageCairo.cpp
