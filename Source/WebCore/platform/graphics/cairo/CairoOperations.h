@@ -49,10 +49,11 @@ class FloatRect;
 class FloatRoundedRect;
 class FloatSize;
 class GraphicsContext;
-class GraphicsContextState;
 class Image;
 class Path;
 class PlatformContextCairo;
+
+struct GraphicsContextState;
 
 namespace Cairo {
 
