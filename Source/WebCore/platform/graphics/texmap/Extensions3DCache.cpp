@@ -48,10 +48,8 @@ Extensions3DCache::Extensions3DCache()
 {
     GLContext* previousActiveContext = GLContext::current();
 
-    if (!previousActiveContext)
-        PlatformDisplay::sharedDisplayForCompositing().sharingGLContext()->makeContextCurrent();
-
-    RefPtr<GraphicsContext3D> context3D = GraphicsContext3D::createForCurrentGLContext();
+    RefPtr<GraphicsContext3D> context3D = GraphicsContext3D::create({ }, 0, GraphicsContext3D::RenderOffscreen);
+    context3D->makeContextCurrent();
     m_supportsUnpackSubimage = context3D->getExtensions().supports("GL_EXT_unpack_subimage");
 #if 0
     m_GL_OES_packed_depth_stencil = context3D->getExtensions().supports("GL_OES_packed_depth_stencil");

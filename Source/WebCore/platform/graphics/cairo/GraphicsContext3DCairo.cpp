@@ -218,10 +218,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, Hos
 GraphicsContext3D::~GraphicsContext3D()
 {
 #if USE(TEXTURE_MAPPER)
-    if (m_texmapLayer->renderStyle() == RenderToCurrentGLContext || m_texmapLayer->renderStyle() == RenderDirectlyToHostWindow)
-        return;
-#else
-    if (m_private->renderStyle() == RenderToCurrentGLContext)
+    if (m_renderStyle == RenderDirectlyToHostWindow)
         return;
 #endif
 

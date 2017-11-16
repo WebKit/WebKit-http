@@ -1,3 +1,68 @@
+2017-11-16  Miguel Gomez  <magomez@igalia.com>
+
+        [TexMap] Remove use of GraphicsContext3D
+        https://bugs.webkit.org/show_bug.cgi?id=174860
+
+        Reviewed by Žan Doberšek.
+
+        Remove remaining uses of GC3D that are not WebGL related:
+        - Remove the option to create a GC3D to render to the curren OpenGL context.
+        - Remove the remaining usage of GC3D inside MediaPlayerPrivateGStreamerBase.
+        - Replace the usage inside TextureMapper with direct OpenGL calls, and use a
+        VAO when the OpenGL version is higher than 3.2.
+
+        This also modifies TextureMapperContextAttributes so all the tested features are
+        supported when using OpenGL, and we only check for the extensions when using GLES2.
+
+        No new tests as there's no behavior change.
+
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/GraphicsContext3DPrivate.cpp:
+        (WebCore::GraphicsContext3DPrivate::GraphicsContext3DPrivate):
+        * platform/graphics/GraphicsContext3DPrivate.h:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::pushTextureToCompositor):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        * platform/graphics/texmap/TextureMapper.h:
+        * platform/graphics/texmap/TextureMapperContextAttributes.cpp:
+        (WebCore::TextureMapperContextAttributes::initialize):
+        * platform/graphics/texmap/TextureMapperContextAttributes.h:
+        * platform/graphics/texmap/TextureMapperGC3DPlatformLayer.cpp:
+        (WebCore::TextureMapperGC3DPlatformLayer::TextureMapperGC3DPlatformLayer):
+        (WebCore::TextureMapperGC3DPlatformLayer::makeContextCurrent):
+        (WebCore::TextureMapperGC3DPlatformLayer::platformContext):
+        (WebCore::TextureMapperGC3DPlatformLayer::swapBuffersIfNeeded):
+        (WebCore::TextureMapperGC3DPlatformLayer::paintToTextureMapper):
+        * platform/graphics/texmap/TextureMapperGC3DPlatformLayer.h:
+        * platform/graphics/texmap/TextureMapperGL.cpp:
+        (WebCore::TextureMapperGLData::SharedGLData::currentSharedGLData):
+        (WebCore::TextureMapperGLData::TextureMapperGLData):
+        (WebCore::TextureMapperGLData::~TextureMapperGLData):
+        (WebCore::TextureMapperGLData::initializeStencil):
+        (WebCore::TextureMapperGLData::getStaticVBO):
+        (WebCore::TextureMapperGLData::getVAO):
+        (WebCore::TextureMapperGLData::getShaderProgram):
+        (WebCore::TextureMapperGL::TextureMapperGL):
+        (WebCore::TextureMapperGL::beginPainting):
+        (WebCore::TextureMapperGL::endPainting):
+        (WebCore::TextureMapperGL::drawBorder):
+        (WebCore::prepareFilterProgram):
+        (WebCore::TextureMapperGL::drawTexture):
+        (WebCore::TextureMapperGL::drawSolidColor):
+        (WebCore::TextureMapperGL::clearColor):
+        (WebCore::TextureMapperGL::drawEdgeTriangles):
+        (WebCore::TextureMapperGL::drawUnitRect):
+        (WebCore::TextureMapperGL::draw):
+        (WebCore::TextureMapperGL::drawTexturedQuadWithProgram):
+        (WebCore::TextureMapperGL::drawFiltered):
+        (WebCore::TextureMapperGL::bindDefaultSurface):
+        (WebCore::TextureMapperGL::beginClip):
+        (WebCore::TextureMapperGL::createTexture):
+        * platform/graphics/texmap/TextureMapperGL.h:
+
 2017-11-15  Adrian Perez de Castro  <aperez@igalia.com>
 
         [Cairo] Clang warns about mismatched declaration type tag for GraphicsContextState
