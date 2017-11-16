@@ -63,7 +63,7 @@
 #include "CDMOpenCDM.h"
 #endif
 
-#if USE(PLAYREADY)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(PLAYREADY)
 #include "PlayreadySession.h"
 #endif
 

@@ -1664,7 +1664,7 @@ void MediaPlayerPrivateGStreamerBase::emitPlayReadySession(PlayreadySession* ses
 #endif
 #endif // USE(PLAYREADY)
 
-#if USE(OPENCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
 CDMSessionOpenCDM* MediaPlayerPrivateGStreamerBase::openCDMSession()
 {
     if (!m_cdmSession)
@@ -1702,7 +1702,7 @@ void MediaPlayerPrivateGStreamerBase::resetOpenCDMSession()
     m_cdmSession.reset();
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 }
-#endif // USE(OPENCDM)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const String& keySystem, const unsigned char* keyData, unsigned keyLength, const unsigned char* /* initData */, unsigned /* initDataLength */ , const String& sessionID)
