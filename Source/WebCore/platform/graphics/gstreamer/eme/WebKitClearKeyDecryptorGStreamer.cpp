@@ -117,6 +117,7 @@ static gboolean webKitMediaClearKeyDecryptorHandleKeyResponse(WebKitMediaCommonE
     WebKitMediaClearKeyDecryptPrivate* priv = WEBKIT_MEDIA_CK_DECRYPT_GET_PRIVATE(WEBKIT_MEDIA_CK_DECRYPT(self));
     const GstStructure* structure = gst_event_get_structure(event);
 
+#if ENABLE(ENCRYPTED_MEDIA)
     // Demand the `drm-cipher-clearkey` GstStructure.
     if (!gst_structure_has_name(structure, "drm-cipher-clearkey"))
         return FALSE;
@@ -144,6 +145,20 @@ static gboolean webKitMediaClearKeyDecryptorHandleKeyResponse(WebKitMediaCommonE
         GRefPtr<GstBuffer> keyValueBuffer(gst_value_get_buffer(gst_value_list_get_value(keyValuesList, i)));
         priv->keys.append(Key { WTFMove(keyIDBuffer), WTFMove(keyValueBuffer) });
     }
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    if (!gst_structure_has_name(structure, "drm-cipher"))
+        return FALSE;
+
+    const GValue* value = gst_structure_get_value(structure, "key");
+    GRefPtr<GstBuffer> key = adoptGRef(gst_buffer_copy(gst_value_get_buffer(value)));
+
+    // Clear out the previous list of keys.
+    priv->keys.clear();
+
+    priv->keys.append(Key { GRefPtr<GstBuffer>(gst_buffer_new()), WTFMove(key) });
+#endif
 
     return TRUE;
 }
@@ -166,12 +181,21 @@ static gboolean webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncrypt
             return false;
         }
 
+#if ENABLE(ENCRYPTED_MEDIA)
         for (auto& key : priv->keys) {
             if (!gst_buffer_memcmp(key.keyID.get(), 0, keyIDBufferMap.data, keyIDBufferMap.size)) {
                 keyBuffer = key.keyValue;
                 break;
             }
         }
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+        // There's no concept of multiple keys nor keyId in EMEv1 and EMEv2, so we just use the first one.
+        ASSERT(priv->keys.size() == 1);
+        if (priv->keys.size())
+            keyBuffer = priv->keys[0].keyValue;
+#endif
 
         gst_buffer_unmap(keyIDBuffer, &keyIDBufferMap);
     }

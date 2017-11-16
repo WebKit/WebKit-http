@@ -300,7 +300,12 @@ public:
         m_flags = flags | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0) | TEXTURE_MAPPER_COLOR_CONVERT_FLAG;
 
         GstBuffer* buffer = gst_sample_get_buffer(sample);
-        if (UNLIKELY(!gst_video_frame_map(&m_videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL))))
+        GstVideoMeta* meta = gst_buffer_get_video_meta(buffer);
+
+        // If info and meta dimensions aren't the same, gst_video_frame_map() shows a CRITICAL error.
+        // This can happen on prerolling (eg: on PLAYING->PAUSED) after a quality change, because the first frame (old quality) is returned.
+        if (UNLIKELY(!(videoInfo.width == int(meta->width) && videoInfo.height == int(meta->height)
+                    && gst_video_frame_map(&m_videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))))
             return;
 
         m_textureID = *reinterpret_cast<GLuint*>(m_videoFrame.data[0]);
