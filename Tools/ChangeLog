@@ -1,17 +1,3 @@
-2017-10-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
-
-        [JHBuild][GTK][WKE] Circular dependency between harfbuzz and freetype6
-        https://bugs.webkit.org/show_bug.cgi?id=177865
-
-        Reviewed by Michael Catanzaro.
-
-        Build freetype6 without harfbuzz support.
-        This seems to be what distros like Fedora, Debian or OpenEmbedded do.
-        Also explicitly enable support for freetype and fontconfig on harfbuzz.
-
-        * gtk/jhbuild.modules: Enable also support for icu.
-        * wpe/jhbuild.modules:
-
 2017-09-25  Frederik Riedel  <riedel@apple.com>
 
         Expose way to set values of classified form controls as {Legacy WebKit, WebKit} SPI
