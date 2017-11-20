@@ -22,7 +22,7 @@
 #include "config.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
 #include "GStreamerEMEUtilities.h"
@@ -147,7 +147,7 @@ static gboolean webKitMediaClearKeyDecryptorHandleKeyResponse(WebKitMediaCommonE
     }
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     if (!gst_structure_has_name(structure, "drm-cipher"))
         return FALSE;
 
@@ -190,7 +190,7 @@ static gboolean webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncrypt
         }
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
         // There's no concept of multiple keys nor keyId in EMEv1 and EMEv2, so we just use the first one.
         ASSERT(priv->keys.size() == 1);
         if (priv->keys.size())

@@ -31,6 +31,6 @@
       const unsigned short MEDIA_ERR_NETWORK = 2;
       const unsigned short MEDIA_ERR_DECODE = 3;
       const unsigned short MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
-      [Conditional=LEGACY_ENCRYPTED_MEDIA_V1|LEGACY_ENCRYPTED_MEDIA] const unsigned short MEDIA_ERR_ENCRYPTED = 5;
+      [Conditional=LEGACY_ENCRYPTED_MEDIA] const unsigned short MEDIA_ERR_ENCRYPTED = 5;
       readonly attribute unsigned short code;
 };

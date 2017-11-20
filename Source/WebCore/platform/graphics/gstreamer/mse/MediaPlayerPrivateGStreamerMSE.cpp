@@ -63,11 +63,11 @@
 #include "CDMOpenCDM.h"
 #endif
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(PLAYREADY)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(PLAYREADY)
 #include "PlayreadySession.h"
 #endif
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
 #include "CDMPrivateOpenCDM.h"
 #include "CDMSessionOpenCDM.h"
 #endif
@@ -1033,7 +1033,7 @@ MediaTime MediaPlayerPrivateGStreamerMSE::maxMediaTimeSeekable() const
     return result;
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 {
     for (auto it : m_appendPipelinesMap)
@@ -1057,7 +1057,7 @@ void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession(PlayreadySession* sess
 #endif
 #endif
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
 void MediaPlayerPrivateGStreamerMSE::emitOpenCDMSession()
 {
     CDMSessionOpenCDM* cdmSession = openCDMSession();

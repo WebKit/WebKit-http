@@ -26,7 +26,7 @@
 #ifndef CDMSession_h
 #define CDMSession_h
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #include <runtime/Uint8Array.h>
 #include <wtf/Forward.h>
@@ -81,6 +81,6 @@ public:
 
 }
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #endif // CDMSession_h

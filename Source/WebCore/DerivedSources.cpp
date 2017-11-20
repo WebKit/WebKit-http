@@ -614,7 +614,7 @@
 #include "JSWebKitAnimationEvent.cpp"
 #include "JSWebKitCSSMatrix.cpp"
 #include "JSWebKitCSSViewportRule.cpp"
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "JSWebKitMediaKeyError.cpp"
 #include "JSWebKitMediaKeyMessageEvent.cpp"
 #include "JSWebKitMediaKeyNeededEvent.cpp"

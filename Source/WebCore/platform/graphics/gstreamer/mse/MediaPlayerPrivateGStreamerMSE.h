@@ -88,7 +88,7 @@ public:
 
     static bool supportsCodecs(const String& codecs);
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void dispatchDecryptionKey(GstBuffer*) override;
 #if USE(PLAYREADY)
     void emitPlayReadySession(PlayreadySession*) override;

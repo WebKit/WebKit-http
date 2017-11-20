@@ -27,13 +27,9 @@
 
 #pragma once
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDMPrivate.h"
-#else
-#include "CDMSession.h"
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include <open_cdm.h>
 
 namespace WebCore {
@@ -68,4 +64,4 @@ protected:
 
 } // namespace WebCore
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)

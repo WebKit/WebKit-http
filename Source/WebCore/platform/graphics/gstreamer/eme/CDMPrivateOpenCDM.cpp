@@ -28,13 +28,10 @@
 #include "config.h"
 #include "CDMPrivateOpenCDM.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDM.h"
 #include "CDMSession.h"
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
-
 #include "CDMSessionOpenCDM.h"
 
 #include <gst/gst.h>
@@ -84,4 +81,4 @@ media::OpenCdm* CDMPrivateOpenCDM::getOpenCdmInstance()
 
 } // namespace WebCore
 
-#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OPENCDM)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
