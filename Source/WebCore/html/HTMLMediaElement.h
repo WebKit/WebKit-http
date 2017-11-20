@@ -216,7 +216,7 @@ public:
 
     Ref<TimeRanges> buffered() const override;
     WEBCORE_EXPORT void load();
-    WEBCORE_EXPORT String canPlayType(const String& mimeType, const String& keySystem = String()) const;
+    WEBCORE_EXPORT String canPlayType(const String& mimeType) const;
 
 // ready state
     using HTMLMediaElementEnums::ReadyState;

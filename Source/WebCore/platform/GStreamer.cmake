@@ -137,45 +137,6 @@ if (ENABLE_WEB_AUDIO)
     )
 endif ()
 
-if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        ${LIBGCRYPT_INCLUDE_DIRS}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${LIBGCRYPT_LIBRARIES} -lgpg-error
-    )
-
-    if (ENABLE_PLAYREADY)
-        list(APPEND WebCore_LIBRARIES
-            ${PLAYREADY_LIBRARIES}
-        )
-        list(APPEND WebCore_INCLUDE_DIRECTORIES
-            ${PLAYREADY_INCLUDE_DIRS}
-        )
-        add_definitions(${PLAYREADY_CFLAGS_OTHER})
-        foreach(p ${PLAYREADY_INCLUDE_DIRS})
-            if (EXISTS "${p}/playready.cmake")
-                include("${p}/playready.cmake")
-            endif()
-        endforeach()
-        list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/eme/CDMPRSessionGStreamer.cpp
-            platform/graphics/gstreamer/eme/PlayreadySession.cpp
-            platform/graphics/gstreamer/eme/WebKitPlayReadyDecryptorGStreamer.cpp
-        )
-    endif ()
-
-    if (ENABLE_OPENCDM)
-        list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/eme/CDMPrivateOpenCDM.cpp
-            platform/graphics/gstreamer/eme/CDMSessionOpenCDM.cpp
-            platform/graphics/gstreamer/eme/WebKitOpenCDMDecryptorGStreamer.cpp
-            platform/graphics/gstreamer/eme/WebKitOpenCDMPlayReadyDecryptorGStreamer.cpp
-            platform/graphics/gstreamer/eme/WebKitOpenCDMWidevineDecryptorGStreamer.cpp
-        )
-    endif ()
-endif ()
-
 if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/encryptedmedia/clearkey"

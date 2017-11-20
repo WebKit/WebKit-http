@@ -59,11 +59,7 @@ typedef (
     readonly attribute TimeRanges buffered;
     void load();
 
-#if defined(ENABLE_LEGACY_ENCRYPTED_MEDIA) && ENABLE_LEGACY_ENCRYPTED_MEDIA
-    DOMString canPlayType(DOMString type, optional DOMString? keySystem = null);
-#else
     DOMString canPlayType(DOMString type);
-#endif
 
     // ready state
     const unsigned short HAVE_NOTHING = 0;

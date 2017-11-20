@@ -40,10 +40,6 @@
 #include "TextureMapperPlatformLayerProxyProvider.h"
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
-#include "CDMSessionOpenCDM.h"
-#endif
-
 typedef struct _GstStreamVolume GstStreamVolume;
 typedef struct _GstVideoInfo GstVideoInfo;
 typedef struct _GstGLContext GstGLContext;
@@ -145,29 +141,6 @@ public:
 #else
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void needKey(RefPtr<Uint8Array>);
-    void setCDMSession(CDMSession*);
-    void keyAdded();
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    virtual void dispatchDecryptionKey(GstBuffer*);
-    void handleProtectionEvent(GstEvent*, GstElement*);
-    void receivedGenerateKeyRequest(const String&);
-    void abortEncryptionSetup();
-
-#if USE(PLAYREADY)
-    PlayreadySession* prSession() const;
-    virtual void emitPlayReadySession(PlayreadySession*);
-#endif
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
-    virtual void emitOpenCDMSession();
-    virtual void resetOpenCDMSession();
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -279,10 +252,6 @@ protected:
     Lock m_drawMutex;
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OPENCDM)
-    CDMSessionOpenCDM* openCDMSession();
-#endif
-
 #if USE(PLAYREADY)
     PlayreadySession* createPlayreadySession(const Vector<uint8_t> &, GstElement* pipeline, bool alreadyLocked = false);
     PlayreadySession* prSessionByInitData(const Vector<uint8_t>&, bool alreadyLocked = false) const;
@@ -295,18 +264,6 @@ protected:
 
     // Protects the previous two HashMaps for concurrent access.
     mutable Lock m_prSessionsMutex;
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
-    CDMSession* m_cdmSession;
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    Lock m_protectionMutex;
-    Condition m_protectionCondition;
-    String m_lastGenerateKeyRequestKeySystemUuid;
-    HashSet<uint32_t> m_handledProtectionEvents;
 #endif
 
 #if USE(TEXTURE_MAPPER_GL)

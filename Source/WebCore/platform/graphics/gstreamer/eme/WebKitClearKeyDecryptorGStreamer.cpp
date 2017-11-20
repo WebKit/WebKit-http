@@ -22,7 +22,7 @@
 #include "config.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
 #include "GStreamerEMEUtilities.h"
@@ -147,19 +147,6 @@ static gboolean webKitMediaClearKeyDecryptorHandleKeyResponse(WebKitMediaCommonE
     }
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    if (!gst_structure_has_name(structure, "drm-cipher"))
-        return FALSE;
-
-    const GValue* value = gst_structure_get_value(structure, "key");
-    GRefPtr<GstBuffer> key = adoptGRef(gst_buffer_copy(gst_value_get_buffer(value)));
-
-    // Clear out the previous list of keys.
-    priv->keys.clear();
-
-    priv->keys.append(Key { GRefPtr<GstBuffer>(gst_buffer_new()), WTFMove(key) });
-#endif
-
     return TRUE;
 }
 
@@ -188,13 +175,6 @@ static gboolean webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncrypt
                 break;
             }
         }
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-        // There's no concept of multiple keys nor keyId in EMEv1 and EMEv2, so we just use the first one.
-        ASSERT(priv->keys.size() == 1);
-        if (priv->keys.size())
-            keyBuffer = priv->keys[0].keyValue;
 #endif
 
         gst_buffer_unmap(keyIDBuffer, &keyIDBufferMap);

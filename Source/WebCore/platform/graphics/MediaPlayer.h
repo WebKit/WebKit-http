@@ -390,9 +390,7 @@ public:
     // Represents synchronous exceptions that can be thrown from the Encrypted Media methods.
     // This is different from the asynchronous MediaKeyError.
     enum MediaKeyException { NoError, InvalidPlayerState, KeySystemNotSupported };
-#endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     std::unique_ptr<CDMSession> createSession(const String& keySystem, CDMSessionClient*);
     void setCDMSession(CDMSession*);
     void keyAdded();
