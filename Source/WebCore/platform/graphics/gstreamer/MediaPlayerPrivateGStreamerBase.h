@@ -252,20 +252,6 @@ protected:
     Lock m_drawMutex;
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 
-#if USE(PLAYREADY)
-    PlayreadySession* createPlayreadySession(const Vector<uint8_t> &, GstElement* pipeline, bool alreadyLocked = false);
-    PlayreadySession* prSessionByInitData(const Vector<uint8_t>&, bool alreadyLocked = false) const;
-    PlayreadySession* prSessionBySessionId(const String&, bool alreadyLocked = false) const;
-
-    // Maps each pipeline (playback pipeline for normal videos, append pipeline for MSE) to its latest sessionId.
-    HashMap<GstElement*, String> m_prSessionIds;
-
-    Vector<std::unique_ptr<PlayreadySession>> m_prSessions;
-
-    // Protects the previous two HashMaps for concurrent access.
-    mutable Lock m_prSessionsMutex;
-#endif
-
 #if USE(TEXTURE_MAPPER_GL)
     RefPtr<GraphicsContext3D> m_context3D;
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
