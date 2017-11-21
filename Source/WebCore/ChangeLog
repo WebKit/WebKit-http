@@ -1,3 +1,21 @@
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Gradient::fill() should only operate on PlatformContextCairo
+        https://bugs.webkit.org/show_bug.cgi?id=179887
+
+        Reviewed by Carlos Garcia Campos.
+
+        In Gradient::fill(), directly invoke Cairo::save() and Cairo::restore(),
+        instead of doing so indirectly through GraphicsContext::save() and
+        GraphicsContext::restore(). The latter pair stashes the internal state
+        that's managed in GraphicsContext, but that doesn't get modified at all
+        in this case.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::fill):
+
 2017-11-16  Miguel Gomez  <magomez@igalia.com>
 
         [TexMap] Remove use of GraphicsContext3D
