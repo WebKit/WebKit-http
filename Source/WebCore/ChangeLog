@@ -1,5 +1,38 @@
 2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] drawNativeImage(), drawPattern() in CairoOperations should operate directly with cairo_surface_t objects
+        https://bugs.webkit.org/show_bug.cgi?id=179888
+
+        Reviewed by Carlos Garcia Campos.
+
+        Cairo::drawNativeImage() should receive a valid cairo_surface_t pointer
+        and work with that, instead of using a NativeImagePtr. Callers are thus
+        forced to pass the pointer into the drawNativeImage() call, and the
+        CairoOperations implementation file drops the need to know about the
+        NativeImagePtr type alias.
+
+        Cairo::drawPattern() now accepts pointer to the cairo_surface_t object,
+        along with an IntSize object that descibes the surface's size. This way
+        it's up to the caller to retrieve any valid native image for the current
+        frame and pass that to the drawPattern() call. The need to use IntSize
+        here is strange, but we should investigate this later.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawNativeImage):
+        (WebCore::Cairo::drawPattern):
+        * platform/graphics/cairo/CairoOperations.h: Include the Cairo header.
+        Also fix forward declaration of Cairo::drawGlyphs().
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::drawPattern):
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage): Execute operation through GraphicsContext,
+        kicking into effect any recording that could be done this way.
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Gradient::fill() should only operate on PlatformContextCairo
         https://bugs.webkit.org/show_bug.cgi?id=179887
 
