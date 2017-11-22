@@ -1,5 +1,38 @@
 2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
 
+        Drop ENABLE_IMAGE_DECODER_DOWN_SAMPLING code
+        https://bugs.webkit.org/show_bug.cgi?id=179921
+
+        Reviewed by Carlos Garcia Campos.
+
+        Drop the ENABLE_IMAGE_DECODER_DOWN_SAMPLING code, along with the build
+        guard definitions in WTF and CMake.
+
+        This was apparently in use in the Qt port, but since then no port
+        enables this. It's not exposed in the Xcode build, and the CMake option
+        is disabled by default, with no way to enable it through build-webkit.
+
+        While the code guarded with this build guard is removed, there's still
+        code in the ScalableImageDecoder class that only operated when this
+        feature was enabled. This should be addressed in the future, after
+        evaluating the need for this scaling capability.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/Image.cpp:
+        (WebCore::Image::adjustSourceRectForDownSampling const): Deleted.
+        * platform/graphics/Image.h:
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawNativeImage):
+        * platform/image-decoders/ScalableImageDecoder.h:
+        * platform/image-decoders/jpeg/JPEGImageDecoder.cpp:
+        (WebCore::JPEGImageReader::decode):
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageDecoder::rowAvailable):
+        (WebCore::PNGImageDecoder::frameComplete):
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] drawNativeImage(), drawPattern() in CairoOperations should operate directly with cairo_surface_t objects
         https://bugs.webkit.org/show_bug.cgi?id=179888
 

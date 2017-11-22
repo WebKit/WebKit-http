@@ -428,10 +428,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_ICONDATABASE 1
 #endif
 
-#if !defined(ENABLE_IMAGE_DECODER_DOWN_SAMPLING)
-#define ENABLE_IMAGE_DECODER_DOWN_SAMPLING 0
-#endif
-
 #if !defined(ENABLE_INDEXED_DATABASE)
 #define ENABLE_INDEXED_DATABASE 0
 #endif
