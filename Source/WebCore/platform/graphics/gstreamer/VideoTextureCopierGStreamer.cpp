@@ -75,6 +75,9 @@ VideoTextureCopierGStreamer::~VideoTextureCopierGStreamer()
 void VideoTextureCopierGStreamer::updateColorConversionMatrix(ColorConversion colorConversion)
 {
     switch (colorConversion) {
+    case ColorConversion::AlreadyRGBA:
+        m_colorConversionMatrix.setMatrix(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+        break;
     case ColorConversion::ConvertBGRAToRGBA:
         m_colorConversionMatrix.setMatrix(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         break;

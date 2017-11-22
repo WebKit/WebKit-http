@@ -61,7 +61,11 @@
 #endif
 
 #if USE(GSTREAMER_GL)
-#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+#if PLATFORM(WPE)
+#define GST_GL_CAPS_FORMAT "{ RGBA }"
+#define TEXTURE_MAPPER_COLOR_CONVERT_FLAG static_cast<TextureMapperGL::Flag>(0);
+#define TEXTURE_COPIER_COLOR_CONVERT_FLAG VideoTextureCopierGStreamer::ColorConversion::AlreadyRGBA
+#elif G_BYTE_ORDER == G_LITTLE_ENDIAN)
 #define GST_GL_CAPS_FORMAT "{ BGRx, BGRA }"
 #define TEXTURE_MAPPER_COLOR_CONVERT_FLAG TextureMapperGL::ShouldConvertTextureBGRAToRGBA
 #define TEXTURE_COPIER_COLOR_CONVERT_FLAG VideoTextureCopierGStreamer::ColorConversion::ConvertBGRAToRGBA
