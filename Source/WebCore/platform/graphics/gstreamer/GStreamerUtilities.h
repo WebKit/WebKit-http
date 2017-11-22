@@ -70,5 +70,4 @@ inline GstClockTime toGstClockTime(const MediaTime &mediaTime)
 }
 
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
-GstElement* getPipeline(GstElement*);
 }
