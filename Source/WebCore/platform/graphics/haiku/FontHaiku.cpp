@@ -71,7 +71,13 @@ void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
     else
         view->SetDrawingMode(B_OP_OVER);
     view->SetHighColor(color);
-    BFont bfont(*font.platformData().font());
+	BFont bfont;
+	// Sometimes we will end up here with a reference to a NULL font… oh well.
+	if (&font == NULL)
+		bfont = be_plain_font;
+	else
+    	bfont = *font.platformData().font();
+
     if (smoothing == NoSmoothing)
         bfont.SetFlags(B_DISABLE_ANTIALIASING);
     else
