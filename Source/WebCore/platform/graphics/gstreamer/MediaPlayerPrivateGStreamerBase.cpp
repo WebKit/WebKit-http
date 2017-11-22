@@ -619,13 +619,6 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
         return { };
     }
 
-    // Sanity check for the unlikely, but reproducible case when getVideoSizeAndFormatFromCaps returns incorrect values
-    if ((originalSize.width() == 0) || (originalSize.height() == 0)
-       || (pixelAspectRatioNumerator == 0) || (pixelAspectRatioNumerator == 0)) {
-        GST_DEBUG("getVideoSizeAndFormatFromCaps returned an invalid info, returning an empty size");
-        return FloatSize();
-    }
-
 #if USE(TEXTURE_MAPPER_GL)
     // When using accelerated compositing, if the video is tagged as rotated 90 or 270 degrees, swap width and height.
     if (m_renderingCanBeAccelerated) {
