@@ -113,8 +113,8 @@ distcc.
 
 The ruby tests pass (all 2 of them!)
 The perl test almost pass: Failed 1/27 test programs. 1/482 subtests failed.
-The python testsuite prints a lot of "sem\_init: No space left on device" then crashes.
-But before it does, there already are some test failures.
+The python tests hit some errors related to file locking, tracked in #13795, as
+well as some other issues.
 
 ### JSC ###
     $ perl Tools/Scripts/run-javascriptcore-tests
@@ -221,6 +221,6 @@ WebKitBuild/Release folder. Launching it will then use the freshly built
 libraries instead of the system ones. It is a good idea to test this because
 HaikuLauncher doesn't use tabs, which sometimes expose different bugs.
 
-This document was last updated July 30, 2014.
+This document was last updated November 23, 2017.
 
 Authors: Maxime Simon, Alexandre Deckner, Adrien Destugues
