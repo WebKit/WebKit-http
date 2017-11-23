@@ -1,5 +1,33 @@
 2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
 
+        [CoordGraphics] Remove relay CoordinatedBuffer::Client implementations
+        https://bugs.webkit.org/show_bug.cgi?id=179970
+
+        Reviewed by Carlos Garcia Campos.
+
+        Drop CoordinatedBuffer::painToSurface() in favor of a simpler
+        GraphicsContext reference getter that returns a reference to the
+        GraphicsContext object of the internal ImageBuffer.
+
+        Remove the ImageBackingSurfaceClient class that only acted as a relay
+        that enabled a CoordinatedBuffer to draw an image through its context.
+        Instead, we use the GraphicsContext of the allocated CoordinatedBuffer
+        to draw the image directly. We still use a rectangle whose size
+        matches the size of the given Image as the clipping area and as the
+        source and destination rectangle for the image.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp:
+        (WebCore::CoordinatedBuffer::context):
+        (WebCore::CoordinatedBuffer::paintToSurface): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+        (WebCore::ImageBackingSurfaceClient::ImageBackingSurfaceClient): Deleted.
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
         [CoordGraphics] TiledBackingStore: use a reference to the client
         https://bugs.webkit.org/show_bug.cgi?id=179969
 

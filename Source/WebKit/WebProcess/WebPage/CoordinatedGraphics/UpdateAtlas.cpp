@@ -33,29 +33,6 @@ using namespace WebCore;
 
 namespace WebKit {
 
-class UpdateAtlasSurfaceClient final : public CoordinatedBuffer::Client {
-public:
-    UpdateAtlasSurfaceClient(CoordinatedBuffer::Client& client, const IntSize& size, bool supportsAlpha)
-        : m_client(client)
-        , m_size(size)
-        , m_supportsAlpha(supportsAlpha)
-    {
-    }
-
-    void paintToSurfaceContext(GraphicsContext& context) override
-    {
-        if (m_supportsAlpha)
-            context.clearRect({ { }, m_size });
-
-        m_client.paintToSurfaceContext(context);
-    }
-
-private:
-    CoordinatedBuffer::Client& m_client;
-    IntSize m_size;
-    bool m_supportsAlpha;
-};
-
 UpdateAtlas::UpdateAtlas(Client& client, const IntSize& size, CoordinatedBuffer::Flags flags)
     : m_client(client)
     , m_buffer(CoordinatedBuffer::create(size, flags))
@@ -107,8 +84,24 @@ bool UpdateAtlas::paintOnAvailableBuffer(const IntSize& size, uint32_t& atlasID,
 
     atlasID = m_ID;
 
-    UpdateAtlasSurfaceClient surfaceClient(client, size, supportsAlpha());
-    m_buffer->paintToSurface(rect, surfaceClient);
+    // FIXME: Use tri-state buffers, to allow faster updates.
+    offset = rect.location();
+
+    {
+        GraphicsContext& context = m_buffer->context();
+        context.save();
+        context.clip(rect);
+        context.translate(rect.x(), rect.y());
+
+        if (supportsAlpha()) {
+            context.setCompositeOperation(CompositeCopy);
+            context.fillRect(IntRect(IntPoint::zero(), size), Color::transparent);
+            context.setCompositeOperation(CompositeSourceOver);
+        }
+
+        client.paintToSurfaceContext(context);
+        context.restore();
+    }
 
     return true;
 }
