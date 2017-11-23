@@ -874,7 +874,7 @@ void CoordinatedGraphicsLayer::adjustContentsScale()
 
 void CoordinatedGraphicsLayer::createBackingStore()
 {
-    m_mainBackingStore = std::make_unique<TiledBackingStore>(this, effectiveContentsScale());
+    m_mainBackingStore = std::make_unique<TiledBackingStore>(*this, effectiveContentsScale());
     m_mainBackingStore->setSupportsAlpha(!contentsOpaque());
 }
 

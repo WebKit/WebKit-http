@@ -1,5 +1,31 @@
 2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
 
+        [CoordGraphics] TiledBackingStore: use a reference to the client
+        https://bugs.webkit.org/show_bug.cgi?id=179969
+
+        Reviewed by Carlos Garcia Campos.
+
+        TiledBackingStore should keep a C++ reference to the TiledBackingStoreClient
+        object, and not a pointer. client() method is updated to reflect that, and
+        uses of this method and the member variable are updated accordingly.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::createBackingStore):
+        * platform/graphics/texmap/coordinated/Tile.cpp:
+        (WebCore::Tile::~Tile):
+        (WebCore::Tile::updateBackBuffer):
+        (WebCore::Tile::paintToSurfaceContext):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::TiledBackingStore):
+        (WebCore::TiledBackingStore::updateTileBuffers):
+        (WebCore::TiledBackingStore::createTiles):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+        (WebCore::TiledBackingStore::client):
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
         [CoordGraphics] Early tile buffer update in TiledBackingStore::createTiles() is unnecessary
         https://bugs.webkit.org/show_bug.cgi?id=179968
 
