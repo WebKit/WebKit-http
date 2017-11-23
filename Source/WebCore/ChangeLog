@@ -1,5 +1,31 @@
 2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
 
+        [CoordGraphics] Early tile buffer update in TiledBackingStore::createTiles() is unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=179968
+
+        Reviewed by Carlos Garcia Campos.
+
+        Under CoordinatedGraphicsLayer::updateContentBuffers(), the TiledBackingStore
+        object has the createTilesIfNeeded() method invoked, if necessary. This
+        invokes createTiles(), where the edge tiles are resized if necessary, and
+        the missing tiles are created. If any of those two cases is fulfilled, the
+        updateTileBuffers() method is invoked, updating any dirty tiles (i.e. the
+        ones that were resized or newly-created).
+
+        This specific invocation of updateTileBuffers() is not needed since it's the
+        very next method that's invoked on the TiledBackingStore object by
+        CoordinatedGraphicsLayer::updateContentBuffers(). It's therefore removed,
+        and the resizeEdgeTiles() method is changed to not return any value.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::createTiles):
+        (WebCore::TiledBackingStore::resizeEdgeTiles):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
         [CoordGraphics] Replace CoordinatedSurface, ThreadSafeCoordinatedSurface with CoordinatedBuffer
         https://bugs.webkit.org/show_bug.cgi?id=179967
 
