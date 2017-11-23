@@ -29,7 +29,6 @@
 
 #if USE(COORDINATED_GRAPHICS)
 
-#include "Extensions3DCache.h"
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Document.h>
 #include <WebCore/FrameView.h>
@@ -386,26 +385,20 @@ void CompositingCoordinator::purgeBackingStores()
     m_updateAtlases.clear();
 }
 
-bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedBuffer::Flags flags, uint32_t& atlasID, IntPoint& offset, CoordinatedBuffer::Client& client)
+RefPtr<CoordinatedBuffer> CompositingCoordinator::getCoordinatedBuffer(const IntSize& size, CoordinatedBuffer::Flags flags, uint32_t& atlasID, IntRect& allocatedRect)
 {
-    if (Extensions3DCache::singleton().supportsUnpackSubimage()) {
-        for (auto& updateAtlas : m_updateAtlases) {
-            UpdateAtlas* atlas = updateAtlas.get();
-            if (atlas->supportsAlpha() == (flags & CoordinatedBuffer::SupportsAlpha)) {
-                // This will be false if there is no available buffer space.
-                if (atlas->paintOnAvailableBuffer(size, atlasID, offset, client))
-                    return true;
-            }
+    for (auto& atlas : m_updateAtlases) {
+        if (atlas->supportsAlpha() == (flags & CoordinatedBuffer::SupportsAlpha)) {
+            if (auto buffer = atlas->getCoordinatedBuffer(size, atlasID, allocatedRect))
+                return buffer;
         }
-
-        static const int ScratchBufferDimension = 1024; // Must be a power of two.
-        m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, IntSize(ScratchBufferDimension, ScratchBufferDimension), flags));
-    } else {
-        m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, size, flags));
     }
 
+    static const int ScratchBufferDimension = 1024; // Must be a power of two.
+    m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, IntSize(ScratchBufferDimension, ScratchBufferDimension), flags));
+
     scheduleReleaseInactiveAtlases();
-    return m_updateAtlases.last()->paintOnAvailableBuffer(size, atlasID, offset, client);
+    return m_updateAtlases.last()->getCoordinatedBuffer(size, atlasID, allocatedRect);
 }
 
 const Seconds releaseInactiveAtlasesTimerInterval { 500_ms };

@@ -28,6 +28,7 @@
 #include "Tile.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -47,7 +48,7 @@ public:
 
     float contentsScale() { return m_contentsScale; }
 
-    void updateTileBuffers();
+    Vector<std::reference_wrapper<Tile>> dirtyTiles();
 
     void invalidate(const IntRect& dirtyRect);
 

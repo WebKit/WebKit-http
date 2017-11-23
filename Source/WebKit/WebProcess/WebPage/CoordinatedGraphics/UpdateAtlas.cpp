@@ -60,50 +60,17 @@ void UpdateAtlas::didSwapBuffers()
     m_areaAllocator = nullptr;
 }
 
-bool UpdateAtlas::paintOnAvailableBuffer(const IntSize& size, uint32_t& atlasID, IntPoint& offset, CoordinatedBuffer::Client& client)
+RefPtr<CoordinatedBuffer> UpdateAtlas::getCoordinatedBuffer(const IntSize& size, uint32_t& atlasID, IntRect& allocatedRect)
 {
     m_inactivityInSeconds = 0;
+    buildLayoutIfNeeded();
+    allocatedRect = m_areaAllocator->allocate(size);
 
-    IntRect rect;
-    if (Extensions3DCache::singleton().supportsUnpackSubimage()) {
-        buildLayoutIfNeeded();
-        rect = m_areaAllocator->allocate(size);
-
-        // No available buffer was found.
-        if (rect.isEmpty())
-            return false;
-
-        offset = rect.location();
-    } else {
-        // When GL_EXT_unpack_subimage is not available, the size requested to paint is the same
-        // as the UpdateAtlas, so we don't need the AreaAllocator. The offset is always (0, 0)
-        // and the size is always the size requested.
-        offset = IntPoint(0, 0);
-        rect = IntRect(offset, size);
-    }
+    if (allocatedRect.isEmpty())
+        return nullptr;
 
     atlasID = m_ID;
-
-    // FIXME: Use tri-state buffers, to allow faster updates.
-    offset = rect.location();
-
-    {
-        GraphicsContext& context = m_buffer->context();
-        context.save();
-        context.clip(rect);
-        context.translate(rect.x(), rect.y());
-
-        if (supportsAlpha()) {
-            context.setCompositeOperation(CompositeCopy);
-            context.fillRect(IntRect(IntPoint::zero(), size), Color::transparent);
-            context.setCompositeOperation(CompositeSourceOver);
-        }
-
-        client.paintToSurfaceContext(context);
-        context.restore();
-    }
-
-    return true;
+    return m_buffer.copyRef();
 }
 
 } // namespace WebCore

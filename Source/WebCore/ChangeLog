@@ -1,5 +1,79 @@
 2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
 
+        [CoordGraphics] Simplify CoordinatedGraphicsLayer's content buffer updates
+        https://bugs.webkit.org/show_bug.cgi?id=179972
+
+        Reviewed by Carlos Garcia Campos.
+
+        During layer flushes, when a CoordinatedGraphicsLayer's tiled backing store
+        has dirty tiles that need to be updated, the following chain of calls would
+        be invoked to perform the painting, starting in
+        CoordinatedGraphicsLayer::updateContentBuffers():
+        |- CoordinatedGraphicsLayer::updateContentBuffers()
+         |- TiledBackingStore::updateTileBuffers()
+          |- Tile::updateBackBuffer()
+           |- CoordinatedGraphicsLayer::paintToSurface()
+            |- CompositingCoordinator::paintToSurface()
+             |- UpdateAtlas::paintOnAvailableBuffer()
+              |- ThreadSafeCoordinatedSurface::paintToSurface()
+               |- Tile::paintToSurfaceContext()
+                |- CoordinatedGraphicsLayer::tiledBackingStorePaint()
+                 |- GraphicsLayer::paintGraphicsLayerContents()
+
+        That's a bit much.
+
+        In CoordinatedGraphicsLayer::updateContentBuffers(), we now first retrieve
+        all the dirty layers in our TiledBackingStore. We then iterate through them,
+        first establishing their ID and then retrieving an available CoordinatedBuffer
+        that we can use for painting. The CoordinatedBuffer is retrieved through
+        CompositingCoordinator, which is still caching these buffers via UpdateAtlas
+        objects.
+
+        With a CoordinatedBuffer available, we can then proceed with painting. The
+        painting context has to be properly set up to paint into the correct area of
+        the given buffer, and the alpha channel, if necessary, has to be addressed.
+        After properly positioning and scaling ourselves on the given context, we
+        can proceed with the GraphicsLayer::paintGraphicsLayerContents() call.
+
+        What's left is filling out the missing SurfaceUpdateInfo information which is
+        then passed to the updateTile() method that properly registers the tile
+        update we've just performed. The tile itself is marked clean. After the
+        iteration, we call the didUpdateTileBuffers() method in case any successful
+        tile update was indeed performed, incrementing the repaint counter.
+
+        That's it -- we clipped 8 calls from the call chain. We can now also remove
+        the CoordinatedBuffer::Client interface, as well as slim down the
+        TiledBackingStore interface. The Tile class is cleaned up a bit, with methods
+        shifted into a more sensible order.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp:
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::didUpdateTileBuffers):
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        (WebCore::CoordinatedGraphicsLayer::tiledBackingStorePaint): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::paintToSurface): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/Tile.cpp:
+        (WebCore::Tile::ensureTileID):
+        (WebCore::Tile::isDirty const):
+        (WebCore::Tile::invalidate):
+        (WebCore::Tile::markClean):
+        (WebCore::Tile::updateBackBuffer): Deleted.
+        (WebCore::Tile::paintToSurfaceContext): Deleted.
+        * platform/graphics/texmap/coordinated/Tile.h:
+        (WebCore::Tile::tileID const):
+        (WebCore::Tile::dirtyRect const):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::dirtyTiles):
+        (WebCore::TiledBackingStore::updateTileBuffers): Deleted.
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+        * platform/graphics/texmap/coordinated/TiledBackingStoreClient.h:
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
         [CoordGraphics] Remove relay CoordinatedBuffer::Client implementations
         https://bugs.webkit.org/show_bug.cgi?id=179970
 
