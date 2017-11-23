@@ -1,3 +1,27 @@
+2017-11-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for CanvasPattern.setTransform()
+        https://bugs.webkit.org/show_bug.cgi?id=179935
+
+        Reviewed by Sam Weinig.
+        
+        Add support for setTransform() on CanvasPattern, per
+        <https://html.spec.whatwg.org/multipage/canvas.html#dom-canvaspattern-settransform>
+        It uses [MayThrowException] since the "validate and fixup" steps for DOMMatrix can throw
+        an exception.
+        
+        Under the hood, the transform is just pushed onto Pattern as the patternSpaceTransform().
+        
+        Minor cleanup in Pattern.
+
+        Test: fast/canvas/canvas-pattern-with-transform.html
+
+        * html/canvas/CanvasPattern.cpp:
+        (WebCore::CanvasPattern::setTransform):
+        * html/canvas/CanvasPattern.h:
+        * html/canvas/CanvasPattern.idl:
+        * platform/graphics/Pattern.h:
+
 2018-01-08  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Contain shadow blur requirement state in a separate object
