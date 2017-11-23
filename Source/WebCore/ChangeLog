@@ -1,3 +1,48 @@
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Replace CoordinatedSurface, ThreadSafeCoordinatedSurface with CoordinatedBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=179967
+
+        Reviewed by Carlos Garcia Campos.
+
+        Roll the CoordinatedSurface and ThreadSafeCoordinatedSurface classes
+        into one CoordinatedBuffer class.
+
+        CoordinatedBuffer class mimics CoordinatedSurface in providing the
+        Client class that allows specifying how the client should paint using a
+        GraphicsContext object. supportsAlpha() and size() methods are also
+        present, as well as paintToSurface(). uploadImage() retrieves the
+        Image that's created from the contained ImageBuffer, allowing the user
+        to then manually upload the buffer data onto the GPU.
+
+        CoordinatedBuffer otherwise serves as a drop-in replacement for the
+        CoordinatedSurface class, and the remaining changes in the
+        CoordiantedGraphics code reflect that.
+
+        No new tests -- no change in behavior.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp: Added.
+        (WebCore::CoordinatedBuffer::create):
+        (WebCore::CoordinatedBuffer::CoordinatedBuffer):
+        (WebCore::CoordinatedBuffer::paintToSurface):
+        (WebCore::CoordinatedBuffer::uploadImage):
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.h: Added.
+        (WebCore::CoordinatedBuffer::supportsAlpha const):
+        (WebCore::CoordinatedBuffer::size const):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::paintToSurface):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+        (WebCore::CoordinatedImageBacking::releaseSurfaceIfNeeded):
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.h:
+        * platform/graphics/texmap/coordinated/CoordinatedSurface.cpp: Removed.
+        * platform/graphics/texmap/coordinated/CoordinatedSurface.h: Removed.
+        * platform/graphics/texmap/coordinated/Tile.h:
+        * platform/graphics/texmap/coordinated/TiledBackingStoreClient.h:
+
 2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
 
         Drop ENABLE_IMAGE_DECODER_DOWN_SAMPLING code
