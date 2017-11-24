@@ -76,7 +76,7 @@ void MediaPlayerPrivate::load(const String& url)
 {
     // Cleanup from previous request (can this even happen?)
     if (m_soundPlayer)
-        m_soundPlayer->Stop();
+        m_soundPlayer->Stop(false);
     delete m_soundPlayer;
 
     cancelLoad();
@@ -134,7 +134,7 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
     {
         // Notify that we're done playing...
         player->m_currentTime = player->m_audioTrack->Duration() / 1000000.f;
-        player->m_soundPlayer->Stop();
+        player->m_soundPlayer->Stop(false);
 
         WeakPtr<MediaPlayerPrivate> p = player->m_holder.createWeakPtr();
         callOnMainThread([p] {
@@ -175,7 +175,7 @@ void MediaPlayerPrivate::play()
 void MediaPlayerPrivate::pause()
 {
     if (m_soundPlayer)
-        m_soundPlayer->Stop();
+        m_soundPlayer->Stop(false);
     m_paused = true;
 }
 
