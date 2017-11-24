@@ -353,6 +353,8 @@ void GraphicsContext::fillPath(const Path& path)
     view->MovePenTo(B_ORIGIN);
 
     // TODO: Render the shadow (cf shadowAndFillCurrentCairoPath)
+    drawing_mode mode = view->DrawingMode();
+
     if (m_state.fillPattern)
         notImplemented();
     else if (m_state.fillGradient) {
@@ -360,13 +362,13 @@ void GraphicsContext::fillPath(const Path& path)
         BGradient* gradient = m_state.fillGradient->platformGradient();
         view->FillShape(path.platformPath(), *gradient);
     } else if (fillColor().alpha()) {
-        drawing_mode mode = view->DrawingMode();
         if (view->HighColor().alpha < 255)
             view->SetDrawingMode(B_OP_ALPHA);
 
         view->FillShape(path.platformPath());
-        view->SetDrawingMode(mode);
     }
+
+    view->SetDrawingMode(mode);
 }
 
 void GraphicsContext::clip(const FloatRect& rect)
@@ -378,10 +380,29 @@ void GraphicsContext::clip(const FloatRect& rect)
 
 IntRect GraphicsContext::clipBounds() const
 {
-    BRegion region;
-    // TODO does this also take clipping shape into account?
-    m_data->view()->GetClippingRegion(&region);
-    return IntRect(region.Frame());
+	// This can be used by drawing code to do some early clipping (for example
+	// the SVG code may skip complete parts of the image which are outside
+	// the bounds).
+	// So, we get the current clipping region, and convert it back to drawing
+	// space by applying the reverse of the view transform.
+	
+	BRegion region;
+	BAffineTransform t = m_data->view()->Transform();
+	m_data->view()->GetClippingRegion(&region);
+	BRect rect = region.Frame();
+
+	BPoint points[2];
+	points[0] = rect.LeftTop();
+	points[1] = rect.RightBottom();
+
+	t.ApplyInverse(points, 2);
+
+	rect.left   = std::min(points[0].x, points[1].x);
+	rect.right  = std::max(points[0].x, points[1].x);
+	rect.top    = std::min(points[0].y, points[1].y);
+	rect.bottom = std::max(points[0].y, points[1].y);
+
+	return IntRect(rect);
 }
 
 void GraphicsContext::clipPath(const Path& path, WindRule windRule)
@@ -760,7 +781,7 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
     }
 
     BAffineTransform t = m_data->view()->Transform();
-    	// TODO: we actually need to ues the combined transform here
+    	// TODO: we actually need to use the combined transform here?
     AffineTransform matrix(t.sx, t.shy, t.shx, t.sy, t.tx, t.ty);
     return matrix;
 }
