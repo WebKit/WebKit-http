@@ -26,8 +26,6 @@
 #include <WebCore/CoordinatedGraphicsState.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/IntRect.h>
-#include <wtf/MathExtras.h>
-#include "Extensions3DCache.h"
 
 using namespace WebCore;
 

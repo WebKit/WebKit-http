@@ -394,9 +394,8 @@ RefPtr<CoordinatedBuffer> CompositingCoordinator::getCoordinatedBuffer(const Int
         }
     }
 
-    static const int ScratchBufferDimension = 1024; // Must be a power of two.
-    m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, IntSize(ScratchBufferDimension, ScratchBufferDimension), flags));
-
+    static const IntSize s_atlasSize { 1024, 1024 }; // This should be a square.
+    m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, s_atlasSize, flags));
     scheduleReleaseInactiveAtlases();
     return m_updateAtlases.last()->getCoordinatedBuffer(size, atlasID, allocatedRect);
 }
