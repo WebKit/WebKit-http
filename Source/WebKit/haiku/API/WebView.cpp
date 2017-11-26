@@ -71,6 +71,7 @@ BWebView::BWebView(const char* name, BUrlContext* urlContext)
     , fLastMousePos(0, 0)
     , fAutoHidePointer(false)
     , fOffscreenBitmap(nullptr)
+    , fOffscreenView(nullptr)
     , fWebPage(new BWebPage(this, urlContext))
     , fUserData(nullptr)
 {
@@ -246,7 +247,7 @@ void BWebView::Hide()
 void BWebView::Draw(BRect rect)
 {
     // Draw the page that was already rendered as an offscreen bitmap
-    if (!fOffscreenBitmap->Lock()) {
+    if (fOffscreenBitmap == NULL || !fOffscreenBitmap->Lock()) {
         SetHighColor(255, 255, 255);
         FillRect(rect);
         return;
@@ -544,6 +545,9 @@ bool BWebView::IsComposited()
 
 void BWebView::_ResizeOffscreenView(int width, int height)
 {
+	if (width <= 1 || height <= 1)
+		return;
+
     BRect bounds(0, 0, width - 1, height - 1);
 
     if (fOffscreenBitmap) {

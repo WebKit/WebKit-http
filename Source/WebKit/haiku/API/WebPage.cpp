@@ -732,7 +732,7 @@ void BWebPage::paint(BRect rect, bool immediate)
     // window locked. This cannot deadlock and makes sure
     // the window is not deleting the offscreen view right
     // after we unlock it and before locking the bitmap.
-    if (!offscreenView->LockLooper()) {
+    if (offscreenView == NULL || !offscreenView->LockLooper()) {
         fWebView->UnlockLooper();
         return;
     }
