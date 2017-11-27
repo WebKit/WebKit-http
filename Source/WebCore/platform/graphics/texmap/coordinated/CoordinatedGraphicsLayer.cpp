@@ -149,9 +149,6 @@ CoordinatedGraphicsLayer::CoordinatedGraphicsLayer(Type layerType, GraphicsLayer
 
 CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
 {
-    if (m_platformLayer)
-        m_platformLayer->setClient(nullptr);
-
     if (m_coordinator) {
         purgeBackingStores();
         m_coordinator->detachLayer(this);
@@ -404,17 +401,12 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (m_platformLayer != platformLayer) {
-        if (m_platformLayer)
-            m_platformLayer->setClient(nullptr);
         m_shouldSyncPlatformLayer = true;
         if (platformLayer)
             m_shouldUpdatePlatformLayer = true;
     }
 
     m_platformLayer = platformLayer;
-
-    if (m_platformLayer)
-        m_platformLayer->setClient(this);
 
     notifyFlushRequired();
 #else
@@ -1257,17 +1249,6 @@ void CoordinatedGraphicsLayer::animationStartedTimerFired()
 {
     client().notifyAnimationStarted(this, "", m_lastAnimationStartTime);
 }
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-void CoordinatedGraphicsLayer::platformLayerWillBeDestroyed()
-{
-    setContentsToPlatformLayer(nullptr, NoContentsLayer);
-}
-
-void CoordinatedGraphicsLayer::setPlatformLayerNeedsDisplay()
-{
-}
-#endif
 
 } // namespace WebCore
 

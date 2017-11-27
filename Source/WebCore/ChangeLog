@@ -1,3 +1,24 @@
+2017-11-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] CoordinatedGraphicsLayer doesn't need to inherit from TextureMapperPlatformLayer::Client
+        https://bugs.webkit.org/show_bug.cgi?id=180036
+
+        Reviewed by Carlos Garcia Campos.
+
+        There's no reason CoordinatedGraphicsLayer should inherit from
+        TextureMapperPlatformLayer::Client. CoordinatedGraphicsLayer objects are
+        not used anywhere through that type, and all the overridden methods are
+        empty anyway. The TextureMapperPlatformLayer::Client class (along with
+        TextureMapperPlatformLayer) is nowadays only used in the direct
+        TextureMapper implementation of GraphicsLayer.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::platformLayerWillBeDestroyed): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::setPlatformLayerNeedsDisplay): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+
 2017-11-24  Zan Dobersek  <zdobersek@igalia.com>
 
         [CoordGraphics] CoordinatedGraphicsLayer::updateContentBuffers() should always assume a non-null CoordinatedBuffer
