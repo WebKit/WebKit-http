@@ -205,7 +205,7 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         lines = []
         if len(type_declaration.description) > 0:
             lines.append('/* %s */' % type_declaration.description)
-        base_class = 'Inspector::InspectorObject'
+        base_class = 'JSON::Object'
         if not Generator.type_has_open_fields(type_declaration.type):
             base_class = base_class + 'Base'
         lines.append('class %s : public %s {' % (object_name, base_class))
@@ -326,11 +326,11 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         lines.append('    void set%(camelName)s(%(parameterType)s value)' % setter_args)
         lines.append('    {')
         if isinstance(type_member.type, EnumType):
-            lines.append('        InspectorObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(value));' % setter_args)
+            lines.append('        JSON::ObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(value));' % setter_args)
         elif CppGenerator.should_use_references_for_type(type_member.type):
-            lines.append('        InspectorObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), WTFMove(value));' % setter_args)
+            lines.append('        JSON::ObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), WTFMove(value));' % setter_args)
         else:
-            lines.append('        InspectorObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), value);' % setter_args)
+            lines.append('        JSON::ObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), value);' % setter_args)
         lines.append('    }')
         return '\n'.join(lines)
 
@@ -361,9 +361,9 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         for argument in type_arguments:
             lines.append('template<> %s BindingTraits<%s> {' % (' '.join(struct_keywords), argument[0]))
             if argument[1]:
-                lines.append('static RefPtr<%s> runtimeCast(RefPtr<Inspector::InspectorValue>&& value);' % argument[0])
+                lines.append('static RefPtr<%s> runtimeCast(RefPtr<JSON::Value>&& value);' % argument[0])
             lines.append('#if !ASSERT_DISABLED')
-            lines.append('%s assertValueHasExpectedType(Inspector::InspectorValue*);' % ' '.join(function_keywords))
+            lines.append('%s assertValueHasExpectedType(JSON::Value*);' % ' '.join(function_keywords))
             lines.append('#endif // !ASSERT_DISABLED')
             lines.append('};')
         return '\n'.join(lines)

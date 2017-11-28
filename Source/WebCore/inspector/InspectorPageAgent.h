@@ -39,10 +39,6 @@
 #include <wtf/Seconds.h>
 #include <wtf/text/WTFString.h>
 
-namespace Inspector {
-class InspectorObject;
-}
-
 namespace WebCore {
 
 class CachedResource;
