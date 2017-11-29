@@ -1,3 +1,29 @@
+2017-11-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Limit the number of active contexts in GraphicsContext3DCairo
+        https://bugs.webkit.org/show_bug.cgi?id=166968
+
+        Reviewed by Alex Christensen.
+
+        Cairo's implementation of GraphicsContext3D should follow the Mac's
+        and limit the number of active GraphicsContext3D objects.
+
+        The active contexts are listed in a global Deque, with the first
+        among them being recycled when the GraphicsContext3D::create()
+        function sees that the limit has been reached. That function still
+        returns null if even after recycling the number of contexts didn't
+        decrease.
+
+        Finally, in the GraphicsContext3D destructor, the context being
+        destroyed is removed from the list of active contexts.
+
+        No new tests -- relevant tests are now passing.
+
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::activeContexts):
+        (WebCore::GraphicsContext3D::create):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+
 2017-11-27  Zan Dobersek  <zdobersek@igalia.com>
 
         [CoordGraphics] CoordinatedGraphicsLayer doesn't need to inherit from TextureMapperPlatformLayer::Client
