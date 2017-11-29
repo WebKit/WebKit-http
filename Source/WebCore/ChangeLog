@@ -1,3 +1,39 @@
+2017-11-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Rename CoordinatedBuffer to Nicosia::Buffer
+        https://bugs.webkit.org/show_bug.cgi?id=180135
+
+        Reviewed by Carlos Garcia Campos.
+
+        Rename CoordinatedBuffer to Nicosia::Buffer, starting an abstraction
+        layer that will in the future allow us to prototype and potentially
+        support different 2D rasterization libraries. The layer is envisioned
+        as separate from the CoordinatedGraphics code, but will in the mid-term
+        only be used there.
+
+        In order to keep CMake changes to a minimum for now, the source code is
+        included in the build along with the CoordinatedGraphics source files,
+        in TextureMapper.cmake.
+
+        No new tests -- no change in functionality.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaBuffer.cpp: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp.
+        (Nicosia::Buffer::create):
+        (Nicosia::Buffer::Buffer):
+        (Nicosia::Buffer::context):
+        (Nicosia::Buffer::uploadImage):
+        * platform/graphics/nicosia/NicosiaBuffer.h: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedBuffer.h.
+        (Nicosia::Buffer::size const):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.h:
+        * platform/graphics/texmap/coordinated/Tile.h:
+
 2017-11-28  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Limit the number of active contexts in GraphicsContext3DCairo
