@@ -92,7 +92,6 @@ class Extensions3DOpenGL;
 class HostWindow;
 class Image;
 class ImageBuffer;
-class ImageSource;
 class ImageData;
 class IntRect;
 class IntSize;
@@ -1252,7 +1251,6 @@ public:
         bool extractImage(bool premultiplyAlpha, bool ignoreGammaAndColorProfile);
 
 #if USE(CAIRO)
-        ImageSource* m_decoder;
         RefPtr<cairo_surface_t> m_imageSurface;
 #elif USE(CG)
         RetainPtr<CGImageRef> m_cgImage;

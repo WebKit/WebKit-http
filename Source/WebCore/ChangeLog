@@ -1,3 +1,70 @@
+2017-11-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the ImageSource from the class hierarchy that connects BitmapImage to ImageFrame
+        https://bugs.webkit.org/show_bug.cgi?id=175595
+
+        Reviewed by Darin Adler.
+
+        The class hierarchy that connects BitmapImage to ImageFrame has been
+        troublesome. ImageSource does not have a clear responsibility other than
+        a bridge that connects BitmapIamge to ImageFrameCache. Sharing the 
+        ImageDecoder between ImageSource and ImageFrameCache is ugly and caused
+        few crashes in the past.
+
+        This patch will do the first step for fixing this issue. First get rid of
+        ImageSource by moving its APIs to ImageFrameCache and BitmapImage. Replace
+        all the instances of ImageSource by ImageFrameCache. The next step will
+        be to rename ImageFrameCache to ImageSource. But this will be done in a
+        follow-up patch
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::BitmapImage):
+        (WebCore::BitmapImage::~BitmapImage):
+        (WebCore::BitmapImage::destroyDecodedData):
+        (WebCore::BitmapImage::destroyDecodedDataIfNecessary):
+        (WebCore::BitmapImage::dataChanged):
+        (WebCore::BitmapImage::frameImageAtIndexCacheIfNeeded):
+        (WebCore::BitmapImage::draw):
+        (WebCore::BitmapImage::canUseAsyncDecodingForLargeImages const):
+        (WebCore::BitmapImage::shouldUseAsyncDecodingForAnimatedImages const):
+        (WebCore::BitmapImage::subsamplingLevelForScaleFactor):
+        (WebCore::BitmapImage::canDestroyDecodedData):
+        (WebCore::BitmapImage::internalStartAnimation):
+        (WebCore::BitmapImage::stopAnimation):
+        (WebCore::BitmapImage::decode):
+        (WebCore::BitmapImage::imageFrameAvailableAtIndex):
+        (WebCore::BitmapImage::dump const):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/ImageFrameCache.cpp:
+        (WebCore::ImageFrameCache::ImageFrameCache):
+        (WebCore::ImageFrameCache::ensureDecoderAvailable):
+        (WebCore::ImageFrameCache::setData):
+        (WebCore::ImageFrameCache::resetData):
+        (WebCore::ImageFrameCache::dataChanged):
+        (WebCore::ImageFrameCache::isAllDataReceived):
+        (WebCore::ImageFrameCache::clearFrameBufferCache):
+        (WebCore::ImageFrameCache::canUseAsyncDecoding):
+        (WebCore::ImageFrameCache::maximumSubsamplingLevel):
+        (WebCore::ImageFrameCache::setTargetContext):
+        (WebCore::ImageFrameCache::createFrameImageAtIndex):
+        (WebCore::ImageFrameCache::dump):
+        (WebCore::ImageFrameCache::setDecoder): Deleted.
+        (WebCore::ImageFrameCache::decoder const): Deleted.
+        * platform/graphics/ImageFrameCache.h:
+        (WebCore::ImageFrameCache::create):
+        (WebCore::ImageFrameCache::requestFrameAsyncDecodingAtIndex):
+        * platform/graphics/ImageSource.cpp: Removed.
+        * platform/graphics/ImageSource.h: Removed.
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::~ImageExtractor):
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+        * platform/graphics/cg/GraphicsContext3DCG.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+        * platform/graphics/cg/ImageSourceCG.h:
+
 2017-09-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Followup (r222427): SynchronizedFixedQueue should not have a public constructor
