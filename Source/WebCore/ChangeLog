@@ -1,3 +1,42 @@
+2017-11-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Move CoordinatedGraphicsLayer painting behind Nicosia::PaintingEngine
+        https://bugs.webkit.org/show_bug.cgi?id=180141
+
+        Reviewed by Carlos Garcia Campos.
+
+        Introduce a painting engine concept that's used to perform painting
+        for a given GraphicsLayer object.
+
+        The Nicosia::PaintingEngine object is leveraged in the
+        CoordinatedGraphicsLayer::updateContentBuffers() method. It's retrieved
+        through the CoordinatedGraphicsLayerClient interface, with a new method
+        introduced there for this purpose.
+
+        The Nicosia::PaintingEngine interface is kept simple for now, with only
+        a single paint() method. The only current implementation is the
+        PaintingEngineBasic class, which simply reuses the code that was
+        previously in CoordinatedGraphicsLayer::updateContentBuffers(),
+        maintaining the current functionality.
+
+        The Nicosia::PaintingEngine::create() function returns a new
+        PaintingEngine object. For now it defaults to PaintingEngineBasic, but
+        it could be configured at configure-time or even runtime in the future
+        to return a more advanced engine implementation.
+
+        No new tests -- no change in behavior.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaPaintingEngine.cpp: Added.
+        (Nicosia::PaintingEngine::create):
+        * platform/graphics/nicosia/NicosiaPaintingEngine.h: Added.
+        * platform/graphics/nicosia/NicosiaPaintingEngineBasic.cpp: Added.
+        (Nicosia::PaintingEngineBasic::paint):
+        * platform/graphics/nicosia/NicosiaPaintingEngineBasic.h: Added.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+
 2017-11-29  Zan Dobersek  <zdobersek@igalia.com>
 
         [CoordGraphics] Rename CoordinatedBuffer to Nicosia::Buffer
