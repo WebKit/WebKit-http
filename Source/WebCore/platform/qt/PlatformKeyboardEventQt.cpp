@@ -808,6 +808,7 @@ static bool isVirtualKeyCodeRepresentingCharacter(int code)
     }
 }
 
+template<bool unmodified>
 static String keyTextForKeyEvent(const QKeyEvent* event)
 {
     switch (event->key()) {
@@ -820,6 +821,53 @@ static String keyTextForKeyEvent(const QKeyEvent* event)
     case Qt::Key_Enter:
         if (event->text().isNull())
             return ASCIILiteral("\r");
+        break;
+
+// Workaround for broken accesskey when QKeyEvent has modifier, see QTBUG-64891
+#define MAKE_TEXT_FOR_KEY(QtKey, Character) \
+    case Qt::Key_##QtKey: \
+        if (unmodified && event->text().isNull()) \
+            return ASCIILiteral(#Character); \
+        break;
+
+    MAKE_TEXT_FOR_KEY(0, 0);
+    MAKE_TEXT_FOR_KEY(1, 1);
+    MAKE_TEXT_FOR_KEY(2, 2);
+    MAKE_TEXT_FOR_KEY(3, 3);
+    MAKE_TEXT_FOR_KEY(4, 4);
+    MAKE_TEXT_FOR_KEY(5, 5);
+    MAKE_TEXT_FOR_KEY(6, 6);
+    MAKE_TEXT_FOR_KEY(7, 7);
+    MAKE_TEXT_FOR_KEY(8, 8);
+    MAKE_TEXT_FOR_KEY(9, 9);
+    MAKE_TEXT_FOR_KEY(A, a);
+    MAKE_TEXT_FOR_KEY(B, b);
+    MAKE_TEXT_FOR_KEY(C, c);
+    MAKE_TEXT_FOR_KEY(D, d);
+    MAKE_TEXT_FOR_KEY(E, e);
+    MAKE_TEXT_FOR_KEY(F, f);
+    MAKE_TEXT_FOR_KEY(G, g);
+    MAKE_TEXT_FOR_KEY(H, h);
+    MAKE_TEXT_FOR_KEY(I, i);
+    MAKE_TEXT_FOR_KEY(J, j);
+    MAKE_TEXT_FOR_KEY(K, k);
+    MAKE_TEXT_FOR_KEY(L, l);
+    MAKE_TEXT_FOR_KEY(M, m);
+    MAKE_TEXT_FOR_KEY(N, n);
+    MAKE_TEXT_FOR_KEY(O, o);
+    MAKE_TEXT_FOR_KEY(P, p);
+    MAKE_TEXT_FOR_KEY(Q, q);
+    MAKE_TEXT_FOR_KEY(R, r);
+    MAKE_TEXT_FOR_KEY(S, s);
+    MAKE_TEXT_FOR_KEY(T, t);
+    MAKE_TEXT_FOR_KEY(U, u);
+    MAKE_TEXT_FOR_KEY(V, v);
+    MAKE_TEXT_FOR_KEY(W, w);
+    MAKE_TEXT_FOR_KEY(X, x);
+    MAKE_TEXT_FOR_KEY(Y, y);
+    MAKE_TEXT_FOR_KEY(Z, z);
+
+#undef MAKE_TEXT_FOR_KEY
     }
     return event->text();
 }
@@ -840,8 +888,8 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(QKeyEvent* event, bool useNativeVir
         m_modifiers |= MetaKey;
 
     m_useNativeVirtualKeyAsDOMKey = useNativeVirtualKeyAsDOMKey;
-    m_text = keyTextForKeyEvent(event);
-    m_unmodifiedText = m_text; // FIXME: not correct
+    m_text = keyTextForKeyEvent<false>(event);
+    m_unmodifiedText = keyTextForKeyEvent<true>(event);
     m_keyIdentifier = keyIdentifierForQtKeyCode(event->key());
     m_autoRepeat = event->isAutoRepeat();
     m_isKeypad = (state & Qt::KeypadModifier);
