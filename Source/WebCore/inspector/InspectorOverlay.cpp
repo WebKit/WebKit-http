@@ -338,7 +338,7 @@ static Ref<Inspector::Protocol::OverlayTypes::Quad> buildArrayForQuad(const Floa
 
 static Ref<Inspector::Protocol::OverlayTypes::FragmentHighlightData> buildObjectForHighlight(const Highlight& highlight)
 {
-    auto arrayOfQuads = Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::Quad>::create();
+    auto arrayOfQuads = JSON::ArrayOf<Inspector::Protocol::OverlayTypes::Quad>::create();
     for (auto& quad : highlight.quads)
         arrayOfQuads->addItem(buildArrayForQuad(quad));
 
@@ -415,7 +415,7 @@ void InspectorOverlay::updatePaintRectsTimerFired()
 
 void InspectorOverlay::drawPaintRects()
 {
-    auto arrayOfRects = Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::Rect>::create();
+    auto arrayOfRects = JSON::ArrayOf<Inspector::Protocol::OverlayTypes::Rect>::create();
     for (const auto& pair : m_paintRects)
         arrayOfRects->addItem(buildObjectForRect(pair.second));
 
@@ -427,9 +427,9 @@ void InspectorOverlay::drawGutter()
     evaluateInOverlay(ASCIILiteral("drawGutter"));
 }
 
-static RefPtr<Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::FragmentHighlightData>> buildArrayForRendererFragments(RenderObject* renderer, const HighlightConfig& config)
+static RefPtr<JSON::ArrayOf<Inspector::Protocol::OverlayTypes::FragmentHighlightData>> buildArrayForRendererFragments(RenderObject* renderer, const HighlightConfig& config)
 {
-    auto arrayOfFragments = Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::FragmentHighlightData>::create();
+    auto arrayOfFragments = JSON::ArrayOf<Inspector::Protocol::OverlayTypes::FragmentHighlightData>::create();
 
     Highlight highlight;
     buildRendererHighlight(renderer, config, highlight, InspectorOverlay::CoordinateSystem::View);
@@ -561,7 +561,7 @@ static RefPtr<Inspector::Protocol::OverlayTypes::ElementData> buildObjectForElem
         .release();
 
     if (element.hasClass() && is<StyledElement>(element)) {
-        auto classes = Inspector::Protocol::Array<String>::create();
+        auto classes = JSON::ArrayOf<String>::create();
         HashSet<AtomicString> usedClassNames;
         const SpaceSplitString& classNamesString = downcast<StyledElement>(element).classNames();
         for (size_t i = 0; i < classNamesString.size(); ++i) {
@@ -623,7 +623,7 @@ RefPtr<Inspector::Protocol::OverlayTypes::NodeHighlightData> InspectorOverlay::b
     if (!renderer)
         return nullptr;
 
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::FragmentHighlightData>> arrayOfFragmentHighlights = buildArrayForRendererFragments(renderer, m_nodeHighlightConfig);
+    RefPtr<JSON::ArrayOf<Inspector::Protocol::OverlayTypes::FragmentHighlightData>> arrayOfFragmentHighlights = buildArrayForRendererFragments(renderer, m_nodeHighlightConfig);
     if (!arrayOfFragmentHighlights)
         return nullptr;
 
@@ -643,9 +643,9 @@ RefPtr<Inspector::Protocol::OverlayTypes::NodeHighlightData> InspectorOverlay::b
     return WTFMove(nodeHighlightObject);
 }
 
-Ref<Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::NodeHighlightData>> InspectorOverlay::buildObjectForHighlightedNodes() const
+Ref<JSON::ArrayOf<Inspector::Protocol::OverlayTypes::NodeHighlightData>> InspectorOverlay::buildObjectForHighlightedNodes() const
 {
-    auto highlights = Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::NodeHighlightData>::create();
+    auto highlights = JSON::ArrayOf<Inspector::Protocol::OverlayTypes::NodeHighlightData>::create();
 
     if (m_highlightNode) {
         if (RefPtr<Inspector::Protocol::OverlayTypes::NodeHighlightData> nodeHighlightData = buildHighlightObjectForNode(m_highlightNode.get(), HighlightType::Node))

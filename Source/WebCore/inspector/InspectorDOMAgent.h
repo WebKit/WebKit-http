@@ -111,7 +111,7 @@ public:
 
     // Methods called from the frontend for DOM nodes inspection.
     void querySelector(ErrorString&, int nodeId, const String& selectors, int* elementId) override;
-    void querySelectorAll(ErrorString&, int nodeId, const String& selectors, RefPtr<Inspector::Protocol::Array<int>>& result) override;
+    void querySelectorAll(ErrorString&, int nodeId, const String& selectors, RefPtr<JSON::ArrayOf<int>>& result) override;
     void getDocument(ErrorString&, RefPtr<Inspector::Protocol::DOM::Node>& root) override;
     void requestChildNodes(ErrorString&, int nodeId, const int* const depth) override;
     void setAttributeValue(ErrorString&, int elementId, const String& name, const String& value) override;
@@ -122,13 +122,13 @@ public:
     void getOuterHTML(ErrorString&, int nodeId, WTF::String* outerHTML) override;
     void setOuterHTML(ErrorString&, int nodeId, const String& outerHTML) override;
     void setNodeValue(ErrorString&, int nodeId, const String& value) override;
-    void getEventListenersForNode(ErrorString&, int nodeId, const WTF::String* const objectGroup, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::DOM::EventListener>>& listenersArray) override;
+    void getEventListenersForNode(ErrorString&, int nodeId, const WTF::String* const objectGroup, RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::EventListener>>& listenersArray) override;
     void getAccessibilityPropertiesForNode(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::DOM::AccessibilityProperties>& axProperties) override;
     void performSearch(ErrorString&, const String& whitespaceTrimmedQuery, const JSON::Array* nodeIds, String* searchId, int* resultCount) override;
-    void getSearchResults(ErrorString&, const String& searchId, int fromIndex, int toIndex, RefPtr<Inspector::Protocol::Array<int>>&) override;
+    void getSearchResults(ErrorString&, const String& searchId, int fromIndex, int toIndex, RefPtr<JSON::ArrayOf<int>>&) override;
     void discardSearchResults(ErrorString&, const String& searchId) override;
     void resolveNode(ErrorString&, int nodeId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result) override;
-    void getAttributes(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::Array<String>>& result) override;
+    void getAttributes(ErrorString&, int nodeId, RefPtr<JSON::ArrayOf<String>>& result) override;
     void setInspectModeEnabled(ErrorString&, bool enabled, const JSON::Object* highlightConfig) override;
     void requestNode(ErrorString&, const String& objectId, int* nodeId) override;
     void pushNodeByPathToFrontend(ErrorString&, const String& path, int* nodeId) override;
@@ -229,12 +229,12 @@ private:
     void pushChildNodesToFrontend(int nodeId, int depth = 1);
 
     Ref<Inspector::Protocol::DOM::Node> buildObjectForNode(Node*, int depth, NodeToIdMap*);
-    Ref<Inspector::Protocol::Array<String>> buildArrayForElementAttributes(Element*);
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::DOM::Node>> buildArrayForContainerChildren(Node* container, int depth, NodeToIdMap* nodesMap);
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::DOM::Node>> buildArrayForPseudoElements(const Element&, NodeToIdMap* nodesMap);
+    Ref<JSON::ArrayOf<String>> buildArrayForElementAttributes(Element*);
+    Ref<JSON::ArrayOf<Inspector::Protocol::DOM::Node>> buildArrayForContainerChildren(Node* container, int depth, NodeToIdMap* nodesMap);
+    RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::Node>> buildArrayForPseudoElements(const Element&, NodeToIdMap* nodesMap);
     Ref<Inspector::Protocol::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, const AtomicString& eventType, Node*, const String* objectGroupId);
     RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> buildObjectForAccessibilityProperties(Node*);
-    void processAccessibilityChildren(RefPtr<AccessibilityObject>&&, RefPtr<Inspector::Protocol::Array<int>>&&);
+    void processAccessibilityChildren(RefPtr<AccessibilityObject>&&, RefPtr<JSON::ArrayOf<int>>&&);
     
     Node* nodeForPath(const String& path);
     Node* nodeForObjectId(const String& objectId);
