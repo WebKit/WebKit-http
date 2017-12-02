@@ -2452,7 +2452,7 @@ set(WebCore_SOURCES
     platform/graphics/ImageBuffer.cpp
     platform/graphics/ImageDecoder.cpp
     platform/graphics/ImageFrame.cpp
-    platform/graphics/ImageFrameCache.cpp
+    platform/graphics/ImageSource.cpp
     platform/graphics/ImageOrientation.cpp
     platform/graphics/IntPoint.cpp
     platform/graphics/IntRect.cpp

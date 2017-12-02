@@ -1,3 +1,100 @@
+2017-12-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rename ImageFrameCache to ImageSource
+        https://bugs.webkit.org/show_bug.cgi?id=180172
+
+        Reviewed by Per Arne Vollan.
+
+        This is a follow-up for r225300. ImageSource is the intended name after
+        merging ImageFrameCache and ImageSource.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::BitmapImage):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/ImageFrame.h:
+        * platform/graphics/ImageFrameCache.cpp: Removed.
+        * platform/graphics/ImageFrameCache.h: Removed.
+        * platform/graphics/ImageSource.cpp: Added.
+        (WebCore::ImageSource::ImageSource):
+        (WebCore::ImageSource::~ImageSource):
+        (WebCore::ImageSource::ensureDecoderAvailable):
+        (WebCore::ImageSource::setData):
+        (WebCore::ImageSource::resetData):
+        (WebCore::ImageSource::dataChanged):
+        (WebCore::ImageSource::isAllDataReceived):
+        (WebCore::ImageSource::destroyDecodedData):
+        (WebCore::ImageSource::destroyIncompleteDecodedData):
+        (WebCore::ImageSource::clearFrameBufferCache):
+        (WebCore::ImageSource::decodedSizeChanged):
+        (WebCore::ImageSource::decodedSizeIncreased):
+        (WebCore::ImageSource::decodedSizeDecreased):
+        (WebCore::ImageSource::decodedSizeReset):
+        (WebCore::ImageSource::didDecodeProperties):
+        (WebCore::ImageSource::growFrames):
+        (WebCore::ImageSource::setNativeImage):
+        (WebCore::ImageSource::cacheMetadataAtIndex):
+        (WebCore::ImageSource::cacheNativeImageAtIndex):
+        (WebCore::ImageSource::cacheNativeImageAtIndexAsync):
+        (WebCore::ImageSource::decodingQueue):
+        (WebCore::ImageSource::frameRequestQueue):
+        (WebCore::ImageSource::canUseAsyncDecoding):
+        (WebCore::ImageSource::startAsyncDecodingQueue):
+        (WebCore::ImageSource::requestFrameAsyncDecodingAtIndex):
+        (WebCore::ImageSource::isAsyncDecodingQueueIdle const):
+        (WebCore::ImageSource::stopAsyncDecodingQueue):
+        (WebCore::ImageSource::frameAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::clearMetadata):
+        (WebCore::ImageSource::sourceURL const):
+        (WebCore::ImageSource::mimeType const):
+        (WebCore::ImageSource::expectedContentLength const):
+        (WebCore::ImageSource::metadata):
+        (WebCore::ImageSource::frameMetadataAtIndex):
+        (WebCore::ImageSource::frameMetadataAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::encodedDataStatus):
+        (WebCore::ImageSource::frameCount):
+        (WebCore::ImageSource::repetitionCount):
+        (WebCore::ImageSource::uti):
+        (WebCore::ImageSource::filenameExtension):
+        (WebCore::ImageSource::hotSpot):
+        (WebCore::ImageSource::size):
+        (WebCore::ImageSource::sizeRespectingOrientation):
+        (WebCore::ImageSource::singlePixelSolidColor):
+        (WebCore::ImageSource::maximumSubsamplingLevel):
+        (WebCore::ImageSource::frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex):
+        (WebCore::ImageSource::frameDecodingStatusAtIndex):
+        (WebCore::ImageSource::frameHasAlphaAtIndex):
+        (WebCore::ImageSource::frameHasFullSizeNativeImageAtIndex):
+        (WebCore::ImageSource::frameHasDecodedNativeImageCompatibleWithOptionsAtIndex):
+        (WebCore::ImageSource::frameSubsamplingLevelAtIndex):
+        (WebCore::ImageSource::frameSizeAtIndex):
+        (WebCore::ImageSource::frameBytesAtIndex):
+        (WebCore::ImageSource::frameDurationAtIndex):
+        (WebCore::ImageSource::frameOrientationAtIndex):
+        (WebCore::ImageSource::setTargetContext):
+        (WebCore::ImageSource::createFrameImageAtIndex):
+        (WebCore::ImageSource::frameImageAtIndex):
+        (WebCore::ImageSource::frameImageAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::dump):
+        * platform/graphics/ImageSource.h: Added.
+        (WebCore::ImageSource::create):
+        (WebCore::ImageSource::decodedSize const):
+        (WebCore::ImageSource::destroyAllDecodedData):
+        (WebCore::ImageSource::destroyAllDecodedDataExcludeFrame):
+        (WebCore::ImageSource::destroyDecodedDataBeforeFrame):
+        (WebCore::ImageSource::clearImage):
+        (WebCore::ImageSource::requestFrameAsyncDecodingAtIndex):
+        (WebCore::ImageSource::hasAsyncDecodingQueue const):
+        (WebCore::ImageSource::isSizeAvailable):
+        (WebCore::ImageSource::isDecoderAvailable const):
+        (WebCore::ImageSource::frameAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::ImageFrameRequest::operator== const):
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+        * platform/graphics/cg/GraphicsContext3DCG.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+
 2017-11-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Remove the ImageSource from the class hierarchy that connects BitmapImage to ImageFrame
