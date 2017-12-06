@@ -28,35 +28,33 @@
 
 #pragma once
 
-#include "IntSize.h"
-#include <wtf/MallocPtr.h>
-#include <wtf/Ref.h>
-#include <wtf/ThreadSafeRefCounted.h>
+#include <memory>
+
+namespace WebCore {
+class GraphicsContext;
+}
 
 namespace Nicosia {
 
-class Buffer : public ThreadSafeRefCounted<Buffer> {
+class Buffer;
+
+class PaintingContext {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum Flag {
-        NoFlags = 0,
-        SupportsAlpha = 1 << 0,
-    };
-    using Flags = unsigned;
+    template<typename T>
+    static void paint(Buffer& buffer, const T& paintFunctor)
+    {
+        auto paintingContext = PaintingContext::create(buffer);
+        paintFunctor(paintingContext->graphicsContext());
+    }
 
-    static Ref<Buffer> create(const WebCore::IntSize&, Flags);
-    ~Buffer();
+    virtual ~PaintingContext() = default;
 
-    bool supportsAlpha() const { return m_flags & SupportsAlpha; }
-    const WebCore::IntSize& size() const { return m_size; }
-    int stride() const { return m_size.width() * 4; }
-    unsigned char* data() const { return m_data.get(); }
+protected:
+    virtual WebCore::GraphicsContext& graphicsContext() = 0;
 
 private:
-    Buffer(const WebCore::IntSize&, Flags);
-
-    MallocPtr<unsigned char> m_data;
-    WebCore::IntSize m_size;
-    Flags m_flags;
+    static std::unique_ptr<PaintingContext> create(Buffer&);
 };
 
 } // namespace Nicosia

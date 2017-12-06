@@ -1,3 +1,79 @@
+2017-12-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Introduce Nicosia::PaintingContext, add Cairo implementation
+        https://bugs.webkit.org/show_bug.cgi?id=180239
+
+        Reviewed by Michael Catanzaro.
+
+        As the next step in the Nicosia abstraction formation, we introduce
+        Nicosia::PaintingContext. Implementations of this class will leverage a
+        chosen 2D graphics library to paint (through GraphicsContext) into the
+        memory area that's specified by a given Nicosia::Buffer object.
+
+        Nicosia::Buffer is slimmed down to only control the memory that's
+        required for rasterization of an RGBA32 painting output. It mimics the
+        Cairo ImageBuffer implementation by using FastMalloc to allocate the
+        necessary memory. In the future this class might become an interface of
+        which different implementations will be providing memory that's
+        allocated through different ways. For instance, when GLES3 is available,
+        it would be possible to map GPU memory into the process memory space and
+        rasterize into that, effectively eliminating need for GPU uploads.
+
+        Since the ImageBuffer use in Nicosia::Buffer is dropped, the context()
+        and uploadImage() methods are also removed. The functionality of
+        ImageBuffer that was leveraged for CoordinatedGraphics rasterization
+        still remains used through the PaintingContextCairo implementation. In
+        the constructor of that class, with the target Nicosia::Buffer provided,
+        we construct the cairo_surface_t and cairo_t objects that are necessary
+        to create a combination of PlatformContextCairo and GraphicsContext
+        objects that we can then use for rasterization.
+
+        Reference of the passed-in Nicosia::Buffer object is increased for the
+        lifetime of the cairo_surface_t object that will be drawing into that
+        buffer's memory area. This ensures the memory area doesn't disappear
+        from a live cairo_surface_t. Still, the expectation is that the
+        cairo_surface_t object won't outlive the PaintingContextCairo object's
+        lifetime, since the cairo_t object is also managed here and deleted in
+        the destructor. To test that, we use a cairo_surface_t user data key
+        that in its destroy callback dereferences the Nicosia::Buffer object and
+        also marks the deletion process for the related PaintingContextCairo
+        object as complete. This m_deletionComplete value is tested in the
+        destructor of the class, once all the Cairo references are nulled out.
+
+        The PaintingContext objects should be limited to a single scope,
+        enabling the implementation resources to assume that the lifetime of the
+        implementation object won't extend outside of the scope where it was
+        created. To ensure that, the PaintingContext::paint() static function is
+        added that creates the PaintingContext object and then executes the
+        passed-in functor, passing it the GraphicsContext that should be used
+        for drawing. Drawing is thus limited to that functor only, and the
+        PaintingContext's create() function and the virtual graphicsContext()
+        are not made public in the class.
+
+        No new tests -- no change in functionality.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaBuffer.cpp:
+        (Nicosia::Buffer::Buffer):
+        (Nicosia::Buffer::context): Deleted.
+        (Nicosia::Buffer::uploadImage): Deleted.
+        * platform/graphics/nicosia/NicosiaBuffer.h:
+        (Nicosia::Buffer::stride const):
+        (Nicosia::Buffer::data const):
+        * platform/graphics/nicosia/NicosiaPaintingContext.cpp: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaBuffer.cpp.
+        (Nicosia::PaintingContext::create):
+        * platform/graphics/nicosia/NicosiaPaintingContext.h: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaBuffer.cpp.
+        (Nicosia::PaintingContext::paint):
+        * platform/graphics/nicosia/NicosiaPaintingContextCairo.cpp: Added.
+        (Nicosia::PaintingContextCairo::PaintingContextCairo):
+        (Nicosia::PaintingContextCairo::~PaintingContextCairo):
+        (Nicosia::PaintingContextCairo::graphicsContext):
+        * platform/graphics/nicosia/NicosiaPaintingContextCairo.h: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaBuffer.h.
+        * platform/graphics/nicosia/NicosiaPaintingEngineBasic.cpp:
+        (Nicosia::PaintingEngineBasic::paint):
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+
 2017-12-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Rename ImageFrameCache to ImageSource

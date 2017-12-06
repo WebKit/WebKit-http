@@ -28,35 +28,42 @@
 
 #pragma once
 
-#include "IntSize.h"
-#include <wtf/MallocPtr.h>
-#include <wtf/Ref.h>
-#include <wtf/ThreadSafeRefCounted.h>
+#include "NicosiaPaintingContext.h"
+
+#if USE(CAIRO)
+
+#include <wtf/RefPtr.h>
+
+typedef struct _cairo cairo_t;
+typedef struct _cairo_surface cairo_surface_t;
+
+namespace WebCore {
+class GraphicsContext;
+class PlatformContextCairo;
+}
 
 namespace Nicosia {
 
-class Buffer : public ThreadSafeRefCounted<Buffer> {
+class PaintingContextCairo final : public PaintingContext {
 public:
-    enum Flag {
-        NoFlags = 0,
-        SupportsAlpha = 1 << 0,
-    };
-    using Flags = unsigned;
-
-    static Ref<Buffer> create(const WebCore::IntSize&, Flags);
-    ~Buffer();
-
-    bool supportsAlpha() const { return m_flags & SupportsAlpha; }
-    const WebCore::IntSize& size() const { return m_size; }
-    int stride() const { return m_size.width() * 4; }
-    unsigned char* data() const { return m_data.get(); }
+    explicit PaintingContextCairo(Buffer&);
+    virtual ~PaintingContextCairo();
 
 private:
-    Buffer(const WebCore::IntSize&, Flags);
+    WebCore::GraphicsContext& graphicsContext() override;
 
-    MallocPtr<unsigned char> m_data;
-    WebCore::IntSize m_size;
-    Flags m_flags;
+    struct {
+        RefPtr<cairo_surface_t> surface;
+        RefPtr<cairo_t> context;
+    } m_cairo;
+    std::unique_ptr<WebCore::PlatformContextCairo> m_platformContext;
+    std::unique_ptr<WebCore::GraphicsContext> m_graphicsContext;
+
+#ifndef NDEBUG
+    bool m_deletionComplete { false };
+#endif
 };
 
 } // namespace Nicosia
+
+#endif // USE(CAIRO)

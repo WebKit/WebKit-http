@@ -26,37 +26,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#include "config.h"
+#include "NicosiaPaintingContext.h"
 
-#include "IntSize.h"
-#include <wtf/MallocPtr.h>
-#include <wtf/Ref.h>
-#include <wtf/ThreadSafeRefCounted.h>
+#if USE(CAIRO)
+#include "NicosiaPaintingContextCairo.h"
+#endif
 
 namespace Nicosia {
 
-class Buffer : public ThreadSafeRefCounted<Buffer> {
-public:
-    enum Flag {
-        NoFlags = 0,
-        SupportsAlpha = 1 << 0,
-    };
-    using Flags = unsigned;
-
-    static Ref<Buffer> create(const WebCore::IntSize&, Flags);
-    ~Buffer();
-
-    bool supportsAlpha() const { return m_flags & SupportsAlpha; }
-    const WebCore::IntSize& size() const { return m_size; }
-    int stride() const { return m_size.width() * 4; }
-    unsigned char* data() const { return m_data.get(); }
-
-private:
-    Buffer(const WebCore::IntSize&, Flags);
-
-    MallocPtr<unsigned char> m_data;
-    WebCore::IntSize m_size;
-    Flags m_flags;
-};
+std::unique_ptr<PaintingContext> PaintingContext::create(Buffer& buffer)
+{
+#if USE(CAIRO)
+    return std::unique_ptr<PaintingContext>(new PaintingContextCairo(buffer));
+#else
+#error A Nicosia::PaintingContext implementation is required.
+#endif
+}
 
 } // namespace Nicosia
