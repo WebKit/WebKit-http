@@ -36,6 +36,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Threading.h>
+#include "MemoryCache.h"
 
 namespace JSC {
 class VM;
