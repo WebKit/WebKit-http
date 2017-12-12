@@ -1,3 +1,57 @@
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Move UpdateAtlas, AreaAllocator into the platform layer
+        https://bugs.webkit.org/show_bug.cgi?id=180641
+
+        Reviewed by Michael Catanzaro.
+
+        Move the UpdateAtlas and AreaAllocator classes and their source files
+        into the platform layer. This still means using the WebCore namespace,
+        but apart from that these two classes have no dependency on anything in
+        the WebKit layer, so they can be moved from there.
+
+        No new tests -- no change in functionality.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/texmap/coordinated/AreaAllocator.cpp: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp.
+        (WebCore::AreaAllocator::AreaAllocator):
+        (WebCore::AreaAllocator::~AreaAllocator):
+        (WebCore::AreaAllocator::expand):
+        (WebCore::AreaAllocator::expandBy):
+        (WebCore::AreaAllocator::release):
+        (WebCore::AreaAllocator::overhead const):
+        (WebCore::AreaAllocator::roundAllocation const):
+        (WebCore::GeneralAreaAllocator::GeneralAreaAllocator):
+        (WebCore::GeneralAreaAllocator::~GeneralAreaAllocator):
+        (WebCore::GeneralAreaAllocator::freeNode):
+        (WebCore::GeneralAreaAllocator::expand):
+        (WebCore::fitsWithin):
+        (WebCore::GeneralAreaAllocator::allocate):
+        (WebCore::GeneralAreaAllocator::allocateFromNode):
+        (WebCore::GeneralAreaAllocator::splitNode):
+        (WebCore::GeneralAreaAllocator::updateLargestFree):
+        (WebCore::GeneralAreaAllocator::release):
+        (WebCore::GeneralAreaAllocator::overhead const):
+        * platform/graphics/texmap/coordinated/AreaAllocator.h: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.h.
+        (WebCore::nextPowerOfTwo):
+        (WebCore::AreaAllocator::size const):
+        (WebCore::AreaAllocator::minimumAllocation const):
+        (WebCore::AreaAllocator::setMinimumAllocation):
+        (WebCore::AreaAllocator::margin const):
+        (WebCore::AreaAllocator::setMargin):
+        * platform/graphics/texmap/coordinated/UpdateAtlas.cpp: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp.
+        (WebCore::UpdateAtlas::UpdateAtlas):
+        (WebCore::UpdateAtlas::~UpdateAtlas):
+        (WebCore::UpdateAtlas::buildLayoutIfNeeded):
+        (WebCore::UpdateAtlas::didSwapBuffers):
+        (WebCore::UpdateAtlas::getCoordinatedBuffer):
+        * platform/graphics/texmap/coordinated/UpdateAtlas.h: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h.
+        (WebCore::UpdateAtlas::size const):
+        (WebCore::UpdateAtlas::supportsAlpha const):
+        (WebCore::UpdateAtlas::addTimeInactive):
+        (WebCore::UpdateAtlas::isInactive const):
+        (WebCore::UpdateAtlas::isInUse const):
+
 2017-12-06  Zan Dobersek  <zdobersek@igalia.com>
 
         [CoordGraphics] Introduce Nicosia::PaintingContext, add Cairo implementation

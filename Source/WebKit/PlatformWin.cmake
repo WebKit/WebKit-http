@@ -19,6 +19,29 @@ list(APPEND WebKit_SOURCES
 
     StorageProcess/win/StorageProcessMainWin.cpp
 
+    WebProcess/Cookies/curl/WebCookieManagerCurl.cpp
+
+    WebProcess/InjectedBundle/win/InjectedBundleWin.cpp
+
+    WebProcess/MediaCache/WebMediaKeyStorageManager.cpp
+
+    WebProcess/Plugins/Netscape/win/PluginProxyWin.cpp
+
+    WebProcess/WebCoreSupport/win/WebContextMenuClientWin.cpp
+    WebProcess/WebCoreSupport/win/WebFrameNetworkingContext.cpp
+    WebProcess/WebCoreSupport/win/WebPopupMenuWin.cpp
+
+    WebProcess/WebPage/AcceleratedDrawingArea.cpp
+    WebProcess/WebPage/AcceleratedSurface.cpp
+    WebProcess/WebPage/DrawingAreaImpl.cpp
+
+    WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
+    WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
+    WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+
+    WebProcess/WebPage/win/WebInspectorUIWin.cpp
+    WebProcess/WebPage/win/WebPageWin.cpp
+
     WebProcess/win/WebProcessMainWin.cpp
 )
 
