@@ -1,5 +1,27 @@
 2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Cairo::clipToImageBuffer() should operate on a cairo_surface_t
+        https://bugs.webkit.org/show_bug.cgi?id=180665
+
+        Reviewed by Michael Catanzaro.
+
+        Have the Cairo::clipToImageBuffer() function in the CairoUtilities code
+        operate on a cairo_surface_t object, instead of an Image object.
+
+        Call site in GraphicsContext::clipToImageBuffer() is adjusted to first
+        ensure a non-null Image object, and then retrieve a cairo_surface_t
+        object from that, passing it on to Cairo::clipToImageBuffer().
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::clipToImageBuffer):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::clipToImageBuffer):
+
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
         [Cairo] Don't use a static cairo_surface_t object for CairoPath contexts
         https://bugs.webkit.org/show_bug.cgi?id=180663
 
