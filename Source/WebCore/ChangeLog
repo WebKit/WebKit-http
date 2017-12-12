@@ -1,5 +1,30 @@
 2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
 
+        [Cairo] Don't use a static cairo_surface_t object for CairoPath contexts
+        https://bugs.webkit.org/show_bug.cgi?id=180663
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of using a single cairo_surface_t object and sharing it between
+        different cairo_t objects handled by CairoPath, create a new mock 1x1px
+        alpha-only surface for each cairo_t object that's allocated in the
+        CairoPath constructor.
+
+        This avoids potential issues in how Cairo's state handling internally
+        uses these surfaces, which is completely opaque to us and out of our
+        control. This also avoids crashes when using this one cairo_surface_t
+        object through different CairoPath objects across different threads.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/PlatformPathCairo.cpp:
+        (WebCore::CairoPath::CairoPath):
+        (WebCore::pathSurface): Deleted.
+        * platform/graphics/cairo/PlatformPathCairo.h:
+        (WebCore::CairoPath::context):
+
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
         [CoordGraphics] Move UpdateAtlas, AreaAllocator into the platform layer
         https://bugs.webkit.org/show_bug.cgi?id=180641
 
