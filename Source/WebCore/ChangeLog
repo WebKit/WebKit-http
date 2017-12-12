@@ -1,3 +1,20 @@
+2017-12-12  Christopher Reid  <chris.reid@sony.com>
+
+        WebGL TextureMapperShaderProgram shaders don't compile in MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=180709
+
+        Reviewed by Myles C. Maxfield.
+
+        No new tests, no change in behavior.
+
+        Vertex and Fragment shaders were not compiling because TextureMapperShaderProgram.cpp was
+        stringifying "#if USE(OPENGL_ES_2) ... #endif" into the shaders rather than evaluating these
+        preprocessor directives before the STRINGIFY expansion.
+
+        Moved these #if conditions outside of STRINGIFY to remove compiler ambiguity.
+
+        * platform/graphics/texmap/TextureMapperShaderProgram.cpp:
+
 2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
 
         [Cairo] Cairo::clipToImageBuffer() should operate on a cairo_surface_t
