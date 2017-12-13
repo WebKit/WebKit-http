@@ -820,9 +820,11 @@ const static HashSet<AtomicString>& codecSet()
             Vector<AtomicString> webkitCodecs;
         };
 
-        std::array<GstCapsWebKitMapping, 7> mapping = { {
+        std::array<GstCapsWebKitMapping, 8> mapping = { {
             { VideoDecoder, "video/x-h264,  profile=(string){ constrained-baseline, baseline }", { "x-h264" } },
             { VideoDecoder, "video/x-h264, stream-format=avc", { "avc*"} },
+            // An autoplugged h264parse in decodebin can convert from byte-stream to avc.
+            { VideoDecoder, "video/x-h264, stream-format=byte-stream", { "avc*"} },
             { VideoDecoder, "video/mpeg, mpegversion=(int){1,2}, systemstream=(boolean)false", { "mpeg" } },
             { VideoDecoder, "video/x-vp8", { "vp8", "x-vp8" } },
             { VideoDecoder, "video/x-vp9", { "vp9", "x-vp9" } },
