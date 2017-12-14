@@ -132,7 +132,15 @@ WEBKIT_OPTION_BEGIN()
 
 if (APPLE)
     option(MACOS_FORCE_SYSTEM_XML_LIBRARIES "Use system installation of libxml2 and libxslt on macOS" ON)
+    option(MACOS_USE_SYSTEM_ICU "Use system installation of ICU on macOS" ON)
+    option(USE_UNIX_DOMAIN_SOCKETS "Use Unix domain sockets instead of native IPC code on macOS" OFF)
+    option(USE_APPSTORE_COMPLIANT_CODE "Avoid using private macOS APIs which are not allowed on App Store (experimental)" OFF)
     set(MACOS_BUILD_FRAMEWORKS ON) # TODO: Make it an option
+
+    if (USE_APPSTORE_COMPLIANT_CODE)
+        set(MACOS_USE_SYSTEM_ICU OFF)
+        set(USE_UNIX_DOMAIN_SOCKETS ON)
+    endif ()
 endif ()
 
 if (WIN32 OR APPLE)
@@ -415,15 +423,19 @@ else ()
     set(ZLIB_FOUND 1)
 endif ()
 
-if (NOT APPLE)
-    find_package(ICU REQUIRED)
-else ()
+if (MACOS_USE_SYSTEM_ICU)
+    # Use system ICU library and bundled headers
     set(ICU_INCLUDE_DIRS
         "${WEBCORE_DIR}/icu"
         "${JAVASCRIPTCORE_DIR}/icu"
         "${WTF_DIR}/icu"
     )
     set(ICU_LIBRARIES libicucore.dylib)
+else ()
+    find_package(ICU REQUIRED)
+endif ()
+
+if (APPLE)
     find_library(COREFOUNDATION_LIBRARY CoreFoundation)
     if (QT_STATIC_BUILD)
         find_library(CARBON_LIBRARY Carbon)
@@ -508,7 +520,7 @@ endif ()
 
 # Mach ports and Unix sockets are currently used by WK2, but their USE() values
 # affect building WorkQueue
-if (APPLE)
+if (APPLE AND NOT USE_UNIX_DOMAIN_SOCKETS)
     SET_AND_EXPOSE_TO_BUILD(USE_MACH_PORTS 1) # Qt-specific
 elseif (UNIX)
     SET_AND_EXPOSE_TO_BUILD(USE_UNIX_DOMAIN_SOCKETS 1)
