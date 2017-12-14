@@ -39,8 +39,12 @@ build_pass|!debug_and_release {
     !qtConfig(system-jpeg):exists($$QTBASE_DIR) {
         CMAKE_CONFIG += \
             QT_BUNDLED_JPEG=1 \
-            JPEG_INCLUDE_DIR=$$QTBASE_DIR/src/3rdparty/libjpeg \
             JPEG_LIBRARIES=$$staticLibPath(qtjpeg)
+
+        exists($$QTBASE_DIR/src/3rdparty/libjpeg/src/jpeglib.h): \
+            CMAKE_CONFIG += JPEG_INCLUDE_DIR=$$QTBASE_DIR/src/3rdparty/libjpeg/src
+        else: \
+            CMAKE_CONFIG += JPEG_INCLUDE_DIR=$$QTBASE_DIR/src/3rdparty/libjpeg
     }
 
     !qtConfig(system-png):qtConfig(png):exists($$QTBASE_DIR) {
