@@ -49,6 +49,7 @@
 #include "PlatformWheelEvent.h"
 #include "RenderWidget.h"
 #include "Scrollbar.h"
+#include <QCoreApplication>
 
 namespace WebCore {
 
@@ -127,7 +128,7 @@ unsigned EventHandler::accessKeyModifiers()
     // to the Command keys on the keyboard,
     // and the MetaModifier value corresponds to the Control keys.
     // See http://doc.qt.io/qt-5/qt.html#KeyboardModifier-enum
-    if (QCoreApplication::testAttribute(Qt::AA_MacDontSwapCtrlAndMeta))
+    if (UNLIKELY(QCoreApplication::testAttribute(Qt::AA_MacDontSwapCtrlAndMeta)))
         return PlatformEvent::CtrlKey | PlatformEvent::AltKey;
     else
         return PlatformEvent::MetaKey | PlatformEvent::AltKey;
