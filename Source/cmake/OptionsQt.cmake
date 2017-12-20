@@ -409,6 +409,19 @@ if (NOT QT_BUNDLED_JPEG)
     find_package(JPEG REQUIRED)
 else ()
     set(JPEG_FOUND 1)
+    # As of Qt 5.10, libjpeg-turbo shipped as a part of Qt requires using a few macro definitions
+    # WARNING: Keep in sync with libjpeg.pri
+    # FIXME: Change Qt so we can avoid this
+    include(CheckTypeSize)
+    check_type_size(size_t _SIZEOF_SIZE_T)
+    set(JPEG_DEFINITIONS
+        -DC_ARITH_CODING_SUPPORTED=1
+        -DD_ARITH_CODING_SUPPORTED=1
+        -DBITS_IN_JSAMPLE=8
+        -DJPEG_LIB_VERSION=80
+        -DSIZEOF_SIZE_T=${_SIZEOF_SIZE_T}
+    )
+    unset(_SIZEOF_SIZE_T)
 endif ()
 
 if (NOT QT_BUNDLED_PNG)
