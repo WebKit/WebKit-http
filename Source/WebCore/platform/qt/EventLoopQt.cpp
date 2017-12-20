@@ -26,7 +26,7 @@ namespace WebCore {
 
 void EventLoop::cycle()
 {
-    QCoreApplication::processEvents();
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents);
 }
 
 } // namespace WebCore
