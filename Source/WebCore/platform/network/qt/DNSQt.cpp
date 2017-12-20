@@ -24,6 +24,7 @@
 #include <QHostInfo>
 #include <QObject>
 #include <QString>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -34,7 +35,7 @@ public:
     DnsPrefetchHelper() : QObject() { }
 
 public Q_SLOTS:
-    void lookup(QString hostname)
+    void lookup(const String& hostname)
     {
         if (hostname.isEmpty()) {
             DNSResolveQueue::singleton().decrementRequestCount();
@@ -71,8 +72,8 @@ void DNSResolveQueue::updateIsUsingProxy()
 // This is called by the platform-independent DNSResolveQueue.
 void DNSResolveQueue::platformResolve(const String& hostname)
 {
-    static DnsPrefetchHelper dnsPrefetchHelper;
-    dnsPrefetchHelper.lookup(QString(hostname));
+    static NeverDestroyed<DnsPrefetchHelper> dnsPrefetchHelper;
+    dnsPrefetchHelper.get().lookup(hostname);
 }
 
 } // namespace
