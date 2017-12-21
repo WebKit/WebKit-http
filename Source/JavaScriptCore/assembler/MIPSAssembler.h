@@ -149,10 +149,6 @@ typedef enum {
     f31
 } FPRegisterID;
 
-typedef enum {
-    fcsr = 31
-} CSRegisterID;
-
 } // namespace MIPSRegisters
 
 class MIPSAssembler {
@@ -160,7 +156,6 @@ public:
     typedef MIPSRegisters::RegisterID RegisterID;
     typedef MIPSRegisters::SPRegisterID SPRegisterID;
     typedef MIPSRegisters::FPRegisterID FPRegisterID;
-    typedef MIPSRegisters::CSRegisterID CSRegisterID;
     typedef SegmentedVector<AssemblerLabel, 64> Jumps;
 
     static constexpr RegisterID firstRegister() { return MIPSRegisters::r0; }
@@ -614,12 +609,6 @@ public:
     void mfc1(RegisterID rt, FPRegisterID fs)
     {
         emitInst(0x44000000 | (fs << OP_SH_FS) | (rt << OP_SH_RT));
-        copDelayNop();
-    }
-
-    void cfc1(RegisterID rt, CSRegisterID fs)
-    {
-        emitInst(0x44400000 | (rt << OP_SH_RT) | (fs << OP_SH_FS));
         copDelayNop();
     }
 
