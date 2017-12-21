@@ -83,6 +83,10 @@ bool QWebPreferencesPrivate::testAttribute(QWebPreferencesPrivate::WebAttribute 
         return WKPreferencesGetUniversalAccessFromFileURLsAllowed(preferencesRef);
     case FileAccessFromFileURLsAllowed:
         return WKPreferencesGetFileAccessFromFileURLsAllowed(preferencesRef);
+    case LogsPageMessagesToSystemConsoleEnabled:
+        return WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(preferencesRef);
+    case WebSecurityEnabled:
+        return WKPreferencesGetWebSecurityEnabled(preferencesRef);
     default:
         ASSERT_NOT_REACHED();
         return false;
@@ -155,6 +159,12 @@ void QWebPreferencesPrivate::setAttribute(QWebPreferencesPrivate::WebAttribute a
         break;
     case FileAccessFromFileURLsAllowed:
         WKPreferencesSetFileAccessFromFileURLsAllowed(preferencesRef, enable);
+        break;
+    case LogsPageMessagesToSystemConsoleEnabled:
+        WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(preferencesRef, enable);
+        break;
+    case WebSecurityEnabled:
+        WKPreferencesSetWebSecurityEnabled(preferencesRef, enable);
         break;
     default:
         ASSERT_NOT_REACHED();
@@ -629,6 +639,32 @@ void QWebPreferences::setLinksIncludedInFocusChain(bool enable)
         return;
     d->setAttribute(QWebPreferencesPrivate::LinksIncludedInFocusChain, enable);
     emit linksIncludedInFocusChainChanged();
+}
+
+bool QWebPreferences::logsPageMessagesToSystemConsoleEnabled() const
+{
+    return d->testAttribute(QWebPreferencesPrivate::LogsPageMessagesToSystemConsoleEnabled);
+}
+
+void QWebPreferences::setLogsPageMessagesToSystemConsoleEnabled(bool enable)
+{
+    if (logsPageMessagesToSystemConsoleEnabled() == enable)
+        return;
+    d->setAttribute(QWebPreferencesPrivate::LogsPageMessagesToSystemConsoleEnabled, enable);
+    emit logsPageMessagesToSystemConsoleEnabledChanged();
+}
+
+bool QWebPreferences::webSecurityEnabled() const
+{
+    return d->testAttribute(QWebPreferencesPrivate::WebSecurityEnabled);
+}
+
+void QWebPreferences::setWebSecurityEnabled(bool enable)
+{
+    if (webSecurityEnabled() == enable)
+        return;
+    d->setAttribute(QWebPreferencesPrivate::WebSecurityEnabled, enable);
+    emit webSecurityEnabledChanged();
 }
 
 QWebPreferencesPrivate* QWebPreferencesPrivate::get(QWebPreferences* preferences)

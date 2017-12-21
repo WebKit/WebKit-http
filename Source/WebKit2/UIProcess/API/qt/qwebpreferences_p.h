@@ -51,6 +51,8 @@ public:
     Q_PROPERTY(bool fileAccessFromFileURLsAllowed READ fileAccessFromFileURLsAllowed WRITE setFileAccessFromFileURLsAllowed NOTIFY fileAccessFromFileURLsAllowedChanged FINAL)
     Q_PROPERTY(bool spatialNavigationEnabled READ spatialNavigationEnabled WRITE setSpatialNavigationEnabled NOTIFY spatialNavigationEnabledChanged FINAL)
     Q_PROPERTY(bool linksIncludedInFocusChain READ linksIncludedInFocusChain WRITE setLinksIncludedInFocusChain NOTIFY linksIncludedInFocusChainChanged FINAL)
+    Q_PROPERTY(bool logsPageMessagesToSystemConsoleEnabled READ logsPageMessagesToSystemConsoleEnabled WRITE setLogsPageMessagesToSystemConsoleEnabled NOTIFY logsPageMessagesToSystemConsoleEnabledChanged FINAL)
+    Q_PROPERTY(bool webSecurityEnabled READ webSecurityEnabled WRITE setWebSecurityEnabled NOTIFY webSecurityEnabledChanged FINAL)
 
     Q_PROPERTY(QString standardFontFamily READ standardFontFamily WRITE setStandardFontFamily NOTIFY standardFontFamilyChanged FINAL)
     Q_PROPERTY(QString fixedFontFamily READ fixedFontFamily WRITE setFixedFontFamily NOTIFY fixedFontFamilyChanged FINAL)
@@ -123,6 +125,12 @@ public:
     bool linksIncludedInFocusChain() const;
     void setLinksIncludedInFocusChain(bool enable);
 
+    bool logsPageMessagesToSystemConsoleEnabled() const;
+    void setLogsPageMessagesToSystemConsoleEnabled(bool);
+
+    bool webSecurityEnabled() const;
+    void setWebSecurityEnabled(bool);
+
     QString standardFontFamily() const;
     void setStandardFontFamily(const QString& family);
 
@@ -171,6 +179,8 @@ Q_SIGNALS:
     void linksIncludedInFocusChainChanged();
     void universalAccessFromFileURLsAllowedChanged();
     void fileAccessFromFileURLsAllowedChanged();
+    void logsPageMessagesToSystemConsoleEnabledChanged();
+    void webSecurityEnabledChanged();
 
     void standardFontFamilyChanged();
     void fixedFontFamilyChanged();
