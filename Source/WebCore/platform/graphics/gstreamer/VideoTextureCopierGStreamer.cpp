@@ -152,7 +152,6 @@ bool VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture(GLuint input
 
     // Save previous context and activate the sharing one.
     GLContext* previousContext = GLContext::current();
-    ASSERT(previousContext);
     PlatformDisplay::sharedDisplayForCompositing().sharingGLContext()->makeContextCurrent();
 
     // Save previous bound framebuffer, texture and viewport.
@@ -212,7 +211,8 @@ bool VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture(GLuint input
     bool ok = (glGetError() == GL_NO_ERROR);
 
     // Restore previous context.
-    previousContext->makeContextCurrent();
+    if (previousContext)
+        previousContext->makeContextCurrent();
     return ok;
 }
 
