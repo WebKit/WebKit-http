@@ -27,6 +27,18 @@
 #include <QNetworkRequest>
 #include <QUrl>
 
+// HTTP/2 is implemented since Qt 5.8, but QTBUG-64359 makes it unusable in browser
+#if QT_VERSION >= QT_VERSION_CHECK(5, 9, 4)
+#define USE_HTTP2 1
+#endif
+
+// HTTP2AllowedAttribute enforces HTTP/2 instead of negotiating, see QTBUG-61397
+#if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
+#define HTTP2_IS_BUGGY_WITHOUT_HTTPS 1
+#else
+#define HTTP2_IS_BUGGY_WITHOUT_HTTPS 0
+#endif
+
 namespace WebCore {
 
 // The limit can be found in qhttpnetworkconnection.cpp.
@@ -57,15 +69,19 @@ static inline QByteArray stringToByteArray(const String& string)
 QNetworkRequest ResourceRequest::toNetworkRequest(NetworkingContext *context) const
 {
     QNetworkRequest request;
-    QUrl newurl = toQUrl(url());
-    request.setUrl(newurl);
+    const URL& originalUrl = url();
+    request.setUrl(toQUrl(originalUrl));
     request.setOriginatingObject(context ? context->originatingObject() : 0);
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-    // HTTP2AllowedAttribute enforces HTTP/2 instead of negotiating, see QTBUG-61397
-    if (newurl.scheme().toLower() == QLatin1String("https"))
-        request.setAttribute(QNetworkRequest::HTTP2AllowedAttribute, true);
+#if USE(HTTP2)
+#if HTTP2_IS_BUGGY_WITHOUT_HTTPS
+    if (originalUrl.protocolIs("https"))
 #endif
+    {
+        request.setAttribute(QNetworkRequest::HTTP2AllowedAttribute, true);
+    }
+#endif // USE(HTTP2)
+
 
     const HTTPHeaderMap &headers = httpHeaderFields();
     for (HTTPHeaderMap::const_iterator it = headers.begin(), end = headers.end();

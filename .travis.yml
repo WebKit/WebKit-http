@@ -4,5 +4,6 @@ python: "2.7"
 sudo: false
 git:
   depth: 3
-script: Tools/Scripts/check-webkit-style -g qtwebkit-stable..
+  sparse_checkout: .travis-sparse-checkout
+script: Tools/Scripts/check-webkit-style -g origin/qtwebkit-stable..
 install: true

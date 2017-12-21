@@ -49,6 +49,7 @@
 #include "PlatformWheelEvent.h"
 #include "RenderWidget.h"
 #include "Scrollbar.h"
+#include <QCoreApplication>
 
 namespace WebCore {
 
@@ -123,7 +124,14 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
 unsigned EventHandler::accessKeyModifiers()
 {
 #if OS(DARWIN)
-    return PlatformEvent::CtrlKey | PlatformEvent::AltKey;
+    // On macOS, the ControlModifier value corresponds
+    // to the Command keys on the keyboard,
+    // and the MetaModifier value corresponds to the Control keys.
+    // See http://doc.qt.io/qt-5/qt.html#KeyboardModifier-enum
+    if (UNLIKELY(QCoreApplication::testAttribute(Qt::AA_MacDontSwapCtrlAndMeta)))
+        return PlatformEvent::CtrlKey | PlatformEvent::AltKey;
+    else
+        return PlatformEvent::MetaKey | PlatformEvent::AltKey;
 #else
     return PlatformEvent::AltKey;
 #endif

@@ -132,7 +132,15 @@ WEBKIT_OPTION_BEGIN()
 
 if (APPLE)
     option(MACOS_FORCE_SYSTEM_XML_LIBRARIES "Use system installation of libxml2 and libxslt on macOS" ON)
+    option(MACOS_USE_SYSTEM_ICU "Use system installation of ICU on macOS" ON)
+    option(USE_UNIX_DOMAIN_SOCKETS "Use Unix domain sockets instead of native IPC code on macOS" OFF)
+    option(USE_APPSTORE_COMPLIANT_CODE "Avoid using private macOS APIs which are not allowed on App Store (experimental)" OFF)
     set(MACOS_BUILD_FRAMEWORKS ON) # TODO: Make it an option
+
+    if (USE_APPSTORE_COMPLIANT_CODE)
+        set(MACOS_USE_SYSTEM_ICU OFF)
+        set(USE_UNIX_DOMAIN_SOCKETS ON)
+    endif ()
 endif ()
 
 if (WIN32 OR APPLE)
@@ -388,6 +396,7 @@ if (SQLITE3_SOURCE_DIR)
     add_library(qtsqlite STATIC ${SQLITE_SOURCE_FILE})
     target_compile_definitions(qtsqlite PUBLIC -DSQLITE_CORE -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_COMPLETE)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(qtsqlite)
+    QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT(qtsqlite)
     set(SQLITE_LIBRARIES qtsqlite)
     set(SQLITE_FOUND 1)
 else ()
@@ -400,6 +409,19 @@ if (NOT QT_BUNDLED_JPEG)
     find_package(JPEG REQUIRED)
 else ()
     set(JPEG_FOUND 1)
+    # As of Qt 5.10, libjpeg-turbo shipped as a part of Qt requires using a few macro definitions
+    # WARNING: Keep in sync with libjpeg.pri
+    # FIXME: Change Qt so we can avoid this
+    include(CheckTypeSize)
+    check_type_size(size_t _SIZEOF_SIZE_T)
+    set(JPEG_DEFINITIONS
+        -DC_ARITH_CODING_SUPPORTED=1
+        -DD_ARITH_CODING_SUPPORTED=1
+        -DBITS_IN_JSAMPLE=8
+        -DJPEG_LIB_VERSION=80
+        -DSIZEOF_SIZE_T=${_SIZEOF_SIZE_T}
+    )
+    unset(_SIZEOF_SIZE_T)
 endif ()
 
 if (NOT QT_BUNDLED_PNG)
@@ -414,15 +436,19 @@ else ()
     set(ZLIB_FOUND 1)
 endif ()
 
-if (NOT APPLE)
-    find_package(ICU REQUIRED)
-else ()
+if (MACOS_USE_SYSTEM_ICU)
+    # Use system ICU library and bundled headers
     set(ICU_INCLUDE_DIRS
         "${WEBCORE_DIR}/icu"
         "${JAVASCRIPTCORE_DIR}/icu"
         "${WTF_DIR}/icu"
     )
     set(ICU_LIBRARIES libicucore.dylib)
+else ()
+    find_package(ICU REQUIRED)
+endif ()
+
+if (APPLE)
     find_library(COREFOUNDATION_LIBRARY CoreFoundation)
     if (QT_STATIC_BUILD)
         find_library(CARBON_LIBRARY Carbon)
@@ -507,7 +533,7 @@ endif ()
 
 # Mach ports and Unix sockets are currently used by WK2, but their USE() values
 # affect building WorkQueue
-if (APPLE)
+if (APPLE AND NOT USE_UNIX_DOMAIN_SOCKETS)
     SET_AND_EXPOSE_TO_BUILD(USE_MACH_PORTS 1) # Qt-specific
 elseif (UNIX)
     SET_AND_EXPOSE_TO_BUILD(USE_UNIX_DOMAIN_SOCKETS 1)
