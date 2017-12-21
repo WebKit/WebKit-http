@@ -89,6 +89,7 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
 static GstPadProbeReturn appendPipelineDemuxerBlackHolePadProbe(GstPad*, GstPadProbeInfo*, gpointer);
 static GstFlowReturn appendPipelineAppsinkNewSample(GstElement*, AppendPipeline*);
 static void appendPipelineAppsinkEOS(GstElement*, AppendPipeline*);
+static void appendPipelineDemuxerNoMorePads(GstElement*, AppendPipeline* appendPipeline);
 
 static void appendPipelineNeedContextMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
 {
@@ -234,6 +235,7 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     g_signal_connect(m_appsrc.get(), "need-data", G_CALLBACK(appendPipelineAppsrcNeedData), this);
     g_signal_connect(m_demux.get(), "pad-added", G_CALLBACK(appendPipelineDemuxerPadAdded), this);
     g_signal_connect(m_demux.get(), "pad-removed", G_CALLBACK(appendPipelineDemuxerPadRemoved), this);
+    g_signal_connect(m_demux.get(), "no-more-pads", G_CALLBACK(appendPipelineDemuxerNoMorePads), this);
     g_signal_connect(m_appsink.get(), "new-sample", G_CALLBACK(appendPipelineAppsinkNewSample), this);
     g_signal_connect(m_appsink.get(), "eos", G_CALLBACK(appendPipelineAppsinkEOS), this);
 
@@ -446,7 +448,20 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         return;
     }
 
+    if (gst_structure_has_name(structure, "demuxer-no-more-pads")) {
+        demuxerNoMorePads();
+        return;
+    }
+
     ASSERT_NOT_REACHED();
+}
+
+void AppendPipeline::demuxerNoMorePads()
+{
+    GST_TRACE("calling didReceiveInitializationSegment");
+    didReceiveInitializationSegment();
+    GST_TRACE("set pipeline to playing");
+    gst_element_set_state(m_pipeline.get(), GST_STATE_PLAYING);
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -804,7 +819,6 @@ void AppendPipeline::appsinkCapsChanged()
         m_appsinkCaps = WTFMove(caps);
         if (m_playerPrivate)
             m_playerPrivate->trackDetected(this, m_track, previousCapsWereNull);
-        didReceiveInitializationSegment();
         gst_element_set_state(m_pipeline.get(), GST_STATE_PLAYING);
     }
 }
@@ -1328,6 +1342,10 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
         break;
     }
 
+    m_appsinkCaps = WTFMove(caps);
+    if (m_playerPrivate)
+        m_playerPrivate->trackDetected(this, m_track, true);
+
     m_padAddRemoveCondition.notifyOne();
 }
 
@@ -1352,6 +1370,15 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad*)
     }
 
     GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, "pad-removed-after");
+}
+
+void AppendPipeline::appendPipelineDemuxerNoMorePadsFromAnyThread()
+{
+    GST_TRACE("appendPipelineDemuxerNoMorePadsFromAnyThread");
+    GstStructure* structure = gst_structure_new_empty("demuxer-no-more-pads");
+    GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc.get()), structure);
+    gst_bus_post(m_bus.get(), message);
+    GST_TRACE("appendPipelineDemuxerNoMorePadsFromAnyThread - posted to bus");
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
@@ -1442,6 +1469,11 @@ static void appendPipelineDemuxerPadAdded(GstElement*, GstPad* demuxerSrcPad, Ap
 static void appendPipelineDemuxerPadRemoved(GstElement*, GstPad* demuxerSrcPad, AppendPipeline* appendPipeline)
 {
     appendPipeline->disconnectDemuxerSrcPadFromAppsinkFromAnyThread(demuxerSrcPad);
+}
+
+static void appendPipelineDemuxerNoMorePads(GstElement*, AppendPipeline* appendPipeline)
+{
+    appendPipeline->appendPipelineDemuxerNoMorePadsFromAnyThread();
 }
 
 static GstFlowReturn appendPipelineAppsinkNewSample(GstElement* appsink, AppendPipeline* appendPipeline)
