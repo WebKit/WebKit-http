@@ -104,6 +104,8 @@ public:
 
     const MediaTime& currentTimeFudgeFactor();
 
+    virtual bool hasBufferedTime(const MediaTime&);
+
 private:
     explicit MediaSource(ScriptExecutionContext&);
 
@@ -128,7 +130,6 @@ private:
     ExceptionOr<Ref<SourceBufferPrivate>> createSourceBufferPrivate(const ContentType&);
     void scheduleEvent(const AtomicString& eventName);
 
-    bool hasBufferedTime(const MediaTime&);
     bool hasCurrentTime();
     bool hasFutureTime();
 

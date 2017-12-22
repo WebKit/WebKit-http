@@ -697,8 +697,8 @@ void MediaPlayerPrivateGStreamerMSE::asyncStateChangeDone()
 
 bool MediaPlayerPrivateGStreamerMSE::isTimeBuffered(const MediaTime &time) const
 {
-    bool result = m_mediaSource && m_mediaSource->buffered()->contain(time);
-    GST_DEBUG("Time %s buffered? %s", toString(time).utf8().data(), result ? "true" : "false");
+    bool result = m_mediaSource && m_mediaSource->hasBufferedTime(time);
+    GST_DEBUG("Time %s buffered? %s", toString(time).utf8().data(), boolForPrinting(result));
     return result;
 }
 

@@ -45,6 +45,7 @@ public:
     virtual std::unique_ptr<PlatformTimeRanges> buffered() const = 0;
     virtual void seekToTime(const MediaTime&) = 0;
     virtual void monitorSourceBuffers() = 0;
+    virtual bool hasBufferedTime(const MediaTime&) = 0;
 };
 
 }
