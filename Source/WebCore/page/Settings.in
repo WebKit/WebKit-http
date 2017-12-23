@@ -79,7 +79,6 @@ needsSiteSpecificQuirks initial=false
 domTimersThrottlingEnabled initial=true
 webArchiveDebugModeEnabled initial=false, conditional=WEB_ARCHIVE
 localFileContentSniffingEnabled initial=false
-offlineStorageDatabaseEnabled initial=false
 offlineWebApplicationCacheEnabled initial=false
 enforceCSSMIMETypeInNoQuirksMode initial=true
 usesEncodingDetector initial=false
@@ -90,6 +89,9 @@ displayListDrawingEnabled initial=false
 acceleratedFiltersEnabled initial=false
 useLegacyTextAlignPositionedElementBehavior initial=false
 javaScriptRuntimeFlags type=JSC::RuntimeFlags
+
+# PLATFORM(QT) only
+offlineStorageDatabaseEnabled initial=true
 
 # FIXME: This should really be disabled by default as it makes platforms that don't support the feature download files
 # they can't use by. Leaving enabled for now to not change existing behavior.
