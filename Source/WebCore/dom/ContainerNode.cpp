@@ -42,19 +42,20 @@
 #include "LabelsNodeList.h"
 #include "MutationEvent.h"
 #include "NameNodeList.h"
+#include "NoEventDispatchAssertion.h"
 #include "NodeOrString.h"
 #include "NodeRareData.h"
 #include "NodeRenderStyle.h"
 #include "RadioNodeList.h"
 #include "RenderBox.h"
 #include "RenderTheme.h"
+#include "RenderTreeUpdater.h"
 #include "RenderWidget.h"
 #include "RootInlineBox.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
 #include "SelectorQuery.h"
-#include "StyleTreeResolver.h"
 #include "TemplateContentDocumentFragment.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
@@ -102,9 +103,9 @@ static inline void destroyRenderTreeIfNeeded(Node& child)
     if (!child.renderer() && !child.isNamedFlowContentNode() && !is<HTMLSlotElement>(child))
         return;
     if (is<Element>(child))
-        Style::detachRenderTree(downcast<Element>(child));
+        RenderTreeUpdater::tearDownRenderers(downcast<Element>(child));
     else if (is<Text>(child))
-        Style::detachTextRenderer(downcast<Text>(child));
+        RenderTreeUpdater::tearDownRenderer(downcast<Text>(child));
 }
 
 void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)

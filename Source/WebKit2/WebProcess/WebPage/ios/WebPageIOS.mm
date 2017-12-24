@@ -2548,12 +2548,7 @@ void WebPage::elementDidFocus(WebCore::Node* node)
         getAssistedNodeInformation(information);
         RefPtr<API::Object> userData;
 
-        // FIXME: We check m_userIsInteracting so that we don't begin an input session for a
-        // programmatic focus that doesn't cause the keyboard to appear. But this misses the case of
-        // a programmatic focus happening while the keyboard is already shown. Once we have a way to
-        // know the keyboard state in the Web Process, we should refine the condition.
-        if (m_userIsInteracting)
-            m_formClient->willBeginInputSession(this, downcast<Element>(node), WebFrame::fromCoreFrame(*node->document().frame()), userData);
+        m_formClient->willBeginInputSession(this, downcast<Element>(node), WebFrame::fromCoreFrame(*node->document().frame()), userData, m_userIsInteracting);
 
         send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, m_hasPendingBlurNotification, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
         m_hasPendingBlurNotification = false;
@@ -2866,28 +2861,17 @@ void WebPage::applicationWillResignActive()
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillResignActiveNotification object:nil];
 }
 
-void WebPage::volatilityTimerFired()
-{
-    if (!markLayersVolatileImmediatelyIfPossible())
-        return;
-
-    m_volatilityTimer.stop();
-}
-
 void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidEnterBackgroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": [NSNumber numberWithBool:isSuspendedUnderLock]}];
 
     setLayerTreeStateIsFrozen(true);
-    if (markLayersVolatileImmediatelyIfPossible())
-        return;
-
-    m_volatilityTimer.startRepeating(std::chrono::milliseconds(200));
+    markLayersVolatile();
 }
 
 void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
 {
-    m_volatilityTimer.stop();
+    cancelMarkLayersVolatile();
     setLayerTreeStateIsFrozen(false);
 
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillEnterForegroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": @(isSuspendedUnderLock)}];
@@ -2948,11 +2932,11 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
             m_oldestNonStableUpdateVisibleContentRectsTimestamp = std::chrono::milliseconds(static_cast<std::chrono::milliseconds::rep>(oldestTimestamp * 1000));
     }
 
-    FloatRect exposedRect = visibleContentRectUpdateInfo.exposedRect();
-    FloatRect adjustedExposedRect = adjustExposedRectForBoundedScale(exposedRect, visibleContentRectUpdateInfo.scale(), boundedScale);
-    m_drawingArea->setExposedContentRect(adjustedExposedRect);
+    FloatRect exposedContentRect = visibleContentRectUpdateInfo.exposedContentRect();
+    FloatRect adjustedExposedContentRect = adjustExposedRectForBoundedScale(exposedContentRect, visibleContentRectUpdateInfo.scale(), boundedScale);
+    m_drawingArea->setExposedContentRect(adjustedExposedContentRect);
 
-    IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredRect().location());
+    IntPoint scrollPosition = roundedIntPoint(visibleContentRectUpdateInfo.unobscuredContentRect().location());
 
     float floatBoundedScale = boundedScale;
     bool hasSetPageScale = false;
@@ -2979,7 +2963,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (m_viewportConfiguration.setCanIgnoreScalingConstraints(m_ignoreViewportScalingConstraints && visibleContentRectUpdateInfo.allowShrinkToFit()))
         viewportConfigurationChanged();
 
-    frameView.setUnobscuredContentSize(visibleContentRectUpdateInfo.unobscuredRect().size());
+    frameView.setUnobscuredContentSize(visibleContentRectUpdateInfo.unobscuredContentRect().size());
 
     double horizontalVelocity = visibleContentRectUpdateInfo.horizontalVelocity();
     double verticalVelocity = visibleContentRectUpdateInfo.verticalVelocity();

@@ -1258,12 +1258,19 @@ static String listMarkerTextForNode(Node* node)
 }
 
 // Returns the text associated with a list marker if this node is contained within a list item.
-String AccessibilityObject::listMarkerTextForNodeAndPosition(Node* node, const VisiblePosition& visiblePositionStart) const
+String AccessibilityObject::listMarkerTextForNodeAndPosition(Node* node, const VisiblePosition& visiblePositionStart)
 {
     // If the range does not contain the start of the line, the list marker text should not be included.
     if (!isStartOfLine(visiblePositionStart))
         return String();
 
+    // We should speak the list marker only for the first line.
+    RenderListItem* listItem = renderListItemContainerForNode(node);
+    if (!listItem)
+        return String();
+    if (!inSameLine(visiblePositionStart, firstPositionInNode(&listItem->element())))
+        return String();
+    
     return listMarkerTextForNode(node);
 }
 
@@ -1281,7 +1288,9 @@ String AccessibilityObject::stringForRange(RefPtr<Range> range) const
         // non-zero length means textual node, zero length means replaced node (AKA "attachments" in AX)
         if (it.text().length()) {
             // Add a textual representation for list marker text.
-            builder.append(listMarkerTextForNode(it.node()));
+            // Don't add list marker text for new line character.
+            if (it.text().length() != 1 || !isSpaceOrNewline(it.text()[0]))
+                builder.append(listMarkerTextForNodeAndPosition(it.node(), VisiblePosition(range->startPosition())));
             it.appendTextToStringBuilder(builder);
         } else {
             // locate the node and starting offset for this replaced range
@@ -1296,7 +1305,7 @@ String AccessibilityObject::stringForRange(RefPtr<Range> range) const
     return builder.toString();
 }
 
-String AccessibilityObject::stringForVisiblePositionRange(const VisiblePositionRange& visiblePositionRange) const
+String AccessibilityObject::stringForVisiblePositionRange(const VisiblePositionRange& visiblePositionRange)
 {
     if (visiblePositionRange.isNull())
         return String();
@@ -2144,7 +2153,7 @@ bool AccessibilityObject::hasHighlighting() const
     return false;
 }
 
-const AtomicString& AccessibilityObject::roleDescription() const
+String AccessibilityObject::roleDescription() const
 {
     return getAttribute(aria_roledescriptionAttr);
 }
@@ -2338,7 +2347,8 @@ bool AccessibilityObject::supportsRangeValue() const
     return isProgressIndicator()
         || isSlider()
         || isScrollbar()
-        || isSpinButton();
+        || isSpinButton()
+        || isAttachmentElement();
 }
     
 bool AccessibilityObject::supportsARIASetSize() const

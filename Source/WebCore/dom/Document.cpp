@@ -116,6 +116,7 @@
 #include "MutationEvent.h"
 #include "NameNodeList.h"
 #include "NestingLevelIncrementer.h"
+#include "NoEventDispatchAssertion.h"
 #include "NodeIterator.h"
 #include "NodeRareData.h"
 #include "NodeWithIndex.h"
@@ -133,6 +134,7 @@
 #include "ProcessingInstruction.h"
 #include "RenderChildIterator.h"
 #include "RenderLayerCompositor.h"
+#include "RenderTreeUpdater.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "ResourceLoadObserver.h"
@@ -1926,15 +1928,22 @@ void Document::recalcStyle(Style::Change change)
         }
 
         Style::TreeResolver resolver(*this);
-        resolver.resolve(change);
-
-        updatedCompositingLayers = frameView.updateCompositingLayersAfterStyleChange();
+        auto styleUpdate = resolver.resolve(change);
 
         clearNeedsStyleRecalc();
         clearChildNeedsStyleRecalc();
         unscheduleStyleRecalc();
 
         m_inStyleRecalc = false;
+
+        if (styleUpdate) {
+            TemporaryChange<bool> inRenderTreeUpdate(m_inRenderTreeUpdate, true);
+
+            RenderTreeUpdater updater(*this);
+            updater.commit(WTFMove(styleUpdate));
+        }
+
+        updatedCompositingLayers = frameView.updateCompositingLayersAfterStyleChange();
     }
 
     // If we wanted to call implicitClose() during recalcStyle, do so now that we're finished.
@@ -2052,7 +2061,10 @@ Ref<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& el
     TemporaryChange<bool> change(m_ignorePendingStylesheets, true);
     auto elementStyle = element.resolveStyle(parentStyle);
 
-    Style::commitRelationsToDocument(WTFMove(elementStyle.relations));
+    if (elementStyle.relations) {
+        Style::Update emptyUpdate(*this);
+        Style::commitRelations(WTFMove(elementStyle.relations), emptyUpdate);
+    }
 
     return WTFMove(elementStyle.renderStyle);
 }
@@ -2341,7 +2353,7 @@ void Document::destroyRenderTree()
     m_activeElement = nullptr;
 
     if (m_documentElement)
-        Style::detachRenderTree(*m_documentElement);
+        RenderTreeUpdater::tearDownRenderers(*m_documentElement);
 
     clearChildNeedsStyleRecalc();
 

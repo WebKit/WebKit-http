@@ -38,7 +38,6 @@ class SmallPage : public ListNode<SmallPage> {
 public:
     SmallPage()
         : m_hasFreeLines(true)
-        , m_objectType(ObjectType::Large)
     {
     }
 
@@ -49,20 +48,19 @@ public:
     size_t sizeClass() { return m_sizeClass; }
     void setSizeClass(size_t sizeClass) { m_sizeClass = sizeClass; }
     
-    ObjectType objectType() const { return m_objectType; }
-    void setObjectType(ObjectType objectType) { m_objectType = objectType; }
-
     bool hasFreeLines(std::lock_guard<StaticMutex>&) const { return m_hasFreeLines; }
     void setHasFreeLines(std::lock_guard<StaticMutex>&, bool hasFreeLines) { m_hasFreeLines = hasFreeLines; }
     
     SmallLine* begin();
-    SmallLine* end();
 
+    unsigned char slide() const { return m_slide; }
+    void setSlide(unsigned char slide) { m_slide = slide; }
+    
 private:
     unsigned char m_hasFreeLines: 1;
     unsigned char m_refCount: 7;
     unsigned char m_sizeClass;
-    ObjectType m_objectType;
+    unsigned char m_slide;
 
 static_assert(
     sizeClassCount <= std::numeric_limits<decltype(m_sizeClass)>::max(),
@@ -71,12 +69,14 @@ static_assert(
 
 inline void SmallPage::ref(std::lock_guard<StaticMutex>&)
 {
+    BASSERT(!m_slide);
     ++m_refCount;
     BASSERT(m_refCount);
 }
 
 inline bool SmallPage::deref(std::lock_guard<StaticMutex>&)
 {
+    BASSERT(!m_slide);
     BASSERT(m_refCount);
     --m_refCount;
     return !m_refCount;

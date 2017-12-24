@@ -207,7 +207,6 @@ FrameView::FrameView(Frame& frame)
     , m_delayedScrollEventTimer(*this, &FrameView::sendScrollEvent)
     , m_isTrackingRepaints(false)
     , m_shouldUpdateWhileOffscreen(true)
-    , m_exposedRect(FloatRect::infiniteRect())
     , m_deferSetNeedsLayoutCount(0)
     , m_setNeedsLayoutWasDeferred(false)
     , m_speculativeTilingEnabled(false)
@@ -3586,11 +3585,11 @@ float FrameView::adjustScrollStepForFixedContent(float step, ScrollbarOrientatio
     return Scrollbar::pageStep(unobscuredContentRect.height(), unobscuredContentRect.height() - topObscuredArea - bottomObscuredArea);
 }
 
-void FrameView::invalidateScrollbarRect(Scrollbar* scrollbar, const IntRect& rect)
+void FrameView::invalidateScrollbarRect(Scrollbar& scrollbar, const IntRect& rect)
 {
     // Add in our offset within the FrameView.
     IntRect dirtyRect = rect;
-    dirtyRect.moveBy(scrollbar->location());
+    dirtyRect.moveBy(scrollbar.location());
     invalidateRect(dirtyRect);
 }
 
@@ -3611,11 +3610,8 @@ void FrameView::setVisibleScrollerThumbRect(const IntRect& scrollerThumb)
     if (!frame().isMainFrame())
         return;
 
-    Page* page = frame().page();
-    if (!page)
-        return;
-
-    page->chrome().client().notifyScrollerThumbIsVisibleInRect(scrollerThumb);
+    if (Page* page = frame().page())
+        page->chrome().client().notifyScrollerThumbIsVisibleInRect(scrollerThumb);
 }
 
 ScrollableArea* FrameView::enclosingScrollableArea() const
@@ -4911,24 +4907,26 @@ void FrameView::notifyWidgets(WidgetNotification notification)
         widget->notifyWidget(notification);
 }
 
-void FrameView::setExposedRect(FloatRect exposedRect)
+void FrameView::setViewExposedRect(Optional<FloatRect> viewExposedRect)
 {
-    if (m_exposedRect == exposedRect)
+    if (m_viewExposedRect == viewExposedRect)
         return;
-    m_exposedRect = exposedRect;
+
+    m_viewExposedRect = viewExposedRect;
 
     // FIXME: We should support clipping to the exposed rect for subframes as well.
     if (!frame().isMainFrame())
         return;
+
     if (TiledBacking* tiledBacking = this->tiledBacking()) {
         adjustTiledBackingCoverage();
-        tiledBacking->setTiledScrollingIndicatorPosition(exposedRect.location());
+        tiledBacking->setTiledScrollingIndicatorPosition(m_viewExposedRect ? m_viewExposedRect.value().location() : FloatPoint());
     }
 
     if (auto* view = renderView())
         view->compositor().scheduleLayerFlush(false /* canThrottle */);
 
-    frame().mainFrame().pageOverlayController().didChangeExposedRect();
+    frame().mainFrame().pageOverlayController().didChangeViewExposedRect();
 }
     
 void FrameView::setViewportSizeForCSSViewportUnits(IntSize size)

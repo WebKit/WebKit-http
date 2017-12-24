@@ -15,7 +15,6 @@ set(DumpRenderTree_LIBRARIES
     JavaScriptCore
     WTF
     WebCoreTestSupport
-    WebKit
 )
 
 set(DumpRenderTree_INCLUDE_DIRECTORIES

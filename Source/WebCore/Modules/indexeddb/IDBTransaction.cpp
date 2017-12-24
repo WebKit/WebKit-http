@@ -42,6 +42,7 @@
 #include "IDBOpenDBRequest.h"
 #include "IDBRequest.h"
 #include "IDBResultData.h"
+#include "IDBValue.h"
 #include "JSDOMWindowBase.h"
 #include "Logging.h"
 #include "ScriptExecutionContext.h"
@@ -867,8 +868,18 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
     LOG(IndexedDB, "IDBTransaction::putOrAddOnServer");
 
     ASSERT(!isReadOnly());
+    ASSERT(value);
 
-    serverConnection().putOrAdd(operation, key, value, overwriteMode);
+    if (!value->hasBlobURLs()) {
+        serverConnection().putOrAdd(operation, key.get(), *value, overwriteMode);
+        return;
+    }
+
+    RefPtr<IDBTransaction> protector(this);
+    RefPtr<IDBClient::TransactionOperation> operationRef(&operation);
+    value->writeBlobsToDiskForIndexedDB([protector, this, operationRef, key, value, overwriteMode](const IDBValue& idbValue) {
+        serverConnection().putOrAdd(*operationRef, key.get(), idbValue, overwriteMode);
+    });
 }
 
 void IDBTransaction::didPutOrAddOnServer(IDBRequest& request, const IDBResultData& resultData)

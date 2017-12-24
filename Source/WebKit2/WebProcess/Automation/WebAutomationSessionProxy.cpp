@@ -31,6 +31,7 @@
 #include "WebAutomationSessionProxyMessages.h"
 #include "WebAutomationSessionProxyScriptSource.h"
 #include "WebFrame.h"
+#include "WebImage.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 #include <JavaScriptCore/APICast.h>
@@ -38,6 +39,7 @@
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/JSStringRefPrivate.h>
 #include <JavaScriptCore/OpaqueJSString.h>
+#include <WebCore/CookieJar.h>
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameTree.h>
@@ -125,10 +127,11 @@ static JSValueRef createUUID(JSContextRef context, JSObjectRef function, JSObjec
 
 static JSValueRef evaluateJavaScriptCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    ASSERT_ARG(argumentCount, argumentCount == 3);
+    ASSERT_ARG(argumentCount, argumentCount == 4);
     ASSERT_ARG(arguments, JSValueIsNumber(context, arguments[0]));
     ASSERT_ARG(arguments, JSValueIsNumber(context, arguments[1]));
     ASSERT_ARG(arguments, JSValueIsString(context, arguments[2]));
+    ASSERT_ARG(arguments, JSValueIsBoolean(context, arguments[3]));
 
     auto automationSessionProxy = WebProcess::singleton().automationSessionProxy();
     if (!automationSessionProxy)
@@ -138,7 +141,19 @@ static JSValueRef evaluateJavaScriptCallback(JSContextRef context, JSObjectRef f
     uint64_t callbackID = JSValueToNumber(context, arguments[1], exception);
     JSRetainPtr<JSStringRef> result(Adopt, JSValueToStringCopy(context, arguments[2], exception));
 
-    automationSessionProxy->didEvaluateJavaScriptFunction(frameID, callbackID, result->string(), emptyString());
+    bool resultIsErrorName = JSValueToBoolean(context, arguments[3]);
+
+    if (resultIsErrorName) {
+        if (result->string() == "JavaScriptTimeout") {
+            String errorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::JavaScriptTimeout);
+            automationSessionProxy->didEvaluateJavaScriptFunction(frameID, callbackID, String(), errorType);
+        } else {
+            ASSERT_NOT_REACHED();
+            String errorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::InternalError);
+            automationSessionProxy->didEvaluateJavaScriptFunction(frameID, callbackID, String(), errorType);
+        }
+    } else
+        automationSessionProxy->didEvaluateJavaScriptFunction(frameID, callbackID, result->string(), String());
 
     return JSValueMakeUndefined(context);
 }
@@ -204,14 +219,14 @@ void WebAutomationSessionProxy::didClearWindowObjectForFrame(WebFrame& frame)
         JSValueUnprotect(frame.jsContext(), scriptObject);
 
     String errorMessage = ASCIILiteral("Callback was not called before the unload event.");
-    String errorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::JavaScriptError);
+    String errorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::JavaScriptError);
 
     auto pendingFrameCallbacks = m_webFramePendingEvaluateJavaScriptCallbacksMap.take(frameID);
     for (uint64_t callbackID : pendingFrameCallbacks)
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidEvaluateJavaScriptFunction(callbackID, emptyString(), errorType), 0);
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidEvaluateJavaScriptFunction(callbackID, String(), errorType), 0);
 }
 
-void WebAutomationSessionProxy::evaluateJavaScriptFunction(uint64_t frameID, const String& function, Vector<String> arguments, bool expectsImplicitCallbackArgument, uint64_t callbackID)
+void WebAutomationSessionProxy::evaluateJavaScriptFunction(uint64_t frameID, const String& function, Vector<String> arguments, bool expectsImplicitCallbackArgument, int callbackTimeout, uint64_t callbackID)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
@@ -224,8 +239,6 @@ void WebAutomationSessionProxy::evaluateJavaScriptFunction(uint64_t frameID, con
     JSValueRef exception = nullptr;
     JSGlobalContextRef context = frame->jsContext();
 
-    JSObjectRef callbackFunction = JSObjectMakeFunctionWithCallback(context, nullptr, evaluateJavaScriptCallback);
-
     if (expectsImplicitCallbackArgument) {
         auto result = m_webFramePendingEvaluateJavaScriptCallbacksMap.add(frameID, Vector<uint64_t>());
         result.iterator->value.append(callbackID);
@@ -237,7 +250,8 @@ void WebAutomationSessionProxy::evaluateJavaScriptFunction(uint64_t frameID, con
         JSValueMakeBoolean(context, expectsImplicitCallbackArgument),
         JSValueMakeNumber(context, frameID),
         JSValueMakeNumber(context, callbackID),
-        callbackFunction
+        JSObjectMakeFunctionWithCallback(context, nullptr, evaluateJavaScriptCallback),
+        JSValueMakeNumber(context, callbackTimeout)
     };
 
     callPropertyFunction(context, scriptObject, ASCIILiteral("evaluateJavaScriptFunction"), WTF_ARRAY_LENGTH(functionArguments), functionArguments, &exception);
@@ -245,14 +259,14 @@ void WebAutomationSessionProxy::evaluateJavaScriptFunction(uint64_t frameID, con
     if (!exception)
         return;
 
-    String errorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::JavaScriptError);
+    String errorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::JavaScriptError);
 
     JSRetainPtr<JSStringRef> exceptionMessage;
     if (JSValueIsObject(context, exception)) {
         JSValueRef nameValue = JSObjectGetProperty(context, const_cast<JSObjectRef>(exception), toJSString(ASCIILiteral("name")).get(), nullptr);
         JSRetainPtr<JSStringRef> exceptionName(Adopt, JSValueToStringCopy(context, nameValue, nullptr));
         if (exceptionName->string() == "NodeNotFound")
-            errorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::NodeNotFound);
+            errorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::NodeNotFound);
 
         JSValueRef messageValue = JSObjectGetProperty(context, const_cast<JSObjectRef>(exception), toJSString(ASCIILiteral("message")).get(), nullptr);
         exceptionMessage.adopt(JSValueToStringCopy(context, messageValue, nullptr));
@@ -277,7 +291,7 @@ void WebAutomationSessionProxy::didEvaluateJavaScriptFunction(uint64_t frameID, 
 
 void WebAutomationSessionProxy::resolveChildFrameWithOrdinal(uint64_t frameID, uint32_t ordinal, uint64_t callbackID)
 {
-    String frameNotFoundErrorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+    String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
 
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame) {
@@ -303,12 +317,12 @@ void WebAutomationSessionProxy::resolveChildFrameWithOrdinal(uint64_t frameID, u
         return;
     }
 
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveChildFrame(callbackID, childFrame->frameID(), emptyString()), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveChildFrame(callbackID, childFrame->frameID(), String()), 0);
 }
 
 void WebAutomationSessionProxy::resolveChildFrameWithNodeHandle(uint64_t frameID, const String& nodeHandle, uint64_t callbackID)
 {
-    String frameNotFoundErrorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+    String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
 
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame) {
@@ -334,12 +348,12 @@ void WebAutomationSessionProxy::resolveChildFrameWithNodeHandle(uint64_t frameID
         return;
     }
 
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveChildFrame(callbackID, frameFromElement->frameID(), emptyString()), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveChildFrame(callbackID, frameFromElement->frameID(), String()), 0);
 }
 
 void WebAutomationSessionProxy::resolveChildFrameWithName(uint64_t frameID, const String& name, uint64_t callbackID)
 {
-    String frameNotFoundErrorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+    String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
 
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame) {
@@ -365,12 +379,12 @@ void WebAutomationSessionProxy::resolveChildFrameWithName(uint64_t frameID, cons
         return;
     }
 
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveChildFrame(callbackID, childFrame->frameID(), emptyString()), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveChildFrame(callbackID, childFrame->frameID(), String()), 0);
 }
 
 void WebAutomationSessionProxy::resolveParentFrame(uint64_t frameID, uint64_t callbackID)
 {
-    String frameNotFoundErrorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+    String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
 
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame) {
@@ -384,7 +398,7 @@ void WebAutomationSessionProxy::resolveParentFrame(uint64_t frameID, uint64_t ca
         return;
     }
 
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveParentFrame(callbackID, parentFrame->frameID(), emptyString()), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidResolveParentFrame(callbackID, parentFrame->frameID(), String()), 0);
 }
 
 void WebAutomationSessionProxy::focusFrame(uint64_t frameID)
@@ -410,8 +424,8 @@ void WebAutomationSessionProxy::focusFrame(uint64_t frameID)
 
 void WebAutomationSessionProxy::computeElementLayout(uint64_t frameID, String nodeHandle, bool scrollIntoViewIfNeeded, bool useViewportCoordinates, uint64_t callbackID)
 {
-    String frameNotFoundErrorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
-    String nodeNotFoundErrorType = Inspector::Protocol::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::NodeNotFound);
+    String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+    String nodeNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::NodeNotFound);
 
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame) {
@@ -446,7 +460,71 @@ void WebAutomationSessionProxy::computeElementLayout(uint64_t frameID, String no
         rect = coreFrameView->rootViewToContents(rect);
     }
 
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, rect, emptyString()), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, rect, String()), 0);
+}
+
+void WebAutomationSessionProxy::takeScreenshot(uint64_t pageID, uint64_t callbackID)
+{
+    ShareableBitmap::Handle handle;
+    String windowNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::WindowNotFound);
+
+    WebPage* page = WebProcess::singleton().webPage(pageID);
+    if (!page) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidTakeScreenshot(callbackID, handle, windowNotFoundErrorType), 0);
+        return;
+    }
+
+    WebCore::FrameView* frameView = page->mainFrameView();
+    if (!frameView) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidTakeScreenshot(callbackID, handle, String()), 0);
+        return;
+    }
+
+    WebCore::IntRect snapshotRect = WebCore::IntRect(WebCore::IntPoint(0, 0), frameView->contentsSize());
+    if (snapshotRect.isEmpty()) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidTakeScreenshot(callbackID, handle, String()), 0);
+        return;
+    }
+
+    RefPtr<WebImage> image = page->scaledSnapshotWithOptions(snapshotRect, 1, SnapshotOptionsShareable);
+    if (image)
+        image->bitmap()->createHandle(handle, SharedMemory::Protection::ReadOnly);
+
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidTakeScreenshot(callbackID, handle, String()), 0);    
+}
+
+void WebAutomationSessionProxy::getCookiesForFrame(uint64_t frameID, uint64_t callbackID)
+{
+    String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+
+    WebFrame* frame = WebProcess::singleton().webFrame(frameID);
+    if (!frame || !frame->coreFrame() || !frame->coreFrame()->document()) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidGetCookiesForFrame(callbackID, Vector<WebCore::Cookie>(), frameNotFoundErrorType), 0);
+        return;
+    }
+
+    // This returns the same list of cookies as when evaluating `document.cookies` in JavaScript.
+    WebCore::Document* document = frame->coreFrame()->document();
+    Vector<WebCore::Cookie> foundCookies;
+    WebCore::getRawCookies(document, document->cookieURL(), foundCookies);
+
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidGetCookiesForFrame(callbackID, foundCookies, String()), 0);
+}
+
+void WebAutomationSessionProxy::deleteCookie(uint64_t frameID, String cookieName, uint64_t callbackID)
+{
+    String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+
+    WebFrame* frame = WebProcess::singleton().webFrame(frameID);
+    if (!frame || !frame->coreFrame() || !frame->coreFrame()->document()) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidDeleteCookie(callbackID, frameNotFoundErrorType), 0);
+        return;
+    }
+
+    WebCore::Document* document = frame->coreFrame()->document();
+    WebCore::deleteCookie(document, document->cookieURL(), cookieName);
+
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidDeleteCookie(callbackID, String()), 0);
 }
 
 } // namespace WebKit

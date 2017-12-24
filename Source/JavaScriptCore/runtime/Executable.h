@@ -75,10 +75,11 @@ protected:
     static const int NUM_PARAMETERS_IS_HOST = 0;
     static const int NUM_PARAMETERS_NOT_COMPILED = -1;
 
-    ExecutableBase(VM& vm, Structure* structure, int numParameters)
+    ExecutableBase(VM& vm, Structure* structure, int numParameters, Intrinsic intrinsic)
         : JSCell(vm, structure)
         , m_numParametersForCall(numParameters)
         , m_numParametersForConstruct(numParameters)
+        , m_intrinsic(intrinsic)
     {
     }
 
@@ -231,7 +232,7 @@ public:
     }
 
     // Intrinsics are only for calls, currently.
-    Intrinsic intrinsic() const;
+    Intrinsic intrinsic() const { return m_intrinsic; }
         
     Intrinsic intrinsicFor(CodeSpecializationKind kind) const
     {
@@ -243,6 +244,7 @@ public:
     void dump(PrintStream&) const;
         
 protected:
+    Intrinsic m_intrinsic;
     RefPtr<JITCode> m_jitCodeForCall;
     RefPtr<JITCode> m_jitCodeForConstruct;
     MacroAssemblerCodePtr m_jitCodeForCallWithArityCheck;
@@ -259,8 +261,8 @@ public:
     static NativeExecutable* create(VM& vm, PassRefPtr<JITCode> callThunk, NativeFunction function, PassRefPtr<JITCode> constructThunk, NativeFunction constructor, Intrinsic intrinsic, const String& name)
     {
         NativeExecutable* executable;
-        executable = new (NotNull, allocateCell<NativeExecutable>(vm.heap)) NativeExecutable(vm, function, constructor);
-        executable->finishCreation(vm, callThunk, constructThunk, intrinsic, name);
+        executable = new (NotNull, allocateCell<NativeExecutable>(vm.heap)) NativeExecutable(vm, function, constructor, intrinsic);
+        executable->finishCreation(vm, callThunk, constructThunk, name);
         return executable;
     }
 
@@ -296,20 +298,19 @@ public:
     const String& name() const { return m_name; }
 
 protected:
-    void finishCreation(VM& vm, PassRefPtr<JITCode> callThunk, PassRefPtr<JITCode> constructThunk, Intrinsic intrinsic, const String& name)
+    void finishCreation(VM& vm, PassRefPtr<JITCode> callThunk, PassRefPtr<JITCode> constructThunk, const String& name)
     {
         Base::finishCreation(vm);
         m_jitCodeForCall = callThunk;
         m_jitCodeForConstruct = constructThunk;
-        m_intrinsic = intrinsic;
         m_name = name;
     }
 
 private:
     friend class ExecutableBase;
 
-    NativeExecutable(VM& vm, NativeFunction function, NativeFunction constructor)
-        : ExecutableBase(vm, vm.nativeExecutableStructure.get(), NUM_PARAMETERS_IS_HOST)
+    NativeExecutable(VM& vm, NativeFunction function, NativeFunction constructor, Intrinsic intrinsic)
+        : ExecutableBase(vm, vm.nativeExecutableStructure.get(), NUM_PARAMETERS_IS_HOST, intrinsic)
         , m_function(function)
         , m_constructor(constructor)
     {
@@ -350,6 +351,7 @@ public:
     bool isArrowFunctionContext() const { return m_isArrowFunctionContext; }
     bool isStrictMode() const { return m_features & StrictModeFeature; }
     DerivedContextType derivedContextType() const { return static_cast<DerivedContextType>(m_derivedContextType); }
+    EvalContextType evalContextType() const { return static_cast<EvalContextType>(m_evalContextType); }
 
     ECMAMode ecmaMode() const { return isStrictMode() ? StrictMode : NotStrictMode; }
         
@@ -399,7 +401,7 @@ private:
     JSObject* prepareForExecutionImpl(ExecState*, JSFunction*, JSScope*, CodeSpecializationKind);
 
 protected:
-    ScriptExecutable(Structure*, VM&, const SourceCode&, bool isInStrictContext, DerivedContextType, bool isInArrowFunctionContext);
+    ScriptExecutable(Structure*, VM&, const SourceCode&, bool isInStrictContext, DerivedContextType, bool isInArrowFunctionContext, EvalContextType, Intrinsic);
 
     void finishCreation(VM& vm)
     {
@@ -419,6 +421,7 @@ protected:
     bool m_neverOptimize : 1;
     bool m_isArrowFunctionContext : 1;
     unsigned m_derivedContextType : 2; // DerivedContextType
+    unsigned m_evalContextType : 2; // EvalContextType
 
     int m_overrideLineNumber;
     int m_firstLine;
@@ -443,7 +446,7 @@ public:
         return m_evalCodeBlock.get();
     }
 
-    static EvalExecutable* create(ExecState*, const SourceCode&, bool isInStrictContext, ThisTDZMode, DerivedContextType, bool isArrowFunctionContext, const VariableEnvironment*);
+    static EvalExecutable* create(ExecState*, const SourceCode&, bool isInStrictContext, ThisTDZMode, DerivedContextType, bool isArrowFunctionContext, EvalContextType, const VariableEnvironment*);
 
     PassRefPtr<JITCode> generatedJITCode()
     {
@@ -457,7 +460,7 @@ public:
         
     DECLARE_INFO;
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext() , false); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false, evalContextType()); }
 
     unsigned numVariables() { return m_unlinkedEvalCodeBlock->numVariables(); }
     unsigned numberOfFunctionDecls() { return m_unlinkedEvalCodeBlock->numberOfFunctionDecls(); }
@@ -466,7 +469,7 @@ private:
     friend class ExecutableBase;
     friend class ScriptExecutable;
 
-    EvalExecutable(ExecState*, const SourceCode&, bool inStrictContext, DerivedContextType, bool isArrowFunctionContext);
+    EvalExecutable(ExecState*, const SourceCode&, bool inStrictContext, DerivedContextType, bool isArrowFunctionContext, EvalContextType);
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
@@ -511,7 +514,7 @@ public:
         
     DECLARE_INFO;
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false, EvalContextType::None); }
 
 private:
     friend class ExecutableBase;
@@ -552,7 +555,7 @@ public:
 
     DECLARE_INFO;
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ModuleEvaluateMode, derivedContextType(), isArrowFunctionContext(), false); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ModuleEvaluateMode, derivedContextType(), isArrowFunctionContext(), false, EvalContextType::None); }
 
     UnlinkedModuleProgramCodeBlock* unlinkedModuleProgramCodeBlock() { return m_unlinkedModuleProgramCodeBlock.get(); }
 
@@ -580,9 +583,9 @@ public:
 
     static FunctionExecutable* create(
         VM& vm, const SourceCode& source, UnlinkedFunctionExecutable* unlinkedExecutable, 
-        unsigned firstLine, unsigned lastLine, unsigned startColumn, unsigned endColumn)
+        unsigned firstLine, unsigned lastLine, unsigned startColumn, unsigned endColumn, Intrinsic intrinsic)
     {
-        FunctionExecutable* executable = new (NotNull, allocateCell<FunctionExecutable>(vm.heap)) FunctionExecutable(vm, source, unlinkedExecutable, firstLine, lastLine, startColumn, endColumn);
+        FunctionExecutable* executable = new (NotNull, allocateCell<FunctionExecutable>(vm.heap)) FunctionExecutable(vm, source, unlinkedExecutable, firstLine, lastLine, startColumn, endColumn, intrinsic);
         executable->finishCreation(vm);
         return executable;
     }
@@ -697,7 +700,7 @@ private:
     friend class ExecutableBase;
     FunctionExecutable(
         VM&, const SourceCode&, UnlinkedFunctionExecutable*, unsigned firstLine, 
-        unsigned lastLine, unsigned startColumn, unsigned endColumn);
+        unsigned lastLine, unsigned startColumn, unsigned endColumn, Intrinsic);
     
     void finishCreation(VM&);
 

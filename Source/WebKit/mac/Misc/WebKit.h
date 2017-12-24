@@ -29,9 +29,9 @@
 #import <WebKitLegacy/DOM.h>
 #import <WebKitLegacy/WebArchive.h>
 #import <WebKitLegacy/WebBackForwardList.h>
+#import <WebKitLegacy/WebDOMOperations.h>
 #import <WebKitLegacy/WebDataSource.h>
 #import <WebKitLegacy/WebDocument.h>
-#import <WebKitLegacy/WebDOMOperations.h>
 #import <WebKitLegacy/WebDownload.h>
 #import <WebKitLegacy/WebEditingDelegate.h>
 #import <WebKitLegacy/WebFrame.h>

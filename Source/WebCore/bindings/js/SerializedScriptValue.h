@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@ typedef const struct OpaqueJSValue* JSValueRef;
 
 namespace WebCore {
 
+class IDBValue;
 class MessagePort;
 typedef Vector<RefPtr<MessagePort>, 1> MessagePortArray;
 typedef Vector<RefPtr<JSC::ArrayBuffer>, 1> ArrayBufferArray;
@@ -59,12 +60,7 @@ enum SerializationErrorMode { NonThrowing, Throwing };
 
 class SharedBuffer;
 
-class SerializedScriptValue :
-#if ENABLE(INDEXED_DATABASE)
-    public ThreadSafeRefCounted<SerializedScriptValue> {
-#else
-    public RefCounted<SerializedScriptValue> {
-#endif
+class SerializedScriptValue : public ThreadSafeRefCounted<SerializedScriptValue> {
 public:
     WEBCORE_EXPORT static RefPtr<SerializedScriptValue> create(JSC::ExecState*, JSC::JSValue, MessagePortArray*, ArrayBufferArray*, SerializationErrorMode = Throwing);
 
@@ -88,12 +84,8 @@ public:
 
     const Vector<uint8_t>& data() const { return m_data; }
     bool hasBlobURLs() const { return !m_blobURLs.isEmpty(); }
-    void blobURLs(Vector<String>&) const;
-
 #if ENABLE(INDEXED_DATABASE)
-    // FIXME: Get rid of these. The only caller immediately deserializes the result, so it's a very roundabout way to create a JSValue.
-    static Ref<SerializedScriptValue> numberValue(double value);
-    static Ref<SerializedScriptValue> undefinedValue();
+    void writeBlobsToDiskForIndexedDB(std::function<void (const IDBValue&)> completionHandler);
 #endif
 
     static Ref<SerializedScriptValue> createFromWireBytes(Vector<uint8_t>&& data)
@@ -109,15 +101,14 @@ private:
     static void maybeThrowExceptionIfSerializationFailed(JSC::ExecState*, SerializationReturnCode);
     static bool serializationDidCompleteSuccessfully(SerializationReturnCode);
     static std::unique_ptr<ArrayBufferContentsArray> transferArrayBuffers(JSC::ExecState*, ArrayBufferArray&, SerializationReturnCode&);
-    void addBlobURL(const String&);
 
     WEBCORE_EXPORT SerializedScriptValue(Vector<unsigned char>&&);
-    SerializedScriptValue(Vector<unsigned char>&&, const Vector<String>& blobURLs);
     SerializedScriptValue(Vector<unsigned char>&&, const Vector<String>& blobURLs, std::unique_ptr<ArrayBufferContentsArray>&&);
 
     Vector<unsigned char> m_data;
     std::unique_ptr<ArrayBufferContentsArray> m_arrayBufferContentsArray;
-    Vector<Vector<uint16_t>> m_blobURLs;
+
+    Vector<String> m_blobURLs;
 };
 
 }

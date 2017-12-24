@@ -168,6 +168,8 @@ namespace WebCore {
         bool shouldConsiderLatching() const;
         bool shouldResetLatching() const;
         bool isEndOfMomentumScroll() const;
+        bool isEndOfNonMomentumScroll() const;
+        bool isTransitioningToMomentumScroll() const;
 #else
         bool useLatchedEventElement() const { return false; }
 #endif
@@ -219,6 +221,15 @@ namespace WebCore {
         return m_phase == PlatformWheelEventPhaseNone && m_momentumPhase == PlatformWheelEventPhaseEnded;
     }
 
+    inline bool PlatformWheelEvent::isEndOfNonMomentumScroll() const
+    {
+        return m_phase == PlatformWheelEventPhaseEnded && m_momentumPhase == PlatformWheelEventPhaseNone;
+    }
+
+    inline bool PlatformWheelEvent::isTransitioningToMomentumScroll() const
+    {
+        return m_phase == PlatformWheelEventPhaseNone && m_momentumPhase == PlatformWheelEventPhaseBegan;
+    }
 #endif
 
 } // namespace WebCore

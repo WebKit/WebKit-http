@@ -163,6 +163,7 @@ typedef JSCell* JIT_OPERATION (*C_JITOperation_ECZ)(ExecState*, JSCell*, int32_t
 typedef JSCell* JIT_OPERATION (*C_JITOperation_ECZC)(ExecState*, JSCell*, int32_t, JSCell*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_ECC)(ExecState*, JSCell*, JSCell*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EGC)(ExecState*, JSGlobalObject*, JSCell*);
+typedef JSCell* JIT_OPERATION (*C_JITOperation_EGJ)(ExecState*, JSGlobalObject*, EncodedJSValue);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EIcf)(ExecState*, InlineCallFrame*);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EJ)(ExecState*, EncodedJSValue);
 typedef JSCell* JIT_OPERATION (*C_JITOperation_EJsc)(ExecState*, JSScope*);
@@ -381,8 +382,6 @@ void JIT_OPERATION operationWriteBarrier(ExecState*, JSCell*, JSCell*);
 void JIT_OPERATION operationUnconditionalWriteBarrier(ExecState*, JSCell*);
 void JIT_OPERATION operationOSRWriteBarrier(ExecState*, JSCell*);
 
-void JIT_OPERATION operationInitGlobalConst(ExecState*, Instruction*);
-
 void JIT_OPERATION operationExceptionFuzz(ExecState*);
 
 int32_t JIT_OPERATION operationCheckIfExceptionIsUncatchableAndNotifyProfiler(ExecState*);
@@ -395,6 +394,7 @@ EncodedJSValue JIT_OPERATION operationNextEnumeratorPname(ExecState*, JSCell*, i
 JSCell* JIT_OPERATION operationToIndexString(ExecState*, int32_t);
 
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState*) WTF_INTERNAL;
+void JIT_OPERATION operationProcessShadowChickenLog(ExecState*) WTF_INTERNAL;
 
 } // extern "C"
 

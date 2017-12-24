@@ -191,7 +191,7 @@ MacroAssemblerCodeRef virtualThunkFor(VM* vm, CallLinkInfo& callLinkInfo)
             CCallHelpers::NotEqual, GPRInfo::regT1,
             CCallHelpers::TrustedImm32(JSValue::CellTag)));
 #endif
-    AssemblyHelpers::emitLoadStructure(jit, GPRInfo::regT0, GPRInfo::regT4, GPRInfo::regT1);
+    jit.emitLoadStructure(GPRInfo::regT0, GPRInfo::regT4, GPRInfo::regT1);
     slowCase.append(
         jit.branchPtr(
             CCallHelpers::NotEqual,
@@ -238,6 +238,9 @@ enum ThunkEntryType { EnterViaCall, EnterViaJump };
 
 static MacroAssemblerCodeRef nativeForGenerator(VM* vm, CodeSpecializationKind kind, ThunkEntryType entryType = EnterViaCall)
 {
+    // FIXME: This should be able to log ShadowChicken prologue packets.
+    // https://bugs.webkit.org/show_bug.cgi?id=155689
+    
     int executableOffsetToFunction = NativeExecutable::offsetOfNativeFunctionFor(kind);
     
     JSInterfaceJIT jit(vm);
@@ -740,6 +743,7 @@ typedef MathThunkCallingConvention(*MathThunk)(MathThunkCallingConvention);
 // MSVC does not accept floor, etc, to be called directly from inline assembly, so we need to wrap these functions.
 static double (_cdecl *floorFunction)(double) = floor;
 static double (_cdecl *ceilFunction)(double) = ceil;
+static double (_cdecl *truncFunction)(double) = trunc;
 static double (_cdecl *expFunction)(double) = exp;
 static double (_cdecl *logFunction)(double) = log;
 static double (_cdecl *jsRoundFunction)(double) = jsRound;
@@ -771,6 +775,7 @@ defineUnaryDoubleOpWrapper(exp);
 defineUnaryDoubleOpWrapper(log);
 defineUnaryDoubleOpWrapper(floor);
 defineUnaryDoubleOpWrapper(ceil);
+defineUnaryDoubleOpWrapper(trunc);
 
 static const double oneConstant = 1.0;
 static const double negativeHalfConstant = -0.5;
@@ -840,6 +845,29 @@ MacroAssemblerCodeRef ceilThunkGenerator(VM* vm)
     doubleResult.link(&jit);
     jit.returnDouble(SpecializedThunkJIT::fpRegT0);
     return jit.finalize(vm->jitStubs->ctiNativeTailCall(vm), "ceil");
+}
+
+MacroAssemblerCodeRef truncThunkGenerator(VM* vm)
+{
+    SpecializedThunkJIT jit(vm, 1);
+    if (!UnaryDoubleOpWrapper(trunc) || !jit.supportsFloatingPoint())
+        return MacroAssemblerCodeRef::createSelfManagedCodeRef(vm->jitStubs->ctiNativeCall(vm));
+    MacroAssembler::Jump nonIntJump;
+    jit.loadInt32Argument(0, SpecializedThunkJIT::regT0, nonIntJump);
+    jit.returnInt32(SpecializedThunkJIT::regT0);
+    nonIntJump.link(&jit);
+    jit.loadDoubleArgument(0, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0);
+    if (jit.supportsFloatingPointRounding())
+        jit.roundTowardZeroDouble(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT0);
+    else
+        jit.callDoubleToDoublePreservingReturn(UnaryDoubleOpWrapper(trunc));
+
+    SpecializedThunkJIT::JumpList doubleResult;
+    jit.branchConvertDoubleToInt32(SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::regT0, doubleResult, SpecializedThunkJIT::fpRegT1);
+    jit.returnInt32(SpecializedThunkJIT::regT0);
+    doubleResult.link(&jit);
+    jit.returnDouble(SpecializedThunkJIT::fpRegT0);
+    return jit.finalize(vm->jitStubs->ctiNativeTailCall(vm), "trunc");
 }
 
 MacroAssemblerCodeRef roundThunkGenerator(VM* vm)

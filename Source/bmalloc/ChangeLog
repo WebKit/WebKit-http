@@ -1,3 +1,364 @@
+2016-04-06  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: handle aligned allocations on the fast path
+        https://bugs.webkit.org/show_bug.cgi?id=156302
+
+        Reviewed by Michael Saboff.
+
+        This helps keep the JavaScriptCore GC on the fast path, and it also
+        helps avoid fragmentation on our website stress test:
+
+            nimlang                      209,584kB            198,076kB      ^ 1.06x smaller
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::allocate): Because we arrange for power-of-two size
+        classes to allocate at power-of-two alignments, we can allocate any
+        small aligned request on the small path.
+
+        * bmalloc/Chunk.h:
+        (bmalloc::Chunk::bytes):
+        (bmalloc::Chunk::lines):
+        (bmalloc::Chunk::pages):
+        (bmalloc::Chunk::boundaryTags):
+        (bmalloc::Chunk::objectType): Moved some code around to provide better
+        API.
+
+        (bmalloc::Chunk::Chunk): Moved this code to VMHeap.
+
+        (bmalloc::Chunk::offset):
+        (bmalloc::Chunk::object): Use our new bytes() helper function.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateChunk): Moved code here from Chunk.
+
+        (bmalloc::VMHeap::allocateSmallChunk): Ensure that power-of-two page
+        sizes always begin allocation at the same alignment. Power-of-two object
+        sizes always request power-of-two page sizes (since that's the least
+        wasteful option), so if we also ensure that power-of-two page sizes get
+        power-of-two alignment, then everything is aligned for all small objects.
+
+2016-04-03  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: segregate small and large objects again, and allocate more objects on the small path
+        https://bugs.webkit.org/show_bug.cgi?id=156152
+
+        Reviewed by Sam Weinig.
+
+        Microbenchmark data suggested that it was a good idea for small and large
+        objects to share memory. But r198675 did not improve memory use in
+        full browser benchmarks.
+
+        This patch reverts to segregating small and large objects -- but without
+        going back to doubled VM usage -- in order to capture a few benefits:
+
+        (*) Small pages fragment the large heap. Separating them out saves a lot
+        of memory in our worst case fragmentation recording:
+
+            nimlang                                          276,076kB                      209,636kB                ^ 1.32x smaller
+
+        (*) Small objects are common enough that even their slow paths benefit 
+        from simpler code:
+
+        Execution Time:
+            ...
+            facebook                                             234ms                          216ms                 ^ 1.08x faster
+            reddit                                               114ms                          108ms                 ^ 1.06x faster
+            flickr                                               118ms                          111ms                 ^ 1.06x faster
+            theverge                                             146ms                          140ms                 ^ 1.04x faster
+            ...
+            <arithmetic mean>                                    107ms                          102ms                 ^ 1.04x faster
+
+        (*) We can use less metadata:
+
+        Memory at End:
+            ...
+            list_allocate                                        460kB                          384kB                 ^ 1.2x smaller
+            tree_allocate                                        492kB                          424kB                ^ 1.16x smaller
+            tree_churn                                           480kB                          404kB                ^ 1.19x smaller
+            fragment                                             532kB                          452kB                ^ 1.18x smaller
+            fragment_iterate                                     712kB                          588kB                ^ 1.21x smaller
+            medium                                            15,152kB                       11,796kB                ^ 1.28x smaller
+            big                                               15,044kB                       10,976kB                ^ 1.37x smaller
+            ...
+            <arithmetic mean>                                  7,724kB                        7,190kB                ^ 1.07x smaller
+
+        This patch also takes advantage of our support for varying the page size
+        at runtime by allocating more objects on the small object path:
+
+            medium                                               178ms                          150ms                 ^ 1.19x faster
+
+        Some microbenchmarks report memory use increases from this change -- like
+        they reported memory use decreases from r198675 -- but I'm ignoring them
+        for now because I expect our full browser memory benchmarks to confirm
+        that this patch is fine.
+
+        * bmalloc/BumpAllocator.h:
+        (bmalloc::BumpAllocator::BumpAllocator): Use a full unsigned because we
+        can allocate objects larger than 16kB - 1, and a full unsigned does not
+        make BumpAllocator any larger on 64bit systems.
+
+        * bmalloc/Chunk.h:
+        (bmalloc::Chunk::begin):
+        (bmalloc::Chunk::end):
+        (bmalloc::Chunk::size):
+        (bmalloc::Chunk::objectType): Store ObjectType in the Chunk, since it only
+        varies by Chunk now, and not from page to page within a Chunk. Also,
+        union together small and large object metadata, since we will only use
+        one or the other. This saves memory.
+
+        (bmalloc::Chunk::Chunk): Conditionalize initialization based on object
+        type, since only one kind of metadata or the other can be used at runtime.
+
+        (bmalloc::Object::Object):
+        (bmalloc::Object::begin):
+        (bmalloc::SmallPage::end): Deleted.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::initializeLineMetadata): Save a little space, since we
+        know that lines are only 256 bytes long.
+
+        (bmalloc::Heap::initializePageMetadata): Store a dynamic page size for
+        each size class. We used to use only one page size (the system page size)
+        but that limited our ability to allocate objects larger than 1kB on the
+        small object path. Now we can handle any object size we want by storing
+        objects of that size in a custom page size.
+
+        (bmalloc::Heap::concurrentScavenge):
+        (bmalloc::Heap::scavenge):
+        (bmalloc::Heap::scavengeSmallPages): Revert to our old linked list
+        strategy for storing small pages.
+
+        (bmalloc::Heap::splitAndAllocate): Object type is per Chunk now.
+
+        (bmalloc::Heap::allocateLarge): Don't nuke the small page list when
+        allocating a large object because the two don't share memory anymore.
+
+        (bmalloc::Heap::allocateSmallPage): Revert to our old linked list
+        strategy for storing small pages.
+
+        (bmalloc::Heap::deallocateSmallLine): Don't return early in the case
+        where this is the first free object in the page. In the case of large-ish
+        objects, the first free object might also be the last free object,
+        since there's one object per page.
+
+        (bmalloc::Heap::allocateSmallBumpRangesByMetadata): Split out some helper
+        lambdas to make this code clearer.
+
+        (bmalloc::Heap::allocateSmallBumpRangesByObject): Added a fast scan
+        for objects larger than the line size. When multiple objects fit in
+        a single line, it's an optimization to scan a line at a time. But when
+        it's one object per line, or one object per 64 lines, it's better just
+        to scan an object at a time.
+
+        * bmalloc/Heap.h:
+        (bmalloc::Heap::allocateSmallBumpRanges):
+        (bmalloc::Heap::derefSmallLine): Match the changes above.
+
+        * bmalloc/LineMetadata.h: We weren't using all those bits.
+
+        * bmalloc/List.h:
+        (bmalloc::List::remove): Put a removed Node fully back into the default
+        (empty) state it was in before it entered the list. This change is not
+        observable, but it makes things clearer when you're debugging.
+
+        * bmalloc/Object.h:
+        (bmalloc::Object::Object):
+        (bmalloc::Object::chunk):
+        (bmalloc::Object::offset):
+        (bmalloc::Object::operator+):
+        (bmalloc::Object::operator<=): Added some helpers for iterating by object.
+
+        * bmalloc/ObjectType.cpp:
+        (bmalloc::objectType): Updated for API change.
+
+        * bmalloc/Sizes.h:
+        (bmalloc::Sizes::maskObjectSize):
+        (bmalloc::Sizes::objectSize):
+        (bmalloc::Sizes::pageSize): Support more page sizes.
+
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::SmallPage):
+        (bmalloc::SmallPage::objectType): Deleted.
+        (bmalloc::SmallPage::setObjectType): Deleted.
+        (bmalloc::SmallPage::smallPageCount): Deleted.
+        (bmalloc::SmallPage::setSmallPageCount): Deleted. Object type is per
+        Chunk now, and we can infer page count from size class.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateChunk):
+        (bmalloc::VMHeap::allocateSmallChunk):
+        * bmalloc/VMHeap.h:
+        (bmalloc::VMHeap::allocateSmallPage):
+        (bmalloc::VMHeap::deallocateSmallPage):
+        (bmalloc::VMHeap::allocateLargeObject): Support our old behavior of
+        storing free pages in linked lists.
+
+2016-03-29  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: support physical page sizes that don't match the virtual page size (take 2)
+        https://bugs.webkit.org/show_bug.cgi?id=156003
+
+        Reviewed by Andreas Kling.
+
+        This is a memory savings on iOS devices where the virtual page size
+        is 16kB but the physical page size is 4kB.
+
+        Take 1 was a memory regression on 16kB virtual / 16kB physical systems
+        because it used a 4kB page size within a 16kB page size, allowing up to
+        4 different object types to mix within a physical page. Because objects
+        of the same type tend to deallocate at the same time, mixing objects of
+        different types made pages less likely to become completely empty.
+
+        (Take 1 also had a bug where it used a platform #ifdef that didn't exist.
+        Oops.)
+
+        Take 2 allocates units of SmallPages equal to the physical page size.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::initializeLineMetadata):
+        (bmalloc::Heap::allocateSmallBumpRanges):
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::allocateLarge):
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::tryAllocateXLarge):
+        (bmalloc::Heap::shrinkXLarge):
+        * bmalloc/Heap.h: Use the physical page size for our VM operations because
+        we're only concerned with returning physical pages to the OS.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmPageSize):
+        (bmalloc::vmPageShift):
+        (bmalloc::vmSize):
+        (bmalloc::vmValidate):
+        (bmalloc::vmPageSizePhysical):
+        (bmalloc::vmValidatePhysical):
+        (bmalloc::tryVMAllocate):
+        (bmalloc::vmDeallocatePhysicalPages):
+        (bmalloc::vmAllocatePhysicalPages):
+        (bmalloc::vmDeallocatePhysicalPagesSloppy):
+        (bmalloc::vmAllocatePhysicalPagesSloppy): Use the physical page size.
+
+2016-03-29  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: page size should be configurable at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=155993
+
+        Reviewed by Andreas Kling.
+
+        This is a memory win on 32bit iOS devices, since their page sizes are
+        4kB and not 16kB.
+
+        It's also a step toward supporting 64bit iOS devices that have a
+        16kB/4kB virtual/physical page size split.
+
+        * bmalloc/Chunk.h: Align to largeAlignment since 2 * smallMax isn't
+        required by the boundary tag allocator.
+
+        (bmalloc::Chunk::page): Account for the slide when accessing a page.
+        Each SmallPage hashes 4kB of memory. When we want to allocate a region
+        of memory larger than 4kB, we store our metadata in the first SmallPage
+        in the region and we assign a slide to the remaining SmallPages, so
+        they forward to that first SmallPage when accessed.
+
+        NOTE: We could use a less flexible technique that just hashed by
+        vmPageSize() instead of 4kB at runtime, with no slide, but I think we'll
+        be able to use this slide technique to make even more page sizes
+        dynamically at runtime, which should save some memory and simplify
+        the allocator.
+
+        (bmalloc::SmallPage::begin): It's invalid to access a SmallPage with
+        a slide, since such SmallPages do not contain meaningful data.
+
+        (bmalloc::SmallPage::end): Account for smallPageCount when computing
+        the size of a page.
+
+        (bmalloc::Chunk::pageBegin): Deleted.
+        (bmalloc::Chunk::pageEnd): Deleted.
+        (bmalloc::Object::pageBegin): Deleted.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap): Cache vmPageSize because computing it might require
+        a syscall.
+
+        (bmalloc::Heap::initializeLineMetadata): Line metadata is a vector instead
+        of a 2D array because we don't know how much metadata we'll need until
+        we know the page size.
+
+        (bmalloc::Heap::scavengeSmallPage): Be sure to revert the slide when
+        deallocating a page. Otherwise, the next attempt to allocate the page
+        will slide when initializing it, sliding to nowhere.
+
+        (bmalloc::Heap::allocateSmallBumpRanges): Account for vector change to
+        line metadata.
+
+        (bmalloc::Heap::allocateSmallPage): Initialize slide and smallPageCount
+        since they aren't constant anymore.
+
+        (bmalloc::Heap::allocateLarge):
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::tryAllocateXLarge):
+        (bmalloc::Heap::shrinkXLarge): Adopt dynamic page size.
+
+        * bmalloc/Heap.h:
+
+        * bmalloc/Sizes.h: smallPageSize is no longer equal to the VM page
+        size -- it's just the smallest VM page size we're interested in supporting.
+
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::slide):
+        (bmalloc::SmallPage::setSlide):
+        (bmalloc::SmallPage::smallPageCount):
+        (bmalloc::SmallPage::setSmallPageCount):
+        (bmalloc::SmallPage::ref):
+        (bmalloc::SmallPage::deref): Support slide and small page count as
+        dynamic values. This doesn't increase metadata size since sizeof(SmallPage)
+        rounds up to alignment anyway.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmPageSize):
+        (bmalloc::vmPageShift):
+        (bmalloc::vmSize):
+        (bmalloc::vmValidate):
+        (bmalloc::tryVMAllocate):
+        (bmalloc::vmDeallocatePhysicalPagesSloppy):
+        (bmalloc::vmAllocatePhysicalPagesSloppy): Treat page size as a variable.
+
+        * bmalloc/Vector.h:
+        (bmalloc::Vector::initialCapacity):
+        (bmalloc::Vector<T>::insert):
+        (bmalloc::Vector<T>::grow):
+        (bmalloc::Vector<T>::shrink):
+        (bmalloc::Vector<T>::shrinkCapacity):
+        (bmalloc::Vector<T>::growCapacity): Treat page size as a variable.
+
+2016-03-29  David Kilzer  <ddkilzer@apple.com>
+
+        bmalloc: add logging for mmap() failures
+        <http://webkit.org/b/155409>
+        <rdar://problem/24568515>
+
+        Reviewed by Saam Barati.
+
+        This patch causes additional logging to be generated on internal
+        iOS builds when mmap() fails.  We are trying to track down an
+        issue where the WebContent process runs out of VM address space
+        before it is killed by jetsam.
+
+        * CMakeLists.txt: Add Logging.cpp.
+        * bmalloc.xcodeproj/project.pbxproj: Add new files.
+
+        * bmalloc/BAssert.h:
+        (RELEASE_BASSERT_WITH_MESSAGE): Add macro.
+        * bmalloc/Logging.cpp: Added.
+        (bmalloc::logVMFailure): Implementation.
+        * bmalloc/Logging.h: Added.
+        (bmalloc::logVMFailure): Declaration.
+        * bmalloc/VMAllocate.h:
+        (bmalloc::tryVMAllocate): Call logVMFailure() on mmap() failure.
+        * bmalloc/darwin/BSoftLinking.h: Copied from Source/WebCore/platform/mac/SoftLinking.h.
+
 2016-03-26  Geoffrey Garen  <ggaren@apple.com>
 
         Unreviewed, rolling out r198702, r198704.

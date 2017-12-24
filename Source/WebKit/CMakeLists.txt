@@ -51,11 +51,8 @@ if (WIN32)
     add_dependencies(WebKit WebKitGUID)
 endif ()
 
-target_link_libraries(WebKit ${WebKit_LIBRARIES})
-set_target_properties(WebKit PROPERTIES FOLDER "WebKit")
-
-if (WebKit_OUTPUT_NAME)
-    set_target_properties(WebKit PROPERTIES OUTPUT_NAME ${WebKit_OUTPUT_NAME})
+if (APPLE)
+    set_target_properties(WebKit PROPERTIES LINK_FLAGS "-umbrella WebKit")
 endif ()
 
 if (HAIKU)

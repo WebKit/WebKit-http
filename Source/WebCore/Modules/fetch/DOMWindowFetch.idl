@@ -28,7 +28,8 @@
 
 [
     Conditional=FETCH_API,
+    EnabledAtRuntime=FetchAPI,
 ] partial interface DOMWindow {
-    Promise fetch(DOMString input, optional Dictionary init);
     Promise fetch(FetchRequest input, optional Dictionary init);
+    Promise fetch(DOMString input, optional Dictionary init);
 };

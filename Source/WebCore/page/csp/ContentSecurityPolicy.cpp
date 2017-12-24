@@ -385,7 +385,10 @@ bool ContentSecurityPolicy::allowObjectFromSource(const URL& url, bool overrideC
         return true;
     if (SchemeRegistry::schemeShouldBypassContentSecurityPolicy(url.protocol()))
         return true;
-    const ContentSecurityPolicyDirective* violatedDirective = violatedDirectiveInAnyPolicy(&ContentSecurityPolicyDirectiveList::violatedDirectiveForObjectSource, url);
+    // As per section object-src of the Content Security Policy Level 3 spec., <http://w3c.github.io/webappsec-csp> (Editor's Draft, 29 February 2016),
+    // "If plugin content is loaded without an associated URL (perhaps an object element lacks a data attribute, but loads some default plugin based
+    // on the specified type), it MUST be blocked if object-src's value is 'none', but will otherwise be allowed".
+    const ContentSecurityPolicyDirective* violatedDirective = violatedDirectiveInAnyPolicy(&ContentSecurityPolicyDirectiveList::violatedDirectiveForObjectSource, url, ContentSecurityPolicySourceListDirective::ShouldAllowEmptyURLIfSourceListIsNotNone::Yes);
     if (!violatedDirective)
         return true;
     String consoleMessage = consoleMessageForViolation(ContentSecurityPolicyDirectiveNames::objectSrc, *violatedDirective, url, "Refused to load");
@@ -402,8 +405,9 @@ bool ContentSecurityPolicy::allowChildFrameFromSource(const URL& url, bool overr
     const ContentSecurityPolicyDirective* violatedDirective = violatedDirectiveInAnyPolicy(&ContentSecurityPolicyDirectiveList::violatedDirectiveForFrame, url);
     if (!violatedDirective)
         return true;
-    String consoleMessage = consoleMessageForViolation(ContentSecurityPolicyDirectiveNames::frameSrc, *violatedDirective, url, "Refused to load");
-    reportViolation(ContentSecurityPolicyDirectiveNames::frameSrc, *violatedDirective, url, consoleMessage, String(), TextPosition(WTF::OrdinalNumber::beforeFirst(), WTF::OrdinalNumber()));
+    const char* effectiveViolatedDirective = violatedDirective->name() == ContentSecurityPolicyDirectiveNames::frameSrc ? ContentSecurityPolicyDirectiveNames::frameSrc : ContentSecurityPolicyDirectiveNames::childSrc;
+    String consoleMessage = consoleMessageForViolation(effectiveViolatedDirective, *violatedDirective, url, "Refused to load");
+    reportViolation(effectiveViolatedDirective, *violatedDirective, url, consoleMessage, String(), TextPosition(WTF::OrdinalNumber::beforeFirst(), WTF::OrdinalNumber()));
     return violatedDirective->directiveList().isReportOnly();
 }
 

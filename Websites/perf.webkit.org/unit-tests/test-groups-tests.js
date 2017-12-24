@@ -3,7 +3,7 @@
 var assert = require('assert');
 
 require('../tools/js/v3-models.js');
-require('./resources/mock-v3-models.js');
+let MockModels = require('./resources/mock-v3-models.js').MockModels;
 
 function sampleTestGroup() {
     return {
@@ -104,6 +104,7 @@ function sampleTestGroup() {
 }
 
 describe('TestGroup', function () {
+    MockModels.inject();
 
     describe('_createModelsFromFetchedTestGroups', function () {
         it('should create test groups', function () {
@@ -138,7 +139,7 @@ describe('TestGroup', function () {
             assert.equal(buildRequests[0].order(), 0);
             assert.ok(!buildRequests[0].hasFinished());
             assert.ok(!buildRequests[0].hasStarted());
-            assert.ok(buildRequests[0].hasPending());
+            assert.ok(buildRequests[0].isPending());
             assert.equal(buildRequests[0].statusLabel(), 'Waiting to be scheduled');
             assert.equal(buildRequests[0].buildId(), null);
             assert.equal(buildRequests[0].result(), null);
@@ -147,7 +148,7 @@ describe('TestGroup', function () {
             assert.equal(buildRequests[1].order(), 1);
             assert.ok(!buildRequests[1].hasFinished());
             assert.ok(!buildRequests[1].hasStarted());
-            assert.ok(buildRequests[1].hasPending());
+            assert.ok(buildRequests[1].isPending());
             assert.equal(buildRequests[1].statusLabel(), 'Waiting to be scheduled');
             assert.equal(buildRequests[1].buildId(), null);
             assert.equal(buildRequests[1].result(), null);
@@ -164,31 +165,31 @@ describe('TestGroup', function () {
             assert.ok(secondSet instanceof RootSet);
             assert.equal(secondSet, buildRequests[3].rootSet());
 
-            assert.equal(firstSet.revisionForRepository(webkit), '191622');
-            var firstWebKitCommit = firstSet.commitForRepository(webkit);
+            assert.equal(firstSet.revisionForRepository(MockModels.webkit), '191622');
+            var firstWebKitCommit = firstSet.commitForRepository(MockModels.webkit);
             assert.ok(firstWebKitCommit instanceof CommitLog);
-            assert.ok(firstWebKitCommit, buildRequests[2].rootSet().commitForRepository(webkit));
-            assert.ok(firstWebKitCommit.repository(), webkit);
+            assert.ok(firstWebKitCommit, buildRequests[2].rootSet().commitForRepository(MockModels.webkit));
+            assert.ok(firstWebKitCommit.repository(), MockModels.webkit);
             assert.ok(firstWebKitCommit.revision(), '191622');
             assert.ok(firstWebKitCommit.time() instanceof Date);
             assert.ok(+firstWebKitCommit.time(), 1445945816878);
 
-            assert.equal(secondSet.revisionForRepository(webkit), '192736');
-            var secondWebKitCommit = secondSet.commitForRepository(webkit);
+            assert.equal(secondSet.revisionForRepository(MockModels.webkit), '192736');
+            var secondWebKitCommit = secondSet.commitForRepository(MockModels.webkit);
             assert.ok(secondWebKitCommit instanceof CommitLog);
-            assert.ok(secondWebKitCommit, buildRequests[3].rootSet().commitForRepository(webkit));
-            assert.ok(secondWebKitCommit.repository(), webkit);
+            assert.ok(secondWebKitCommit, buildRequests[3].rootSet().commitForRepository(MockModels.webkit));
+            assert.ok(secondWebKitCommit.repository(), MockModels.webkit);
             assert.ok(secondWebKitCommit.revision(), '192736');
             assert.ok(secondWebKitCommit.time() instanceof Date);
             assert.ok(+secondWebKitCommit.time(), 1445945816878);
 
-            assert.equal(firstSet.revisionForRepository(osx), '10.11 15A284');
-            var osxCommit = firstSet.commitForRepository(osx);
+            assert.equal(firstSet.revisionForRepository(MockModels.osx), '10.11 15A284');
+            var osxCommit = firstSet.commitForRepository(MockModels.osx);
             assert.ok(osxCommit instanceof CommitLog);
-            assert.equal(osxCommit, buildRequests[1].rootSet().commitForRepository(osx));
-            assert.equal(osxCommit, buildRequests[2].rootSet().commitForRepository(osx));
-            assert.equal(osxCommit, buildRequests[3].rootSet().commitForRepository(osx));
-            assert.ok(osxCommit.repository(), osx);
+            assert.equal(osxCommit, buildRequests[1].rootSet().commitForRepository(MockModels.osx));
+            assert.equal(osxCommit, buildRequests[2].rootSet().commitForRepository(MockModels.osx));
+            assert.equal(osxCommit, buildRequests[3].rootSet().commitForRepository(MockModels.osx));
+            assert.ok(osxCommit.repository(), MockModels.osx);
             assert.ok(osxCommit.revision(), '10.11 15A284');
         });
     });

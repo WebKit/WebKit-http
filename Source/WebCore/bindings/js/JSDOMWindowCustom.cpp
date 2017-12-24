@@ -76,21 +76,6 @@ static EncodedJSValue jsDOMWindowWebKit(ExecState* exec, EncodedJSValue thisValu
 }
 #endif
 
-#if ENABLE(INDEXED_DATABASE)
-static EncodedJSValue jsDOMWindowIndexedDB(ExecState* exec, EncodedJSValue thisValue, PropertyName)
-{
-    UNUSED_PARAM(exec);
-    auto* castedThis = toJSDOMWindow(JSValue::decode(thisValue));
-    if (!RuntimeEnabledFeatures::sharedFeatures().indexedDBEnabled())
-        return JSValue::encode(jsUndefined());
-    if (!castedThis || !BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->wrapped()))
-        return JSValue::encode(jsUndefined());
-    auto& impl = castedThis->wrapped();
-    JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(DOMWindowIndexedDatabase::indexedDB(&impl)));
-    return JSValue::encode(result);
-}
-#endif
-
 static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObject, Frame* frame, ExecState* exec, PropertyName propertyName, PropertySlot& slot, String& errorMessage)
 {
     // Allow access to toString() cross-domain, but always Object.prototype.toString.
@@ -252,30 +237,6 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
     // (Particularly, is it correct that this exists here but not in getOwnPropertySlotByIndex?)
     slot.setWatchpointSet(thisObject->m_windowCloseWatchpoints);
 
-    // FIXME: These are all bogus. Keeping these here make some tests pass that check these properties
-    // are own properties of the window, but introduces other problems instead (e.g. if you overwrite
-    // & delete then the original value is restored!) Should be removed.
-    if (propertyName == exec->propertyNames().blur) {
-        if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
-            slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionBlur, 0>);
-        return true;
-    }
-    if (propertyName == exec->propertyNames().close) {
-        if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
-            slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionClose, 0>);
-        return true;
-    }
-    if (propertyName == exec->propertyNames().focus) {
-        if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
-            slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionFocus, 0>);
-        return true;
-    }
-    if (propertyName == exec->propertyNames().postMessage) {
-        if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
-            slot.setCustom(thisObject, ReadOnly | DontDelete | DontEnum, nonCachingStaticFunctionGetter<jsDOMWindowInstanceFunctionPostMessage, 2>);
-        return true;
-    }
-
     if (propertyName == exec->propertyNames().showModalDialog) {
         if (Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
             return true;
@@ -287,16 +248,6 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* exec, Property
     if (getStaticPropertySlot<JSDOMWindow, Base>(exec, *JSDOMWindow::info()->staticPropHashTable, thisObject, propertyName, slot))
         return true;
 
-#if ENABLE(INDEXED_DATABASE)
-    // FIXME: With generated JS bindings built on static property tables there is no way to
-    // completely remove a generated property at runtime. So to completely disable IndexedDB
-    // at runtime we have to not generate these accessors and have to handle them specially here.
-    // Once https://webkit.org/b/145669 is resolved, they can once again be auto generated.
-    if (RuntimeEnabledFeatures::sharedFeatures().indexedDBEnabled() && (propertyName == exec->propertyNames().indexedDB || propertyName == exec->propertyNames().webkitIndexedDB)) {
-        slot.setCustom(thisObject, DontDelete | ReadOnly | CustomAccessor, jsDOMWindowIndexedDB);
-        return true;
-    }
-#endif
 #if ENABLE(USER_MESSAGE_HANDLERS)
     if (propertyName == exec->propertyNames().webkit && thisObject->wrapped().shouldHaveWebKitNamespaceForWorld(thisObject->world())) {
         slot.setCacheableCustom(thisObject, DontDelete | ReadOnly, jsDOMWindowWebKit);
@@ -613,7 +564,7 @@ static JSValue handlePostMessage(DOMWindow& impl, ExecState& state)
         return jsUndefined();
 
     ExceptionCode ec = 0;
-    impl.postMessage(message.release(), &messagePorts, targetOrigin, activeDOMWindow(&state), ec);
+    impl.postMessage(message.release(), &messagePorts, targetOrigin, callerDOMWindow(&state), ec);
     setDOMException(&state, ec);
 
     return jsUndefined();

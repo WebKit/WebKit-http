@@ -28,18 +28,38 @@
 // MarkedArgumentBuffer of property names, passed to a macro so we can do set them up various
 // ways without repeating the list.
 #define JSC_COMMON_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
+    macro(AnimationTimeline) \
     macro(Array) \
     macro(ArrayBuffer) \
     macro(ArrayIterator) \
+    macro(Audio) \
     macro(BYTES_PER_ELEMENT) \
     macro(Boolean) \
     macro(Collator) \
     macro(Date) \
     macro(DateTimeFormat) \
+    macro(DocumentTimeline) \
     macro(Error) \
     macro(EvalError) \
     macro(Function) \
+    macro(Gamepad) \
+    macro(GamepadButton) \
+    macro(GamepadEvent) \
     macro(GeneratorFunction) \
+    macro(Headers) \
+    macro(HTMLAudioElement) \
+    macro(HTMLSlotElement) \
+    macro(IDBCursor) \
+    macro(IDBCursorWithValue) \
+    macro(IDBDatabase) \
+    macro(IDBFactory) \
+    macro(IDBIndex) \
+    macro(IDBKeyRange) \
+    macro(IDBObjectStore) \
+    macro(IDBOpenDBRequest) \
+    macro(IDBRequest) \
+    macro(IDBTransaction) \
+    macro(IDBVersionChangeEvent) \
     macro(Infinity) \
     macro(Intl) \
     macro(JSON) \
@@ -57,8 +77,11 @@
     macro(ReferenceError) \
     macro(Reflect) \
     macro(RegExp) \
+    macro(Response) \
+    macro(Request) \
     macro(Set)\
     macro(SetIterator)\
+    macro(ShadowRoot) \
     macro(String) \
     macro(Symbol) \
     macro(SyntaxError) \
@@ -67,6 +90,9 @@
     macro(UTC) \
     macro(WeakMap)\
     macro(WeakSet)\
+    macro(WebGL2RenderingContext) \
+    macro(WebGLVertexArrayObject) \
+    macro(WebSocket) \
     macro(__defineGetter__) \
     macro(__defineSetter__) \
     macro(__lookupGetter__) \
@@ -117,6 +143,7 @@
     macro(exec) \
     macro(executionCount) \
     macro(exitKind) \
+    macro(fetch) \
     macro(flags) \
     macro(focus) \
     macro(forEach) \
@@ -218,6 +245,14 @@
     macro(valueOf) \
     macro(values) \
     macro(webkit) \
+    macro(webkitIDBCursor) \
+    macro(webkitIDBDatabase) \
+    macro(webkitIDBFactory) \
+    macro(webkitIDBIndex) \
+    macro(webkitIDBKeyRange) \
+    macro(webkitIDBObjectStore) \
+    macro(webkitIDBRequest) \
+    macro(webkitIDBTransaction) \
     macro(webkitIndexedDB) \
     macro(weekday) \
     macro(window) \
@@ -273,12 +308,12 @@
     macro(yield)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL_NOT_IMPLEMENTED_YET(macro)\
-    macro(isConcatSpreadable) \
     macro(replace) \
     macro(split)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(hasInstance) \
+    macro(isConcatSpreadable) \
     macro(iterator) \
     macro(match) \
     macro(search) \
@@ -315,6 +350,7 @@
     macro(InternalPromise) \
     macro(abs) \
     macro(floor) \
+    macro(trunc) \
     macro(isFinite) \
     macro(isNaN) \
     macro(create) \
@@ -323,6 +359,7 @@
     macro(getOwnPropertyDescriptor) \
     macro(getOwnPropertyNames) \
     macro(ownKeys) \
+    macro(Error) \
     macro(RangeError) \
     macro(TypeError) \
     macro(typedArrayLength) \
@@ -338,6 +375,7 @@
     macro(promiseRejectReactions) \
     macro(promiseResult) \
     macro(push) \
+    macro(repeatCharacter) \
     macro(capabilities) \
     macro(starDefault) \
     macro(InspectorInstrumentation) \
@@ -373,7 +411,12 @@
     macro(hasInstanceBoundFunction) \
     macro(instanceOf) \
     macro(isArray) \
+    macro(isJSArray) \
     macro(isArrayConstructor) \
+    macro(concatMemcpy) \
+    macro(appendMemcpy) \
+    macro(predictFinalLengthFromArgumunts) \
+    macro(print) \
     macro(isSet) \
     macro(isMap) \
     macro(SetIterator) \

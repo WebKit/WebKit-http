@@ -388,6 +388,7 @@ public:
     virtual bool isRenderMathMLRadicalOperator() const { return false; }
     virtual bool isRenderMathMLRow() const { return false; }
     virtual bool isRenderMathMLMath() const { return false; }
+    virtual bool isRenderMathMLMenclose() const { return false; }
     virtual bool isRenderMathMLFenced() const { return false; }
     virtual bool isRenderMathMLFraction() const { return false; }
     virtual bool isRenderMathMLRoot() const { return false; }
@@ -1150,6 +1151,11 @@ inline bool RenderObject::backgroundIsKnownToBeObscured(const LayoutPoint& paint
     }
     return m_bitfields.boxDecorationState() == HasBoxDecorationsAndBackgroundIsKnownToBeObscured;
 }
+
+#if ENABLE(TREE_DEBUGGING)
+void printRenderTreeForLiveDocuments();
+void printLayerTreeForLiveDocuments();
+#endif
 
 } // namespace WebCore
 

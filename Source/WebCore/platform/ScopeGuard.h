@@ -25,6 +25,8 @@
 #ifndef ScopeGuard_h
 #define ScopeGuard_h
 
+#include <functional>
+
 namespace WebCore {
 
 class ScopeGuard {

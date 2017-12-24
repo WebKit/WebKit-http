@@ -147,7 +147,8 @@ enum ContextMenuAction {
     ContextMenuItemTagMediaMute,
     ContextMenuItemTagDictationAlternative,
     ContextMenuItemTagToggleVideoFullscreen,
-    ContextMenuItemTagShareMenu, 
+    ContextMenuItemTagShareMenu,
+    ContextMenuItemTagToggleVideoEnhancedFullscreen,
     ContextMenuItemBaseCustomTag = 5000,
     ContextMenuItemLastCustomTag = 5999,
     ContextMenuItemBaseApplicationTag = 10000

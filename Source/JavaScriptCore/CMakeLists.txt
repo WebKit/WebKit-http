@@ -388,7 +388,6 @@ set(JavaScriptCore_SOURCES
 
     disassembler/udis86/udis86.c
     disassembler/udis86/udis86_decode.c
-    disassembler/udis86/udis86_input.c
     disassembler/udis86/udis86_itab_holder.c
     disassembler/udis86/udis86_syn-att.c
     disassembler/udis86/udis86_syn-intel.c
@@ -508,10 +507,12 @@ set(JavaScriptCore_SOURCES
     interpreter/Interpreter.cpp
     interpreter/JSStack.cpp
     interpreter/ProtoCallFrame.cpp
+    interpreter/ShadowChicken.cpp
     interpreter/StackVisitor.cpp
 
     jit/AssemblyHelpers.cpp
     jit/BinarySwitch.cpp
+    jit/CCallHelpers.cpp
     jit/CachedRecovery.cpp
     jit/CallFrameShuffleData.cpp
     jit/CallFrameShuffler.cpp
@@ -912,14 +913,13 @@ endforeach ()
 
 set(UDIS_GEN_DEP
     disassembler/udis86/ud_opcode.py
-    disassembler/udis86/ud_optable.py
 )
 
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.c ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/udis86_itab.h
     DEPENDS ${UDIS_GEN_DEP}
     WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
-    COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/disassembler/udis86/itab.py ${JAVASCRIPTCORE_DIR}/disassembler/udis86/optable.xml
+    COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/disassembler/udis86/ud_itab.py ${JAVASCRIPTCORE_DIR}/disassembler/udis86/optable.xml ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
     VERBATIM)
 
 list(APPEND JavaScriptCore_HEADERS
@@ -1326,10 +1326,12 @@ add_subdirectory(shell)
 WEBKIT_WRAP_SOURCELIST(${JavaScriptCore_SOURCES})
 WEBKIT_FRAMEWORK(JavaScriptCore)
 
-if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
-    POPULATE_LIBRARY_VERSION(JAVASCRIPTCORE)
-    set_target_properties(JavaScriptCore PROPERTIES VERSION ${JAVASCRIPTCORE_VERSION} SOVERSION ${JAVASCRIPTCORE_VERSION_MAJOR})
-    install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
+if (NOT APPLE)
+    if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
+        POPULATE_LIBRARY_VERSION(JAVASCRIPTCORE)
+        set_target_properties(JavaScriptCore PROPERTIES VERSION ${JAVASCRIPTCORE_VERSION} SOVERSION ${JAVASCRIPTCORE_VERSION_MAJOR})
+        install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
+    endif ()
 endif ()
 
 # Force staging of shared scripts, even if they aren't directly used to build JavaScriptCore.

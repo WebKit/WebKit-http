@@ -59,6 +59,7 @@
 #include "ScrollingConstraints.h"
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
+#include "TextStream.h"
 #include "TiledBacking.h"
 #include "TransformState.h"
 #include <wtf/CurrentTime.h>
@@ -458,12 +459,12 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
         rootLayer->flushCompositingState(exposedRect, frameView.viewportIsStable());
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
-        IntRect visibleRect = m_clipLayer ? IntRect(IntPoint(), frameView.unscaledVisibleContentSizeIncludingObscuredArea()) : frameView.visibleContentRect();
-        if (!frameView.exposedRect().isInfinite())
-            visibleRect.intersect(IntRect(frameView.exposedRect()));
+        FloatRect visibleRect = m_clipLayer ? FloatRect({ 0, 0 }, frameView.unscaledVisibleContentSizeIncludingObscuredArea()) : frameView.visibleContentRect();
 
-        LOG(Compositing, "RenderLayerCompositor %p flushPendingLayerChanges(%d) %d, %d, %dx%d (stable viewport %d)", this, isFlushRoot,
-            visibleRect.x(), visibleRect.y(), visibleRect.width(), visibleRect.height(), frameView.viewportIsStable());
+        if (frameView.viewExposedRect())
+            visibleRect.intersect(frameView.viewExposedRect().value());
+
+        LOG_WITH_STREAM(Compositing,  stream << "RenderLayerCompositor " << this << " flushPendingLayerChanges(" << isFlushRoot << ") " << visibleRect << " (stable viewport " << frameView.viewportIsStable() << ")");
         rootLayer->flushCompositingState(visibleRect, frameView.viewportIsStable());
 #endif
     }
@@ -3492,7 +3493,7 @@ void RenderLayerCompositor::destroyRootLayer()
         if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
             scrollingCoordinator->scrollableAreaScrollbarLayerDidChange(m_renderView.frameView(), HorizontalScrollbar);
         if (Scrollbar* horizontalScrollbar = m_renderView.frameView().verticalScrollbar())
-            m_renderView.frameView().invalidateScrollbar(horizontalScrollbar, IntRect(IntPoint(0, 0), horizontalScrollbar->frameRect().size()));
+            m_renderView.frameView().invalidateScrollbar(*horizontalScrollbar, IntRect(IntPoint(0, 0), horizontalScrollbar->frameRect().size()));
     }
 
     if (m_layerForVerticalScrollbar) {
@@ -3501,7 +3502,7 @@ void RenderLayerCompositor::destroyRootLayer()
         if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
             scrollingCoordinator->scrollableAreaScrollbarLayerDidChange(m_renderView.frameView(), VerticalScrollbar);
         if (Scrollbar* verticalScrollbar = m_renderView.frameView().verticalScrollbar())
-            m_renderView.frameView().invalidateScrollbar(verticalScrollbar, IntRect(IntPoint(0, 0), verticalScrollbar->frameRect().size()));
+            m_renderView.frameView().invalidateScrollbar(*verticalScrollbar, IntRect(IntPoint(0, 0), verticalScrollbar->frameRect().size()));
     }
 
     if (m_layerForScrollCorner) {

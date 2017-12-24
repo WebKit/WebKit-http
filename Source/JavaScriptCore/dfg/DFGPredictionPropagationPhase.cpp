@@ -389,7 +389,8 @@ private:
 
         case ArithRound:
         case ArithFloor:
-        case ArithCeil: {
+        case ArithCeil:
+        case ArithTrunc: {
             if (isInt32OrBooleanSpeculation(node->getHeapPrediction()) && m_graph.roundShouldSpeculateInt32(node, m_pass))
                 changed |= setPrediction(SpecInt32);
             else
@@ -417,6 +418,9 @@ private:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
+        case IsArrayObject:
+        case IsJSArray:
+        case IsArrayConstructor:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:
@@ -487,6 +491,11 @@ private:
         case AllocatePropertyStorage:
         case ReallocatePropertyStorage: {
             changed |= setPrediction(SpecOther);
+            break;
+        }
+
+        case CallObjectConstructor: {
+            changed |= setPrediction(SpecObject);
             break;
         }
 
@@ -667,6 +676,7 @@ private:
         case GetStack:
         case GetRegExpObjectLastIndex:
         case SetRegExpObjectLastIndex:
+        case RecordRegExpCachedResult:
         case LazyJSConstant: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
@@ -763,6 +773,8 @@ private:
         case Check:
         case PutGlobalVariable:
         case CheckWatchdogTimer:
+        case LogShadowChickenPrologue:
+        case LogShadowChickenTail:
         case Unreachable:
         case LoopHint:
         case NotifyWrite:

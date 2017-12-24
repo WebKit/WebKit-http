@@ -82,13 +82,21 @@ inline bool isArray(ExecState* exec, JSValue argumentValue)
 
         ProxyObject* proxy = jsCast<ProxyObject*>(argument);
         if (proxy->isRevoked()) {
-            throwTypeError(exec, ASCIILiteral("Array.isArray can not be called on a Proxy that has been revoked."));
+            throwTypeError(exec, ASCIILiteral("Array.isArray cannot be called on a Proxy that has been revoked"));
             return false;
         }
         argument = proxy->target();
     }
 
     ASSERT_NOT_REACHED();
+}
+
+inline bool isArrayConstructor(JSValue argumentValue)
+{
+    if (!argumentValue.isObject())
+        return false;
+
+    return jsCast<JSObject*>(argumentValue)->classInfo() == ArrayConstructor::info();
 }
 
 } // namespace JSC

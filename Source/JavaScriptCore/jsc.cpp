@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004-2008, 2012-2013, 2015 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2008, 2012-2013, 2015-2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2006 Bjoern Graf (bjoern.graf@gmail.com)
  *
  *  This library is free software; you can redistribute it and/or
@@ -51,6 +51,7 @@
 #include "JSWASMModule.h"
 #include "ProfilerDatabase.h"
 #include "SamplingProfiler.h"
+#include "ShadowChicken.h"
 #include "StackVisitor.h"
 #include "StructureInlines.h"
 #include "StructureRareDataInlines.h"
@@ -104,6 +105,10 @@
 
 #if PLATFORM(EFL)
 #include <Ecore.h>
+#endif
+
+#if !defined(PATH_MAX)
+#define PATH_MAX 4096
 #endif
 
 using namespace JSC;
@@ -437,7 +442,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info(), ArrayClass);
+        return Structure::create(vm, globalObject, prototype, TypeInfo(ArrayType, StructureFlags), info(), ArrayClass);
     }
 
 protected:
@@ -558,6 +563,7 @@ static EncodedJSValue JSC_HOST_CALL functionGetHiddenValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionSetHiddenValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDebug(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionDataLogValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDescribeArray(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState*);
@@ -620,6 +626,8 @@ static EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecStat
 static EncodedJSValue JSC_HOST_CALL functionSetSamplingFlags(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionClearSamplingFlags(ExecState*);
 #endif
+
+static EncodedJSValue JSC_HOST_CALL functionShadowChickenFunctionsOnStack(ExecState*);
 
 struct Script {
     bool isFile;
@@ -723,7 +731,8 @@ protected:
     void finishCreation(VM& vm, const Vector<String>& arguments)
     {
         Base::finishCreation(vm);
-        
+
+        addFunction(vm, "dataLogValue", functionDataLogValue, 1);
         addFunction(vm, "debug", functionDebug, 1);
         addFunction(vm, "describe", functionDescribe, 1);
         addFunction(vm, "describeArray", functionDescribeArray, 1);
@@ -759,6 +768,7 @@ protected:
         addFunction(vm, "setSamplingFlags", functionSetSamplingFlags, 1);
         addFunction(vm, "clearSamplingFlags", functionClearSamplingFlags, 1);
 #endif
+        addFunction(vm, "shadowChickenFunctionsOnStack", functionShadowChickenFunctionsOnStack, 0);
         addConstructableFunction(vm, "Root", functionCreateRoot, 0);
         addConstructableFunction(vm, "Element", functionCreateElement, 1);
         addFunction(vm, "getElement", functionGetElement, 1);
@@ -821,6 +831,7 @@ protected:
         }
 
         putDirect(vm, Identifier::fromString(globalExec(), "console"), jsUndefined());
+        putDirect(vm, vm.propertyNames->printPrivateName, JSFunction::create(vm, this, 1, vm.propertyNames->printPrivateName.string(), functionPrint));
     }
 
     void addFunction(VM& vm, const char* name, NativeFunction function, unsigned arguments)
@@ -1120,6 +1131,12 @@ EncodedJSValue JSC_HOST_CALL functionDebug(ExecState* exec)
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL functionDataLogValue(ExecState* exec)
+{
+    dataLog("value is: ", exec->argument(0), "\n");
+    return JSValue::encode(jsUndefined());
+}
+
 EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState* exec)
 {
     if (exec->argumentCount() < 1)
@@ -1144,7 +1161,7 @@ public:
     {
     }
 
-    StackVisitor::Status operator()(StackVisitor& visitor)
+    StackVisitor::Status operator()(StackVisitor& visitor) const
     {
         m_trace.append(String::format("    %zu   %s\n", visitor->index(), visitor->toString().utf8().data()));
         return StackVisitor::Continue;
@@ -1436,6 +1453,11 @@ EncodedJSValue JSC_HOST_CALL functionClearSamplingFlags(ExecState* exec)
     return JSValue::encode(jsNull());
 }
 #endif
+
+EncodedJSValue JSC_HOST_CALL functionShadowChickenFunctionsOnStack(ExecState* exec)
+{
+    return JSValue::encode(exec->vm().shadowChicken().functionsOnStack(exec));
+}
 
 EncodedJSValue JSC_HOST_CALL functionReadline(ExecState* exec)
 {

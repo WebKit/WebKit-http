@@ -27,11 +27,11 @@
 #define CodeCache_h
 
 #include "CodeSpecializationKind.h"
+#include "ExecutableInfo.h"
 #include "ParserModes.h"
 #include "SourceCode.h"
 #include "SourceCodeKey.h"
 #include "Strong.h"
-#include "VariableEnvironment.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/Forward.h>
 #include <wtf/RandomNumber.h>
@@ -56,6 +56,7 @@ class UnlinkedProgramCodeBlock;
 class VM;
 class SourceCode;
 class SourceProvider;
+class VariableEnvironment;
 
 struct SourceCodeValue {
     SourceCodeValue()
@@ -194,7 +195,7 @@ public:
     ~CodeCache();
 
     UnlinkedProgramCodeBlock* getProgramCodeBlock(VM&, ProgramExecutable*, const SourceCode&, JSParserBuiltinMode, JSParserStrictMode, DebuggerMode, ProfilerMode, ParserError&);
-    UnlinkedEvalCodeBlock* getEvalCodeBlock(VM&, EvalExecutable*, const SourceCode&, JSParserBuiltinMode, JSParserStrictMode, ThisTDZMode, bool, DebuggerMode, ProfilerMode, ParserError&, const VariableEnvironment*);
+    UnlinkedEvalCodeBlock* getEvalCodeBlock(VM&, EvalExecutable*, const SourceCode&, JSParserBuiltinMode, JSParserStrictMode, ThisTDZMode, bool, DebuggerMode, ProfilerMode, ParserError&, EvalContextType, const VariableEnvironment*);
     UnlinkedModuleProgramCodeBlock* getModuleProgramCodeBlock(VM&, ModuleProgramExecutable*, const SourceCode&, JSParserBuiltinMode, DebuggerMode, ProfilerMode, ParserError&);
     UnlinkedFunctionExecutable* getFunctionExecutableFromGlobalCode(VM&, const Identifier&, const SourceCode&, ParserError&);
 
@@ -205,7 +206,7 @@ public:
 
 private:
     template <class UnlinkedCodeBlockType, class ExecutableType> 
-    UnlinkedCodeBlockType* getGlobalCodeBlock(VM&, ExecutableType*, const SourceCode&, JSParserBuiltinMode, JSParserStrictMode, ThisTDZMode, bool, DebuggerMode, ProfilerMode, ParserError&, const VariableEnvironment*);
+    UnlinkedCodeBlockType* getGlobalCodeBlock(VM&, ExecutableType*, const SourceCode&, JSParserBuiltinMode, JSParserStrictMode, ThisTDZMode, bool, DebuggerMode, ProfilerMode, ParserError&, EvalContextType, const VariableEnvironment*);
 
     CodeCacheMap m_sourceCode;
 };

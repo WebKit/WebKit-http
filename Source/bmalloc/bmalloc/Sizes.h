@@ -46,23 +46,24 @@ namespace Sizes {
     static const size_t alignment = 8;
     static const size_t alignmentMask = alignment - 1ul;
 
-#if BPLATFORM(IOS)
-    static const size_t vmPageSize = 16 * kB;
-#else
-    static const size_t vmPageSize = 4 * kB;
-#endif
-    
     static const size_t smallLineSize = 256;
-    static const size_t smallLineCount = vmPageSize / smallLineSize;
+    static const size_t smallPageSize = 4 * kB;
+    static const size_t smallPageLineCount = smallPageSize / smallLineSize;
 
-    static const size_t smallMax = 1 * kB;
     static const size_t maskSizeClassMax = 512;
+    static const size_t smallMax = 16 * kB;
+
+    static const size_t pageSizeMax = 32 * kB;
+    static const size_t pageClassCount = pageSizeMax / smallPageSize;
+
+    static const size_t pageSizeWasteFactor = 8;
+    static const size_t logWasteFactor = 8;
 
     static const size_t chunkSize = 2 * MB;
     static const size_t chunkMask = ~(chunkSize - 1ul);
 
     static const size_t largeAlignment = 64;
-    static const size_t largeMin = smallMax;
+    static const size_t largeMin = 1 * kB;
     static const size_t largeObjectMax = chunkSize;
     static const size_t largeMax = largeObjectMax / 2;
 
@@ -91,7 +92,6 @@ namespace Sizes {
         return (maskSizeClass + 1) * alignment;
     }
 
-    static const size_t logWasteFactor = 8;
     static const size_t logAlignmentMin = maskSizeClassMax / logWasteFactor;
 
     static const size_t logSizeClassCount = (log2(smallMax) - log2(maskSizeClassMax)) * logWasteFactor;
@@ -124,6 +124,11 @@ namespace Sizes {
         if (sizeClass < maskSizeClassCount)
             return maskObjectSize(sizeClass);
         return logObjectSize(sizeClass - maskSizeClassCount);
+    }
+    
+    inline size_t pageSize(size_t pageClass)
+    {
+        return (pageClass + 1) * smallPageSize;
     }
 }
 

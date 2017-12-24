@@ -35,6 +35,7 @@
 #include "AccessibilityARIAGrid.h"
 #include "AccessibilityARIAGridCell.h"
 #include "AccessibilityARIAGridRow.h"
+#include "AccessibilityAttachment.h"
 #include "AccessibilityImageMapLink.h"
 #include "AccessibilityList.h"
 #include "AccessibilityListBox.h"
@@ -71,6 +72,7 @@
 #include "HTMLMeterElement.h"
 #include "HTMLNames.h"
 #include "Page.h"
+#include "RenderAttachment.h"
 #include "RenderListBox.h"
 #include "RenderMenuList.h"
 #include "RenderMeter.h"
@@ -117,7 +119,31 @@ void AXComputedObjectAttributeCache::setIgnored(AXID id, AccessibilityObjectIncl
         m_idMapping.set(id, attributes);
     }
 }
-    
+
+AccessibilityReplacedText::AccessibilityReplacedText(const VisibleSelection& selection)
+{
+    if (AXObjectCache::accessibilityEnabled() && selection.isRange()) {
+        m_replacedText = AccessibilityObject::stringForVisiblePositionRange(selection);
+        m_replacedRange.startIndex.value = indexForVisiblePosition(selection.start(), m_replacedRange.startIndex.scope);
+        m_replacedRange.endIndex.value = indexForVisiblePosition(selection.end(), m_replacedRange.endIndex.scope);
+    }
+}
+
+void AccessibilityReplacedText::postTextStateChangeNotification(AXObjectCache* cache, AXTextEditType type, const String& text, const VisibleSelection& selection)
+{
+    if (!cache)
+        return;
+    if (!AXObjectCache::accessibilityEnabled())
+        return;
+
+    VisiblePosition position = selection.start();
+    Node* node = highestEditableRoot(position.deepEquivalent(), HasEditableAXRole);
+    if (m_replacedText.length())
+        cache->postTextReplacementNotification(node, AXTextEditTypeDelete, m_replacedText, type, text, position);
+    else
+        cache->postTextStateChangeNotification(node, type, text, position);
+}
+
 bool AXObjectCache::gAccessibilityEnabled = false;
 bool AXObjectCache::gAccessibilityEnhancedUserInterfaceEnabled = false;
 
@@ -428,6 +454,10 @@ static Ref<AccessibilityObject> createFromRenderer(RenderObject* renderer)
         if (is<RenderProgress>(cssBox))
             return AccessibilityProgressIndicator::create(&downcast<RenderProgress>(cssBox));
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+        if (is<RenderAttachment>(cssBox))
+            return AccessibilityAttachment::create(&downcast<RenderAttachment>(cssBox));
+#endif
 #if ENABLE(METER_ELEMENT)
         if (is<RenderMeter>(cssBox))
             return AccessibilityProgressIndicator::create(&downcast<RenderMeter>(cssBox));
@@ -1191,7 +1221,8 @@ void AXObjectCache::postTextStateChangeNotification(Node* node, AXTextEditType t
 {
     if (!node)
         return;
-    ASSERT(type != AXTextEditTypeUnknown);
+    if (type == AXTextEditTypeUnknown)
+        return;
 
     stopCachingComputedObjectAttributes();
 
@@ -1213,8 +1244,10 @@ void AXObjectCache::postTextReplacementNotification(Node* node, AXTextEditType d
 {
     if (!node)
         return;
-    ASSERT(deletionType == AXTextEditTypeDelete);
-    ASSERT(insertionType == AXTextEditTypeInsert || insertionType == AXTextEditTypeTyping || insertionType == AXTextEditTypeDictation || insertionType == AXTextEditTypePaste);
+    if (deletionType != AXTextEditTypeDelete)
+        return;
+    if (!(insertionType == AXTextEditTypeInsert || insertionType == AXTextEditTypeTyping || insertionType == AXTextEditTypeDictation || insertionType == AXTextEditTypePaste))
+        return;
 
     stopCachingComputedObjectAttributes();
 
@@ -2514,6 +2547,9 @@ bool isNodeAriaVisible(Node* node)
                 return false;
             if (!ariaHiddenFalsePresent && ariaHiddenFalse)
                 ariaHiddenFalsePresent = true;
+            // We should break early when it gets to a rendered object.
+            if (testNode->renderer())
+                break;
         }
     }
     

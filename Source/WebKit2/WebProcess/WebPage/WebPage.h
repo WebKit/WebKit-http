@@ -287,6 +287,7 @@ public:
     void removeWebEditCommand(uint64_t);
     bool isInRedo() const { return m_isInRedo; }
 
+    bool isAlwaysOnLoggingAllowed() const;
     void setActivePopupMenu(WebPopupMenu*);
 
     void setHiddenPageTimerThrottlingIncreaseLimit(std::chrono::milliseconds limit)
@@ -579,7 +580,8 @@ public:
 #endif
 
     void setLayerTreeStateIsFrozen(bool);
-    bool markLayersVolatileImmediatelyIfPossible();
+    void markLayersVolatile(std::function<void()> completionHandler = {});
+    void cancelMarkLayersVolatile();
 
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
 
@@ -931,8 +933,6 @@ public:
 
     void didRestoreScrollPosition();
 
-    bool mediaShouldUsePersistentCache() const { return m_mediaShouldUsePersistentCache; }
-
     bool isControlledByAutomation() const;
     void setControlledByAutomation(bool);
 
@@ -976,7 +976,6 @@ private:
     void resetTextAutosizingBeforeLayoutIfNeeded(const WebCore::FloatSize& oldSize, const WebCore::FloatSize& newSize);
     WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(const WebCore::Frame&, const WebCore::IntPoint&, bool isInteractingWithAssistedNode);
     PassRefPtr<WebCore::Range> rangeForGranularityAtPoint(const WebCore::Frame&, const WebCore::IntPoint&, uint32_t granularity, bool isInteractingWithAssistedNode);
-    void volatilityTimerFired();
 #endif
 #if !PLATFORM(COCOA)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
@@ -986,6 +985,9 @@ private:
 #if PLATFORM(MAC)
     bool executeKeypressCommandsInternal(const Vector<WebCore::KeypressCommand>&, WebCore::KeyboardEvent*);
 #endif
+
+    bool markLayersVolatileImmediatelyIfPossible();
+    void layerVolatilityTimerFired();
 
     String sourceForFrame(WebFrame*);
 
@@ -1414,8 +1416,10 @@ private:
     RefPtr<WebCore::Node> m_pendingSyntheticClickNode;
     WebCore::FloatPoint m_pendingSyntheticClickLocation;
     WebCore::FloatRect m_previousExposedContentRect;
-    WebCore::Timer m_volatilityTimer;
 #endif
+
+    WebCore::Timer m_layerVolatilityTimer;
+    Vector<std::function<void()>> m_markLayersAsVolatileCompletionHandlers;
 
     HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;
     WebCore::Color m_backgroundColor;
@@ -1455,8 +1459,6 @@ private:
 #if USE(OS_STATE)
     std::chrono::system_clock::time_point m_loadCommitTime;
 #endif
-
-    bool m_mediaShouldUsePersistentCache;
 };
 
 } // namespace WebKit

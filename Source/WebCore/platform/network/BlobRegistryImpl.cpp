@@ -41,8 +41,11 @@
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ScopeGuard.h"
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/WorkQueue.h>
 
 namespace WebCore {
 
@@ -98,11 +101,11 @@ void BlobRegistryImpl::appendStorageItems(BlobData* blobData, const BlobDataItem
     for (; iter != items.end() && length > 0; ++iter) {
         long long currentLength = iter->length() - offset;
         long long newLength = currentLength > length ? length : currentLength;
-        if (iter->type == BlobDataItem::Data)
-            blobData->appendData(iter->data, iter->offset() + offset, newLength);
+        if (iter->type() == BlobDataItem::Type::Data)
+            blobData->appendData(iter->data(), iter->offset() + offset, newLength);
         else {
-            ASSERT(iter->type == BlobDataItem::File);
-            blobData->appendFile(iter->file.get(), iter->offset() + offset, newLength);
+            ASSERT(iter->type() == BlobDataItem::Type::File);
+            blobData->appendFile(iter->file(), iter->offset() + offset, newLength);
         }
         length -= newLength;
         offset = 0;
@@ -115,8 +118,7 @@ void BlobRegistryImpl::registerFileBlobURL(const URL& url, RefPtr<BlobDataFileRe
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create();
-    blobData->setContentType(contentType);
+    RefPtr<BlobData> blobData = BlobData::create(contentType);
 
     blobData->appendFile(file);
     m_blobs.set(url.string(), blobData.release());
@@ -127,8 +129,7 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create();
-    blobData->setContentType(contentType);
+    RefPtr<BlobData> blobData = BlobData::create(contentType);
 
     // The blob data is stored in the "canonical" way. That is, it only contains a list of Data and File items.
     // 1) The Data item is denoted by the raw data and the range.
@@ -139,8 +140,9 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
     for (BlobPart& part : blobParts) {
         switch (part.type()) {
         case BlobPart::Data: {
-            RefPtr<RawData> rawData = RawData::create(part.moveData());
-            blobData->appendData(rawData.release());
+            auto movedData = part.moveData();
+            auto data = ThreadSafeDataBuffer::adoptVector(movedData);
+            blobData->appendData(data);
             break;
         }
         case BlobPart::Blob: {
@@ -196,8 +198,7 @@ void BlobRegistryImpl::registerBlobURLForSlice(const URL& url, const URL& srcURL
         end = originalSize;
 
     unsigned long long newLength = end - start;
-    RefPtr<BlobData> newData = BlobData::create();
-    newData->setContentType(originalData->contentType());
+    RefPtr<BlobData> newData = BlobData::create(originalData->contentType());
 
     appendStorageItems(newData.get(), originalData->items(), start, newLength);
 
@@ -228,6 +229,92 @@ unsigned long long BlobRegistryImpl::blobSize(const URL& url)
         result += item.length();
 
     return result;
+}
+
+static WorkQueue& blobUtilityQueue()
+{
+    static NeverDestroyed<Ref<WorkQueue>> queue(WorkQueue::create("org.webkit.BlobUtility", WorkQueue::Type::Serial, WorkQueue::QOS::Background));
+    return queue.get();
+}
+
+struct BlobForFileWriting {
+    String blobURL;
+    Vector<std::pair<String, ThreadSafeDataBuffer>> filePathsOrDataBuffers;
+};
+
+void BlobRegistryImpl::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, std::function<void (const Vector<String>& filePaths)> completionHandler)
+{
+    Vector<BlobForFileWriting> blobsForWriting;
+    for (auto& url : blobURLs) {
+        blobsForWriting.append({ });
+        blobsForWriting.last().blobURL = url.isolatedCopy();
+
+        auto* blobData = getBlobDataFromURL({ ParsedURLString, url });
+        if (!blobData) {
+            Vector<String> filePaths;
+            completionHandler(filePaths);
+        }
+
+        for (auto& item : blobData->items()) {
+            switch (item.type()) {
+            case BlobDataItem::Type::Data:
+                blobsForWriting.last().filePathsOrDataBuffers.append({ { }, item.data() });
+                break;
+            case BlobDataItem::Type::File:
+                blobsForWriting.last().filePathsOrDataBuffers.append({ item.file()->path().isolatedCopy(), { } });
+
+            }
+        }
+    }
+
+    blobUtilityQueue().dispatch([blobsForWriting, completionHandler]() {
+        Vector<String> filePaths;
+
+        ScopeGuard completionCaller([completionHandler]() {
+            callOnMainThread([completionHandler]() {
+                Vector<String> filePaths;
+                completionHandler(filePaths);
+            });
+        });
+
+        for (auto& blob : blobsForWriting) {
+            PlatformFileHandle file;
+            String tempFilePath = openTemporaryFile(ASCIILiteral("Blob"), file);
+
+            ScopeGuard fileCloser([file, completionHandler]() {
+                PlatformFileHandle handle = file;
+                closeFile(handle);
+            });
+            
+            if (tempFilePath.isEmpty() || !isHandleValid(file)) {
+                LOG_ERROR("Failed to open temporary file for writing a Blob to IndexedDB");
+                return;
+            }
+
+            for (auto& part : blob.filePathsOrDataBuffers) {
+                if (part.second.data()) {
+                    int length = part.second.data()->size();
+                    if (writeToFile(file, reinterpret_cast<const char*>(part.second.data()->data()), length) != length) {
+                        LOG_ERROR("Failed writing a Blob to temporary file for storage in IndexedDB");
+                        return;
+                    }
+                } else {
+                    ASSERT(!part.first.isEmpty());
+                    if (!appendFileContentsToFileHandle(part.first, file)) {
+                        LOG_ERROR("Failed copying File contents to a Blob temporary file for storage in IndexedDB");
+                        return;
+                    }
+                }
+            }
+
+            filePaths.append(tempFilePath.isolatedCopy());
+        }
+
+        completionCaller.disable();
+        callOnMainThread([completionHandler, filePaths]() {
+            completionHandler(filePaths);
+        });
+    });
 }
 
 } // namespace WebCore

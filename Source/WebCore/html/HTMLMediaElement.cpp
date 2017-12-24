@@ -68,6 +68,7 @@
 #include "MediaResourceLoader.h"
 #include "MemoryPressureHandler.h"
 #include "NetworkingContext.h"
+#include "NoEventDispatchAssertion.h"
 #include "PageGroup.h"
 #include "PageThrottler.h"
 #include "PlatformMediaSessionManager.h"
@@ -190,23 +191,24 @@ static String actionName(HTMLMediaElementEnums::DelayedActionType action)
 {
     StringBuilder actionBuilder;
 
-#define CASE(_actionType) \
+#define ACTION(_actionType) \
     if (action & (HTMLMediaElementEnums::_actionType)) { \
         if (!actionBuilder.isEmpty()) \
         actionBuilder.append(", "); \
         actionBuilder.append(#_actionType); \
     } \
 
-    CASE(LoadMediaResource);
-    CASE(ConfigureTextTracks);
-    CASE(TextTrackChangesNotification);
-    CASE(ConfigureTextTrackDisplay);
-    CASE(CheckPlaybackTargetCompatablity);
-    CASE(CheckMediaState);
+    ACTION(LoadMediaResource);
+    ACTION(ConfigureTextTracks);
+    ACTION(TextTrackChangesNotification);
+    ACTION(ConfigureTextTrackDisplay);
+    ACTION(CheckPlaybackTargetCompatablity);
+    ACTION(CheckMediaState);
+    ACTION(MediaEngineUpdated);
 
     return actionBuilder.toString();
 
-#undef CASE
+#undef ACTION
 }
 
 #endif
@@ -868,6 +870,9 @@ void HTMLMediaElement::scheduleDelayedAction(DelayedActionType actionType)
     if (actionType & CheckMediaState)
         setFlags(m_pendingActionFlags, CheckMediaState);
 
+    if (actionType & MediaEngineUpdated)
+        setFlags(m_pendingActionFlags, MediaEngineUpdated);
+
     m_pendingActionTimer.startOneShot(0);
 }
 
@@ -895,13 +900,15 @@ void HTMLMediaElement::scheduleEvent(const AtomicString& eventName)
 void HTMLMediaElement::pendingActionTimerFired()
 {
     Ref<HTMLMediaElement> protect(*this); // loadNextSourceChild may fire 'beforeload', which can make arbitrary DOM mutations.
+    PendingActionFlags pendingActions = m_pendingActionFlags;
+    m_pendingActionFlags = 0;
 
 #if ENABLE(VIDEO_TRACK)
-    if (RuntimeEnabledFeatures::sharedFeatures().webkitVideoTrackEnabled() && (m_pendingActionFlags & ConfigureTextTracks))
+    if (RuntimeEnabledFeatures::sharedFeatures().webkitVideoTrackEnabled() && (pendingActions & ConfigureTextTracks))
         configureTextTracks();
 #endif
 
-    if (m_pendingActionFlags & LoadMediaResource) {
+    if (pendingActions & LoadMediaResource) {
         if (m_loadState == LoadingFromSourceElement)
             loadNextSourceChild();
         else
@@ -909,17 +916,18 @@ void HTMLMediaElement::pendingActionTimerFired()
     }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    if (m_pendingActionFlags & CheckPlaybackTargetCompatablity && m_player && m_player->isCurrentPlaybackTargetWireless() && !m_player->canPlayToWirelessPlaybackTarget()) {
+    if (pendingActions & CheckPlaybackTargetCompatablity && m_player && m_player->isCurrentPlaybackTargetWireless() && !m_player->canPlayToWirelessPlaybackTarget()) {
         LOG(Media, "HTMLMediaElement::pendingActionTimerFired(%p) - calling setShouldPlayToPlaybackTarget(false)", this);
         m_failedToPlayToWirelessTarget = true;
         m_player->setShouldPlayToPlaybackTarget(false);
     }
 
-    if (m_pendingActionFlags & CheckMediaState)
+    if (pendingActions & CheckMediaState)
         updateMediaState();
 #endif
 
-    m_pendingActionFlags = 0;
+    if (pendingActions & MediaEngineUpdated)
+        mediaEngineWasUpdated();
 }
 
 PassRefPtr<MediaError> HTMLMediaElement::error() const 
@@ -2991,14 +2999,6 @@ void HTMLMediaElement::playInternal()
         return;
     }
 
-    // FIXME: rdar://problem/23833752 We need to be more strategic about when we set up the video controls manager.
-    // It's really something that should be handled by the PlatformMediaSessionManager since we only want a controls
-    // manager for the currentSession.
-    if (document().page() && is<HTMLVideoElement>(*this)) {
-        HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
-        document().page()->chrome().client().setUpVideoControlsManager(asVideo);
-    }
-
     // 4.8.10.9. Playing the media resource
     if (!m_player || m_networkState == NETWORK_EMPTY)
         scheduleDelayedAction(LoadMediaResource);
@@ -4539,19 +4539,13 @@ GraphicsDeviceAdapter* HTMLMediaElement::mediaPlayerGraphicsDeviceAdapter(const 
 }
 #endif
 
-void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
+void HTMLMediaElement::mediaEngineWasUpdated()
 {
-    LOG(Media, "HTMLMediaElement::mediaPlayerEngineUpdated(%p)", this);
+    LOG(Media, "HTMLMediaElement::mediaEngineWasUpdated(%p)", this);
     beginProcessingMediaPlayerCallback();
     if (renderer())
         renderer()->updateFromElement();
     endProcessingMediaPlayerCallback();
-
-#if ENABLE(MEDIA_SOURCE)
-    m_droppedVideoFrames = 0;
-#endif
-
-    m_havePreparedToPlay = false;
 
     m_mediaSession->mediaEngineUpdated(*this);
 
@@ -4570,9 +4564,23 @@ void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
     m_player->setVideoFullscreenGravity(m_videoFullscreenGravity);
     m_player->setVideoFullscreenLayer(m_videoFullscreenLayer.get());
 #endif
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     updateMediaState(UpdateMediaState::Asynchronously);
 #endif
+}
+
+void HTMLMediaElement::mediaPlayerEngineUpdated(MediaPlayer*)
+{
+    LOG(Media, "HTMLMediaElement::mediaPlayerEngineUpdated(%p)", this);
+
+#if ENABLE(MEDIA_SOURCE)
+    m_droppedVideoFrames = 0;
+#endif
+
+    m_havePreparedToPlay = false;
+
+    scheduleDelayedAction(MediaEngineUpdated);
 }
 
 void HTMLMediaElement::mediaPlayerFirstVideoFrameAvailable(MediaPlayer*)
@@ -4815,6 +4823,11 @@ void HTMLMediaElement::updatePlayState()
     LOG(Media, "HTMLMediaElement::updatePlayState(%p) - shouldBePlaying = %s, playerPaused = %s", this, boolString(shouldBePlaying), boolString(playerPaused));
 
     if (shouldBePlaying) {
+        if (document().page() && m_mediaSession->canControlControlsManager(*this)) {
+            HTMLVideoElement& asVideo = downcast<HTMLVideoElement>(*this);
+            document().page()->chrome().client().setUpVideoControlsManager(asVideo);
+        }
+
         setDisplayMode(Video);
         invalidateCachedTime();
 
@@ -4847,6 +4860,9 @@ void HTMLMediaElement::updatePlayState()
         startPlaybackProgressTimer();
         setPlaying(true);
     } else {
+        if (endedPlayback() && document().page() && is<HTMLVideoElement>(*this))
+            document().page()->chrome().client().clearVideoControlsManager();
+
         if (!playerPaused)
             m_player->pause();
         refreshCachedTime();
@@ -6187,10 +6203,10 @@ RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceL
 
 bool HTMLMediaElement::mediaPlayerShouldUsePersistentCache() const
 {
-    if (!document().page())
-        return false;
+    if (Page* page = document().page())
+        return !page->usesEphemeralSession() && !page->isResourceCachingDisabled();
 
-    return document().page()->chrome().client().mediaShouldUsePersistentCache();
+    return false;
 }
 
 bool HTMLMediaElement::mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge& challenge)

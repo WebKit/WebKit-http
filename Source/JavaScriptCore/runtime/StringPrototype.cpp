@@ -68,7 +68,6 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncLastIndexOf(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncPadEnd(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncPadStart(ExecState*);
-EncodedJSValue JSC_HOST_CALL stringProtoFuncRepeat(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncReplace(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSlice(ExecState*);
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSplit(ExecState*);
@@ -112,6 +111,7 @@ const ClassInfo StringPrototype::s_info = { "String", &StringObject::s_info, &st
 /* Source for StringConstructor.lut.h
 @begin stringPrototypeTable
     match     JSBuiltin    DontEnum|Function 1
+    repeat    JSBuiltin    DontEnum|Function 1
     search    JSBuiltin    DontEnum|Function 1
 @end
 */
@@ -137,7 +137,6 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("lastIndexOf", stringProtoFuncLastIndexOf, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("padEnd", stringProtoFuncPadEnd, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("padStart", stringProtoFuncPadStart, DontEnum, 1);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("repeat", stringProtoFuncRepeat, DontEnum, 1);
     JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("replace", stringProtoFuncReplace, DontEnum, 2, StringPrototypeReplaceIntrinsic);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("slice", stringProtoFuncSlice, DontEnum, 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("split", stringProtoFuncSplit, DontEnum, 2);
@@ -283,13 +282,18 @@ static NEVER_INLINE String substituteBackreferencesSlow(StringView replacement, 
     return substitutedReplacement.toString();
 }
 
-static inline String substituteBackreferences(const String& replacement, StringView source, const int* ovector, RegExp* reg)
+inline String substituteBackreferencesInline(const String& replacement, StringView source, const int* ovector, RegExp* reg)
 {
     size_t i = replacement.find('$');
     if (UNLIKELY(i != notFound))
         return substituteBackreferencesSlow(replacement, source, ovector, reg, i);
 
     return replacement;
+}
+
+String substituteBackreferences(const String& replacement, StringView source, const int* ovector, RegExp* reg)
+{
+    return substituteBackreferencesInline(replacement, source, ovector, reg);
 }
 
 struct StringRange {
@@ -448,7 +452,7 @@ static ALWAYS_INLINE JSValue jsSpliceSubstringsWithSeparators(ExecState* exec, J
     return jsString(exec, impl.release());
 }
 
-static ALWAYS_INLINE EncodedJSValue removeUsingRegExpSearch(ExecState* exec, JSString* string, const String& source, RegExp* regExp)
+static ALWAYS_INLINE EncodedJSValue removeUsingRegExpSearch(VM& vm, ExecState* exec, JSString* string, const String& source, RegExp* regExp)
 {
     SuperSamplerScope superSamplerScope(false);
     
@@ -456,12 +460,11 @@ static ALWAYS_INLINE EncodedJSValue removeUsingRegExpSearch(ExecState* exec, JSS
     unsigned startPosition = 0;
 
     Vector<StringRange, 16> sourceRanges;
-    VM* vm = &exec->vm();
     RegExpConstructor* regExpConstructor = exec->lexicalGlobalObject()->regExpConstructor();
     unsigned sourceLen = source.length();
 
     while (true) {
-        MatchResult result = regExpConstructor->performMatch(*vm, regExp, string, source, startPosition);
+        MatchResult result = regExpConstructor->performMatch(vm, regExp, string, source, startPosition);
         if (!result)
             break;
 
@@ -489,8 +492,8 @@ static ALWAYS_INLINE EncodedJSValue removeUsingRegExpSearch(ExecState* exec, JSS
 }
 
 static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
-    ExecState* exec, JSString* string, JSValue searchValue, CallData& callData, CallType callType,
-    String& replacementString, JSValue replaceValue)
+    VM& vm, ExecState* exec, JSString* string, JSValue searchValue, CallData& callData,
+    CallType callType, String& replacementString, JSValue replaceValue)
 {
     const String& source = string->value(exec);
     unsigned sourceLen = source.length();
@@ -507,7 +510,7 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
             return JSValue::encode(jsUndefined());
 
         if (callType == CallType::None && !replacementString.length())
-            return removeUsingRegExpSearch(exec, string, source, regExp);
+            return removeUsingRegExpSearch(vm, exec, string, source, regExp);
     }
 
     // FIXME: This is wrong because we may be called directly from the FTL.
@@ -528,11 +531,10 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
         CachedCall cachedCall(exec, func, argCount);
         if (exec->hadException())
             return JSValue::encode(jsUndefined());
-        VM* vm = &exec->vm();
         if (source.is8Bit()) {
             while (true) {
                 int* ovector;
-                MatchResult result = regExpConstructor->performMatch(*vm, regExp, string, source, startPosition, &ovector);
+                MatchResult result = regExpConstructor->performMatch(vm, regExp, string, source, startPosition, &ovector);
                 if (!result)
                     break;
 
@@ -546,7 +548,7 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                     if (matchStart < 0)
                         cachedCall.setArgument(i, jsUndefined());
                     else
-                        cachedCall.setArgument(i, jsSubstring(vm, source, matchStart, matchLen));
+                        cachedCall.setArgument(i, jsSubstring(&vm, source, matchStart, matchLen));
                 }
 
                 cachedCall.setArgument(i++, jsNumber(result.start));
@@ -571,7 +573,7 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
         } else {
             while (true) {
                 int* ovector;
-                MatchResult result = regExpConstructor->performMatch(*vm, regExp, string, source, startPosition, &ovector);
+                MatchResult result = regExpConstructor->performMatch(vm, regExp, string, source, startPosition, &ovector);
                 if (!result)
                     break;
 
@@ -585,7 +587,7 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                     if (matchStart < 0)
                         cachedCall.setArgument(i, jsUndefined());
                     else
-                        cachedCall.setArgument(i, jsSubstring(vm, source, matchStart, matchLen));
+                        cachedCall.setArgument(i, jsSubstring(&vm, source, matchStart, matchLen));
                 }
 
                 cachedCall.setArgument(i++, jsNumber(result.start));
@@ -609,10 +611,9 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
             }
         }
     } else {
-        VM* vm = &exec->vm();
         do {
             int* ovector;
-            MatchResult result = regExpConstructor->performMatch(*vm, regExp, string, source, startPosition, &ovector);
+            MatchResult result = regExpConstructor->performMatch(vm, regExp, string, source, startPosition, &ovector);
             if (!result)
                 break;
 
@@ -673,31 +674,37 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
 EncodedJSValue JIT_OPERATION operationStringProtoFuncReplaceRegExpEmptyStr(
     ExecState* exec, JSString* thisValue, RegExpObject* searchValue)
 {
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    
     RegExp* regExp = searchValue->regExp();
     if (regExp->global()) {
         // ES5.1 15.5.4.10 step 8.a.
         searchValue->setLastIndex(exec, 0);
         if (exec->hadException())
             return JSValue::encode(jsUndefined());
-        return removeUsingRegExpSearch(exec, thisValue, thisValue->value(exec), regExp);
+        return removeUsingRegExpSearch(vm, exec, thisValue, thisValue->value(exec), regExp);
     }
 
     CallData callData;
     String replacementString = emptyString();
     return replaceUsingRegExpSearch(
-        exec, thisValue, searchValue, callData, CallType::None, replacementString, JSValue());
+        vm, exec, thisValue, searchValue, callData, CallType::None, replacementString, JSValue());
 }
 
 EncodedJSValue JIT_OPERATION operationStringProtoFuncReplaceRegExpString(
     ExecState* exec, JSString* thisValue, RegExpObject* searchValue, JSString* replaceString)
 {
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    
     CallData callData;
     String replacementString = replaceString->value(exec);
     return replaceUsingRegExpSearch(
-        exec, thisValue, searchValue, callData, CallType::None, replacementString, replaceString);
+        vm, exec, thisValue, searchValue, callData, CallType::None, replacementString, replaceString);
 }
 
-static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(ExecState* exec, JSString* string, JSValue searchValue, JSValue replaceValue)
+static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(VM& vm, ExecState* exec, JSString* string, JSValue searchValue, JSValue replaceValue)
 {
     String replacementString;
     CallData callData;
@@ -709,10 +716,10 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(ExecState* exec, JS
     }
 
     return replaceUsingRegExpSearch(
-        exec, string, searchValue, callData, callType, replacementString, replaceValue);
+        vm, exec, string, searchValue, callData, callType, replacementString, replaceValue);
 }
 
-static ALWAYS_INLINE EncodedJSValue replaceUsingStringSearch(ExecState* exec, JSString* jsString, JSValue searchValue, JSValue replaceValue)
+static ALWAYS_INLINE EncodedJSValue replaceUsingStringSearch(VM&, ExecState* exec, JSString* jsString, JSValue searchValue, JSValue replaceValue)
 {
     const String& string = jsString->value(exec);
     String searchString = searchValue.toString(exec)->value(exec);
@@ -792,6 +799,26 @@ static inline JSString* repeatCharacter(ExecState& exec, CharacterType character
     return jsString(&exec, impl.release());
 }
 
+EncodedJSValue JSC_HOST_CALL stringProtoFuncRepeatCharacter(ExecState* exec)
+{
+    // For a string which length is single, instead of creating ropes,
+    // allocating a sequential buffer and fill with the repeated string for efficiency.
+    ASSERT(exec->argumentCount() == 2);
+
+    ASSERT(exec->uncheckedArgument(0).isString());
+    JSString* string = jsCast<JSString*>(exec->uncheckedArgument(0));
+    ASSERT(string->length() == 1);
+
+    if (!exec->uncheckedArgument(1).isInt32())
+        return JSValue::encode(jsNull());
+
+    int32_t repeatCount = exec->uncheckedArgument(1).asInt32();
+    UChar character = string->view(exec)[0];
+    if (!(character & ~0xff))
+        return JSValue::encode(repeatCharacter(*exec, static_cast<LChar>(character), repeatCount));
+    return JSValue::encode(repeatCharacter(*exec, character, repeatCount));
+}
+
 static inline bool repeatStringPattern(ExecState& exec, unsigned maxLength, JSString* string, JSRopeString::RopeBuilder& ropeBuilder)
 {
     unsigned repeatCount = maxLength / string->length();
@@ -810,53 +837,6 @@ static inline bool repeatStringPattern(ExecState& exec, unsigned maxLength, JSSt
         }
     }
     return true;
-}
-
-EncodedJSValue JSC_HOST_CALL stringProtoFuncRepeat(ExecState* exec)
-{
-    JSValue thisValue = exec->thisValue();
-    if (!checkObjectCoercible(thisValue))
-        return throwVMTypeError(exec);
-
-    JSString* string = thisValue.toString(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    double repeatCountDouble = exec->argument(0).toInteger(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    if (repeatCountDouble < 0 || std::isinf(repeatCountDouble))
-        return throwVMError(exec, createRangeError(exec, ASCIILiteral("repeat() argument must be greater than or equal to 0 and not be infinity")));
-
-    VM& vm = exec->vm();
-
-    if (!string->length() || !repeatCountDouble)
-        return JSValue::encode(jsEmptyString(&vm));
-
-    if (repeatCountDouble == 1)
-        return JSValue::encode(string);
-
-    // JSString requires the limitation that its length is in the range of int32_t.
-    if (repeatCountDouble > std::numeric_limits<int32_t>::max() / string->length())
-        return JSValue::encode(throwOutOfMemoryError(exec));
-    unsigned repeatCount = static_cast<unsigned>(repeatCountDouble);
-
-    // For a string which length is small, instead of creating ropes,
-    // allocating a sequential buffer and fill with the repeated string for efficiency.
-    if (string->length() == 1) {
-        String repeatedString = string->value(exec);
-        UChar character = repeatedString.at(0);
-        if (!(character & ~0xff))
-            return JSValue::encode(repeatCharacter(exec, static_cast<LChar>(character), repeatCount));
-        return JSValue::encode(repeatCharacter(exec, character, repeatCount));
-    }
-
-    JSRopeString::RopeBuilder ropeBuilder(vm);
-    for (unsigned i = 0; i < repeatCount; ++i) {
-        if (!ropeBuilder.append(string))
-            return JSValue::encode(throwOutOfMemoryError(exec));
-    }
-    return JSValue::encode(ropeBuilder.release());
 }
 
 enum class StringPaddingLocation { Start, End };
@@ -933,35 +913,38 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncPadStart(ExecState* exec)
 }
 
 ALWAYS_INLINE EncodedJSValue replace(
-    ExecState* exec, JSString* string, JSValue searchValue, JSValue replaceValue)
+    VM& vm, ExecState* exec, JSString* string, JSValue searchValue, JSValue replaceValue)
 {
     if (searchValue.inherits(RegExpObject::info()))
-        return replaceUsingRegExpSearch(exec, string, searchValue, replaceValue);
-    return replaceUsingStringSearch(exec, string, searchValue, replaceValue);
+        return replaceUsingRegExpSearch(vm, exec, string, searchValue, replaceValue);
+    return replaceUsingStringSearch(vm, exec, string, searchValue, replaceValue);
 }
 
 ALWAYS_INLINE EncodedJSValue replace(
-    ExecState* exec, JSValue thisValue, JSValue searchValue, JSValue replaceValue)
+    VM& vm, ExecState* exec, JSValue thisValue, JSValue searchValue, JSValue replaceValue)
 {
     if (!checkObjectCoercible(thisValue))
         return throwVMTypeError(exec);
     JSString* string = thisValue.toString(exec);
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
-    return replace(exec, string, searchValue, replaceValue);
+    return replace(vm, exec, string, searchValue, replaceValue);
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncReplace(ExecState* exec)
 {
-    return replace(exec, exec->thisValue(), exec->argument(0), exec->argument(1));
+    return replace(exec->vm(), exec, exec->thisValue(), exec->argument(0), exec->argument(1));
 }
 
 EncodedJSValue JIT_OPERATION operationStringProtoFuncReplaceGeneric(
     ExecState* exec, EncodedJSValue thisValue, EncodedJSValue searchValue,
     EncodedJSValue replaceValue)
 {
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    
     return replace(
-        exec, JSValue::decode(thisValue), JSValue::decode(searchValue),
+        vm, exec, JSValue::decode(thisValue), JSValue::decode(searchValue),
         JSValue::decode(replaceValue));
 }
 
@@ -1955,7 +1938,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncStartsWith(ExecState* exec)
     if (vm.exception())
         return JSValue::encode(JSValue());
     if (isRegularExpression)
-        return throwVMTypeError(exec, "Argument to String.prototype.startsWith cannot be a RegExp.");
+        return throwVMTypeError(exec, "Argument to String.prototype.startsWith cannot be a RegExp");
 
     String searchString = a0.toString(exec)->value(exec);
     if (exec->hadException())
@@ -1991,7 +1974,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncEndsWith(ExecState* exec)
     if (vm.exception())
         return JSValue::encode(JSValue());
     if (isRegularExpression)
-        return throwVMTypeError(exec, "Argument to String.prototype.endsWith cannot be a RegExp.");
+        return throwVMTypeError(exec, "Argument to String.prototype.endsWith cannot be a RegExp");
 
     String searchString = a0.toString(exec)->value(exec);
     if (exec->hadException())
@@ -2028,7 +2011,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncIncludes(ExecState* exec)
     if (vm.exception())
         return JSValue::encode(JSValue());
     if (isRegularExpression)
-        return throwVMTypeError(exec, "Argument to String.prototype.includes cannot be a RegExp.");
+        return throwVMTypeError(exec, "Argument to String.prototype.includes cannot be a RegExp");
 
     String searchString = a0.toString(exec)->value(exec);
     if (exec->hadException())

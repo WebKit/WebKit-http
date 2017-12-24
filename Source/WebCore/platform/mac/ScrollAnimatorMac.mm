@@ -1300,10 +1300,10 @@ void ScrollAnimatorMac::updateScrollerStyle()
 
         NSScrollerImp *oldVerticalPainter = [m_scrollerImpPair verticalScrollerImp];
         NSScrollerImp *newVerticalPainter = [NSScrollerImp scrollerImpWithStyle:newStyle controlSize:(NSControlSize)verticalScrollbar->controlSize() horizontal:NO replacingScrollerImp:oldVerticalPainter];
-        m_scrollableArea.setScrollbarLayoutDirection(newVerticalPainter);
 
         [m_scrollerImpPair setVerticalScrollerImp:newVerticalPainter];
         macTheme->setNewPainterForScrollbar(*verticalScrollbar, newVerticalPainter);
+        macTheme->didCreateScrollerImp(*verticalScrollbar);
 
         // The different scrollbar styles have different thicknesses, so we must re-set the 
         // frameRect to the new thickness, and the re-layout below will ensure the position
@@ -1317,10 +1317,10 @@ void ScrollAnimatorMac::updateScrollerStyle()
 
         NSScrollerImp *oldHorizontalPainter = [m_scrollerImpPair horizontalScrollerImp];
         NSScrollerImp *newHorizontalPainter = [NSScrollerImp scrollerImpWithStyle:newStyle controlSize:(NSControlSize)horizontalScrollbar->controlSize() horizontal:YES replacingScrollerImp:oldHorizontalPainter];
-        m_scrollableArea.setScrollbarLayoutDirection(newHorizontalPainter);
 
         [m_scrollerImpPair setHorizontalScrollerImp:newHorizontalPainter];
         macTheme->setNewPainterForScrollbar(*horizontalScrollbar, newHorizontalPainter);
+        macTheme->didCreateScrollerImp(*horizontalScrollbar);
 
         // The different scrollbar styles have different thicknesses, so we must re-set the 
         // frameRect to the new thickness, and the re-layout below will ensure the position

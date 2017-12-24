@@ -29,6 +29,7 @@
 #ifndef VM_h
 #define VM_h
 
+#include "ConcurrentJITLock.h"
 #include "ControlFlowProfiler.h"
 #include "DateInstanceCache.h"
 #include "ExecutableAllocator.h"
@@ -101,6 +102,7 @@ class RegisterAtOffsetList;
 #if ENABLE(SAMPLING_PROFILER)
 class SamplingProfiler;
 #endif
+class ShadowChicken;
 class ScriptExecutable;
 class SourceProvider;
 class SourceProviderCache;
@@ -541,6 +543,7 @@ public:
     RefPtr<TypedArrayController> m_typedArrayController;
     RegExpCache* m_regExpCache;
     BumpPointerAllocator m_regExpAllocator;
+    ConcurrentJITLock m_regExpAllocatorLock;
 
 #if ENABLE(REGEXP_TRACING)
     typedef ListHashSet<RegExp*> RTTraceList;
@@ -598,8 +601,6 @@ public:
 
     JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, PassRefPtr<Microtask>);
     JS_EXPORT_PRIVATE void drainMicrotasks();
-    JS_EXPORT_PRIVATE void setShouldRewriteConstAsVar(bool shouldRewrite) { m_shouldRewriteConstAsVar = shouldRewrite; }
-    ALWAYS_INLINE bool shouldRewriteConstAsVar() { return m_shouldRewriteConstAsVar; }
 
     inline bool shouldTriggerTermination(ExecState*);
 
@@ -607,6 +608,8 @@ public:
     bool shouldBuilderPCToCodeOriginMapping() const { return m_shouldBuildPCToCodeOriginMapping; }
 
     BytecodeIntrinsicRegistry& bytecodeIntrinsicRegistry() { return *m_bytecodeIntrinsicRegistry; }
+    
+    ShadowChicken& shadowChicken() { return *m_shadowChicken; }
 
 private:
     friend class LLIntOffsetsExtractor;
@@ -658,7 +661,6 @@ private:
     Exception* m_lastException { nullptr };
     bool m_failNextNewCodeBlock { false };
     bool m_inDefineOwnProperty;
-    bool m_shouldRewriteConstAsVar { false };
     bool m_shouldBuildPCToCodeOriginMapping { false };
     std::unique_ptr<CodeCache> m_codeCache;
     LegacyProfiler* m_enabledProfiler;
@@ -677,6 +679,7 @@ private:
 #if ENABLE(SAMPLING_PROFILER)
     RefPtr<SamplingProfiler> m_samplingProfiler;
 #endif
+    std::unique_ptr<ShadowChicken> m_shadowChicken;
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
 };
 

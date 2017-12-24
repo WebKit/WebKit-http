@@ -1517,22 +1517,37 @@ void RenderGrid::offsetAndBreadthForPositionedChild(const RenderBox& child, Grid
         || (endLine < firstExplicitLine)
         || (endLine > lastExplicitLine);
 
-    LayoutUnit start = startIsAuto ? LayoutUnit() : (isRowAxis ?  m_columnPositions[startLine] : m_rowPositions[startLine]);
-    LayoutUnit end = endIsAuto ? (isRowAxis ? logicalWidth() : logicalHeight()) : (isRowAxis ?  m_columnPositions[endLine] : m_rowPositions[endLine]);
-
-    breadth = end - start;
-
-    if (startIsAuto)
-        breadth -= isRowAxis ? borderStart() : borderBefore();
-    else
-        start -= isRowAxis ? borderStart() : borderBefore();
-
-    if (endIsAuto) {
-        breadth -= isRowAxis ? borderEnd() : borderAfter();
-        breadth -= scrollbarLogicalWidth();
+    // We're normalizing the positions to avoid issues with RTL (as they're stored in the same order than LTR but adding an offset).
+    LayoutUnit start;
+    if (!startIsAuto) {
+        if (isRowAxis)
+            start = m_columnPositions[startLine] - m_columnPositions[0] + paddingStart();
+        else
+            start = m_rowPositions[startLine] - m_rowPositions[0] + paddingBefore();
     }
 
+    LayoutUnit end = isRowAxis ? clientLogicalWidth() : clientLogicalHeight();
+    if (!endIsAuto) {
+        if (isRowAxis)
+            end = m_columnPositions[endLine] - m_columnPositions[0] + paddingStart();
+        else
+            end = m_rowPositions[endLine] - m_rowPositions[0] + paddingBefore();
+    }
+
+    breadth = end - start;
     offset = start;
+
+    if (isRowAxis && !style().isLeftToRightDirection() && !child.style().hasStaticInlinePosition(child.isHorizontalWritingMode())) {
+        // If the child doesn't have a static inline position (i.e. "left" and/or "right" aren't "auto",
+        // we need to calculate the offset from the left (even if we're in RTL).
+        if (endIsAuto)
+            offset = LayoutUnit();
+        else {
+            LayoutUnit alignmentOffset =  m_columnPositions[0] - borderAndPaddingStart();
+            LayoutUnit offsetFromLastLine = m_columnPositions[m_columnPositions.size() - 1] - m_columnPositions[endLine];
+            offset = paddingLeft() +  alignmentOffset + offsetFromLastLine;
+        }
+    }
 
     if (child.parent() == this && !startIsAuto) {
         // If column/row start is "auto" the static position has been already set in prepareChildForPositionedLayout().

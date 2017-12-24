@@ -90,6 +90,7 @@ bool doesGC(Graph& graph, Node* node)
     case ArithRound:
     case ArithFloor:
     case ArithCeil:
+    case ArithTrunc:
     case ArithFRound:
     case ArithSin:
     case ArithCos:
@@ -116,6 +117,7 @@ bool doesGC(Graph& graph, Node* node)
     case PutClosureVar:
     case GetRegExpObjectLastIndex:
     case SetRegExpObjectLastIndex:
+    case RecordRegExpCachedResult:
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
     case PutGlobalVariable:
@@ -149,6 +151,9 @@ bool doesGC(Graph& graph, Node* node)
     case OverridesHasInstance:
     case InstanceOf:
     case InstanceOfCustom:
+    case IsArrayObject:
+    case IsJSArray:
+    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -232,12 +237,15 @@ bool doesGC(Graph& graph, Node* node)
     case GetFromArguments:
     case PutToArguments:
     case CopyRest:
+    case LogShadowChickenPrologue:
+    case LogShadowChickenTail:
         return false;
 
     case CreateActivation:
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:
+    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
     case AllocatePropertyStorage:

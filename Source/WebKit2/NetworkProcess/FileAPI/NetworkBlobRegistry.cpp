@@ -117,6 +117,11 @@ uint64_t NetworkBlobRegistry::blobSize(NetworkConnectionToWebProcess* connection
     return blobRegistry().blobSize(url);
 }
 
+void NetworkBlobRegistry::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, std::function<void(const Vector<String>&)> completionHandler)
+{
+    blobRegistry().writeBlobsToTemporaryFiles(blobURLs, completionHandler);
+}
+
 void NetworkBlobRegistry::connectionToWebProcessDidClose(NetworkConnectionToWebProcess* connection)
 {
     if (!m_blobsForConnection.contains(connection))
@@ -141,8 +146,8 @@ Vector<RefPtr<BlobDataFileReference>> NetworkBlobRegistry::filesInBlob(NetworkCo
 
     Vector<RefPtr<BlobDataFileReference>> result;
     for (const BlobDataItem& item : blobData->items()) {
-        if (item.type == BlobDataItem::File)
-            result.append(item.file);
+        if (item.type() == BlobDataItem::Type::File)
+            result.append(item.file());
     }
 
     return result;

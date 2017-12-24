@@ -45,9 +45,9 @@ void InsertionSet::insertSlow(const Insertion& insertion)
     m_insertions.insert(0, insertion);
 }
 
-void InsertionSet::execute(BasicBlock* block)
+size_t InsertionSet::execute(BasicBlock* block)
 {
-    executeInsertions(*block, m_insertions);
+    return executeInsertions(*block, m_insertions);
 }
 
 } } // namespace JSC::DFG
