@@ -88,10 +88,10 @@ ssize_t BFormDataIO::Size()
                 for (size_t j = 0; j < blobData->items().size(); ++j)
                 {
                     const BlobDataItem& blobItem = blobData->items()[j];
-                    if (blobItem.type == BlobDataItem::File
+                    if (blobItem.type() == BlobDataItem::Type::File
                         && blobItem.length() == BlobDataItem::toEndOfFile)
                     {
-                        BNode node(BString(blobItem.file->path()));
+                        BNode node(BString(blobItem.file()->path()));
                         off_t filesize = 0;
                         node.GetSize(&filesize);
                         size += filesize;
@@ -133,7 +133,7 @@ BFormDataIO::Read(void* buffer, size_t size)
                 }
 
                 const BlobDataItem& item = blobData->items()[m_currentItem];
-                if (item.type == BlobDataItem::Data) {
+                if (item.type() == BlobDataItem::Type::Data) {
                     size_t toCopy = 0;
 
                     if (remaining < item.length() - m_currentOffset)
@@ -142,7 +142,7 @@ BFormDataIO::Read(void* buffer, size_t size)
                         toCopy = item.length() - m_currentOffset;
 
                     memcpy(reinterpret_cast<char*>(buffer) + read,
-                        item.data->data() + item.offset() + m_currentOffset, toCopy);
+                        item.data().data() + item.offset() + m_currentOffset, toCopy);
                     m_currentOffset += toCopy;
                     read += toCopy;
 
@@ -247,17 +247,18 @@ BFormDataIO::_ParseCurrentElement()
             {
                 const BlobDataItem& item = blobData->items()[m_currentItem];
 
-                if (item.type == BlobDataItem::File)
+                if (item.type() == BlobDataItem::Type::File)
                 {
-                    m_currentFile->SetTo(item.file->path().utf8().data(), B_READ_ONLY);
+                    m_currentFile->SetTo(item.file()->path().utf8().data(), B_READ_ONLY);
                     m_currentFile->Seek(item.offset(), SEEK_SET);
                     if (item.length() == BlobDataItem::toEndOfFile)
                         m_currentFile->GetSize(&m_currentFileSize);
                     else
                         m_currentFileSize = item.length();
                     return;
-                } else if(item.type == BlobDataItem::Data) {
+                } else if(item.type() == BlobDataItem::Type::Data) {
                     // FIXME handle BlobDataItem::Data too!
+					fprintf(stderr, "TODO handle blob data items\n");
                 } else {
                     debugger("Unhandled blob type. Please submit a bugreport with the webpage that triggered this.");
                 }

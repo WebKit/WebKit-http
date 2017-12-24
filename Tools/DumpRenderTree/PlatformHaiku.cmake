@@ -10,9 +10,9 @@ list(APPEND DumpRenderTree_SOURCES
 )
 
 list(APPEND DumpRenderTree_LIBRARIES
-    ${LIBXML2_LIBRARIES}
-    ${LIBXSLT_LIBRARIES}
-    ${SQLITE_LIBRARIES}
+	WebKit
+	WebCoreDerivedSources
+	WebCore
 )
 
 list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES

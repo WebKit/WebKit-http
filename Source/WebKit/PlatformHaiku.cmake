@@ -130,6 +130,7 @@ LIST(APPEND WebKit_LIBRARIES
     ${JPEG_LIBRARY}
     ${CMAKE_DL_LIBS}
     be bnetapi shared translation tracker
+    -Wl,--start-group WebCore WebCoreDerivedSources -Wl,--end-group
 )
 
 INSTALL(FILES

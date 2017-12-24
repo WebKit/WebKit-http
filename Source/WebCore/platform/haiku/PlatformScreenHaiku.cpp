@@ -72,6 +72,11 @@ FloatRect screenAvailableRect(Widget* widget)
     return screenRect(widget);
 }
 
+bool screenSupportsExtendedColor()
+{
+    return false;
+}
+
 int screenDepth(Widget*)
 {
     BScreen screen;
