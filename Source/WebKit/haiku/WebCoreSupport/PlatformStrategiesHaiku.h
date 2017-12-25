@@ -47,6 +47,7 @@ private:
     virtual String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
     virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&) override;
     virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
+	virtual void addCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const WebCore::Cookie&) override;
 
     // WebCore::PluginStrategy
     virtual void refreshPlugins() override;

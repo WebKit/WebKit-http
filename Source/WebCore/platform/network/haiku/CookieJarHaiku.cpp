@@ -128,6 +128,12 @@ void deleteCookie(const NetworkStorageSession&, const URL& url, const String& na
 	notImplemented();
 }
 
+void addCookie(const NetworkStorageSession&, const URL&, const Cookie&)
+{
+    // FIXME: implement this command. <https://webkit.org/b/156295>
+    notImplemented();
+}
+
 void setCookieStoragePrivateBrowsingEnabled(bool)
 {
 #if TRACE_COOKIE_JAR
