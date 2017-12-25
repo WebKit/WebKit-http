@@ -31,9 +31,6 @@
 
 namespace WebCore {
 
-    // This struct is currently only used to provide more cookies information
-    // to the Web Inspector.
-
     struct Cookie {
         Cookie() { }
 
@@ -55,6 +52,7 @@ namespace WebCore {
         String value;
         String domain;
         String path;
+        // Expiration date, expressed as milliseconds since the UNIX epoch.
         double expires;
         bool httpOnly;
         bool secure;

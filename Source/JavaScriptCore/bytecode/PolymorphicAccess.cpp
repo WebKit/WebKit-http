@@ -31,11 +31,13 @@
 #include "BinarySwitch.h"
 #include "CCallHelpers.h"
 #include "CodeBlock.h"
+#include "DirectArguments.h"
 #include "GetterSetter.h"
 #include "Heap.h"
 #include "JITOperations.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
+#include "ScopedArguments.h"
 #include "ScratchRegisterAllocator.h"
 #include "StructureStubClearingWatchpoint.h"
 #include "StructureStubInfo.h"
@@ -70,7 +72,7 @@ void AccessGenerationState::succeed()
     success.append(jit->jump());
 }
 
-void AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling()
+void AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling(const RegisterSet& extra)
 {
     if (!m_calculatedRegistersForCallAndExceptionHandling) {
         m_calculatedRegistersForCallAndExceptionHandling = true;
@@ -81,12 +83,16 @@ void AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling()
             RELEASE_ASSERT(JITCode::isOptimizingJIT(jit->codeBlock()->jitType()));
 
         m_liveRegistersForCall = RegisterSet(m_liveRegistersToPreserveAtExceptionHandlingCallSite, allocator->usedRegisters());
+        m_liveRegistersForCall.merge(extra);
         m_liveRegistersForCall.exclude(RegisterSet::registersToNotSaveForJSCall());
+        m_liveRegistersForCall.merge(extra);
     }
 }
 
-void AccessGenerationState::preserveLiveRegistersToStackForCall()
+void AccessGenerationState::preserveLiveRegistersToStackForCall(const RegisterSet& extra)
 {
+    calculateLiveRegistersForCallAndExceptionHandling(extra);
+    
     unsigned extraStackPadding = 0;
     unsigned numberOfStackBytesUsedForRegisterPreservation = ScratchRegisterAllocator::preserveRegistersToStackForCall(*jit, liveRegistersForCall(), extraStackPadding);
     if (m_numberOfStackBytesUsedForRegisterPreservation != std::numeric_limits<unsigned>::max())
@@ -155,8 +161,60 @@ const HandlerInfo& AccessGenerationState::originalExceptionHandler() const
 
 CallSiteIndex AccessGenerationState::originalCallSiteIndex() const { return stubInfo->callSiteIndex; }
 
+void AccessGenerationState::emitExplicitExceptionHandler()
+{
+    restoreScratch();
+    jit->copyCalleeSavesToVMCalleeSavesBuffer();
+    if (needsToRestoreRegistersIfException()) {
+        // To the JIT that produces the original exception handling
+        // call site, they will expect the OSR exit to be arrived
+        // at from genericUnwind. Therefore we must model what genericUnwind
+        // does here. I.e, set callFrameForCatch and copy callee saves.
+
+        jit->storePtr(GPRInfo::callFrameRegister, jit->vm()->addressOfCallFrameForCatch());
+        CCallHelpers::Jump jumpToOSRExitExceptionHandler = jit->jump();
+
+        // We don't need to insert a new exception handler in the table
+        // because we're doing a manual exception check here. i.e, we'll
+        // never arrive here from genericUnwind().
+        HandlerInfo originalHandler = originalExceptionHandler();
+        jit->addLinkTask(
+            [=] (LinkBuffer& linkBuffer) {
+                linkBuffer.link(jumpToOSRExitExceptionHandler, originalHandler.nativeCode);
+            });
+    } else {
+        jit->setupArguments(CCallHelpers::TrustedImmPtr(jit->vm()), GPRInfo::callFrameRegister);
+        CCallHelpers::Call lookupExceptionHandlerCall = jit->call();
+        jit->addLinkTask(
+            [=] (LinkBuffer& linkBuffer) {
+                linkBuffer.link(lookupExceptionHandlerCall, lookupExceptionHandler);
+            });
+        jit->jumpToExceptionHandler();
+    }
+}
+
 AccessCase::AccessCase()
 {
+}
+
+std::unique_ptr<AccessCase> AccessCase::tryGet(
+    VM& vm, JSCell* owner, AccessType type, PropertyOffset offset, Structure* structure,
+    const ObjectPropertyConditionSet& conditionSet, bool viaProxy, WatchpointSet* additionalSet)
+{
+    std::unique_ptr<AccessCase> result(new AccessCase());
+
+    result->m_type = type;
+    result->m_offset = offset;
+    result->m_structure.set(vm, owner, structure);
+    result->m_conditionSet = conditionSet;
+
+    if (viaProxy || additionalSet) {
+        result->m_rareData = std::make_unique<RareData>();
+        result->m_rareData->viaProxy = viaProxy;
+        result->m_rareData->additionalSet = additionalSet;
+    }
+
+    return result;
 }
 
 std::unique_ptr<AccessCase> AccessCase::get(
@@ -222,13 +280,6 @@ std::unique_ptr<AccessCase> AccessCase::transition(
         && oldStructure->outOfLineCapacity()) {
         return nullptr;
     }
-
-    // Skip optimizing the case where we need realloc, and the structure has
-    // indexing storage.
-    // FIXME: We shouldn't skip this! Implement it!
-    // https://bugs.webkit.org/show_bug.cgi?id=130914
-    if (oldStructure->couldHaveIndexingHeader())
-        return nullptr;
 
     std::unique_ptr<AccessCase> result(new AccessCase());
 
@@ -347,6 +398,8 @@ bool AccessCase::guardedByStructureCheck() const
     case MegamorphicLoad:
     case ArrayLength:
     case StringLength:
+    case DirectArgumentsLength:
+    case ScopedArgumentsLength:
         return false;
     default:
         return true;
@@ -358,6 +411,29 @@ JSObject* AccessCase::alternateBase() const
     if (customSlotBase())
         return customSlotBase();
     return conditionSet().slotBaseCondition().object();
+}
+
+bool AccessCase::doesCalls(Vector<JSCell*>* cellsToMark) const
+{
+    switch (type()) {
+    case Getter:
+    case Setter:
+    case CustomValueGetter:
+    case CustomAccessorGetter:
+    case CustomValueSetter:
+    case CustomAccessorSetter:
+        return true;
+    case Transition:
+        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()
+            && structure()->couldHaveIndexingHeader()) {
+            if (cellsToMark)
+                cellsToMark->append(newStructure());
+            return true;
+        }
+        return false;
+    default:
+        return false;
+    }
 }
 
 bool AccessCase::couldStillSucceed() const
@@ -472,6 +548,46 @@ void AccessCase::generateWithGuard(
                 CCallHelpers::Address(baseGPR, JSCell::typeInfoTypeOffset()),
                 CCallHelpers::TrustedImm32(StringType)));
         break;
+    }
+        
+    case DirectArgumentsLength: {
+        ASSERT(!viaProxy());
+        fallThrough.append(
+            jit.branch8(
+                CCallHelpers::NotEqual,
+                CCallHelpers::Address(baseGPR, JSCell::typeInfoTypeOffset()),
+                CCallHelpers::TrustedImm32(DirectArgumentsType)));
+
+        fallThrough.append(
+            jit.branchTestPtr(
+                CCallHelpers::NonZero,
+                CCallHelpers::Address(baseGPR, DirectArguments::offsetOfOverrides())));
+        jit.load32(
+            CCallHelpers::Address(baseGPR, DirectArguments::offsetOfLength()),
+            valueRegs.payloadGPR());
+        jit.boxInt32(valueRegs.payloadGPR(), valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        state.succeed();
+        return;
+    }
+        
+    case ScopedArgumentsLength: {
+        ASSERT(!viaProxy());
+        fallThrough.append(
+            jit.branch8(
+                CCallHelpers::NotEqual,
+                CCallHelpers::Address(baseGPR, JSCell::typeInfoTypeOffset()),
+                CCallHelpers::TrustedImm32(ScopedArgumentsType)));
+
+        fallThrough.append(
+            jit.branchTest8(
+                CCallHelpers::NonZero,
+                CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfOverrodeThings())));
+        jit.load32(
+            CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfTotalLength()),
+            valueRegs.payloadGPR());
+        jit.boxInt32(valueRegs.payloadGPR(), valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        state.succeed();
+        return;
     }
         
     case MegamorphicLoad: {
@@ -685,6 +801,7 @@ void AccessCase::generate(AccessGenerationState& state)
         return;
 
     case Load:
+    case GetGetter:
     case Getter:
     case Setter:
     case CustomValueGetter:
@@ -720,7 +837,7 @@ void AccessCase::generate(AccessGenerationState& state)
 
         GPRReg loadedValueGPR = InvalidGPRReg;
         if (m_type != CustomValueGetter && m_type != CustomAccessorGetter && m_type != CustomValueSetter && m_type != CustomAccessorSetter) {
-            if (m_type == Load)
+            if (m_type == Load || m_type == GetGetter)
                 loadedValueGPR = valueRegs.payloadGPR();
             else
                 loadedValueGPR = scratchGPR;
@@ -739,7 +856,7 @@ void AccessCase::generate(AccessGenerationState& state)
             jit.load64(
                 CCallHelpers::Address(storageGPR, offsetRelativeToBase(m_offset)), loadedValueGPR);
 #else
-            if (m_type == Load) {
+            if (m_type == Load || m_type == GetGetter) {
                 jit.load32(
                     CCallHelpers::Address(storageGPR, offsetRelativeToBase(m_offset) + TagOffset),
                     valueRegs.tagGPR());
@@ -750,14 +867,13 @@ void AccessCase::generate(AccessGenerationState& state)
 #endif
         }
 
-        if (m_type == Load) {
+        if (m_type == Load || m_type == GetGetter) {
             state.succeed();
             return;
         }
 
         // Stuff for custom getters/setters.
         CCallHelpers::Call operationCall;
-        CCallHelpers::Call lookupExceptionHandlerCall;
 
         // Stuff for JS getters/setters.
         CCallHelpers::DataLabelPtr addressOfLinkFunctionCheck;
@@ -769,11 +885,8 @@ void AccessCase::generate(AccessGenerationState& state)
 
         // This also does the necessary calculations of whether or not we're an
         // exception handling call site.
-        state.calculateLiveRegistersForCallAndExceptionHandling();
         state.preserveLiveRegistersToStackForCall();
 
-        // Need to make sure that whenever this call is made in the future, we remember the
-        // place that we made it from.
         jit.store32(
             CCallHelpers::TrustedImm32(state.callSiteIndexForExceptionHandlingOrOriginal().bits()),
             CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
@@ -892,11 +1005,11 @@ void AccessCase::generate(AccessGenerationState& state)
 
             done.link(&jit);
 
-            jit.addPtr(CCallHelpers::TrustedImm32((jit.codeBlock()->stackPointerOffset() * sizeof(Register)) - state.preservedReusedRegisterState.numberOfBytesPreserved - state.numberOfStackBytesUsedForRegisterPreservation()),
+            jit.addPtr(CCallHelpers::TrustedImm32((codeBlock->stackPointerOffset() * sizeof(Register)) - state.preservedReusedRegisterState.numberOfBytesPreserved - state.numberOfStackBytesUsedForRegisterPreservation()),
                 GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
             state.restoreLiveRegistersFromStackForCall(isGetter());
 
-            state.callbacks.append(
+            jit.addLinkTask(
                 [=, &vm] (LinkBuffer& linkBuffer) {
                     m_rareData->callLinkInfo->setCallLocations(
                         linkBuffer.locationOfNearCall(slowPathCall),
@@ -908,12 +1021,10 @@ void AccessCase::generate(AccessGenerationState& state)
                         CodeLocationLabel(vm.getCTIStub(linkCallThunkGenerator).code()));
                 });
         } else {
-            // Need to make room for the C call so any of our stack spillage isn't overwritten.
-            // We also need to make room because we may be an inline cache in the FTL and not
-            // have a JIT call frame.
-            bool needsToMakeRoomOnStackForCCall = state.numberOfStackBytesUsedForRegisterPreservation() || codeBlock->jitType() == JITCode::FTLJIT;
-            if (needsToMakeRoomOnStackForCCall)
-                jit.makeSpaceOnStackForCCall();
+            // Need to make room for the C call so any of our stack spillage isn't overwritten. It's
+            // hard to track if someone did spillage or not, so we just assume that we always need
+            // to make some space here.
+            jit.makeSpaceOnStackForCCall();
 
             // getter: EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName);
             // setter: void (*PutValueFunc)(ExecState*, EncodedJSValue thisObject, EncodedJSValue value);
@@ -942,51 +1053,23 @@ void AccessCase::generate(AccessGenerationState& state)
             jit.storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
 
             operationCall = jit.call();
+            jit.addLinkTask(
+                [=] (LinkBuffer& linkBuffer) {
+                    linkBuffer.link(operationCall, FunctionPtr(m_rareData->customAccessor.opaque));
+                });
+
             if (m_type == CustomValueGetter || m_type == CustomAccessorGetter)
                 jit.setupResults(valueRegs);
-            if (needsToMakeRoomOnStackForCCall)
-                jit.reclaimSpaceOnStackForCCall();
+            jit.reclaimSpaceOnStackForCCall();
 
             CCallHelpers::Jump noException =
                 jit.emitExceptionCheck(CCallHelpers::InvertedExceptionCheck);
 
-            bool didSetLookupExceptionHandler = false;
             state.restoreLiveRegistersFromStackForCallWithThrownException();
-            state.restoreScratch();
-            jit.copyCalleeSavesToVMCalleeSavesBuffer();
-            if (state.needsToRestoreRegistersIfException()) {
-                // To the JIT that produces the original exception handling
-                // call site, they will expect the OSR exit to be arrived
-                // at from genericUnwind. Therefore we must model what genericUnwind
-                // does here. I.e, set callFrameForCatch and copy callee saves.
-
-                jit.storePtr(GPRInfo::callFrameRegister, vm.addressOfCallFrameForCatch());
-                CCallHelpers::Jump jumpToOSRExitExceptionHandler = jit.jump();
-
-                // We don't need to insert a new exception handler in the table
-                // because we're doing a manual exception check here. i.e, we'll
-                // never arrive here from genericUnwind().
-                HandlerInfo originalHandler = state.originalExceptionHandler();
-                state.callbacks.append(
-                    [=] (LinkBuffer& linkBuffer) {
-                        linkBuffer.link(jumpToOSRExitExceptionHandler, originalHandler.nativeCode);
-                    });
-            } else {
-                jit.setupArguments(CCallHelpers::TrustedImmPtr(&vm), GPRInfo::callFrameRegister);
-                lookupExceptionHandlerCall = jit.call();
-                didSetLookupExceptionHandler = true;
-                jit.jumpToExceptionHandler();
-            }
+            state.emitExplicitExceptionHandler();
         
             noException.link(&jit);
             state.restoreLiveRegistersFromStackForCall(isGetter());
-
-            state.callbacks.append(
-                [=] (LinkBuffer& linkBuffer) {
-                    linkBuffer.link(operationCall, FunctionPtr(m_rareData->customAccessor.opaque));
-                    if (didSetLookupExceptionHandler)
-                        linkBuffer.link(lookupExceptionHandlerCall, lookupExceptionHandler);
-                });
         }
         state.succeed();
         return;
@@ -1021,9 +1104,8 @@ void AccessCase::generate(AccessGenerationState& state)
     }
 
     case Transition: {
-        // AccessCase::transition() should have returned null.
+        // AccessCase::transition() should have returned null if this wasn't true.
         RELEASE_ASSERT(GPRInfo::numberOfRegisters >= 6 || !structure()->outOfLineCapacity() || structure()->outOfLineCapacity() == newStructure()->outOfLineCapacity());
-        RELEASE_ASSERT(!structure()->couldHaveIndexingHeader());
 
         if (InferredType* type = newStructure()->inferredTypeFor(ident.impl())) {
             if (verbose)
@@ -1034,7 +1116,11 @@ void AccessCase::generate(AccessGenerationState& state)
         } else if (verbose)
             dataLog("Don't have type.\n");
         
-        CCallHelpers::JumpList slowPath;
+        // NOTE: This logic is duplicated in AccessCase::doesCalls(). It's important that doesCalls() knows
+        // exactly when this would make calls.
+        bool allocating = newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity();
+        bool reallocating = allocating && structure()->outOfLineCapacity();
+        bool allocatingInline = allocating && !structure()->couldHaveIndexingHeader();
 
         ScratchRegisterAllocator allocator(stubInfo.patch.usedRegisters);
         allocator.lock(baseGPR);
@@ -1044,75 +1130,120 @@ void AccessCase::generate(AccessGenerationState& state)
         allocator.lock(valueRegs);
         allocator.lock(scratchGPR);
 
-        GPRReg scratchGPR2 = allocator.allocateScratchGPR();
-        GPRReg scratchGPR3;
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()
-            && structure()->outOfLineCapacity())
+        GPRReg scratchGPR2 = InvalidGPRReg;
+        GPRReg scratchGPR3 = InvalidGPRReg;
+        if (allocatingInline) {
+            scratchGPR2 = allocator.allocateScratchGPR();
             scratchGPR3 = allocator.allocateScratchGPR();
-        else
-            scratchGPR3 = InvalidGPRReg;
+        }
 
         ScratchRegisterAllocator::PreservedState preservedState =
             allocator.preserveReusedRegistersByPushing(jit, ScratchRegisterAllocator::ExtraStackSpace::SpaceForCCall);
+        
+        CCallHelpers::JumpList slowPath;
 
         ASSERT(structure()->transitionWatchpointSetHasBeenInvalidated());
 
-        bool scratchGPRHasStorage = false;
-        bool needsToMakeRoomOnStackForCCall = !preservedState.numberOfBytesPreserved && codeBlock->jitType() == JITCode::FTLJIT;
-
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
+        if (allocating) {
             size_t newSize = newStructure()->outOfLineCapacity() * sizeof(JSValue);
-            CopiedAllocator* copiedAllocator = &vm.heap.storageAllocator();
-
-            if (!structure()->outOfLineCapacity()) {
-                jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
-                slowPath.append(
-                    jit.branchSubPtr(
-                        CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
-                jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
-                jit.negPtr(scratchGPR);
-                jit.addPtr(
-                    CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
-                jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
-            } else {
-                size_t oldSize = structure()->outOfLineCapacity() * sizeof(JSValue);
-                ASSERT(newSize > oldSize);
             
-                jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR3);
-                jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
-                slowPath.append(
-                    jit.branchSubPtr(
-                        CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
-                jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
-                jit.negPtr(scratchGPR);
-                jit.addPtr(
-                    CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
-                jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
-                // We have scratchGPR = new storage, scratchGPR3 = old storage,
-                // scratchGPR2 = available
-                for (size_t offset = 0; offset < oldSize; offset += sizeof(void*)) {
-                    jit.loadPtr(
-                        CCallHelpers::Address(
-                            scratchGPR3,
-                            -static_cast<ptrdiff_t>(
-                                offset + sizeof(JSValue) + sizeof(void*))),
-                        scratchGPR2);
-                    jit.storePtr(
-                        scratchGPR2,
-                        CCallHelpers::Address(
-                            scratchGPR,
-                            -static_cast<ptrdiff_t>(offset + sizeof(JSValue) + sizeof(void*))));
+            if (allocatingInline) {
+                CopiedAllocator* copiedAllocator = &vm.heap.storageAllocator();
+
+                if (!reallocating) {
+                    jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
+                    slowPath.append(
+                        jit.branchSubPtr(
+                            CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
+                    jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
+                    jit.negPtr(scratchGPR);
+                    jit.addPtr(
+                        CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
+                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
+                } else {
+                    // Handle the case where we are reallocating (i.e. the old structure/butterfly
+                    // already had out-of-line property storage).
+                    size_t oldSize = structure()->outOfLineCapacity() * sizeof(JSValue);
+                    ASSERT(newSize > oldSize);
+            
+                    jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR3);
+                    jit.loadPtr(&copiedAllocator->m_currentRemaining, scratchGPR);
+                    slowPath.append(
+                        jit.branchSubPtr(
+                            CCallHelpers::Signed, CCallHelpers::TrustedImm32(newSize), scratchGPR));
+                    jit.storePtr(scratchGPR, &copiedAllocator->m_currentRemaining);
+                    jit.negPtr(scratchGPR);
+                    jit.addPtr(
+                        CCallHelpers::AbsoluteAddress(&copiedAllocator->m_currentPayloadEnd), scratchGPR);
+                    jit.addPtr(CCallHelpers::TrustedImm32(sizeof(JSValue)), scratchGPR);
+                    // We have scratchGPR = new storage, scratchGPR3 = old storage,
+                    // scratchGPR2 = available
+                    for (size_t offset = 0; offset < oldSize; offset += sizeof(void*)) {
+                        jit.loadPtr(
+                            CCallHelpers::Address(
+                                scratchGPR3,
+                                -static_cast<ptrdiff_t>(
+                                    offset + sizeof(JSValue) + sizeof(void*))),
+                            scratchGPR2);
+                        jit.storePtr(
+                            scratchGPR2,
+                            CCallHelpers::Address(
+                                scratchGPR,
+                                -static_cast<ptrdiff_t>(offset + sizeof(JSValue) + sizeof(void*))));
+                    }
                 }
+            } else {
+                // Handle the case where we are allocating out-of-line using an operation.
+                RegisterSet extraRegistersToPreserve;
+                extraRegistersToPreserve.set(baseGPR);
+                extraRegistersToPreserve.set(valueRegs);
+                state.preserveLiveRegistersToStackForCall(extraRegistersToPreserve);
+                
+                jit.store32(
+                    CCallHelpers::TrustedImm32(
+                        state.callSiteIndexForExceptionHandlingOrOriginal().bits()),
+                    CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+                
+                jit.makeSpaceOnStackForCCall();
+                
+                if (!reallocating) {
+                    jit.setupArgumentsWithExecState(baseGPR);
+                    
+                    CCallHelpers::Call operationCall = jit.call();
+                    jit.addLinkTask(
+                        [=] (LinkBuffer& linkBuffer) {
+                            linkBuffer.link(
+                                operationCall,
+                                FunctionPtr(operationReallocateButterflyToHavePropertyStorageWithInitialCapacity));
+                        });
+                } else {
+                    // Handle the case where we are reallocating (i.e. the old structure/butterfly
+                    // already had out-of-line property storage).
+                    jit.setupArgumentsWithExecState(
+                        baseGPR, CCallHelpers::TrustedImm32(newSize / sizeof(JSValue)));
+                    
+                    CCallHelpers::Call operationCall = jit.call();
+                    jit.addLinkTask(
+                        [=] (LinkBuffer& linkBuffer) {
+                            linkBuffer.link(
+                                operationCall,
+                                FunctionPtr(operationReallocateButterflyToGrowPropertyStorage));
+                        });
+                }
+                
+                jit.reclaimSpaceOnStackForCCall();
+                jit.move(GPRInfo::returnValueGPR, scratchGPR);
+                
+                CCallHelpers::Jump noException =
+                    jit.emitExceptionCheck(CCallHelpers::InvertedExceptionCheck);
+                
+                state.restoreLiveRegistersFromStackForCallWithThrownException();
+                state.emitExplicitExceptionHandler();
+                
+                noException.link(&jit);
+                state.restoreLiveRegistersFromStackForCall();
             }
-
-            jit.storePtr(scratchGPR, CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()));
-            scratchGPRHasStorage = true;
         }
-
-        uint32_t structureBits = bitwise_cast<uint32_t>(newStructure()->id());
-        jit.store32(
-            CCallHelpers::TrustedImm32(structureBits),
-            CCallHelpers::Address(baseGPR, JSCell::structureIDOffset()));
 
         if (isInlineOffset(m_offset)) {
             jit.storeValue(
@@ -1122,100 +1253,61 @@ void AccessCase::generate(AccessGenerationState& state)
                     JSObject::offsetOfInlineStorage() +
                     offsetInInlineStorage(m_offset) * sizeof(JSValue)));
         } else {
-            if (!scratchGPRHasStorage)
+            if (!allocating)
                 jit.loadPtr(CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()), scratchGPR);
             jit.storeValue(
                 valueRegs,
                 CCallHelpers::Address(scratchGPR, offsetInButterfly(m_offset) * sizeof(JSValue)));
         }
-
-        ScratchBuffer* scratchBuffer = nullptr;
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity())
-            scratchBuffer = vm.scratchBufferForSize(allocator.desiredScratchBufferSizeForCall());
-
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
-            CCallHelpers::Call callFlushWriteBarrierBuffer;
+        
+        // If we had allocated using an operation then we would have already executed the store
+        // barrier and we would have already stored the butterfly into the object.
+        if (allocatingInline) {
             CCallHelpers::Jump ownerIsRememberedOrInEden = jit.jumpIfIsRememberedOrInEden(baseGPR);
             WriteBarrierBuffer& writeBarrierBuffer = jit.vm()->heap.writeBarrierBuffer();
             jit.load32(writeBarrierBuffer.currentIndexAddress(), scratchGPR2);
-            CCallHelpers::Jump needToFlush =
+            slowPath.append(
                 jit.branch32(
                     CCallHelpers::AboveOrEqual, scratchGPR2,
-                    CCallHelpers::TrustedImm32(writeBarrierBuffer.capacity()));
-
+                    CCallHelpers::TrustedImm32(writeBarrierBuffer.capacity())));
+            
             jit.add32(CCallHelpers::TrustedImm32(1), scratchGPR2);
             jit.store32(scratchGPR2, writeBarrierBuffer.currentIndexAddress());
-
-            jit.move(CCallHelpers::TrustedImmPtr(writeBarrierBuffer.buffer()), scratchGPR);
+            
+            jit.move(CCallHelpers::TrustedImmPtr(writeBarrierBuffer.buffer()), scratchGPR3);
             // We use an offset of -sizeof(void*) because we already added 1 to scratchGPR2.
             jit.storePtr(
                 baseGPR,
                 CCallHelpers::BaseIndex(
-                    scratchGPR, scratchGPR2, CCallHelpers::ScalePtr,
+                    scratchGPR3, scratchGPR2, CCallHelpers::ScalePtr,
                     static_cast<int32_t>(-sizeof(void*))));
-
-            CCallHelpers::Jump doneWithBarrier = jit.jump();
-            needToFlush.link(&jit);
-
-            // FIXME: We should restoreReusedRegistersByPopping() before this. Then, we wouldn't need
-            // padding in preserveReusedRegistersByPushing(). Or, maybe it would be even better if the
-            // barrier slow path was just the normal slow path, below.
-            // https://bugs.webkit.org/show_bug.cgi?id=149030
-            allocator.preserveUsedRegistersToScratchBufferForCall(jit, scratchBuffer, scratchGPR2);
-            if (needsToMakeRoomOnStackForCCall)
-                jit.makeSpaceOnStackForCCall();
-            jit.setupArgumentsWithExecState(baseGPR);
-            callFlushWriteBarrierBuffer = jit.call();
-            if (needsToMakeRoomOnStackForCCall)
-                jit.reclaimSpaceOnStackForCCall();
-            allocator.restoreUsedRegistersFromScratchBufferForCall(
-                jit, scratchBuffer, scratchGPR2);
-
-            doneWithBarrier.link(&jit);
             ownerIsRememberedOrInEden.link(&jit);
-
-            state.callbacks.append(
-                [=] (LinkBuffer& linkBuffer) {
-                    linkBuffer.link(callFlushWriteBarrierBuffer, operationFlushWriteBarrierBuffer);
-                });
+            
+            // We set the new butterfly and the structure last. Doing it this way ensures that
+            // whatever we had done up to this point is forgotten if we choose to branch to slow
+            // path.
+            
+            jit.storePtr(scratchGPR, CCallHelpers::Address(baseGPR, JSObject::butterflyOffset()));
         }
         
+        uint32_t structureBits = bitwise_cast<uint32_t>(newStructure()->id());
+        jit.store32(
+            CCallHelpers::TrustedImm32(structureBits),
+            CCallHelpers::Address(baseGPR, JSCell::structureIDOffset()));
+
         allocator.restoreReusedRegistersByPopping(jit, preservedState);
         state.succeed();
-
-        if (newStructure()->outOfLineCapacity() != structure()->outOfLineCapacity()) {
-            slowPath.link(&jit);
-            allocator.restoreReusedRegistersByPopping(jit, preservedState);
-            allocator.preserveUsedRegistersToScratchBufferForCall(jit, scratchBuffer, scratchGPR);
-            if (needsToMakeRoomOnStackForCCall)
-                jit.makeSpaceOnStackForCCall();
-            jit.store32(
-                CCallHelpers::TrustedImm32(state.originalCallSiteIndex().bits()),
-                CCallHelpers::tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
-#if USE(JSVALUE64)
-            jit.setupArgumentsWithExecState(
-                baseGPR,
-                CCallHelpers::TrustedImmPtr(newStructure()),
-                CCallHelpers::TrustedImm32(m_offset),
-                valueRegs.gpr());
-#else
-            jit.setupArgumentsWithExecState(
-                baseGPR,
-                CCallHelpers::TrustedImmPtr(newStructure()),
-                CCallHelpers::TrustedImm32(m_offset),
-                valueRegs.payloadGPR(), valueRegs.tagGPR());
-#endif
-            CCallHelpers::Call operationCall = jit.call();
-            if (needsToMakeRoomOnStackForCCall)
-                jit.reclaimSpaceOnStackForCCall();
-            allocator.restoreUsedRegistersFromScratchBufferForCall(jit, scratchBuffer, scratchGPR);
-            state.succeed();
-
-            state.callbacks.append(
-                [=] (LinkBuffer& linkBuffer) {
-                    linkBuffer.link(operationCall, operationReallocateStorageAndFinishPut);
-                });
-        }
+        
+        // We will have a slow path if we were allocating without the help of an operation.
+        if (allocatingInline) {
+            if (allocator.didReuseRegisters()) {
+                slowPath.link(&jit);
+                allocator.restoreReusedRegistersByPopping(jit, preservedState);
+                state.failAndIgnore.append(jit.jump());
+            } else
+                state.failAndIgnore.append(slowPath);
+        } else
+            RELEASE_ASSERT(slowPath.empty());
         return;
     }
 
@@ -1235,7 +1327,7 @@ void AccessCase::generate(AccessGenerationState& state)
         state.succeed();
         return;
     }
-
+        
     case IntrinsicGetter: {
         RELEASE_ASSERT(isValidOffset(offset()));
 
@@ -1251,11 +1343,13 @@ void AccessCase::generate(AccessGenerationState& state)
         emitIntrinsicGetter(state);
         return;
     }
-    
+
+    case DirectArgumentsLength:
+    case ScopedArgumentsLength:
     case MegamorphicLoad:
-        // These need to be handled by generateWithGuard(), since the guard is part of the megamorphic load
-        // algorithm. We can be sure that nobody will call generate() directly for MegamorphicLoad since
-        // MegamorphicLoad is not guarded by a structure check.
+        // These need to be handled by generateWithGuard(), since the guard is part of the
+        // algorithm. We can be sure that nobody will call generate() directly for these since they
+        // are not guarded by structure checks.
         RELEASE_ASSERT_NOT_REACHED();
     }
     
@@ -1521,7 +1615,7 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
 
         HandlerInfo oldHandler = state.originalExceptionHandler();
         CallSiteIndex newExceptionHandlingCallSite = state.callSiteIndexForExceptionHandling();
-        state.callbacks.append(
+        jit.addLinkTask(
             [=] (LinkBuffer& linkBuffer) {
                 linkBuffer.link(jumpToOSRExitExceptionHandler, oldHandler.nativeCode);
 
@@ -1555,9 +1649,6 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
         failure,
         stubInfo.callReturnLocation.labelAtOffset(stubInfo.patch.deltaCallToSlowCase));
     
-    for (auto callback : state.callbacks)
-        callback(linkBuffer);
-
     if (verbose)
         dataLog(*codeBlock, " ", stubInfo.codeOrigin, ": Generating polymorphic access stub for ", listDump(cases), "\n");
 
@@ -1566,10 +1657,11 @@ MacroAssemblerCodePtr PolymorphicAccess::regenerate(
         ("%s", toCString("Access stub for ", *codeBlock, " ", stubInfo.codeOrigin, " with return point ", successLabel, ": ", listDump(cases)).data()));
 
     bool doesCalls = false;
+    Vector<JSCell*> cellsToMark;
     for (auto& entry : cases)
-        doesCalls |= entry->doesCalls();
+        doesCalls |= entry->doesCalls(&cellsToMark);
     
-    m_stubRoutine = createJITStubRoutine(code, vm, codeBlock, doesCalls, nullptr, codeBlockThatOwnsExceptionHandlers, callSiteIndexForExceptionHandling);
+    m_stubRoutine = createJITStubRoutine(code, vm, codeBlock, doesCalls, cellsToMark, codeBlockThatOwnsExceptionHandlers, callSiteIndexForExceptionHandling);
     m_watchpoints = WTFMove(state.watchpoints);
     if (!state.weakReferences.isEmpty())
         m_weakReferences = std::make_unique<Vector<WriteBarrier<JSCell>>>(WTFMove(state.weakReferences));
@@ -1624,6 +1716,9 @@ void printInternal(PrintStream& out, AccessCase::AccessType type)
     case AccessCase::Miss:
         out.print("Miss");
         return;
+    case AccessCase::GetGetter:
+        out.print("GetGetter");
+        return;
     case AccessCase::Getter:
         out.print("Getter");
         return;
@@ -1656,6 +1751,12 @@ void printInternal(PrintStream& out, AccessCase::AccessType type)
         return;
     case AccessCase::StringLength:
         out.print("StringLength");
+        return;
+    case AccessCase::DirectArgumentsLength:
+        out.print("DirectArgumentsLength");
+        return;
+    case AccessCase::ScopedArgumentsLength:
+        out.print("ScopedArgumentsLength");
         return;
     }
 

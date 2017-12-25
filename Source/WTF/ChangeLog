@@ -1,3 +1,58 @@
+2016-04-11  Fujii Hironori  <Hironori.Fujii@jp.sony.com>
+
+        [CMake] Make FOLDER property INHERITED
+        https://bugs.webkit.org/show_bug.cgi?id=156460
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        Set FOLDER directory property
+
+2016-04-08  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards running CMake WebKit2 on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156426
+
+        Reviewed by Tim Horton.
+
+        * wtf/PlatformMac.cmake:
+
+2016-04-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Enable Concurrent JIT by default
+        https://bugs.webkit.org/show_bug.cgi?id=156341
+
+        Reviewed by Filip Pizlo.
+
+        We enable Concurrent JIT by default when DFG JIT and JSVALUE64 are enabled.
+        This change offers Concurrent JIT to the JSCOnly port.
+
+        * wtf/Platform.h:
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ENABLE_ES6_CLASS_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=156384
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+
+2016-04-06  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should have a simple way of gathering IC statistics
+        https://bugs.webkit.org/show_bug.cgi?id=156317
+
+        Reviewed by Benjamin Poulain.
+        
+        Make it easier to do relative sleeping on a condition. Previously you could do this using
+        std::chrono. I now believe that std::chrono is just a bad decision, and I always want to
+        use doubles instead. This makes it easier to do the right thing and use doubles.
+
+        * wtf/Condition.h:
+        (WTF::ConditionBase::waitUntilMonotonicClockSeconds):
+        (WTF::ConditionBase::waitForSeconds):
+
 2016-04-06  Simon Fraser  <simon.fraser@apple.com>
 
         Fix Windows build by converting clampToInteger() into a template that only

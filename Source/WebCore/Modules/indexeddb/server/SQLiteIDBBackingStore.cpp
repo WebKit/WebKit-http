@@ -36,6 +36,7 @@
 #include "IDBObjectStoreInfo.h"
 #include "IDBSerialization.h"
 #include "IDBTransactionInfo.h"
+#include "IDBValue.h"
 #include "IndexKey.h"
 #include "Logging.h"
 #include "SQLiteDatabase.h"
@@ -160,9 +161,43 @@ static const String& v2IndexRecordsTableSchemaAlternate()
     return v2IndexRecordsTableSchemaString;
 }
 
+static const String blobRecordsTableSchema(const String& tableName)
+{
+    return makeString("CREATE TABLE ", tableName, " (objectStoreRow INTEGER NOT NULL ON CONFLICT FAIL, blobURL TEXT NOT NULL ON CONFLICT FAIL)");
+}
 
-SQLiteIDBBackingStore::SQLiteIDBBackingStore(const IDBDatabaseIdentifier& identifier, const String& databaseRootDirectory)
+static const String& blobRecordsTableSchema()
+{
+    static NeverDestroyed<String> blobRecordsTableSchemaString(blobRecordsTableSchema("BlobRecords"));
+    return blobRecordsTableSchemaString;
+}
+
+static const String& blobRecordsTableSchemaAlternate()
+{
+    static NeverDestroyed<String> blobRecordsTableSchemaString(blobRecordsTableSchema("\"BlobRecords\""));
+    return blobRecordsTableSchemaString;
+}
+
+static const String blobFilesTableSchema(const String& tableName)
+{
+    return makeString("CREATE TABLE ", tableName, " (blobURL TEXT NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT FAIL, fileName TEXT NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT FAIL)");
+}
+
+static const String& blobFilesTableSchema()
+{
+    static NeverDestroyed<String> blobFilesTableSchemaString(blobFilesTableSchema("BlobFiles"));
+    return blobFilesTableSchemaString;
+}
+
+static const String& blobFilesTableSchemaAlternate()
+{
+    static NeverDestroyed<String> blobFilesTableSchemaString(blobFilesTableSchema("\"BlobFiles\""));
+    return blobFilesTableSchemaString;
+}
+
+SQLiteIDBBackingStore::SQLiteIDBBackingStore(const IDBDatabaseIdentifier& identifier, const String& databaseRootDirectory, IDBBackingStoreTemporaryFileHandler& fileHandler)
     : m_identifier(identifier)
+    , m_temporaryFileHandler(fileHandler)
 {
     m_absoluteDatabaseDirectory = identifier.databaseDirectoryRelativeToRoot(databaseRootDirectory);
 }
@@ -271,6 +306,78 @@ static bool createOrMigrateRecordsTableIfNecessary(SQLiteDatabase& database)
     }
 
     transaction.commit();
+
+    return true;
+}
+
+bool SQLiteIDBBackingStore::ensureValidBlobTables()
+{
+    ASSERT(m_sqliteDB);
+    ASSERT(m_sqliteDB->isOpen());
+
+    String currentSchema;
+    {
+        // Fetch the schema for an existing blob record table.
+        SQLiteStatement statement(*m_sqliteDB, "SELECT type, sql FROM sqlite_master WHERE tbl_name='BlobRecords'");
+        if (statement.prepare() != SQLITE_OK) {
+            LOG_ERROR("Unable to prepare statement to fetch schema for the BlobRecords table.");
+            return false;
+        }
+
+        int sqliteResult = statement.step();
+
+        // If there is no BlobRecords table at all, create it..
+        if (sqliteResult == SQLITE_DONE) {
+            if (!m_sqliteDB->executeCommand(blobRecordsTableSchema())) {
+                LOG_ERROR("Could not create BlobRecords table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+                return false;
+            }
+
+            currentSchema = blobRecordsTableSchema();
+        } else if (sqliteResult != SQLITE_ROW) {
+            LOG_ERROR("Error executing statement to fetch schema for the BlobRecords table.");
+            return false;
+        } else
+            currentSchema = statement.getColumnText(1);
+    }
+
+    if (currentSchema != blobRecordsTableSchema() && currentSchema != blobRecordsTableSchemaAlternate()) {
+        LOG_ERROR("Invalid BlobRecords table schema found");
+        return false;
+    }
+
+    {
+        // Fetch the schema for an existing blob file table.
+        SQLiteStatement statement(*m_sqliteDB, "SELECT type, sql FROM sqlite_master WHERE tbl_name='BlobFiles'");
+        if (statement.prepare() != SQLITE_OK) {
+            LOG_ERROR("Unable to prepare statement to fetch schema for the BlobFiles table.");
+            return false;
+        }
+
+        int sqliteResult = statement.step();
+
+        // If there is no BlobFiles table at all, create it and then bail.
+        if (sqliteResult == SQLITE_DONE) {
+            if (!m_sqliteDB->executeCommand(blobFilesTableSchema())) {
+                LOG_ERROR("Could not create BlobFiles table in database (%i) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
+                return false;
+            }
+
+            return true;
+        }
+
+        if (sqliteResult != SQLITE_ROW) {
+            LOG_ERROR("Error executing statement to fetch schema for the BlobFiles table.");
+            return false;
+        }
+
+        currentSchema = statement.getColumnText(1);
+    }
+
+    if (currentSchema != blobFilesTableSchema() && currentSchema != blobFilesTableSchemaAlternate()) {
+        LOG_ERROR("Invalid BlobFiles table schema found");
+        return false;
+    }
 
     return true;
 }
@@ -610,6 +717,12 @@ IDBError SQLiteIDBBackingStore::getOrEstablishDatabaseInfo(IDBDatabaseInfo& info
         LOG_ERROR("Error creating or migrating Index Records table in database");
         m_sqliteDB = nullptr;
         return { IDBDatabaseException::UnknownError, ASCIILiteral("Error creating or migrating Index Records table in database") };
+    }
+
+    if (!ensureValidBlobTables()) {
+        LOG_ERROR("Error creating or confirming Blob Records tables in database");
+        m_sqliteDB = nullptr;
+        return { IDBDatabaseException::UnknownError, ASCIILiteral("Error creating or confirming Blob Records tables in database") };
     }
 
     auto databaseInfo = extractExistingDatabaseInfo();
@@ -1300,13 +1413,14 @@ IDBError SQLiteIDBBackingStore::updateAllIndexesForAddRecord(const IDBObjectStor
     return error;
 }
 
-IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const ThreadSafeDataBuffer& value, const Vector<String>&, const Vector<String>&)
+IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transactionIdentifier, const IDBObjectStoreInfo& objectStoreInfo, const IDBKeyData& keyData, const IDBValue& value)
 {
     LOG(IndexedDB, "SQLiteIDBBackingStore::addRecord - key %s, object store %" PRIu64, keyData.loggingString().utf8().data(), objectStoreInfo.identifier());
 
     ASSERT(m_sqliteDB);
     ASSERT(m_sqliteDB->isOpen());
-    ASSERT(value.data());
+    ASSERT(value.data().data());
+    ASSERT(value.blobURLs().size() == value.blobFilePaths().size());
 
     auto* transaction = m_transactions.get(transactionIdentifier);
     if (!transaction || !transaction->inProgress()) {
@@ -1323,19 +1437,23 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
         LOG_ERROR("Unable to serialize IDBKey to be stored in an object store");
         return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to serialize IDBKey to be stored in an object store") };
     }
+
+    int64_t recordID = 0;
     {
         SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO Records VALUES (?, CAST(? AS TEXT), ?, NULL);"));
         if (sql.prepare() != SQLITE_OK
             || sql.bindInt64(1, objectStoreInfo.identifier()) != SQLITE_OK
             || sql.bindBlob(2, keyBuffer->data(), keyBuffer->size()) != SQLITE_OK
-            || sql.bindBlob(3, value.data()->data(), value.data()->size()) != SQLITE_OK
+            || sql.bindBlob(3, value.data().data()->data(), value.data().data()->size()) != SQLITE_OK
             || sql.step() != SQLITE_DONE) {
             LOG_ERROR("Could not put record for object store %" PRIi64 " in Records table (%i) - %s", objectStoreInfo.identifier(), m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
             return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to store record in object store") };
         }
+
+        recordID = m_sqliteDB->lastInsertRowID();
     }
 
-    auto error = updateAllIndexesForAddRecord(objectStoreInfo, keyData, value);
+    auto error = updateAllIndexesForAddRecord(objectStoreInfo, keyData, value.data());
 
     if (!error.isNull()) {
         SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("DELETE FROM Records WHERE objectStoreID = ? AND key = CAST(? AS TEXT);"));
@@ -1348,12 +1466,63 @@ IDBError SQLiteIDBBackingStore::addRecord(const IDBResourceIdentifier& transacti
         }
     }
 
+    const Vector<String>& blobURLs = value.blobURLs();
+    const Vector<String>& blobFiles = value.blobFilePaths();
+    for (size_t i = 0; i < blobURLs.size(); ++i) {
+        auto& url = blobURLs[i];
+        {
+            SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO BlobRecords VALUES (?, ?);"));
+            if (sql.prepare() != SQLITE_OK
+                || sql.bindInt64(1, recordID) != SQLITE_OK
+                || sql.bindText(2, url) != SQLITE_OK
+                || sql.step() != SQLITE_DONE) {
+                LOG_ERROR("Unable to record Blob record in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to record Blob record in database") };
+            }
+        }
+        int64_t potentialFileNameInteger = m_sqliteDB->lastInsertRowID();
+
+        // If we already have a file for this blobURL, nothing left to do.
+        {
+            SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("SELECT fileName FROM BlobFiles WHERE blobURL = ?;"));
+            if (sql.prepare() != SQLITE_OK
+                || sql.bindText(1, url) != SQLITE_OK) {
+                LOG_ERROR("Unable to examine Blob filenames in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to examine Blob filenames in database") };
+            }
+
+            int result = sql.step();
+            if (result != SQLITE_ROW && result != SQLITE_DONE) {
+                LOG_ERROR("Unable to examine Blob filenames in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to examine Blob filenames in database") };
+            }
+
+            if (result == SQLITE_ROW)
+                continue;
+        }
+
+        // We don't already have a file for this blobURL, so commit our file as a unique filename
+        String storedFilename = String::format("%" PRId64 ".blob", potentialFileNameInteger);
+        {
+            SQLiteStatement sql(*m_sqliteDB, ASCIILiteral("INSERT INTO BlobFiles VALUES (?, ?);"));
+            if (sql.prepare() != SQLITE_OK
+                || sql.bindText(1, url) != SQLITE_OK
+                || sql.bindText(2, storedFilename) != SQLITE_OK
+                || sql.step() != SQLITE_DONE) {
+                LOG_ERROR("Unable to record Blob file record in database");
+                return { IDBDatabaseException::UnknownError, ASCIILiteral("Unable to record Blob file record in database") };
+            }
+        }
+
+        transaction->addBlobFile(blobFiles[i], storedFilename);
+    }
+
     transaction->notifyCursorsOfChanges(objectStoreInfo.identifier());
 
     return error;
 }
 
-IDBError SQLiteIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreID, const IDBKeyRangeData& keyRange, ThreadSafeDataBuffer& resultValue)
+IDBError SQLiteIDBBackingStore::getRecord(const IDBResourceIdentifier& transactionIdentifier, uint64_t objectStoreID, const IDBKeyRangeData& keyRange, IDBGetResult& resultValue)
 {
     LOG(IndexedDB, "SQLiteIDBBackingStore::getRecord - key range %s, object store %" PRIu64, keyRange.loggingString().utf8().data(), objectStoreID);
 
@@ -1464,10 +1633,8 @@ IDBError SQLiteIDBBackingStore::getIndexRecord(const IDBResourceIdentifier& tran
     else {
         if (type == IndexedDB::IndexRecordType::Key)
             getResult = { cursor->currentPrimaryKey() };
-        else {
-            getResult = { SharedBuffer::create(cursor->currentValueBuffer().data(), cursor->currentValueBuffer().size()).ptr() };
-            getResult.setKeyData(cursor->currentPrimaryKey());
-        }
+        else
+            getResult = { SharedBuffer::create(cursor->currentValueBuffer().data(), cursor->currentValueBuffer().size()), cursor->currentPrimaryKey() };
     }
 
     return { };

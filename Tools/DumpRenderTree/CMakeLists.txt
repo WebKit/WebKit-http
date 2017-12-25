@@ -94,12 +94,10 @@ ENDIF (HAIKU)
 
 add_executable(DumpRenderTree ${DumpRenderTree_SOURCES})
 target_link_libraries(DumpRenderTree ${DumpRenderTree_LIBRARIES})
-set_target_properties(DumpRenderTree PROPERTIES FOLDER "Tools")
 
 if(NOT HAIKU)
-    add_library(TestNetscapePlugin SHARED ${TestNetscapePlugin_SOURCES})
-    target_link_libraries(TestNetscapePlugin ${TestNetscapePlugin_LIBRARIES})
-    set_target_properties(TestNetscapePlugin PROPERTIES FOLDER "Tools")
+add_library(TestNetscapePlugin SHARED ${TestNetscapePlugin_SOURCES})
+target_link_libraries(TestNetscapePlugin ${TestNetscapePlugin_LIBRARIES})
 endif()
 
 if (WIN32)

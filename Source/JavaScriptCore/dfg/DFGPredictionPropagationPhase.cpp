@@ -172,7 +172,12 @@ private:
             changed |= setPrediction(SpecInt32);
             break;
         }
-            
+
+        case TryGetById: {
+            changed |= setPrediction(SpecBytecodeTop);
+            break;
+        }
+
         case ArrayPop:
         case ArrayPush:
         case RegExpExec:
@@ -238,10 +243,10 @@ private:
         }
 
         case UInt32ToNumber: {
-            // FIXME: Support Int52.
-            // https://bugs.webkit.org/show_bug.cgi?id=125704
             if (node->canSpeculateInt32(m_pass))
                 changed |= mergePrediction(SpecInt32);
+            else if (enableInt52())
+                changed |= mergePrediction(SpecMachineInt);
             else
                 changed |= mergePrediction(SpecBytecodeNumber);
             break;
@@ -418,9 +423,6 @@ private:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
-        case IsArrayObject:
-        case IsJSArray:
-        case IsArrayConstructor:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:
@@ -491,11 +493,6 @@ private:
         case AllocatePropertyStorage:
         case ReallocatePropertyStorage: {
             changed |= setPrediction(SpecOther);
-            break;
-        }
-
-        case CallObjectConstructor: {
-            changed |= setPrediction(SpecObject);
             break;
         }
 

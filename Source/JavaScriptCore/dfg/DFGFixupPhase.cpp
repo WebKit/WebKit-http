@@ -140,7 +140,8 @@ private:
                 node->setArithMode(Arith::CheckOverflow);
             else {
                 node->setArithMode(Arith::DoOverflow);
-                node->setResult(NodeResultDouble);
+                node->clearFlags(NodeMustGenerate);
+                node->setResult(enableInt52() ? NodeResultInt52 : NodeResultDouble);
             }
             break;
         }
@@ -1029,18 +1030,7 @@ private:
             fixEdge<Int32Use>(node->child1());
             break;
         }
-
-        case CallObjectConstructor: {
-            if (node->child1()->shouldSpeculateObject()) {
-                fixEdge<ObjectUse>(node->child1());
-                node->convertToIdentity();
-                break;
-            }
-
-            fixEdge<UntypedUse>(node->child1());
-            break;
-        }
-
+            
         case ToThis: {
             fixupToThis(node);
             break;
@@ -1076,6 +1066,12 @@ private:
         case AllocatePropertyStorage:
         case ReallocatePropertyStorage: {
             fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
+
+        case TryGetById: {
+            if (node->child1()->shouldSpeculateCell())
+                fixEdge<CellUse>(node->child1());
             break;
         }
 
@@ -1501,9 +1497,6 @@ private:
         case NewRegexp:
         case ProfileWillCall:
         case ProfileDidCall:
-        case IsArrayObject:
-        case IsJSArray:
-        case IsArrayConstructor:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:
@@ -2227,7 +2220,7 @@ private:
                 attemptToForceStringArrayModeByToStringConversion<StringOrStringObjectUse>(arrayMode, node);
         }
             
-        if (!arrayMode.supportsLength())
+        if (!arrayMode.supportsSelfLength())
             return false;
         
         convertToGetArrayLength(node, arrayMode);

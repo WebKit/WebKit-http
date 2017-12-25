@@ -96,6 +96,7 @@ bool doesGC(Graph& graph, Node* node)
     case ArithCos:
     case ArithLog:
     case ValueAdd:
+    case TryGetById:
     case GetById:
     case GetByIdFlush:
     case PutById:
@@ -151,9 +152,6 @@ bool doesGC(Graph& graph, Node* node)
     case OverridesHasInstance:
     case InstanceOf:
     case InstanceOfCustom:
-    case IsArrayObject:
-    case IsJSArray:
-    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -245,7 +243,6 @@ bool doesGC(Graph& graph, Node* node)
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:
-    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
     case AllocatePropertyStorage:

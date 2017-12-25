@@ -447,11 +447,12 @@ private:
     // whether it is safe to blit on scroll.
     bool m_canBlitOnScroll;
 
+#if PLATFORM(IOS)
     // FIXME: exposedContentRect is a very similar concept to fixedVisibleContentRect except it does not differentiate
     // between exposed and unobscured areas. The two attributes should eventually be merged.
-#if PLATFORM(IOS)
     FloatRect m_exposedContentRect;
     FloatSize m_unobscuredContentSize;
+    // This is only used for history scroll position restoration.
 #else
     IntRect m_fixedVisibleContentRect;
 #endif

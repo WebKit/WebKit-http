@@ -45,7 +45,6 @@
 #include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
-#include "ObjectConstructor.h"
 #include "PreciseJumpTargets.h"
 #include "PutByIdFlags.h"
 #include "PutByIdStatus.h"
@@ -232,9 +231,10 @@ private:
     Node* load(SpeculatedType, Node* base, unsigned identifierNumber, const VariantType&);
 
     Node* store(Node* base, unsigned identifier, const PutByIdVariant&, Node* value);
-        
+
+    void handleTryGetById(int destinationOperand, Node* base, unsigned identifierNumber, const GetByIdStatus&);
     void handleGetById(
-        int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber, GetByIdStatus);
+        int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber, GetByIdStatus, AccessType);
     void emitPutById(
         Node* base, unsigned identifierNumber, Node* value,  const PutByIdStatus&, bool isDirect);
     void handlePutById(
@@ -2142,34 +2142,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         }
     }
 
-    case IsArrayIntrinsic: {
-        if (argumentCountIncludingThis != 2)
-            return false;
-
-        insertChecks();
-        Node* isArray = addToGraph(IsArrayObject, OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
-        set(VirtualRegister(resultOperand), isArray);
-        return true;
-    }
-
-    case IsJSArrayIntrinsic: {
-        ASSERT(argumentCountIncludingThis == 2);
-
-        insertChecks();
-        Node* isArray = addToGraph(IsJSArray, OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
-        set(VirtualRegister(resultOperand), isArray);
-        return true;
-    }
-
-    case IsArrayConstructorIntrinsic: {
-        ASSERT(argumentCountIncludingThis == 2);
-
-        insertChecks();
-        Node* isArray = addToGraph(IsArrayConstructor, OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
-        set(VirtualRegister(resultOperand), isArray);
-        return true;
-    }
-
     case CharCodeAtIntrinsic: {
         if (argumentCountIncludingThis != 2)
             return false;
@@ -2545,16 +2517,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
         set(VirtualRegister(resultOperand), result);
         return true;
     }
-
-    // FIXME: This should handle construction as well. https://bugs.webkit.org/show_bug.cgi?id=155591
-    if (function->classInfo() == ObjectConstructor::info() && kind == CodeForCall) {
-        insertChecks();
-
-        Node* result = addToGraph(CallObjectConstructor, get(virtualRegisterForArgument(1, registerOffset)));
-        set(VirtualRegister(resultOperand), result);
-        return true;
-    }
-
+    
     for (unsigned typeIndex = 0; typeIndex < NUMBER_OF_TYPED_ARRAY_TYPES; ++typeIndex) {
         bool result = handleTypedArrayConstructor(
             resultOperand, function, registerOffset, argumentCountIncludingThis,
@@ -2925,7 +2888,7 @@ Node* ByteCodeParser::store(Node* base, unsigned identifier, const PutByIdVarian
 
 void ByteCodeParser::handleGetById(
     int destinationOperand, SpeculatedType prediction, Node* base, unsigned identifierNumber,
-    GetByIdStatus getByIdStatus)
+    GetByIdStatus getByIdStatus, AccessType type)
 {
     // Attempt to reduce the set of things in the GetByIdStatus.
     if (base->op() == NewObject) {
@@ -2943,8 +2906,13 @@ void ByteCodeParser::handleGetById(
             getByIdStatus.filter(base->structure());
     }
     
-    NodeType getById = getByIdStatus.makesCalls() ? GetByIdFlush : GetById;
-    
+    NodeType getById;
+    if (type == AccessType::Get)
+        getById = getByIdStatus.makesCalls() ? GetByIdFlush : GetById;
+    else
+        getById = TryGetById;
+
+    ASSERT(type == AccessType::Get || !getByIdStatus.makesCalls());
     if (!getByIdStatus.isSimple() || !getByIdStatus.numVariants() || !Options::useAccessInlining()) {
         set(VirtualRegister(destinationOperand),
             addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
@@ -3014,6 +2982,7 @@ void ByteCodeParser::handleGetById(
     if (m_graph.compilation())
         m_graph.compilation()->noticeInlinedGetById();
 
+    ASSERT(type == AccessType::Get || !variant.callLinkStatus());
     if (!variant.callLinkStatus() && variant.intrinsic() == NoIntrinsic) {
         set(VirtualRegister(destinationOperand), loadedValue);
         return;
@@ -3029,8 +2998,7 @@ void ByteCodeParser::handleGetById(
         return;
     }
 
-    if (variant.intrinsic() != NoIntrinsic)
-        ASSERT(variant.intrinsic() == NoIntrinsic);
+    ASSERT(variant.intrinsic() == NoIntrinsic);
 
     // Make a call. We don't try to get fancy with using the smallest operand number because
     // the stack layout phase should compress the stack anyway.
@@ -3831,7 +3799,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                         locker, m_inlineStackTop->m_profiledBlock,
                         byValInfo->stubInfo, currentCodeOrigin(), uid);
 
-                    handleGetById(currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus);
+                    handleGetById(currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, AccessType::Get);
                 }
             }
 
@@ -3885,7 +3853,22 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
             NEXT_OPCODE(op_put_by_val);
         }
-            
+
+        case op_try_get_by_id: {
+            Node* base = get(VirtualRegister(currentInstruction[2].u.operand));
+            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
+            UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
+
+            GetByIdStatus getByIdStatus = GetByIdStatus::computeFor(
+                m_inlineStackTop->m_profiledBlock, m_dfgCodeBlock,
+                m_inlineStackTop->m_stubInfos, m_dfgStubInfos,
+                currentCodeOrigin(), uid);
+
+            handleGetById(currentInstruction[1].u.operand, SpecHeapTop, base, identifierNumber, getByIdStatus, AccessType::GetPure);
+
+            NEXT_OPCODE(op_try_get_by_id);
+        }
+
         case op_get_by_id:
         case op_get_array_length: {
             SpeculatedType prediction = getPrediction();
@@ -3900,7 +3883,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 currentCodeOrigin(), uid);
             
             handleGetById(
-                currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus);
+                currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, AccessType::Get);
 
             NEXT_OPCODE(op_get_by_id);
         }

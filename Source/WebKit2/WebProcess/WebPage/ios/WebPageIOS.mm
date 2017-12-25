@@ -299,7 +299,7 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
 
         m_drawingArea->setExposedContentRect(historyItem.exposedContentRect());
 
-        send(Messages::WebPageProxy::RestorePageState(historyItem.exposedContentRect(), frameView.scrollOrigin(), boundedScale));
+        send(Messages::WebPageProxy::RestorePageState(historyItem.scrollPosition(), frameView.scrollOrigin(), historyItem.obscuredInset(), boundedScale));
     } else {
         IntSize oldContentSize = historyItem.contentSize();
         IntSize newContentSize = frameView.contentsSize();
@@ -2964,6 +2964,8 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
         viewportConfigurationChanged();
 
     frameView.setUnobscuredContentSize(visibleContentRectUpdateInfo.unobscuredContentRect().size());
+    m_page->setObscuredInset(visibleContentRectUpdateInfo.obscuredInset());
+    m_page->setEnclosedInScrollView(visibleContentRectUpdateInfo.enclosedInScrollView());
 
     double horizontalVelocity = visibleContentRectUpdateInfo.horizontalVelocity();
     double verticalVelocity = visibleContentRectUpdateInfo.verticalVelocity();

@@ -406,7 +406,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/ImageBufferDataCG.cpp
     platform/graphics/cg/ImageCG.cpp
     platform/graphics/cg/ImageDecoderCG.cpp
-    platform/graphics/cg/ImageSourceCG.cpp
     platform/graphics/cg/ImageSourceCGMac.mm
     platform/graphics/cg/IntPointCG.cpp
     platform/graphics/cg/IntRectCG.cpp
@@ -934,3 +933,5 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/MockContentFilter.cpp
     testing/MockContentFilterSettings.cpp
 )
+
+set(CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS} "-compatibility_version 1 -current_version ${WEBKIT_MAC_VERSION}")

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
+set_property(DIRECTORY . PROPERTY FOLDER "JavaScriptCore")
 
 set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
@@ -171,6 +172,7 @@ set(JavaScriptCore_SOURCES
     bindings/ScriptValue.cpp
 
     builtins/BuiltinExecutables.cpp
+    builtins/BuiltinExecutableCreator.cpp
 
     bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp
     bytecode/ArrayAllocationProfile.cpp
@@ -524,6 +526,7 @@ set(JavaScriptCore_SOURCES
     jit/GCAwareJITStubRoutine.cpp
     jit/GPRInfo.cpp
     jit/HostCallReturnValue.cpp
+    jit/ICStats.cpp
     jit/IntrinsicEmitter.cpp
     jit/JIT.cpp
     jit/JITAddGenerator.cpp

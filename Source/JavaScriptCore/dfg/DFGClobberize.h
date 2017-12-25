@@ -153,8 +153,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetGlobalObject:
     case StringCharCodeAt:
     case CompareStrictEq:
-    case IsJSArray:
-    case IsArrayConstructor:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -194,8 +192,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(MathDotRandomState);
         write(MathDotRandomState);
         return;
-
-    case IsArrayObject:
+        
     case HasGenericProperty:
     case HasStructureProperty:
     case GetEnumerableLength:
@@ -412,7 +409,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
-    case CallObjectConstructor:
     case ToThis:
     case CreateThis:
         read(MiscFields);
@@ -852,7 +848,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(NamedPropertyLoc, heap, node->child2()), LazyNode(node));
         return;
     }
-        
+
+    case TryGetById: {
+        read(Heap);
+        return;
+    }
+
     case MultiGetByOffset: {
         read(JSCell_structureID);
         read(JSObject_butterfly);

@@ -57,6 +57,7 @@ public:
         Transition,
         Replace,
         Miss,
+        GetGetter,
         Getter,
         Setter,
         CustomValueGetter,
@@ -67,80 +68,16 @@ public:
         InHit,
         InMiss,
         ArrayLength,
-        StringLength
+        StringLength,
+        DirectArgumentsLength,
+        ScopedArgumentsLength
     };
 
-    static bool isGet(AccessType type)
-    {
-        switch (type) {
-        case Transition:
-        case Replace:
-        case Setter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-        case InHit:
-        case InMiss:
-            return false;
-        case Load:
-        case MegamorphicLoad:
-        case Miss:
-        case Getter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case IntrinsicGetter:
-        case ArrayLength:
-        case StringLength:
-            return true;
-        }
-    }
-
-    static bool isPut(AccessType type)
-    {
-        switch (type) {
-        case Load:
-        case MegamorphicLoad:
-        case Miss:
-        case Getter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case IntrinsicGetter:
-        case InHit:
-        case InMiss:
-        case ArrayLength:
-        case StringLength:
-            return false;
-        case Transition:
-        case Replace:
-        case Setter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-            return true;
-        }
-    }
-
-    static bool isIn(AccessType type)
-    {
-        switch (type) {
-        case Load:
-        case MegamorphicLoad:
-        case Miss:
-        case Getter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case IntrinsicGetter:
-        case Transition:
-        case Replace:
-        case Setter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-        case ArrayLength:
-        case StringLength:
-            return false;
-        case InHit:
-        case InMiss:
-            return true;
-        }
-    }
+    static std::unique_ptr<AccessCase> tryGet(
+        VM&, JSCell* owner, AccessType, PropertyOffset, Structure*,
+        const ObjectPropertyConditionSet& = ObjectPropertyConditionSet(),
+        bool viaProxy = false,
+        WatchpointSet* additionalSet = nullptr);
 
     static std::unique_ptr<AccessCase> get(
         VM&, JSCell* owner, AccessType, PropertyOffset, Structure*,
@@ -216,21 +153,10 @@ public:
     }
 
     JSObject* alternateBase() const;
-    
-    bool doesCalls() const
-    {
-        switch (type()) {
-        case Getter:
-        case Setter:
-        case CustomValueGetter:
-        case CustomAccessorGetter:
-        case CustomValueSetter:
-        case CustomAccessorSetter:
-            return true;
-        default:
-            return false;
-        }
-    }
+
+    // If you supply the optional vector, this will append the set of cells that this will need to keep alive
+    // past the call.
+    bool doesCalls(Vector<JSCell*>* cellsToMark = nullptr) const;
 
     bool isGetter() const
     {
@@ -441,7 +367,6 @@ struct AccessGenerationState {
     GPRReg baseGPR { InvalidGPRReg };
     JSValueRegs valueRegs;
     GPRReg scratchGPR { InvalidGPRReg };
-    Vector<std::function<void(LinkBuffer&)>> callbacks;
     const Identifier* ident;
     std::unique_ptr<WatchpointsOnStructureStubInfo> watchpoints;
     Vector<WriteBarrier<JSCell>> weakReferences;
@@ -451,11 +376,11 @@ struct AccessGenerationState {
     void restoreScratch();
     void succeed();
 
-    void calculateLiveRegistersForCallAndExceptionHandling();
+    void calculateLiveRegistersForCallAndExceptionHandling(const RegisterSet& extra = RegisterSet());
 
-    void preserveLiveRegistersToStackForCall();
+    void preserveLiveRegistersToStackForCall(const RegisterSet& extra = RegisterSet());
 
-    void restoreLiveRegistersFromStackForCall(bool isGetter);
+    void restoreLiveRegistersFromStackForCall(bool isGetter = false);
     void restoreLiveRegistersFromStackForCallWithThrownException();
     void restoreLiveRegistersFromStackForCall(const RegisterSet& dontRestore);
 
@@ -483,6 +408,8 @@ struct AccessGenerationState {
 
     bool needsToRestoreRegistersIfException() const { return m_needsToRestoreRegistersIfException; }
     CallSiteIndex originalCallSiteIndex() const;
+    
+    void emitExplicitExceptionHandler();
     
 private:
     const RegisterSet& liveRegistersToPreserveAtExceptionHandlingCallSite()

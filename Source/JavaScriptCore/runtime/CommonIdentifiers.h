@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003, 2007, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2007, 2009, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -308,12 +308,12 @@
     macro(yield)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL_NOT_IMPLEMENTED_YET(macro)\
+    macro(isConcatSpreadable) \
     macro(replace) \
     macro(split)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(hasInstance) \
-    macro(isConcatSpreadable) \
     macro(iterator) \
     macro(match) \
     macro(search) \
@@ -411,14 +411,10 @@
     macro(hasInstanceBoundFunction) \
     macro(instanceOf) \
     macro(isArray) \
-    macro(isJSArray) \
     macro(isArrayConstructor) \
-    macro(concatMemcpy) \
-    macro(appendMemcpy) \
-    macro(predictFinalLengthFromArgumunts) \
-    macro(print) \
     macro(isSet) \
     macro(isMap) \
+    macro(regExpCreate) \
     macro(SetIterator) \
     macro(setIteratorNext) \
     macro(MapIterator) \

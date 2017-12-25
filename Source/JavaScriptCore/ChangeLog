@@ -1,3 +1,884 @@
+2016-04-11  Fujii Hironori  <Hironori.Fujii@jp.sony.com>
+
+        [CMake] Make FOLDER property INHERITED
+        https://bugs.webkit.org/show_bug.cgi?id=156460
+
+        Reviewed by Brent Fulgham.
+
+        * CMakeLists.txt:
+        * shell/CMakeLists.txt:
+        * shell/PlatformWin.cmake:
+        Set FOLDER property as a directory property not a target property
+
+2016-04-09  Keith Miller  <keith_miller@apple.com>
+
+        tryGetById should be supported by the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=156378
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds support for tryGetById in the DFG/FTL. It adds a new DFG node
+        TryGetById, which acts similarly to the normal GetById DFG node. One key
+        difference between GetById and TryGetById is that in the LLInt and Baseline
+        we do not profile the result type. This profiling is unnessary for the current
+        use case of tryGetById, which is expected to be a strict equality comparision
+        against a specific object or undefined. In either case other DFG optimizations
+        will make this equally fast with or without the profiling information.
+
+        Additionally, this patch adds new reuse modes for JSValueRegsTemporary that take
+        an operand and attempt to reuse the registers for that operand if they are free
+        after the current DFG node.
+
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasIdentifier):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileTryGetById):
+        (JSC::DFG::JSValueRegsTemporary::JSValueRegsTemporary):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::GPRTemporary::operator=):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetById):
+        (JSC::FTL::DFG::LowerDFGToB3::getById):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * tests/stress/try-get-by-id.js:
+        (tryGetByIdTextStrict):
+        (get let):
+        (let.get createBuiltin):
+        (get throw):
+        (getCaller.obj.1.throw.new.Error): Deleted.
+
+2016-04-09  Saam barati  <sbarati@apple.com>
+
+        Allocation sinking SSA Defs are allowed to have replacements
+        https://bugs.webkit.org/show_bug.cgi?id=156444
+
+        Reviewed by Filip Pizlo.
+
+        Consider the following program and the annotations that explain why
+        the SSA defs we create in allocation sinking can have replacements.
+
+        function foo(a1) {
+            let o1 = {x: 20, y: 50};
+            let o2 = {y: 40, o1: o1};
+            let o3 = {};
+        
+            // We're Defing a new variable here, call it o3_field.
+            // o3_field is defing the value that is the result of 
+            // a GetByOffset that gets eliminated through allocation sinking.
+            o3.field = o1.y;
+        
+            dontCSE();
+        
+            // This control flow is here to not allow the phase to consult
+            // its local SSA mapping (which properly handles replacements)
+            // for the value of o3_field.
+            if (a1) {
+                a1 = true; 
+            } else {
+                a1 = false;
+            }
+        
+            // Here, we ask for the reaching def of o3_field, and assert
+            // it doesn't have a replacement. It does have a replacement
+            // though. The original Def was the GetByOffset. We replaced
+            // that GetByOffset with the value of the o1_y variable.
+            let value = o3.field;
+            assert(value === 50);
+        }
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * tests/stress/allocation-sinking-defs-may-have-replacements.js: Added.
+        (dontCSE):
+        (assert):
+        (foo):
+
+2016-04-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199242.
+        https://bugs.webkit.org/show_bug.cgi?id=156442
+
+        Caused many many leaks (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: get rid of InspectorBasicValue and
+        InspectorString subclasses"
+        https://bugs.webkit.org/show_bug.cgi?id=156407
+        http://trac.webkit.org/changeset/199242
+
+2016-04-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Debug JSC test failure: stress/multi-put-by-offset-reallocation-butterfly-cse.js.ftl-no-cjit-small-pool
+        https://bugs.webkit.org/show_bug.cgi?id=156406
+
+        Reviewed by Saam Barati.
+
+        The failure was because the GC ran from within the butterfly allocation call in a put_by_id
+        transition AccessCase that had to deal with indexing storage. When the GC runs in a call from a stub,
+        then we need to be extra careful:
+
+        1) The GC may reset the IC and delete the stub. So, the stub needs to tell the GC that it might be on
+           the stack during GC, so that the GC keeps it alive if it's currently running.
+        
+        2) If the stub uses (dereferences or stores) some object after the call, then we need to ensure that
+           the stub routine knows about that object independently of the IC.
+        
+        In the case of put_by_id transitions that use a helper to allocate the butterfly, we have both
+        issues. A long time ago, we had to deal with (2), and we still had code to handle that case, although
+        it appears to be dead. This change revives that code and glues it together with PolymorphicAccess.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::alternateBase):
+        (JSC::AccessCase::doesCalls):
+        (JSC::AccessCase::couldStillSucceed):
+        (JSC::AccessCase::generate):
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessCase::customSlotBase):
+        (JSC::AccessCase::isGetter):
+        (JSC::AccessCase::doesCalls): Deleted.
+        * jit/GCAwareJITStubRoutine.cpp:
+        (JSC::GCAwareJITStubRoutine::markRequiredObjectsInternal):
+        (JSC::MarkingGCAwareJITStubRoutine::MarkingGCAwareJITStubRoutine):
+        (JSC::MarkingGCAwareJITStubRoutine::~MarkingGCAwareJITStubRoutine):
+        (JSC::MarkingGCAwareJITStubRoutine::markRequiredObjectsInternal):
+        (JSC::GCAwareJITStubRoutineWithExceptionHandler::GCAwareJITStubRoutineWithExceptionHandler):
+        (JSC::createJITStubRoutine):
+        (JSC::MarkingGCAwareJITStubRoutineWithOneObject::MarkingGCAwareJITStubRoutineWithOneObject): Deleted.
+        (JSC::MarkingGCAwareJITStubRoutineWithOneObject::~MarkingGCAwareJITStubRoutineWithOneObject): Deleted.
+        (JSC::MarkingGCAwareJITStubRoutineWithOneObject::markRequiredObjectsInternal): Deleted.
+        * jit/GCAwareJITStubRoutine.h:
+        (JSC::createJITStubRoutine):
+
+2016-04-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: XHRs and Web Worker scripts are not searchable
+        https://bugs.webkit.org/show_bug.cgi?id=154214
+        <rdar://problem/24643587>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Page.json:
+        Add optional requestId to search results properties and search
+        parameters for when the frameId and url are not enough. XHR
+        resources, and "Other" resources will use this.
+
+2016-04-08  Guillaume Emont  <guijemont@igalia.com>
+
+        MIPS: support Signed cond in branchTest32()
+        https://bugs.webkit.org/show_bug.cgi?id=156260
+
+        This is needed since r197688 makes use of it.
+
+        Reviewed by Mark Lam.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::branchTest32):
+
+2016-04-08  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards running CMake WebKit2 on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156426
+
+        Reviewed by Tim Horton.
+
+        * PlatformMac.cmake:
+
+2016-04-08  Saam barati  <sbarati@apple.com>
+
+        Debugger may dereference m_currentCallFrame even after the VM has gone idle
+        https://bugs.webkit.org/show_bug.cgi?id=156413
+
+        Reviewed by Mark Lam.
+
+        There is a bug where the debugger may dereference its m_currentCallFrame
+        pointer after that pointer becomes invalid to read from. This happens like so:
+
+        We may step over an instruction which causes the end of execution for the
+        current program. This causes the VM to exit. Then, we perform a GC which
+        causes us to collect the global object. The global object being collected
+        causes us to detach the debugger. In detaching, we think we still have a 
+        valid m_currentCallFrame, we dereference it, and crash. The solution is to
+        make sure we're paused when dereferencing this pointer inside ::detach().
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::detach):
+
+2016-04-08  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: get rid of InspectorBasicValue and InspectorString subclasses
+        https://bugs.webkit.org/show_bug.cgi?id=156407
+        <rdar://problem/25627659>
+
+        Reviewed by Timothy Hatcher.
+
+        There's no point having these subclasses as they don't save any space.
+        Add m_stringValue to the union and merge some implementations of writeJSON.
+        Move uses of the subclass to InspectorValue and delete redundant methods.
+        Now, most InspectorValue methods are non-virtual so they can be templated.
+
+        * bindings/ScriptValue.cpp:
+        (Deprecated::jsToInspectorValue):
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeCall):
+        Don't used deleted subclasses.
+
+        * inspector/InspectorValues.cpp:
+        (Inspector::InspectorValue::null):
+        (Inspector::InspectorValue::create):
+        (Inspector::InspectorValue::asValue):
+        (Inspector::InspectorValue::asBoolean):
+        (Inspector::InspectorValue::asDouble):
+        (Inspector::InspectorValue::asInteger):
+        (Inspector::InspectorValue::asString):
+        These only need one implementation now.
+
+        (Inspector::InspectorValue::writeJSON):
+        Still a virtual method since Object and Array need their members.
+
+        (Inspector::InspectorObjectBase::InspectorObjectBase):
+        (Inspector::InspectorBasicValue::asBoolean): Deleted.
+        (Inspector::InspectorBasicValue::asDouble): Deleted.
+        (Inspector::InspectorBasicValue::asInteger): Deleted.
+        (Inspector::InspectorBasicValue::writeJSON): Deleted.
+        (Inspector::InspectorString::asString): Deleted.
+        (Inspector::InspectorString::writeJSON): Deleted.
+        (Inspector::InspectorString::create): Deleted.
+        (Inspector::InspectorBasicValue::create): Deleted.
+
+        * inspector/InspectorValues.h:
+        (Inspector::InspectorObjectBase::setBoolean):
+        (Inspector::InspectorObjectBase::setInteger):
+        (Inspector::InspectorObjectBase::setDouble):
+        (Inspector::InspectorObjectBase::setString):
+        (Inspector::InspectorArrayBase::pushBoolean):
+        (Inspector::InspectorArrayBase::pushInteger):
+        (Inspector::InspectorArrayBase::pushDouble):
+        (Inspector::InspectorArrayBase::pushString):
+        Use new factory methods.
+
+        * replay/EncodedValue.cpp:
+        (JSC::ScalarEncodingTraits<bool>::encodeValue):
+        (JSC::ScalarEncodingTraits<double>::encodeValue):
+        (JSC::ScalarEncodingTraits<float>::encodeValue):
+        (JSC::ScalarEncodingTraits<int32_t>::encodeValue):
+        (JSC::ScalarEncodingTraits<int64_t>::encodeValue):
+        (JSC::ScalarEncodingTraits<uint32_t>::encodeValue):
+        (JSC::ScalarEncodingTraits<uint64_t>::encodeValue):
+        * replay/EncodedValue.h:
+        Use new factory methods.
+
+2016-04-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Add IC support for arguments.length
+        https://bugs.webkit.org/show_bug.cgi?id=156389
+
+        Reviewed by Geoffrey Garen.
+        
+        This adds support for caching accesses to arguments.length for both DirectArguments and
+        ScopedArguments. In strict mode, we already cached these accesses since they were just
+        normal properties.
+
+        Amazingly, we also already supported caching of overridden arguments.length in both
+        DirectArguments and ScopedArguments. This is because when you override, the property gets
+        materialized as a normal JS property and the structure is changed.
+        
+        This patch painstakingly preserves our previous caching of overridden length while
+        introducing caching of non-overridden length (i.e. the common case). In fact, we even cache
+        the case where it could either be overridden or not, since we just end up with an AccessCase
+        for each and they cascade to each other.
+
+        This is a >3x speed-up on microbenchmarks that do arguments.length in a polymorphic context.
+        Entirely monomorphic accesses were already handled by the DFG.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling):
+        (JSC::AccessCase::guardedByStructureCheck):
+        (JSC::AccessCase::generateWithGuard):
+        (JSC::AccessCase::generate):
+        (WTF::printInternal):
+        * bytecode/PolymorphicAccess.h:
+        * jit/ICStats.h:
+        * jit/JITOperations.cpp:
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryCachePutByID):
+        (JSC::tryRepatchIn):
+        * tests/stress/direct-arguments-override-length-then-access-normal-length.js: Added.
+        (args):
+        (foo):
+        (result.foo):
+
+2016-04-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        UInt32ToNumber should have an Int52 path
+        https://bugs.webkit.org/show_bug.cgi?id=125704
+
+        Reviewed by Filip Pizlo.
+
+        When dealing with big numbers, fall back to Int52 instead
+        of double when possible.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileUInt32ToNumber):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileUInt32ToNumber):
+
+2016-04-08  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: protocol generator should emit an error when 'type' is used instead of '$ref'
+        https://bugs.webkit.org/show_bug.cgi?id=156275
+        <rdar://problem/25569331>
+
+        Reviewed by Darin Adler.
+
+        * inspector/protocol/Heap.json: Fix a mistake that's now caught by the protocol generator.
+
+        * inspector/scripts/codegen/models.py:
+        (TypeReference.__init__): Check here if type_kind is on a whitelist of primitive types.
+        (TypeReference.referenced_name): Update comment.
+
+        Add a new test specifically for the case when the type would otherwise be resolved. Rebaseline.
+
+        * inspector/scripts/tests/expected/fail-on-type-reference-as-primitive-type.json-error: Added.
+        * inspector/scripts/tests/expected/fail-on-unknown-type-reference-in-type-declaration.json-error:
+        * inspector/scripts/tests/fail-on-type-reference-as-primitive-type.json: Added.
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(ENABLE_ES6_CLASS_SYNTAX) guards
+        https://bugs.webkit.org/show_bug.cgi?id=156384
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * features.json: Mark as Done.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2016-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Implementing caching transition puts that need to reallocate with indexing storage
+        https://bugs.webkit.org/show_bug.cgi?id=130914
+
+        Reviewed by Saam Barati.
+
+        This enables the IC's put_by_id path to handle reallocating the out-of-line storage even if
+        the butterfly has indexing storage. Like the DFG, we do this by calling operations that
+        reallocate the butterfly. Those use JSObject API and do all of the nasty work for us, like
+        triggering a barrier.
+
+        This does a bunch of refactoring to how PolymorphicAccess makes calls. It's a lot easier to
+        do it now because the hard work is hidden under AccessGenerationState methods. This means
+        that custom accessors now share logic with put_by_id transitions.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessGenerationState::succeed):
+        (JSC::AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling):
+        (JSC::AccessGenerationState::preserveLiveRegistersToStackForCall):
+        (JSC::AccessGenerationState::originalCallSiteIndex):
+        (JSC::AccessGenerationState::emitExplicitExceptionHandler):
+        (JSC::AccessCase::AccessCase):
+        (JSC::AccessCase::transition):
+        (JSC::AccessCase::generate):
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessGenerationState::needsToRestoreRegistersIfException):
+        (JSC::AccessGenerationState::liveRegistersToPreserveAtExceptionHandlingCallSite):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remote Inspector: When disallowing remote inspection on a debuggable, a listing is still sent to debuggers
+        https://bugs.webkit.org/show_bug.cgi?id=156380
+        <rdar://problem/25323727>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::updateTarget):
+        (Inspector::RemoteInspector::updateAutomaticInspectionCandidate):
+        When a target has been updated and it no longer generates a listing,
+        we should remove the old listing as that is now stale and should
+        not be sent. Not generating a listing means this target is no
+        longer allowed to be debugged.
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Not necessary to validate webinspectord connection on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=156377
+        <rdar://problem/25612460>
+
+        Reviewed by Simon Fraser.
+
+        * inspector/remote/RemoteInspectorXPCConnection.h:
+        * inspector/remote/RemoteInspectorXPCConnection.mm:
+        (Inspector::RemoteInspectorXPCConnection::handleEvent):
+
+2016-04-07  Keith Miller  <keith_miller@apple.com>
+
+        Rename ArrayMode::supportsLength to supportsSelfLength
+        https://bugs.webkit.org/show_bug.cgi?id=156374
+
+        Reviewed by Filip Pizlo.
+
+        The name supportsLength is confusing because TypedArray have a
+        length function however it is on the prototype and not on the
+        instance. supportsSelfLength makes more sense since we use the
+        function during fixup to tell if we can intrinsic the length
+        property lookup on self accesses.
+
+        * dfg/DFGArrayMode.h:
+        (JSC::DFG::ArrayMode::supportsSelfLength):
+        (JSC::DFG::ArrayMode::supportsLength): Deleted.
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::attemptToMakeGetArrayLength):
+
+2016-04-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ProfileView source links are off by 1 line, worse in pretty printed code
+        https://bugs.webkit.org/show_bug.cgi?id=156371
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/ScriptProfiler.json:
+        Clarify that these locations are 1-based.
+
+2016-04-07  Jon Davis  <jond@apple.com>
+
+        Add Web Animations API to Feature Status Page
+        https://bugs.webkit.org/show_bug.cgi?id=156360
+
+        Reviewed by Timothy Hatcher.
+
+        * features.json:
+
+2016-04-07  Saam barati  <sbarati@apple.com>
+
+        Invalid assertion inside DebuggerScope::getOwnPropertySlot
+        https://bugs.webkit.org/show_bug.cgi?id=156357
+
+        Reviewed by Keith Miller.
+
+        The Type Profiler might profile JS code that uses DebuggerScope and accesses properties
+        on it. Therefore, it may have a DebuggerScope object in its log. Objects in the log
+        are subject to having their getOwnPropertySlot method called. Therefore, the DebuggerScope
+        might not always be in a valid state when its getOwnPropertySlot method is called.
+        Therefore, the assertion invalid.
+
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::getOwnPropertySlot):
+
+2016-04-07  Saam barati  <sbarati@apple.com>
+
+        Initial implementation of annex b.3.3 behavior was incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=156276
+
+        Reviewed by Keith Miller.
+
+        I almost got annex B.3.3 correct in my first implementation.
+        There is a subtlety here I got wrong. We always create a local binding for
+        a function at the very beginning of execution of a block scope. So we
+        hoist function declarations to their local binding within a given
+        block scope. When we actually evaluate the function declaration statement
+        itself, we must lookup the binding in the current scope, and bind the
+        value to the binding in the "var" scope. We perform the following
+        abstract operations when executing a function declaration statement.
+
+        f = lookupBindingInCurrentScope("func")
+        store(varScope, "func", f)
+
+        I got this wrong by performing the store to the var binding at the beginning
+        of the block scope instead of when we evaluate the function declaration statement.
+        This behavior is observable. For example, a program could change the value
+        of "func" before the actual function declaration statement executes.
+        Consider the following two functions:
+        ```
+        function foo1() {
+            // func === undefined
+            {
+                // typeof func === "function"
+                function func() { } // Executing this statement binds the local "func" binding to the implicit "func" var binding.
+                func = 20 // This sets the local "func" binding to 20.
+            }
+            // typeof func === "function"
+        }
+
+        function foo2() {
+            // func === undefined
+            {
+                // typeof func === "function"
+                func = 20 // This sets the local "func" binding to 20.
+                function func() { } // Executing this statement binds the local "func" binding to the implicit "func" var binding.
+            }
+            // func === 20
+        }
+        ```
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::initializeBlockScopedFunctions):
+        (JSC::BytecodeGenerator::hoistSloppyModeFunctionIfNecessary):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::emitNodeForLeftHandSide):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FuncDeclNode::emitBytecode):
+        * tests/stress/sloppy-mode-function-hoisting.js:
+        (test.foo):
+        (test):
+        (test.):
+        (test.bar):
+        (test.switch.case.0):
+        (test.capFoo1):
+        (test.switch.capFoo2):
+        (test.outer):
+        (foo):
+
+2016-04-07  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r199170
+
+        * CMakeLists.txt:
+
+2016-04-07  Keith Miller  <keith_miller@apple.com>
+
+        We should support the ability to do a non-effectful getById
+        https://bugs.webkit.org/show_bug.cgi?id=156116
+
+        Reviewed by Benjamin Poulain.
+
+        Currently, there is no way in JS to do a non-effectful getById. A non-effectful getById is
+        useful because it enables us to take different code paths based on values that we would
+        otherwise not be able to have knowledge of. This patch adds this new feature called
+        try_get_by_id that will attempt to do as much of a get_by_id as possible without performing
+        an effectful behavior. Thus, try_get_by_id will return the value if the slot is a value, the
+        GetterSetter object if the slot is a normal accessor (not a CustomGetterSetter) and
+        undefined if the slot is unset.  If the slot is proxied or any other cases then the result
+        is null. In theory, if we ever wanted to check for null we could add a sentinal object to
+        the global object that indicates we could not get the result.
+
+        In order to implement this feature we add a new enum GetByIdKind that indicates what to do
+        for accessor properties in PolymorphicAccess. If the GetByIdKind is pure then we treat the
+        get_by_id the same way we would for load and return the value at the appropriate offset.
+        Additionally, in order to make sure the we can properly compare the GetterSetter object
+        with === GetterSetters are now JSObjects. This comes at the cost of eight extra bytes on the
+        GetterSetter object but it vastly simplifies the patch. Additionally, the extra bytes are
+        likely to have little to no impact on memory usage as normal accessors are generally rare.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinExecutableCreator.cpp: Added.
+        (JSC::createBuiltinExecutable):
+        * builtins/BuiltinExecutableCreator.h: Copied from Source/JavaScriptCore/builtins/BuiltinExecutables.h.
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createDefaultConstructor):
+        (JSC::BuiltinExecutables::createBuiltinExecutable):
+        (JSC::createBuiltinExecutable):
+        (JSC::BuiltinExecutables::createExecutable):
+        (JSC::createExecutableInternal): Deleted.
+        * builtins/BuiltinExecutables.h:
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::tryGet):
+        (JSC::AccessCase::generate):
+        (WTF::printInternal):
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessCase::isGet): Deleted.
+        (JSC::AccessCase::isPut): Deleted.
+        (JSC::AccessCase::isIn): Deleted.
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::reset):
+        * bytecode/StructureStubInfo.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitTryGetById):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_tryGetById):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetById):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::getById):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITInlineCacheGenerator.cpp:
+        (JSC::JITGetByIdGenerator::JITGetByIdGenerator):
+        * jit/JITInlineCacheGenerator.h:
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitGetByValWithCachedId):
+        (JSC::JIT::emit_op_try_get_by_id):
+        (JSC::JIT::emitSlow_op_try_get_by_id):
+        (JSC::JIT::emit_op_get_by_id):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitGetByValWithCachedId):
+        (JSC::JIT::emit_op_try_get_by_id):
+        (JSC::JIT::emitSlow_op_try_get_by_id):
+        (JSC::JIT::emit_op_get_by_id):
+        * jit/Repatch.cpp:
+        (JSC::repatchByIdSelfAccess):
+        (JSC::appropriateOptimizingGetByIdFunction):
+        (JSC::appropriateGenericGetByIdFunction):
+        (JSC::tryCacheGetByID):
+        (JSC::repatchGetByID):
+        (JSC::resetGetByID):
+        * jit/Repatch.h:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionGetGetterSetter):
+        (functionCreateBuiltin):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * runtime/GetterSetter.cpp:
+        * runtime/GetterSetter.h:
+        * runtime/JSType.h:
+        * runtime/PropertySlot.cpp:
+        (JSC::PropertySlot::getPureResult):
+        * runtime/PropertySlot.h:
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::getOwnPropertySlotCommon):
+        * tests/stress/try-get-by-id.js: Added.
+        (tryGetByIdText):
+        (getCaller.obj.1.throw.new.Error.let.func):
+        (getCaller.obj.1.throw.new.Error):
+        (throw.new.Error.get let):
+        (throw.new.Error.):
+        (throw.new.Error.let.get createBuiltin):
+        (get let):
+        (let.get createBuiltin):
+        (let.func):
+        (get let.func):
+        (get throw):
+
+2016-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Rationalize the makeSpaceForCCall stuff
+        https://bugs.webkit.org/show_bug.cgi?id=156352
+
+        Reviewed by Mark Lam.
+
+        I want to add more code to PolymorphicAccess that makes C calls, so that I can finally fix
+        https://bugs.webkit.org/show_bug.cgi?id=130914 (allow transition caches to handle indexing
+        headers).
+
+        When trying to understand what it takes to make a C call, I came across code that was making
+        room on the stack for spilled arguments. This logic was guarded with some complicated
+        condition. At first, I tried to just refactor the code so that the same ugly condition
+        wouldn't have to be copy-pasted everywhere that we made C calls. But then I started thinking
+        about the condition, and realized that it was probably wrong: if the outer PolymorphicAccess
+        harness decides to reuse a register for the scratchGPR then the top of the stack will store
+        the old value of scratchGPR, but the condition wouldn't necessarily trigger. So if the call
+        then overwrote something on the stack, we'd have a bad time.
+
+        Making room on the stack for a call is a cheap operation. It's orders of magnitude cheaper
+        than the rest of the call. Therefore, I think that it's best to just unconditionally make
+        room on the stack.
+
+        This patch makes us do just that. I also made the relevant helpers not inline, because I
+        think that we have too many inline methods in our assemblers. Now it's much easier to make
+        C calls from PolymorphicAccess because you just call the AssemblyHelper methods for making
+        space. There are no special conditions or anything like that.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitLoadStructure):
+        (JSC::AssemblyHelpers::makeSpaceOnStackForCCall):
+        (JSC::AssemblyHelpers::reclaimSpaceOnStackForCCall):
+        (JSC::emitRandomThunkImpl):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::makeSpaceOnStackForCCall): Deleted.
+        (JSC::AssemblyHelpers::reclaimSpaceOnStackForCCall): Deleted.
+
+2016-04-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199128 and r199141.
+        https://bugs.webkit.org/show_bug.cgi?id=156348
+
+        Causes crashes on multiple webpages (Requested by keith_mi_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "[ES6] Add support for Symbol.isConcatSpreadable."
+        https://bugs.webkit.org/show_bug.cgi?id=155351
+        http://trac.webkit.org/changeset/199128
+
+        "Unreviewed, uncomment accidentally commented line in test."
+        http://trac.webkit.org/changeset/199141
+
+2016-04-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Rationalize the handling of PutById transitions a bit
+        https://bugs.webkit.org/show_bug.cgi?id=156330
+
+        Reviewed by Mark Lam.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generate): Get rid of the specialized slow calls. We can just use the failAndIgnore jump target. We just need to make sure that we don't make observable effects until we're done with all of the fast path checks.
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::addAccessCase): MadeNoChanges indicates that we should keep trying to repatch. Currently PutById transitions might trigger the case that addAccessCase() sees null, if the transition involves an indexing header. Doing repatching in that case is probably not good. But, we should just fix this the right way eventually.
+
+2016-04-07  Per Arne Vollan  <peavo@outlook.com>
+
+        [Win] Fix for JSC stress test failures.
+        https://bugs.webkit.org/show_bug.cgi?id=156343
+
+        Reviewed by Filip Pizlo.
+
+        We need to make it clear to MSVC that the method loadPtr(ImplicitAddress address, RegisterID dest)
+        should be used, and not loadPtr(const void* address, RegisterID dest).
+
+        * jit/CCallHelpers.cpp:
+        (JSC::CCallHelpers::setupShadowChickenPacket):
+
+2016-04-06  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] UInt32ToNumber should be NodeMustGenerate
+        https://bugs.webkit.org/show_bug.cgi?id=156329
+
+        Reviewed by Filip Pizlo.
+
+        It exits on negative numbers on the integer path.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+
+2016-04-04  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed, rolling out r199016.
+        https://bugs.webkit.org/show_bug.cgi?id=156140
+
+        "Perf bots are down, so I can't re-land this right now."
+
+        Reverted changeset:
+
+        CopiedBlock should be 16kB
+        https://bugs.webkit.org/show_bug.cgi?id=156168
+        http://trac.webkit.org/changeset/199016
+
+2016-04-06  Mark Lam  <mark.lam@apple.com>
+
+        String.prototype.match() should be calling internal function RegExpCreate.
+        https://bugs.webkit.org/show_bug.cgi?id=156318
+
+        Reviewed by Filip Pizlo.
+
+        RegExpCreate is not the same as the RegExp constructor.  The current implementation
+        invokes new @RegExp which calls the constructor.  This results in failures in
+        es6/Proxy_internal_get_calls_String.prototype.match.js, and
+        es6/Proxy_internal_get_calls_String.prototype.search.js due to observable side
+        effects.
+
+        This patch fixes this by factoring out the part of the RegExp constructor that
+        makes the RegExpCreate function, and changing String's match and search to call
+        RegExpCreate instead in accordance with the ES6 spec. 
+
+        * builtins/StringPrototype.js:
+        (match):
+        (search):
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::toFlags):
+        (JSC::regExpCreate):
+        (JSC::constructRegExp):
+        (JSC::esSpecRegExpCreate):
+        (JSC::constructWithRegExpConstructor):
+        * runtime/RegExpConstructor.h:
+        (JSC::isRegExp):
+
+2016-04-06  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, uncomment accidentally commented line in test.
+
+        * tests/stress/array-concat-spread-object.js:
+
+2016-04-06  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should have a simple way of gathering IC statistics
+        https://bugs.webkit.org/show_bug.cgi?id=156317
+
+        Reviewed by Benjamin Poulain.
+
+        This adds a cheap, runtime-enabled way of gathering statistics about why we take the slow
+        paths for inline caches. This is complementary to our existing bytecode profiler. Eventually
+        we may want to combine the two things.
+        
+        This is not a slow-down on anything because we only do extra work on IC slow paths and if
+        it's disabled it's just a load-and-branch to skip the stats gathering code.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jit/ICStats.cpp: Added.
+        * jit/ICStats.h: Added.
+        * jit/JITOperations.cpp:
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::inherits):
+        (JSC::JSValue::classInfoOrNull):
+        (JSC::JSValue::toThis):
+        * runtime/Options.h:
+
 2016-04-06  Filip Pizlo  <fpizlo@apple.com>
 
         32-bit JSC stress/multi-put-by-offset-multiple-transitions.js failing

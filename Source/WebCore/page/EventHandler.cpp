@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
  * Copyright (C) 2012 Digia Plc. and/or its subsidiary(-ies)
  *
@@ -455,9 +455,7 @@ void EventHandler::clear()
     m_mousePressed = false;
     m_capturesDragging = false;
     m_capturingMouseEventsElement = nullptr;
-#if PLATFORM(MAC)
-    m_frame.mainFrame().resetLatchingState();
-#endif
+    clearLatchedState();
 #if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     m_originatingTouchPointTargets.clear();
     m_originatingTouchPointDocument = nullptr;
@@ -2612,6 +2610,18 @@ void EventHandler::clearOrScheduleClearingLatchedStateIfNeeded(const PlatformWhe
 }
 #endif
 
+static Widget* widgetForElement(const Element& element)
+{
+    RenderElement* target = element.renderer();
+    if (!target)
+        return nullptr;
+
+    if (!is<RenderWidget>(target))
+        return nullptr;
+
+    return downcast<RenderWidget>(*target).widget();
+}
+
 bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
 {
     RenderView* renderView = m_frame.contentRenderer();
@@ -2652,18 +2662,21 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& event)
 
     if (element) {
         if (isOverWidget) {
-            RenderElement* target = element->renderer();
-            if (is<RenderWidget>(target)) {
-                Widget* widget = downcast<RenderWidget>(*target).widget();
-                if (widget && passWheelEventToWidget(event, *widget)) {
-                    m_isHandlingWheelEvent = false;
-                    if (scrollableArea)
-                        scrollableArea->setScrolledProgrammatically(false);
-                    platformNotifyIfEndGesture(adjustedEvent, scrollableArea);
-                    if (!widget->platformWidget())
-                        return true;
-                    return platformCompletePlatformWidgetWheelEvent(event, *widget, scrollableContainer.get());
-                }
+            Widget* widget = widgetForElement(*element);
+            if (widget && passWheelEventToWidget(event, *widget)) {
+                m_isHandlingWheelEvent = false;
+
+                // We do another check on the widget because the event handler can run JS which results in the frame getting destroyed.
+                Widget* widget = widgetForElement(*element);
+                if (!widget)
+                    return false;
+
+                if (scrollableArea)
+                    scrollableArea->setScrolledProgrammatically(false);
+                platformNotifyIfEndGesture(adjustedEvent, scrollableArea);
+                if (!widget->platformWidget())
+                    return true;
+                return platformCompletePlatformWidgetWheelEvent(event, *widget, scrollableContainer.get());
             }
         }
 
@@ -2693,7 +2706,8 @@ void EventHandler::clearLatchedState()
 #if PLATFORM(MAC)
     m_frame.mainFrame().resetLatchingState();
 #endif
-    m_frame.mainFrame().wheelEventDeltaFilter()->endFilteringDeltas();
+    if (auto filter = m_frame.mainFrame().wheelEventDeltaFilter())
+        filter->endFilteringDeltas();
 }
 
 void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEvent)

@@ -28,7 +28,6 @@
 
 #if ENABLE(DFG_JIT)
 
-#include "ArrayConstructor.h"
 #include "DFGAbstractInterpreter.h"
 #include "GetByIdStatus.h"
 #include "GetterSetter.h"
@@ -300,6 +299,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case UInt32ToNumber: {
         JSValue child = forNode(node->child1()).value();
         if (doesOverflow(node->arithMode())) {
+            if (enableInt52()) {
+                if (child && child.isMachineInt()) {
+                    setConstant(node, jsNumber(child.asMachineInt()));
+                    break;
+                }
+                forNode(node).setType(SpecMachineInt);
+                break;
+            }
             if (child && child.isInt32()) {
                 uint32_t value = child.asInt32();
                 setConstant(node, jsNumber(value));
@@ -956,10 +963,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         break;
     }
-
-    case IsArrayObject:
-    case IsJSArray:
-    case IsArrayConstructor:
+        
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
@@ -971,28 +975,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         if (child.value()) {
             bool constantWasSet = true;
             switch (node->op()) {
-            case IsArrayObject:
-                if (child.value().isObject()) {
-                    if (child.value().getObject()->type() == ArrayType) {
-                        setConstant(node, jsBoolean(true));
-                        break;
-                    }
-
-                    if (child.value().getObject()->type() == ProxyObjectType) {
-                        // We have no way of knowing what type we are proxing yet.
-                        constantWasSet = false;
-                        break;
-                    }
-                }
-
-                setConstant(node, jsBoolean(false));
-                break;
-            case IsJSArray:
-                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->type() == ArrayType));
-                break;
-            case IsArrayConstructor:
-                setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->classInfo() == ArrayConstructor::info()));
-                break;
             case IsUndefined:
                 setConstant(node, jsBoolean(
                     child.value().isCell()
@@ -1055,22 +1037,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
         bool constantWasSet = false;
         switch (node->op()) {
-        case IsJSArray:
-        case IsArrayObject:
-            // We don't have a SpeculatedType for Proxies yet so we can't do better at proving false.
-            if (!(child.m_type & ~SpecArray)) {
-                setConstant(node, jsBoolean(true));
-                constantWasSet = true;
-                break;
-            }
-
-            if (!(child.m_type & SpecObject)) {
-                setConstant(node, jsBoolean(false));
-                constantWasSet = true;
-                break;
-            }
-
-            break;
         case IsUndefined:
             // FIXME: Use the masquerades-as-undefined watchpoint thingy.
             // https://bugs.webkit.org/show_bug.cgi?id=144456
@@ -1824,21 +1790,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         ASSERT(node->structure());
         forNode(node).set(m_graph, node->structure());
         break;
-
-    case CallObjectConstructor: {
-        AbstractValue& source = forNode(node->child1());
-        AbstractValue& destination = forNode(node);
-
-        if (!(source.m_type & ~SpecObject)) {
-            m_state.setFoundConstants(true);
-            destination = source;
-            break;
-        }
-
-        forNode(node).setType(m_graph, SpecObject);
-        break;
-    }
-
+        
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
@@ -2020,7 +1972,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case PutToArguments:
         break;
-            
+
+    case TryGetById:
+        // FIXME: This should constant fold at least as well as the normal GetById case.
+        // https://bugs.webkit.org/show_bug.cgi?id=156422
+        forNode(node).makeHeapTop();
+        break;
+
     case GetById:
     case GetByIdFlush: {
         if (!node->prediction()) {

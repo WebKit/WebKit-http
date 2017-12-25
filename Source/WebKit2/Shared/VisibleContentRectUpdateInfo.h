@@ -39,11 +39,15 @@ class VisibleContentRectUpdateInfo {
 public:
     VisibleContentRectUpdateInfo() = default;
 
-    VisibleContentRectUpdateInfo(const WebCore::FloatRect& exposedContentRect, const WebCore::FloatRect& unobscuredContentRect, const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, bool allowShrinkToFit, double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate, uint64_t lastLayerTreeTransactionId)
+    VisibleContentRectUpdateInfo(const WebCore::FloatRect& exposedContentRect, const WebCore::FloatRect& unobscuredContentRect,
+        const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect,
+        const WebCore::FloatSize& obscuredInset, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, bool allowShrinkToFit, bool enclosedInScrollView,
+        double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate, uint64_t lastLayerTreeTransactionId)
         : m_exposedContentRect(exposedContentRect)
         , m_unobscuredContentRect(unobscuredContentRect)
         , m_unobscuredRectInScrollViewCoordinates(unobscuredRectInScrollViewCoordinates)
         , m_customFixedPositionRect(customFixedPositionRect)
+        , m_obscuredInset(obscuredInset)
         , m_lastLayerTreeTransactionID(lastLayerTreeTransactionId)
         , m_scale(scale)
         , m_timestamp(timestamp)
@@ -53,6 +57,7 @@ public:
         , m_inStableState(inStableState)
         , m_isChangingObscuredInsetsInteractively(isChangingObscuredInsetsInteractively)
         , m_allowShrinkToFit(allowShrinkToFit)
+        , m_enclosedInScrollView(enclosedInScrollView)
     {
     }
 
@@ -60,10 +65,13 @@ public:
     const WebCore::FloatRect& unobscuredContentRect() const { return m_unobscuredContentRect; }
     const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates() const { return m_unobscuredRectInScrollViewCoordinates; }
     const WebCore::FloatRect& customFixedPositionRect() const { return m_customFixedPositionRect; }
+    const WebCore::FloatSize obscuredInset() const { return m_obscuredInset; }
+
     double scale() const { return m_scale; }
     bool inStableState() const { return m_inStableState; }
     bool isChangingObscuredInsetsInteractively() const { return m_isChangingObscuredInsetsInteractively; }
     bool allowShrinkToFit() const { return m_allowShrinkToFit; }
+    bool enclosedInScrollView() const { return m_enclosedInScrollView; }
 
     double timestamp() const { return m_timestamp; }
     double horizontalVelocity() const { return m_horizontalVelocity; }
@@ -80,6 +88,7 @@ private:
     WebCore::FloatRect m_unobscuredContentRect;
     WebCore::FloatRect m_unobscuredRectInScrollViewCoordinates;
     WebCore::FloatRect m_customFixedPositionRect;
+    WebCore::FloatSize m_obscuredInset;
     uint64_t m_lastLayerTreeTransactionID { 0 };
     double m_scale { -1 };
     double m_timestamp { 0 };
@@ -89,6 +98,7 @@ private:
     bool m_inStableState { false };
     bool m_isChangingObscuredInsetsInteractively { false };
     bool m_allowShrinkToFit { false };
+    bool m_enclosedInScrollView { false };
 };
 
 inline bool operator==(const VisibleContentRectUpdateInfo& a, const VisibleContentRectUpdateInfo& b)
@@ -98,11 +108,13 @@ inline bool operator==(const VisibleContentRectUpdateInfo& a, const VisibleConte
         && a.exposedContentRect() == b.exposedContentRect()
         && a.unobscuredContentRect() == b.unobscuredContentRect()
         && a.customFixedPositionRect() == b.customFixedPositionRect()
+        && a.obscuredInset() == b.obscuredInset()
         && a.horizontalVelocity() == b.horizontalVelocity()
         && a.verticalVelocity() == b.verticalVelocity()
         && a.scaleChangeRate() == b.scaleChangeRate()
         && a.inStableState() == b.inStableState()
-        && a.allowShrinkToFit() == b.allowShrinkToFit();
+        && a.allowShrinkToFit() == b.allowShrinkToFit()
+        && a.enclosedInScrollView() == b.enclosedInScrollView();
 }
 
 } // namespace WebKit

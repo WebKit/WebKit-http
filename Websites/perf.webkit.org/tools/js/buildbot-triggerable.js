@@ -80,14 +80,15 @@ class BuildbotTriggerable {
     _pullBuildbotOnAllSyncers(buildReqeustsByGroup)
     {
         let updates = {};
+        let associatedRequests = new Set;
         let self = this;
         return Promise.all(this._syncers.map(function (syncer) {
-            self._logger.log(`Fetching builds on ${syncer.builderName()}`);
             return syncer.pullBuildbot(self._lookbackCount).then(function (entryList) {
                 for (let entry of entryList) {
                     let request = BuildRequest.findById(entry.buildRequestId());
                     if (!request)
                         continue;
+                    associatedRequests.add(request);
 
                     let info = buildReqeustsByGroup.get(request.testGroupId());
                     assert(!info.syncer || info.syncer == syncer);
@@ -101,10 +102,21 @@ class BuildbotTriggerable {
                     if (newStatus) {
                         self._logger.log(`Updating the status of build request ${request.id()} from ${request.status()} to ${newStatus}`);
                         updates[entry.buildRequestId()] = {status: newStatus, url: entry.url()};
+                    } else if (!request.statusUrl()) {
+                        self._logger.log(`Setting the status URL of build request ${request.id()} to ${entry.url()}`);
+                        updates[entry.buildRequestId()] = {status: request.status(), url: entry.url()};
                     }
                 }
             });
-        })).then(function () { return updates; });
+        })).then(function () {
+            for (let request of BuildRequest.all()) {
+                if (request.hasStarted() && !request.hasFinished() && !associatedRequests.has(request)) {
+                    self._logger.log(`Updating the status of build request ${request.id()} from ${request.status()} to failedIfNotCompleted`);
+                    assert(!(request.id() in updates));
+                    updates[request.id()] = {status: 'failedIfNotCompleted'};
+                }
+            }
+        }).then(function () { return updates; });
     }
 
     _scheduleNextRequestInGroupIfSlaveIsAvailable(groupInfo, pendingUpdates)
@@ -124,7 +136,7 @@ class BuildbotTriggerable {
 
         let firstRequest = !nextRequest.order();
         if (firstRequest) {
-            this._logger.log(`Syncing build request ${nextRequest.id()} on ${groupInfo.slaveName} in ${groupInfo.syncer.builderName()}`);
+            this._logger.log(`Scheduling build request ${nextRequest.id()} on ${groupInfo.slaveName} in ${groupInfo.syncer.builderName()}`);
             return groupInfo.syncer.scheduleRequest(request, groupInfo.slaveName);
         }
 
@@ -132,7 +144,7 @@ class BuildbotTriggerable {
             let promise = syncer.scheduleFirstRequestInGroupIfAvailable(nextRequest);
             if (promise) {
                 let slaveName = groupInfo.slaveName ? ` on ${groupInfo.slaveName}` : '';
-                this._logger.log(`Syncing build request ${nextRequest.id()}${slaveName} in ${syncer.builderName()}`);
+                this._logger.log(`Scheduling build request ${nextRequest.id()}${slaveName} in ${syncer.builderName()}`);
                 return promise;
             }
         }

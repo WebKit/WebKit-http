@@ -112,7 +112,7 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
     VM& vm = *codeBlock->vm();
     
     if (!accessCase)
-        return AccessGenerationResult::MadeNoChanges;
+        return AccessGenerationResult::GaveUp;
     
     if (cacheType == CacheType::Stub)
         return u.stub->regenerateWithCase(vm, codeBlock, *this, ident, WTFMove(accessCase));
@@ -150,8 +150,11 @@ void StructureStubInfo::reset(CodeBlock* codeBlock)
     }
 
     switch (accessType) {
+    case AccessType::GetPure:
+        resetGetByID(codeBlock, *this, GetByIDKind::Pure);
+        break;
     case AccessType::Get:
-        resetGetByID(codeBlock, *this);
+        resetGetByID(codeBlock, *this, GetByIDKind::Normal);
         break;
     case AccessType::Put:
         resetPutByID(codeBlock, *this);

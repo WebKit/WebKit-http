@@ -44,7 +44,7 @@ function sampleiOSConfig()
             'iPad-bench': {
                 'builder': 'ABTest-iPad-RunBenchmark-Tests',
                 'arguments': { 'forcescheduler': 'ABTest-iPad-RunBenchmark-Tests-ForceScheduler' },
-                'slaveList': ['ABTest-iPad-0'],
+                'slaveList': ['ABTest-iPad-0', 'ABTest-iPad-1'],
             }
         },
         'configurations': [
@@ -850,7 +850,7 @@ describe('BuildbotSyncer', function () {
                 syncer.scheduleFirstRequestInGroupIfAvailable(createSampleBuildRequest(MockModels.somePlatform, MockModels.someTest));
             }).then(function () {
                 assert.equal(requests.length, 1);
-                assert.equal(requests[0].url, '/builders/some builder/force');
+                assert.equal(requests[0].url, '/builders/some%20builder/force');
                 assert.equal(requests[0].method, 'POST');
                 assert.deepEqual(requests[0].data, {id: '16733-' + MockModels.somePlatform.id()});
                 done();
@@ -864,7 +864,7 @@ describe('BuildbotSyncer', function () {
                 syncer.scheduleFirstRequestInGroupIfAvailable(createSampleBuildRequest(MockModels.somePlatform, MockModels.someTest));
             }).then(function () {
                 assert.equal(requests.length, 1);
-                assert.equal(requests[0].url, '/builders/some builder/force');
+                assert.equal(requests[0].url, '/builders/some%20builder/force');
                 assert.equal(requests[0].method, 'POST');
                 assert.deepEqual(requests[0].data, {id: '16733-' + MockModels.somePlatform.id()});
                 done();
@@ -963,5 +963,47 @@ describe('BuildbotSyncer', function () {
             }).catch(done);
         });
 
+        it('should not schedule a build if a new request had been submitted to the same slave', function (done) {
+            let syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig())[1];
+
+            pullBuildbotWithAssertion(syncer, [], {}).then(function () {
+                syncer.scheduleRequest(createSampleBuildRequest(MockModels.ipad, MockModels.speedometer), 'ABTest-iPad-0');
+                syncer.scheduleRequest(createSampleBuildRequest(MockModels.ipad, MockModels.speedometer), 'ABTest-iPad-1');
+            }).then(function () {
+                assert.equal(requests.length, 2);
+                syncer.scheduleFirstRequestInGroupIfAvailable(createSampleBuildRequest(MockModels.ipad, MockModels.speedometer));
+            }).then(function () {
+                assert.equal(requests.length, 2);
+                done();
+            }).catch(done);
+        });
+
+        it('should schedule a build if a new request had been submitted to another slave', function (done) {
+            let syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig())[1];
+
+            pullBuildbotWithAssertion(syncer, [], {}).then(function () {
+                syncer.scheduleRequest(createSampleBuildRequest(MockModels.ipad, MockModels.speedometer), 'ABTest-iPad-0');
+            }).then(function () {
+                assert.equal(requests.length, 1);
+                syncer.scheduleFirstRequestInGroupIfAvailable(createSampleBuildRequest(MockModels.ipad, MockModels.speedometer), 'ABTest-iPad-1');
+            }).then(function () {
+                assert.equal(requests.length, 2);
+                done();
+            }).catch(done);
+        });
+
+        it('should not schedule a build if a new request had been submitted to the same builder without slaveList', function (done) {
+            let syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, {'configurations': [smallConfiguration()]})[0];
+
+            pullBuildbotWithAssertion(syncer, [], {}).then(function () {
+                syncer.scheduleRequest(createSampleBuildRequest(MockModels.somePlatform, MockModels.someTest), null);
+            }).then(function () {
+                assert.equal(requests.length, 1);
+                syncer.scheduleFirstRequestInGroupIfAvailable(createSampleBuildRequest(MockModels.somePlatform, MockModels.someTest));
+            }).then(function () {
+                assert.equal(requests.length, 1);
+                done();
+            }).catch(done);
+        });
     });
 });
