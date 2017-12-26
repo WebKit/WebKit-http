@@ -310,7 +310,7 @@ namespace WebCore {
         // ImageDecoder-owned pointer.
         virtual ImageFrame* frameBufferAtIndex(size_t) = 0;
 
-        bool frameIsCompleteAtIndex(size_t) const;
+        bool frameIsCompleteAtIndex(size_t);
 
         // Make the best effort guess to check if the requested frame has alpha channel.
         bool frameHasAlphaAtIndex(size_t) const;
@@ -318,9 +318,9 @@ namespace WebCore {
         // Number of bytes in the decoded frame requested. Return 0 if not yet decoded.
         unsigned frameBytesAtIndex(size_t) const;
         
-        float frameDurationAtIndex(size_t) const;
+        float frameDurationAtIndex(size_t);
         
-        NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel) const;
+        NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel);
 
         void setIgnoreGammaAndColorProfile(bool flag) { m_ignoreGammaAndColorProfile = flag; }
         bool ignoresGammaAndColorProfile() const { return m_ignoreGammaAndColorProfile; }

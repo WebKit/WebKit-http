@@ -364,21 +364,19 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
 
     AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, propertyName, WTFMove(newCase));
 
-    if (result.gaveUp())
-        return GiveUpOnCache;
-    if (result.madeNoChanges())
-        return RetryCacheLater;
+    if (result.generatedSomeCode()) {
+        LOG_IC((ICEvent::GetByIdReplaceWithJump, baseValue.classInfoOrNull(), propertyName));
+        
+        RELEASE_ASSERT(result.code());
+        replaceWithJump(stubInfo, result.code());
+    }
     
-    LOG_IC((ICEvent::GetByIdReplaceWithJump, baseValue.classInfoOrNull(), propertyName));
-
-    RELEASE_ASSERT(result.code());
-    replaceWithJump(stubInfo, result.code());
-    
-    return RetryCacheLater;
+    return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
 }
 
 void repatchGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo, GetByIDKind kind)
 {
+    SuperSamplerScope superSamplerScope(false);
     GCSafeConcurrentJITLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
     if (tryCacheGetByID(exec, baseValue, propertyName, slot, stubInfo, kind) == GiveUpOnCache)
@@ -514,25 +512,23 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
     
     AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
     
-    if (result.gaveUp())
-        return GiveUpOnCache;
-    if (result.madeNoChanges())
-        return RetryCacheLater;
-
-    LOG_IC((ICEvent::PutByIdReplaceWithJump, structure->classInfo(), ident));
-
-    RELEASE_ASSERT(result.code());
-    resetPutByIDCheckAndLoad(stubInfo);
-    MacroAssembler::repatchJump(
-        stubInfo.callReturnLocation.jumpAtOffset(
-            stubInfo.patch.deltaCallToJump),
-        CodeLocationLabel(result.code()));
+    if (result.generatedSomeCode()) {
+        LOG_IC((ICEvent::PutByIdReplaceWithJump, structure->classInfo(), ident));
+        
+        RELEASE_ASSERT(result.code());
+        resetPutByIDCheckAndLoad(stubInfo);
+        MacroAssembler::repatchJump(
+            stubInfo.callReturnLocation.jumpAtOffset(
+                stubInfo.patch.deltaCallToJump),
+            CodeLocationLabel(result.code()));
+    }
     
-    return RetryCacheLater;
+    return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
 }
 
 void repatchPutByID(ExecState* exec, JSValue baseValue, Structure* structure, const Identifier& propertyName, const PutPropertySlot& slot, StructureStubInfo& stubInfo, PutKind putKind)
 {
+    SuperSamplerScope superSamplerScope(false);
     GCSafeConcurrentJITLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
     if (tryCachePutByID(exec, baseValue, structure, propertyName, slot, stubInfo, putKind) == GiveUpOnCache)
@@ -577,25 +573,24 @@ static InlineCacheAction tryRepatchIn(
         vm, codeBlock, wasFound ? AccessCase::InHit : AccessCase::InMiss, structure, conditionSet);
 
     AccessGenerationResult result = stubInfo.addAccessCase(codeBlock, ident, WTFMove(newCase));
-    if (result.gaveUp())
-        return GiveUpOnCache;
-    if (result.madeNoChanges())
-        return RetryCacheLater;
-
-    LOG_IC((ICEvent::InReplaceWithJump, structure->classInfo(), ident));
-
-    RELEASE_ASSERT(result.code());
-    MacroAssembler::repatchJump(
-        stubInfo.callReturnLocation.jumpAtOffset(stubInfo.patch.deltaCallToJump),
-        CodeLocationLabel(result.code()));
     
-    return RetryCacheLater;
+    if (result.generatedSomeCode()) {
+        LOG_IC((ICEvent::InReplaceWithJump, structure->classInfo(), ident));
+        
+        RELEASE_ASSERT(result.code());
+        MacroAssembler::repatchJump(
+            stubInfo.callReturnLocation.jumpAtOffset(stubInfo.patch.deltaCallToJump),
+            CodeLocationLabel(result.code()));
+    }
+    
+    return result.shouldGiveUpNow() ? GiveUpOnCache : RetryCacheLater;
 }
 
 void repatchIn(
     ExecState* exec, JSCell* base, const Identifier& ident, bool wasFound,
     const PropertySlot& slot, StructureStubInfo& stubInfo)
 {
+    SuperSamplerScope superSamplerScope(false);
     if (tryRepatchIn(exec, base, ident, wasFound, slot, stubInfo) == GiveUpOnCache)
         repatchCall(exec->codeBlock(), stubInfo.callReturnLocation, operationIn);
 }

@@ -60,6 +60,7 @@
 #include "Repatch.h"
 #include "ScopedArguments.h"
 #include "ShadowChicken.h"
+#include "StructureStubInfo.h"
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
@@ -194,7 +195,7 @@ EncodedJSValue JIT_OPERATION operationTryGetByIdOptimize(ExecState* exec, Struct
     PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
 
     baseValue.getPropertySlot(exec, ident, slot);
-    if (stubInfo->considerCaching() && !slot.isTaintedByProxy() && (slot.isCacheableValue() || slot.isCacheableGetter() || slot.isUnset()))
+    if (stubInfo->considerCaching(baseValue.structureOrNull()) && !slot.isTaintedByProxy() && (slot.isCacheableValue() || slot.isCacheableGetter() || slot.isUnset()))
         repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::Pure);
 
     return JSValue::encode(slot.getPureResult());
@@ -244,7 +245,7 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, Structure
     PropertySlot slot(baseValue, PropertySlot::InternalMethodType::Get);
     
     bool hasResult = baseValue.getPropertySlot(exec, ident, slot);
-    if (stubInfo->considerCaching())
+    if (stubInfo->considerCaching(baseValue.structureOrNull()))
         repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::Normal);
     
     return JSValue::encode(hasResult? slot.getValue(exec, ident) : jsUndefined());
@@ -271,7 +272,7 @@ EncodedJSValue JIT_OPERATION operationInOptimize(ExecState* exec, StructureStubI
     
     RELEASE_ASSERT(accessType == stubInfo->accessType);
     
-    if (stubInfo->considerCaching())
+    if (stubInfo->considerCaching(asObject(base)->structure()))
         repatchIn(exec, base, ident, result, slot, *stubInfo);
     
     return JSValue::encode(jsBoolean(result));
@@ -392,7 +393,7 @@ void JIT_OPERATION operationPutByIdStrictOptimize(ExecState* exec, StructureStub
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
-    if (stubInfo->considerCaching())
+    if (stubInfo->considerCaching(structure))
         repatchPutByID(exec, baseValue, structure, ident, slot, *stubInfo, NotDirect);
 }
 
@@ -417,7 +418,7 @@ void JIT_OPERATION operationPutByIdNonStrictOptimize(ExecState* exec, StructureS
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
-    if (stubInfo->considerCaching())
+    if (stubInfo->considerCaching(structure))
         repatchPutByID(exec, baseValue, structure, ident, slot, *stubInfo, NotDirect);
 }
 
@@ -442,7 +443,7 @@ void JIT_OPERATION operationPutByIdDirectStrictOptimize(ExecState* exec, Structu
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
-    if (stubInfo->considerCaching())
+    if (stubInfo->considerCaching(structure))
         repatchPutByID(exec, baseObject, structure, ident, slot, *stubInfo, Direct);
 }
 
@@ -467,7 +468,7 @@ void JIT_OPERATION operationPutByIdDirectNonStrictOptimize(ExecState* exec, Stru
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
-    if (stubInfo->considerCaching())
+    if (stubInfo->considerCaching(structure))
         repatchPutByID(exec, baseObject, structure, ident, slot, *stubInfo, Direct);
 }
 

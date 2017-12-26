@@ -26,13 +26,13 @@
 #include "HTMLLinkElement.h"
 
 #include "Attribute.h"
-#include "AttributeDOMTokenList.h"
 #include "AuthorStyleSheets.h"
 #include "CachedCSSStyleSheet.h"
 #include "CachedResource.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "ContentSecurityPolicy.h"
+#include "DOMTokenList.h"
 #include "Document.h"
 #include "Event.h"
 #include "EventSender.h"
@@ -141,7 +141,7 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
     if (name == relAttr) {
         m_relAttribute = LinkRelAttribute(value);
         if (m_relList)
-            m_relList->attributeValueChanged(value);
+            m_relList->associatedAttributeValueChanged(value);
         process();
         return;
     }
@@ -160,7 +160,7 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
     }
     if (name == sizesAttr) {
         if (m_sizes)
-            m_sizes->attributeValueChanged(value);
+            m_sizes->associatedAttributeValueChanged(value);
         process();
         return;
     }
@@ -378,7 +378,7 @@ bool HTMLLinkElement::styleSheetIsLoading() const
 DOMTokenList& HTMLLinkElement::sizes()
 {
     if (!m_sizes)
-        m_sizes = std::make_unique<AttributeDOMTokenList>(*this, sizesAttr);
+        m_sizes = std::make_unique<DOMTokenList>(*this, sizesAttr);
     return *m_sizes;
 }
 
@@ -418,7 +418,7 @@ void HTMLLinkElement::dispatchPendingEvent(LinkEventSender* eventSender)
 DOMTokenList& HTMLLinkElement::relList()
 {
     if (!m_relList) 
-        m_relList = std::make_unique<AttributeDOMTokenList>(*this, HTMLNames::relAttr);
+        m_relList = std::make_unique<DOMTokenList>(*this, HTMLNames::relAttr);
     return *m_relList;
 }
 

@@ -787,6 +787,10 @@ webkit.org/b/130693 mathml/presentation/tokenElements-background-color.html [ Im
 webkit.org/b/72828 mathml/opentype/horizontal.html [ Failure ]
 webkit.org/b/72828 mathml/opentype/horizontal-munderover.html [ Failure ]
 
+# These tests require the Latin Modern Math font.
+mathml/opentype/fraction-line.html [ Pass ImageOnlyFailure ]
+mathml/presentation/fractions-linethickness.html [ Pass ImageOnlyFailure ]
+
 # Missing references
 webkit.org/b/119038 mathml/presentation/mo-stretch.html [ Failure ]
 webkit.org/b/119038 mathml/presentation/roots.xhtml [ Failure ]
@@ -1224,7 +1228,6 @@ webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeo
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
-webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
 
 # Touch events is not enabled on Mac
 webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]

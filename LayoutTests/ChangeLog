@@ -1,3 +1,445 @@
+2016-04-12  Antti Koivisto  <antti@apple.com>
+
+        Crash at com.apple.JavaScriptCore: bool WTF::startsWith<WTF::StringImpl, WTF::StringImpl> + 8
+        https://bugs.webkit.org/show_bug.cgi?id=156512
+        rdar://problem/24220567
+
+        Reviewed by Benjamin Poulain.
+
+        Land a test that verifies that setting attr to null does not crash with attribute selectors.
+        This was fixed by http://trac.webkit.org/changeset/199392.
+
+        * fast/css/attribute-selector-null-crash-expected.html: Added.
+        * fast/css/attribute-selector-null-crash.html: Added.
+
+2016-04-12  Mark Lam  <mark.lam@apple.com>
+
+        Rollout: ES6: Implement String.prototype.split and RegExp.prototype[@@split].
+        https://bugs.webkit.org/show_bug.cgi?id=156013
+
+        Speculative rollout to fix 32-bit shadow-chicken.yaml/tests/v8-v6/v8-regexp.js.shadow-chicken test failure.
+
+        Not reviewed.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/string-prototype-properties-expected.txt:
+        * js/regress/regexp-prototype-split-observable-side-effects-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects2-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects2.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode.html: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects4-expected.txt: Removed.
+        * js/regress/regexp-prototype-split-observable-side-effects4.html: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects2.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-flags.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-global.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-ignoreCase.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-multiline.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-sticky.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-unicode.js: Removed.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects4.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects2.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-flags.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-global.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-ignoreCase.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-multiline.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-sticky.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-unicode.js: Removed.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects4.js: Removed.
+        * js/regress/string-prototype-split-observable-side-effects-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects2-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects2.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-flags-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-flags.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-global-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-global.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode.html: Removed.
+        * js/regress/string-prototype-split-observable-side-effects4-expected.txt: Removed.
+        * js/regress/string-prototype-split-observable-side-effects4.html: Removed.
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.14_String.prototype.split/S15.5.4.14_A1_T3-expected.txt:
+
+2016-04-12  Keith Miller  <keith_miller@apple.com>
+
+        [ES6] Add support for Symbol.isConcatSpreadable.
+        https://bugs.webkit.org/show_bug.cgi?id=155351
+
+        Reviewed by Saam Barati.
+
+        Fix tests for Symbol.isConcatSpreadable on the Symbol object.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/array-prototype-properties-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2016-04-12  Mark Lam  <mark.lam@apple.com>
+
+        ES6: Implement String.prototype.split and RegExp.prototype[@@split].
+        https://bugs.webkit.org/show_bug.cgi?id=156013
+
+        Reviewed by Keith Miller.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/dom/string-prototype-properties-expected.txt:
+
+        * js/regress/regexp-prototype-split-observable-side-effects-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects2-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects2.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-flags.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-global.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-ignoreCase.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-multiline.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-sticky.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects3-unicode.html: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects4-expected.txt: Added.
+        * js/regress/regexp-prototype-split-observable-side-effects4.html: Added.
+
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects2.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-flags.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-global.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-ignoreCase.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-multiline.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-sticky.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects3-unicode.js: Added.
+        * js/regress/script-tests/regexp-prototype-split-observable-side-effects4.js: Added.
+
+        * js/regress/script-tests/string-prototype-split-observable-side-effects.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects2.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-flags.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-global.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-ignoreCase.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-multiline.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-sticky.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects3-unicode.js: Added.
+        * js/regress/script-tests/string-prototype-split-observable-side-effects4.js: Added.
+
+        * js/regress/string-prototype-split-observable-side-effects-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects2-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects2.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-flags-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-flags.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-global-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-global.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-ignoreCase.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-multiline.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-sticky.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects3-unicode.html: Added.
+        * js/regress/string-prototype-split-observable-side-effects4-expected.txt: Added.
+        * js/regress/string-prototype-split-observable-side-effects4.html: Added.
+
+        * js/script-tests/Object-getOwnPropertyNames.js:
+        * sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.14_String.prototype.split/S15.5.4.14_A1_T3-expected.txt:
+
+2016-04-12  Chris Dumez  <cdumez@apple.com>
+
+        Attr.value should not be nullable
+        https://bugs.webkit.org/show_bug.cgi?id=156515
+
+        Reviewed by Benjamin Poulain.
+
+        Add layout test and rebaseline existing one now that Attr.value is no
+        longer nullable.
+
+        * fast/dom/Attr/value-not-nullable-expected.txt: Added.
+        * fast/dom/Attr/value-not-nullable.html: Added.
+        * fast/dom/coreDOM-element-attribute-js-null-expected.txt:
+        * fast/dom/coreDOM-element-attribute-js-null.xhtml:
+
+2016-04-12  David Kilzer  <ddkilzer@apple.com>
+
+        Web Inspector: inspector/heap/getRemoteObject.html is flakey
+        <http://webkit.org/b/156077>
+
+        Unreviewed test expectations update.
+
+        * platform/mac-wk2/TestExpectations:
+        (inspector/heap/getRemoteObject.html): Update bug number.
+
+2016-04-12  David Kilzer  <ddkilzer@apple.com>
+
+        Web Inspector: inspector/heap/getRemoteObject.html is flakey
+        <http://webkit.org/b/156514>
+
+        Unreviewed test expectations update.
+
+        * platform/mac-wk2/TestExpectations:
+        (inspector/heap/getRemoteObject.html): Mark as flakey.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to expand Objects in Heap Allocations View to see exactly what it retains
+        https://bugs.webkit.org/show_bug.cgi?id=156419
+        <rdar://problem/25633863>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/heap-snapshot-expected.txt:
+        * inspector/unit-tests/heap-snapshot.html:
+        Add a quick test that retainedNodes returns a list of edges.
+
+2016-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [RTL Scrollbars] Overlay scrollbars push contents inwards
+        https://bugs.webkit.org/show_bug.cgi?id=156225
+        <rdar://problem/25137040>
+
+        Reviewed by Darin Adler.
+
+        * fast/scrolling/rtl-scrollbars-overlay-no-push-contents-expected.html: Added.
+        * fast/scrolling/rtl-scrollbars-overlay-no-push-contents.html: Added.
+
+2016-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Flakey crash after ScrollAnimatorMac destruction
+        https://bugs.webkit.org/show_bug.cgi?id=156372
+
+        Reviewed by Darin Adler.
+
+        Migrate to the new mechanism for disabling mock scrollbars in tests.
+
+        * fast/scrolling/rtl-scrollbars-animation-property.html:
+
+2016-04-12  Saam barati  <sbarati@apple.com>
+
+        We incorrectly parse arrow function expressions
+        https://bugs.webkit.org/show_bug.cgi?id=156373
+
+        Reviewed by Mark Lam.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+        (catch):
+
+2016-03-17  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Add parsing support for <auto-repeat> syntax
+        https://bugs.webkit.org/show_bug.cgi?id=155583
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set-expected.txt: Added.
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set.html: Added.
+
+2016-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Remove failing assertion in ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=156485
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/fragment-shader-assertion-expected.txt: Added.
+        * fast/canvas/webgl/fragment-shader-assertion.html: Added.
+
+2016-04-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Use WeakPtrs to avoid using deallocated Widgets and ScrollableAreas
+        https://bugs.webkit.org/show_bug.cgi?id=156420
+        <rdar://problem/25637378>
+
+        Reviewed by Darin Adler.
+
+        * fast/events/wheel-event-destroys-overflow-expected.txt: Added.
+        * fast/events/wheel-event-destroys-overflow.html: Added.
+        * platform/ios-simulator/TestExpectations: Skip wheel-event test on iOS.
+
+2016-04-11  Dean Jackson  <dino@apple.com>
+
+        putImageData needs to premultiply input
+        https://bugs.webkit.org/show_bug.cgi?id=156488
+        <rdar://problem/25672675>
+
+        Reviewed by Zalan Bujtas.
+
+        Tests that putImageData is taking unmultiplied data,
+        premultiplying it, then copying into the backing store.
+
+        * fast/canvas/putImageData-unmultiplied-expected.html: Added.
+        * fast/canvas/putImageData-unmultiplied.html: Added.
+
+2016-04-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unskip imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm
+        https://bugs.webkit.org/show_bug.cgi?id=156480
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-04-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Skip imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm on ios-simulators
+        https://bugs.webkit.org/show_bug.cgi?id=156480
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-04-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        fast/loader/opaque-base-url.html crashing during mac and ios debug tests
+        https://bugs.webkit.org/show_bug.cgi?id=156179
+        <rdar://problem/25507719>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/loader/iframe-src-invalid-url-expected.txt: Added.
+        * fast/loader/iframe-src-invalid-url.html: Added.
+
+2016-04-11  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Merge CG ImageSource and non CG ImageSource implementation in one file
+        https://bugs.webkit.org/show_bug.cgi?id=155456
+
+        Reviewed by Darin Adler.
+        
+        Add a test for image sub-sampling. The image subsampling is enabled by
+        default for iOS platform only. But it can be explicitly enabled through
+        the setting ImageSubsamplingEnabled.
+
+        * fast/images/image-subsampling-expected.html: Added.
+        * fast/images/image-subsampling.html: Added.
+
+2016-04-11  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r193857): Text selection causes text to disappear.
+        https://bugs.webkit.org/show_bug.cgi?id=156448
+        rdar://problem/25578952
+
+        Reviewed by Simon Fraser.
+
+        Apparently when the end position of the selection range is smaller than the start position, we need
+        to repaint the entire text as it indicates selection clearing.
+
+        * fast/text/text-disappear-on-deselect-expected.html: Added.
+        * fast/text/text-disappear-on-deselect.html: Added.
+
+2016-04-11  Chris Dumez  <cdumez@apple.com>
+
+        DOMTokenList.contains() should not throw
+        https://bugs.webkit.org/show_bug.cgi?id=156453
+
+        Reviewed by Ryosuke Niwa.
+
+        Update existing layout tests now that DOMTokenList.contains() no longer
+        throws when called with an invalid token.
+
+        * fast/dom/HTMLElement/class-list-expected.txt:
+        * fast/dom/HTMLElement/class-list-quirks-expected.txt:
+        * fast/dom/HTMLElement/script-tests/class-list.js:
+        (shouldThrowDOMException): Deleted.
+        * fast/dom/HTMLOutputElement/dom-settable-token-list-expected.txt:
+        * fast/dom/HTMLOutputElement/script-tests/dom-settable-token-list.js:
+        (shouldThrowDOMException): Deleted.
+        * fast/dom/rel-list-expected.txt:
+        * fast/dom/rel-list.html:
+
+2016-04-11  Frederic Wang  <fwang@igalia.com>
+
+        Refactor RenderMathMLFraction layout to avoid using flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=153917
+
+        Reviewed by Sergio Villar Senin.
+
+        * TestExpectations: No longer skip mathml/presentation/fractions-positions.html
+        * mathml/opentype/fraction-line-expected.html: Added. New test to verify AxisHeight and
+        FractionRuleThickness parameters.
+        * mathml/opentype/fraction-line.html: Added. New test to verify axis height and rule
+        thickness parameters.
+        * mathml/presentation/fractions-linethickness-expected.html: Adjust the test to be sure that
+        the default rule thickness is 1px.
+        * mathml/presentation/fractions-linethickness.html: Adjust the test to be sure that the
+        default rule thickness is 1px.
+        * platform/gtk/mathml/presentation/roots-expected.txt: Update reference to take into account
+        changes in the render tree.
+        * platform/ios-simulator/mathml/presentation/roots-expected.txt: Ditto
+        * platform/mac/TestExpectations: Mark fraction-line and fractions-linethickness as
+        possibly failing since these tests require Latin Modern Math to work reliably.
+        * platform/ios-simulator/TestExpectations: Ditto
+
+2016-04-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199290.
+        https://bugs.webkit.org/show_bug.cgi?id=156465
+
+        broke 300 tests (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "Merge CG ImageSource and non CG ImageSource implementation in
+        one file"
+        https://bugs.webkit.org/show_bug.cgi?id=155456
+        http://trac.webkit.org/changeset/199290
+
+2016-04-11  Frederic Wang  <fwang@igalia.com>
+
+        Refactor RenderMathMLUnderOver layout functions to avoid using flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=153742
+
+        Reviewed by Sergio Villar Senin.
+
+        Apply some small adjustments to the expectations of MathML tests after
+        the refactoring of RenderMathMLUnderOver. We also add a test for
+        non-stretchy horizontal operators in underover.
+
+        * platform/gtk/mathml/opentype/horizontal-expected.png:
+        * platform/gtk/mathml/opentype/horizontal-expected.txt:
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.png:
+        * platform/gtk/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+        * platform/mac/mathml/opentype/opentype-stretchy-horizontal-expected.png:
+        * platform/mac/mathml/opentype/opentype-stretchy-horizontal-expected.txt:
+        * mathml/mn-as-list-item-assert.html: Move the test description out of the invalid munderover
+        so that it is still displayed.
+        * mathml/mn-as-list-item-assert-expected.txt: Update the text expectation.
+        * mathml/presentation/underover-nonstretchy-horizontal.html: Ensure that nonstretchy horizontal operators are not stretched in munderover.
+        * mathml/presentation/underover-nonstretchy-horizontal-expected.html: Ditto.
+
+2016-04-11  Antti Koivisto  <antti@apple.com>
+
+        Implement functional :host() pseudo class
+        https://bugs.webkit.org/show_bug.cgi?id=156397
+        <rdar://problem/25621445>
+
+        Reviewed by Darin Adler.
+
+        Enable, fix and expand the test.
+
+        * fast/shadow-dom/css-scoping-shadow-host-functional-rule.html:
+        * platform/mac/TestExpectations:
+
 2016-04-11  Said Abou-Hallawa  <sabouhallawa@apple,com>
 
         Merge CG ImageSource and non CG ImageSource implementation in one file

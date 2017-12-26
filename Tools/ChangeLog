@@ -1,3 +1,77 @@
+2016-04-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Python test webkitpy.common.system.executive_unittest.ExecutiveTest.serial_test_kill_process is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=155367
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/common/system/executive.py: (Executive.kill_process):
+        Don't flakily consume the return code with waitpid, callers need to do waitpid on
+        their own. Not sure if this line of code was even intentional.
+
+2016-04-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [OS X] Flakey crash after ScrollAnimatorMac destruction
+        https://bugs.webkit.org/show_bug.cgi?id=156372
+
+        Reviewed by Darin Adler.
+
+        Implement the new <!-- webkit-test-runner --> flag.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WKR::PlatformWebView::viewSupportsOptions):
+
+2016-04-12  Tomas Popela  <tpopela@redhat.com>
+
+        Modify the CXXFLAGS in webkitdirs.pm just on architectures where the flags are supported
+        https://bugs.webkit.org/show_bug.cgi?id=156338
+
+        Reviewed by Michael Catanzaro.
+
+        Add the "-march=pentium4 -msse2 -mfpmath=sse " into the CXXFLAGS just
+        for the i686 where it is supported and not for other architectures
+        (such as s390(x) and ppc(64)) where the build will fail with these
+        CXXFLAGS.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+
+2016-04-11  Alex Christensen  <achristensen@webkit.org>
+
+        Build MiniBrowser with CMake on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=156471
+
+        Reviewed by Daniel Bates.
+
+        * CMakeLists.txt:
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformWin.cmake:
+        * MiniBrowser/mac/CMakeLists.txt: Added.
+
+2016-04-11  Ryuan Choi  <ryuan.choi@navercorp.com>
+
+        [EFL] Do not pass context to EwkViewCreate
+        https://bugs.webkit.org/show_bug.cgi?id=156461
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewUserViewportToContents.cpp:
+        (TestWebKitAPI::TEST): Removed context argument from EwkViewCreate calls.
+        * TestWebKitAPI/efl/PlatformWebView.cpp:
+        (TestWebKitAPI::PlatformWebView::PlatformWebView): Ditto.
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::PlatformWebView): Ditto.
+
 2016-04-11  Fujii Hironori  <Hironori.Fujii@jp.sony.com>
 
         [CMake] Make FOLDER property INHERITED

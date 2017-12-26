@@ -732,6 +732,7 @@ public:
             , shareResources(true)
             , preferDiscreteGPU(false)
             , forceSoftwareRenderer(false)
+            , useGLES3(false)
             , devicePixelRatio(1)
         {
         }
@@ -746,6 +747,7 @@ public:
         bool shareResources;
         bool preferDiscreteGPU;
         bool forceSoftwareRenderer;
+        bool useGLES3;
         float devicePixelRatio;
     };
 

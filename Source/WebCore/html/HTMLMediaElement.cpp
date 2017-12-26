@@ -2058,6 +2058,8 @@ void HTMLMediaElement::mediaLoadingFailed(MediaPlayer::NetworkState error)
     }
 
     logMediaLoadRequest(document().page(), String(), stringForNetworkState(error), false);
+
+    m_mediaSession->clientCharacteristicsChanged();
 }
 
 void HTMLMediaElement::setNetworkState(MediaPlayer::NetworkState state)
@@ -2213,6 +2215,8 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
         updateMediaState(UpdateMediaState::Asynchronously);
 #endif
+
+        m_mediaSession->clientCharacteristicsChanged();
     }
 
     bool shouldUpdateDisplayState = false;
@@ -5004,6 +5008,7 @@ void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
 #endif
 
     m_mediaSession->setCanProduceAudio(false);
+    m_mediaSession->clientCharacteristicsChanged();
 
     updateSleepDisabling();
 }
@@ -5064,6 +5069,8 @@ void HTMLMediaElement::stop()
     // if the media was not fully loaded, but we need the same cleanup if the file was completely
     // loaded and calling it again won't cause any problems.
     clearMediaPlayer(EveryDelayedAction);
+
+    m_mediaSession->stopSession();
 }
 
 void HTMLMediaElement::suspend(ReasonForSuspension why)
@@ -5593,21 +5600,36 @@ void HTMLMediaElement::setShouldDelayLoadEvent(bool shouldDelay)
     else
         document().decrementLoadEventDelayCount();
 }
-    
 
-void HTMLMediaElement::getSitesInMediaCache(Vector<String>& sites)
+static String& sharedMediaCacheDirectory()
 {
-    MediaPlayer::getSitesInMediaCache(sites);
+    static NeverDestroyed<String> sharedMediaCacheDirectory;
+    return sharedMediaCacheDirectory;
 }
 
-void HTMLMediaElement::clearMediaCache()
+void HTMLMediaElement::setMediaCacheDirectory(const String& path)
 {
-    MediaPlayer::clearMediaCache();
+    sharedMediaCacheDirectory() = path;
 }
 
-void HTMLMediaElement::clearMediaCacheForSite(const String& site)
+const String& HTMLMediaElement::mediaCacheDirectory()
 {
-    MediaPlayer::clearMediaCacheForSite(site);
+    return sharedMediaCacheDirectory();
+}
+
+HashSet<RefPtr<SecurityOrigin>> HTMLMediaElement::originsInMediaCache(const String& path)
+{
+    return MediaPlayer::originsInMediaCache(path);
+}
+
+void HTMLMediaElement::clearMediaCache(const String& path, std::chrono::system_clock::time_point modifiedSince)
+{
+    MediaPlayer::clearMediaCache(path, modifiedSince);
+}
+
+void HTMLMediaElement::clearMediaCacheForOrigins(const String& path, const HashSet<RefPtr<SecurityOrigin>>& origins)
+{
+    MediaPlayer::clearMediaCacheForOrigins(path, origins);
 }
 
 void HTMLMediaElement::resetMediaEngines()
@@ -6192,6 +6214,11 @@ bool HTMLMediaElement::mediaPlayerShouldUsePersistentCache() const
     return false;
 }
 
+const String& HTMLMediaElement::mediaPlayerMediaCacheDirectory() const
+{
+    return mediaCacheDirectory();
+}
+
 bool HTMLMediaElement::mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
     Frame* frame = document().frame();
@@ -6557,6 +6584,20 @@ PlatformMediaSession::DisplayType HTMLMediaElement::displayType() const
     return PlatformMediaSession::Normal;
 }
 
+PlatformMediaSession::CharacteristicsFlags HTMLMediaElement::characteristics() const
+{
+    if (m_readyState < HAVE_METADATA)
+        return PlatformMediaSession::HasNothing;
+
+    PlatformMediaSession::CharacteristicsFlags state = PlatformMediaSession::HasNothing;
+    if (isVideo() && hasVideo())
+        state |= PlatformMediaSession::HasVideo;
+    if (this->hasAudio())
+        state |= PlatformMediaSession::HasAudio;
+
+    return state;
+}
+
 #if ENABLE(MEDIA_SOURCE)
 size_t HTMLMediaElement::maximumSourceBufferSize(const SourceBuffer& buffer) const
 {
@@ -6626,12 +6667,16 @@ void HTMLMediaElement::didReceiveRemoteControlCommand(PlatformMediaSession::Remo
 
 bool HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType type) const
 {
-    if (type != PlatformMediaSession::EnteringBackground)
+    if (type != PlatformMediaSession::EnteringBackground) {
+        LOG(Media, "HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(%p) - returning false because type != PlatformMediaSession::EnteringBackground", this);
         return false;
+    }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
-    if (m_player && m_player->isCurrentPlaybackTargetWireless())
+    if (m_player && m_player->isCurrentPlaybackTargetWireless()) {
+        LOG(Media, "HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(%p) - returning true because m_player->isCurrentPlaybackTargetWireless is true", this);
         return true;
+    }
 #endif
     if (m_videoFullscreenMode & VideoFullscreenModePictureInPicture)
         return true;
@@ -6738,6 +6783,11 @@ void HTMLMediaElement::purgeBufferedDataIfPossible()
 #if PLATFORM(IOS)
     if (!MemoryPressureHandler::singleton().isUnderMemoryPressure() && PlatformMediaSessionManager::sharedManager().sessionCanLoadMedia(*m_mediaSession))
         return;
+
+    if (isPlayingToWirelessPlaybackTarget()) {
+        LOG(Media, "HTMLMediaElement::purgeBufferedDataIfPossible(%p) - early return because m_player->isCurrentPlaybackTargetWireless is true", this);
+        return;
+    }
 
     // This is called to relieve memory pressure. Turning off buffering causes the media playback
     // daemon to release memory associated with queued-up video frames.

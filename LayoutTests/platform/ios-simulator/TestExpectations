@@ -58,6 +58,7 @@ fast/history/page-cache-suspended-audiocontext.html
 fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
 fast/events/wheel-event-destroys-frame.html [ Skip ]
+fast/events/wheel-event-destroys-overflow.html [ Skip ]
 
 # Not supported on iOS
 batterystatus
@@ -245,6 +246,8 @@ fast/scrolling/scroll-animator-basic-events.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
 fast/events/prevent-default-prevents-interaction-with-scrollbars.html [ Skip ]
+fast/text/text-disappear-on-deselect.html [ ImageOnlyFailure ]
+
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 webkit.org/b/149440 fast/shadow-dom/css-scoping-shadow-host-functional-rule.html [ ImageOnlyFailure ]
@@ -651,6 +654,10 @@ js/dom/global-constructors-attributes.html [ Failure ]
 pageoverlay/overlay-large-document-scrolled.html [ Failure ]
 pageoverlay/overlay-large-document.html [ Failure ]
 webkit.org/b/153337 pageoverlay/overlay-installation.html [ Pass Failure ]
+
+# These tests require the Latin Modern Math font.
+mathml/opentype/fraction-line.html [ Pass ImageOnlyFailure ]
+mathml/presentation/fractions-linethickness.html [ Pass ImageOnlyFailure ]
 
 # MathML tests that fail:
 mathml/opentype/horizontal.html [ Failure ]

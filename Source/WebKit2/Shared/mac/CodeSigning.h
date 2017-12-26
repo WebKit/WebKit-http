@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,35 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "AttributeDOMTokenList.h"
+#pragma once
 
-#include <wtf/TemporaryChange.h>
+#include <wtf/Forward.h>
 
-namespace WebCore {
+namespace WebKit {
 
-AttributeDOMTokenList::AttributeDOMTokenList(Element& element, const QualifiedName& attributeName)
-    : m_element(element)
-    , m_attributeName(attributeName)
-{
-    setValueInternal(m_element.getAttribute(m_attributeName));
-}
+// These functions return a null string if the process is either unsigned or signed by a third-party.
+String codeSigningIdentifier();
+String codeSigningIdentifierForProcess(pid_t);
 
-void AttributeDOMTokenList::attributeValueChanged(const AtomicString& newValue)
-{
-    // Do not reset the DOMTokenList value if the attribute value was changed by us.
-    if (m_isUpdatingAttributeValue)
-        return;
-
-    setValueInternal(newValue);
-}
-
-void AttributeDOMTokenList::updateAfterTokenChange()
-{
-    DOMTokenList::updateAfterTokenChange();
-
-    TemporaryChange<bool> inAttributeUpdate(m_isUpdatingAttributeValue, true);
-    m_element.setAttribute(m_attributeName, value());
-}
-
-} // namespace WebCore
+} // namespace WebKit

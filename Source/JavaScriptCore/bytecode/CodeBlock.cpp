@@ -59,6 +59,7 @@
 #include "Repatch.h"
 #include "SlotVisitorInlines.h"
 #include "StackVisitor.h"
+#include "StructureStubInfo.h"
 #include "TypeLocationCache.h"
 #include "TypeProfiler.h"
 #include "UnlinkedInstructionStream.h"
@@ -1885,31 +1886,6 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             m_constantRegisters[registerIndex].set(*m_vm, this, m_globalObject->jsCellForLinkTimeConstant(type));
     }
 
-#if !ASSERT_DISABLED
-    HashSet<int, WTF::IntHash<int>, WTF::UnsignedWithZeroKeyHashTraits<int>> clonedConstantSymbolTables;
-#endif
-    {
-#if !ASSERT_DISABLED
-        HashSet<SymbolTable*> clonedSymbolTables;
-#endif
-        bool hasTypeProfiler = !!vm.typeProfiler();
-        for (unsigned i = 0; i < m_constantRegisters.size(); i++) {
-            if (m_constantRegisters[i].get().isEmpty())
-                continue;
-            if (SymbolTable* symbolTable = jsDynamicCast<SymbolTable*>(m_constantRegisters[i].get())) {
-                ASSERT(clonedSymbolTables.add(symbolTable).isNewEntry);
-                if (hasTypeProfiler) {
-                    ConcurrentJITLocker locker(symbolTable->m_lock);
-                    symbolTable->prepareForTypeProfiling(locker);
-                }
-                m_constantRegisters[i].set(*m_vm, this, symbolTable->cloneScopePart(*m_vm));
-#if !ASSERT_DISABLED
-                clonedConstantSymbolTables.add(i + FirstConstantRegisterIndex);
-#endif
-            }
-        }
-    }
-
     // We already have the cloned symbol table for the module environment since we need to instantiate
     // the module environments before linking the code block. We replace the stored symbol table with the already cloned one.
     if (UnlinkedModuleProgramCodeBlock* unlinkedModuleProgramCodeBlock = jsDynamicCast<UnlinkedModuleProgramCodeBlock*>(unlinkedCodeBlock)) {
@@ -2105,14 +2081,6 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         case op_get_array_length:
             CRASH();
 
-#if !ASSERT_DISABLED
-        case op_create_lexical_environment: {
-            int symbolTableIndex = pc[3].u.operand;
-            ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
-            break;
-        }
-#endif
-
         case op_resolve_scope: {
             const Identifier& ident = identifier(pc[3].u.operand);
             ResolveType type = static_cast<ResolveType>(pc[4].u.operand);
@@ -2176,7 +2144,6 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 // Only do watching if the property we're putting to is not anonymous.
                 if (static_cast<unsigned>(pc[2].u.operand) != UINT_MAX) {
                     int symbolTableIndex = pc[5].u.operand;
-                    ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
                     SymbolTable* symbolTable = jsCast<SymbolTable*>(getConstant(symbolTableIndex));
                     const Identifier& ident = identifier(pc[2].u.operand);
                     ConcurrentJITLocker locker(symbolTable->m_lock);
@@ -2247,7 +2214,6 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             }
             case ProfileTypeBytecodeLocallyResolved: {
                 int symbolTableIndex = pc[2].u.operand;
-                ASSERT(clonedConstantSymbolTables.contains(symbolTableIndex));
                 SymbolTable* symbolTable = jsCast<SymbolTable*>(getConstant(symbolTableIndex));
                 const Identifier& ident = identifier(pc[4].u.operand);
                 ConcurrentJITLocker locker(symbolTable->m_lock);
@@ -2416,6 +2382,31 @@ CodeBlock::~CodeBlock()
         stub->deref();
     }
 #endif // ENABLE(JIT)
+}
+
+void CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& constants, const Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation)
+{
+    ASSERT(constants.size() == constantsSourceCodeRepresentation.size());
+    size_t count = constants.size();
+    m_constantRegisters.resizeToFit(count);
+    bool hasTypeProfiler = !!m_vm->typeProfiler();
+    for (size_t i = 0; i < count; i++) {
+        JSValue constant = constants[i].get();
+
+        if (!constant.isEmpty()) {
+            if (SymbolTable* symbolTable = jsDynamicCast<SymbolTable*>(constant)) {
+                if (hasTypeProfiler) {
+                    ConcurrentJITLocker locker(symbolTable->m_lock);
+                    symbolTable->prepareForTypeProfiling(locker);
+                }
+                constant = symbolTable->cloneScopePart(*m_vm);
+            }
+        }
+
+        m_constantRegisters[i].set(*m_vm, this, constant);
+    }
+
+    m_constantsSourceCodeRepresentation = constantsSourceCodeRepresentation;
 }
 
 void CodeBlock::setAlternative(VM& vm, CodeBlock* alternative)
@@ -4228,12 +4219,39 @@ unsigned CodeBlock::rareCaseProfileCountForBytecodeOffset(int bytecodeOffset)
 
 ResultProfile* CodeBlock::resultProfileForBytecodeOffset(int bytecodeOffset)
 {
+    ConcurrentJITLocker locker(m_lock);
+    return resultProfileForBytecodeOffset(locker, bytecodeOffset);
+}
+
+ResultProfile* CodeBlock::resultProfileForBytecodeOffset(const ConcurrentJITLocker&, int bytecodeOffset)
+{
     if (!m_bytecodeOffsetToResultProfileIndexMap)
         return nullptr;
     auto iterator = m_bytecodeOffsetToResultProfileIndexMap->find(bytecodeOffset);
     if (iterator == m_bytecodeOffsetToResultProfileIndexMap->end())
         return nullptr;
     return &m_resultProfiles[iterator->value];
+}
+
+
+ResultProfile* CodeBlock::ensureResultProfile(int bytecodeOffset)
+{
+    ConcurrentJITLocker locker(m_lock);
+    return ensureResultProfile(locker, bytecodeOffset);
+}
+
+ResultProfile* CodeBlock::ensureResultProfile(const ConcurrentJITLocker& locker, int bytecodeOffset)
+{
+    ResultProfile* profile = resultProfileForBytecodeOffset(locker, bytecodeOffset);
+    if (!profile) {
+        m_resultProfiles.append(ResultProfile(bytecodeOffset));
+        profile = &m_resultProfiles.last();
+        ASSERT(&m_resultProfiles.last() == &m_resultProfiles[m_resultProfiles.size() - 1]);
+        if (!m_bytecodeOffsetToResultProfileIndexMap)
+            m_bytecodeOffsetToResultProfileIndexMap = std::make_unique<BytecodeOffsetToResultProfileIndexMap>();
+        m_bytecodeOffsetToResultProfileIndexMap->add(bytecodeOffset, m_resultProfiles.size() - 1);
+    }
+    return profile;
 }
 
 #if ENABLE(JIT)

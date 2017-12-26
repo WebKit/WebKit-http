@@ -33,6 +33,7 @@
 #include "LLIntData.h"
 #include "LowLevelInterpreter.h"
 #include "PolymorphicAccess.h"
+#include "StructureStubInfo.h"
 #include <wtf/ListDump.h>
 
 namespace JSC {
@@ -219,11 +220,11 @@ GetByIdStatus GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback(
                     break;
                 }
                 case AccessCase::Getter: {
-                    CallLinkInfo* callLinkInfo = access.callLinkInfo();
-                    ASSERT(callLinkInfo);
-                    callLinkStatus = std::make_unique<CallLinkStatus>(
-                        CallLinkStatus::computeFor(
-                            locker, profiledBlock, *callLinkInfo, callExitSiteData));
+                    callLinkStatus = std::make_unique<CallLinkStatus>();
+                    if (CallLinkInfo* callLinkInfo = access.callLinkInfo()) {
+                        *callLinkStatus = CallLinkStatus::computeFor(
+                            locker, profiledBlock, *callLinkInfo, callExitSiteData);
+                    }
                     break;
                 }
                 default: {

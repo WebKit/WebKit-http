@@ -34,15 +34,14 @@ class BuildbotTriggerable {
 
         let self = this;
         this._logger.log(`Fetching build requests for ${this._name}...`);
-        return BuildRequest.fetchForTriggerable(this._name).then(function () {
-            let buildRequests = BuildRequest.all();
+        return BuildRequest.fetchForTriggerable(this._name).then(function (buildRequests) {
             self._validateRequests(buildRequests);
             buildReqeustsByGroup = BuildbotTriggerable._testGroupMapForBuildRequests(buildRequests);
             return self._pullBuildbotOnAllSyncers(buildReqeustsByGroup);
         }).then(function (updates) {
             self._logger.log('Scheduling builds');
             let promistList = [];
-            let testGroupList = Array.from(buildReqeustsByGroup.values()).sort(function (a, b) { return a.id - b.id; });
+            let testGroupList = Array.from(buildReqeustsByGroup.values()).sort(function (a, b) { return a.groupOrder - b.groupOrder; });
             for (let group of testGroupList) {
                 let promise = self._scheduleNextRequestInGroupIfSlaveIsAvailable(group, updates);
                 if (promise)
@@ -121,9 +120,8 @@ class BuildbotTriggerable {
 
     _scheduleNextRequestInGroupIfSlaveIsAvailable(groupInfo, pendingUpdates)
     {
-        let orderedRequests = groupInfo.requests.sort(function (a, b) { return a.order() - b.order(); });
         let nextRequest = null;
-        for (let request of orderedRequests) {
+        for (let request of groupInfo.requests) {
             if (request.isScheduled() || (request.id() in pendingUpdates && pendingUpdates[request.id()]['status'] == 'scheduled'))
                 break;
             if (request.isPending() && !(request.id() in pendingUpdates)) {
@@ -134,30 +132,41 @@ class BuildbotTriggerable {
         if (!nextRequest)
             return null;
 
-        let firstRequest = !nextRequest.order();
-        if (firstRequest) {
-            this._logger.log(`Scheduling build request ${nextRequest.id()} on ${groupInfo.slaveName} in ${groupInfo.syncer.builderName()}`);
-            return groupInfo.syncer.scheduleRequest(request, groupInfo.slaveName);
+        let promise;
+        let syncer;
+        if (!!nextRequest.order()) {
+            syncer = groupInfo.syncer;
+            if (!syncer)
+                this._logger.error(`Could not identify the syncer for ${nextRequest.id()}.`);
+            else
+                promise = syncer.scheduleRequestInGroupIfAvailable(nextRequest, groupInfo.slaveName);
         }
 
-        for (let syncer of this._syncers) {
-            let promise = syncer.scheduleFirstRequestInGroupIfAvailable(nextRequest);
-            if (promise) {
-                let slaveName = groupInfo.slaveName ? ` on ${groupInfo.slaveName}` : '';
-                this._logger.log(`Scheduling build request ${nextRequest.id()}${slaveName} in ${syncer.builderName()}`);
-                return promise;
+        if (!syncer) {
+            for (syncer of this._syncers) {
+                let promise = syncer.scheduleRequestInGroupIfAvailable(nextRequest);
+                if (promise)
+                    break;
             }
         }
+
+        if (promise) {
+            let slaveName = groupInfo.slaveName ? ` on ${groupInfo.slaveName}` : '';
+            this._logger.log(`Scheduling build request ${nextRequest.id()}${slaveName} in ${syncer.builderName()}`);
+            return promise;
+        }
+
         return null;
     }
 
     static _testGroupMapForBuildRequests(buildRequests)
     {
         let map = new Map;
+        let groupOrder = 0;
         for (let request of buildRequests) {
             let groupId = request.testGroupId();
             if (!map.has(groupId)) // Don't use real TestGroup objects to avoid executing postgres query in the server
-                map.set(groupId, {id: groupId, requests: [request], syncer: null, slaveName: null});
+                map.set(groupId, {id: groupId, groupOrder: groupOrder++, requests: [request], syncer: null, slaveName: null});
             else
                 map.get(groupId).requests.push(request);
         }

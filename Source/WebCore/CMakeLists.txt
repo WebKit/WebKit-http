@@ -1306,6 +1306,7 @@ set(WebCore_SOURCES
     css/CSSFontValue.cpp
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
+    css/CSSGridAutoRepeatValue.cpp
     css/CSSGridLineNamesValue.cpp
     css/CSSGridTemplateAreasValue.cpp
     css/CSSGroupingRule.cpp
@@ -1616,7 +1617,6 @@ set(WebCore_SOURCES
     history/HistoryItem.cpp
     history/PageCache.cpp
 
-    html/AttributeDOMTokenList.cpp
     html/Autofill.cpp
     html/BaseButtonInputType.cpp
     html/BaseCheckableInputType.cpp

@@ -25,11 +25,10 @@
 #define HTMLOptionsCollection_h
 
 #include "CachedHTMLCollection.h"
+#include "HTMLOptionElement.h"
 #include "HTMLSelectElement.h"
 
 namespace WebCore {
-
-class HTMLOptionElement;
 
 typedef int ExceptionCode;
 
@@ -40,13 +39,13 @@ public:
     HTMLSelectElement& selectElement() { return downcast<HTMLSelectElement>(ownerNode()); }
     const HTMLSelectElement& selectElement() const { return downcast<HTMLSelectElement>(ownerNode()); }
 
-    HTMLOptionElement* item(unsigned offset) const override;
-    HTMLOptionElement* namedItem(const AtomicString& name) const override;
+    HTMLOptionElement* item(unsigned offset) const final;
+    HTMLOptionElement* namedItem(const AtomicString& name) const final;
 
-    void add(HTMLElement*, HTMLElement* beforeElement, ExceptionCode&);
-    void add(HTMLElement*, int beforeIndex, ExceptionCode&);
+    void add(HTMLElement&, HTMLElement* beforeElement, ExceptionCode&);
+    void add(HTMLElement&, int beforeIndex, ExceptionCode&);
     void remove(int index);
-    void remove(HTMLOptionElement*);
+    void remove(HTMLOptionElement&);
 
     int selectedIndex() const;
     void setSelectedIndex(int);

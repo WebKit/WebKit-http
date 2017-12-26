@@ -1030,7 +1030,18 @@ private:
             fixEdge<Int32Use>(node->child1());
             break;
         }
-            
+
+        case CallObjectConstructor: {
+            if (node->child1()->shouldSpeculateObject()) {
+                fixEdge<ObjectUse>(node->child1());
+                node->convertToIdentity();
+                break;
+            }
+
+            fixEdge<UntypedUse>(node->child1());
+            break;
+        }
+
         case ToThis: {
             fixupToThis(node);
             break;
@@ -1442,12 +1453,6 @@ private:
             break;
         }
 
-        case NewArrowFunction: {
-            fixEdge<CellUse>(node->child1());
-            fixEdge<CellUse>(node->child2());
-            break;
-        }
-
         case SetFunctionName: {
             // The first child is guaranteed to be a cell because op_set_function_name is only used
             // on a newly instantiated function object (the first child).
@@ -1497,6 +1502,9 @@ private:
         case NewRegexp:
         case ProfileWillCall:
         case ProfileDidCall:
+        case IsArrayObject:
+        case IsJSArray:
+        case IsArrayConstructor:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:

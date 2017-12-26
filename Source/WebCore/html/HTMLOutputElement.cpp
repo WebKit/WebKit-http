@@ -68,7 +68,7 @@ void HTMLOutputElement::parseAttribute(const QualifiedName& name, const AtomicSt
 {
     if (name == forAttr) {
         if (m_tokens)
-            m_tokens->attributeValueChanged(value);
+            m_tokens->associatedAttributeValueChanged(value);
     } else
         HTMLFormControlElement::parseAttribute(name, value);
 }
@@ -130,7 +130,7 @@ void HTMLOutputElement::setDefaultValue(const String& value)
 DOMTokenList& HTMLOutputElement::htmlFor()
 {
     if (!m_tokens)
-        m_tokens = std::make_unique<AttributeDOMTokenList>(*this, forAttr);
+        m_tokens = std::make_unique<DOMTokenList>(*this, forAttr);
     return *m_tokens;
 }
 

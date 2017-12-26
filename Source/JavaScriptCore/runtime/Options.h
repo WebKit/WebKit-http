@@ -118,13 +118,14 @@ typedef const char* optionString;
     \
     v(bool, crashIfCantAllocateJITMemory, false, nullptr) \
     v(unsigned, jitMemoryReservationSize, 0, "Set this number to change the executable allocation size in ExecutableAllocatorFixedVMPool. (In bytes.)") \
-    v(bool, useSeparatedWXHeap, true, nullptr) \
+    v(bool, useSeparatedWXHeap, false, nullptr) \
     \
     v(bool, forceCodeBlockLiveness, false, nullptr) \
     v(bool, forceICFailure, false, nullptr) \
     \
     v(unsigned, repatchCountForCoolDown, 10, nullptr) \
     v(unsigned, initialCoolDownCount, 20, nullptr) \
+    v(unsigned, repatchBufferingCountdown, 7, nullptr) \
     \
     v(bool, dumpGeneratedBytecodes, false, nullptr) \
     v(bool, dumpBytecodeLivenessResults, false, nullptr) \
@@ -277,9 +278,6 @@ typedef const char* optionString;
     v(unsigned, osrExitCountForReoptimizationFromLoop, 5, nullptr) \
     \
     v(unsigned, reoptimizationRetryCounterMax, 0, nullptr)  \
-    \
-    v(bool, assertICSizing, false, "crash if estimated IC sizes are inadequate")  \
-    v(bool, dumpFailedICSizing, false, "dumps a log entry if estimated IC sizes are inadequate")  \
     \
     v(unsigned, minimumOptimizationDelay, 1, nullptr) \
     v(unsigned, maximumOptimizationDelay, 5, nullptr) \

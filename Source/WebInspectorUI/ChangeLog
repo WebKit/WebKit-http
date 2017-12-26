@@ -1,3 +1,202 @@
+2016-04-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: save inspector's zoom factor as a persistent setting across sessions
+        https://bugs.webkit.org/show_bug.cgi?id=156522
+        <rdar://problem/25635774>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Initialize the setting and immediately set the zoom before the frontend page loads.
+
+        (WebInspector._increaseZoom):
+        (WebInspector._decreaseZoom):
+        (WebInspector._resetZoom):
+        Use the internal get/set method which updates the WebInspector.Setting.
+
+        (WebInspector._setZoomFactor):
+        Added. Round-trip through the frontend host method in case it further clamps the value.
+
+        (WebInspector._zoomFactor):
+        Added. Just return the setting, since there's no other way for zoom to have changed.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show the normal Native icon for all Internal objects in Heap Snapshots
+        https://bugs.webkit.org/show_bug.cgi?id=156513
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HeapSnapshotClusterContentView.js:
+        (WebInspector.HeapSnapshotClusterContentView.iconStyleClassNameForClassName):
+        Show the native icon for internal objects.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Keyboard shortcut for "Inspect Element" only works when Web Inspector is open.
+        https://bugs.webkit.org/show_bug.cgi?id=111193
+        <rdar://problem/13325889>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype.set inspectModeEnabled):
+        (WebInspector.DOMTreeManager.set inspectModeEnabled.callback):
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.setElementSelectionEnabled):
+        Frontend API to enable element selection.
+
+2016-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Should be able to expand Objects in Heap Allocations View to see exactly what it retains
+        https://bugs.webkit.org/show_bug.cgi?id=156419
+        <rdar://problem/25633863>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        Remove strings, and fix sort.
+
+        * UserInterface/Models/HeapSnapshotRootPath.js:
+        (WebInspector.HeapSnapshotRootPath.pathComponentForIndividualEdge):
+        (WebInspector.HeapSnapshotRootPath.canPropertyNameBeDotAccess):
+        (WebInspector.HeapSnapshotRootPath.prototype.appendPropertyName):
+        (WebInspector.HeapSnapshotRootPath.prototype._canPropertyNameBeDotAccess):
+        Provide a helper to get an path component string for an individual edge.
+
+        * UserInterface/Models/PropertyPreview.js:
+        (WebInspector.PropertyPreview):
+        Fix an assert that may have errantly fired for an empty string name.
+
+        * UserInterface/Proxies/HeapSnapshotNodeProxy.js:
+        (WebInspector.HeapSnapshotNodeProxy):
+        (WebInspector.HeapSnapshotNodeProxy.deserialize):
+        Include "hasChildren" property in the original proxy message.
+
+        (WebInspector.HeapSnapshotNodeProxy.prototype.retainedNodes):
+        The method now also returns a list of edges for each of the retained nodes.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.createCellContent):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.sort):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._populate):
+        An instance DataGrid node can now show children. It can expand to show
+        its retained node graph.
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js:
+        (HeapSnapshot.instancesWithClassName):
+        (HeapSnapshot.prototype.dominatedNodes):
+        (HeapSnapshot.prototype.retainers):
+        (HeapSnapshot.prototype.serializeNode):
+        Remove unnecessary calls to bind in favor of using the `thisObject` argument.
+
+        (HeapSnapshot.prototype.retainedNodes):
+        Return a parallel list of edges for each of the nodes.
+
+        * UserInterface/Views/HeapSnapshotClassDataGridNode.js:
+        (WebInspector.HeapSnapshotClassDataGridNode.prototype.createCellContent):
+        (WebInspector.HeapSnapshotClassDataGridNode.prototype._populate):
+        * UserInterface/Views/HeapSnapshotClusterContentView.js:
+        (WebInspector.HeapSnapshotClusterContentView.prototype.get summaryContentView):
+        (WebInspector.HeapSnapshotClusterContentView.prototype.get instancesContentView):
+        (WebInspector.HeapSnapshotClusterContentView.prototype.shown):
+        (WebInspector.HeapSnapshotClusterContentView):
+        (WebInspector.HeapSnapshotClusterContentView.prototype.get navigationItems): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._contentViewExtraArguments): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._toggleShowInternalObjectsSetting): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._updateViewsForShowInternalObjectsSettingValue): Deleted.
+        (WebInspector.HeapSnapshotClusterContentView.prototype._updateShowInternalObjectsButtonNavigationItem): Deleted.
+        * UserInterface/Views/HeapSnapshotInstancesContentView.js:
+        (WebInspector.HeapSnapshotInstancesContentView):
+        (WebInspector.HeapSnapshotInstancesContentView.prototype.get showInternalObjects): Deleted.
+        (WebInspector.HeapSnapshotInstancesContentView.prototype.set showInternalObjects): Deleted.
+        * UserInterface/Views/HeapSnapshotInstancesDataGridTree.js:
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype._populateTopLevel):
+        (WebInspector.HeapSnapshotInstancesDataGridTree):
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.get includeInternalObjects): Deleted.
+        (WebInspector.HeapSnapshotInstancesDataGridTree.prototype.set includeInternalObjects): Deleted.
+        * UserInterface/Views/HeapSnapshotSummaryContentView.js:
+        Remove the show/hide internal objects button. In the Instances view we will
+        only show non-Internal objects at the top level, and show internal objects
+        when those instances are expanded.
+
+2016-04-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: clearing the console should exit all console groups
+        https://bugs.webkit.org/show_bug.cgi?id=156496
+        <rdar://problem/25676416>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._logCleared):
+        Reset nesting level to zero.
+
+2016-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Tab Bar items get unreadable at narrow window widths, should collapse earlier
+        https://bugs.webkit.org/show_bug.cgi?id=156477
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype.layout):
+        Hide-titles sooner since a width of 60 results in only a few characters
+        and looks poor.
+
+2016-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unstyled nodes in ObjectTree previews look poor
+        https://bugs.webkit.org/show_bug.cgi?id=156475
+        <rdar://problem/25667351>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ObjectPreviewView.js:
+        (WebInspector.ObjectPreviewView.prototype._appendPreview):
+        Treat nodes as simple values.
+
+        (WebInspector.ObjectPreviewView.prototype._initTitleElement):
+        (WebInspector.ObjectPreviewView.prototype._appendValuePreview):
+        Format nodes nicely, and treat them as lossy since they have properties.
+
+2016-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: HeapSnapshot instance property path popover should include a descriptive header
+        https://bugs.webkit.org/show_bug.cgi?id=156431
+        <rdar://problem/25633594>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendTitle):
+        Title for the popover. Because localization may change the location of the @1234
+        in the string, localize first with a placeholder, and then replace the placeholder
+        with the @1234 link.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendPath):
+        Give the table a container for extra padding.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler.appendPathRow):
+        Do not include the space before @1234 as part of the clickable link.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._mouseoverHandler):
+        Include a title when the popover shows a root path.
+
+        * UserInterface/Views/HeapSnapshotInstancesContentView.css:
+        (.heap-snapshot-instance-popover-content > .title):
+        (.heap-snapshot-instance-popover-content):
+        (.heap-snapshot-instance-popover-content > .table-container):
+        (.heap-snapshot-instance-popover-content table):
+        Provide styles for the title. Let the title extend across the entire
+        popover horizontally, but pad the table so that it appears more
+        centered under the title. Because the table has border collapse we have
+        to wrap it in a container to give it back the padding we want.
+
 2016-04-08  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: XHRs and Web Worker scripts are not searchable

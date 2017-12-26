@@ -1,3 +1,133 @@
+2016-04-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a summary page to v3 UI
+        https://bugs.webkit.org/show_bug.cgi?id=156531
+
+        Reviewed by Stephanie Lewis.
+
+        Add new "Summary" page, which shows the average difference (better or worse) from the baseline across
+        multiple platforms and tests by a single number.
+
+        * public/include/manifest.php:
+        (ManifestGenerator::generate): Include "summary" in manifest.json.
+        * public/shared/statistics.js:
+        (Statistics.mean): Added.
+        (Statistics.median): Added.
+        * public/v3/components/ratio-bar-graph.js: Added.
+        (RatioBarGraph): Shows a horizontal bar graph that visualizes the relative difference (e.g. 3% better).
+        (RatioBarGraph.prototype.update):
+        (RatioBarGraph.prototype.render):
+        (RatioBarGraph.cssTemplate):
+        (RatioBarGraph.htmlTemplate):
+        * public/v3/index.html:
+        * public/v3/main.js:
+        (main): Instantiate SummaryPage and add it to the navigation bar and the router.
+        * public/v3/models/manifest.js:
+        (Manifest._didFetchManifest): Let "summary" pass through from manifest.json to main().
+        * public/v3/models/measurement-set.js:
+        (MeasurementSet.prototype._failedToFetchJSON): Invoke the callback with an error or true in order for
+        the callback can detect a failure.
+        (MeasurementSet.prototype._invokeCallbacks): Ditto.
+        * public/v3/pages/charts-page.js:
+        (ChartsPage.createStateForConfigurationList): Added to add a hyperlink from summary page to charts page.
+        * public/v3/pages/summary-page.js: Added.
+        (SummaryPage): Added.
+        (SummaryPage.prototype.routeName): Added.
+        (SummaryPage.prototype.open): Added.
+        (SummaryPage.prototype.render): Added.
+        (SummaryPage.prototype._createConfigurationGroupAndStartFetchingData): Added.
+        (SummaryPage.prototype._constructTable): Added.
+        (SummaryPage.prototype._constructRatioGraph): Added.
+        (SummaryPage.htmlTemplate): Added.
+        (SummaryPage.cssTemplate): Added.
+        (SummaryPageConfigurationGroup): Added. Represents a set of platforms and tests shown in a single cell.
+        (SummaryPageConfigurationGroup.prototype.ratio): Added.
+        (SummaryPageConfigurationGroup.prototype.label): Added.
+        (SummaryPageConfigurationGroup.prototype.changeType): Added.
+        (SummaryPageConfigurationGroup.prototype.configurationList): Added.
+        (SummaryPageConfigurationGroup.prototype.fetchAndComputeSummary): Added.
+        (SummaryPageConfigurationGroup.prototype._computeSummary): Added.
+        (SummaryPageConfigurationGroup.prototype._fetchAndComputeRatio): Added. Invoked for each time series in
+        the set, and stores the computed ratio of the current values to the baseline in this._setToRatio.
+        The results are aggregated by _computeSummary as a single number later.
+        (SummaryPageConfigurationGroup._medianForTimeRange): Added.
+        (SummaryPageConfigurationGroup._fetchData): A thin wrapper to make MeasurementSet.fetchBetween promise
+        friendly since MeasurementSet doesn't support Promise at the moment (but it should!).
+        * server-tests/api-manifest.js: Updated a test case.
+
+2016-04-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make sync-buildbot.js fault safe
+        https://bugs.webkit.org/show_bug.cgi?id=156498
+
+        Reviewed by Chris Dumez.
+
+        Fixed a bug that sync-buildbot.js will continue to schedule build requests from multiple test groups
+        if multiple test groups are simultaneously in-progress on the same builder. Also fixed a bug that if
+        a build request had failed without leaving a trace (i.e. no entry on any of the builders we know of),
+        sync-buildbot.js throws an exception.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Added test cases.
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype.scheduleRequestInGroupIfAvailable): Renamed. Optionally takes the slave name.
+        When this parameter is specified, schedule the request only if the specified slave is available.
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._scheduleNextRequestInGroupIfSlaveIsAvailable): Always use
+        scheduleRequestInGroupIfAvailable to schedule a new build request. Using scheduleRequest for non-first
+        build requests was problematic when there were multiple test groups with pending requests because then
+        we would schedule those pending requests without checking whether there is already a pending job or if
+        we have previously scheduled a job. Also fallback to use any syncer / builder when groupInfo.syncer is
+        not set even if the next request was not the first one in the test group since we can't determine on
+        which builder preceding requests are processed in such cases.
+        * unit-tests/buildbot-syncer-tests.js:
+
+2016-04-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace script runner to use mocha.js tests
+        https://bugs.webkit.org/show_bug.cgi?id=156490
+
+        Reviewed by Chris Dumez.
+
+        Replaced run-tests.js, which was a whole test harness for running legacy tests by tools/run-tests.py
+        which is a thin wrapper around mocha.js.
+
+        * run-tests.js: Removed.
+        * tests: Removed.
+        * tools/run-tests.py: Added.
+        (main):
+
+2016-04-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New syncing script sometimes schedules a build request on a wrong builder
+        https://bugs.webkit.org/show_bug.cgi?id=156489
+
+        Reviewed by Stephanie Lewis.
+
+        The bug was caused by _scheduleNextRequestInGroupIfSlaveIsAvailable scheduling the next build request on
+        any available syncer regardless of whether the request is the first one in the test group or not because
+        BuildRequest.order was returning a string instead of a number.
+
+        Also fixed a bug that BuildbotTriggerable.syncOnce was re-ordering test groups by their id's instead of
+        respecting the order in which the perf dashboard returned.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.order): Force the order to be a number.
+        * server-tests/api-build-requests-tests.js: Assert the order as numbers.
+        * server-tests/resources/mock-data.js:
+        (MockData.addAnotherMockTestGroup): Changed the test group id to 601, which is after the first mock data.
+        The old number was masking a bug in BuildbotTriggerable that it was re-ordering test groups by their id's
+        instead of using the order set forth by the perf dashboard.
+        (MockData.mockTestSyncConfigWithSingleBuilder):
+        * server-tests/tools-buildbot-triggerable-tests.js: Added a test case for scheduling two build requests in
+        a single call to syncOnce. Each build request should be scheduled on the same builder as the previous build
+        requests in the same test group.
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.syncOnce): Order test groups by groupOrder, which is the index at which first
+        build request in the group appeared.
+        (BuildbotTriggerable.prototype._scheduleNextRequestInGroupIfSlaveIsAvailable): Don't re-order build requests
+        as they're already sorted on the server side.
+        (BuildbotTriggerable._testGroupMapForBuildRequests): Added groupOrder to test group info 
+
 2016-04-09  Ryosuke Niwa  <rniwa@webkit.org>
 
         Build fix. Don't treat a build number 0 as a pending build.

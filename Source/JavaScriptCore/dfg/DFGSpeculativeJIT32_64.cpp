@@ -3824,6 +3824,11 @@ void SpeculativeJIT::compile(Node* node)
         cellResult(resultPayload.gpr(), node);
         break;
     }
+
+    case CallObjectConstructor: {
+        compileCallObjectConstructor(node);
+        break;
+    }
         
     case ToThis: {
         ASSERT(node->child1().useKind() == UntypedUse);
@@ -4480,6 +4485,21 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case IsJSArray: {
+        compileIsJSArray(node);
+        break;
+    }
+
+    case IsArrayObject: {
+        compileIsArrayObject(node);
+        break;
+    }
+
+    case IsArrayConstructor: {
+        compileIsArrayConstructor(node);
+        break;
+    }
+
     case IsObject: {
         JSValueOperand value(this, node->child1());
         GPRTemporary result(this, Reuse, value, TagWord);
@@ -4627,7 +4647,6 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case NewFunction:
-    case NewArrowFunction:
     case NewGeneratorFunction:
         compileNewFunction(node);
         break;
