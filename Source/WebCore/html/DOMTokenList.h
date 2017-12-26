@@ -26,7 +26,7 @@
 #ifndef DOMTokenList_h
 #define DOMTokenList_h
 
-#include <Element.h>
+#include <dom/Element.h>
 #include <wtf/Optional.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
