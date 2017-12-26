@@ -95,9 +95,6 @@ public:
     void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
 
-    void flushStartupSamples();
-    void setStartupBufferingComplete(bool);
-
 private:
     void resetPipeline();
     void checkEndOfAppend();
@@ -109,7 +106,6 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     void dispatchPendingDecryptionStructure();
 #endif
-    void notifyReceivedAllPendingSamples();
 
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     Ref<SourceBufferPrivateGStreamer> m_sourceBufferPrivate;
@@ -169,8 +165,6 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     GUniquePtr<GstStructure> m_pendingDecryptionStructure;
 #endif
-    Vector< GRefPtr<GstSample> > m_startupSamples;
-    bool m_startupBufferingComplete { false };
 };
 
 } // namespace WebCore.
