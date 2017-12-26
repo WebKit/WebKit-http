@@ -85,6 +85,8 @@ public:
 
     IDBBackingStoreTemporaryFileHandler& temporaryFileHandler() const { return m_temporaryFileHandler; }
 
+    IDBError getBlobRecordsForObjectStoreRecord(int64_t objectStoreRecord, Vector<String>& blobURLs, Vector<String>& blobFilePaths);
+
 private:
     String filenameForDatabaseName() const;
     String fullDatabasePath() const;
@@ -104,6 +106,8 @@ private:
     IDBError uncheckedPutIndexKey(const IDBIndexInfo&, const IDBKeyData& keyValue, const IndexKey&);
     IDBError uncheckedPutIndexRecord(int64_t objectStoreID, int64_t indexID, const IDBKeyData& keyValue, const IDBKeyData& indexKey);
     IDBError uncheckedHasIndexRecord(const IDBIndexInfo&, const IDBKeyData&, bool& hasRecord);
+
+    IDBError deleteUnusedBlobFileRecords(SQLiteIDBTransaction&);
 
     JSC::VM& vm();
     JSC::JSGlobalObject& globalObject();

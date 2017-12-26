@@ -1,3 +1,633 @@
+2016-04-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [CMake] Clean up CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=156580
+
+        Reviewed by Alex Christensen.
+
+        Revise the various CMake input files to reduce the amount of duplicated file references in
+        the various ports.
+
+        * CMakeLists.txt:
+        * PlatformAppleWin.cmake:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * PlatformWin.cmake:
+        * PlatformWinCairo.cmake:
+
+2016-04-14  Frederic Wang  <fred.wang@free.fr>
+
+        RenderMathMLOperator: Add helper function to retrieve italic correction
+        https://bugs.webkit.org/show_bug.cgi?id=156572
+
+        Reviewed by Darin Adler.
+
+        No new tests, the helper function will only be used in bug 153918.
+
+        * rendering/mathml/RenderMathMLOperator.cpp:
+        (WebCore::RenderMathMLOperator::italicCorrection): Return the italic correction from the MATH table if it's a large operator.
+        * rendering/mathml/RenderMathMLOperator.h: Declare italicCorrection.
+
+2016-04-14  Frederic Wang  <fwang@igalia.com>
+
+        RenderMathMLOperator: Move glyph measuring helper functions outside the class
+        https://bugs.webkit.org/show_bug.cgi?id=156571
+
+        Reviewed by Darin Adler.
+
+        No new tests, this is just a simple refactoring to prepare the patch
+        for bug 156542, without any behavior change.
+
+        * rendering/mathml/RenderMathMLOperator.cpp: MATHML_OPDICT_SIZE was removed in bug 152242, so no need to undef it.
+        (WebCore::boundsForGlyph): Static inline helper function moved from the RenderMathMLOperator class.
+        (WebCore::heightForGlyph): Ditto.
+        (WebCore::advanceWidthForGlyph): Ditto and renamed.
+        (WebCore::RenderMathMLOperator::computePreferredLogicalWidths): Rename advanceForGlyph.
+        (WebCore::RenderMathMLOperator::findStretchyData): Ditto.
+        (WebCore::RenderMathMLOperator::updateStyle): Ditto.
+        (WebCore::RenderMathMLOperator::paintGlyph): Ditto.
+        (WebCore::RenderMathMLOperator::paint): Ditto.
+        (WebCore::RenderMathMLOperator::trailingSpaceError): Ditto.
+        (WebCore::RenderMathMLOperator::setOperatorProperties): Deleted.
+        (WebCore::RenderMathMLOperator::boundsForGlyph): Deleted.
+        (WebCore::RenderMathMLOperator::heightForGlyph): Deleted.
+        (WebCore::RenderMathMLOperator::advanceForGlyph): Deleted.
+        * rendering/mathml/RenderMathMLOperator.h:
+
+2016-04-14  Frederic Wang  <fred.wang@free.fr>
+
+        Set some RenderMathMLOperator members as final
+        https://bugs.webkit.org/show_bug.cgi?id=156574
+
+        Reviewed by Darin Adler.
+
+        No new tests, this is only a simple refactoring without behavior change.
+
+        * rendering/mathml/RenderMathMLOperator.h: Replace "override" with "final" for some members.
+
+2016-04-14  Frederic Wang  <fwang@igalia.com>
+
+        Ensure that RenderMathMLOperator::stretchTo functions are called with stretchy operators that have the correct direction
+        https://bugs.webkit.org/show_bug.cgi?id=156542
+
+        Reviewed by Darin Adler.
+
+        In the RenderMathMLUnderOver refactoring (r199293), we avoided doing a
+        horizontal stretchTo call for non-stretchy operators. Here we do the
+        same for RenderMathMLRow and avoid doing a vertical stretchTo call for
+        horizontal or non-stretchy operators. We also add appropriate ASSERT in
+        the RenderMathMLOperator::stretchTo functions. To avoid failing tests
+        with DOM/style update, we make our updates a bit stricter. Hopefully,
+        we could manage such things better in the future (bug 156536).
+
+        Tests: mathml/presentation/row-nonstretchy-or-horizontal.html
+               mathml/presentation/underover-nonstretchy-or-vertical.html
+
+        * mathml/MathMLTextElement.cpp:
+        (WebCore::MathMLTextElement::parseAttribute): Replace setOperatorFlagAndScheduleLayoutIfNeeded with a stronger rendering update.
+        Also ensure that this is done when the lspace/rspace attributes change.
+        This avoids breaking mathml/presentation/mo-lspace-rspace-dynamic.html
+        * rendering/mathml/RenderMathMLOperator.cpp:
+        (WebCore::RenderMathMLOperator::stretchTo): Add ASSERT to ensure that it is only called with stretchy operators that have the correct direction.
+        (WebCore::RenderMathMLOperator::styleDidChange): Do a stronger rendering update when the style changes.
+        This avoids breaking mathml/presentation/style-changed.html
+        (WebCore::RenderMathMLOperator::setOperatorFlagAndScheduleLayoutIfNeeded): Deleted.
+        * rendering/mathml/RenderMathMLOperator.h: Make updateFromElement public so that it can be called from MathMLTextElement::parseAttribute
+        Remove setOperatorFlagAndScheduleLayoutIfNeeded and declare styleDidChange.
+        * rendering/mathml/RenderMathMLRow.cpp:
+        (WebCore::RenderMathMLRow::layoutRowItems): Only call stretchTo for vertical stretchy operators.
+
+2016-04-14  Anders Carlsson  <andersca@apple.com>
+
+        When FileInputType::setFiles is called with an empty file list, the last set icon is not cleared
+        https://bugs.webkit.org/show_bug.cgi?id=156582
+
+        Reviewed by Beth Dakin.
+
+        * html/FileInputType.cpp:
+        (WebCore::FileInputType::requestIcon):
+
+2016-04-14  Darin Adler  <darin@apple.com>
+
+        Remove UsePointersEvenForNonNullableObjectArguments from Internals
+        https://bugs.webkit.org/show_bug.cgi?id=156539
+
+        Reviewed by Alex Christensen.
+
+        * html/HTMLImageElement.idl: Exported this so it can be used as the type for
+        a function argument in Internals.idl.
+        * html/HTMLInputElement.idl: Ditto.
+        * html/HTMLLinkElement.idl: Ditto.
+        * html/HTMLSelectElement.idl: Ditto.
+
+        * testing/Internals.cpp:
+        (WebCore::InspectorStubFrontend::InspectorStubFrontend): Take a Page&.
+        (WebCore::Internals::create): Take a Document&.
+        (WebCore::Internals::resetToConsistentState): Take a Page&.
+        (WebCore::Internals::Internals): Take a Document&.
+        (WebCore::Internals::settings): Use nullptr instead of 0.
+        (WebCore::Internals::address): Take a Node&.
+        (WebCore::Internals::nodeNeedsStyleRecalc): Take a Node& and no ExceptionCode&.
+        (WebCore::Internals::styleChangeType): Ditto.
+        (WebCore::Internals::xhrResponseSource): Take an XMLHttpRequest&.
+        (WebCore::Internals::isSharingStyleSheetContents): Take two
+        HTMLLinkElement&.
+        (WebCore::Internals::isStyleSheetLoadingSubresources): Take an HTMLLinkElement&.
+        (WebCore::Internals::imageFrameIndex): Take an HTMLImageElement& and no
+        ExceptionCode&. Also return an unsigned rather than size_t, since the IDL expects
+        unsigned long, which means unsigned in C++ code.
+        (WebCore::Internals::treeScopeRootNode): Take a Node& and no ExceptionCode&.
+        (WebCore::Internals::parentTreeScope): Ditto.
+        (WebCore::Internals::pauseAnimationAtTimeOnElement): Take an Element&.
+        (WebCore::Internals::pauseAnimationAtTimeOnPseudoElement): Ditto.
+        (WebCore::Internals::pauseTransitionAtTimeOnElement): Ditto.
+        (WebCore::Internals::pauseTransitionAtTimeOnPseudoElement): Ditto.
+        (WebCore::Internals::attached): Deleted.
+        (WebCore::Internals::elementRenderTreeAsText): Take an Element&.
+        (WebCore::Internals::hasPausedImageAnimations): Take an Element& and no
+        ExceptionCode&.
+        (WebCore::Internals::computedStyleIncludingVisitedInfo): Take a Node& and no
+        ExceptionCode&.
+        (WebCore::Internals::ensureShadowRoot): Take an Element&.
+        (WebCore::Internals::ensureUserAgentShadowRoot): Take an Element& and no
+        ExceptionCode&.
+        (WebCore::Internals::createShadowRoot): Take an Element&.
+        (WebCore::Internals::shadowRoot): Take an Element& and no ExceptionCode&.
+        (WebCore::Internals::shadowRootType): Take a Node&.
+        (WebCore::Internals::includerFor): Deleted.
+        (WebCore::Internals::shadowPseudoId): Take an Element& and no ExceptionCode&.
+        (WebCore::Internals::setShadowPseudoId): Ditto.
+        (WebCore::Internals::visiblePlaceholder): Take an Element&.
+        (WebCore::Internals::selectColorInColorChooser): Take an HTMLInputElement&.
+        (WebCore::Internals::boundingBox): Take an Element& and no ExceptionCode&.
+        (WebCore::Internals::markerCountForNode): Take a Node&.
+        (WebCore::Internals::markerAt): Ditto.
+        (WebCore::Internals::markerRangeForNode): Ditto.
+        (WebCore::Internals::markerDescriptionForNode): Ditto.
+        (WebCore::Internals::addTextMatchMarker): Take a const Range&.
+        (WebCore::Internals::setScrollViewPosition): Take int instead of long; long in
+        IDL means int in C++ code.
+        (WebCore::Internals::wasLastChangeUserEdit): Take an Element&.
+        (WebCore::Internals::elementShouldAutoComplete): Take an HTMLInputElement&.
+        (WebCore::Internals::setEditingValue): Take an HTMLInputElement& and no
+        ExceptionCode&.
+        (WebCore::Internals::setAutofilled): Ditto.
+        (WebCore::Internals::setShowAutoFillButton): Ditto.
+        (WebCore::Internals::scrollElementToRect): Take an Element& and int instead of long.
+        (WebCore::Internals::autofillFieldName): Take an Element&.
+        (WebCore::Internals::rangeFromLocationAndLength): Take an Element& and no ExceptionCode&.
+        (WebCore::Internals::locationFromRange): Ditto.
+        (WebCore::Internals::lengthFromRange): Take an Element& and const Range& and no
+        ExceptionCode&.
+        (WebCore::Internals::rangeAsText): Take const Range& an no ExceptionCode&.
+        (WebCore::Internals::subrange): Take Range& an no ExceptionCode&.
+        (WebCore::Internals::nodesFromRect): Take a Document&.
+        (WebCore::Internals::openDummyInspectorFrontend): Ditto.
+        (WebCore::Internals::layerTreeAsText): Take an Element&.
+        (WebCore::Internals::setElementUsesDisplayListDrawing): Ditto.
+        (WebCore::Internals::setElementTracksDisplayListReplay): Ditto.
+        (WebCore::Internals::displayListForElement): Ditto.
+        (WebCore::Internals::replayDisplayListForElement): Ditto.
+        (WebCore::Internals::counterValue): Ditto.
+        (WebCore::Internals::pageNumber): Ditto.
+        (WebCore::Internals::webkitWillEnterFullScreenForElement): Ditto.
+        (WebCore::Internals::webkitDidEnterFullScreenForElement): Ditto.
+        (WebCore::Internals::webkitWillExitFullScreenForElement): Ditto.
+        (WebCore::Internals::webkitDidExitFullScreenForElement): Ditto.
+        (WebCore::Internals::layerFlushCount): Return unsigned instead of unsigned long.
+        IDL unsigned long means unsigned in C++ code.
+        (WebCore::Internals::styleRecalcCount): Ditto.
+        (WebCore::Internals::compositingUpdateCount): Ditto.
+        (WebCore::Internals::deserializeBuffer): Take an ArrayBuffer&.
+        (WebCore::Internals::markerTextForListItem): Take an Element& and no ExceptionCode&.
+        (WebCore::Internals::toolTipFromElement): Ditto.
+        (WebCore::Internals::getImageSourceURL): Ditto.
+        (WebCore::Internals::simulateAudioInterruption): Take an HTMLMediaElement&.
+        (WebCore::Internals::mediaElementHasCharacteristic): Ditto.
+        (WebCore::Internals::isSelectPopupVisible): Take an HTMLSelectElement&.
+        (WebCore::Internals::closestTimeToTimeRanges): Take a TimeRange&.
+        (WebCore::Internals::isPluginUnavailabilityIndicatorObscured): Take an Element&.
+        (WebCore::Internals::isPluginSnapshotted): Take an Element& and no ExceptionCode&.
+        (WebCore::Internals::bufferedSamplesForTrackID): Take a SourceBuffer&.
+        (WebCore::Internals::setShouldGenerateTimestamps): Ditto.
+        (WebCore::Internals::setMediaElementRestrictions): Take an HTMLMediaElement&.
+        (WebCore::Internals::elementIsBlockingDisplaySleep): Take an HTMLMediaElement&.
+        (WebCore::Internals::setAudioContextRestrictions): Take an AudioContext&.
+        (WebCore::Internals::scrollSnapOffsets): Take an Element&.
+        (WebCore::Internals::getCurrentMediaControlsStatusForElement): Take an HTMLMediaElement&.
+        (WebCore::Internals::userVisibleString): Take a const DOMURL&.
+        (WebCore::Internals::composedTreeAsText): Take a Node&.
+
+        * testing/Internals.h: Update for all the changes listed above.
+
+        * testing/Internals.idl: Removed UsePointersEvenForNonNullableObjectArguments. Removed
+        many unneeded [RaisesException]. Used more specific types for many arguments. Removed
+        unused, and unimplemented, attached and includedFor functions. Made the node argument to
+        updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks nullable as well as optional.
+
+        * testing/Internals.mm:
+        (WebCore::Internals::userVisibleString): Take a const DOMURL&.
+
+        * testing/js/WebCoreTestSupport.cpp:
+        (WebCoreTestSupport::injectInternalsObject): Pass a Document& rather than a Document*.
+        (WebCoreTestSupport::resetInternalsObject): Pass a Page& rather than a Page*.
+
+2016-04-14  Daniel Bates  <dabates@apple.com>
+
+        CSP: Ignore report-only policy delivered via meta element
+        https://bugs.webkit.org/show_bug.cgi?id=156565
+        <rdar://problem/25718167>
+
+        Reviewed by Brent Fulgham.
+
+        Only honor a report-only policy delivered via the HTTP header Content-Security-Policy-Report-Only
+        or X-WebKit-CSP-Report-Only as per section Content-Security-Policy-Report-Only Header Field of 
+        the Content Security Policy Level 2 spec., <https://w3c.github.io/webappsec-csp/2/> (Editor's Draft, 29 August 2015).
+
+        Currently we honor a report-only policy delivered via a meta element or an HTTP header. Instead
+        we should only honor such a policy when delivered via an HTTP header.
+
+        Tests: http/tests/security/contentSecurityPolicy/1.1/reportonly-in-meta-ignored2.html
+               http/tests/security/contentSecurityPolicy/eval-allowed-in-report-only-mode-and-sends-report.php
+               http/tests/security/contentSecurityPolicy/eval-allowed-in-report-only-mode.php
+               http/tests/security/contentSecurityPolicy/report-multiple-violations-01.php
+               http/tests/security/contentSecurityPolicy/report-multiple-violations-02.php
+               http/tests/security/contentSecurityPolicy/report-only-report-uri-missing.php
+
+        * dom/Document.cpp:
+        (WebCore::Document::processHttpEquiv): Do not process policy for HTTP equivalent header
+        Content-Security-Policy-Report-Only and X-WebKit-CSP-Report-Only.
+
+2016-04-14  Antoine Quint  <graouts@apple.com>
+
+        Dashboard is spelled as Dashbard in several source files
+        https://bugs.webkit.org/show_bug.cgi?id=156577
+
+        Reviewed by Eric Carlson.
+
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::getContext):
+        * html/canvas/CanvasGradient.cpp:
+        (WebCore::CanvasGradient::CanvasGradient):
+        (WebCore::CanvasGradient::addColorStop):
+        * html/canvas/CanvasGradient.h:
+        (WebCore::CanvasGradient::setDashboardCompatibilityMode):
+
+2016-04-14  Antoine Quint  <graouts@apple.com>
+
+        WebGL based canvases composite incorrectly after changing size
+        https://bugs.webkit.org/show_bug.cgi?id=152556
+        <rdar://problem/24012678>
+
+        Reviewed by Dean Jackson.
+
+        On iOS, we use the CAEAGLLayer's bounds to set the size of the backing store.
+        However, that layer's bounds is also used to size the layer during layout. If
+        the canvas backing store is resized after layout has been performed, the call
+        to setBounds loses the layout value and the <canvas> element is incorrectly
+        sized on screen.
+
+        To address this, when updating the backing store, we keep track of the previous
+        layer bounds so we can reset it after we sized the backing store.
+
+        Test: webgl/webgl-backing-store-size-update.html
+
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/mac/GraphicsContext3DMac.mm:
+        (WebCore::GraphicsContext3D::setRenderbufferStorageFromDrawable):
+
+2016-04-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GObject DOM bindings API break after r199392.
+
+        Since r199392 webkit_dom_attr_set_value() no longer raises exceptions, but we need to keep the GError parameter
+        to keep backwards compatibility.
+
+        * bindings/scripts/CodeGeneratorGObject.pm:
+        (FunctionUsedToRaiseException):
+
+2016-04-13  Daniel Bates  <dabates@apple.com>
+
+        CSP: Nested browsing context created for <object> or <embed> should respect object-src directive
+        https://bugs.webkit.org/show_bug.cgi?id=156563
+        <rdar://problem/25715713>
+
+        Reviewed by Darin Adler.
+
+        As per section object-src of the Content Security Policy Level 2 spec.,
+        <https://w3c.github.io/webappsec-csp/2/> (Editor's Draft, 29 August 2015), a nested browsing
+        context created for an HTML object or HTML embed element should respect the object-src directive.
+
+        Currently a nested browsing context created for an HTML object or HTML embed element respects
+        the child-src directive or frame-src directive (in that order). Instead such nested browsing
+        contexts should respect the object-src directive.
+
+        Tests: http/tests/security/contentSecurityPolicy/object-src-allows-embed-blocked-by-child-src.html
+               http/tests/security/contentSecurityPolicy/object-src-allows-embed-blocked-by-frame-src.html
+               http/tests/security/contentSecurityPolicy/object-src-allows-object-blocked-by-child-src.html
+               http/tests/security/contentSecurityPolicy/object-src-allows-object-blocked-by-frame-src.html
+               http/tests/security/contentSecurityPolicy/object-src-blocks-embed-allowed-by-child-src.html
+               http/tests/security/contentSecurityPolicy/object-src-blocks-embed-allowed-by-frame-src.html
+               http/tests/security/contentSecurityPolicy/object-src-blocks-object-allowed-by-child-src.html
+               http/tests/security/contentSecurityPolicy/object-src-blocks-object-allowed-by-frame-src.html
+
+        * loader/PolicyChecker.cpp:
+        (WebCore::isAllowedByContentSecurityPolicy): Added. Checks whether the specified URL is allowed by the
+        object-src or the child-src/frame-src directive for a plugin element and non-plugin element, respectively.
+        (WebCore::PolicyChecker::checkNavigationPolicy): Modified to call isAllowedByContentSecurityPolicy().
+
+2016-04-13  Daniel Bates  <dabates@apple.com>
+
+        CSP: Remove experimental directive reflected-xss
+        https://bugs.webkit.org/show_bug.cgi?id=156554
+
+        Reviewed by Brent Fulgham.
+
+        The Content Security Policy directive reflected-xss was removed from the Content Security
+        Policy Level 2 spec., <https://w3c.github.io/webappsec-csp/2/> (Editor's Draft, 29 August 2015).
+        This directive was considered experimental and was guarded by a run-time flag that was never
+        enabled by default. We should remove support for this directive.
+
+        * html/parser/XSSAuditor.cpp:
+        (WebCore::XSSAuditor::XSSAuditor): Initialize m_xssProtection to XSSProtectionDisposition::Enabled.
+        (WebCore::XSSAuditor::init): Write logic in terms of enum class XSSProtectionDisposition.
+        (WebCore::XSSAuditor::filterToken): Ditto.
+        (WebCore::combineXSSProtectionHeaderAndCSP): Deleted.
+        * html/parser/XSSAuditor.h: Change data type of m_xssProtection from ContentSecurityPolicy::ReflectedXSSDisposition
+        to XSSProtectionDisposition.
+        * html/parser/XSSAuditorDelegate.cpp: Ditto.
+        (WebCore::buildConsoleError): Remove logic to emit a remarks in the console error when a XSS is
+        blocked because of the directive reflected-xss. Also substituted "because" for "as" in the remark
+        added to the error message when the XSS Auditor is enabled because the server did not send HTTP
+        header X-XSS-Protection.
+        * html/parser/XSSAuditorDelegate.h:
+        (WebCore::XSSInfo::XSSInfo): Removed argument didSendCSPHeader as we are removing support for the
+        directive reflected-xss.
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::reflectedXSSDisposition): Deleted.
+        (WebCore::ContentSecurityPolicy::reportInvalidReflectedXSS): Deleted.
+        * page/csp/ContentSecurityPolicy.h:
+        * page/csp/ContentSecurityPolicyDirectiveList.cpp:
+        (WebCore::ContentSecurityPolicyDirectiveList::ContentSecurityPolicyDirectiveList): Remove initialization
+        of m_reflectedXSSDisposition as we are removing support for the directive reflected-xss.
+        (WebCore::ContentSecurityPolicyDirectiveList::parseReflectedXSS): Deleted.
+        (WebCore::ContentSecurityPolicyDirectiveList::addDirective): Remove logic to parse directive reflected-xss.
+        * page/csp/ContentSecurityPolicyDirectiveList.h:
+        (WebCore::ContentSecurityPolicyDirectiveList::reflectedXSSDisposition): Deleted.
+        * page/csp/ContentSecurityPolicyDirectiveNames.cpp:
+        * page/csp/ContentSecurityPolicyDirectiveNames.h:
+        * page/csp/ContentSecurityPolicySourceList.cpp:
+        (WebCore::isCSPDirectiveName):
+        (WebCore::isExperimentalDirectiveName): Deleted.
+        * platform/network/HTTPParsers.cpp:
+        (WebCore::parseXSSProtectionHeader): Write it terms of enum class XSSProtectionDisposition.
+        * platform/network/HTTPParsers.h: Define enum class XSSProtectionDisposition. Change return type
+        of parseXSSProtectionHeader() from ContentSecurityPolicy::ReflectedXSSDisposition to XSSProtectionDisposition
+        as we are removing the former.
+
+2016-04-13  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB (Blob support): Support retrieving Blobs from IDB.
+        https://bugs.webkit.org/show_bug.cgi?id=156367
+
+        Reviewed by Alex Christensen.
+
+        No new tests (No testable change in behavior yet, current tests pass).
+
+        This patch does the following:
+        - Pulls BlobURLs and stored filenames out of IDB whenever an IDB record is fetched.
+        - Adds those URLs and filenames to IDBValue.
+        - Uses IDBValue in more places instead of SharedBuffer/ThreadSafeBuffer.
+        - Teaches SerializedScriptValue, Blob, and File how to read the URLs and filenames when they exist.
+        - Teaches the Blob registry to register a new type of Blob that is not a "File" but is backed by one.
+
+        * Modules/indexeddb/IDBCursor.cpp:
+        (WebCore::IDBCursor::setGetResult):
+        
+        * Modules/indexeddb/IDBGetResult.h:
+        (WebCore::IDBGetResult::IDBGetResult):
+        
+        * Modules/indexeddb/IDBRequest.cpp:
+        (WebCore::IDBRequest::setResultToStructuredClone):
+        * Modules/indexeddb/IDBRequest.h:
+        
+        * Modules/indexeddb/IDBTransaction.cpp:
+        (WebCore::IDBTransaction::didGetRecordOnServer):
+        
+        * Modules/indexeddb/IDBValue.cpp:
+        (WebCore::IDBValue::IDBValue):
+        * Modules/indexeddb/IDBValue.h:
+        
+        * Modules/indexeddb/server/MemoryIndexCursor.cpp:
+        (WebCore::IDBServer::MemoryIndexCursor::currentData):
+        
+        * Modules/indexeddb/server/MemoryObjectStoreCursor.cpp:
+        (WebCore::IDBServer::MemoryObjectStoreCursor::currentData):
+        
+        * Modules/indexeddb/server/SQLiteIDBBackingStore.cpp:
+        (WebCore::IDBServer::SQLiteIDBBackingStore::createIndex):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::getBlobRecordsForObjectStoreRecord):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::getRecord):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::getIndexRecord):
+        * Modules/indexeddb/server/SQLiteIDBBackingStore.h:
+        
+        * Modules/indexeddb/server/SQLiteIDBCursor.cpp:
+        (WebCore::IDBServer::SQLiteIDBCursor::currentData):
+        (WebCore::IDBServer::SQLiteIDBCursor::internalAdvanceOnce):
+        * Modules/indexeddb/server/SQLiteIDBCursor.h:
+        (WebCore::IDBServer::SQLiteIDBCursor::currentValue):
+        (WebCore::IDBServer::SQLiteIDBCursor::currentValueBuffer): Deleted.
+        
+        * Modules/indexeddb/server/SQLiteIDBTransaction.h:
+        (WebCore::IDBServer::SQLiteIDBTransaction::backingStore):
+        
+        * Modules/websockets/WorkerThreadableWebSocketChannel.cpp:
+        (WebCore::WorkerThreadableWebSocketChannel::Bridge::send):
+        
+        * bindings/js/IDBBindingUtilities.cpp:
+        (WebCore::deserializeIDBValueDataToJSValue):
+        (WebCore::deserializeIDBValueData):
+        (WebCore::deserializeIDBValue):
+        * bindings/js/IDBBindingUtilities.h:
+        
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::CloneDeserializer::deserialize):
+        (WebCore::CloneDeserializer::CloneDeserializer):
+        (WebCore::CloneDeserializer::readFile):
+        (WebCore::CloneDeserializer::readTerminal):
+        (WebCore::CloneDeserializer::blobFilePathForBlobURL):
+        (WebCore::SerializedScriptValue::deserialize):
+        * bindings/js/SerializedScriptValue.h:
+
+        * fileapi/Blob.cpp:
+        (WebCore::Blob::Blob):
+        * fileapi/Blob.h:
+        (WebCore::Blob::deserialize):
+
+        * fileapi/File.cpp:
+        (WebCore::File::File):
+
+        * fileapi/ThreadableBlobRegistry.cpp:
+        (WebCore::threadableQueue):
+        (WebCore::ThreadableBlobRegistry::registerBlobURLOptionallyFileBacked):
+        * fileapi/ThreadableBlobRegistry.h:
+
+        * platform/CrossThreadTask.h:
+        (WebCore::createCrossThreadTask):
+
+        * platform/network/BlobRegistry.h:
+
+        * platform/network/BlobRegistryImpl.cpp:
+        (WebCore::BlobRegistryImpl::registerBlobURL):
+        (WebCore::BlobRegistryImpl::registerBlobURLOptionallyFileBacked):
+        * platform/network/BlobRegistryImpl.h:
+
+2016-04-13  Zalan Bujtas  <zalan@apple.com>
+
+        Text on compositing layer with negative letter-spacing is truncated.
+        https://bugs.webkit.org/show_bug.cgi?id=156550
+        <rdar://problem/24212140>
+
+        Reviewed by Antti Koivisto.
+
+        Negative letter-spacing affects the right edge of content's visual overflow (for both RTL and LTR).
+        This is similar to how normal line layout adjusts it at InlineFlowBox::addTextBoxVisualOverflow().
+
+        Test: fast/text/negative-letter-spacing-visual-overflow.html
+
+        * rendering/SimpleLineLayoutFunctions.cpp:
+        (WebCore::SimpleLineLayout::computeOverflow):
+        (WebCore::SimpleLineLayout::paintFlow):
+        (WebCore::SimpleLineLayout::collectFlowOverflow):
+
+2016-04-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] remote command should be considered user events
+        https://bugs.webkit.org/show_bug.cgi?id=156546
+        <rdar://problem/25560877>
+
+        Reviewed by Jer Noble.
+
+        Test: media/remote-control-command-is-user-gesture.html
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::didReceiveRemoteControlCommand): Increment/decrement 
+          m_processingRemoteControlCommand around calling remote command method.
+        (WebCore::HTMLMediaElement::processingUserGesture): Return true if called while handling
+          a remote control command.
+        * html/HTMLMediaElement.h:
+
+2016-04-13  Antonio Gomes  <tonikitoo@webkit.org>
+
+        Non-resizable text field looks resizable
+        https://bugs.webkit.org/show_bug.cgi?id=152271
+
+        Reviewed by Darin Adler.
+
+        The 'resizability' of an HTML element is controlled by its 'resize' CSS property value.
+        By default it is 'none', but certain HTML elements, including <textarea>, have it
+        set to 'both' by default (defined in html.css). These values mean no resize at all, and
+        resizable in both vertical and horizontal axis, respectively.
+        Additionally, 'vertical' and 'horizontal' values are also valid.
+
+        Problem here is that the way WebKit handles the 'resize' property on single line
+        input elements (e.g. <input>) is different than other engines (read Gecko, Blink and Presto):
+
+        - Match: WebKit, Firefox, Presto and Blink all force single line input elements to be non-resizable,
+        regardless of either the 'resize' properly is set or not.
+
+        - Mismatch: WebKit is the only engine that actually paints the resize control on single line
+        input elements, even it having no effect.
+
+        On WebKit, this happens because the 'resize' property is wrongly implemented as 'inheritable',
+        differently from other engines. In the way WebKit contructs its RenderTree, 'resize' property
+        ends up spilling out of <input> and entering its shadow representation, carrying the 'resize'
+        property on.
+
+        Patch fixes this by making the 'resize' properly be non-inherited, matching other vendors
+        and the spec [1].
+
+        [1] https://drafts.csswg.org/css-ui/#resize
+
+        Tests: fast/css/resize-not-inherited.html
+               fast/css/resize-single-line-input-no-paint.html
+
+        * rendering/style/RenderStyle.h:
+        * rendering/style/StyleRareInheritedData.cpp:
+        (WebCore::StyleRareInheritedData::StyleRareInheritedData):
+        (WebCore::StyleRareInheritedData::operator==):
+        * rendering/style/StyleRareInheritedData.h:
+        * rendering/style/StyleRareNonInheritedData.cpp:
+        (WebCore::StyleRareNonInheritedData::StyleRareNonInheritedData):
+        (WebCore::StyleRareNonInheritedData::operator==):
+        * rendering/style/StyleRareNonInheritedData.h:
+
+2016-04-13  Darin Adler  <darin@apple.com>
+
+        Remove UsePointersEvenForNonNullableObjectArguments from DataTransfer
+        https://bugs.webkit.org/show_bug.cgi?id=156495
+
+        Reviewed by Chris Dumez.
+
+        * dom/DataTransfer.idl: Removed UsePointersEvenForNonNullableObjectArguments
+        and marked the element argument to setDragImage as nullable.
+
+2016-04-13  Brady Eidson  <beidson@apple.com>
+
+        Modern IDB (Blob support): Support deleting stored blob files.
+        https://bugs.webkit.org/show_bug.cgi?id=156523
+
+        Reviewed by Alex Christensen.
+
+        No new tests (No testable change in behavior yet, current tests pass).
+
+        There's 3 points in time when we need to delete blob files (and records of them):
+        1 - When deleting a specific object store record.
+        2 - When deleting an entire object store.
+        3 - When deleting a whole database.
+        
+        This patch does those three things.
+
+        * Modules/indexeddb/server/SQLiteIDBBackingStore.cpp:
+        (WebCore::IDBServer::SQLiteIDBBackingStore::deleteObjectStore):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::deleteUnusedBlobFileRecords):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::deleteRecord):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::addRecord):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::getRecord):
+        (WebCore::IDBServer::SQLiteIDBBackingStore::deleteBackingStore):
+        * Modules/indexeddb/server/SQLiteIDBBackingStore.h:
+
+        * Modules/indexeddb/server/SQLiteIDBTransaction.cpp:
+        (WebCore::IDBServer::SQLiteIDBTransaction::commit):
+        (WebCore::IDBServer::SQLiteIDBTransaction::deleteBlobFilesIfNecessary):
+        (WebCore::IDBServer::SQLiteIDBTransaction::addRemovedBlobFile):
+        * Modules/indexeddb/server/SQLiteIDBTransaction.h:
+
+2016-04-13  Frederic Wang  <fwang@igalia.com>
+
+        Fix two coding mistakes in MathMLInlineContainerElement::childrenChanged
+        https://bugs.webkit.org/show_bug.cgi?id=156538
+
+        Reviewed by Darin Adler.
+
+        We fix the call to updateOperatorProperties inside MathMLInlineContainerElement::childrenChanged
+        for the <math> and <msqrt> tags.
+
+        The <math> tag is already a RenderMathMLRow so the hasTagName(mathTag)
+        conditional is never executed. The tag does not create any anonymous
+        wrapper so we do not need a special case for it anyway.
+
+        The <msqrt> tag is not a RenderMathMLRow (yet). However, the anonymous
+        wrapper behaving as a RenderMathMLRow is actually the last child, not
+        the first one.
+
+        No new tests, this is already covered by mathml/presentation/mo-form-dynamic.html
+        Note that for some reason the coding error for <msqrt> only shows up
+        after the refactoring of bug 152244.
+
+        * mathml/MathMLInlineContainerElement.cpp:
+        (WebCore::MathMLInlineContainerElement::childrenChanged): Fix the two mistakes and add some FIXME comments.
+
 2016-04-12  Chris Dumez  <cdumez@apple.com>
 
         Attr.value should not be nullable

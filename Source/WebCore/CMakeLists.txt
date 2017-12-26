@@ -2112,6 +2112,7 @@ set(WebCore_SOURCES
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
+    platform/KillRingNone.cpp
     platform/Language.cpp
     platform/Length.cpp
     platform/LengthPoint.cpp
@@ -2241,6 +2242,7 @@ set(WebCore_SOURCES
     platform/graphics/StringTruncator.cpp
     platform/graphics/SurrogatePairAwareTextIterator.cpp
     platform/graphics/TextRun.cpp
+    platform/graphics/WOFFFileFormat.cpp
     platform/graphics/WidthIterator.cpp
 
     platform/graphics/cpu/arm/filters/FELightingNEON.cpp

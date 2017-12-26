@@ -1,3 +1,479 @@
+2016-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update treatment of invoking RegExp.prototype methods on RegExp.prototype.
+        https://bugs.webkit.org/show_bug.cgi?id=155922
+
+        Reviewed by Keith Miller.
+
+        According to the TC39 committee, when invoking the following RegExp.prototype
+        methods on the RegExp.prototype:
+        1. RegExp.prototype.flags yields ""
+        2. RegExp.prototype.global yields undefined
+        3. RegExp.prototype.ignoreCase yields undefined
+        4. RegExp.prototype.multiline yields undefined
+        5. RegExp.prototype.unicode yields undefined
+        6. RegExp.prototype.source yields "(?:)"
+        7. RegExp.prototype.sticky yields undefined
+        8. RegExp.prototype.toString() yields "/(?:)/"
+
+        and RegExp.prototype is still NOT an instance of RegExp.  The above behavior
+        changes is a special dispensation applicable only to RegExp.prototype.  The ES6
+        spec of throwing errors still applies if those methods are applied to anything =
+        else that is not a RegExp object.
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoGetterGlobal):
+        (JSC::regExpProtoGetterIgnoreCase):
+        (JSC::regExpProtoGetterMultiline):
+        (JSC::regExpProtoGetterSticky):
+        (JSC::regExpProtoGetterUnicode):
+        (JSC::regExpProtoGetterFlags):
+        (JSC::regExpProtoGetterSource):
+        - Implemented new behavior.
+
+        * tests/es6/miscellaneous_built-in_prototypes_are_not_instances.js:
+        (test):
+        - Updated to match current kangax test.
+
+2016-04-14  Geoffrey Garen  <ggaren@apple.com>
+
+        Some imported ES6 tests are missing __createIterableObject
+        https://bugs.webkit.org/show_bug.cgi?id=156584
+
+        Reviewed by Keith Miller.
+
+        These tests were failing because I neglected to include __createIterableObject
+        when I first imported them. Now they pass.
+
+        * tests/es6.yaml:
+        * tests/es6/Array_static_methods_Array.from_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/Array_static_methods_Array.from_instances_of_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/Array_static_methods_Array.from_iterator_closing.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/Array_static_methods_Array.from_map_function_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/Array_static_methods_Array.from_map_function_instances_of_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/Map_iterator_closing.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/Promise_Promise.all_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test.asyncTestPassed):
+        * tests/es6/Promise_Promise.race_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test.asyncTestPassed):
+        * tests/es6/Set_iterator_closing.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/WeakMap_iterator_closing.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/WeakSet_iterator_closing.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/destructuring_iterator_closing.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/destructuring_with_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/destructuring_with_instances_of_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/for..of_loops_iterator_closing_break.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/for..of_loops_iterator_closing_throw.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/for..of_loops_with_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/for..of_loops_with_instances_of_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/generators_yield_star_generic_iterables.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/generators_yield_star_iterator_closing_via_throw.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        * tests/es6/spread_..._operator_with_generic_iterables_in_arrays.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/spread_..._operator_with_generic_iterables_in_calls.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/spread_..._operator_with_instances_of_iterables_in_arrays.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+        * tests/es6/spread_..._operator_with_instances_of_iterables_in_calls.js:
+        (iterator.next):
+        (iterable.Symbol.iterator):
+        (__createIterableObject):
+        (test):
+
+2016-04-13  Alex Christensen  <achristensen@webkit.org>
+
+        CMake MiniBrowser should be an app bundle
+        https://bugs.webkit.org/show_bug.cgi?id=156521
+
+        Reviewed by Brent Fulgham.
+
+        * PlatformMac.cmake:
+        Unreviewed build fix.  Define __STDC_WANT_LIB_EXT1__ so we can find memset_s.
+
+2016-04-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Improve Class instances and JSC API Exported Values view in Console / ObjectTree
+        https://bugs.webkit.org/show_bug.cgi?id=156566
+        <rdar://problem/16392365>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.RemoteObject.prototype._appendPropertyPreviews):
+        Treat non-basic object types as not lossless so they can be expanded.
+        Show non-enumerable native getters in Object previews.
+
+2016-04-13  Michael Saboff  <msaboff@apple.com>
+
+        Some tests fail with ES6 `u` (Unicode) flag for regular expressions
+        https://bugs.webkit.org/show_bug.cgi?id=151597
+
+        Reviewed by Geoffrey Garen.
+
+        Added two new tables to handle the anomolies of \w and \W CharacterClassEscapes
+        when specified in RegExp's with both the unicode and ignoreCase flags.  Given the
+        case folding rules described in the standard vie the meta function Canonicalize(),
+        which allow cross ASCII case folding when unicode is specified, the unicode characters
+        \u017f (small sharp s) and \u212a (kelvin symbol) are part of the \w (word) characterClassEscape.
+        This is true because they case fold to 's' and 'k' respectively.  Because they case fold
+        to lower case letters, the corresponding letters, 'k', 'K', 's' and 'S', are also matched with
+        \W with the unicode and ignoreCase flags.
+
+        * create_regex_tables:
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::atomBuiltInCharacterClass):
+        (JSC::Yarr::YarrPatternConstructor::atomCharacterClassBuiltIn):
+        (JSC::Yarr::YarrPattern::YarrPattern):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::YarrPattern::wordcharCharacterClass):
+        (JSC::Yarr::YarrPattern::wordUnicodeIgnoreCaseCharCharacterClass):
+        (JSC::Yarr::YarrPattern::nonwordcharCharacterClass):
+        (JSC::Yarr::YarrPattern::nonwordUnicodeIgnoreCaseCharCharacterClass):
+
+2016-04-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r199502 and r199511.
+        https://bugs.webkit.org/show_bug.cgi?id=156557
+
+        Appears to have in-browser perf regression (Requested by mlam
+        on #webkit).
+
+        Reverted changesets:
+
+        "ES6: Implement String.prototype.split and
+        RegExp.prototype[@@split]."
+        https://bugs.webkit.org/show_bug.cgi?id=156013
+        http://trac.webkit.org/changeset/199502
+
+        "ES6: Implement RegExp.prototype[@@search]."
+        https://bugs.webkit.org/show_bug.cgi?id=156331
+        http://trac.webkit.org/changeset/199511
+
+2016-04-13  Keith Miller  <keith_miller@apple.com>
+
+        isJSArray should use ArrayType rather than the ClassInfo
+        https://bugs.webkit.org/show_bug.cgi?id=156551
+
+        Reviewed by Filip Pizlo.
+
+        Using the JSType rather than the ClassInfo should be slightly faster
+        since the type is inline on the cell whereas the ClassInfo is only
+        on the structure.
+
+        * runtime/JSArray.h:
+        (JSC::isJSArray):
+
+2016-04-13  Mark Lam  <mark.lam@apple.com>
+
+        ES6: Implement RegExp.prototype[@@search].
+        https://bugs.webkit.org/show_bug.cgi?id=156331
+
+        Reviewed by Keith Miller.
+
+        What changed?
+        1. Implemented search builtin in RegExpPrototype.js.
+           The native path is now used as a fast path.
+        2. Added DFG support for an IsRegExpObjectIntrinsic (modelled after the
+           IsJSArrayIntrinsic).
+        3. Renamed @isRegExp to @isRegExpObject to match the new IsRegExpObjectIntrinsic.
+        4. Change the esSpecIsRegExpObject() implementation to check if the object's
+           JSType is RegExpObjectType instead of walking the classinfo chain.
+
+        * builtins/RegExpPrototype.js:
+        (search):
+        * builtins/StringPrototype.js:
+        (search):
+        - fixed some indentation.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        (JSC::DFG::PredictionPropagationPhase::propagate):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIsArrayConstructor):
+        (JSC::DFG::SpeculativeJIT::compileIsRegExpObject):
+        (JSC::DFG::SpeculativeJIT::compileCallObjectConstructor):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileIsFunction):
+        (JSC::FTL::DFG::LowerDFGToB3::compileIsRegExpObject):
+        (JSC::FTL::DFG::LowerDFGToB3::compileTypeOf):
+        (JSC::FTL::DFG::LowerDFGToB3::isExoticForTypeof):
+        (JSC::FTL::DFG::LowerDFGToB3::isRegExpObject):
+        (JSC::FTL::DFG::LowerDFGToB3::isType):
+        * runtime/Intrinsic.h:
+        - Added IsRegExpObjectIntrinsic.
+
+        * runtime/CommonIdentifiers.h:
+
+        * runtime/ECMAScriptSpecInternalFunctions.cpp:
+        (JSC::esSpecIsConstructor):
+        - Changed to use uncheckedArgument since this is only called from internal code.
+        (JSC::esSpecIsRegExpObject):
+        (JSC::esSpecIsRegExp): Deleted.
+        * runtime/ECMAScriptSpecInternalFunctions.h:
+        - Changed to check the object for a JSType of RegExpObjectType.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        - Added split fast path.
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        (JSC::regExpProtoFuncSearchFast):
+        (JSC::regExpProtoFuncSearch): Deleted.
+        * runtime/RegExpPrototype.h:
+
+        * tests/es6.yaml:
+        * tests/stress/regexp-search.js:
+        - Rebased test.
+
+2016-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        PolymorphicAccess::regenerate() shouldn't have to clone non-generated AccessCases
+        https://bugs.webkit.org/show_bug.cgi?id=156493
+
+        Reviewed by Geoffrey Garen.
+
+        Cloning AccessCases is only necessary if they hold some artifacts that are used by code that
+        they already generated. So, if the state is not Generated, we don't have to bother with
+        cloning them.
+
+        This should speed up PolymorphicAccess regeneration a bit more.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::commit):
+        (JSC::PolymorphicAccess::regenerate):
+
+2016-04-13  Mark Lam  <mark.lam@apple.com>
+
+        ES6: Implement String.prototype.split and RegExp.prototype[@@split].
+        https://bugs.webkit.org/show_bug.cgi?id=156013
+
+        Reviewed by Keith Miller.
+
+        Re-landing r199393 now that the shadow chicken crash has been fixed.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/GlobalObject.js:
+        (speciesConstructor):
+        * builtins/PromisePrototype.js:
+        - refactored to use the @speciesConstructor internal function.
+
+        * builtins/RegExpPrototype.js:
+        (advanceStringIndex):
+        - refactored from @advanceStringIndexUnicode() to be match the spec.
+          Benchmarks show that there's no advantage in doing the unicode check outside
+          of the advanceStringIndexUnicode part.  So, I simplified the code to match the
+          spec (especially since @@split needs to call advanceStringIndex from more than
+          1 location).
+        (match):
+        - Removed an unnecessary call to @Object because it was already proven above.
+        - Changed to use advanceStringIndex instead of advanceStringIndexUnicode.
+          Again, there's no perf regression for this.
+        (regExpExec):
+        (hasObservableSideEffectsForRegExpSplit):
+        (split):
+        (advanceStringIndexUnicode): Deleted.
+
+        * builtins/StringPrototype.js:
+        (split):
+        - Modified to use RegExp.prototype[@@split].
+
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        (JSC::BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry):
+        (JSC::BytecodeIntrinsicRegistry::lookup):
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        - Added the @@split symbol.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/ECMAScriptSpecInternalFunctions.cpp: Added.
+        (JSC::esSpecIsConstructor):
+        (JSC::esSpecIsRegExp):
+        * runtime/ECMAScriptSpecInternalFunctions.h: Added.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::getGetterById):
+        (JSC::JSGlobalObject::init):
+
+        * runtime/PropertyDescriptor.cpp:
+        (JSC::PropertyDescriptor::setDescriptor):
+        - Removed an assert that is no longer valid.
+
+        * runtime/RegExpObject.h:
+        - Made advanceStringUnicode() public so that it can be re-used by the regexp split
+          fast path.
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        (JSC::regExpProtoFuncExec):
+        (JSC::regExpProtoFuncSearch):
+        (JSC::advanceStringIndex):
+        (JSC::regExpProtoFuncSplitFast):
+        * runtime/RegExpPrototype.h:
+
+        * runtime/StringObject.h:
+        (JSC::jsStringWithReuse):
+        (JSC::jsSubstring):
+        - Hoisted some utility functions from StringPrototype.cpp so that they can be
+          reused by the regexp split fast path.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::stringProtoFuncSplitFast):
+        (JSC::stringProtoFuncSubstr):
+        (JSC::builtinStringSubstrInternal):
+        (JSC::stringProtoFuncSubstring):
+        (JSC::stringIncludesImpl):
+        (JSC::stringProtoFuncIncludes):
+        (JSC::builtinStringIncludesInternal):
+        (JSC::jsStringWithReuse): Deleted.
+        (JSC::jsSubstring): Deleted.
+        (JSC::stringProtoFuncSplit): Deleted.
+        * runtime/StringPrototype.h:
+
+        * tests/es6.yaml:
+
+2016-04-13  Mark Lam  <mark.lam@apple.com>
+
+        ShadowChicken::visitChildren() should not visit tailMarkers and throwMarkers.
+        https://bugs.webkit.org/show_bug.cgi?id=156532
+
+        Reviewed by Saam Barati and Filip Pizlo.
+
+        ShadowChicken can store tailMarkers and throwMarkers in its log, specifically in
+        the callee field of a log packet.  However, ShadowChicken::visitChildren()
+        unconditionally visits the callee field of each packet as if they are real
+        objects.  If visitChildren() encounters one of these markers in the log, we get a
+        crash.
+
+        This crash was observed in the v8-v6/v8-regexp.js stress test running with shadow
+        chicken when r199393 landed.  r199393 introduced tail calls to a RegExp split
+        fast path, and the v8-regexp.js test exercised this fast path a lot.  Throw in
+        some timely GCs, and we get a crash party.
+
+        The fix is to have ShadowChicken::visitChildren() filter out the tailMarker and
+        throwMarker.
+
+        Alternatively, if perf is an issue, we can allocate 2 dedicated objects for
+        these markers so that ShadowChicken can continue to visit them.  For now, I'm
+        going with the filter.
+
+        * interpreter/ShadowChicken.cpp:
+        (JSC::ShadowChicken::visitChildren):
+
+2016-04-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Add @@toStringTag to GeneratorFunction
+        https://bugs.webkit.org/show_bug.cgi?id=156499
+
+        Reviewed by Mark Lam.
+
+        GeneratorFunction.prototype has @@toStringTag property, "GeneratorFunction".
+        https://tc39.github.io/ecma262/#sec-generatorfunction.prototype-@@tostringtag
+
+        * runtime/GeneratorFunctionPrototype.cpp:
+        (JSC::GeneratorFunctionPrototype::finishCreation):
+        * tests/es6.yaml:
+        * tests/es6/well-known_symbols_Symbol.toStringTag_new_built-ins.js: Added.
+        (test):
+
 2016-04-13  Alberto Garcia  <berto@igalia.com>
 
         Fix build in glibc-based BSD systems

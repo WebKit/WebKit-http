@@ -70,14 +70,17 @@ public:
     bool inProgress() const;
 
     SQLiteTransaction* sqliteTransaction() const { return m_sqliteTransaction.get(); }
+    SQLiteIDBBackingStore& backingStore() { return m_backingStore; }
 
     void addBlobFile(const String& temporaryPath, const String& storedFilename);
+    void addRemovedBlobFile(const String& removedFilename);
 
 private:
     void clearCursors();
     void reset();
 
     void moveBlobFilesIfNecessary();
+    void deleteBlobFilesIfNecessary();
 
     IDBTransactionInfo m_info;
 
@@ -86,6 +89,7 @@ private:
     HashMap<IDBResourceIdentifier, std::unique_ptr<SQLiteIDBCursor>> m_cursors;
     HashSet<SQLiteIDBCursor*> m_backingStoreCursors;
     Vector<std::pair<String, String>> m_blobTemporaryAndStoredFilenames;
+    HashSet<String> m_blobRemovedFilenames;
 };
 
 } // namespace IDBServer
