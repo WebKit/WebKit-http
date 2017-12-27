@@ -186,6 +186,7 @@ inline CapabilityLevel canCompile(Node* node)
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
+    case IsRegExpObject:
     case CheckTypeInfoFlags:
     case OverridesHasInstance:
     case InstanceOf:
@@ -236,6 +237,9 @@ inline CapabilityLevel canCompile(Node* node)
     case SetFunctionName:
     case LogShadowChickenPrologue:
     case LogShadowChickenTail:
+    case ResolveScope:
+    case GetDynamicVar:
+    case PutDynamicVar:
         // These are OK.
         break;
 
@@ -412,6 +416,10 @@ inline CapabilityLevel canCompile(Node* node)
             break;
         if (node->isBinaryUseKind(DoubleRepUse))
             break;
+        if (node->isBinaryUseKind(StringIdentUse))
+            break;
+        if (node->isBinaryUseKind(StringUse))
+            break;
         if (node->isBinaryUseKind(UntypedUse))
             break;
         return CannotCompile;
@@ -433,6 +441,12 @@ CapabilityLevel canCompile(Graph& graph)
     if (graph.m_codeBlock->codeType() != FunctionCode) {
         if (verboseCapabilities())
             dataLog("FTL rejecting ", *graph.m_codeBlock, " because it doesn't belong to a function.\n");
+        return CannotCompile;
+    }
+
+    if (UNLIKELY(graph.m_codeBlock->ownerScriptExecutable()->neverFTLOptimize())) {
+        if (verboseCapabilities())
+            dataLog("FTL rejecting ", *graph.m_codeBlock, " because it is marked as never FTL compile.\n");
         return CannotCompile;
     }
     

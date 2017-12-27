@@ -640,15 +640,17 @@ Object.defineProperty(String, "tokenizeFormatString",
                 }
             }
 
-            var precision = -1;
+            const defaultPrecision = 6;
+
+            let precision = defaultPrecision;
             if (format[index] === ".") {
                 // This is a precision specifier. If no digit follows the ".",
-                // then the precision should be zero.
+                // then use the default precision of six digits (ISO C99 specification).
                 ++index;
 
                 precision = parseInt(format.substring(index), 10);
                 if (isNaN(precision))
-                    precision = 0;
+                    precision = defaultPrecision;
 
                 while (!isNaN(format[index]))
                     ++index;
@@ -715,14 +717,21 @@ Object.defineProperty(String, "standardFormatters",
     value: {
         d: function(substitution)
         {
-            return !isNaN(substitution) ? substitution : 0;
+            return parseInt(substitution);
         },
 
         f: function(substitution, token)
         {
-            if (substitution && token.precision > -1)
-                substitution = substitution.toFixed(token.precision);
-            return !isNaN(substitution) ? substitution : (token.precision > -1 ? Number(0).toFixed(token.precision) : 0);
+            let value = parseFloat(substitution);
+            if (isNaN(value))
+                return NaN;
+
+            let options = {
+                minimumFractionDigits: token.precision,
+                maximumFractionDigits: token.precision,
+                useGrouping: false
+            };
+            return value.toLocaleString(undefined, options);
         },
 
         s: function(substitution)
@@ -741,7 +750,7 @@ Object.defineProperty(String, "format",
 
         function prettyFunctionName()
         {
-            return "String.format(\"" + format + "\", \"" + substitutions.join("\", \"") + "\")";
+            return "String.format(\"" + format + "\", \"" + Array.from(substitutions).join("\", \"") + "\")";
         }
 
         function warn(msg)
@@ -912,10 +921,10 @@ Object.defineProperty(Number, "constrain",
 
 Object.defineProperty(Number, "percentageString",
 {
-    value: function(percent, precision = 1)
+    value: function(fraction, precision = 1)
     {
-        console.assert(percent >= 0 && percent <= 100);
-        return percent.toFixed(precision) + "%";
+        console.assert(fraction >= 0 && fraction <= 1);
+        return fraction.toLocaleString(undefined, {minimumFractionDigits: precision, style: "percent"});
     }
 });
 
@@ -936,6 +945,8 @@ Object.defineProperty(Number, "secondsToString",
     value: function(seconds, higherResolution)
     {
         let ms = seconds * 1000;
+        if (!ms)
+            return WebInspector.UIString("%.0fms").format(0);
 
         if (Math.abs(ms) < 10) {
             if (higherResolution)
@@ -1183,19 +1194,62 @@ Object.defineProperty(Array.prototype, "binaryIndexOf",
 });
 
 (function() {
-    const debounceSymbol = Symbol("function-debounce-timeout");
-    Object.defineProperty(Function.prototype, "debounce",
+    // The `debounce` function lets you call any function on an object with a delay
+    // and if the function keeps getting called, the delay gets reset. Since `debounce`
+    // returns a Proxy, you can cache it and call multiple functions with the same delay.
+
+    // Use: object.debounce(200).foo("Argument 1", "Argument 2")
+    // Note: The last call's arguments get used for the delayed call.
+
+    const debounceTimeoutSymbol = Symbol("debounce-timeout");
+    const debounceSoonProxySymbol = Symbol("debounce-soon-proxy");
+
+    Object.defineProperty(Object.prototype, "soon",
     {
-        value: function(delay, thisObject)
+        get: function()
         {
-            let callback = this.bind(thisObject);
-            return function() {
-                clearTimeout(callback[debounceSymbol]);
-                let args = arguments;
-                callback[debounceSymbol] = setTimeout(() => {
-                    callback.apply(null, args);
-                }, delay);
-            };
+            if (!this[debounceSoonProxySymbol])
+                this[debounceSoonProxySymbol] = this.debounce(0);
+            return this[debounceSoonProxySymbol];
+        }
+    });
+
+    Object.defineProperty(Object.prototype, "debounce",
+    {
+        value: function(delay)
+        {
+            console.assert(delay >= 0);
+
+            return new Proxy(this, {
+                get(target, property, receiver) {
+                    return (...args) => {
+                        let original = target[property];
+                        console.assert(typeof original === "function");
+
+                        if (original[debounceTimeoutSymbol])
+                            clearTimeout(original[debounceTimeoutSymbol]);
+
+                        let performWork = () => {
+                            original[debounceTimeoutSymbol] = undefined;
+                            original.apply(target, args);
+                        };
+
+                        original[debounceTimeoutSymbol] = setTimeout(performWork, delay);
+                    };
+                }
+            });
+        }
+    });
+
+    Object.defineProperty(Function.prototype, "cancelDebounce",
+    {
+        value: function()
+        {
+            if (!this[debounceTimeoutSymbol])
+                return;
+
+            clearTimeout(this[debounceTimeoutSymbol]);
+            this[debounceTimeoutSymbol] = undefined;
         }
     });
 })();

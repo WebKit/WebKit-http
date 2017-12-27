@@ -50,6 +50,7 @@ class InspectorResource;
 class SecurityOrigin;
 class SharedBuffer;
 class SubresourceLoader;
+class TextResourceDecoder;
 
 // A resource that is held in the cache. Classes who want to use this object should derive
 // from CachedResourceClient, to get the function calls in case the requested data has arrived.
@@ -75,6 +76,7 @@ public:
 #if ENABLE(XSLT)
         , XSLStyleSheet
 #endif
+        , LinkPreload
 #if ENABLE(LINK_PREFETCH)
         , LinkPrefetch
         , LinkSubresource
@@ -99,6 +101,7 @@ public:
 
     virtual void setEncoding(const String&) { }
     virtual String encoding() const { return String(); }
+    virtual const TextResourceDecoder* textResourceDecoder() const { return nullptr; }
     virtual void addDataBuffer(SharedBuffer&);
     virtual void addData(const char* data, unsigned length);
     virtual void finishLoading(SharedBuffer*);
@@ -263,6 +266,7 @@ public:
 #endif
 
     unsigned long identifierForLoadWithoutResourceLoader() const { return m_identifierForLoadWithoutResourceLoader; }
+    static ResourceLoadPriority defaultPriorityForResourceType(Type);
 
 protected:
     void setEncodedSize(unsigned);

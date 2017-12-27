@@ -31,6 +31,7 @@
 #include "DrawingAreaProxyImpl.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
+#include "NativeWebWheelEvent.h"
 #include "NotImplemented.h"
 #include "WebColorPickerGtk.h"
 #include "WebContextMenuProxyGtk.h"
@@ -252,6 +253,11 @@ void PageClientImpl::selectionDidChange()
         webkitWebViewSelectionDidChange(WEBKIT_WEB_VIEW(m_viewWidget));
 }
 
+void PageClientImpl::didChangeContentSize(const IntSize& size)
+{
+    webkitWebViewBaseSetContentsSize(WEBKIT_WEB_VIEW_BASE(m_viewWidget), size);
+}
+
 #if ENABLE(DRAG_SUPPORT)
 void PageClientImpl::startDrag(const WebCore::DragData& dragData, PassRefPtr<ShareableBitmap> dragImage)
 {
@@ -376,6 +382,12 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& event, bool w
     gtk_widget_event(m_viewWidget, pointerEvent.get());
 }
 #endif // ENABLE(TOUCH_EVENTS)
+
+void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent& event)
+{
+    webkitWebViewBaseForwardNextWheelEvent(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
+    gtk_main_do_event(event.nativeEvent());
+}
 
 void PageClientImpl::didFinishLoadingDataForCustomContentProvider(const String&, const IPC::DataReference&)
 {

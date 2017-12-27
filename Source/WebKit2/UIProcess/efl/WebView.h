@@ -207,6 +207,7 @@ private:
 #if ENABLE(TOUCH_EVENTS)
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
 #endif
+    void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override { }
 
     RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
 #if ENABLE(CONTEXT_MENUS)
@@ -260,6 +261,8 @@ private:
     void beganEnterFullScreen(const WebCore::IntRect&, const WebCore::IntRect&) override { }
     void beganExitFullScreen(const WebCore::IntRect&, const WebCore::IntRect&) override { }
 #endif
+
+    UserInterfaceLayoutDirection userInterfaceLayoutDirection() override { return UserInterfaceLayoutDirection::LTR; }
 
     EwkView* m_ewkView;
 

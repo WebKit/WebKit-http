@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FontSelector_h
-#define FontSelector_h
+#pragma once
 
 #include "FontRanges.h"
 #include <wtf/Forward.h>
@@ -55,13 +54,4 @@ public:
     virtual unsigned version() const = 0;
 };
 
-class FontSelectorClient {
-public:
-    virtual ~FontSelectorClient() { }
-
-    virtual void fontsNeedUpdate(FontSelector&) = 0;
-};
-
-} // namespace WebCore
-
-#endif // FontSelector_h
+}

@@ -46,6 +46,7 @@
 #import "WKNavigationDataInternal.h"
 #import "WKNavigationInternal.h"
 #import "WKNavigationResponseInternal.h"
+#import "WKOpenPanelParametersInternal.h"
 #import "WKPreferencesInternal.h"
 #import "WKProcessPoolInternal.h"
 #import "WKSecurityOriginInternal.h"
@@ -63,6 +64,7 @@
 #import "WKWindowFeaturesInternal.h"
 #import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadInternal.h"
+#import "_WKExperimentalFeatureInternal.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
@@ -149,6 +151,10 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [_WKDownload alloc];
         break;
 
+    case Type::ExperimentalFeature:
+        wrapper = [_WKExperimentalFeature alloc];
+        break;
+
     case Type::Error:
         wrapper = NSAllocateObject([WKNSError self], size, nullptr);
         break;
@@ -179,6 +185,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::NavigationResponse:
         wrapper = [WKNavigationResponse alloc];
+        break;
+
+    case Type::OpenPanelParameters:
+        wrapper = [WKOpenPanelParameters alloc];
         break;
 
     case Type::PageGroup:

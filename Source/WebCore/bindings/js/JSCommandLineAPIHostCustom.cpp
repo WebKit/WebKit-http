@@ -50,7 +50,6 @@
 #include <runtime/JSLock.h>
 #include <runtime/ObjectConstructor.h>
 
-
 using namespace JSC;
 
 namespace WebCore {
@@ -62,11 +61,8 @@ JSValue JSCommandLineAPIHost::inspectedObject(ExecState& state)
         return jsUndefined();
 
     JSLockHolder lock(&state);
-    Deprecated::ScriptValue scriptValue = object->get(&state);
-    if (scriptValue.hasNoValue())
-        return jsUndefined();
-
-    return scriptValue.jsValue();
+    auto scriptValue = object->get(state);
+    return scriptValue ? scriptValue : jsUndefined();
 }
 
 static JSArray* getJSListenerFunctions(ExecState& state, Document* document, const EventListenerInfo& listenerInfo)
@@ -126,12 +122,10 @@ JSValue JSCommandLineAPIHost::getEventListeners(ExecState& state)
 
 JSValue JSCommandLineAPIHost::inspect(ExecState& state)
 {
-    if (state.argumentCount() >= 2) {
-        Deprecated::ScriptValue object(state.vm(), state.uncheckedArgument(0));
-        Deprecated::ScriptValue hints(state.vm(), state.uncheckedArgument(1));
-        wrapped().inspectImpl(object.toInspectorValue(&state), hints.toInspectorValue(&state));
-    }
-
+    if (state.argumentCount() < 2)
+        return jsUndefined();
+    wrapped().inspectImpl(Inspector::toInspectorValue(state, state.uncheckedArgument(0)),
+        Inspector::toInspectorValue(state, state.uncheckedArgument(1)));
     return jsUndefined();
 }
 

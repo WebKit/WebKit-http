@@ -31,7 +31,7 @@
 
 namespace WebCore {
 
-class IDBCursorWithValue : public IDBCursor {
+class IDBCursorWithValue final : public IDBCursor {
 public:
     static Ref<IDBCursorWithValue> create(IDBTransaction&, IDBObjectStore&, const IDBCursorInfo&);
     static Ref<IDBCursorWithValue> create(IDBTransaction&, IDBIndex&, const IDBCursorInfo&);

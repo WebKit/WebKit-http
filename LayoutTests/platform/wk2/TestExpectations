@@ -42,9 +42,8 @@
 ########################################
 ### START OF (1) Classified failures with bug reports
 
-# WebKitTestRunner needs to implement testRunner.dumpIconChanges().
-webkit.org/b/44046 http/tests/security/contentSecurityPolicy/icon-allowed.html
-webkit.org/b/44046 http/tests/security/contentSecurityPolicy/icon-blocked.html
+webkit.org/b/156612 http/tests/security/contentSecurityPolicy/embed-redirect-blocked3.html [ Failure ]
+webkit.org/b/156612 http/tests/security/contentSecurityPolicy/object-redirect-blocked3.html [ Failure ]
 
 # AX tests that require hit testing do not work in WK2.
 webkit.org/b/71298 accessibility/loading-iframe-updates-axtree.html
@@ -68,9 +67,6 @@ webkit.org/b/60648 fast/frames/flattening/frameset-flattening-subframesets.html 
 # (zero-font-size.html passes because overridePreference does not work)
 webkit.org/b/42197 fast/harness/override-preferences-2.html [ Failure ]
 webkit.org/b/42197 fast/text/zero-font-size.html [ Pass ]
-
-# setIconDatabaseEnabled not implemented in WebKitTestRunner.
-webkit.org/b/115809 webarchive/test-link-rel-icon-beforeload.html [ Skip ]
 
 webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding.html [ Skip ]
 webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding-shift-jis.html [ Skip ]
@@ -594,6 +590,7 @@ platform/mac/fast/objc/dom-html-select-activate.html
 platform/mac/fast/objc/dom-html-select-live-pseudo-selectors.html
 platform/mac/fast/objc/longlongTest.html
 platform/mac/fast/objc/webScriptObject-hasWebScriptKey.html
+platform/mac/fast/objc/webScriptObject-does-not-call-description-on-nsobject.html
 platform/mac/plugins/bindings-array-apply-crash.html
 platform/mac/plugins/bindings-objc-long-method-name.html
 platform/mac/plugins/bindings-objc-method-name-conversion.html
@@ -674,10 +671,10 @@ http/tests/local/formdata/send-form-data.html
 http/tests/local/formdata/send-form-data-with-empty-file-filename.html
 http/tests/local/formdata/upload-events.html
 http/tests/security/clipboard/clipboard-file-access.html
+imported/blink/storage/indexeddb/blob-basics-metadata.html
+imported/blink/storage/indexeddb/empty-blob-file.html
 media/video-with-blob-url-allowed-by-csp-media-src-star.html
 media/video-src-blob.html
-storage/indexeddb/noblobs.html
-storage/indexeddb/noblobs-private.html
 storage/indexeddb/structured-clone.html
 storage/indexeddb/structured-clone-private.html
 

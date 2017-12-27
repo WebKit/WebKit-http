@@ -177,6 +177,7 @@ struct _WebKitWebViewBasePrivate {
     std::unique_ptr<PageClientImpl> pageClient;
     RefPtr<WebPageProxy> pageProxy;
     bool shouldForwardNextKeyEvent;
+    bool shouldForwardNextWheelEvent;
     ClickCounter clickCounter;
     CString tooltipText;
     IntRect tooltipArea;
@@ -190,6 +191,7 @@ struct _WebKitWebViewBasePrivate {
     InputMethodFilter inputMethodFilter;
     KeyBindingTranslator keyBindingTranslator;
     TouchEventsMap touchEvents;
+    IntSize contentsSize;
 
     GtkWindow* toplevelOnScreenWindow;
     unsigned long toplevelFocusInEventID;
@@ -695,6 +697,20 @@ static void webkitWebViewBaseSizeAllocate(GtkWidget* widget, GtkAllocation* allo
     drawingArea->setSize(viewRect.size(), IntSize(), IntSize());
 }
 
+static void webkitWebViewBaseGetPreferredWidth(GtkWidget* widget, gint* minimumSize, gint* naturalSize)
+{
+    WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
+    *minimumSize = 0;
+    *naturalSize = priv->contentsSize.width();
+}
+
+static void webkitWebViewBaseGetPreferredHeight(GtkWidget* widget, gint* minimumSize, gint* naturalSize)
+{
+    WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
+    *minimumSize = 0;
+    *naturalSize = priv->contentsSize.height();
+}
+
 static void webkitWebViewBaseMap(GtkWidget* widget)
 {
     GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->map(widget);
@@ -853,8 +869,11 @@ static gboolean webkitWebViewBaseScrollEvent(GtkWidget* widget, GdkEventScroll* 
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
 
+    if (std::exchange(priv->shouldForwardNextWheelEvent, false))
+        return FALSE;
+
     if (priv->authenticationDialog)
-        return TRUE;
+        return FALSE;
 
     priv->pageProxy->handleWheelEvent(NativeWebWheelEvent(reinterpret_cast<GdkEvent*>(event)));
 
@@ -1161,6 +1180,8 @@ static void webkit_web_view_base_class_init(WebKitWebViewBaseClass* webkitWebVie
     widgetClass->unrealize = webkitWebViewBaseUnrealize;
     widgetClass->draw = webkitWebViewBaseDraw;
     widgetClass->size_allocate = webkitWebViewBaseSizeAllocate;
+    widgetClass->get_preferred_width = webkitWebViewBaseGetPreferredWidth;
+    widgetClass->get_preferred_height = webkitWebViewBaseGetPreferredHeight;
     widgetClass->map = webkitWebViewBaseMap;
     widgetClass->unmap = webkitWebViewBaseUnmap;
     widgetClass->focus = webkitWebViewBaseFocus;
@@ -1281,6 +1302,11 @@ DragAndDropHandler& webkitWebViewBaseDragAndDropHandler(WebKitWebViewBase* webVi
 void webkitWebViewBaseForwardNextKeyEvent(WebKitWebViewBase* webkitWebViewBase)
 {
     webkitWebViewBase->priv->shouldForwardNextKeyEvent = TRUE;
+}
+
+void webkitWebViewBaseForwardNextWheelEvent(WebKitWebViewBase* webkitWebViewBase)
+{
+    webkitWebViewBase->priv->shouldForwardNextWheelEvent = true;
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -1498,6 +1524,14 @@ void webkitWebViewBaseUpdateTextInputState(WebKitWebViewBase* webkitWebViewBase)
     const auto& editorState = webkitWebViewBase->priv->pageProxy->editorState();
     if (!editorState.isMissingPostLayoutData)
         webkitWebViewBase->priv->inputMethodFilter.setCursorRect(editorState.postLayoutData().caretRectAtStart);
+}
+
+void webkitWebViewBaseSetContentsSize(WebKitWebViewBase* webkitWebViewBase, const IntSize& contentsSize)
+{
+    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
+    if (priv->contentsSize == contentsSize)
+        return;
+    priv->contentsSize = contentsSize;
 }
 
 void webkitWebViewBaseResetClickCounter(WebKitWebViewBase* webkitWebViewBase)

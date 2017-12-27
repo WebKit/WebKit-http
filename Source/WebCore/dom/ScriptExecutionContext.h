@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2009, 2010, 2011, 2013, 2014, 2015, 2016 Apple Inc. All Rights Reserved.
  * Copyright (C) 2012 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,7 @@
  *
  */
 
-#ifndef ScriptExecutionContext_h
-#define ScriptExecutionContext_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "DOMTimer.h"
@@ -56,7 +55,11 @@ class PublicURLManager;
 class SecurityOrigin;
 class URL;
 
-class ScriptExecutionContext : public SecurityContext, public Supplementable<ScriptExecutionContext> {
+namespace IDBClient {
+class IDBConnectionProxy;
+}
+
+class ScriptExecutionContext : public SecurityContext {
 public:
     ScriptExecutionContext();
     virtual ~ScriptExecutionContext();
@@ -73,6 +76,10 @@ public:
     virtual String userAgent(const URL&) const = 0;
 
     virtual void disableEval(const String& errorMessage) = 0;
+
+#if ENABLE(INDEXED_DATABASE)
+    virtual IDBClient::IDBConnectionProxy* idbConnectionProxy() = 0;
+#endif
 
     bool sanitizeScriptError(String& errorMessage, int& lineNumber, int& columnNumber, String& sourceURL, CachedScript* = nullptr);
     void reportException(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, RefPtr<Inspector::ScriptCallStack>&&, CachedScript* = nullptr);
@@ -188,6 +195,8 @@ public:
     int timerNestingLevel() const { return m_timerNestingLevel; }
     void setTimerNestingLevel(int timerNestingLevel) { m_timerNestingLevel = timerNestingLevel; }
 
+    JSC::ExecState* execState();
+
 protected:
     class AddConsoleMessageTask : public Task {
     public:
@@ -222,7 +231,7 @@ private:
     HashMap<int, RefPtr<DOMTimer>> m_timeouts;
 
     bool m_inDispatchErrorEvent;
-    class PendingException;
+    struct PendingException;
     std::unique_ptr<Vector<std::unique_ptr<PendingException>>> m_pendingExceptions;
 
     bool m_activeDOMObjectsAreSuspended;
@@ -245,5 +254,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ScriptExecutionContext_h

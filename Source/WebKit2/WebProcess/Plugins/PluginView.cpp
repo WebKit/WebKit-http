@@ -1266,7 +1266,10 @@ void PluginView::performJavaScriptURLRequest(URLRequest* request)
     // Evaluate the JavaScript code. Note that running JavaScript here could cause the plug-in to be destroyed, so we
     // grab references to the plug-in here.
     RefPtr<Plugin> plugin = m_plugin;
-    Deprecated::ScriptValue result = frame->script().executeScript(jsString, request->allowPopups());
+    auto result = frame->script().executeScript(jsString, request->allowPopups());
+
+    if (!result)
+        return;
 
     // Check if evaluating the JavaScript destroyed the plug-in.
     if (!plugin->controller())
@@ -1815,7 +1818,8 @@ void PluginView::pluginSnapshotTimerFired()
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     unsigned candidateArea = 0;
-    bool noSnapshotFoundAfterMaxRetries = m_countSnapshotRetries == frame()->settings().maximumPlugInSnapshotAttempts() && !isPlugInOnScreen && !snapshotFound;
+    unsigned maximumSnapshotRetries = frame() ? frame()->settings().maximumPlugInSnapshotAttempts() : 0;
+    bool noSnapshotFoundAfterMaxRetries = m_countSnapshotRetries == maximumSnapshotRetries && !isPlugInOnScreen && !snapshotFound;
     if (m_webPage->plugInIsPrimarySize(plugInImageElement, candidateArea)
         && (noSnapshotFoundAfterMaxRetries || plugInCameOnScreen))
         m_pluginElement->setDisplayState(HTMLPlugInElement::Playing);

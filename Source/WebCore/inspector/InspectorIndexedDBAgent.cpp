@@ -44,6 +44,7 @@
 #include "EventTarget.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
+#include "IDBBindingUtilities.h"
 #include "IDBCursor.h"
 #include "IDBCursorWithValue.h"
 #include "IDBDatabase.h"
@@ -58,6 +59,7 @@
 #include "IDBTransaction.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
+#include "ScriptState.h"
 #include "SecurityOrigin.h"
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
@@ -87,6 +89,8 @@ using namespace Inspector;
 namespace WebCore {
 
 namespace {
+
+#if 0 // IDBFactory::getDatabaseNames isn't implemented any more. Disable this for now.
 
 class GetDatabaseNamesCallback : public EventListener {
     WTF_MAKE_NONCOPYABLE(GetDatabaseNamesCallback);
@@ -140,6 +144,8 @@ private:
     String m_securityOrigin;
 };
 
+#endif
+
 class ExecutableWithDatabase : public RefCounted<ExecutableWithDatabase> {
 public:
     ExecutableWithDatabase(ScriptExecutionContext* context)
@@ -174,14 +180,13 @@ public:
             return;
         }
 
-        IDBOpenDBRequest* idbOpenDBRequest = static_cast<IDBOpenDBRequest*>(event->target());
-        ExceptionCodeWithMessage ec;
-        RefPtr<IDBAny> requestResult = idbOpenDBRequest->result(ec);
-        if (ec.code) {
+        auto& request = static_cast<IDBOpenDBRequest&>(*event->target());
+        if (!request.isDone()) {
             m_executableWithDatabase->requestCallback().sendFailure("Could not get result in callback.");
             return;
         }
-        if (requestResult->type() != IDBAny::Type::IDBDatabase) {
+        auto databaseResult = request.databaseResult();
+        if (!databaseResult) {
             m_executableWithDatabase->requestCallback().sendFailure("Unexpected result type.");
             return;
         }
@@ -201,7 +206,7 @@ private:
 void ExecutableWithDatabase::start(IDBFactory* idbFactory, SecurityOrigin*, const String& databaseName)
 {
     Ref<OpenDatabaseCallback> callback = OpenDatabaseCallback::create(this);
-    ExceptionCode ec = 0;
+    ExceptionCodeWithMessage ec;
 
     if (!context()) {
         requestCallback().sendFailure("Could not open database.");
@@ -209,7 +214,7 @@ void ExecutableWithDatabase::start(IDBFactory* idbFactory, SecurityOrigin*, cons
     }
 
     RefPtr<IDBOpenDBRequest> idbOpenDBRequest = idbFactory->open(*context(), databaseName, ec);
-    if (ec) {
+    if (ec.code) {
         requestCallback().sendFailure("Could not open database.");
         return;
     }
@@ -307,14 +312,12 @@ static RefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(const InspectorObject* keyRan
     bool lowerOpen;
     if (!keyRange->getBoolean("lowerOpen", lowerOpen))
         return nullptr;
-    IDBKeyRange::LowerBoundType lowerBoundType = lowerOpen ? IDBKeyRange::LowerBoundOpen : IDBKeyRange::LowerBoundClosed;
 
     bool upperOpen;
     if (!keyRange->getBoolean("upperOpen", upperOpen))
         return nullptr;
-    IDBKeyRange::UpperBoundType upperBoundType = upperOpen ? IDBKeyRange::UpperBoundOpen : IDBKeyRange::UpperBoundClosed;
 
-    return IDBKeyRange::create(WTFMove(idbLower), WTFMove(idbUpper), lowerBoundType, upperBoundType);
+    return IDBKeyRange::create(WTFMove(idbLower), WTFMove(idbUpper), lowerOpen, upperOpen);
 }
 
 class DataLoader;
@@ -333,34 +336,33 @@ public:
         return this == &other;
     }
 
-    void handleEvent(ScriptExecutionContext*, Event* event) override
+    void handleEvent(ScriptExecutionContext* context, Event* event) override
     {
         if (event->type() != eventNames().successEvent) {
             m_requestCallback->sendFailure("Unexpected event type.");
             return;
         }
 
-        IDBRequest* idbRequest = static_cast<IDBRequest*>(event->target());
-        ExceptionCodeWithMessage ecwm;
-        RefPtr<IDBAny> requestResult = idbRequest->result(ecwm);
-        if (ecwm.code) {
+        auto& request = static_cast<IDBRequest&>(*event->target());
+        if (!request.isDone()) {
             m_requestCallback->sendFailure("Could not get result in callback.");
             return;
         }
-        if (requestResult->type() == IDBAny::Type::ScriptValue) {
+        if (request.scriptResult()) {
             end(false);
             return;
         }
-        if (requestResult->type() != IDBAny::Type::IDBCursorWithValue) {
+        auto* cursorResult = request.cursorResult();
+        if (!cursorResult) {
             m_requestCallback->sendFailure("Unexpected result type.");
             return;
         }
 
-        RefPtr<IDBCursorWithValue> idbCursor = requestResult->idbCursorWithValue();
+        auto& cursor = *cursorResult;
 
         if (m_skipCount) {
             ExceptionCodeWithMessage ec;
-            idbCursor->advance(m_skipCount, ec);
+            cursor.advance(m_skipCount, ec);
             if (ec.code)
                 m_requestCallback->sendFailure("Could not advance cursor.");
             m_skipCount = 0;
@@ -374,16 +376,20 @@ public:
 
         // Continue cursor before making injected script calls, otherwise transaction might be finished.
         ExceptionCodeWithMessage ec;
-        idbCursor->continueFunction(nullptr, ec);
+        cursor.continueFunction(nullptr, ec);
         if (ec.code) {
             m_requestCallback->sendFailure("Could not continue cursor.");
             return;
         }
 
+        JSC::ExecState* state = context ? context->execState() : nullptr;
+        if (!state)
+            return;
+
         RefPtr<DataEntry> dataEntry = DataEntry::create()
-            .setKey(m_injectedScript.wrapObject(idbCursor->key(), String(), true))
-            .setPrimaryKey(m_injectedScript.wrapObject(idbCursor->primaryKey(), String(), true))
-            .setValue(m_injectedScript.wrapObject(idbCursor->value(), String(), true))
+            .setKey(m_injectedScript.wrapObject(cursor.key(), String(), true))
+            .setPrimaryKey(m_injectedScript.wrapObject(cursor.primaryKey(), String(), true))
+            .setValue(m_injectedScript.wrapObject(cursor.value(), String(), true))
             .release();
         m_result->addItem(WTFMove(dataEntry));
 
@@ -506,6 +512,11 @@ static IDBFactory* assertIDBFactory(ErrorString& errorString, Document* document
 
 void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, const String& securityOrigin, Ref<RequestDatabaseNamesCallback>&& requestCallback)
 {
+    UNUSED_PARAM(errorString);
+    UNUSED_PARAM(securityOrigin);
+    requestCallback->sendFailure("Could not obtain database names.");
+
+#if 0 // IDBFactory::getDatabaseNames isn't implemented any more. Disable this for now.
     Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
     Document* document = assertDocument(errorString, frame);
     if (!document)
@@ -523,6 +534,7 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, con
     }
 
     idbRequest->addEventListener(eventNames().successEvent, GetDatabaseNamesCallback::create(WTFMove(requestCallback), document->securityOrigin()->toRawString()), false);
+#endif
 }
 
 void InspectorIndexedDBAgent::requestDatabase(ErrorString& errorString, const String& securityOrigin, const String& databaseName, Ref<RequestDatabaseCallback>&& requestCallback)

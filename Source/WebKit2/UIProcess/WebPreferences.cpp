@@ -29,6 +29,7 @@
 #include "WebPageGroup.h"
 #include "WebPreferencesKeys.h"
 #include "WebProcessPool.h"
+#include <wtf/NeverDestroyed.h>
 #include <wtf/ThreadingPrimitives.h>
 
 namespace WebKit {
@@ -170,7 +171,7 @@ void WebPreferences::updatePrivateBrowsingValue(bool value)
     }
 }
 
-#define DEFINE_PREFERENCE_GETTER_AND_SETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue) \
+#define DEFINE_PREFERENCE_GETTER_AND_SETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
     void WebPreferences::set##KeyUpper(const Type& value) \
     { \
         if (!m_store.set##TypeName##ValueForKey(WebPreferencesKey::KeyLower##Key(), value)) \
@@ -186,8 +187,81 @@ void WebPreferences::updatePrivateBrowsingValue(bool value)
 
 FOR_EACH_WEBKIT_PREFERENCE(DEFINE_PREFERENCE_GETTER_AND_SETTERS)
 FOR_EACH_WEBKIT_DEBUG_PREFERENCE(DEFINE_PREFERENCE_GETTER_AND_SETTERS)
+FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(DEFINE_PREFERENCE_GETTER_AND_SETTERS)
 
 #undef DEFINE_PREFERENCE_GETTER_AND_SETTERS
+
+static Vector<RefPtr<API::Object>> createExperimentalFeaturesVector()
+{
+    Vector<RefPtr<API::Object>> features;
+
+#define ADD_EXPERIMENTAL_PREFERENCE_DESCRIPTION(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
+    features.append(API::ExperimentalFeature::create(HumanReadableName, #KeyUpper, HumanReadableDescription)); \
+
+    FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(ADD_EXPERIMENTAL_PREFERENCE_DESCRIPTION)
+
+#undef ADD_EXPERIMENTAL_PREFERENCE_DESCRIPTION
+
+    return features;
+}
+
+const Vector<RefPtr<API::Object>>& WebPreferences::experimentalFeatures()
+{
+    static NeverDestroyed<Vector<RefPtr<API::Object>>> features = createExperimentalFeaturesVector();
+    return features;
+}
+
+bool WebPreferences::isEnabledForFeature(const API::ExperimentalFeature& feature) const
+{
+    struct FeatureGetterMapping {
+        const char* name;
+        bool (WebPreferences::*function) () const;
+    };
+
+#define MAKE_FEATURE_GETTER(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
+    { #KeyUpper, &WebPreferences::KeyLower }, \
+
+    static FeatureGetterMapping getters[] = {
+        FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(MAKE_FEATURE_GETTER)
+    };
+
+#undef MAKE_FEATURE_GETTER
+
+    const String& key = feature.key();
+
+    for (auto& getter : getters) {
+        if (key == getter.name)
+            return (this->*getter.function)();
+    }
+
+    return false;
+}
+
+void WebPreferences::setEnabledForFeature(bool value, const API::ExperimentalFeature& feature)
+{
+    struct FeatureSetterMapping {
+        const char* name;
+        void (WebPreferences::*function) (const bool&);
+    };
+
+#define MAKE_FEATURE_SETTER(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
+    { #KeyUpper, &WebPreferences::set##KeyUpper }, \
+
+    static FeatureSetterMapping setters[] = {
+        FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(MAKE_FEATURE_SETTER)
+    };
+
+#undef MAKE_FEATURE_SETTER
+
+    const String& key = feature.key();
+    
+    for (auto& setter : setters) {
+        if (key == setter.name) {
+            (this->*setter.function)(value);
+            return;
+        }
+    }
+}
 
 bool WebPreferences::anyPagesAreUsingPrivateBrowsing()
 {

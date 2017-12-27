@@ -189,7 +189,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/geolocation/PositionErrorCallback.idl
 
     Modules/indexeddb/DOMWindowIndexedDatabase.idl
-    Modules/indexeddb/IDBAny.idl
     Modules/indexeddb/IDBCursor.idl
     Modules/indexeddb/IDBCursorWithValue.idl
     Modules/indexeddb/IDBDatabase.idl
@@ -271,6 +270,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/streams/ReadableStream.idl
     Modules/streams/ReadableStreamController.idl
     Modules/streams/ReadableStreamReader.idl
+    Modules/streams/ReadableStreamSource.idl
     Modules/streams/WritableStream.idl
 
     Modules/vibration/NavigatorVibration.idl
@@ -829,6 +829,7 @@ set(WebCore_SOURCES
     Modules/fetch/FetchLoader.cpp
     Modules/fetch/FetchRequest.cpp
     Modules/fetch/FetchResponse.cpp
+    Modules/fetch/FetchResponseSource.cpp
     Modules/fetch/WorkerGlobalScopeFetch.cpp
 
     Modules/geolocation/Coordinates.cpp
@@ -838,7 +839,6 @@ set(WebCore_SOURCES
     Modules/geolocation/NavigatorGeolocation.cpp
 
     Modules/indexeddb/DOMWindowIndexedDatabase.cpp
-    Modules/indexeddb/IDBAny.cpp
     Modules/indexeddb/IDBCursor.cpp
     Modules/indexeddb/IDBCursorWithValue.cpp
     Modules/indexeddb/IDBDatabase.cpp
@@ -862,6 +862,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBVersionChangeEvent.cpp
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.cpp
 
+    Modules/indexeddb/client/IDBConnectionProxy.cpp
     Modules/indexeddb/client/IDBConnectionToServer.cpp
     Modules/indexeddb/client/TransactionOperation.cpp
 
@@ -1091,7 +1092,6 @@ set(WebCore_SOURCES
     bindings/js/IDBBindingUtilities.cpp
     bindings/js/JSAnimationTimelineCustom.cpp
     bindings/js/JSAttrCustom.cpp
-    bindings/js/JSAudioBufferSourceNodeCustom.cpp
     bindings/js/JSAudioContextCustom.cpp
     bindings/js/JSAudioTrackCustom.cpp
     bindings/js/JSAudioTrackListCustom.cpp
@@ -1150,6 +1150,7 @@ set(WebCore_SOURCES
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
     bindings/js/JSExceptionBase.cpp
+    bindings/js/JSFetchResponseCustom.cpp
     bindings/js/JSFileReaderCustom.cpp
     bindings/js/JSGeolocationCustom.cpp
     bindings/js/JSHTMLAllCollectionCustom.cpp
@@ -1170,12 +1171,12 @@ set(WebCore_SOURCES
     bindings/js/JSHTMLSelectElementCustom.cpp
     bindings/js/JSHTMLTemplateElementCustom.cpp
     bindings/js/JSHistoryCustom.cpp
-    bindings/js/JSIDBAnyCustom.cpp
     bindings/js/JSIDBCursorCustom.cpp
     bindings/js/JSIDBCursorWithValueCustom.cpp
     bindings/js/JSIDBDatabaseCustom.cpp
     bindings/js/JSIDBIndexCustom.cpp
     bindings/js/JSIDBObjectStoreCustom.cpp
+    bindings/js/JSIDBRequestCustom.cpp
     bindings/js/JSImageConstructor.cpp
     bindings/js/JSImageDataCustom.cpp
     bindings/js/JSInspectorFrontendHostCustom.cpp
@@ -1202,6 +1203,7 @@ set(WebCore_SOURCES
     bindings/js/JSPluginElementFunctions.cpp
     bindings/js/JSPopStateEventCustom.cpp
     bindings/js/JSReadableStreamPrivateConstructors.cpp
+    bindings/js/JSReadableStreamSourceCustom.cpp
     bindings/js/JSRTCIceCandidateCustom.cpp
     bindings/js/JSRTCPeerConnectionCustom.cpp
     bindings/js/JSRTCSessionDescriptionCustom.cpp
@@ -1232,6 +1234,7 @@ set(WebCore_SOURCES
     bindings/js/JSXMLHttpRequestCustom.cpp
     bindings/js/JSXPathResultCustom.cpp
     bindings/js/JSXSLTProcessorCustom.cpp
+    bindings/js/ReadableStreamController.cpp
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptController.cpp
@@ -2112,7 +2115,6 @@ set(WebCore_SOURCES
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
-    platform/KillRingNone.cpp
     platform/Language.cpp
     platform/Length.cpp
     platform/LengthPoint.cpp
@@ -3230,6 +3232,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     )
 
     list(APPEND ANGLESupport_SOURCES
+        ${THIRDPARTY_DIR}/ANGLE/src/common/Float16ToFloat32.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/common/angleutils.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/common/debug.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/common/event_tracer.cpp
@@ -3245,12 +3248,15 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/BuiltInFunctionEmulator.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/BuiltInFunctionEmulatorGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/BuiltInFunctionEmulatorHLSL.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Cache.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/CallDAG.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/CodeGen.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Compiler.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/DeferGlobalInitializers.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Diagnostics.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/DirectiveHandler.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/EmulatePrecision.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ExtensionGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/glslang_lex.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/glslang_tab.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ForLoopUnroll.cpp
@@ -3270,13 +3276,14 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/OutputGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/OutputGLSLBase.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/OutputHLSL.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/parseConst.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ParseContext.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/PoolAlloc.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/PruneEmptyDeclarations.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/QualifierAlive.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RecordConstantPrecision.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RegenerateStructNames.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RemovePow.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RemoveSwitchFallThrough.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RewriteDoWhile.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RewriteElseBlocks.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ScalarizeVecAndMatConstructorArgs.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SearchSymbol.cpp
@@ -3284,7 +3291,6 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SeparateDeclarations.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ShaderLang.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ShaderVars.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SimplifyArrayAssignment.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/StructureHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SymbolTable.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/TranslatorESSL.cpp
@@ -3292,11 +3298,12 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/TranslatorHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Types.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuitAST.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuit.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UniformHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/util.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UtilsHLSL.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateGlobalInitializer.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateLimitations.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateMaxParameters.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateOutputs.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateSwitch.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/VariableInfo.cpp
@@ -3877,6 +3884,12 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         ADD_TARGET_PROPERTIES(ANGLESupport COMPILE_FLAGS "-Wno-null-conversion")
     endif ()
+
+    # Enable the ESSL and GLSL translators.
+    set_property(TARGET ANGLESupport
+        PROPERTY COMPILE_DEFINITIONS
+        ANGLE_ENABLE_ESSL
+        ANGLE_ENABLE_GLSL)
 
     target_include_directories(ANGLESupport PRIVATE
         "${THIRDPARTY_DIR}/ANGLE/include"

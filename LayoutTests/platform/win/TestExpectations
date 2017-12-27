@@ -437,6 +437,10 @@ storage/storagequota-query-usage.html [ Skip ]
 storage/storagequota-request-quota.html [ Skip ]
 fast/workers/worker-storagequota-query-usage.html [ Skip ]
 
+# The number of workers in this test exceeds the number of
+# ThreadSpecificValues we have on Windows.
+fast/workers/dedicated-worker-lifecycle.html [ Skip ] 
+
 # Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
 fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
@@ -2184,10 +2188,10 @@ webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-allowall.h
 webkit.org/b/140703 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-cached.html [ Crash ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny.html [ Failure ]
 webkit.org/b/140703 [ Debug ] http/tests/security/XFrameOptions/x-frame-options-deny-delete-frame-in-load-event.html [ Crash ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body.html [ Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-allow.html [ Crash Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny.html [ Crash Failure ]
-webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag.html [ Crash Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-in-body.html [ Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-allow.html [ Crash Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny.html [ Crash Failure ]
+webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag.html [ Crash Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-invalid.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict.html [ Failure ]
 webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow.html [ Failure ]
@@ -3281,7 +3285,6 @@ imported/blink/css3/blending/svg-isolation-foreign-no-isolation.html [ ImageOnly
 imported/blink/css3/blending/svg-isolation-nested-svg-no-isolation.html [ ImageOnlyFailure ]
 imported/blink/css3/filters/effect-drop-shadow-clip-abspos.html [ ImageOnlyFailure ]
 imported/blink/css3/filters/effect-reference-on-transparent-element.html [ ImageOnlyFailure ]
-imported/blink/editing/selection/deleteFromDocument-crash.html [ ImageOnlyFailure ]
 imported/blink/fast/css/tab-size-complex-path.html [ ImageOnlyFailure ]
 imported/blink/fast/css/text-decoration-propagate.html [ ImageOnlyFailure ]
 imported/blink/fast/text/emoji-font-fallback-win.html [ ImageOnlyFailure ]

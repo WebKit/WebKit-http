@@ -36,7 +36,9 @@
 #include "IDBValue.h"
 #include "Logging.h"
 #include "ScopeGuard.h"
+#include "SerializedScriptValue.h"
 #include "UniqueIDBDatabaseConnection.h"
+#include <runtime/StructureInlines.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -765,7 +767,7 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
     if (usedKeyIsGenerated && !objectStoreInfo->keyPath().isNull()) {
         JSLockHolder locker(databaseThreadVM());
 
-        JSValue value = deserializeIDBValueDataToJSValue(databaseThreadExecState(), originalRecordValue.data());
+        auto value = deserializeIDBValueDataToJSValue(databaseThreadExecState(), originalRecordValue.data());
         if (value.isUndefined()) {
             m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(IDBDatabaseException::ConstraintError, ASCIILiteral("Unable to deserialize record value for record key injection")), usedKey));
             return;

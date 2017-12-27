@@ -34,25 +34,28 @@
 #include <wtf/RefCounted.h>
 #include <wtf/Threading.h>
 
-#if OS(DARWIN) && !PLATFORM(GTK)
+#if USE(COCOA_EVENT_LOOP)
 #include <dispatch/dispatch.h>
 #elif OS(HAIKU)
 #include <Message.h>
 #include <set>
 #endif
 
-#if PLATFORM(EFL)
+#if USE(EFL_EVENT_LOOP)
 #include <DispatchQueueEfl.h>
-#elif USE(GLIB)
-#include <wtf/Condition.h>
-#include <wtf/RunLoop.h>
-#include <wtf/glib/GRefPtr.h>
-#elif OS(WINDOWS)
+#endif
+
+#if USE(WINDOWS_EVENT_LOOP)
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 #include <wtf/win/WorkItemWin.h>
 #elif OS(HAIKU)
 #include <Looper.h>
+#endif
+
+#if USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
+#include <wtf/Condition.h>
+#include <wtf/RunLoop.h>
 #endif
 
 namespace WTF {
@@ -79,13 +82,13 @@ public:
 
     WTF_EXPORT_PRIVATE static void concurrentApply(size_t iterations, const std::function<void (size_t index)>&);
 
-#if PLATFORM(EFL)
+#if USE(EFL_EVENT_LOOP)
     void registerSocketEventHandler(int, std::function<void ()>);
     void unregisterSocketEventHandler(int);
-#elif USE(GLIB)
-    RunLoop& runLoop() const { return *m_runLoop; }
-#elif OS(DARWIN)
+#elif USE(COCOA_EVENT_LOOP)
     dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
+#elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
+    RunLoop& runLoop() const { return *m_runLoop; }
 #endif
 
 #if OS(HAIKU)
@@ -98,7 +101,7 @@ private:
     void platformInitialize(const char* name, Type, QOS);
     void platformInvalidate();
 
-#if OS(WINDOWS)
+#if USE(WINDOWS_EVENT_LOOP)
     static void CALLBACK handleCallback(void* context, BOOLEAN timerOrWaitFired);
     static void CALLBACK timerCallback(void* context, BOOLEAN timerOrWaitFired);
     static DWORD WINAPI workThreadCallback(void* context);
@@ -111,19 +114,12 @@ private:
     static DWORD WINAPI unregisterWaitAndDestroyItemCallback(void* context);
 #endif
 
-#if PLATFORM(EFL)
+#if USE(EFL_EVENT_LOOP)
     RefPtr<DispatchQueue> m_dispatchQueue;
-#elif USE(GLIB)
-    ThreadIdentifier m_workQueueThread;
-    Lock m_initializeRunLoopConditionMutex;
-    Condition m_initializeRunLoopCondition;
-    RunLoop* m_runLoop;
-    Lock m_terminateRunLoopConditionMutex;
-    Condition m_terminateRunLoopCondition;
-#elif OS(DARWIN)
+#elif USE(COCOA_EVENT_LOOP)
     static void executeFunction(void*);
     dispatch_queue_t m_dispatchQueue;
-#elif OS(WINDOWS)
+#elif USE(WINDOWS_EVENT_LOOP)
     volatile LONG m_isWorkThreadRegistered;
 
     Mutex m_workItemQueueLock;
@@ -133,11 +129,13 @@ private:
     HashMap<HANDLE, RefPtr<HandleWorkItem>> m_handles;
 
     HANDLE m_timerQueue;
-#elif OS(HAIKU)
-    struct WorkItemHaiku;
-    std::set<WorkItemHaiku*> m_workItems;
-
-    BLooper* m_looper;
+#elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
+    ThreadIdentifier m_workQueueThread;
+    Lock m_initializeRunLoopConditionMutex;
+    Condition m_initializeRunLoopCondition;
+    RunLoop* m_runLoop;
+    Lock m_terminateRunLoopConditionMutex;
+    Condition m_terminateRunLoopCondition;
 #endif
 };
 

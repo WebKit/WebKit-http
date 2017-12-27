@@ -472,6 +472,9 @@ bool AccessCase::couldStillSucceed() const
 
 bool AccessCase::canBeReplacedByMegamorphicLoad() const
 {
+    if (type() == MegamorphicLoad)
+        return true;
+    
     return type() == Load
         && !viaProxy()
         && conditionSet().isEmpty()
@@ -481,17 +484,23 @@ bool AccessCase::canBeReplacedByMegamorphicLoad() const
 
 bool AccessCase::canReplace(const AccessCase& other) const
 {
-    // We could do a lot better here, but for now we just do something obvious.
-    
-    if (type() == MegamorphicLoad && other.canBeReplacedByMegamorphicLoad())
-        return true;
+    // This puts in a good effort to try to figure out if 'other' is made superfluous by '*this'.
+    // It's fine for this to return false if it's in doubt.
 
-    if (!guardedByStructureCheck() || !other.guardedByStructureCheck()) {
-        // FIXME: Implement this!
-        return false;
+    switch (type()) {
+    case MegamorphicLoad:
+        return other.canBeReplacedByMegamorphicLoad();
+    case ArrayLength:
+    case StringLength:
+    case DirectArgumentsLength:
+    case ScopedArgumentsLength:
+        return other.type() == type();
+    default:
+        if (!guardedByStructureCheck() || !other.guardedByStructureCheck())
+            return false;
+        
+        return structure() == other.structure();
     }
-
-    return structure() == other.structure();
 }
 
 void AccessCase::dump(PrintStream& out) const
@@ -601,7 +610,7 @@ void AccessCase::generateWithGuard(
         jit.load32(
             CCallHelpers::Address(baseGPR, DirectArguments::offsetOfLength()),
             valueRegs.payloadGPR());
-        jit.boxInt32(valueRegs.payloadGPR(), valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        jit.boxInt32(valueRegs.payloadGPR(), valueRegs);
         state.succeed();
         return;
     }
@@ -621,7 +630,7 @@ void AccessCase::generateWithGuard(
         jit.load32(
             CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfTotalLength()),
             valueRegs.payloadGPR());
-        jit.boxInt32(valueRegs.payloadGPR(), valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        jit.boxInt32(valueRegs.payloadGPR(), valueRegs);
         state.succeed();
         return;
     }
@@ -983,7 +992,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             unsigned numberOfRegsForCall = JSStack::CallFrameHeaderSize + numberOfParameters;
 
             unsigned numberOfBytesForCall =
-                numberOfRegsForCall * sizeof(Register) + sizeof(CallerFrameAndPC);
+                numberOfRegsForCall * sizeof(Register) - sizeof(CallerFrameAndPC);
 
             unsigned alignedNumberOfBytesForCall =
                 WTF::roundUpToMultipleOf(stackAlignmentBytes(), numberOfBytesForCall);
@@ -1117,7 +1126,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 dataLog("Have type: ", type->descriptor(), "\n");
             state.failAndRepatch.append(
                 jit.branchIfNotType(
-                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::DoNotHaveTagRegisters));
+                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::HaveTagRegisters));
         } else if (verbose)
             dataLog("Don't have type.\n");
         
@@ -1148,7 +1157,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 dataLog("Have type: ", type->descriptor(), "\n");
             state.failAndRepatch.append(
                 jit.branchIfNotType(
-                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::DoNotHaveTagRegisters));
+                    valueRegs, scratchGPR, type->descriptor(), CCallHelpers::HaveTagRegisters));
         } else if (verbose)
             dataLog("Don't have type.\n");
         
@@ -1352,14 +1361,14 @@ void AccessCase::generateImpl(AccessGenerationState& state)
         jit.load32(CCallHelpers::Address(scratchGPR, ArrayStorage::lengthOffset()), scratchGPR);
         state.failAndIgnore.append(
             jit.branch32(CCallHelpers::LessThan, scratchGPR, CCallHelpers::TrustedImm32(0)));
-        jit.boxInt32(scratchGPR, valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        jit.boxInt32(scratchGPR, valueRegs);
         state.succeed();
         return;
     }
 
     case StringLength: {
         jit.load32(CCallHelpers::Address(baseGPR, JSString::offsetOfLength()), valueRegs.payloadGPR());
-        jit.boxInt32(valueRegs.payloadGPR(), valueRegs, CCallHelpers::DoNotHaveTagRegisters);
+        jit.boxInt32(valueRegs.payloadGPR(), valueRegs);
         state.succeed();
         return;
     }
@@ -1587,7 +1596,7 @@ AccessGenerationResult PolymorphicAccess::regenerate(
     // optimization is applicable. Note that we basically tune megamorphicLoadCost according to code
     // size. It would be faster to just allow more repatching with many load cases, and avoid the
     // megamorphicLoad optimization, if we had infinite executable memory.
-    if (cases.size() >= Options::megamorphicLoadCost()) {
+    if (cases.size() >= Options::maxAccessVariantListSize()) {
         unsigned numSelfLoads = 0;
         for (auto& newCase : cases) {
             if (newCase->canBeReplacedByMegamorphicLoad())
@@ -1658,9 +1667,14 @@ AccessGenerationResult PolymorphicAccess::regenerate(
         // of something that isn't patchable. The slow path will decrement "countdown" and will only
         // patch things if the countdown reaches zero. We increment the slow path count here to ensure
         // that the slow path does not try to patch.
+#if CPU(X86) || CPU(X86_64)
+        jit.move(CCallHelpers::TrustedImmPtr(&stubInfo.countdown), state.scratchGPR);
+        jit.add8(CCallHelpers::TrustedImm32(1), CCallHelpers::Address(state.scratchGPR));
+#else
         jit.load8(&stubInfo.countdown, state.scratchGPR);
         jit.add32(CCallHelpers::TrustedImm32(1), state.scratchGPR);
         jit.store8(state.scratchGPR, &stubInfo.countdown);
+#endif
     }
 
     CCallHelpers::JumpList failure;

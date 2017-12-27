@@ -107,6 +107,7 @@ bool doesGC(Graph& graph, Node* node)
     case PutGetterSetterById:
     case PutGetterByVal:
     case PutSetterByVal:
+    case DeleteById:
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
@@ -162,6 +163,7 @@ bool doesGC(Graph& graph, Node* node)
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
+    case IsRegExpObject:
     case TypeOf:
     case LogicalNot:
     case ToPrimitive:
@@ -240,6 +242,9 @@ bool doesGC(Graph& graph, Node* node)
     case CopyRest:
     case LogShadowChickenPrologue:
     case LogShadowChickenTail:
+    case GetDynamicVar:
+    case PutDynamicVar:
+    case ResolveScope:
         return false;
 
     case CreateActivation:

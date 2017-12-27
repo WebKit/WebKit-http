@@ -45,6 +45,10 @@
 #include "SQLiteStatement.h"
 #include "SQLiteTransaction.h"
 #include "ThreadSafeDataBuffer.h"
+#include <heap/StrongInlines.h>
+#include <runtime/JSCJSValueInlines.h>
+#include <runtime/JSGlobalObject.h>
+#include <runtime/StructureInlines.h>
 #include <wtf/NeverDestroyed.h>
 
 using namespace JSC;
@@ -1282,8 +1286,10 @@ IDBError SQLiteIDBBackingStore::deleteUnusedBlobFileRecords(SQLiteIDBTransaction
         }
 
         int result = sql.step();
-        while (result == SQLITE_ROW)
-            removedBlobFilenames.add(sql.getColumnText(1));
+        while (result == SQLITE_ROW) {
+            removedBlobFilenames.add(sql.getColumnText(0));
+            result = sql.step();
+        }
 
         if (result != SQLITE_DONE) {
             LOG_ERROR("Error deleting stored blobs (%i) (Could not gather unused blobURLs) - %s", m_sqliteDB->lastError(), m_sqliteDB->lastErrorMsg());
@@ -2058,7 +2064,8 @@ void SQLiteIDBBackingStore::deleteBackingStore()
     String databaseDirectory = fullDatabaseDirectory();
     for (auto& file : blobFiles) {
         String fullPath = pathByAppendingComponent(databaseDirectory, file);
-        deleteFile(fullPath);
+        if (!deleteFile(fullPath))
+            LOG_ERROR("Error deleting blob file %s", fullPath.utf8().data());
     }
 
     if (m_sqliteDB) {
@@ -2067,6 +2074,7 @@ void SQLiteIDBBackingStore::deleteBackingStore()
     }
 
     SQLiteFileSystem::deleteDatabaseFile(dbFilename);
+    SQLiteFileSystem::deleteEmptyDatabaseDirectory(fullDatabaseDirectory());
     SQLiteFileSystem::deleteEmptyDatabaseDirectory(m_absoluteDatabaseDirectory);
 }
 

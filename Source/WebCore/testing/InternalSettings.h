@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014, 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,8 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InternalSettings_h
-#define InternalSettings_h
+#pragma once
 
 // FIXME (121927): This include should not be needed.
 #include <wtf/text/AtomicStringHash.h>
@@ -100,6 +99,9 @@ public:
 #endif
         bool m_allowsInlineMediaPlayback;
         bool m_inlineMediaPlaybackRequiresPlaysInlineAttribute;
+#if ENABLE(INDEXED_DATABASE_IN_WORKERS)
+        bool m_indexedDBWorkersEnabled;
+#endif
     };
 
     static Ref<InternalSettings> create(Page* page)
@@ -147,6 +149,7 @@ public:
     void setScrollingTreeIncludesFrames(bool, ExceptionCode&);
     void setAllowsInlineMediaPlayback(bool, ExceptionCode&);
     void setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool, ExceptionCode&);
+    void setIndexedDBWorkersEnabled(bool, ExceptionCode&);
 
 private:
     explicit InternalSettings(Page*);
@@ -160,5 +163,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

@@ -627,6 +627,12 @@ static BOOL forceNSViewHitTest;
 
 // if YES, do the "top WebHTMLView" hit test (which we'd like to do all the time but can't because of Java requirements [see bug 4349721])
 static BOOL forceWebHTMLViewHitTest;
+
+@interface NSApplication ()
+- (BOOL)isSpeaking;
+- (void)stopSpeaking:(id)sender;
+@end
+
 #endif // !PLATFORM(IOS)
 
 static WebHTMLView *lastHitView;
@@ -6696,6 +6702,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
 #endif
 }
 
+#if PLATFORM(MAC)
 - (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx
 {
     if (_private) {
@@ -6708,6 +6715,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if (_private)
         _private->drawingIntoLayer = NO;
 }
+#endif
 
 - (BOOL)_web_isDrawingIntoLayer
 {

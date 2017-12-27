@@ -1,3 +1,79 @@
+2016-04-21  Chris Dumez  <cdumez@apple.com>
+
+        Drop [UsePointersEvenForNonNullableObjectArguments] from Document
+        https://bugs.webkit.org/show_bug.cgi?id=156881
+
+        Reviewed by Darin Adler.
+
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2016-04-21  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Improve some fetch response streams tests
+        https://bugs.webkit.org/show_bug.cgi?id=156848
+
+        Reviewed by Darin Adler.
+
+        Most important changes are for response-stream-disturbed-2.html and response-stream-disturbed-5.html which were broken.
+        response-stream-disturbed-2.html was calling an undefined function and was expecting to get a resolved promise while it should be rejected.
+        response-stream-disturbed-5.html was expecting to have a null body if data is consumed.
+        After rereading the spec, this test is non conformant, as the body should not be null, but getting the reader should throw.
+
+        * web-platform-tests/fetch/api/resources/utils.js: Adding delay helper function.
+        * web-platform-tests/fetch/api/response/response-cancel-stream.html: Using delay function.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-1.html: Removing unused function.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-2-expected.txt: Rebasing
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-2.html: Fixing test.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-5-expected.txt: Rebasing
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-5.html: Fixing test.
+
+2016-04-19  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        imported/w3c/web-platform-tests/streams/readable-streams/general.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=155760
+
+        Reviewed by Alexey Proskuryakov.
+
+        Flakiness was coming from a callback being called after a timeout.
+        Timeout was set so that a double promise resolution (promise resolved
+        in another promise resolution callback) is done before calling the callback.
+        On some slow bots, the timeout was not big enough.
+
+        * web-platform-tests/streams/readable-streams/general.js: Increased the callback delay.
+
+2016-04-17  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [Fetch API] Consume HTTP data as a ReadableStream
+        https://bugs.webkit.org/show_bug.cgi?id=138968
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/basic/stream-response-expected.txt:
+        * web-platform-tests/fetch/api/basic/stream-response-worker-expected.txt:
+        * web-platform-tests/fetch/api/request/request-consume.html:
+        * web-platform-tests/fetch/api/resources/data.json: Added.
+        * web-platform-tests/fetch/api/resources/utils.js:
+        (validateStreamFromString):
+        * web-platform-tests/fetch/api/response/response-cancel-stream-expected.txt: Added.
+        * web-platform-tests/fetch/api/response/response-cancel-stream.html: Added.
+        * web-platform-tests/fetch/api/response/response-clone-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-stream-expected.txt: Added.
+        * web-platform-tests/fetch/api/response/response-consume-stream.html: Added.
+        * web-platform-tests/fetch/api/response/response-init-002-expected.txt:
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-expected-1.txt: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-1.html: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-expected-2.txt: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-2.html: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-expected-3.txt: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-3.html: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-expected-4.txt: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-4.html: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-expected-5.txt: Added.
+        * web-platform-tests/fetch/api/response/response-stream-disturbed-5.html: Added.
+
 2016-04-11  Chris Dumez  <cdumez@apple.com>
 
         DOMTokenList.contains() should not throw
