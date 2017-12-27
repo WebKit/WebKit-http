@@ -101,6 +101,7 @@ LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/NotificationClientHaiku.cpp
     haiku/WebCoreSupport/PlatformStrategiesHaiku.cpp
     haiku/WebCoreSupport/ProgressTrackerHaiku.cpp
+	haiku/WebCoreSupport/WebApplicationCache.cpp
     haiku/WebCoreSupport/WebVisitedLinkStore.cpp
 
     haiku/API/WebDownload.cpp

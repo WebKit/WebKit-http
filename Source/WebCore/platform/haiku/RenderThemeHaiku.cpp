@@ -131,18 +131,18 @@ bool RenderThemeHaiku::paintSliderTrack(const RenderObject& object, const PaintI
     return false;
 }
 
-void RenderThemeHaiku::adjustSliderTrackStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeHaiku::adjustSliderTrackStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     style.setBoxShadow(nullptr);
 }
 
-void RenderThemeHaiku::adjustSliderThumbStyle(StyleResolver& styleResolver, RenderStyle& style, Element* element) const
+void RenderThemeHaiku::adjustSliderThumbStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* element) const
 {
     RenderTheme::adjustSliderThumbStyle(styleResolver, style, element);
     style.setBoxShadow(nullptr);
 }
 
-void RenderThemeHaiku::adjustSliderThumbSize(RenderStyle& style, Element*) const
+void RenderThemeHaiku::adjustSliderThumbSize(RenderStyle& style, const Element*) const
 {
     ControlPart part = style.appearance();
     if (part == SliderThumbVerticalPart) {
@@ -315,7 +315,7 @@ bool RenderThemeHaiku::paintButton(const RenderObject& object, const PaintInfo& 
 }
 #endif
 
-void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
+void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver& selector, RenderStyle& style, const Element* element) const
 {
 }
 
@@ -340,7 +340,7 @@ bool RenderThemeHaiku::paintTextField(const RenderObject& object, const PaintInf
     return false;
 }
 
-void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
+void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver& selector, RenderStyle& style, const Element* element) const
 {
 	adjustTextFieldStyle(selector, style, element);
 }
@@ -350,12 +350,12 @@ bool RenderThemeHaiku::paintTextArea(const RenderObject& object, const PaintInfo
     return paintTextField(object, info, intRect);
 }
 
-void RenderThemeHaiku::adjustMenuListStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
+void RenderThemeHaiku::adjustMenuListStyle(StyleResolver& selector, RenderStyle& style, const Element* element) const
 {
     adjustMenuListButtonStyle(selector, style, element);
 }
 
-void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver& selector, RenderStyle& style, Element* element) const
+void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver& selector, RenderStyle& style, const Element* element) const
 {
     style.resetBorder();
     style.resetBorderRadius();

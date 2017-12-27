@@ -32,7 +32,7 @@
 #ifndef ScriptCallFrame_h
 #define ScriptCallFrame_h
 
-#include "DebuggerPrimitives.h"
+#include "debugger/DebuggerPrimitives.h"
 #include "InspectorProtocolObjects.h"
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>

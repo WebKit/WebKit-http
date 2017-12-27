@@ -385,18 +385,6 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& 
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidChangeIcons(WebCore::IconType iconType)
-{
-    if (!m_webFrame)
-        return;
-
-    // Other icon types are apple-specific
-    ASSERT_UNUSED(iconType, iconType == WebCore::Favicon);
-
-    BMessage message(ICON_CHANGED);
-    dispatchMessage(message);
-}
-
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
     CALLED();

@@ -78,6 +78,7 @@
 #include "Settings.h"
 #include "TextEncoding.h"
 #include "UserContentController.h"
+#include "WebApplicationCache.h"
 #include "WebDatabaseProvider.h"
 #include "WebDownload.h"
 #include "WebDownloadPrivate.h"
@@ -153,6 +154,8 @@ BMessenger BWebPage::sDownloadListener;
     WebCore::initializeLoggingChannelsIfNecessary();
 #endif
     PlatformStrategiesHaiku::initialize();
+    //WebKitInitializeWebDatabasesIfNecessary();
+    //MemoryPressureHandler::singleton().install();
 
     ScriptController::initializeThreading();
     WTF::initializeMainThread();
@@ -233,20 +236,23 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
         storagePath.Path());
 
     PageConfiguration pageClients;
+	//pageClients.backForwardClient = this;
+	//pluginClient
+	//validationMessageClient
+	//alternativeTextClient
+	//applicationCacheStorage
     pageClients.chromeClient = new ChromeClientHaiku(this, webView);
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
     pageClients.editorClient = new EditorClientHaiku(this);
     pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
+    pageClients.applicationCacheStorage = &WebApplicationCache::storage();
     pageClients.databaseProvider = &WebDatabaseProvider::singleton();
     pageClients.storageNamespaceProvider = &viewGroup->storageNamespaceProvider();
     pageClients.progressTrackerClient = fProgressTracker;
     pageClients.userContentProvider = &viewGroup->userContentController();
     pageClients.visitedLinkStore = &viewGroup->visitedLinkStore();
-
-    pageClients.storageNamespaceProvider = WebStorageNamespaceProvider::create(
-        storagePath.Path());
 
     fPage = new Page(pageClients);
 

@@ -72,24 +72,24 @@ protected:
     bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
 #endif
 
-    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustMenuListStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
 
-    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
-    void adjustSliderThumbSize(RenderStyle&, Element*) const override;
+    void adjustSliderThumbSize(RenderStyle&, const Element*) const override;
 
 #if ENABLE(DATALIST_ELEMENT)
     // Returns size of one slider tick mark for a horizontal track.

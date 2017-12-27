@@ -109,7 +109,6 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDidReceiveIcon() override;
     void dispatchDidStartProvisionalLoad() override;
     void dispatchDidReceiveTitle(const StringWithDirection&) override;
-    void dispatchDidChangeIcons(IconType) override;
     void dispatchDidCommitLoad() override;
     void dispatchDidFailProvisionalLoad(const ResourceError&) override;
     void dispatchDidFailLoad(const ResourceError&) override;
