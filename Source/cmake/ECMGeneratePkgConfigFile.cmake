@@ -16,6 +16,7 @@
 #                         [INCLUDE_INSTALL_DIR <dir>]
 #                         [LIB_INSTALL_DIR <dir>]
 #                         [DEFINES -D<variable=value>...]
+#                         [DESCRIPTION <library description>]
 #                         [INSTALL])
 #
 # ``BASE_NAME`` is the name of the module. It's the name projects will use to
@@ -42,6 +43,10 @@
 # ``DEFINES`` is a list of preprocessor defines that it is recommended users of
 # the library pass to the compiler when using it.
 #
+# ``DESCRIPTION`` describes what this library is. If it's not specified, CMake
+# will first try to get the description from the metainfo.yaml file or will
+# create one based on ``LIB_NAME``.
+#
 # ``INSTALL`` will cause the module to be installed to the ``pkgconfig``
 # subdirectory of ``LIB_INSTALL_DIR``, unless the ``ECM_PKGCONFIG_INSTALL_DIR``
 # cache variable is set to something different. Note that the first call to
@@ -66,24 +71,39 @@
 #   )
 #
 # Since 1.3.0.
+# ``DESCRIPTION`` available since 5.1.41
+#
 
 #=============================================================================
 # Copyright 2014 Aleix Pol Gonzalez <aleixpol@kde.org>
 # Copyright 2014 David Faure <faure@kde.org>
 #
-# Distributed under the OSI-approved BSD License (the "License");
-# see accompanying file COPYING-CMAKE-SCRIPTS for details.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
 #
-# This software is distributed WITHOUT ANY WARRANTY; without even the
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the License for more information.
-#=============================================================================
-# (To distribute this file outside of extra-cmake-modules, substitute the full
-#  License text for the above reference.)
+# 1. Redistributions of source code must retain the copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. The name of the author may not be used to endorse or promote products
+#    derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 function(ECM_GENERATE_PKGCONFIG_FILE)
   set(options INSTALL)
-  set(oneValueArgs BASE_NAME LIB_NAME FILENAME_VAR INCLUDE_INSTALL_DIR LIB_INSTALL_DIR)
+  set(oneValueArgs BASE_NAME LIB_NAME FILENAME_VAR INCLUDE_INSTALL_DIR LIB_INSTALL_DIR DESCRIPTION)
   set(multiValueArgs DEPS DEFINES)
 
   cmake_parse_arguments(EGPF "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -119,6 +139,17 @@ function(ECM_GENERATE_PKGCONFIG_FILE)
           set(EGPF_LIB_INSTALL_DIR "lib")
       endif()
   endif()
+  if(NOT EGPF_DESCRIPTION)
+      if(EXISTS ${CMAKE_SOURCE_DIR}/metainfo.yaml)
+          file(STRINGS "${CMAKE_SOURCE_DIR}/metainfo.yaml" _EGPF_METAINFO_DESCRIPTION_STRING REGEX "^description:.*$")
+          if(_EGPF_METAINFO_DESCRIPTION_STRING)
+              string(REGEX REPLACE "^description:[ ]*(.*)" "\\1" EGPF_DESCRIPTION ${_EGPF_METAINFO_DESCRIPTION_STRING})
+          endif()
+      endif()
+      if("${EGPF_DESCRIPTION}" STREQUAL "")
+          set(EGPF_DESCRIPTION "${EGPF_LIB_NAME} library.")
+      endif()
+  endif()
 
   set(PKGCONFIG_TARGET_BASENAME ${EGPF_BASE_NAME})
   set(PKGCONFIG_TARGET_LIBNAME ${EGPF_LIB_NAME})
@@ -135,6 +166,7 @@ function(ECM_GENERATE_PKGCONFIG_FILE)
   else()
       set(PKGCONFIG_TARGET_LIBS "${CMAKE_INSTALL_PREFIX}/${EGPF_LIB_INSTALL_DIR}")
   endif()
+  set(PKGCONFIG_TARGET_DESCRIPTION "${EGPF_DESCRIPTION}")
   set(PKGCONFIG_TARGET_DEFINES "")
   if(EGPF_DEFINES)
     set(PKGCONFIG_TARGET_DEFINES "${EGPF_DEFINE}")
@@ -148,6 +180,7 @@ function(ECM_GENERATE_PKGCONFIG_FILE)
   file(WRITE ${PKGCONFIG_FILENAME}
 "
 Name: ${PKGCONFIG_TARGET_LIBNAME}
+Description: ${PKGCONFIG_TARGET_DESCRIPTION}
 Version: ${PROJECT_VERSION}
 Libs: -L${CMAKE_INSTALL_PREFIX}/${EGPF_LIB_INSTALL_DIR} -l${PKGCONFIG_TARGET_LIBNAME}
 Cflags: ${PKGCONFIG_TARGET_INCLUDES} ${PKGCONFIG_TARGET_DEFINES}
@@ -156,8 +189,11 @@ Requires: ${PKGCONFIG_TARGET_DEPS}
   )
 
   if(EGPF_INSTALL)
-    set(ECM_PKGCONFIG_INSTALL_DIR "${EGPF_LIB_INSTALL_DIR}/pkgconfig" CACHE PATH "The directory where pkgconfig will be installed to.")
+    if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+      set(ECM_PKGCONFIG_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/libdata/pkgconfig" CACHE PATH "The directory where pkgconfig will be installed to.")
+    else()
+      set(ECM_PKGCONFIG_INSTALL_DIR "${EGPF_LIB_INSTALL_DIR}/pkgconfig" CACHE PATH "The directory where pkgconfig will be installed to.")
+    endif()
     install(FILES ${PKGCONFIG_FILENAME} DESTINATION ${ECM_PKGCONFIG_INSTALL_DIR})
   endif()
 endfunction()
-
