@@ -40,7 +40,7 @@ private:
 
     bool isGradientStop() const override { return true; }
 
-    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
     bool rendererIsNeeded(const RenderStyle&) override;
 
     BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGStopElement)

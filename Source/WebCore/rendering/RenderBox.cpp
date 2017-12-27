@@ -118,7 +118,7 @@ static bool skipBodyBackground(const RenderBox* bodyElementRenderer)
         && (documentElementRenderer == bodyElementRenderer->parent());
 }
 
-RenderBox::RenderBox(Element& element, Ref<RenderStyle>&& style, BaseTypeFlags baseTypeFlags)
+RenderBox::RenderBox(Element& element, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : RenderBoxModelObject(element, WTFMove(style), baseTypeFlags)
     , m_minPreferredLogicalWidth(-1)
     , m_maxPreferredLogicalWidth(-1)
@@ -127,7 +127,7 @@ RenderBox::RenderBox(Element& element, Ref<RenderStyle>&& style, BaseTypeFlags b
     setIsBox();
 }
 
-RenderBox::RenderBox(Document& document, Ref<RenderStyle>&& style, BaseTypeFlags baseTypeFlags)
+RenderBox::RenderBox(Document& document, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : RenderBoxModelObject(document, WTFMove(style), baseTypeFlags)
     , m_minPreferredLogicalWidth(-1)
     , m_maxPreferredLogicalWidth(-1)
@@ -2898,8 +2898,13 @@ Optional<LayoutUnit> RenderBox::computeIntrinsicLogicalContentHeightUsing(Length
 {
     // FIXME: The CSS sizing spec is considering changing what min-content/max-content should resolve to.
     // If that happens, this code will have to change.
-    if (logicalHeightLength.isMinContent() || logicalHeightLength.isMaxContent() || logicalHeightLength.isFitContent())
+    if (logicalHeightLength.isMinContent() || logicalHeightLength.isMaxContent() || logicalHeightLength.isFitContent()) {
+        if (!intrinsicContentHeight)
+            return intrinsicContentHeight;
+        if (style().boxSizing() == BORDER_BOX)
+            return intrinsicContentHeight.value() + borderAndPaddingLogicalHeight();
         return intrinsicContentHeight;
+    }
     if (logicalHeightLength.isFillAvailable())
         return containingBlock()->availableLogicalHeight(ExcludeMarginBorderPadding) - borderAndPadding;
     ASSERT_NOT_REACHED();

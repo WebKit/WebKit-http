@@ -292,10 +292,14 @@ static int32_t deviceOrientation()
 
 - (BOOL)_isShowingVideoPictureInPicture
 {
+#if !HAVE(AVKIT)
+    return false;
+#else
     if (!_page || !_page->videoFullscreenManager())
         return false;
     
     return _page->videoFullscreenManager()->hasMode(WebCore::HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
+#endif
 }
 
 - (BOOL)_mayAutomaticallyShowVideoPictureInPicture
@@ -303,7 +307,7 @@ static int32_t deviceOrientation()
 #if !HAVE(AVKIT)
     return false;
 #else
-    if (!_page)
+    if (!_page || !_page->videoFullscreenManager())
         return false;
 
     return _page->videoFullscreenManager()->mayAutomaticallyShowVideoPictureInPicture();

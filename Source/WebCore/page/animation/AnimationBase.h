@@ -138,8 +138,8 @@ public:
     double progress(double scale = 1, double offset = 0, const TimingFunction* = nullptr) const;
 
     // Returns true if the animation state changed.
-    virtual bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* /*currentStyle*/, RenderStyle* /*targetStyle*/, RefPtr<RenderStyle>& /*animatedStyle*/) = 0;
-    virtual void getAnimatedStyle(RefPtr<RenderStyle>& /*animatedStyle*/) = 0;
+    virtual bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* /*currentStyle*/, RenderStyle* /*targetStyle*/, std::unique_ptr<RenderStyle>& /*animatedStyle*/) = 0;
+    virtual void getAnimatedStyle(std::unique_ptr<RenderStyle>& /*animatedStyle*/) = 0;
 
     virtual bool computeExtentOfTransformAnimation(LayoutRect&) const = 0;
 
@@ -181,7 +181,7 @@ public:
         if ((runningState & Paused) && inPausedState())
             return true;
 
-        if ((runningState & Running) && !inPausedState() && (m_animationState >= AnimationState::StartWaitStyleAvailable && m_animationState <= AnimationState::Done))
+        if ((runningState & Running) && !inPausedState() && (m_animationState >= AnimationState::StartWaitStyleAvailable && m_animationState < AnimationState::Done))
             return true;
 
         return false;

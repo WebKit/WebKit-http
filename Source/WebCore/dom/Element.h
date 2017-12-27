@@ -170,9 +170,9 @@ public:
 
     RefPtr<Attr> getAttributeNode(const AtomicString& name);
     RefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RefPtr<Attr> setAttributeNode(Attr*, ExceptionCode&);
-    RefPtr<Attr> setAttributeNodeNS(Attr*, ExceptionCode&);
-    RefPtr<Attr> removeAttributeNode(Attr*, ExceptionCode&);
+    RefPtr<Attr> setAttributeNode(Attr&, ExceptionCode&);
+    RefPtr<Attr> setAttributeNodeNS(Attr&, ExceptionCode&);
+    RefPtr<Attr> removeAttributeNode(Attr&, ExceptionCode&);
 
     RefPtr<Attr> attrIfExists(const QualifiedName&);
     RefPtr<Attr> attrIfExists(const AtomicString& localName, bool shouldIgnoreAttributeCase);
@@ -243,7 +243,7 @@ public:
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) { }
 
-    virtual RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&);
+    virtual RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&);
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;

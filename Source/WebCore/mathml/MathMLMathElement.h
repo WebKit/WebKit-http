@@ -39,7 +39,7 @@ public:
 private:
     MathMLMathElement(const QualifiedName& tagName, Document&);
 
-    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 };
     
 }

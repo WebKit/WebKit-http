@@ -41,7 +41,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderAttachment::RenderAttachment(HTMLAttachmentElement& element, Ref<RenderStyle>&& style)
+RenderAttachment::RenderAttachment(HTMLAttachmentElement& element, RenderStyle&& style)
     : RenderReplaced(element, WTFMove(style), LayoutSize())
 {
 }

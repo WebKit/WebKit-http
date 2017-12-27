@@ -217,6 +217,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
+    case GetMyArgumentByValOutOfBounds:
     case ForwardVarargs:
     case Switch:
     case TypeOf:
@@ -499,8 +500,8 @@ CapabilityLevel canCompile(Graph& graph)
                 case MiscUse:
                 case StringIdentUse:
                 case NotStringVarUse:
-                case MachineIntUse:
-                case DoubleRepMachineIntUse:
+                case AnyIntUse:
+                case DoubleRepAnyIntUse:
                     // These are OK.
                     break;
                 default:

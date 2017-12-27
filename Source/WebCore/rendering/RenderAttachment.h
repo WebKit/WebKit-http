@@ -36,7 +36,7 @@ class HTMLAttachmentElement;
 
 class RenderAttachment final : public RenderReplaced {
 public:
-    RenderAttachment(HTMLAttachmentElement&, Ref<RenderStyle>&&);
+    RenderAttachment(HTMLAttachmentElement&, RenderStyle&&);
 
     HTMLAttachmentElement& attachmentElement() const;
 

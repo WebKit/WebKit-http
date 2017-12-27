@@ -25,16 +25,17 @@
 
 WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.DataGrid
 {
-    constructor(columns, treeOutline, delegate, editCallback, deleteCallback)
+    constructor(columns, treeOutline, synchronizerDelegate, editCallback, deleteCallback)
     {
         super(columns, editCallback, deleteCallback);
 
         if (treeOutline)
-            this._treeOutlineDataGridSynchronizer = new WebInspector.TreeOutlineDataGridSynchronizer(treeOutline, this, delegate);
+            this._treeOutlineDataGridSynchronizer = new WebInspector.TreeOutlineDataGridSynchronizer(treeOutline, this, synchronizerDelegate);
 
         this.element.classList.add("timeline");
 
-        this._filterableColumns = [];
+        this._sortDelegate = null;
+        this._scopeBarColumns = [];
 
         // Check if any of the cells can be filtered.
         for (var [identifier, column] of this.columns) {
@@ -43,12 +44,12 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
             if (!scopeBar)
                 continue;
 
-            this._filterableColumns.push(identifier);
+            this._scopeBarColumns.push(identifier);
             scopeBar.columnIdentifier = identifier;
             scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectedItemsDidChange, this);
         }
 
-        if (this._filterableColumns.length > 1) {
+        if (this._scopeBarColumns.length > 1) {
             console.error("Creating a TimelineDataGrid with more than one filterable column is not yet supported.");
             return;
         }
@@ -78,6 +79,23 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
     }
 
     // Public
+
+    get sortDelegate()
+    {
+        return this._sortDelegate;
+    }
+
+    set sortDelegate(delegate)
+    {
+        delegate = delegate || null;
+        if (this._sortDelegate === delegate)
+            return;
+
+        this._sortDelegate = delegate;
+
+        if (this.sortOrder !== WebInspector.DataGrid.SortOrder.Indeterminate)
+            this.dispatchEventToListeners(WebInspector.DataGrid.Event.SortChanged);
+    }
 
     reset()
     {
@@ -129,31 +147,6 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
     {
         // Implemented by subclasses.
         return null;
-    }
-
-    treeElementMatchesActiveScopeFilters(treeElement)
-    {
-        if (!this._treeOutlineDataGridSynchronizer)
-            return false;
-
-        var dataGridNode = this._treeOutlineDataGridSynchronizer.dataGridNodeForTreeElement(treeElement);
-        console.assert(dataGridNode);
-
-        for (var identifier of this._filterableColumns) {
-            var scopeBar = this.columns.get(identifier).scopeBar;
-            if (!scopeBar || scopeBar.defaultItem.selected)
-                continue;
-
-            var value = dataGridNode.data[identifier];
-            var matchesFilter = scopeBar.selectedItems.some(function(scopeBarItem) {
-                return scopeBarItem.value === value;
-            });
-
-            if (!matchesFilter)
-                return false;
-        }
-
-        return true;
     }
 
     addRowInSortOrder(treeElement, dataGridNode, parentTreeElementOrDataGridNode)
@@ -215,6 +208,29 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
             return;
 
         this._scheduledDataGridNodeRefreshIdentifier = requestAnimationFrame(this._refreshDirtyDataGridNodes.bind(this));
+    }
+
+    hasCustomFilters()
+    {
+        return true;
+    }
+
+    matchNodeAgainstCustomFilters(node)
+    {
+        if (!super.matchNodeAgainstCustomFilters(node))
+            return false;
+
+        for (let identifier of this._scopeBarColumns) {
+            let scopeBar = this.columns.get(identifier).scopeBar;
+            if (!scopeBar || scopeBar.defaultItem.selected)
+                continue;
+
+            let value = node.data[identifier];
+            if (!scopeBar.selectedItems.some((scopeBarItem) => scopeBarItem.value === value))
+                return false;
+        }
+
+        return true;
     }
 
     // Private
@@ -282,6 +298,9 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
 
     _sort()
     {
+        if (!this.children.length)
+            return;
+
         let sortColumnIdentifier = this.sortColumnIdentifier;
         if (!sortColumnIdentifier)
             return;
@@ -357,6 +376,12 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
 
         var sortDirection = this.sortOrder === WebInspector.DataGrid.SortOrder.Ascending ? 1 : -1;
 
+        if (this._sortDelegate && typeof this._sortDelegate.dataGridSortComparator === "function") {
+            let result = this._sortDelegate.dataGridSortComparator(sortColumnIdentifier, sortDirection, node1, node2);
+            if (typeof result === "number")
+                return result;
+        }
+
         var value1 = node1.data[sortColumnIdentifier];
         var value2 = node2.data[sortColumnIdentifier];
 
@@ -384,27 +409,18 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
             value2 = value2 ? value2.displayName || "" : "";
         }
 
+        if (value1 instanceof WebInspector.SourceCodeLocation || value2 instanceof WebInspector.SourceCodeLocation) {
+            value1 = value1 ? value1.displayLocationString() || "" : "";
+            value2 = value2 ? value2.displayLocationString() || "" : "";
+        }
+
         // For everything else (mostly booleans).
         return (value1 < value2 ? -1 : (value1 > value2 ? 1 : 0)) * sortDirection;
     }
 
-    _updateScopeBarForcedVisibility()
-    {
-        for (var identifier of this._filterableColumns) {
-            var scopeBar = this.columns.get(identifier).scopeBar;
-            if (scopeBar) {
-                this.element.classList.toggle(WebInspector.TimelineDataGrid.HasNonDefaultFilterStyleClassName, scopeBar.hasNonDefaultItemSelected());
-                break;
-            }
-        }
-    }
-
     _scopeBarSelectedItemsDidChange(event)
     {
-        this._updateScopeBarForcedVisibility();
-
-        var columnIdentifier = event.target.columnIdentifier;
-        this.dispatchEventToListeners(WebInspector.TimelineDataGrid.Event.FiltersDidChange, {columnIdentifier});
+        this.filterDidChange();
     }
 
     _dataGridSelectedNodeChanged(event)
@@ -532,11 +548,8 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
     }
 };
 
+WebInspector.TimelineDataGrid.WasExpandedDuringFilteringSymbol = Symbol("was-expanded-during-filtering");
+
 WebInspector.TimelineDataGrid.HasNonDefaultFilterStyleClassName = "has-non-default-filter";
 WebInspector.TimelineDataGrid.DelayedPopoverShowTimeout = 250;
 WebInspector.TimelineDataGrid.DelayedPopoverHideContentClearTimeout = 500;
-
-WebInspector.TimelineDataGrid.Event = {
-    FiltersDidChange: "timelinedatagrid-filters-did-change"
-};
-

@@ -1562,6 +1562,16 @@ void webkit_dom_test_obj_method_with_optional_string(WebKitDOMTestObj* self, con
     item->methodWithOptionalString(convertedStr);
 }
 
+void webkit_dom_test_obj_method_with_optional_atomic_string(WebKitDOMTestObj* self, const gchar* str)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(str);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedStr = WTF::String::fromUTF8(str);
+    item->methodWithOptionalAtomicString(convertedStr);
+}
+
 void webkit_dom_test_obj_method_with_optional_string_and_default_value(WebKitDOMTestObj* self, const gchar* str)
 {
     WebCore::JSMainThreadNullState state;
@@ -1572,24 +1582,138 @@ void webkit_dom_test_obj_method_with_optional_string_and_default_value(WebKitDOM
     item->methodWithOptionalStringAndDefaultValue(convertedStr);
 }
 
-void webkit_dom_test_obj_method_with_optional_string_is_undefined(WebKitDOMTestObj* self, const gchar* str)
+void webkit_dom_test_obj_method_with_optional_atomic_string_and_default_value(WebKitDOMTestObj* self, const gchar* str)
 {
     WebCore::JSMainThreadNullState state;
     g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
     g_return_if_fail(str);
     WebCore::TestObj* item = WebKit::core(self);
     WTF::String convertedStr = WTF::String::fromUTF8(str);
-    item->methodWithOptionalStringIsUndefined(convertedStr);
+    item->methodWithOptionalAtomicStringAndDefaultValue(convertedStr);
 }
 
-void webkit_dom_test_obj_method_with_optional_string_is_null_string(WebKitDOMTestObj* self, const gchar* str)
+void webkit_dom_test_obj_method_with_optional_string_is_null(WebKitDOMTestObj* self, const gchar* str)
 {
     WebCore::JSMainThreadNullState state;
     g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
     g_return_if_fail(str);
     WebCore::TestObj* item = WebKit::core(self);
     WTF::String convertedStr = WTF::String::fromUTF8(str);
-    item->methodWithOptionalStringIsNullString(convertedStr);
+    item->methodWithOptionalStringIsNull(convertedStr);
+}
+
+void webkit_dom_test_obj_method_with_optional_atomic_string_is_null(WebKitDOMTestObj* self, const gchar* str)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(str);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedStr = WTF::String::fromUTF8(str);
+    item->methodWithOptionalAtomicStringIsNull(convertedStr);
+}
+
+void webkit_dom_test_obj_method_with_optional_string_is_empty_string(WebKitDOMTestObj* self, const gchar* str)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(str);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedStr = WTF::String::fromUTF8(str);
+    item->methodWithOptionalStringIsEmptyString(convertedStr);
+}
+
+void webkit_dom_test_obj_method_with_optional_atomic_string_is_empty_string(WebKitDOMTestObj* self, const gchar* str)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(str);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedStr = WTF::String::fromUTF8(str);
+    item->methodWithOptionalAtomicStringIsEmptyString(convertedStr);
+}
+
+void webkit_dom_test_obj_method_with_optional_double_is_na_n(WebKitDOMTestObj* self, gdouble number)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalDoubleIsNaN(number);
+}
+
+void webkit_dom_test_obj_method_with_optional_float_is_na_n(WebKitDOMTestObj* self, gfloat number)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalFloatIsNaN(number);
+}
+
+void webkit_dom_test_obj_method_with_optional_long_long(WebKitDOMTestObj* self, gint64 number)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalLongLong(number);
+}
+
+void webkit_dom_test_obj_method_with_optional_long_long_is_zero(WebKitDOMTestObj* self, gint64 number)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalLongLongIsZero(number);
+}
+
+void webkit_dom_test_obj_method_with_optional_unsigned_long_long(WebKitDOMTestObj* self, guint64 number)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalUnsignedLongLong(number);
+}
+
+void webkit_dom_test_obj_method_with_optional_unsigned_long_long_is_zero(WebKitDOMTestObj* self, guint64 number)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalUnsignedLongLongIsZero(number);
+}
+
+void webkit_dom_test_obj_method_with_optional_array(WebKitDOMTestObj* self, const gchar* array)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(WEBKIT_DOM_IS_DOM_STRING[](array));
+    WebCore::TestObj* item = WebKit::core(self);
+    WebCore::DOMString[]* convertedArray = WebKit::core(array);
+    item->methodWithOptionalArray(convertedArray);
+}
+
+void webkit_dom_test_obj_method_with_optional_array_is_empty(WebKitDOMTestObj* self, const gchar* array)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    g_return_if_fail(WEBKIT_DOM_IS_DOM_STRING[](array));
+    WebCore::TestObj* item = WebKit::core(self);
+    WebCore::DOMString[]* convertedArray = WebKit::core(array);
+    item->methodWithOptionalArrayIsEmpty(convertedArray);
+}
+
+void webkit_dom_test_obj_method_with_optional_boolean(WebKitDOMTestObj* self, gboolean b)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalBoolean(b);
+}
+
+void webkit_dom_test_obj_method_with_optional_boolean_is_false(WebKitDOMTestObj* self, gboolean b)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
+    WebCore::TestObj* item = WebKit::core(self);
+    item->methodWithOptionalBooleanIsFalse(b);
 }
 
 gchar* webkit_dom_test_obj_conditional_method1(WebKitDOMTestObj* self)

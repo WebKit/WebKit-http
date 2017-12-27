@@ -36,7 +36,7 @@ public:
 private:
     SVGGElement(const QualifiedName&, Document&);
 
-    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
     bool isValid() const override { return SVGTests::isValid(); }
 

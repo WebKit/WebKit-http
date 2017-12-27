@@ -40,7 +40,7 @@ class HTMLSelectElement;
 
 class RenderListBox final : public RenderBlockFlow, public ScrollableArea {
 public:
-    RenderListBox(HTMLSelectElement&, Ref<RenderStyle>&&);
+    RenderListBox(HTMLSelectElement&, RenderStyle&&);
     virtual ~RenderListBox();
 
     HTMLSelectElement& selectElement() const;

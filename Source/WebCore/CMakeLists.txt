@@ -1130,7 +1130,6 @@ set(WebCore_SOURCES
     bindings/js/JSDOMPromise.cpp
     bindings/js/JSDOMStringListCustom.cpp
     bindings/js/JSDOMStringMapCustom.cpp
-    bindings/js/JSDOMTokenListCustom.cpp
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
     bindings/js/JSDOMWindowShell.cpp
@@ -1151,6 +1150,7 @@ set(WebCore_SOURCES
     bindings/js/JSEventTargetCustom.cpp
     bindings/js/JSExceptionBase.cpp
     bindings/js/JSFetchResponseCustom.cpp
+    bindings/js/JSFileCustom.cpp
     bindings/js/JSFileReaderCustom.cpp
     bindings/js/JSGeolocationCustom.cpp
     bindings/js/JSHTMLAllCollectionCustom.cpp

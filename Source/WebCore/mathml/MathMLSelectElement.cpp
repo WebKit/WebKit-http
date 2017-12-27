@@ -52,7 +52,7 @@ Ref<MathMLSelectElement> MathMLSelectElement::create(const QualifiedName& tagNam
     return adoptRef(*new MathMLSelectElement(tagName, document));
 }
 
-RenderPtr<RenderElement> MathMLSelectElement::createElementRenderer(Ref<RenderStyle>&& style, const RenderTreePosition&)
+RenderPtr<RenderElement> MathMLSelectElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderMathMLRow>(*this, WTFMove(style));
 }

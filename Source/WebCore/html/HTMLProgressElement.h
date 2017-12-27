@@ -52,7 +52,7 @@ private:
     bool shouldAppearIndeterminate() const override;
     bool supportLabels() const override { return true; }
 
-    RenderPtr<RenderElement> createElementRenderer(Ref<RenderStyle>&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
     bool childShouldCreateRenderer(const Node&) const override;
     RenderProgress* renderProgress() const;
 

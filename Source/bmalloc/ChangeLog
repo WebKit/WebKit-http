@@ -1,3 +1,63 @@
+2016-04-25  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: vm allocations should plant guard pages
+        https://bugs.webkit.org/show_bug.cgi?id=156937
+
+        Rolling back in r199936 with a fix for the memory regression.
+
+2016-04-23  Gavin Barraclough  <barraclough@apple.com>
+
+        bmalloc: vm allocations should plant guard pages
+        https://bugs.webkit.org/show_bug.cgi?id=156937
+
+        Rolling out - looks like this is memory regression.
+
+        * bmalloc/Object.h:
+        (bmalloc::Object::operator+):
+        (bmalloc::Object::operator<=):
+        (bmalloc::Object::operator-): Deleted.
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmDeallocate):
+        (bmalloc::vmRevokePermissions): Deleted.
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateSmallChunk):
+
+2016-04-22  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: vm allocations should plant guard pages
+        https://bugs.webkit.org/show_bug.cgi?id=156937
+
+        Reviewed by Michael Saboff.
+
+        * bmalloc/Object.h:
+        (bmalloc::Object::operator-): Added a - helper.
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmRevokePermissions): Added a helper to revoke permissions on
+        a VM region. We use this for guard pages.
+
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::allocateSmallChunk): Add guard pages to the start and
+        end of the chunk.
+
+        Note that we don't guard large chunks becuase we need to be able to merge
+        them. Otherwise, we will run out of virtual addresses.
+
+2016-04-22  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: Constify introspect function pointer table
+        https://bugs.webkit.org/show_bug.cgi?id=156936
+
+        Reviewed by Michael Saboff.
+
+        * bmalloc/Zone.cpp:
+        (bmalloc::Zone::Zone): Declaring this function pointer table const puts
+        it in the read-only section of the binary, providing a little hardening
+        against overwriting the function pointers at runtime. (We have to
+        const_cast when assigning because the API declares a pointer to non-const,
+        but we happen to know it will never try to write through that pointer.
+        This is not my favorite API.)
+
 2016-04-19  Geoffrey Garen  <ggaren@apple.com>
 
         bmalloc: fix up overflow checks

@@ -76,6 +76,7 @@ namespace WebCore {
 class FontDescription;
 class SharedBuffer;
 
+// This class is conceptually immutable. Once created, no instances should ever change (in an observable way).
 class FontPlatformData {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -88,6 +89,10 @@ public:
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT FontPlatformData(CTFontRef, float size, bool syntheticBold = false, bool syntheticOblique = false, FontOrientation = Horizontal, FontWidthVariant = RegularWidth, TextRenderingMode = AutoTextRendering);
 #endif
+
+    static FontPlatformData cloneWithOrientation(const FontPlatformData&, FontOrientation);
+    static FontPlatformData cloneWithSyntheticOblique(const FontPlatformData&, bool);
+    static FontPlatformData cloneWithSize(const FontPlatformData&, float);
 
 #if USE(CG)
     FontPlatformData(CGFontRef, float size, bool syntheticBold, bool syntheticOblique, FontOrientation, FontWidthVariant, TextRenderingMode);
@@ -111,7 +116,6 @@ public:
 #elif PLATFORM(COCOA)
     CTFontRef font() const { return m_font.get(); }
     WEBCORE_EXPORT CTFontRef registeredFont() const; // Returns nullptr iff the font is not registered, such as web fonts (otherwise returns font()).
-    void setFont(CTFontRef);
 
     CTFontRef ctFont() const;
     static RetainPtr<CFTypeRef> objectForEqualityCheck(CTFontRef);
@@ -122,13 +126,11 @@ public:
 #if USE(APPKIT)
     // FIXME: Remove this when all NSFont usage is removed.
     NSFont *nsFont() const { return (NSFont *)m_font.get(); }
-    void setNSFont(NSFont *font) { setFont(reinterpret_cast<CTFontRef>(font)); }
 #endif
 #endif
 
 #if PLATFORM(WIN) || PLATFORM(COCOA)
     bool isSystemFont() const { return m_isSystemFont; }
-    void setIsSystemFont(bool isSystemFont) { m_isSystemFont = isSystemFont; }
 #endif
 
 #if USE(CG)
@@ -137,7 +139,6 @@ public:
 
     bool isFixedPitch() const;
     float size() const { return m_size; }
-    void setSize(float size) { m_size = size; }
     bool syntheticBold() const { return m_syntheticBold; }
     bool syntheticOblique() const { return m_syntheticOblique; }
     bool isColorBitmapFont() const { return m_isColorBitmapFont; }
@@ -145,9 +146,6 @@ public:
     FontWidthVariant widthVariant() const { return m_widthVariant; }
     TextRenderingMode textRenderingMode() const { return m_textRenderingMode; }
     bool isForTextCombine() const { return widthVariant() != RegularWidth; } // Keep in sync with callers of FontDescription::setWidthVariant().
-
-    void setOrientation(FontOrientation orientation) { m_orientation = orientation; }
-    void setSyntheticOblique(bool syntheticOblique) { m_syntheticOblique = syntheticOblique; }
 
 #if USE(CAIRO)
     cairo_scaled_font_t* scaledFont() const { return m_scaledFont; }
@@ -201,7 +199,7 @@ public:
     }
 
 #if PLATFORM(COCOA) || PLATFORM(WIN)
-    PassRefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
+    RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 #endif
 
 #ifndef NDEBUG
@@ -219,15 +217,6 @@ private:
     void platformDataInit(HFONT, float size, HDC, WCHAR* faceName);
 #endif
 
-public:
-    bool m_syntheticBold { false };
-    bool m_syntheticOblique { false };
-    FontOrientation m_orientation { Horizontal };
-    float m_size { 0 };
-    FontWidthVariant m_widthVariant { RegularWidth };
-    TextRenderingMode m_textRenderingMode { AutoTextRendering };
-
-private:
 #if PLATFORM(COCOA)
     // FIXME: Get rid of one of these. These two fonts are subtly different, and it is not obvious which one to use where.
     RetainPtr<CTFontRef> m_font;
@@ -243,9 +232,21 @@ private:
     cairo_scaled_font_t* m_scaledFont { nullptr };
 #endif
 
+    // The values below are common to all ports
+    // FIXME: If they're common to all ports, they should move to Font
+    float m_size { 0 };
+
+    FontOrientation m_orientation { Horizontal };
+    FontWidthVariant m_widthVariant { RegularWidth };
+    TextRenderingMode m_textRenderingMode { AutoTextRendering };
+
+    bool m_syntheticBold { false };
+    bool m_syntheticOblique { false };
     bool m_isColorBitmapFont { false };
     bool m_isHashTableDeletedValue { false };
     bool m_isSystemFont { false };
+    // The values above are common to all ports
+
 #if PLATFORM(IOS)
     bool m_isEmoji { false };
 #endif

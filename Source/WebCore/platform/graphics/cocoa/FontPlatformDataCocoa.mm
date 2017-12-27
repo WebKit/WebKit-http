@@ -108,28 +108,6 @@ CTFontRef FontPlatformData::registeredFont() const
     return nullptr;
 }
 
-void FontPlatformData::setFont(CTFontRef font)
-{
-    ASSERT_ARG(font, font);
-
-    if (m_font == font)
-        return;
-
-    m_font = font;
-    m_size = CTFontGetSize(font);
-    m_cgFont = adoptCF(CTFontCopyGraphicsFont(font, nullptr));
-
-    CTFontSymbolicTraits traits = CTFontGetSymbolicTraits(m_font.get());
-    m_isColorBitmapFont = traits & kCTFontTraitColorGlyphs;
-    m_isSystemFont = CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(m_font.get())).get());
-
-#if PLATFORM(IOS)
-    m_isEmoji = CTFontIsAppleColorEmoji(m_font.get());
-#endif
-    
-    m_ctFont = nullptr;
-}
-
 inline int mapFontWidthVariantToCTFeatureSelector(FontWidthVariant variant)
 {
     switch(variant) {
@@ -210,7 +188,7 @@ RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck() const
     return objectForEqualityCheck(ctFont());
 }
 
-PassRefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
+RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
 {
     if (RetainPtr<CFDataRef> data = adoptCF(CGFontCopyTableForTag(cgFont(), table)))
         return SharedBuffer::wrapCFData(data.get());

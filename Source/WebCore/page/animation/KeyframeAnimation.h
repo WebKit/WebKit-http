@@ -40,25 +40,23 @@ class RenderStyle;
 // A KeyframeAnimation tracks the state of an explicit animation for a single RenderElement.
 class KeyframeAnimation final : public AnimationBase {
 public:
-    static Ref<KeyframeAnimation> create(Animation& animation, RenderElement* renderer, int index, CompositeAnimation* compositeAnimation, RenderStyle* unanimatedStyle)
+    static Ref<KeyframeAnimation> create(Animation& animation, RenderElement* renderer, CompositeAnimation* compositeAnimation, RenderStyle* unanimatedStyle)
     {
-        return adoptRef(*new KeyframeAnimation(animation, renderer, index, compositeAnimation, unanimatedStyle));
+        return adoptRef(*new KeyframeAnimation(animation, renderer, compositeAnimation, unanimatedStyle));
     }
 
-    bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* currentStyle, RenderStyle* targetStyle, RefPtr<RenderStyle>& animatedStyle) override;
-    void getAnimatedStyle(RefPtr<RenderStyle>&) override;
+    bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* currentStyle, RenderStyle* targetStyle, std::unique_ptr<RenderStyle>& animatedStyle) override;
+    void getAnimatedStyle(std::unique_ptr<RenderStyle>&) override;
 
     bool computeExtentOfTransformAnimation(LayoutRect&) const override;
 
     const KeyframeList& keyframes() const { return m_keyframes; }
 
     const AtomicString& name() const { return m_keyframes.animationName(); }
-    int index() const { return m_index; }
-    void setIndex(int i) { m_index = i; }
 
     bool hasAnimationForProperty(CSSPropertyID) const;
     
-    void setUnanimatedStyle(PassRefPtr<RenderStyle> style) { m_unanimatedStyle = style; }
+    void setUnanimatedStyle(std::unique_ptr<RenderStyle> style) { m_unanimatedStyle = WTFMove(style); }
     RenderStyle* unanimatedStyle() const { return m_unanimatedStyle.get(); }
 
     double timeToNextService() override;
@@ -90,16 +88,15 @@ protected:
 #endif
 
 private:
-    KeyframeAnimation(Animation&, RenderElement*, int index, CompositeAnimation*, RenderStyle* unanimatedStyle);
+    KeyframeAnimation(Animation&, RenderElement*, CompositeAnimation*, RenderStyle* unanimatedStyle);
     virtual ~KeyframeAnimation();
     
     // Get the styles for the given property surrounding the current animation time and the progress between them.
     void fetchIntervalEndpointsForProperty(CSSPropertyID, const RenderStyle*& fromStyle, const RenderStyle*& toStyle, double& progress) const;
 
     KeyframeList m_keyframes;
-    RefPtr<RenderStyle> m_unanimatedStyle; // The style just before we started animation
+    std::unique_ptr<RenderStyle> m_unanimatedStyle; // The style just before we started animation
 
-    int m_index; // The order in which this animation appears in the animation-name style.
     bool m_startEventDispatched { false };
 };
 

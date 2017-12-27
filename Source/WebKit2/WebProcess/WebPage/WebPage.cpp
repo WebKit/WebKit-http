@@ -401,7 +401,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageConfiguration.plugInClient = new WebPlugInClient(*this);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(*this);
-    pageConfiguration.diagnosticLoggingClient = new WebDiagnosticLoggingClient(*this);
+    pageConfiguration.diagnosticLoggingClient = std::make_unique<WebDiagnosticLoggingClient>(*this);
 
     pageConfiguration.applicationCacheStorage = &WebProcess::singleton().applicationCacheStorage();
     pageConfiguration.databaseProvider = WebDatabaseProvider::getOrCreate(m_pageGroup->pageGroupID());
@@ -3195,7 +3195,7 @@ WebInspectorUI* WebPage::inspectorUI()
     return m_inspectorUI.get();
 }
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 WebPlaybackSessionManager& WebPage::playbackSessionManager()
 {
     if (!m_playbackSessionManager)

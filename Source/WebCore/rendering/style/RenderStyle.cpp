@@ -68,7 +68,7 @@ struct SameSizeAsBorderValue {
 
 COMPILE_ASSERT(sizeof(BorderValue) == sizeof(SameSizeAsBorderValue), BorderValue_should_not_grow);
 
-struct SameSizeAsRenderStyle : public RefCounted<SameSizeAsRenderStyle> {
+struct SameSizeAsRenderStyle {
     void* dataRefs[7];
     void* ownPtrs[1];
     void* dataRefSvgStyle;
@@ -79,50 +79,58 @@ struct SameSizeAsRenderStyle : public RefCounted<SameSizeAsRenderStyle> {
     struct NonInheritedFlags {
         uint64_t m_flags;
     } noninherited_flags;
+#if !ASSERT_DISABLED
+    bool deletionCheck;
+#endif
 };
 
 COMPILE_ASSERT(sizeof(RenderStyle) == sizeof(SameSizeAsRenderStyle), RenderStyle_should_stay_small);
 
-inline RenderStyle& defaultStyle()
+RenderStyle& RenderStyle::defaultStyle()
 {
-    static RenderStyle& style = RenderStyle::createDefaultStyle().leakRef();
+    static RenderStyle& style = *new RenderStyle(CreateDefaultStyle);
     return style;
 }
 
-Ref<RenderStyle> RenderStyle::create()
+RenderStyle RenderStyle::create()
 {
-    return adoptRef(*new RenderStyle(defaultStyle()));
+    return clone(defaultStyle());
 }
 
-Ref<RenderStyle> RenderStyle::createDefaultStyle()
+std::unique_ptr<RenderStyle> RenderStyle::createPtr()
 {
-    return adoptRef(*new RenderStyle(true));
+    return clonePtr(defaultStyle());
 }
 
-Ref<RenderStyle> RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay display)
+RenderStyle RenderStyle::clone(const RenderStyle& style)
 {
-    auto newStyle = RenderStyle::create();
-    newStyle.get().inheritFrom(parentStyle);
-    newStyle.get().inheritUnicodeBidiFrom(parentStyle);
-    newStyle.get().setDisplay(display);
+    return RenderStyle(style, Clone);
+}
+
+std::unique_ptr<RenderStyle> RenderStyle::clonePtr(const RenderStyle& style)
+{
+    return std::make_unique<RenderStyle>(style, Clone);
+}
+
+RenderStyle RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle& parentStyle, EDisplay display)
+{
+    auto newStyle = create();
+    newStyle.inheritFrom(&parentStyle);
+    newStyle.inheritUnicodeBidiFrom(&parentStyle);
+    newStyle.setDisplay(display);
     return newStyle;
 }
 
-Ref<RenderStyle> RenderStyle::clone(const RenderStyle* other)
-{
-    return adoptRef(*new RenderStyle(*other));
-}
-
-Ref<RenderStyle> RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle)
+RenderStyle RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle& pseudoStyle)
 {
     ASSERT(pseudoStyle.styleType() == BEFORE || pseudoStyle.styleType() == AFTER);
 
-    auto style = RenderStyle::create();
-    style.get().inheritFrom(&pseudoStyle);
+    auto style = create();
+    style.inheritFrom(&pseudoStyle);
     return style;
 }
 
-ALWAYS_INLINE RenderStyle::RenderStyle(bool)
+RenderStyle::RenderStyle(CreateDefaultStyleTag)
     : m_box(StyleBoxData::create())
     , visual(StyleVisualData::create())
     , m_background(StyleBackgroundData::create())
@@ -159,19 +167,26 @@ ALWAYS_INLINE RenderStyle::RenderStyle(bool)
     static_assert((sizeof(NonInheritedFlags) <= 8), "NonInheritedFlags does not grow");
 }
 
-ALWAYS_INLINE RenderStyle::RenderStyle(const RenderStyle& o)
-    : RefCounted<RenderStyle>()
-    , m_box(o.m_box)
-    , visual(o.visual)
-    , m_background(o.m_background)
-    , surround(o.surround)
-    , rareNonInheritedData(o.rareNonInheritedData)
-    , rareInheritedData(o.rareInheritedData)
-    , inherited(o.inherited)
-    , m_svgStyle(o.m_svgStyle)
-    , inherited_flags(o.inherited_flags)
-    , noninherited_flags(o.noninherited_flags)
+RenderStyle::RenderStyle(const RenderStyle& other, CloneTag)
+    : m_box(other.m_box)
+    , visual(other.visual)
+    , m_background(other.m_background)
+    , surround(other.surround)
+    , rareNonInheritedData(other.rareNonInheritedData)
+    , rareInheritedData(other.rareInheritedData)
+    , inherited(other.inherited)
+    , m_svgStyle(other.m_svgStyle)
+    , inherited_flags(other.inherited_flags)
+    , noninherited_flags(other.noninherited_flags)
 {
+}
+
+RenderStyle::~RenderStyle()
+{
+#if !ASSERT_DISABLED
+    ASSERT(!m_deletionHasBegun);
+    m_deletionHasBegun = true;
+#endif
 }
 
 static inline StyleSelfAlignmentData resolveAlignmentData(const RenderStyle& parentStyle, const RenderStyle& childStyle, ItemPosition resolvedAutoPositionForRenderer)
@@ -287,11 +302,6 @@ bool RenderStyle::operator==(const RenderStyle& o) const
             ;
 }
 
-bool RenderStyle::isStyleAvailable() const
-{
-    return !Style::isPlaceholderStyle(*this);
-}
-
 bool RenderStyle::hasUniquePseudoStyle() const
 {
     if (!m_cachedPseudoStyles || styleType() != NOPSEUDO)
@@ -323,7 +333,7 @@ RenderStyle* RenderStyle::getCachedPseudoStyle(PseudoId pid) const
     return nullptr;
 }
 
-RenderStyle* RenderStyle::addCachedPseudoStyle(PassRefPtr<RenderStyle> pseudo)
+RenderStyle* RenderStyle::addCachedPseudoStyle(std::unique_ptr<RenderStyle> pseudo)
 {
     if (!pseudo)
         return nullptr;
@@ -335,7 +345,7 @@ RenderStyle* RenderStyle::addCachedPseudoStyle(PassRefPtr<RenderStyle> pseudo)
     if (!m_cachedPseudoStyles)
         m_cachedPseudoStyles = std::make_unique<PseudoStyleCache>();
 
-    m_cachedPseudoStyles->append(pseudo);
+    m_cachedPseudoStyles->append(WTFMove(pseudo));
 
     return result;
 }

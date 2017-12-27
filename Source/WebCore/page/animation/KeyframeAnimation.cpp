@@ -41,11 +41,10 @@
 
 namespace WebCore {
 
-KeyframeAnimation::KeyframeAnimation(Animation& animation, RenderElement* renderer, int index, CompositeAnimation* compositeAnimation, RenderStyle* unanimatedStyle)
+KeyframeAnimation::KeyframeAnimation(Animation& animation, RenderElement* renderer, CompositeAnimation* compositeAnimation, RenderStyle* unanimatedStyle)
     : AnimationBase(animation, renderer, compositeAnimation)
     , m_keyframes(animation.name())
-    , m_unanimatedStyle(unanimatedStyle)
-    , m_index(index)
+    , m_unanimatedStyle(RenderStyle::clonePtr(*unanimatedStyle))
 {
     // Get the keyframe RenderStyles
     if (m_object && m_object->element())
@@ -125,20 +124,24 @@ void KeyframeAnimation::fetchIntervalEndpointsForProperty(CSSPropertyID property
     prog = progress(scale, offset, prevKeyframe.timingFunction(name()));
 }
 
-bool KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderElement*, const RenderStyle*, RenderStyle* targetStyle, RefPtr<RenderStyle>& animatedStyle)
+bool KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderElement*, const RenderStyle*, RenderStyle* targetStyle, std::unique_ptr<RenderStyle>& animatedStyle)
 {
     // Fire the start timeout if needed
     fireAnimationEventsIfNeeded();
     
     // If we have not yet started, we will not have a valid start time, so just start the animation if needed.
-    if (isNew() && m_animation->playState() == AnimPlayStatePlaying && !compositeAnimation->isSuspended())
-        updateStateMachine(AnimationStateInput::StartAnimation, -1);
+    if (isNew()) {
+        if (m_animation->playState() == AnimPlayStatePlaying && !compositeAnimation->isSuspended())
+            updateStateMachine(AnimationStateInput::StartAnimation, -1);
+        else if (m_animation->playState() == AnimPlayStatePaused)
+            updateStateMachine(AnimationStateInput::PlayStatePaused, -1);
+    }
 
     // If we get this far and the animation is done, it means we are cleaning up a just finished animation.
     // If so, we need to send back the targetStyle.
     if (postActive()) {
         if (!animatedStyle)
-            animatedStyle = const_cast<RenderStyle*>(targetStyle);
+            animatedStyle = RenderStyle::clonePtr(*targetStyle);
         return false;
     }
 
@@ -161,7 +164,7 @@ bool KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderEl
     // Run a cycle of animation.
     // We know we will need a new render style, so make one if needed.
     if (!animatedStyle)
-        animatedStyle = RenderStyle::clone(targetStyle);
+        animatedStyle = RenderStyle::clonePtr(*targetStyle);
 
     // FIXME: we need to be more efficient about determining which keyframes we are animating between.
     // We should cache the last pair or something.
@@ -184,18 +187,17 @@ bool KeyframeAnimation::animate(CompositeAnimation* compositeAnimation, RenderEl
     return state() != oldState;
 }
 
-void KeyframeAnimation::getAnimatedStyle(RefPtr<RenderStyle>& animatedStyle)
+void KeyframeAnimation::getAnimatedStyle(std::unique_ptr<RenderStyle>& animatedStyle)
 {
-    // If we're in the delay phase and we're not backwards filling, tell the caller
-    // to use the current style.
-    if (waitingToStart() && m_animation->delay() > 0 && !m_animation->fillsBackwards())
+    // If we're done, or in the delay phase and we're not backwards filling, tell the caller to use the current style.
+    if (postActive() || (waitingToStart() && m_animation->delay() > 0 && !m_animation->fillsBackwards()))
         return;
 
     if (!m_keyframes.size())
         return;
 
     if (!animatedStyle)
-        animatedStyle = RenderStyle::clone(&m_object->style());
+        animatedStyle = RenderStyle::clonePtr(m_object->style());
 
     for (auto propertyID : m_keyframes.properties()) {
         // Get the from/to styles and progress between

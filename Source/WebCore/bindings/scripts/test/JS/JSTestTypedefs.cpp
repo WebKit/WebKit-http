@@ -463,14 +463,7 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionFunc(ExecState* stat
         return throwThisTypeError(*state, "TestTypedefs", "func");
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestTypedefs::info());
     auto& impl = castedThis->wrapped();
-
-    size_t argsCount = state->argumentCount();
-    if (argsCount <= 0) {
-        impl.func();
-        return JSValue::encode(jsUndefined());
-    }
-
-    Vector<int> x = toNativeArray<int>(state, state->argument(0));
+    Vector<int> x = state->argument(0).isUndefined() ? Vector<int>() : toNativeArray<int>(state, state->uncheckedArgument(0));
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
     impl.func(x);
@@ -506,12 +499,7 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionSetShadow(ExecState*
     String color = state->argument(3).toString(state)->value(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    if (argsCount <= 4) {
-        impl.setShadow(width, height, blur, color);
-        return JSValue::encode(jsUndefined());
-    }
-
-    float alpha = state->argument(4).toFloat(state);
+    Optional<float> alpha = state->argument(4).isUndefined() ? Optional<float>() : state->uncheckedArgument(4).toFloat(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
     impl.setShadow(width, height, blur, color, alpha);

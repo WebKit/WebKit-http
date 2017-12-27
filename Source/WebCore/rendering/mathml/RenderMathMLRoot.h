@@ -42,8 +42,7 @@ class RenderMathMLRoot : public RenderMathMLBlock {
 friend class RenderMathMLRootWrapper;
 
 public:
-    RenderMathMLRoot(Element&, Ref<RenderStyle>&&);
-    RenderMathMLRoot(Document&, Ref<RenderStyle>&&);
+    RenderMathMLRoot(Element&, RenderStyle&&);
 
     void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
@@ -79,7 +78,7 @@ class RenderMathMLRootWrapper final : public RenderMathMLRow {
 friend class RenderMathMLRoot;
 
 public:
-    RenderMathMLRootWrapper(Document& document, Ref<RenderStyle>&& style)
+    RenderMathMLRootWrapper(Document& document, RenderStyle&& style)
         : RenderMathMLRow(document, WTFMove(style)) { }
 
 private:

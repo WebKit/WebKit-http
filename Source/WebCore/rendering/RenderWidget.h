@@ -79,7 +79,7 @@ public:
     void deref();
 
 protected:
-    RenderWidget(HTMLFrameOwnerElement&, Ref<RenderStyle>&&);
+    RenderWidget(HTMLFrameOwnerElement&, RenderStyle&&);
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
     void layout() override;
