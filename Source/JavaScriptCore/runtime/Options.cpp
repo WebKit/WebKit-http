@@ -53,6 +53,15 @@
 
 namespace JSC {
 
+static bool allowRestrictedOptions()
+{
+#ifdef NDEBUG
+    return false;
+#else
+    return true;
+#endif
+}
+
 static bool parse(const char* string, bool& value)
 {
     if (!strcasecmp(string, "true") || !strcasecmp(string, "yes") || !strcmp(string, "1")) {
@@ -115,13 +124,15 @@ static bool parse(const char* string, GCLogging::Level& value)
 }
 
 template<typename T>
-bool overrideOptionWithHeuristic(T& variable, const char* name)
+bool overrideOptionWithHeuristic(T& variable, const char* name, Options::Availability availability)
 {
+    bool isAvailable = (availability != Options::Availability::Restricted) || allowRestrictedOptions();
+
     const char* stringValue = getenv(name);
     if (!stringValue)
         return false;
     
-    if (parse(stringValue, variable))
+    if (isAvailable && parse(stringValue, variable))
         return true;
     
     fprintf(stderr, "WARNING: failed to parse %s=%s\n", name, stringValue);
@@ -232,8 +243,8 @@ Options::Entry Options::s_defaultOptions[Options::numberOfOptions];
 
 // Realize the names for each of the options:
 const Options::EntryInfo Options::s_optionsInfo[Options::numberOfOptions] = {
-#define FOR_EACH_OPTION(type_, name_, defaultValue_, description_) \
-    { #name_, description_, Options::Type::type_##Type },
+#define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \
+    { #name_, description_, Options::Type::type_##Type, Availability::availability_ },
     JSC_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
 };
@@ -341,13 +352,6 @@ static void recomputeDependentOptions()
         Options::useOSREntryToFTL() = false;
     }
 
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    // Override globally for now. Longer term we'll just make the default
-    // be to have this option enabled, and have platforms that don't support
-    // it just silently use a single mapping.
-    Options::useSeparatedWXHeap() = true;
-#endif
-
     // Compute the maximum value of the reoptimization retry counter. This is simply
     // the largest value at which we don't overflow the execute counter, when using it
     // to left-shift the execution counter by this amount. Currently the value ends
@@ -369,7 +373,7 @@ void Options::initialize()
         initializeOptionsOnceFlag,
         [] {
             // Initialize each of the options with their default values:
-#define FOR_EACH_OPTION(type_, name_, defaultValue_, description_)      \
+#define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \
             name_() = defaultValue_;                                    \
             name_##Default() = defaultValue_;
             JSC_OPTIONS(FOR_EACH_OPTION)
@@ -392,8 +396,8 @@ void Options::initialize()
             if (hasBadOptions && Options::validateOptions())
                 CRASH();
 #else // PLATFORM(COCOA)
-#define FOR_EACH_OPTION(type_, name_, defaultValue_, description_)      \
-            overrideOptionWithHeuristic(name_(), "JSC_" #name_);
+#define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \
+            overrideOptionWithHeuristic(name_(), "JSC_" #name_, Availability::availability_);
             JSC_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
 #endif // PLATFORM(COCOA)
@@ -557,9 +561,11 @@ bool Options::setOptionWithoutAlias(const char* arg)
 
     // For each option, check if the specify arg is a match. If so, set the arg
     // if the value makes sense. Otherwise, move on to checking the next option.
-#define FOR_EACH_OPTION(type_, name_, defaultValue_, description_) \
+#define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \
     if (strlen(#name_) == static_cast<size_t>(equalStr - arg)      \
         && !strncmp(arg, #name_, equalStr - arg)) {                \
+        if (Availability::availability_ == Availability::Restricted && !allowRestrictedOptions()) \
+            return false;                                          \
         type_ value;                                               \
         value = (defaultValue_);                                   \
         bool success = parse(valueStr, value);                     \
@@ -675,6 +681,9 @@ void Options::dumpOption(StringBuilder& builder, DumpLevel level, OptionID id,
         return; // Illegal option.
 
     Option option(id);
+    if (option.availability() == Availability::Restricted && !allowRestrictedOptions())
+        return;
+
     bool wasOverridden = option.isOverridden();
     bool needsDescription = (level == DumpLevel::Verbose && option.description());
 

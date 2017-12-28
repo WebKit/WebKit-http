@@ -26,8 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FetchResponse_h
-#define FetchResponse_h
+#pragma once
 
 #if ENABLE(FETCH_API)
 
@@ -49,11 +48,11 @@ typedef int ExceptionCode;
 
 class FetchResponse final : public FetchBodyOwner {
 public:
+    enum class Type { Basic, Cors, Default, Error, Opaque, Opaqueredirect };
+
     static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, Type::Default, { }, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
     static Ref<FetchResponse> error(ScriptExecutionContext&);
     static RefPtr<FetchResponse> redirect(ScriptExecutionContext&, const String&, int, ExceptionCode&);
-    // FIXME: Binding generator should not require below method to handle optional status parameter.
-    static RefPtr<FetchResponse> redirect(ScriptExecutionContext& context, const String& url, ExceptionCode& ec) { return redirect(context, url, 302, ec); }
 
     using FetchPromise = DOMPromise<RefPtr<FetchResponse>, ExceptionCode>;
     static void fetch(ScriptExecutionContext&, FetchRequest&, const Dictionary&, FetchPromise&&);
@@ -61,7 +60,7 @@ public:
 
     void initializeWith(const Dictionary&, ExceptionCode&);
 
-    String type() const;
+    Type type() const;
     const String& url() const { return m_response.url().string(); }
     bool redirected() const { return m_isRedirected; }
     int status() const { return m_response.httpStatusCode(); }
@@ -77,8 +76,6 @@ public:
 #endif
 
 private:
-    enum class Type { Basic, Cors, Default, Error, Opaque, OpaqueRedirect };
-
     FetchResponse(ScriptExecutionContext&, Type, FetchBody&&, Ref<FetchHeaders>&&, ResourceResponse&&);
 
     static void startFetching(ScriptExecutionContext&, const FetchRequest&, FetchPromise&&);
@@ -119,8 +116,11 @@ private:
     Optional<BodyLoader> m_bodyLoader;
 };
 
+inline auto FetchResponse::type() const -> Type
+{
+    return m_type;
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(FETCH_API)
-
-#endif // FetchResponse_h

@@ -67,6 +67,7 @@ public:
     static const Vector<RefPtr<API::Object>>& experimentalFeatures();
     bool isEnabledForFeature(const API::ExperimentalFeature&) const;
     void setEnabledForFeature(bool, const API::ExperimentalFeature&);
+    void enableAllExperimentalFeatures();
 
     // Exposed for WebKitTestRunner use only.
     void forceUpdate() { update(); }
@@ -80,6 +81,7 @@ private:
 
     void updateStringValueForKey(const String& key, const String& value);
     void updateBoolValueForKey(const String& key, bool value);
+    void updateBoolValueForExperimentalFeatureKey(const String& key, bool value);
     void updateUInt32ValueForKey(const String& key, uint32_t value);
     void updateDoubleValueForKey(const String& key, double value);
     void updateFloatValueForKey(const String& key, float value);

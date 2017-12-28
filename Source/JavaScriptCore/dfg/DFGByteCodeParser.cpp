@@ -49,6 +49,7 @@
 #include "PreciseJumpTargets.h"
 #include "PutByIdFlags.h"
 #include "PutByIdStatus.h"
+#include "RegExpPrototype.h"
 #include "StackAlignment.h"
 #include "StringConstructor.h"
 #include "StructureStubInfo.h"
@@ -721,11 +722,22 @@ private:
             Edge(child3));
         return addToGraph(result);
     }
+    Node* addToGraph(NodeType op, OpInfo info, Edge child1, Edge child2 = Edge(), Edge child3 = Edge())
+    {
+        Node* result = m_graph.addNode(SpecNone, op, currentNodeOrigin(), info, child1, child2, child3);
+        return addToGraph(result);
+    }
     Node* addToGraph(NodeType op, OpInfo info1, OpInfo info2, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
             SpecNone, op, currentNodeOrigin(), info1, info2,
             Edge(child1), Edge(child2), Edge(child3));
+        return addToGraph(result);
+    }
+    Node* addToGraph(NodeType op, OpInfo info1, OpInfo info2, Edge child1, Edge child2 = Edge(), Edge child3 = Edge())
+    {
+        Node* result = m_graph.addNode(
+            SpecNone, op, currentNodeOrigin(), info1, info2, child1, child2, child3);
         return addToGraph(result);
     }
     
@@ -2233,12 +2245,52 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         return true;
     }
         
-    case RegExpTestIntrinsic: {
+    case RegExpTestIntrinsic:
+    case RegExpTestFastIntrinsic: {
         if (argumentCountIncludingThis != 2)
             return false;
-        
+
+        if (intrinsic == RegExpTestIntrinsic) {
+            // Don't inline intrinsic if we exited due to one of the primordial RegExp checks failing.
+            if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell))
+                return false;
+
+            JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
+            Structure* regExpStructure = globalObject->regExpStructure();
+            m_graph.registerStructure(regExpStructure);
+            ASSERT(regExpStructure->storedPrototype().isObject());
+            ASSERT(regExpStructure->storedPrototype().asCell()->classInfo() == RegExpPrototype::info());
+
+            FrozenValue* regExpPrototypeObjectValue = m_graph.freeze(regExpStructure->storedPrototype());
+            Structure* regExpPrototypeStructure = regExpPrototypeObjectValue->structure();
+
+            auto isRegExpPropertySame = [&] (JSValue primordialProperty, UniquedStringImpl* propertyUID) {
+                JSValue currentProperty;
+                if (!m_graph.getRegExpPrototypeProperty(regExpStructure->storedPrototypeObject(), regExpPrototypeStructure, propertyUID, currentProperty))
+                    return false;
+                
+                return currentProperty == primordialProperty;
+            };
+
+            // Check that RegExp.exec is still the primordial RegExp.prototype.exec
+            if (!isRegExpPropertySame(globalObject->regExpProtoExecFunction(), m_vm->propertyNames->exec.impl()))
+                return false;
+
+            // Check that regExpObject is actually a RegExp object.
+            Node* regExpObject = get(virtualRegisterForArgument(0, registerOffset));
+            addToGraph(Check, Edge(regExpObject, RegExpObjectUse));
+
+            // Check that regExpObject's exec is actually the primodial RegExp.prototype.exec.
+            UniquedStringImpl* execPropertyID = m_vm->propertyNames->exec.impl();
+            unsigned execIndex = m_graph.identifiers().ensure(execPropertyID);
+            Node* actualProperty = addToGraph(TryGetById, OpInfo(execIndex), OpInfo(SpecFunction), Edge(regExpObject, CellUse));
+            FrozenValue* regExpPrototypeExec = m_graph.freeze(globalObject->regExpProtoExecFunction());
+            addToGraph(CheckCell, OpInfo(regExpPrototypeExec), Edge(actualProperty, CellUse));
+        }
+
         insertChecks();
-        Node* regExpExec = addToGraph(RegExpTest, OpInfo(0), OpInfo(prediction), addToGraph(GetGlobalObject, callee), get(virtualRegisterForArgument(0, registerOffset)), get(virtualRegisterForArgument(1, registerOffset)));
+        Node* regExpObject = get(virtualRegisterForArgument(0, registerOffset));
+        Node* regExpExec = addToGraph(RegExpTest, OpInfo(0), OpInfo(prediction), addToGraph(GetGlobalObject, callee), regExpObject, get(virtualRegisterForArgument(1, registerOffset)));
         set(VirtualRegister(resultOperand), regExpExec);
         
         return true;
@@ -2257,8 +2309,60 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         if (argumentCountIncludingThis != 3)
             return false;
 
+        // Don't inline intrinsic if we exited due to "search" not being a RegExp or String object.
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        // Don't inline intrinsic if we exited due to one of the primordial RegExp checks failing.
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell))
+            return false;
+
+        JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
+        Structure* regExpStructure = globalObject->regExpStructure();
+        m_graph.registerStructure(regExpStructure);
+        ASSERT(regExpStructure->storedPrototype().isObject());
+        ASSERT(regExpStructure->storedPrototype().asCell()->classInfo() == RegExpPrototype::info());
+
+        FrozenValue* regExpPrototypeObjectValue = m_graph.freeze(regExpStructure->storedPrototype());
+        Structure* regExpPrototypeStructure = regExpPrototypeObjectValue->structure();
+
+        auto isRegExpPropertySame = [&] (JSValue primordialProperty, UniquedStringImpl* propertyUID) {
+            JSValue currentProperty;
+            if (!m_graph.getRegExpPrototypeProperty(regExpStructure->storedPrototypeObject(), regExpPrototypeStructure, propertyUID, currentProperty))
+                return false;
+
+            return currentProperty == primordialProperty;
+        };
+
+        // Check that searchRegExp.exec is still the primordial RegExp.prototype.exec
+        if (!isRegExpPropertySame(globalObject->regExpProtoExecFunction(), m_vm->propertyNames->exec.impl()))
+            return false;
+
+        // Check that searchRegExp.global is still the primordial RegExp.prototype.global
+        if (!isRegExpPropertySame(globalObject->regExpProtoGlobalGetter(), m_vm->propertyNames->global.impl()))
+            return false;
+
+        // Check that searchRegExp.unicode is still the primordial RegExp.prototype.unicode
+        if (!isRegExpPropertySame(globalObject->regExpProtoUnicodeGetter(), m_vm->propertyNames->unicode.impl()))
+            return false;
+
+        // Check that searchRegExp[Symbol.match] is still the primordial RegExp.prototype[Symbol.replace]
+        if (!isRegExpPropertySame(globalObject->regExpProtoSymbolReplaceFunction(), m_vm->propertyNames->replaceSymbol.impl()))
+            return false;
+
         insertChecks();
+
         Node* result = addToGraph(StringReplace, OpInfo(0), OpInfo(prediction), get(virtualRegisterForArgument(0, registerOffset)), get(virtualRegisterForArgument(1, registerOffset)), get(virtualRegisterForArgument(2, registerOffset)));
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+        
+    case StringPrototypeReplaceRegExpIntrinsic: {
+        if (argumentCountIncludingThis != 3)
+            return false;
+        
+        insertChecks();
+        Node* result = addToGraph(StringReplaceRegExp, OpInfo(0), OpInfo(prediction), get(virtualRegisterForArgument(0, registerOffset)), get(virtualRegisterForArgument(1, registerOffset)), get(virtualRegisterForArgument(2, registerOffset)));
         set(VirtualRegister(resultOperand), result);
         return true;
     }
@@ -2499,6 +2603,9 @@ bool ByteCodeParser::handleTypedArrayConstructor(
     // or else making Construct not super slow.
     
     if (argumentCountIncludingThis != 2)
+        return false;
+    
+    if (!function->globalObject()->typedArrayStructureConcurrently(type))
         return false;
 
     insertChecks();

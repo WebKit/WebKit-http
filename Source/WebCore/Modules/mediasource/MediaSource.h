@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaSource_h
-#define MediaSource_h
+#pragma once
 
 #if ENABLE(MEDIA_SOURCE)
 
@@ -67,8 +66,10 @@ public:
     bool isOpen() const;
     bool isClosed() const;
     bool isEnded() const;
-    void sourceBufferDidChangeAcitveState(SourceBuffer*, bool);
-    void streamEndedWithError(const AtomicString& error, ExceptionCode&);
+    void sourceBufferDidChangeActiveState(SourceBuffer&, bool);
+
+    enum class EndOfStreamError { Network, Decode };
+    void streamEndedWithError(Optional<EndOfStreamError>);
 
     // MediaSourcePrivateClient
     void setPrivateAndOpen(Ref<MediaSourcePrivate>&&) override;
@@ -87,8 +88,7 @@ public:
     MediaTime currentTime() const;
     const AtomicString& readyState() const { return m_readyState; }
     void setReadyState(const AtomicString&);
-    void endOfStream(ExceptionCode&);
-    void endOfStream(const AtomicString& error, ExceptionCode&);
+    void endOfStream(Optional<EndOfStreamError>, ExceptionCode&);
 
     HTMLMediaElement* mediaElement() const { return m_mediaElement; }
 
@@ -96,7 +96,7 @@ public:
     SourceBufferList* sourceBuffers() { return m_sourceBuffers.get(); }
     SourceBufferList* activeSourceBuffers() { return m_activeSourceBuffers.get(); }
     SourceBuffer* addSourceBuffer(const String& type, ExceptionCode&);
-    void removeSourceBuffer(SourceBuffer*, ExceptionCode&);
+    void removeSourceBuffer(SourceBuffer&, ExceptionCode&);
     static bool isTypeSupported(const String& type);
 
     // EventTarget interface
@@ -145,7 +145,5 @@ protected:
 };
 
 }
-
-#endif
 
 #endif

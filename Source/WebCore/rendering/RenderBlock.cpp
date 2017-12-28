@@ -1000,13 +1000,13 @@ void RenderBlock::addOverflowFromChildren()
     }
 }
 
+// Overflow is always relative to the border-box of the element in question.
+// Therefore, if the element has a vertical scrollbar placed on the left, an overflow rect at x=2px would conceptually intersect the scrollbar.
 void RenderBlock::computeOverflow(LayoutUnit oldClientAfterEdge, bool)
 {
     clearOverflow();
-    // Add overflow from children.
     addOverflowFromChildren();
 
-    // Add in the overflow from positioned objects.
     addOverflowFromPositionedObjects();
 
     if (hasOverflowClip()) {
@@ -1714,6 +1714,9 @@ void RenderBlock::paintContinuationOutlines(PaintInfo& info, const LayoutPoint& 
 
 bool RenderBlock::shouldPaintSelectionGaps() const
 {
+    if (frame().settings().selectionPaintingWithoutSelectionGapsEnabled())
+        return false;
+
     return selectionState() != SelectionNone && style().visibility() == VISIBLE && isSelectionRoot();
 }
 
@@ -2280,7 +2283,7 @@ LayoutUnit RenderBlock::textIndentOffset() const
 LayoutUnit RenderBlock::logicalLeftOffsetForContent(RenderRegion* region) const
 {
     LayoutUnit logicalLeftOffset = style().isHorizontalWritingMode() ? borderLeft() + paddingLeft() : borderTop() + paddingTop();
-    if (style().shouldPlaceBlockDirectionScrollbarOnLeft())
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         logicalLeftOffset += verticalScrollbarWidth();
     if (!region)
         return logicalLeftOffset;
@@ -2291,7 +2294,7 @@ LayoutUnit RenderBlock::logicalLeftOffsetForContent(RenderRegion* region) const
 LayoutUnit RenderBlock::logicalRightOffsetForContent(RenderRegion* region) const
 {
     LayoutUnit logicalRightOffset = style().isHorizontalWritingMode() ? borderLeft() + paddingLeft() : borderTop() + paddingTop();
-    if (style().shouldPlaceBlockDirectionScrollbarOnLeft())
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         logicalRightOffset += verticalScrollbarWidth();
     logicalRightOffset += availableLogicalWidth();
     if (!region)

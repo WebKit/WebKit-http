@@ -40,8 +40,8 @@ struct TestOptions {
     bool isSVGTest { false };
     bool isHiDPITest { false };
     bool useDataDetection { false };
-    bool useRTLScrollbars { false };
     bool useMockScrollbars { true };
+    bool needsSiteSpecificQuirks { false };
 
     Vector<String> overrideLanguages;
     

@@ -486,7 +486,6 @@ public:
 #endif
 
     bool isActive() const override;
-    bool updatesScrollLayerPositionOnMainThread() const override;
     bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const override;
 
 #if ENABLE(RUBBER_BANDING)
@@ -556,6 +555,8 @@ public:
     void didChangeScrollOffset();
 
     void show() override;
+
+    bool shouldPlaceBlockDirectionScrollbarOnLeft() const final;
 
 protected:
     bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) override;

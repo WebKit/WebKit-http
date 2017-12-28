@@ -504,6 +504,14 @@
             "byungwoo"
          ]
       },
+      "Caitlin Potter" : {
+         "emails" : [
+            "caitp@igalia.com"
+         ],
+         "nicks" : [
+            "caitp"
+         ]
+      },
       "Cameron McCormack" : {
          "emails" : [
             "cam@mcc.id.au",
@@ -1788,6 +1796,15 @@
          "expertise" : "The BlackBerry Port, Web Inspector",
          "nicks" : [
             "kpiascik"
+         ]
+      },
+      "Konstantin Tokarev" : {
+         "emails" : [
+            "annulen@yandex.ru",
+            "ktokarev@smartlabs.tv"
+         ],
+         "nicks" : [
+            "annulen"
          ]
       },
       "Kristof Kosztyo" : {

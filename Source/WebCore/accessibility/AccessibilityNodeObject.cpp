@@ -159,7 +159,7 @@ void AccessibilityNodeObject::childrenChanged()
             cache->postLiveRegionChangeNotification(parent);
         
         // If this element is an ARIA text control, notify the AT of changes.
-        if ((parent->isARIATextControl() || parent->hasContentEditableAttributeSet()) && !parent->isNativeTextControl())
+        if (parent->isNonNativeTextControl())
             cache->postNotification(parent, parent->document(), AXObjectCache::AXValueChanged);
     }
 }
@@ -1265,6 +1265,11 @@ void AccessibilityNodeObject::titleElementText(Vector<AccessibilityText>& textOr
         if (HTMLLabelElement* label = labelForElement(downcast<Element>(node))) {
             AccessibilityObject* labelObject = axObjectCache()->getOrCreate(label);
             String innerText = label->innerText();
+            
+            const AtomicString& ariaLabel = label->fastGetAttribute(aria_labelAttr);
+            if (!ariaLabel.isEmpty())
+                innerText = ariaLabel;
+            
             // Only use the <label> text if there's no ARIA override.
             if (!innerText.isEmpty() && !ariaAccessibilityDescription())
                 textOrder.append(AccessibilityText(innerText, LabelByElementText, labelObject));

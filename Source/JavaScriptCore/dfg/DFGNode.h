@@ -633,13 +633,6 @@ struct Node {
         m_op = ToString;
     }
 
-    void convertToArithSqrt()
-    {
-        ASSERT(m_op == ArithPow);
-        child2() = Edge();
-        m_op = ArithSqrt;
-    }
-
     void convertToArithNegate()
     {
         ASSERT(m_op == ArithAbs && child1().useKind() == Int32Use);
@@ -1384,6 +1377,7 @@ struct Node {
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case StringReplace:
+        case StringReplaceRegExp:
             return true;
         default:
             return false;

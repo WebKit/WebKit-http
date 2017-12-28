@@ -241,6 +241,24 @@ bool IOSApplication::isIBooks()
     return isIBooks;
 }
 
+bool IOSApplication::isEcobee()
+{
+    static bool isEcobee = applicationBundleIsEqualTo("com.ecobee.athenamobile");
+    return isEcobee;
+}
+
+bool IOSApplication::isQuora()
+{
+    static bool isQuora = applicationBundleIsEqualTo("com.quora.app.mobile");
+    return isQuora;
+}
+
+bool IOSApplication::isXtraMath()
+{
+    static bool isXtraMath = applicationBundleIsEqualTo("org.xtramath.mathfacts");
+    return isXtraMath;
+}
+
 #endif
 
 } // namespace WebCore

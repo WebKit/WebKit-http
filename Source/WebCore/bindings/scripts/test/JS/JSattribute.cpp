@@ -159,7 +159,7 @@ EncodedJSValue jsattributeReadonly(ExecState* state, EncodedJSValue thisValue, P
 EncodedJSValue jsattributeConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSattributePrototype* domObject = jsDynamicCast<JSattributePrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSattribute::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -227,7 +227,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, attribute* i
 #if COMPILER(CLANG)
     // If this fails attribute does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(attribute), attribute_is_not_polymorphic);
+    static_assert(__is_polymorphic(attribute), "attribute is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

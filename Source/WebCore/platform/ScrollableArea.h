@@ -155,8 +155,6 @@ public:
     virtual IntRect scrollCornerRect() const = 0;
     WEBCORE_EXPORT virtual void invalidateScrollCorner(const IntRect&);
 
-    virtual bool updatesScrollLayerPositionOnMainThread() const = 0;
-
     virtual bool forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const = 0;
 
     // Convert points and rects between the scrollbar and its containing view.
@@ -315,8 +313,7 @@ public:
     virtual bool usesMockScrollAnimator() const { return false; }
     virtual void logMockScrollAnimatorMessage(const String&) const { };
 
-    bool verticalScrollbarIsOnLeft() const;
-    static bool systemLanguageIsRTL();
+    virtual bool shouldPlaceBlockDirectionScrollbarOnLeft() const = 0;
 
 protected:
     WEBCORE_EXPORT ScrollableArea();

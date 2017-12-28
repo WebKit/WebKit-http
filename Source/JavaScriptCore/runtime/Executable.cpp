@@ -437,7 +437,7 @@ EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source
     EvalExecutable* executable = new (NotNull, allocateCell<EvalExecutable>(*exec->heap())) EvalExecutable(exec, source, isInStrictContext, derivedContextType, isArrowFunctionContext, evalContextType);
     executable->finishCreation(exec->vm());
 
-    UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable, thisTDZMode, isArrowFunctionContext, variablesUnderTDZ);
+    UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable, thisTDZMode, variablesUnderTDZ);
     if (!unlinkedEvalCode)
         return 0;
 
@@ -606,8 +606,15 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
             if (globalObject->hasProperty(exec, entry.key.get()))
                 return createSyntaxError(exec, makeString("Can't create duplicate variable that shadows a global property: '", String(entry.key.get()), "'"));
 
-            if (globalLexicalEnvironment->hasProperty(exec, entry.key.get()))
+            if (globalLexicalEnvironment->hasProperty(exec, entry.key.get())) {
+                if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isStrictMode())) {
+                    // We only allow "const" duplicate declarations under this setting.
+                    // For example, we don't "let" variables to be overridden by "const" variables.
+                    if (globalLexicalEnvironment->isConstVariable(entry.key.get()))
+                        continue;
+                }
                 return createSyntaxError(exec, makeString("Can't create duplicate variable: '", String(entry.key.get()), "'"));
+            }
         }
 
         // Check if any new "var"s will shadow any previous "let"/"const"/"class" names.
@@ -646,6 +653,10 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
         SymbolTable* symbolTable = globalLexicalEnvironment->symbolTable();
         ConcurrentJITLocker locker(symbolTable->m_lock);
         for (auto& entry : lexicalDeclarations) {
+            if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isStrictMode())) {
+                if (symbolTable->contains(locker, entry.key.get()))
+                    continue;
+            }
             ScopeOffset offset = symbolTable->takeNextScopeOffset(locker);
             SymbolTableEntry newEntry(VarOffset(offset), entry.value.isConst() ? ReadOnly : 0);
             newEntry.prepareToWatch();
@@ -723,7 +734,7 @@ FunctionExecutable* FunctionExecutable::fromGlobalCode(
 const ClassInfo WebAssemblyExecutable::s_info = { "WebAssemblyExecutable", &ExecutableBase::s_info, 0, CREATE_METHOD_TABLE(WebAssemblyExecutable) };
 
 WebAssemblyExecutable::WebAssemblyExecutable(VM& vm, const SourceCode& source, JSWASMModule* module, unsigned functionIndex)
-    : ExecutableBase(vm, vm.webAssemblyExecutableStructure.get(), NUM_PARAMETERS_NOT_COMPILED)
+    : ExecutableBase(vm, vm.webAssemblyExecutableStructure.get(), NUM_PARAMETERS_NOT_COMPILED, NoIntrinsic)
     , m_source(source)
     , m_module(vm, this, module)
     , m_functionIndex(functionIndex)

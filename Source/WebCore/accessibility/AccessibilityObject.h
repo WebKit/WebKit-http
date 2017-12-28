@@ -127,7 +127,6 @@ enum AccessibilityRole {
     DocumentArticleRole,
     DocumentMathRole,
     DocumentNoteRole,
-    DocumentRegionRole,            
     DrawerRole,
     EditableTextRole,
     FooterRole,
@@ -151,6 +150,7 @@ enum AccessibilityRole {
     LandmarkContentInfoRole,
     LandmarkMainRole,
     LandmarkNavigationRole,
+    LandmarkRegionRole,
     LandmarkSearchRole,
     LegendRole,
     LinkRole,
@@ -534,6 +534,7 @@ public:
     bool isToggleButton() const { return roleValue() == ToggleButtonRole; }
     bool isTextControl() const;
     bool isARIATextControl() const;
+    bool isNonNativeTextControl() const;
     bool isTabList() const { return roleValue() == TabListRole; }
     bool isTabItem() const { return roleValue() == TabRole; }
     bool isRadioGroup() const { return roleValue() == RadioGroupRole; }
@@ -555,6 +556,8 @@ public:
     bool isSplitter() const { return roleValue() == SplitterRole; }
     bool isToolbar() const { return roleValue() == ToolbarRole; }
     bool isStyleFormatGroup() const;
+    bool isSubscriptStyleGroup() const;
+    bool isSuperscriptStyleGroup() const;
     
     virtual bool isChecked() const { return false; }
     virtual bool isEnabled() const { return false; }

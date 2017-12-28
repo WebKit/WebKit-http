@@ -2554,11 +2554,11 @@ void SpeculativeJIT::compile(Node* node)
             GPRReg indexGPR = index.gpr();
             GPRReg resultGPR = result.gpr();
 
-            use(node->child1());
-            index.use();
-
             speculationCheck(OutOfBounds, JSValueRegs(), node,
                 m_jit.branch32(MacroAssembler::LessThan, indexGPR, MacroAssembler::TrustedImm32(0)));
+
+            use(node->child1());
+            index.use();
 
             m_jit.move(MacroAssembler::TrustedImm64(ValueUndefined), resultGPR);
             jsValueResult(resultGPR, node, UseChildrenCalledExplicitly);
@@ -3112,7 +3112,8 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case StringReplace: {
+    case StringReplace:
+    case StringReplaceRegExp: {
         bool sample = false;
 
         if (sample)
@@ -3164,18 +3165,23 @@ void SpeculativeJIT::compile(Node* node)
                 m_jit.decrementSuperSamplerCount();
             break;
         }
-        
+
+        // If we fixed up the edge of child2, we inserted a Check(@child2, String).
+        OperandSpeculationMode child2SpeculationMode = AutomaticOperandSpeculation;
+        if (node->child2().useKind() == StringUse)
+            child2SpeculationMode = ManualOperandSpeculation;
+
         JSValueOperand string(this, node->child1());
-        JSValueOperand regExp(this, node->child2());
+        JSValueOperand search(this, node->child2(), child2SpeculationMode);
         JSValueOperand replace(this, node->child3());
         GPRReg stringGPR = string.gpr();
-        GPRReg regExpGPR = regExp.gpr();
+        GPRReg searchGPR = search.gpr();
         GPRReg replaceGPR = replace.gpr();
         
         flushRegisters();
         GPRFlushedCallResult result(this);
         callOperation(
-            operationStringProtoFuncReplaceGeneric, result.gpr(), stringGPR, regExpGPR,
+            operationStringProtoFuncReplaceGeneric, result.gpr(), stringGPR, searchGPR,
             replaceGPR);
         m_jit.exceptionCheck();
         cellResult(result.gpr(), node);
@@ -3855,7 +3861,7 @@ void SpeculativeJIT::compile(Node* node)
             JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
             callOperation(
                 operationNewTypedArrayWithOneArgumentForType(node->typedArrayType()),
-                resultGPR, globalObject->typedArrayStructure(node->typedArrayType()),
+                resultGPR, globalObject->typedArrayStructureConcurrently(node->typedArrayType()),
                 argumentGPR);
             m_jit.exceptionCheck();
             

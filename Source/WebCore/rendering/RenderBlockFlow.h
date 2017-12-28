@@ -394,6 +394,7 @@ public:
     void updateStylesForColumnChildren();
 
     bool needsLayoutAfterRegionRangeChange() const override;
+    WEBCORE_EXPORT RenderText* findClosestTextAtAbsolutePoint(const FloatPoint&);
 
 protected:
     void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
@@ -602,6 +603,8 @@ private:
     unsigned m_lineCountForTextAutosizing : 2;
 #endif
     void setSelectionState(SelectionState) final;
+
+    void removeInlineBox(BidiRun&, const RootInlineBox&) const;
 
 public:
     // FIXME-BLOCKFLOW: These can be made protected again once all callers have been moved here.

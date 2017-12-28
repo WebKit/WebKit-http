@@ -40,6 +40,12 @@
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED false
 #endif
 
+#if PLATFORM(EFL)
+#define DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED true
+#else
+#define DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED false
+#endif
+
 #if ENABLE(SMOOTH_SCROLLING)
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED true
 #else
@@ -225,11 +231,9 @@
     macro(NewBlockInsideInlineModelEnabled, newBlockInsideInlineModelEnabled, Bool, bool, false, "", "") \
     macro(HTTPEquivEnabled, httpEquivEnabled, Bool, bool, true, "", "") \
     macro(MockCaptureDevicesEnabled, mockCaptureDevicesEnabled, Bool, bool, false, "", "") \
-    macro(ShadowDOMEnabled, shadowDOMEnabled, Bool, bool, true, "", "") \
-    macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, false, "", "") \
     macro(FetchAPIEnabled, fetchAPIEnabled, Bool, bool, false, "", "") \
-    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, false, "", "") \
     macro(DownloadAttributeEnabled, downloadAttributeEnabled, Bool, bool, false, "", "") \
+    macro(SelectionPaintingWithoutSelectionGapsEnabled, selectionPaintingWithoutSelectionGapsEnabled, Bool, bool, DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED, "", "") \
     FOR_EACH_ADDITIONAL_WEBKIT_BOOL_PREFERENCE(macro) \
     \
 
@@ -257,6 +261,8 @@
     macro(StorageBlockingPolicy, storageBlockingPolicy, UInt32, uint32_t, WebCore::SecurityOrigin::BlockThirdPartyStorage, "", "") \
     macro(JavaScriptRuntimeFlags, javaScriptRuntimeFlags, UInt32, uint32_t, 0, "", "") \
     macro(DataDetectorTypes, dataDetectorTypes, UInt32, uint32_t, 0, "", "") \
+    macro(UserInterfaceDirectionPolicy, userInterfaceDirectionPolicy, UInt32, uint32_t, 0, "", "") \
+    macro(SystemLayoutDirection, systemLayoutDirection, UInt32, uint32_t, 0, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DEBUG_BOOL_PREFERENCE(macro) \
@@ -276,9 +282,18 @@
 #define FOR_EACH_WEBKIT_DEBUG_UINT32_PREFERENCE(macro) \
     macro(VisibleDebugOverlayRegions, visibleDebugOverlayRegions, UInt32, uint32_t, 0, "", "")
 
+// For experimental features:
+// - The type should be boolean.
+// - You must provide the last two parameters for all experimental features. They
+//   are the text exposed to the user from the WebKit client.
+// - They should be alphabetically ordered by the human readable text.
+// - They should be false by default. The client is responsible for enabling them.
+
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
-    macro(ExperimentalShadowDOMEnabled, experimentalShadowDOMEnabled, Bool, bool, false, "Shadow DOM", "Support for the Shadow DOM feature") \
-    macro(ExperimentalWebGL2Enabled, experimentalWebGL2Enabled, Bool, bool, false, "WebGL 2.0", "Prototype WebGL 2 Support") \
+    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, false, "CSS Grid", "CSS Grid Layout Module support") \
+    macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, false, "Custom Elements", "HTML Custom Elements prototype") \
+    macro(ShadowDOMEnabled, shadowDOMEnabled, Bool, bool, false, "Shadow DOM", "HTML Shadow DOM prototype") \
+    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, false, "WebGL 2.0", "WebGL 2 prototype") \
     \
 
 #if PLATFORM(COCOA)

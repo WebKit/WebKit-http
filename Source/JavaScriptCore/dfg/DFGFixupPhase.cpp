@@ -349,7 +349,6 @@ private:
         }
 
         case ArithPow: {
-            node->setResult(NodeResultDouble);
             if (node->child2()->shouldSpeculateInt32OrBooleanForArithmetic()) {
                 fixDoubleOrBooleanEdge(node->child1());
                 fixIntOrBooleanEdge(node->child2());
@@ -910,10 +909,25 @@ private:
             break;
         }
 
-        case StringReplace: {
+        case StringReplace:
+        case StringReplaceRegExp: {
+            if (node->child2()->shouldSpeculateString()) {
+                m_insertionSet.insertNode(
+                    m_indexInBlock, SpecNone, Check, node->origin,
+                    Edge(node->child2().node(), StringUse));
+                fixEdge<StringUse>(node->child2());
+            } else if (op == StringReplace) {
+                if (node->child2()->shouldSpeculateRegExpObject())
+                    addStringReplacePrimordialChecks(node->child2().node());
+                else 
+                    m_insertionSet.insertNode(
+                        m_indexInBlock, SpecNone, ForceOSRExit, node->origin);
+            }
+
             if (node->child1()->shouldSpeculateString()
                 && node->child2()->shouldSpeculateRegExpObject()
                 && node->child3()->shouldSpeculateString()) {
+
                 fixEdge<StringUse>(node->child1());
                 fixEdge<RegExpObjectUse>(node->child2());
                 fixEdge<StringUse>(node->child3());
@@ -1728,6 +1742,9 @@ private:
             return;
         }
 
+        // FIXME: This should cover other use cases but we don't have use kinds for them. It's not critical,
+        // however, since we cover all the missing cases in constant folding.
+        // https://bugs.webkit.org/show_bug.cgi?id=157213
         if (node->child1()->shouldSpeculateStringObject()) {
             fixEdge<StringObjectUse>(node->child1());
             node->convertToIdentity();
@@ -1900,6 +1917,39 @@ private:
         m_insertionSet.execute(block);
     }
     
+    void addStringReplacePrimordialChecks(Node* searchRegExp)
+    {
+        Node* node = m_currentNode;
+
+        // Check that structure of searchRegExp is RegExp object
+        m_insertionSet.insertNode(
+            m_indexInBlock, SpecNone, Check, node->origin,
+            Edge(searchRegExp, RegExpObjectUse));
+
+        auto emitPrimordialCheckFor = [&] (JSValue primordialProperty, UniquedStringImpl* propertyUID) {
+            unsigned index = m_graph.identifiers().ensure(propertyUID);
+
+            Node* actualProperty = m_insertionSet.insertNode(
+                m_indexInBlock, SpecNone, TryGetById, node->origin,
+                OpInfo(index), OpInfo(SpecFunction), Edge(searchRegExp, CellUse));
+
+            m_insertionSet.insertNode(
+                m_indexInBlock, SpecNone, CheckCell, node->origin,
+                OpInfo(m_graph.freeze(primordialProperty)), Edge(actualProperty, CellUse));
+        };
+
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+
+        // Check that searchRegExp.exec is the primordial RegExp.prototype.exec
+        emitPrimordialCheckFor(globalObject->regExpProtoExecFunction(), vm().propertyNames->exec.impl());
+        // Check that searchRegExp.global is the primordial RegExp.prototype.global
+        emitPrimordialCheckFor(globalObject->regExpProtoGlobalGetter(), vm().propertyNames->global.impl());
+        // Check that searchRegExp.unicode is the primordial RegExp.prototype.unicode
+        emitPrimordialCheckFor(globalObject->regExpProtoUnicodeGetter(), vm().propertyNames->unicode.impl());
+        // Check that searchRegExp[Symbol.match] is the primordial RegExp.prototype[Symbol.replace]
+        emitPrimordialCheckFor(globalObject->regExpProtoSymbolReplaceFunction(), vm().propertyNames->replaceSymbol.impl());
+    }
+
     Node* checkArray(ArrayMode arrayMode, const NodeOrigin& origin, Node* array, Node* index, bool (*storageCheck)(const ArrayMode&) = canCSEStorage)
     {
         ASSERT(arrayMode.isSpecific());

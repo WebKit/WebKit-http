@@ -73,6 +73,9 @@ bool isNASAHD();
 WEBCORE_EXPORT bool isTheEconomistOnIphone();
 WEBCORE_EXPORT bool isWebProcess();
 bool isIBooks();
+WEBCORE_EXPORT bool isEcobee();
+WEBCORE_EXPORT bool isQuora();
+WEBCORE_EXPORT bool isXtraMath();
 
 } // IOSApplication
 

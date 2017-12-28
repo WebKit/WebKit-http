@@ -29,20 +29,21 @@
  *
  */
 
-#ifndef ReferrerPolicy_h
-#define ReferrerPolicy_h
+#pragma once
 
 namespace WebCore {
 
-enum ReferrerPolicy {
-    ReferrerPolicyAlways,
-    ReferrerPolicyDefault,
-    ReferrerPolicyNever,
-    // Same as ReferrerPolicyAlways, except that only the origin of the
-    // referring URL is send.
-    ReferrerPolicyOrigin,
+// The following is needed to compile on GTK because of a macro defined in X11.h.
+// FIXME: Move this workaround to a global location, perhaps config.h; maybe a GTK-specific location.
+#undef Always
+
+// FIXME: Merge this with FetchOptions::ReferrerPolicy, which is the one defined in the Fetch specification.
+enum class ReferrerPolicy {
+    Always,
+    Default,
+    Never,
+    // Same as Always, except that only the origin of the referring URL is sent.
+    Origin,
 };
 
 }
-
-#endif // ReferrerPolicy_h

@@ -49,15 +49,21 @@ enum class CryptoKeyClass {
 
 class CryptoKey : public RefCounted<CryptoKey> {
 public:
-    CryptoKey(CryptoAlgorithmIdentifier, CryptoKeyType, bool extractable, CryptoKeyUsage);
+    using Type = CryptoKeyType;
+    CryptoKey(CryptoAlgorithmIdentifier, Type, bool extractable, CryptoKeyUsage);
     virtual ~CryptoKey();
 
     virtual CryptoKeyClass keyClass() const = 0;
 
-    String type() const;
+    Type type() const;
     bool extractable() const { return m_extractable; }
     virtual void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const;
-    Vector<String> usages() const;
+
+    // FIXME: Confusing to have CryptoKeyUsage and CryptoKey::Usage named almost the same, but be slightly different.
+    // CryptoKeyUsage values are bit masks so they can be combined with "or", while this is a normal enum that must
+    // match what is defined in the IDL. Maybe we can rename CryptoKeyUsage to CryptoKey::UsagesBitmap?
+    enum class Usage { Encrypt, Decrypt, Sign, Verify, DeriveKey, DeriveBits, WrapKey, UnwrapKey };
+    Vector<Usage> usages() const;
 
     CryptoAlgorithmIdentifier algorithmIdentifier() const { return m_algorithm; }
     CryptoKeyUsage usagesBitmap() const { return m_usages; }
@@ -69,10 +75,15 @@ public:
 
 private:
     CryptoAlgorithmIdentifier m_algorithm;
-    CryptoKeyType m_type;
+    Type m_type;
     bool m_extractable;
     CryptoKeyUsage m_usages;
 };
+
+inline auto CryptoKey::type() const -> Type
+{
+    return m_type;
+}
 
 } // namespace WebCore
 

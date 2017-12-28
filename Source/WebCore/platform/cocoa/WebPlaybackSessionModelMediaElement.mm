@@ -157,13 +157,10 @@ void WebPlaybackSessionModelMediaElement::updateForEventName(const WTF::AtomicSt
         String localizedDeviceName;
 
         if (m_mediaElement->mediaControlsHost()) {
-            static NeverDestroyed<String> airplay(ASCIILiteral("airplay"));
-            static NeverDestroyed<String> tvout(ASCIILiteral("tvout"));
-
-            String type = m_mediaElement->mediaControlsHost()->externalDeviceType();
-            if (type == airplay)
+            auto type = m_mediaElement->mediaControlsHost()->externalDeviceType();
+            if (type == MediaControlsHost::DeviceType::Airplay)
                 targetType = WebPlaybackSessionInterface::TargetTypeAirPlay;
-            else if (type == tvout)
+            else if (type == MediaControlsHost::DeviceType::Tvout)
                 targetType = WebPlaybackSessionInterface::TargetTypeTVOut;
             localizedDeviceName = m_mediaElement->mediaControlsHost()->externalDeviceDisplayName();
         }
@@ -306,7 +303,7 @@ void WebPlaybackSessionModelMediaElement::updateLegibleOptions()
             trackMenuItemSelected = true;
         }
 
-        if (displayMode != MediaControlsHost::automaticKeyword() && track->mode() == TextTrack::showingKeyword()) {
+        if (displayMode != MediaControlsHost::automaticKeyword() && track->mode() == TextTrack::Mode::Showing) {
             selectedIndex = index;
             trackMenuItemSelected = true;
         }

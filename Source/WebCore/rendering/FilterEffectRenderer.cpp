@@ -67,8 +67,6 @@ static inline void lastMatrixRow(Vector<float>& parameters)
 
 FilterEffectRenderer::FilterEffectRenderer()
     : Filter(AffineTransform())
-    , m_graphicsBufferAttached(false)
-    , m_hasFilterThatMovesPixels(false)
 {
     setFilterResolution(FloatSize(1, 1));
     m_sourceGraphic = SourceGraphic::create(*this);
@@ -387,7 +385,7 @@ bool FilterEffectRendererHelper::prepareFilterEffect(RenderLayer* renderLayer, c
 GraphicsContext* FilterEffectRendererHelper::filterContext() const
 {
     if (!m_haveFilterEffect)
-        return 0;
+        return nullptr;
 
     FilterEffectRenderer* filter = m_renderLayer->filterRenderer();
     return filter->inputContext();
@@ -407,7 +405,7 @@ bool FilterEffectRendererHelper::beginFilterEffect()
         return false;
     }
     
-    // Translate the context so that the contents of the layer is captuterd in the offscreen memory buffer.
+    // Translate the context so that the contents of the layer is captured in the offscreen memory buffer.
     sourceGraphicsContext->save();
     sourceGraphicsContext->translate(-m_paintOffset.x(), -m_paintOffset.y());
     sourceGraphicsContext->clearRect(m_repaintRect);

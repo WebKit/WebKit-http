@@ -31,13 +31,15 @@
 #include "PageConsoleClient.h"
 #include <runtime/Float32Array.h>
 
+#if ENABLE(MEDIA_SESSION)
+#include "MediaSessionInterruptionProvider.h"
+#endif
+
 namespace WebCore {
 
 class AudioContext;
 class ClientRect;
 class ClientRectList;
-class DOMPath;
-class DOMStringList;
 class DOMURL;
 class DOMWindow;
 class Document;
@@ -56,12 +58,10 @@ class MediaSession;
 class MemoryInfo;
 class MockContentFilterSettings;
 class MockPageOverlay;
-class Node;
 class NodeList;
 class Page;
 class Range;
 class RenderedDocumentMarker;
-class ScriptExecutionContext;
 class SerializedScriptValue;
 class SourceBuffer;
 class TimeRanges;
@@ -88,11 +88,13 @@ public:
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
     String xhrResponseSource(XMLHttpRequest&);
-    bool isSharingStyleSheetContents(HTMLLinkElement& a, HTMLLinkElement& b);
+    bool isSharingStyleSheetContents(HTMLLinkElement&, HTMLLinkElement&);
     bool isStyleSheetLoadingSubresources(HTMLLinkElement&);
-    void setOverrideCachePolicy(const String&);
+    enum class CachePolicy { UseProtocolCachePolicy, ReloadIgnoringCacheData, ReturnCacheDataElseLoad, ReturnCacheDataDontLoad };
+    void setOverrideCachePolicy(CachePolicy);
     void setCanShowModalDialogOverride(bool allow, ExceptionCode&);
-    void setOverrideResourceLoadPriority(const String&);
+    enum class ResourceLoadPriority { ResourceLoadPriorityVeryLow, ResourceLoadPriorityLow, ResourceLoadPriorityMedium, ResourceLoadPriorityHigh, ResourceLoadPriorityVeryHigh };
+    void setOverrideResourceLoadPriority(ResourceLoadPriority);
     void setStrictRawResourceValidationPolicyDisabled(bool);
 
     void clearMemoryCache();
@@ -169,7 +171,8 @@ public:
     bool elementShouldAutoComplete(HTMLInputElement&);
     void setEditingValue(HTMLInputElement&, const String&);
     void setAutofilled(HTMLInputElement&, bool enabled);
-    void setShowAutoFillButton(HTMLInputElement&, const String& autoFillButtonType);
+    enum class AutoFillButtonType { AutoFillButtonTypeNone, AutoFillButtonTypeContacts, AutoFillButtonTypeCredentials };
+    void setShowAutoFillButton(HTMLInputElement&, AutoFillButtonType);
     void scrollElementToRect(Element&, int x, int y, int w, int h, ExceptionCode&);
 
     String autofillFieldName(Element&, ExceptionCode&);
@@ -200,7 +203,7 @@ public:
     RefPtr<NodeList> nodesFromRect(Document&, int x, int y, unsigned topPadding, unsigned rightPadding,
         unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, bool allowChildFrameContent, ExceptionCode&) const;
 
-    String parserMetaData(JSC::JSValue = { });
+    String parserMetaData(JSC::JSValue = JSC::JSValue::JSUndefined);
 
     void updateEditorUINowIfScheduled();
 
@@ -326,7 +329,6 @@ public:
     void startTrackingCompositingUpdates(ExceptionCode&);
     unsigned compositingUpdateCount(ExceptionCode&);
 
-    void updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(ExceptionCode&);
     void updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(Node*, ExceptionCode&);
     unsigned layoutCount() const;
 
@@ -380,7 +382,7 @@ public:
     void setCaptionDisplayMode(const String&, ExceptionCode&);
 
 #if ENABLE(VIDEO)
-    Ref<TimeRanges> createTimeRanges(Float32Array* startTimes, Float32Array* endTimes);
+    Ref<TimeRanges> createTimeRanges(Float32Array& startTimes, Float32Array& endTimes);
     double closestTimeToTimeRanges(double time, TimeRanges&);
 #endif
 
@@ -411,11 +413,12 @@ public:
 #endif
 
 #if ENABLE(MEDIA_SESSION)
-    void sendMediaSessionStartOfInterruptionNotification(const String&);
-    void sendMediaSessionEndOfInterruptionNotification(const String&);
+    void sendMediaSessionStartOfInterruptionNotification(MediaSessionInterruptingCategory);
+    void sendMediaSessionEndOfInterruptionNotification(MediaSessionInterruptingCategory);
     String mediaSessionCurrentState(MediaSession&) const;
     double mediaElementPlayerVolume(HTMLMediaElement&) const;
-    void sendMediaControlEvent(const String&);
+    enum class MediaControlEvent { PlayPause, NextTrack, PreviousTrack };
+    void sendMediaControlEvent(MediaControlEvent);
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -430,7 +433,8 @@ public:
     void simulateSystemSleep() const;
     void simulateSystemWake() const;
 
-    RefPtr<MockPageOverlay> installMockPageOverlay(const String& overlayType, ExceptionCode&);
+    enum class PageOverlayType { View, Document };
+    RefPtr<MockPageOverlay> installMockPageOverlay(PageOverlayType, ExceptionCode&);
     String pageOverlayLayerTreeAsText(ExceptionCode&) const;
 
     void setPageMuted(bool);
@@ -468,6 +472,16 @@ public:
     
     void setViewportForceAlwaysUserScalable(bool);
     void setLinkPreloadSupport(bool);
+    void setResourceTimingSupport(bool);
+
+#if ENABLE(CSS_GRID_LAYOUT)
+    void setCSSGridLayoutEnabled(bool);
+#endif
+
+#if ENABLE(WEBGL2)
+    bool webGL2Enabled() const;
+    void setWebGL2Enabled(bool);
+#endif
 
 private:
     explicit Internals(Document&);

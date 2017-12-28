@@ -309,28 +309,6 @@ void AudioContext::setState(State state)
         promise.resolve(nullptr);
 }
 
-const AtomicString& AudioContext::state() const
-{
-    static NeverDestroyed<AtomicString> suspended("suspended");
-    static NeverDestroyed<AtomicString> running("running");
-    static NeverDestroyed<AtomicString> interrupted("interrupted");
-    static NeverDestroyed<AtomicString> closed("closed");
-
-    switch (m_state) {
-    case State::Suspended:
-        return suspended;
-    case State::Running:
-        return running;
-    case State::Interrupted:
-        return interrupted;
-    case State::Closed:
-        return closed;
-    }
-
-    ASSERT_NOT_REACHED();
-    return suspended;
-}
-
 void AudioContext::stop()
 {
     ASSERT(isMainThread());
@@ -481,18 +459,6 @@ Ref<MediaStreamAudioDestinationNode> AudioContext::createMediaStreamDestination(
 
 #endif
 
-RefPtr<ScriptProcessorNode> AudioContext::createScriptProcessor(size_t bufferSize, ExceptionCode& ec)
-{
-    // Set number of input/output channels to stereo by default.
-    return createScriptProcessor(bufferSize, 2, 2, ec);
-}
-
-RefPtr<ScriptProcessorNode> AudioContext::createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, ExceptionCode& ec)
-{
-    // Set number of output channels to stereo by default.
-    return createScriptProcessor(bufferSize, numberOfInputChannels, 2, ec);
-}
-
 RefPtr<ScriptProcessorNode> AudioContext::createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, size_t numberOfOutputChannels, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
@@ -567,12 +533,6 @@ RefPtr<DelayNode> AudioContext::createDelay(double maxDelayTime, ExceptionCode& 
     return WTFMove(node);
 }
 
-RefPtr<ChannelSplitterNode> AudioContext::createChannelSplitter(ExceptionCode& ec)
-{
-    const unsigned ChannelSplitterDefaultNumberOfOutputs = 6;
-    return createChannelSplitter(ChannelSplitterDefaultNumberOfOutputs, ec);
-}
-
 RefPtr<ChannelSplitterNode> AudioContext::createChannelSplitter(size_t numberOfOutputs, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
@@ -586,12 +546,6 @@ RefPtr<ChannelSplitterNode> AudioContext::createChannelSplitter(size_t numberOfO
     }
 
     return node;
-}
-
-RefPtr<ChannelMergerNode> AudioContext::createChannelMerger(ExceptionCode& ec)
-{
-    const unsigned ChannelMergerDefaultNumberOfInputs = 6;
-    return createChannelMerger(ChannelMergerDefaultNumberOfInputs, ec);
 }
 
 RefPtr<ChannelMergerNode> AudioContext::createChannelMerger(size_t numberOfInputs, ExceptionCode& ec)
@@ -623,17 +577,17 @@ Ref<OscillatorNode> AudioContext::createOscillator()
     return node;
 }
 
-RefPtr<PeriodicWave> AudioContext::createPeriodicWave(Float32Array* real, Float32Array* imag, ExceptionCode& ec)
+RefPtr<PeriodicWave> AudioContext::createPeriodicWave(Float32Array& real, Float32Array& imaginary, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
     
-    if (!real || !imag || (real->length() != imag->length() || (real->length() > MaxPeriodicWaveLength) || (real->length() <= 0))) {
+    if (real.length() != imaginary.length() || (real.length() > MaxPeriodicWaveLength) || !real.length()) {
         ec = INDEX_SIZE_ERR;
         return nullptr;
     }
     
     lazyInitialize();
-    return PeriodicWave::create(sampleRate(), real, imag);
+    return PeriodicWave::create(sampleRate(), real, imaginary);
 }
 
 void AudioContext::notifyNodeFinishedProcessing(AudioNode* node)

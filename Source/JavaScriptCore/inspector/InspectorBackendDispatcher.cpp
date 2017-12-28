@@ -192,7 +192,7 @@ void BackendDispatcher::sendResponse(long requestId, RefPtr<InspectorObject>&& r
     // The JSON-RPC 2.0 specification requires that the "error" member have the value 'null'
     // if no error occurred during an invocation, but we do not include it at all.
     Ref<InspectorObject> responseMessage = InspectorObject::create();
-    responseMessage->setObject(ASCIILiteral("result"), result);
+    responseMessage->setObject(ASCIILiteral("result"), WTFMove(result));
     responseMessage->setInteger(ASCIILiteral("id"), requestId);
     m_frontendRouter->sendResponse(responseMessage->toJSONString());
 }
@@ -212,7 +212,7 @@ void BackendDispatcher::sendPendingErrors()
     // To construct the error object, only use the last error's code and message.
     // Per JSON-RPC 2.0, Section 5.1, the 'data' member may contain nested errors,
     // but only one top-level Error object should be sent per request.
-    CommonErrorCode errorCode;
+    CommonErrorCode errorCode = InternalError;
     String errorMessage;
     Ref<InspectorArray> payload = InspectorArray::create();
     

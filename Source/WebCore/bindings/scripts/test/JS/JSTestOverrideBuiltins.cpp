@@ -159,7 +159,7 @@ bool JSTestOverrideBuiltins::getOwnPropertySlotByIndex(JSObject* object, ExecSta
 EncodedJSValue jsTestOverrideBuiltinsConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     JSTestOverrideBuiltinsPrototype* domObject = jsDynamicCast<JSTestOverrideBuiltinsPrototype*>(JSValue::decode(thisValue));
-    if (!domObject)
+    if (UNLIKELY(!domObject))
         return throwVMTypeError(state);
     return JSValue::encode(JSTestOverrideBuiltins::getConstructor(state->vm(), domObject->globalObject()));
 }
@@ -200,7 +200,7 @@ EncodedJSValue JSC_HOST_CALL jsTestOverrideBuiltinsPrototypeFunctionNamedItem(Ex
         return throwThisTypeError(*state, "TestOverrideBuiltins", "namedItem");
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestOverrideBuiltins::info());
     auto& impl = castedThis->wrapped();
-    String name = state->argument(0).isUndefined() ? ASCIILiteral("test") : state->uncheckedArgument(0).toString(state)->value(state);
+    String name = state->argument(0).isUndefined() ? ASCIILiteral("test") : state->uncheckedArgument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
     JSValue result = toJS(state, castedThis->globalObject(), WTF::getPtr(impl.namedItem(name)));
@@ -253,7 +253,7 @@ JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, TestOverride
 #if COMPILER(CLANG)
     // If this fails TestOverrideBuiltins does not have a vtable, so you need to add the
     // ImplementationLacksVTable attribute to the interface definition
-    COMPILE_ASSERT(__is_polymorphic(TestOverrideBuiltins), TestOverrideBuiltins_is_not_polymorphic);
+    static_assert(__is_polymorphic(TestOverrideBuiltins), "TestOverrideBuiltins is not polymorphic");
 #endif
 #endif
     // If you hit this assertion you either have a use after free bug, or

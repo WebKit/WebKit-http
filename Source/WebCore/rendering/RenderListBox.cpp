@@ -139,6 +139,8 @@ void RenderListBox::updateFromElement()
         
         setHasVerticalScrollbar(true);
 
+        computeFirstIndexesVisibleInPaddingTopBottomAreas();
+
         setNeedsLayoutAndPrefWidthsRecalc();
     }
 }
@@ -236,10 +238,14 @@ int RenderListBox::size() const
     return defaultSize;
 }
 
-int RenderListBox::numVisibleItems() const
+int RenderListBox::numVisibleItems(ConsiderPadding considerPadding) const
 {
     // Only count fully visible rows. But don't return 0 even if only part of a row shows.
-    return std::max<int>(1, (contentHeight() + paddingBottom() + rowSpacing) / itemHeight());
+    int visibleItemsExcludingPadding = std::max<int>(1, (contentHeight() + rowSpacing) / itemHeight());
+    if (considerPadding == ConsiderPadding::No)
+        return visibleItemsExcludingPadding;
+
+    return numberOfVisibleItemsInPaddingTop() + visibleItemsExcludingPadding + numberOfVisibleItemsInPaddingBottom();
 }
 
 int RenderListBox::numItems() const
@@ -266,25 +272,30 @@ int RenderListBox::baselinePosition(FontBaseline baselineType, bool firstLine, L
 LayoutRect RenderListBox::itemBoundingBoxRect(const LayoutPoint& additionalOffset, int index)
 {
     LayoutUnit x = additionalOffset.x() + borderLeft() + paddingLeft();
-    if (verticalScrollbarIsOnLeft() && m_vBar)
+    if (shouldPlaceBlockDirectionScrollbarOnLeft() && m_vBar)
         x += m_vBar->occupiedWidth();
     LayoutUnit y = additionalOffset.y() + borderTop() + paddingTop() + itemHeight() * (index - m_indexOffset);
     return LayoutRect(x, y, contentWidth(), itemHeight());
 }
-    
+
+void RenderListBox::paintItem(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintFunction paintFunction)
+{
+    int listItemsSize = numItems();
+    int firstVisibleItem = m_indexOfFirstVisibleItemInsidePaddingTopArea.valueOr(m_indexOffset);
+    int endIndex = firstVisibleItem + numVisibleItems(ConsiderPadding::Yes);
+    for (int i = firstVisibleItem; i < listItemsSize && i < endIndex; ++i)
+        paintFunction(paintInfo, paintOffset, i);
+}
+
 void RenderListBox::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     if (style().visibility() != VISIBLE)
         return;
     
-    int listItemsSize = numItems();
-
     if (paintInfo.phase == PaintPhaseForeground) {
-        int index = m_indexOffset;
-        while (index < listItemsSize && index <= m_indexOffset + numVisibleItems()) {
-            paintItemForeground(paintInfo, paintOffset, index);
-            index++;
-        }
+        paintItem(paintInfo, paintOffset, [this](PaintInfo& paintInfo, const LayoutPoint& paintOffset, int listItemIndex) {
+            paintItemForeground(paintInfo, paintOffset, listItemIndex);
+        });
     }
 
     // Paint the children.
@@ -303,11 +314,9 @@ void RenderListBox::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOf
         break;
     case PaintPhaseChildBlockBackground:
     case PaintPhaseChildBlockBackgrounds: {
-        int index = m_indexOffset;
-        while (index < listItemsSize && index <= m_indexOffset + numVisibleItems()) {
-            paintItemBackground(paintInfo, paintOffset, index);
-            index++;
-        }
+        paintItem(paintInfo, paintOffset, [this](PaintInfo& paintInfo, const LayoutPoint& paintOffset, int listItemIndex) {
+            paintItemBackground(paintInfo, paintOffset, listItemIndex);
+        });
         break;
     }
     default:
@@ -345,7 +354,7 @@ void RenderListBox::paintScrollbar(PaintInfo& paintInfo, const LayoutPoint& pain
     if (!m_vBar)
         return;
 
-    LayoutUnit left = paintOffset.x() + (verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
+    LayoutUnit left = paintOffset.x() + (shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
     LayoutUnit top = paintOffset.y() + borderTop();
     LayoutUnit width = m_vBar->width();
     LayoutUnit height = this->height() - (borderTop() + borderBottom());
@@ -448,7 +457,7 @@ bool RenderListBox::isPointInOverflowControl(HitTestResult& result, const Layout
     if (!m_vBar || !m_vBar->shouldParticipateInHitTesting())
         return false;
 
-    LayoutUnit x = accumulatedOffset.x() + (verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
+    LayoutUnit x = accumulatedOffset.x() + (shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - m_vBar->width());
     LayoutUnit y = accumulatedOffset.y() + borderTop();
     LayoutUnit width = m_vBar->width();
     LayoutUnit height = this->height() - borderTop() - borderBottom();
@@ -470,9 +479,9 @@ int RenderListBox::listIndexAtOffset(const LayoutSize& offset)
         return -1;
 
     int scrollbarWidth = m_vBar ? m_vBar->width() : 0;
-    if (verticalScrollbarIsOnLeft() && (offset.width() < borderLeft() + paddingLeft() + scrollbarWidth || offset.width() > width() - borderRight() - paddingRight()))
+    if (shouldPlaceBlockDirectionScrollbarOnLeft() && (offset.width() < borderLeft() + paddingLeft() + scrollbarWidth || offset.width() > width() - borderRight() - paddingRight()))
         return -1;
-    if (!verticalScrollbarIsOnLeft() && (offset.width() < borderLeft() + paddingLeft() || offset.width() > width() - borderRight() - paddingRight() - scrollbarWidth))
+    if (!shouldPlaceBlockDirectionScrollbarOnLeft() && (offset.width() < borderLeft() + paddingLeft() || offset.width() > width() - borderRight() - paddingRight() - scrollbarWidth))
         return -1;
 
     int newOffset = (offset.height() - borderTop() - paddingTop()) / itemHeight() + m_indexOffset;
@@ -587,8 +596,13 @@ bool RenderListBox::scrollToRevealElementAtListIndex(int index)
 }
 
 bool RenderListBox::listIndexIsVisible(int index)
-{    
-    return index >= m_indexOffset && index < m_indexOffset + numVisibleItems();
+{
+    int firstIndex = m_indexOfFirstVisibleItemInsidePaddingTopArea.valueOr(m_indexOffset);
+    int endIndex = m_indexOfFirstVisibleItemInsidePaddingBottomArea
+        ? m_indexOfFirstVisibleItemInsidePaddingBottomArea.value() + numberOfVisibleItemsInPaddingBottom()
+        : m_indexOffset + numVisibleItems();
+
+    return index >= firstIndex && index < endIndex;
 }
 
 bool RenderListBox::scroll(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Element**, RenderBox*, const IntPoint&)
@@ -632,12 +646,53 @@ void RenderListBox::setScrollOffset(const ScrollOffset& offset)
     scrollTo(offset.y());
 }
 
+int RenderListBox::maximumNumberOfItemsThatFitInPaddingBottomArea() const
+{
+    return paddingBottom() / itemHeight();
+}
+
+int RenderListBox::numberOfVisibleItemsInPaddingTop() const
+{
+    if (!m_indexOfFirstVisibleItemInsidePaddingTopArea)
+        return 0;
+
+    return m_indexOffset - m_indexOfFirstVisibleItemInsidePaddingTopArea.value();
+}
+
+int RenderListBox::numberOfVisibleItemsInPaddingBottom() const
+{
+    if (!m_indexOfFirstVisibleItemInsidePaddingBottomArea)
+        return 0;
+
+    return std::min(maximumNumberOfItemsThatFitInPaddingBottomArea(), numItems() - m_indexOffset - numVisibleItems());
+}
+
+void RenderListBox::computeFirstIndexesVisibleInPaddingTopBottomAreas()
+{
+    m_indexOfFirstVisibleItemInsidePaddingTopArea = Nullopt;
+    m_indexOfFirstVisibleItemInsidePaddingBottomArea = Nullopt;
+
+    int maximumNumberOfItemsThatFitInPaddingTopArea = paddingTop() / itemHeight();
+    if (maximumNumberOfItemsThatFitInPaddingTopArea) {
+        if (m_indexOffset)
+            m_indexOfFirstVisibleItemInsidePaddingTopArea = std::max(0, m_indexOffset - maximumNumberOfItemsThatFitInPaddingTopArea);
+    }
+
+    if (maximumNumberOfItemsThatFitInPaddingBottomArea()) {
+        if (numItems() > (m_indexOffset + numVisibleItems()))
+            m_indexOfFirstVisibleItemInsidePaddingBottomArea = m_indexOffset + numVisibleItems();
+    }
+}
+
 void RenderListBox::scrollTo(int newOffset)
 {
     if (newOffset == m_indexOffset)
         return;
 
     m_indexOffset = newOffset;
+
+    computeFirstIndexesVisibleInPaddingTopBottomAreas();
+
     repaint();
     document().eventQueue().enqueueOrDispatchScrollEvent(selectElement());
 }
@@ -729,7 +784,7 @@ LayoutRect RenderListBox::controlClipRect(const LayoutPoint& additionalOffset) c
     // Clip against the padding box, to give <option>s and overlay scrollbar some extra space
     // to get painted.
     LayoutRect clipRect = paddingBoxRect();
-    if (verticalScrollbarIsOnLeft() && (!layer() || !layer()->verticalScrollbarIsOnLeft()))
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         clipRect.move(m_vBar->occupiedWidth(), 0);
     clipRect.moveBy(additionalOffset);
     return clipRect;
@@ -744,14 +799,14 @@ bool RenderListBox::isActive() const
 void RenderListBox::invalidateScrollbarRect(Scrollbar& scrollbar, const IntRect& rect)
 {
     IntRect scrollRect = rect;
-    scrollRect.move(verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width(), borderTop());
+    scrollRect.move(shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width(), borderTop());
     repaintRectangle(scrollRect);
 }
 
 IntRect RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& scrollbar, const IntRect& scrollbarRect) const
 {
     IntRect rect = scrollbarRect;
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     rect.move(scrollbarLeft, scrollbarTop);
     return view().frameView().convertFromRendererToContainingView(this, rect);
@@ -760,7 +815,7 @@ IntRect RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& scr
 IntRect RenderListBox::convertFromContainingViewToScrollbar(const Scrollbar& scrollbar, const IntRect& parentRect) const
 {
     IntRect rect = view().frameView().convertFromContainingViewToRenderer(this, parentRect);
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     rect.move(-scrollbarLeft, -scrollbarTop);
     return rect;
@@ -769,7 +824,7 @@ IntRect RenderListBox::convertFromContainingViewToScrollbar(const Scrollbar& scr
 IntPoint RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& scrollbar, const IntPoint& scrollbarPoint) const
 {
     IntPoint point = scrollbarPoint;
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     point.move(scrollbarLeft, scrollbarTop);
     return view().frameView().convertFromRendererToContainingView(this, point);
@@ -778,7 +833,7 @@ IntPoint RenderListBox::convertFromScrollbarToContainingView(const Scrollbar& sc
 IntPoint RenderListBox::convertFromContainingViewToScrollbar(const Scrollbar& scrollbar, const IntPoint& parentPoint) const
 {
     IntPoint point = view().frameView().convertFromContainingViewToRenderer(this, parentPoint);
-    int scrollbarLeft = verticalScrollbarIsOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
+    int scrollbarLeft = shouldPlaceBlockDirectionScrollbarOnLeft() ? borderLeft() : width() - borderRight() - scrollbar.width();
     int scrollbarTop = borderTop();
     point.move(-scrollbarLeft, -scrollbarTop);
     return point;

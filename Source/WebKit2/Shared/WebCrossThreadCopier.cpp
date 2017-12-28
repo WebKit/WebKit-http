@@ -28,7 +28,6 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include <WebCore/IDBKeyData.h>
-#include <WebCore/SecurityOriginData.h>
 
 using namespace WebKit;
 
@@ -37,6 +36,7 @@ namespace WebCore {
 Vector<char> CrossThreadCopierBase<false, false, Vector<char>>::copy(const Vector<char>& vector)
 {
     Vector<char> result;
+    result.reserveInitialCapacity(vector.size());
     result.appendVector(vector);
     return result;
 }
@@ -44,6 +44,7 @@ Vector<char> CrossThreadCopierBase<false, false, Vector<char>>::copy(const Vecto
 Vector<int64_t> CrossThreadCopierBase<false, false, Vector<int64_t>>::copy(const Vector<int64_t>& vector)
 {
     Vector<int64_t> result;
+    result.reserveInitialCapacity(vector.size());
     result.appendVector(vector);
     return result;
 }
@@ -51,26 +52,9 @@ Vector<int64_t> CrossThreadCopierBase<false, false, Vector<int64_t>>::copy(const
 Vector<uint8_t> CrossThreadCopierBase<false, false, Vector<uint8_t>>::copy(const Vector<uint8_t>& vector)
 {
     Vector<uint8_t> result;
+    result.reserveInitialCapacity(vector.size());
     result.appendVector(vector);
     return result;
-}
-
-Vector<Vector<IDBKeyData>> CrossThreadCopierBase<false, false, Vector<Vector<IDBKeyData>>>::copy(const Vector<Vector<IDBKeyData>>& vector)
-{
-    Vector<Vector<IDBKeyData>> result;
-
-    for (const auto& keys : vector) {
-        result.append(Vector<IDBKeyData>());
-        for (const auto& key : keys)
-            result.last().append(WebCore::CrossThreadCopier<IDBKeyData>::copy(key));
-    }
-
-    return result;
-}
-
-SecurityOriginData CrossThreadCopierBase<false, false, SecurityOriginData>::copy(const SecurityOriginData& securityOriginData)
-{
-    return securityOriginData.isolatedCopy();
 }
 
 ASCIILiteral CrossThreadCopierBase<false, false, ASCIILiteral>::copy(const ASCIILiteral& literal)

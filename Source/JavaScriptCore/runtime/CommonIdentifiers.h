@@ -71,6 +71,9 @@
     macro(Number) \
     macro(NumberFormat) \
     macro(Object) \
+    macro(PerformanceEntry) \
+    macro(PerformanceEntryList) \
+    macro(PerformanceResourceTiming) \
     macro(Promise) \
     macro(Proxy) \
     macro(RangeError) \
@@ -126,6 +129,7 @@
     macro(compilations) \
     macro(compile) \
     macro(configurable) \
+    macro(console) \
     macro(constructor) \
     macro(count) \
     macro(counters) \
@@ -136,7 +140,6 @@
     macro(displayName) \
     macro(document) \
     macro(done) \
-    macro(entries) \
     macro(enumerable) \
     macro(era) \
     macro(eval) \
@@ -177,7 +180,6 @@
     macro(isWatchpoint) \
     macro(jettisonReason) \
     macro(join) \
-    macro(keys) \
     macro(lastIndex) \
     macro(length) \
     macro(line) \
@@ -243,7 +245,6 @@
     macro(usage) \
     macro(value) \
     macro(valueOf) \
-    macro(values) \
     macro(webkit) \
     macro(webkitIDBCursor) \
     macro(webkitIDBDatabase) \
@@ -315,6 +316,7 @@
     macro(isConcatSpreadable) \
     macro(iterator) \
     macro(match) \
+    macro(replace) \
     macro(search) \
     macro(species) \
     macro(split) \
@@ -328,6 +330,8 @@
     macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
+    macro(arrayIteratorNext) \
+    macro(arrayIteratorIsDone) \
     macro(charCodeAt) \
     macro(iteratedString) \
     macro(stringIteratorNextIndex) \
@@ -335,7 +339,6 @@
     macro(fulfillmentHandler) \
     macro(rejectionHandler) \
     macro(index) \
-    macro(values) \
     macro(deferred) \
     macro(countdownHolder) \
     macro(Object) \
@@ -425,6 +428,8 @@
     macro(regExpCreate) \
     macro(SetIterator) \
     macro(setIteratorNext) \
+    macro(replaceUsingRegExp) \
+    macro(replaceUsingStringSearch) \
     macro(MapIterator) \
     macro(mapIteratorNext) \
     macro(regExpBuiltinExec) \
@@ -436,8 +441,11 @@
     macro(regExpProtoSourceGetter) \
     macro(regExpProtoStickyGetter) \
     macro(regExpProtoUnicodeGetter) \
+    macro(regExpPrototypeSymbolReplace) \
+    macro(regExpReplaceFast) \
     macro(regExpSearchFast) \
     macro(regExpSplitFast) \
+    macro(regExpTestFast) \
     macro(stringIncludesInternal) \
     macro(stringSplitFast) \
     macro(stringSubstrInternal) \

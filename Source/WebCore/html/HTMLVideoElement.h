@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLVideoElement_h
-#define HTMLVideoElement_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -42,7 +41,6 @@ public:
     WEBCORE_EXPORT unsigned videoWidth() const;
     WEBCORE_EXPORT unsigned videoHeight() const;
 
-    // Fullscreen
     void webkitEnterFullscreen(ExceptionCode&);
     void webkitExitFullscreen();
     bool webkitSupportsFullscreen();
@@ -61,7 +59,6 @@ public:
 #endif
 
 #if ENABLE(MEDIA_STATISTICS)
-    // Statistics
     unsigned webkitDecodedFrameCount() const;
     unsigned webkitDroppedFrameCount() const;
 #endif
@@ -81,9 +78,10 @@ public:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
 #if ENABLE(VIDEO_PRESENTATION_MODE)
-    bool webkitSupportsPresentationMode(const String&) const;
-    void webkitSetPresentationMode(const String&);
-    String webkitPresentationMode() const;
+    enum class VideoPresentationMode { Fullscreen, PictureInPicture, Inline };
+    bool webkitSupportsPresentationMode(VideoPresentationMode) const;
+    void webkitSetPresentationMode(VideoPresentationMode);
+    VideoPresentationMode webkitPresentationMode() const;
     void setFullscreenMode(VideoFullscreenMode);
     void fullscreenModeChanged(VideoFullscreenMode) override;
 #endif
@@ -132,4 +130,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLVideoElement)
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(VIDEO)
-#endif // HTMLVideoElement_h

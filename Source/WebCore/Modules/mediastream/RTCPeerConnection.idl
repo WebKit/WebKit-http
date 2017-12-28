@@ -31,13 +31,12 @@
  */
 
 [
-    Conditional=WEB_RTC,
     ActiveDOMObject,
-    CustomConstructor(Dictionary rtcConfiguration),
+    Conditional=WEB_RTC,
     ConstructorCallWith=ScriptExecutionContext,
     ConstructorRaisesException,
+    CustomConstructor(Dictionary rtcConfiguration),
     InterfaceName=webkitRTCPeerConnection,
-    UsePointersEvenForNonNullableObjectArguments,
 ] interface RTCPeerConnection : EventTarget {
 
     // Private functions called by runQueuedOperation() (RTCPeerConnectionInternals.js)
@@ -47,7 +46,7 @@
     [Private] Promise queuedSetRemoteDescription(RTCSessionDescription description);
     [Private] Promise queuedAddIceCandidate(RTCIceCandidate candidate);
 
-    [Private] Promise privateGetStats(optional MediaStreamTrack selector);
+    [Private] Promise privateGetStats(optional MediaStreamTrack? selector = null);
 
     [JSBuiltin] Promise createOffer(optional Dictionary offerOptions);
     // Legacy signature: void createOffer(RTCSessionDescriptionCallback successCallback

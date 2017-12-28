@@ -170,9 +170,10 @@ private:
                 double yOperandValue = m_node->child2()->asNumber();
                 if (yOperandValue == 1) {
                     convertToIdentityOverChild1();
-                } else if (yOperandValue == 0.5) {
-                    m_insertionSet.insertCheck(m_nodeIndex, m_node);
-                    m_node->convertToArithSqrt();
+                    m_changed = true;
+                } else if (yOperandValue == 2) {
+                    m_node->setOp(ArithMul);
+                    m_node->child2() = m_node->child1();
                     m_changed = true;
                 }
             }
@@ -618,7 +619,8 @@ private:
             break;
         }
 
-        case StringReplace: {
+        case StringReplace:
+        case StringReplaceRegExp: {
             Node* stringNode = m_node->child1().node();
             String string = stringNode->tryGetString(m_graph);
             if (!string)

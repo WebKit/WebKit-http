@@ -67,12 +67,15 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 @property char byteAttr;
 @property unsigned char octetAttr;
 @property short shortAttr;
+@property short clampedShortAttr;
+@property short enforceRangeShortAttr;
 @property unsigned short unsignedShortAttr;
 @property int longAttr;
 @property long long longLongAttr;
 @property unsigned long long unsignedLongLongAttr;
 @property (copy) NSString *stringAttr;
 @property (strong) DOMTestObj *testObjAttr;
+@property (strong) DOMTestObj *testNullableObjAttr;
 @property (strong) DOMTestObj *lenientTestObjAttr;
 @property (readonly, copy) NSString *unforgeableAttr;
 @property (copy) NSString *stringAttrTreatingNullAsEmptyString;
@@ -179,6 +182,7 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (void)methodWithOptionalStringAndDefaultValue:(NSString *)str;
 - (void)methodWithOptionalAtomicStringAndDefaultValue:(NSString *)str;
 - (void)methodWithOptionalStringIsNull:(NSString *)str;
+- (void)methodWithOptionalStringIsUndefined:(NSString *)str;
 - (void)methodWithOptionalAtomicStringIsNull:(NSString *)str;
 - (void)methodWithOptionalStringIsEmptyString:(NSString *)str;
 - (void)methodWithOptionalAtomicStringIsEmptyString:(NSString *)str;
@@ -190,9 +194,13 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (void)methodWithOptionalUnsignedLongLongIsZero:(unsigned long long)number;
 - (void)methodWithOptionalBoolean:(BOOL)b;
 - (void)methodWithOptionalBooleanIsFalse:(BOOL)b;
+- (void)methodWithOptionalAny:(DOMany *)a;
+- (void)methodWithOptionalNullableWrapper:(DOMTestObj *)obj;
+- (void)methodWithOptionalNullableWrapperIsNull:(DOMTestObj *)obj;
 - (void)classMethod;
 - (int)classMethodWithOptional:(int)arg;
 - (void)classMethod2:(int)arg;
+- (void)classMethodWithEnforceRange:(unsigned short)objArgsShort objArgsLong:(unsigned)objArgsLong;
 - (DOMSVGDocument *)getSVGDocument;
 - (void)convert1:(DOMTestNode *)value;
 - (void)convert2:(DOMTestNode *)value;

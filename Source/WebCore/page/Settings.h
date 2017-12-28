@@ -35,6 +35,7 @@
 #include "TextFlags.h"
 #include "Timer.h"
 #include "URL.h"
+#include "WritingMode.h"
 #include <chrono>
 #include <runtime/RuntimeFlags.h>
 #include <unicode/uscript.h>
@@ -69,6 +70,11 @@ enum TextDirectionSubmenuInclusionBehavior {
 enum DebugOverlayRegionFlags {
     NonFastScrollableRegion = 1 << 0,
     WheelEventHandlerRegion = 1 << 1,
+};
+
+enum class UserInterfaceDirectionPolicy {
+    Content,
+    System
 };
 
 typedef unsigned DebugOverlayRegions;
@@ -183,6 +189,8 @@ public:
     static bool shouldUseHighResolutionTimers() { return gShouldUseHighResolutionTimers; }
 #endif
 
+    static bool globalConstRedeclarationShouldThrow();
+
     WEBCORE_EXPORT void setBackgroundShouldExtendBeyondPage(bool);
     bool backgroundShouldExtendBeyondPage() const { return m_backgroundShouldExtendBeyondPage; }
 
@@ -204,6 +212,7 @@ public:
 #endif
 
     static const unsigned defaultMaximumHTMLParserDOMTreeDepth = 512;
+    static const unsigned defaultMaximumRenderTreeDepth = 512;
 
     WEBCORE_EXPORT static void setMockScrollbarsEnabled(bool flag);
     WEBCORE_EXPORT static bool mockScrollbarsEnabled();

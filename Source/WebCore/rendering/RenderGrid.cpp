@@ -1185,10 +1185,19 @@ void RenderGrid::insertItemIntoGrid(RenderBox& child, const GridArea& area)
     }
 }
 
+unsigned RenderGrid::computeAutoRepeatTracksCount(GridTrackSizingDirection) const
+{
+    // FIXME: implement the algorithm to compute the number of auto repeat tracks.
+    return 0;
+}
+
 void RenderGrid::placeItemsOnGrid()
 {
     ASSERT(!gridWasPopulated());
     ASSERT(m_gridItemArea.isEmpty());
+
+    m_autoRepeatColumns = computeAutoRepeatTracksCount(ForColumns);
+    m_autoRepeatRows = computeAutoRepeatTracksCount(ForRows);
 
     populateExplicitGridAndOrderIterator();
 
@@ -1217,8 +1226,8 @@ void RenderGrid::placeItemsOnGrid()
         insertItemIntoGrid(*child, GridArea(area.rows, area.columns));
     }
 
-    ASSERT(gridRowCount() >= GridPositionsResolver::explicitGridRowCount(style()));
-    ASSERT(gridColumnCount() >= GridPositionsResolver::explicitGridColumnCount(style()));
+    ASSERT(gridRowCount() >= GridPositionsResolver::explicitGridRowCount(style(), m_autoRepeatRows));
+    ASSERT(gridColumnCount() >= GridPositionsResolver::explicitGridColumnCount(style(), m_autoRepeatColumns));
 
     placeSpecifiedMajorAxisItemsOnGrid(specifiedMajorAxisAutoGridItems);
     placeAutoMajorAxisItemsOnGrid(autoMajorAxisAutoGridItems);
@@ -1238,8 +1247,8 @@ void RenderGrid::populateExplicitGridAndOrderIterator()
 {
     OrderIteratorPopulator populator(m_orderIterator);
     m_smallestRowStart = m_smallestColumnStart = 0;
-    unsigned maximumRowIndex = std::max<unsigned>(1, GridPositionsResolver::explicitGridRowCount(style()));
-    unsigned maximumColumnIndex = std::max<unsigned>(1, GridPositionsResolver::explicitGridColumnCount(style()));
+    unsigned maximumRowIndex = std::max<unsigned>(1, GridPositionsResolver::explicitGridRowCount(style(), m_autoRepeatRows));
+    unsigned maximumColumnIndex = std::max<unsigned>(1, GridPositionsResolver::explicitGridColumnCount(style(), m_autoRepeatColumns));
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (child->isOutOfFlowPositioned())
@@ -1247,7 +1256,7 @@ void RenderGrid::populateExplicitGridAndOrderIterator()
 
         populator.collectChild(*child);
 
-        GridSpan rowPositions = GridPositionsResolver::resolveGridPositionsFromStyle(style(), *child, ForRows);
+        GridSpan rowPositions = GridPositionsResolver::resolveGridPositionsFromStyle(style(), *child, ForRows, m_autoRepeatRows);
         if (!rowPositions.isIndefinite()) {
             m_smallestRowStart = std::min(m_smallestRowStart, rowPositions.untranslatedStartLine());
             maximumRowIndex = std::max<int>(maximumRowIndex, rowPositions.untranslatedEndLine());
@@ -1257,7 +1266,7 @@ void RenderGrid::populateExplicitGridAndOrderIterator()
             maximumRowIndex = std::max(maximumRowIndex, spanSize);
         }
 
-        GridSpan columnPositions = GridPositionsResolver::resolveGridPositionsFromStyle(style(), *child, ForColumns);
+        GridSpan columnPositions = GridPositionsResolver::resolveGridPositionsFromStyle(style(), *child, ForColumns, m_autoRepeatColumns);
         if (!columnPositions.isIndefinite()) {
             m_smallestColumnStart = std::min(m_smallestColumnStart, columnPositions.untranslatedStartLine());
             maximumColumnIndex = std::max<int>(maximumColumnIndex, columnPositions.untranslatedEndLine());
@@ -1521,7 +1530,8 @@ void RenderGrid::offsetAndBreadthForPositionedChild(const RenderBox& child, Grid
     ASSERT(child.isHorizontalWritingMode() == isHorizontalWritingMode());
     bool isRowAxis = direction == ForColumns;
 
-    GridSpan positions = GridPositionsResolver::resolveGridPositionsFromStyle(style(), child, direction);
+    unsigned autoRepeatCount = autoRepeatCountForDirection(direction);
+    GridSpan positions = GridPositionsResolver::resolveGridPositionsFromStyle(style(), child, direction, autoRepeatCount);
     if (positions.isIndefinite()) {
         offset = LayoutUnit();
         breadth = isRowAxis ? clientLogicalWidth() : clientLogicalHeight();
@@ -1536,32 +1546,38 @@ void RenderGrid::offsetAndBreadthForPositionedChild(const RenderBox& child, Grid
     GridPosition startPosition = isRowAxis ? child.style().gridItemColumnStart() : child.style().gridItemRowStart();
     GridPosition endPosition = isRowAxis ? child.style().gridItemColumnEnd() : child.style().gridItemRowEnd();
     int firstExplicitLine = smallestStart;
-    int lastExplicitLine = (isRowAxis ? GridPositionsResolver::explicitGridColumnCount(style()) : GridPositionsResolver::explicitGridRowCount(style())) + smallestStart;
+    int lastExplicitLine = (isRowAxis ? GridPositionsResolver::explicitGridColumnCount(style(), autoRepeatCount) : GridPositionsResolver::explicitGridRowCount(style(), autoRepeatCount)) + smallestStart;
 
     bool startIsAuto = startPosition.isAuto()
-        || (startPosition.isNamedGridArea() && GridPositionsResolver::isNonExistentNamedLineOrArea(startPosition.namedGridLine(), style(), (direction == ForColumns) ? ColumnStartSide : RowStartSide))
+        || (startPosition.isNamedGridArea() && !NamedLineCollection::isValidNamedLineOrArea(startPosition.namedGridLine(), style(), (direction == ForColumns) ? ColumnStartSide : RowStartSide))
         || (startLine < firstExplicitLine)
         || (startLine > lastExplicitLine);
     bool endIsAuto = endPosition.isAuto()
-        || (endPosition.isNamedGridArea() && GridPositionsResolver::isNonExistentNamedLineOrArea(endPosition.namedGridLine(), style(), (direction == ForColumns) ? ColumnEndSide : RowEndSide))
+        || (endPosition.isNamedGridArea() && !NamedLineCollection::isValidNamedLineOrArea(endPosition.namedGridLine(), style(), (direction == ForColumns) ? ColumnEndSide : RowEndSide))
         || (endLine < firstExplicitLine)
         || (endLine > lastExplicitLine);
 
     // We're normalizing the positions to avoid issues with RTL (as they're stored in the same order than LTR but adding an offset).
     LayoutUnit start;
     if (!startIsAuto) {
-        if (isRowAxis)
-            start = m_columnPositions[startLine] - m_columnPositions[0] + paddingStart();
-        else
-            start = m_rowPositions[startLine] - m_rowPositions[0] + paddingBefore();
+        if (isRowAxis) {
+            if (style().isLeftToRightDirection())
+                start = m_columnPositions[startLine] - borderLogicalLeft();
+            else
+                start = logicalWidth() - translateRTLCoordinate(m_columnPositions[startLine]) - borderLogicalRight();
+        } else
+            start = m_rowPositions[startLine] - borderBefore();
     }
 
     LayoutUnit end = isRowAxis ? clientLogicalWidth() : clientLogicalHeight();
     if (!endIsAuto) {
-        if (isRowAxis)
-            end = m_columnPositions[endLine] - m_columnPositions[0] + paddingStart();
-        else
-            end = m_rowPositions[endLine] - m_rowPositions[0] + paddingBefore();
+        if (isRowAxis) {
+            if (style().isLeftToRightDirection())
+                end = m_columnPositions[endLine] - borderLogicalLeft();
+            else
+                end = logicalWidth() - translateRTLCoordinate(m_columnPositions[endLine]) - borderLogicalRight();
+        } else
+            end = m_rowPositions[endLine] - borderBefore();
 
         // These vectors store line positions including gaps, but we shouldn't consider them for the edges of the grid.
         if (endLine > firstExplicitLine && endLine < lastExplicitLine) {
@@ -1569,15 +1585,6 @@ void RenderGrid::offsetAndBreadthForPositionedChild(const RenderBox& child, Grid
             end -= isRowAxis ? m_offsetBetweenColumns : m_offsetBetweenRows;
         }
     }
-
-    LayoutUnit alignmentOffset = isRowAxis ? m_columnPositions[0] - borderAndPaddingStart() : m_rowPositions[0] - borderAndPaddingBefore();
-    if (isRowAxis && !style().isLeftToRightDirection())
-        alignmentOffset = contentLogicalWidth() - (m_columnPositions[m_columnPositions.size() - 1] - borderAndPaddingStart());
-
-    if (!startIsAuto)
-        start += alignmentOffset;
-    if (!endIsAuto)
-        end += alignmentOffset;
 
     breadth = end - start;
     offset = start;
@@ -1662,7 +1669,7 @@ void RenderGrid::populateGridPositions(GridSizingData& sizingData)
     ContentAlignmentData offset = computeContentPositionAndDistributionOffset(ForColumns, sizingData.freeSpaceForDirection(ForColumns).value(), numberOfTracks);
     LayoutUnit trackGap = guttersSize(ForColumns, 2);
     m_columnPositions.resize(numberOfLines);
-    m_columnPositions[0] = borderAndPaddingStart() + offset.positionOffset;
+    m_columnPositions[0] = borderAndPaddingLogicalLeft() + offset.positionOffset;
     for (unsigned i = 0; i < nextToLastLine; ++i)
         m_columnPositions[i + 1] = m_columnPositions[i] + offset.distributionOffset + sizingData.columnTracks[i].baseSize() + trackGap;
     m_columnPositions[lastLine] = m_columnPositions[nextToLastLine] + sizingData.columnTracks[nextToLastLine].baseSize();
@@ -1936,14 +1943,12 @@ LayoutUnit RenderGrid::columnAxisOffsetForChild(const RenderBox& child) const
     case GridAxisCenter: {
         unsigned childEndLine = rowsSpan.endLine();
         LayoutUnit endOfRow = m_rowPositions[childEndLine];
-        // m_rowPositions include gutters so we need to substract them to get the actual end position for a given
-        // row (this does not have to be done for the last track as there are no more m_rowPositions after it)
+        // m_rowPositions include distribution offset (because of content alignment) and gutters
+        // so we need to subtract them to get the actual end position for a given row
+        // (this does not have to be done for the last track as there are no more m_rowPositions after it).
         if (childEndLine < m_rowPositions.size() - 1)
-            endOfRow -= guttersSize(ForRows, 2);
+            endOfRow -= guttersSize(ForRows, 2) + m_offsetBetweenRows;
         LayoutUnit childBreadth = child.logicalHeight() + child.marginLogicalHeight();
-        // In order to properly adjust the Self Alignment values we need to consider the offset between tracks.
-        if (childEndLine - childStartLine > 1 && childEndLine < m_rowPositions.size() - 1)
-            endOfRow -= m_offsetBetweenRows;
         LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(RenderStyle::resolveAlignmentOverflow(style(), child.style()), endOfRow - startOfRow, childBreadth);
         return startPosition + (axisPosition == GridAxisEnd ? offsetFromStartPosition : offsetFromStartPosition / 2);
     }
@@ -1970,14 +1975,12 @@ LayoutUnit RenderGrid::rowAxisOffsetForChild(const RenderBox& child) const
     case GridAxisCenter: {
         unsigned childEndLine = columnsSpan.endLine();
         LayoutUnit endOfColumn = m_columnPositions[childEndLine];
-        // m_columnPositions include gutters so we need to substract them to get the actual end position for a given
-        // column (this does not have to be done for the last track as there are no more m_columnPositions after it)
+        // m_columnPositions include distribution offset (because of content alignment) and gutters
+        // so we need to subtract them to get the actual end position for a given column
+        // (this does not have to be done for the last track as there are no more m_columnPositions after it).
         if (childEndLine < m_columnPositions.size() - 1)
-            endOfColumn -= guttersSize(ForColumns, 2);
+            endOfColumn -= guttersSize(ForColumns, 2) + m_offsetBetweenColumns;
         LayoutUnit childBreadth = child.logicalWidth() + child.marginLogicalWidth();
-        // In order to properly adjust the Self Alignment values we need to consider the offset between tracks.
-        if (childEndLine - childStartLine > 1 && childEndLine < m_columnPositions.size() - 1)
-            endOfColumn -= m_offsetBetweenColumns;
         LayoutUnit offsetFromStartPosition = computeOverflowAlignmentOffset(RenderStyle::resolveJustificationOverflow(style(), child.style()), endOfColumn - startOfColumn, childBreadth);
         return startPosition + (axisPosition == GridAxisEnd ? offsetFromStartPosition : offsetFromStartPosition / 2);
     }
@@ -2092,9 +2095,9 @@ LayoutUnit RenderGrid::translateRTLCoordinate(LayoutUnit coordinate) const
 {
     ASSERT(!style().isLeftToRightDirection());
 
-    LayoutUnit alignmentOffset = m_columnPositions[0] - borderAndPaddingStart();
+    LayoutUnit alignmentOffset = m_columnPositions[0];
     LayoutUnit rightGridEdgePosition = m_columnPositions[m_columnPositions.size() - 1];
-    return borderAndPaddingLogicalLeft() + rightGridEdgePosition + alignmentOffset - coordinate;
+    return rightGridEdgePosition + alignmentOffset - coordinate;
 }
 
 LayoutPoint RenderGrid::findChildLogicalPosition(const RenderBox& child) const

@@ -530,11 +530,11 @@ public:
     bool isArrowFunctionBoundary() { return m_isArrowFunctionBoundary; }
     bool isArrowFunction() { return m_isArrowFunction; }
 
-    bool hasDirectSuper() { return m_hasDirectSuper; }
-    void setHasDirectSuper() { m_hasDirectSuper = true; }
+    bool hasDirectSuper() const { return m_hasDirectSuper; }
+    bool setHasDirectSuper() { return std::exchange(m_hasDirectSuper, true); }
 
-    bool needsSuperBinding() { return m_needsSuperBinding; }
-    void setNeedsSuperBinding() { m_needsSuperBinding = true; }
+    bool needsSuperBinding() const { return m_needsSuperBinding; }
+    bool setNeedsSuperBinding() { return std::exchange(m_needsSuperBinding, true); }
     
     void setEvalContextType(EvalContextType evalContextType) { m_evalContextType = evalContextType; }
     EvalContextType evalContextType() { return m_evalContextType; }
@@ -1034,6 +1034,7 @@ private:
         ASSERT(i < m_scopeStack.size() && m_scopeStack.size());
         while (i && (!m_scopeStack[i].isFunctionBoundary() || m_scopeStack[i].isGeneratorBoundary() || m_scopeStack[i].isArrowFunctionBoundary()))
             i--;
+        // When reaching the top level scope (it can be non ordinary function scope), we return it.
         return ScopeRef(&m_scopeStack, i);
     }
     
@@ -1518,6 +1519,7 @@ private:
 
     ALWAYS_INLINE void restoreLexerState(const LexerState& lexerState)
     {
+        // setOffset clears lexer errors.
         m_lexer->setOffset(lexerState.startOffset, lexerState.oldLineStartOffset);
         next();
         m_lexer->setLastLineNumber(lexerState.oldLastLineNumber);
@@ -1528,31 +1530,55 @@ private:
         ParserState parserState;
         LexerState lexerState;
     };
-    
-    ALWAYS_INLINE SavePoint createSavePointForError()
+
+    struct SavePointWithError : public SavePoint {
+        bool lexerError;
+        String lexerErrorMessage;
+        String parserErrorMessage;
+    };
+
+    ALWAYS_INLINE void internalSaveState(SavePoint& savePoint)
     {
-        SavePoint result;
-        result.parserState = internalSaveParserState();
-        result.lexerState = internalSaveLexerState();
-        return result;
+        savePoint.parserState = internalSaveParserState();
+        savePoint.lexerState = internalSaveLexerState();
+    }
+    
+    ALWAYS_INLINE SavePointWithError createSavePointForError()
+    {
+        SavePointWithError savePoint;
+        internalSaveState(savePoint);
+        savePoint.lexerError = m_lexer->sawError();
+        savePoint.lexerErrorMessage = m_lexer->getErrorMessage();
+        savePoint.parserErrorMessage = m_errorMessage;
+        return savePoint;
     }
     
     ALWAYS_INLINE SavePoint createSavePoint()
     {
         ASSERT(!hasError());
-        return createSavePointForError();
+        SavePoint savePoint;
+        internalSaveState(savePoint);
+        return savePoint;
     }
 
-    ALWAYS_INLINE void restoreSavePointWithError(const SavePoint& savePoint, const String& message)
+    ALWAYS_INLINE void internalRestoreState(const SavePoint& savePoint)
     {
-        m_errorMessage = message;
         restoreLexerState(savePoint.lexerState);
         restoreParserState(savePoint.parserState);
     }
 
+    ALWAYS_INLINE void restoreSavePointWithError(const SavePointWithError& savePoint)
+    {
+        internalRestoreState(savePoint);
+        m_lexer->setSawError(savePoint.lexerError);
+        m_lexer->setErrorMessage(savePoint.lexerErrorMessage);
+        m_errorMessage = savePoint.parserErrorMessage;
+    }
+
     ALWAYS_INLINE void restoreSavePoint(const SavePoint& savePoint)
     {
-        restoreSavePointWithError(savePoint, String());
+        internalRestoreState(savePoint);
+        m_errorMessage = String();
     }
 
     VM* m_vm;

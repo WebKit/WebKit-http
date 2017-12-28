@@ -30,13 +30,14 @@
 
 #include "config.h"
 
-#if ENABLE(PERFORMANCE_TIMELINE)
-
+#if ENABLE(WEB_TIMING)
 #include "JSPerformanceEntry.h"
 
 #include "JSDOMBinding.h"
+#if ENABLE(USER_TIMING)
 #include "JSPerformanceMark.h"
 #include "JSPerformanceMeasure.h"
+#endif
 #include "JSPerformanceResourceTiming.h"
 #include "PerformanceMark.h"
 #include "PerformanceMeasure.h"
@@ -51,22 +52,19 @@ JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, PerformanceEntry* entr
     if (!entry)
         return jsNull();
 
-#if ENABLE(RESOURCE_TIMING)
-    if (entry->isResource())
-        return wrap<JSPerformanceResourceTiming>(globalObject, static_cast<PerformanceResourceTiming*>(entry));
-#endif
+    if (is<PerformanceResourceTiming>(*entry))
+        return wrap<JSPerformanceResourceTiming>(globalObject, downcast<PerformanceResourceTiming>(*entry));
 
 #if ENABLE(USER_TIMING)
-    if (entry->isMark())
-        return wrap<JSPerformanceMark>(globalObject, static_cast<PerformanceMark*>(entry));
+    if (is<PerformanceMark>(*entry))
+        return wrap<JSPerformanceMark>(globalObject, downcast<PerformanceMark>(*entry));
 
-    if (entry->isMeasure())
-        return wrap<JSPerformanceMeasure>(globalObject, static_cast<PerformanceMeasure*>(entry));
+    if (is<PerformanceMeasure>(*entry))
+        return wrap<JSPerformanceMeasure>(globalObject, downcast<PerformanceMeasure>(*entry));
 #endif
 
-    return wrap<JSPerformanceEntry>(globalObject, entry);
+    return wrap<JSPerformanceEntry>(globalObject, *entry);
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(PERFORMANCE_TIMELINE)
+#endif // ENABLE(WEB_TIMING)

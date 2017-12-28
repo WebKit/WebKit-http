@@ -693,7 +693,7 @@ RoundedRect::Radii RenderBox::borderRadii() const
 LayoutRect RenderBox::contentBoxRect() const
 {
     LayoutUnit x = borderLeft() + paddingLeft();
-    if (layer() && layer()->verticalScrollbarIsOnLeft())
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         x += verticalScrollbarWidth();
     LayoutUnit y = borderTop() + paddingTop();
     return LayoutRect(x, y, contentWidth(), contentHeight());
@@ -1827,7 +1827,7 @@ LayoutRect RenderBox::overflowClipRect(const LayoutPoint& location, RenderRegion
 
     // Subtract out scrollbars if we have them.
     if (layer()) {
-        if (style().shouldPlaceBlockDirectionScrollbarOnLeft())
+        if (shouldPlaceBlockDirectionScrollbarOnLeft())
             clipRect.move(layer()->verticalScrollbarWidth(relevancy), 0);
         clipRect.contract(layer()->verticalScrollbarWidth(relevancy), layer()->horizontalScrollbarHeight(relevancy));
     }
@@ -2157,10 +2157,6 @@ void RenderBox::positionLineBox(InlineElementBox& box)
             if (style().hasStaticBlockPosition(box.isHorizontal()))
                 setChildNeedsLayout(MarkOnlyThis); // Just mark the positioned object as needing layout, so it will update its position properly.
         }
-
-        // Nuke the box.
-        box.removeFromParent();
-        delete &box;
         return;
     }
 
@@ -3534,7 +3530,7 @@ void RenderBox::computePositionedLogicalWidth(LogicalExtentComputedValues& compu
     computedValues.m_extent += bordersPlusPadding;
     if (is<RenderBox>(containerBlock)) {
         auto& containingBox = downcast<RenderBox>(containerBlock);
-        if (containingBox.layer() && containingBox.layer()->verticalScrollbarIsOnLeft())
+        if (containingBox.shouldPlaceBlockDirectionScrollbarOnLeft())
             computedValues.m_position += containingBox.verticalScrollbarWidth();
     }
     
@@ -4907,7 +4903,7 @@ LayoutRect RenderBox::flippedClientBoxRect() const
     flipForWritingMode(rect);
     // Subtract space occupied by scrollbars. They are at their physical edge in this coordinate
     // system, so order is important here: first flip, then subtract scrollbars.
-    if (style().shouldPlaceBlockDirectionScrollbarOnLeft() && style().isLeftToRightDirection())
+    if (shouldPlaceBlockDirectionScrollbarOnLeft())
         rect.move(verticalScrollbarWidth(), 0);
     rect.contract(verticalScrollbarWidth(), horizontalScrollbarHeight());
     return rect;

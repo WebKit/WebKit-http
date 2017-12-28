@@ -48,19 +48,33 @@ public:
     static RefPtr<FetchRequest> create(ScriptExecutionContext&, FetchRequest&, const Dictionary&, ExceptionCode&);
     static RefPtr<FetchRequest> create(ScriptExecutionContext&, const String&, const Dictionary&, ExceptionCode&);
 
-    // Request API
     const String& method() const { return m_internalRequest.request.httpMethod(); }
     const String& url() const { return m_internalRequest.request.url().string(); }
     FetchHeaders& headers() { return m_headers.get(); }
 
-    String type() const;
-    String destination() const;
+    using Type = FetchOptions::Type;
+    Type type() const;
+
+    using Destination = FetchOptions::Destination;
+    Destination destination() const;
+
     String referrer() const;
-    String referrerPolicy() const;
-    String mode() const;
-    String credentials() const;
-    String cache() const;
-    String redirect() const;
+
+    using ReferrerPolicy = FetchOptions::ReferrerPolicy;
+    ReferrerPolicy referrerPolicy() const;
+
+    using Mode = FetchOptions::Mode;
+    Mode mode() const;
+
+    using Credentials = FetchOptions::Credentials;
+    Credentials credentials() const;
+
+    using Cache = FetchOptions::Cache;
+    Cache cache() const;
+
+    using Redirect = FetchOptions::Redirect;
+    Redirect redirect() const;
+
     const String& integrity() const { return m_internalRequest.integrity; }
 
     RefPtr<FetchRequest> clone(ScriptExecutionContext&, ExceptionCode&);
@@ -91,6 +105,41 @@ inline FetchRequest::FetchRequest(ScriptExecutionContext& context, FetchBody&& b
     , m_headers(WTFMove(headers))
     , m_internalRequest(WTFMove(internalRequest))
 {
+}
+
+inline auto FetchRequest::cache() const -> Cache
+{
+    return m_internalRequest.options.cache;
+}
+
+inline auto FetchRequest::credentials() const -> Credentials
+{
+    return m_internalRequest.options.credentials;
+}
+
+inline auto FetchRequest::destination() const -> Destination
+{
+    return m_internalRequest.options.destination;
+}
+
+inline auto FetchRequest::mode() const -> Mode
+{
+    return m_internalRequest.options.mode;
+}
+
+inline auto FetchRequest::redirect() const -> Redirect
+{
+    return m_internalRequest.options.redirect;
+}
+
+inline auto FetchRequest::referrerPolicy() const -> ReferrerPolicy
+{
+    return m_internalRequest.options.referrerPolicy;
+}
+
+inline auto FetchRequest::type() const -> Type
+{
+    return m_internalRequest.options.type;
 }
 
 } // namespace WebCore

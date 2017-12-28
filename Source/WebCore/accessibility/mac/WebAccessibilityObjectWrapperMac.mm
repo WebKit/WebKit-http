@@ -2159,6 +2159,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { LandmarkContentInfoRole, NSAccessibilityGroupRole },
         { LandmarkMainRole, NSAccessibilityGroupRole },
         { LandmarkNavigationRole, NSAccessibilityGroupRole },
+        { LandmarkRegionRole, NSAccessibilityGroupRole },
         { LandmarkSearchRole, NSAccessibilityGroupRole },
         { ApplicationAlertRole, NSAccessibilityGroupRole },
         { ApplicationAlertDialogRole, NSAccessibilityGroupRole },
@@ -2171,7 +2172,6 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { DocumentArticleRole, NSAccessibilityGroupRole },
         { DocumentMathRole, NSAccessibilityGroupRole },
         { DocumentNoteRole, NSAccessibilityGroupRole },
-        { DocumentRegionRole, NSAccessibilityGroupRole },
         { UserInterfaceTooltipRole, NSAccessibilityGroupRole },
         { TabRole, NSAccessibilityRadioButtonRole },
         { TabListRole, NSAccessibilityTabGroupRole },
@@ -2300,6 +2300,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return @"AXLandmarkMain";
         case LandmarkNavigationRole:
             return @"AXLandmarkNavigation";
+        case LandmarkRegionRole:
+            return @"AXLandmarkRegion";
         case LandmarkSearchRole:
             return @"AXLandmarkSearch";
         case ApplicationAlertRole:
@@ -2324,8 +2326,6 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return @"AXDocumentMath";
         case DocumentNoteRole:
             return @"AXDocumentNote";
-        case DocumentRegionRole:
-            return @"AXDocumentRegion";
         case UserInterfaceTooltipRole:
             return @"AXUserInterfaceTooltip";
         case TabPanelRole:
@@ -2413,6 +2413,10 @@ static NSString* roleValueToNSString(AccessibilityRole value)
                 return @"AXInsertStyleGroup";
             if (node->hasTagName(delTag))
                 return @"AXDeleteStyleGroup";
+            if (node->hasTagName(supTag))
+                return @"AXSuperscriptStyleGroup";
+            if (node->hasTagName(subTag))
+                return @"AXSubscriptStyleGroup";
         }
     }
     

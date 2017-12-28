@@ -37,9 +37,18 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         console.assert(message instanceof WebInspector.ConsoleMessage);
 
         this._message = message;
-
         this._expandable = false;
+        this._repeatCount = message._repeatCount || 0;
 
+        // These are the parameters unused by the messages's optional format string.
+        // Any extra parameters will be displayed as children of this message.
+        this._extraParameters = message.parameters;
+    }
+
+    // Public
+
+    render()
+    {
         this._element = document.createElement("div");
         this._element.classList.add("console-message");
 
@@ -76,10 +85,6 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             break;
         }
 
-        // These are the parameters unused by the messages's optional format string.
-        // Any extra parameters will be displayed as children of this message.
-        this._extraParameters = this._message.parameters;
-
         // FIXME: The location link should include stack trace information.
         this._appendLocationLink();
 
@@ -92,10 +97,8 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         this._appendExtraParameters();
         this._appendStackTrace();
 
-        this.repeatCount = this._message.repeatCount;
+        this._renderRepeatCount();
     }
-
-    // Public
 
     get element()
     {
@@ -120,6 +123,14 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             return;
 
         this._repeatCount = count;
+
+        if (this._element)
+            this._renderRepeatCount();
+    }
+
+    _renderRepeatCount()
+    {
+        let count = this._repeatCount;
 
         if (count <= 1) {
             if (this._repeatCountElement) {
@@ -234,9 +245,10 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             case WebInspector.ConsoleMessage.MessageType.Trace:
                 var args = [WebInspector.UIString("Trace")];
                 if (this._message.parameters) {
-                    if (this._message.parameters[0].type === "string")
-                        args = [WebInspector.UIString("Trace: %s")].concat(this._message.parameters);
-                    else
+                    if (this._message.parameters[0].type === "string") {
+                        var prefixedFormatString = WebInspector.UIString("Trace: %s").format(this._message.parameters[0].description);
+                        args = [prefixedFormatString].concat(this._message.parameters.slice(1));
+                    } else
                         args = args.concat(this._message.parameters);
                 }
                 this._appendFormattedArguments(element, args);
@@ -245,9 +257,10 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             case WebInspector.ConsoleMessage.MessageType.Assert:
                 var args = [WebInspector.UIString("Assertion Failed")];
                 if (this._message.parameters) {
-                    if (this._message.parameters[0].type === "string")
-                        args = [WebInspector.UIString("Assertion Failed: %s")].concat(this._message.parameters);
-                    else
+                    if (this._message.parameters[0].type === "string") {
+                        var prefixedFormatString = WebInspector.UIString("Assertion Failed: %s").format(this._message.parameters[0].description);
+                        args = [prefixedFormatString].concat(this._message.parameters.slice(1));
+                    } else
                         args = args.concat(this._message.parameters);
                 }
                 this._appendFormattedArguments(element, args);

@@ -71,7 +71,9 @@ public:
     void exitedFullscreen();
 
     String externalDeviceDisplayName() const;
-    String externalDeviceType() const;
+
+    enum class DeviceType { None, Airplay, Tvout };
+    DeviceType externalDeviceType() const;
 
     bool controlsDependOnPageScaleFactor() const;
     void setControlsDependOnPageScaleFactor(bool v);

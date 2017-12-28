@@ -1044,7 +1044,8 @@ sub FunctionUsedToRaiseException {
         || $functionName eq "webkit_dom_range_get_collapsed"
         || $functionName eq "webkit_dom_range_get_end_offset"
         || $functionName eq "webkit_dom_range_get_start_offset"
-        || $functionName eq "webkit_dom_range_to_string";
+        || $functionName eq "webkit_dom_range_to_string"
+        || $functionName eq "webkit_dom_tree_walker_set_current_node";
 }
 
 sub FunctionUsedToNotRaiseException {
@@ -1110,9 +1111,7 @@ sub GenerateFunction {
         }
         if ($paramIsGDOMType || ($paramIDLType eq "DOMString")) {
             $paramName = "converted" . $codeGenerator->WK_ucfirst($paramName);
-            if ($prefix ne "set_" && $codeGenerator->ShouldPassWrapperByReference($param, $parentNode)) {
-                $paramName = "*$paramName";
-            }
+            $paramName = "*$paramName" if $codeGenerator->ShouldPassWrapperByReference($param, $parentNode);
         }
         if ($paramIDLType eq "NodeFilter" || $paramIDLType eq "XPathNSResolver") {
             $paramName = "WTF::getPtr(" . $paramName . ")";
@@ -1497,6 +1496,7 @@ sub GenerateFunctions {
         my $param = new domSignature();
         $param->name("value");
         $param->type($attribute->signature->type);
+        $param->isNullable($attribute->signature->isNullable);
         my %attributes = ();
         $param->extendedAttributes(\%attributes);
         my $arrayRef = $function->parameters;

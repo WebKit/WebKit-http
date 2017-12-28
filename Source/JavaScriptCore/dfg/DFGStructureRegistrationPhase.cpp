@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -62,7 +62,6 @@ public:
         registerStructure(m_graph.m_vm.structureStructure.get());
         registerStructure(m_graph.m_vm.stringStructure.get());
         registerStructure(m_graph.m_vm.symbolStructure.get());
-        registerStructure(m_graph.m_vm.getterSetterStructure.get());
         
         for (FrozenValue* value : m_graph.m_frozenValues)
             assertIsRegistered(value->structure());
@@ -92,7 +91,11 @@ public:
                     registerStructure(node->transition()->previous);
                     registerStructure(node->transition()->next);
                     break;
-                    
+
+                case GetGetterSetterByOffset:
+                    registerStructure(m_graph.globalObjectFor(node->origin.semantic)->getterSetterStructure());
+                    break;
+
                 case MultiGetByOffset:
                     for (const MultiGetByOffsetCase& getCase : node->multiGetByOffsetData().cases)
                         registerStructures(getCase.set());
@@ -117,7 +120,7 @@ public:
                 }
                     
                 case NewTypedArray:
-                    registerStructure(m_graph.globalObjectFor(node->origin.semantic)->typedArrayStructure(node->typedArrayType()));
+                    registerStructure(m_graph.globalObjectFor(node->origin.semantic)->typedArrayStructureConcurrently(node->typedArrayType()));
                     break;
                     
                 case ToString:

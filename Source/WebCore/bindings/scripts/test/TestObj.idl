@@ -35,6 +35,14 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
 // Leading underscore on an enum should be removed.
 enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
 
+[Conditional=Condition1] enum TestEnumA { "A" };
+[Conditional=Condition1&Condition2] enum TestEnumB { "B" };
+[Conditional=Condition1|Condition2] enum TestEnumC { "C" };
+
+enum TestObjKind { "quick", "dead" };
+enum ObjSize { "small", "much-much-larger" };
+enum TestConfidence { "high", "kinda-low" };
+
 [
     Constructor(TestCallback testCallback, TestCallbackFunction testCallbackFunction),
     InterfaceName=TestObject
@@ -51,12 +59,15 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     attribute byte                     byteAttr;
     attribute octet                    octetAttr;
     attribute short                    shortAttr;
+    [Clamp] attribute short            clampedShortAttr;
+    [EnforceRange] attribute short     enforceRangeShortAttr;
     attribute unsigned short           unsignedShortAttr;
     attribute long                     longAttr;
     attribute long long                longLongAttr;
     attribute unsigned long long       unsignedLongLongAttr;
     attribute DOMString                stringAttr;
     attribute TestObj                  testObjAttr;
+    attribute TestObj?                 testNullableObjAttr;
     [LenientThis] attribute TestObj    lenientTestObjAttr;
     [Unforgeable] readonly attribute DOMString unforgeableAttr;
     [TreatNullAs=EmptyString] attribute DOMString stringAttrTreatingNullAsEmptyString;
@@ -64,10 +75,6 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     // WK_ucfirst, WK_lcfirst exceptional cases.
     attribute TestObj                  XMLObjAttr;
     attribute boolean                  create;
-
-    // Readonly Symbol typed attributes.
-    readonly attribute Symbol readOnlySymbolAttr;
-    static readonly attribute Symbol staticReadOnlySymbolAttr;
 
     // Reflected DOM attributes
     [Reflect] attribute DOMString reflectedStringAttr;
@@ -130,7 +137,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     [SetterRaisesException] attribute DOMString stringAttrWithSetterException;
 
     // Strict type checking.
-    [StrictTypeChecking] attribute TestObj strictTypeCheckingAttribute;
+    [StrictTypeChecking] attribute TestObj? strictTypeCheckingAttribute;
 
     // 'Custom' extended attribute
     [Custom] attribute long            customAttr;
@@ -183,6 +190,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     void    methodWithOptionalStringAndDefaultValue(optional DOMString str = "foo");
     void    methodWithOptionalAtomicStringAndDefaultValue([AtomicString] optional DOMString str = "foo");
     void    methodWithOptionalStringIsNull(optional DOMString str = null);
+    void    methodWithOptionalStringIsUndefined(optional DOMString str = "undefined");
     void    methodWithOptionalAtomicStringIsNull([AtomicString] optional DOMString str = null);
     void    methodWithOptionalStringIsEmptyString(optional DOMString str = "");
     void    methodWithOptionalAtomicStringIsEmptyString([AtomicString] optional DOMString str = "");
@@ -197,20 +205,23 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     void    methodWithOptionalArrayIsEmpty(optional DOMString[] array = []);
     void    methodWithOptionalBoolean(optional boolean b);
     void    methodWithOptionalBooleanIsFalse(optional boolean b = false);
+    void    methodWithOptionalAny(optional any a);
+    void    methodWithOptionalNullableWrapper(optional TestObj? obj);
+    void    methodWithOptionalNullableWrapperIsNull(optional TestObj? obj = null);
 
 #if defined(TESTING_JS)
     // Callback interface parameters.
     void    methodWithCallbackArg(TestCallback callback);
     void    methodWithNonCallbackArgAndCallbackArg(long nonCallback, TestCallback callback);
-    void    methodWithCallbackAndOptionalArg(optional TestCallback callback);
+    void    methodWithCallbackAndOptionalArg(optional TestCallback? callback);
 
     // Callback function parameters.
     void    methodWithCallbackFunctionArg(TestCallbackFunction callback);
     void    methodWithNonCallbackArgAndCallbackFunctionArg(long nonCallback, TestCallbackFunction callback);
-    void    methodWithCallbackFunctionAndOptionalArg(optional TestCallbackFunction callback);
+    void    methodWithCallbackFunctionAndOptionalArg(optional TestCallbackFunction? callback);
 
     // static methods with 'Callback' extended attribute
-    static void    staticMethodWithCallbackAndOptionalArg(optional TestCallback callback);
+    static void    staticMethodWithCallbackAndOptionalArg(optional TestCallback? callback);
     static void    staticMethodWithCallbackArg(TestCallback callback);
 #endif
 
@@ -254,7 +265,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     // FIXME: Implement support for overloaded functions with variadic arguments.
     void    overloadedMethod(Blob... blobArgs);
 
-    void overloadedMethodWithOptionalParameter(TestObj? objArg1, optional TestObj? objArg2);
+    void overloadedMethodWithOptionalParameter(TestObj? objArg1, optional TestObj? objArg2 = null);
     void overloadedMethodWithOptionalParameter(TestObj? objArg, optional long longArg);
 #endif
 
@@ -268,6 +279,7 @@ enum _optional { "", "OptionalValue1", "OptionalValue2", "OptionalValue3" };
     [Conditional=Condition1] static void overloadedMethod1([StrictTypeChecking] DOMString type);
 
     void classMethodWithClamp([Clamp] unsigned short objArgsShort, [Clamp] unsigned long objArgsLong);
+    void classMethodWithEnforceRange([EnforceRange] unsigned short objArgsShort, [EnforceRange] unsigned long objArgsLong);
 
 #if defined(TESTING_JS)
     void methodWithUnsignedLongSequence(sequence<unsigned long> unsignedLongSequence);
