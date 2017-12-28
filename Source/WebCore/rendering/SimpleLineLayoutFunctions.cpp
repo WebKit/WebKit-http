@@ -84,7 +84,7 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
     if (paintInfo.phase != PaintPhaseForeground)
         return;
 
-    RenderStyle& style = flow.style();
+    auto& style = flow.style();
     if (style.visibility() != VISIBLE)
         return;
 
@@ -140,7 +140,7 @@ bool hitTestFlow(const RenderBlockFlow& flow, const Layout& layout, const HitTes
     if (!layout.runCount())
         return false;
 
-    RenderStyle& style = flow.style();
+    auto& style = flow.style();
     if (style.visibility() != VISIBLE || style.pointerEvents() == PE_NONE)
         return false;
 
@@ -217,7 +217,7 @@ Vector<FloatQuad> collectAbsoluteQuads(const RenderObject& renderer, const Layou
 #if ENABLE(TREE_DEBUGGING)
 static void printPrefix(int& printedCharacters, int depth)
 {
-    fprintf(stderr, "------- --");
+    fprintf(stderr, "-------- --");
     printedCharacters = 0;
     while (++printedCharacters <= depth * 2)
         fputc(' ', stderr);

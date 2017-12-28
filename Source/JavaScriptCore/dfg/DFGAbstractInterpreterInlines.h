@@ -97,7 +97,11 @@ void AbstractInterpreter<AbstractStateType>::startExecuting()
 template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::executeEdges(Node* node)
 {
-    DFG_NODE_DO_TO_CHILDREN(m_graph, node, filterEdgeByUse);
+    m_graph.doToChildren(
+        node,
+        [&] (Edge& edge) {
+            filterEdgeByUse(edge);
+        });
 }
 
 template<typename AbstractStateType>
@@ -107,14 +111,26 @@ void AbstractInterpreter<AbstractStateType>::executeEdges(unsigned indexInBlock)
 }
 
 template<typename AbstractStateType>
-void AbstractInterpreter<AbstractStateType>::verifyEdge(Node* node, Edge edge)
+void AbstractInterpreter<AbstractStateType>::executeKnownEdgeTypes(Node* node)
 {
     // Some use kinds are required to not have checks, because we know somehow that the incoming
     // value will already have the type we want. In those cases, AI may not be smart enough to
-    // prove that this is indeed the case.
-    if (shouldNotHaveTypeCheck(edge.useKind()))
-        return;
-    
+    // prove that this is indeed the case. But the existance of the edge is enough to prove that
+    // it is indeed the case. Taking advantage of this is not optional, since otherwise the DFG
+    // and FTL backends may emit checks in a node that lacks a valid exit origin.
+    m_graph.doToChildren(
+        node,
+        [&] (Edge& edge) {
+            if (mayHaveTypeCheck(edge.useKind()))
+                return;
+            
+            filterEdgeByUse(edge);
+        });
+}
+
+template<typename AbstractStateType>
+void AbstractInterpreter<AbstractStateType>::verifyEdge(Node* node, Edge edge)
+{
     if (!(forNode(edge).m_type & ~typeFilterFor(edge.useKind())))
         return;
     
@@ -980,6 +996,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case IsEmpty:
     case IsArrayObject:
     case IsJSArray:
     case IsArrayConstructor:
@@ -1068,6 +1085,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             case IsRegExpObject:
                 setConstant(node, jsBoolean(child.value().isObject() && child.value().getObject()->type() == RegExpObjectType));
                 break;
+            case IsEmpty:
+                setConstant(node, jsBoolean(child.value().isEmpty()));
+                break;
             default:
                 constantWasSet = false;
                 break;
@@ -1098,6 +1118,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
 
             break;
+        case IsEmpty: {
+            if (child.m_type && !(child.m_type & SpecEmpty)) {
+                setConstant(node, jsBoolean(false));
+                constantWasSet = true;
+                break;
+            }
+
+            if (child.m_type && !(child.m_type & ~SpecEmpty)) {
+                setConstant(node, jsBoolean(true));
+                constantWasSet = true;
+                break;
+            }
+
+            break;
+        }
         case IsUndefined:
             // FIXME: Use the masquerades-as-undefined watchpoint thingy.
             // https://bugs.webkit.org/show_bug.cgi?id=144456
