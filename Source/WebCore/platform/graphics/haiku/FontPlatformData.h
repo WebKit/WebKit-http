@@ -67,7 +67,13 @@ public:
     bool oblique() const;
 
     FontOrientation orientation() const { return Horizontal; } // FIXME: Implement.
-    void setOrientation(FontOrientation) { } // FIXME: Implement.
+
+    static FontPlatformData cloneWithOrientation(const FontPlatformData& source, FontOrientation)
+	{
+		FontPlatformData copy(source);
+		//copy.m_orientation = orientation;
+		return copy;
+	}
 
     unsigned hash() const;
     bool isHashTableDeletedValue() const;

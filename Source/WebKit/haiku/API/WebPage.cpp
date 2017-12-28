@@ -40,6 +40,7 @@
 #include "CookieJar.h"
 #include "Cursor.h"
 #include "DeviceOrientationClientMock.h"
+#include "DiagnosticLoggingClient.h"
 #include "DOMTimer.h"
 #include "DragClientHaiku.h"
 #include "Editor.h"
