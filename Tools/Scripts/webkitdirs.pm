@@ -2028,7 +2028,7 @@ sub generateBuildSystemFromCMakeProject
     # Compiler options to keep floating point values consistent
     # between 32-bit and 64-bit architectures.
     determineArchitecture();
-    if ($architecture eq "i686" && !isCrossCompilation() && !isAnyWindows()) {
+    if ($architecture eq "i686" && !isCrossCompilation() && !isAnyWindows() && !isHaiku()) {
         $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CXXFLAGS'} || "");
     }
 
