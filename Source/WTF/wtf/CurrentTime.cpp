@@ -261,18 +261,7 @@ double monotonicallyIncreasingTime()
     return ecore_time_get();
 }
 
-#elif PLATFORM(QT)
-
-double monotonicallyIncreasingTime()
-{
-    ASSERT(QElapsedTimer::isMonotonic());
-    static QElapsedTimer timer;
-    if (!timer.isValid())
-        timer.start();
-    return timer.nsecsElapsed() / 1.0e9;
-}
-
-#elif USE(GLIB)
+#elif USE(GLIB) && !PLATFORM(QT)
 
 double monotonicallyIncreasingTime()
 {
