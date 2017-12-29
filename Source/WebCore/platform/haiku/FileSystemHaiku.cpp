@@ -43,6 +43,11 @@ CString fileSystemRepresentation(const String& path)
     return path.utf8();
 }
 
+String stringFromFileSystemRepresentation(const char* fileSystemRepresentation)
+{
+    return String::fromUTF8(fileSystemRepresentation);
+}
+
 String homeDirectoryPath()
 {
     BPath path;

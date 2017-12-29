@@ -60,7 +60,7 @@ public:
     void notificationControllerDestroyed() override {}
 
     void requestPermission(ScriptExecutionContext*, 
-            PassRefPtr<NotificationPermissionCallback> callback) override {
+            RefPtr<NotificationPermissionCallback>&& callback) override {
         if (callback)
             callback->handleEvent(Notification::permissionString(PermissionAllowed));
     }

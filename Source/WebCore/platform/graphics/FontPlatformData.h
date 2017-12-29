@@ -43,6 +43,15 @@
 #include "OpenTypeVerticalData.h"
 #endif
 
+#if PLATFORM(HAIKU)
+#include <memory>
+
+#include <interface/Font.h>
+
+#include <wtf/text/AtomicString.h>
+#include <wtf/text/CString.h>
+#endif
+
 #if PLATFORM(COCOA)
 #if PLATFORM(IOS)
 #import <CoreGraphics/CoreGraphics.h>
@@ -82,8 +91,11 @@ class FontPlatformData {
 public:
     FontPlatformData(WTF::HashTableDeletedValueType);
     FontPlatformData();
-#if !USE(FREETYPE)
+#if !USE(FREETYPE) && !PLATFORM(HAIKU)
     FontPlatformData(const FontPlatformData&) = default;
+#endif
+#if PLATFORM(HAIKU)
+    FontPlatformData(const FontPlatformData&);
 #endif
     FontPlatformData(FontPlatformData&&) = default;
     FontPlatformData(const FontDescription&, const AtomicString& family);
@@ -91,6 +103,13 @@ public:
 
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT FontPlatformData(CTFontRef, float size, bool syntheticBold = false, bool syntheticOblique = false, FontOrientation = Horizontal, FontWidthVariant = RegularWidth, TextRenderingMode = AutoTextRendering);
+#endif
+
+#if PLATFORM(HAIKU)
+    static void SetFallBackSerifFont(const BString& font);
+    static void SetFallBackSansSerifFont(const BString& font);
+    static void SetFallBackFixedFont(const BString& font);
+    static void SetFallBackStandardFont(const BString& font);
 #endif
 
     static FontPlatformData cloneWithOrientation(const FontPlatformData&, FontOrientation);
@@ -112,10 +131,16 @@ public:
 #endif
 
 #if USE(FREETYPE)
-    FontPlatformData(FcPattern*, const FontDescription&);
+#if USE(CAIRO)
     FontPlatformData(cairo_font_face_t*, const FontDescription&, bool syntheticBold, bool syntheticOblique);
+#endif
+    FontPlatformData(FcPattern*, const FontDescription&);
     FontPlatformData(const FontPlatformData&);
     ~FontPlatformData();
+#endif
+
+#if PLATFORM(HAIKU)
+	const BFont* font() const { return m_font.get(); }
 #endif
 
 #if PLATFORM(WIN)
@@ -169,6 +194,18 @@ public:
     {
 #if PLATFORM(WIN) && !USE(CAIRO)
         return m_font ? m_font->hash() : 0;
+#elif PLATFORM(HAIKU)
+		if (m_font == nullptr)
+			return 0;
+    	uintptr_t flags = static_cast<uintptr_t>(m_isHashTableDeletedValue << 5
+			| m_textRenderingMode << 3 | m_orientation << 2
+			| m_syntheticBold << 1 | m_syntheticOblique);
+    	uintptr_t hashCodes[] = { m_font->FamilyAndStyle(), m_font->Face(),
+			(uintptr_t)(m_font->Shear() * 100),
+			(uintptr_t)(m_font->Rotation() * 100),
+			(uintptr_t)(m_font->Size() * 100),
+			m_font->Encoding(), flags };
+        return StringHasher::hashMemory<sizeof(hashCodes)>(hashCodes);
 #elif OS(DARWIN)
         uintptr_t flags = static_cast<uintptr_t>(m_isHashTableDeletedValue << 5 | m_textRenderingMode << 3 | m_orientation << 2 | m_syntheticBold << 1 | m_syntheticOblique);
 #if USE(APPKIT)
@@ -183,7 +220,7 @@ public:
 #endif
     }
 
-#if USE(FREETYPE)
+#if USE(FREETYPE) || USE(HAIKU)
     FontPlatformData& operator=(const FontPlatformData&);
 #else
     FontPlatformData& operator=(const FontPlatformData&) = default;
@@ -232,8 +269,12 @@ private:
 #if PLATFORM(WIN)
     void platformDataInit(HFONT, float size, HDC, WCHAR* faceName);
 #endif
-#if USE(FREETYPE)
+#if USE(FREETYPE) && USE(CAIRO)
     void buildScaledFont(cairo_font_face_t*);
+#endif
+#if PLATFORM(HAIKU)
+    static void findMatchingFontFamily(const AtomicString& familyName,
+		font_family* fontFamily);
 #endif
 
 #if PLATFORM(COCOA)
@@ -242,6 +283,8 @@ private:
     mutable RetainPtr<CTFontRef> m_ctFont;
 #elif PLATFORM(WIN)
     RefPtr<SharedGDIObject<HFONT>> m_font;
+#elif PLATFORM(HAIKU)
+	std::unique_ptr<BFont> m_font;
 #endif
 
 #if USE(CG)
@@ -251,7 +294,9 @@ private:
     RefPtr<cairo_scaled_font_t> m_scaledFont;
 #endif
 #if USE(FREETYPE)
+#if USE(CAIRO)
     RefPtr<FcPattern> m_pattern;
+#endif
     mutable FcUniquePtr<FcFontSet> m_fallbacks;
     mutable RefPtr<HarfBuzzFace> m_harfBuzzFace;
 #endif
@@ -271,6 +316,12 @@ private:
     bool m_isSystemFont { false };
     // The values above are common to all ports
 
+#if PLATFORM(HAIKU)
+    static font_family m_FallbackSerifFontFamily;
+    static font_family m_FallbackSansSerifFontFamily;
+    static font_family m_FallbackFixedFontFamily;
+    static font_family m_FallbackStandardFontFamily;
+#endif
 #if PLATFORM(IOS)
     bool m_isEmoji { false };
 #endif

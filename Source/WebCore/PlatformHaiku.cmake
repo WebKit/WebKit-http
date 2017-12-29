@@ -5,16 +5,20 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
   "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
   "${JAVASCRIPTCORE_DIR}"
+  "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
   "${JAVASCRIPTCORE_DIR}/API"
   "${JAVASCRIPTCORE_DIR}/assembler"
   "${JAVASCRIPTCORE_DIR}/bytecode"
+  "${JAVASCRIPTCORE_DIR}/bytecompiler"
   "${JAVASCRIPTCORE_DIR}/dfg"
   "${JAVASCRIPTCORE_DIR}/disassembler"
   "${JAVASCRIPTCORE_DIR}/interpreter"
   "${JAVASCRIPTCORE_DIR}/jit"
   "${JAVASCRIPTCORE_DIR}/llint"
+  "${JAVASCRIPTCORE_DIR}/parser"
   "${JAVASCRIPTCORE_DIR}/profiler"
   "${JAVASCRIPTCORE_DIR}/runtime"
+  "${JAVASCRIPTCORE_DIR}/yarr"
   "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"
@@ -235,7 +239,7 @@ list(APPEND WebCore_LIBRARIES
   be bsd network bnetapi textencoding translation execinfo
 )
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
+list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
   ${GNUTLS_INCLUDE_DIRS}
   ${ICU_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR}

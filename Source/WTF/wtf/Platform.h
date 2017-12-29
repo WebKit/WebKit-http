@@ -611,7 +611,6 @@
 #if PLATFORM(HAIKU)
 #define USE_HAIKU 1
 #define USE_PTHREADS 1
-#define USE_FREETYPE 1
 #define USE_WEBP 1
 
 #define HAVE_ERRNO_H 1
