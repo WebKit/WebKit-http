@@ -62,13 +62,13 @@ private:
     void bootstrapFromNetworkCache(const String& networkCachePath);
     void shrinkIfNeeded();
 
-    void addHashesToDatabase(const Vector<StringCapture>& hashes);
-    void addStoreDecisionsToDatabase(const Vector<std::pair<StringCapture, NetworkCache::StoreDecision>>&);
+    void addHashesToDatabase(const HashSet<String>& hashes);
+    void addStoreDecisionsToDatabase(const HashMap<String, NetworkCache::StoreDecision>&);
     void writeTimerFired();
 
     typedef std::function<void (bool wasEverRequested, const Optional<StoreDecision>&)> RequestedCompletionHandler;
     enum class NeedUncachedReason { No, Yes };
-    void queryWasEverRequested(const String&, NeedUncachedReason, const RequestedCompletionHandler&);
+    void queryWasEverRequested(const String&, NeedUncachedReason, RequestedCompletionHandler&&);
     void markAsRequested(const String& hash);
 
     struct EverRequestedQuery {

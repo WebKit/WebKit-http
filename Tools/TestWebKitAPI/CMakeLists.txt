@@ -47,7 +47,6 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Condition.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/DateMath.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WTF/Functional.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashCountedSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashSet.cpp
@@ -68,6 +67,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/RefPtr.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/SHA1.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/SaturatedArithmeticOperations.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/ScopedLambda.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringBuilder.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringHasher.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringImpl.cpp

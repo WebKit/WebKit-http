@@ -133,8 +133,11 @@ public:
 
     WEBCORE_EXPORT PlatformMedia platformMedia() const;
     PlatformLayer* platformLayer() const;
+    bool isVideoLayerInline();
+    void setPreparedForInline(bool);
+    void waitForPreparedForInlineThen(std::function<void()> completionHandler = [] { });
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    void setVideoFullscreenLayer(PlatformLayer*);
+    void setVideoFullscreenLayer(PlatformLayer*, std::function<void()> completionHandler = [] { });
     PlatformLayer* videoFullscreenLayer() const { return m_videoFullscreenLayer.get(); }
     void setVideoFullscreenFrame(FloatRect);
     void setVideoFullscreenGravity(MediaPlayerEnums::VideoGravity);
@@ -370,7 +373,7 @@ public:
 
     using MediaPlayerEnums::VideoFullscreenMode;
     VideoFullscreenMode fullscreenMode() const { return m_videoFullscreenMode; }
-    virtual void fullscreenModeChanged(VideoFullscreenMode mode) { m_videoFullscreenMode = mode; }
+    virtual void fullscreenModeChanged(VideoFullscreenMode);
 
     void enterFullscreen(VideoFullscreenMode);
     void enterFullscreen() override;
@@ -757,6 +760,7 @@ private:
     bool canReceiveRemoteControlCommands() const override { return true; }
     void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType) override;
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
+    bool shouldOverrideBackgroundLoadingRestriction() const override;
 
     void pageMutedStateDidChange() override;
 
@@ -846,6 +850,8 @@ private:
     RefPtr<Node> m_nextChildNodeToConsider;
 
     VideoFullscreenMode m_videoFullscreenMode;
+    bool m_preparedForInline;
+    std::function<void()> m_preparedForInlineCompletionHandler;
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RetainPtr<PlatformLayer> m_videoFullscreenLayer;
     FloatRect m_videoFullscreenFrame;

@@ -132,6 +132,14 @@ IDBClient::IDBConnectionProxy* WorkerGlobalScope::idbConnectionProxy()
     return nullptr;
 #endif
 }
+
+void WorkerGlobalScope::stopIndexedDatabase()
+{
+#if ENABLE(INDEXED_DATABASE_IN_WORKERS)
+    ASSERT(m_connectionProxy);
+    m_connectionProxy->forgetActivityForCurrentThread();
+#endif
+}
 #endif // ENABLE(INDEXED_DATABASE)
 
 WorkerLocation& WorkerGlobalScope::location() const
@@ -165,7 +173,7 @@ WorkerNavigator& WorkerGlobalScope::navigator() const
     return *m_navigator;
 }
 
-void WorkerGlobalScope::postTask(Task task)
+void WorkerGlobalScope::postTask(Task&& task)
 {
     thread().runLoop().postTask(WTFMove(task));
 }

@@ -46,6 +46,7 @@
 #include "StringWithDirection.h"
 #include "StyleChange.h"
 #include "Supplementable.h"
+#include "TextAutoSizing.h"
 #include "TextResourceDecoder.h"
 #include "Timer.h"
 #include "TreeScope.h"
@@ -212,12 +213,6 @@ class DeviceOrientationController;
 struct TextAutoSizingHash;
 class TextAutoSizingKey;
 class TextAutoSizingValue;
-
-struct TextAutoSizingTraits : WTF::GenericHashTraits<TextAutoSizingKey> {
-    static const bool emptyValueIsZero = true;
-    static void constructDeletedValue(TextAutoSizingKey& slot);
-    static bool isDeletedValue(const TextAutoSizingKey& value);
-};
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -722,7 +717,9 @@ public:
     String selectedStylesheetSet() const;
     void setSelectedStylesheetSet(const String&);
 
-    WEBCORE_EXPORT bool setFocusedElement(Element*, FocusDirection = FocusDirectionNone);
+    enum class FocusRemovalEventsMode { Dispatch, DoNotDispatch };
+    WEBCORE_EXPORT bool setFocusedElement(Element*, FocusDirection = FocusDirectionNone,
+        FocusRemovalEventsMode = FocusRemovalEventsMode::Dispatch);
     Element* focusedElement() const { return m_focusedElement.get(); }
     UserActionElementSet& userActionElements()  { return m_userActionElements; }
     const UserActionElementSet& userActionElements() const { return m_userActionElements; }
@@ -973,7 +970,7 @@ public:
     bool isDNSPrefetchEnabled() const { return m_isDNSPrefetchEnabled; }
     void parseDNSPrefetchControlHeader(const String&);
 
-    void postTask(Task) final; // Executes the task on context's thread asynchronously.
+    void postTask(Task&&) final; // Executes the task on context's thread asynchronously.
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     ScriptedAnimationController* scriptedAnimationController() { return m_scriptedAnimationController.get(); }
@@ -1692,12 +1689,12 @@ private:
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 public:
-    void addAutoSizingNode(Text&, float size);
-    void validateAutoSizingNodes();
-    void resetAutoSizingNodes();
+    void addAutoSizedNode(Text&, float size);
+    void updateAutoSizedNodes();
+    void clearAutoSizedNodes();
 
 private:
-    typedef HashMap<TextAutoSizingKey, RefPtr<TextAutoSizingValue>, TextAutoSizingHash, TextAutoSizingTraits> TextAutoSizingMap;
+    using TextAutoSizingMap = HashMap<TextAutoSizingKey, std::unique_ptr<TextAutoSizingValue>, TextAutoSizingHash, TextAutoSizingTraits>;
     TextAutoSizingMap m_textAutoSizedNodes;
 #endif
 

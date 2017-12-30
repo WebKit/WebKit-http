@@ -129,8 +129,7 @@ namespace WebCore {
 static void CMTimebaseEffectiveRateChangedCallback(CMNotificationCenterRef, const void *listener, CFStringRef, const void *, CFTypeRef)
 {
     MediaPlayerPrivateMediaSourceAVFObjC* player = (MediaPlayerPrivateMediaSourceAVFObjC*)listener;
-    auto weakThis = player->createWeakPtr();
-    callOnMainThread([weakThis]{
+    callOnMainThread([weakThis = player->createWeakPtr()] {
         if (!weakThis)
             return;
         weakThis.get()->effectiveRateChanged();
@@ -312,8 +311,7 @@ PlatformLayer* MediaPlayerPrivateMediaSourceAVFObjC::platformLayer() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::play()
 {
-    auto weakThis = createWeakPtr();
-    callOnMainThread([weakThis]{
+    callOnMainThread([weakThis = createWeakPtr()] {
         if (!weakThis)
             return;
         weakThis.get()->playInternal();
@@ -332,8 +330,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::playInternal()
 
 void MediaPlayerPrivateMediaSourceAVFObjC::pause()
 {
-    auto weakThis = createWeakPtr();
-    callOnMainThread([weakThis]{
+    callOnMainThread([weakThis = createWeakPtr()] {
         if (!weakThis)
             return;
         weakThis.get()->pauseInternal();
@@ -770,7 +767,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::addDisplayLayer(AVSampleBufferDisplay
     m_player->firstVideoFrameAvailable();
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-    m_videoFullscreenLayerManager->setVideoLayer(m_sampleBufferDisplayLayer.get(), snappedIntRect(m_player->client().mediaPlayerContentBoxRect()).size());
+    m_videoFullscreenLayerManager->setVideoLayers(m_sampleBufferDisplayLayer.get(), nil, snappedIntRect(m_player->client().mediaPlayerContentBoxRect()).size());
 #endif
 }
 
@@ -828,9 +825,9 @@ void MediaPlayerPrivateMediaSourceAVFObjC::characteristicsChanged()
 }
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-void MediaPlayerPrivateMediaSourceAVFObjC::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer)
+void MediaPlayerPrivateMediaSourceAVFObjC::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, std::function<void()> completionHandler)
 {
-    m_videoFullscreenLayerManager->setVideoFullscreenLayer(videoFullscreenLayer);
+    m_videoFullscreenLayerManager->setVideoFullscreenLayer(videoFullscreenLayer, completionHandler);
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setVideoFullscreenFrame(FloatRect frame)

@@ -13,6 +13,8 @@ set(WTF_HEADERS
     CompilationThread.h
     Compiler.h
     Condition.h
+    CrossThreadCopier.h
+    CrossThreadTask.h
     CryptographicUtilities.h
     CryptographicallyRandomNumber.h
     CurrentTime.h
@@ -30,7 +32,6 @@ set(WTF_HEADERS
     FlipBytes.h
     Forward.h
     FunctionDispatcher.h
-    Functional.h
     GetPtr.h
     GraphNodeWorklist.h
     GregorianDateTime.h
@@ -160,6 +161,7 @@ set(WTF_SOURCES
     Atomics.cpp
     BitVector.cpp
     CompilationThread.cpp
+    CrossThreadCopier.cpp
     CryptographicUtilities.cpp
     CryptographicallyRandomNumber.cpp
     CurrentTime.cpp

@@ -2431,7 +2431,7 @@ RegisterID* BytecodeGenerator::emitGetById(RegisterID* dst, RegisterID* base, co
     instructions().append(0);
     instructions().append(0);
     instructions().append(0);
-    instructions().append(Options::prototypeHitCountForLLIntCaching());
+    instructions().append(0);
     instructions().append(profile);
     return dst;
 }
@@ -2883,17 +2883,11 @@ void BytecodeGenerator::emitNewFunctionExpressionCommon(RegisterID* dst, Functio
 
     OpcodeID opcodeID = op_new_func_exp;
     switch (function->parseMode()) {
-    case SourceParseMode::GeneratorWrapperFunctionMode: {
+    case SourceParseMode::GeneratorWrapperFunctionMode:
         opcodeID = op_new_generator_func_exp;
         break;
-    }
-    case SourceParseMode::ArrowFunctionMode: {
-        opcodeID = op_new_arrow_func_exp;
+    default:
         break;
-    }
-    default: {
-        break;
-    }
     }
     
     emitOpcode(opcodeID);

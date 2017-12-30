@@ -150,7 +150,6 @@ void computeUsesForBytecodeOffset(
     case op_get_enumerable_length:
     case op_new_func_exp:
     case op_new_generator_func_exp:
-    case op_new_arrow_func_exp:
     case op_to_index_string:
     case op_create_lexical_environment:
     case op_resolve_scope:
@@ -158,7 +157,6 @@ void computeUsesForBytecodeOffset(
     case op_to_primitive:
     case op_try_get_by_id:
     case op_get_by_id:
-    case op_get_by_id_proto_load:
     case op_get_array_length:
     case op_typeof:
     case op_is_empty:
@@ -382,7 +380,6 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_new_func_exp:
     case op_new_generator_func:
     case op_new_generator_func_exp:
-    case op_new_arrow_func_exp:
     case op_call_varargs:
     case op_tail_call_varargs:
     case op_construct_varargs:
@@ -393,7 +390,6 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_construct:
     case op_try_get_by_id:
     case op_get_by_id:
-    case op_get_by_id_proto_load:
     case op_get_by_id_with_this:
     case op_get_by_val_with_this:
     case op_get_array_length:

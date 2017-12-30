@@ -31,6 +31,7 @@
 #include "MediaPlayerPrivate.h"
 #include "MediaStreamPrivate.h"
 #include <wtf/MediaTime.h>
+#include <wtf/NoncopyableFunction.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 
@@ -142,7 +143,7 @@ private:
     void updateTracks();
     void renderingModeChanged();
 
-    void scheduleDeferredTask(std::function<void()>);
+    void scheduleDeferredTask(NoncopyableFunction<void ()>&&);
 
     enum DisplayMode {
         None,
@@ -160,7 +161,7 @@ private:
     void didRemoveTrack(MediaStreamTrackPrivate&) override;
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-    void setVideoFullscreenLayer(PlatformLayer*) override;
+    void setVideoFullscreenLayer(PlatformLayer*, std::function<void()> completionHandler) override;
     void setVideoFullscreenFrame(FloatRect) override;
 #endif
 

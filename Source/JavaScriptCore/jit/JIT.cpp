@@ -240,7 +240,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_eq_null)
         DEFINE_OP(op_try_get_by_id)
         case op_get_array_length:
-        case op_get_by_id_proto_load:
         DEFINE_OP(op_get_by_id)
         DEFINE_OP(op_get_by_id_with_this)
         DEFINE_OP(op_get_by_val)
@@ -284,7 +283,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_new_func_exp)
         DEFINE_OP(op_new_generator_func)
         DEFINE_OP(op_new_generator_func_exp)
-        DEFINE_OP(op_new_arrow_func_exp) 
         DEFINE_OP(op_new_object)
         DEFINE_OP(op_new_regexp)
         DEFINE_OP(op_not)
@@ -423,7 +421,6 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_eq)
         DEFINE_SLOWCASE_OP(op_try_get_by_id)
         case op_get_array_length:
-        case op_get_by_id_proto_load:
         DEFINE_SLOWCASE_OP(op_get_by_id)
         DEFINE_SLOWCASE_OP(op_get_by_val)
         DEFINE_SLOWCASE_OP(op_instanceof)

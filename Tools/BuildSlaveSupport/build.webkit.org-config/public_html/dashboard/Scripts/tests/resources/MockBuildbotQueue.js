@@ -39,7 +39,7 @@ MockBuildbotQueue = function()
         heading: "",
         crashesOnly: ""
     };
-    BuildbotQueue.call(this, "Mock BuildBot", "id", info);
+    BuildbotQueue.call(this, new MockBuildbot(), "id", info);
 };
 
 BaseObject.addConstructorFunctions(MockBuildbotQueue);

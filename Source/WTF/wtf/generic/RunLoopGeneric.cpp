@@ -32,15 +32,13 @@ namespace WTF {
 class RunLoop::TimerBase::ScheduledTask : public ThreadSafeRefCounted<ScheduledTask> {
 WTF_MAKE_NONCOPYABLE(ScheduledTask);
 public:
-    template<typename Lambda>
-    static RefPtr<ScheduledTask> create(Lambda&& lambda, double interval, bool repeating)
+    static RefPtr<ScheduledTask> create(NoncopyableFunction<void ()>&& function, double interval, bool repeating)
     {
-        return adoptRef(new ScheduledTask(std::forward<Lambda>(lambda), interval, repeating));
+        return adoptRef(new ScheduledTask(WTFMove(function), interval, repeating));
     }
 
-    template<typename Lambda>
-    ScheduledTask(Lambda&& lambda, double interval, bool repeating)
-        : m_function(std::forward<Lambda>(lambda))
+    ScheduledTask(NoncopyableFunction<void ()>&& function, double interval, bool repeating)
+        : m_function(WTFMove(function))
         , m_fireInterval(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(interval)))
         , m_isRepeating(repeating)
     {
@@ -92,7 +90,7 @@ public:
     }
 
 private:
-    std::function<void()> m_function;
+    NoncopyableFunction<void ()> m_function;
     Condition::Clock::time_point m_scheduledTimePoint;
     std::chrono::microseconds m_fireInterval;
     std::atomic<bool> m_isActive { true };
@@ -239,11 +237,11 @@ void RunLoop::scheduleAndWakeUp(RefPtr<TimerBase::ScheduledTask> task)
     wakeUp(locker);
 }
 
-void RunLoop::dispatchAfter(std::chrono::nanoseconds delay, std::function<void()> function)
+void RunLoop::dispatchAfter(std::chrono::nanoseconds delay, NoncopyableFunction<void ()>&& function)
 {
     LockHolder locker(m_loopLock);
     bool repeating = false;
-    schedule(locker, TimerBase::ScheduledTask::create(function, delay.count() / 1000.0 / 1000.0 / 1000.0, repeating));
+    schedule(locker, TimerBase::ScheduledTask::create(WTFMove(function), delay.count() / 1000.0 / 1000.0 / 1000.0, repeating));
     wakeUp(locker);
 }
 

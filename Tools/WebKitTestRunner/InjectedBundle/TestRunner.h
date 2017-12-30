@@ -126,6 +126,7 @@ public:
     void setCacheModel(int);
     void setAsynchronousSpellCheckingEnabled(bool);
     void setDownloadAttributeEnabled(bool);
+    void setAllowsAnySSLCertificate(bool);
 
     // Special DOM functions.
     void clearBackForwardList();

@@ -305,6 +305,9 @@ Node::~Node()
     if (!isContainerNode())
         willBeDeletedFrom(document());
 
+    if (hasEventTargetData())
+        clearEventTargetData();
+
     document().decrementReferencingNodeCount();
 }
 
@@ -317,7 +320,6 @@ void Node::willBeDeletedFrom(Document& document)
 #else
         // FIXME: This should call didRemoveTouchEventHandler().
 #endif
-        clearEventTargetData();
     }
 
     if (AXObjectCache* cache = document.existingAXObjectCache())
@@ -1162,6 +1164,9 @@ Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPo
         setFlag(InDocumentFlag);
     if (parentOrShadowHostNode()->isInShadowTree())
         setFlag(IsInShadowTreeFlag);
+
+    setNeedsStyleRecalc(ReconstructRenderTree);
+
     return InsertionDone;
 }
 
@@ -2004,7 +2009,7 @@ EventTargetData& Node::ensureEventTargetData()
         return *eventTargetDataMap().get(this);
 
     setHasEventTargetData(true);
-    return *eventTargetDataMap().set(this, std::make_unique<EventTargetData>()).iterator->value;
+    return *eventTargetDataMap().add(this, std::make_unique<EventTargetData>()).iterator->value;
 }
 
 void Node::clearEventTargetData()

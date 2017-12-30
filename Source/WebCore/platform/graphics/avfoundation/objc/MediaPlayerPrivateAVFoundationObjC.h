@@ -67,6 +67,7 @@ namespace WebCore {
 
 class AudioSourceProviderAVFObjC;
 class AudioTrackPrivateAVFObjC;
+class CDMSessionAVFoundationObjC;
 class InbandMetadataTextTrackPrivateAVF;
 class InbandTextTrackPrivateAVFObjC;
 class MediaSelectionGroupAVFObjC;
@@ -142,12 +143,20 @@ public:
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void playbackTargetIsWirelessDidChange();
 #endif
-    
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    void outputObscuredDueToInsufficientExternalProtectionChanged(bool);
+#endif
+
 #if ENABLE(AVF_CAPTIONS)
     void notifyTrackModeChanged() override;
     void synchronizeTextTrackState() override;
 #endif
-    
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    void removeSession(CDMSession&);
+#endif
+
     WeakPtr<MediaPlayerPrivateAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 private:
@@ -172,7 +181,7 @@ private:
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
     PlatformLayer* platformLayer() const override;
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    void setVideoFullscreenLayer(PlatformLayer*) override;
+    void setVideoFullscreenLayer(PlatformLayer*, std::function<void()> completionHandler) override;
     void setVideoFullscreenFrame(FloatRect) override;
     void setVideoFullscreenGravity(MediaPlayer::VideoGravity) override;
     void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) override;
@@ -329,6 +338,7 @@ private:
     RetainPtr<AVPlayer> m_avPlayer;
     RetainPtr<AVPlayerItem> m_avPlayerItem;
     RetainPtr<AVPlayerLayer> m_videoLayer;
+    RetainPtr<AVPlayerLayer> m_secondaryVideoLayer;
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     std::unique_ptr<VideoFullscreenLayerManager> m_videoFullscreenLayerManager;
     MediaPlayer::VideoGravity m_videoFullscreenGravity;
@@ -389,6 +399,10 @@ private:
 #if PLATFORM(MAC) && ENABLE(WIRELESS_PLAYBACK_TARGET)
     RetainPtr<AVOutputContext> m_outputContext;
     RefPtr<MediaPlaybackTarget> m_playbackTarget { nullptr };
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    WeakPtr<CDMSessionAVFoundationObjC> m_session;
 #endif
 
     mutable RetainPtr<NSArray> m_cachedSeekableRanges;

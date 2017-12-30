@@ -27,7 +27,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "CrossThreadTask.h"
 #include "IDBBackingStore.h"
 #include "IDBBindingUtilities.h"
 #include "IDBDatabaseIdentifier.h"
@@ -38,6 +37,8 @@
 #include "Timer.h"
 #include "UniqueIDBDatabaseConnection.h"
 #include "UniqueIDBDatabaseTransaction.h"
+#include <wtf/CrossThreadQueue.h>
+#include <wtf/CrossThreadTask.h>
 #include <wtf/Deque.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
@@ -195,8 +196,8 @@ private:
 
     bool prepareToFinishTransaction(UniqueIDBDatabaseTransaction&);
 
-    void postDatabaseTask(std::unique_ptr<CrossThreadTask>&&);
-    void postDatabaseTaskReply(std::unique_ptr<CrossThreadTask>&&);
+    void postDatabaseTask(CrossThreadTask&&);
+    void postDatabaseTaskReply(CrossThreadTask&&);
     void executeNextDatabaseTask();
     void executeNextDatabaseTaskReply();
 
@@ -242,8 +243,8 @@ private:
 
     bool m_deleteBackingStoreInProgress { false };
 
-    MessageQueue<CrossThreadTask> m_databaseQueue;
-    MessageQueue<CrossThreadTask> m_databaseReplyQueue;
+    CrossThreadQueue<CrossThreadTask> m_databaseQueue;
+    CrossThreadQueue<CrossThreadTask> m_databaseReplyQueue;
     std::atomic<uint64_t> m_queuedTaskCount { 0 };
 
     bool m_hardClosedForUserDelete { false };

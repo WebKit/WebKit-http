@@ -1181,8 +1181,6 @@
 		5370B4F61BF26205005C40FC /* AdaptiveInferredPropertyValueWatchpointBase.h in Headers */ = {isa = PBXBuildFile; fileRef = 5370B4F41BF25EA2005C40FC /* AdaptiveInferredPropertyValueWatchpointBase.h */; };
 		53917E7B1B7906FA000EBD33 /* JSGenericTypedArrayViewPrototypeFunctions.h in Headers */ = {isa = PBXBuildFile; fileRef = 53917E7A1B7906E4000EBD33 /* JSGenericTypedArrayViewPrototypeFunctions.h */; };
 		53F6BF6D1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h in Headers */ = {isa = PBXBuildFile; fileRef = 53F6BF6C1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		53FA2AE11CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h in Headers */ = {isa = PBXBuildFile; fileRef = 53FA2AE01CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		53FA2AE31CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 53FA2AE21CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp */; };
 		5D5D8AD10E0D0EBE00F9C692 /* libedit.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D5D8AD00E0D0EBE00F9C692 /* libedit.dylib */; };
 		5DBB151B131D0B310056AD36 /* testapi.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 14D857740A4696C80032146C /* testapi.js */; };
 		5DBB1525131D0BD70056AD36 /* minidom.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 1412110D0A48788700480255 /* minidom.js */; };
@@ -1282,7 +1280,7 @@
 		799EF7C41C56ED96002B0534 /* B3PCToOriginMap.h in Headers */ = {isa = PBXBuildFile; fileRef = 799EF7C31C56ED96002B0534 /* B3PCToOriginMap.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		79B00CBC1C6AB07E0088C65D /* ProxyConstructor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 79B00CB81C6AB07E0088C65D /* ProxyConstructor.cpp */; };
 		79B00CBD1C6AB07E0088C65D /* ProxyConstructor.h in Headers */ = {isa = PBXBuildFile; fileRef = 79B00CB91C6AB07E0088C65D /* ProxyConstructor.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		79B00CBE1C6AB07E0088C65D /* ProxyObject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 79B00CBA1C6AB07E0088C65D /* ProxyObject.cpp */; };
+		79B00CBE1C6AB07E0088C65D /* ProxyObject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 79B00CBA1C6AB07E0088C65D /* ProxyObject.cpp */; settings = {COMPILER_FLAGS = "-fno-optimize-sibling-calls"; }; };
 		79B00CBF1C6AB07E0088C65D /* ProxyObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 79B00CBB1C6AB07E0088C65D /* ProxyObject.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		79C4B15D1BA2158F00FD592E /* DFGLiveCatchVariablePreservationPhase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 79C4B15B1BA2158F00FD592E /* DFGLiveCatchVariablePreservationPhase.cpp */; };
 		79C4B15E1BA2158F00FD592E /* DFGLiveCatchVariablePreservationPhase.h in Headers */ = {isa = PBXBuildFile; fileRef = 79C4B15C1BA2158F00FD592E /* DFGLiveCatchVariablePreservationPhase.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1987,6 +1985,7 @@
 		DC605B5E1CE26EA200593718 /* ProfilerEvent.h in Headers */ = {isa = PBXBuildFile; fileRef = DC605B5A1CE26E9800593718 /* ProfilerEvent.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		DC605B5F1CE26EA500593718 /* ProfilerUID.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC605B5B1CE26E9800593718 /* ProfilerUID.cpp */; };
 		DC605B601CE26EA700593718 /* ProfilerUID.h in Headers */ = {isa = PBXBuildFile; fileRef = DC605B5C1CE26E9800593718 /* ProfilerUID.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		DC69AA661CF7A1F200C6272F /* MatchResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC69AA651CF7A1EF00C6272F /* MatchResult.cpp */; };
 		DC7997831CDE9FA0004D4A09 /* TagRegistersMode.h in Headers */ = {isa = PBXBuildFile; fileRef = DC7997821CDE9F9E004D4A09 /* TagRegistersMode.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		DC7997841CDE9FA2004D4A09 /* TagRegistersMode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC7997811CDE9F9E004D4A09 /* TagRegistersMode.cpp */; };
 		DCEE22091CEB9895000C2396 /* DFGBackwardsCFG.h in Headers */ = {isa = PBXBuildFile; fileRef = DCEE22061CEB9890000C2396 /* DFGBackwardsCFG.h */; };
@@ -3323,8 +3322,6 @@
 		53917E831B791CB8000EBD33 /* TypedArrayPrototype.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; name = TypedArrayPrototype.js; path = builtins/TypedArrayPrototype.js; sourceTree = SOURCE_ROOT; };
 		53F256E11B87E28000B4B768 /* JSTypedArrayViewPrototype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSTypedArrayViewPrototype.cpp; sourceTree = "<group>"; };
 		53F6BF6C1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InternalFunctionAllocationProfile.h; sourceTree = "<group>"; };
-		53FA2AE01CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LLIntPrototypeLoadAdaptiveStructureWatchpoint.h; sourceTree = "<group>"; };
-		53FA2AE21CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp; sourceTree = "<group>"; };
 		593D43CCA0BBE06D89C59707 /* MapDataInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MapDataInlines.h; sourceTree = "<group>"; };
 		5D5D8AD00E0D0EBE00F9C692 /* libedit.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libedit.dylib; path = /usr/lib/libedit.dylib; sourceTree = "<absolute>"; };
 		5DAFD6CB146B686300FBEFB4 /* JSC.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = JSC.xcconfig; sourceTree = "<group>"; };
@@ -4200,6 +4197,7 @@
 		DC605B5A1CE26E9800593718 /* ProfilerEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ProfilerEvent.h; path = profiler/ProfilerEvent.h; sourceTree = "<group>"; };
 		DC605B5B1CE26E9800593718 /* ProfilerUID.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ProfilerUID.cpp; path = profiler/ProfilerUID.cpp; sourceTree = "<group>"; };
 		DC605B5C1CE26E9800593718 /* ProfilerUID.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ProfilerUID.h; path = profiler/ProfilerUID.h; sourceTree = "<group>"; };
+		DC69AA651CF7A1EF00C6272F /* MatchResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MatchResult.cpp; sourceTree = "<group>"; };
 		DC7997811CDE9F9E004D4A09 /* TagRegistersMode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TagRegistersMode.cpp; sourceTree = "<group>"; };
 		DC7997821CDE9F9E004D4A09 /* TagRegistersMode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TagRegistersMode.h; sourceTree = "<group>"; };
 		DCEE22061CEB9890000C2396 /* DFGBackwardsCFG.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGBackwardsCFG.h; path = dfg/DFGBackwardsCFG.h; sourceTree = "<group>"; };
@@ -5504,12 +5502,6 @@
 		7EF6E0BB0EB7A1EC0079AFAF /* runtime */ = {
 			isa = PBXGroup;
 			children = (
-				708EBE231CE8F35000453146 /* IntlObjectInlines.h */,
-				DCF3D5641CD29468003D5C65 /* LazyClassStructure.cpp */,
-				DCF3D5651CD29468003D5C65 /* LazyClassStructure.h */,
-				DCF3D5661CD29468003D5C65 /* LazyClassStructureInlines.h */,
-				DCF3D5671CD29468003D5C65 /* LazyProperty.h */,
-				DCF3D5681CD29468003D5C65 /* LazyPropertyInlines.h */,
 				BCF605110E203EF800B9A64D /* ArgList.cpp */,
 				BCF605120E203EF800B9A64D /* ArgList.h */,
 				0FE0500C1AA9091100D33B33 /* ArgumentsMode.h */,
@@ -5684,6 +5676,7 @@
 				A1D792FB1B43864B004516F5 /* IntlNumberFormatPrototype.h */,
 				A12BBFF31B044A9800664B69 /* IntlObject.cpp */,
 				A12BBFF11B044A8B00664B69 /* IntlObject.h */,
+				708EBE231CE8F35000453146 /* IntlObjectInlines.h */,
 				86BF642A148DB2B5004DE36A /* Intrinsic.h */,
 				FE4D55B71AE716CA0052E459 /* IterationStatus.h */,
 				70113D491A8DB093003848C4 /* IteratorOperations.cpp */,
@@ -5839,6 +5832,11 @@
 				1442566015EDE98D0066A49B /* JSWithScope.h */,
 				65C7A1710A8EAACB00FA37EA /* JSWrapperObject.cpp */,
 				65C7A1720A8EAACB00FA37EA /* JSWrapperObject.h */,
+				DCF3D5641CD29468003D5C65 /* LazyClassStructure.cpp */,
+				DCF3D5651CD29468003D5C65 /* LazyClassStructure.h */,
+				DCF3D5661CD29468003D5C65 /* LazyClassStructureInlines.h */,
+				DCF3D5671CD29468003D5C65 /* LazyProperty.h */,
+				DCF3D5681CD29468003D5C65 /* LazyPropertyInlines.h */,
 				A7E2EA6A0FB460CF00601F06 /* LiteralParser.cpp */,
 				A7E2EA690FB460CF00601F06 /* LiteralParser.h */,
 				F692A8680255597D01FF60F7 /* Lookup.cpp */,
@@ -5851,6 +5849,7 @@
 				A74DEF8E182D991400522C22 /* MapIteratorPrototype.h */,
 				A700873B17CBE8D300C3E643 /* MapPrototype.cpp */,
 				A700873C17CBE8D300C3E643 /* MapPrototype.h */,
+				DC69AA651CF7A1EF00C6272F /* MatchResult.cpp */,
 				8612E4CB1522918400C836BE /* MatchResult.h */,
 				4340A4821A9051AF00D73CCA /* MathCommon.cpp */,
 				4340A4831A9051AF00D73CCA /* MathCommon.h */,
@@ -6579,8 +6578,6 @@
 				0FB5467814F5C468002C2989 /* LazyOperandValueProfile.cpp */,
 				0FB5467614F59AD1002C2989 /* LazyOperandValueProfile.h */,
 				0F0FC45814BD15F100B81154 /* LLIntCallLinkInfo.h */,
-				53FA2AE21CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp */,
-				53FA2AE01CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h */,
 				0FB5467C14F5CFD3002C2989 /* MethodOfGettingAValueProfile.cpp */,
 				0FB5467A14F5C7D4002C2989 /* MethodOfGettingAValueProfile.h */,
 				14CA958C16AB50FA00938A06 /* ObjectAllocationProfile.h */,
@@ -7916,7 +7913,6 @@
 				0FF7168C15A3B235008F5DAA /* PropertyOffset.h in Headers */,
 				BC18C4550E16F5CD00B34460 /* PropertySlot.h in Headers */,
 				0FB7F39C15ED8E4600F167B2 /* PropertyStorage.h in Headers */,
-				53FA2AE11CF37F3F0022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.h in Headers */,
 				BC18C4560E16F5CD00B34460 /* Protect.h in Headers */,
 				1474C33B16AA2D950062F01D /* PrototypeMap.h in Headers */,
 				0F5780A218FE1E98001E72D9 /* PureNaN.h in Headers */,
@@ -8642,7 +8638,6 @@
 				65C02850171795E200351E35 /* ARMv7Disassembler.cpp in Sources */,
 				65C0285C1717966800351E35 /* ARMv7DOpcode.cpp in Sources */,
 				0F8335B71639C1E6001443B5 /* ArrayAllocationProfile.cpp in Sources */,
-				53FA2AE31CF380390022711D /* LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp in Sources */,
 				A7A8AF3417ADB5F3005AB174 /* ArrayBuffer.cpp in Sources */,
 				0FFC99D4184EE318009C10AB /* ArrayBufferNeuteringWatchpoint.cpp in Sources */,
 				A7A8AF3617ADB5F3005AB174 /* ArrayBufferView.cpp in Sources */,
@@ -9223,6 +9218,7 @@
 				14469DE1107EC7E700650446 /* NativeErrorPrototype.cpp in Sources */,
 				E33E8D201B9013DE00346B52 /* NativeStdFunctionCell.cpp in Sources */,
 				148F21B7107EC5470042EC2C /* Nodes.cpp in Sources */,
+				DC69AA661CF7A1F200C6272F /* MatchResult.cpp in Sources */,
 				E3963CEE1B73F75000EB4CE5 /* NodesAnalyzeModule.cpp in Sources */,
 				655EB29B10CE2581001A990E /* NodesCodegen.cpp in Sources */,
 				6546F5211A32B313006F07D5 /* NullGetterFunction.cpp in Sources */,

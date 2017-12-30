@@ -76,6 +76,7 @@ public:
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
+    void stopIndexedDatabase();
 #endif
 
     bool shouldBypassMainWorldContentSecurityPolicy() const final { return m_shouldBypassMainWorldContentSecurityPolicy; }
@@ -87,7 +88,7 @@ public:
 
     using ScriptExecutionContext::hasPendingActivity;
 
-    void postTask(Task) override; // Executes the task on context's thread asynchronously.
+    void postTask(Task&&) final; // Executes the task on context's thread asynchronously.
 
     // WorkerGlobalScope
     WorkerGlobalScope& self() { return *this; }

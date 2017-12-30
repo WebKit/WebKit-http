@@ -328,7 +328,7 @@ bool IDBTransaction::hasPendingActivity() const
 
 void IDBTransaction::stop()
 {
-    LOG(IndexedDB, "IDBTransaction::stop");
+    LOG(IndexedDB, "IDBTransaction::stop - %s", m_info.loggingString().utf8().data());
     ASSERT(currentThread() == m_database->originThreadID());
 
     // IDBDatabase::stop() calls IDBTransaction::stop() for each of its active transactions.
@@ -968,7 +968,7 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
 
     RefPtr<IDBTransaction> protectedThis(this);
     RefPtr<IDBClient::TransactionOperation> protectedOperation(&operation);
-    value->writeBlobsToDiskForIndexedDB([protectedThis = WTFMove(protectedThis), this, protectedOperation = WTFMove(protectedOperation), key = WTFMove(key), value = WTFMove(value), overwriteMode](const IDBValue& idbValue) mutable {
+    value->writeBlobsToDiskForIndexedDB([protectedThis = WTFMove(protectedThis), this, protectedOperation = WTFMove(protectedOperation), key = WTFMove(key), overwriteMode](const IDBValue& idbValue) mutable {
         ASSERT(currentThread() == originThreadID());
         ASSERT(isMainThread());
         if (idbValue.data().data()) {
@@ -979,7 +979,7 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
         // If the IDBValue doesn't have any data, then something went wrong writing the blobs to disk.
         // In that case, we cannot successfully store this record, so we callback with an error.
         auto result = IDBResultData::error(protectedOperation->identifier(), { IDBDatabaseException::UnknownError, ASCIILiteral("Error preparing Blob/File data to be stored in object store") });
-        callOnMainThread([protectedThis = WTFMove(protectedThis), this, protectedOperation = WTFMove(protectedOperation), result = WTFMove(result)]() {
+        callOnMainThread([protectedThis = WTFMove(protectedThis), protectedOperation = WTFMove(protectedOperation), result = WTFMove(result)]() {
             protectedOperation->completed(result);
         });
     });

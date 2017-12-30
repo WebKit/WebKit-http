@@ -152,6 +152,10 @@
 #include <bindings/ScriptObject.h>
 #endif
 
+#if USE(APPLE_INTERNAL_SDK)
+#include <WebKitAdditions/HTMLMediaElementAdditions.cpp>
+#endif
+
 namespace WebCore {
 
 static const double SeekRepeatDelay = 0.1;
@@ -3990,12 +3994,11 @@ void HTMLMediaElement::updateCaptionContainer()
 void HTMLMediaElement::layoutSizeChanged()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    RefPtr<HTMLMediaElement> strongThis = this;
-    std::function<void()> task = [strongThis] {
-        if (ShadowRoot* root = strongThis->userAgentShadowRoot())
+    auto task = [this, protectedThis = Ref<Element>(*this)] {
+        if (ShadowRoot* root = userAgentShadowRoot())
             root->dispatchEvent(Event::create("resize", false, false));
     };
-    m_resizeTaskQueue.enqueueTask(task);
+    m_resizeTaskQueue.enqueueTask(WTFMove(task));
 #endif
 }
 
@@ -4176,13 +4179,12 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
             goto check_again;
         
         if (source->fastHasAttribute(mediaAttr)) {
-            MediaQueryEvaluator screenEval("screen", document().frame(), renderer() ? &renderer()->style() : nullptr);
-            RefPtr<MediaQuerySet> media = source->mediaQuerySet();
+            auto media = source->mediaQuerySet();
 #if !LOG_DISABLED
             if (shouldLog)
                 LOG(Media, "HTMLMediaElement::selectNextSourceChild(%p) - 'media' is %s", this, source->media().utf8().data());
 #endif
-            if (!screenEval.eval(media.get())) 
+            if (media && !MediaQueryEvaluator { "screen", document(), renderer() ? &renderer()->style() : nullptr }.evaluate(*media))
                 goto check_again;
         }
 
@@ -5184,6 +5186,8 @@ void HTMLMediaElement::syncTextTrackBounds()
 void HTMLMediaElement::webkitShowPlaybackTargetPicker()
 {
     LOG(Media, "HTMLMediaElement::webkitShowPlaybackTargetPicker(%p)", this);
+    if (ScriptController::processingUserGestureForMedia())
+        removeBehaviorsRestrictionsAfterFirstUserGesture();
     m_mediaSession->showPlaybackTargetPicker(*this);
 }
 
@@ -5211,8 +5215,10 @@ void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPl
 
 bool HTMLMediaElement::dispatchEvent(Event& event)
 {
-    if (event.type() == eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent)
+    if (event.type() == eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent) {
+        m_failedToPlayToWirelessTarget = false;
         scheduleDelayedAction(CheckPlaybackTargetCompatablity);
+    }
     return HTMLElement::dispatchEvent(event);
 }
 
@@ -5468,15 +5474,42 @@ PlatformLayer* HTMLMediaElement::platformLayer() const
     return m_player ? m_player->platformLayer() : nullptr;
 }
 
+void HTMLMediaElement::setPreparedForInline(bool value)
+{
+    m_preparedForInline = value;
+    if (m_preparedForInline && m_preparedForInlineCompletionHandler) {
+        m_preparedForInlineCompletionHandler();
+        m_preparedForInlineCompletionHandler = nullptr;
+    }
+}
+
+void HTMLMediaElement::waitForPreparedForInlineThen(std::function<void()> completionHandler)
+{
+    ASSERT(!m_preparedForInlineCompletionHandler);
+    if (m_preparedForInline)  {
+        completionHandler();
+        return;
+    }
+    
+    m_preparedForInlineCompletionHandler = completionHandler;
+}
+
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
-void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer)
+bool HTMLMediaElement::isVideoLayerInline()
+{
+    return !m_videoFullscreenLayer;
+};
+    
+void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer, std::function<void()> completionHandler)
 {
     m_videoFullscreenLayer = platformLayer;
-    if (!m_player)
+    if (!m_player) {
+        completionHandler();
         return;
+    }
     
-    m_player->setVideoFullscreenLayer(platformLayer);
+    m_player->setVideoFullscreenLayer(platformLayer, completionHandler);
     setNeedsStyleRecalc(SyntheticStyleChange);
 #if ENABLE(VIDEO_TRACK)
     updateTextTrackDisplay();
@@ -5496,6 +5529,13 @@ void HTMLMediaElement::setVideoFullscreenGravity(MediaPlayer::VideoGravity gravi
     if (m_player)
         m_player->setVideoFullscreenGravity(gravity);
 }
+    
+#else
+    
+bool HTMLMediaElement::isVideoLayerInline()
+{
+    return true;
+};
 
 #endif
 
@@ -7023,6 +7063,23 @@ void HTMLMediaElement::updatePlaybackControlsManager()
     else
         page->chrome().client().clearPlaybackControlsManager(*this);
 }
+
+#if !USE(APPLE_INTERNAL_SDK)
+bool HTMLMediaElement::shouldOverrideBackgroundLoadingRestriction() const
+{
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    if (isPlayingToWirelessPlaybackTarget())
+        return true;
+#endif
+
+    return false;
+}
+
+void HTMLMediaElement::fullscreenModeChanged(VideoFullscreenMode mode)
+{
+    m_videoFullscreenMode = mode;
+}
+#endif
 
 }
 

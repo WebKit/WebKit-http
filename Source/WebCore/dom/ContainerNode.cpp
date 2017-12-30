@@ -376,8 +376,6 @@ void ContainerNode::parserInsertBefore(Node& newChild, Node& nextChild)
     newChild.updateAncestorConnectedSubframeCountForInsertion();
 
     notifyChildInserted(newChild, ChildChangeSourceParser);
-
-    newChild.setNeedsStyleRecalc(ReconstructRenderTree);
 }
 
 bool ContainerNode::replaceChild(Node& newChild, Node& oldChild, ExceptionCode& ec)
@@ -458,7 +456,7 @@ bool ContainerNode::replaceChild(Node& newChild, Node& oldChild, ExceptionCode& 
     return true;
 }
 
-void ContainerNode::willRemoveChild(Node& child)
+static void willRemoveChild(ContainerNode& container, Node& child)
 {
     ASSERT(child.parentNode());
 
@@ -466,12 +464,16 @@ void ContainerNode::willRemoveChild(Node& child)
     child.notifyMutationObserversNodeWillDetach();
     dispatchChildRemovalEvents(child);
 
-    if (child.parentNode() != this)
+    if (child.parentNode() != &container)
+        return;
+
+    if (is<ContainerNode>(child))
+        disconnectSubframesIfNeeded(downcast<ContainerNode>(child), RootAndDescendants);
+
+    if (child.parentNode() != &container)
         return;
 
     child.document().nodeWillBeRemoved(child); // e.g. mutation event listener can create a new range.
-    if (is<ContainerNode>(child))
-        disconnectSubframesIfNeeded(downcast<ContainerNode>(child), RootAndDescendants);
 }
 
 static void willRemoveChildren(ContainerNode& container)
@@ -488,9 +490,10 @@ static void willRemoveChildren(ContainerNode& container)
         dispatchChildRemovalEvents(child.get());
     }
 
+    disconnectSubframesIfNeeded(container, DescendantsOnly);
+
     container.document().nodeChildrenWillBeRemoved(container);
 
-    disconnectSubframesIfNeeded(container, DescendantsOnly);
 }
 
 void ContainerNode::disconnectDescendantFrames()
@@ -516,12 +519,6 @@ bool ContainerNode::removeChild(Node& oldChild, ExceptionCode& ec)
 
     Ref<Node> child(oldChild);
 
-    document().removeFocusedNodeOfSubtree(child.ptr());
-
-#if ENABLE(FULLSCREEN_API)
-    document().removeFullScreenElementOfSubtree(&child.get());
-#endif
-
     // Events fired when blurring currently focused node might have moved this
     // child into a different parent.
     if (child->parentNode() != this) {
@@ -529,7 +526,7 @@ bool ContainerNode::removeChild(Node& oldChild, ExceptionCode& ec)
         return false;
     }
 
-    willRemoveChild(child);
+    willRemoveChild(*this, child);
 
     // Mutation events might have moved this child into a different parent.
     if (child->parentNode() != this) {
@@ -612,13 +609,6 @@ void ContainerNode::removeChildren()
 
     // The container node can be removed from event handlers.
     Ref<ContainerNode> protectedThis(*this);
-
-    // exclude this node when looking for removed focusedNode since only children will be removed
-    document().removeFocusedNodeOfSubtree(this, true);
-
-#if ENABLE(FULLSCREEN_API)
-    document().removeFullScreenElementOfSubtree(this, true);
-#endif
 
     // Do any prep work needed before actually starting to detach
     // and remove... e.g. stop loading frames, fire unload events.
@@ -721,8 +711,6 @@ void ContainerNode::parserAppendChild(Node& newChild)
     newChild.updateAncestorConnectedSubframeCountForInsertion();
 
     notifyChildInserted(newChild, ChildChangeSourceParser);
-
-    newChild.setNeedsStyleRecalc(ReconstructRenderTree);
 }
 
 void ContainerNode::childrenChanged(const ChildChange& change)
@@ -813,8 +801,6 @@ void ContainerNode::updateTreeAfterInsertion(Node& child)
     ASSERT(child.refCount());
 
     notifyChildInserted(child, ChildChangeSourceAPI);
-
-    child.setNeedsStyleRecalc(ReconstructRenderTree);
 
     dispatchChildInsertionEvents(child);
 }

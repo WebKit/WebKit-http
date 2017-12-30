@@ -1879,9 +1879,9 @@ void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, u
         if (renderer->style().preserveNewline())
             m_blockRectForTextSelection = renderer->absoluteBoundingBoxRect(true);
         else {
-            auto* paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithAssistedNode), ParagraphGranularity, DirectionForward).get();
+            auto paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithAssistedNode), ParagraphGranularity, DirectionForward);
             if (paragraphRange && !paragraphRange->collapsed())
-                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange);
+                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange.get());
         }
         
         if (rectIsTooBigForSelection(m_blockRectForTextSelection, frame))
@@ -2973,12 +2973,14 @@ void WebPage::applicationDidEnterBackground(bool isSuspendedUnderLock)
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationDidEnterBackgroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": [NSNumber numberWithBool:isSuspendedUnderLock]}];
 
+    m_isSuspendedUnderLock = isSuspendedUnderLock;
     setLayerTreeStateIsFrozen(true);
     markLayersVolatile();
 }
 
 void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
 {
+    m_isSuspendedUnderLock = false;
     cancelMarkLayersVolatile();
     setLayerTreeStateIsFrozen(false);
 

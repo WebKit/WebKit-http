@@ -817,7 +817,7 @@ static ContainerNode* findEnclosingScrollableContainer(ContainerNode* node, floa
         if (box && box->canBeScrolledAndHasScrollableArea()) {
             if (ScrollableArea* scrollableArea = scrollableAreaForBox(*box)) {
                 if (((deltaY > 0) && !scrollableArea->scrolledToTop()) || ((deltaY < 0) && !scrollableArea->scrolledToBottom())
-                    || ((deltaX > 0) && !scrollableArea->scrolledToRight()) || ((deltaX < 0) && !scrollableArea->scrolledToLeft())) {
+                    || ((deltaX > 0) && !scrollableArea->scrolledToLeft()) || ((deltaX < 0) && !scrollableArea->scrolledToRight())) {
                     return candidate;
                 }
             }
@@ -1175,10 +1175,8 @@ IntPoint EventHandler::effectiveMousePositionForSelectionAutoscroll() const
     if (!page)
         return m_lastKnownMousePosition;
 
-    NSScreen *screen = screenForDisplayID(page->chrome().displayID());
-    IntSize autoscrollAdjustmentFactor = autoscrollAdjustmentFactorForScreenBoundaries(m_lastKnownMouseGlobalPosition, toUserSpace(screen.frame, nil));
-
-    return m_lastKnownMousePosition + autoscrollAdjustmentFactor;
+    auto frame = toUserSpace(screen(page->chrome().displayID()).frame, nil);
+    return m_lastKnownMousePosition + autoscrollAdjustmentFactorForScreenBoundaries(m_lastKnownMouseGlobalPosition, frame);
 }
 
 }
