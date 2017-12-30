@@ -44,7 +44,7 @@ namespace JSC {
 // EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned even-numbered register (r0, r2 or [sp]).
 // To avoid assemblies from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
 #if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
-#define EABI_32BIT_DUMMY_ARG      TrustedImm32(0),
+#define EABI_32BIT_DUMMY_ARG      CCallHelpers::TrustedImm32(0),
 #else
 #define EABI_32BIT_DUMMY_ARG
 #endif
@@ -53,7 +53,7 @@ namespace JSC {
 // To avoid this, let's occupy the 4th argument register (r7) with a dummy argument when necessary. This must only be done when there
 // is no other 32-bit value argument behind this 64-bit JSValue.
 #if CPU(SH4)
-#define SH4_32BIT_DUMMY_ARG      TrustedImm32(0),
+#define SH4_32BIT_DUMMY_ARG      CCallHelpers::TrustedImm32(0),
 #else
 #define SH4_32BIT_DUMMY_ARG
 #endif
@@ -707,6 +707,16 @@ public:
     }
 
     ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImmPtr arg1, GPRReg arg2, TrustedImm32 arg3, TrustedImmPtr arg4)
+    {
+        resetCallArguments();
+        addCallArgument(GPRInfo::callFrameRegister);
+        addCallArgument(arg1);
+        addCallArgument(arg2);
+        addCallArgument(arg3);
+        addCallArgument(arg4);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImm32 arg2, TrustedImmPtr arg3, GPRReg arg4)
     {
         resetCallArguments();
         addCallArgument(GPRInfo::callFrameRegister);
@@ -1684,6 +1694,12 @@ public:
         setupArgumentsWithExecState(arg1, arg2, arg3);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, TrustedImm32 arg2, TrustedImmPtr arg3, GPRReg arg4)
+    {
+        poke(arg4, POKE_ARGUMENT_OFFSET);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, TrustedImm32 arg3, TrustedImm32 arg4, TrustedImm32 arg5)
     {
         poke(arg5, POKE_ARGUMENT_OFFSET + 1);
@@ -2034,6 +2050,13 @@ public:
     }
 
     ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImm32 arg1, GPRReg arg2, TrustedImm32 arg3, GPRReg arg4, TrustedImm32 arg5)
+    {
+        poke(arg5, POKE_ARGUMENT_OFFSET + 1);
+        poke(arg4, POKE_ARGUMENT_OFFSET);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImm32 arg1, GPRReg arg2, TrustedImm32 arg3, TrustedImmPtr arg4, GPRReg arg5)
     {
         poke(arg5, POKE_ARGUMENT_OFFSET + 1);
         poke(arg4, POKE_ARGUMENT_OFFSET);

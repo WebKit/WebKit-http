@@ -35,12 +35,15 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#include "HTMLAnchorElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLButtonElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLHtmlElement.h"
 #include "HTMLInputElement.h"
+#include "HTMLLegendElement.h"
 #include "HTMLNames.h"
+#include "HTMLSelectElement.h"
 #include "HTMLTextAreaElement.h"
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
@@ -2004,7 +2007,7 @@ void RenderBox::mapLocalToContainer(const RenderLayerModelObject* repaintContain
     }
 
     bool containerSkipped;
-    RenderElement* container = this->container(repaintContainer, &containerSkipped);
+    RenderElement* container = this->container(repaintContainer, containerSkipped);
     if (!container)
         return;
 
@@ -2052,7 +2055,7 @@ const RenderObject* RenderBox::pushMappingToContainer(const RenderLayerModelObje
     ASSERT(ancestorToStopAt != this);
 
     bool ancestorSkipped;
-    RenderElement* container = this->container(ancestorToStopAt, &ancestorSkipped);
+    RenderElement* container = this->container(ancestorToStopAt, ancestorSkipped);
     if (!container)
         return nullptr;
 
@@ -2241,7 +2244,7 @@ LayoutRect RenderBox::computeRectForRepaint(const LayoutRect& rect, const Render
     }
 
     bool containerSkipped;
-    auto* renderer = container(repaintContainer, &containerSkipped);
+    auto* renderer = container(repaintContainer, containerSkipped);
     if (!renderer)
         return adjustedRect;
     

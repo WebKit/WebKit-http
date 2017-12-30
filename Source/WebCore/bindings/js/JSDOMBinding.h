@@ -154,9 +154,7 @@ bool clearInlineCachedWrapper(DOMWrapperWorld&, void*, JSDOMObject*);
 bool clearInlineCachedWrapper(DOMWrapperWorld&, ScriptWrappable*, JSDOMObject* wrapper);
 bool clearInlineCachedWrapper(DOMWrapperWorld&, JSC::ArrayBuffer*, JSC::JSArrayBuffer* wrapper);
 
-template<typename DOMClass, typename T> Ref<DOMClass> inline castDOMObjectForWrapperCreation(T& object) { return Ref<DOMClass>(*static_cast<DOMClass*>(&object)); }
 template<typename DOMClass, typename T> Ref<DOMClass> inline castDOMObjectForWrapperCreation(Ref<T>&& object) { return static_reference_cast<DOMClass>(WTFMove(object)); }
-
 #define CREATE_DOM_WRAPPER(globalObject, className, object) createWrapper<JS##className, className>(globalObject, castDOMObjectForWrapperCreation<className>(object))
 
 template<typename DOMClass> JSC::JSObject* getCachedWrapper(DOMWrapperWorld&, DOMClass&);
@@ -165,9 +163,7 @@ template<typename DOMClass, typename WrapperClass> void cacheWrapper(DOMWrapperW
 template<typename DOMClass, typename WrapperClass> void uncacheWrapper(DOMWrapperWorld&, DOMClass*, WrapperClass*);
 template<typename WrapperClass, typename DOMClass> WrapperClass* createWrapper(JSDOMGlobalObject*, Ref<DOMClass>&&);
 
-template<typename WrapperClass, typename DOMClass> JSC::JSValue wrap(JSDOMGlobalObject*, DOMClass&);
-template<typename WrapperClass, typename DOMClass> JSC::JSValue getExistingWrapper(JSDOMGlobalObject*, DOMClass&);
-template<typename WrapperClass, typename DOMClass> JSC::JSValue createNewWrapper(JSDOMGlobalObject*, Ref<DOMClass>&&);
+template<typename DOMClass> JSC::JSValue wrap(JSC::ExecState*, JSDOMGlobalObject*, DOMClass&);
 
 void addImpureProperty(const AtomicString&);
 
@@ -269,7 +265,7 @@ JSC::JSValue toJSIteratorEnd(JSC::ExecState&);
 
 template<typename T, size_t inlineCapacity> JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, const Vector<T, inlineCapacity>&);
 template<typename T, size_t inlineCapacity> JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, const Vector<T, inlineCapacity>*);
-WEBCORE_EXPORT JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, PassRefPtr<DOMStringList>);
+WEBCORE_EXPORT JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, DOMStringList*);
 
 JSC::JSValue jsPair(JSC::ExecState&, JSDOMGlobalObject*, JSC::JSValue, JSC::JSValue);
 template<typename FirstType, typename SecondType> JSC::JSValue jsPair(JSC::ExecState&, JSDOMGlobalObject*, const FirstType&, const SecondType&);
@@ -309,7 +305,7 @@ String propertyNameToString(JSC::PropertyName);
 AtomicString propertyNameToAtomicString(JSC::PropertyName);
 
 template<typename DOMClass> const JSC::HashTableValue* getStaticValueSlotEntryWithoutCaching(JSC::ExecState*, JSC::PropertyName);
-template<JSC::NativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+template<JSC::NativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName, JSC::JSObject*);
 
 // Inline functions and template definitions.
 
@@ -467,22 +463,11 @@ template<typename WrapperClass, typename DOMClass> inline WrapperClass* createWr
     return wrapper;
 }
 
-template<typename WrapperClass, typename DOMClass> inline JSC::JSValue wrap(JSDOMGlobalObject* globalObject, DOMClass& domObject)
+template<typename DOMClass> inline JSC::JSValue wrap(JSC::ExecState* state, JSDOMGlobalObject* globalObject, DOMClass& domObject)
 {
     if (auto* wrapper = getCachedWrapper(globalObject->world(), domObject))
         return wrapper;
-    return createWrapper<WrapperClass, DOMClass>(globalObject, domObject);
-}
-
-template<typename WrapperClass, typename DOMClass> inline JSC::JSValue getExistingWrapper(JSDOMGlobalObject* globalObject, DOMClass& domObject)
-{
-    return getCachedWrapper(globalObject->world(), domObject);
-}
-
-template<typename WrapperClass, typename DOMClass> inline JSC::JSValue createNewWrapper(JSDOMGlobalObject* globalObject, Ref<DOMClass>&& domObject)
-{
-    ASSERT(!getCachedWrapper(globalObject->world(), domObject));
-    return createWrapper<WrapperClass>(globalObject, WTFMove(domObject));
+    return toJSNewlyCreated(state, globalObject, Ref<DOMClass>(domObject));
 }
 
 inline int32_t finiteInt32Value(JSC::JSValue value, JSC::ExecState* exec, bool& okay)
@@ -521,7 +506,7 @@ inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, 
 {
     if (!buffer)
         return JSC::jsNull();
-    if (JSC::JSValue result = getExistingWrapper<JSC::JSArrayBuffer>(globalObject, *buffer))
+    if (JSC::JSValue result = getCachedWrapper(globalObject->world(), *buffer))
         return result;
 
     // The JSArrayBuffer::create function will register the wrapper in finishCreation.
@@ -799,7 +784,7 @@ template<> inline const JSC::HashTableValue* getStaticValueSlotEntryWithoutCachi
     return nullptr;
 }
 
-template<JSC::NativeFunction nativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState* exec, JSC::EncodedJSValue, JSC::PropertyName propertyName)
+template<JSC::NativeFunction nativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState* exec, JSC::EncodedJSValue, JSC::PropertyName propertyName, JSC::JSObject*)
 {
     return JSC::JSValue::encode(JSC::JSFunction::create(exec->vm(), exec->lexicalGlobalObject(), length, propertyName.publicName(), nativeFunction));
 }

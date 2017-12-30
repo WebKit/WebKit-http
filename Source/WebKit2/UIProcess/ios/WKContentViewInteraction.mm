@@ -229,6 +229,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 - (void)didHandleWebKeyEvent;
 - (void)didHandleWebKeyEvent:(WebIOSEvent *)event;
 - (void)deleteFromInputWithFlags:(NSUInteger)flags;
+- (void)addInputString:(NSString *)string withFlags:(NSUInteger)flags withInputManagerHint:(NSString *)hint;
 @end
 
 @interface UIView (UIViewInternalHack)
@@ -263,6 +264,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
     RetainPtr<UIView> _customInputView;
     RetainPtr<NSArray<UITextSuggestion *>> _suggestions;
+    RetainPtr<NSString> _textContentType;
     BOOL _accessoryViewShouldNotShow;
 }
 
@@ -348,6 +350,20 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     _suggestions = adoptNS([suggestions copy]);
     [suggestionDelegate setSuggestions:suggestions];
 #endif
+}
+
+- (NSString *)textContentType
+{
+    return _textContentType.get();
+}
+
+- (void)setTextContentType:(NSString *)textContentType
+{
+    if (textContentType == _textContentType || [textContentType isEqualToString:_textContentType.get()])
+        return;
+
+    _textContentType = adoptNS([textContentType copy]);
+    [_contentView reloadInputViews];
 }
 
 - (void)invalidate
@@ -1044,12 +1060,14 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (void)_displayFormNodeInputView
 {
+    // In case user scaling is force enabled, do not use that scaling when zooming in with an input field.
+    // Zooming above the page's default scale factor should only happen when the user performs it.
     [self _zoomToFocusRect:_assistedNodeInformation.elementRect
              selectionRect: _didAccessoryTabInitiateFocus ? IntRect() : _assistedNodeInformation.selectionRect
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
               maximumScale:_assistedNodeInformation.maximumScaleFactor
-              allowScaling:(_assistedNodeInformation.allowsUserScaling && !UICurrentUserInterfaceIdiomIsPad())
+              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && !UICurrentUserInterfaceIdiomIsPad())
                forceScroll:[self requiresAccessoryView]];
     _didAccessoryTabInitiateFocus = NO;
     [self _ensureFormAccessoryView];
@@ -2872,109 +2890,50 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     return UITextAutocapitalizationTypeSentences;
 }
 
-// UITextInputPrivate protocol
-// Direct access to the (private) UITextInputTraits object.
-- (UITextInputTraits *)textInputTraits
-{
-    if (!_traits)
-        _traits = adoptNS([[UITextInputTraits alloc] init]);
-
-    [_traits setSecureTextEntry:_assistedNodeInformation.elementType == InputType::Password];
-    [_traits setShortcutConversionType:_assistedNodeInformation.elementType == InputType::Password ? UITextShortcutConversionTypeNo : UITextShortcutConversionTypeDefault];
-
-    if (!_assistedNodeInformation.formAction.isEmpty())
-        [_traits setReturnKeyType:(_assistedNodeInformation.elementType == InputType::Search) ? UIReturnKeySearch : UIReturnKeyGo];
-
-    if (_assistedNodeInformation.elementType == InputType::Password || _assistedNodeInformation.elementType == InputType::Email || _assistedNodeInformation.elementType == InputType::URL || _assistedNodeInformation.formAction.contains("login")) {
-        [_traits setAutocapitalizationType:UITextAutocapitalizationTypeNone];
-        [_traits setAutocorrectionType:UITextAutocorrectionTypeNo];
-    } else {
-        [_traits setAutocapitalizationType:toUITextAutocapitalize(_assistedNodeInformation.autocapitalizeType)];
-        [_traits setAutocorrectionType:_assistedNodeInformation.isAutocorrect ? UITextAutocorrectionTypeYes : UITextAutocorrectionTypeNo];
-    }
-
-    switch (_assistedNodeInformation.elementType) {
-    case InputType::Phone:
-         [_traits setKeyboardType:UIKeyboardTypePhonePad];
-         break;
-    case InputType::URL:
-         [_traits setKeyboardType:UIKeyboardTypeURL];
-         break;
-    case InputType::Email:
-         [_traits setKeyboardType:UIKeyboardTypeEmailAddress];
-          break;
-    case InputType::Number:
-         [_traits setKeyboardType:UIKeyboardTypeNumbersAndPunctuation];
-         break;
-    case InputType::NumberPad:
-         [_traits setKeyboardType:UIKeyboardTypeNumberPad];
-         break;
-    default:
-         [_traits setKeyboardType:UIKeyboardTypeDefault];
-    }
-
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    switch (_assistedNodeInformation.autofillFieldName) {
+static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
+{
+    switch (fieldName) {
     case WebCore::AutofillFieldName::Name:
-        [_traits setTextContentType:UITextContentTypeName];
-        break;
+        return UITextContentTypeName;
     case WebCore::AutofillFieldName::HonorificPrefix:
-        [_traits setTextContentType:UITextContentTypeNamePrefix];
-        break;
+        return UITextContentTypeNamePrefix;
     case WebCore::AutofillFieldName::GivenName:
-        [_traits setTextContentType:UITextContentTypeMiddleName];
-        break;
+        return UITextContentTypeMiddleName;
     case WebCore::AutofillFieldName::AdditionalName:
-        [_traits setTextContentType:UITextContentTypeMiddleName];
-        break;
+        return UITextContentTypeMiddleName;
     case WebCore::AutofillFieldName::FamilyName:
-        [_traits setTextContentType:UITextContentTypeFamilyName];
-        break;
+        return UITextContentTypeFamilyName;
     case WebCore::AutofillFieldName::HonorificSuffix:
-        [_traits setTextContentType:UITextContentTypeNameSuffix];
-        break;
+        return UITextContentTypeNameSuffix;
     case WebCore::AutofillFieldName::Nickname:
-        [_traits setTextContentType:UITextContentTypeNickname];
-        break;
+        return UITextContentTypeNickname;
     case WebCore::AutofillFieldName::OrganizationTitle:
-        [_traits setTextContentType:UITextContentTypeJobTitle];
-        break;
+        return UITextContentTypeJobTitle;
     case WebCore::AutofillFieldName::Organization:
-        [_traits setTextContentType:UITextContentTypeOrganizationName];
-        break;
+        return UITextContentTypeOrganizationName;
     case WebCore::AutofillFieldName::StreetAddress:
-        [_traits setTextContentType:UITextContentTypeFullStreetAddress];
-        break;
+        return UITextContentTypeFullStreetAddress;
     case WebCore::AutofillFieldName::AddressLine1:
-        [_traits setTextContentType:UITextContentTypeStreetAddressLine1];
-        break;
+        return UITextContentTypeStreetAddressLine1;
     case WebCore::AutofillFieldName::AddressLine2:
-        [_traits setTextContentType:UITextContentTypeStreetAddressLine2];
-        break;
+        return UITextContentTypeStreetAddressLine2;
     case WebCore::AutofillFieldName::AddressLevel3:
-        [_traits setTextContentType:UITextContentTypeSublocality];
-        break;
+        return UITextContentTypeSublocality;
     case WebCore::AutofillFieldName::AddressLevel2:
-        [_traits setTextContentType:UITextContentTypeAddressCity];
-        break;
+        return UITextContentTypeAddressCity;
     case WebCore::AutofillFieldName::AddressLevel1:
-        [_traits setTextContentType:UITextContentTypeAddressState];
-        break;
+        return UITextContentTypeAddressState;
     case WebCore::AutofillFieldName::CountryName:
-        [_traits setTextContentType:UITextContentTypeCountryName];
-        break;
+        return UITextContentTypeCountryName;
     case WebCore::AutofillFieldName::PostalCode:
-        [_traits setTextContentType:UITextContentTypePostalCode];
-        break;
+        return UITextContentTypePostalCode;
     case WebCore::AutofillFieldName::Tel:
-        [_traits setTextContentType:UITextContentTypeTelephoneNumber];
-        break;
+        return UITextContentTypeTelephoneNumber;
     case WebCore::AutofillFieldName::Email:
-        [_traits setTextContentType:UITextContentTypeEmailAddress];
-        break;
+        return UITextContentTypeEmailAddress;
     case WebCore::AutofillFieldName::URL:
-        [_traits setTextContentType:UITextContentTypeURL];
-        break;
+        return UITextContentTypeURL;
     case WebCore::AutofillFieldName::None:
     case WebCore::AutofillFieldName::Username:
     case WebCore::AutofillFieldName::NewPassword:
@@ -3011,6 +2970,57 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
     case WebCore::AutofillFieldName::Impp:
         break;
     };
+
+    return nil;
+}
+#endif
+
+// UITextInputPrivate protocol
+// Direct access to the (private) UITextInputTraits object.
+- (UITextInputTraits *)textInputTraits
+{
+    if (!_traits)
+        _traits = adoptNS([[UITextInputTraits alloc] init]);
+
+    [_traits setSecureTextEntry:_assistedNodeInformation.elementType == InputType::Password];
+    [_traits setShortcutConversionType:_assistedNodeInformation.elementType == InputType::Password ? UITextShortcutConversionTypeNo : UITextShortcutConversionTypeDefault];
+
+    if (!_assistedNodeInformation.formAction.isEmpty())
+        [_traits setReturnKeyType:(_assistedNodeInformation.elementType == InputType::Search) ? UIReturnKeySearch : UIReturnKeyGo];
+
+    if (_assistedNodeInformation.elementType == InputType::Password || _assistedNodeInformation.elementType == InputType::Email || _assistedNodeInformation.elementType == InputType::URL || _assistedNodeInformation.formAction.contains("login")) {
+        [_traits setAutocapitalizationType:UITextAutocapitalizationTypeNone];
+        [_traits setAutocorrectionType:UITextAutocorrectionTypeNo];
+    } else {
+        [_traits setAutocapitalizationType:toUITextAutocapitalize(_assistedNodeInformation.autocapitalizeType)];
+        [_traits setAutocorrectionType:_assistedNodeInformation.isAutocorrect ? UITextAutocorrectionTypeYes : UITextAutocorrectionTypeNo];
+    }
+
+    switch (_assistedNodeInformation.elementType) {
+    case InputType::Phone:
+        [_traits setKeyboardType:UIKeyboardTypePhonePad];
+        break;
+    case InputType::URL:
+        [_traits setKeyboardType:UIKeyboardTypeURL];
+        break;
+    case InputType::Email:
+        [_traits setKeyboardType:UIKeyboardTypeEmailAddress];
+        break;
+    case InputType::Number:
+        [_traits setKeyboardType:UIKeyboardTypeNumbersAndPunctuation];
+        break;
+    case InputType::NumberPad:
+        [_traits setKeyboardType:UIKeyboardTypeNumberPad];
+        break;
+    default:
+        [_traits setKeyboardType:UIKeyboardTypeDefault];
+    }
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+    if (NSString *textContentType = [_formInputSession textContentType])
+        [_traits setTextContentType:textContentType];
+    else
+        [_traits setTextContentType:contentTypeFromFieldName(_assistedNodeInformation.autofillFieldName)];
 #endif
 
     return _traits.get();
@@ -3263,7 +3273,10 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
     case kWebSpaceKey:
         if (contentEditable && isCharEvent) {
-            [keyboard addInputString:event.characters withFlags:event.keyboardFlags];
+            if ([keyboard respondsToSelector:@selector(addInputString:withFlags:withInputManagerHint:)])
+                [keyboard addInputString:event.characters withFlags:event.keyboardFlags withInputManagerHint:event.inputManagerHint];
+            else
+                [keyboard addInputString:event.characters withFlags:event.keyboardFlags];
             return YES;
         }
         break;
@@ -3283,7 +3296,10 @@ static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType
 
     default:
         if (contentEditable && isCharEvent) {
-            [keyboard addInputString:event.characters withFlags:event.keyboardFlags];
+            if ([keyboard respondsToSelector:@selector(addInputString:withFlags:withInputManagerHint:)])
+                [keyboard addInputString:event.characters withFlags:event.keyboardFlags withInputManagerHint:event.inputManagerHint];
+            else
+                [keyboard addInputString:event.characters withFlags:event.keyboardFlags];
             return YES;
         }
         break;

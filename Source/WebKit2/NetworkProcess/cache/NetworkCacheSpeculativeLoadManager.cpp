@@ -46,7 +46,7 @@ namespace NetworkCache {
 
 using namespace WebCore;
 
-static const auto preloadedEntryLifetime = 10_s;
+static const auto preloadedEntryLifetime = 10s;
 
 #if !LOG_DISABLED
 static HashCountedSet<String>& allSpeculativeLoadingDiagnosticMessages()
@@ -84,25 +84,25 @@ static inline Key makeSubresourcesKey(const Key& resourceKey)
     return Key(resourceKey.partition(), subresourcesType(), resourceKey.range(), resourceKey.identifier());
 }
 
-static inline std::unique_ptr<ResourceRequest> constructRevalidationRequest(const Entry& entry, const SubresourceInfo& subResourceInfo)
+static inline ResourceRequest constructRevalidationRequest(const Entry& entry, const SubresourceInfo& subResourceInfo)
 {
-    auto revalidationRequest = std::make_unique<ResourceRequest>(entry.key().identifier());
-    revalidationRequest->setHTTPHeaderFields(subResourceInfo.requestHeaders);
-    revalidationRequest->setFirstPartyForCookies(subResourceInfo.firstPartyForCookies);
+    ResourceRequest revalidationRequest(entry.key().identifier());
+    revalidationRequest.setHTTPHeaderFields(subResourceInfo.requestHeaders);
+    revalidationRequest.setFirstPartyForCookies(subResourceInfo.firstPartyForCookies);
 #if ENABLE(CACHE_PARTITIONING)
     if (entry.key().hasPartition())
-        revalidationRequest->setCachePartition(entry.key().partition());
+        revalidationRequest.setCachePartition(entry.key().partition());
 #endif
     ASSERT_WITH_MESSAGE(entry.key().range().isEmpty(), "range is not supported");
 
-    revalidationRequest->makeUnconditional();
+    revalidationRequest.makeUnconditional();
     String eTag = entry.response().httpHeaderField(HTTPHeaderName::ETag);
     if (!eTag.isEmpty())
-        revalidationRequest->setHTTPHeaderField(HTTPHeaderName::IfNoneMatch, eTag);
+        revalidationRequest.setHTTPHeaderField(HTTPHeaderName::IfNoneMatch, eTag);
 
     String lastModified = entry.response().httpHeaderField(HTTPHeaderName::LastModified);
     if (!lastModified.isEmpty())
-        revalidationRequest->setHTTPHeaderField(HTTPHeaderName::IfModifiedSince, lastModified);
+        revalidationRequest.setHTTPHeaderField(HTTPHeaderName::IfModifiedSince, lastModified);
 
     return revalidationRequest;
 }
@@ -114,7 +114,7 @@ static bool responseNeedsRevalidation(const ResourceResponse& response, std::chr
 
     auto age = computeCurrentAge(response, timestamp);
     auto lifetime = computeFreshnessLifetimeForHTTPFamily(response, timestamp);
-    return age - lifetime > 0_ms;
+    return age - lifetime > 0ms;
 }
 
 class SpeculativeLoadManager::ExpiringEntry {
@@ -133,7 +133,7 @@ private:
 class SpeculativeLoadManager::PreloadedEntry : private ExpiringEntry {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PreloadedEntry(std::unique_ptr<Entry> entry, std::unique_ptr<ResourceRequest> speculativeValidationRequest, std::function<void()>&& lifetimeReachedHandler)
+    PreloadedEntry(std::unique_ptr<Entry> entry, Optional<ResourceRequest>&& speculativeValidationRequest, std::function<void()>&& lifetimeReachedHandler)
         : ExpiringEntry(WTFMove(lifetimeReachedHandler))
         , m_entry(WTFMove(entry))
         , m_speculativeValidationRequest(WTFMove(speculativeValidationRequest))
@@ -145,12 +145,12 @@ public:
         return WTFMove(m_entry);
     }
 
-    ResourceRequest* revalidationRequest() const { return m_speculativeValidationRequest.get(); }
+    const Optional<ResourceRequest>& revalidationRequest() const { return m_speculativeValidationRequest; }
     bool wasRevalidated() const { return !!m_speculativeValidationRequest; }
 
 private:
     std::unique_ptr<Entry> m_entry;
-    std::unique_ptr<ResourceRequest> m_speculativeValidationRequest;
+    Optional<ResourceRequest> m_speculativeValidationRequest;
 };
 
 class SpeculativeLoadManager::PendingFrameLoad : public RefCounted<PendingFrameLoad> {
@@ -392,7 +392,7 @@ void SpeculativeLoadManager::registerLoad(const GlobalFrameID& frameID, const Re
         pendingFrameLoad->registerSubresourceLoad(request, resourceKey);
 }
 
-void SpeculativeLoadManager::addPreloadedEntry(std::unique_ptr<Entry> entry, const GlobalFrameID& frameID, std::unique_ptr<ResourceRequest> revalidationRequest)
+void SpeculativeLoadManager::addPreloadedEntry(std::unique_ptr<Entry> entry, const GlobalFrameID& frameID, Optional<ResourceRequest>&& revalidationRequest)
 {
     ASSERT(entry);
     ASSERT(!entry->needsValidation());
@@ -409,7 +409,7 @@ void SpeculativeLoadManager::addPreloadedEntry(std::unique_ptr<Entry> entry, con
 
 void SpeculativeLoadManager::retrieveEntryFromStorage(const Key& key, const RetrieveCompletionHandler& completionHandler)
 {
-    m_storage.retrieve(key, static_cast<unsigned>(ResourceLoadPriority::Medium), [completionHandler](std::unique_ptr<Storage::Record> record) {
+    m_storage.retrieve(key, static_cast<unsigned>(ResourceLoadPriority::Medium), [completionHandler](auto record) {
         if (!record) {
             completionHandler(nullptr);
             return false;
@@ -463,15 +463,14 @@ void SpeculativeLoadManager::revalidateEntry(std::unique_ptr<Entry> entry, const
     if (!key.range().isEmpty())
         return;
 
-    ResourceRequest* revalidationRequestPtr = constructRevalidationRequest(*entry, subresourceInfo).release();
+    ResourceRequest revalidationRequest = constructRevalidationRequest(*entry, subresourceInfo);
 
     LOG(NetworkCacheSpeculativePreloading, "(NetworkProcess) Speculatively revalidating '%s':", key.identifier().utf8().data());
 
-    auto revalidator = std::make_unique<SpeculativeLoad>(frameID, *revalidationRequestPtr, WTFMove(entry), [this, key, revalidationRequestPtr, frameID](std::unique_ptr<Entry> revalidatedEntry) {
+    auto revalidator = std::make_unique<SpeculativeLoad>(frameID, revalidationRequest, WTFMove(entry), [this, key, revalidationRequest, frameID](std::unique_ptr<Entry> revalidatedEntry) {
         ASSERT(!revalidatedEntry || !revalidatedEntry->needsValidation());
         ASSERT(!revalidatedEntry || revalidatedEntry->key() == key);
 
-        auto revalidationRequest = std::unique_ptr<ResourceRequest>(revalidationRequestPtr);
         auto protectRevalidator = m_pendingPreloads.take(key);
         LOG(NetworkCacheSpeculativePreloading, "(NetworkProcess) Speculative revalidation completed for '%s':", key.identifier().utf8().data());
 
@@ -482,7 +481,7 @@ void SpeculativeLoadManager::revalidateEntry(std::unique_ptr<Entry> entry, const
         }
 
         if (revalidatedEntry)
-            addPreloadedEntry(WTFMove(revalidatedEntry), frameID, WTFMove(revalidationRequest));
+            addPreloadedEntry(WTFMove(revalidatedEntry), frameID, revalidationRequest);
     });
     m_pendingPreloads.add(key, WTFMove(revalidator));
 }
@@ -493,9 +492,7 @@ void SpeculativeLoadManager::preloadEntry(const Key& key, const SubresourceInfo&
         return;
 
     m_pendingPreloads.add(key, nullptr);
-    auto* subResourceInfoPtr = new SubresourceInfo(subResourceInfo);
-    retrieveEntryFromStorage(key, [this, key, subResourceInfoPtr, frameID](std::unique_ptr<Entry> entry) {
-        auto subResourceInfo = std::unique_ptr<SubresourceInfo>(subResourceInfoPtr);
+    retrieveEntryFromStorage(key, [this, key, subResourceInfo, frameID](std::unique_ptr<Entry> entry) {
         ASSERT(!m_pendingPreloads.get(key));
         bool removed = m_pendingPreloads.remove(key);
         ASSERT_UNUSED(removed, removed);
@@ -510,7 +507,7 @@ void SpeculativeLoadManager::preloadEntry(const Key& key, const SubresourceInfo&
             return;
 
         if (entry->needsValidation())
-            revalidateEntry(WTFMove(entry), *subResourceInfo, frameID);
+            revalidateEntry(WTFMove(entry), subResourceInfo, frameID);
         else
             addPreloadedEntry(WTFMove(entry), frameID);
     });
@@ -537,7 +534,7 @@ void SpeculativeLoadManager::retrieveSubresourcesEntry(const Key& storageKey, st
 {
     ASSERT(storageKey.type() == "resource");
     auto subresourcesStorageKey = makeSubresourcesKey(storageKey);
-    m_storage.retrieve(subresourcesStorageKey, static_cast<unsigned>(ResourceLoadPriority::Medium), [completionHandler](std::unique_ptr<Storage::Record> record) {
+    m_storage.retrieve(subresourcesStorageKey, static_cast<unsigned>(ResourceLoadPriority::Medium), [completionHandler](auto record) {
         if (!record) {
             completionHandler(nullptr);
             return false;

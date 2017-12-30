@@ -125,6 +125,7 @@
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/HTMLFormElement.h>
+#include <WebCore/HTMLImageElement.h>
 #include <WebCore/HTMLInputElement.h>
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/HTMLPlugInImageElement.h>
@@ -340,6 +341,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_hasWheelEventHandlers(false)
     , m_cachedPageCount(0)
     , m_autoSizingShouldExpandToViewHeight(false)
+    , m_userIsInteracting(false)
 #if ENABLE(CONTEXT_MENUS)
     , m_isShowingContextMenu(false)
 #endif
@@ -349,7 +351,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_scaleWasSetByUIProcess(false)
     , m_userHasChangedPageScaleFactor(false)
     , m_hasStablePageScaleFactor(true)
-    , m_userIsInteracting(false)
     , m_hasPendingBlurNotification(false)
     , m_useTestingViewportConfiguration(false)
     , m_isInStableState(true)
@@ -2172,6 +2173,8 @@ static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, boo
 
 void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 {
+    m_userIsInteracting = true;
+
     m_page->pageThrottler().didReceiveUserInput();
 
     bool shouldHandleEvent = true;
@@ -2188,6 +2191,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 
     if (!shouldHandleEvent) {
         send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(mouseEvent.type()), false));
+        m_userIsInteracting = false;
         return;
     }
 
@@ -2213,6 +2217,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
     }
 
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(mouseEvent.type()), handled));
+    m_userIsInteracting = false;
 }
 
 static bool handleWheelEvent(const WebWheelEvent& wheelEvent, Page* page)
@@ -2248,6 +2253,8 @@ static bool handleKeyEvent(const WebKeyboardEvent& keyboardEvent, Page* page)
 
 void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
 {
+    m_userIsInteracting = true;
+
     m_page->pageThrottler().didReceiveUserInput();
 
     CurrentEvent currentEvent(keyboardEvent);
@@ -2258,6 +2265,8 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
         handled = performDefaultBehaviorForKeyEvent(keyboardEvent);
 
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled));
+
+    m_userIsInteracting = false;
 }
 
 void WebPage::validateCommand(const String& commandName, uint64_t callbackID)
@@ -2460,9 +2469,7 @@ void WebPage::setInitialFocus(bool forward, bool isKeyboardEventValid, const Web
     if (!m_page)
         return;
 
-#if PLATFORM(IOS)
     TemporaryChange<bool> userIsInteractingChange { m_userIsInteracting, true };
-#endif
 
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     frame.document()->setFocusedElement(0);
@@ -2557,8 +2564,14 @@ void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, ui
 void WebPage::didStartPageTransition()
 {
     m_drawingArea->setLayerTreeStateIsFrozen(true);
-#if PLATFORM(IOS)
+
+#if PLATFORM(MAC)
+    bool hasPreviouslyFocusedDueToUserInteraction = m_hasFocusedDueToUserInteraction;
+#endif
     m_hasFocusedDueToUserInteraction = false;
+#if PLATFORM(MAC)
+    if (hasPreviouslyFocusedDueToUserInteraction)
+        send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasFocusedDueToUserInteraction));
 #endif
 }
 
@@ -2928,6 +2941,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAudioPlaybackRequiresUserGesture(requiresUserGestureForMedia || store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureForAudioPlaybackKey()));
     settings.setMainContentUserGestureOverrideEnabled(store.getBoolValueForKey(WebPreferencesKey::mainContentUserGestureOverrideEnabledKey()));
     settings.setAllowsInlineMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsInlineMediaPlaybackKey()));
+    settings.setAllowsInlineMediaPlaybackAfterFullscreen(store.getBoolValueForKey(WebPreferencesKey::allowsInlineMediaPlaybackAfterFullscreenKey()));
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(store.getBoolValueForKey(WebPreferencesKey::inlineMediaPlaybackRequiresPlaysInlineAttributeKey()));
     settings.setInvisibleAutoplayNotPermitted(store.getBoolValueForKey(WebPreferencesKey::invisibleAutoplayNotPermittedKey()));
     settings.setMediaDataLoadsAutomatically(store.getBoolValueForKey(WebPreferencesKey::mediaDataLoadsAutomaticallyKey()));
@@ -4695,6 +4709,11 @@ void WebPage::didChangeSelection()
     m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
 
 #if PLATFORM(MAC)
+    bool hasPreviouslyFocusedDueToUserInteraction = m_hasFocusedDueToUserInteraction;
+    m_hasFocusedDueToUserInteraction |= m_userIsInteracting;
+    if (!hasPreviouslyFocusedDueToUserInteraction && m_hasFocusedDueToUserInteraction)
+        send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasFocusedDueToUserInteraction));
+
     // Abandon the current inline input session if selection changed for any other reason but an input method direct action.
     // FIXME: This logic should be in WebCore.
     // FIXME: Many changes that affect composition node do not go through didChangeSelection(). We need to do something when DOM manipulation affects the composition, because otherwise input method's idea about it will be different from Editor's.
@@ -5104,7 +5123,7 @@ bool WebPage::plugInIsPrimarySize(WebCore::HTMLPlugInImageElement& plugInImageEl
 
     LayoutUnit contentArea = pluginRenderBox.contentWidth() * pluginRenderBox.contentHeight();
     if (contentArea > candidatePlugInArea * primarySnapshottedPlugInSearchBucketSize) {
-        candidatePlugInArea = contentArea;
+        candidatePlugInArea = contentArea.toUnsigned();
         return true;
     }
     return false;

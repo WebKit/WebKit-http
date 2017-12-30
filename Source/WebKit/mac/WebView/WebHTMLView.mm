@@ -2184,6 +2184,11 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
     }
 }
 
++ (NSString *)_dummyPasteboardType
+{
+    return @"Apple WebKit dummy pasteboard type";
+}
+
 + (NSArray *)_insertablePasteboardTypes
 {
     static NSArray *types = nil;
@@ -4571,6 +4576,8 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
         slideBack:(BOOL)slideBack
 {
     ASSERT(self == [self _topHTMLView]);
+    [pasteboard setString:@"" forType:[WebHTMLView _dummyPasteboardType]];
+
     [super dragImage:dragImage at:at offset:offset event:event pasteboard:pasteboard source:source slideBack:slideBack];
 }
 
@@ -7230,6 +7237,10 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     // Why doesn't it?  See <rdar://problem/6837252> for questions.
 #endif // PLATFORM(IOS)
 }
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebHTMLViewWebNSTextInputSupportAdditions.mm>
+#endif
 
 @end
 

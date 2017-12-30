@@ -79,6 +79,7 @@
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLFrameSetElement.h"
 #include "HTMLHeadElement.h"
+#include "HTMLHtmlElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLLinkElement.h"
@@ -182,7 +183,6 @@
 #include "XPathNSResolver.h"
 #include "XPathResult.h"
 #include "htmlediting.h"
-#include <JavaScriptCore/Profile.h>
 #include <ctime>
 #include <inspector/ScriptCallStack.h>
 #include <wtf/CurrentTime.h>
@@ -5279,11 +5279,11 @@ HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
 
-void Document::addAutoSizingNode(Node* node, float candidateSize)
+void Document::addAutoSizingNode(Text& node, float candidateSize)
 {
-    LOG(TextAutosizing, " addAutoSizingNode %p candidateSize=%f", node, candidateSize);
+    LOG(TextAutosizing, " addAutoSizingNode %p candidateSize=%f", &node, candidateSize);
 
-    TextAutoSizingKey key(&node->renderer()->style());
+    TextAutoSizingKey key(&node.renderer()->style());
     auto addResult = m_textAutoSizedNodes.ensure(WTFMove(key), [] {
         return TextAutoSizingValue::create();
     });
@@ -5299,7 +5299,7 @@ void Document::validateAutoSizingNodes()
         // candidate size.
         value->adjustNodeSizes();
     }
-    m_textAutoSizedNodes.removeIf([] (TextAutoSizingMap::KeyValuePairType& keyAndValue) {
+    m_textAutoSizedNodes.removeIf([](auto& keyAndValue) {
         return !keyAndValue.value->numNodes();
     });
 }

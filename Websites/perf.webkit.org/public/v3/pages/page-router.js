@@ -140,10 +140,26 @@ class PageRouter {
 
     _deserializeHashQueryValue(value)
     {
+        var json = value.replace(/\(/g, '[').replace(/\)/g, ']').replace(/-/g, ',');
         try {
-            return JSON.parse(value.replace(/\(/g, '[').replace(/\)/g, ']').replace(/-/g, ','));
+            return JSON.parse(json);
         } catch (error) {
+
+            // Some applications don't linkify two consecutive closing parentheses: )).
+            // Try fixing adding one extra parenthesis to see if that works.
+            var missingClosingBrackets = this._countOccurrences(json, /\[/g) - this._countOccurrences(json, /\]/g);
+            var fix = new Array(missingClosingBrackets).fill(']').join('');
+            try {
+                return JSON.parse(json + fix);
+            } catch (newError) { }
+
             return value;
         }
+    }
+
+    _countOccurrences(string, regex)
+    {
+        var match = string.match(regex);
+        return match ? match.length : 0;
     }
 }

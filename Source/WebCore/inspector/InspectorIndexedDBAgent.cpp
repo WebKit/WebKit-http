@@ -112,7 +112,7 @@ public:
 
     virtual ~OpenDatabaseCallback() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }
@@ -371,7 +371,7 @@ public:
 
     virtual ~OpenCursorCallback() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }
@@ -600,7 +600,7 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, con
         return;
 
     RefPtr<RequestDatabaseNamesCallback> callback = WTFMove(requestCallback);
-    idbFactory->getAllDatabaseNames(*topOrigin, *openingOrigin, [callback](const Vector<String>& databaseNames) {
+    idbFactory->getAllDatabaseNames(*topOrigin, *openingOrigin, [callback](auto& databaseNames) {
         if (!callback->isActive())
             return;
 
@@ -660,7 +660,7 @@ public:
 
     virtual ~ClearObjectStoreListener() { }
 
-    bool operator==(const EventListener& other) override
+    bool operator==(const EventListener& other) const override
     {
         return this == &other;
     }

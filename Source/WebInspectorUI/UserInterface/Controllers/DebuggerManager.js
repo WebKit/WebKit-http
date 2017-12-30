@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +39,9 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         WebInspector.Breakpoint.addEventListener(WebInspector.Breakpoint.Event.IgnoreCountDidChange, this._breakpointEditablePropertyDidChange, this);
         WebInspector.Breakpoint.addEventListener(WebInspector.Breakpoint.Event.AutoContinueDidChange, this._breakpointEditablePropertyDidChange, this);
         WebInspector.Breakpoint.addEventListener(WebInspector.Breakpoint.Event.ActionsDidChange, this._breakpointEditablePropertyDidChange, this);
+
+        WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.CapturingWillStart, this._timelineCapturingWillStart, this);
+        WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.CapturingStopped, this._timelineCapturingStopped, this);
 
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
 
@@ -345,34 +348,6 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         return knownScripts;
     }
 
-    get breakpointsDisabledTemporarily()
-    {
-        return this._temporarilyDisabledBreakpointsRestoreSetting.value !== null;
-    }
-
-    startDisablingBreakpointsTemporarily()
-    {
-        console.assert(this._temporarilyDisabledBreakpointsRestoreSetting.value === null, "Already temporarily disabling breakpoints.");
-        if (this._temporarilyDisabledBreakpointsRestoreSetting.value !== null)
-            return;
-
-        this._temporarilyDisabledBreakpointsRestoreSetting.value = this._breakpointsEnabledSetting.value;
-
-        this.breakpointsEnabled = false;
-    }
-
-    stopDisablingBreakpointsTemporarily()
-    {
-        console.assert(this._temporarilyDisabledBreakpointsRestoreSetting.value !== null, "Was not temporarily disabling breakpoints.");
-        if (this._temporarilyDisabledBreakpointsRestoreSetting.value === null)
-            return;
-
-        let restoreState = this._temporarilyDisabledBreakpointsRestoreSetting.value;
-        this._temporarilyDisabledBreakpointsRestoreSetting.value = null;
-
-        this.breakpointsEnabled = restoreState;
-    }
-
     addBreakpoint(breakpoint, skipEventDispatch, shouldSpeculativelyResolve)
     {
         console.assert(breakpoint instanceof WebInspector.Breakpoint, "Bad argument to DebuggerManger.addBreakpoint: ", breakpoint);
@@ -546,7 +521,9 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         this._activeCallFrame = this._callFrames[0];
 
         if (!this._activeCallFrame) {
-            console.warn("We should always have one call frame. This could indicate we are hitting an exception or debugger statement in an internal injected script.");
+            // This indicates we were pausing in internal scripts only (Injected Scripts, built-ins).
+            // Just resume and skip past this pause.
+            DebuggerAgent.resume();
             this._didResumeInternal();
             return;
         }
@@ -890,6 +867,47 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         }
     }
 
+    get breakpointsDisabledTemporarily()
+    {
+        return this._temporarilyDisabledBreakpointsRestoreSetting.value !== null;
+    }
+
+    _startDisablingBreakpointsTemporarily()
+    {
+        console.assert(!this.breakpointsDisabledTemporarily, "Already temporarily disabling breakpoints.");
+        if (this.breakpointsDisabledTemporarily)
+            return;
+
+        this._temporarilyDisabledBreakpointsRestoreSetting.value = this._breakpointsEnabledSetting.value;
+
+        this.breakpointsEnabled = false;
+    }
+
+    _stopDisablingBreakpointsTemporarily()
+    {
+        console.assert(this.breakpointsDisabledTemporarily, "Was not temporarily disabling breakpoints.");
+        if (!this.breakpointsDisabledTemporarily)
+            return;
+
+        let restoreState = this._temporarilyDisabledBreakpointsRestoreSetting.value;
+        this._temporarilyDisabledBreakpointsRestoreSetting.value = null;
+
+        this.breakpointsEnabled = restoreState;
+    }
+
+    _timelineCapturingWillStart(event)
+    {
+        this._startDisablingBreakpointsTemporarily();
+
+        if (this.paused)
+            this.resume();
+    }
+
+    _timelineCapturingStopped(event)
+    {
+        this._stopDisablingBreakpointsTemporarily();
+    }
+
     _mainResourceDidChange(event)
     {
         if (!event.target.isMainFrame())
@@ -900,7 +918,7 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
 
     _didResumeInternal()
     {
-        if (!this._activeCallFrame)
+        if (!this._paused)
             return;
 
         if (this._delayedResumeTimeout) {

@@ -87,8 +87,11 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
         WebInspector.ContentView.addEventListener(WebInspector.ContentView.Event.SelectionPathComponentsDidChange, this._contentViewSelectionPathComponentDidChange, this);
 
         this._pendingRecords = [];
+        this._pendingZeroTimeDataGridNodes = [];
 
         timeline.addEventListener(WebInspector.Timeline.Event.RecordAdded, this._heapAllocationsTimelineRecordAdded, this);
+
+        WebInspector.HeapSnapshotWorkerProxy.singleton().addEventListener("HeapSnapshot.CollectionEvent", this._heapSnapshotCollectionEvent, this);
     }
 
     // Public
@@ -227,16 +230,25 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
         this._dataGrid.closed();
 
         this._contentViewContainer.closeAllContentViews();
+
+        WebInspector.HeapSnapshotWorkerProxy.singleton().removeEventListener("HeapSnapshot.CollectionEvent", this._heapSnapshotCollectionEvent, this);
     }
 
     layout()
     {
-        // Wait to show records until our zeroTime has been set.
-        // FIXME: Waiting until zero time causes snapshots taken without recording to not show up in the list.
-        if (this._pendingRecords.length && this.zeroTime) {
+        if (this._pendingZeroTimeDataGridNodes.length && this.zeroTime) {
+            for (let dataGridNode of this._pendingZeroTimeDataGridNodes)
+                dataGridNode.updateTimestamp(this.zeroTime);
+            this._pendingZeroTimeDataGridNodes = [];
+            this._dataGrid._sort();
+        }
+
+        if (this._pendingRecords.length) {
             for (let heapAllocationsTimelineRecord of this._pendingRecords) {
                 let dataGridNode = new WebInspector.HeapAllocationsTimelineDataGridNode(heapAllocationsTimelineRecord, this.zeroTime, this);
                 this._dataGrid.addRowInSortOrder(null, dataGridNode);
+                if (!this.zeroTime)
+                    this._pendingZeroTimeDataGridNodes.push(dataGridNode);
             }
 
             this._pendingRecords = [];
@@ -252,6 +264,7 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
 
         this.showHeapSnapshotList();
         this._pendingRecords = [];
+        this._pendingZeroTimeDataGridNodes = [];
         this._updateCompareHeapSnapshotButton();
     }
 
@@ -267,6 +280,22 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
         this._pendingRecords.push(event.data.record);
 
         this.needsLayout();
+    }
+
+    _heapSnapshotCollectionEvent(event)
+    {
+        function updateHeapSnapshotForEvent(heapSnapshot) {
+            heapSnapshot.updateForCollectionEvent(event);
+        }
+
+        for (let node of this._dataGrid.children)
+            updateHeapSnapshotForEvent(node.record.heapSnapshot);
+        for (let record of this._pendingRecords)
+            updateHeapSnapshotForEvent(record.heapSnapshot);
+        if (this._heapSnapshotDiff)
+            updateHeapSnapshotForEvent(this._heapSnapshotDiff);
+
+        // FIXME: <https://webkit.org/b/157904> Web Inspector: Snapshot List should show the total size and the total live size
     }
 
     _snapshotListPathComponentClicked(event)

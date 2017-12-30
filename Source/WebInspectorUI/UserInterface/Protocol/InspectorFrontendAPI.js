@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,12 +47,10 @@ InspectorFrontendAPI = {
         if (WebInspector.timelineManager.isCapturing() === enabled)
             return;
 
-        if (enabled) {
-            WebInspector.showTimelineTab();
+        if (enabled)
             WebInspector.timelineManager.startCapturing();
-        } else {
+        else
             WebInspector.timelineManager.stopCapturing();
-        }
     },
 
     setElementSelectionEnabled: function(enabled)
@@ -68,6 +66,11 @@ InspectorFrontendAPI = {
     setDockSide: function(side)
     {
         WebInspector.updateDockedState(side);
+    },
+
+    setIsVisible: function(visible)
+    {
+        WebInspector.updateVisibilityState(visible);
     },
 
     showConsole: function()
@@ -97,6 +100,11 @@ InspectorFrontendAPI = {
     showResources: function()
     {
         WebInspector.showResourcesTab();
+    },
+
+    showTimelines: function()
+    {
+        WebInspector.showTimelineTab();
     },
 
     showMainResourceForFrame: function(frameIdentifier)

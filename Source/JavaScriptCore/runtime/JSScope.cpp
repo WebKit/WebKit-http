@@ -57,16 +57,22 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
             return true;
         }
 
-        SymbolTableEntry entry = lexicalEnvironment->symbolTable()->get(ident.impl());
-        if (entry.isReadOnly() && getOrPut == Put) {
-            // We know the property will be at this lexical environment scope, but we don't know how to cache it.
-            op = ResolveOp(Dynamic, 0, 0, 0, 0, 0);
-            return true;
-        }
+        SymbolTable* symbolTable = lexicalEnvironment->symbolTable();
+        {
+            ConcurrentJITLocker locker(symbolTable->m_lock);
+            auto iter = symbolTable->find(locker, ident.impl());
+            if (iter != symbolTable->end(locker)) {
+                SymbolTableEntry& entry = iter->value;
+                ASSERT(!entry.isNull());
+                if (entry.isReadOnly() && getOrPut == Put) {
+                    // We know the property will be at this lexical environment scope, but we don't know how to cache it.
+                    op = ResolveOp(Dynamic, 0, 0, 0, 0, 0);
+                    return true;
+                }
 
-        if (!entry.isNull()) {
-            op = ResolveOp(makeType(ClosureVar, needsVarInjectionChecks), depth, 0, lexicalEnvironment, entry.watchpointSet(), entry.scopeOffset().offset());
-            return true;
+                op = ResolveOp(makeType(ClosureVar, needsVarInjectionChecks), depth, 0, lexicalEnvironment, entry.watchpointSet(), entry.scopeOffset().offset());
+                return true;
+            }
         }
 
         if (scope->type() == ModuleEnvironmentType) {
@@ -76,22 +82,30 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
             if (resolution.type == JSModuleRecord::Resolution::Type::Resolved) {
                 JSModuleRecord* importedRecord = resolution.moduleRecord;
                 JSModuleEnvironment* importedEnvironment = importedRecord->moduleEnvironment();
-                SymbolTableEntry entry = importedEnvironment->symbolTable()->get(resolution.localName.impl());
+                SymbolTable* symbolTable = importedEnvironment->symbolTable();
+                ConcurrentJITLocker locker(symbolTable->m_lock);
+                auto iter = symbolTable->find(locker, resolution.localName.impl());
+                ASSERT(iter != symbolTable->end(locker));
+                SymbolTableEntry& entry = iter->value;
                 ASSERT(!entry.isNull());
                 op = ResolveOp(makeType(ModuleVar, needsVarInjectionChecks), depth, 0, importedEnvironment, entry.watchpointSet(), entry.scopeOffset().offset(), resolution.localName.impl());
                 return true;
             }
         }
 
-        if (lexicalEnvironment->symbolTable()->usesNonStrictEval())
+        if (symbolTable->usesNonStrictEval())
             needsVarInjectionChecks = true;
         return false;
     }
 
     if (scope->isGlobalLexicalEnvironment()) {
         JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(scope);
-        SymbolTableEntry entry = globalLexicalEnvironment->symbolTable()->get(ident.impl());
-        if (!entry.isNull()) {
+        SymbolTable* symbolTable = globalLexicalEnvironment->symbolTable();
+        ConcurrentJITLocker locker(symbolTable->m_lock);
+        auto iter = symbolTable->find(locker, ident.impl());
+        if (iter != symbolTable->end(locker)) {
+            SymbolTableEntry& entry = iter->value;
+            ASSERT(!entry.isNull());
             if (getOrPut == Put && entry.isReadOnly() && !isInitialization(initializationMode)) {
                 // We know the property will be at global lexical environment, but we don't know how to cache it.
                 op = ResolveOp(Dynamic, 0, 0, 0, 0, 0);
@@ -118,18 +132,24 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
 
     if (scope->isGlobalObject()) {
         JSGlobalObject* globalObject = jsCast<JSGlobalObject*>(scope);
-        SymbolTableEntry entry = globalObject->symbolTable()->get(ident.impl());
-        if (!entry.isNull()) {
-            if (getOrPut == Put && entry.isReadOnly()) {
-                // We know the property will be at global scope, but we don't know how to cache it.
-                op = ResolveOp(Dynamic, 0, 0, 0, 0, 0);
+        {
+            SymbolTable* symbolTable = globalObject->symbolTable();
+            ConcurrentJITLocker locker(symbolTable->m_lock);
+            auto iter = symbolTable->find(locker, ident.impl());
+            if (iter != symbolTable->end(locker)) {
+                SymbolTableEntry& entry = iter->value;
+                ASSERT(!entry.isNull());
+                if (getOrPut == Put && entry.isReadOnly()) {
+                    // We know the property will be at global scope, but we don't know how to cache it.
+                    op = ResolveOp(Dynamic, 0, 0, 0, 0, 0);
+                    return true;
+                }
+
+                op = ResolveOp(
+                    makeType(GlobalVar, needsVarInjectionChecks), depth, 0, 0, entry.watchpointSet(),
+                    reinterpret_cast<uintptr_t>(globalObject->variableAt(entry.scopeOffset()).slot()));
                 return true;
             }
-
-            op = ResolveOp(
-                makeType(GlobalVar, needsVarInjectionChecks), depth, 0, 0, entry.watchpointSet(),
-                reinterpret_cast<uintptr_t>(globalObject->variableAt(entry.scopeOffset()).slot()));
-            return true;
         }
 
         PropertySlot slot(globalObject, PropertySlot::InternalMethodType::VMInquiry);

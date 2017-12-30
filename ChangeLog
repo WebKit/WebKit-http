@@ -1,3 +1,31 @@
+2016-05-22  Brady Eidson  <beidson@apple.com>
+
+        Move to C++14.
+        https://bugs.webkit.org/show_bug.cgi?id=157948
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2016-05-22  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Suppress -Wmissing-field-initializers warnings with GCC 4.9
+        https://bugs.webkit.org/show_bug.cgi?id=157888
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2016-05-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove LegacyProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=153565
+
+        Reviewed by Saam Barati.
+
+        * ManualTests/inspector/profiler-test-call.html: Removed.
+        * ManualTests/inspector/profiler-test-many-calls-in-the-same-scope.html: Removed.
+
 2016-05-18  Gwang Yoon Hwang  <yoon@igalia.com>
 
         [GStreamer] Use FakeSink to get a decoded texture from a pipeline

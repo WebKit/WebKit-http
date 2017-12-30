@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef Counter_h
-#define Counter_h
+#pragma once
 
 #include "CSSPrimitiveValue.h"
 #include <wtf/text/WTFString.h>
@@ -28,20 +27,20 @@ namespace WebCore {
 
 class Counter : public RefCounted<Counter> {
 public:
-    static Ref<Counter> create(PassRefPtr<CSSPrimitiveValue> identifier, PassRefPtr<CSSPrimitiveValue> listStyle, PassRefPtr<CSSPrimitiveValue> separator)
+    static Ref<Counter> create(Ref<CSSPrimitiveValue>&& identifier, Ref<CSSPrimitiveValue>&& listStyle, Ref<CSSPrimitiveValue>&& separator)
     {
-        return adoptRef(*new Counter(identifier, listStyle, separator));
+        return adoptRef(*new Counter(WTFMove(identifier), WTFMove(listStyle), WTFMove(separator)));
     }
 
-    String identifier() const { return m_identifier ? m_identifier->getStringValue() : String(); }
-    String listStyle() const { return m_listStyle ? m_listStyle->getStringValue() : String(); }
-    String separator() const { return m_separator ? m_separator->getStringValue() : String(); }
+    String identifier() const { return m_identifier->getStringValue(); }
+    String listStyle() const { return m_listStyle->getStringValue(); }
+    String separator() const { return m_separator->getStringValue(); }
 
-    CSSValueID listStyleIdent() const { return m_listStyle ? m_listStyle->getValueID() : CSSValueInvalid; }
+    CSSValueID listStyleIdent() const { return m_listStyle->getValueID(); }
 
-    void setIdentifier(PassRefPtr<CSSPrimitiveValue> identifier) { m_identifier = identifier; }
-    void setListStyle(PassRefPtr<CSSPrimitiveValue> listStyle) { m_listStyle = listStyle; }
-    void setSeparator(PassRefPtr<CSSPrimitiveValue> separator) { m_separator = separator; }
+    void setIdentifier(Ref<CSSPrimitiveValue>&& identifier) { m_identifier = WTFMove(identifier); }
+    void setListStyle(Ref<CSSPrimitiveValue>&& listStyle) { m_listStyle = WTFMove(listStyle); }
+    void setSeparator(Ref<CSSPrimitiveValue>&& separator) { m_separator = WTFMove(separator); }
 
     bool equals(const Counter& other) const
     {
@@ -52,24 +51,20 @@ public:
     
     Ref<Counter> cloneForCSSOM() const
     {
-        return create(m_identifier ? m_identifier->cloneForCSSOM() : nullptr
-            , m_listStyle ? m_listStyle->cloneForCSSOM() : nullptr
-            , m_separator ? m_separator->cloneForCSSOM() : nullptr);
+        return create(m_identifier->cloneForCSSOM(), m_listStyle->cloneForCSSOM(), m_separator->cloneForCSSOM());
     }
 
 private:
-    Counter(PassRefPtr<CSSPrimitiveValue> identifier, PassRefPtr<CSSPrimitiveValue> listStyle, PassRefPtr<CSSPrimitiveValue> separator)
-        : m_identifier(identifier)
-        , m_listStyle(listStyle)
-        , m_separator(separator)
+    Counter(Ref<CSSPrimitiveValue>&& identifier, Ref<CSSPrimitiveValue>&& listStyle, Ref<CSSPrimitiveValue>&& separator)
+        : m_identifier(WTFMove(identifier))
+        , m_listStyle(WTFMove(listStyle))
+        , m_separator(WTFMove(separator))
     {
     }
 
-    RefPtr<CSSPrimitiveValue> m_identifier; // string
-    RefPtr<CSSPrimitiveValue> m_listStyle; // ident
-    RefPtr<CSSPrimitiveValue> m_separator; // string
+    Ref<CSSPrimitiveValue> m_identifier; // string
+    Ref<CSSPrimitiveValue> m_listStyle; // ident
+    Ref<CSSPrimitiveValue> m_separator; // string
 };
 
 } // namespace WebCore
-
-#endif // Counter_h

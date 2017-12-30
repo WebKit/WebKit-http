@@ -358,7 +358,7 @@ public:
     }
 
 private:
-    static EncodedJSValue customGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName)
+    static EncodedJSValue customGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName, JSObject*)
     {
         CustomGetter* thisObject = jsDynamicCast<CustomGetter*>(JSValue::decode(thisValue));
         if (!thisObject)
@@ -463,7 +463,7 @@ private:
     {
     }
 
-    static EncodedJSValue lengthGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName)
+    static EncodedJSValue lengthGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName, JSObject*)
     {
         RuntimeArray* thisObject = jsDynamicCast<RuntimeArray*>(JSValue::decode(thisValue));
         if (!thisObject)
@@ -868,7 +868,7 @@ protected:
 };
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, nullptr, CREATE_METHOD_TABLE(GlobalObject) };
-const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsLegacyProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, nullptr, nullptr };
+const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, nullptr, nullptr };
 
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
@@ -1929,6 +1929,11 @@ int main(int argc, char** argv)
 
 #if PLATFORM(EFL)
     ecore_init();
+#endif
+
+#if PLATFORM(GTK)
+    if (!setlocale(LC_ALL, ""))
+        WTFLogAlways("Locale not supported by C library.\n\tUsing the fallback 'C' locale.");
 #endif
 
     // Need to initialize WTF threading before we start any threads. Cannot initialize JSC

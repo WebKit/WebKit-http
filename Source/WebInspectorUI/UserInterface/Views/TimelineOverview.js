@@ -64,6 +64,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
 
         let instrumentsNavigationBar = new WebInspector.NavigationBar;
         instrumentsNavigationBar.element.classList.add("timelines");
+        instrumentsNavigationBar.addNavigationItem(new WebInspector.FlexibleSpaceNavigationItem);
         instrumentsNavigationBar.addNavigationItem(this._editInstrumentsButton);
         this.addSubview(instrumentsNavigationBar);
 
@@ -428,11 +429,8 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         return this._timelineRuler;
     }
 
-    layout(layoutReason)
+    layout()
     {
-        if (layoutReason === WebInspector.View.LayoutReason.Resize)
-            this._cachedScrollContainerWidth = NaN;
-
         let startTime = this._startTime;
         let endTime = this._endTime;
         let currentTime = this._currentTime;
@@ -485,6 +483,11 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
             overviewGraph.currentTime = currentTime;
             overviewGraph.endTime = scrollStartTime + visibleDuration;
         }
+    }
+
+    sizeDidChange()
+    {
+        this._cachedScrollContainerWidth = NaN;
     }
 
     // Private

@@ -64,12 +64,12 @@ static bool shouldAllowAccessFrom(const JSGlobalObject* thisObject, ExecState* e
 
 const ClassInfo JSDOMWindowBase::s_info = { "Window", &JSDOMGlobalObject::s_info, 0, CREATE_METHOD_TABLE(JSDOMWindowBase) };
 
-const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsLegacyProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, &moduleLoaderEvaluate, &defaultLanguage };
+const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, &moduleLoaderEvaluate, &defaultLanguage };
 
-JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, PassRefPtr<DOMWindow> window, JSDOMWindowShell* shell)
-    : JSDOMGlobalObject(vm, structure, &shell->world(), &s_globalObjectMethodTable)
+JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>&& window, JSDOMWindowShell* shell)
+    : JSDOMGlobalObject(vm, structure, shell->world(), &s_globalObjectMethodTable)
     , m_windowCloseWatchpoints((window && window->frame()) ? IsWatched : IsInvalidated)
-    , m_wrapped(window)
+    , m_wrapped(WTFMove(window))
     , m_shell(shell)
 {
 }
@@ -125,20 +125,6 @@ void JSDOMWindowBase::printErrorMessage(const String& message) const
     printErrorMessageForFrame(wrapped().frame(), message);
 }
 
-bool JSDOMWindowBase::supportsLegacyProfiling(const JSGlobalObject* object)
-{
-    const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
-    Frame* frame = thisObject->wrapped().frame();
-    if (!frame)
-        return false;
-
-    Page* page = frame->page();
-    if (!page)
-        return false;
-
-    return page->inspectorController().legacyProfilerEnabled();
-}
-
 bool JSDOMWindowBase::supportsRichSourceInfo(const JSGlobalObject* object)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
@@ -152,7 +138,6 @@ bool JSDOMWindowBase::supportsRichSourceInfo(const JSGlobalObject* object)
 
     bool enabled = page->inspectorController().enabled();
     ASSERT(enabled || !thisObject->debugger());
-    ASSERT(enabled || !supportsLegacyProfiling(thisObject));
     return enabled;
 }
 
@@ -204,9 +189,9 @@ RuntimeFlags JSDOMWindowBase::javaScriptRuntimeFlags(const JSGlobalObject* objec
 
 class JSDOMWindowMicrotaskCallback : public RefCounted<JSDOMWindowMicrotaskCallback> {
 public:
-    static Ref<JSDOMWindowMicrotaskCallback> create(JSDOMWindowBase* globalObject, PassRefPtr<JSC::Microtask> task)
+    static Ref<JSDOMWindowMicrotaskCallback> create(JSDOMWindowBase* globalObject, Ref<JSC::Microtask>&& task)
     {
-        return adoptRef(*new JSDOMWindowMicrotaskCallback(globalObject, task));
+        return adoptRef(*new JSDOMWindowMicrotaskCallback(globalObject, WTFMove(task)));
     }
 
     void call()
@@ -216,27 +201,27 @@ public:
 
         ExecState* exec = m_globalObject->globalExec();
 
-        JSMainThreadExecState::runTask(exec, *m_task.get());
+        JSMainThreadExecState::runTask(exec, m_task);
 
         ASSERT(!exec->hadException());
     }
 
 private:
-    JSDOMWindowMicrotaskCallback(JSDOMWindowBase* globalObject, PassRefPtr<JSC::Microtask> task)
+    JSDOMWindowMicrotaskCallback(JSDOMWindowBase* globalObject, Ref<JSC::Microtask>&& task)
         : m_globalObject(globalObject->vm(), globalObject)
-        , m_task(task)
+        , m_task(WTFMove(task))
     {
     }
 
     Strong<JSDOMWindowBase> m_globalObject;
-    RefPtr<JSC::Microtask> m_task;
+    Ref<JSC::Microtask> m_task;
 };
 
-void JSDOMWindowBase::queueTaskToEventLoop(const JSGlobalObject* object, PassRefPtr<JSC::Microtask> task)
+void JSDOMWindowBase::queueTaskToEventLoop(const JSGlobalObject* object, Ref<JSC::Microtask>&& task)
 {
     const JSDOMWindowBase* thisObject = static_cast<const JSDOMWindowBase*>(object);
 
-    RefPtr<JSDOMWindowMicrotaskCallback> callback = JSDOMWindowMicrotaskCallback::create((JSDOMWindowBase*)thisObject, task);
+    RefPtr<JSDOMWindowMicrotaskCallback> callback = JSDOMWindowMicrotaskCallback::create((JSDOMWindowBase*)thisObject, WTFMove(task));
     auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *thisObject->scriptExecutionContext(), [callback]() mutable {
         callback->call();
     });
