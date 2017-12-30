@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ResourceError_h
-#define ResourceError_h
+#pragma once
 
 #include "ResourceErrorBase.h"
 
@@ -61,8 +60,6 @@ public:
     WEBCORE_EXPORT CFErrorRef cfError() const;
     WEBCORE_EXPORT operator CFErrorRef() const;
 
-    ResourceError isolatedCopy() const { return copy(); }
-
 #if USE(CFNETWORK)
 #if PLATFORM(WIN)
     ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, CFDataRef certificate);
@@ -86,7 +83,9 @@ private:
     friend class ResourceErrorBase;
 
     void platformLazyInit();
-    void platformCopy(ResourceError&) const;
+
+    void doPlatformIsolatedCopy(const ResourceError&);
+
     bool m_dataIsUpToDate;
 #if USE(CFNETWORK)
     mutable RetainPtr<CFErrorRef> m_platformError;
@@ -102,5 +101,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ResourceError_h

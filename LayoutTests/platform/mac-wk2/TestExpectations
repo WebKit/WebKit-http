@@ -298,11 +298,7 @@ webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Time
 
 webkit.org/b/152492 [ Debug ] inspector/debugger/break-on-exception-catch.html [ Pass Timeout ]
 
-webkit.org/b/155050 storage/indexeddb/intversion-open-in-upgradeneeded.html [ Pass Crash Failure ]
-
 webkit.org/b/155138 [ Yosemite ElCapitan ] inspector/console/addInspectedNode.html [ Pass Timeout ]
-
-webkit.org/b/154606 [ Release Yosemite ] imported/w3c/web-platform-tests/IndexedDB/idbcursor-advance-continue-async.htm [ Pass Timeout ]
 
 webkit.org/b/155151 [ Debug ElCapitan ] media/track/track-cues-pause-on-exit.html [ Pass Timeout ]
 
@@ -466,4 +462,4 @@ webkit.org/b/155757 [ Debug ElCapitan ] media/media-document-audio-repaint.html 
 
 webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ Pass Timeout ]
 
-webkit.org/b/158133 [ Debug ] js/function-apply.html [ Pass Timeout ]
+webkit.org/b/158237 fast/scrolling/scroll-container-horizontally.html [ Pass Timeout ]

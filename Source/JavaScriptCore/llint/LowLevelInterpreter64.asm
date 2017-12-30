@@ -584,6 +584,16 @@ _llint_op_enter:
     dispatch(1)
 
 
+_llint_op_argument_count:
+    traceExecution()
+    loadisFromInstruction(1, t1)
+    loadi PayloadOffset + ArgumentCount[cfr], t0
+    subi 1, t0
+    orq TagTypeNumber, t0
+    storeq t0, [cfr, t1, 8]
+    dispatch(2)
+
+
 _llint_op_get_scope:
     traceExecution()
     loadp Callee[cfr], t0
@@ -1228,6 +1238,43 @@ _llint_op_get_by_id:
     dispatch(9)
 
 .opGetByIdSlow:
+    callSlowPath(_llint_slow_path_get_by_id)
+    dispatch(9)
+
+
+_llint_op_get_by_id_proto_load:
+    traceExecution()
+    loadisFromInstruction(2, t0)
+    loadConstantOrVariableCell(t0, t3, .opGetByIdProtoSlow)
+    loadi JSCell::m_structureID[t3], t1
+    loadisFromInstruction(4, t2)
+    bineq t2, t1, .opGetByIdProtoSlow
+    loadisFromInstruction(5, t1)
+    loadpFromInstruction(6, t3)
+    loadisFromInstruction(1, t2)
+    loadPropertyAtVariableOffset(t1, t3, t0)
+    storeq t0, [cfr, t2, 8]
+    valueProfile(t0, 8, t1)
+    dispatch(9)
+
+.opGetByIdProtoSlow:
+    callSlowPath(_llint_slow_path_get_by_id)
+    dispatch(9)
+
+
+_llint_op_get_by_id_unset:
+    traceExecution()
+    loadisFromInstruction(2, t0)
+    loadConstantOrVariableCell(t0, t3, .opGetByIdUnsetSlow)
+    loadi JSCell::m_structureID[t3], t1
+    loadisFromInstruction(4, t2)
+    bineq t2, t1, .opGetByIdUnsetSlow
+    loadisFromInstruction(1, t2)
+    storeq ValueUndefined, [cfr, t2, 8]
+    valueProfile(ValueUndefined, 8, t1)
+    dispatch(9)
+
+.opGetByIdUnsetSlow:
     callSlowPath(_llint_slow_path_get_by_id)
     dispatch(9)
 
@@ -2393,7 +2440,7 @@ _llint_op_log_shadow_chicken_prologue:
     storep cfr, ShadowChicken::Packet::frame[t0]
     loadp CallerFrame[cfr], t1
     storep t1, ShadowChicken::Packet::callerFrame[t0]
-    loadp Callee + PayloadOffset[cfr], t1
+    loadp Callee[cfr], t1
     storep t1, ShadowChicken::Packet::callee[t0]
     loadVariable(1, t1)
     storep t1, ShadowChicken::Packet::scope[t0]

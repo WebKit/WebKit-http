@@ -4610,8 +4610,6 @@ void Document::setInPageCache(bool flag)
         }
         m_styleRecalcTimer.stop();
 
-        clearStyleResolver();
-        clearSelectorQueryCache();
         clearSharedObjectPool();
     } else {
         if (childNeedsStyleRecalc())
@@ -5162,16 +5160,26 @@ void Document::initSecurityContext()
 
     // If we do not obtain a meaningful origin from the URL, then we try to
     // find one via the frame hierarchy.
+    Frame* parentFrame = m_frame->tree().parent();
+    Frame* openerFrame = m_frame->loader().opener();
 
-    Frame* ownerFrame = m_frame->tree().parent();
+    Frame* ownerFrame = parentFrame;
     if (!ownerFrame)
-        ownerFrame = m_frame->loader().opener();
+        ownerFrame = openerFrame;
 
     if (!ownerFrame) {
         didFailToInitializeSecurityOrigin();
         return;
     }
+    
+    Document* openerDocument = openerFrame ? openerFrame->document() : nullptr;
 
+    // Per <http://www.w3.org/TR/upgrade-insecure-requests/>, new browsing contexts must inherit from an
+    // ongoing set of upgraded requests. When opening a new browsing context, we need to capture its
+    // existing upgrade request. Nested browsing contexts are handled during DocumentWriter::begin.
+    if (openerDocument)
+        contentSecurityPolicy()->inheritInsecureNavigationRequestsToUpgradeFromOpener(*openerDocument->contentSecurityPolicy());
+    
     if (isSandboxed(SandboxOrigin)) {
         // If we're supposed to inherit our security origin from our owner,
         // but we're also sandboxed, the only thing we inherit is the ability
@@ -5333,7 +5341,7 @@ void Document::parseDNSPrefetchControlHeader(const String& dnsPrefetchControl)
 void Document::addConsoleMessage(MessageSource source, MessageLevel level, const String& message, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
-        postTask(AddConsoleMessageTask(source, level, StringCapture(message)));
+        postTask(AddConsoleMessageTask(source, level, message));
         return;
     }
 
@@ -5344,7 +5352,7 @@ void Document::addConsoleMessage(MessageSource source, MessageLevel level, const
 void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&& callStack, JSC::ExecState* state, unsigned long requestIdentifier)
 {
     if (!isContextThread()) {
-        postTask(AddConsoleMessageTask(source, level, StringCapture(message)));
+        postTask(AddConsoleMessageTask(source, level, message));
         return;
     }
 

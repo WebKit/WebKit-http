@@ -1084,7 +1084,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             // to make some space here.
             jit.makeSpaceOnStackForCCall();
 
-            // getter: EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName, JSObject* slotBase);
+            // getter: EncodedJSValue (*GetValueFunc)(ExecState*, EncodedJSValue thisValue, PropertyName);
             // setter: void (*PutValueFunc)(ExecState*, EncodedJSValue thisObject, EncodedJSValue value);
             // Custom values are passed the slotBase (the property holder), custom accessors are passed the thisVaule (reciever).
             // FIXME: Remove this differences in custom values and custom accessors.
@@ -1094,8 +1094,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
             if (m_type == CustomValueGetter || m_type == CustomAccessorGetter) {
                 jit.setupArgumentsWithExecState(
                     baseForCustomValue,
-                    CCallHelpers::TrustedImmPtr(ident.impl()),
-                    baseForAccessGPR);
+                    CCallHelpers::TrustedImmPtr(ident.impl()));
             } else
                 jit.setupArgumentsWithExecState(baseForCustomValue, valueRegs.gpr());
 #else
@@ -1103,8 +1102,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 jit.setupArgumentsWithExecState(
                     EABI_32BIT_DUMMY_ARG baseForCustomValue,
                     CCallHelpers::TrustedImm32(JSValue::CellTag),
-                    CCallHelpers::TrustedImmPtr(ident.impl()),
-                    baseForAccessGPR);
+                    CCallHelpers::TrustedImmPtr(ident.impl()));
             } else {
                 jit.setupArgumentsWithExecState(
                     EABI_32BIT_DUMMY_ARG baseForCustomValue,
@@ -1421,7 +1419,7 @@ PolymorphicAccess::~PolymorphicAccess() { }
 
 AccessGenerationResult PolymorphicAccess::addCases(
     VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident,
-    Vector<std::unique_ptr<AccessCase>> originalCasesToAdd)
+    Vector<std::unique_ptr<AccessCase>, 2> originalCasesToAdd)
 {
     SuperSamplerScope superSamplerScope(false);
     
@@ -1482,7 +1480,7 @@ AccessGenerationResult PolymorphicAccess::addCase(
     VM& vm, CodeBlock* codeBlock, StructureStubInfo& stubInfo, const Identifier& ident,
     std::unique_ptr<AccessCase> newAccess)
 {
-    Vector<std::unique_ptr<AccessCase>> newAccesses;
+    Vector<std::unique_ptr<AccessCase>, 2> newAccesses;
     newAccesses.append(WTFMove(newAccess));
     return addCases(vm, codeBlock, stubInfo, ident, WTFMove(newAccesses));
 }

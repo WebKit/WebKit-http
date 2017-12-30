@@ -53,25 +53,16 @@
 #include <wtf/Ref.h>
 
 #if ENABLE(CONTENT_EXTENSIONS)
-#include "ResourceLoadInfo.h"
 #include "UserContentController.h"
 #endif
 
 namespace WebCore {
 
-ResourceLoader::ResourceLoader(Frame* frame, ResourceLoaderOptions options)
-    : m_frame(frame)
-    , m_documentLoader(frame->loader().activeDocumentLoader())
-    , m_identifier(0)
-    , m_reachedTerminalState(false)
-    , m_notifiedLoadComplete(false)
-    , m_cancellationStatus(NotCancelled)
-    , m_defersLoading(options.defersLoadingPolicy() == DefersLoadingPolicy::AllowDefersLoading && frame->page()->defersLoading())
+ResourceLoader::ResourceLoader(Frame& frame, ResourceLoaderOptions options)
+    : m_frame(&frame)
+    , m_documentLoader(frame.loader().activeDocumentLoader())
+    , m_defersLoading(options.defersLoadingPolicy() == DefersLoadingPolicy::AllowDefersLoading && frame.page()->defersLoading())
     , m_options(options)
-    , m_isQuickLookResource(false)
-#if ENABLE(CONTENT_EXTENSIONS)
-    , m_resourceType(ResourceType::Invalid)
-#endif
 {
 }
 
@@ -195,11 +186,11 @@ void ResourceLoader::start()
     ASSERT(frameLoader());
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
-    if (m_documentLoader->scheduleArchiveLoad(this, m_request))
+    if (m_documentLoader->scheduleArchiveLoad(*this, m_request))
         return;
 #endif
 
-    if (m_documentLoader->applicationCacheHost()->maybeLoadResource(this, m_request, m_request.url()))
+    if (m_documentLoader->applicationCacheHost()->maybeLoadResource(*this, m_request, m_request.url()))
         return;
 
     if (m_defersLoading) {
@@ -616,11 +607,12 @@ ResourceError ResourceLoader::cannotShowURLError()
     return frameLoader()->client().cannotShowURLError(m_request);
 }
 
-void ResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest& request, const ResourceResponse& redirectResponse)
+ResourceRequest ResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest&& request, ResourceResponse&& redirectResponse)
 {
     if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(this, request, redirectResponse))
-        return;
+        return WTFMove(request);
     willSendRequestInternal(request, redirectResponse);
+    return WTFMove(request);
 }
 
 void ResourceLoader::didSendData(ResourceHandle*, unsigned long long bytesSent, unsigned long long totalBytesToBeSent)

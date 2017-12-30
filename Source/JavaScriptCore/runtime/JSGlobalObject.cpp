@@ -319,6 +319,8 @@ void JSGlobalObject::init(VM& vm)
 {
     ASSERT(vm.currentThreadIsHoldingAPILock());
 
+    Base::setStructure(vm, Structure::toCacheableDictionaryTransition(vm, structure()));
+
     JSGlobalObject::globalExec()->init(0, 0, CallFrame::noCaller(), 0, 0);
 
     m_debugger = 0;
@@ -382,25 +384,9 @@ void JSGlobalObject::init(VM& vm)
             getterSetter->setSetter(init.vm, init.owner, thrower);
             init.set(getterSetter);
         });
-    m_throwTypeErrorCalleeAndCallerGetterSetter.initLater(
+    m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter.initLater(
         [] (const Initializer<GetterSetter>& init) {
-            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorCalleeAndCaller);
-            GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner);
-            getterSetter->setGetter(init.vm, init.owner, thrower);
-            getterSetter->setSetter(init.vm, init.owner, thrower);
-            init.set(getterSetter);
-        });
-    m_throwTypeErrorArgumentsAndCallerInStrictModeGetterSetter.initLater(
-        [] (const Initializer<GetterSetter>& init) {
-            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorArgumentsAndCallerInStrictMode);
-            GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner);
-            getterSetter->setGetter(init.vm, init.owner, thrower);
-            getterSetter->setSetter(init.vm, init.owner, thrower);
-            init.set(getterSetter);
-        });
-    m_throwTypeErrorArgumentsAndCallerInClassContextGetterSetter.initLater(
-        [] (const Initializer<GetterSetter>& init) {
-            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorArgumentsAndCallerInClassContext);
+            JSFunction* thrower = JSFunction::create(init.vm, init.owner, 0, String(), globalFuncThrowTypeErrorArgumentsCalleeAndCaller);
             GetterSetter* getterSetter = GetterSetter::create(init.vm, init.owner);
             getterSetter->setGetter(init.vm, init.owner, thrower);
             getterSetter->setSetter(init.vm, init.owner, thrower);
@@ -871,7 +857,8 @@ void JSGlobalObject::addGlobalVar(const Identifier& ident)
 void JSGlobalObject::addFunction(ExecState* exec, const Identifier& propertyName)
 {
     VM& vm = exec->vm();
-    removeDirect(vm, propertyName); // Newly declared functions overwrite existing properties.
+    VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+    methodTable(vm)->deleteProperty(this, exec, propertyName);
     addGlobalVar(propertyName);
 }
 
@@ -1072,9 +1059,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_newPromiseCapabilityFunction);
     visitor.append(&thisObject->m_functionProtoHasInstanceSymbolFunction);
     thisObject->m_throwTypeErrorGetterSetter.visit(visitor);
-    thisObject->m_throwTypeErrorCalleeAndCallerGetterSetter.visit(visitor);
-    thisObject->m_throwTypeErrorArgumentsAndCallerInStrictModeGetterSetter.visit(visitor);
-    thisObject->m_throwTypeErrorArgumentsAndCallerInClassContextGetterSetter.visit(visitor);
+    thisObject->m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter.visit(visitor);
     visitor.append(&thisObject->m_moduleLoader);
 
     visitor.append(&thisObject->m_objectPrototype);
@@ -1193,10 +1178,9 @@ void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
 
 bool JSGlobalObject::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
-    JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
-    if (getStaticPropertySlot<JSGlobalObject, Base>(exec, globalObjectTable, thisObject, propertyName, slot))
+    if (Base::getOwnPropertySlot(object, exec, propertyName, slot))
         return true;
-    return symbolTableGet(thisObject, propertyName, slot);
+    return symbolTableGet(jsCast<JSGlobalObject*>(object), propertyName, slot);
 }
 
 void JSGlobalObject::clearRareData(JSCell* cell)

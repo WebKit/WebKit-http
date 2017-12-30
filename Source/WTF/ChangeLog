@@ -1,3 +1,258 @@
+2016-06-04  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of WorkItemWin
+        https://bugs.webkit.org/show_bug.cgi?id=158381
+
+        Reviewed by Sam Weinig.
+
+        * wtf/PlatformWin.cmake:
+        * wtf/WorkQueue.h:
+        * wtf/win/WorkItemWin.cpp: Removed.
+        (WTF::WorkItemWin::WorkItemWin): Deleted.
+        (WTF::WorkItemWin::create): Deleted.
+        (WTF::WorkItemWin::~WorkItemWin): Deleted.
+        * wtf/win/WorkItemWin.h: Removed.
+        (WTF::WorkItemWin::function): Deleted.
+        (WTF::WorkItemWin::queue): Deleted.
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::performWorkOnRegisteredWorkThread):
+        (WTF::WorkQueue::dispatch):
+
+2016-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of HANDLE registration code in WorkQueueWin
+        https://bugs.webkit.org/show_bug.cgi?id=158375
+
+        Reviewed by Darin Adler.
+
+        * wtf/WorkQueue.h:
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::HandleWorkItem::HandleWorkItem): Deleted.
+        (WTF::HandleWorkItem::createByAdoptingHandle): Deleted.
+        (WTF::HandleWorkItem::~HandleWorkItem): Deleted.
+        * wtf/win/WorkItemWin.h:
+        (WTF::HandleWorkItem::setWaitHandle): Deleted.
+        (WTF::HandleWorkItem::waitHandle): Deleted.
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback): Deleted.
+        (WTF::WorkQueue::platformInvalidate): Deleted.
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemSoon): Deleted.
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemCallback): Deleted.
+
+2016-06-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201663.
+        https://bugs.webkit.org/show_bug.cgi?id=158374
+
+        Broke the Windows build (Requested by andersca on #webkit).
+
+        Reverted changeset:
+
+        "Rename NoncopyableFunction to Function"
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+        http://trac.webkit.org/changeset/201663
+
+2016-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Rename NoncopyableFunction to Function
+        https://bugs.webkit.org/show_bug.cgi?id=158354
+
+        Reviewed by Chris Dumez.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CrossThreadTask.h:
+        (WTF::CrossThreadTask::CrossThreadTask):
+        * wtf/Function.h: Renamed from Source/WTF/wtf/NoncopyableFunction.h.
+        * wtf/FunctionDispatcher.h:
+        * wtf/MainThread.cpp:
+        (WTF::functionQueue):
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/efl/DispatchQueueWorkItemEfl.h:
+        (WorkItem::WorkItem):
+        (TimerWorkItem::create):
+        (TimerWorkItem::TimerWorkItem):
+        * wtf/efl/WorkQueueEfl.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        * wtf/win/WorkItemWin.cpp:
+        (WTF::WorkItemWin::WorkItemWin):
+        (WTF::WorkItemWin::create):
+        (WTF::HandleWorkItem::HandleWorkItem):
+        (WTF::HandleWorkItem::createByAdoptingHandle):
+        * wtf/win/WorkItemWin.h:
+        (WTF::WorkItemWin::function):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-06-03  Mark Lam  <mark.lam@apple.com>
+
+        Clean up how StackVisitor dumps its frames.
+        https://bugs.webkit.org/show_bug.cgi?id=158316
+
+        Reviewed by Keith Miller.
+
+        Added an Indenter class what works with dataLog.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Indenter.h: Added.
+        (WTF::Indenter::Indenter):
+        (WTF::Indenter::dump):
+        (WTF::Indenter::operator++):
+        (WTF::Indenter::operator--):
+
+2016-06-02  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        [iOS] PDFDocumentImage should not create a cached image larger than 4M pixels
+        https://bugs.webkit.org/show_bug.cgi?id=157857
+
+        Reviewed by Darin Adler.
+
+        * wtf/StdLibExtras.h: Add a constant value for GB (2^30).
+
+2016-06-02  Oliver Hunt  <oliver@apple.com>
+
+        JS parser incorrectly handles invalid utf8 in error messages.
+        https://bugs.webkit.org/show_bug.cgi?id=158128
+
+        Reviewed by Saam Barati.
+
+        Add a new toStringWithLatin1Fallback that simply uses
+        String::fromUTF8WithLatin1Fallback, so we can avoid the
+        standard String::fromUTF8 null return.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::toStringWithLatin1Fallback):
+        * wtf/StringPrintStream.h:
+
+2016-06-02  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, reland r201532. The associated regressions have been fixed
+        by r201584.
+
+2016-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Use "= delete" for Locker(int) 
+
+        Rubber stamped by Saam Barati.
+        
+        See discussion: https://bugs.webkit.org/show_bug.cgi?id=158306#c8
+
+        * wtf/Locker.h:
+        (WTF::Locker::Locker):
+        (WTF::Locker::~Locker):
+
+2016-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it harder to accidentally pass an integer to a locker.
+
+        Rubber stamped by Keith Miller.
+        
+        See here for the discussion: https://bugs.webkit.org/show_bug.cgi?id=158306#c3
+
+        * wtf/Locker.h:
+        (WTF::Locker::Locker):
+        (WTF::Locker::~Locker):
+
+2016-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it easier to use NoLockingNecessary
+        https://bugs.webkit.org/show_bug.cgi?id=158306
+
+        Reviewed by Keith Miller.
+        
+        An idiom that we borrowed from LLVM is that if a function requires a lock to be held, we
+        have it take a const Locker& as its first argument. This may not communicate which lock is
+        to be held, but it does help us to remember that some lock must be held. So far, it's been
+        relatively easy to then figure out which lock. We've had bugs where we forgot to hold a
+        lock but I don't remember the last time we had a bug where we grabbed the wrong lock.
+        
+        But sometimes, we know at the point where we call such a method that we actually don't
+        need to hold any lock. This usually happens during object construction. If we're
+        constructing some object then we usually know that we have not escaped it yet, so we don't
+        need to waste time acquiring its lock. We could solve this by having a separate set of
+        methods that don't do or require locking. This would be cumbersome, since usually for
+        every variant that takes const Locker&, there is already one that doesn't, and that one
+        will grab the lock for you. So this means having a third variant, that also doesn't take a
+        const Locker&, but does no locking. That's pretty weird.
+        
+        So, we introduced NoLockingNecessary for situations like this. The idiom went like so:
+        
+            Locker<Whatever> locker(Locker<Whatever>::NoLockingNecessary)
+            stuff->foo(locker);
+        
+        Usually though, there would be some distance between where the locker is defined and where
+        it's used, so when you just look at stuff->foo(locker) in isolation you don't know if this
+        is a real locker or a NoLockingNecessary cast. Also, requiring two lines for this just
+        adds code.
+        
+        This change makes this easier. Now you can just do:
+        
+            stuff->foo(NoLockingNecessary).
+        
+        This is because NoLockingNecessary has been pulled out into the WTF namespace (and is
+        usinged from the global namespace) and the Locker<> constructor that takes
+        NoLockingNecessaryTag is now implicit.
+        
+        The only possible downside of this change is that people might use this idiom more
+        frequently now that it's easier to use. I don't think that's a bad thing. I'm now
+        convinced that this is not a bad idiom. When I was fixing an unrelated bug, I almost went
+        the way of adding more locking to some core JSC data structures, and in the process, I
+        needed to use NoLockingNecessary. It's clear that this is a general-purpose idiom and we
+        should not impose artificial constraints on its use.
+
+        * wtf/Locker.h:
+        (WTF::Locker::Locker):
+        (WTF::Locker::~Locker):
+
+2016-06-01  Brady Eidson  <beidson@apple.com>
+
+        Get rid of StringCapture.
+        https://bugs.webkit.org/show_bug.cgi?id=158285
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/WTFString.h:
+        (WTF::StringCapture::StringCapture): Deleted.
+        (WTF::StringCapture::string): Deleted.
+        (WTF::StringCapture::releaseString): Deleted.
+        (WTF::StringCapture::operator=): Deleted.
+
+2016-06-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Some setters for components of Date do not timeClip() their result
+        https://bugs.webkit.org/show_bug.cgi?id=158278
+
+        Unreviewed.
+
+        * wtf/DateMath.cpp:
+        (WTF::equivalentYearForDST): Deleted.
+        The assertion is bogus.
+        As the comments above explains, the function is completely wrong for years
+        outside [1900-2100].
+        The tests passing large values for years are failing (year <= maxYear).
+        The weird NaN test is a mystery. The old changelog does not explain it.
+
 2016-05-31  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r201363 and r201456.

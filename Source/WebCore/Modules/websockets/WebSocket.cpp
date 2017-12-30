@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc.  All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -230,6 +231,9 @@ void WebSocket::connect(const String& url, const Vector<String>& protocols, Exce
         ec = SYNTAX_ERR;
         return;
     }
+
+    scriptExecutionContext()->contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(m_url, ContentSecurityPolicy::InsecureRequestType::Load);
+    
     if (!portAllowed(m_url)) {
         scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "WebSocket port " + String::number(m_url.port()) + " blocked");
         m_state = CLOSED;
@@ -283,7 +287,7 @@ void WebSocket::connect(const String& url, const Vector<String>& protocols, Exce
             // using the error event. But since this code executes as part of the WebSocket's
             // constructor, we have to wait until the constructor has completed before firing the
             // event; otherwise, users can't connect to the event.
-            RunLoop::main().dispatch([this]() {
+            RunLoop::main().dispatch([this, protectedThis = Ref<WebSocket>(*this)]() {
                 dispatchOrQueueErrorEvent();
                 stop();
             });

@@ -95,22 +95,21 @@ void ProxyObject::finishCreation(VM& vm, ExecState* exec, JSValue target, JSValu
 
 static const char* s_proxyAlreadyRevokedErrorMessage = "Proxy has already been revoked. No more operations are allowed to be performed on it";
 
-static EncodedJSValue performProxyGet(ExecState* exec, EncodedJSValue thisValue, PropertyName propertyName, JSObject* slotBase)
+static JSValue performProxyGet(ExecState* exec, ProxyObject* proxyObject, JSValue receiver, PropertyName propertyName)
 {
     VM& vm = exec->vm();
     if (UNLIKELY(!vm.isSafeToRecurse())) {
         throwStackOverflowError(exec);
-        return JSValue::encode(JSValue());
+        return JSValue();
     }
 
-    ProxyObject* proxyObject = jsCast<ProxyObject*>(slotBase);
     JSObject* target = proxyObject->target();
 
     if (propertyName == vm.propertyNames->underscoreProto)
-        return JSValue::encode(proxyObject->performGetPrototype(exec));
+        return proxyObject->performGetPrototype(exec);
 
     auto performDefaultGet = [&] {
-        return JSValue::encode(target->get(exec, propertyName));
+        return target->get(exec, propertyName);
     };
 
     if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid())))
@@ -118,14 +117,14 @@ static EncodedJSValue performProxyGet(ExecState* exec, EncodedJSValue thisValue,
 
     JSValue handlerValue = proxyObject->handler();
     if (handlerValue.isNull())
-        return throwVMTypeError(exec, ASCIILiteral(s_proxyAlreadyRevokedErrorMessage));
+        return throwTypeError(exec, ASCIILiteral(s_proxyAlreadyRevokedErrorMessage));
 
     JSObject* handler = jsCast<JSObject*>(handlerValue);
     CallData callData;
     CallType callType;
     JSValue getHandler = handler->getMethod(exec, callData, callType, vm.propertyNames->get, ASCIILiteral("'get' property of a Proxy's handler object should be callable"));
     if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+        return jsUndefined();
 
     if (getHandler.isUndefined())
         return performDefaultGet();
@@ -133,26 +132,36 @@ static EncodedJSValue performProxyGet(ExecState* exec, EncodedJSValue thisValue,
     MarkedArgumentBuffer arguments;
     arguments.append(target);
     arguments.append(identifierToSafePublicJSValue(vm, Identifier::fromUid(&vm, propertyName.uid())));
-    arguments.append(JSValue::decode(thisValue));
+    arguments.append(receiver);
     JSValue trapResult = call(exec, getHandler, callType, callData, handler, arguments);
     if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+        return jsUndefined();
 
     PropertyDescriptor descriptor;
     if (target->getOwnPropertyDescriptor(exec, propertyName, descriptor)) {
         if (descriptor.isDataDescriptor() && !descriptor.configurable() && !descriptor.writable()) {
             if (!sameValue(exec, descriptor.value(), trapResult))
-                return throwVMTypeError(exec, ASCIILiteral("Proxy handler's 'get' result of a non-configurable and non-writable property should be the same value as the target's property"));
+                return throwTypeError(exec, ASCIILiteral("Proxy handler's 'get' result of a non-configurable and non-writable property should be the same value as the target's property"));
         } else if (descriptor.isAccessorDescriptor() && !descriptor.configurable() && descriptor.getter().isUndefined()) {
             if (!trapResult.isUndefined())
-                return throwVMTypeError(exec, ASCIILiteral("Proxy handler's 'get' result of a non-configurable accessor property without a getter should be undefined"));
+                return throwTypeError(exec, ASCIILiteral("Proxy handler's 'get' result of a non-configurable accessor property without a getter should be undefined"));
         }
     }
 
     if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+        return jsUndefined();
 
-    return JSValue::encode(trapResult);
+    return trapResult;
+}
+
+bool ProxyObject::performGet(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+{
+    JSValue result = performProxyGet(exec, this, slot.thisValue(), propertyName);
+    if (exec->hadException())
+        return false;
+    unsigned ignoredAttributes = 0;
+    slot.setValue(this, ignoredAttributes, result);
+    return true;
 }
 
 bool ProxyObject::performInternalMethodGetOwnProperty(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -337,8 +346,7 @@ bool ProxyObject::getOwnPropertySlotCommon(ExecState* exec, PropertyName propert
     slot.setIsTaintedByProxy();
     switch (slot.internalMethodType()) {
     case PropertySlot::InternalMethodType::Get:
-        slot.setCustom(this, CustomAccessor, performProxyGet);
-        return true;
+        return performGet(exec, propertyName, slot);
     case PropertySlot::InternalMethodType::GetOwnProperty:
         return performInternalMethodGetOwnProperty(exec, propertyName, slot);
     case PropertySlot::InternalMethodType::HasProperty:
@@ -861,7 +869,7 @@ void ProxyObject::performGetOwnPropertyNames(ExecState* exec, PropertyNameArray&
     CallData callData;
     CallType callType;
     JSValue ownKeysMethod = handler->getMethod(exec, callData, callType, makeIdentifier(vm, "ownKeys"), ASCIILiteral("'ownKeys' property of a Proxy's handler should be callable"));
-    if (exec->hadException())
+    if (vm.exception())
         return;
     JSObject* target = this->target();
     if (ownKeysMethod.isUndefined()) {
@@ -872,7 +880,7 @@ void ProxyObject::performGetOwnPropertyNames(ExecState* exec, PropertyNameArray&
     MarkedArgumentBuffer arguments;
     arguments.append(target);
     JSValue arrayLikeObject = call(exec, ownKeysMethod, callType, callData, handler, arguments);
-    if (exec->hadException())
+    if (vm.exception())
         return;
 
     PropertyNameMode propertyNameMode = trapResult.mode();
@@ -890,8 +898,7 @@ void ProxyObject::performGetOwnPropertyNames(ExecState* exec, PropertyNameArray&
     }
     ASSERT(resultFilter);
     RuntimeTypeMask dontThrowAnExceptionTypeFilter = TypeString | TypeSymbol;
-    HashMap<UniquedStringImpl*, unsigned> uncheckedResultKeys;
-    unsigned totalSize = 0;
+    HashSet<UniquedStringImpl*> uncheckedResultKeys;
 
     auto addPropName = [&] (JSValue value, RuntimeType type) -> bool {
         static const bool doExitEarly = true;
@@ -901,33 +908,30 @@ void ProxyObject::performGetOwnPropertyNames(ExecState* exec, PropertyNameArray&
             return dontExitEarly;
 
         Identifier ident = value.toPropertyKey(exec);
-        if (exec->hadException())
+        if (vm.exception())
             return doExitEarly;
 
-        ++uncheckedResultKeys.add(ident.impl(), 0).iterator->value;
-        ++totalSize;
-
+        uncheckedResultKeys.add(ident.impl());
         trapResult.addUnchecked(ident.impl());
-
         return dontExitEarly;
     };
 
     createListFromArrayLike(exec, arrayLikeObject, dontThrowAnExceptionTypeFilter, ASCIILiteral("Proxy handler's 'ownKeys' method must return an array-like object containing only Strings and Symbols"), addPropName);
-    if (exec->hadException())
+    if (vm.exception())
         return;
 
     bool targetIsExensible = target->isExtensible(exec);
 
     PropertyNameArray targetKeys(&vm, propertyNameMode);
     target->methodTable(vm)->getOwnPropertyNames(target, exec, targetKeys, enumerationMode);
-    if (exec->hadException())
+    if (vm.exception())
         return;
     Vector<UniquedStringImpl*> targetConfigurableKeys;
     Vector<UniquedStringImpl*> targetNonConfigurableKeys;
     for (const Identifier& ident : targetKeys) {
         PropertyDescriptor descriptor;
         bool isPropertyDefined = target->getOwnPropertyDescriptor(exec, ident.impl(), descriptor); 
-        if (exec->hadException())
+        if (vm.exception())
             return;
         if (isPropertyDefined && !descriptor.configurable())
             targetNonConfigurableKeys.append(ident.impl());
@@ -935,26 +939,18 @@ void ProxyObject::performGetOwnPropertyNames(ExecState* exec, PropertyNameArray&
             targetConfigurableKeys.append(ident.impl());
     }
 
-    auto removeIfContainedInUncheckedResultKeys = [&] (UniquedStringImpl* impl) -> bool {
-        static const bool isContainedIn = true;
-        static const bool isNotContainedIn = false;
-
+    enum ContainedIn { IsContainedIn, IsNotContainedIn };
+    auto removeIfContainedInUncheckedResultKeys = [&] (UniquedStringImpl* impl) -> ContainedIn {
         auto iter = uncheckedResultKeys.find(impl);
         if (iter == uncheckedResultKeys.end())
-            return isNotContainedIn;
+            return IsNotContainedIn;
 
-        unsigned& count = iter->value;
-        if (count == 0)
-            return isNotContainedIn;
-
-        --count;
-        --totalSize;
-        return isContainedIn;
+        uncheckedResultKeys.remove(iter);
+        return IsContainedIn;
     };
 
     for (UniquedStringImpl* impl : targetNonConfigurableKeys) {
-        bool contains = removeIfContainedInUncheckedResultKeys(impl);
-        if (!contains) {
+        if (removeIfContainedInUncheckedResultKeys(impl) == IsNotContainedIn) {
             throwVMTypeError(exec, makeString("Proxy object's 'target' has the non-configurable property '", String(impl), "' that was not in the result from the 'ownKeys' trap"));
             return;
         }
@@ -964,22 +960,14 @@ void ProxyObject::performGetOwnPropertyNames(ExecState* exec, PropertyNameArray&
         return;
 
     for (UniquedStringImpl* impl : targetConfigurableKeys) {
-        bool contains = removeIfContainedInUncheckedResultKeys(impl);
-        if (!contains) {
+        if (removeIfContainedInUncheckedResultKeys(impl) == IsNotContainedIn) {
             throwVMTypeError(exec, makeString("Proxy object's non-extensible 'target' has configurable property '", String(impl), "' that was not in the result from the 'ownKeys' trap"));
             return;
         }
     }
 
-#ifndef NDEBUG
-    unsigned sum = 0;
-    for (unsigned keyCount : uncheckedResultKeys.values())
-        sum += keyCount;
-    ASSERT(sum == totalSize);
-#endif
-
-    if (totalSize) {
-        throwVMTypeError(exec, ASCIILiteral("Proxy handler's 'ownKeys' method returned a key that was not present in its target or it returned duplicate keys"));
+    if (uncheckedResultKeys.size()) {
+        throwVMTypeError(exec, ASCIILiteral("Proxy handler's 'ownKeys' method returned a key that was not present in its non-extensible target"));
         return;
     }
 }

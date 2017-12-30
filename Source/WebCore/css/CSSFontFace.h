@@ -27,8 +27,8 @@
 
 #include "CSSFontFaceRule.h"
 #include "FontFeatureSettings.h"
-#include "FontSelector.h"
 #include "TextFlags.h"
+#include "Timer.h"
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
@@ -136,7 +136,7 @@ public:
     // We don't guarantee that the FontFace wrapper will be the same every time you ask for it.
     Ref<FontFace> wrapper();
 
-    Vector<ResolvedFontFamily> resolveFamilies() const;
+    bool webFontsShouldAlwaysFallBack() const;
 
 #if ENABLE(SVG_FONTS)
     bool hasSVGFontFaceSource() const;
@@ -149,11 +149,15 @@ private:
     void setStatus(Status);
     void notifyClientsOfFontPropertyChange();
 
+    void fontLoadEventOccurred();
+    void timeoutFired();
+
     RefPtr<CSSValueList> m_families;
     FontTraitsMask m_traitsMask { static_cast<FontTraitsMask>(FontStyleNormalMask | FontWeight400Mask) };
     Vector<UnicodeRange> m_ranges;
     FontFeatureSettings m_featureSettings;
     FontVariantSettings m_variantSettings;
+    Timer m_timeoutTimer;
     Vector<std::unique_ptr<CSSFontFaceSource>> m_sources;
     RefPtr<CSSFontSelector> m_fontSelector;
     RefPtr<StyleRuleFontFace> m_cssConnection;

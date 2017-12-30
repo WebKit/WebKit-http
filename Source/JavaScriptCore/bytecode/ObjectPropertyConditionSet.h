@@ -67,6 +67,8 @@ public:
     {
         return !m_data || !m_data->vector.isEmpty();
     }
+
+    bool isValidAndWatchable() const;
     
     bool isEmpty() const
     {
@@ -166,7 +168,9 @@ ObjectPropertyConditionSet generateConditionsForPrototypePropertyHitCustom(
     VM&, JSCell* owner, ExecState*, Structure* headStructure, JSObject* prototype,
     UniquedStringImpl* uid);
 
-
+ObjectPropertyConditionSet generateConditionsForPrototypeEquivalenceConcurrently(
+    VM&, JSGlobalObject*, Structure* headStructure, JSObject* prototype,
+    UniquedStringImpl* uid);
 ObjectPropertyConditionSet generateConditionsForPropertyMissConcurrently(
     VM&, JSGlobalObject*, Structure* headStructure, UniquedStringImpl* uid);
 ObjectPropertyConditionSet generateConditionsForPropertySetterMissConcurrently(

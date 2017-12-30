@@ -264,7 +264,7 @@ static JSValue retrieveArguments(ExecState* exec, JSFunction* functionObj)
     return functor.result();
 }
 
-EncodedJSValue JSFunction::argumentsGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName, JSObject*)
+EncodedJSValue JSFunction::argumentsGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName)
 {
     JSFunction* thisObj = jsCast<JSFunction*>(JSValue::decode(thisValue));
     ASSERT(!thisObj->isHostFunction());
@@ -319,14 +319,7 @@ static JSValue retrieveCallerFunction(ExecState* exec, JSFunction* functionObj)
     return functor.result();
 }
 
-static GetterSetter* getThrowTypeErrorGetterSetter(JSFunction* function)
-{
-    return function->jsExecutable()->isClassConstructorFunction() || function->jsExecutable()->parseMode() == SourceParseMode::MethodMode
-        ? function->globalObject()->throwTypeErrorArgumentsAndCallerInClassContextGetterSetter()
-        : function->globalObject()->throwTypeErrorArgumentsAndCallerInStrictModeGetterSetter();
-}
-
-EncodedJSValue JSFunction::callerGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName, JSObject*)
+EncodedJSValue JSFunction::callerGetter(ExecState* exec, EncodedJSValue thisValue, PropertyName)
 {
     JSFunction* thisObj = jsCast<JSFunction*>(JSValue::decode(thisValue));
     ASSERT(!thisObj->isHostFunction());
@@ -375,7 +368,7 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
         if (thisObject->jsExecutable()->isStrictMode() || thisObject->jsExecutable()->isClassConstructorFunction()) {
             bool result = Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
             if (!result) {
-                GetterSetter* errorGetterSetter = getThrowTypeErrorGetterSetter(thisObject);
+                GetterSetter* errorGetterSetter = thisObject->globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter();
                 thisObject->putDirectAccessor(exec, propertyName, errorGetterSetter, DontDelete | DontEnum | Accessor);
                 result = Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
                 ASSERT(result);
@@ -390,7 +383,7 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
         if (thisObject->jsExecutable()->isStrictMode() || thisObject->jsExecutable()->isClassConstructorFunction()) {
             bool result = Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
             if (!result) {
-                GetterSetter* errorGetterSetter = getThrowTypeErrorGetterSetter(thisObject);
+                GetterSetter* errorGetterSetter = thisObject->globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter();
                 thisObject->putDirectAccessor(exec, propertyName, errorGetterSetter, DontDelete | DontEnum | Accessor);
                 result = Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
                 ASSERT(result);
@@ -465,7 +458,7 @@ bool JSFunction::deleteProperty(JSCell* cell, ExecState* exec, PropertyName prop
 {
     JSFunction* thisObject = jsCast<JSFunction*>(cell);
     // For non-host functions, don't let these properties by deleted - except by DefineOwnProperty.
-    if (!thisObject->isHostOrBuiltinFunction() && !exec->vm().isInDefineOwnProperty()) {
+    if (!thisObject->isHostOrBuiltinFunction() && exec->vm().deletePropertyMode() != VM::DeletePropertyMode::IgnoreConfigurable) {
         FunctionExecutable* executable = thisObject->jsExecutable();
         if (propertyName == exec->propertyNames().arguments
             || (propertyName == exec->propertyNames().prototype && !executable->isArrowFunction())
@@ -499,7 +492,7 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
         if (thisObject->jsExecutable()->isStrictMode()) {
             PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
             if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
-                thisObject->putDirectAccessor(exec, propertyName, getThrowTypeErrorGetterSetter(thisObject), DontDelete | DontEnum | Accessor);
+                thisObject->putDirectAccessor(exec, propertyName, thisObject->globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter(), DontDelete | DontEnum | Accessor);
             return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
         }
         valueCheck = !descriptor.value() || sameValue(exec, descriptor.value(), retrieveArguments(exec, thisObject));
@@ -507,7 +500,7 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
         if (thisObject->jsExecutable()->isStrictMode()) {
             PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
             if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
-                thisObject->putDirectAccessor(exec, propertyName, getThrowTypeErrorGetterSetter(thisObject), DontDelete | DontEnum | Accessor);
+                thisObject->putDirectAccessor(exec, propertyName, thisObject->globalObject()->throwTypeErrorArgumentsCalleeAndCallerGetterSetter(), DontDelete | DontEnum | Accessor);
             return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
         }
         valueCheck = !descriptor.value() || sameValue(exec, descriptor.value(), retrieveCallerFunction(exec, thisObject));

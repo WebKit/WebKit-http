@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "ApplicationCache.h"
 #include "ApplicationCacheGroup.h"
 #include "ApplicationCacheResource.h"
+#include "ContentSecurityPolicy.h"
 #include "DocumentLoader.h"
 #include "DOMApplicationCache.h"
 #include "FileSystem.h"
@@ -166,7 +167,7 @@ void ApplicationCacheHost::finishedLoadingMainResource()
         group->finishedLoadingMainResource(&m_documentLoader);
 }
 
-bool ApplicationCacheHost::maybeLoadResource(ResourceLoader* loader, const ResourceRequest& request, const URL& originalURL)
+bool ApplicationCacheHost::maybeLoadResource(ResourceLoader& loader, const ResourceRequest& request, const URL& originalURL)
 {
     if (!isApplicationCacheEnabled() && !isApplicationCacheBlockedForRequest(request))
         return false;
@@ -178,7 +179,7 @@ bool ApplicationCacheHost::maybeLoadResource(ResourceLoader* loader, const Resou
     if (!shouldLoadResourceFromApplicationCache(request, resource))
         return false;
 
-    m_documentLoader.scheduleSubstituteResourceLoad(*loader, *resource);
+    m_documentLoader.scheduleSubstituteResourceLoad(loader, *resource);
     return true;
 }
 
@@ -370,12 +371,18 @@ void ApplicationCacheHost::setApplicationCache(PassRefPtr<ApplicationCache> appl
     m_applicationCache = applicationCache;
 }
 
-bool ApplicationCacheHost::shouldLoadResourceFromApplicationCache(const ResourceRequest& request, ApplicationCacheResource*& resource)
+bool ApplicationCacheHost::shouldLoadResourceFromApplicationCache(const ResourceRequest& originalRequest, ApplicationCacheResource*& resource)
 {
     ApplicationCache* cache = applicationCache();
     if (!cache || !cache->isComplete())
         return false;
 
+    ResourceRequest request(originalRequest);
+    if (Frame* loaderFrame = m_documentLoader.frame()) {
+        if (Document* document = loaderFrame->document())
+            document->contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(request, ContentSecurityPolicy::InsecureRequestType::Load);
+    }
+    
     // If the resource is not to be fetched using the HTTP GET mechanism or equivalent, or if its URL has a different
     // <scheme> component than the application cache's manifest, then fetch the resource normally.
     if (!ApplicationCache::requestIsHTTPOrHTTPSGet(request) || !equalIgnoringASCIICase(request.url().protocol(), cache->manifestResource()->url().protocol()))

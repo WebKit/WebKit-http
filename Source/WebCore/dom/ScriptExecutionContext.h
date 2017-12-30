@@ -140,8 +140,8 @@ public:
         {
         }
 
-        Task(std::function<void ()> task)
-            : m_task([task](ScriptExecutionContext&) { task(); })
+        Task(NoncopyableFunction<void ()>&& task)
+            : m_task([task = WTFMove(task)](ScriptExecutionContext&) { task(); })
             , m_isCleanupTask(false)
         {
         }
@@ -210,9 +210,9 @@ public:
 protected:
     class AddConsoleMessageTask : public Task {
     public:
-        AddConsoleMessageTask(MessageSource source, MessageLevel level, const StringCapture& message)
-            : Task([source, level, message](ScriptExecutionContext& context) {
-                context.addConsoleMessage(source, level, message.string());
+        AddConsoleMessageTask(MessageSource source, MessageLevel level, const String& message)
+            : Task([source, level, message = message.isolatedCopy()](ScriptExecutionContext& context) {
+                context.addConsoleMessage(source, level, message);
             })
         {
         }

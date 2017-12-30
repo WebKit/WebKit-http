@@ -254,7 +254,6 @@ storage/indexeddb/database-odd-names.html [ Timeout Failure ]
 storage/indexeddb/primary-key-unique-to-objectstore.html [ Timeout ]
 storage/indexeddb/version-change-event-basic.html [ Timeout ]
 storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
-storage/indexeddb/modern/blob-simple.html [ Failure ]
 storage/indexeddb/modern/date-basic-private.html [ Failure ]
 storage/indexeddb/modern/date-basic.html [ Failure ]
 storage/indexeddb/modern/get-keyrange-private.html [ Failure ]
@@ -2231,8 +2230,6 @@ http/tests/security/contentSecurityPolicy/object-src-none-allowed.html [ Skip ] 
 http/tests/security/contentSecurityPolicy/object-src-none-blocked.html [ Skip ] # Crash
 http/tests/security/video-cross-origin-accessfailure.html [ Skip ] # Crash
 http/tests/security/mixedContent/insecure-plugin-in-iframe.html [ Skip ] # Crash
-http/tests/websocket/tests/hybi/workers/close-in-worker.html [ Skip ] # Crash
-http/tests/websocket/tests/hybi/workers/close.html [ Skip ] # Crash
 http/tests/webgl/1.0.2/texSubImage2DHTML.html [ Skip ] # Crash
 
 # The following timeout

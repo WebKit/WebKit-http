@@ -73,6 +73,20 @@ bool ObjectPropertyCondition::validityRequiresImpurePropertyWatchpoint() const
     return validityRequiresImpurePropertyWatchpoint(m_object->structure());
 }
 
+bool ObjectPropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(Structure* structure) const
+{
+    return m_condition.isStillValidAssumingImpurePropertyWatchpoint(structure, m_object);
+}
+
+bool ObjectPropertyCondition::isStillValidAssumingImpurePropertyWatchpoint() const
+{
+    if (!*this)
+        return false;
+
+    return isStillValidAssumingImpurePropertyWatchpoint(m_object->structure());
+}
+
+
 bool ObjectPropertyCondition::isStillValid(Structure* structure) const
 {
     return m_condition.isStillValid(structure, m_object);

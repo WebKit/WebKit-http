@@ -151,6 +151,8 @@ public:
 
     bool getPropertySlot(ExecState*, PropertyName, PropertySlot&);
     bool getPropertySlot(ExecState*, unsigned propertyName, PropertySlot&);
+    template<typename CallbackWhenNoException> typename std::result_of<CallbackWhenNoException(bool, PropertySlot&)>::type getPropertySlot(ExecState*, PropertyName, CallbackWhenNoException) const;
+    template<typename CallbackWhenNoException> typename std::result_of<CallbackWhenNoException(bool, PropertySlot&)>::type getPropertySlot(ExecState*, PropertyName, PropertySlot&, CallbackWhenNoException) const;
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     JS_EXPORT_PRIVATE static bool getOwnPropertySlotByIndex(JSObject*, ExecState*, unsigned propertyName, PropertySlot&);
@@ -1225,10 +1227,13 @@ ALWAYS_INLINE bool JSObject::getOwnNonIndexPropertySlot(VM& vm, Structure& struc
 
 ALWAYS_INLINE void JSObject::fillCustomGetterPropertySlot(PropertySlot& slot, JSValue customGetterSetter, unsigned attributes, Structure& structure)
 {
-    if (structure.isDictionary()) {
+    if (structure.isUncacheableDictionary()) {
         slot.setCustom(this, attributes, jsCast<CustomGetterSetter*>(customGetterSetter)->getter());
         return;
     }
+
+    // This access is cacheable because Structure requires an attributeChangedTransition
+    // if this property stops being an accessor.
     slot.setCacheableCustom(this, attributes, jsCast<CustomGetterSetter*>(customGetterSetter)->getter());
 }
 
@@ -1356,6 +1361,22 @@ inline JSValue JSObject::get(ExecState* exec, unsigned propertyName) const
         return slot.getValue(exec, propertyName);
 
     return jsUndefined();
+}
+
+template<typename CallbackWhenNoException>
+ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(bool, PropertySlot&)>::type JSObject::getPropertySlot(ExecState* exec, PropertyName propertyName, CallbackWhenNoException callback) const
+{
+    PropertySlot slot(this, PropertySlot::InternalMethodType::Get);
+    return getPropertySlot(exec, propertyName, slot, callback);
+}
+
+template<typename CallbackWhenNoException>
+ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(bool, PropertySlot&)>::type JSObject::getPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot, CallbackWhenNoException callback) const
+{
+    bool found = const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot);
+    if (UNLIKELY(exec->hadException()))
+        return { };
+    return callback(found, slot);
 }
 
 template<JSObject::PutMode mode>
@@ -1620,6 +1641,12 @@ inline size_t maxOffsetRelativeToBase(PropertyOffset offset)
 }
 
 COMPILE_ASSERT(!(sizeof(JSObject) % sizeof(WriteBarrierBase<Unknown>)), JSObject_inline_storage_has_correct_alignment);
+
+template<unsigned charactersCount>
+ALWAYS_INLINE Identifier makeIdentifier(VM& vm, const char (&characters)[charactersCount])
+{
+    return Identifier::fromString(&vm, characters);
+}
 
 ALWAYS_INLINE Identifier makeIdentifier(VM& vm, const char* name)
 {

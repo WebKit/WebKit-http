@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ResourceResponseBase_h
-#define ResourceResponseBase_h
+#pragma once
 
 #include "CacheValidation.h"
 #include "CertificateInfo.h"
@@ -41,16 +40,33 @@
 namespace WebCore {
 
 class ResourceResponse;
-struct CrossThreadResourceResponseData;
 
 // Do not use this class directly, use the class ResponseResponse instead
 class ResourceResponseBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static std::unique_ptr<ResourceResponse> adopt(std::unique_ptr<CrossThreadResourceResponseData>);
+    enum class Type;
 
-    // Gets a copy of the data suitable for passing to another thread.
-    std::unique_ptr<CrossThreadResourceResponseData> copyData() const;
+    struct CrossThreadData {
+        CrossThreadData(const CrossThreadData&) = delete;
+        CrossThreadData& operator=(const CrossThreadData&) = delete;
+        CrossThreadData() = default;
+        CrossThreadData(CrossThreadData&&) = default;
+
+        URL url;
+        String mimeType;
+        long long expectedContentLength;
+        String textEncodingName;
+        int httpStatusCode;
+        String httpStatusText;
+        String httpVersion;
+        HTTPHeaderMap httpHeaderFields;
+        ResourceLoadTiming resourceLoadTiming;
+        Type type;
+    };
+
+    CrossThreadData crossThreadData() const;
+    static ResourceResponse fromCrossThreadData(CrossThreadData&&);
 
     bool isNull() const { return m_isNull; }
     WEBCORE_EXPORT bool isHTTP() const;
@@ -275,23 +291,4 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
     return true;
 }
 
-struct CrossThreadResourceResponseDataBase {
-    WTF_MAKE_NONCOPYABLE(CrossThreadResourceResponseDataBase); WTF_MAKE_FAST_ALLOCATED;
-public:
-    CrossThreadResourceResponseDataBase() { }
-    URL m_url;
-    String m_mimeType;
-    long long m_expectedContentLength;
-    String m_textEncodingName;
-    int m_httpStatusCode;
-    String m_httpStatusText;
-    String m_httpVersion;
-    std::unique_ptr<CrossThreadHTTPHeaderMapData> m_httpHeaders;
-    ResourceLoadTiming m_resourceLoadTiming;
-    ResourceResponseBase::Type m_type;
-    bool m_isRedirected;
-};
-
 } // namespace WebCore
-
-#endif // ResourceResponseBase_h

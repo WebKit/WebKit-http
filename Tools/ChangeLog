@@ -1,3 +1,117 @@
+2016-06-04  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r201263): Some tests have become flaky timeouts.
+        https://bugs.webkit.org/show_bug.cgi?id=157990
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/TestInvocation.cpp: (WTR::TestInvocation::invoke):
+        It is somewhat legitimate for WebContent to not respond to messages after the test
+        is done; it can be e.g. re-doing a costly repaint. So, we should restart is silently,
+        without making the current test fail.
+
+2016-06-03  Youenn Fablet  <youenn.fablet@crf.canon.fr>
+
+        [GTK] Update YouCompleteMe script to make all include paths absolute
+        https://bugs.webkit.org/show_bug.cgi?id=158301
+
+        Reviewed by Michael Catanzaro.
+
+        Before this patch, some include paths were not made absolute.
+        This could make YouCompleteMe plugin to fail extracting information or validating cpp files.
+
+        * gtk/ycm_extra_conf.py:
+
+2016-06-03  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        Unreviewed: add myself to the committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2016-06-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fetch API tests are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=158296
+
+        Reviewed by Alex Christensen.
+
+        Enable Fetch API when running tests.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2016-06-02  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Really display failing JSC stress tests in buildbot dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=158324
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotCombinedQueueView.js:
+        (BuildbotCombinedQueueView.prototype.update): Correctly check for string membership in array.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype._parseData): Correctly check for string membership in array.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotQueueView.js:
+        (BuildbotQueueView.prototype._popoverContentForJavaScriptCoreTestRegressions): Correctly check for string
+        membership in array.
+        (BuildbotQueueView.prototype._presentPopoverForJavaScriptCoreTestRegressions): Ensure that the correct URL is
+        generated after the first time.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotTesterQueueView.js:
+        (BuildbotTesterQueueView.prototype.appendBuilderQueueStatus): Correctly check for string membership in array.
+
+2016-06-02  Michael Saboff  <msaboff@apple.com>
+
+        [iOS]: Some JSC stress tests fail running out of executable memory when the LLInt is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=158317
+
+        Reviewed by Saam Barati.
+
+        Added defaultNoNoLLIntRun variant to run the default tests with the exception of the no-llint
+        variant.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-06-02  Aakash Jain  <aakash_jain@apple.com>
+
+        LayoutTests time out intermittently due to alert about reopening Simulator after it unexpectedly quit
+        https://bugs.webkit.org/show_bug.cgi?id=158305
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort.clean_up_test_run): Delete simulator's savedState directories during cleanup.
+
+2016-06-01  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r191907): Can't enter combining diacritic marks in Web Inspector fields
+        https://bugs.webkit.org/show_bug.cgi?id=158227
+        <rdar://problem/26232464>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add a regression test that runs on Mac only.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewTextInput.mm: Added.
+        (-[DummyNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/editable-body.html: Added.
+
+2016-06-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: iOS: VoiceOver can't access attachments in mail messages
+        https://bugs.webkit.org/show_bug.cgi?id=158198
+
+        Reviewed by Joanmarie Diggs.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::stringForRange):
+        (AccessibilityUIElement::attributedStringForRange):
+        (AccessibilityUIElement::attributedStringRangeIsMisspelled):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::attributedStringForRange):
+        (WTR::AccessibilityUIElement::attributedStringRangeIsMisspelled):
+
 2016-06-01  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Mark GTK+ test /webkit2/WebKitWebInspectorServer/test-open-debugging-session as slow.

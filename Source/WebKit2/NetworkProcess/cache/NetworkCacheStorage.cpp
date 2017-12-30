@@ -113,10 +113,10 @@ public:
 struct Storage::TraverseOperation {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    TraverseOperation(const String& type, TraverseFlags flags, const TraverseHandler& handler)
+    TraverseOperation(const String& type, TraverseFlags flags, TraverseHandler&& handler)
         : type(type)
         , flags(flags)
-        , handler(handler)
+        , handler(WTFMove(handler))
     { }
 
     const String type;
@@ -662,8 +662,7 @@ template <class T> bool retrieveFromMemory(const T& operations, const Key& key, 
     for (auto& operation : operations) {
         if (operation->record.key == key) {
             LOG(NetworkCacheStorage, "(NetworkProcess) found write operation in progress");
-            auto record = operation->record;
-            RunLoop::main().dispatch([record, completionHandler] {
+            RunLoop::main().dispatch([record = operation->record, completionHandler = WTFMove(completionHandler)] {
                 completionHandler(std::make_unique<Storage::Record>(record));
             });
             return true;
