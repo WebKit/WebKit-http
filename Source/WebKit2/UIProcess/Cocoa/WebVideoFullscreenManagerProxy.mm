@@ -34,6 +34,7 @@
 #import "WebVideoFullscreenManagerMessages.h"
 #import "WebVideoFullscreenManagerProxyMessages.h"
 #import <QuartzCore/CoreAnimation.h>
+#import <WebCore/MachSendRight.h>
 #import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/TimeRanges.h>
 #import <WebKitSystemInterface.h>
@@ -123,56 +124,6 @@ WebVideoFullscreenModelContext::~WebVideoFullscreenModelContext()
 {
 }
 
-void WebVideoFullscreenModelContext::play()
-{
-    m_playbackSessionModel->play();
-}
-
-void WebVideoFullscreenModelContext::pause()
-{
-    m_playbackSessionModel->pause();
-}
-
-void WebVideoFullscreenModelContext::togglePlayState()
-{
-    m_playbackSessionModel->togglePlayState();
-}
-
-void WebVideoFullscreenModelContext::beginScrubbing()
-{
-    m_playbackSessionModel->beginScrubbing();
-}
-
-void WebVideoFullscreenModelContext::endScrubbing()
-{
-    m_playbackSessionModel->endScrubbing();
-}
-
-void WebVideoFullscreenModelContext::seekToTime(double time)
-{
-    m_playbackSessionModel->seekToTime(time);
-}
-
-void WebVideoFullscreenModelContext::fastSeek(double time)
-{
-    m_playbackSessionModel->fastSeek(time);
-}
-
-void WebVideoFullscreenModelContext::beginScanningForward()
-{
-    m_playbackSessionModel->beginScanningForward();
-}
-
-void WebVideoFullscreenModelContext::beginScanningBackward()
-{
-    m_playbackSessionModel->beginScanningBackward();
-}
-
-void WebVideoFullscreenModelContext::endScanning()
-{
-    m_playbackSessionModel->endScanning();
-}
-
 void WebVideoFullscreenModelContext::requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
 {
     if (m_manager)
@@ -189,16 +140,6 @@ void WebVideoFullscreenModelContext::setVideoLayerGravity(WebCore::WebVideoFulls
 {
     if (m_manager)
         m_manager->setVideoLayerGravity(m_contextId, gravity);
-}
-
-void WebVideoFullscreenModelContext::selectAudioMediaOption(uint64_t optionId)
-{
-    m_playbackSessionModel->selectAudioMediaOption(optionId);
-}
-
-void WebVideoFullscreenModelContext::selectLegibleMediaOption(uint64_t optionId)
-{
-    m_playbackSessionModel->selectLegibleMediaOption(optionId);
 }
 
 void WebVideoFullscreenModelContext::fullscreenModeChanged(WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode)
@@ -305,6 +246,18 @@ bool WebVideoFullscreenManagerProxy::mayAutomaticallyShowVideoPictureInPicture()
     }
     return false;
 }
+
+#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
+bool WebVideoFullscreenManagerProxy::isPlayingVideoInEnhancedFullscreen() const
+{
+    for (auto& tuple : m_contextMap.values()) {
+        if (std::get<1>(tuple)->isPlayingVideoInEnhancedFullscreen())
+            return true;
+    }
+    
+    return false;
+}
+#endif
 
 void WebVideoFullscreenManagerProxy::applicationDidBecomeActive()
 {
@@ -509,7 +462,10 @@ void WebVideoFullscreenManagerProxy::setVideoLayerFrame(uint64_t contextId, WebC
 #if PLATFORM(IOS)
         mach_port_name_t fencePort = [UIWindow _synchronizeDrawingAcrossProcesses];
 #else
-        mach_port_name_t fencePort = 0;
+        MachSendRight fenceSendRight;
+        if (DrawingAreaProxy* drawingArea = m_page->drawingArea())
+            fenceSendRight = drawingArea->createFence();
+        mach_port_name_t fencePort = fenceSendRight.leakSendRight();
 #endif
 
         m_page->send(Messages::WebVideoFullscreenManager::SetVideoLayerFrameFenced(contextId, frame, IPC::Attachment(fencePort, MACH_MSG_TYPE_MOVE_SEND)), m_page->pageID());

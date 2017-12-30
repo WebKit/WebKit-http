@@ -1231,6 +1231,7 @@ set(WebCore_SOURCES
     bindings/js/JSWorkerGlobalScopeBase.cpp
     bindings/js/JSWorkerGlobalScopeCustom.cpp
     bindings/js/JSXMLHttpRequestCustom.cpp
+    bindings/js/JSXPathNSResolverCustom.cpp
     bindings/js/JSXPathResultCustom.cpp
     bindings/js/JSXSLTProcessorCustom.cpp
     bindings/js/ReadableStreamController.cpp
@@ -1742,6 +1743,7 @@ set(WebCore_SOURCES
     html/InputTypeNames.cpp
     html/LabelableElement.cpp
     html/LabelsNodeList.cpp
+    html/LinkIconCollector.cpp
     html/LinkRelAttribute.cpp
     html/MediaController.cpp
     html/MediaDocument.cpp
@@ -2114,6 +2116,7 @@ set(WebCore_SOURCES
     platform/FileChooser.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
+    platform/GenericTaskQueue.cpp
     platform/Language.cpp
     platform/Length.cpp
     platform/LengthBox.cpp

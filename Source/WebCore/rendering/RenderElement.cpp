@@ -31,13 +31,14 @@
 #include "CursorList.h"
 #include "ElementChildIterator.h"
 #include "EventHandler.h"
+#include "FlowThreadController.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLBodyElement.h"
 #include "HTMLHtmlElement.h"
 #include "HTMLNames.h"
-#include "FlowThreadController.h"
+#include "Logging.h"
 #include "PathUtilities.h"
 #include "RenderBlock.h"
 #include "RenderCounter.h"
@@ -2166,6 +2167,81 @@ void RenderElement::updateOutlineAutoAncestor(bool hasOutlineAuto) const
     if (hasContinuation())
         downcast<RenderBoxModelObject>(*this).continuation()->updateOutlineAutoAncestor(hasOutlineAuto);
 }
+
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+static RenderObject::BlockContentHeightType includeNonFixedHeight(const RenderObject& renderer)
+{
+    const RenderStyle& style = renderer.style();
+    if (style.height().type() == Fixed) {
+        if (is<RenderBlock>(renderer)) {
+            // For fixed height styles, if the overflow size of the element spills out of the specified
+            // height, assume we can apply text auto-sizing.
+            if (style.overflowY() == OVISIBLE
+                && style.height().value() < downcast<RenderBlock>(renderer).layoutOverflowRect().maxY())
+                return RenderObject::OverflowHeight;
+        }
+        return RenderObject::FixedHeight;
+    }
+    return RenderObject::FlexibleHeight;
+}
+
+void RenderElement::adjustComputedFontSizesOnBlocks(float size, float visibleWidth)
+{
+    Document* document = view().frameView().frame().document();
+    if (!document)
+        return;
+
+    Vector<int> depthStack;
+    int currentDepth = 0;
+    int newFixedDepth = 0;
+
+    // We don't apply autosizing to nodes with fixed height normally.
+    // But we apply it to nodes which are located deep enough
+    // (nesting depth is greater than some const) inside of a parent block
+    // which has fixed height but its content overflows intentionally.
+    for (RenderObject* descendent = traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth); descendent; descendent = descendent->traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth)) {
+        while (depthStack.size() > 0 && currentDepth <= depthStack[depthStack.size() - 1])
+            depthStack.remove(depthStack.size() - 1);
+        if (newFixedDepth)
+            depthStack.append(newFixedDepth);
+
+        int stackSize = depthStack.size();
+        if (is<RenderBlockFlow>(*descendent) && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
+            downcast<RenderBlockFlow>(*descendent).adjustComputedFontSizes(size, visibleWidth);
+        newFixedDepth = 0;
+    }
+
+    // Remove style from auto-sizing table that are no longer valid.
+    document->validateAutoSizingNodes();
+}
+
+void RenderElement::resetTextAutosizing()
+{
+    Document* document = view().frameView().frame().document();
+    if (!document)
+        return;
+
+    LOG(TextAutosizing, "RenderElement::resetTextAutosizing()");
+
+    document->resetAutoSizingNodes();
+
+    Vector<int> depthStack;
+    int currentDepth = 0;
+    int newFixedDepth = 0;
+
+    for (RenderObject* descendent = traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth); descendent; descendent = descendent->traverseNext(this, includeNonFixedHeight, currentDepth, newFixedDepth)) {
+        while (depthStack.size() > 0 && currentDepth <= depthStack[depthStack.size() - 1])
+            depthStack.remove(depthStack.size() - 1);
+        if (newFixedDepth)
+            depthStack.append(newFixedDepth);
+
+        int stackSize = depthStack.size();
+        if (is<RenderBlockFlow>(*descendent) && !descendent->isListItem() && (!stackSize || currentDepth - depthStack[stackSize - 1] > TextAutoSizingFixedHeightDepth))
+            downcast<RenderBlockFlow>(*descendent).resetComputedFontSize();
+        newFixedDepth = 0;
+    }
+}
+#endif // ENABLE(IOS_TEXT_AUTOSIZING)
 
 RenderBlock* containingBlockForFixedPosition(const RenderElement* element)
 {

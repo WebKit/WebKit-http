@@ -59,6 +59,7 @@ public:
     }
     virtual ~WebVideoFullscreenInterfaceMac();
     WebVideoFullscreenModel* webVideoFullscreenModel() const { return m_videoFullscreenModel; }
+    WebPlaybackSessionModel* webPlaybackSessionModel() const { return m_playbackSessionInterface->webPlaybackSessionModel(); }
     WEBCORE_EXPORT void setWebVideoFullscreenModel(WebVideoFullscreenModel*);
     WebVideoFullscreenChangeObserver* webVideoFullscreenChangeObserver() const { return m_fullscreenChangeObserver; }
     WEBCORE_EXPORT void setWebVideoFullscreenChangeObserver(WebVideoFullscreenChangeObserver*);
@@ -91,6 +92,8 @@ public:
     bool isMode(HTMLMediaElementEnums::VideoFullscreenMode mode) const { return m_mode == mode; }
     void setMode(HTMLMediaElementEnums::VideoFullscreenMode);
     void clearMode(HTMLMediaElementEnums::VideoFullscreenMode);
+
+    bool isPlayingVideoInEnhancedFullscreen() const;
 
     WEBCORE_EXPORT bool mayAutomaticallyShowVideoPictureInPicture() const { return false; }
     void applicationDidBecomeActive() { }

@@ -616,6 +616,15 @@ void PlatformCALayerCocoa::setHidden(bool value)
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
+bool PlatformCALayerCocoa::contentsHidden() const
+{
+    return false;
+}
+
+void PlatformCALayerCocoa::setContentsHidden(bool)
+{
+}
+
 void PlatformCALayerCocoa::setBackingStoreAttached(bool)
 {
     // We could throw away backing store here with setContents:nil.

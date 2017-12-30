@@ -1676,15 +1676,16 @@ void WebPage::setUseFixedLayout(bool fixed)
     send(Messages::WebPageProxy::UseFixedLayoutDidChange(fixed));
 }
 
-void WebPage::setFixedLayoutSize(const IntSize& size)
+bool WebPage::setFixedLayoutSize(const IntSize& size)
 {
     FrameView* view = mainFrameView();
     if (!view || view->fixedLayoutSize() == size)
-        return;
+        return false;
 
     view->setFixedLayoutSize(size);
 
     send(Messages::WebPageProxy::FixedLayoutSizeDidChange(size));
+    return true;
 }
 
 IntSize WebPage::fixedLayoutSize() const
@@ -2919,8 +2920,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(WEB_ANIMATIONS)
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled(store.getBoolValueForKey(WebPreferencesKey::webAnimationsEnabledKey()));
 #endif
-    RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
-    RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCompositingEnabledKey()));
     settings.setWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::webGLEnabledKey()));
     settings.setForceSoftwareWebGLRendering(store.getBoolValueForKey(WebPreferencesKey::forceSoftwareWebGLRenderingKey()));
     settings.setAccelerated2dCanvasEnabled(store.getBoolValueForKey(WebPreferencesKey::accelerated2dCanvasEnabledKey()));
@@ -2968,10 +2967,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if PLATFORM(IOS) && HAVE(AVKIT)
     settings.setAVKitEnabled(true);
-#endif
-
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-    settings.setMinimumZoomFontSize(store.getDoubleValueForKey(WebPreferencesKey::minimumZoomFontSizeKey()));
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -3024,8 +3019,11 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setPrimaryPlugInSnapshotDetectionEnabled(store.getBoolValueForKey(WebPreferencesKey::primaryPlugInSnapshotDetectionEnabledKey()));
     settings.setUsesEncodingDetector(store.getBoolValueForKey(WebPreferencesKey::usesEncodingDetectorKey()));
 
-#if ENABLE(TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
     settings.setTextAutosizingEnabled(store.getBoolValueForKey(WebPreferencesKey::textAutosizingEnabledKey()));
+#endif
+#if ENABLE(IOS_TEXT_AUTOSIZING)
+    settings.setMinimumZoomFontSize(store.getDoubleValueForKey(WebPreferencesKey::minimumZoomFontSizeKey()));
 #endif
 
     settings.setLogsPageMessagesToSystemConsoleEnabled(store.getBoolValueForKey(WebPreferencesKey::logsPageMessagesToSystemConsoleEnabledKey()));
@@ -3108,6 +3106,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled(store.getBoolValueForKey(WebPreferencesKey::downloadAttributeEnabledKey()));
 #endif
 
+#if ENABLE(SHADOW_DOM)
+    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(store.getBoolValueForKey(WebPreferencesKey::shadowDOMEnabledKey()));
+#endif
+
     // Experimental Features.
 
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -3116,10 +3118,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(CUSTOM_ELEMENTS)
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(store.getBoolValueForKey(WebPreferencesKey::customElementsEnabledKey()));
-#endif
-
-#if ENABLE(SHADOW_DOM)
-    RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(store.getBoolValueForKey(WebPreferencesKey::shadowDOMEnabledKey()));
 #endif
 
 #if ENABLE(WEBGL2)
@@ -4991,7 +4989,7 @@ void WebPage::determinePrimarySnapshottedPlugIn()
     IntRect searchRect = IntRect(IntPoint(), corePage()->mainFrame().view()->contentsSize());
     searchRect.intersect(IntRect(IntPoint(), IntSize(primarySnapshottedPlugInSearchLimit, primarySnapshottedPlugInSearchLimit)));
 
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent);
 
     HTMLPlugInImageElement* candidatePlugIn = nullptr;
     unsigned candidatePlugInArea = 0;

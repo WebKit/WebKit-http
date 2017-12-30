@@ -25,6 +25,7 @@
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvert.h"
 #include "JSDOMStringList.h"
 #include "JSSVGPoint.h"
 #include "JSSerializedScriptValue.h"
@@ -128,7 +129,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestTypedefsConstructor::construct(Exe
     auto* castedThis = jsCast<JSTestTypedefsConstructor*>(state->callee());
     if (UNLIKELY(state->argumentCount() < 2))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    String hello = state->argument(0).toWTFString(state);
+    auto hello = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
     if (UNLIKELY(!state->argument(1).isObject()))
@@ -353,10 +354,10 @@ bool setJSTestTypedefsUnsignedLongLongAttr(ExecState* state, EncodedJSValue this
         return throwSetterTypeError(*state, "TestTypedefs", "unsignedLongLongAttr");
     }
     auto& impl = castedThis->wrapped();
-    unsigned long long nativeValue = toUInt64(state, value, NormalConversion);
+    auto nativeValue = convert<uint64_t>(*state, value, NormalConversion);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setUnsignedLongLongAttr(nativeValue);
+    impl.setUnsignedLongLongAttr(WTFMove(nativeValue));
     return true;
 }
 
@@ -370,10 +371,10 @@ bool setJSTestTypedefsImmutableSerializedScriptValue(ExecState* state, EncodedJS
         return throwSetterTypeError(*state, "TestTypedefs", "immutableSerializedScriptValue");
     }
     auto& impl = castedThis->wrapped();
-    RefPtr<SerializedScriptValue> nativeValue = SerializedScriptValue::create(state, value, 0, 0);
+    auto nativeValue = SerializedScriptValue::create(state, value, 0, 0);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setImmutableSerializedScriptValue(nativeValue);
+    impl.setImmutableSerializedScriptValue(WTFMove(nativeValue));
     return true;
 }
 
@@ -387,10 +388,10 @@ bool setJSTestTypedefsAttrWithGetterException(ExecState* state, EncodedJSValue t
         return throwSetterTypeError(*state, "TestTypedefs", "attrWithGetterException");
     }
     auto& impl = castedThis->wrapped();
-    int nativeValue = toInt32(state, value, NormalConversion);
+    auto nativeValue = convert<int32_t>(*state, value, NormalConversion);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setAttrWithGetterException(nativeValue);
+    impl.setAttrWithGetterException(WTFMove(nativeValue));
     return true;
 }
 
@@ -405,10 +406,10 @@ bool setJSTestTypedefsAttrWithSetterException(ExecState* state, EncodedJSValue t
     }
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
-    int nativeValue = toInt32(state, value, NormalConversion);
+    auto nativeValue = convert<int32_t>(*state, value, NormalConversion);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setAttrWithSetterException(nativeValue, ec);
+    impl.setAttrWithSetterException(WTFMove(nativeValue), ec);
     setDOMException(state, ec);
     return true;
 }
@@ -423,10 +424,10 @@ bool setJSTestTypedefsStringAttrWithGetterException(ExecState* state, EncodedJSV
         return throwSetterTypeError(*state, "TestTypedefs", "stringAttrWithGetterException");
     }
     auto& impl = castedThis->wrapped();
-    String nativeValue = value.toWTFString(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setStringAttrWithGetterException(nativeValue);
+    impl.setStringAttrWithGetterException(WTFMove(nativeValue));
     return true;
 }
 
@@ -441,10 +442,10 @@ bool setJSTestTypedefsStringAttrWithSetterException(ExecState* state, EncodedJSV
     }
     auto& impl = castedThis->wrapped();
     ExceptionCode ec = 0;
-    String nativeValue = value.toWTFString(state);
+    auto nativeValue = value.toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return false;
-    impl.setStringAttrWithSetterException(nativeValue, ec);
+    impl.setStringAttrWithSetterException(WTFMove(nativeValue), ec);
     setDOMException(state, ec);
     return true;
 }
@@ -463,10 +464,10 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionFunc(ExecState* stat
         return throwThisTypeError(*state, "TestTypedefs", "func");
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestTypedefs::info());
     auto& impl = castedThis->wrapped();
-    Vector<int> x = toNativeArray<int>(state, state->argument(0));
+    auto x = toNativeArray<int32_t>(state, state->argument(0));
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.func(x);
+    impl.func(WTFMove(x));
     return JSValue::encode(jsUndefined());
 }
 
@@ -480,22 +481,22 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionSetShadow(ExecState*
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 3))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    float width = state->argument(0).toFloat(state);
+    auto width = convert<float>(*state, state->argument(0), ShouldAllowNonFinite::Yes);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    float height = state->argument(1).toFloat(state);
+    auto height = convert<float>(*state, state->argument(1), ShouldAllowNonFinite::Yes);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    float blur = state->argument(2).toFloat(state);
+    auto blur = convert<float>(*state, state->argument(2), ShouldAllowNonFinite::Yes);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    String color = state->argument(3).isUndefined() ? String() : state->uncheckedArgument(3).toWTFString(state);
+    auto color = state->argument(3).isUndefined() ? String() : state->uncheckedArgument(3).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    Optional<float> alpha = state->argument(4).isUndefined() ? Optional<float>() : state->uncheckedArgument(4).toFloat(state);
+    auto alpha = state->argument(4).isUndefined() ? Optional<float>() : convert<float>(*state, state->uncheckedArgument(4), ShouldAllowNonFinite::Yes);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.setShadow(width, height, blur, color, alpha);
+    impl.setShadow(WTFMove(width), WTFMove(height), WTFMove(blur), WTFMove(color), WTFMove(alpha));
     return JSValue::encode(jsUndefined());
 }
 
@@ -509,10 +510,10 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionMethodWithSequenceAr
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<RefPtr<SerializedScriptValue>> sequenceArg = (toRefPtrNativeArray<SerializedScriptValue, JSSerializedScriptValue>(state, state->argument(0), &JSSerializedScriptValue::toWrapped));
+    auto sequenceArg = (toRefPtrNativeArray<SerializedScriptValue, JSSerializedScriptValue>(state, state->argument(0), &JSSerializedScriptValue::toWrapped));
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    JSValue result = jsNumber(impl.methodWithSequenceArg(sequenceArg));
+    JSValue result = jsNumber(impl.methodWithSequenceArg(WTFMove(sequenceArg)));
     return JSValue::encode(result);
 }
 
@@ -526,10 +527,10 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionNullableArrayArg(Exe
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<String> arrayArg = toNativeArray<String>(state, state->argument(0));
+    auto arrayArg = toNativeArray<String>(state, state->argument(0));
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.nullableArrayArg(arrayArg);
+    impl.nullableArrayArg(WTFMove(arrayArg));
     return JSValue::encode(jsUndefined());
 }
 
@@ -543,13 +544,13 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionFuncWithClamp(ExecSt
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    unsigned long long arg1 = toUInt64(state, state->argument(0), Clamp);
+    auto arg1 = convert<uint64_t>(*state, state->argument(0), Clamp);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    Optional<unsigned long long> arg2 = state->argument(1).isUndefined() ? Optional<unsigned long long>() : toUInt64(state, state->uncheckedArgument(1), Clamp);
+    auto arg2 = state->argument(1).isUndefined() ? Optional<uint64_t>() : convert<uint64_t>(*state, state->uncheckedArgument(1), Clamp);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    impl.funcWithClamp(arg1, arg2);
+    impl.funcWithClamp(WTFMove(arg1), WTFMove(arg2));
     return JSValue::encode(jsUndefined());
 }
 
@@ -576,10 +577,10 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionStringArrayFunction(
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
     ExceptionCode ec = 0;
-    Vector<String> values = toNativeArray<String>(state, state->argument(0));
+    auto values = toNativeArray<String>(state, state->argument(0));
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    JSValue result = jsArray(state, castedThis->globalObject(), impl.stringArrayFunction(values, ec));
+    JSValue result = jsArray(state, castedThis->globalObject(), impl.stringArrayFunction(WTFMove(values), ec));
 
     setDOMException(state, ec);
     return JSValue::encode(result);
@@ -596,10 +597,10 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionStringArrayFunction2
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
     ExceptionCode ec = 0;
-    Vector<String> values = toNativeArray<String>(state, state->argument(0));
+    auto values = toNativeArray<String>(state, state->argument(0));
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    JSValue result = jsArray(state, castedThis->globalObject(), impl.stringArrayFunction2(values, ec));
+    JSValue result = jsArray(state, castedThis->globalObject(), impl.stringArrayFunction2(WTFMove(values), ec));
 
     setDOMException(state, ec);
     return JSValue::encode(result);
@@ -615,10 +616,10 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionCallWithSequenceThat
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, createNotEnoughArgumentsError(state));
-    Vector<RefPtr<TestEventTarget>> sequenceArg = (toRefPtrNativeArray<TestEventTarget, JSTestEventTarget>(state, state->argument(0), &JSTestEventTarget::toWrapped));
+    auto sequenceArg = (toRefPtrNativeArray<TestEventTarget, JSTestEventTarget>(state, state->argument(0), &JSTestEventTarget::toWrapped));
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    JSValue result = jsBoolean(impl.callWithSequenceThatRequiresInclude(sequenceArg));
+    JSValue result = jsBoolean(impl.callWithSequenceThatRequiresInclude(WTFMove(sequenceArg)));
     return JSValue::encode(result);
 }
 

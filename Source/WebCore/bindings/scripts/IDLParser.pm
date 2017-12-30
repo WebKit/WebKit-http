@@ -35,9 +35,10 @@ use constant EmptyToken => 5;
 
 # Used to represent a parsed IDL document
 struct( idlDocument => {
-    interfaces => '@', # All parsed interfaces
-    enumerations => '@', # All parsed enumerations
-    fileName => '$', # file name
+    interfaces => '@', # List of 'domInterface'
+    enumerations => '@', # List of 'domEnum'
+    dictionaries => '@', # List of 'domDictionary'
+    fileName => '$',
 });
 
 # Used to represent 'interface' blocks
@@ -107,6 +108,12 @@ struct( domConstant => {
 struct( domEnum => {
     name => '$', # Enumeration identifier
     values => '@', # Enumeration values (list of unique strings)
+    extendedAttributes => '$',
+});
+
+struct( domDictionary => {
+    name => '$',
+    members => '@', # List of 'domSignature'
     extendedAttributes => '$',
 });
 
@@ -217,6 +224,8 @@ sub Parse
             push(@{$document->interfaces}, $definition);
         } elsif (ref($definition) eq "domEnum") {
             push(@{$document->enumerations}, $definition);
+        } elsif (ref($definition) eq "domDictionary") {
+            push(@{$document->dictionaries}, $definition);
         } else {
             die "Unrecognized IDL definition kind: \"" . ref($definition) . "\"";
         }
@@ -333,27 +342,27 @@ sub identifierRemoveNullablePrefix
 my $nextAttribute_1 = '^(attribute|inherit|readonly)$';
 my $nextPrimitiveType_1 = '^(int|long|short|unsigned)$';
 my $nextPrimitiveType_2 = '^(double|float|unrestricted)$';
-my $nextArgumentList_1 = '^(\(|::|ByteString|DOMString|Date|\[|any|boolean|byte|double|float|in|int|long|object|octet|optional|sequence|short|unrestricted|unsigned)$';
-my $nextNonAnyType_1 = '^(boolean|byte|double|float|int|long|octet|short|unrestricted|unsigned)$';
-my $nextInterfaceMember_1 = '^(\(|::|ByteString|DOMString|Date|any|attribute|boolean|byte|creator|deleter|double|float|getter|inherit|int|legacycaller|long|object|octet|readonly|sequence|serializer|setter|short|static|stringifier|unrestricted|unsigned|void)$';
+my $nextArgumentList_1 = '^(\(|::|ByteString|DOMString|Date|\[|any|boolean|byte|double|float|in|long|object|octet|optional|sequence|short|unrestricted|unsigned)$';
+my $nextNonAnyType_1 = '^(boolean|byte|double|float|long|octet|short|unrestricted|unsigned)$';
+my $nextInterfaceMember_1 = '^(\(|::|ByteString|DOMString|Date|any|attribute|boolean|byte|creator|deleter|double|float|getter|inherit|legacycaller|long|object|octet|readonly|sequence|serializer|setter|short|static|stringifier|unrestricted|unsigned|void)$';
 my $nextAttributeOrOperation_1 = '^(static|stringifier)$';
-my $nextAttributeOrOperation_2 = '^(\(|::|ByteString|DOMString|Date|any|boolean|byte|creator|deleter|double|float|getter|int|legacycaller|long|object|octet|sequence|setter|short|unrestricted|unsigned|void)$';
+my $nextAttributeOrOperation_2 = '^(\(|::|ByteString|DOMString|Date|any|boolean|byte|creator|deleter|double|float|getter|legacycaller|long|object|octet|sequence|setter|short|unrestricted|unsigned|void)$';
 my $nextUnrestrictedFloatType_1 = '^(double|float)$';
 my $nextExtendedAttributeRest3_1 = '^(\,|::|\])$';
-my $nextExceptionField_1 = '^(\(|::|ByteString|DOMString|Date|any|boolean|byte|double|float|int|long|object|octet|sequence|short|unrestricted|unsigned)$';
-my $nextType_1 = '^(::|ByteString|DOMString|Date|any|boolean|byte|double|float|int|long|object|octet|sequence|short|unrestricted|unsigned)$';
+my $nextExceptionField_1 = '^(\(|::|ByteString|DOMString|Date|any|boolean|byte|double|float|long|object|octet|sequence|short|unrestricted|unsigned)$';
+my $nextType_1 = '^(::|ByteString|DOMString|Date|any|boolean|byte|double|float|long|object|octet|sequence|short|unrestricted|unsigned)$';
 my $nextSpecials_1 = '^(creator|deleter|getter|legacycaller|setter)$';
 my $nextDefinitions_1 = '^(::|callback|dictionary|enum|exception|interface|partial|typedef)$';
-my $nextExceptionMembers_1 = '^(\(|::|ByteString|DOMString|Date|\[|any|boolean|byte|const|double|float|int|long|object|octet|optional|sequence|short|unrestricted|unsigned)$';
+my $nextExceptionMembers_1 = '^(\(|::|ByteString|DOMString|Date|\[|any|boolean|byte|const|double|float|long|object|octet|optional|sequence|short|unrestricted|unsigned)$';
 my $nextAttributeRest_1 = '^(attribute|readonly)$';
-my $nextInterfaceMembers_1 = '^(\(|::|ByteString|DOMString|Date|any|attribute|boolean|byte|const|creator|deleter|double|float|getter|inherit|int|legacycaller|long|object|octet|readonly|sequence|serializer|setter|short|static|stringifier|unrestricted|unsigned|void)$';
-my $nextSingleType_1 = '^(::|ByteString|DOMString|Date|boolean|byte|double|float|int|long|object|octet|sequence|short|unrestricted|unsigned)$';
+my $nextInterfaceMembers_1 = '^(\(|::|ByteString|DOMString|Date|any|attribute|boolean|byte|const|creator|deleter|double|float|getter|inherit|legacycaller|long|object|octet|readonly|sequence|serializer|setter|short|static|stringifier|unrestricted|unsigned|void)$';
+my $nextSingleType_1 = '^(::|ByteString|DOMString|Date|boolean|byte|double|float|long|object|octet|sequence|short|unrestricted|unsigned)$';
 my $nextArgumentName_1 = '^(attribute|callback|const|creator|deleter|dictionary|enum|exception|getter|implements|inherit|interface|legacycaller|partial|serializer|setter|static|stringifier|typedef|unrestricted)$';
 my $nextConstValue_1 = '^(false|true)$';
 my $nextConstValue_2 = '^(-|Infinity|NaN)$';
 my $nextDefinition_1 = '^(callback|interface)$';
-my $nextAttributeOrOperationRest_1 = '^(\(|::|ByteString|DOMString|Date|any|boolean|byte|double|float|int|long|object|octet|sequence|short|unrestricted|unsigned|void)$';
-my $nextUnsignedIntegerType_1 = '^(int|long|short)$';
+my $nextAttributeOrOperationRest_1 = '^(\(|::|ByteString|DOMString|Date|any|boolean|byte|double|float|long|object|octet|sequence|short|unrestricted|unsigned|void)$';
+my $nextUnsignedIntegerType_1 = '^(long|short)$';
 my $nextDefaultValue_1 = '^(-|Infinity|NaN|false|null|true)$';
 
 
@@ -623,14 +632,18 @@ sub parseDictionary
 
     my $next = $self->nextToken();
     if ($next->value() eq "dictionary") {
+        my $dictionary = domDictionary->new();
+        $dictionary->extendedAttributes($extendedAttributeList);
         $self->assertTokenValue($self->getToken(), "dictionary", __LINE__);
-        $self->assertTokenType($self->getToken(), IdentifierToken);
+        my $nameToken = $self->getToken();
+        $self->assertTokenType($nameToken, IdentifierToken);
+        $dictionary->name($nameToken->value());
         $self->parseInheritance();
         $self->assertTokenValue($self->getToken(), "{", __LINE__);
-        $self->parseDictionaryMembers();
+        $dictionary->members($self->parseDictionaryMembers());
         $self->assertTokenValue($self->getToken(), "}", __LINE__);
         $self->assertTokenValue($self->getToken(), ";", __LINE__);
-        return;
+        return $dictionary;
     }
     $self->assertUnexpectedToken($next->value(), __LINE__);
 }
@@ -639,15 +652,19 @@ sub parseDictionaryMembers
 {
     my $self = shift;
 
+    my @members = ();
+
     while (1) {
         my $extendedAttributeList = $self->parseExtendedAttributeListAllowEmpty();
         my $next = $self->nextToken();
         if ($next->type() == IdentifierToken || $next->value() =~ /$nextExceptionField_1/) {
-            $self->parseDictionaryMember($extendedAttributeList);
+            push(@members, $self->parseDictionaryMember($extendedAttributeList));
         } else {
             last;
         }
     }
+
+    return \@members;
 }
 
 sub parseDictionaryMember
@@ -657,11 +674,20 @@ sub parseDictionaryMember
 
     my $next = $self->nextToken();
     if ($next->type() == IdentifierToken || $next->value() =~ /$nextExceptionField_1/) {
-        $self->parseType();
-        $self->assertTokenType($self->getToken(), IdentifierToken);
-        $self->parseDefault();
+        my $member = domSignature->new();
+        if ($next->value ne "required") {
+            $member->isOptional(1);
+        } else {
+            $self->assertTokenValue($self->getToken(), "required", __LINE__);
+            $member->isOptional(0);
+        }
+        $member->type($self->parseType());
+        my $nameToken = $self->getToken();
+        $self->assertTokenType($nameToken, IdentifierToken);
+        $member->name($nameToken->value);
+        $member->default($self->parseDefault());
         $self->assertTokenValue($self->getToken(), ";", __LINE__);
-        return;
+        return $member;
     }
     $self->assertUnexpectedToken($next->value(), __LINE__);
 }

@@ -62,16 +62,21 @@ IDBOpenDBRequest::IDBOpenDBRequest(ScriptExecutionContext& context, IDBClient::I
 
 IDBOpenDBRequest::~IDBOpenDBRequest()
 {
+    ASSERT(currentThread() == originThreadID());
 }
 
 void IDBOpenDBRequest::onError(const IDBResultData& data)
 {
+    ASSERT(currentThread() == originThreadID());
+
     m_domError = DOMError::create(data.error().name(), data.error().message());
     enqueueEvent(IDBRequestCompletionEvent::create(eventNames().errorEvent, true, true, *this));
 }
 
 void IDBOpenDBRequest::versionChangeTransactionDidFinish()
 {
+    ASSERT(currentThread() == originThreadID());
+
     // 3.3.7 "versionchange" transaction steps
     // When the transaction is finished, after firing complete/abort on the transaction, immediately set request's transaction property to null.
     m_shouldExposeTransactionToDOM = false;
@@ -81,6 +86,7 @@ void IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit()
 {
     LOG(IndexedDB, "IDBOpenDBRequest::fireSuccessAfterVersionChangeCommit()");
 
+    ASSERT(currentThread() == originThreadID());
     ASSERT(hasPendingActivity());
     m_transaction->addRequest(*this);
 
@@ -94,6 +100,7 @@ void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
 {
     LOG(IndexedDB, "IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()");
 
+    ASSERT(currentThread() == originThreadID());
     ASSERT(hasPendingActivity());
 
     IDBError idbError(IDBDatabaseException::AbortError);
@@ -106,10 +113,12 @@ void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
 
 bool IDBOpenDBRequest::dispatchEvent(Event& event)
 {
+    ASSERT(currentThread() == originThreadID());
+
     bool result = IDBRequest::dispatchEvent(event);
 
     if (m_transaction && m_transaction->isVersionChange() && (event.type() == eventNames().errorEvent || event.type() == eventNames().successEvent))
-        m_transaction->database().serverConnection().didFinishHandlingVersionChangeTransaction(*m_transaction);
+        m_transaction->database().connectionProxy().didFinishHandlingVersionChangeTransaction(*m_transaction);
 
     return result;
 }
@@ -117,6 +126,8 @@ bool IDBOpenDBRequest::dispatchEvent(Event& event)
 void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)
 {
     LOG(IndexedDB, "IDBOpenDBRequest::onSuccess()");
+
+    ASSERT(currentThread() == originThreadID());
 
     setResult(IDBDatabase::create(*scriptExecutionContext(), connectionProxy(), resultData));
     m_isDone = true;
@@ -126,6 +137,8 @@ void IDBOpenDBRequest::onSuccess(const IDBResultData& resultData)
 
 void IDBOpenDBRequest::onUpgradeNeeded(const IDBResultData& resultData)
 {
+    ASSERT(currentThread() == originThreadID());
+
     Ref<IDBDatabase> database = IDBDatabase::create(*scriptExecutionContext(), connectionProxy(), resultData);
     Ref<IDBTransaction> transaction = database->startVersionChangeTransaction(resultData.transactionInfo(), *this);
 
@@ -147,6 +160,8 @@ void IDBOpenDBRequest::onUpgradeNeeded(const IDBResultData& resultData)
 
 void IDBOpenDBRequest::onDeleteDatabaseSuccess(const IDBResultData& resultData)
 {
+    ASSERT(currentThread() == originThreadID());
+
     uint64_t oldVersion = resultData.databaseInfo().version();
 
     LOG(IndexedDB, "IDBOpenDBRequest::onDeleteDatabaseSuccess() - current version is %" PRIu64, oldVersion);
@@ -161,16 +176,18 @@ void IDBOpenDBRequest::requestCompleted(const IDBResultData& data)
 {
     LOG(IndexedDB, "IDBOpenDBRequest::requestCompleted");
 
+    ASSERT(currentThread() == originThreadID());
+
     // If an Open request was completed after the page has navigated, leaving this request
     // with a stopped script execution context, we need to message back to the server so it
     // doesn't hang waiting on a database connection or transaction that will never exist.
     if (m_contextStopped) {
         switch (data.type()) {
         case IDBResultType::OpenDatabaseSuccess:
-            connectionProxy().connectionToServer().abortOpenAndUpgradeNeeded(data.databaseConnectionIdentifier(), IDBResourceIdentifier::emptyValue());
+            connectionProxy().abortOpenAndUpgradeNeeded(data.databaseConnectionIdentifier(), IDBResourceIdentifier::emptyValue());
             break;
         case IDBResultType::OpenDatabaseUpgradeNeeded:
-            connectionProxy().connectionToServer().abortOpenAndUpgradeNeeded(data.databaseConnectionIdentifier(), data.transactionInfo().identifier());
+            connectionProxy().abortOpenAndUpgradeNeeded(data.databaseConnectionIdentifier(), data.transactionInfo().identifier());
             break;
         default:
             break;
@@ -199,6 +216,8 @@ void IDBOpenDBRequest::requestCompleted(const IDBResultData& data)
 
 void IDBOpenDBRequest::requestBlocked(uint64_t oldVersion, uint64_t newVersion)
 {
+    ASSERT(currentThread() == originThreadID());
+
     LOG(IndexedDB, "IDBOpenDBRequest::requestBlocked");
     enqueueEvent(IDBVersionChangeEvent::create(oldVersion, newVersion, eventNames().blockedEvent));
 }

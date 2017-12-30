@@ -53,7 +53,6 @@ public:
         explicit Backup(Settings&);
         void restoreTo(Settings&);
 
-        bool m_originalCSSShapesEnabled;
         EditingBehaviorType m_originalEditingBehavior;
 
         // Initially empty, only used if changed by a test.
@@ -65,11 +64,15 @@ public:
         ScriptFontFamilyMap m_fantasyFontFamilies;
         ScriptFontFamilyMap m_pictographFontFamilies;
 
-#if ENABLE(TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
         bool m_originalTextAutosizingEnabled;
         IntSize m_originalTextAutosizingWindowSizeOverride;
+#endif
+
+#if ENABLE(TEXT_AUTOSIZING)
         float m_originalTextAutosizingFontScaleFactor;
 #endif
+
         String m_originalMediaTypeOverride;
         bool m_originalCanvasUsesAcceleratedDrawing;
         bool m_originalMockScrollbarsEnabled;
@@ -131,7 +134,6 @@ public:
     void setTextAutosizingWindowSizeOverride(int width, int height, ExceptionCode&);
     void setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode&);
     void setMediaTypeOverride(const String& mediaType, ExceptionCode&);
-    void setCSSShapesEnabled(bool, ExceptionCode&);
     void setCanStartMedia(bool, ExceptionCode&);
     void setWirelessPlaybackDisabled(bool);
     void setEditingBehavior(const String&, ExceptionCode&);

@@ -30,6 +30,7 @@
 
 #include "AssemblyHelpers.h"
 #include "GPRInfo.h"
+#include "RegisterMap.h"
 #include "StackAlignment.h"
 
 namespace JSC {
@@ -38,6 +39,23 @@ namespace JSC {
 #define POKE_ARGUMENT_OFFSET 4
 #else
 #define POKE_ARGUMENT_OFFSET 0
+#endif
+
+// EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned even-numbered register (r0, r2 or [sp]).
+// To avoid assemblies from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
+#if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
+#define EABI_32BIT_DUMMY_ARG      TrustedImm32(0),
+#else
+#define EABI_32BIT_DUMMY_ARG
+#endif
+
+// JSVALUE32_64 is a 64-bit integer that cannot be put half in an argument register and half on stack when using SH4 architecture.
+// To avoid this, let's occupy the 4th argument register (r7) with a dummy argument when necessary. This must only be done when there
+// is no other 32-bit value argument behind this 64-bit JSValue.
+#if CPU(SH4)
+#define SH4_32BIT_DUMMY_ARG      TrustedImm32(0),
+#else
+#define SH4_32BIT_DUMMY_ARG
 #endif
 
 class CCallHelpers : public AssemblyHelpers {
@@ -827,6 +845,21 @@ public:
         addCallArgument(arg2);
         addCallArgument(arg3);
     }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, GPRReg arg3, GPRReg arg4, GPRReg arg5, GPRReg arg6, GPRReg arg7, GPRReg arg8)
+    {
+        resetCallArguments();
+        addCallArgument(GPRInfo::callFrameRegister);
+        addCallArgument(arg1);
+        addCallArgument(arg2);
+        addCallArgument(arg3);
+        addCallArgument(arg4);
+        addCallArgument(arg5);
+        addCallArgument(arg6);
+        addCallArgument(arg7);
+        addCallArgument(arg8);
+    }
+
 #endif // !NUMBER_OF_ARGUMENT_REGISTERS
     // These methods are suitable for any calling convention that provides for
     // at least 4 argument registers, e.g. X86_64, ARMv7.
@@ -912,6 +945,8 @@ public:
         if (srcB != destB)
             swap(destB, destC);
     }
+
+    void setupFourStubArgsGPR(GPRReg destA, GPRReg destB, GPRReg destC, GPRReg destD, GPRReg srcA, GPRReg srcB, GPRReg srcC, GPRReg srcD);
 
 #if CPU(X86_64) || CPU(ARM64)
     template<FPRReg destA, FPRReg destB>
@@ -1951,6 +1986,27 @@ public:
         setupArgumentsWithExecState(arg1, arg2, arg3);
     }
 
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, GPRReg arg3, GPRReg arg4, GPRReg arg5, GPRReg arg6, GPRReg arg7, GPRReg arg8)
+    {
+        poke(arg8, POKE_ARGUMENT_OFFSET + 4);
+        poke(arg7, POKE_ARGUMENT_OFFSET + 3);
+        poke(arg6, POKE_ARGUMENT_OFFSET + 2);
+        poke(arg5, POKE_ARGUMENT_OFFSET + 1);
+        poke(arg4, POKE_ARGUMENT_OFFSET);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
+    ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImm32 arg1, GPRReg arg2, GPRReg arg3, GPRReg arg4, GPRReg arg5, GPRReg arg6, GPRReg arg7, GPRReg arg8, GPRReg arg9)
+    {
+        poke(arg9, POKE_ARGUMENT_OFFSET + 5);
+        poke(arg8, POKE_ARGUMENT_OFFSET + 4);
+        poke(arg7, POKE_ARGUMENT_OFFSET + 3);
+        poke(arg6, POKE_ARGUMENT_OFFSET + 2);
+        poke(arg5, POKE_ARGUMENT_OFFSET + 1);
+        poke(arg4, POKE_ARGUMENT_OFFSET);
+        setupArgumentsWithExecState(arg1, arg2, arg3);
+    }
+
     ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImm32 arg1, GPRReg arg2, GPRReg arg3, TrustedImm32 arg4, TrustedImm32 arg5, GPRReg arg6, GPRReg arg7)
     {
         poke(arg7, POKE_ARGUMENT_OFFSET + 3);
@@ -1986,6 +2042,12 @@ public:
 #endif // NUMBER_OF_ARGUMENT_REGISTERS == 4
 
 #if NUMBER_OF_ARGUMENT_REGISTERS >= 5
+    ALWAYS_INLINE void setupArgumentsWithExecState(GPRReg arg1, GPRReg arg2, GPRReg arg3, GPRReg arg4)
+    {
+        setupFourStubArgsGPR(GPRInfo::argumentGPR1, GPRInfo::argumentGPR2, GPRInfo::argumentGPR3, GPRInfo::argumentGPR4, arg1, arg2, arg3, arg4);
+        move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
+    }
+
     void setupStubArguments134(GPRReg arg1, GPRReg arg3, GPRReg arg4)
     {
         setupThreeStubArgsGPR<GPRInfo::argumentGPR1, GPRInfo::argumentGPR3, GPRInfo::argumentGPR4>(arg1, arg3, arg4);
@@ -2036,7 +2098,7 @@ public:
         move(arg4, GPRInfo::argumentGPR4);
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
     }
-    
+
     ALWAYS_INLINE void setupArgumentsWithExecState(TrustedImmPtr arg1, GPRReg arg2, TrustedImm32 arg3, TrustedImm32 arg4)
     {
         move(arg2, GPRInfo::argumentGPR2); // In case arg2 is argumentGPR1.
@@ -2121,6 +2183,15 @@ public:
         move(arg4, GPRInfo::argumentGPR3);
     }
 #endif
+    
+    void setupArgumentsWithExecState(JSValueRegs arg1, JSValueRegs arg2, TrustedImmPtr arg3)
+    {
+#if USE(JSVALUE64)
+        setupArgumentsWithExecState(arg1.gpr(), arg2.gpr(), arg3);
+#else
+        setupArgumentsWithExecState(EABI_32BIT_DUMMY_ARG arg1.payloadGPR(), arg1.tagGPR(), arg2.payloadGPR(), arg2.tagGPR(), arg3);
+#endif
+    }
     
     void setupArguments(JSValueRegs arg1)
     {

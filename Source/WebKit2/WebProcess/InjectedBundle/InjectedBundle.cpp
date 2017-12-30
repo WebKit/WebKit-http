@@ -183,16 +183,6 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled(enabled);
 #endif
 
-#if ENABLE(CSS_REGIONS)
-    if (preference == "WebKitCSSRegionsEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(enabled);
-#endif
-
-#if ENABLE(CSS_COMPOSITING)
-    if (preference == "WebKitCSSCompositingEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(enabled);
-#endif
-    
 #if ENABLE(FETCH_API)
     if (preference == "WebKitFetchAPIEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setFetchAPIEnabled(enabled);
@@ -203,6 +193,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled(enabled);
 #endif
 
+#if ENABLE(SHADOW_DOM)
+    if (preference == "WebKitShadowDOMEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enabled);
+#endif
+
 #if ENABLE(CSS_GRID_LAYOUT)
     if (preference == "WebKitCSSGridLayoutEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enabled);
@@ -211,11 +206,6 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 #if ENABLE(CUSTOM_ELEMENTS)
     if (preference == "WebKitCustomElementsEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(enabled);
-#endif
-
-#if ENABLE(SHADOW_DOM)
-    if (preference == "WebKitShadowDOMEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(enabled);
 #endif
 
 #if ENABLE(WEBGL2)
@@ -590,24 +580,6 @@ void InjectedBundle::setWebAnimationsEnabled(bool enabled)
 {
 #if ENABLE(WEB_ANIMATIONS)
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
-}
-
-void InjectedBundle::setCSSRegionsEnabled(bool enabled)
-{
-#if ENABLE(CSS_REGIONS)
-    RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
-}
-
-void InjectedBundle::setCSSCompositingEnabled(bool enabled)
-{
-#if ENABLE(CSS_COMPOSITING)
-    RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(enabled);
 #else
     UNUSED_PARAM(enabled);
 #endif

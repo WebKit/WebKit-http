@@ -123,9 +123,9 @@ typedef const char* optionString;
     v(bool, forceCodeBlockLiveness, false, Normal, nullptr) \
     v(bool, forceICFailure, false, Normal, nullptr) \
     \
-    v(unsigned, repatchCountForCoolDown, 10, Normal, nullptr) \
+    v(unsigned, repatchCountForCoolDown, 8, Normal, nullptr) \
     v(unsigned, initialCoolDownCount, 20, Normal, nullptr) \
-    v(unsigned, repatchBufferingCountdown, 10, Normal, nullptr) \
+    v(unsigned, repatchBufferingCountdown, 8, Normal, nullptr) \
     \
     v(bool, dumpGeneratedBytecodes, false, Normal, nullptr) \
     v(bool, dumpBytecodeLivenessResults, false, Normal, nullptr) \
@@ -145,8 +145,10 @@ typedef const char* optionString;
     v(bool, dumpDFGDisassembly, false, Normal, "dumps disassembly of DFG function upon compilation") \
     v(bool, dumpFTLDisassembly, false, Normal, "dumps disassembly of FTL function upon compilation") \
     v(bool, dumpAllDFGNodes, false, Normal, nullptr) \
+    v(optionRange, bytecodeRangeToJITCompile, 0, Normal, "bytecode size range to allow compilation on, e.g. 1:100") \
     v(optionRange, bytecodeRangeToDFGCompile, 0, Normal, "bytecode size range to allow DFG compilation on, e.g. 1:100") \
     v(optionRange, bytecodeRangeToFTLCompile, 0, Normal, "bytecode size range to allow FTL compilation on, e.g. 1:100") \
+    v(optionString, jitWhitelist, nullptr, Normal, "file with list of function signatures to allow compilation on") \
     v(optionString, dfgWhitelist, nullptr, Normal, "file with list of function signatures to allow DFG compilation on") \
     v(bool, dumpSourceAtDFGTime, false, Normal, "dumps source code of JS function being DFG compiled") \
     v(bool, dumpBytecodeAtDFGTime, false, Normal, "dumps bytecode of JS function being DFG compiled") \
@@ -168,9 +170,12 @@ typedef const char* optionString;
     v(bool, verboseFTLOSRExit, false, Normal, nullptr) \
     v(bool, verboseCallLink, false, Normal, nullptr) \
     v(bool, verboseCompilationQueue, false, Normal, nullptr) \
-    v(bool, reportCompileTimes, false, Normal, "dumps JS function signature and the time it took to compile") \
+    v(bool, reportCompileTimes, false, Normal, "dumps JS function signature and the time it took to compile in all tiers") \
+    v(bool, reportBaselineCompileTimes, false, Normal, "dumps JS function signature and the time it took to BaselineJIT compile") \
+    v(bool, reportDFGCompileTimes, false, Normal, "dumps JS function signature and the time it took to DFG and FTL compile") \
     v(bool, reportFTLCompileTimes, false, Normal, "dumps JS function signature and the time it took to FTL compile") \
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
+    v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
     v(bool, verboseFTLToJSThunk, false, Normal, nullptr) \
     v(bool, verboseFTLFailure, false, Normal, nullptr) \
@@ -191,7 +196,7 @@ typedef const char* optionString;
     v(bool, ftlCrashes, false, Normal, nullptr) /* fool-proof way of checking that you ended up in the FTL. ;-) */\
     v(bool, clobberAllRegsInFTLICSlowPath, !ASSERT_DISABLED, Normal, nullptr) \
     v(bool, useAccessInlining, true, Normal, nullptr) \
-    v(unsigned, maxAccessVariantListSize, 13, Normal, nullptr) \
+    v(unsigned, maxAccessVariantListSize, 8, Normal, nullptr) \
     v(unsigned, megamorphicLoadCost, 999, Normal, nullptr) /* This used to be 10, but we're temporarily testing what happens when the feature is disabled. */\
     v(bool, usePolyvariantDevirtualization, true, Normal, nullptr) \
     v(bool, usePolymorphicAccessInlining, true, Normal, nullptr) \

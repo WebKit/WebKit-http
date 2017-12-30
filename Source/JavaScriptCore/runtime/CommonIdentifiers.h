@@ -129,7 +129,6 @@
     macro(compilations) \
     macro(compile) \
     macro(configurable) \
-    macro(console) \
     macro(constructor) \
     macro(count) \
     macro(counters) \
@@ -332,6 +331,7 @@
     macro(arrayIterationKind) \
     macro(arrayIteratorNext) \
     macro(arrayIteratorIsDone) \
+    macro(arrayIteratorKind) \
     macro(charCodeAt) \
     macro(iteratedString) \
     macro(stringIteratorNextIndex) \

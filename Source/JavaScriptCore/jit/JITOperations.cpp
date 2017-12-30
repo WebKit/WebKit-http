@@ -1871,7 +1871,6 @@ EncodedJSValue JIT_OPERATION operationDeleteByIdJSResult(ExecState* exec, Encode
     return JSValue::encode(jsBoolean(operationDeleteById(exec, base, uid)));
 }
 
-
 size_t JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue encodedBase, UniquedStringImpl* uid)
 {
     VM& vm = exec->vm();
@@ -1879,8 +1878,40 @@ size_t JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue encoded
 
     JSObject* baseObj = JSValue::decode(encodedBase).toObject(exec);
     if (!baseObj)
-        JSValue::encode(JSValue());
+        return false;
     bool couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, exec, Identifier::fromUid(&vm, uid));
+    if (!couldDelete && exec->codeBlock()->isStrictMode())
+        vm.throwException(exec, createTypeError(exec, ASCIILiteral("Unable to delete property.")));
+    return couldDelete;
+}
+
+EncodedJSValue JIT_OPERATION operationDeleteByValJSResult(ExecState* exec, EncodedJSValue base,  EncodedJSValue key)
+{
+    return JSValue::encode(jsBoolean(operationDeleteByVal(exec, base, key)));
+}
+
+size_t JIT_OPERATION operationDeleteByVal(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedKey)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    JSObject* baseObj = JSValue::decode(encodedBase).toObject(exec);
+    JSValue key = JSValue::decode(encodedKey);
+    if (!baseObj)
+        return false;
+
+    bool couldDelete;
+    uint32_t index;
+    if (key.getUInt32(index))
+        couldDelete = baseObj->methodTable(vm)->deletePropertyByIndex(baseObj, exec, index);
+    else {
+        if (vm.exception())
+            return false;
+        Identifier property = key.toPropertyKey(exec);
+        if (vm.exception())
+            return false;
+        couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, exec, property);
+    }
     if (!couldDelete && exec->codeBlock()->isStrictMode())
         vm.throwException(exec, createTypeError(exec, ASCIILiteral("Unable to delete property.")));
     return couldDelete;
@@ -2210,6 +2241,88 @@ JSCell* JIT_OPERATION operationToIndexString(ExecState* exec, int32_t index)
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
     return jsString(exec, Identifier::from(exec, index).string());
+}
+
+EncodedJSValue JIT_OPERATION operationValueAdd(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+    
+    return JSValue::encode(jsAdd(exec, op1, op2));
+}
+
+EncodedJSValue JIT_OPERATION operationValueAddProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile* resultProfile)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+    
+    JSValue result = jsAdd(exec, op1, op2);
+    resultProfile->detectNumericness(result);
+    return JSValue::encode(result);
+}
+
+EncodedJSValue JIT_OPERATION operationValueMul(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    double a = op1.toNumber(exec);
+    double b = op2.toNumber(exec);
+    return JSValue::encode(jsNumber(a * b));
+}
+
+EncodedJSValue JIT_OPERATION operationValueMulProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile* resultProfile)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    double a = op1.toNumber(exec);
+    double b = op2.toNumber(exec);
+    
+    JSValue result = jsNumber(a * b);
+    resultProfile->detectNumericness(result);
+    return JSValue::encode(result);
+}
+
+EncodedJSValue JIT_OPERATION operationValueSub(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    double a = op1.toNumber(exec);
+    double b = op2.toNumber(exec);
+    return JSValue::encode(jsNumber(a - b));
+}
+
+EncodedJSValue JIT_OPERATION operationValueSubProfiled(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ResultProfile* resultProfile)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    JSValue op1 = JSValue::decode(encodedOp1);
+    JSValue op2 = JSValue::decode(encodedOp2);
+
+    double a = op1.toNumber(exec);
+    double b = op2.toNumber(exec);
+    
+    JSValue result = jsNumber(a - b);
+    resultProfile->detectNumericness(result);
+    return JSValue::encode(result);
 }
 
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState* exec)

@@ -862,9 +862,11 @@ struct Node {
         case TryGetById:
         case GetById:
         case GetByIdFlush:
+        case GetByIdWithThis:
         case PutById:
         case PutByIdFlush:
         case PutByIdDirect:
+        case PutByIdWithThis:
         case PutGetterById:
         case PutSetterById:
         case PutGetterSetterById:
@@ -953,6 +955,16 @@ struct Node {
     bool mayHaveNonIntResult()
     {
         return m_flags & NodeMayHaveNonIntResult;
+    }
+    
+    bool mayHaveDoubleResult()
+    {
+        return m_flags & NodeMayHaveDoubleResult;
+    }
+    
+    bool mayHaveNonNumberResult()
+    {
+        return m_flags & NodeMayHaveNonNumberResult;
     }
 
     bool hasConstantBuffer()

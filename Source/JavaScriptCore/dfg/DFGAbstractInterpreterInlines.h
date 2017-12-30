@@ -2179,6 +2179,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).makeHeapTop();
         break;
     }
+
+    case GetByValWithThis:
+    case GetByIdWithThis:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).makeHeapTop();
+        break;
             
     case GetArrayLength: {
         JSArrayBufferView* view = m_graph.tryGetFoldableView(
@@ -2191,7 +2197,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case DeleteById: {
+    case DeleteById:
+    case DeleteByVal: {
         // FIXME: This could decide if the delete will be successful based on the set of structures that
         // we get from our base value. https://bugs.webkit.org/show_bug.cgi?id=156611
         clobberWorld(node->origin.semantic, clobberLimit);
@@ -2677,6 +2684,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case PutByValWithThis:
+    case PutByIdWithThis:
+        clobberWorld(node->origin.semantic, clobberLimit);
+        break;
+
     case PutGetterById:
     case PutSetterById:
     case PutGetterSetterById:
@@ -2877,6 +2889,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case Unreachable:
+        // It may be that during a previous run of AI we proved that something was unreachable, but
+        // during this run of AI we forget that it's unreachable. AI's proofs don't have to get
+        // monotonically stronger over time. So, we don't assert that AI doesn't reach the
+        // Unreachable. We have no choice but to take our past proof at face value. Otherwise we'll
+        // crash whenever AI fails to be as powerful on run K as it was on run K-1.
+        m_state.setIsValid(false);
+        break;
+        
     case LastNodeType:
     case ArithIMul:
     case FiatInt52:

@@ -53,7 +53,6 @@
 			buildConfigurationList = 65FB3F7709D11EBD00F49DEB /* Build configuration list for PBXAggregateTarget "Derived Sources" */;
 			buildPhases = (
 				65FB3F6509D11E9100F49DEB /* Generate Derived Sources */,
-				5D35DEE10C7C140B008648B2 /* Generate DTrace header */,
 			);
 			dependencies = (
 			);
@@ -1131,8 +1130,6 @@
 		2A83638618D7D0EE0000EBCC /* EdenGCActivityCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A83638418D7D0EE0000EBCC /* EdenGCActivityCallback.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2A83638918D7D0FE0000EBCC /* FullGCActivityCallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A83638718D7D0FE0000EBCC /* FullGCActivityCallback.cpp */; };
 		2A83638A18D7D0FE0000EBCC /* FullGCActivityCallback.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A83638818D7D0FE0000EBCC /* FullGCActivityCallback.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		2A88067819107D5500CB0BBB /* DFGFunctionWhitelist.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A88067619107D5500CB0BBB /* DFGFunctionWhitelist.cpp */; };
-		2A88067919107D5500CB0BBB /* DFGFunctionWhitelist.h in Headers */ = {isa = PBXBuildFile; fileRef = 2A88067719107D5500CB0BBB /* DFGFunctionWhitelist.h */; };
 		2AAAA31218BD49D100394CC8 /* StructureIDBlob.h in Headers */ = {isa = PBXBuildFile; fileRef = 2AAAA31018BD49D100394CC8 /* StructureIDBlob.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2AABCDE718EF294200002096 /* GCLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = 2AABCDE618EF294200002096 /* GCLogging.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2AACE63C18CA5A0300ED0191 /* GCActivityCallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2AACE63A18CA5A0300ED0191 /* GCActivityCallback.cpp */; };
@@ -1185,7 +1182,6 @@
 		53917E7B1B7906FA000EBD33 /* JSGenericTypedArrayViewPrototypeFunctions.h in Headers */ = {isa = PBXBuildFile; fileRef = 53917E7A1B7906E4000EBD33 /* JSGenericTypedArrayViewPrototypeFunctions.h */; };
 		539FB8BA1C99DA7C00940FA1 /* JSArrayInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = 539FB8B91C99DA7C00940FA1 /* JSArrayInlines.h */; };
 		53F6BF6D1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h in Headers */ = {isa = PBXBuildFile; fileRef = 53F6BF6C1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		5D53726F0E1C54880021E549 /* Tracing.h in Headers */ = {isa = PBXBuildFile; fileRef = 5D53726E0E1C54880021E549 /* Tracing.h */; };
 		5D5D8AD10E0D0EBE00F9C692 /* libedit.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D5D8AD00E0D0EBE00F9C692 /* libedit.dylib */; };
 		5DBB151B131D0B310056AD36 /* testapi.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 14D857740A4696C80032146C /* testapi.js */; };
 		5DBB1525131D0BD70056AD36 /* minidom.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 1412110D0A48788700480255 /* minidom.js */; };
@@ -1996,6 +1992,8 @@
 		DC17E81A1C9C91E9008A6AB3 /* CCallHelpers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC17E8161C9C802B008A6AB3 /* CCallHelpers.cpp */; };
 		DC2143071CA32E55000A8869 /* ICStats.h in Headers */ = {isa = PBXBuildFile; fileRef = DC2143061CA32E52000A8869 /* ICStats.h */; };
 		DC2143081CA32E58000A8869 /* ICStats.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC2143051CA32E52000A8869 /* ICStats.cpp */; };
+		DC7997831CDE9FA0004D4A09 /* TagRegistersMode.h in Headers */ = {isa = PBXBuildFile; fileRef = DC7997821CDE9F9E004D4A09 /* TagRegistersMode.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		DC7997841CDE9FA2004D4A09 /* TagRegistersMode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC7997811CDE9F9E004D4A09 /* TagRegistersMode.cpp */; };
 		DCF3D5691CD2946D003D5C65 /* LazyClassStructure.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DCF3D5641CD29468003D5C65 /* LazyClassStructure.cpp */; };
 		DCF3D56A1CD29470003D5C65 /* LazyClassStructure.h in Headers */ = {isa = PBXBuildFile; fileRef = DCF3D5651CD29468003D5C65 /* LazyClassStructure.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		DCF3D56B1CD29472003D5C65 /* LazyClassStructureInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = DCF3D5661CD29468003D5C65 /* LazyClassStructureInlines.h */; };
@@ -2094,6 +2092,8 @@
 		FE99B24A1C24C3D700C82159 /* JITNegGenerator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE99B2471C24B6D300C82159 /* JITNegGenerator.cpp */; };
 		FEA08620182B7A0400F6D851 /* Breakpoint.h in Headers */ = {isa = PBXBuildFile; fileRef = FEA0861E182B7A0400F6D851 /* Breakpoint.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FEA08621182B7A0400F6D851 /* DebuggerPrimitives.h in Headers */ = {isa = PBXBuildFile; fileRef = FEA0861F182B7A0400F6D851 /* DebuggerPrimitives.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FEA0C4021CDD7D1D00481991 /* FunctionWhitelist.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA0C4001CDD7D0E00481991 /* FunctionWhitelist.cpp */; };
+		FEA0C4031CDD7D1D00481991 /* FunctionWhitelist.h in Headers */ = {isa = PBXBuildFile; fileRef = FEA0C4011CDD7D0E00481991 /* FunctionWhitelist.h */; };
 		FEA1E4391C213A2B00277A16 /* ValueProfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEA1E4381C213A2600277A16 /* ValueProfile.cpp */; };
 		FEB137571BB11EF900CD5100 /* MacroAssemblerARM64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEB137561BB11EEE00CD5100 /* MacroAssemblerARM64.cpp */; };
 		FEB51F6C1A97B688001F921C /* Regress141809.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEB51F6B1A97B688001F921C /* Regress141809.mm */; };
@@ -3265,8 +3265,6 @@
 		2A83638418D7D0EE0000EBCC /* EdenGCActivityCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EdenGCActivityCallback.h; sourceTree = "<group>"; };
 		2A83638718D7D0FE0000EBCC /* FullGCActivityCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FullGCActivityCallback.cpp; sourceTree = "<group>"; };
 		2A83638818D7D0FE0000EBCC /* FullGCActivityCallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FullGCActivityCallback.h; sourceTree = "<group>"; };
-		2A88067619107D5500CB0BBB /* DFGFunctionWhitelist.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGFunctionWhitelist.cpp; path = dfg/DFGFunctionWhitelist.cpp; sourceTree = "<group>"; };
-		2A88067719107D5500CB0BBB /* DFGFunctionWhitelist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGFunctionWhitelist.h; path = dfg/DFGFunctionWhitelist.h; sourceTree = "<group>"; };
 		2AAAA31018BD49D100394CC8 /* StructureIDBlob.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StructureIDBlob.h; sourceTree = "<group>"; };
 		2AABCDE618EF294200002096 /* GCLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GCLogging.h; sourceTree = "<group>"; };
 		2AACE63A18CA5A0300ED0191 /* GCActivityCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GCActivityCallback.cpp; sourceTree = "<group>"; };
@@ -3328,9 +3326,6 @@
 		53F256E11B87E28000B4B768 /* JSTypedArrayViewPrototype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSTypedArrayViewPrototype.cpp; sourceTree = "<group>"; };
 		53F6BF6C1C3F060A00F41E5D /* InternalFunctionAllocationProfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InternalFunctionAllocationProfile.h; sourceTree = "<group>"; };
 		593D43CCA0BBE06D89C59707 /* MapDataInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MapDataInlines.h; sourceTree = "<group>"; };
-		5D53726D0E1C546B0021E549 /* Tracing.d */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Tracing.d; sourceTree = "<group>"; };
-		5D53726E0E1C54880021E549 /* Tracing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Tracing.h; sourceTree = "<group>"; };
-		5D53727D0E1C55EC0021E549 /* TracingDtrace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TracingDtrace.h; sourceTree = "<group>"; };
 		5D5D8AD00E0D0EBE00F9C692 /* libedit.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libedit.dylib; path = /usr/lib/libedit.dylib; sourceTree = "<absolute>"; };
 		5DAFD6CB146B686300FBEFB4 /* JSC.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = JSC.xcconfig; sourceTree = "<group>"; };
 		5DDDF44614FEE72200B4FB4D /* LLIntDesiredOffsets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LLIntDesiredOffsets.h; path = LLIntOffsets/LLIntDesiredOffsets.h; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4211,6 +4206,8 @@
 		DC17E8161C9C802B008A6AB3 /* CCallHelpers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CCallHelpers.cpp; sourceTree = "<group>"; };
 		DC2143051CA32E52000A8869 /* ICStats.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ICStats.cpp; sourceTree = "<group>"; };
 		DC2143061CA32E52000A8869 /* ICStats.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ICStats.h; sourceTree = "<group>"; };
+		DC7997811CDE9F9E004D4A09 /* TagRegistersMode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TagRegistersMode.cpp; sourceTree = "<group>"; };
+		DC7997821CDE9F9E004D4A09 /* TagRegistersMode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TagRegistersMode.h; sourceTree = "<group>"; };
 		DCF3D5641CD29468003D5C65 /* LazyClassStructure.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LazyClassStructure.cpp; sourceTree = "<group>"; };
 		DCF3D5651CD29468003D5C65 /* LazyClassStructure.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LazyClassStructure.h; sourceTree = "<group>"; };
 		DCF3D5661CD29468003D5C65 /* LazyClassStructureInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LazyClassStructureInlines.h; sourceTree = "<group>"; };
@@ -4347,6 +4344,8 @@
 		FE99B2481C24B6D300C82159 /* JITNegGenerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JITNegGenerator.h; sourceTree = "<group>"; };
 		FEA0861E182B7A0400F6D851 /* Breakpoint.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Breakpoint.h; sourceTree = "<group>"; };
 		FEA0861F182B7A0400F6D851 /* DebuggerPrimitives.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DebuggerPrimitives.h; sourceTree = "<group>"; };
+		FEA0C4001CDD7D0E00481991 /* FunctionWhitelist.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FunctionWhitelist.cpp; sourceTree = "<group>"; };
+		FEA0C4011CDD7D0E00481991 /* FunctionWhitelist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FunctionWhitelist.h; sourceTree = "<group>"; };
 		FEA1E4381C213A2600277A16 /* ValueProfile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ValueProfile.cpp; sourceTree = "<group>"; };
 		FEB137561BB11EEE00CD5100 /* MacroAssemblerARM64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MacroAssemblerARM64.cpp; sourceTree = "<group>"; };
 		FEB51F6A1A97B688001F921C /* Regress141809.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Regress141809.h; path = API/tests/Regress141809.h; sourceTree = "<group>"; };
@@ -5089,6 +5088,8 @@
 				FE187A0C1C02EBA70038BBCA /* SnippetOperand.h */,
 				A7386551118697B400540279 /* SpecializedThunkJIT.h */,
 				A7FF647A18C52E8500B55307 /* SpillRegistersMode.h */,
+				DC7997811CDE9F9E004D4A09 /* TagRegistersMode.cpp */,
+				DC7997821CDE9F9E004D4A09 /* TagRegistersMode.h */,
 				0FC314111814559100033232 /* TempRegisterSet.cpp */,
 				0F24E54817EE274900ABB217 /* TempRegisterSet.h */,
 				0F572D4D16879FDB00E57FBD /* ThunkGenerator.h */,
@@ -5405,7 +5406,6 @@
 				996B73121BD9FA2C00331B84 /* StringIteratorPrototype.lut.h */,
 				996B73131BD9FA2C00331B84 /* SymbolConstructor.lut.h */,
 				996B73141BD9FA2C00331B84 /* SymbolPrototype.lut.h */,
-				5D53727D0E1C55EC0021E549 /* TracingDtrace.h */,
 				65A946141C8E9F6F00A7209A /* YarrCanonicalizeUnicode.cpp */,
 			);
 			name = "Derived Sources";
@@ -6000,8 +6000,6 @@
 				0FA2C17917D7CF84009D015F /* TestRunnerUtils.cpp */,
 				0FA2C17A17D7CF84009D015F /* TestRunnerUtils.h */,
 				0F55989717C86C5600A1E543 /* ToNativeFromValue.h */,
-				5D53726D0E1C546B0021E549 /* Tracing.d */,
-				5D53726E0E1C54880021E549 /* Tracing.h */,
 				0F2B66D817B6B5AB00A7AE3F /* TypedArrayAdaptors.h */,
 				0F2B66D917B6B5AB00A7AE3F /* TypedArrayController.cpp */,
 				0F2B66DA17B6B5AB00A7AE3F /* TypedArrayController.h */,
@@ -6060,6 +6058,8 @@
 				8603CEF314C7546400AE59E3 /* CodeProfiling.h */,
 				FE4BFF291AD476E700088F87 /* FunctionOverrides.cpp */,
 				FE4BFF2A1AD476E700088F87 /* FunctionOverrides.h */,
+				FEA0C4001CDD7D0E00481991 /* FunctionWhitelist.cpp */,
+				FEA0C4011CDD7D0E00481991 /* FunctionWhitelist.h */,
 				FE384EE11ADDB7AD0055DE2C /* JSDollarVM.cpp */,
 				FE384EE21ADDB7AD0055DE2C /* JSDollarVM.h */,
 				FE384EE31ADDB7AD0055DE2C /* JSDollarVMPrototype.cpp */,
@@ -6214,8 +6214,6 @@
 				0F2DD8101AB3D8BE00BBB8E8 /* DFGForAllKills.h */,
 				0F69CC86193AC60A0045759E /* DFGFrozenValue.cpp */,
 				0F69CC87193AC60A0045759E /* DFGFrozenValue.h */,
-				2A88067619107D5500CB0BBB /* DFGFunctionWhitelist.cpp */,
-				2A88067719107D5500CB0BBB /* DFGFunctionWhitelist.h */,
 				86EC9DB61328DF82002B2AD7 /* DFGGenerationInfo.h */,
 				86EC9DB71328DF82002B2AD7 /* DFGGraph.cpp */,
 				86EC9DB81328DF82002B2AD7 /* DFGGraph.h */,
@@ -7078,6 +7076,7 @@
 				99DA00A81BD5993100F4575C /* builtins_generate_combined_implementation.py in Headers */,
 				99DA00A91BD5993100F4575C /* builtins_generate_separate_header.py in Headers */,
 				0F338E111BF0276C0013C88F /* B3OpaqueByproduct.h in Headers */,
+				FEA0C4031CDD7D1D00481991 /* FunctionWhitelist.h in Headers */,
 				99DA00AA1BD5993100F4575C /* builtins_generate_separate_implementation.py in Headers */,
 				99DA00A31BD5993100F4575C /* builtins_generator.py in Headers */,
 				FE3A06A61C10B72D00390FDD /* JITBitOrGenerator.h in Headers */,
@@ -7267,7 +7266,6 @@
 				A7D89CF817A0B8CC00773AD8 /* DFGFlushFormat.h in Headers */,
 				0F2DD8151AB3D8BE00BBB8E8 /* DFGForAllKills.h in Headers */,
 				0F69CC89193AC60A0045759E /* DFGFrozenValue.h in Headers */,
-				2A88067919107D5500CB0BBB /* DFGFunctionWhitelist.h in Headers */,
 				86EC9DC61328DF82002B2AD7 /* DFGGenerationInfo.h in Headers */,
 				86EC9DC81328DF82002B2AD7 /* DFGGraph.h in Headers */,
 				0F2FCCFA18A60070001A27F8 /* DFGGraphSafepoint.h in Headers */,
@@ -7869,6 +7867,7 @@
 				86F3EEBF168CDE930077B92A /* ObjcRuntimeExtras.h in Headers */,
 				14CA958D16AB50FA00938A06 /* ObjectAllocationProfile.h in Headers */,
 				DCF3D56C1CD29475003D5C65 /* LazyProperty.h in Headers */,
+				DC7997831CDE9FA0004D4A09 /* TagRegistersMode.h in Headers */,
 				BC18C4450E16F5CD00B34460 /* ObjectConstructor.h in Headers */,
 				996B73221BDA08EF00331B84 /* ObjectConstructor.lut.h in Headers */,
 				0FD3E40A1B618B6600C80E1E /* ObjectPropertyCondition.h in Headers */,
@@ -8043,7 +8042,6 @@
 				2684D4381C00161C0081D663 /* AirLiveness.h in Headers */,
 				0F55989817C86C5800A1E543 /* ToNativeFromValue.h in Headers */,
 				0F2D4DE919832DAC007D4B19 /* ToThisStatus.h in Headers */,
-				5D53726F0E1C54880021E549 /* Tracing.h in Headers */,
 				0F952ABD1B487A7700C367C5 /* TrackedReferences.h in Headers */,
 				0F2B670617B6B5AB00A7AE3F /* TypedArrayAdaptors.h in Headers */,
 				0F338E131BF0276C0013C88F /* B3OpaqueByproducts.h in Headers */,
@@ -8445,22 +8443,6 @@
 			shellPath = /bin/sh;
 			shellScript = "# Touch Info.plist to let Xcode know it needs to copy it into the built product\nif [[ \"${CONFIGURATION}\" != \"Production\" ]]; then\n    touch \"$SRCROOT/Info.plist\";\nfi;\n";
 		};
-		5D35DEE10C7C140B008648B2 /* Generate DTrace header */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/runtime/Tracing.d",
-			);
-			name = "Generate DTrace header";
-			outputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/DerivedSources/JavaScriptCore/TracingDtrace.h",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\n\nTRACING_D=\"$SRCROOT/runtime/Tracing.d\";\nTRACING_H=\"$BUILT_PRODUCTS_DIR/DerivedSources/JavaScriptCore/TracingDtrace.h\";\n\nif [[ \"$TRACING_D\" -nt \"$TRACING_H\" ]];\nthen\n\tdtrace -h -o \"$TRACING_H\" -s \"$TRACING_D\";\nfi;\n";
-		};
 		5D5D8ABF0E0D0B0300F9C692 /* Create /usr/local/bin/jsc symlink */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -8834,7 +8816,6 @@
 				0F9D339617FFC4E60073C2BC /* DFGFlushedAt.cpp in Sources */,
 				A7D89CF717A0B8CC00773AD8 /* DFGFlushFormat.cpp in Sources */,
 				0F69CC88193AC60A0045759E /* DFGFrozenValue.cpp in Sources */,
-				2A88067819107D5500CB0BBB /* DFGFunctionWhitelist.cpp in Sources */,
 				86EC9DC71328DF82002B2AD7 /* DFGGraph.cpp in Sources */,
 				0F2FCCF918A60070001A27F8 /* DFGGraphSafepoint.cpp in Sources */,
 				0FB17660196B8F9E0091052A /* DFGHeapLocation.cpp in Sources */,
@@ -8849,6 +8830,7 @@
 				86EC9DCB1328DF82002B2AD7 /* DFGJITCompiler.cpp in Sources */,
 				A78A9778179738B8009DF744 /* DFGJITFinalizer.cpp in Sources */,
 				0FC97F3F18202119002C9B26 /* DFGJumpReplacement.cpp in Sources */,
+				FEA0C4021CDD7D1D00481991 /* FunctionWhitelist.cpp in Sources */,
 				A73A535A1799CD5D00170C19 /* DFGLazyJSValue.cpp in Sources */,
 				62F2AA371B0BEDE300610C7A /* DFGLazyNode.cpp in Sources */,
 				A7D9A29717A0BC7400EE2618 /* DFGLICMPhase.cpp in Sources */,
@@ -9041,6 +9023,7 @@
 				FE3A06B31C10CB8E00390FDD /* JITBitXorGenerator.cpp in Sources */,
 				A57D23E51890CEBF0031C7FA /* InspectorDebuggerAgent.cpp in Sources */,
 				A532438918568335002ED692 /* InspectorFrontendDispatchers.cpp in Sources */,
+				DC7997841CDE9FA2004D4A09 /* TagRegistersMode.cpp in Sources */,
 				99F1A6FE1B8E6D9400463B26 /* InspectorFrontendRouter.cpp in Sources */,
 				A5339EC71BB399A90054F005 /* InspectorHeapAgent.cpp in Sources */,
 				E35E035F1B7AB43E0073AD2A /* InspectorInstrumentationObject.cpp in Sources */,

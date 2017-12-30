@@ -130,6 +130,15 @@ void JIT::emit_op_del_by_id(Instruction* currentInstruction)
     callOperation(operationDeleteByIdJSResult, dst, regT1, regT0, m_codeBlock->identifier(property).impl());
 }
 
+void JIT::emit_op_del_by_val(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int base = currentInstruction[2].u.operand;
+    int property = currentInstruction[3].u.operand;
+    emitLoad2(base, regT1, regT0, property, regT3, regT2);
+    callOperation(operationDeleteByValJSResult, dst, regT1, regT0, regT3, regT2);
+}
+
 JIT::CodeRef JIT::stringGetByValStubGenerator(VM* vm)
 {
     JSInterfaceJIT jit(vm);
@@ -1152,6 +1161,30 @@ void JIT::emit_op_put_to_arguments(Instruction* currentInstruction)
     emitLoad(value, regT1, regT2);
     store32(regT1, Address(regT0, DirectArguments::storageOffset() + index * sizeof(WriteBarrier<Unknown>) + TagOffset));
     store32(regT2, Address(regT0, DirectArguments::storageOffset() + index * sizeof(WriteBarrier<Unknown>) + PayloadOffset));
+}
+
+void JIT::emit_op_get_by_id_with_this(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_get_by_id_with_this);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_get_by_val_with_this(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_get_by_val_with_this);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_put_by_id_with_this(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_put_by_id_with_this);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_put_by_val_with_this(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_put_by_val_with_this);
+    slowPathCall.call();
 }
 
 } // namespace JSC

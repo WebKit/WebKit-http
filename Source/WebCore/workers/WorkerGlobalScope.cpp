@@ -76,7 +76,14 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& userAgent, Wo
     , m_connectionProxy(connectionProxy)
 #endif
 {
-    setSecurityOriginPolicy(SecurityOriginPolicy::create(SecurityOrigin::create(url)));
+#if !ENABLE(INDEXED_DATABASE)
+    UNUSED_PARAM(connectionProxy);
+#endif
+    auto origin = SecurityOrigin::create(url);
+    if (m_topOrigin->hasUniversalAccess())
+        origin->grantUniversalAccess();
+
+    setSecurityOriginPolicy(SecurityOriginPolicy::create(WTFMove(origin)));
     setContentSecurityPolicy(std::make_unique<ContentSecurityPolicy>(*this));
 }
 

@@ -37,7 +37,7 @@ namespace WebKit {
 class ExperimentalFeatures {
 public:
     enum Feature {
-        RegionBasedColumns
+        CSSGridLayout
     };
 
     ExperimentalFeatures();

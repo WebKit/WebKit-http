@@ -369,7 +369,7 @@ Ref<Element> Element::cloneElementWithoutAttributesAndChildren(Document& targetD
     return targetDocument.createElement(tagQName(), false);
 }
 
-RefPtr<Attr> Element::detachAttribute(unsigned index)
+Ref<Attr> Element::detachAttribute(unsigned index)
 {
     ASSERT(elementData());
 
@@ -382,7 +382,7 @@ RefPtr<Attr> Element::detachAttribute(unsigned index)
         attrNode = Attr::create(document(), attribute.name(), attribute.value());
 
     removeAttributeInternal(index, NotInSynchronizationOfLazyAttribute);
-    return attrNode.release();
+    return attrNode.releaseNonNull();
 }
 
 bool Element::removeAttribute(const QualifiedName& name)
@@ -1511,10 +1511,12 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
         setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
 #endif
 
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (parentNode() == &insertionPoint) {
         if (auto* shadowRoot = parentNode()->shadowRoot())
             shadowRoot->hostChildElementDidChange(*this);
     }
+#endif
 
     if (!insertionPoint.isInTreeScope())
         return InsertionDone;
@@ -1595,10 +1597,12 @@ void Element::removedFrom(ContainerNode& insertionPoint)
         }
     }
 
+#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (!parentNode()) {
         if (auto* shadowRoot = insertionPoint.shadowRoot())
             shadowRoot->hostChildElementDidChange(*this);
     }
+#endif
 
     ContainerNode::removedFrom(insertionPoint);
 
@@ -1614,7 +1618,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 
 void Element::unregisterNamedFlowContentElement()
 {
-    if (document().cssRegionsEnabled() && isNamedFlowContentNode() && document().renderView())
+    if (isNamedFlowContentNode() && document().renderView())
         document().renderView()->flowThreadController().unregisterNamedFlowContentElement(*this);
 }
 
@@ -1674,21 +1678,14 @@ RefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
     return nullptr;
 }
 
-RefPtr<ShadowRoot> Element::attachShadow(const Dictionary& dictionary, ExceptionCode& ec)
+bool Element::canHaveUserAgentShadowRoot() const
 {
-    String mode;
-    dictionary.get("mode", mode);
+    return false;
+}
 
-    auto type = ShadowRoot::Type::Closed;
-    if (mode == "open")
-        type = ShadowRoot::Type::Open;
-    else if (mode != "closed") {
-        ec = TypeError;
-        return nullptr;
-    }
-
-    // FIXME: The current spec allows attachShadow on non-HTML elements.
-    if (!is<HTMLElement>(this) || downcast<HTMLElement>(this)->canHaveUserAgentShadowRoot()) {
+RefPtr<ShadowRoot> Element::attachShadow(const ShadowRootInit& init, ExceptionCode& ec)
+{
+    if (canHaveUserAgentShadowRoot()) {
         ec = NOT_SUPPORTED_ERR;
         return nullptr;
     }
@@ -1698,9 +1695,9 @@ RefPtr<ShadowRoot> Element::attachShadow(const Dictionary& dictionary, Exception
         return nullptr;
     }
 
-    addShadowRoot(ShadowRoot::create(document(), type));
-
-    return shadowRoot();
+    auto shadow = ShadowRoot::create(document(), init.mode == ShadowRootMode::Open ? ShadowRoot::Type::Open : ShadowRoot::Type::Closed);
+    addShadowRoot(shadow.copyRef());
+    return WTFMove(shadow);
 }
 
 ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
@@ -2005,7 +2002,7 @@ RefPtr<Attr> Element::setAttributeNodeNS(Attr& attrNode, ExceptionCode& ec)
     treeScope().adoptIfNeeded(&attrNode);
     ensureAttrNodeListForElement(*this).append(&attrNode);
 
-    return oldAttrNode.release();
+    return oldAttrNode;
 }
 
 RefPtr<Attr> Element::removeAttributeNode(Attr& attr, ExceptionCode& ec)
@@ -2937,7 +2934,7 @@ const AtomicString& Element::webkitRegionOverset() const
     document().updateLayoutIgnorePendingStylesheets();
 
     static NeverDestroyed<AtomicString> undefinedState("undefined", AtomicString::ConstructFromLiteral);
-    if (!document().cssRegionsEnabled() || !renderNamedFlowFragment())
+    if (!renderNamedFlowFragment())
         return undefinedState;
 
     switch (regionOversetState()) {
@@ -2964,9 +2961,6 @@ const AtomicString& Element::webkitRegionOverset() const
 Vector<RefPtr<Range>> Element::webkitGetRegionFlowRanges() const
 {
     Vector<RefPtr<Range>> rangeObjects;
-    if (!document().cssRegionsEnabled())
-        return rangeObjects;
-
     document().updateLayoutIgnorePendingStylesheets();
     if (renderer() && renderer()->isRenderNamedFlowFragmentContainer()) {
         RenderNamedFlowFragment& namedFlowFragment = *downcast<RenderBlockFlow>(*renderer()).renderNamedFlowFragment();
@@ -3177,7 +3171,7 @@ RefPtr<Attr> Element::attrIfExists(const QualifiedName& name)
     return nullptr;
 }
 
-RefPtr<Attr> Element::ensureAttr(const QualifiedName& name)
+Ref<Attr> Element::ensureAttr(const QualifiedName& name)
 {
     auto& attrNodeList = ensureAttrNodeListForElement(*this);
     RefPtr<Attr> attrNode = findAttrNodeInList(attrNodeList, name);
@@ -3186,7 +3180,7 @@ RefPtr<Attr> Element::ensureAttr(const QualifiedName& name)
         treeScope().adoptIfNeeded(attrNode.get());
         attrNodeList.append(attrNode);
     }
-    return attrNode.release();
+    return attrNode.releaseNonNull();
 }
 
 void Element::detachAttrNodeFromElementWithValue(Attr* attrNode, const AtomicString& value)

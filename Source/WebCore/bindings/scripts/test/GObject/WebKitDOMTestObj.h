@@ -277,6 +277,16 @@ WEBKIT_API void
 webkit_dom_test_obj_method_with_arg_treating_null_as_empty_string(WebKitDOMTestObj* self, const gchar* arg);
 
 /**
+ * webkit_dom_test_obj_method_with_xpath_ns_resolver_parameter:
+ * @self: A #WebKitDOMTestObj
+ * @resolver: A #WebKitDOMXPathNSResolver
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_method_with_xpath_ns_resolver_parameter(WebKitDOMTestObj* self, WebKitDOMXPathNSResolver* resolver);
+
+/**
  * webkit_dom_test_obj_nullable_string_method:
  * @self: A #WebKitDOMTestObj
  *
@@ -308,6 +318,16 @@ webkit_dom_test_obj_nullable_string_special_method(WebKitDOMTestObj* self, gulon
 **/
 WEBKIT_API void
 webkit_dom_test_obj_method_with_enum_arg(WebKitDOMTestObj* self, WebKitDOMTestEnumType* enumArg);
+
+/**
+ * webkit_dom_test_obj_method_with_optional_enum_arg:
+ * @self: A #WebKitDOMTestObj
+ * @enumArg: A #WebKitDOMTestEnumType
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_method_with_optional_enum_arg(WebKitDOMTestObj* self, WebKitDOMTestEnumType* enumArg);
 
 /**
  * webkit_dom_test_obj_method_with_optional_enum_arg_and_default_value:
@@ -729,6 +749,16 @@ WEBKIT_API void
 webkit_dom_test_obj_method_with_optional_nullable_wrapper_is_null(WebKitDOMTestObj* self, WebKitDOMTestObj* obj);
 
 /**
+ * webkit_dom_test_obj_method_with_optional_xpath_ns_resolver:
+ * @self: A #WebKitDOMTestObj
+ * @resolver: A #WebKitDOMXPathNSResolver
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_method_with_optional_xpath_ns_resolver(WebKitDOMTestObj* self, WebKitDOMXPathNSResolver* resolver);
+
+/**
  * webkit_dom_test_obj_conditional_method1:
  * @self: A #WebKitDOMTestObj
  *
@@ -847,11 +877,11 @@ webkit_dom_test_obj_orange(WebKitDOMTestObj* self);
  * @b: A #glong
  * @error: #GError
  *
- * Returns: (transfer none): A #WebKitDOMbool
+ * Returns: A #gboolean
  *
  * Stability: Unstable
 **/
-WEBKIT_API WebKitDOMbool*
+WEBKIT_API gboolean
 webkit_dom_test_obj_strict_function(WebKitDOMTestObj* self, const gchar* str, gfloat a, glong b, GError** error);
 
 /**
@@ -861,11 +891,11 @@ webkit_dom_test_obj_strict_function(WebKitDOMTestObj* self, const gchar* str, gf
  * @array: A #glong
  * @error: #GError
  *
- * Returns: (transfer none): A #WebKitDOMbool
+ * Returns: A #gboolean
  *
  * Stability: Unstable
 **/
-WEBKIT_API WebKitDOMbool*
+WEBKIT_API gboolean
 webkit_dom_test_obj_strict_function_with_array(WebKitDOMTestObj* self, WebKitDOMTestObj* objArg, glong array, GError** error);
 
 /**
@@ -911,6 +941,16 @@ webkit_dom_test_obj_variadic_node_method(WebKitDOMTestObj* self, WebKitDOMNode* 
 **/
 WEBKIT_API void
 webkit_dom_test_obj_any(WebKitDOMTestObj* self, gfloat a, glong b);
+
+/**
+ * webkit_dom_test_obj_attach_shadow_root:
+ * @self: A #WebKitDOMTestObj
+ * @init: A #WebKitDOMTestDictionary
+ *
+ * Stability: Unstable
+**/
+WEBKIT_API void
+webkit_dom_test_obj_attach_shadow_root(WebKitDOMTestObj* self, WebKitDOMTestDictionary* init);
 
 /**
  * webkit_dom_test_obj_get_read_only_long_attr:

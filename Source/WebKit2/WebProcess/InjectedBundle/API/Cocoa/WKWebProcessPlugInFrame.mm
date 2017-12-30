@@ -38,7 +38,10 @@
 #import "_WKFrameHandleInternal.h"
 #import <JavaScriptCore/JSValue.h>
 #import <WebCore/CertificateInfo.h>
+#import <WebCore/Frame.h>
 #import <WebCore/IntPoint.h>
+#import <WebCore/LinkIconCollector.h>
+#import <WebCore/LinkIconType.h>
 
 using namespace WebKit;
 
@@ -103,6 +106,30 @@ using namespace WebKit;
     return [wrapper(API::FrameHandle::create(_frame->frameID()).leakRef()) autorelease];
 }
 
+static RetainPtr<NSArray> collectIcons(WebCore::Frame* frame, OptionSet<WebCore::LinkIconType> iconTypes)
+{
+    auto result = adoptNS([[NSMutableArray alloc] init]);
+
+    if (frame) {
+        if (auto* document = frame->document()) {
+            for (auto& icon : WebCore::LinkIconCollector(*document).iconsOfTypes(iconTypes))
+                [result addObject:(NSURL *)icon.url];
+        }
+    }
+
+    return result.autorelease();
+}
+
+- (NSArray *)appleTouchIconURLs
+{
+    return collectIcons(_frame->coreFrame(), { WebCore::LinkIconType::TouchIcon, WebCore::LinkIconType::TouchPrecomposedIcon }).autorelease();
+}
+
+- (NSArray *)faviconURLs
+{
+    return collectIcons(_frame->coreFrame(), WebCore::LinkIconType::Favicon).autorelease();
+}
+
 - (WKWebProcessPlugInFrame *)_parentFrame
 {
     WebFrame *parentFrame = _frame->parentFrame();
@@ -120,6 +147,15 @@ using namespace WebKit;
 - (NSArray *)_certificateChain
 {
     return (NSArray *)_frame->certificateInfo().certificateChain();
+}
+
+- (SecTrustRef)_serverTrust
+{
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    return _frame->certificateInfo().trust();
+#else
+    return nil;
+#endif
 }
 
 - (NSURL *)_provisionalURL

@@ -1,3 +1,104 @@
+2016-05-10  Chris Dumez  <cdumez@apple.com>
+
+        Get rid of a lot of calls to RefPtr::release()
+        https://bugs.webkit.org/show_bug.cgi?id=157505
+
+        Reviewed by Alex Christensen.
+
+        Get rid of a lot of calls to RefPtr::release() and use WTFMove() instead.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::HashAndUTF8CharactersTranslator::translate):
+        * wtf/text/CString.cpp:
+        (WTF::CString::copyBufferIfNeeded):
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::allocateBuffer):
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        (WTF::StringBuilder::shrinkToFit):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::append):
+        (WTF::String::insert):
+        (WTF::String::removeInternal):
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+        (WTF::String::operator=):
+        (WTF::String::releaseImpl):
+        (WTF::String::isNull): Deleted.
+
+2016-05-08  Chris Dumez  <cdumez@apple.com>
+
+        [COCOA] Disable HAVE_DTRACE at build time
+        https://bugs.webkit.org/show_bug.cgi?id=157433
+        <rdar://problem/26148841>
+
+        Reviewed by Mark Lam.
+
+        Disable HAVE_DTRACE on COCOA since it is mostly unused and has a performance
+        impact, at least on iOS.
+
+        * wtf/Platform.h:
+
+2016-05-08  Chris Dumez  <cdumez@apple.com>
+
+        [Bindings] Simplify [RequiresExistingAtomicString] IDL extended attribute handling
+        https://bugs.webkit.org/show_bug.cgi?id=157465
+
+        Reviewed by Darin Adler.
+
+        Add an AtomicString(RefPtr<AtomicStringImpl>&&) constructor that is now
+        used by the bindings when [RequiresExistingAtomicString] is used. This
+        is more efficient than using AtomicString(AtomicStringImpl*) as the
+        caller has a RefPtr<AtomicStringImpl> and is consistent with the
+        pre-existing String(RefPtr<AtomicStringImpl>&&) constructor.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+
+2016-05-08  Darin Adler  <darin@apple.com>
+
+        * wtf/text/WTFString.h: Remove pragma once. Not working for some reason.
+
+2016-05-08  Darin Adler  <darin@apple.com>
+
+        Follow-up to that last patch (missed review comments).
+
+        * wtf/text/WTFString.h: Use nullptr instead of 0 as needed. Also use pragma once.
+
+2016-05-08  Darin Adler  <darin@apple.com>
+
+        Change EventSource constructor to take an IDL dictionary instead of a WebCore::Dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=157459
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/WTFString.h: Export a symbol now used in WebCore.
+
+2016-05-02  Sam Weinig  <sam@webkit.org>
+
+        On platforms that support it, use a SecTrustRef as the basis of CertificateInfo instead of a chain of SecCertificateRefs.
+        https://bugs.webkit.org/show_bug.cgi?id=157220
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+        Add support for HAVE(SEC_TRUST_SERIALIZATION).
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Add SPI access to SecTrustSerialize and SecTrustDeserialize.
+
+2016-05-04  Filip Pizlo  <fpizlo@apple.com>
+
+        Add HLE locks and synchronic TTAS locks to the ToyLocks benchmark suite
+        https://bugs.webkit.org/show_bug.cgi?id=157367
+
+        Rubber stamped by Benjamin Poulain.
+        
+        Turns out they are both a lot slower than WTF::Lock. The HLE lock is written according to Intel's
+        documentation. The synchronic lock follows the algorithm of the "ttas_lock" in the synchronic
+        test.hpp.
+
+        * benchmarks/ToyLocks.h:
+
 2016-05-04  Filip Pizlo  <fpizlo@apple.com>
 
         Add a few more WTF locking benchmarks

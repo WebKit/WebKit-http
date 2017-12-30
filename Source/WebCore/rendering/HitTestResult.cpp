@@ -121,16 +121,27 @@ HitTestResult& HitTestResult::operator=(const HitTestResult& other)
     return *this;
 }
 
-void HitTestResult::setToNonShadowAncestor()
+static Node* moveOutOfUserAgentShadowTree(Node& node)
 {
-    Node* node = innerNode();
-    if (node)
-        node = node->document().ancestorInThisScope(node);
-    setInnerNode(node);
-    node = innerNonSharedNode();
-    if (node)
-        node = node->document().ancestorInThisScope(node);
-    setInnerNonSharedNode(node);
+    if (node.isInShadowTree()) {
+        if (ShadowRoot* root = node.containingShadowRoot()) {
+            if (root->type() == ShadowRoot::Type::UserAgent)
+                return root->host();
+        }
+    }
+    return &node;
+}
+
+void HitTestResult::setToNonUserAgentShadowAncestor()
+{
+    if (Node* node = innerNode()) {
+        node = moveOutOfUserAgentShadowTree(*node);
+        setInnerNode(node);
+    }
+    if (Node *node = innerNonSharedNode()) {
+        node = moveOutOfUserAgentShadowTree(*node);
+        setInnerNonSharedNode(node);
+    }
 }
 
 void HitTestResult::setInnerNode(Node* node)
@@ -657,7 +668,7 @@ bool HitTestResult::addNodeToRectBasedTestResult(Node* node, const HitTestReques
     if (!node)
         return true;
 
-    if (request.disallowsShadowContent())
+    if (request.disallowsUserAgentShadowContent())
         node = node->document().ancestorInThisScope(node);
 
     mutableRectBasedTestResult().add(node);
@@ -677,7 +688,7 @@ bool HitTestResult::addNodeToRectBasedTestResult(Node* node, const HitTestReques
     if (!node)
         return true;
 
-    if (request.disallowsShadowContent())
+    if (request.disallowsUserAgentShadowContent())
         node = node->document().ancestorInThisScope(node);
 
     mutableRectBasedTestResult().add(node);

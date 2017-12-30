@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -137,6 +137,11 @@ public:
     {
         ASSERT(!isAddress());
         return m_base;
+    }
+    
+    JSValueRegs regs() const
+    {
+        return JSValueRegs(gpr());
     }
     
     MacroAssembler::Address asAddress() const { return MacroAssembler::Address(base(), offset()); }
@@ -304,6 +309,11 @@ public:
     uint32_t tag() const
     {
         return static_cast<int32_t>(m_tagType);
+    }
+    
+    JSValueRegs regs() const
+    {
+        return JSValueRegs(tagGPR(), payloadGPR());
     }
     
     MacroAssembler::Address asAddress(unsigned additionalOffset = 0) const { return MacroAssembler::Address(base(), offset() + additionalOffset); }
@@ -879,20 +889,6 @@ public:
 };
 
 #endif // CPU(SH4)
-
-inline GPRReg argumentRegisterFor(unsigned argumentIndex)
-{
-#if USE(JSVALUE64)
-    if (argumentIndex >= NUMBER_OF_ARGUMENT_REGISTERS)
-        return InvalidGPRReg;
-
-    return GPRInfo::toArgumentRegister(argumentIndex);
-#else
-    UNUSED_PARAM(argumentIndex);
-
-    return InvalidGPRReg;
-#endif
-}
 
 // The baseline JIT uses "accumulator" style execution with regT0 (for 64-bit)
 // and regT0 + regT1 (for 32-bit) serving as the accumulator register(s) for

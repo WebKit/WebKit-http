@@ -55,10 +55,11 @@ class SerializedScriptValue;
 struct IDBKeyRangeData;
 
 namespace IDBClient {
+class IDBConnectionProxy;
 class TransactionOperation;
 }
 
-class IDBTransaction : public RefCounted<IDBTransaction>, public EventTargetWithInlineData, private ActiveDOMObject {
+class IDBTransaction : public ThreadSafeRefCounted<IDBTransaction>, public EventTargetWithInlineData, private ActiveDOMObject {
 public:
     static const AtomicString& modeReadOnly();
     static const AtomicString& modeReadWrite();
@@ -83,13 +84,13 @@ public:
 
     EventTargetInterface eventTargetInterface() const final { return IDBTransactionEventTargetInterfaceType; }
     ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
-    void refEventTarget() final { RefCounted::ref(); }
-    void derefEventTarget() final { RefCounted::deref(); }
+    void refEventTarget() final { ThreadSafeRefCounted::ref(); }
+    void derefEventTarget() final { ThreadSafeRefCounted::deref(); }
     using EventTarget::dispatchEvent;
     bool dispatchEvent(Event&) final;
 
-    using RefCounted<IDBTransaction>::ref;
-    using RefCounted<IDBTransaction>::deref;
+    using ThreadSafeRefCounted<IDBTransaction>::ref;
+    using ThreadSafeRefCounted<IDBTransaction>::deref;
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
@@ -132,8 +133,6 @@ public:
 
     void abortDueToFailedRequest(DOMError&);
 
-    IDBClient::IDBConnectionToServer& serverConnection();
-
     void activate();
     void deactivate();
 
@@ -141,6 +140,10 @@ public:
 
     bool isFinishedOrFinishing() const;
     bool isFinished() const { return m_state == IndexedDB::TransactionState::Finished; }
+
+    IDBClient::IDBConnectionProxy& connectionProxy();
+
+    ThreadIdentifier originThreadID() const;
 
 private:
     IDBTransaction(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest*);

@@ -45,6 +45,7 @@
 
     --border-color: hsl(0, 0%, 70%);
     --panel-background-color: hsl(0, 0%, 94%);
+    --panel-background-color-light: hsl(0, 0%, 96%);
 
     --console-secondary-text-color: hsla(0, 0%, 0%, 0.33);
     --console-prompt-min-height: 30px;
@@ -67,8 +68,6 @@
     --memory-page-stroke-color: hsl(22, 40%, 50%);
     --memory-max-comparison-fill-color: hsl(220, 10%, 75%);
     --memory-max-comparison-stroke-color: hsl(220, 10%, 55%);
-    --memory-extra-fill-color: hsl(211, 53%, 70%);
-    --memory-extra-stroke-color: hsl(211, 53%, 55%);
 
     --even-zebra-stripe-row-background-color: white;
     --odd-zebra-stripe-row-background-color: hsl(0, 0%, 95%);

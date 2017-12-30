@@ -193,10 +193,15 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ValueAdd:
     case TryGetById:
     case DeleteById:
+    case DeleteByVal:
     case GetById:
+    case GetByIdWithThis:
+    case GetByValWithThis:
     case GetByIdFlush:
     case PutById:
     case PutByIdFlush:
+    case PutByIdWithThis:
+    case PutByValWithThis:
     case PutByIdDirect:
     case PutGetterById:
     case PutSetterById:

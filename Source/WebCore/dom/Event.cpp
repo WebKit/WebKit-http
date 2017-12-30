@@ -187,11 +187,11 @@ void Event::setTarget(RefPtr<EventTarget>&& target)
         receivedTarget();
 }
 
-Vector<EventTarget*> Event::deepPath() const
+Vector<EventTarget*> Event::composedPath() const
 {
     if (!m_eventPath)
         return Vector<EventTarget*>();
-    return m_eventPath->computePathDisclosedToTarget(*m_target);
+    return m_eventPath->computePathUnclosedToTarget(*m_currentTarget);
 }
 
 void Event::receivedTarget()

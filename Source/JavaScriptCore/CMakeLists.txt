@@ -289,7 +289,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGFlushedAt.cpp
     dfg/DFGLiveCatchVariablePreservationPhase.cpp
     dfg/DFGFrozenValue.cpp
-    dfg/DFGFunctionWhitelist.cpp
     dfg/DFGGraph.cpp
     dfg/DFGGraphSafepoint.cpp
     dfg/DFGHeapLocation.cpp
@@ -564,6 +563,7 @@ set(JavaScriptCore_SOURCES
     jit/Repatch.cpp
     jit/ScratchRegisterAllocator.cpp
     jit/SetupVarargsFrame.cpp
+    jit/TagRegistersMode.cpp
     jit/TempRegisterSet.cpp
     jit/ThunkGenerators.cpp
 
@@ -826,6 +826,7 @@ set(JavaScriptCore_SOURCES
     tools/CodeProfile.cpp
     tools/CodeProfiling.cpp
     tools/FunctionOverrides.cpp
+    tools/FunctionWhitelist.cpp
     tools/JSDollarVM.cpp
     tools/JSDollarVMPrototype.cpp
 
