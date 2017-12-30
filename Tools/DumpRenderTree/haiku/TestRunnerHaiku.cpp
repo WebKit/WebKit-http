@@ -230,6 +230,11 @@ void TestRunner::setWindowIsKey(bool)
     notImplemented();
 }
 
+void TestRunner::setViewSize(double width, double height)
+{
+	notImplemented();
+}
+
 void watchdogFired()
 {
     delete waitToDumpWatchdog;
@@ -603,6 +608,12 @@ void TestRunner::simulateWebNotificationClick(JSValueRef jsNotification)
 
 void TestRunner::simulateLegacyWebNotificationClick(JSStringRef title)
 {
+}
+
+unsigned TestRunner::imageCountInGeneralPasteboard() const
+{
+    printf("ERROR: TestRunner::imageCountInGeneralPasteboard() not implemented\n");
+    return 0;
 }
 
 void TestRunner::resetPageVisibility()
