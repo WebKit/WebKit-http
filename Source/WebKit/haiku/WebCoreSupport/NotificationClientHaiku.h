@@ -30,6 +30,7 @@
 
 #include "NotificationClient.h"
 #include "Notification.h"
+#include "NotificationPermissionCallback.h"
 #include <Notification.h>
 
 #include <Bitmap.h>
