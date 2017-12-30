@@ -1,4 +1,6 @@
 LIST(APPEND WTF_SOURCES
+	PlatformUserPreferredLanguagesHaiku.cpp
+
     haiku/MainThreadHaiku.cpp
 
 	generic/RunLoopGeneric.cpp

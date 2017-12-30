@@ -52,6 +52,12 @@ void TestController::platformWillRunTest(const TestInvocation&)
 {
 }
 
+unsigned TestController::imageCountInGeneralPasteboard() const
+{
+	// FIXME implement (scan BClipboard?)
+	return 0;
+}
+
 void TestController::platformRunUntil(bool& condition, double timeout)
 {
     // FIXME condition (?), timeout (via BMessageRunnner)

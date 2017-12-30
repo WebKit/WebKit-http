@@ -31,29 +31,19 @@
 
 namespace WebCore {
 
-BitmapImage::BitmapImage(NativeImagePtr&& nativeImage, ImageObserver* observer)
-    : Image(observer)
-    , m_size(nativeImage->Bounds().Width(), nativeImage->Bounds().Height())
-    , m_currentFrame(0)
-    , m_repetitionCount(cAnimationNone)
-    , m_repetitionCountStatus(Unknown)
-    , m_repetitionsComplete(0)
-    , m_decodedSize(m_size.width() * m_size.height() * 4)
-    , m_frameCount(1)
-    , m_isSolidColor(false)
-    , m_checkedForSolidColor(false)
-    , m_animationFinished(true)
-    , m_allDataReceived(true)
-    , m_haveSize(true)
-    , m_sizeAvailable(true)
-    , m_haveFrameCount(true)
-{
-    m_frames.grow(1);
-    m_frames[0].m_hasAlpha = true; // FIXME
-    m_frames[0].m_image = nativeImage;
-    m_frames[0].m_haveMetadata = true;
+namespace NativeImage {
 
-    checkForSolidColor();
+IntSize size(const RefPtr<WebCore::BitmapRef>& image)
+{
+    BRect r = image->Bounds();
+	return IntSize(r.Width(), r.Height());
+}
+
+bool hasAlpha(const RefPtr<WebCore::BitmapRef>& image)
+{
+	return image->ColorSpace() == B_RGBA32;
+}
+
 }
 
 }

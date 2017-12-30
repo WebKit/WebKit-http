@@ -791,7 +791,7 @@ void FrameLoaderClientHaiku::frameLoadCompleted()
 {
 }
 
-void FrameLoaderClientHaiku::saveViewStateToItem(HistoryItem*)
+void FrameLoaderClientHaiku::saveViewStateToItem(HistoryItem&)
 {
     notImplemented();
 }

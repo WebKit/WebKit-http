@@ -23,19 +23,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 #include "config.h"
+#include <wtf/text/WTFString.h>
 #include "Language.h"
 
-#include <wtf/text/WTFString.h>
+/* Can't include these the normal way, because WTF header names collide. */
+#include <locale/Collator.h>
+#include <support/Locker.h>
 
-// JavaScriptCore's Locker.h winds up taking precedence over ours
-// hence the explicit path
-#include <os/support/Locker.h>
 #include <Locale.h>
 #include <LocaleRoster.h>
 #include <stdio.h>
 
-namespace WebCore {
+
+namespace WTF {
+
+void setPlatformUserPreferredLanguagesChangedCallback(void (*)()) { }
 
 static String platformLanguage()
 {
@@ -47,10 +51,10 @@ static String platformLanguage()
         if (BLocale::Default()->GetLanguage(&language) == B_OK)
             locale = language.ID();
         else
-            locale = "en_US";
+            locale = "c";
 	    locale.ReplaceAll('_', '-');
     }
-    return locale;
+    return locale.String();
 }
 
 Vector<String> platformUserPreferredLanguages()
