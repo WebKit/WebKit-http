@@ -879,27 +879,57 @@ static IntRect selectionBoxForRange(WebCore::Range* range)
     return boundingRect;
 }
 
+static bool canShrinkToTextSelection(Node* node)
+{
+    if (node && !is<Element>(*node))
+        node = node->parentElement();
+    
+    auto* renderer = (node) ? node->renderer() : nullptr;
+    return renderer && renderer->childrenInline() && (is<RenderBlock>(*renderer) && !downcast<RenderBlock>(*renderer).inlineElementContinuation()) && !renderer->isTable();
+}
+
+static bool canShrinkToTextSelection(Range& range)
+{
+    if (range.startContainer().isTextNode() && range.endContainer().isTextNode())
+        return true;
+    return canShrinkToTextSelection(range.commonAncestorContainer());
+}
+
+static bool hasCustomLineHeight(Node& node)
+{
+    auto* renderer = node.renderer();
+    return renderer && renderer->style().lineHeight().isSpecified();
+}
+    
 PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point, const VisiblePosition& position, SelectionFlags& flags)
 {
     HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint((point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
 
     Node* currentNode = result.innerNode();
+    if (!currentNode)
+        return nullptr;
     RefPtr<Range> range;
     FloatRect boundingRectInScrollViewCoordinates;
+
+    if (!currentNode->isTextNode() && !canShrinkToTextSelection(currentNode) && hasCustomLineHeight(*currentNode)) {
+        auto* renderer = currentNode->renderer();
+        if (is<RenderBlockFlow>(renderer)) {
+            auto *renderText = downcast<RenderBlockFlow>(renderer)->findClosestTextAtAbsolutePoint(point);
+            if (renderText && renderText->textNode())
+                currentNode = renderText->textNode();
+        }
+    }
 
     if (currentNode->isTextNode()) {
         range = enclosingTextUnitOfGranularity(position, ParagraphGranularity, DirectionForward);
         if (!range || range->collapsed())
             range = Range::create(currentNode->document(), position, position);
-        if (!range)
-            return nullptr;
+        else {
+            m_blockRectForTextSelection = selectionBoxForRange(range.get());
+            range = wordRangeFromPosition(position);
+        }
 
-        boundingRectInScrollViewCoordinates = selectionBoxForRange(range.get());
-        boundingRectInScrollViewCoordinates.scale(m_page->pageScaleFactor());
-        if (boundingRectInScrollViewCoordinates.width() > m_blockSelectionDesiredSize.width() && boundingRectInScrollViewCoordinates.height() > m_blockSelectionDesiredSize.height())
-            return wordRangeFromPosition(position);
-
-        currentNode = range->commonAncestorContainer();
+        return range;
     }
 
     if (!currentNode->isElementNode())
@@ -1430,6 +1460,8 @@ PassRefPtr<Range> WebPage::contractedRangeFromHandle(Range* currentRange, Select
         case SelectionHandlePosition::Top:
         case SelectionHandlePosition::Bottom:
             isBetterChoice = (copyRect.height() < currentBox.height());
+            if (copyRect.height() == currentBox.height())
+                isBetterChoice = canShrinkToTextSelection(*newRange.get());
             break;
         case SelectionHandlePosition::Left:
         case SelectionHandlePosition::Right:
@@ -1464,12 +1496,7 @@ PassRefPtr<Range> WebPage::contractedRangeFromHandle(Range* currentRange, Select
     // there are multiple sub-element blocks beneath us.  If we didn't find
     // multiple sub-element blocks, don't shrink to a sub-element block.
 
-    Node* node = bestRange->commonAncestorContainer();
-    if (!node->isElementNode())
-        node = node->parentElement();
-
-    RenderObject* renderer = node->renderer();
-    if (renderer && renderer->childrenInline() && (is<RenderBlock>(*renderer) && !downcast<RenderBlock>(*renderer).inlineElementContinuation()) && !renderer->isTable())
+    if (canShrinkToTextSelection(*bestRange.get()))
         flags = None;
 
     return bestRange;
@@ -1605,18 +1632,61 @@ void WebPage::clearSelection()
     m_page->focusController().focusedOrMainFrame().selection().clear();
 }
 
+RefPtr<Range> WebPage::switchToBlockSelectionAtPoint(const IntPoint& point, SelectionHandlePosition handlePosition)
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    RefPtr<Range> newRange;
+    RefPtr<Range> currentRange = frame.selection().selection().toNormalizedRange();
+    if (currentRange) {
+        Node* currentNode = &currentRange->startContainer();
+        if (currentNode->isTextNode()) {
+            newRange = enclosingTextUnitOfGranularity(currentRange->startPosition(), ParagraphGranularity, DirectionBackward);
+            if (newRange && newRange->collapsed())
+                newRange = nullptr;
+        }
+        
+        if (!newRange && !currentNode->isElementNode())
+            currentNode = currentNode->parentElement();
+        
+        if (!newRange && currentNode) {
+            newRange = Range::create(currentNode->document());
+            newRange->selectNodeContents(*currentNode, ASSERT_NO_EXCEPTION);
+        }
+    }
+    return newRange;
+}
+
+bool WebPage::shouldSwitchToBlockModeForHandle(const IntPoint& handlePoint, SelectionHandlePosition handlePosition)
+{
+    if (!m_blockRectForTextSelection.height())
+        return false;
+    switch (handlePosition) {
+    case SelectionHandlePosition::Top:
+        return handlePoint.y() < m_blockRectForTextSelection.y();
+    case SelectionHandlePosition::Right:
+        return handlePoint.x() > m_blockRectForTextSelection.maxX();
+    case SelectionHandlePosition::Bottom:
+        return handlePoint.y() > m_blockRectForTextSelection.maxY();
+    case SelectionHandlePosition::Left:
+        return handlePoint.x() < m_blockRectForTextSelection.x();
+    }
+}
+
 void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches, bool baseIsStart, uint64_t callbackID)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-    VisiblePosition position = frame.visiblePositionForPoint(frame.view()->rootViewToContents(point));
+    IntPoint pointInDocument = frame.view()->rootViewToContents(point);
+    VisiblePosition position = frame.visiblePositionForPoint(pointInDocument);
     if (position.isNull()) {
-        send(Messages::WebPageProxy::TouchesCallback(point, touches, callbackID));
+        send(Messages::WebPageProxy::TouchesCallback(point, touches, 0, callbackID));
         return;
     }
 
     RefPtr<Range> range;
     VisiblePosition result;
-    
+    SelectionFlags flags = None;
+    SelectionHandlePosition handlePosition = baseIsStart ? SelectionHandlePosition::Bottom : SelectionHandlePosition::Top;
+
     switch (static_cast<SelectionTouch>(touches)) {
     case SelectionTouch::Started:
     case SelectionTouch::EndedNotMoving:
@@ -1640,13 +1710,27 @@ void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches
         break;
 
     case SelectionTouch::Moved:
-        range = rangeForPosition(&frame, position, baseIsStart);
+        if (shouldSwitchToBlockModeForHandle(pointInDocument, handlePosition)) {
+            range = switchToBlockSelectionAtPoint(pointInDocument, handlePosition);
+            flags = IsBlockSelection;
+        } else
+            range = rangeForPosition(&frame, position, baseIsStart);
         break;
     }
-    if (range)
+    if (range && flags != IsBlockSelection)
         frame.selection().setSelectedRange(range.get(), position.affinity(), true);
 
-    send(Messages::WebPageProxy::TouchesCallback(point, touches, callbackID));
+    send(Messages::WebPageProxy::TouchesCallback(point, touches, flags, callbackID));
+    if (range && flags == IsBlockSelection) {
+        // We just switched to block selection therefore we need to compute the thresholds.
+        m_currentBlockSelection = range;
+        frame.selection().setSelectedRange(range.get(), position.affinity(), true);
+        
+        float growThreshold = 0;
+        float shrinkThreshold = 0;
+        computeExpandAndShrinkThresholdsForHandle(point, handlePosition, growThreshold, shrinkThreshold);
+        send(Messages::WebPageProxy::DidUpdateBlockSelectionWithTouch(static_cast<uint32_t>(SelectionTouch::Started), static_cast<uint32_t>(IsBlockSelection), growThreshold, shrinkThreshold));
+    }
 }
 
 void WebPage::selectWithTwoTouches(const WebCore::IntPoint& from, const WebCore::IntPoint& to, uint32_t gestureType, uint32_t gestureState, uint64_t callbackID)
@@ -1777,10 +1861,32 @@ PassRefPtr<Range> WebPage::rangeForGranularityAtPoint(const Frame& frame, const 
     return range;
 }
 
+static inline bool rectIsTooBigForSelection(const IntRect& blockRect, const Frame& frame)
+{
+    const float factor = 0.97;
+    return blockRect.height() > frame.view()->unobscuredContentRect().height() * factor;
+}
+
 void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, uint32_t granularity, bool isInteractingWithAssistedNode, uint64_t callbackID)
 {
     const Frame& frame = m_page->focusController().focusedOrMainFrame();
     RefPtr<Range> range = rangeForGranularityAtPoint(frame, point, granularity, isInteractingWithAssistedNode);
+    if (!isInteractingWithAssistedNode) {
+        m_blockSelectionDesiredSize.setWidth(blockSelectionStartWidth);
+        m_blockSelectionDesiredSize.setHeight(blockSelectionStartHeight);
+        m_currentBlockSelection = nullptr;
+        auto* renderer = range->startContainer().renderer();
+        if (renderer->style().preserveNewline())
+            m_blockRectForTextSelection = renderer->absoluteBoundingBoxRect(true);
+        else {
+            auto* paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithAssistedNode), ParagraphGranularity, DirectionForward).get();
+            if (paragraphRange && !paragraphRange->collapsed())
+                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange);
+        }
+        
+        if (rectIsTooBigForSelection(m_blockRectForTextSelection, frame))
+            m_blockRectForTextSelection.setHeight(0);
+    }
 
     if (range)
         frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
@@ -2298,8 +2404,9 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                 if (attachment.file())
                     info.url = downcast<HTMLAttachmentElement>(*hitNode).file()->path();
             } else {
-                const static CGFloat factor = 0.97;
-                info.isSelectable = renderer->style().userSelect() != SELECT_NONE && info.bounds.height() < result.innerNodeFrame()->view()->unobscuredContentRect().height() * factor;
+                info.isSelectable = renderer->style().userSelect() != SELECT_NONE;
+                if (info.isSelectable && !hitNode->isTextNode())
+                    info.isSelectable = !rectIsTooBigForSelection(info.bounds, *result.innerNodeFrame());
             }
         }
     }
@@ -2422,6 +2529,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         bool inFixed = false;
         renderer->localToContainerPoint(FloatPoint(), nullptr, UseTransforms, &inFixed);
         information.insideFixedPosition = inFixed;
+        information.isRTL = renderer->style().direction() == RTL;
         
         if (inFixed && elementFrame.isMainFrame()) {
             FrameView* frameView = elementFrame.view();

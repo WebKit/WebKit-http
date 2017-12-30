@@ -35,6 +35,7 @@
 #include "HTMLNames.h"
 #include "HTMLTableElement.h"
 #include "LayoutRepainter.h"
+#include "RenderChildIterator.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
 #include "RenderNamedFlowFragment.h"
@@ -689,7 +690,7 @@ void RenderTable::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 void RenderTable::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     PaintPhase paintPhase = paintInfo.phase;
-    if ((paintPhase == PaintPhaseBlockBackground || paintPhase == PaintPhaseChildBlockBackground) && hasBoxDecorations() && style().visibility() == VISIBLE)
+    if ((paintPhase == PaintPhaseBlockBackground || paintPhase == PaintPhaseChildBlockBackground) && hasVisibleBoxDecorations() && style().visibility() == VISIBLE)
         paintBoxDecorations(paintInfo, paintOffset);
 
     if (paintPhase == PaintPhaseMask) {
@@ -768,7 +769,7 @@ void RenderTable::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& p
     paintBackground(paintInfo, rect, bleedAvoidance);
     paintBoxShadow(paintInfo, rect, style(), Inset);
 
-    if (style().hasBorderDecoration() && !collapseBorders())
+    if (style().hasVisibleBorderDecoration() && !collapseBorders())
         paintBorder(paintInfo, rect, style());
 }
 
@@ -879,12 +880,12 @@ void RenderTable::appendColumn(unsigned span)
 
 RenderTableCol* RenderTable::firstColumn() const
 {
-    for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
-        if (is<RenderTableCol>(*child))
-            return downcast<RenderTableCol>(child);
+    for (auto& child : childrenOfType<RenderObject>(*this)) {
+        if (is<RenderTableCol>(child))
+            return &const_cast<RenderTableCol&>(downcast<RenderTableCol>(child));
 
         // We allow only table-captions before columns or column-groups.
-        if (!is<RenderTableCaption>(*child))
+        if (!is<RenderTableCaption>(child))
             return nullptr;
     }
 

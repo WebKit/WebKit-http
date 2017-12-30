@@ -137,7 +137,7 @@ typedef const char* optionString;
     v(bool, useTailCalls, true, Normal, nullptr) \
     v(bool, alwaysUseShadowChicken, false, Normal, nullptr) \
     v(unsigned, shadowChickenLogSize, 1000, Normal, nullptr) \
-    v(unsigned, shadowChickenStackSizeLimit, 100000, Normal, nullptr) \
+    v(unsigned, shadowChickenMaxTailDeletedFramesSize, 128, Normal, nullptr) \
     \
     /* dumpDisassembly implies dumpDFGDisassembly. */ \
     v(bool, dumpDisassembly, false, Normal, "dumps disassembly of all JIT compiled code upon compilation") \
@@ -211,6 +211,7 @@ typedef const char* optionString;
     v(bool, useMovHintRemoval, true, Normal, nullptr) \
     v(bool, usePutStackSinking, true, Normal, nullptr) \
     v(bool, useObjectAllocationSinking, true, Normal, nullptr) \
+    v(bool, logExecutableAllocation, false, Normal, nullptr) \
     \
     v(bool, useConcurrentJIT, true, Normal, "allows the DFG / FTL compilation in threads other than the executing JS thread") \
     v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1, Normal, nullptr) \

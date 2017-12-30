@@ -976,7 +976,7 @@ static bool layoutOverflowRectContainsAllDescendants(const RenderElement& render
     }
 
     // This renderer may have positioned descendants whose containing block is some ancestor.
-    if (auto containingBlock = containingBlockForAbsolutePosition(&renderer)) {
+    if (auto containingBlock = renderer.containingBlockForAbsolutePosition()) {
         if (auto positionedObjects = containingBlock->positionedObjects()) {
             for (RenderBox* it : *positionedObjects) {
                 if (it != &renderer && renderer.element()->contains(it->element()))
@@ -2369,7 +2369,7 @@ void Element::setOuterHTML(const String& html, ExceptionCode& ec)
     if (ec)
         return;
     
-    parent->replaceChild(fragment.releaseNonNull(), *this, ec);
+    parent->replaceChild(*fragment, *this, ec);
     RefPtr<Node> node = next ? next->previousSibling() : nullptr;
     if (!ec && is<Text>(node.get()))
         mergeWithNextTextNode(downcast<Text>(*node), ec);
@@ -2384,7 +2384,7 @@ void Element::setInnerHTML(const String& html, ExceptionCode& ec)
         ContainerNode* container = this;
 
         if (is<HTMLTemplateElement>(*this))
-            container = downcast<HTMLTemplateElement>(*this).content();
+            container = &downcast<HTMLTemplateElement>(*this).content();
 
         replaceChildrenWithFragment(*container, fragment.releaseNonNull(), ec);
     }

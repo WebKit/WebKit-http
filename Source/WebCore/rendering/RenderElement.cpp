@@ -41,6 +41,7 @@
 #include "Logging.h"
 #include "PathUtilities.h"
 #include "RenderBlock.h"
+#include "RenderChildIterator.h"
 #include "RenderCounter.h"
 #include "RenderDeprecatedFlexibleBox.h"
 #include "RenderFlexibleBox.h"
@@ -860,7 +861,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
             clearPositionedState();
         }
         setHorizontalWritingMode(true);
-        setHasBoxDecorations(false);
+        setHasVisibleBoxDecorations(false);
         setHasOverflowClip(false);
         setHasTransformRelatedProperty(false);
         setHasReflection(false);
@@ -1257,7 +1258,7 @@ static bool mustRepaintBackgroundOrBorder(const RenderElement& renderer)
         return true;
 
     // If we don't have a background/border/mask, then nothing to do.
-    if (!renderer.hasBoxDecorations())
+    if (!renderer.hasVisibleBoxDecorations())
         return false;
 
     if (mustRepaintFillLayers(renderer, renderer.style().backgroundLayers()))
@@ -2151,18 +2152,18 @@ void RenderElement::issueRepaintForOutlineAuto(float outlineSize)
     repaintRectangle(repaintRect);
 }
 
-void RenderElement::updateOutlineAutoAncestor(bool hasOutlineAuto) const
+void RenderElement::updateOutlineAutoAncestor(bool hasOutlineAuto)
 {
-    for (auto* child = firstChild(); child; child = child->nextSibling()) {
-        if (hasOutlineAuto == child->hasOutlineAutoAncestor())
+    for (auto& child : childrenOfType<RenderObject>(*this)) {
+        if (hasOutlineAuto == child.hasOutlineAutoAncestor())
             continue;
-        child->setHasOutlineAutoAncestor(hasOutlineAuto);
-        bool childHasOutlineAuto = child->outlineStyleForRepaint().outlineStyleIsAuto();
+        child.setHasOutlineAutoAncestor(hasOutlineAuto);
+        bool childHasOutlineAuto = child.outlineStyleForRepaint().outlineStyleIsAuto();
         if (childHasOutlineAuto)
             continue;
         if (!is<RenderElement>(child))
             continue;
-        downcast<RenderElement>(*child).updateOutlineAutoAncestor(hasOutlineAuto);
+        downcast<RenderElement>(child).updateOutlineAutoAncestor(hasOutlineAuto);
     }
     if (hasContinuation())
         downcast<RenderBoxModelObject>(*this).continuation()->updateOutlineAutoAncestor(hasOutlineAuto);
@@ -2242,42 +2243,5 @@ void RenderElement::resetTextAutosizing()
     }
 }
 #endif // ENABLE(IOS_TEXT_AUTOSIZING)
-
-RenderBlock* containingBlockForFixedPosition(const RenderElement* element)
-{
-    const auto* object = element;
-    while (object && !object->canContainFixedPositionObjects())
-        object = object->parent();
-
-    ASSERT(!object || !object->isAnonymousBlock());
-    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
-}
-
-RenderBlock* containingBlockForAbsolutePosition(const RenderElement* element)
-{
-    const auto* object = element;
-    while (object && !object->canContainAbsolutelyPositionedObjects())
-        object = object->parent();
-
-    // For a relatively positioned inline, return its nearest non-anonymous containing block,
-    // not the inline itself, to avoid having a positioned objects list in all RenderInlines
-    // and use RenderBlock* as RenderElement::containingBlock's return type.
-    // Use RenderBlock::container() to obtain the inline.
-    if (object && !is<RenderBlock>(*object))
-        object = object->containingBlock();
-
-    while (object && object->isAnonymousBlock())
-        object = object->containingBlock();
-
-    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
-}
-
-RenderBlock* containingBlockForObjectInFlow(const RenderElement* element)
-{
-    const auto* object = element;
-    while (object && ((object->isInline() && !object->isReplaced()) || !object->isRenderBlock()))
-        object = object->parent();
-    return const_cast<RenderBlock*>(downcast<RenderBlock>(object));
-}
 
 }

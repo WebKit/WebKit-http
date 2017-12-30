@@ -158,7 +158,15 @@ JSValue eval(CallFrame* callFrame)
     UnlinkedCodeBlock* callerUnlinkedCodeBlock = callerCodeBlock->unlinkedCodeBlock();
 
     bool isArrowFunctionContext = callerUnlinkedCodeBlock->isArrowFunction() || callerUnlinkedCodeBlock->isArrowFunctionContext();
-    EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(callerCodeBlock->isStrictMode(), programSource, isArrowFunctionContext, callerScopeChain);
+
+    DerivedContextType derivedContextType = callerUnlinkedCodeBlock->derivedContextType();
+    if (!isArrowFunctionContext && callerUnlinkedCodeBlock->isClassContext()) {
+        derivedContextType = callerUnlinkedCodeBlock->isConstructor()
+            ? DerivedContextType::DerivedConstructorContext
+            : DerivedContextType::DerivedMethodContext;
+    }
+
+    EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(callerCodeBlock->isStrictMode(), programSource, isArrowFunctionContext, derivedContextType, callerScopeChain);
 
     if (!eval) {
         if (!callerCodeBlock->isStrictMode()) {
@@ -180,14 +188,6 @@ JSValue eval(CallFrame* callFrame)
         if (callerUnlinkedCodeBlock->constructorKind() == ConstructorKind::Derived)
             thisTDZMode = ThisTDZMode::AlwaysCheck;
 
-        DerivedContextType derivedContextType = callerUnlinkedCodeBlock->derivedContextType();
-        
-        if (!isArrowFunctionContext && callerUnlinkedCodeBlock->isClassContext()) {
-            derivedContextType = callerUnlinkedCodeBlock->isConstructor()
-                ? DerivedContextType::DerivedConstructorContext
-                : DerivedContextType::DerivedMethodContext;
-        }
-        
         EvalContextType evalContextType;
         
         if (isFunctionParseMode(callerUnlinkedCodeBlock->parseMode()))
@@ -695,18 +695,18 @@ public:
             if (LegacyProfiler* profiler = vm.enabledProfiler())
                 profiler->exceptionUnwind(m_callFrame);
 
-            copyCalleeSavesToVMCalleeSavesBuffer(visitor);
+            copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(visitor);
 
             return StackVisitor::Done;
         }
 
-        copyCalleeSavesToVMCalleeSavesBuffer(visitor);
+        copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(visitor);
 
         return StackVisitor::Continue;
     }
 
 private:
-    void copyCalleeSavesToVMCalleeSavesBuffer(StackVisitor& visitor) const
+    void copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(StackVisitor& visitor) const
     {
 #if ENABLE(JIT) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
 
@@ -728,13 +728,14 @@ private:
         intptr_t* frame = reinterpret_cast<intptr_t*>(m_callFrame->registers());
 
         unsigned registerCount = currentCalleeSaves->size();
+        VMEntryRecord* record = vmEntryRecord(vm.topVMEntryFrame);
         for (unsigned i = 0; i < registerCount; i++) {
             RegisterAtOffset currentEntry = currentCalleeSaves->at(i);
             if (dontCopyRegisters.get(currentEntry.reg()))
                 continue;
-            RegisterAtOffset* vmCalleeSavesEntry = allCalleeSaves->find(currentEntry.reg());
+            RegisterAtOffset* calleeSavesEntry = allCalleeSaves->find(currentEntry.reg());
             
-            vm.calleeSaveRegistersBuffer[vmCalleeSavesEntry->offsetAsIndex()] = *(frame + currentEntry.offsetAsIndex());
+            record->calleeSaveRegistersBuffer[calleeSavesEntry->offsetAsIndex()] = *(frame + currentEntry.offsetAsIndex());
         }
 #else
         UNUSED_PARAM(visitor);

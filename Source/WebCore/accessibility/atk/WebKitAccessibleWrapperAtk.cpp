@@ -111,67 +111,24 @@ static const gchar* webkitAccessibleGetName(AtkObject* object)
     g_return_val_if_fail(WEBKIT_IS_ACCESSIBLE(object), 0);
     returnValIfWebKitAccessibleIsInvalid(WEBKIT_ACCESSIBLE(object), 0);
 
-    AccessibilityObject* coreObject = core(object);
-    if (coreObject->isFieldset()) {
-        AccessibilityObject* label = coreObject->titleUIElement();
-        if (label) {
-            AtkObject* atkObject = label->wrapper();
-            if (ATK_IS_TEXT(atkObject))
-                return atk_text_get_text(ATK_TEXT(atkObject), 0, -1);
-        }
+    Vector<AccessibilityText> textOrder;
+    core(object)->accessibilityText(textOrder);
+
+    for (const auto& text : textOrder) {
+        // FIXME: This check is here because AccessibilityNodeObject::titleElementText()
+        // appends an empty String for the LabelByElementText source when there is a
+        // titleUIElement(). Removing this check makes some fieldsets lose their name.
+        if (text.text.isEmpty())
+            continue;
+
+        // WebCore Accessibility should provide us with the text alternative computation
+        // in the order defined by that spec. So take the first thing that our platform
+        // does not expose via the AtkObject description.
+        if (text.textSource != HelpText && text.textSource != SummaryText)
+            return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, text.text);
     }
 
-    if (coreObject->isControl()) {
-        AccessibilityObject* label = coreObject->correspondingLabelForControlElement();
-        if (label) {
-            AtkObject* atkObject = label->wrapper();
-            if (ATK_IS_TEXT(atkObject))
-                return atk_text_get_text(ATK_TEXT(atkObject), 0, -1);
-        }
-
-        // Try text under the node.
-        String textUnder = coreObject->textUnderElement();
-        if (textUnder.length())
-            return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, textUnder);
-    }
-
-    if (is<SVGElement>(coreObject->element())) {
-        Vector<AccessibilityText> textOrder;
-        coreObject->accessibilityText(textOrder);
-
-        for (const auto& text : textOrder) {
-            if (text.textSource != HelpText && text.textSource != SummaryText)
-                return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, text.text);
-        }
-        // FIXME: This is to keep the next blocks from returning duplicate text.
-        // This behavior should be extended to all elements; not just SVG.
-        return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, "");
-    }
-
-    if (coreObject->isImage() || coreObject->isInputImage() || coreObject->isImageMap() || coreObject->isImageMapLink()) {
-        Node* node = coreObject->node();
-        if (is<HTMLElement>(node)) {
-            // Get the attribute rather than altText String so as not to fall back on title.
-            const AtomicString& alt = downcast<HTMLElement>(*node).getAttribute(HTMLNames::altAttr);
-            if (!alt.isEmpty())
-                return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, alt);
-        }
-    }
-
-    // Fallback for the webArea object: just return the document's title.
-    if (coreObject->isWebArea()) {
-        Document* document = coreObject->document();
-        if (document)
-            return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, document->title());
-    }
-
-    // Nothing worked so far, try with the AccessibilityObject's
-    // title() before going ahead with stringValue().
-    String axTitle = accessibilityTitle(coreObject);
-    if (!axTitle.isEmpty())
-        return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, axTitle);
-
-    return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, coreObject->stringValue());
+    return cacheAndReturnAtkProperty(object, AtkCachedAccessibleName, "");
 }
 
 static const gchar* webkitAccessibleGetDescription(AtkObject* object)
@@ -179,41 +136,26 @@ static const gchar* webkitAccessibleGetDescription(AtkObject* object)
     g_return_val_if_fail(WEBKIT_IS_ACCESSIBLE(object), 0);
     returnValIfWebKitAccessibleIsInvalid(WEBKIT_ACCESSIBLE(object), 0);
 
-    AccessibilityObject* coreObject = core(object);
-    Node* node = nullptr;
-    if (coreObject->isAccessibilityRenderObject())
-        node = coreObject->node();
+    Vector<AccessibilityText> textOrder;
+    core(object)->accessibilityText(textOrder);
 
-    if (is<SVGElement>(node)) {
-        Vector<AccessibilityText> textOrder;
-        coreObject->accessibilityText(textOrder);
+    bool nameTextAvailable = false;
+    for (const auto& text : textOrder) {
+        // WebCore Accessibility should provide us with the text alternative computation
+        // in the order defined by that spec. So take the first thing that our platform
+        // does not expose via the AtkObject name.
+        if (text.textSource == HelpText || text.textSource == SummaryText)
+            return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, text.text);
 
-        for (const auto& text : textOrder) {
-            if (text.textSource == HelpText || text.textSource == SummaryText || text.textSource == TitleTagText)
-                return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, text.text);
-        }
-        // FIXME: This is to keep the next blocks from returning duplicate text.
-        // This behavior should be extended to all elements; not just SVG.
-        return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, "");
+        // If there is no other text alternative, the title tag contents will have been
+        // used for the AtkObject name. We don't want to duplicate it here.
+        if (text.textSource == TitleTagText && nameTextAvailable)
+            return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, text.text);
+
+        nameTextAvailable = true;
     }
 
-    if (!is<HTMLElement>(node) || coreObject->ariaRoleAttribute() != UnknownRole || coreObject->isImage())
-        return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, accessibilityDescription(coreObject));
-
-    // atk_table_get_summary returns an AtkObject. We have no summary object, so expose summary here.
-    if (coreObject->roleValue() == TableRole) {
-        const AtomicString& summary = downcast<HTMLTableElement>(*node).summary();
-        if (!summary.isEmpty())
-            return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, summary);
-    }
-
-    // The title attribute should be reliably available as the object's descripton.
-    // We do not want to fall back on other attributes in its absence. See bug 25524.
-    String title = downcast<HTMLElement>(*node).title();
-    if (!title.isEmpty())
-        return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, title);
-
-    return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, accessibilityDescription(coreObject));
+    return cacheAndReturnAtkProperty(object, AtkCachedAccessibleDescription, "");
 }
 
 static void removeAtkRelationByType(AtkRelationSet* relationSet, AtkRelationType relationType)
@@ -474,6 +416,14 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     if (coreObject->supportsARIASetSize())
         attributeSet = addToAtkAttributeSet(attributeSet, "setsize", String::number(coreObject->ariaSetSize()).utf8().data());
 
+    String isReadOnly = coreObject->ariaReadOnlyValue();
+    if (!isReadOnly.isEmpty())
+        attributeSet = addToAtkAttributeSet(attributeSet, "readonly", isReadOnly.utf8().data());
+
+    String valueDescription = coreObject->valueDescription();
+    if (!valueDescription.isEmpty())
+        attributeSet = addToAtkAttributeSet(attributeSet, "valuetext", valueDescription.utf8().data());
+
     // According to the W3C Core Accessibility API Mappings 1.1, section 5.4.1 General Rules:
     // "User agents must expose the WAI-ARIA role string if the API supports a mechanism to do so."
     // In the case of ATK, the mechanism to do so is an object attribute pair (xml-roles:"string").
@@ -568,8 +518,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case BusyIndicatorRole:
         return ATK_ROLE_PROGRESS_BAR; // Is this right?
     case ProgressIndicatorRole:
-        // return ATK_ROLE_SPIN_BUTTON; // Some confusion about this role in AccessibilityRenderObject.cpp
-        return ATK_ROLE_PROGRESS_BAR;
+        return coreObject->isMeter() ? ATK_ROLE_LEVEL_BAR : ATK_ROLE_PROGRESS_BAR;
     case WindowRole:
         return ATK_ROLE_WINDOW;
     case PopUpButtonRole:
@@ -801,16 +750,15 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
     if (isListBoxOption && coreObject->isSelectedOptionActive())
         atk_state_set_add_state(stateSet, ATK_STATE_ACTIVE);
 
+#if ATK_CHECK_VERSION(2,11,2)
+    if (coreObject->supportsChecked() && coreObject->canSetValueAttribute())
+        atk_state_set_add_state(stateSet, ATK_STATE_CHECKABLE);
+#endif
+
     if (coreObject->isChecked())
         atk_state_set_add_state(stateSet, ATK_STATE_CHECKED);
 
-    // FIXME: isReadOnly does not seem to do the right thing for
-    // controls, so check explicitly for them. In addition, because
-    // isReadOnly is false for listBoxOptions, we need to add one
-    // more check so that we do not present them as being "editable".
-    if ((!coreObject->isReadOnly()
-        || (coreObject->isControl() && coreObject->canSetValueAttribute()))
-        && !isListBoxOption)
+    if ((coreObject->isTextControl() || coreObject->isNonNativeTextControl()) && coreObject->canSetValueAttribute())
         atk_state_set_add_state(stateSet, ATK_STATE_EDITABLE);
 
     // FIXME: Put both ENABLED and SENSITIVE together here for now
@@ -854,6 +802,11 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
 
     if (coreObject->isPressed())
         atk_state_set_add_state(stateSet, ATK_STATE_PRESSED);
+
+#if ATK_CHECK_VERSION(2,15,3)
+    if (!coreObject->canSetValueAttribute() && (coreObject->supportsARIAReadOnly()))
+        atk_state_set_add_state(stateSet, ATK_STATE_READ_ONLY);
+#endif
 
     if (coreObject->isRequired())
         atk_state_set_add_state(stateSet, ATK_STATE_REQUIRED);
@@ -1144,9 +1097,9 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
     // Text, Editable Text & Hypertext
     if (role == StaticTextRole || coreObject->isMenuListOption())
         interfaceMask |= 1 << WAIText;
-    else if (coreObject->isTextControl()) {
+    else if (coreObject->isTextControl() || coreObject->isNonNativeTextControl()) {
         interfaceMask |= 1 << WAIText;
-        if (!coreObject->isReadOnly())
+        if (coreObject->canSetValueAttribute())
             interfaceMask |= 1 << WAIEditableText;
     } else if (!coreObject->isWebArea()) {
         if (role != TableRole) {

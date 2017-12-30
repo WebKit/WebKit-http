@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InProcessIDBServer_h
-#define InProcessIDBServer_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -54,12 +53,14 @@ public:
     WEBCORE_EXPORT IDBClient::IDBConnectionToServer& connectionToServer() const;
     IDBServer::IDBConnectionToClient& connectionToClient() const;
 
+    IDBServer::IDBServer& idbServer() { return m_server.get(); }
+
     // IDBConnectionToServer
     void deleteDatabase(const IDBRequestData&) final;
     void openDatabase(const IDBRequestData&) final;
     void abortTransaction(const IDBResourceIdentifier&) final;
     void commitTransaction(const IDBResourceIdentifier&) final;
-    void didFinishHandlingVersionChangeTransaction(const IDBResourceIdentifier&) final;
+    void didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier&) final;
     void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&) final;
     void deleteObjectStore(const IDBRequestData&, const String& objectStoreName) final;
     void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier) final;
@@ -75,6 +76,7 @@ public:
     void databaseConnectionClosed(uint64_t databaseConnectionIdentifier) final;
     void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier) final;
     void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier) final;
+    void openDBRequestCancelled(const IDBRequestData&) final;
     void getAllDatabaseNames(const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID) final;
 
     // IDBConnectionToClient
@@ -117,4 +119,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // InProcessIDBServer_h

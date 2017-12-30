@@ -126,6 +126,7 @@
     macro(collation) \
     macro(column) \
     macro(compilationKind) \
+    macro(compilationUID) \
     macro(compilations) \
     macro(compile) \
     macro(configurable) \
@@ -136,12 +137,14 @@
     macro(defineProperty) \
     macro(description) \
     macro(descriptions) \
+    macro(detail) \
     macro(displayName) \
     macro(document) \
     macro(done) \
     macro(enumerable) \
     macro(era) \
     macro(eval) \
+    macro(events) \
     macro(exec) \
     macro(executionCount) \
     macro(exitKind) \
@@ -227,9 +230,11 @@
     macro(stack) \
     macro(sticky) \
     macro(subarray) \
+    macro(summary) \
     macro(target) \
     macro(test) \
     macro(then) \
+    macro(time) \
     macro(timeZone) \
     macro(timeZoneName) \
     macro(toExponential) \
@@ -240,6 +245,7 @@
     macro(toPrecision) \
     macro(toString) \
     macro(top) \
+    macro(uid) \
     macro(unicode) \
     macro(usage) \
     macro(value) \
@@ -308,11 +314,11 @@
     macro(yield)
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL_NOT_IMPLEMENTED_YET(macro)\
+    macro(isConcatSpreadable) \
     macro(replace) \
 
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(macro) \
     macro(hasInstance) \
-    macro(isConcatSpreadable) \
     macro(iterator) \
     macro(match) \
     macro(replace) \
@@ -415,12 +421,9 @@
     macro(hasInstanceBoundFunction) \
     macro(instanceOf) \
     macro(isArray) \
-    macro(isJSArray) \
     macro(isArrayConstructor) \
     macro(isConstructor) \
     macro(isRegExpObject) \
-    macro(concatMemcpy) \
-    macro(appendMemcpy) \
     macro(predictFinalLengthFromArgumunts) \
     macro(print) \
     macro(isSet) \

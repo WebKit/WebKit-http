@@ -22,7 +22,6 @@
 #ifndef StyleProperties_h
 #define StyleProperties_h
 
-#include "CSSParser.h"
 #include "CSSParserMode.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSProperty.h"
@@ -201,7 +200,7 @@ public:
 
     PropertySetCSSStyleDeclaration* cssStyleDeclaration();
 
-    bool addParsedProperties(const CSSParser::ParsedPropertyVector&);
+    bool addParsedProperties(const ParsedPropertyVector&);
     bool addParsedProperty(const CSSProperty&);
 
     // These expand shorthand properties into multiple properties.
@@ -211,12 +210,9 @@ public:
     // These do not. FIXME: This is too messy, we can do better.
     bool setProperty(CSSPropertyID, CSSValueID identifier, bool important = false);
     bool setProperty(CSSPropertyID, CSSPropertyID identifier, bool important = false);
-    bool appendPrefixingVariantProperty(const CSSProperty&);
-    void setPrefixingVariantProperty(const CSSProperty&);
     bool setProperty(const CSSProperty&, CSSProperty* slot = nullptr);
 
     bool removeProperty(CSSPropertyID, String* returnText = nullptr);
-    void removePrefixedOrUnprefixedProperty(CSSPropertyID);
     void removeBlockProperties();
     bool removePropertiesInSet(const CSSPropertyID* set, unsigned length);
 

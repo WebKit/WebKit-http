@@ -713,6 +713,46 @@ setResizable(NotResizable);
 #define _HTML_DOCUMENT_H_
 ```
 
+[](#names-protectors-this) Ref and RefPtr objects meant to protect `this` from deletion should be named "protectedThis".
+
+###### Right:
+
+```cpp
+RefPtr<Node> protectedThis(this);
+Ref<Element> protectedThis(*this);
+RefPtr<Widget> protectedThis = this;
+```
+
+###### Wrong:
+
+```cpp
+RefPtr<Node> protector(this);
+Ref<Node> protector = *this;
+RefPtr<Widget> self(this);
+Ref<Element> elementRef(*this);
+```
+
+[](#names-protectors) Ref and RefPtr objects meant to protect variables other than `this` from deletion should be named either "protector", or "protected" combined with the capitalized form of the variable name.
+
+###### Right:
+
+```cpp
+RefPtr<Element> protector(&element);
+RefPtr<Element> protector = &element;
+RefPtr<Node> protectedNode(node);
+RefPtr<Widget> protectedMainWidget(m_mainWidget);
+RefPtr<Loader> protectedFontLoader = m_fontLoader;
+```
+
+###### Wrong:
+
+```cpp
+RefPtr<Node> nodeRef(&rootNode);
+Ref<Element> protect(*element);
+RefPtr<Node> protectorNode(node);
+RefPtr<Widget> protected = widget;
+```
+
 ### Other Punctuation
 
 [](#punctuation-member-init) Constructors for C++ classes should initialize all of their members using C++ initializer syntax. Each member (and superclass) should be indented on a separate line, with the colon or comma preceding the member on that line.

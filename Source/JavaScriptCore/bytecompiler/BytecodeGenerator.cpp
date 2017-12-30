@@ -64,6 +64,8 @@ void Label::setLocation(unsigned location)
 ParserError BytecodeGenerator::generate()
 {
     m_codeBlock->setThisRegister(m_thisRegister.virtualRegister());
+
+    emitLogShadowChickenPrologueIfNecessary();
     
     // If we have declared a variable named "arguments" and we are using arguments then we should
     // perform that assignment now.
@@ -291,7 +293,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     emitEnter();
 
     allocateAndEmitScope();
-    
+
     m_calleeRegister.setIndex(JSStack::Callee);
 
     initializeParameters(parameters);
@@ -557,15 +559,25 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     }
     }
 
+    // We need load |super| & |this| for arrow function before initializeDefaultParameterValuesAndSetupFunctionScopeStack
+    // if we have default parameter expression. Because |super| & |this| values can be used there
+    if (SourceParseMode::ArrowFunctionMode == parseMode && !isSimpleParameterList) {
+        if (functionNode->usesThis() || functionNode->usesSuperProperty())
+            emitLoadThisFromArrowFunctionLexicalEnvironment();
+
+        if (m_scopeNode->usesNewTarget() || m_scopeNode->usesSuperCall())
+            emitLoadNewTargetFromArrowFunctionLexicalEnvironment();
+    }
+
     // All "addVar()"s needs to happen before "initializeDefaultParameterValuesAndSetupFunctionScopeStack()" is called
     // because a function's default parameter ExpressionNodes will use temporary registers.
     pushTDZVariables(*parentScopeTDZVariables, TDZCheckOptimization::DoNotOptimize);
     initializeDefaultParameterValuesAndSetupFunctionScopeStack(parameters, isSimpleParameterList, functionNode, functionSymbolTable, symbolTableConstantIndex, captures);
     
-    // Loading |this| inside an arrow function must be done after initializeDefaultParameterValuesAndSetupFunctionScopeStack()
-    // because that function sets up the SymbolTable stack and emitLoadThisFromArrowFunctionLexicalEnvironment()
-    // consults the SymbolTable stack
-    if (SourceParseMode::ArrowFunctionMode == parseMode) {
+    // If we don't have  default parameter expression, then loading |this| inside an arrow function must be done
+    // after initializeDefaultParameterValuesAndSetupFunctionScopeStack() because that function sets up the
+    // SymbolTable stack and emitLoadThisFromArrowFunctionLexicalEnvironment() consults the SymbolTable stack
+    if (SourceParseMode::ArrowFunctionMode == parseMode && isSimpleParameterList) {
         if (functionNode->usesThis() || functionNode->usesSuperProperty())
             emitLoadThisFromArrowFunctionLexicalEnvironment();
     
@@ -1095,7 +1107,6 @@ UnlinkedValueProfile BytecodeGenerator::emitProfiledOpcode(OpcodeID opcodeID)
 void BytecodeGenerator::emitEnter()
 {
     emitOpcode(op_enter);
-    emitLogShadowChickenPrologueIfNecessary();
     emitWatchdog();
 }
 
@@ -3157,6 +3168,7 @@ void BytecodeGenerator::emitLogShadowChickenPrologueIfNecessary()
     if (!m_shouldEmitDebugHooks && !Options::alwaysUseShadowChicken())
         return;
     emitOpcode(op_log_shadow_chicken_prologue);
+    instructions().append(scopeRegister()->index());
 }
 
 void BytecodeGenerator::emitLogShadowChickenTailIfNecessary()
@@ -3164,6 +3176,8 @@ void BytecodeGenerator::emitLogShadowChickenTailIfNecessary()
     if (!m_shouldEmitDebugHooks && !Options::alwaysUseShadowChicken())
         return;
     emitOpcode(op_log_shadow_chicken_tail);
+    instructions().append(thisRegister()->index());
+    instructions().append(scopeRegister()->index());
 }
 
 void BytecodeGenerator::emitCallDefineProperty(RegisterID* newObj, RegisterID* propertyNameRegister,
@@ -3205,24 +3219,26 @@ RegisterID* BytecodeGenerator::emitReturn(RegisterID* src)
 {
     if (isConstructor()) {
         bool derived = constructorKind() == ConstructorKind::Derived;
-        if (derived && src->index() == m_thisRegister.index())
+        bool srcIsThis = src->index() == m_thisRegister.index();
+
+        if (derived && srcIsThis)
             emitTDZCheck(src);
 
-        RefPtr<Label> isObjectLabel = newLabel();
-        emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectLabel.get());
+        if (!srcIsThis) {
+            RefPtr<Label> isObjectLabel = newLabel();
+            emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectLabel.get());
 
-        if (derived) {
-            RefPtr<Label> isUndefinedLabel = newLabel();
-            emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isUndefinedLabel.get());
-            emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
-            emitLabel(isUndefinedLabel.get());
-            if (constructorKind() == ConstructorKind::Derived)
+            if (derived) {
+                RefPtr<Label> isUndefinedLabel = newLabel();
+                emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isUndefinedLabel.get());
+                emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
+                emitLabel(isUndefinedLabel.get());
                 emitTDZCheck(&m_thisRegister);
+            }
+
+            emitUnaryNoDstOp(op_ret, &m_thisRegister);
+            emitLabel(isObjectLabel.get());
         }
-
-        emitUnaryNoDstOp(op_ret, &m_thisRegister);
-
-        emitLabel(isObjectLabel.get());
     }
 
     return emitUnaryNoDstOp(op_ret, src);

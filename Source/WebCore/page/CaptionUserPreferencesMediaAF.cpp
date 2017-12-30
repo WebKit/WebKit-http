@@ -42,6 +42,7 @@
 #include "UserStyleSheetTypes.h"
 #include "VTTCue.h"
 #include <wtf/NeverDestroyed.h>
+#include <wtf/PlatformUserPreferredLanguages.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
@@ -213,7 +214,7 @@ bool CaptionUserPreferencesMediaAF::userPrefersSubtitles() const
 
 void CaptionUserPreferencesMediaAF::updateTimerFired()
 {
-    updateCaptionStyleSheetOveride();
+    updateCaptionStyleSheetOverride();
 }
 
 void CaptionUserPreferencesMediaAF::setInterestedInCaptionPreferenceChanges()
@@ -247,7 +248,7 @@ void CaptionUserPreferencesMediaAF::captionPreferencesChanged()
         return;
 
     if (m_listeningForPreferenceChanges)
-        updateCaptionStyleSheetOveride();
+        updateCaptionStyleSheetOverride();
 
     CaptionUserPreferences::captionPreferencesChanged();
 }

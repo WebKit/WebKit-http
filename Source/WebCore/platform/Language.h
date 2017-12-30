@@ -42,8 +42,6 @@ typedef void (*LanguageChangeObserverFunction)(void* context);
 WEBCORE_EXPORT void addLanguageChangeObserver(void* context, LanguageChangeObserverFunction);
 WEBCORE_EXPORT void removeLanguageChangeObserver(void* context);
 
-Vector<String> platformUserPreferredLanguages();
-
 String displayNameForLanguageLocale(const String&);
 
 // Called from platform specific code when the user's preferred language(s) change.

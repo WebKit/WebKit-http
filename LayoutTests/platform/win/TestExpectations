@@ -1230,6 +1230,8 @@ editing/pasteboard/emacs-cntl-y-001.html [ Failure ]
 # Assertion failure in replaySavedEvents
 webkit.org/b/21796 editing/pasteboard/drop-text-events.html [ Skip ]
 
+http/tests/images/hidpi-srcset-copy.html [ Skip ]
+
 ###### Selection
 editing/selection/ [ Pass Failure ]
 # This test is flaky due to capitalization; perhaps a capslock keypress or something?
@@ -3387,3 +3389,6 @@ webkit.org/b/137093 svg/custom/glyph-selection-lang-attribute.svg [ Failure ]
 
 # This test relies on iOS-specific font fallback.
 fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
+
+# dumpPolicyDelegateCallbacks is not supported in DumpRenderTree
+fast/loader/iframe-src-invalid-url.html [ Skip ]

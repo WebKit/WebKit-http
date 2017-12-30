@@ -119,10 +119,10 @@ static const String& verticalGrowingRightKeyword()
 
 // ----------------------------
 
-PassRefPtr<VTTCueBox> VTTCueBox::create(Document& document, VTTCue& cue)
+Ref<VTTCueBox> VTTCueBox::create(Document& document, VTTCue& cue)
 {
-    VTTCueBox* cueBox = new VTTCueBox(document, cue);
-    cueBox->setPseudo(VTTCueBox::vttCueBoxShadowPseudoId());
+    VTTCueBox& cueBox = *new VTTCueBox(document, cue);
+    cueBox.setPseudo(VTTCueBox::vttCueBoxShadowPseudoId());
     return adoptRef(cueBox);
 }
 
@@ -784,7 +784,7 @@ void VTTCue::updateDisplayTree(const MediaTime& movieTime)
         return;
 
     markFutureAndPastNodes(referenceTree.get(), startMediaTime(), movieTime);
-    m_cueHighlightBox->appendChild(referenceTree.releaseNonNull());
+    m_cueHighlightBox->appendChild(*referenceTree);
 }
 
 VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize, int fontSize)

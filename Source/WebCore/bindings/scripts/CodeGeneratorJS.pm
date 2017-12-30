@@ -958,6 +958,25 @@ sub GenerateDefaultValue
     return $value;
 }
 
+sub ShouldAllowNonFiniteForFloatingPointType
+{
+    my $type = shift;
+
+    die "Can only be called with floating point types" unless $codeGenerator->IsFloatingPointType($type);
+    return $type eq "unrestricted double" || $type eq "unrestricted float";
+}
+
+sub GenerateConversionRuleWithLeadingComma
+{
+    my ($interface, $member) = @_;
+
+    if ($codeGenerator->IsFloatingPointType($member->type)) {
+        return ", " . (ShouldAllowNonFiniteForFloatingPointType($member->type) ? "ShouldAllowNonFinite::Yes" : "ShouldAllowNonFinite::No");
+    }
+    return ", " . GetIntegerConversionConfiguration($member) if $codeGenerator->IsIntegerType($member->type);
+    return "";
+}
+
 sub GenerateDefaultValueWithLeadingComma
 {
     my ($interface, $member) = @_;
@@ -1011,9 +1030,9 @@ sub GenerateDictionaryImplementationContent
             }
             # FIXME: Eventually we will want this to share a lot more code with JSValueToNative.
             my $function = $member->isOptional ? "convertOptional" : "convert";
-            my $defaultValueWithLeadingComma = $member->isOptional && defined $member->default ? ", " . $member->default : "";
             $result .= "    auto " . $member->name . " = " . $function . "<" . GetNativeTypeFromSignature($interface, $member) . ">"
                 . "(state, object->get(&state, Identifier::fromString(&state, \"" . $member->name . "\"))"
+                . GenerateConversionRuleWithLeadingComma($interface, $member)
                 . GenerateDefaultValueWithLeadingComma($interface, $member) . ");\n";
             $needExceptionCheck = 1;
         }
@@ -1462,14 +1481,15 @@ sub GenerateHeader
         # Node and NodeList have custom inline implementations which thus cannot be exported.
         # FIXME: The special case for Node and NodeList should probably be implemented via an IDL attribute.
         if ($implType eq "Node" or $implType eq "NodeList") {
-            push(@headerContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $implType*);\n");
+            push(@headerContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $implType&);\n");
         } else {
-            push(@headerContent, $exportMacro."JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $implType*);\n");
+            push(@headerContent, $exportMacro."JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $implType&);\n");
         }
-        push(@headerContent, "inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, $implType& impl) { return toJS(state, globalObject, &impl); }\n");
+        push(@headerContent, "inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, $implType* impl) { return impl ? toJS(state, globalObject, *impl) : JSC::jsNull(); }\n");
 
-        push(@headerContent, "JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, $implType*);\n");
-    }
+        push(@headerContent, "JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<$implType>&&);\n");
+        push(@headerContent, "inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<$implType>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }\n");
+   }
 
     push(@headerContent, "\n");
 
@@ -1661,7 +1681,6 @@ sub GenerateParametersCheckExpression
         my $value = "arg$parameterIndex";
         my $type = $parameter->type;
 
-        # Only DOMString or wrapper types are checked.
         # For DOMString with StrictTypeChecking only Null, Undefined and Object
         # are accepted for compatibility. Otherwise, no restrictions are made to
         # match the non-overloaded behavior.
@@ -1679,12 +1698,11 @@ sub GenerateParametersCheckExpression
                 push(@andExpression, "(${value}.isNull() || ${value}.isObject())");
             }
             $usedArguments{$parameterIndex} = 1;
-        } elsif (!IsNativeType($type)) {
+        } elsif ($codeGenerator->GetArrayOrSequenceType($type) || $codeGenerator->IsTypedArrayType($type) || $codeGenerator->IsWrapperType($type)) {
             my $condition = "";
             $condition .= "${value}.isUndefined() || " if $parameter->isOptional;
 
-            # FIXME: WebIDL says that undefined is also acceptable for nullable parameters and
-            # should be converted to null:
+            # FIXME: WebIDL says that undefined is also acceptable for nullable parameters and should be converted to null:
             # http://heycam.github.io/webidl/#es-nullable-type
             $condition .= "${value}.isNull() || " if $parameter->isNullable;
 
@@ -3391,26 +3409,17 @@ extern "C" { extern void* ${vtableNameGnu}[]; }
 
 END
 
-        push(@implContent, "JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, $implType* impl)\n");
+        push(@implContent, "JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, Ref<$implType>&& impl)\n");
         push(@implContent, "{\n");
-push(@implContent, <<END);
-    if (!impl)
-        return jsNull();
-END
         if ($svgPropertyType) {
-            push(@implContent, "    return createNewWrapper<$className, $implType>(globalObject, impl);\n");
+            push(@implContent, "    return createNewWrapper<$className, $implType>(globalObject, WTFMove(impl));\n");
         } else {
-            push(@implContent, "    return createNewWrapper<$className>(globalObject, impl);\n");
+            push(@implContent, "    return createNewWrapper<$className>(globalObject, WTFMove(impl));\n");
         }
         push(@implContent, "}\n\n");
 
-        push(@implContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, $implType* impl)\n");
+        push(@implContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject* globalObject, $implType& impl)\n");
         push(@implContent, "{\n");
-        push(@implContent, <<END);
-    if (!impl)
-        return jsNull();
-END
-
         if ($svgPropertyType) {
             push(@implContent, "    if (JSValue result = getExistingWrapper<$className, $implType>(globalObject, impl))\n");
             push(@implContent, "        return result;\n");
@@ -3421,7 +3430,7 @@ END
         push(@implContent, <<END) if $vtableNameGnu;
 
 #if ENABLE(BINDING_INTEGRITY)
-    void* actualVTablePointer = *(reinterpret_cast<void**>(impl));
+    void* actualVTablePointer = *(reinterpret_cast<void**>(&impl));
 #if PLATFORM(WIN)
     void* expectedVTablePointer = reinterpret_cast<void*>(${vtableRefWin});
 #else
@@ -3449,14 +3458,10 @@ END
 #endif
 END
         push(@implContent, <<END) if $interface->extendedAttributes->{"ReportExtraMemoryCost"};
-    globalObject->vm().heap.reportExtraMemoryAllocated(impl->memoryCost());
+    globalObject->vm().heap.reportExtraMemoryAllocated(impl.memoryCost());
 END
 
-        if ($svgPropertyType) {
-            push(@implContent, "    return createNewWrapper<$className, $implType>(globalObject, impl);\n");
-        } else {
-            push(@implContent, "    return createNewWrapper<$className>(globalObject, impl);\n");
-        }
+        push(@implContent, "    return createNewWrapper<$className, $implType>(globalObject, impl);\n");
 
         push(@implContent, "}\n\n");
     }
@@ -3701,13 +3706,7 @@ sub GenerateParametersCheck
             }
             $value = "WTFMove($name)";
         } elsif ($parameter->isVariadic) {
-            my $nativeElementType;
-            if ($type eq "DOMString") {
-                $nativeElementType = "String";
-            } else {
-                $nativeElementType = GetNativeType($interface, $type);
-            }
-
+            my $nativeElementType = GetNativeType($interface, $type);
             if (!IsNativeType($type)) {
                 push(@$outputArray, "    Vector<$nativeElementType> $name;\n");
                 push(@$outputArray, "    for (unsigned i = $argumentIndex, count = state->argumentCount(); i < count; ++i) {\n");
@@ -3717,7 +3716,6 @@ sub GenerateParametersCheck
                 push(@$outputArray, "    }\n")
             } else {
                 push(@$outputArray, "    Vector<$nativeElementType> $name = toNativeArguments<$nativeElementType>(state, $argumentIndex);\n");
-                # Check if the type conversion succeeded.
                 push(@$outputArray, "    if (UNLIKELY(state->hadException()))\n");
                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
@@ -3923,8 +3921,8 @@ sub GenerateCallbackHeader
     push(@headerContent, "};\n\n");
 
     # toJS().
-    push(@headerContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $interfaceName*);\n");
-    push(@headerContent, "inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, $interfaceName& impl) { return toJS(state, globalObject, &impl); }\n\n");
+    push(@headerContent, "JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $interfaceName&);\n");
+    push(@headerContent, "inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, $interfaceName* impl) { return impl ? toJS(state, globalObject, *impl) : JSC::jsNull(); }\n\n");
 
     push(@headerContent, "} // namespace WebCore\n");
 
@@ -4063,7 +4061,7 @@ sub GenerateCallbackImplementation
             push(@implContent, @argsCheck) if @argsCheck;
             push(@implContent, "    if (!canInvokeCallback())\n");
             push(@implContent, "        return true;\n\n");
-            push(@implContent, "    Ref<$className> protect(*this);\n\n");
+            push(@implContent, "    Ref<$className> protectedThis(*this);\n\n");
             push(@implContent, "    JSLockHolder lock(m_data->globalObject()->vm());\n\n");
             push(@implContent, "    ExecState* state = m_data->globalObject()->globalExec();\n");
             push(@implContent, "    MarkedArgumentBuffer args;\n");
@@ -4101,11 +4099,11 @@ sub GenerateCallbackImplementation
     }
 
     # toJS() implementation.
-    push(@implContent, "\nJSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $interfaceName* impl)\n");
+    push(@implContent, "\nJSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, $interfaceName& impl)\n");
     push(@implContent, "{\n");
-    push(@implContent, "    if (!impl || !static_cast<${className}&>(*impl).callbackData())\n");
+    push(@implContent, "    if (!static_cast<${className}&>(impl).callbackData())\n");
     push(@implContent, "        return jsNull();\n\n");
-    push(@implContent, "    return static_cast<${className}&>(*impl).callbackData()->callback();\n\n");
+    push(@implContent, "    return static_cast<${className}&>(impl).callbackData()->callback();\n\n");
     push(@implContent, "}\n");
 
     push(@implContent, "\n}\n");
@@ -4382,7 +4380,7 @@ sub IsNativeType
     return exists $nativeType{$type};
 }
 
-sub GetIntegerConversionType
+sub GetIntegerConversionConfiguration
 {
     my $signature = shift;
 
@@ -4400,7 +4398,7 @@ sub JSValueToNative
 
     if ($codeGenerator->IsIntegerType($type)) {
         my $nativeType = GetNativeType($interface, $type);
-        my $conversionType = GetIntegerConversionType($signature);
+        my $conversionType = GetIntegerConversionConfiguration($signature);
         AddToImplIncludes("JSDOMConvert.h");
         return ("convert<$nativeType>(*state, $value, $conversionType)", 1);
     }
@@ -4442,11 +4440,9 @@ sub JSValueToNative
 
     if ($codeGenerator->IsFloatingPointType($type)) {
         AddToImplIncludes("JSDOMConvert.h");
-        return ("convert<double>(*state, $value, ShouldAllowNonFinite::No)", 1) if $type eq "double";
-        return ("convert<double>(*state, $value, ShouldAllowNonFinite::Yes)", 1) if $type eq "unrestricted double";
-        return ("convert<float>(*state, $value, ShouldAllowNonFinite::No)", 1) if $type eq "float";
-        return ("convert<float>(*state, $value, ShouldAllowNonFinite::Yes)", 1) if $type eq "unrestricted float";
-        die "Unhandled floating point type: " . $type;
+        my $allowNonFinite = ShouldAllowNonFiniteForFloatingPointType($type) ? "ShouldAllowNonFinite::Yes" : "ShouldAllowNonFinite::No";
+        my $nativeType = GetNativeType($interface, $type);
+        return ("convert<$nativeType>(*state, $value, $allowNonFinite)", 1);
     }
 
     return ("valueToDate(state, $value)", 1) if $type eq "Date";
@@ -4570,8 +4566,7 @@ sub NativeToJSValue
     }
 
     my $function = $signature->extendedAttributes->{"NewObject"} ? "toJSNewlyCreated" : "toJS";
-
-    return "$function(state, $globalObject, WTF::getPtr($value))";
+    return "$function(state, $globalObject, $value)";
 }
 
 sub ceilingToPowerOf2
@@ -5028,8 +5023,8 @@ template<> EncodedJSValue JSC_HOST_CALL ${constructorClassName}::construct(ExecS
             return JSValue::encode(jsUndefined());
     }
 
-    RefPtr<${interfaceName}> event = ${interfaceName}::createForBindings(eventType, eventInit);
-    return JSValue::encode(toJS(state, jsConstructor->globalObject(), event.get()));
+    Ref<${interfaceName}> event = ${interfaceName}::createForBindings(eventType, eventInit);
+    return JSValue::encode(toJS(state, jsConstructor->globalObject(), event));
 }
 
 bool fill${interfaceName}Init(${interfaceName}Init& eventInit, JSDictionary& dictionary)
@@ -5142,9 +5137,9 @@ END
             }
             my $constructorArg = join(", ", @constructorArgList);
             if ($generatingNamedConstructor) {
-                push(@$outputArray, "    RefPtr<${interfaceName}> object = ${interfaceName}::createForJSConstructor(${constructorArg});\n");
+                push(@$outputArray, "    auto object = ${interfaceName}::createForJSConstructor(${constructorArg});\n");
             } else {
-                push(@$outputArray, "    RefPtr<${interfaceName}> object = ${interfaceName}::create(${constructorArg});\n");
+                push(@$outputArray, "    auto object = ${interfaceName}::create(${constructorArg});\n");
             }
 
             if ($interface->extendedAttributes->{"ConstructorRaisesException"}) {
@@ -5159,7 +5154,7 @@ END
                  push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
 
-            push(@$outputArray, "    return JSValue::encode(asObject(toJS(state, castedThis->globalObject(), object.get())));\n");
+            push(@$outputArray, "    return JSValue::encode(asObject(toJS(state, castedThis->globalObject(), WTFMove(object))));\n");
             push(@$outputArray, "}\n\n");
         }
     }

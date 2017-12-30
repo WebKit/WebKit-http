@@ -399,6 +399,13 @@ AccessibilityObject* AccessibilityRenderObject::nextSibling() const
         // Case 5b: continuation is an inline - in this case the inline's first child is the next sibling
         else
             nextSibling = firstChildConsideringContinuation(continuation);
+        
+        // After case 4, there are chances that nextSibling has the same node as the current renderer,
+        // which might lead to adding the same child repeatedly.
+        if (nextSibling && nextSibling->node() == m_renderer->node()) {
+            if (AccessibilityObject* nextObj = axObjectCache()->getOrCreate(nextSibling))
+                return nextObj->nextSibling();
+        }
     }
 
     if (!nextSibling)
@@ -521,22 +528,6 @@ bool AccessibilityRenderObject::isFileUploadButton() const
     }
     
     return false;
-}
-    
-bool AccessibilityRenderObject::isReadOnly() const
-{
-    ASSERT(m_renderer);
-    
-    if (isWebArea()) {
-        if (HTMLElement* body = m_renderer->document().bodyOrFrameset()) {
-            if (body->hasEditableStyle())
-                return false;
-        }
-
-        return !m_renderer->document().hasEditableStyle();
-    }
-
-    return AccessibilityNodeObject::isReadOnly();
 }
 
 bool AccessibilityRenderObject::isOffScreen() const
@@ -922,7 +913,7 @@ IntPoint AccessibilityRenderObject::clickPoint()
         return children()[0]->clickPoint();
 
     // use the default position unless this is an editable web area, in which case we use the selection bounds.
-    if (!isWebArea() || isReadOnly())
+    if (!isWebArea() || !canSetValueAttribute())
         return AccessibilityObject::clickPoint();
     
     VisibleSelection visSelection = selection();
@@ -1356,6 +1347,15 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (isWebArea())
         return false;
     
+#if ENABLE(METER_ELEMENT)
+    // The render tree of meter includes a RenderBlock (meter) and a RenderMeter (div).
+    // We expose the latter and thus should ignore the former. However, if the author
+    // includes a title attribute on the element, hasAttributesRequiredForInclusion()
+    // will return true, potentially resulting in a redundant accessible object.
+    if (is<HTMLMeterElement>(node))
+        return true;
+#endif
+
     // Using the presence of an accessible name to decide an element's visibility is not
     // as definitive as previous checks, so this should remain as one of the last.
     if (hasAttributesRequiredForInclusion())
@@ -1678,7 +1678,7 @@ void AccessibilityRenderObject::setFocused(bool on)
     // When a node is told to set focus, that can cause it to be deallocated, which means that doing
     // anything else inside this object will crash. To fix this, we added a RefPtr to protect this object
     // long enough for duration.
-    RefPtr<AccessibilityObject> protect(this);
+    RefPtr<AccessibilityObject> protectedThis(this);
     
     // If this node is already the currently focused node, then calling focus() won't do anything.
     // That is a problem when focus is removed from the webpage to chrome, and then returns.
@@ -1890,10 +1890,10 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForIndex(int index) co
     return visiblePositionForIndexUsingCharacterIterator(*node, index);
 }
     
-int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& pos) const
+int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& position) const
 {
     if (isNativeTextControl())
-        return downcast<RenderTextControl>(*m_renderer).textFormControlElement().indexForVisiblePosition(pos);
+        return downcast<RenderTextControl>(*m_renderer).textFormControlElement().indexForVisiblePosition(position);
 
     if (!isTextControl())
         return 0;
@@ -1902,7 +1902,7 @@ int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& po
     if (!node)
         return 0;
 
-    Position indexPosition = pos.deepEquivalent();
+    Position indexPosition = position.deepEquivalent();
     if (indexPosition.isNull() || highestEditableRoot(indexPosition, HasEditableAXRole) != node)
         return 0;
 
@@ -1914,7 +1914,7 @@ int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& po
     bool forSelectionPreservation = false;
 #endif
 
-    return WebCore::indexForVisiblePosition(node, pos, forSelectionPreservation);
+    return WebCore::indexForVisiblePosition(*node, position, forSelectionPreservation);
 }
 
 Element* AccessibilityRenderObject::rootEditableElementForPosition(const Position& position) const
@@ -2874,33 +2874,6 @@ bool AccessibilityRenderObject::canSetExpandedAttribute() const
     // An object can be expanded if it aria-expanded is true or false.
     const AtomicString& ariaExpanded = getAttribute(aria_expandedAttr);
     return equalLettersIgnoringASCIICase(ariaExpanded, "true") || equalLettersIgnoringASCIICase(ariaExpanded, "false");
-}
-
-bool AccessibilityRenderObject::canSetValueAttribute() const
-{
-    // In the event of a (Boolean)@readonly and (True/False/Undefined)@aria-readonly
-    // value mismatch, the host language native attribute value wins.    
-    if (isNativeTextControl())
-        return !isReadOnly();
-
-    if (isMeter())
-        return false;
-
-    auto& readOnly = getAttribute(aria_readonlyAttr);
-    if (equalLettersIgnoringASCIICase(readOnly, "true"))
-        return false;
-    if (equalLettersIgnoringASCIICase(readOnly, "false"))
-        return true;
-
-    if (isProgressIndicator() || isSlider())
-        return true;
-
-    if (isTextControl() && !isNativeTextControl())
-        return true;
-
-    // Any node could be contenteditable, so isReadOnly should be relied upon
-    // for this information for all elements.
-    return !isReadOnly();
 }
 
 bool AccessibilityRenderObject::canSetTextRangeAttributes() const

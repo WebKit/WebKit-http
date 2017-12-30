@@ -184,9 +184,6 @@ public:
 
         auto preOrder = m_graph.blocksInPreOrder();
 
-        // We should not create any alloca's after this point, since they will cease to
-        // be mem2reg candidates.
-        
         m_callFrame = m_out.framePointer();
         m_tagTypeNumber = m_out.constInt64(TagTypeNumber);
         m_tagMask = m_out.constInt64(TagMask);
@@ -209,7 +206,7 @@ public:
                 // clobber scratch.
                 AllowMacroScratchRegisterUsage allowScratch(jit);
                 
-                jit.copyCalleeSavesToVMCalleeSavesBuffer();
+                jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer();
                 jit.move(CCallHelpers::TrustedImmPtr(jit.vm()), GPRInfo::argumentGPR0);
                 jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
                 CCallHelpers::Call call = jit.call();
@@ -481,9 +478,6 @@ private:
             break;
         case DFG::Check:
             compileNoOp();
-            break;
-        case CallObjectConstructor:
-            compileCallObjectConstructor();
             break;
         case ToThis:
             compileToThis();
@@ -868,15 +862,6 @@ private:
             break;
         case IsString:
             compileIsString();
-            break;
-        case IsArrayObject:
-            compileIsArrayObject();
-            break;
-        case IsJSArray:
-            compileIsJSArray();
-            break;
-        case IsArrayConstructor:
-            compileIsArrayConstructor();
             break;
         case IsObject:
             compileIsObject();
@@ -1456,29 +1441,6 @@ private:
         DFG_NODE_DO_TO_CHILDREN(m_graph, m_node, speculate);
     }
 
-    void compileCallObjectConstructor()
-    {
-        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-        LValue value = lowJSValue(m_node->child1());
-
-        LBasicBlock isCellCase = m_out.newBlock();
-        LBasicBlock slowCase = m_out.newBlock();
-        LBasicBlock continuation = m_out.newBlock();
-
-        m_out.branch(isCell(value, provenType(m_node->child1())), usually(isCellCase), rarely(slowCase));
-
-        LBasicBlock lastNext = m_out.appendTo(isCellCase, slowCase);
-        ValueFromBlock fastResult = m_out.anchor(value);
-        m_out.branch(isObject(value), usually(continuation), rarely(slowCase));
-
-        m_out.appendTo(slowCase, continuation);
-        ValueFromBlock slowResult = m_out.anchor(vmCall(m_out.int64, m_out.operation(operationObjectConstructor), m_callFrame, m_out.constIntPtr(globalObject), value));
-        m_out.jump(continuation);
-
-        m_out.appendTo(continuation, lastNext);
-        setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
-    }
-    
     void compileToThis()
     {
         LValue value = lowJSValue(m_node->child1());
@@ -5928,55 +5890,6 @@ private:
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
     }
 
-    void compileIsArrayObject()
-    {
-        LValue value = lowJSValue(m_node->child1());
-
-        LBasicBlock cellCase = m_out.newBlock();
-        LBasicBlock notArrayCase = m_out.newBlock();
-        LBasicBlock continuation = m_out.newBlock();
-
-        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
-        m_out.branch(isCell(value, provenType(m_node->child1())), unsure(cellCase), unsure(continuation));
-
-        LBasicBlock lastNext = m_out.appendTo(cellCase, notArrayCase);
-        ValueFromBlock arrayResult = m_out.anchor(m_out.booleanTrue);
-        m_out.branch(isArray(value, provenType(m_node->child1())), unsure(continuation), unsure(notArrayCase));
-
-        m_out.appendTo(notArrayCase, continuation);
-        ValueFromBlock notArrayResult = m_out.anchor(vmCall(m_out.boolean, m_out.operation(operationIsArrayObject), m_callFrame, value));
-        m_out.jump(continuation);
-
-        m_out.appendTo(continuation, lastNext);
-        setBoolean(m_out.phi(m_out.boolean, notCellResult, arrayResult, notArrayResult));
-    }
-
-    void compileIsJSArray()
-    {
-        LValue value = lowJSValue(m_node->child1());
-
-        LBasicBlock isCellCase = m_out.newBlock();
-        LBasicBlock continuation = m_out.newBlock();
-
-        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
-        m_out.branch(
-            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(continuation));
-
-        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
-        ValueFromBlock cellResult = m_out.anchor(isArray(value, provenType(m_node->child1())));
-        m_out.jump(continuation);
-
-        m_out.appendTo(continuation, lastNext);
-        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
-    }
-
-    void compileIsArrayConstructor()
-    {
-        LValue value = lowJSValue(m_node->child1());
-
-        setBoolean(vmCall(m_out.boolean, m_out.operation(operationIsArrayConstructor), m_callFrame, value));
-    }
-
     void compileIsObject()
     {
         LValue value = lowJSValue(m_node->child1());
@@ -6146,8 +6059,8 @@ private:
                 UniquedStringImpl* str = bitwise_cast<UniquedStringImpl*>(string->tryGetValueImpl());
                 B3::PatchpointValue* patchpoint = m_out.patchpoint(Int64);
                 patchpoint->appendSomeRegister(cell);
-                patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
-                patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+                patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+                patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
                 patchpoint->clobber(RegisterSet::macroScratchRegisters());
 
                 RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
@@ -7097,19 +7010,28 @@ private:
     
     void compileLogShadowChickenPrologue()
     {
-        LValue packet = setupShadowChickenPacket();
-        
+        LValue packet = ensureShadowChickenPacket();
+        LValue scope = lowCell(m_node->child1());
+
         m_out.storePtr(m_callFrame, packet, m_heaps.ShadowChicken_Packet_frame);
         m_out.storePtr(m_out.loadPtr(addressFor(0)), packet, m_heaps.ShadowChicken_Packet_callerFrame);
         m_out.storePtr(m_out.loadPtr(payloadFor(JSStack::Callee)), packet, m_heaps.ShadowChicken_Packet_callee);
+        m_out.storePtr(scope, packet, m_heaps.ShadowChicken_Packet_scope);
     }
     
     void compileLogShadowChickenTail()
     {
-        LValue packet = setupShadowChickenPacket();
+        LValue packet = ensureShadowChickenPacket();
+        LValue thisValue = lowJSValue(m_node->child1());
+        LValue scope = lowCell(m_node->child2());
+        CallSiteIndex callSiteIndex = m_ftlState.jitCode->common.addCodeOrigin(m_node->origin.semantic);
         
         m_out.storePtr(m_callFrame, packet, m_heaps.ShadowChicken_Packet_frame);
         m_out.storePtr(m_out.constIntPtr(ShadowChicken::Packet::tailMarker()), packet, m_heaps.ShadowChicken_Packet_callee);
+        m_out.store64(thisValue, packet, m_heaps.ShadowChicken_Packet_thisValue);
+        m_out.storePtr(scope, packet, m_heaps.ShadowChicken_Packet_scope);
+        m_out.storePtr(m_out.constIntPtr(codeBlock()), packet, m_heaps.ShadowChicken_Packet_codeBlock);
+        m_out.store32(m_out.constInt32(callSiteIndex.bits()), packet, m_heaps.ShadowChicken_Packet_callSiteIndex);
     }
 
     void compileRecordRegExpCachedResult()
@@ -7619,8 +7541,8 @@ private:
 
         B3::PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendSomeRegister(base);
-        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
-        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
 
         // FIXME: If this is a GetByIdFlush, we might get some performance boost if we claim that it
         // clobbers volatile registers late. It's not necessary for correctness, though, since the
@@ -7972,8 +7894,8 @@ private:
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendSomeRegister(left);
         patchpoint->appendSomeRegister(right);
-        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
-        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
         RefPtr<PatchpointExceptionHandle> exceptionHandle =
             preparePatchpointForExceptions(patchpoint);
         patchpoint->numGPScratchRegisters = 1;
@@ -8028,9 +7950,6 @@ private:
     {
         Node* node = m_node;
         
-        // FIXME: Make this do exceptions.
-        // https://bugs.webkit.org/show_bug.cgi?id=151686
-            
         LValue left = lowJSValue(node->child1());
         LValue right = lowJSValue(node->child2());
 
@@ -8040,8 +7959,8 @@ private:
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendSomeRegister(left);
         patchpoint->appendSomeRegister(right);
-        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
-        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
         RefPtr<PatchpointExceptionHandle> exceptionHandle =
             preparePatchpointForExceptions(patchpoint);
         patchpoint->numGPScratchRegisters = 1;
@@ -8094,8 +8013,8 @@ private:
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
         patchpoint->appendSomeRegister(left);
         patchpoint->appendSomeRegister(right);
-        patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
-        patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
         RefPtr<PatchpointExceptionHandle> exceptionHandle =
             preparePatchpointForExceptions(patchpoint);
         patchpoint->numGPScratchRegisters = 1;
@@ -8386,7 +8305,7 @@ private:
             m_out.phi(m_out.intPtr, fastButterfly, slowButterfly));
     }
     
-    LValue setupShadowChickenPacket()
+    LValue ensureShadowChickenPacket()
     {
         LBasicBlock slowCase = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
@@ -10094,15 +10013,6 @@ private:
             return;
         
         jsValueToStrictInt52(edge, lowJSValue(edge, ManualOperandSpeculation));
-    }
-
-    LValue isArray(LValue cell, SpeculatedType type = SpecFullTop)
-    {
-        if (LValue proven = isProvenValue(type & SpecCell, SpecArray))
-            return proven;
-        return m_out.equal(
-            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
-            m_out.constInt32(ArrayType));
     }
     
     LValue isObject(LValue cell, SpeculatedType type = SpecFullTop)

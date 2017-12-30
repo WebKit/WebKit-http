@@ -44,9 +44,9 @@
 #include "File.h"
 #include "Frame.h"
 #include "HTMLAttachmentElement.h"
+#include "HTMLBRElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLDivElement.h"
-#include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "HTMLTableElement.h"
 #include "HTMLTextAreaElement.h"
@@ -402,9 +402,10 @@ Node* StyledMarkupAccumulator::traverseNodesForSerialization(Node* startNode, No
         next = NodeTraversal::next(*n);
         bool openedTag = false;
 
-        if (isBlock(n) && canHaveChildrenForEditing(n) && next == pastEnd)
+        if (isBlock(n) && canHaveChildrenForEditing(*n) && next == pastEnd) {
             // Don't write out empty block containers that aren't fully selected.
             continue;
+        }
 
         if (!n->renderer() && !enclosingElementWithTag(firstPositionInOrBeforeNode(n), selectTag)) {
             next = NodeTraversal::nextSkippingChildren(*n);
@@ -529,7 +530,7 @@ static bool isElementPresentational(const Node* node)
 
 static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterchange shouldAnnotate)
 {
-    Node* commonAncestor = range->commonAncestorContainer();
+    auto* commonAncestor = range->commonAncestorContainer();
     ASSERT(commonAncestor);
     Node* specialCommonAncestor = nullptr;
     if (shouldAnnotate == AnnotateForInterchange) {
@@ -537,10 +538,10 @@ static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterch
         // the structure and appearance of the copied markup.
         specialCommonAncestor = ancestorToRetainStructureAndAppearance(commonAncestor);
 
-        if (Node* parentListNode = enclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isListItem)) {
-            if (!editingIgnoresContent(parentListNode) && WebCore::areRangesEqual(VisibleSelection::selectionFromContentsOfNode(parentListNode).toNormalizedRange().get(), range)) {
+        if (auto* parentListNode = downcast<Element>(enclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isListItem))) {
+            if (!editingIgnoresContent(*parentListNode) && WebCore::areRangesEqual(VisibleSelection::selectionFromContentsOfNode(parentListNode).toNormalizedRange().get(), range)) {
                 specialCommonAncestor = parentListNode->parentNode();
-                while (specialCommonAncestor && !isListElement(specialCommonAncestor))
+                while (specialCommonAncestor && !isListHTMLElement(specialCommonAncestor))
                     specialCommonAncestor = specialCommonAncestor->parentNode();
             }
         }
@@ -550,7 +551,7 @@ static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterch
             specialCommonAncestor = highestMailBlockquote;
     }
 
-    Node* checkAncestor = specialCommonAncestor ? specialCommonAncestor : commonAncestor;
+    auto* checkAncestor = specialCommonAncestor ? specialCommonAncestor : commonAncestor;
     if (checkAncestor->renderer() && checkAncestor->renderer()->containingBlock()) {
         Node* newSpecialCommonAncestor = highestEnclosingNodeOfType(firstPositionInNode(checkAncestor), &isElementPresentational, CanCrossEditingBoundary, checkAncestor->renderer()->containingBlock()->element());
         if (newSpecialCommonAncestor)
@@ -729,7 +730,7 @@ static void fillContainerFromString(ContainerNode& paragraph, const String& stri
                 tabText = emptyString();
             }
             Ref<Node> textNode = document.createTextNode(stringWithRebalancedWhitespace(s, first, i + 1 == numEntries));
-            paragraph.appendChild(WTFMove(textNode), ASSERT_NO_EXCEPTION);
+            paragraph.appendChild(textNode, ASSERT_NO_EXCEPTION);
         }
 
         // there is a tab after every entry, except the last entry
@@ -792,9 +793,9 @@ Ref<DocumentFragment> createFragmentFromText(Range& context, const String& text)
     if (contextPreservesNewline(context)) {
         fragment->appendChild(document.createTextNode(string), ASSERT_NO_EXCEPTION);
         if (string.endsWith('\n')) {
-            Ref<Element> element = createBreakElement(document);
+            auto element = HTMLBRElement::create(document);
             element->setAttribute(classAttr, AppleInterchangeNewline);            
-            fragment->appendChild(WTFMove(element), ASSERT_NO_EXCEPTION);
+            fragment->appendChild(element, ASSERT_NO_EXCEPTION);
         }
         return fragment;
     }
@@ -824,10 +825,10 @@ Ref<DocumentFragment> createFragmentFromText(Range& context, const String& text)
         RefPtr<Element> element;
         if (s.isEmpty() && i + 1 == numLines) {
             // For last line, use the "magic BR" rather than a P.
-            element = createBreakElement(document);
+            element = HTMLBRElement::create(document);
             element->setAttribute(classAttr, AppleInterchangeNewline);
         } else if (useLineBreak) {
-            element = createBreakElement(document);
+            element = HTMLBRElement::create(document);
             fillContainerFromString(fragment, s);
         } else {
             if (useClonesOfEnclosingBlock)
@@ -836,7 +837,7 @@ Ref<DocumentFragment> createFragmentFromText(Range& context, const String& text)
                 element = createDefaultParagraphElement(document);
             fillContainerFromString(*element, s);
         }
-        fragment->appendChild(element.releaseNonNull(), ASSERT_NO_EXCEPTION);
+        fragment->appendChild(*element, ASSERT_NO_EXCEPTION);
     }
     return fragment;
 }
@@ -1020,12 +1021,12 @@ void replaceChildrenWithFragment(ContainerNode& container, Ref<DocumentFragment>
             return;
         }
 
-        containerNode->replaceChild(WTFMove(fragment), *containerChild, ec);
+        containerNode->replaceChild(fragment, *containerChild, ec);
         return;
     }
 
     containerNode->removeChildren();
-    containerNode->appendChild(WTFMove(fragment), ec);
+    containerNode->appendChild(fragment, ec);
 }
 
 void replaceChildrenWithText(ContainerNode& container, const String& text, ExceptionCode& ec)
@@ -1038,15 +1039,15 @@ void replaceChildrenWithText(ContainerNode& container, const String& text, Excep
         return;
     }
 
-    Ref<Text> textNode = Text::create(containerNode->document(), text);
+    auto textNode = Text::create(containerNode->document(), text);
 
     if (hasOneChild(containerNode)) {
-        containerNode->replaceChild(WTFMove(textNode), *containerNode->firstChild(), ec);
+        containerNode->replaceChild(textNode, *containerNode->firstChild(), ec);
         return;
     }
 
     containerNode->removeChildren();
-    containerNode->appendChild(WTFMove(textNode), ec);
+    containerNode->appendChild(textNode, ec);
 }
 
 }

@@ -30,7 +30,6 @@
 #import "WebPluginPackage.h"
 #import "WebResourceLoadScheduler.h"
 #import <WebCore/BlobRegistryImpl.h>
-#import <WebCore/BlockExceptions.h>
 #import <WebCore/Color.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
@@ -40,6 +39,7 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SubframeLoader.h>
 #import <WebKitSystemInterface.h>
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
@@ -147,10 +147,6 @@ void WebPlatformStrategies::getWebVisiblePluginInfo(const Page* page, Vector<Plu
 
 #if PLATFORM(MAC)
 void WebPlatformStrategies::setPluginLoadClientPolicy(PluginLoadClientPolicy, const String&, const String&, const String&)
-{
-}
-
-void WebPlatformStrategies::setPrivateBrowsingPluginLoadClientPolicy(PluginLoadClientPolicy, const String&, const String&, const String&)
 {
 }
 

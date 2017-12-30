@@ -530,6 +530,8 @@ const ClassInfo ImpureGetter::s_info = { "ImpureGetter", &Base::s_info, 0, CREAT
 const ClassInfo CustomGetter::s_info = { "CustomGetter", &Base::s_info, 0, CREATE_METHOD_TABLE(CustomGetter) };
 const ClassInfo RuntimeArray::s_info = { "RuntimeArray", &Base::s_info, 0, CREATE_METHOD_TABLE(RuntimeArray) };
 const ClassInfo SimpleObject::s_info = { "SimpleObject", &Base::s_info, 0, CREATE_METHOD_TABLE(SimpleObject) };
+static bool test262AsyncPassed { false };
+static bool test262AsyncTest { false };
 
 ElementHandleOwner* Element::handleOwner()
 {
@@ -567,7 +569,6 @@ static EncodedJSValue JSC_HOST_CALL functionGetHiddenValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionSetHiddenValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionPrint(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDebug(ExecState*);
-static EncodedJSValue JSC_HOST_CALL functionDataLogValue(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDescribe(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDescribeArray(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState*);
@@ -637,13 +638,17 @@ static EncodedJSValue JSC_HOST_CALL functionShadowChickenFunctionsOnStack(ExecSt
 static EncodedJSValue JSC_HOST_CALL functionSetGlobalConstRedeclarationShouldNotThrow(ExecState*);
 
 struct Script {
+    bool parseAsStrict;
     bool isFile;
     char* argument;
 
-    Script(bool isFile, char *argument)
-        : isFile(isFile)
+    Script(bool parseAsStrict, bool isFile, char *argument)
+        : parseAsStrict(parseAsStrict)
+        , isFile(isFile)
         , argument(argument)
     {
+        if (parseAsStrict)
+            ASSERT(isFile);
     }
 };
 
@@ -662,6 +667,7 @@ public:
     Vector<String> m_arguments;
     bool m_profile { false };
     String m_profilerOutput;
+    String m_uncaughtExceptionName;
     bool m_dumpSamplingProfilerData { false };
 
     void parseArguments(int, char**);
@@ -739,8 +745,7 @@ protected:
     void finishCreation(VM& vm, const Vector<String>& arguments)
     {
         Base::finishCreation(vm);
-
-        addFunction(vm, "dataLogValue", functionDataLogValue, 1);
+        
         addFunction(vm, "debug", functionDebug, 1);
         addFunction(vm, "describe", functionDescribe, 1);
         addFunction(vm, "describeArray", functionDescribeArray, 1);
@@ -844,7 +849,6 @@ protected:
         }
 
         putDirect(vm, Identifier::fromString(globalExec(), "console"), jsUndefined());
-        putDirect(vm, vm.propertyNames->printPrivateName, JSFunction::create(vm, this, 1, vm.propertyNames->printPrivateName.string(), functionPrint));
     }
 
     void addFunction(VM& vm, const char* name, NativeFunction function, unsigned arguments)
@@ -1038,12 +1042,14 @@ static void convertShebangToJSComment(Vector<char>& buffer)
 
 static bool fillBufferWithContentsOfFile(FILE* file, Vector<char>& buffer)
 {
+    // We might have injected "use strict"; at the top.
+    size_t initialSize = buffer.size();
     fseek(file, 0, SEEK_END);
     size_t bufferCapacity = ftell(file);
     fseek(file, 0, SEEK_SET);
-    buffer.resize(bufferCapacity);
-    size_t readSize = fread(buffer.data(), 1, buffer.size(), file);
-    return readSize == buffer.size();
+    buffer.resize(bufferCapacity + initialSize);
+    size_t readSize = fread(buffer.data() + initialSize, 1, buffer.size(), file);
+    return readSize == buffer.size() - initialSize;
 }
 
 static bool fillBufferWithContentsOfFile(const String& fileName, Vector<char>& buffer)
@@ -1115,6 +1121,13 @@ JSInternalPromise* GlobalObject::moduleLoaderFetch(JSGlobalObject* globalObject,
 
 EncodedJSValue JSC_HOST_CALL functionPrint(ExecState* exec)
 {
+    if (test262AsyncTest) {
+        JSValue value = exec->argument(0);
+        if (value.isString() && WTF::equal(asString(value)->value(exec).impl(), "Test262:AsyncTestComplete"))
+            test262AsyncPassed = true;
+        return JSValue::encode(jsUndefined());
+    }
+
     for (unsigned i = 0; i < exec->argumentCount(); ++i) {
         if (i)
             putchar(' ');
@@ -1141,12 +1154,6 @@ EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL functionDebug(ExecState* exec)
 {
     fprintf(stderr, "--> %s\n", exec->argument(0).toString(exec)->view(exec).get().utf8().data());
-    return JSValue::encode(jsUndefined());
-}
-
-EncodedJSValue JSC_HOST_CALL functionDataLogValue(ExecState* exec)
-{
-    dataLog("value is: ", exec->argument(0), "\n");
     return JSValue::encode(jsUndefined());
 }
 
@@ -1848,15 +1855,17 @@ EncodedJSValue JSC_HOST_CALL functionGenerateHeapSnapshot(ExecState* exec)
 #if ENABLE(SAMPLING_PROFILER)
 EncodedJSValue JSC_HOST_CALL functionStartSamplingProfiler(ExecState* exec)
 {
-    exec->vm().ensureSamplingProfiler(WTF::Stopwatch::create());
-    exec->vm().samplingProfiler()->noticeCurrentThreadAsJSCExecutionThread();
-    exec->vm().samplingProfiler()->start();
+    SamplingProfiler& samplingProfiler = exec->vm().ensureSamplingProfiler(WTF::Stopwatch::create());
+    samplingProfiler.noticeCurrentThreadAsJSCExecutionThread();
+    samplingProfiler.start();
     return JSValue::encode(jsUndefined());
 }
 
 EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecState* exec)
 {
-    RELEASE_ASSERT(exec->vm().samplingProfiler());
+    if (!exec->vm().samplingProfiler())
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Sampling profiler was never started"))));
+
     String jsonString = exec->vm().samplingProfiler()->stackTracesAsJSON();
     EncodedJSValue result = JSValue::encode(JSONParse(exec, jsonString));
     RELEASE_ASSERT(!exec->hadException());
@@ -1971,7 +1980,30 @@ static void dumpException(GlobalObject* globalObject, NakedPtr<Exception> evalua
         dumpException(globalObject, evaluationException->value());
 }
 
-static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scripts, bool dump, bool module)
+static bool checkUncaughtException(VM& vm, GlobalObject* globalObject, NakedPtr<Exception> evaluationException, const String& expectedExceptionName)
+{
+    if (!evaluationException) {
+        printf("Expected uncaught exception with name '%s' but none was thrown\n", expectedExceptionName.utf8().data());
+        return false;
+    }
+
+    JSValue exception = evaluationException->value();
+    JSValue exceptionName = exception.get(globalObject->globalExec(), vm.propertyNames->name);
+
+    if (JSString* exceptionNameStr = jsDynamicCast<JSString*>(exceptionName)) {
+        const String& name = exceptionNameStr->value(globalObject->globalExec());
+        if (name == expectedExceptionName)
+            return true;
+        printf("Expected uncaught exception with name '%s' but got one with name '%s'\n", expectedExceptionName.utf8().data(), name.utf8().data());
+        dumpException(globalObject, exception);
+        return false;
+    }
+    printf("Expected uncaught exception with name '%s' but exception value did not have a name property\n", expectedExceptionName.utf8().data());
+    dumpException(globalObject, exception);
+    return false;
+}
+
+static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scripts, const String& uncaughtExceptionName, bool dump, bool module)
 {
     String fileName;
     Vector<char> scriptBuffer;
@@ -1996,6 +2028,9 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
         JSInternalPromise* promise = nullptr;
         if (scripts[i].isFile) {
             fileName = scripts[i].argument;
+            if (scripts[i].parseAsStrict)
+                scriptBuffer.append("\"use strict\";\n", strlen("\"use strict\";\n"));
+
             if (module)
                 promise = loadAndEvaluateModule(globalObject->globalExec(), fileName);
             else {
@@ -2012,19 +2047,24 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
         if (module) {
             if (!promise)
                 promise = loadAndEvaluateModule(globalObject->globalExec(), jscSource(scriptBuffer, fileName));
-            globalObject->globalExec()->clearException();
+            vm.clearException();
             promise->then(globalObject->globalExec(), nullptr, errorHandler);
-            globalObject->vm().drainMicrotasks();
+            vm.drainMicrotasks();
         } else {
             NakedPtr<Exception> evaluationException;
             JSValue returnValue = evaluate(globalObject->globalExec(), jscSource(scriptBuffer, fileName), JSValue(), evaluationException);
-            success = success && !evaluationException;
-            if (dump && !evaluationException)
-                printf("End: %s\n", returnValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
-            dumpException(globalObject, evaluationException);
+            if (!uncaughtExceptionName || i != scripts.size() - 1) {
+                success = success && !evaluationException;
+                if (dump && !evaluationException)
+                    printf("End: %s\n", returnValue.toString(globalObject->globalExec())->value(globalObject->globalExec()).utf8().data());
+                dumpException(globalObject, evaluationException);
+            } else
+                success = success && checkUncaughtException(vm, globalObject, evaluationException, uncaughtExceptionName);
+
         }
 
-        globalObject->globalExec()->clearException();
+        scriptBuffer.clear();
+        vm.clearException();
     }
 
 #if ENABLE(REGEXP_TRACING)
@@ -2109,6 +2149,9 @@ static NO_RETURN void printUsageStatement(bool help = false)
     fprintf(stderr, "  -x         Output exit code before terminating\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "  --sample                   Collects and outputs sampling profiler data\n");
+    fprintf(stderr, "  --test262-async            Check that some script calls the print function with the string 'Test262:AsyncTestComplete'\n");
+    fprintf(stderr, "  --strict-file=<file>       Parse the given file as if it were in strict mode (this option may be passed more than once)\n");
+    fprintf(stderr, "  --exception=<name>         Check the last script exits with an uncaught exception with the specified name\n");
     fprintf(stderr, "  --options                  Dumps all JSC VM options and exits\n");
     fprintf(stderr, "  --dumpOptions              Dumps all non-default JSC VM options before continuing\n");
     fprintf(stderr, "  --<jsc VM option>=<value>  Sets the specified JSC VM option\n");
@@ -2131,13 +2174,13 @@ void CommandLine::parseArguments(int argc, char** argv)
         if (!strcmp(arg, "-f")) {
             if (++i == argc)
                 printUsageStatement();
-            m_scripts.append(Script(true, argv[i]));
+            m_scripts.append(Script(false, true, argv[i]));
             continue;
         }
         if (!strcmp(arg, "-e")) {
             if (++i == argc)
                 printUsageStatement();
-            m_scripts.append(Script(false, argv[i]));
+            m_scripts.append(Script(false, false, argv[i]));
             continue;
         }
         if (!strcmp(arg, "-i")) {
@@ -2195,6 +2238,23 @@ void CommandLine::parseArguments(int argc, char** argv)
             continue;
         }
 
+        if (!strcmp(arg, "--test262-async")) {
+            test262AsyncTest = true;
+            continue;
+        }
+
+        static const unsigned strictFileStrLength = strlen("--strict-file=");
+        if (!strncmp(arg, "--strict-file=", strictFileStrLength)) {
+            m_scripts.append(Script(true, true, argv[i] + strictFileStrLength));
+            continue;
+        }
+
+        static const unsigned exceptionStrLength = strlen("--exception=");
+        if (!strncmp(arg, "--exception=", exceptionStrLength)) {
+            m_uncaughtExceptionName = String(arg + exceptionStrLength);
+            continue;
+        }
+
         // See if the -- option is a JSC VM option.
         if (strstr(arg, "--") == arg) {
             if (!JSC::Options::setOption(&arg[2])) {
@@ -2206,7 +2266,7 @@ void CommandLine::parseArguments(int argc, char** argv)
 
         // This arg is not recognized by the VM nor by jsc. Pass it on to the
         // script.
-        m_scripts.append(Script(true, argv[i]));
+        m_scripts.append(Script(false, true, argv[i]));
     }
 
     if (hasBadJSCOptions && JSC::Options::validateOptions())
@@ -2239,11 +2299,12 @@ static int NEVER_INLINE runJSC(VM* vm, CommandLine options)
         vm->m_perBytecodeProfiler = std::make_unique<Profiler::Database>(*vm);
 
     GlobalObject* globalObject = GlobalObject::create(*vm, GlobalObject::createStructure(*vm, jsNull()), options.m_arguments);
-    bool success = runWithScripts(globalObject, options.m_scripts, options.m_dump, options.m_module);
+    bool success = runWithScripts(globalObject, options.m_scripts, options.m_uncaughtExceptionName, options.m_dump, options.m_module);
     if (options.m_interactive && success)
         runInteractive(globalObject);
 
-    result = success ? 0 : 3;
+    vm->drainMicrotasks();
+    result = success && (test262AsyncTest == test262AsyncPassed) ? 0 : 3;
 
     if (options.m_exitCode)
         printf("jsc exiting %d\n", result);

@@ -60,16 +60,13 @@ void JSCSSRule::visitAdditionalChildren(SlotVisitor& visitor)
     visitor.addOpaqueRoot(root(&wrapped()));
 }
 
-JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, CSSRule* rule)
+JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, CSSRule& rule)
 {
-    if (!rule)
-        return jsNull();
-
     JSObject* wrapper = getCachedWrapper(globalObject->world(), rule);
     if (wrapper)
         return wrapper;
 
-    switch (rule->type()) {
+    switch (rule.type()) {
         case CSSRule::STYLE_RULE:
             wrapper = CREATE_DOM_WRAPPER(globalObject, CSSStyleRule, rule);
             break;

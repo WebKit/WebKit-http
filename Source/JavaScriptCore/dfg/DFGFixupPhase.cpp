@@ -105,8 +105,7 @@ private:
         case BitRShift:
         case BitLShift:
         case BitURShift: {
-            if (Node::shouldSpeculateUntypedForBitOps(node->child1().node(), node->child2().node())
-                && m_graph.hasExitSite(node->origin.semantic, BadType)) {
+            if (Node::shouldSpeculateUntypedForBitOps(node->child1().node(), node->child2().node())) {
                 fixEdge<UntypedUse>(node->child1());
                 fixEdge<UntypedUse>(node->child2());
                 break;
@@ -1057,18 +1056,7 @@ private:
             fixEdge<Int32Use>(node->child1());
             break;
         }
-
-        case CallObjectConstructor: {
-            if (node->child1()->shouldSpeculateObject()) {
-                fixEdge<ObjectUse>(node->child1());
-                node->convertToIdentity();
-                break;
-            }
-
-            fixEdge<UntypedUse>(node->child1());
-            break;
-        }
-
+            
         case ToThis: {
             fixupToThis(node);
             break;
@@ -1502,6 +1490,16 @@ private:
             break;
         }
 
+        case LogShadowChickenPrologue: {
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
+        case LogShadowChickenTail: {
+            fixEdge<UntypedUse>(node->child1());
+            fixEdge<KnownCellUse>(node->child2());
+            break;
+        }
+
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
@@ -1539,9 +1537,6 @@ private:
         case ProfileDidCall:
         case DeleteById:
         case DeleteByVal:
-        case IsArrayObject:
-        case IsJSArray:
-        case IsArrayConstructor:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:
@@ -1562,8 +1557,6 @@ private:
         case CheckBadCell:
         case CheckNotEmpty:
         case CheckWatchdogTimer:
-        case LogShadowChickenPrologue:
-        case LogShadowChickenTail:
         case Unreachable:
         case ExtractOSREntryLocal:
         case LoopHint:

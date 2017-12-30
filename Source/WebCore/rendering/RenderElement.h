@@ -278,7 +278,7 @@ protected:
 
     void paintFocusRing(PaintInfo&, const RenderStyle&, const Vector<LayoutRect>& focusRingRects);
     void paintOutline(PaintInfo&, const LayoutRect&);
-    void updateOutlineAutoAncestor(bool hasOutlineAuto) const;
+    void updateOutlineAutoAncestor(bool hasOutlineAuto);
 
 private:
     RenderElement(ContainerNode&, RenderStyle&&, BaseTypeFlags);
@@ -488,9 +488,6 @@ inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const Render
     return adjustLayoutUnitForAbsoluteZoom(value, renderer.style());
 }
 
-RenderBlock* containingBlockForFixedPosition(const RenderElement*);
-RenderBlock* containingBlockForAbsolutePosition(const RenderElement*);
-RenderBlock* containingBlockForObjectInFlow(const RenderElement*);
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderElement, isRenderElement())

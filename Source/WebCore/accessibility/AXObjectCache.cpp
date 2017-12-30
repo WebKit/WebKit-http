@@ -71,8 +71,10 @@
 #include "HTMLLabelElement.h"
 #include "HTMLMeterElement.h"
 #include "HTMLNames.h"
+#include "InlineElementBox.h"
 #include "Page.h"
 #include "RenderAttachment.h"
+#include "RenderLineBreak.h"
 #include "RenderListBox.h"
 #include "RenderMenuList.h"
 #include "RenderMeter.h"
@@ -122,10 +124,13 @@ void AXComputedObjectAttributeCache::setIgnored(AXID id, AccessibilityObjectIncl
 
 AccessibilityReplacedText::AccessibilityReplacedText(const VisibleSelection& selection)
 {
-    if (AXObjectCache::accessibilityEnabled() && selection.isRange()) {
-        m_replacedText = AccessibilityObject::stringForVisiblePositionRange(selection);
+    if (AXObjectCache::accessibilityEnabled()) {
         m_replacedRange.startIndex.value = indexForVisiblePosition(selection.start(), m_replacedRange.startIndex.scope);
-        m_replacedRange.endIndex.value = indexForVisiblePosition(selection.end(), m_replacedRange.endIndex.scope);
+        if (selection.isRange()) {
+            m_replacedText = AccessibilityObject::stringForVisiblePositionRange(selection);
+            m_replacedRange.endIndex.value = indexForVisiblePosition(selection.end(), m_replacedRange.endIndex.scope);
+        } else
+            m_replacedRange.endIndex = m_replacedRange.startIndex;
     }
 }
 
@@ -137,7 +142,7 @@ void AccessibilityReplacedText::postTextStateChangeNotification(AXObjectCache* c
         return;
 
     VisiblePosition position = selection.start();
-    Node* node = highestEditableRoot(position.deepEquivalent(), HasEditableAXRole);
+    auto* node = highestEditableRoot(position.deepEquivalent(), HasEditableAXRole);
     if (m_replacedText.length())
         cache->postTextReplacementNotification(node, AXTextEditTypeDelete, m_replacedText, type, text, position);
     else
@@ -1468,7 +1473,12 @@ CharacterOffset AXObjectCache::characterOffsetForTextMarkerData(TextMarkerData& 
     if (textMarkerData.ignored)
         return CharacterOffset();
     
-    return CharacterOffset(textMarkerData.node, textMarkerData.characterStartIndex, textMarkerData.characterOffset);
+    CharacterOffset result = CharacterOffset(textMarkerData.node, textMarkerData.characterStartIndex, textMarkerData.characterOffset);
+    // When we are at a line wrap and the VisiblePosition is upstream, it means the text marker is at the end of the previous line.
+    // We use the previous CharacterOffset so that it will match the Range.
+    if (textMarkerData.affinity == UPSTREAM)
+        return previousCharacterOffset(result, false);
+    return result;
 }
 
 CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int offset, TraverseOption option, bool stayWithinRange)
@@ -1600,6 +1610,11 @@ CharacterOffset AXObjectCache::traverseToOffsetInRange(RefPtr<Range>range, int o
         if (!toNodeEnd)
             remaining = offset - cumulativeOffset;
     }
+    
+    // Sometimes when we are getting the end CharacterOffset of a line range, the TextIterator will emit an extra space at the end
+    // and make the character count greater than the Range's end offset.
+    if (toNodeEnd && currentNode->isTextNode() && currentNode == &range->endContainer() && range->endOffset() < lastStartOffset + offsetInCharacter)
+        offsetInCharacter = range->endOffset() - lastStartOffset;
     
     return CharacterOffset(currentNode, lastStartOffset, offsetInCharacter, remaining);
 }
@@ -1999,7 +2014,7 @@ CharacterOffset AXObjectCache::characterOffsetFromVisiblePosition(const VisibleP
     
     // Sometimes when the node is a replaced node and is ignored in accessibility, we get a wrong CharacterOffset from it.
     CharacterOffset result = traverseToOffsetInRange(rangeForNodeContents(obj->node()), characterOffset);
-    if  (result.remainingOffset > 0 && !result.isNull() && isRendererReplacedElement(result.node->renderer()))
+    if (result.remainingOffset > 0 && !result.isNull() && isRendererReplacedElement(result.node->renderer()))
         result.offset += result.remainingOffset;
     return result;
 }
@@ -2315,18 +2330,18 @@ CharacterOffset AXObjectCache::startCharacterOffsetOfParagraph(const CharacterOf
     if (characterOffset.isNull())
         return CharacterOffset();
     
-    Node* startNode = characterOffset.node;
+    auto* startNode = characterOffset.node;
     
     if (isRenderedAsNonInlineTableImageOrHR(startNode))
         return startOrEndCharacterOffsetForRange(rangeForNodeContents(startNode), true);
     
-    Node* startBlock = enclosingBlock(startNode);
+    auto* startBlock = enclosingBlock(startNode);
     int offset = characterOffset.startIndex + characterOffset.offset;
     Position p(startNode, offset, Position::PositionIsOffsetInAnchor);
-    Node* highestRoot = highestEditableRoot(p);
+    auto* highestRoot = highestEditableRoot(p);
     Position::AnchorType type = Position::PositionIsOffsetInAnchor;
     
-    Node* node = findStartOfParagraph(startNode, highestRoot, startBlock, offset, type, boundaryCrossingRule);
+    auto* node = findStartOfParagraph(startNode, highestRoot, startBlock, offset, type, boundaryCrossingRule);
     
     if (type == Position::PositionIsOffsetInAnchor)
         return characterOffsetForNodeAndOffset(*node, offset, TraverseOptionIncludeStart);
@@ -2450,6 +2465,9 @@ LayoutRect AXObjectCache::localCaretRectForCharacterOffset(RenderObject*& render
     
     if (inlineBox)
         renderer = &inlineBox->renderer();
+    
+    if (is<RenderLineBreak>(renderer) && downcast<RenderLineBreak>(renderer)->inlineBoxWrapper() != inlineBox)
+        return IntRect();
     
     return renderer->localCaretRect(inlineBox, caretOffset);
 }

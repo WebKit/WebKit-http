@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #ifndef VMInlines_h
 #define VMInlines_h
 
+#include "ProfilerDatabase.h"
 #include "VM.h"
 #include "Watchdog.h"
 
@@ -36,6 +37,15 @@ bool VM::shouldTriggerTermination(ExecState* exec)
     if (!watchdog())
         return false;
     return watchdog()->shouldTerminate(exec);
+}
+
+template<typename Func>
+void VM::logEvent(CodeBlock* codeBlock, const char* summary, const Func& func)
+{
+    if (LIKELY(!m_perBytecodeProfiler))
+        return;
+    
+    m_perBytecodeProfiler->logEvent(codeBlock, summary, func());
 }
 
 } // namespace JSC

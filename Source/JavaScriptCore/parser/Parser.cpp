@@ -2204,10 +2204,8 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseFunctionDecla
     next();
     ParserFunctionInfo<TreeBuilder> functionInfo;
     SourceParseMode parseMode = SourceParseMode::NormalFunctionMode;
-#if ENABLE(ES6_GENERATORS)
     if (consume(TIMES))
         parseMode = SourceParseMode::GeneratorWrapperFunctionMode;
-#endif
     failIfFalse((parseFunctionInfo(context, FunctionNeedsName, parseMode, true, ConstructorKind::None, SuperBinding::NotNeeded, functionKeywordStart, functionInfo, FunctionDefinitionType::Declaration)), "Cannot parse this function");
     failIfFalse(functionInfo.name, "Function statements must have a name");
 
@@ -2325,10 +2323,8 @@ template <class TreeBuilder> TreeClassExpression Parser<LexerType>::parseClass(T
         bool isGetter = false;
         bool isSetter = false;
         bool isGenerator = false;
-#if ENABLE(ES6_GENERATORS)
         if (consume(TIMES))
             isGenerator = true;
-#endif
         switch (m_token.m_type) {
         namedKeyword:
         case STRING:
@@ -2842,11 +2838,9 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclara
             isFunctionOrClassDeclaration = true;
             next();
 
-#if ENABLE(ES6_GENERATORS)
             // ES6 Generators
             if (startsWithFunction && match(TIMES))
                 next();
-#endif
             if (match(IDENT))
                 localName = m_token.m_data.ident;
             restoreSavePoint(savePoint);
@@ -3045,7 +3039,6 @@ template <typename TreeBuilder> TreeExpression Parser<LexerType>::parseAssignmen
     int initialAssignmentCount = m_parserState.assignmentCount;
     int initialNonLHSCount = m_parserState.nonLHSCount;
     bool maybeAssignmentPattern = match(OPENBRACE) || match(OPENBRACKET);
-#if ENABLE(ES6_ARROWFUNCTION_SYNTAX)
     bool wasOpenParen = match(OPENPAREN);
     bool isValidArrowFunctionStart = match(OPENPAREN) || match(IDENT);
     SavePoint savePoint = createSavePoint();
@@ -3054,16 +3047,12 @@ template <typename TreeBuilder> TreeExpression Parser<LexerType>::parseAssignmen
         usedVariablesSize = currentScope()->currentUsedVariablesSize();
         currentScope()->pushUsedVariableSet();
     }
-#endif
 
-#if ENABLE(ES6_GENERATORS)
     if (match(YIELD) && !isYIELDMaskedAsIDENT(currentScope()->isGenerator()))
         return parseYieldExpression(context);
-#endif
 
     TreeExpression lhs = parseConditionalExpression(context);
 
-#if ENABLE(ES6_ARROWFUNCTION_SYNTAX)
     if (isValidArrowFunctionStart && !match(EOFTOK)) {
         bool isArrowFunctionToken = match(ARROWFUNCTION);
         if (!lhs || isArrowFunctionToken) {
@@ -3079,8 +3068,6 @@ template <typename TreeBuilder> TreeExpression Parser<LexerType>::parseAssignmen
                 failDueToUnexpectedToken();
         }
     }
-
-#endif
 
     if (!lhs && (!maybeAssignmentPattern || !classifier.indicatesPossiblePattern()))
         propagateError();
@@ -3282,10 +3269,8 @@ template <class TreeBuilder> TreeProperty Parser<LexerType>::parseProperty(TreeB
     bool wasIdent = false;
     bool isGenerator = false;
     bool isClassProperty = false;
-#if ENABLE(ES6_GENERATORS)
     if (consume(TIMES))
         isGenerator = true;
-#endif
     switch (m_token.m_type) {
     namedProperty:
     case IDENT:
@@ -3639,10 +3624,8 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseFunctionExpr
     ParserFunctionInfo<TreeBuilder> functionInfo;
     functionInfo.name = &m_vm->propertyNames->nullIdentifier;
     SourceParseMode parseMode = SourceParseMode::NormalFunctionMode;
-#if ENABLE(ES6_GENERATORS)
     if (consume(TIMES))
         parseMode = SourceParseMode::GeneratorWrapperFunctionMode;
-#endif
     failIfFalse((parseFunctionInfo(context, FunctionNoRequirements, parseMode, false, ConstructorKind::None, SuperBinding::NotNeeded, functionKeywordStart, functionInfo, FunctionDefinitionType::Expression)), "Cannot parse function expression");
     return context.createFunctionExpr(location, functionInfo);
 }

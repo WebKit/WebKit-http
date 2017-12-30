@@ -97,6 +97,7 @@
 #include "StyleResolver.h"
 #include "SuddenTermination.h"
 #include "URL.h"
+#include "UserGestureIndicator.h"
 #include "WebKitPoint.h"
 #include "WindowFeatures.h"
 #include "WindowFocusAllowedIndicator.h"
@@ -152,6 +153,7 @@ public:
         , m_channels(WTFMove(channels))
         , m_targetOrigin(WTFMove(targetOrigin))
         , m_stackTrace(stackTrace)
+        , m_wasProcessingUserGesture(UserGestureIndicator::processingUserGesture())
     {
     }
 
@@ -159,6 +161,7 @@ public:
     {
         return MessageEvent::create(MessagePort::entanglePorts(context, WTFMove(m_channels)), WTFMove(m_message), m_origin, { }, m_source.ptr());
     }
+
     SecurityOrigin* targetOrigin() const { return m_targetOrigin.get(); }
     ScriptCallStack* stackTrace() const { return m_stackTrace.get(); }
 
@@ -167,6 +170,8 @@ private:
     {
         // This object gets deleted when std::unique_ptr falls out of scope..
         std::unique_ptr<PostMessageTimer> timer(this);
+        
+        UserGestureIndicator userGestureIndicator(m_wasProcessingUserGesture ? DefinitelyProcessingUserGesture : DefinitelyNotProcessingUserGesture);
         m_window->postMessageTimerFired(*timer);
     }
 
@@ -177,6 +182,7 @@ private:
     std::unique_ptr<MessagePortChannelArray> m_channels;
     RefPtr<SecurityOrigin> m_targetOrigin;
     RefPtr<ScriptCallStack> m_stackTrace;
+    bool m_wasProcessingUserGesture;
 };
 
 typedef HashCountedSet<DOMWindow*> DOMWindowSet;
@@ -463,9 +469,9 @@ DOMWindow* DOMWindow::toDOMWindow()
     return this;
 }
 
-PassRefPtr<MediaQueryList> DOMWindow::matchMedia(const String& media)
+RefPtr<MediaQueryList> DOMWindow::matchMedia(const String& media)
 {
-    return document() ? document()->mediaQueryMatcher().matchMedia(media) : 0;
+    return document() ? document()->mediaQueryMatcher().matchMedia(media) : nullptr;
 }
 
 Page* DOMWindow::page()
@@ -1405,16 +1411,16 @@ Document* DOMWindow::document() const
     return downcast<Document>(context);
 }
 
-PassRefPtr<StyleMedia> DOMWindow::styleMedia() const
+RefPtr<StyleMedia> DOMWindow::styleMedia() const
 {
     if (!isCurrentlyDisplayedInFrame())
         return nullptr;
     if (!m_media)
         m_media = StyleMedia::create(m_frame);
-    return m_media.get();
+    return m_media;
 }
 
-PassRefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Element* element, const String& pseudoElt) const
+RefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Element* element, const String& pseudoElt) const
 {
     if (!element)
         return nullptr;
@@ -1422,15 +1428,15 @@ PassRefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Element* element, co
     return CSSComputedStyleDeclaration::create(element, false, pseudoElt);
 }
 
-PassRefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String& pseudoElement, bool authorOnly) const
+RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String& pseudoElement, bool authorOnly) const
 {
     if (!isCurrentlyDisplayedInFrame())
-        return 0;
+        return nullptr;
 
     unsigned colonStart = pseudoElement[0] == ':' ? (pseudoElement[1] == ':' ? 2 : 1) : 0;
     CSSSelector::PseudoElementType pseudoType = CSSSelector::parsePseudoElementType(pseudoElement.substringSharingImpl(colonStart));
     if (pseudoType == CSSSelector::PseudoElementUnknown && !pseudoElement.isEmpty())
-        return 0;
+        return nullptr;
 
     unsigned rulesToInclude = StyleResolver::AuthorCSSRules;
     if (!authorOnly)
@@ -1442,22 +1448,22 @@ PassRefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const St
 
     auto matchedRules = m_frame->document()->ensureStyleResolver().pseudoStyleRulesForElement(element, pseudoId, rulesToInclude);
     if (matchedRules.isEmpty())
-        return 0;
+        return nullptr;
 
     RefPtr<StaticCSSRuleList> ruleList = StaticCSSRuleList::create();
     for (auto& rule : matchedRules)
         ruleList->rules().append(rule->createCSSOMWrapper());
 
-    return ruleList.release();
+    return ruleList;
 }
 
-PassRefPtr<WebKitPoint> DOMWindow::webkitConvertPointFromNodeToPage(Node* node, const WebKitPoint* p) const
+RefPtr<WebKitPoint> DOMWindow::webkitConvertPointFromNodeToPage(Node* node, const WebKitPoint* p) const
 {
     if (!node || !p)
-        return 0;
+        return nullptr;
 
     if (!document())
-        return 0;
+        return nullptr;
 
     document()->updateLayoutIgnorePendingStylesheets();
 
@@ -1466,13 +1472,13 @@ PassRefPtr<WebKitPoint> DOMWindow::webkitConvertPointFromNodeToPage(Node* node, 
     return WebKitPoint::create(pagePoint.x(), pagePoint.y());
 }
 
-PassRefPtr<WebKitPoint> DOMWindow::webkitConvertPointFromPageToNode(Node* node, const WebKitPoint* p) const
+RefPtr<WebKitPoint> DOMWindow::webkitConvertPointFromPageToNode(Node* node, const WebKitPoint* p) const
 {
     if (!node || !p)
-        return 0;
+        return nullptr;
 
     if (!document())
-        return 0;
+        return nullptr;
 
     document()->updateLayoutIgnorePendingStylesheets();
 
@@ -1493,7 +1499,12 @@ double DOMWindow::devicePixelRatio() const
     return page->deviceScaleFactor();
 }
 
-void DOMWindow::scrollBy(int x, int y) const
+void DOMWindow::scrollBy(const ScrollToOptions& options) const
+{
+    return scrollBy(options.left.valueOr(0), options.top.valueOr(0));
+}
+
+void DOMWindow::scrollBy(double x, double y) const
 {
     if (!isCurrentlyDisplayedInFrame())
         return;
@@ -1504,11 +1515,26 @@ void DOMWindow::scrollBy(int x, int y) const
     if (!view)
         return;
 
+    // Normalize non-finite values (https://drafts.csswg.org/cssom-view/#normalize-non-finite-values).
+    x = std::isfinite(x) ? x : 0;
+    y = std::isfinite(y) ? y : 0;
+
     IntSize scaledOffset(view->mapFromCSSToLayoutUnits(x), view->mapFromCSSToLayoutUnits(y));
     view->setContentsScrollPosition(view->contentsScrollPosition() + scaledOffset);
 }
 
-void DOMWindow::scrollTo(int x, int y) const
+void DOMWindow::scrollTo(const ScrollToOptions& options) const
+{
+    RefPtr<FrameView> view = m_frame->view();
+    if (!view)
+        return;
+
+    double x = options.left ? options.left.value() : view->contentsScrollPosition().x();
+    double y = options.top ? options.top.value() : view->contentsScrollPosition().y();
+    return scrollTo(x, y);
+}
+
+void DOMWindow::scrollTo(double x, double y) const
 {
     if (!isCurrentlyDisplayedInFrame())
         return;
@@ -1516,6 +1542,10 @@ void DOMWindow::scrollTo(int x, int y) const
     RefPtr<FrameView> view = m_frame->view();
     if (!view)
         return;
+
+    // Normalize non-finite values (https://drafts.csswg.org/cssom-view/#normalize-non-finite-values).
+    x = std::isfinite(x) ? x : 0;
+    y = std::isfinite(y) ? y : 0;
 
     if (!x && !y && view->contentsScrollPosition() == IntPoint(0, 0))
         return;
@@ -1885,7 +1915,7 @@ void DOMWindow::dispatchLoadEvent()
 
 bool DOMWindow::dispatchEvent(Event& event, EventTarget* target)
 {
-    Ref<EventTarget> protect(*this);
+    Ref<EventTarget> protectedThis(*this);
 
     // Pausing a page may trigger pagehide and pageshow events. WebCore also implicitly fires these
     // events when closing a WebView. Here we keep track of the state of the page to prevent duplicate,
@@ -2140,7 +2170,7 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
     return newFrame;
 }
 
-PassRefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& frameName, const String& windowFeaturesString,
+RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& frameName, const String& windowFeaturesString,
     DOMWindow& activeWindow, DOMWindow& firstWindow)
 {
     if (!isCurrentlyDisplayedInFrame())

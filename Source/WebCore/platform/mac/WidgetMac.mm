@@ -26,8 +26,6 @@
 #import "config.h"
 #import "Widget.h"
 
-
-#import "BlockExceptions.h"
 #import "Chrome.h"
 #import "Cursor.h"
 #import "Document.h"
@@ -40,6 +38,7 @@
 #import "RuntimeApplicationChecks.h"
 #import "WebCoreFrameView.h"
 #import "WebCoreView.h"
+#import <wtf/BlockObjCExceptions.h>
 #import <wtf/Ref.h>
 #import <wtf/RetainPtr.h>
 
@@ -160,7 +159,7 @@ void Widget::setFrameRect(const IntRect& rect)
 
     // Take a reference to this Widget, because sending messages to outerView can invoke arbitrary
     // code including recalc style/layout, which can deref it.
-    Ref<Widget> protect(*this);
+    Ref<Widget> protectedThis(*this);
 
     NSRect frame = rect;
     if (!NSEqualRects(frame, outerView.frame)) {
@@ -204,7 +203,7 @@ void Widget::paint(GraphicsContext& p, const IntRect& r)
 
     // Take a reference to this Widget, because sending messages to the views can invoke arbitrary
     // code, which can deref it.
-    Ref<Widget> protect(*this);
+    Ref<Widget> protectedThis(*this);
 
     NSGraphicsContext *currentContext = [NSGraphicsContext currentContext];
     if (currentContext == [[view window] graphicsContext] || ![currentContext isDrawingToScreen]) {
