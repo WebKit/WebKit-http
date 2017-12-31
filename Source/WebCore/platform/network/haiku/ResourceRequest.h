@@ -73,16 +73,11 @@ namespace WebCore {
         void doUpdatePlatformHTTPBody() { }
         void doUpdateResourceHTTPBody() { }
 
-        std::unique_ptr<CrossThreadResourceRequestData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceRequestData> data) const { return data; }
-        void doPlatformAdopt(std::unique_ptr<CrossThreadResourceRequestData>) { }
+        void doPlatformSetAsIsolatedCopy(const ResourceRequest&) { }
 
         BString fUsername;
         BString fPassword;
     };
-    
-    struct CrossThreadResourceRequestData : public CrossThreadResourceRequestDataBase {
-    };
-
 } // namespace WebCore
 
 #endif // ResourceRequest_h

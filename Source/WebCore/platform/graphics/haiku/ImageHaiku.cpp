@@ -93,11 +93,6 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatR
     if (!image || !image->IsValid()) // If the image hasn't fully loaded.
         return;
 
-    if (mayFillWithSolidColor()) {
-        fillWithSolidColor(ctxt, dst, solidColor(), op);
-        return;
-    }
-
     ctxt.save();
     ctxt.setCompositeOperation(op);
 
@@ -169,25 +164,6 @@ void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect,
 
     if (imageObserver())
         imageObserver()->didDraw(this);
-}
-
-void BitmapImage::checkForSolidColor()
-{
-    m_isSolidColor = false;
-    m_checkedForSolidColor = true;
-
-    if (frameCount() > 1)
-        return;
-
-    NativeImagePtr image = getBBitmap();
-    if (!image || !image->Bounds().IsValid()
-        || image->Bounds().IntegerWidth() > 0 || image->Bounds().IntegerHeight() > 0) {
-        return;
-    }
-
-    m_isSolidColor = true;
-    uint8* bits = reinterpret_cast<uint8*>(image->Bits());
-    m_solidColor = Color(bits[2], bits[1], bits[0], bits[3]);
 }
 
 NativeImagePtr BitmapImage::getBBitmap()

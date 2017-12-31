@@ -467,8 +467,10 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         // Handle this just like redirects.
         m_redirected = true;
 
-        currentRequest.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
-        client->willSendRequest(m_resourceHandle, currentRequest, response);
+        ResourceRequest request = m_resourceHandle->firstRequest();
+		ResourceResponse responseCopy = response;
+        request.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
+        client->willSendRequest(m_resourceHandle, WTFMove(request), WTFMove(responseCopy));
     } else {
         // Anything to do in case of failure?
     }
@@ -555,10 +557,11 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
         }
 
         // Notify the client that we are redirecting.
-        ResourceRequest request(m_resourceHandle->firstRequest());
+        ResourceRequest request = m_resourceHandle->firstRequest();
+		ResourceResponse responseCopy = response;
         request.setURL(url);
 
-        client->willSendRequest(m_resourceHandle, request, response);
+        client->willSendRequest(m_resourceHandle, WTFMove(request), WTFMove(responseCopy));
     } else {
         client->didReceiveResponse(m_resourceHandle, response);
     }

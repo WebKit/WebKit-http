@@ -44,6 +44,18 @@ bool hasAlpha(const RefPtr<WebCore::BitmapRef>& image)
 	return image->ColorSpace() == B_RGBA32;
 }
 
+
+Color singlePixelSolidColor(const RefPtr<WebCore::BitmapRef>& image)
+{
+    ASSERT(image);
+    
+    if (image->Bounds().Width() > 1 || image->Bounds().Height() > 1)
+        return Color();
+
+    RGBA32* pixel = reinterpret_cast_ptr<RGBA32*>(image->Bits());
+    return colorFromPremultipliedARGB(*pixel);
+}
+
 }
 
 }

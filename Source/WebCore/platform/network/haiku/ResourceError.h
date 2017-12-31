@@ -41,8 +41,11 @@ public:
         : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription)
     {
     }
-};
 
+private:
+    friend class ResourceErrorBase;
+    void doPlatformIsolatedCopy(const ResourceError&) { }
+};
 }
 
 #endif // ResourceError_h_
