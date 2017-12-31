@@ -40,7 +40,8 @@ public:
     static PassRefPtr<BitmapContext> createByAdoptingData(BSize size,
         BBitmap* bitmap)
     {
-        return adoptRef(new BitmapContext(size, bitmap));
+		BitmapContext* context = new BitmapContext(size, bitmap);
+        return adoptRef(*context);
     }
 
     ~BitmapContext()

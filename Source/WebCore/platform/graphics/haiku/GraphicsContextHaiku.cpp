@@ -567,7 +567,7 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
     m_data->view()->PopState();
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool /*printing*/, bool /* doubleLines */)
+void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool /*printing*/, bool /* doubleLines */, WebCore::StrokeStyle)
 {
     if (paintingDisabled())
         return;
@@ -576,7 +576,7 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     drawLine(IntPoint(origin), IntPoint(endPoint));
 }
 
-void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleUnderlines)
+void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleUnderlines, WebCore::StrokeStyle)
 {
     if (paintingDisabled())
         return;
