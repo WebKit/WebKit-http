@@ -153,7 +153,7 @@ public:
     void attemptToDecryptWithInstance(const CDMInstance&) override;
 #endif
 #if USE(OPENCDM)
-    bool isInitDataCached(const Ref<SharedBuffer>&);
+    bool findAndSetPendingProtectionEventByInitData(const Vector<uint8_t>&, const uint32_t);
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -282,9 +282,10 @@ protected:
 
     WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
 #if USE(OPENCDM)
-    Vector<std::pair<Ref<SharedBuffer>, HashMap<String, uint32_t>>> m_initDataProtectionEventsMap;
-    HashMap<unsigned, String> m_protectionEventSessionMap;
     size_t m_initDataCount;
+    HashSet<uint32_t> m_triggeredProtectionEvents;
+    HashMap<unsigned, String> m_protectionEventSessionMap;
+    Vector<std::pair<Vector<uint8_t>, HashSet<uint32_t>>> m_initDataProtectionEventsMapping;
 #endif
 };
 

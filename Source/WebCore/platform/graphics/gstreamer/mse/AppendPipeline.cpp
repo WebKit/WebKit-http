@@ -361,11 +361,16 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
             }
 
             m_initData.append(mapInfo.data, mapInfo.size);
+            // Keeping all eventKeySystemId and protection events received, since
+            // Appendpipeline does not know which CDM instance is actually selected.
             if (streamEncryptionInformation.second.contains(eventKeySystemId))
                 m_keySystemProtectionEventMap.add(eventKeySystemId, GST_EVENT_SEQNUM(event.get()));
 
             gst_buffer_unmap(data, &mapInfo);
         }
+
+        m_decryptionStructureDispatched = false;
+        m_protectionEventTriggered = false;
 #endif
         if (WTF::isMainThread())
             transitionTo(AppendState::KeyNegotiation, true);
@@ -463,9 +468,10 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
         GRefPtr<GstEvent> event;
         gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
 #if USE(OPENCDM)
-        m_protectionEventTriggered = true;
         if (m_pendingDecryptionStructure)
             gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
+        else
+            m_protectionEventTriggered = true;
 #endif
         m_playerPrivate->handleProtectionEvent(event.get());
     }
@@ -1369,8 +1375,10 @@ void AppendPipeline::dispatchPendingDecryptionStructure()
 
     // Release the m_pendingDecryptionStructure object since
     // gst_event_new_custom() takes over ownership of it.
-    if (m_protectionEventTriggered)
+    if (m_protectionEventTriggered) {
         gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
+        m_keySystemProtectionEventMap.clear();
+    }
 
     if (WTF::isMainThread()) {
         transitionTo(AppendState::Ongoing, true);
@@ -1397,23 +1405,6 @@ void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& stru
             GST_TRACE("no decryptor yet, waiting for it");
     } else
         GST_TRACE("append pipeline %p not in key negotiation", this);
-}
-#endif
-
-#if USE(OPENCDM)
-bool AppendPipeline::isDecryptionStructureDispatched()
-{
-    return m_decryptionStructureDispatched;
-}
-
-Vector<char> AppendPipeline::getInitData()
-{
-    return m_initData;
-}
-
-HashMap<String, unsigned> AppendPipeline::getKeySystemProtectionEventMap()
-{
-    return m_keySystemProtectionEventMap;
 }
 #endif
 

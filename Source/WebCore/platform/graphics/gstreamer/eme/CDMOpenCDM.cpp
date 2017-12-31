@@ -463,7 +463,7 @@ String CDMInstanceOpenCDM::getCurrentSessionId() const
     return sessionIdMap.begin()->key;
 }
 
-String CDMInstanceOpenCDM::getSessionIdByInitData(const Ref<SharedBuffer>& initData) const
+String CDMInstanceOpenCDM::sessionIdByInitData(const Vector<uint8_t>& initData) const
 {
     if (sessionIdMap.isEmpty()) {
         GST_WARNING("no sessions");
@@ -471,8 +471,8 @@ String CDMInstanceOpenCDM::getSessionIdByInitData(const Ref<SharedBuffer>& initD
     }
 
     for (auto& sessionIdInitDataMap : sessionIdMap) {
-        if (sessionIdInitDataMap.value->size() == initData->size()) {
-            if (!(memcmp(sessionIdInitDataMap.value->data(), initData->data(), initData->size())))
+        if (sessionIdInitDataMap.value->size() == initData.size()) {
+            if (!memcmp(sessionIdInitDataMap.value->data(), initData.data(), sessionIdInitDataMap.value->size()))
                 return sessionIdInitDataMap.key;
         }
     }

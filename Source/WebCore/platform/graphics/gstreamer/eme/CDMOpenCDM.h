@@ -71,7 +71,7 @@ public:
 
     // FIXME: Session handling needs a lot of love here.
     String getCurrentSessionId() const;
-    String getSessionIdByInitData(const Ref<SharedBuffer>&) const;
+    String sessionIdByInitData(const Vector<uint8_t>&) const;
 
 private:
     MediaKeyStatus getKeyStatus(std::string &);

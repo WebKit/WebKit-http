@@ -1061,15 +1061,14 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
 
         for (const auto& it : m_appendPipelinesMap) {
             if (!(it.value->isDecryptionStructureDispatched())) {
-                String sessionId = cdmInstanceOpenCDM.getSessionIdByInitData(SharedBuffer::create(it.value->getInitData()));
-                // FIXME: If initData is not mapped, then retrieve the current sessionId in case of single initData.
-                if (sessionId.isEmpty()) {
-                    if (m_initDataCount == 1)
-                        sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
-                }
+                String sessionId;
+                if (m_initDataCount == 1)
+                    sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+                else
+                    sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData());
 
                 if (!sessionId.isEmpty()) {
-                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, it.value->getKeySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem())), nullptr));
+                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, it.value->keySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem())), nullptr));
                     it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
                 }
             }
