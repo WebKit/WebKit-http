@@ -5243,9 +5243,7 @@ RefPtr<CSSValue> CSSParser::parseAnimationTimingFunction()
         // There are two points specified. The x values must be between 0 and 1 but the y values can exceed this range.
 
         auto x1 = parseCubicBezierTimingFunctionValue(*args);
-        if (!x1)
-            return nullptr;
-        if (x1.value() < 0 || x1.value() > 1)
+        if (!x1 || x1.value() < 0 || x1.value() > 1)
             return nullptr;
 
         auto y1 = parseCubicBezierTimingFunctionValue(*args);
@@ -5253,9 +5251,7 @@ RefPtr<CSSValue> CSSParser::parseAnimationTimingFunction()
             return nullptr;
 
         auto x2 = parseCubicBezierTimingFunctionValue(*args);
-        if (!x2)
-            return nullptr;
-        if (x2.value() < 0 || x2.value() > 1)
+        if (!x2 || x2.value() < 0 || x2.value() > 1)
             return nullptr;
 
         auto y2 = parseCubicBezierTimingFunctionValue(*args);
@@ -5267,28 +5263,23 @@ RefPtr<CSSValue> CSSParser::parseAnimationTimingFunction()
 
     if (isSpringTimingFunctionEnabled() && equalLettersIgnoringASCIICase(value.function->name, "spring(")) {
         // For a spring, 4 values must be specified (space-separated).
+        // FIXME: Make the arguments all optional.
         if (!args || args->size() != 4)
             return nullptr;
         
         // Mass must be greater than 0.
         auto mass = parseSpringTimingFunctionValue(*args);
-        if (!mass)
-            return nullptr;
-        if (mass.value() <= 0)
+        if (!mass || mass.value() <= 0)
             return nullptr;
 
         // Stiffness must be greater than 0.
         auto stiffness = parseSpringTimingFunctionValue(*args);
-        if (!stiffness)
-            return nullptr;
-        if (stiffness.value() <= 0)
+        if (!stiffness || stiffness.value() <= 0)
             return nullptr;
 
         // Damping coefficient must be greater than or equal to 0.
         auto damping = parseSpringTimingFunctionValue(*args);
-        if (!damping)
-            return nullptr;
-        if (damping.value() < 0)
+        if (!damping || damping.value() < 0)
             return nullptr;
 
         // Initial velocity may have any value.

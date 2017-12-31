@@ -337,20 +337,20 @@ void MultipartHandle::didReceiveResponse()
 {
     ResourceHandleInternal* d = m_resourceHandle->getInternal();
     if (d->client()) {
-        std::unique_ptr<ResourceResponse> response = ResourceResponseBase::adopt(d->m_response.copyData());
+        auto response = d->m_response;
 
         HTTPHeaderMap::const_iterator end = m_headers.end();
         for (HTTPHeaderMap::const_iterator it = m_headers.begin(); it != end; ++it)
-            response->setHTTPHeaderField(it->key, it->value);
+            response.setHTTPHeaderField(it->key, it->value);
 
         String contentType = m_headers.get(HTTPHeaderName::ContentType);
         String mimeType = extractMIMETypeFromMediaType(contentType);
 
-        response->setMimeType(mimeType.convertToASCIILowercase());
-        response->setTextEncodingName(extractCharsetFromMediaType(contentType));
+        response.setMimeType(mimeType.convertToASCIILowercase());
+        response.setTextEncodingName(extractCharsetFromMediaType(contentType));
 
-        d->client()->didReceiveResponse(m_resourceHandle, *response);
-        response->setResponseFired(true);
+        d->client()->didReceiveResponse(m_resourceHandle, response);
+        m_response->setResponseFired(true);
     }
 }
 

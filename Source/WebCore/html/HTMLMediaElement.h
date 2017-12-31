@@ -342,8 +342,8 @@ public:
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void webkitShowPlaybackTargetPicker();
-    bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, bool useCapture) override;
-    bool removeEventListener(const AtomicString& eventType, EventListener&, bool useCapture) override;
+    bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) override;
+    bool removeEventListener(const AtomicString& eventType, EventListener&, const ListenerOptions&) override;
 
     void wirelessRoutesAvailableDidChange() override;
     bool canPlayToWirelessPlaybackTarget() const override;
@@ -503,9 +503,6 @@ private:
     void createMediaPlayer();
 
     bool alwaysCreateUserAgentShadowRoot() const override { return true; }
-
-    // FIXME: Shadow DOM spec says we should be able to create shadow root on audio and video elements
-    bool canHaveUserAgentShadowRoot() const final { return true; }
 
     bool supportsFocus() const override;
     bool isMouseFocusable() const override;
@@ -926,6 +923,7 @@ private:
     bool m_parsingInProgress : 1;
     bool m_elementIsHidden : 1;
     bool m_creatingControls : 1;
+    bool m_receivedLayoutSizeChanged : 1;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool m_mediaControlsDependOnPageScaleFactor : 1;

@@ -1,3 +1,365 @@
+2016-06-07  Saam barati  <sbarati@apple.com>
+
+        InvalidationPointInjectionPhase creates bogus InvalidationPoints that may even be inserted when it's not OK to exit
+        https://bugs.webkit.org/show_bug.cgi?id=158499
+        <rdar://problem/26647473>
+
+        Reviewed by Mark Lam and Benjamin Poulain.
+
+        InvalidationPointInjectionPhase forgot to clear m_originThatHadFire 
+        before analyzing the current block it's analyzing. This meant that
+        the phase allowed a residual m_originThatHadFire that was set from the
+        previous block to effect a completely unrelated block. This is usually
+        harmless, but sometimes we would insert an InvalidationPoint at a point
+        in the graph when exiting is invalid. This would cause a crash.
+
+        * dfg/DFGInvalidationPointInjectionPhase.cpp:
+        (JSC::DFG::InvalidationPointInjectionPhase::run):
+        * tests/stress/dont-crash-on-bad-invalidation-point.js: Added.
+        (dontCrash):
+
+2016-06-07  Saam Barati  <sbarati@apple.com>
+
+        operationProcessTypeProfilerLogDFG doesn't update topCallFrame
+        https://bugs.webkit.org/show_bug.cgi?id=158428
+        <rdar://problem/26571493>
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGOperations.cpp:
+
+2016-06-07  Mark Lam  <mark.lam@apple.com>
+
+        calculatedDisplayName() and friends actually need a VM& and not a ExecState/CallFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=158488
+
+        Reviewed by Geoffrey Garen.
+
+        calculatedDisplayName() (and some of its friends) actually just need a VM&.
+        Their work has nothing to do with an ExecState at all.  This patch will make that
+        clear by changing these functions to take a VM& arg instead of an ExecState* or
+        CallFrame*.
+
+        Also removed the JS_EXPORT_PRIVATE attribute from Interpreter::StackFrame::toString().
+        The JS_EXPORT_PRIVATE attribute was a holdover from the days when WebInspector
+        was entirely in WebCore.  It is no longer needed.
+
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::functionName):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::functionDetails):
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::createScriptCallStackFromException):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::friendlyFunctionName):
+        * interpreter/Interpreter.cpp:
+        (JSC::StackFrame::friendlySourceURL):
+        (JSC::StackFrame::friendlyFunctionName):
+        (JSC::StackFrame::expressionInfo):
+        (JSC::StackFrame::toString):
+        (JSC::Interpreter::stackTraceAsString):
+        * interpreter/Interpreter.h:
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::functionName):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::name):
+        (JSC::InternalFunction::displayName):
+        (JSC::InternalFunction::getCallData):
+        (JSC::InternalFunction::calculatedDisplayName):
+        * runtime/InternalFunction.h:
+        (JSC::InternalFunction::createStructure):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::name):
+        (JSC::JSFunction::displayName):
+        (JSC::JSFunction::calculatedDisplayName):
+        (JSC::JSFunction::getConstructData):
+        (JSC::getCalculatedDisplayName):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::executable):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+
+2016-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not allocate unnecessary UTF-8 string for encodeXXX functions
+        https://bugs.webkit.org/show_bug.cgi?id=158416
+
+        Reviewed by Darin Adler and Geoffrey Garen.
+
+        Previously, encodeXXX functions first allocate new UTF-8 string, and generate (& allocate) the results from this UTF-8 string.
+        It is costly since this UTF-8 string is always wasted. In this patch, we generate the results without this UTF-8 string.
+        We precisely implement ECMA262's Encode abstract operation[1].
+
+        This optimized encodeXXX functions provide great improvement in kraken stanford-crypto-sha256-iterative since it frequently calls
+        these functions. We can see 6 - 7% improvements.
+
+                                                      baseline                  patched
+
+        stanford-crypto-sha256-iterative           37.952+-0.155      ^      35.484+-0.265         ^ definitely 1.0695x faster
+
+
+        [1]: https://tc39.github.io/ecma262/#sec-encode
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::toSafeView):
+        Use this helper function to retrieve JSString::SafeView.
+
+        (JSC::makeCharacterBitmap):
+        (JSC::encode):
+        In encode, we reserve N length buffer at first. This is important when the length of the given string is long enough,
+        preventing frequent unnecessary buffer reallocations. This reserving contributes to 1% kraken stanford-crypto-sha256-iterative progression.
+
+        (JSC::decode):
+        Previously, Bitmap accidentally includes \0. And instead of removing this \0, we checked character != 0.
+        This patch fixes it for the Bitmap not to include \0.
+
+        (JSC::globalFuncParseInt):
+        (JSC::globalFuncEscape):
+        (JSC::globalFuncUnescape):
+        * tests/stress/encode-decode-ascii.js: Added.
+        (shouldBe):
+        * tests/stress/encode-decode-unicode.js: Added.
+        (shouldBe):
+        (isLowSurrogate):
+        (isHighSurrogate):
+        (isSurrogate):
+        * tests/stress/encode-decode-uri-component-surrogates.js: Added.
+        (shouldBe):
+        (toHighSurrogate):
+        (toLowSurrogate):
+        * tests/stress/encode-decode-uri-surrogates.js: Added.
+        (shouldBe):
+        (toHighSurrogate):
+        (toLowSurrogate):
+        * tests/stress/encode-decode-zero.js: Added.
+        (shouldBe):
+        * tests/stress/escape-unescape-surrogates.js: Added.
+        (shouldBe):
+        (toHighSurrogate):
+        (toLowSurrogate):
+
+2016-06-07  Ting-Wei Lan  <lantw44@gmail.com>
+
+        [GTK] Include locale.h before using LC_ALL
+        https://bugs.webkit.org/show_bug.cgi?id=158470
+
+        Reviewed by Darin Adler.
+
+        * jsc.cpp:
+
+2016-06-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unskip generator related stress tests
+        https://bugs.webkit.org/show_bug.cgi?id=158461
+
+        Reviewed by Darin Adler.
+
+        * tests/stress/generator-methods.js:
+        * tests/stress/generator-syntax.js:
+        * tests/stress/yield-and-line-terminator.js:
+        * tests/stress/yield-label-generator.js:
+        * tests/stress/yield-named-accessors-generator.js:
+        * tests/stress/yield-named-variable-generator.js:
+        * tests/stress/yield-out-of-generator.js:
+
+2016-06-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix typo in test name trailing-comma-in-function-paramters.js
+        https://bugs.webkit.org/show_bug.cgi?id=158462
+
+        Reviewed by Mark Lam.
+
+        * tests/stress/trailing-comma-in-function-parameters.js: Renamed from Source/JavaScriptCore/tests/stress/trailing-comma-in-function-paramters.js.
+
+2016-06-06  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r197595): 2% JSBench regression on iPhone 5.
+        <https://webkit.org/b/158459>
+
+        Unreviewed rollout.
+
+        * runtime/VM.cpp:
+        (JSC::VM::deleteAllRegExpCode): Deleted.
+        * runtime/VM.h:
+
+2016-06-06  Michael Saboff  <msaboff@apple.com>
+
+        octal and binary parsing is wrong for some programs
+        https://bugs.webkit.org/show_bug.cgi?id=158437
+
+        Reviewed by Saam Barati.
+
+        When there is an error parsing an binary or octal literal, we need to clear the returnValue
+        of any residual value.  This is because the processing of returnValue happens before the
+        syntax check for the extra character.  Without clearing returnValue, we end trying to
+        categorize the value as an INTEGER or DOUBLE token.  If the value happens to be an
+        impure NaN, we ASSERT.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::parseBinary):
+        (JSC::Lexer<T>::parseOctal):
+        * tests/stress/regress-158437.js: New test.
+
+2016-06-06  Mark Lam  <mark.lam@apple.com>
+
+        32-bit JSC stress test failing: stress/recursive-try-catch.js.ftl-no-cjit-validate-sampling-profiler
+        https://bugs.webkit.org/show_bug.cgi?id=158362
+
+        Reviewed by Michael Saboff.
+
+        The test does infinite recursion until it overflows the stack.  That means the
+        sampling profiler will have to capture excessively large samples, which in turn
+        makes it run very slowly.  This is what causes the test time out.
+
+        The fix is to not run the test with the sampling profiler.
+
+        * tests/stress/recursive-try-catch.js:
+
+2016-06-06  Andreas Kling  <akling@apple.com>
+
+        Don't reportAbandonedObjectGraph() after throwing out linked code or RegExps.
+        <https://webkit.org/b/158444>
+
+        Unreviewed.
+
+        This is a speculative change for iOS performance bots. The calls to reportAbandonedObjectGraph
+        were basically redundant, since mainframe navigation will cause GC acceleration anyway via
+        ScriptController.
+
+        This appears successful at recovering the ~0.7% regression I could reproduce locally on newer
+        hardware but it's a bit too noisy to say for sure.
+
+        * runtime/VM.cpp:
+        (JSC::VM::deleteAllLinkedCode):
+        (JSC::VM::deleteAllRegExpCode):
+
+2016-06-06  Skachkov Oleksandr  <gskachkov@gmail.com>
+        [ESNext] Trailing commas in function parameters.
+        https://bugs.webkit.org/show_bug.cgi?id=158020
+
+        Reviewed by Keith Miller.
+
+        ESNext allow to add trailing commas in function parameters and function arguments.
+        Link to spec - https://jeffmo.github.io/es-trailing-function-commas 
+        Example of using - (function (a, b,) { return a + b; })(1,2,);
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFormalParameters):
+        (JSC::Parser<LexerType>::parseArguments):
+        * tests/stress/trailing-comma-in-function-paramters.js: Added.
+
+2016-06-05  Gavin & Ellie Barraclough  <barraclough@apple.com>
+
+        Deprecate remaining uses of Lookup getStatic*, use HasStaticPropertyTable instead.
+        https://bugs.webkit.org/show_bug.cgi?id=158178
+
+        Reviewed by Darin Adler.
+
+        As of bug #158059 most JSC static table property access no longer requires getOwnPropertySlot to be
+        overridden. Port remaining calls to the getStatic* functions in Lookup.h over to the new mechanism.
+
+        Deprecate getStatic* functions in Lookup.h
+
+        * runtime/Lookup.h:
+        (JSC::getStaticPropertySlot): Deleted.
+        (JSC::getStaticFunctionSlot): Deleted.
+        (JSC::getStaticValueSlot): Deleted.
+            - No longer required. Static table access now via JSObject.
+
+2016-06-06  Guillaume Emont  <guijemont@igalia.com>
+
+        [jsc][mips] Implement absDouble()
+        https://bugs.webkit.org/show_bug.cgi?id=158206
+
+        Reviewed by Mark Lam.
+
+        Implement absDouble() for MIPS. This is needed because Math.pow() uses
+        it since r200208.
+
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::absd):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::absDouble):
+
+2016-06-03  Oliver Hunt  <oliver@apple.com>
+
+        RegExp unicode parsing reads an extra character before failing
+        https://bugs.webkit.org/show_bug.cgi?id=158376
+
+        Reviewed by Saam Barati.
+
+        This was a probably harmless bug, but keeps triggering assertions
+        for me locally. Essentially we'd see a parse error, set the error
+        type, but then carry on parsing. In debug builds this asserts, in
+        release builds you are pretty safe unless you're exceptionally
+        unlucky with where the error occurs.
+
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::parseEscape):
+
+2016-06-06  Guillaume Emont  <guijemont@igalia.com>
+
+        [jsc][mips] fix JIT::emit_op_log_shadow_chicken_prologue/_tail
+        https://bugs.webkit.org/show_bug.cgi?id=158209
+
+        Reviewed by Mark Lam.
+
+        On MIPS, changes GPRInfo::nonArgGPR0 to be regT4 instead of regT0,
+        since the code of JIT::emit_op_log_shadow_chicken_prologue/_tail()
+        expects nonArgGPR0 to be a different register from regT0 and regT2.
+
+        * jit/GPRInfo.h:
+
+2016-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Crash under JSObject::getOwnPropertyDescriptor()
+        https://bugs.webkit.org/show_bug.cgi?id=158382
+        <rdar://problem/26605004>
+
+        Reviewed by Mark Lam.
+
+        * runtime/JSObject.h:
+        (JSC::JSObject::putDirectInternal):
+        We were crashing under getOwnPropertyDescriptor() because the
+        CustomAccessor was not properly reset on window.statusbar when
+        setting it to false (which is allowed because the property is
+        marked as [Replaceable] in the IDL). We now property reset the
+        CustomAccessor flag in putDirectInternal() when needed. This
+        fixes the crash.
+
+2016-06-06  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Move efl include paths to JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
+        https://bugs.webkit.org/show_bug.cgi?id=158418
+
+        Reviewed by Csaba Osztrogonác.
+
+        In Source/JavaScriptCore/PlatformEfl.cmake, we don't use JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
+        for efl include paths.
+
+        * PlatformEfl.cmake:
+        * tests/stress/encode-decode-ascii.js: Added.
+        (shouldBe):
+        * tests/stress/encode-decode-unicode.js: Added.
+        (shouldBe):
+        (isLowSurrogate):
+        (isHighSurrogate):
+        (isSurrogate):
+        * tests/stress/encode-decode-uri-component-surrogates.js: Added.
+        (shouldBe):
+        (toHighSurrogate):
+        (toLowSurrogate):
+        * tests/stress/encode-decode-uri-surrogates.js: Added.
+        (shouldBe):
+        (toHighSurrogate):
+        (toLowSurrogate):
+        * tests/stress/encode-decode-zero.js: Added.
+        (shouldBe):
+        * tests/stress/escape-unescape-surrogates.js: Added.
+        (shouldBe):
+        (toHighSurrogate):
+        (toLowSurrogate):
+
 2016-06-05  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Change ProxyObject.[[Get]] not to use custom accessor

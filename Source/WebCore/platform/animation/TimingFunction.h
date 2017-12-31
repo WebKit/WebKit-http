@@ -250,7 +250,6 @@ public:
     {
         if (other.isSpringTimingFunction()) {
             const SpringTimingFunction& otherString = *static_cast<const SpringTimingFunction*>(&other);
-
             return m_mass == otherString.m_mass && m_stiffness == otherString.m_stiffness && m_damping == otherString.m_damping && m_initialVelocity == otherString.m_initialVelocity;
         }
         return false;

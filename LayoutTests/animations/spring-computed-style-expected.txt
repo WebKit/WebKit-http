@@ -22,6 +22,9 @@ PASS springStyle.cssText is 'spring(1 100 0 10)'
 Minimum Values : spring(1 1 0 -999999)
 PASS springStyle.cssText is 'spring(1 1 0 -999999)'
 
+Floating Point Values : spring(1.5 2.3 3.7 -1.8)
+PASS springStyle.cssText is 'spring(1.5 2.3 3.7 -1.8)'
+
 Invalid spring tests
 
 
@@ -32,6 +35,9 @@ Not enough parameters : spring(1 100 10)
 PASS springStyle.cssText is 'ease'
 
 Too many parameters : spring(1 100 10 0 0)
+PASS springStyle.cssText is 'ease'
+
+Non-numeric parameters : spring(a b c d)
 PASS springStyle.cssText is 'ease'
 
 Illegal Mass (< 0) : spring(-1 100 10 0)

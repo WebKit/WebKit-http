@@ -893,8 +893,12 @@ static void resetWebViewToConsistentStateBeforeTesting()
     }
 
     COMPtr<IWebViewPrivate2> webViewPrivate(Query, webView);
-    if (webViewPrivate)
+    if (webViewPrivate) {
+        POINT origin = { 0, 0 };
+        webViewPrivate->scaleWebView(1.0, origin);
+        webViewPrivate->setCustomBackingScaleFactor(0);
         webViewPrivate->setTabKeyCyclesThroughElements(TRUE);
+    }
 
     webView->setPolicyDelegate(nullptr);
     policyDelegate->setPermissive(false);
@@ -1180,10 +1184,8 @@ static void runTest(const string& inputLine)
         _bstr_t emptyURL(L"");
         emptyRequest->initWithURL(emptyURL.GetBSTR(), WebURLRequestUseProtocolCachePolicy, 60);
         emptyRequest->setHTTPMethod(methodBStr);
-        frame->loadRequest(request.get());
+        frame->loadRequest(emptyRequest.get());
     }
-
-    frame->stopLoading();
 
     // We should only have our main window left open when we're done
     ASSERT(openWindows().size() == 1);

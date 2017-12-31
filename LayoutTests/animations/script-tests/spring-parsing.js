@@ -8,13 +8,16 @@ var stylesheet, cssRule, declaration, propertyValue, subRule;
 var styleElement = document.createElement("style");
 document.head.appendChild(styleElement);
 stylesheet = styleElement.sheet;
+var div = document.createElement(div);
+div.id = "target";
+document.body.appendChild(div);
 
 function testSpring(description, spring, expectedValue)
 {
     debug("");
     debug(description + " : " + spring);
 
-    stylesheet.insertRule("body { transition-timing-function: " + spring + "; }", 0);
+    stylesheet.insertRule("#target { transition-timing-function: " + spring + "; }", 0);
     cssRule = stylesheet.cssRules.item(0);
 
     shouldBe("cssRule.type", "1");
@@ -44,6 +47,7 @@ testSpring("Negative Velocity", "spring(1 100 10 -10)", "spring(1 100 10 -10)");
 testSpring("Positive Velocity", "spring(1 100 10 10)", "spring(1 100 10 10)");
 testSpring("Zero Damping", "spring(1 100 0 10)", "spring(1 100 0 10)");
 testSpring("Minimum Values", "spring(1 1 0 -999999)", "spring(1 1 0 -999999)");
+testSpring("Floating Point Values", "spring(1.5 2.3 3.7 -1.8)", "spring(1.5 2.3 3.7 -1.8)");
 
 debug("")
 debug("Invalid spring tests");
@@ -52,6 +56,7 @@ debug("")
 testSpring("No parameters", "spring()", null);
 testSpring("Not enough parameters", "spring(1 100 10)", null);
 testSpring("Too many parameters", "spring(1 100 10 0 0)", null);
+testSpring("Non-numeric parameters", "spring(a b c d)", null);
 testSpring("Illegal Mass (< 0)", "spring(-1 100 10 0)", null);
 testSpring("Illegal Mass (== 0)", "spring(0 100 10 0)", null);
 testSpring("Illegal Stiffness (< 0)", "spring(1 -1 10 0)", null);

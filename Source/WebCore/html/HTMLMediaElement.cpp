@@ -409,6 +409,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_parsingInProgress(createdByParser)
     , m_elementIsHidden(document.hidden())
     , m_creatingControls(false)
+    , m_receivedLayoutSizeChanged(false)
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     , m_mediaControlsDependOnPageScaleFactor(false)
     , m_haveSetUpCaptionContainer(false)
@@ -443,6 +444,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToAutoplayToExternalDevice);
 #endif
+    m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager);
 
     Settings* settings = document.settings();
 #if PLATFORM(IOS)
@@ -4001,6 +4003,11 @@ void HTMLMediaElement::layoutSizeChanged()
     };
     m_resizeTaskQueue.enqueueTask(WTFMove(task));
 #endif
+
+    if (!m_receivedLayoutSizeChanged) {
+        m_receivedLayoutSizeChanged = true;
+        updatePlaybackControlsManager();
+    }
 }
 
 void HTMLMediaElement::visibilityDidChange()
@@ -5221,13 +5228,13 @@ bool HTMLMediaElement::dispatchEvent(Event& event)
     return HTMLElement::dispatchEvent(event);
 }
 
-bool HTMLMediaElement::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, bool useCapture)
+bool HTMLMediaElement::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, const AddEventListenerOptions& options)
 {
     if (eventType != eventNames().webkitplaybacktargetavailabilitychangedEvent)
-        return Node::addEventListener(eventType, WTFMove(listener), useCapture);
+        return Node::addEventListener(eventType, WTFMove(listener), options);
 
     bool isFirstAvailabilityChangedListener = !hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent);
-    if (!Node::addEventListener(eventType, WTFMove(listener), useCapture))
+    if (!Node::addEventListener(eventType, WTFMove(listener), options))
         return false;
 
     if (isFirstAvailabilityChangedListener) {
@@ -5241,12 +5248,12 @@ bool HTMLMediaElement::addEventListener(const AtomicString& eventType, Ref<Event
     return true;
 }
 
-bool HTMLMediaElement::removeEventListener(const AtomicString& eventType, EventListener& listener, bool useCapture)
+bool HTMLMediaElement::removeEventListener(const AtomicString& eventType, EventListener& listener, const ListenerOptions& options)
 {
     if (eventType != eventNames().webkitplaybacktargetavailabilitychangedEvent)
-        return Node::removeEventListener(eventType, listener, useCapture);
+        return Node::removeEventListener(eventType, listener, options);
 
-    if (!Node::removeEventListener(eventType, listener, useCapture))
+    if (!Node::removeEventListener(eventType, listener, options))
         return false;
 
     bool didRemoveLastAvailabilityChangedListener = !hasEventListeners(eventNames().webkitplaybacktargetavailabilitychangedEvent);
@@ -6404,7 +6411,8 @@ void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
         | MediaElementSession::RequireUserGestureForVideoRateChange
         | MediaElementSession::RequireUserGestureForAudioRateChange
         | MediaElementSession::RequireUserGestureForFullscreen
-        | MediaElementSession::InvisibleAutoplayNotPermitted;
+        | MediaElementSession::InvisibleAutoplayNotPermitted
+        | MediaElementSession::RequireUserGestureToControlControlsManager;
     m_mediaSession->removeBehaviorRestriction(restrictionsToRemove);
 }
 

@@ -23,11 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
+#import "config.h"
 #import "PlatformCAAnimationCocoa.h"
 
 #import "FloatConversion.h"
 #import "PlatformCAFilters.h"
+#import "QuartzCoreSPI.h"
 #import "TimingFunction.h"
 #import <QuartzCore/QuartzCore.h>
 #import <wtf/text/WTFString.h>
@@ -328,7 +329,11 @@ void PlatformCAAnimationCocoa::setTimingFunction(const TimingFunction* value, bo
             springAnimation.mass = function.mass();
             springAnimation.stiffness = function.stiffness();
             springAnimation.damping = function.damping();
+#if PLATFORM(IOS) || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
             springAnimation.initialVelocity = function.initialVelocity();
+#else
+            springAnimation.velocity = function.initialVelocity();
+#endif
         }
         break;
     }

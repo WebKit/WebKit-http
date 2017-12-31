@@ -141,6 +141,20 @@ typedef enum {
 @property BOOL inheritsSecurity;
 @end
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101100
+@interface CASpringAnimation : CABasicAnimation 
+@property CGFloat mass;
+@property CGFloat stiffness;
+@property CGFloat damping;
+@property CGFloat velocity;
+@property CGFloat initialVelocity;
+@end
+#else
+@interface CASpringAnimation (Private)
+@property CGFloat velocity;
+@end
+#endif
+
 #endif // __OBJC__
 
 #endif

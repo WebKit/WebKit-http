@@ -549,15 +549,6 @@ void VM::deleteAllLinkedCode()
 {
     whenIdle([this]() {
         heap.deleteAllCodeBlocks();
-        heap.reportAbandonedObjectGraph();
-    });
-}
-
-void VM::deleteAllRegExpCode()
-{
-    whenIdle([this]() {
-        m_regExpCache->deleteAllCode();
-        heap.reportAbandonedObjectGraph();
     });
 }
 

@@ -8,15 +8,18 @@ var stylesheet, springStyle;
 var styleElement = document.createElement("style");
 document.head.appendChild(styleElement);
 stylesheet = styleElement.sheet;
+var div = document.createElement(div);
+div.id = "target";
+document.body.appendChild(div);
 
 function testComputedSpring(description, spring, expectedValue)
 {
     debug("");
     debug(description + " : " + spring);
 
-    stylesheet.insertRule("body { transition-timing-function: " + spring + "; }", 0);
+    stylesheet.insertRule("#target { transition-timing-function: " + spring + "; }", 0);
 
-    springStyle = window.getComputedStyle(document.body).getPropertyCSSValue("transition-timing-function");
+    springStyle = window.getComputedStyle(div).getPropertyCSSValue("transition-timing-function");
     shouldBe("springStyle.cssText", "'" + expectedValue + "'");
     
     stylesheet.deleteRule(0);
@@ -31,6 +34,7 @@ testComputedSpring("Negative Velocity", "spring(1 100 10 -10)", "spring(1 100 10
 testComputedSpring("Positive Velocity", "spring(1 100 10 10)", "spring(1 100 10 10)");
 testComputedSpring("Zero Damping", "spring(1 100 0 10)", "spring(1 100 0 10)");
 testComputedSpring("Minimum Values", "spring(1 1 0 -999999)", "spring(1 1 0 -999999)");
+testComputedSpring("Floating Point Values", "spring(1.5 2.3 3.7 -1.8)", "spring(1.5 2.3 3.7 -1.8)");
 
 debug("")
 debug("Invalid spring tests");
@@ -39,6 +43,7 @@ debug("")
 testComputedSpring("No parameters", "spring()", "ease");
 testComputedSpring("Not enough parameters", "spring(1 100 10)", "ease");
 testComputedSpring("Too many parameters", "spring(1 100 10 0 0)", "ease");
+testComputedSpring("Non-numeric parameters", "spring(a b c d)", "ease");
 testComputedSpring("Illegal Mass (< 0)", "spring(-1 100 10 0)", "ease");
 testComputedSpring("Illegal Mass (== 0)", "spring(0 100 10 0)", "ease");
 testComputedSpring("Illegal Stiffness (< 0)", "spring(1 -1 10 0)", "ease");

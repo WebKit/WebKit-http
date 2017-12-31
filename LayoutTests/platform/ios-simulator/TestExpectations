@@ -275,6 +275,7 @@ fast/text/all-small-caps-whitespace.html [ Skip ]
 
 # This test relies on EventSender.keydown(), which is not supported on iOS
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
+fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
@@ -2992,3 +2993,5 @@ imported/w3c/web-platform-tests/dom/nodes/Document-createEvent.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/selection.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/inrange-outofrange.html [ Failure ]
+
+webkit.org/b/157916 http/tests/misc/slow-loading-animated-image.html [ Pass ImageOnlyFailure ]
