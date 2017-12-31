@@ -1,3 +1,82 @@
+2016-06-08  Chris Dumez  <cdumez@apple.com>
+
+        self.hasOwnProperty() does not work inside Web workers
+        https://bugs.webkit.org/show_bug.cgi?id=158446
+        <rdar://problem/26638397>
+
+        Reviewed by Geoffrey Garen.
+
+        Add tests to make sure that self.toString() and self.hasOwnProperty()
+        now work in workers.
+
+        * fast/workers/self-hasOwnProperty-expected.txt: Added.
+        * fast/workers/self-hasOwnProperty.html: Added.
+        * fast/workers/self-toString-expected.txt: Added.
+        * fast/workers/self-toString.html: Added.
+
+2016-06-06  Antti Koivisto  <antti@apple.com>
+
+        WebKit memory cache doesn't respect Vary header
+        https://bugs.webkit.org/show_bug.cgi?id=71509
+        <rdar://problem/26651033>
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/cache/disk-cache/disk-cache-vary-expected.txt:
+        * http/tests/cache/disk-cache/disk-cache-vary-no-body-expected.txt:
+
+2016-06-08  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::setLocalDescription()
+        https://bugs.webkit.org/show_bug.cgi?id=158190
+
+        Reviewed by Eric Carlson.
+
+        Add new test for RTCPeerConnection.setLocalDescription.
+
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html: Added.
+        Set two local offers as local descriptions and inspect the state changes. Also set some
+        descriptions with bad types.
+        * platform/mac/TestExpectations:
+        Skip the above test for mac (not building with WEB_RTC)
+
+2016-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Expose Event / EventTarget properties on WorkerGlobalScope
+        https://bugs.webkit.org/show_bug.cgi?id=158511
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline existing test.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+
+2016-06-07  Antoine Quint  <graouts@apple.com>
+
+        The backdrop-filter property does not respect border-radius
+        https://bugs.webkit.org/show_bug.cgi?id=158483
+        <rdar://problem/24210257>
+
+        Reviewed by Simon Fraser.
+
+        Adding new tests checking that border-radius correctly affects clipping of the backdrop layer
+        in a basic scenario, when we change border-radius to a different value, when we set border-radius
+        back to 0 and when we add a reflection.
+
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-remove-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-remove.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-change-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-change.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-remove-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius-value-remove.html: Added.
+        * css3/filters/backdrop/backdrop-filter-with-border-radius.html: Added.
+
 2016-06-07  Sam Weinig  <sam@webkit.org>
 
         Update tests to work around https://bugs.webkit.org/show_bug.cgi?id=158507.

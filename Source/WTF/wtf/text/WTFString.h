@@ -111,7 +111,6 @@ public:
     // Construct a string referencing an existing StringImpl.
     String(StringImpl&);
     String(StringImpl*);
-    String(PassRefPtr<StringImpl>);
     String(Ref<StringImpl>&&);
     String(RefPtr<StringImpl>&&);
 
@@ -536,11 +535,6 @@ inline String::String(StringImpl& impl)
 }
 
 inline String::String(StringImpl* impl)
-    : m_impl(impl)
-{
-}
-
-inline String::String(PassRefPtr<StringImpl> impl)
     : m_impl(impl)
 {
 }

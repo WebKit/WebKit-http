@@ -1,3 +1,427 @@
+2016-06-08  Chris Dumez  <cdumez@apple.com>
+
+        self.hasOwnProperty() does not work inside Web workers
+        https://bugs.webkit.org/show_bug.cgi?id=158446
+        <rdar://problem/26638397>
+
+        Reviewed by Geoffrey Garen.
+
+        W3C tests for workers were severely broken on WebKit because
+        self.hasOwnProperty() did not work inside workers. The reason is that
+        hasOwnProperty() (and other methods like toString()) call toThis() in
+        StrictMode on thisValue. However, in the case of 'self' in workers,
+        self was a DedicatedWorkerGlobalScope, which is a JSGlobalObject.
+        JSGlobalObject::toThis() returns jsUndefined() when called in strict
+        mode. As a result, we would end up with exceptions such as "undefined
+        is not an object" when calling self.hasOwnProperty() in workers.
+
+        To address the problem, this patch introduces a JSProxy whose proxy
+        type is PureForwardingProxyType and whose target is the
+        WorkerGlobalScope. This JSProxy is what we expose to the JavaScript,
+        instead of the JSWorkerGlobalScope itself. As a result, toThis() now
+        behaves as expected and self.hasOwnProperty() works inside workers.
+
+        This patch greatly improves our pass rate on several W3C tests:
+        http://w3c-test.org/workers/interfaces.worker: 20 passes -> 50 passes (out of 128)
+        http://w3c-test.org/IndexedDB/interfaces.worker 0 passes -> 145 passes (out of 156)
+
+        Tests: fast/workers/self-hasOwnProperty.html
+               fast/workers/self-toString.html
+
+        * bindings/js/JSWorkerGlobalScopeBase.cpp:
+        (WebCore::JSWorkerGlobalScopeBase::finishCreation):
+        (WebCore::JSWorkerGlobalScopeBase::visitChildren):
+        (WebCore::toJS):
+        * bindings/js/JSWorkerGlobalScopeBase.h:
+        (WebCore::JSWorkerGlobalScopeBase::proxy):
+        * bindings/js/WorkerScriptController.cpp:
+        (WebCore::WorkerScriptController::initScript):
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        (GenerateImplementation):
+
+2016-06-08  Antti Koivisto  <antti@apple.com>
+
+        WebKit memory cache doesn't respect Vary header
+        https://bugs.webkit.org/show_bug.cgi?id=71509
+        <rdar://problem/26651033>
+
+        Reviewed by Sam Weinig.
+
+        Implement Vary header support in WebCore memory cache.
+
+        The patch moves Vary header code from WebKit2 Network Cache to WebCore and uses it to
+        verify the headers for CachedResources.
+
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::failBeforeStarting):
+        (WebCore::addAdditionalRequestHeadersToRequest):
+
+            Factor into standalone function so we can use it from varyHeaderValuesMatch.
+
+        (WebCore::CachedResource::addAdditionalRequestHeaders):
+        (WebCore::CachedResource::load):
+        (WebCore::CachedResource::setResponse):
+
+            Collect the Vary header values when we receive a response.
+
+        (WebCore::CachedResource::responseReceived):
+        (WebCore::CachedResource::redirectChainAllowsReuse):
+        (WebCore::CachedResource::varyHeaderValuesMatch):
+
+            Test for Vary match.
+
+        (WebCore::CachedResource::overheadSize):
+        * loader/cache/CachedResource.h:
+        (WebCore::CachedResource::isCacheValidator):
+        (WebCore::CachedResource::resourceToRevalidate):
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::determineRevalidationPolicy):
+
+            Reload on Vary mismatch.
+
+        * platform/network/CacheValidation.cpp:
+        (WebCore::parseCacheControlDirectives):
+        (WebCore::headerValueForVary):
+        (WebCore::collectVaryingRequestHeaders):
+        (WebCore::verifyVaryingRequestHeaders):
+
+            Vary header collection and validation code moves here.
+
+        * platform/network/CacheValidation.h:
+
+2016-06-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201800.
+        https://bugs.webkit.org/show_bug.cgi?id=158518
+
+        Missing WebKit2 pieces (Requested by anttik on #webkit).
+
+        Reverted changeset:
+
+        "WebKit memory cache doesn't respect Vary header"
+        https://bugs.webkit.org/show_bug.cgi?id=71509
+        http://trac.webkit.org/changeset/201800
+
+2016-06-06  Antti Koivisto  <antti@apple.com>
+
+        WebKit memory cache doesn't respect Vary header
+        https://bugs.webkit.org/show_bug.cgi?id=71509
+        <rdar://problem/26651033>
+
+        Reviewed by Sam Weinig.
+
+        Implement Vary header support in WebCore memory cache.
+
+        The patch moves Vary header code from WebKit2 Network Cache to WebCore and uses it to
+        verify the headers for CachedResources.
+
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::failBeforeStarting):
+        (WebCore::addAdditionalRequestHeadersToRequest):
+
+            Factor into standalone function so we can use it from varyHeaderValuesMatch.
+
+        (WebCore::CachedResource::addAdditionalRequestHeaders):
+        (WebCore::CachedResource::load):
+        (WebCore::CachedResource::setResponse):
+
+            Collect the Vary header values when we receive a response.
+
+        (WebCore::CachedResource::responseReceived):
+        (WebCore::CachedResource::redirectChainAllowsReuse):
+        (WebCore::CachedResource::varyHeaderValuesMatch):
+
+            Test for Vary match.
+
+        (WebCore::CachedResource::overheadSize):
+        * loader/cache/CachedResource.h:
+        (WebCore::CachedResource::isCacheValidator):
+        (WebCore::CachedResource::resourceToRevalidate):
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::determineRevalidationPolicy):
+
+            Reload on Vary mismatch.
+
+        * platform/network/CacheValidation.cpp:
+        (WebCore::parseCacheControlDirectives):
+        (WebCore::headerValueForVary):
+        (WebCore::collectVaryingRequestHeaders):
+        (WebCore::verifyVaryingRequestHeaders):
+
+            Vary header collection and validation code moves here.
+
+        * platform/network/CacheValidation.h:
+
+2016-06-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Extend CSSFontSelector's lifetime to be longer than the Document's lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=154101
+
+        Reviewed by Darin Adler.
+
+        Rather than destroying the Document's CSSFontSelector, instead, the object should
+        live for the lifetime of the document, and it should instead be asked to clear its
+        contents.
+
+        This is important for the CSS Font Loading API, where the identity of objects the
+        CSSFontSelector references needs to persist throughout the lifetime of the
+        Document. This patch represents the first step to implementing this correctly.
+        The second step is for the CSSFontSelector to perform a diff instead of a
+        wholesale clear of its contents. Once this is done, font loading objects can
+        survive through a call to Document::clearStyleResolver().
+
+        This patch gives the CSSFontSelector two states: building underway and building not
+        underway. The state is building underway in between calls to clearStyleResolver()
+        and when the style resolver gets built back up. Otherwise, the state is building
+        not underway. Because of this new design, creation of all FontFace objects can be
+        postponed until a state transition from building underway to building not underway.
+        A subsequent patch will perform the diff at this point. An ASSERT() makes sure that
+        we never service a font lookup request while Building.
+
+        No new tests because there is no behavior change.
+
+        * css/CSSFontFaceSet.cpp:
+        (WebCore::CSSFontFaceSet::clear):
+        * css/CSSFontSelector.cpp:
+        (WebCore::CSSFontSelector::buildStarted):
+        (WebCore::CSSFontSelector::buildCompleted):
+        (WebCore::CSSFontSelector::addFontFaceRule):
+        (WebCore::CSSFontSelector::fontRangesForFamily):
+        (WebCore::CSSFontSelector::CSSFontSelector): Deleted.
+        (WebCore::CSSFontSelector::clearDocument): Deleted.
+        * css/CSSFontSelector.h:
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::appendAuthorStyleSheets):
+        * dom/Document.cpp:
+        (WebCore::Document::Document):
+        (WebCore::Document::~Document):
+        (WebCore::Document::clearStyleResolver):
+        (WebCore::Document::fontSelector): Deleted.
+        * dom/Document.h:
+        (WebCore::Document::fontSelector):
+
+2016-06-08  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Imlement MediaEndpointPeerConnection::setLocalDescription()
+        https://bugs.webkit.org/show_bug.cgi?id=158190
+
+        Reviewed by Eric Carlson.
+
+        Add implementation for MediaEndpointPeerConnection::setLocalDescription. This function
+        parses the input SDP, configures the media backend and updates the
+        RTCPeerConnection state.
+
+        This change adds MediaEndpointSessionDescription which is an object representation
+        of an RTCSessionDescription (which contains an SDP string).
+
+        Test: fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html
+
+        * CMakeLists.txt:
+        Add MediaEndpointSessionDescription.
+        * Modules/mediastream/MediaEndpointPeerConnection.cpp:
+        (WebCore::hasUnassociatedTransceivers):
+        (WebCore::MediaEndpointPeerConnection::createOfferTask):
+        (WebCore::MediaEndpointPeerConnection::setLocalDescription):
+        (WebCore::MediaEndpointPeerConnection::setLocalDescriptionTask):
+        Add implementation.
+        (WebCore::MediaEndpointPeerConnection::localDescription):
+        (WebCore::MediaEndpointPeerConnection::currentLocalDescription):
+        (WebCore::MediaEndpointPeerConnection::pendingLocalDescription):
+        (WebCore::MediaEndpointPeerConnection::localDescriptionTypeValidForState):
+        (WebCore::MediaEndpointPeerConnection::internalLocalDescription):
+        (WebCore::MediaEndpointPeerConnection::createRTCSessionDescription):
+        * Modules/mediastream/MediaEndpointPeerConnection.h:
+        * Modules/mediastream/MediaEndpointSessionDescription.cpp: Added.
+        (WebCore::MediaEndpointSessionDescription::create):
+        (WebCore::MediaEndpointSessionDescription::toRTCSessionDescription):
+        (WebCore::MediaEndpointSessionDescription::typeString):
+        (WebCore::MediaEndpointSessionDescription::isLaterThan):
+        * Modules/mediastream/MediaEndpointSessionDescription.h: Added.
+        (WebCore::MediaEndpointSessionDescription::~MediaEndpointSessionDescription):
+        (WebCore::MediaEndpointSessionDescription::type):
+        (WebCore::MediaEndpointSessionDescription::configuration):
+        (WebCore::MediaEndpointSessionDescription::MediaEndpointSessionDescription):
+        * WebCore.xcodeproj/project.pbxproj:
+        Add MediaEndpointSessionDescription.
+
+2016-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Implement hardLinkOrCopyFile() in FileSystemGlib
+        https://bugs.webkit.org/show_bug.cgi?id=158473
+
+        Reviewed by Michael Catanzaro.
+
+        It was added in r199230 to be used by IndexedDB blob support, but never implemented for GLib.
+
+        * platform/glib/FileSystemGlib.cpp:
+        (WebCore::hardLinkOrCopyFile):
+
+2016-06-07  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Refactor: Use captures with initializers in MediaEndpointPeerConnection::createOffer()
+        https://bugs.webkit.org/show_bug.cgi?id=158486
+
+        Reviewed by Eric Carlson.
+
+        Use initializers for the capture list when scheduling the "create offer task".
+
+        No change in behavior.
+
+        * Modules/mediastream/MediaEndpointPeerConnection.cpp:
+        (WebCore::MediaEndpointPeerConnection::createOffer):
+        (WebCore::WrappedSessionDescriptionPromise::create): Deleted.
+        (WebCore::WrappedSessionDescriptionPromise::promise): Deleted.
+        (WebCore::WrappedSessionDescriptionPromise::WrappedSessionDescriptionPromise): Deleted.
+        Not needed anymore.
+
+2016-06-07  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        TouchList::append() should take a Ref instead of RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=158469
+
+        Reviewed by Chris Dumez.
+
+        RefPtr<Touch> items handled in TouchList cannot be null. Thus
+        RefPtr<Touch> is replaced by Ref<Touch> objects.
+
+        * bindings/js/JSDocumentCustom.cpp:
+        (WebCore::JSDocument::createTouchList):
+        * dom/TouchList.cpp:
+        (WebCore::TouchList::item):
+        * dom/TouchList.h:
+        (WebCore::TouchList::append):
+
+2016-06-07  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        EFL build has been broken since r201761
+        https://bugs.webkit.org/show_bug.cgi?id=158512
+
+        Unreviewed build fix.
+
+        * platform/posix/SharedBufferPOSIX.cpp: 
+        (WebCore::SharedBuffer::createFromReadingFile):
+        Do not use ? operand in return line. Additionally return nullptr instead of 0.
+
+2016-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Expose Event / EventTarget properties on WorkerGlobalScope
+        https://bugs.webkit.org/show_bug.cgi?id=158511
+
+        Reviewed by Sam Weinig.
+
+        Expose Event / EventTarget properties on WorkerGlobalScope, as per the
+        latest DOM specification:
+        - https://dom.spec.whatwg.org/#interface-event
+        - https://dom.spec.whatwg.org/#interface-eventtarget
+
+        No new tests, rebaselined existing test.
+
+        * dom/Event.idl:
+        * dom/EventTarget.idl:
+
+2016-06-07  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] Build fix related with SharedBuffer::createFromReadingFile in SharedBufferPosix.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=158515
+
+        * platform/posix/SharedBufferPOSIX.cpp:
+        (WebCore::SharedBuffer::createFromReadingFile):
+
+2016-06-07  Mark Lam  <mark.lam@apple.com>
+
+        Need an exception check after constructEmptyArray().
+        https://bugs.webkit.org/show_bug.cgi?id=158411
+
+        Reviewed by Saam Barati.
+
+        A stress test for this was added in JavaScriptCore.
+
+        * bindings/js/IDBBindingUtilities.cpp:
+        (WebCore::toJS):
+        * bindings/js/JSCommandLineAPIHostCustom.cpp:
+        (WebCore::getJSListenerFunctions):
+        * bindings/js/JSCryptoKeySerializationJWK.cpp:
+        (WebCore::buildJSONForRSAComponents):
+        (WebCore::addBoolToJSON):
+        (WebCore::addUsagesToJSON):
+        (WebCore::JSCryptoKeySerializationJWK::serialize):
+        * bindings/js/JSDOMBinding.h:
+        (WebCore::toJS):
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::CloneDeserializer::deserialize):
+
+2016-06-07  Antoine Quint  <graouts@apple.com>
+
+        The backdrop-filter property does not respect border-radius
+        https://bugs.webkit.org/show_bug.cgi?id=158483
+        <rdar://problem/24210257>
+
+        Reviewed by Simon Fraser.
+
+        In order to correctly support border-radius and backdrop-filter together, we change
+        the value set as the m_backdropFiltersRect from a FloatRect to FloatRoundedRect so
+        that it accounts for values set by the border-radius property. Then we add a new
+        m_backdropClippingLayer PlatformCALayer member to clip the backdrop layer in the
+        event that the border-radius is non-zero in updateBackdropFiltersRect(). Finally,
+        we follow the same pattern used for other PlatformCALayers owned by a GraphicsLayerCA
+        to support cloning of the new m_backdropClippingLayer.
+
+        Tests: css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add.html
+               css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-remove.html
+               css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection.html
+               css3/filters/backdrop/backdrop-filter-with-border-radius-value-change.html
+               css3/filters/backdrop/backdrop-filter-with-border-radius-value-remove.html
+               css3/filters/backdrop/backdrop-filter-with-border-radius.html
+
+        * platform/graphics/GraphicsLayer.h:
+        (WebCore::GraphicsLayer::setBackdropFiltersRect):
+        (WebCore::GraphicsLayer::backdropFiltersRect):
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::willBeDestroyed):
+        (WebCore::GraphicsLayerCA::setBackdropFiltersRect):
+        (WebCore::GraphicsLayerCA::updateBackdropFiltersRect):
+        (WebCore::GraphicsLayerCA::dumpAdditionalProperties):
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateBackdropFiltersGeometry):
+        Use a rounded rect if there is no clip and we have non-zero border-radius set on the renderer.
+
+2016-06-07  Andreas Kling  <akling@apple.com>
+
+        CachedScript should avoid recomputing its hash multiple times.
+        <https://webkit.org/b/158506>
+
+        Reviewed by Saam Barati.
+
+        JSBench was hitting CachedScript::script() hard and spending lots of time hashing scripts.
+        Since we're already caching the hash in a member variable, don't bother rehashing if we've
+        already done it before.
+
+        This takes total time spent in StringImpl::hashSlowCase() from 1600ms to 77ms on my MBP.
+
+        * loader/cache/CachedScript.cpp:
+        (WebCore::CachedScript::script):
+
+2016-06-07  Keith Rollin  <krollin@apple.com>
+
+        Remove all uses of PassRefPtr in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=157596
+        <rdar://problem/26234391>
+
+        Reviewed by Chris Dumez.
+
+        Update calls to interfaces that no longer take or return PassRefPtrs.
+
+        No new tests: no new functionality so changes are covered by existing
+        tests.
+
+        * css/CSSPrimitiveValue.cpp:
+        (WebCore::CSSPrimitiveValue::formatNumberValue):
+        * dom/Document.cpp:
+        (WebCore::Document::displayStringModifiedByEncoding):
+        * xml/XPathGrammar.y:
+
 2016-06-07  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Text-decoration-style: dashed / dotted rendered as solid
