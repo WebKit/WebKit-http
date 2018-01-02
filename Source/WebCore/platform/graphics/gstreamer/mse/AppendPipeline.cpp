@@ -1315,7 +1315,17 @@ void AppendPipeline::dispatchPendingDecryptionStructure()
     // gst_event_new_custom() takes over ownership of it.
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
 
-    setAppendState(AppendState::Ongoing);
+    if (WTF::isMainThread()) {
+        transitionTo(AppendState::Ongoing, true);
+    } else {
+        GstStructure* structure = gst_structure_new("transition-main-thread", "transition", G_TYPE_INT, AppendState::Ongoing, nullptr);
+        GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc.get()), structure);
+        if (gst_bus_post(m_bus.get(), message)) {
+            GST_TRACE("transition-main-thread Ongoing sent to the bus");
+            LockHolder locker(m_appendStateTransitionLock);
+            m_appendStateTransitionCondition.wait(m_appendStateTransitionLock);
+        }
+    }
 }
 
 void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
