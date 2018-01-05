@@ -96,6 +96,7 @@ void Path::clear()
         return;
 
     cairo_t* cr = platformPath()->context();
+    cairo_identity_matrix(cr);
     cairo_new_path(cr);
 }
 
