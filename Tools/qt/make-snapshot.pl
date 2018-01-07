@@ -36,7 +36,7 @@ scalar @ARGV == 0 || usage();
 -f "ChangeLog" && die "This script must be run in snapshots repository";
 -d ".git" || usage();
 
-`git status` =~ "nothing to commit, working tree clean" or die "Target working tree is dirty";
+`LC_ALL=C LANG=C git status` =~ "nothing to commit, working tree clean" or die "Target working tree is dirty";
 
 my $src_repo = dirname(dirname(dirname(__FILE__)));
 my $target_repo = getcwd();

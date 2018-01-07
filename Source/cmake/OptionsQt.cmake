@@ -183,6 +183,13 @@ if (QT_CORE_TYPE MATCHES STATIC)
     set(MACOS_BUILD_FRAMEWORKS OFF)
 endif ()
 
+# static icu libraries on windows are build with 's' prefix
+if (QT_STATIC_BUILD AND MSVC)
+    set(ICU_LIBRARY_PREFIX "s")
+else ()
+    set(ICU_LIBRARY_PREFIX "")
+endif ()
+
 if (QT_STATIC_BUILD)
     set(ENABLE_WEBKIT2_DEFAULT OFF)
 else ()
@@ -662,10 +669,19 @@ if (ENABLE_OPENGL)
     SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER_GL TRUE)
     SET_AND_EXPOSE_TO_BUILD(ENABLE_GRAPHICS_CONTEXT_3D TRUE)
 
-    # TODO: Add proper support of DynamicGL detection to Qt and use it
-    if (WIN32 AND NOT QT_USES_GLES2_ONLY)
-        set(Qt5Gui_OPENGL_IMPLEMENTATION GL)
+    if (WIN32)
+        include(CheckCXXSymbolExists)
+        set(CMAKE_REQUIRED_INCLUDES ${Qt5Gui_INCLUDE_DIRS})
+        set(CMAKE_REQUIRED_FLAGS ${Qt5Gui_EXECUTABLE_COMPILE_FLAGS})
+        check_cxx_symbol_exists(QT_OPENGL_DYNAMIC qopenglcontext.h HAVE_QT_OPENGL_DYNAMIC)
+        if (HAVE_QT_OPENGL_DYNAMIC)
+            set(Qt5Gui_OPENGL_IMPLEMENTATION DynamicGL)
+        endif ()
+        unset(CMAKE_REQUIRED_INCLUDES)
+        unset(CMAKE_REQUIRED_FLAGS)
     endif ()
+
+    message("Qt OpenGL implementation: ${Qt5Gui_OPENGL_IMPLEMENTATION}")
 endif ()
 
 if (NOT ENABLE_VIDEO)
@@ -857,7 +873,7 @@ if (MSVC)
     endif ()
 
     if (NOT QT_CONAN_DIR)
-        set(ICU_LIBRARIES icuuc${CMAKE_DEBUG_POSTFIX} icuin${CMAKE_DEBUG_POSTFIX} icudt${CMAKE_DEBUG_POSTFIX})
+        set(ICU_LIBRARIES ${ICU_LIBRARY_PREFIX}icuuc${CMAKE_DEBUG_POSTFIX} ${ICU_LIBRARY_PREFIX}icuin${CMAKE_DEBUG_POSTFIX} ${ICU_LIBRARY_PREFIX}icudt${CMAKE_DEBUG_POSTFIX})
     endif ()
 endif ()
 

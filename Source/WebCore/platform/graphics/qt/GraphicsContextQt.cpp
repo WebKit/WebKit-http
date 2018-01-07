@@ -358,7 +358,7 @@ void GraphicsContext::restorePlatformState()
 {
     if (!m_data->layers.isEmpty() && !m_data->layers.top()->alphaMask.isNull())
         if (!--m_data->layers.top()->saveCounter)
-            endPlatformTransparencyLayer();
+            popTransparencyLayerInternal();
 
     m_data->p()->restore();
 }
@@ -1313,18 +1313,39 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
     ++m_data->layerCount;
 }
 
+void GraphicsContext::popTransparencyLayerInternal()
+{
+    TransparencyLayer* layer = m_data->layers.pop();
+    ASSERT(!layer->alphaMask.isNull());
+    ASSERT(layer->saveCounter == 0);
+    layer->painter.resetTransform();
+    layer->painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    layer->painter.drawPixmap(QPoint(), layer->alphaMask);
+    layer->painter.end();
+
+    QPainter* p = m_data->p();
+    p->save();
+    p->resetTransform();
+    p->setOpacity(layer->opacity);
+    p->drawPixmap(layer->offset, layer->pixmap);
+    p->restore();
+
+    delete layer;
+}
+
 void GraphicsContext::endPlatformTransparencyLayer()
 {
     if (paintingDisabled())
         return;
 
+    while ( ! m_data->layers.top()->alphaMask.isNull() ){
+        --m_data->layers.top()->saveCounter;
+        popTransparencyLayerInternal();
+        if (m_data->layers.isEmpty())
+            return;
+    }
     TransparencyLayer* layer = m_data->layers.pop();
-    if (!layer->alphaMask.isNull()) {
-        layer->painter.resetTransform();
-        layer->painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-        layer->painter.drawPixmap(QPoint(), layer->alphaMask);
-    } else
-        --m_data->layerCount; // see the comment for layerCount
+    --m_data->layerCount; // see the comment for layerCount
     layer->painter.end();
 
     QPainter* p = m_data->p();

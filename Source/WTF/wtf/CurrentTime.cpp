@@ -261,18 +261,7 @@ double monotonicallyIncreasingTime()
     return ecore_time_get();
 }
 
-#elif PLATFORM(QT)
-
-double monotonicallyIncreasingTime()
-{
-    ASSERT(QElapsedTimer::isMonotonic());
-    static QElapsedTimer timer;
-    if (!timer.isValid())
-        timer.start();
-    return timer.nsecsElapsed() / 1.0e9;
-}
-
-#elif USE(GLIB)
+#elif USE(GLIB) && !PLATFORM(QT)
 
 double monotonicallyIncreasingTime()
 {
@@ -293,6 +282,15 @@ double monotonicallyIncreasingTime()
     });
 
     return (mach_absolute_time() * timebaseInfo.numer) / (1.0e9 * timebaseInfo.denom);
+}
+
+#elif OS(LINUX) || OS(FREEBSD) || OS(OPENBSD) || OS(NETBSD)
+
+double monotonicallyIncreasingTime()
+{
+    struct timespec ts { };
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return static_cast<double>(ts.tv_sec) + ts.tv_nsec / 1.0e9;
 }
 
 #else
