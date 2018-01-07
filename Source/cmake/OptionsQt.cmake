@@ -545,6 +545,8 @@ if (ENABLE_OPENGL)
     endif ()
 
     message(STATUS "Qt OpenGL implementation: ${Qt5Gui_OPENGL_IMPLEMENTATION}")
+    message(STATUS "Qt OpenGL libraries: ${Qt5Gui_OPENGL_LIBRARIES}")
+    message(STATUS "Qt EGL libraries: ${Qt5Gui_EGL_LIBRARIES}")
 endif ()
 
 if (ENABLE_PRINT_SUPPORT)
