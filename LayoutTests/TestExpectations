@@ -1518,3 +1518,6 @@ webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-different-optio
 imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-001.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-002.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-003.html [ ImageOnlyFailure ]
+
+# There is a bug in the test
+imported/w3c/web-platform-tests/workers/worker-performance.worker.html [ Pass Failure ]
