@@ -1372,7 +1372,7 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
         // the JS app send us down a new init data we can't map (in this case it would be a FIXME for the case
         // it has more than one unmapped init datas).
         LockHolder lock(m_protectionMutex);
-        for (auto& initDataProtectionEventsMapping : m_initDataProtectionEventsMapping) {
+        for (const auto& initDataProtectionEventsMapping : m_initDataProtectionEventsMapping) {
             // Retrieve SessionId using initData.
             String sessionId;
             if (m_initDataCount == 1)
@@ -1403,7 +1403,7 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 }
 
 #if USE(OPENCDM)
-bool MediaPlayerPrivateGStreamerBase::findAndSetPendingProtectionEventByInitData(const Vector<uint8_t>& initData, const uint32_t protectionEvent)
+bool MediaPlayerPrivateGStreamerBase::findAndSetPendingProtectionEventByInitData(const Vector<uint8_t>& initData, uint32_t protectionEvent)
 {
     for (auto& initDataProtectionEventsMapping : m_initDataProtectionEventsMapping) {
         if (initDataProtectionEventsMapping.first == initData) {

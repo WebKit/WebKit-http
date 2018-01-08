@@ -153,7 +153,7 @@ public:
     void attemptToDecryptWithInstance(const CDMInstance&) override;
 #endif
 #if USE(OPENCDM)
-    bool findAndSetPendingProtectionEventByInitData(const Vector<uint8_t>&, const uint32_t);
+    bool findAndSetPendingProtectionEventByInitData(const Vector<uint8_t>&, uint32_t);
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
