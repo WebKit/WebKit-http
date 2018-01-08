@@ -233,7 +233,7 @@ void Performance::webkitClearMeasures(const String& measureName)
 double Performance::now() const
 {
     double nowSeconds = monotonicallyIncreasingTime() - m_referenceTime;
-    const double resolutionSeconds = 0.0001;
+    const double resolutionSeconds = 0.001;
     return 1000.0 * floor(nowSeconds / resolutionSeconds) * resolutionSeconds;
 }
 
