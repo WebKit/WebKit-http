@@ -7,6 +7,8 @@ list(APPEND DumpRenderTree_SOURCES
     haiku/PixelDumpSupportHaiku.cpp
     haiku/TestRunnerHaiku.cpp
     haiku/WorkQueueItemHaiku.cpp
+
+    ${WEBCORE_DIR}/bindings/js/JSInspectorFrontendHostCustom.cpp
 )
 
 list(APPEND DumpRenderTree_LIBRARIES
