@@ -480,10 +480,11 @@ else ()
     endif ()
 endif ()
 
-find_package(Fontconfig)
-
-if (FONTCONFIG_FOUND)
-    SET_AND_EXPOSE_TO_BUILD(HAVE_FONTCONFIG 1)
+if (ENABLE_TEST_SUPPORT)
+    find_package(Fontconfig)
+    if (FONTCONFIG_FOUND)
+        SET_AND_EXPOSE_TO_BUILD(HAVE_FONTCONFIG 1)
+    endif ()
 endif ()
 
 find_package(WebP)
