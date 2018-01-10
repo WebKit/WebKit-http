@@ -123,6 +123,12 @@ void ProcessLauncher::launchProcess()
         QByteArray pluginProcessPrefix = qgetenv("QT_WEBKIT2_PP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(pluginProcessPrefix.constData())).arg(QString(executablePathOfPluginProcess()));
 #endif
+#if ENABLE(DATABASE_PROCESS)
+    } else if (m_launchOptions.processType == ProcessType::Database) {
+        commandLine = QLatin1String("%1 \"%2\" %3 %4");
+        QByteArray processPrefix = qgetenv("QT_WEBKIT2_DP_CMD_PREFIX");
+        commandLine = commandLine.arg(QLatin1String(processPrefix.constData())).arg(QString(executablePathOfDatabaseProcess()));
+#endif
     } else {
         qDebug() << "Unsupported process type" << (int)m_launchOptions.processType;
         ASSERT_NOT_REACHED();
