@@ -503,22 +503,6 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
     if (newDuration == m_duration)
         return { };
 
-#if defined(METROLOGICAL)
-    // Implementation to pass the YouTube MSE Conformance Tests 2016, conforming to the old MSE spec:
-    // https://www.w3.org/TR/2016/CR-media-source-20160503/#duration-change-algorithm
-
-    // 4. If the new duration is less than old duration, then call remove(new duration, old duration)
-    // on all objects in sourceBuffers.
-    if (m_duration.isValid() && newDuration < m_duration) {
-        for (auto& sourceBuffer : *m_sourceBuffers) {
-            auto length = sourceBuffer->bufferedInternal().length();
-            if (length && newDuration < sourceBuffer->bufferedInternal().ranges().end(length - 1))
-                sourceBuffer->rangeRemoval(newDuration, sourceBuffer->bufferedInternal().ranges().end(length - 1));
-        }
-    }
-#else
-    // Upstream implementation, conforming to the latest MSE spec.
-
     // 2. If new duration is less than the highest presentation timestamp of any buffered coded frames
     // for all SourceBuffer objects in sourceBuffers, then throw an InvalidStateError exception and
     // abort these steps.
@@ -537,7 +521,7 @@ ExceptionOr<void> MediaSource::setDurationInternal(const MediaTime& duration)
     // 4.1. Update new duration to equal highest end time.
     if (highestEndTime.isValid() && newDuration < highestEndTime)
         newDuration = highestEndTime;
-#endif
+
     // 5. Update duration to new duration.
     m_duration = newDuration;
 
