@@ -407,6 +407,7 @@ void QQuickWebViewPrivate::initialize(WKPageConfigurationRef configurationRef)
     preferences.setMediaSourceEnabled(false);
     preferences.setWebGLEnabled(true);
     preferences.setForceCompositingMode(true);
+    preferences.setAllowFileAccessFromFileURLs(true);
 
     webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), ASCIILiteral("qrc"));
 
