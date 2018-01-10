@@ -1,7 +1,7 @@
 set(WebKit2_WebProcess_OUTPUT_NAME QtWebProcess)
 set(WebKit2_NetworkProcess_OUTPUT_NAME QtWebNetworkProcess)
 set(WebKit2_PluginProcess_OUTPUT_NAME QtWebPluginProcess)
-set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebDatabaseProcess)
+set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebStorageProcess)
 
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 

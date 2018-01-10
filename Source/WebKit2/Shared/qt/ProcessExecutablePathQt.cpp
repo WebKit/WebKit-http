@@ -68,7 +68,7 @@ String executablePathOfNetworkProcess()
 #if ENABLE(DATABASE_PROCESS)
 String executablePathOfDatabaseProcess()
 {
-    return executablePath(QStringLiteral("QtWebDatabaseProcess"));
+    return executablePath(QStringLiteral("QtWebStorageProcess"));
 }
 #endif
 
