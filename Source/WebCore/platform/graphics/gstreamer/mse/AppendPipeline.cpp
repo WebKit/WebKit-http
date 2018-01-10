@@ -115,6 +115,7 @@ public:
         : m_sampleDuration(MediaTime::invalidTime())
         , m_lastPts(MediaTime::invalidTime())
         , m_lastDts(MediaTime::invalidTime())
+        , m_ptsOffset(MediaTime::invalidTime())
     {
         if (demuxerSrcPadCaps) {
             GstStructure* structure = gst_caps_get_structure(demuxerSrcPadCaps, 0);
@@ -151,6 +152,16 @@ public:
                     GST_BUFFER_DTS(buffer) = toGstClockTime(MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND) + MediaTime(GST_BUFFER_DURATION(buffer), GST_SECOND));
             }
 
+            // If the first sample (DTS=0) doesn't start with PTS=0, compute a negative offset.
+            if (!GST_BUFFER_DTS(buffer) && GST_BUFFER_PTS(buffer) && !m_ptsOffset.isValid()) {
+                m_ptsOffset = MediaTime(GST_BUFFER_DTS(buffer), GST_SECOND) - MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND);
+                printf("### %s: Setting an offset of %s\n", __PRETTY_FUNCTION__, m_ptsOffset.toString().utf8().data()); fflush(stdout);
+            }
+
+            // Apply the offset to zero-align the first sample and also correct the next ones.
+            if (m_ptsOffset.isValid())
+                GST_BUFFER_PTS(buffer) += toGstClockTime(m_ptsOffset);
+
             m_lastPts = MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND);
             m_lastDts = MediaTime(GST_BUFFER_DTS(buffer), GST_SECOND);
         }
@@ -160,6 +171,7 @@ private:
     MediaTime m_sampleDuration;
     MediaTime m_lastPts;
     MediaTime m_lastDts;
+    MediaTime m_ptsOffset;
 };
 
 AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceClient, Ref<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE& playerPrivate)
@@ -819,12 +831,14 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
 
     RefPtr<GStreamerMediaSample> mediaSample = WebCore::GStreamerMediaSample::create(sample, m_presentationSize, trackId());
 
-    GST_TRACE("append: trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f",
+    GST_TRACE("append: trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f %s%s",
         mediaSample->trackID().string().utf8().data(),
         mediaSample->presentationTime().toString().utf8().data(),
         mediaSample->decodeTime().toString().utf8().data(),
         mediaSample->duration().toString().utf8().data(),
-        mediaSample->presentationSize().width(), mediaSample->presentationSize().height());
+        mediaSample->presentationSize().width(), mediaSample->presentationSize().height(),
+        mediaSample->flags() == MediaSample::SampleFlags::IsSync ? "[SYNC]" : "",
+        mediaSample->flags() == MediaSample::SampleFlags::IsNonDisplaying ? "[NON-DISPLAYING]" : "");
 
     // If we're beyond the duration, ignore this sample and the remaining ones.
     MediaTime duration = m_mediaSourceClient->duration();
