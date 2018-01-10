@@ -778,11 +778,9 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         // NOTE: Step 3.2 will be incorrect for any random access point timestamp whose decode time is later than the sample at end,
         // but whose presentation time is less than the sample at end. Skip this step until step 3.3 below.
 
-        // GStreamer backend doesn't support samples division
-#if !USE(GSTREAMER)
         // NOTE: To handle MediaSamples which may be an amalgamation of multiple shorter samples, find samples whose presentation
         // interval straddles the start and end times, and divide them if possible:
-        auto divideSampleIfPossibleAtPresentationTime = [&] (const MediaTime& time) {
+        auto divideSampleIfPossibleAtPresentationTime = [&] (const MediaTime& time, bool insertLowerHalf = true, bool insertHigherHalf = true) {
             auto sampleIterator = trackBuffer.samples.presentationOrder().findSampleContainingPresentationTime(time);
             if (sampleIterator == trackBuffer.samples.presentationOrder().end())
                 return;
@@ -797,9 +795,28 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
                 toString(replacementSamples.first).utf8().data(),
                 toString(replacementSamples.second).utf8().data());
             trackBuffer.samples.removeSample(sample.get());
-            trackBuffer.samples.addSample(*replacementSamples.first);
-            trackBuffer.samples.addSample(*replacementSamples.second);
+
+            if (insertLowerHalf)
+                trackBuffer.samples.addSample(*replacementSamples.first);
+            else {
+                PlatformTimeRanges notInserted(replacementSamples.first->presentationTime(), replacementSamples.first->presentationTime() + replacementSamples.first->duration());
+                notInserted.invert();
+                trackBuffer.buffered.intersectWith(notInserted);
+            }
+
+            if (insertHigherHalf)
+                trackBuffer.samples.addSample(*replacementSamples.second);
+            else {
+                PlatformTimeRanges notInserted(replacementSamples.second->presentationTime(), replacementSamples.second->presentationTime() + replacementSamples.second->duration());
+                notInserted.invert();
+                trackBuffer.buffered.intersectWith(notInserted);
+            }
         };
+
+#if (USE(GSTREAMER))
+        divideSampleIfPossibleAtPresentationTime(start, true, false);
+        divideSampleIfPossibleAtPresentationTime(end, false, true);
+#else
         divideSampleIfPossibleAtPresentationTime(start);
         divideSampleIfPossibleAtPresentationTime(end);
 #endif

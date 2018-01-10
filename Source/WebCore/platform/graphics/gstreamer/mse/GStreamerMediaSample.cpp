@@ -98,6 +98,26 @@ void GStreamerMediaSample::offsetTimestampsBy(const MediaTime& timestampOffset)
     }
 }
 
+std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> GStreamerMediaSample::divide(const MediaTime& time)
+{
+    if (!isDivisable() || !time.isValid() || time < m_pts || time > m_pts + m_duration)
+        return { nullptr, nullptr };
+
+    GStreamerMediaSample* lowerHalf = new GStreamerMediaSample(m_sample.get(), m_presentationSize, m_trackId);
+    lowerHalf->m_pts = m_pts;
+    lowerHalf->m_dts = m_dts;
+    lowerHalf->m_duration = time - m_pts;
+    lowerHalf->m_flags = m_flags;
+
+    GStreamerMediaSample* upperHalf = new GStreamerMediaSample(m_sample.get(), m_presentationSize, m_trackId);
+    upperHalf->m_pts = time;
+    upperHalf->m_dts = m_dts + time - m_pts;
+    upperHalf->m_duration = m_pts + m_duration - time;
+    upperHalf->m_flags = m_flags;
+
+    return { adoptRef(*lowerHalf), adoptRef(*upperHalf) };
+}
+
 Ref<MediaSample> GStreamerMediaSample::createNonDisplayingCopy() const
 {
     if (!m_sample)
