@@ -65,7 +65,6 @@ public:
     void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
 #endif
 #if USE(OPENCDM)
-    bool isDecryptionStructureDispatched() const { return m_decryptionStructureDispatched; }
     Vector<uint8_t> initData() { return m_initData; }
     HashMap<String, unsigned> keySystemProtectionEventMap() { return m_keySystemProtectionEventMap; }
 #endif
@@ -178,8 +177,6 @@ private:
 #if USE(OPENCDM)
     Vector<uint8_t> m_initData;
     HashMap<String, unsigned> m_keySystemProtectionEventMap;
-    bool m_protectionEventTriggered;
-    bool m_decryptionStructureDispatched;
 #endif
 };
 

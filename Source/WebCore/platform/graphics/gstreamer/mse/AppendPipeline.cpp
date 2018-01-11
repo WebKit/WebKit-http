@@ -189,8 +189,6 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     , m_appendState(AppendState::NotStarted)
     , m_abortPending(false)
     , m_streamType(Unknown)
-    , m_protectionEventTriggered(false)
-    , m_decryptionStructureDispatched(false)
 {
     ASSERT(WTF::isMainThread());
 
@@ -368,9 +366,6 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
 
             gst_buffer_unmap(data, &mapInfo);
         }
-
-        m_decryptionStructureDispatched = false;
-        m_protectionEventTriggered = false;
 #endif
         if (WTF::isMainThread())
             transitionTo(AppendState::KeyNegotiation, true);
@@ -467,12 +462,6 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
         GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
         GRefPtr<GstEvent> event;
         gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-#if USE(OPENCDM)
-        if (m_pendingDecryptionStructure)
-            gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
-        else
-            m_protectionEventTriggered = true;
-#endif
         m_playerPrivate->handleProtectionEvent(event.get());
     }
 }
@@ -1375,10 +1364,8 @@ void AppendPipeline::dispatchPendingDecryptionStructure()
 
     // Release the m_pendingDecryptionStructure object since
     // gst_event_new_custom() takes over ownership of it.
-    if (m_protectionEventTriggered) {
-        gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
-        m_keySystemProtectionEventMap.clear();
-    }
+    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
+    m_keySystemProtectionEventMap.clear();
 
     if (WTF::isMainThread()) {
         transitionTo(AppendState::Ongoing, true);
@@ -1391,7 +1378,6 @@ void AppendPipeline::dispatchPendingDecryptionStructure()
             m_appendStateTransitionCondition.wait(m_appendStateTransitionLock);
         }
     }
-    m_decryptionStructureDispatched = true;
 }
 
 void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)

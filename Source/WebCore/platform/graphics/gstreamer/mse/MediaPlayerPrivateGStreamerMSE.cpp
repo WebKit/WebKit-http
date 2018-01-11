@@ -1060,21 +1060,32 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         GST_TRACE("instance is OpenCDM, continuing with %s", cdmInstanceOpenCDM.keySystem().utf8().data());
 
         for (const auto& it : m_appendPipelinesMap) {
-            if (!(it.value->isDecryptionStructureDispatched())) {
-                String sessionId;
-                if (m_initDataCount == 1)
+            unsigned protectionEvent = it.value->keySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem()));
+            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData());
+            if (sessionId.isEmpty()) {
+                if (m_initDataProtectionEventsMapping.size() == 1)
                     sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
-                else
-                    sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData());
-
-                if (!sessionId.isEmpty()) {
-                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, it.value->keySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem())), nullptr));
+            }
+            if (!sessionId.isEmpty()) {
+                if (m_handledProtectionEvents.contains(protectionEvent)) {
+                    m_protectionEventSessionMap.add(protectionEvent, sessionId);
+                    it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
+                } else {
+                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, protectionEvent, nullptr));
                     it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
                 }
             }
         }
     }
 #endif // USE(OPENCDM)
+}
+void MediaPlayerPrivateGStreamerMSE::dispatchOrStoreDecryptionSession(const String& sessionId, const unsigned& protectionEvent)
+{
+    for (const auto& it : m_appendPipelinesMap) {
+        GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, protectionEvent, nullptr));
+        it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+    }
+    m_protectionEventSessionMap.remove(protectionEvent);
 }
 #endif
 

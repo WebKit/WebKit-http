@@ -147,13 +147,13 @@ public:
     void cdmInstanceAttached(const CDMInstance&) override;
     void cdmInstanceDetached(const CDMInstance&) override;
     void dispatchDecryptionKey(GstBuffer*);
-    void dispatchOrStoreDecryptionSession(const String&, const unsigned&);
+    virtual void dispatchOrStoreDecryptionSession(const String&, const unsigned&);
     void handleProtectionEvent(GstEvent*);
     void attemptToDecryptWithLocalInstance();
     void attemptToDecryptWithInstance(const CDMInstance&) override;
 #endif
 #if USE(OPENCDM)
-    bool findAndSetPendingProtectionEventByInitData(const Vector<uint8_t>&, uint32_t);
+    void addPendingProtectionEventToInitDataMapping(const Vector<uint8_t>&, uint32_t);
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -282,8 +282,6 @@ protected:
 
     WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
 #if USE(OPENCDM)
-    size_t m_initDataCount;
-    HashSet<uint32_t> m_triggeredProtectionEvents;
     HashMap<unsigned, String> m_protectionEventSessionMap;
     Vector<std::pair<Vector<uint8_t>, HashSet<uint32_t>>> m_initDataProtectionEventsMapping;
 #endif
