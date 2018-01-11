@@ -65,4 +65,11 @@ String executablePathOfNetworkProcess()
     return executablePath(QStringLiteral("QtWebNetworkProcess"));
 }
 
+#if ENABLE(DATABASE_PROCESS)
+String executablePathOfDatabaseProcess()
+{
+    return executablePath(QStringLiteral("QtWebStorageProcess"));
+}
+#endif
+
 } // namespace WebKit

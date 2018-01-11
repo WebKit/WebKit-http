@@ -1,7 +1,7 @@
 set(WebKit2_WebProcess_OUTPUT_NAME QtWebProcess)
 set(WebKit2_NetworkProcess_OUTPUT_NAME QtWebNetworkProcess)
 set(WebKit2_PluginProcess_OUTPUT_NAME QtWebPluginProcess)
-set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebDatabaseProcess)
+set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebStorageProcess)
 
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 
@@ -259,6 +259,7 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
 endif ()
 
 list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+    ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}
     ${Qt5Quick_PRIVATE_INCLUDE_DIRS}
@@ -328,3 +329,12 @@ WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit/private DIRECTORIES UIProcess/API/qt)
 if (ENABLE_API_TESTS)
     add_subdirectory(UIProcess/API/qt/tests)
 endif ()
+
+file(GLOB WebKit2_PRIVATE_HEADERS UIProcess/API/qt/*_p.h)
+install(
+    FILES
+       ${WebKit2_PRIVATE_HEADERS}
+    DESTINATION
+        ${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
+    COMPONENT Data
+)

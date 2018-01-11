@@ -73,6 +73,8 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/qt/AudioBusQt.cpp
 
+    platform/crypto/qt/CryptoDigestQt.cpp
+
     platform/graphics/ImageSource.cpp
     platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp

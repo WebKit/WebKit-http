@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L. All rights reserved.
+ * Copyright (C) 2016 Konstantin Tokavev <annulen@yandex.ru>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,83 +26,68 @@
 #include "config.h"
 #include "CryptoDigest.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
-
-#include <gnutls/gnutls.h>
-#include <gnutls/crypto.h>
+#include <QCryptographicHash>
+#include <QDebug>
 
 namespace WebCore {
 
+static QCryptographicHash::Algorithm toQtAlgorithm(CryptoDigest::Algorithm algorithm)
+{
+    switch (algorithm) {
+    case CryptoDigest::Algorithm::SHA_1:
+        return QCryptographicHash::Sha1;
+
+    case CryptoDigest::Algorithm::SHA_224:
+        return QCryptographicHash::Sha224;
+
+    case CryptoDigest::Algorithm::SHA_256:
+        return QCryptographicHash::Sha256;
+
+    case CryptoDigest::Algorithm::SHA_384:
+        return QCryptographicHash::Sha384;
+
+    case CryptoDigest::Algorithm::SHA_512:
+        return QCryptographicHash::Sha512;
+    }
+
+    ASSERT_NOT_REACHED();
+    return QCryptographicHash::Algorithm();
+}
+
 struct CryptoDigestContext {
-    gnutls_digest_algorithm_t algorithm;
-    gnutls_hash_hd_t hash;
+    CryptoDigestContext(QCryptographicHash::Algorithm algorithm)
+        : hash(algorithm)
+    {
+    }
+    QCryptographicHash hash;
 };
 
 CryptoDigest::CryptoDigest()
-    : m_context(new CryptoDigestContext)
 {
 }
 
 CryptoDigest::~CryptoDigest()
 {
-    gnutls_hash_deinit(m_context->hash, 0);
 }
 
-std::unique_ptr<CryptoDigest> CryptoDigest::create(CryptoAlgorithmIdentifier algorithm)
+std::unique_ptr<CryptoDigest> CryptoDigest::create(CryptoDigest::Algorithm algorithm)
 {
-    gnutls_digest_algorithm_t gnutlsAlgorithm;
-
-    switch (algorithm) {
-    case CryptoAlgorithmIdentifier::SHA_1: {
-        gnutlsAlgorithm = GNUTLS_DIG_SHA1;
-        break;
-    }
-    case CryptoAlgorithmIdentifier::SHA_224: {
-        gnutlsAlgorithm = GNUTLS_DIG_SHA224;
-        break;
-    }
-    case CryptoAlgorithmIdentifier::SHA_256: {
-        gnutlsAlgorithm = GNUTLS_DIG_SHA256;
-        break;
-    }
-    case CryptoAlgorithmIdentifier::SHA_384: {
-        gnutlsAlgorithm = GNUTLS_DIG_SHA384;
-        break;
-    }
-    case CryptoAlgorithmIdentifier::SHA_512: {
-        gnutlsAlgorithm = GNUTLS_DIG_SHA512;
-        break;
-    }
-    default:
-        return nullptr;
-    }
-
     std::unique_ptr<CryptoDigest> digest(new CryptoDigest);
-    digest->m_context->algorithm = gnutlsAlgorithm;
-
-    int ret = gnutls_hash_init(&digest->m_context->hash, gnutlsAlgorithm);
-    if (ret != GNUTLS_E_SUCCESS)
-        return nullptr;
-
+    digest->m_context.reset(new CryptoDigestContext(toQtAlgorithm(algorithm)));
     return digest;
 }
 
 void CryptoDigest::addBytes(const void* input, size_t length)
 {
-    gnutls_hash(m_context->hash, input, length);
+    m_context->hash.addData(static_cast<const char*>(input), length);
 }
 
 Vector<uint8_t> CryptoDigest::computeHash()
 {
-    Vector<uint8_t> result;
-    int digestLen = gnutls_hash_get_len(m_context->algorithm);
-    result.resize(digestLen);
-
-    gnutls_hash_output(m_context->hash, result.data());
-
+    QByteArray digest = m_context->hash.result();
+    Vector<uint8_t> result(digest.size());
+    memcpy(result.data(), digest.constData(), digest.size());
     return result;
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(SUBTLE_CRYPTO)
