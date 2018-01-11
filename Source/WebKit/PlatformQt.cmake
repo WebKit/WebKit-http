@@ -418,7 +418,7 @@ install(
     COMPONENT Data
 )
 
-file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h ../WebKit2/UIProcess/API/qt/*_p.h)
+file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h)
 install(
     FILES
         ${WebKit_PRIVATE_HEADERS}

@@ -265,6 +265,8 @@ macro(WEBKIT_FRAMEWORK _target)
         ${${_target}_HEADERS}
         ${${_target}_SOURCES}
         ${${_target}_DERIVED_SOURCES}
+        ${${_target}_PRIVATE_HEADERS}
+        ${${_target}_PUBLIC_HEADERS}
     )
     target_link_libraries(${_target} ${${_target}_LIBRARIES})
     set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "BUILDING_${_target}")
