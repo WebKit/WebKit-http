@@ -37,6 +37,7 @@
 #import "RemoteScrollingCoordinatorTransaction.h"
 #import "WebPage.h"
 #import "WebProcess.h"
+#import <QuartzCore/QuartzCore.h>
 #import <WebCore/DebugPageOverlays.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
@@ -48,7 +49,7 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TiledBacking.h>
-#import <QuartzCore/QuartzCore.h>
+#import <wtf/SystemTracing.h>
 
 using namespace WebCore;
 
@@ -111,9 +112,9 @@ GraphicsLayerFactory* RemoteLayerTreeDrawingArea::graphicsLayerFactory()
 
 RefPtr<DisplayRefreshMonitor> RemoteLayerTreeDrawingArea::createDisplayRefreshMonitor(PlatformDisplayID displayID)
 {
-    RefPtr<RemoteLayerTreeDisplayRefreshMonitor> monitor = RemoteLayerTreeDisplayRefreshMonitor::create(displayID, *this);
-    m_displayRefreshMonitors.add(monitor.get());
-    return monitor.release();
+    auto monitor = RemoteLayerTreeDisplayRefreshMonitor::create(displayID, *this);
+    m_displayRefreshMonitors.add(monitor.ptr());
+    return WTFMove(monitor);
 }
 
 void RemoteLayerTreeDrawingArea::willDestroyDisplayRefreshMonitor(DisplayRefreshMonitor* monitor)
@@ -436,6 +437,8 @@ void RemoteLayerTreeDrawingArea::flushLayers()
 
 void RemoteLayerTreeDrawingArea::didUpdate()
 {
+    TraceScope tracingScope(RAFDidUpdateStart, RAFDidUpdateEnd);
+
     // FIXME: This should use a counted replacement for setLayerTreeStateIsFrozen, but
     // the callers of that function are not strictly paired.
 
@@ -485,6 +488,8 @@ void RemoteLayerTreeDrawingArea::BackingStoreFlusher::flush()
 {
     ASSERT(!m_hasFlushed);
 
+    TraceScope tracingScope(RAFBackingStoreFlushStart, RAFBackingStoreFlushEnd);
+    
     for (auto& context : m_contextsToFlush)
         CGContextFlush(context.get());
     m_hasFlushed = true;

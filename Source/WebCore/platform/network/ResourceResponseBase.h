@@ -33,10 +33,6 @@
 #include "ResourceLoadTiming.h"
 #include "URL.h"
 
-#if OS(SOLARIS)
-#include <sys/time.h> // For time_t structure.
-#endif
-
 namespace WebCore {
 
 class ResourceResponse;
@@ -70,6 +66,7 @@ public:
 
     bool isNull() const { return m_isNull; }
     WEBCORE_EXPORT bool isHTTP() const;
+    bool isSuccessful() const;
 
     WEBCORE_EXPORT const URL& url() const;
     WEBCORE_EXPORT void setURL(const URL&);
@@ -85,7 +82,7 @@ public:
 
     WEBCORE_EXPORT int httpStatusCode() const;
     WEBCORE_EXPORT void setHTTPStatusCode(int);
-    
+
     WEBCORE_EXPORT const String& httpStatusText() const;
     WEBCORE_EXPORT void setHTTPStatusText(const String&);
 
@@ -114,8 +111,7 @@ public:
     WEBCORE_EXPORT String suggestedFilename() const;
 
     WEBCORE_EXPORT void includeCertificateInfo() const;
-    bool containsCertificateInfo() const { return m_includesCertificateInfo; }
-    WEBCORE_EXPORT CertificateInfo certificateInfo() const;
+    WEBCORE_EXPORT const Optional<CertificateInfo>& certificateInfo() const { return m_certificateInfo; };
     
     // These functions return parsed values of the corresponding response headers.
     // NaN means that the header was not present or had invalid value.
@@ -175,7 +171,6 @@ protected:
     static bool platformCompare(const ResourceResponse&, const ResourceResponse&) { return true; }
 
 private:
-    const ResourceResponse& asResourceResponse() const;
     void parseCacheControlDirectives() const;
     void updateHeaderParsedState(HTTPHeaderName);
 
@@ -190,8 +185,7 @@ protected:
     HTTPHeaderMap m_httpHeaderFields;
     mutable ResourceLoadTiming m_resourceLoadTiming;
 
-    mutable bool m_includesCertificateInfo;
-    mutable CertificateInfo m_certificateInfo;
+    mutable Optional<CertificateInfo> m_certificateInfo;
 
     int m_httpStatusCode;
 
@@ -236,9 +230,7 @@ void ResourceResponseBase::encode(Encoder& encoder) const
     encoder << m_httpHeaderFields;
     encoder << m_resourceLoadTiming;
     encoder << m_httpStatusCode;
-    encoder << m_includesCertificateInfo;
-    if (m_includesCertificateInfo)
-        encoder << m_certificateInfo;
+    encoder << m_certificateInfo;
     encoder.encodeEnum(m_source);
     encoder.encodeEnum(m_type);
     encoder << m_isRedirected;
@@ -274,12 +266,8 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
         return false;
     if (!decoder.decode(response.m_httpStatusCode))
         return false;
-    if (!decoder.decode(response.m_includesCertificateInfo))
+    if (!decoder.decode(response.m_certificateInfo))
         return false;
-    if (response.m_includesCertificateInfo) {
-        if (!decoder.decode(response.m_certificateInfo))
-            return false;
-    }
     if (!decoder.decodeEnum(response.m_source))
         return false;
     if (!decoder.decodeEnum(response.m_type))

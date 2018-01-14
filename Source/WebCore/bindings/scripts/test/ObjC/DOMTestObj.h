@@ -28,7 +28,6 @@
 
 @class DOMDictionary;
 @class DOMDocument;
-@class DOMNode;
 @class DOMSVGDocument;
 @class DOMSVGPoint;
 @class DOMTestDictionary;
@@ -164,6 +163,7 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (void)methodWithExceptionWithMessage;
 - (void)customMethod;
 - (void)customMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
+- (NSString *)publicAndPrivateMethod:(NSString *)argument;
 - (void)addEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture;
 - (void)removeEventListener:(NSString *)type listener:(id <DOMEventListener>)listener useCapture:(BOOL)useCapture;
 - (void)withScriptStateVoid;
@@ -214,9 +214,6 @@ WEBCORE_EXPORT @interface DOMTestObj : DOMObject
 - (DOMSVGPoint *)immutablePointFunction;
 - (void)orange;
 - (BOOL)strictFunction:(NSString *)str a:(float)a b:(int)b;
-- (void)variadicStringMethod:(NSString *)head tail:(NSString *)tail;
-- (void)variadicDoubleMethod:(double)head tail:(double)tail;
-- (void)variadicNodeMethod:(DOMNode *)head tail:(DOMNode *)tail;
 - (void)any:(float)a b:(int)b;
 - (void)attachShadowRoot:(DOMTestDictionary *)init;
 @end

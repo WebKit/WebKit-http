@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,7 @@
 #include "VirtualRegister.h"
 #include <wtf/FastBitVector.h>
 #include <wtf/RefCountedArray.h>
+#include <wtf/TriState.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -325,7 +326,7 @@ public:
     int lineNumberForBytecodeOffset(unsigned bytecodeOffset);
 
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
-        int& startOffset, int& endOffset, unsigned& line, unsigned& column);
+        int& startOffset, int& endOffset, unsigned& line, unsigned& column) const;
 
     bool typeProfilerExpressionInfoForBytecodeOffset(unsigned bytecodeOffset, unsigned& startDivot, unsigned& endDivot);
 
@@ -370,6 +371,9 @@ public:
 
     bool wasCompiledWithDebuggingOpcodes() const { return m_wasCompiledWithDebuggingOpcodes; }
 
+    TriState didOptimize() const { return m_didOptimize; }
+    void setDidOptimize(TriState didOptimize) { m_didOptimize = didOptimize; }
+
 protected:
     UnlinkedCodeBlock(VM*, Structure*, CodeType, const ExecutableInfo&, DebuggerMode);
     ~UnlinkedCodeBlock();
@@ -387,7 +391,7 @@ private:
             m_rareData = std::make_unique<RareData>();
     }
 
-    void getLineAndColumn(ExpressionRangeInfo&, unsigned& line, unsigned& column);
+    void getLineAndColumn(const ExpressionRangeInfo&, unsigned& line, unsigned& column) const;
 
     int m_numParameters;
 
@@ -416,6 +420,7 @@ private:
     unsigned m_lineCount;
     unsigned m_endColumn;
 
+    TriState m_didOptimize;
     SourceParseMode m_parseMode;
     CodeFeatures m_features;
     CodeType m_codeType;

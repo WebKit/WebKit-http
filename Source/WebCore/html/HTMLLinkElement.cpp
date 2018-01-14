@@ -35,6 +35,7 @@
 #include "DOMTokenList.h"
 #include "Document.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "EventSender.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -261,9 +262,10 @@ void HTMLLinkElement::process()
             options.setContentSecurityPolicyImposition(ContentSecurityPolicyImposition::SkipPolicyCheck);
             request.setOptions(options);
         }
+        request.setAsPotentiallyCrossOrigin(crossOrigin(), document());
 
         m_cachedSheet = document().cachedResourceLoader().requestCSSStyleSheet(request);
-        
+
         if (m_cachedSheet)
             m_cachedSheet->addClient(this);
         else {

@@ -37,6 +37,7 @@ WebInspector.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends
         columns.name.width = "10%";
         columns.name.icon = true;
         columns.name.disclosure = true;
+        columns.name.locked = true;
 
         columns.location.title = WebInspector.UIString("Location");
         columns.location.icon = true;
@@ -73,8 +74,9 @@ WebInspector.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends
 
         this._dataGrid = new WebInspector.ScriptTimelineDataGrid(columns);
         this._dataGrid.sortDelegate = this;
-        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("script-timeline-view-sort", "startTime");
-        this._dataGrid.sortOrderSetting = new WebInspector.Setting("script-timeline-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
+        this._dataGrid.sortColumnIdentifier = "startTime";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
+        this._dataGrid.createSettings("script-timeline-view");
 
         this.setupDataGrid(this._dataGrid);
 

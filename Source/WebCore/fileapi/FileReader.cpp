@@ -29,9 +29,9 @@
  */
 
 #include "config.h"
-
 #include "FileReader.h"
 
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "File.h"
 #include "Logging.h"
@@ -43,7 +43,7 @@
 
 namespace WebCore {
 
-static const auto progressNotificationInterval = std::chrono::milliseconds(50);
+static const auto progressNotificationInterval = 50ms;
 
 Ref<FileReader> FileReader::create(ScriptExecutionContext& context)
 {

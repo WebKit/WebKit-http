@@ -23,15 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PageConfiguration_h
-#define PageConfiguration_h
+#pragma once
 
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
-
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/PageConfigurationIncludes.h>
-#endif
+#include <wtf/UniqueRef.h>
 
 namespace WebCore {
 
@@ -45,8 +41,10 @@ class DragClient;
 class EditorClient;
 class FrameLoaderClient;
 class InspectorClient;
+class PaymentCoordinatorClient;
 class PlugInClient;
 class ProgressTrackerClient;
+class SocketProvider;
 class StorageNamespaceProvider;
 class UserContentProvider;
 class ValidationMessageClient;
@@ -59,7 +57,7 @@ class ContextMenuClient;
 class PageConfiguration {
     WTF_MAKE_NONCOPYABLE(PageConfiguration); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT PageConfiguration();
+    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, UniqueRef<SocketProvider>&&);
     WEBCORE_EXPORT ~PageConfiguration();
 
     AlternativeTextClient* alternativeTextClient { nullptr };
@@ -67,19 +65,20 @@ public:
 #if ENABLE(CONTEXT_MENUS)
     ContextMenuClient* contextMenuClient { nullptr };
 #endif
-    EditorClient* editorClient { nullptr };
+    UniqueRef<EditorClient> editorClient;
+    UniqueRef<SocketProvider> socketProvider;
     DragClient* dragClient { nullptr };
     InspectorClient* inspectorClient { nullptr };
+#if ENABLE(APPLE_PAY)
+    PaymentCoordinatorClient* paymentCoordinatorClient { nullptr };
+#endif
+
     PlugInClient* plugInClient { nullptr };
     ProgressTrackerClient* progressTrackerClient { nullptr };
     RefPtr<BackForwardClient> backForwardClient;
     ValidationMessageClient* validationMessageClient { nullptr };
     FrameLoaderClient* loaderClientForMainFrame { nullptr };
     std::unique_ptr<DiagnosticLoggingClient> diagnosticLoggingClient { nullptr };
-
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/PageConfigurationMembers.h>
-#endif
 
     RefPtr<ApplicationCacheStorage> applicationCacheStorage;
     RefPtr<DatabaseProvider> databaseProvider;
@@ -89,5 +88,3 @@ public:
 };
 
 }
-
-#endif

@@ -27,6 +27,7 @@
 #ifndef DOMWindow_h
 #define DOMWindow_h
 
+#include "Base64Utilities.h"
 #include "ContextDestructionObserver.h"
 #include "EventTarget.h"
 #include "FrameDestructionObserver.h"
@@ -34,6 +35,7 @@
 #include "Supplementable.h"
 #include <functional>
 #include <memory>
+#include <wtf/HashSet.h>
 #include <wtf/Optional.h>
 #include <wtf/WeakPtr.h>
 
@@ -97,6 +99,7 @@ namespace WebCore {
         , public EventTargetWithInlineData
         , public ContextDestructionObserver
         , public FrameDestructionObserver
+        , public Base64Utilities
         , public Supplementable<DOMWindow> {
     public:
         static Ref<DOMWindow> create(Document* document) { return adoptRef(*new DOMWindow(document)); }
@@ -175,8 +178,6 @@ namespace WebCore {
         void alert(const String& message);
         bool confirm(const String& message);
         String prompt(const String& message, const String& defaultValue);
-        String btoa(const String& stringToEncode, ExceptionCode&);
-        String atob(const String& encodedString, ExceptionCode&);
 
         bool find(const String&, bool caseSensitive, bool backwards, bool wrap, bool wholeWord, bool searchInFrames, bool showDialog) const;
 

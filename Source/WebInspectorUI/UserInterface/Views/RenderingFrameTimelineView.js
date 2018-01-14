@@ -46,6 +46,7 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
         columns.name.width = "20%";
         columns.name.icon = true;
         columns.name.disclosure = true;
+        columns.name.locked = true;
 
         columns.totalTime.title = WebInspector.UIString("Total Time");
         columns.totalTime.width = "15%";
@@ -77,8 +78,9 @@ WebInspector.RenderingFrameTimelineView = class RenderingFrameTimelineView exten
             columns[column].sortable = true;
 
         this._dataGrid = new WebInspector.TimelineDataGrid(columns);
-        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("rendering-frame-timeline-view-sort", "startTime");
-        this._dataGrid.sortOrderSetting = new WebInspector.Setting("rendering-frame-timeline-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
+        this._dataGrid.sortColumnIdentifier = "startTime";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
+        this._dataGrid.createSettings("rendering-frame-timeline-view");
 
         this.setupDataGrid(this._dataGrid);
 

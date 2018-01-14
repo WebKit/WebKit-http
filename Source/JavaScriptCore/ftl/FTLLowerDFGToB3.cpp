@@ -498,6 +498,9 @@ private:
         case DFG::Check:
             compileNoOp();
             break;
+        case CallObjectConstructor:
+            compileCallObjectConstructor();
+            break;
         case ToThis:
             compileToThis();
             break;
@@ -882,6 +885,9 @@ private:
         case IsString:
             compileIsString();
             break;
+        case IsJSArray:
+            compileIsJSArray();
+            break;
         case IsObject:
             compileIsObject();
             break;
@@ -999,6 +1005,9 @@ private:
             break;
         case PutDynamicVar:
             compilePutDynamicVar();
+            break;
+        case Unreachable:
+            compileUnreachable();
             break;
 
         case PhantomLocal:
@@ -1460,6 +1469,29 @@ private:
         DFG_NODE_DO_TO_CHILDREN(m_graph, m_node, speculate);
     }
 
+    void compileCallObjectConstructor()
+    {
+        JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        m_out.branch(isCell(value, provenType(m_node->child1())), usually(isCellCase), rarely(slowCase));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, slowCase);
+        ValueFromBlock fastResult = m_out.anchor(value);
+        m_out.branch(isObject(value), usually(continuation), rarely(slowCase));
+
+        m_out.appendTo(slowCase, continuation);
+        ValueFromBlock slowResult = m_out.anchor(vmCall(m_out.int64, m_out.operation(operationObjectConstructor), m_callFrame, m_out.constIntPtr(globalObject), value));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(m_out.int64, fastResult, slowResult));
+    }
+    
     void compileToThis()
     {
         LValue value = lowJSValue(m_node->child1());
@@ -5194,7 +5226,7 @@ private:
     {
         Node* node = m_node;
         LValue jsCallee = lowJSValue(m_node->child1());
-        LValue thisArg = lowJSValue(m_node->child3());
+        LValue thisArg = lowJSValue(m_node->child2());
         
         LValue jsArguments = nullptr;
         bool forwarding = false;
@@ -5204,7 +5236,7 @@ private:
         case TailCallVarargs:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
-            jsArguments = lowJSValue(node->child2());
+            jsArguments = lowJSValue(node->child3());
             break;
         case CallForwardVarargs:
         case TailCallForwardVarargs:
@@ -5357,7 +5389,12 @@ private:
                     jit.move(CCallHelpers::TrustedImm32(originalStackHeight / sizeof(EncodedJSValue)), scratchGPR2);
                     
                     CCallHelpers::JumpList slowCase;
-                    emitSetupVarargsFrameFastCase(jit, scratchGPR2, scratchGPR1, scratchGPR2, scratchGPR3, node->child2()->origin.semantic.inlineCallFrame, data->firstVarArgOffset, slowCase);
+                    InlineCallFrame* inlineCallFrame;
+                    if (node->child3())
+                        inlineCallFrame = node->child3()->origin.semantic.inlineCallFrame;
+                    else
+                        inlineCallFrame = node->origin.semantic.inlineCallFrame;
+                    emitSetupVarargsFrameFastCase(jit, scratchGPR2, scratchGPR1, scratchGPR2, scratchGPR3, inlineCallFrame, data->firstVarArgOffset, slowCase);
 
                     CCallHelpers::Jump done = jit.jump();
                     slowCase.link(&jit);
@@ -5501,7 +5538,11 @@ private:
     void compileForwardVarargs()
     {
         LoadVarargsData* data = m_node->loadVarargsData();
-        InlineCallFrame* inlineCallFrame = m_node->child1()->origin.semantic.inlineCallFrame;
+        InlineCallFrame* inlineCallFrame;
+        if (m_node->child1())
+            inlineCallFrame = m_node->child1()->origin.semantic.inlineCallFrame;
+        else
+            inlineCallFrame = m_node->origin.semantic.inlineCallFrame;
         
         LValue length = getArgumentsLength(inlineCallFrame).value;
         LValue lengthIncludingThis = m_out.add(length, m_out.constInt32(1 - data->offset));
@@ -5909,6 +5950,25 @@ private:
         setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
     }
 
+    void compileIsJSArray()
+    {
+        LValue value = lowJSValue(m_node->child1());
+
+        LBasicBlock isCellCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
+        m_out.branch(
+            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(continuation));
+
+        LBasicBlock lastNext = m_out.appendTo(isCellCase, continuation);
+        ValueFromBlock cellResult = m_out.anchor(isArray(value, provenType(m_node->child1())));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setBoolean(m_out.phi(m_out.boolean, notCellResult, cellResult));
+    }
+
     void compileIsObject()
     {
         LValue value = lowJSValue(m_node->child1());
@@ -6123,21 +6183,19 @@ private:
 
                                 jit.addLinkTask(
                                     [=] (LinkBuffer& linkBuffer) {
-                                        CodeLocationCall callReturnLocation =
-                                            linkBuffer.locationOf(slowPathCall);
-                                        stubInfo->patch.deltaCallToDone =
-                                            CCallHelpers::differenceBetweenCodePtr(
-                                                callReturnLocation,
-                                                linkBuffer.locationOf(done));
-                                        stubInfo->patch.deltaCallToJump =
-                                            CCallHelpers::differenceBetweenCodePtr(
-                                                callReturnLocation,
-                                                linkBuffer.locationOf(jump));
-                                        stubInfo->callReturnLocation = callReturnLocation;
-                                        stubInfo->patch.deltaCallToSlowCase =
-                                            CCallHelpers::differenceBetweenCodePtr(
-                                                callReturnLocation,
-                                                linkBuffer.locationOf(slowPathBegin));
+                                        CodeLocationLabel start = linkBuffer.locationOf(jump);
+                                        stubInfo->patch.start = start;
+                                        ptrdiff_t inlineSize = MacroAssembler::differenceBetweenCodePtr(
+                                            start, linkBuffer.locationOf(done));
+                                        RELEASE_ASSERT(inlineSize >= 0);
+                                        stubInfo->patch.inlineSize = inlineSize;
+
+                                        stubInfo->patch.deltaFromStartToSlowPathCallLocation = MacroAssembler::differenceBetweenCodePtr(
+                                            start, linkBuffer.locationOf(slowPathCall));
+
+                                        stubInfo->patch.deltaFromStartToSlowPathStart = MacroAssembler::differenceBetweenCodePtr(
+                                            start, linkBuffer.locationOf(slowPathBegin));
+
                                     });
                             });
                     });
@@ -7556,7 +7614,7 @@ private:
 
                 auto generator = Box<JITGetByIdGenerator>::create(
                     jit.codeBlock(), node->origin.semantic, callSiteIndex,
-                    params.unavailableRegisters(), JSValueRegs(params[1].gpr()),
+                    params.unavailableRegisters(), uid, JSValueRegs(params[1].gpr()),
                     JSValueRegs(params[0].gpr()), type);
 
                 generator->generateFastPath(jit);
@@ -7682,6 +7740,18 @@ private:
         UniquedStringImpl* uid = m_graph.identifiers()[m_node->identifierNumber()];
         setJSValue(vmCall(Void, m_out.operation(operationPutDynamicVar),
             m_callFrame, lowCell(m_node->child1()), lowJSValue(m_node->child2()), m_out.constIntPtr(uid), m_out.constInt32(m_node->getPutInfo())));
+    }
+    
+    void compileUnreachable()
+    {
+        // It's so tempting to assert that AI has proved that this is unreachable. But that's
+        // simply not a requirement of the Unreachable opcode at all. If you emit an opcode that
+        // *you* know will not return, then it's fine to end the basic block with Unreachable
+        // after that opcode. You don't have to also prove to AI that your opcode does not return.
+        // Hence, there is nothing to do here but emit code that will crash, so that we catch
+        // cases where you said Unreachable but you lied.
+        
+        crash();
     }
     
     void compareEqObjectOrOtherToObject(Edge leftChild, Edge rightChild)
@@ -9091,7 +9161,7 @@ private:
         m_out.jump(continuation);
         
         m_out.appendTo(slowPath, continuation);
-        results.append(m_out.anchor(m_out.call(m_out.int32, m_out.operation(toInt32), doubleValue)));
+        results.append(m_out.anchor(m_out.call(m_out.int32, m_out.operation(operationToInt32), doubleValue)));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
@@ -9120,7 +9190,7 @@ private:
         
         LBasicBlock lastNext = m_out.appendTo(slowPath, continuation);
         ValueFromBlock slowResult = m_out.anchor(
-            m_out.call(m_out.int32, m_out.operation(toInt32), doubleValue));
+            m_out.call(m_out.int32, m_out.operation(operationToInt32), doubleValue));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
@@ -9997,6 +10067,15 @@ private:
         
         jsValueToStrictInt52(edge, lowJSValue(edge, ManualOperandSpeculation));
     }
+
+    LValue isArray(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, SpecArray))
+            return proven;
+        return m_out.equal(
+            m_out.load8ZeroExt32(cell, m_heaps.JSCell_typeInfoType),
+            m_out.constInt32(ArrayType));
+    }
     
     LValue isObject(LValue cell, SpeculatedType type = SpecFullTop)
     {
@@ -10729,10 +10808,11 @@ private:
             
             Availability availability = availabilityMap.m_locals[i];
             
-            if (Options::validateFTLOSRExitLiveness()) {
-                DFG_ASSERT(
-                    m_graph, m_node,
-                    (!(availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), exitOrigin))) || m_graph.m_plan.mode == FTLForOSREntryMode);
+            if (Options::validateFTLOSRExitLiveness()
+                && m_graph.m_plan.mode != FTLForOSREntryMode) {
+                
+                if (availability.isDead() && m_graph.isLiveInBytecode(VirtualRegister(operand), exitOrigin))
+                    DFG_CRASH(m_graph, m_node, toCString("Live bytecode local not available: operand = ", VirtualRegister(operand), ", availability = ", availability, ", origin = ", exitOrigin).data());
             }
             ExitValue exitValue = exitValueForAvailability(arguments, map, availability);
             if (exitValue.hasIndexInStackmapLocations())

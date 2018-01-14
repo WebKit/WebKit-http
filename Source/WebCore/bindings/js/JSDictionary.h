@@ -53,9 +53,11 @@ class MediaKeyError;
 class MediaStream;
 class MediaStreamTrack;
 class RTCRtpReceiver;
+class RTCRtpTransceiver;
 class Node;
 class SerializedScriptValue;
 class Storage;
+class TouchList;
 class TrackBase;
 class VoidCallback;
 
@@ -152,6 +154,8 @@ private:
 #endif
 #if ENABLE(WEB_RTC)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<RTCRtpReceiver>& result);
+    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<RTCRtpTransceiver>& result);
+    static void convertValue(JSC::ExecState*, JSC::JSValue, Vector<RefPtr<MediaStream>>& result);
 #endif
 #if ENABLE(FONT_LOAD_EVENTS)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<CSSFontFaceRule>& result);
@@ -162,6 +166,9 @@ private:
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<Gamepad>&);
 #endif
     static void convertValue(JSC::ExecState*, JSC::JSValue, JSC::JSFunction*&);
+#if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(TOUCH_EVENTS)
+    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<TouchList>&);
+#endif
 
     JSC::ExecState* m_exec;
     JSC::Strong<JSC::JSObject> m_initializerObject;

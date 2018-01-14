@@ -175,7 +175,7 @@ static const bool defaultSelectTrailingWhitespaceEnabled = false;
 // This amount of time must have elapsed before we will even consider scheduling a layout without a delay.
 // FIXME: For faster machines this value can really be lowered to 200. 250 is adequate, but a little high
 // for dual G5s. :)
-static const auto layoutScheduleThreshold = std::chrono::milliseconds(250);
+static const auto layoutScheduleThreshold = 250ms;
 
 Settings::Settings(Page* page)
     : m_page(nullptr)
@@ -192,6 +192,7 @@ Settings::Settings(Page* page)
     , m_isJavaEnabledForLocalFiles(true)
     , m_loadsImagesAutomatically(false)
     , m_areImagesEnabled(true)
+    , m_preferMIMETypeForImages(false)
     , m_arePluginsEnabled(false)
     , m_isScriptEnabled(false)
     , m_needsAdobeFrameReloadingQuirk(false)
@@ -417,6 +418,11 @@ void Settings::setImagesEnabled(bool areImagesEnabled)
 
     // See comment in setLoadsImagesAutomatically.
     m_setImageLoadingSettingsTimer.startOneShot(0);
+}
+
+void Settings::setPreferMIMETypeForImages(bool preferMIMETypeForImages)
+{
+    m_preferMIMETypeForImages = preferMIMETypeForImages;
 }
 
 void Settings::setForcePendingWebGLPolicy(bool forced)

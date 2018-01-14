@@ -42,6 +42,7 @@
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
+#include "Page.h"
 #include "PlatformStrategies.h"
 #include "ResourceHandle.h"
 #include "SchemeRegistry.h"
@@ -391,7 +392,7 @@ std::chrono::microseconds CachedResource::freshnessLifetime(const ResourceRespon
             // FIXME: We should not cache subresources either, but when we tried this
             // it caused performance and flakiness issues in our test infrastructure.
             if (m_type == MainResource || SchemeRegistry::shouldAlwaysRevalidateURLScheme(protocol))
-                return std::chrono::microseconds::zero();
+                return 0us;
         }
 
         return std::chrono::microseconds::max();

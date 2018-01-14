@@ -1011,6 +1011,19 @@ article div.note {
     box-sizing: normal;
 }
 
+article .foreword {
+    padding: 1.6rem 2.2rem 1.6rem;
+    line-height: 2.6rem;
+    background-color: #f0f0f0;
+    border: 1px solid #e6e6e6;
+    color: #8E8E93;
+    border-radius: 3px;
+    margin-bottom: 3rem;
+    box-sizing: normal;
+    font-size: 1.6rem;
+    font-style: italic;
+}
+
 article .two-columns {
     columns: 2;
     column-gap: 6rem;
@@ -1197,6 +1210,18 @@ article figcaption::before {
     display: inline-block;
     box-sizing: border-box;
     position: absolute;
+}
+
+figure.aligncenter figcaption {
+    text-align: center;
+    padding-left: 0;
+}
+
+figure.aligncenter figcaption::before {
+    margin: 0 auto;
+    width: 20%;
+    left: 50%;
+    transform: translate(-50%);
 }
 
 article .clipbottom + p + figcaption {

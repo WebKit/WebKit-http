@@ -292,4 +292,25 @@ TEST(WTF, StringExistingHash)
     ASSERT_EQ(string2.existingHash(), 0u);
 }
 
+TEST(WTF, StringUnicodeEqualUCharArray)
+{
+    String string1("abc");
+    ASSERT_FALSE(string1.isNull());
+    ASSERT_TRUE(string1.is8Bit());
+    UChar ab[] = { 'a', 'b' };
+    UChar abc[] = { 'a', 'b', 'c' };
+    UChar abcd[] = { 'a', 'b', 'c', 'd' };
+    UChar aBc[] = { 'a', 'B', 'c' };
+    ASSERT_FALSE(equal(string1, ab));
+    ASSERT_TRUE(equal(string1, abc));
+    ASSERT_FALSE(equal(string1, abcd));
+    ASSERT_FALSE(equal(string1, aBc));
+
+    String string2(abc, 3);
+    ASSERT_FALSE(equal(string2, ab));
+    ASSERT_TRUE(equal(string2, abc));
+    ASSERT_FALSE(equal(string2, abcd));
+    ASSERT_FALSE(equal(string2, aBc));
+}
+
 } // namespace TestWebKitAPI

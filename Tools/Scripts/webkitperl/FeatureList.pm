@@ -23,6 +23,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # A module to contain all the enable/disable feature option code.
+#
+# For CMake ports, this module only affects development builds. The
+# settings in this file have ZERO EFFECT for end users. Use
+# WebKitFeatures.cmake to change settings for users. Guidelines:
+#
+# * A feature enabled here but not WebKitFeatures.cmake is EXPERIMENTAL.
+# * A feature enabled in WebKitFeatures.cmake but not here is a BUG.
 
 use strict;
 use warnings;
@@ -383,9 +390,6 @@ my @features = (
 
     { option => "scripted-speech", desc => "Toggle Scripted Speech support",
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
-
-    { option => "shadow-dom", desc => "Toggle Shadow DOM support",
-      define => "ENABLE_SHADOW_DOM", default => (isAppleMacWebKit() || isIOSWebKit()), value => \$shadowDOMSupport },
 
     { option => "streams-api", desc => "Toggle Streams API support",
       define => "ENABLE_STREAMS_API", default => 1, value => \$streamsAPISupport },

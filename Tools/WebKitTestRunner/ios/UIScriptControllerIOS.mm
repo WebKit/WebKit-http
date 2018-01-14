@@ -175,6 +175,18 @@ void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef character, JSVal
     }];
 }
 
+void UIScriptController::keyboardAccessoryBarNext()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView keyboardAccessoryBarNext];
+}
+
+void UIScriptController::keyboardAccessoryBarPrevious()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView keyboardAccessoryBarPrevious];
+}
+
 double UIScriptController::minimumZoomScale() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -195,6 +207,18 @@ JSObjectRef UIScriptController::contentVisibleRect() const
     
     WKRect wkRect = WKRectMake(contentVisibleRect.origin.x, contentVisibleRect.origin.y, contentVisibleRect.size.width, contentVisibleRect.size.height);
     return m_context->objectFromRect(wkRect);
+}
+
+bool UIScriptController::forceIPadStyleZoomOnInputFocus() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return webView.forceIPadStyleZoomOnInputFocus;
+}
+
+void UIScriptController::setForceIPadStyleZoomOnInputFocus(bool value)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.forceIPadStyleZoomOnInputFocus = value;
 }
 
 void UIScriptController::platformSetWillBeginZoomingCallback()

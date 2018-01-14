@@ -1,3 +1,65 @@
+2016-06-22  Anders Carlsson  <andersca@apple.com>
+
+        Move the WebKitLegacy Apple Pay code to the open source repository
+        https://bugs.webkit.org/show_bug.cgi?id=159035
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-06-20  Keith Rollin  <krollin@apple.com>
+
+        Remove RefPtr::release() and change calls sites to use WTFMove()
+        https://bugs.webkit.org/show_bug.cgi?id=158369
+
+        Reviewed by Chris Dumez.
+
+        RefPtr::release() releases its managed pointer awkwardly. It's more
+        direct and clearer to use WTFMove to transfer ownership of the managed
+        pointer.
+
+        As part of this cleanup, also change a lot of explicit data types to
+        'auto'.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebCore::StorageAreaImpl::setItem):
+        (WebCore::StorageAreaImpl::removeItem):
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up WebKit.vcxproj directory after switching to CMake.
+
+        * PlatformWin.cmake:
+        * WebKit.vcxproj/Interfaces: Removed.
+        * WebKit.vcxproj/WebKit: Removed.
+        * WebKit.vcxproj/WebKit/resource.h: Removed.
+        * WebKit.vcxproj/WebKitGUID: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDCommon.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebug.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebugWinCairo.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDPostBuild.cmd: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDPreBuild.cmd: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDProduction.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDRelease.props: Removed.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDReleaseWinCairo.props: Removed.
+
 2016-06-07  Csaba Osztrogonác  <ossy@webkit.org>
 
         [Mac][cmake] Unreviewed trivial buildfix after r201689. Just for fun.

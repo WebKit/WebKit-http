@@ -37,6 +37,8 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
         this._instruments = instruments || [];
         this._topDownCallingContextTree = new WebInspector.CallingContextTree(WebInspector.CallingContextTree.Type.TopDown);
         this._bottomUpCallingContextTree = new WebInspector.CallingContextTree(WebInspector.CallingContextTree.Type.BottomUp);
+        this._topFunctionsTopDownCallingContextTree = new WebInspector.CallingContextTree(WebInspector.CallingContextTree.Type.TopFunctionsTopDown);
+        this._topFunctionsBottomUpCallingContextTree = new WebInspector.CallingContextTree(WebInspector.CallingContextTree.Type.TopFunctionsBottomUp);
 
         for (let type of WebInspector.TimelineManager.availableTimelineTypes()) {
             let timeline = WebInspector.Timeline.create(type);
@@ -104,6 +106,16 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
         return this._bottomUpCallingContextTree;
     }
 
+    get topFunctionsTopDownCallingContextTree()
+    {
+        return this._topFunctionsTopDownCallingContextTree;
+    }
+
+    get topFunctionsBottomUpCallingContextTree()
+    {
+        return this._topFunctionsBottomUpCallingContextTree;
+    }
+
     start()
     {
         console.assert(!this._capturing, "Attempted to start an already started session.");
@@ -115,15 +127,17 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
             instrument.startInstrumentation();
     }
 
-    stop()
+    stop(programmatic)
     {
         console.assert(this._capturing, "Attempted to stop an already stopped session.");
         console.assert(!this._readonly, "Attempted to stop a readonly session.");
 
         this._capturing = false;
 
-        for (let instrument of this._instruments)
-            instrument.stopInstrumentation();
+        if (!programmatic) {
+            for (let instrument of this._instruments)
+                instrument.stopInstrumentation();
+        }
     }
 
     saveIdentityToCookie()
@@ -163,6 +177,8 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
 
         this._topDownCallingContextTree.reset();
         this._bottomUpCallingContextTree.reset();
+        this._topFunctionsTopDownCallingContextTree.reset();
+        this._topFunctionsBottomUpCallingContextTree.reset();
 
         for (var timeline of this._timelines.values())
             timeline.reset(suppressEvents);
@@ -291,6 +307,19 @@ WebInspector.TimelineRecording = class TimelineRecording extends WebInspector.Ob
     discontinuitiesInTimeRange(startTime, endTime)
     {
         return this._discontinuities.filter((item) => item.startTime < endTime && item.endTime > startTime);
+    }
+
+    addScriptInstrumentForProgrammaticCapture()
+    {
+        for (let instrument of this._instruments) {
+            if (instrument instanceof WebInspector.ScriptInstrument)
+                return;
+        }
+
+        this.addInstrument(new WebInspector.ScriptInstrument);
+
+        let instrumentTypes = this._instruments.map((instrument) => instrument.timelineRecordType);
+        WebInspector.timelineManager.enabledTimelineTypes = instrumentTypes;
     }
 
     computeElapsedTime(timestamp)

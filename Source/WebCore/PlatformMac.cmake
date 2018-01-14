@@ -361,6 +361,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/avfoundation/MediaSelectionGroupAVFObjC.mm
     platform/graphics/avfoundation/MediaTimeAVFoundation.cpp
 
+    platform/graphics/avfoundation/objc/AVFoundationMIMETypeCache.mm
     platform/graphics/avfoundation/objc/AudioTrackPrivateAVFObjC.mm
     platform/graphics/avfoundation/objc/AudioTrackPrivateMediaSourceAVFObjC.cpp
     platform/graphics/avfoundation/objc/CDMSessionAVContentKeySession.mm
@@ -706,12 +707,12 @@ set(WebCore_FORWARDING_HEADERS_FILES
     platform/cf/RunLoopObserver.h
 
     platform/cocoa/MachSendRight.h
+    platform/cocoa/SoftLinking.h
 
     platform/graphics/cocoa/IOSurface.h
 
     platform/graphics/transforms/AffineTransform.h
 
-    platform/mac/SoftLinking.h
     platform/mac/WebCoreSystemInterface.h
 
     platform/network/cf/CertificateInfo.h
@@ -904,9 +905,8 @@ set(ObjC_BINDINGS_NO_MM
     NonElementParentNode
     ParentNode
     URLUtils
-    WindowBase64
     WindowEventHandlers
-    WindowTimers
+    WindowOrWorkerGlobalScope
     WorkerGlobalScopeIndexedDatabase
     WorkerGlobalScopeNotifications
     XPathNSResolver

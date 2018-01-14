@@ -30,9 +30,33 @@
 
 // @conditional=ENABLE(WEB_RTC)
 
+function initializeRTCPeerConnection(configuration)
+{
+    "use strict";
+
+    if (arguments.length < 1)
+        throw new @TypeError("Not enough arguments");
+
+    if (!@isObject(configuration))
+        throw new @TypeError("RTCPeerConnection argument must be a valid Dictionary");
+
+    // FIXME: Handle errors in a better way than catching and re-throwing (http://webkit.org/b/158936)
+    try {
+        this.@initializeWith(configuration);
+    } catch (e) {
+        const message = e.name === "TypeMismatchError" ? "Invalid RTCPeerConnection constructor arguments"
+            : "Error creating RTCPeerConnection";
+        throw new @TypeError(message);
+    }
+    return this;
+}
+
 function createOffer()
 {
     "use strict";
+
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
 
     const peerConnection = this;
 
@@ -55,6 +79,9 @@ function createAnswer()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
+
     const peerConnection = this;
 
     return @callbacksAndDictionaryOverload(arguments, "createAnswer", function (options) {
@@ -75,6 +102,9 @@ function createAnswer()
 function setLocalDescription()
 {
     "use strict";
+
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
 
     const peerConnection = this;
 
@@ -102,6 +132,9 @@ function setRemoteDescription()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
+
     const peerConnection = this;
 
     const objectInfo = {
@@ -128,6 +161,9 @@ function addIceCandidate()
 {
     "use strict";
 
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
+
     const peerConnection = this;
 
     const objectInfo = {
@@ -153,6 +189,9 @@ function addIceCandidate()
 function getStats()
 {
     "use strict";
+
+    if (!@isRTCPeerConnection(this))
+        return @Promise.@reject(new @TypeError("Function should be called on an RTCPeerConnection"));
 
     const peerConnection = this;
 

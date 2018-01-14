@@ -229,9 +229,9 @@ void ReplacementFragment::removeNodePreservingChildren(PassRefPtr<Node> node)
 
     while (RefPtr<Node> n = node->firstChild()) {
         removeNode(n);
-        insertNodeBefore(n.release(), node.get());
+        insertNodeBefore(WTFMove(n), node.get());
     }
-    removeNode(node);
+    removeNode(WTFMove(node));
 }
 
 void ReplacementFragment::removeNode(PassRefPtr<Node> node)
@@ -678,7 +678,7 @@ void ReplaceSelectionCommand::moveNodeOutOfAncestor(PassRefPtr<Node> prpNode, Pa
     }
     if (!ancestor->firstChild()) {
         insertedNodes.willRemoveNode(ancestor.get());
-        removeNode(ancestor.release());
+        removeNode(WTFMove(ancestor));
     }
 }
 
@@ -914,10 +914,7 @@ void ReplaceSelectionCommand::doApply()
     VisibleSelection selection = endingSelection();
     ASSERT(selection.isCaretOrRange());
     ASSERT(selection.start().deprecatedNode());
-    if (!selection.isNonOrphanedCaretOrRange() || !selection.start().deprecatedNode())
-        return;
-
-    if (!selection.rootEditableElement())
+    if (selection.isNoneOrOrphaned() || !selection.start().deprecatedNode() || !selection.isContentEditable())
         return;
 
     // In plain text only regions, we create style-less fragments, so the inserted content will automatically

@@ -36,16 +36,17 @@ function match(regexp)
     }
 
     if (regexp != null) {
-        var matcher = regexp[@symbolMatch];
+        var matcher = regexp.@matchSymbol;
         if (matcher != @undefined)
             return matcher.@call(regexp, this);
     }
 
     let thisString = @toString(this);
     let createdRegExp = @regExpCreate(regexp, @undefined);
-    return createdRegExp[@symbolMatch](thisString);
+    return createdRegExp.@matchSymbol(thisString);
 }
 
+@globalPrivate
 function repeatSlowPath(string, count)
 {
     "use strict";
@@ -84,7 +85,7 @@ function repeatSlowPath(string, count)
     }
 }
 
-
+@globalPrivate
 function repeatCharactersSlowPath(string, count)
 {
     "use strict";
@@ -202,6 +203,7 @@ function padEnd(maxLength/*, fillString*/)
     return string + truncatedStringFiller;
 }
 
+@globalPrivate
 function hasObservableSideEffectsForStringReplace(regexp, replacer) {
     if (replacer !== @regExpPrototypeSymbolReplace)
         return true;
@@ -233,7 +235,7 @@ function replace(search, replace)
     }
 
     if (search != null) {
-        let replacer = search[@symbolReplace];
+        let replacer = search.@replaceSymbol;
         if (replacer !== @undefined) {
             if (!@hasObservableSideEffectsForStringReplace(search, replacer))
                 return @toString(this).@replaceUsingRegExp(search, replace);
@@ -291,14 +293,14 @@ function search(regexp)
     }
 
     if (regexp != null) {
-        var searcher = regexp[@symbolSearch];
+        var searcher = regexp.@searchSymbol;
         if (searcher != @undefined)
             return searcher.@call(regexp, this);
     }
 
     var thisString = @toString(this);
     var createdRegExp = @regExpCreate(regexp, @undefined);
-    return createdRegExp[@symbolSearch](thisString);
+    return createdRegExp.@searchSymbol(thisString);
 }
 
 function split(separator, limit)
@@ -312,7 +314,7 @@ function split(separator, limit)
     }
     
     if (separator != null) {
-        var splitter = separator[@symbolSplit];
+        var splitter = separator.@splitSymbol;
         if (splitter != @undefined)
             return splitter.@call(separator, this, limit);
     }

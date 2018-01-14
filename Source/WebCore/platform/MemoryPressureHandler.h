@@ -69,6 +69,8 @@ public:
         m_lowMemoryHandler = handler;
     }
 
+    void jettisonExpensiveObjectsOnTopLevelNavigation();
+
     bool isUnderMemoryPressure() const { return m_underMemoryPressure; }
     void setUnderMemoryPressure(bool b) { m_underMemoryPressure = b; }
 
@@ -122,6 +124,7 @@ public:
     WEBCORE_EXPORT void releaseMemory(Critical, Synchronous = Synchronous::No);
 
 private:
+    void platformInitialize();
     void releaseNoncriticalMemory();
     void releaseCriticalMemory(Synchronous);
 

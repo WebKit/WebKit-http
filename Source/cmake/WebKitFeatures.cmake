@@ -1,3 +1,13 @@
+# The settings in this file are the WebKit project default values, and
+# are recommended for most ports. Ports can override these settings in
+# Options*.cmake, but should do so only if there is strong reason to
+# deviate from the defaults of the WebKit project (e.g. if the feature
+# requires platform-specific implementation that does not exist).
+#
+# Most defaults in this file affect end users but not developers.
+# Defaults for development builds are set in FeatureList.pm. Most all
+# features enabled here should also be enabled in FeatureList.pm.
+
 set(_WEBKIT_AVAILABLE_OPTIONS "")
 
 set(PUBLIC YES)
@@ -168,7 +178,6 @@ macro(WEBKIT_OPTION_BEGIN)
     WEBKIT_OPTION_DEFINE(ENABLE_RUBBER_BANDING "Toggle rubber banding support" PRIVATE OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_SAMPLING_PROFILER "Toggle sampling profiler support" PRIVATE ON)
     WEBKIT_OPTION_DEFINE(ENABLE_SERVICE_CONTROLS "Toggle service controls support" PRIVATE OFF)
-    WEBKIT_OPTION_DEFINE(ENABLE_SHADOW_DOM "Toggle shadow dom" PRIVATE OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_SMOOTH_SCROLLING "Toggle smooth scrolling" PRIVATE OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_SPEECH_SYNTHESIS "Toggle Speech Synthesis API support)" PRIVATE OFF)
     WEBKIT_OPTION_DEFINE(ENABLE_SPELLCHECK "Toggle Spellchecking support (requires Enchant)" PRIVATE OFF)

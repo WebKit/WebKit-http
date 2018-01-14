@@ -34,8 +34,6 @@ namespace WTF {
 template<typename T> class RefPtr;
 template<typename T> RefPtr<T> adoptRef(T*);
 
-enum HashTableDeletedValueType { HashTableDeletedValue };
-
 template<typename T> class RefPtr {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -49,8 +47,8 @@ public:
     ALWAYS_INLINE RefPtr(const RefPtr& o) : m_ptr(o.m_ptr) { refIfNotNull(m_ptr); }
     template<typename U> RefPtr(const RefPtr<U>& o) : m_ptr(o.get()) { refIfNotNull(m_ptr); }
 
-    ALWAYS_INLINE RefPtr(RefPtr&& o) : m_ptr(o.release().leakRef()) { }
-    template<typename U> RefPtr(RefPtr<U>&& o) : m_ptr(o.release().leakRef()) { }
+    ALWAYS_INLINE RefPtr(RefPtr&& o) : m_ptr(o.leakRef()) { }
+    template<typename U> RefPtr(RefPtr<U>&& o) : m_ptr(o.leakRef()) { }
 
     // See comments in PassRefPtr.h for an explanation of why this takes a const reference.
     template<typename U> RefPtr(const PassRefPtr<U>&);

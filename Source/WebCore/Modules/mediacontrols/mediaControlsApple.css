@@ -764,6 +764,10 @@ video:-webkit-full-screen::-webkit-media-controls-panel .volume-box {
     border: none;
 }
 
+video:-webkit-full-screen::-webkit-media-controls-panel .volume-box:not(.uses-ltr-user-interface-layout-direction) {
+    transform: translateX(23px) scaleX(-1);
+}
+
 video:-webkit-full-screen::-webkit-media-controls-volume-slider {
     -webkit-transform: none;
     background-color: transparent;
@@ -1131,4 +1135,10 @@ audio::-webkit-media-controls-wireless-playback-status.hidden {
 video::-webkit-media-controls-panel.picture-in-picture {
     opacity: 0;
     pointer-events: none;
+}
+
+video:-webkit-full-screen::-webkit-media-controls-panel .picture-in-picture-button {
+    margin-top: 7px;
+    margin-right: 24px;
+    margin-left: 0px;
 }

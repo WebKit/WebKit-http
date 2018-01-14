@@ -40,8 +40,6 @@ public:
 
     static const bool needsDestruction = false;
 
-    static const bool hasStaticPropertyTable = true;
-
     static TestGlobalObject* toWrapped(JSC::JSValue);
     static void destroy(JSC::JSCell*);
 
@@ -64,7 +62,7 @@ protected:
         ASSERT(inherits(info()));
     }
 
-    void finishCreation(JSC::VM&);
+    void finishCreation(JSC::VM&, JSC::JSProxy*);
 };
 
 class JSTestGlobalObjectOwner : public JSC::WeakHandleOwner {

@@ -39,9 +39,11 @@
 #include "LoaderStrategy.h"
 #include "MainFrame.h"
 #include "NodeRenderStyle.h"
+#include "Page.h"
 #include "PlatformStrategies.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "StyleFontSizeFunctions.h"
 #include "StyleResolver.h"
 #include "Text.h"
 
@@ -62,6 +64,15 @@ static void ensurePlaceholderStyle(Document& document)
     placeholderStyle = RenderStyle::createPtr().release();
     placeholderStyle->setDisplay(NONE);
     placeholderStyle->setIsPlaceholderStyle();
+
+    FontCascadeDescription fontDescription;
+    fontDescription.setOneFamily(standardFamily);
+    fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
+    float size = Style::fontSizeForKeyword(CSSValueMedium, false, document);
+    fontDescription.setSpecifiedSize(size);
+    fontDescription.setComputedSize(size);
+    placeholderStyle->setFontDescription(fontDescription);
+
     placeholderStyle->fontCascade().update(&document.fontSelector());
 }
 
@@ -318,12 +329,10 @@ void TreeResolver::pushParent(Element& element, const RenderStyle& style, Change
         pushScope(*shadowRoot);
         parent.didPushScope = true;
     }
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     else if (is<HTMLSlotElement>(element) && downcast<HTMLSlotElement>(element).assignedNodes()) {
         pushEnclosingScope();
         parent.didPushScope = true;
     }
-#endif
 
     m_parentStack.append(WTFMove(parent));
 }

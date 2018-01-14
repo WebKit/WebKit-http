@@ -309,7 +309,7 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingRelease)
 
     DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
-    map.add(ptr.release(), 0);
+    map.add(WTFMove(ptr), 0);
 
     EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
 }
@@ -373,7 +373,7 @@ TEST(WTF_HashMap, RefPtrKey_AddUsingReleaseKeyAlreadyPresent)
 
     {
         RefPtr<RefLogger> ptr2(&a);
-        auto addResult = map.add(ptr2.release(), 0);
+        auto addResult = map.add(WTFMove(ptr2), 0);
         EXPECT_FALSE(addResult.isNewEntry);
     }
 
@@ -419,7 +419,7 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingRelease)
 
     DerivedRefLogger a("a");
     RefPtr<RefLogger> ptr(&a);
-    map.set(ptr.release(), 0);
+    map.set(WTFMove(ptr), 0);
 
     EXPECT_STREQ("ref(a) ", takeLogStr().c_str());
 }
@@ -481,7 +481,7 @@ TEST(WTF_HashMap, RefPtrKey_SetUsingReleaseKeyAlreadyPresent)
 
     {
         RefPtr<RefLogger> ptr2(&a);
-        auto addResult = map.set(ptr2.release(), 1);
+        auto addResult = map.set(WTFMove(ptr2), 1);
         EXPECT_FALSE(addResult.isNewEntry);
         EXPECT_EQ(1, map.get(ptr.get()));
     }
@@ -700,5 +700,197 @@ TEST(WTF_HashMap, RefPtrNotZeroedBeforeDeref)
     EXPECT_TRUE(observer->observedBucket == observer.get() || observer->observedBucket == RefPtr<DerefObserver>::hashTableDeletedValue());
     EXPECT_EQ(observer->count, 0u);
 }
+
+TEST(WTF_HashMap, Ref_Key)
+{
+    {
+        HashMap<Ref<RefLogger>, int> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<Ref<RefLogger>, int> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.set(WTFMove(ref), 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<Ref<RefLogger>, int> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> refA(a);
+        map.add(WTFMove(refA), 1);
+
+        Ref<RefLogger> refA2(a);
+        map.set(WTFMove(refA2), 1);
+    }
+
+    ASSERT_STREQ("ref(a) ref(a) deref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<Ref<RefLogger>, int> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.ensure(WTFMove(ref), []() { 
+            return 1; 
+        });
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<Ref<RefLogger>, int> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+        
+        auto it = map.find(&a);
+        ASSERT_TRUE(it != map.end());
+        
+        ASSERT_EQ(it->key.ptr(), &a);
+        ASSERT_EQ(it->value, 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<Ref<RefLogger>, int> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+
+        map.remove(&a);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<Ref<RefLogger>, int> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(WTFMove(ref), 1);
+
+        int i = map.take(&a);
+        ASSERT_EQ(i, 1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+}
+
+TEST(WTF_HashMap, Ref_Value)
+{
+    {
+        HashMap<int, Ref<RefLogger>> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.set(1, WTFMove(ref));
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> refA(a);
+        map.add(1, WTFMove(refA));
+
+        RefLogger b("b");
+        Ref<RefLogger> refB(b);
+        map.set(1, WTFMove(refB));
+    }
+
+    ASSERT_STREQ("ref(a) ref(b) deref(a) deref(b) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+        
+        auto aGet = map.get(1);
+        ASSERT_EQ(aGet, &a);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+        
+        auto emptyGet = map.get(1);
+        ASSERT_TRUE(emptyGet == nullptr);
+    }
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+        
+        auto aOut = map.take(1);
+        ASSERT_TRUE(static_cast<bool>(aOut));
+        ASSERT_EQ(&a, aOut.value().ptr());
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+        
+        auto emptyTake = map.take(1);
+        ASSERT_FALSE(static_cast<bool>(emptyTake));
+    }
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+
+        RefLogger a("a");
+        Ref<RefLogger> ref(a);
+        map.add(1, WTFMove(ref));
+        map.remove(1);
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+
+    {
+        HashMap<int, Ref<RefLogger>> map;
+
+        RefLogger a("a");
+        map.ensure(1, [&]() { 
+            Ref<RefLogger> ref(a);
+            return ref; 
+        });
+    }
+
+    ASSERT_STREQ("ref(a) deref(a) ", takeLogStr().c_str());
+}
+
+
 
 } // namespace TestWebKitAPI

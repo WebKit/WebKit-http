@@ -32,17 +32,6 @@
 namespace TestWebKitAPI {
 namespace Util {
 
-void run(bool* done)
-{
-    while (!*done)
-        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
-}
-
-void sleep(double seconds)
-{
-    usleep(seconds * 1000000);
-}
-
 std::string toSTD(NSString *string)
 {
     if (!string)

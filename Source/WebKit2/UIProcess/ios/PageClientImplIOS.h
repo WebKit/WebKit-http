@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -152,8 +152,6 @@ private:
     void overflowScrollWillStartScroll() override;
     void overflowScrollDidEndScroll() override;
 
-    void didFinishDrawingPagesToPDF(const IPC::DataReference&) override;
-
     // Auxiliary Client Creation
 #if ENABLE(FULLSCREEN_API)
     virual WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() override;
@@ -193,7 +191,7 @@ private:
 
     void didRestoreScrollPosition() override;
 
-    UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
+    WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
     WKContentView *m_contentView;
     WKWebView *m_webView;

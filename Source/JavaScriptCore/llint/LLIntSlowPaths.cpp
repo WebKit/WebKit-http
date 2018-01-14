@@ -40,6 +40,7 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITExceptions.h"
+#include "JITWorklist.h"
 #include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
@@ -49,6 +50,7 @@
 #include "JSString.h"
 #include "JSWithScope.h"
 #include "LLIntCommon.h"
+#include "LLIntData.h"
 #include "LLIntExceptions.h"
 #include "LowLevelInterpreter.h"
 #include "ObjectConstructor.h"
@@ -325,6 +327,8 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         return false;
     }
     
+    JITWorklist::instance()->poll(vm);
+    
     switch (codeBlock->jitType()) {
     case JITCode::BaselineJIT: {
         if (Options::verboseOSR())
@@ -333,24 +337,8 @@ inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
         return true;
     }
     case JITCode::InterpreterThunk: {
-        CompilationResult result = JIT::compile(&vm, codeBlock, JITCompilationCanFail);
-        switch (result) {
-        case CompilationFailed:
-            CODEBLOCK_LOG_EVENT(codeBlock, "delayJITCompile", ("compilation failed"));
-            if (Options::verboseOSR())
-                dataLogF("    JIT compilation failed.\n");
-            codeBlock->dontJITAnytimeSoon();
-            return false;
-        case CompilationSuccessful:
-            if (Options::verboseOSR())
-                dataLogF("    JIT compilation successful.\n");
-            codeBlock->ownerScriptExecutable()->installCode(codeBlock);
-            codeBlock->jitSoon();
-            return true;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            return false;
-        }
+        JITWorklist::instance()->compileLater(codeBlock);
+        return codeBlock->jitType() == JITCode::BaselineJIT;
     }
     default:
         dataLog("Unexpected code block in LLInt: ", *codeBlock, "\n");
@@ -478,7 +466,17 @@ LLINT_SLOW_PATH_DECL(replace)
 
 LLINT_SLOW_PATH_DECL(stack_check)
 {
-    LLINT_BEGIN();
+    VM& vm = exec->vm();
+    VMEntryFrame* vmEntryFrame = vm.topVMEntryFrame;
+    CallFrame* callerFrame = exec->callerFrame(vmEntryFrame);
+    if (!callerFrame) {
+        callerFrame = exec;
+        vmEntryFrame = vm.topVMEntryFrame;
+    }
+    NativeCallFrameTracerWithRestore tracer(&vm, vmEntryFrame, callerFrame);
+
+    LLINT_SET_PC_FOR_STUBS();
+
 #if LLINT_SLOW_PATH_TRACING
     dataLogF("Checking stack height with exec = %p.\n", exec);
     dataLogF("CodeBlock = %p.\n", exec->codeBlock());
@@ -505,10 +503,9 @@ LLINT_SLOW_PATH_DECL(stack_check)
         LLINT_RETURN_TWO(pc, 0);
 #endif
 
-    vm.topCallFrame = exec;
     ErrorHandlingScope errorScope(vm);
-    vm.throwException(exec, createStackOverflowError(exec));
-    pc = returnToThrow(exec);
+    throwStackOverflowError(callerFrame);
+    pc = returnToThrow(callerFrame);
     LLINT_RETURN_TWO(pc, exec);
 }
 
@@ -587,6 +584,9 @@ static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc,
     Structure* structure = baseCell->structure();
 
     if (structure->typeInfo().prohibitsPropertyCaching())
+        return;
+    
+    if (structure->needImpurePropertyWatchpoint())
         return;
 
     if (structure->isDictionary()) {
@@ -1363,47 +1363,69 @@ LLINT_SLOW_PATH_DECL(slow_path_size_frame_for_varargs)
     LLINT_RETURN_CALLEE_FRAME(execCallee);
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_call_varargs)
+LLINT_SLOW_PATH_DECL(slow_path_size_frame_for_forward_arguments)
+{
+    LLINT_BEGIN();
+    // This needs to:
+    // - Set up a call frame with the same arguments as the current frame.
+
+    unsigned numUsedStackSlots = -pc[5].u.operand;
+
+    unsigned arguments = sizeFrameForForwardArguments(exec, &vm.interpreter->stack(), numUsedStackSlots);
+    LLINT_CALL_CHECK_EXCEPTION(exec, exec);
+
+    ExecState* execCallee = calleeFrameForVarargs(exec, numUsedStackSlots, arguments + 1);
+
+    vm.varargsLength = arguments;
+    vm.newCallFrameReturnValue = execCallee;
+
+    LLINT_RETURN_CALLEE_FRAME(execCallee);
+}
+
+enum class SetArgumentsWith {
+    Object,
+    CurrentArguments
+};
+
+inline SlowPathReturnType varargsSetup(ExecState* exec, Instruction* pc, CodeSpecializationKind kind, SetArgumentsWith set)
 {
     LLINT_BEGIN_NO_SET_PC();
     // This needs to:
     // - Figure out what to call and compile it if necessary.
     // - Return a tuple of machine code address to call and the new call frame.
-    
+
     JSValue calleeAsValue = LLINT_OP_C(2).jsValue();
-    
+
     ExecState* execCallee = vm.newCallFrameReturnValue;
 
-    setupVarargsFrameAndSetThis(exec, execCallee, LLINT_OP_C(3).jsValue(), LLINT_OP_C(4).jsValue(), pc[6].u.operand, vm.varargsLength);
-    LLINT_CALL_CHECK_EXCEPTION(exec, exec);
-    
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
+    if (set == SetArgumentsWith::Object) {
+        setupVarargsFrameAndSetThis(exec, execCallee, LLINT_OP_C(3).jsValue(), LLINT_OP_C(4).jsValue(), pc[6].u.operand, vm.varargsLength);
+        LLINT_CALL_CHECK_EXCEPTION(exec, exec);
+    } else
+        setupForwardArgumentsFrameAndSetThis(exec, execCallee, LLINT_OP_C(3).jsValue(), vm.varargsLength);
+
     execCallee->setCallerFrame(exec);
+    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
     exec->setCurrentVPC(pc);
-    
-    return setUpCall(execCallee, pc, CodeForCall, calleeAsValue);
+
+    return setUpCall(execCallee, pc, kind, calleeAsValue);
 }
-    
+
+LLINT_SLOW_PATH_DECL(slow_path_call_varargs)
+{
+    return varargsSetup(exec, pc, CodeForCall, SetArgumentsWith::Object);
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_tail_call_forward_arguments)
+{
+    return varargsSetup(exec, pc, CodeForCall, SetArgumentsWith::CurrentArguments);
+}
+
 LLINT_SLOW_PATH_DECL(slow_path_construct_varargs)
 {
-    LLINT_BEGIN_NO_SET_PC();
-    // This needs to:
-    // - Figure out what to call and compile it if necessary.
-    // - Return a tuple of machine code address to call and the new call frame.
-    
-    JSValue calleeAsValue = LLINT_OP_C(2).jsValue();
-    
-    ExecState* execCallee = vm.newCallFrameReturnValue;
-    
-    setupVarargsFrameAndSetThis(exec, execCallee, LLINT_OP_C(3).jsValue(), LLINT_OP_C(4).jsValue(), pc[6].u.operand, vm.varargsLength);
-    LLINT_CALL_CHECK_EXCEPTION(exec, exec);
-    
-    execCallee->uncheckedR(JSStack::Callee) = calleeAsValue;
-    execCallee->setCallerFrame(exec);
-    exec->setCurrentVPC(pc);
-    
-    return setUpCall(execCallee, pc, CodeForConstruct, calleeAsValue);
+    return varargsSetup(exec, pc, CodeForConstruct, SetArgumentsWith::Object);
 }
+
     
 LLINT_SLOW_PATH_DECL(slow_path_call_eval)
 {
@@ -1622,5 +1644,23 @@ extern "C" NO_RETURN_DUE_TO_CRASH void llint_crash()
 {
     CRASH();
 }
+
+#if ENABLE(LLINT_STATS)
+
+LLINT_SLOW_PATH_DECL(count_opcode)
+{
+    OpcodeID opcodeID = exec->vm().interpreter->getOpcodeID(pc[0].u.opcode);
+    Data::opcodeStats(opcodeID).count++;
+    LLINT_END_IMPL();
+}
+
+LLINT_SLOW_PATH_DECL(count_opcode_slow_path)
+{
+    OpcodeID opcodeID = exec->vm().interpreter->getOpcodeID(pc[0].u.opcode);
+    Data::opcodeStats(opcodeID).slowPathCount++;
+    LLINT_END_IMPL();
+}
+
+#endif // ENABLE(LLINT_STATS)
 
 } } // namespace JSC::LLInt

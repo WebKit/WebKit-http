@@ -1,3 +1,405 @@
+2016-06-21  Said Abou-Hallawa  <sabouhallawa@apple,com>
+
+        Add system tracing points for requestAnimationFrame() workflow
+        https://bugs.webkit.org/show_bug.cgi?id=158723
+
+        Reviewed by Simon Fraser.
+
+        Define new trace score codes for requestAnimationFrame().
+
+        * wtf/SystemTracing.h:
+        (WTF::TracePoint):
+        (WTF::TraceScope::TraceScope):
+        (WTF::TraceScope::~TraceScope):
+
+2016-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202136.
+        https://bugs.webkit.org/show_bug.cgi?id=158932
+
+        JSBench wasn't regressed by r202002 and r202111 on iOS after
+        all (Requested by rniwa_ on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r202002 and r202111."
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+        http://trac.webkit.org/changeset/202136
+
+2016-06-17  Chris Dumez  <cdumez@apple.com>
+
+        Optimize parseCacheHeader() by using StringView
+        https://bugs.webkit.org/show_bug.cgi?id=158891
+
+        Reviewed by Darin Adler.
+
+        Add a StringView::find() overload which takes a CharacterMatchFunction
+        to match the one on String.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::find):
+
+2016-06-17  Mark Lam  <mark.lam@apple.com>
+
+        OOM Assertion failure in JSON.stringify.
+        https://bugs.webkit.org/show_bug.cgi?id=158794
+        <rdar://problem/26826254>
+
+        Reviewed by Saam Barati.
+
+        The bug was actually in StringBuilder::appendQuotedJSONString() where it failed
+        to detect an imminent unsigned int overflow.  The fix is to use Checked<unsigned>
+        for the needed math, and RELEASE_ASSERT afterwards that we did not overflow.
+
+        I also added more assertions to detect sooner if any there are any problems with
+        StringBuilder's m_buffer or m_length being incorrectly sized.  These assertions
+        have been run on the JSC and layout tests without any issue.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::resize):
+        (WTF::StringBuilder::allocateBuffer):
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        (WTF::StringBuilder::reallocateBuffer<LChar>):
+        (WTF::StringBuilder::reallocateBuffer<UChar>):
+        (WTF::StringBuilder::reserveCapacity):
+        (WTF::StringBuilder::appendUninitializedSlow):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::appendQuotedJSONString):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::swap):
+
+2016-06-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should be concurrent
+        https://bugs.webkit.org/show_bug.cgi?id=158755
+
+        Reviewed by Geoffrey Garen.
+        
+        The concurrent baseline JIT needs to be able to clone bytecode to get a consistent snapshot.
+        So, this adds such a method.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        (WTF::RefCountedArray::clone):
+
+2016-06-16  Chris Dumez  <cdumez@apple.com>
+
+        No need to ref connection in lambda inside NetworkResourceLoader::tryStoreAsCacheEntry()
+        https://bugs.webkit.org/show_bug.cgi?id=158862
+
+        Reviewed by Darin Adler.
+
+        Add NoncopyableFunction constructor that takes a nullptr_t in, in order
+        to match the std::function API and make porting from one to the other
+        easier.
+
+        * wtf/NoncopyableFunction.h:
+
+2016-06-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r202002 and r202111.
+
+        Ryosuke says this was a JSBench regression on iOS
+
+        Reverted changesets:
+
+        "Make HashMap and HashSet work with Refs"
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+        http://trac.webkit.org/changeset/202002
+
+        "Improve HashMap and HashSet support for Ref"
+        https://bugs.webkit.org/show_bug.cgi?id=158789
+        http://trac.webkit.org/changeset/202111
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        [Cocoa] Clean up / optimize ResourceResponse::platformLazyInit(InitLevel)
+        https://bugs.webkit.org/show_bug.cgi?id=158809
+
+        Reviewed by Darin Adler.
+
+        Add toAtomicString() method to StringView to avoid having to call toString()
+        and then atomizing the String at call sites.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::toAtomicString):
+
+2016-06-15  Sam Weinig  <sam@webkit.org>
+
+        Improve HashMap and HashSet support for Ref
+        https://bugs.webkit.org/show_bug.cgi?id=158789
+
+        Reviewed by Chris Dumez.
+
+        Tests: Add more cases to WTF_HashMap.Ref_Key, WTF_HashMap.Ref_Value and WTF_HashSet.Ref
+
+        * wtf/HashMap.h:
+        * wtf/HashSet.h:
+        Add a MappedTakeType typedef and rework the take functions to use it and HashTraits::take(...).
+
+        * wtf/HashTraits.h:
+        (WTF::GenericHashTraits::assignToEmpty):
+        Move to GenericHashTraits rather than GenericHashTraitsBase, since it is not different
+        between integral and non-integral HashTraits.
+
+        (WTF::GenericHashTraits::take):
+        Add a trait function for take that defaults as a forward. This allows us to override take
+        just like we do with get/peek.
+
+        (WTF::HashTraits<Ref<P>>::emptyValue):
+        Remove unnecessary explicit construction.
+
+        (WTF::HashTraits<Ref<P>>::peek):
+        Fix assertion that could happen if you did a HashMap.get() on an empty Ref value.
+
+        (WTF::HashTraits<Ref<P>>::take):
+        Make the TakeType of a Ref<P> be Optional<Ref<P>>, to avoid having empty
+        Refs returned from HashMap and HashSet. Implement an explicit take() function to
+        construct one.
+
+        (WTF::HashTraits<Ref<P>>::customDeleteBucket): Deleted.
+        Remove unnecessary customDeleteBucket implementation. Ref does not assign nullptr to
+        it's m_ptr in destruction, so there is no dead store to avoid here.
+
+        * wtf/Ref.h:
+        (WTF::Ref::ptrAllowingHashTableEmptyValue):
+        Add HashTrait helper to allow getting the value of m_ptr even when it is null. This
+        allows us to avoid a branch in HashTraits<Ref<P>>::peek().
+
+2016-06-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Only Mac port needs ObjC API for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=158780
+
+        Reviewed by Philippe Normand.
+
+        * wtf/FeatureDefines.h:
+
+2016-06-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow up patch for r202092
+        https://bugs.webkit.org/show_bug.cgi?id=158661
+
+        During checking Windows port on EWS, accidentally introduce the regression.
+
+        * wtf/Platform.h:
+
+2016-06-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Move calling convention flags to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=158661
+
+        Reviewed by Keith Miller.
+
+        * wtf/Platform.h:
+
+2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Honor bidi unicode codepoints
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        <rdar://problem/26527378>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/unicode/CharacterNames.h:
+
+2016-06-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202057.
+        https://bugs.webkit.org/show_bug.cgi?id=158749
+
+        This change broke the Windows build. (Requested by ryanhaddad
+        on #webkit).
+
+        Reverted changeset:
+
+        "Honor bidi unicode codepoints"
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        http://trac.webkit.org/changeset/202057
+
+2016-06-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Honor bidi unicode codepoints
+        https://bugs.webkit.org/show_bug.cgi?id=149170
+        <rdar://problem/26527378>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/unicode/CharacterNames.h:
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * wtf/UniqueRef.h:
+        (WTF::UniqueRef::operator->):
+        (WTF::UniqueRef::operator T&):
+        (WTF::UniqueRef::operator const T&):
+        Added operator T& to avoid unneeded .get() calls.
+
+2016-06-13  Sam Weinig  <sam@webkit.org>
+
+        Make HashMap and HashSet work with Refs
+        https://bugs.webkit.org/show_bug.cgi?id=158638
+
+        Reviewed by Darin Adler.
+
+        * wtf/GetPtr.h:
+        Move HashTableDeletedValueType and HashTableEmptyValueType here, as they are now shared
+        by more than one smart pointer. This file should probably be renamed to something else
+        at some point to indicate that it contains helpers for pointer and ref related functionality.
+
+        * wtf/HashFunctions.h:
+        Add a DefaultHash for Refs. Customize the PtrHash to indicate that it is not safe to compare
+        to empty or deleted Refs.
+
+        * wtf/HashMap.h:
+        (WTF::HashMapTranslator::equal):
+        (WTF::HashMapTranslator::translate):
+        (WTF::HashMapEnsureTranslator::equal):
+        (WTF::HashMapEnsureTranslator::translate):
+        * wtf/HashSet.h:
+        (WTF::IdentityExtractor::extract):
+        (WTF::HashSetTranslator::hash):
+        (WTF::HashSetTranslator::equal):
+        (WTF::HashSetTranslator::translate):
+        * wtf/HashTable.h:
+        (WTF::IdentityHashTranslator::hash):
+        (WTF::IdentityHashTranslator::equal):
+        (WTF::IdentityHashTranslator::translate):
+        Use the new assignToEmpty trait function to allow uninitialized Ref's to be safely assigned to.
+
+        * wtf/HashTraits.h:
+        (WTF::HashTraits<Ref<P>>::emptyValue):
+        (WTF::HashTraits<Ref<P>>::isEmptyValue):
+        (WTF::HashTraits<Ref<P>>::assignToEmpty):
+        (WTF::HashTraits<Ref<P>>::peek):
+        (WTF::HashTraits<Ref<P>>::customDeleteBucket):
+        Add custom HashTraits for Ref. Also, introduce a new trait function, assignToEmpty, for use
+        in translation assignments. This is necessary since the default assignment operator for Ref
+        will not allow assignment to the empty Ref, which we need to do here.
+
+        * wtf/Ref.h:
+        (WTF::Ref::operator=):
+        (WTF::Ref::Ref):
+        (WTF::Ref::isHashTableDeletedValue):
+        (WTF::Ref::hashTableDeletedValue):
+        (WTF::Ref::isHashTableEmptyValue):
+        (WTF::Ref::hashTableEmptyValue):
+        Add explicit constructors/predicates for making deleted/empty Refs.
+
+        (WTF::Ref::assignToHashTableEmptyValue):
+        Add a special function that allows assignment to an empty Ref, which the
+        assignment operator does not.
+        
+        (WTF::IsSmartPtr):
+        Add an IsSmartPtr override to indicate that Ref is a smart pointer.
+
+        * wtf/RefPtr.h:
+        Move HashTableDeletedValueType to GetPtr.h.
+
+2016-06-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Stack overflow at RefPtr::release on Windows port since r201782
+        https://bugs.webkit.org/show_bug.cgi?id=158687
+
+        Reviewed by Chris Dumez.
+
+        RefPtr::release calls RefPtr::RefPtr, and RefPtr::RefPtr calls
+        RefPtr::release.
+
+        RefPtr::RefPtr does not need to call RefPtr::release.
+
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::RefPtr): Do not call RefPtr::release.
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Addressing post-review comments after r201978.
+        https://bugs.webkit.org/show_bug.cgi?id=158649
+        <rdar://problem/13258122>
+
+        Unreviewed.
+
+        * wtf/text/StringCommon.h:
+        (WTF::equal):
+        (WTF::naiveEqualWithoutPerformingUnicodeNormalization): Deleted.
+
+2016-06-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Map commonly used Chinese Windows font names to names present on Cocoa operating systems
+        https://bugs.webkit.org/show_bug.cgi?id=158649
+        <rdar://problem/13258122>
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringCommon.h:
+        (WTF::naiveEqualWithoutPerformingUnicodeNormalization): Added.
+
+2016-06-11  Chris Dumez  <cdumez@apple.com>
+
+        WorkerNavigator is missing some attributes
+        https://bugs.webkit.org/show_bug.cgi?id=158593
+        <rdar://problem/26731334>
+
+        Reviewed by Darin Adler.
+
+        * wtf/PlatformUserPreferredLanguages.h:
+        * wtf/PlatformUserPreferredLanguagesWin.cpp:
+        (WTF::platformLanguage):
+        (WTF::platformUserPreferredLanguages):
+
+        Make platformUserPreferredLanguages() thread safe on Windows. The
+        Mac and Unix implementations are already thread-safe.
+
+        HAS_FASTCALL_CALLING_CONVENTION is changed to COMPILER_SUPPORTS(FASTCALL_CALLING_CONVENTION).
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce WTF::UniqueRef
+        https://bugs.webkit.org/show_bug.cgi?id=158596
+
+        Reviewed by Brady Eidson.
+
+        WTF::UniqueRef is like a std::unique_ptr that is guaranteed to be non-null.
+        std::make_unique returns a non-null value that is put into a std::unique_ptr, a type
+        that could contain null values.  To be able to pass such values around and store them
+        without wondering if they are null, we now have WTF::UniqueRef which cannot be null.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/UniqueRef.h: Added.
+        (WTF::makeUniqueRef):
+        (WTF::UniqueRef::UniqueRef):
+        (WTF::UniqueRef::get):
+        (WTF::UniqueRef::operator&):
+        (WTF::UniqueRef::operator->):
+
+2016-06-09  Brady Eidson  <beidson@apple.com>
+
+        Unaddressed review feedback from r201872
+
+        * wtf/CrossThreadTask.h:
+        (WTF::callFunctionForCrossThreadTask): Fix typo.
+
+2016-06-09  Brady Eidson  <beidson@apple.com>
+
+        Greatly simplify CrossThreadTask.h.
+        https://bugs.webkit.org/show_bug.cgi?id=158542
+
+        Reviewed by Darin Adler.
+
+        * wtf/CrossThreadTask.h:
+        (WTF::crossThreadCopy):
+        (WTF::callFunctionForCrossThreadTaskImpl):
+        (WTF::callFunctionForCrossThreadTask):
+        (WTF::createCrossThreadTask):
+        (WTF::callMemberFunctionForCrossThreadTaskImpl):
+        (WTF::callMemberFunctionForCrossThreadTask):
+
 2016-06-08  Brady Eidson  <beidson@apple.com>
 
         Make CrossThreadCopier more efficient (fewer copies!).

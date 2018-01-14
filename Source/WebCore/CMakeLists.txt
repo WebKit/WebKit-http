@@ -5,6 +5,7 @@ set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
 set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/airplay"
+    "${WEBCORE_DIR}/Modules/applepay"
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/fetch"
@@ -610,6 +611,10 @@ set(WebCore_NON_SVG_IDL_FILES
     page/History.idl
     page/Location.idl
     page/Navigator.idl
+    page/NavigatorConcurrentHardware.idl
+    page/NavigatorID.idl
+    page/NavigatorLanguage.idl
+    page/NavigatorOnLine.idl
     page/Performance.idl
     page/PerformanceEntry.idl
     page/PerformanceEntryList.idl
@@ -623,9 +628,8 @@ set(WebCore_NON_SVG_IDL_FILES
     page/UserMessageHandlersNamespace.idl
     page/WebKitNamespace.idl
     page/WebKitPoint.idl
-    page/WindowBase64.idl
     page/WindowEventHandlers.idl
-    page/WindowTimers.idl
+    page/WindowOrWorkerGlobalScope.idl
     page/WorkerNavigator.idl
 
     plugins/DOMMimeType.idl
@@ -1054,6 +1058,7 @@ set(WebCore_SOURCES
     accessibility/AccessibilityARIAGridRow.cpp
     accessibility/AccessibilityAttachment.cpp
     accessibility/AccessibilityImageMapLink.cpp
+    accessibility/AccessibilityLabel.cpp
     accessibility/AccessibilityList.cpp
     accessibility/AccessibilityListBox.cpp
     accessibility/AccessibilityListBoxOption.cpp
@@ -1143,6 +1148,7 @@ set(WebCore_SOURCES
     bindings/js/JSDocumentFragmentCustom.cpp
     bindings/js/JSDocumentTypeCustom.cpp
     bindings/js/JSElementCustom.cpp
+    bindings/js/JSErrorEventCustom.cpp
     bindings/js/JSErrorHandler.cpp
     bindings/js/JSEventCustom.cpp
     bindings/js/JSEventListener.cpp
@@ -1203,7 +1209,6 @@ set(WebCore_SOURCES
     bindings/js/JSPopStateEventCustom.cpp
     bindings/js/JSReadableStreamPrivateConstructors.cpp
     bindings/js/JSReadableStreamSourceCustom.cpp
-    bindings/js/JSRTCPeerConnectionCustom.cpp
     bindings/js/JSRTCStatsResponseCustom.cpp
     bindings/js/JSSQLResultSetRowListCustom.cpp
     bindings/js/JSSQLTransactionCustom.cpp
@@ -1908,6 +1913,7 @@ set(WebCore_SOURCES
     loader/ContentFilter.cpp
     loader/CookieJar.cpp
     loader/CrossOriginAccessControl.cpp
+    loader/CrossOriginPreflightChecker.cpp
     loader/CrossOriginPreflightResultCache.cpp
     loader/DocumentLoadTiming.cpp
     loader/DocumentLoader.cpp
@@ -1995,6 +2001,7 @@ set(WebCore_SOURCES
 
     page/AutoscrollController.cpp
     page/BarProp.cpp
+    page/Base64Utilities.cpp
     page/CaptionUserPreferences.cpp
     page/Chrome.cpp
     page/ContextMenuContext.cpp
@@ -2337,7 +2344,6 @@ set(WebCore_SOURCES
     platform/network/CredentialBase.cpp
     platform/network/CredentialStorage.cpp
     platform/network/DNSResolveQueue.cpp
-    platform/network/DataURL.cpp
     platform/network/DataURLDecoder.cpp
     platform/network/FormData.cpp
     platform/network/FormDataBuilder.cpp
@@ -2524,18 +2530,17 @@ set(WebCore_SOURCES
     rendering/line/TrailingObjects.cpp
 
     rendering/mathml/MathMLOperatorDictionary.cpp
+    rendering/mathml/MathOperator.cpp
     rendering/mathml/RenderMathMLBlock.cpp
     rendering/mathml/RenderMathMLFenced.cpp
     rendering/mathml/RenderMathMLFraction.cpp
     rendering/mathml/RenderMathMLMath.cpp
     rendering/mathml/RenderMathMLMenclose.cpp
     rendering/mathml/RenderMathMLOperator.cpp
-    rendering/mathml/RenderMathMLRadicalOperator.cpp
     rendering/mathml/RenderMathMLRoot.cpp
     rendering/mathml/RenderMathMLRow.cpp
     rendering/mathml/RenderMathMLScripts.cpp
     rendering/mathml/RenderMathMLSpace.cpp
-    rendering/mathml/RenderMathMLSquareRoot.cpp
     rendering/mathml/RenderMathMLToken.cpp
     rendering/mathml/RenderMathMLUnderOver.cpp
 

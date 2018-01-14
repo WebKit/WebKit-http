@@ -36,6 +36,7 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         columns.name.title = WebInspector.UIString("Name");
         columns.name.icon = true;
         columns.name.width = "10%";
+        columns.name.locked = true;
 
         columns.domain.title = WebInspector.UIString("Domain");
         columns.domain.width = "10%";
@@ -89,8 +90,9 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
 
         this._dataGrid = new WebInspector.TimelineDataGrid(columns);
         this._dataGrid.sortDelegate = this;
-        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("network-timeline-view-sort", "requestSent");
-        this._dataGrid.sortOrderSetting = new WebInspector.Setting("network-timeline-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
+        this._dataGrid.sortColumnIdentifier = "requestSent";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
+        this._dataGrid.createSettings("network-timeline-view");
 
         this.setupDataGrid(this._dataGrid);
 

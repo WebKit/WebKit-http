@@ -82,6 +82,7 @@
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/EventHandler.h>
+#import <WebCore/EventNames.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FormState.h>
 #import <WebCore/FrameLoader.h>
@@ -2347,7 +2348,7 @@ void WebFrameLoaderClient::prefetchDNS(const String& hostname)
 
 - (void)receivedPolicyDecision:(PolicyAction)action
 {
-    RefPtr<Frame> frame = _frame.release();
+    auto frame = WTFMove(_frame);
     if (!frame)
         return;
 

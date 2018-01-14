@@ -139,13 +139,13 @@ void Node::dumpStatistics()
                 if (!result.isNewEntry)
                     result.iterator->value++;
 
-                if (ElementData* elementData = element.elementData()) {
+                if (const ElementData* elementData = element.elementData()) {
                     unsigned length = elementData->length();
                     attributes += length;
                     ++elementsWithAttributeStorage;
                     for (unsigned i = 0; i < length; ++i) {
-                        Attribute& attr = elementData->attributeAt(i);
-                        if (attr.attr())
+                        const Attribute& attr = elementData->attributeAt(i);
+                        if (!attr.isEmpty())
                             ++attributesWithAttr;
                     }
                 }
@@ -1067,7 +1067,6 @@ bool Node::isUnclosedNode(const Node& otherNode) const
     return false;
 }
 
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 static inline ShadowRoot* parentShadowRoot(const Node& node)
 {
     if (auto* parent = node.parentElement())
@@ -1089,15 +1088,12 @@ HTMLSlotElement* Node::assignedSlotForBindings() const
         return shadowRoot->findAssignedSlot(*this);
     return nullptr;
 }
-#endif
 
 ContainerNode* Node::parentInComposedTree() const
 {
     ASSERT(isMainThreadOrGCThread());
-#if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
     if (auto* slot = assignedSlot())
         return slot;
-#endif
     if (is<ShadowRoot>(*this))
         return downcast<ShadowRoot>(*this).host();
     return parentNode();

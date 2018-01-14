@@ -26,7 +26,7 @@
 .filter-bar {
     display: flex;
 
-    height: 29px;
+    height: var(--navigation-bar-height);
 
     white-space: nowrap;
     overflow: hidden;
@@ -62,7 +62,7 @@
     height: 22px;
 }
 
-.filter-bar > input[type="search"]::-webkit-input-placeholder {
+.filter-bar > input[type="search"]::placeholder {
     color: hsla(0, 0%, 0%, 0.35);
 }
 

@@ -171,7 +171,7 @@ public:
     JS_EXPORT_PRIVATE void collect(HeapOperation collectionType = AnyCollection);
     bool collectIfNecessaryOrDefer(); // Returns true if it did collect.
 
-    void completeAllDFGPlans();
+    void completeAllJITPlans();
     
     // Use this API to report non-GC memory referenced by GC objects. Be sure to
     // call both of these functions: Calling only one may trigger catastropic
@@ -342,7 +342,6 @@ private:
     void didFinishCollection(double gcStartTime);
     void resumeCompilerThreads();
     void zombifyDeadObjects();
-    void markDeadObjects();
     void gatherExtraHeapSnapshotData(HeapProfiler&);
     void removeDeadHeapSnapshotNodes(HeapProfiler&);
 

@@ -321,9 +321,8 @@ String Parser<LexerType>::parseInner(const Identifier& calleeName, SourceParseMo
     if (m_parsingBuiltin && isProgramParseMode(parseMode)) {
         VariableEnvironment& lexicalVariables = scope->lexicalVariables();
         const HashSet<UniquedStringImpl*>& closedVariableCandidates = scope->closedVariableCandidates();
-        const BuiltinNames& builtinNames = m_vm->propertyNames->builtinNames();
         for (UniquedStringImpl* candidate : closedVariableCandidates) {
-            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !builtinNames.isPrivateName(*candidate)) {
+            if (!lexicalVariables.contains(candidate) && !varDeclarations.contains(candidate) && !candidate->isSymbol()) {
                 dataLog("Bad global capture in builtin: '", candidate, "'\n");
                 dataLog(m_source->view());
                 CRASH();
@@ -1898,23 +1897,23 @@ template <class TreeBuilder> typename TreeBuilder::FormalParameterList Parser<Le
     JSTextPosition position = tokenStartPosition();
 
     // @generator
-    declareParameter(&m_vm->propertyNames->generatorPrivateName);
-    auto generator = context.createBindingLocation(location, m_vm->propertyNames->generatorPrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorPrivateName());
+    auto generator = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorPrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generator, 0);
 
     // @generatorState
-    declareParameter(&m_vm->propertyNames->generatorStatePrivateName);
-    auto generatorState = context.createBindingLocation(location, m_vm->propertyNames->generatorStatePrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorStatePrivateName());
+    auto generatorState = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorStatePrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generatorState, 0);
 
     // @generatorValue
-    declareParameter(&m_vm->propertyNames->generatorValuePrivateName);
-    auto generatorValue = context.createBindingLocation(location, m_vm->propertyNames->generatorValuePrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorValuePrivateName());
+    auto generatorValue = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorValuePrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generatorValue, 0);
 
     // @generatorResumeMode
-    declareParameter(&m_vm->propertyNames->generatorResumeModePrivateName);
-    auto generatorResumeMode = context.createBindingLocation(location, m_vm->propertyNames->generatorResumeModePrivateName, position, position, AssignmentContext::DeclarationStatement);
+    declareParameter(&m_vm->propertyNames->builtinNames().generatorResumeModePrivateName());
+    auto generatorResumeMode = context.createBindingLocation(location, m_vm->propertyNames->builtinNames().generatorResumeModePrivateName(), position, position, AssignmentContext::DeclarationStatement);
     context.appendParameter(parameters, generatorResumeMode, 0);
 
     return parameters;
@@ -1928,6 +1927,8 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
     bool upperScopeIsGenerator = currentScope()->isGenerator();
     AutoPopScopeRef functionScope(this, pushScope());
     functionScope->setSourceParseMode(mode);
+    functionScope->setExpectedSuperBinding(expectedSuperBinding);
+    functionScope->setConstructorKind(constructorKind);
     SetForScope<FunctionParsePhase> functionParsePhasePoisoner(m_parserState.functionParsePhase, FunctionParsePhase::Body);
     int functionNameStart = m_token.m_location.startOffset;
     const Identifier* lastFunctionName = m_parserState.lastFunctionName;
@@ -1949,8 +1950,6 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
 
             ConstructorKind constructorKind = static_cast<ConstructorKind>(cachedInfo->constructorKind);
             SuperBinding expectedSuperBinding = static_cast<SuperBinding>(cachedInfo->expectedSuperBinding);
-            functionScope->setConstructorKind(constructorKind);
-            functionScope->setExpectedSuperBinding(expectedSuperBinding);
 
             endLocation.line = cachedInfo->lastTokenLine;
             endLocation.startOffset = cachedInfo->lastTokenStartOffset;
@@ -2872,15 +2871,15 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclara
             TreeExpression expression = parseAssignmentExpression(context);
             failIfFalse(expression, "Cannot parse expression");
 
-            DeclarationResultMask declarationResult = declareVariable(&m_vm->propertyNames->starDefaultPrivateName, DeclarationType::ConstDeclaration);
+            DeclarationResultMask declarationResult = declareVariable(&m_vm->propertyNames->builtinNames().starDefaultPrivateName(), DeclarationType::ConstDeclaration);
             if (declarationResult & DeclarationResult::InvalidDuplicateDeclaration)
                 internalFailWithMessage(false, "Only one 'default' export is allowed");
 
-            TreeExpression assignment = context.createAssignResolve(location, m_vm->propertyNames->starDefaultPrivateName, expression, start, start, tokenEndPosition(), AssignmentContext::ConstDeclarationStatement);
+            TreeExpression assignment = context.createAssignResolve(location, m_vm->propertyNames->builtinNames().starDefaultPrivateName(), expression, start, start, tokenEndPosition(), AssignmentContext::ConstDeclarationStatement);
             result = context.createExprStatement(location, assignment, start, tokenEndPosition());
             if (!isFunctionOrClassDeclaration)
                 failIfFalse(autoSemiColon(), "Expected a ';' following a targeted export declaration");
-            localName = &m_vm->propertyNames->starDefaultPrivateName;
+            localName = &m_vm->propertyNames->builtinNames().starDefaultPrivateName();
         }
         failIfFalse(result, "Cannot parse the declaration");
 

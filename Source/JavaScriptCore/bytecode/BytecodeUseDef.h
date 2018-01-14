@@ -171,6 +171,7 @@ void computeUsesForBytecodeOffset(
     case op_is_boolean:
     case op_is_number:
     case op_is_string:
+    case op_is_jsarray:
     case op_is_object:
     case op_is_object_or_null:
     case op_is_function:
@@ -223,7 +224,8 @@ void computeUsesForBytecodeOffset(
     case op_eq:
     case op_push_with_scope:
     case op_get_by_id_with_this:
-    case op_del_by_val: {
+    case op_del_by_val:
+    case op_tail_call_forward_arguments: {
         ASSERT(opcodeLengths[opcodeID] > 3);
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[3].u.operand);
@@ -390,6 +392,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_new_generator_func_exp:
     case op_call_varargs:
     case op_tail_call_varargs:
+    case op_tail_call_forward_arguments:
     case op_construct_varargs:
     case op_get_from_scope:
     case op_call:
@@ -413,6 +416,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_is_boolean:
     case op_is_number:
     case op_is_string:
+    case op_is_jsarray:
     case op_is_object:
     case op_is_object_or_null:
     case op_is_function:

@@ -1,3 +1,317 @@
+2016-06-22  Anders Carlsson  <andersca@apple.com>
+
+        Move the WebKitLegacy Apple Pay code to the open source repository
+        https://bugs.webkit.org/show_bug.cgi?id=159035
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h: Added.
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm: Added.
+        (WebPaymentCoordinatorClient::WebPaymentCoordinatorClient):
+        (WebPaymentCoordinatorClient::~WebPaymentCoordinatorClient):
+        (WebPaymentCoordinatorClient::supportsVersion):
+        (WebPaymentCoordinatorClient::canMakePayments):
+        (WebPaymentCoordinatorClient::canMakePaymentsWithActiveCard):
+        (WebPaymentCoordinatorClient::showPaymentUI):
+        (WebPaymentCoordinatorClient::completeMerchantValidation):
+        (WebPaymentCoordinatorClient::completeShippingMethodSelection):
+        (WebPaymentCoordinatorClient::completeShippingContactSelection):
+        (WebPaymentCoordinatorClient::completePaymentMethodSelection):
+        (WebPaymentCoordinatorClient::completePaymentSession):
+        (WebPaymentCoordinatorClient::abortPaymentSession):
+        (WebPaymentCoordinatorClient::mainFrameDestroyed):
+        * WebKitAdditions.mm: Removed.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-06-21  Anders Carlsson  <andersca@apple.com>
+
+        Begin moving the Apple Pay code to the open source repository
+        https://bugs.webkit.org/show_bug.cgi?id=158998
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add ENABLE_APPLE_PAY.
+
+2016-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Focus event dispatched in iframe causes parent document to scroll incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=158629
+        rdar://problem/26521616
+
+        Reviewed by Tim Horton.
+        
+        Pass SelectionRevealMode::Reveal in existing code.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _scrollDOMRangeToVisible:]):
+        (-[WebFrame _scrollDOMRangeToVisible:withInset:]):
+        (-[WebFrame revealSelectionAtExtent:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView jumpToSelection:]):
+        (-[WebHTMLView centerSelectionInVisibleArea:]):
+
+2016-06-21  Amir Alavi  <aalavi@apple.com>
+
+        Upstream WKHTTPCookiesForURL from WebKitSystemInterface to OpenSource
+        https://bugs.webkit.org/show_bug.cgi?id=158967
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Deleted.
+
+2016-06-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202243.
+        https://bugs.webkit.org/show_bug.cgi?id=158972
+
+        Broke Windows build and iOS tests (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "Focus event dispatched in iframe causes parent document to
+        scroll incorrectly"
+        https://bugs.webkit.org/show_bug.cgi?id=158629
+        http://trac.webkit.org/changeset/202243
+
+2016-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Focus event dispatched in iframe causes parent document to scroll incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=158629
+        rdar://problem/26521616
+
+        Reviewed by Tim Horton.
+        
+        Pass SelectionRevealMode::Reveal in existing code.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _scrollDOMRangeToVisible:]):
+        (-[WebFrame _scrollDOMRangeToVisible:withInset:]):
+        (-[WebFrame revealSelectionAtExtent:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView jumpToSelection:]):
+        (-[WebHTMLView centerSelectionInVisibleArea:]):
+
+2016-06-20  Keith Rollin  <krollin@apple.com>
+
+        Remove RefPtr::release() and change calls sites to use WTFMove()
+        https://bugs.webkit.org/show_bug.cgi?id=158369
+
+        Reviewed by Chris Dumez.
+
+        RefPtr::release() releases its managed pointer awkwardly. It's more
+        direct and clearer to use WTFMove to transfer ownership of the managed
+        pointer.
+
+        As part of this cleanup, also change a lot of explicit data types to
+        'auto'.
+
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::create):
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener receivedPolicyDecision:]):
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin initWithURL:]):
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        (-[WebArchive initWithData:]):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource mainResource]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _documentFragmentWithNodesAsParagraphs:]):
+
+2016-06-15  Alexey Proskuryakov  <ap@apple.com>
+
+        +[WebHTMLRepresentation supportedMIMETypes] leaks
+        https://bugs.webkit.org/show_bug.cgi?id=158683
+
+        Reviewed by Darin Adler.
+
+        The problem occurred when chaining newArrayByConcatenatingArrays calls.
+
+        Also refactored the code to avoid returning NSMutableArrays disguised as NSArrays,
+        and removed __unsafe_unretained modifiers that were added in http://trac.webkit.org/r149453
+        for no apparent reason.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (newArrayWithStrings):
+        (+[WebHTMLRepresentation supportedMIMETypes]):
+        (+[WebHTMLRepresentation supportedMediaMIMETypes]):
+        (+[WebHTMLRepresentation supportedNonImageMIMETypes]):
+        (+[WebHTMLRepresentation supportedImageMIMETypes]):
+        (+[WebHTMLRepresentation unsupportedTextMIMETypes]):
+        (newArrayByConcatenatingArrays): Deleted.
+
+2016-06-15  Dean Jackson  <dino@apple.com>
+
+        RTL <select> forms are misplaced
+        https://bugs.webkit.org/show_bug.cgi?id=158810
+        <rdar://problem/24847541>
+
+        Reviewed by Eric Carlson.
+
+        AppKit made a change in Sierra that causes popup menus
+        to snap to a different point when the system language is RTL.
+        We need to be more explicit about what directionality
+        we want, and override the location of the popup based
+        on the text direction.
+
+        I also made a small tweak to the fudge offsets we use
+        in order to make button text and menu text to be
+        more consistent.
+
+        Unfortunately since this is just about the location
+        of the popup menu, it's unable to be tested in our
+        current infrastructure.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+
+2016-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Drop some unnecessary header includes
+        https://bugs.webkit.org/show_bug.cgi?id=158788
+
+        Reviewed by Alexey Proskuryakov.
+
+        Drop some unnecessary header includes in headers to speed up build time.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2016-06-15  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        Enabling Shadow DOM for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=158738
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed Shadow DOM from options (enabled by default)
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm:
+        * WebView/WebView.mm:
+
+2016-06-15  Antti Koivisto  <antti@apple.com>
+
+        Vary:Cookie validation doesn't work in private browsing
+        https://bugs.webkit.org/show_bug.cgi?id=158616
+        <rdar://problem/26755067>
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        (WebFrameNetworkingContext::create):
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (privateSession):
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+
+            Expose the private browsing session.
+
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+
+            Implement SessionID version of the function.
+
+        (WebPlatformStrategies::getRawCookies):
+
+2016-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WebSocketProvider stub
+        https://bugs.webkit.org/show_bug.cgi?id=158702
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebSocketProvider.h: Added.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-06-10  Alex Christensen  <achristensen@webkit.org>
+
+        Introduce WTF::UniqueRef
+        https://bugs.webkit.org/show_bug.cgi?id=158596
+
+        Reviewed by Brady Eidson.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-06-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up EditorClient lifetime
+        https://bugs.webkit.org/show_bug.cgi?id=158588
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::WebEditorClient):
+        (WebEditorClient::pageDestroyed): Deleted.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-06-09  Andy Estes  <aestes@apple.com>
+
+        Define printing{Minimum,Maximum}ShrinkFactor in only one place
+        https://bugs.webkit.org/show_bug.cgi?id=158580
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebHTMLView.mm: Initialized _WebHTMLViewPrintingMinimumShrinkFactor and
+        _WebHTMLViewPrintingMaximumShrinkFactor with PrintContext::minimumShrinkFactor() and
+        PrintContext::maximumShrinkFactor() instead of with duplicated float literals.
+
+2016-06-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201810.
+        https://bugs.webkit.org/show_bug.cgi?id=158563
+
+        breaks build without ENABLE_WEB_ANIMATION (Requested by
+        mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "[web-animations] Add Animatable, AnimationEffect,
+        KeyframeEffect and Animation interface"
+        https://bugs.webkit.org/show_bug.cgi?id=156096
+        http://trac.webkit.org/changeset/201810
+
+2016-06-08  Rawinder Singh  <rawinder.singh-webkit@cisra.canon.com.au>
+
+        [web-animations] Add Animatable, AnimationEffect, KeyframeEffect and Animation interface
+        https://bugs.webkit.org/show_bug.cgi?id=156096
+
+        Reviewed by Dean Jackson.
+
+        Adds:
+        - Setup interface for enabling runtime flag for Web animations through preferences.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webAnimationsEnabled]):
+        (-[WebPreferences setWebAnimationsEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2016-06-07  David Kilzer  <ddkilzer@apple.com>
 
         [iOS WK1] Remove unused -_webkit_unescapedQueryValue and -_webkit_queryKeysAndValues NSString category methods

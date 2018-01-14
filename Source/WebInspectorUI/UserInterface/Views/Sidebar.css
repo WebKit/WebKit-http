@@ -52,12 +52,10 @@
     display: none;
 
     overflow: hidden;
-
-    z-index: 0; /* Workaround so that scroll bars appear above position:sticky section headers. */
 }
 
 .sidebar.has-navigation-bar > .panel {
-    top: 29px;
+    top: var(--navigation-bar-height);
 }
 
 .sidebar > .panel.selected {

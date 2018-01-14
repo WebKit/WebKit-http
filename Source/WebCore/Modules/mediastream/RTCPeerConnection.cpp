@@ -38,6 +38,7 @@
 
 #include "Document.h"
 #include "Event.h"
+#include "EventNames.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "MediaStream.h"
@@ -58,41 +59,18 @@ namespace WebCore {
 using namespace PeerConnection;
 using namespace PeerConnectionStates;
 
-RefPtr<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context, const Dictionary& rtcConfiguration, ExceptionCode& ec)
+Ref<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context)
 {
-    RefPtr<RTCConfiguration> configuration = RTCConfiguration::create(rtcConfiguration, ec);
-    if (ec)
-        return nullptr;
-
-    RefPtr<RTCPeerConnection> peerConnection = adoptRef(new RTCPeerConnection(context, WTFMove(configuration), ec));
+    Ref<RTCPeerConnection> peerConnection = adoptRef(*new RTCPeerConnection(context));
     peerConnection->suspendIfNeeded();
-    if (ec)
-        return nullptr;
 
     return peerConnection;
 }
 
-RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context, RefPtr<RTCConfiguration>&& configuration, ExceptionCode& ec)
+RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context)
     : ActiveDOMObject(&context)
-    , m_signalingState(SignalingState::Stable)
-    , m_iceGatheringState(IceGatheringState::New)
-    , m_iceConnectionState(IceConnectionState::New)
-    , m_configuration(WTFMove(configuration))
+    , m_backend(PeerConnectionBackend::create(this))
 {
-    Document& document = downcast<Document>(context);
-
-    if (!document.frame()) {
-        ec = NOT_SUPPORTED_ERR;
-        return;
-    }
-
-    m_backend = PeerConnectionBackend::create(this);
-    if (!m_backend) {
-        ec = NOT_SUPPORTED_ERR;
-        return;
-    }
-
-    m_backend->setConfiguration(*m_configuration);
 }
 
 RTCPeerConnection::~RTCPeerConnection()
@@ -100,7 +78,22 @@ RTCPeerConnection::~RTCPeerConnection()
     stop();
 }
 
-RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, Vector<MediaStream*> streams, ExceptionCode& ec)
+void RTCPeerConnection::initializeWith(Document& document, const Dictionary& rtcConfiguration, ExceptionCode& ec)
+{
+    if (!document.frame()) {
+        ec = NOT_SUPPORTED_ERR;
+        return;
+    }
+
+    if (!m_backend) {
+        ec = NOT_SUPPORTED_ERR;
+        return;
+    }
+
+    setConfiguration(rtcConfiguration, ec);
+}
+
+RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, const Vector<MediaStream*>& streams, ExceptionCode& ec)
 {
     if (m_signalingState == SignalingState::Closed) {
         ec = INVALID_STATE_ERR;
@@ -115,8 +108,7 @@ RefPtr<RTCRtpSender> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, 
 
     for (auto& sender : m_transceiverSet->getSenders()) {
         if (sender->trackId() == track->id()) {
-            // FIXME: Spec says InvalidParameter
-            ec = INVALID_MODIFICATION_ERR;
+            ec = INVALID_ACCESS_ERR;
             return nullptr;
         }
     }
@@ -452,6 +444,11 @@ bool RTCPeerConnection::canSuspendForDocumentSuspension() const
     return false;
 }
 
+void RTCPeerConnection::addTransceiver(RefPtr<RTCRtpTransceiver>&& transceiver)
+{
+    m_transceiverSet->append(WTFMove(transceiver));
+}
+
 void RTCPeerConnection::setSignalingState(SignalingState newState)
 {
     m_signalingState = newState;
@@ -479,8 +476,8 @@ void RTCPeerConnection::scheduleNegotiationNeededEvent()
 {
     scriptExecutionContext()->postTask([=](ScriptExecutionContext&) {
         if (m_backend->isNegotiationNeeded()) {
-            dispatchEvent(Event::create(eventNames().negotiationneededEvent, false, false));
             m_backend->clearNegotiationNeededState();
+            dispatchEvent(Event::create(eventNames().negotiationneededEvent, false, false));
         }
     });
 }
@@ -490,9 +487,9 @@ void RTCPeerConnection::fireEvent(Event& event)
     dispatchEvent(event);
 }
 
-void RTCPeerConnection::replaceTrack(RTCRtpSender& sender, MediaStreamTrack& withTrack, PeerConnection::VoidPromise&& promise)
+void RTCPeerConnection::replaceTrack(RTCRtpSender& sender, RefPtr<MediaStreamTrack>&& withTrack, PeerConnection::VoidPromise&& promise)
 {
-    m_backend->replaceTrack(sender, withTrack, WTFMove(promise));
+    m_backend->replaceTrack(sender, WTFMove(withTrack), WTFMove(promise));
 }
 
 } // namespace WebCore

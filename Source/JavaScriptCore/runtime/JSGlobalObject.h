@@ -55,6 +55,7 @@ class JSGlobalObjectInspectorController;
 
 namespace JSC {
 
+class ArrayConstructor;
 class ArrayPrototype;
 class BooleanPrototype;
 class ConsoleClient;
@@ -226,6 +227,7 @@ public:
     WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
     LazyProperty<JSGlobalObject, NativeErrorConstructor> m_URIErrorConstructor;
     WriteBarrier<ObjectConstructor> m_objectConstructor;
+    WriteBarrier<ArrayConstructor> m_arrayConstructor;
     WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
     WriteBarrier<JSInternalPromiseConstructor> m_internalPromiseConstructor;
 
@@ -288,7 +290,7 @@ public:
     WriteBarrier<Structure> m_calleeStructure;
     WriteBarrier<Structure> m_functionStructure;
     LazyProperty<JSGlobalObject, Structure> m_boundFunctionStructure;
-    LazyProperty<JSGlobalObject, Structure> m_boundSlotBaseFunctionStructure;
+    LazyProperty<JSGlobalObject, Structure> m_customGetterSetterFunctionStructure;
     WriteBarrier<Structure> m_getterSetterStructure;
     LazyProperty<JSGlobalObject, Structure> m_nativeStdFunctionStructure;
     LazyProperty<JSGlobalObject, Structure> m_namedFunctionStructure;
@@ -458,9 +460,12 @@ public:
     // The following accessors return pristine values, even if a script 
     // replaces the global object's associated property.
 
+    GetterSetter* speciesGetterSetter() const { return m_speciesGetterSetter.get(); }
+
     RegExpConstructor* regExpConstructor() const { return m_regExpConstructor.get(); }
 
     ErrorConstructor* errorConstructor() const { return m_errorConstructor.get(); }
+    ArrayConstructor* arrayConstructor() const { return m_arrayConstructor.get(); }
     ObjectConstructor* objectConstructor() const { return m_objectConstructor.get(); }
     JSPromiseConstructor* promiseConstructor() const { return m_promiseConstructor.get(); }
     JSInternalPromiseConstructor* internalPromiseConstructor() const { return m_internalPromiseConstructor.get(); }
@@ -557,7 +562,7 @@ public:
     Structure* calleeStructure() const { return m_calleeStructure.get(); }
     Structure* functionStructure() const { return m_functionStructure.get(); }
     Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(this); }
-    Structure* boundSlotBaseFunctionStructure() const { return m_boundSlotBaseFunctionStructure.get(this); }
+    Structure* customGetterSetterFunctionStructure() const { return m_customGetterSetterFunctionStructure.get(this); }
     Structure* getterSetterStructure() const { return m_getterSetterStructure.get(); }
     Structure* nativeStdFunctionStructure() const { return m_nativeStdFunctionStructure.get(this); }
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(this); }

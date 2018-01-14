@@ -41,6 +41,7 @@
 #include "StyledElement.h"
 #include "WorkerThread.h"
 #include <JavaScriptCore/IncrementalSweeper.h>
+#include <chrono>
 #include <wtf/CurrentTime.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/StdLibExtras.h>
@@ -73,6 +74,7 @@ MemoryPressureHandler::MemoryPressureHandler()
     , m_holdOffTimer(*this, &MemoryPressureHandler::holdOffTimerFired)
 #endif
 {
+    platformInitialize();
 }
 
 void MemoryPressureHandler::releaseNoncriticalMemory()
@@ -158,6 +160,26 @@ void MemoryPressureHandler::releaseCriticalMemory(Synchronous synchronous)
     });
 }
 
+void MemoryPressureHandler::jettisonExpensiveObjectsOnTopLevelNavigation()
+{
+#if PLATFORM(IOS)
+    // Protect against doing excessive jettisoning during repeated navigations.
+    const auto minimumTimeSinceNavigation = 2s;
+
+    static auto timeOfLastNavigation = std::chrono::steady_clock::now();
+    auto now = std::chrono::steady_clock::now();
+    bool shouldJettison = now - timeOfLastNavigation >= minimumTimeSinceNavigation;
+    timeOfLastNavigation = now;
+
+    if (!shouldJettison)
+        return;
+
+    // Throw away linked JS code. Linked code is tied to a global object and is not reusable.
+    // The immediate memory savings outweigh the cost of recompilation in case we go back again.
+    GCController::singleton().deleteAllLinkedCode();
+#endif
+}
+
 void MemoryPressureHandler::releaseMemory(Critical critical, Synchronous synchronous)
 {
     if (critical == Critical::Yes)
@@ -210,6 +232,10 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
     else
         MEMORYPRESSURE_LOG("Memory pressure relief: " STRING_SPECIFICATION ": =dirty (at %zu bytes)", m_logString, currentMemory);
 }
+
+#if !PLATFORM(COCOA)
+void MemoryPressureHandler::platformInitialize() { }
+#endif
 
 #if !PLATFORM(COCOA) && !OS(LINUX) && !PLATFORM(WIN)
 void MemoryPressureHandler::install() { }

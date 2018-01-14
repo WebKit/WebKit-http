@@ -46,12 +46,14 @@ public:
 
     CompositingRunLoop(std::function<void ()>&&);
 
-    void callOnCompositingRunLoop(std::function<void ()>&&);
+    void performTask(NoncopyableFunction<void ()>&&);
+    void performTaskSync(NoncopyableFunction<void ()>&&);
 
-    void setUpdateTimer(UpdateTiming timing = Immediate);
+    void startUpdateTimer(UpdateTiming = Immediate);
     void stopUpdateTimer();
 
-    RunLoop& runLoop() { return m_runLoop; }
+    void run();
+    void stop();
 
 private:
     void updateTimerFired();
@@ -59,8 +61,10 @@ private:
     RunLoop& m_runLoop;
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     std::function<void ()> m_updateFunction;
+    Lock m_dispatchSyncConditionMutex;
+    Condition m_dispatchSyncCondition;
 
-    double m_lastUpdateTime;
+    double m_lastUpdateTime { 0 };
 };
 
 } // namespace WebKit

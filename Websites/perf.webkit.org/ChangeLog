@@ -1,3 +1,86 @@
+2016-06-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. Strip out "use strict" everywhere so that the perf dashboard works on the shipping Safari.
+
+        * tools/bundle-v3-scripts.py:
+        (main):
+
+2016-06-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Invalid token error when trying to create an A/B analysis for a range
+        https://bugs.webkit.org/show_bug.cgi?id=158679
+
+        Reviewed by Chris Dumez.
+
+        The problem in this particular case was due to another website overriding cookies for our subdomain.
+        Make PrivilegedAPI robust against its token becoming invalid in general to fix the bug since the cookie
+        is only available under /privileged-api/ and the v3 UI can't access it for security reasons.
+
+        This patch factors out PrivilegedAPI out of remote.js so that it can be tested separately in server tests
+        as well as unit tests even though RemoteAPI itself is implemented differently in each case.
+
+        * init-database.sql: Added a forgotten default value "false" to run_marked_outlier.
+        * public/v3/index.html:
+        * public/v3/privileged-api.js: Added. Extracted out of public/v3/remote.js.
+        (PrivilegedAPI.sendRequest): Fixed the bug. When the initial request fails with "InvalidToken" error,
+        re-generate the token and re-issue the request.
+        (PrivilegedAPI.requestCSRFToken):
+        * public/v3/remote.js:
+        (RemoteAPI.postJSON): Added to match tools/js/remote.js.
+        (RemoteAPI.postJSONWithStatus): Ditto.
+        (PrivilegedAPI): Moved to privileged-api.js.
+        * server-tests/api-measurement-set-tests.js: Removed the unused require for crypto.
+        * server-tests/privileged-api-upate-run-status.js: Added tests for /privileged-api/update-run-status.
+        * server-tests/resources/test-server.js:
+        (TestServer.prototype.inject): Clear the cookies as well as tokens in PrivilegedAPI.
+        * tools/js/remote.js:
+        (RemoteAPI): Added the support for PrivilegedAPI by making cookie set by the server persist.
+        (RemoteAPI.prototype.clearCookies): Added for tests.
+        (RemoteAPI.prototype.postJSON): Make sure sendHttpRequest always sends a valid JSON.
+        (RemoteAPI.prototype.postJSONWithStatus): Added since this API is used PrivilegedAPI.
+        (RemoteAPI.prototype.sendHttpRequest): Retain the cookie set by the server and send it back in each request.
+        * tools/js/v3-models.js:
+        * unit-tests/privileged-api-tests.js: Added unit tests for PrivilegedAPI.
+        * unit-tests/resources/mock-remote-api.js:
+        (MockRemoteAPI.postJSON): Added for unit testing.
+        (MockRemoteAPI.postJSONWithStatus): Ditto.
+
+2016-06-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        /admin/tests is very slow
+        https://bugs.webkit.org/show_bug.cgi?id=158682
+
+        Reviewed by Chris Dumez.
+
+        The slowness came from TestNameResolver::__construct, which was fetching the entire table of test_configurations,
+        which at this point contains more than 32,000 rows. Don't fetch the entire table in the constructor. Instead,
+        fetch a subset of rows as needed in configurations_for_metric_and_platform. Even though this results in many SQL
+        queries being issued, that's a lot more efficient in practice because we only fetch a few dozen rows in practice.
+
+        Also removed a whole bunch of features from /admin/tests to simplify the page. In particular, the ability to update
+        the list of triggerables has been removed now that sync-buildbot.js automatically updates that for us. This removed
+        the last use of test_exists_on_platform, which was also dependent on fetching test_configurations upfront.
+
+        * public/admin/tests.php:
+        * public/include/test-name-resolver.php:
+        (TestNameResolver::__construct): Don't fetch the entire table of test_configurations.
+        (TestNameResolver::configurations_for_metric_and_platform): Just issue a SQL query for the specified platform and metric.
+        (TestNameResolver::test_exists_on_platform): Removed.
+
+2016-06-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        sync-buildbot.js should update the list of tests and platforms associated with a triggerable
+        https://bugs.webkit.org/show_bug.cgi?id=158406
+
+        Reviewed by Chris Dumez.
+
+        Add /api/update-triggerable and a test for it, which were supposed to be added in r201718
+        but for which I forgot to run svn add.
+
+        * public/api/update-triggerable.php: Added.
+        (main):
+        * server-tests/api-update-triggerable.js: Added.
+
 2016-06-07  Ryosuke Niwa  <rniwa@webkit.org>
 
         Build fix after r201739. attachShadow was throwing an exception on this component.

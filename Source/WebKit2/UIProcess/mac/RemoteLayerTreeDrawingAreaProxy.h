@@ -91,6 +91,8 @@ private:
 
     RemoteLayerTreeHost m_remoteLayerTreeHost;
     bool m_isWaitingForDidUpdateGeometry { false };
+    enum DidUpdateMessageState { NotSent, Sent, MissedCommit };
+    DidUpdateMessageState m_didUpdateMessageState { NotSent };
 
     WebCore::IntSize m_lastSentSize;
 

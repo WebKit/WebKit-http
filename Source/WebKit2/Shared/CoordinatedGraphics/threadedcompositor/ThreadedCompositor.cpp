@@ -50,8 +50,6 @@ Ref<ThreadedCompositor> ThreadedCompositor::create(Client* client)
 
 ThreadedCompositor::ThreadedCompositor(Client* client)
     : m_client(client)
-    , m_deviceScaleFactor(1)
-    , m_threadIdentifier(0)
 {
     createCompositingThread();
 }
@@ -61,69 +59,60 @@ ThreadedCompositor::~ThreadedCompositor()
     terminateCompositingThread();
 }
 
-void ThreadedCompositor::setNeedsDisplay()
-{
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector] {
-        protector->scheduleDisplayImmediately();
-    });
-}
-
 void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, handle] {
-        protector->m_nativeSurfaceHandle = handle;
-        protector->m_scene->setActive(true);
+    m_compositingRunLoop->stopUpdateTimer();
+    m_compositingRunLoop->performTaskSync([this, protectedThis = Ref<ThreadedCompositor>(*this), handle] {
+        m_scene->setActive(!!handle);
+
+        // A new native handle can't be set without destroying the previous one first if any.
+        ASSERT(!!handle ^ !!m_nativeSurfaceHandle);
+        m_nativeSurfaceHandle = handle;
+        if (!m_nativeSurfaceHandle)
+            m_context = nullptr;
     });
 }
 
 void ThreadedCompositor::setDeviceScaleFactor(float scale)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, scale] {
-        protector->m_deviceScaleFactor = scale;
-        protector->scheduleDisplayImmediately();
+    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), scale] {
+        m_deviceScaleFactor = scale;
+        scheduleDisplayImmediately();
     });
 }
 
 void ThreadedCompositor::didChangeViewportSize(const IntSize& size)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, size] {
-        protector->viewportController()->didChangeViewportSize(size);
+    m_compositingRunLoop->performTaskSync([this, protectedThis = Ref<ThreadedCompositor>(*this), size] {
+        m_viewportController->didChangeViewportSize(size);
     });
 }
 
 void ThreadedCompositor::didChangeViewportAttribute(const ViewportAttributes& attr)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, attr] {
-        protector->viewportController()->didChangeViewportAttribute(attr);
+    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), attr] {
+        m_viewportController->didChangeViewportAttribute(attr);
     });
 }
 
 void ThreadedCompositor::didChangeContentsSize(const IntSize& size)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, size] {
-        protector->viewportController()->didChangeContentsSize(size);
+    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), size] {
+        m_viewportController->didChangeContentsSize(size);
     });
 }
 
 void ThreadedCompositor::scrollTo(const IntPoint& position)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, position] {
-        protector->viewportController()->scrollTo(position);
+    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), position] {
+        m_viewportController->scrollTo(position);
     });
 }
 
 void ThreadedCompositor::scrollBy(const IntSize& delta)
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    callOnCompositingThread([protector, delta] {
-        protector->viewportController()->scrollBy(delta);
+    m_compositingRunLoop->performTask([this, protectedThis = Ref<ThreadedCompositor>(*this), delta] {
+        m_viewportController->scrollBy(delta);
     });
 }
 
@@ -139,7 +128,7 @@ void ThreadedCompositor::renderNextFrame()
 
 void ThreadedCompositor::updateViewport()
 {
-    m_compositingRunLoop->setUpdateTimer(CompositingRunLoop::WaitUntilNextFrame);
+    m_compositingRunLoop->startUpdateTimer(CompositingRunLoop::WaitUntilNextFrame);
 }
 
 void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& offset)
@@ -147,7 +136,7 @@ void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& off
     m_client->commitScrollOffset(layerID, offset);
 }
 
-bool ThreadedCompositor::ensureGLContext()
+bool ThreadedCompositor::tryEnsureGLContext()
 {
     if (!glContext())
         return false;
@@ -167,11 +156,13 @@ bool ThreadedCompositor::ensureGLContext()
 
 GLContext* ThreadedCompositor::glContext()
 {
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+
     if (m_context)
         return m_context.get();
 
     if (!m_nativeSurfaceHandle)
-        return 0;
+        return nullptr;
 
     m_context = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(m_nativeSurfaceHandle), GLContext::sharingContext());
     return m_context.get();
@@ -179,16 +170,15 @@ GLContext* ThreadedCompositor::glContext()
 
 void ThreadedCompositor::scheduleDisplayImmediately()
 {
-    m_compositingRunLoop->setUpdateTimer(CompositingRunLoop::Immediate);
+    m_compositingRunLoop->startUpdateTimer(CompositingRunLoop::Immediate);
 }
 
 void ThreadedCompositor::didChangeVisibleRect()
 {
-    RefPtr<ThreadedCompositor> protector(this);
-    FloatRect visibleRect = viewportController()->visibleContentsRect();
-    float scale = viewportController()->pageScaleFactor();
-    RunLoop::main().dispatch([protector, visibleRect, scale] {
-        protector->m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+
+    RunLoop::main().dispatch([this, protectedThis = Ref<ThreadedCompositor>(*this), visibleRect = m_viewportController->visibleContentsRect(), scale = m_viewportController->pageScaleFactor()] {
+        m_client->setVisibleContentsRect(visibleRect, FloatPoint::zero(), scale);
     });
 
     scheduleDisplayImmediately();
@@ -196,17 +186,18 @@ void ThreadedCompositor::didChangeVisibleRect()
 
 void ThreadedCompositor::renderLayerTree()
 {
-    if (!m_scene)
+    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    if (!m_scene || !m_scene->isActive())
         return;
 
-    if (!ensureGLContext())
+    if (!tryEnsureGLContext())
         return;
 
     FloatRect clipRect(0, 0, m_viewportSize.width(), m_viewportSize.height());
 
     TransformationMatrix viewportTransform;
-    FloatPoint scrollPostion = viewportController()->visibleContentsRect().location();
-    viewportTransform.scale(viewportController()->pageScaleFactor() * m_deviceScaleFactor);
+    FloatPoint scrollPostion = m_viewportController->visibleContentsRect().location();
+    viewportTransform.scale(m_viewportController->pageScaleFactor() * m_deviceScaleFactor);
     viewportTransform.translate(-scrollPostion.x(), -scrollPostion.y());
 
     m_scene->paintToCurrentGLContext(viewportTransform, 1, clipRect, Color::white, false, scrollPostion);
@@ -216,22 +207,13 @@ void ThreadedCompositor::renderLayerTree()
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
 {
+    ASSERT(isMainThread());
     RefPtr<CoordinatedGraphicsScene> scene = m_scene;
     m_scene->appendUpdate([scene, state] {
         scene->commitSceneState(state);
     });
 
-    setNeedsDisplay();
-}
-
-void ThreadedCompositor::callOnCompositingThread(std::function<void()>&& function)
-{
-    m_compositingRunLoop->callOnCompositingRunLoop(WTFMove(function));
-}
-
-void ThreadedCompositor::compositingThreadEntry(void* coordinatedCompositor)
-{
-    static_cast<ThreadedCompositor*>(coordinatedCompositor)->runCompositingThread();
+    scheduleDisplayImmediately();
 }
 
 void ThreadedCompositor::createCompositingThread()
@@ -240,8 +222,7 @@ void ThreadedCompositor::createCompositingThread()
         return;
 
     LockHolder locker(m_initializeRunLoopConditionMutex);
-    m_threadIdentifier = createThread(compositingThreadEntry, this, "WebCore: ThreadedCompositor");
-
+    m_threadIdentifier = createThread("WebKit: ThreadedCompositor", [this] { runCompositingThread(); });
     m_initializeRunLoopCondition.wait(m_initializeRunLoopConditionMutex);
 }
 
@@ -259,9 +240,8 @@ void ThreadedCompositor::runCompositingThread()
         m_initializeRunLoopCondition.notifyOne();
     }
 
-    m_compositingRunLoop->runLoop().run();
+    m_compositingRunLoop->run();
 
-    m_compositingRunLoop->stopUpdateTimer();
     m_scene->purgeGLResources();
 
     {
@@ -281,7 +261,7 @@ void ThreadedCompositor::terminateCompositingThread()
     LockHolder locker(m_terminateRunLoopConditionMutex);
 
     m_scene->detach();
-    m_compositingRunLoop->runLoop().stop();
+    m_compositingRunLoop->stop();
 
     m_terminateRunLoopCondition.wait(m_terminateRunLoopConditionMutex);
 }

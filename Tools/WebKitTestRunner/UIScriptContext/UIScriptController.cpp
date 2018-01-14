@@ -150,6 +150,14 @@ void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
 
+void UIScriptController::keyboardAccessoryBarNext()
+{
+}
+
+void UIScriptController::keyboardAccessoryBarPrevious()
+{
+}
+
 double UIScriptController::zoomScale() const
 {
     return 1;
@@ -168,6 +176,15 @@ double UIScriptController::maximumZoomScale() const
 JSObjectRef UIScriptController::contentVisibleRect() const
 {
     return nullptr;
+}
+
+bool UIScriptController::forceIPadStyleZoomOnInputFocus() const
+{
+    return false;
+}
+
+void UIScriptController::setForceIPadStyleZoomOnInputFocus(bool)
+{
 }
 
 void UIScriptController::platformSetWillBeginZoomingCallback()

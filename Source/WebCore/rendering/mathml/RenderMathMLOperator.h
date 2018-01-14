@@ -32,6 +32,7 @@
 #include "GlyphPage.h"
 #include "MathMLElement.h"
 #include "MathMLOperatorDictionary.h"
+#include "MathOperator.h"
 #include "OpenTypeMathData.h"
 #include "RenderMathMLToken.h"
 
@@ -42,7 +43,7 @@ public:
     RenderMathMLOperator(MathMLElement&, RenderStyle&&);
     RenderMathMLOperator(Document&, RenderStyle&&, const String& operatorString, MathMLOperatorDictionary::Form, unsigned short flags = 0);
 
-    virtual void stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit depthBelowBaseline);
+    void stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit depthBelowBaseline);
     void stretchTo(LayoutUnit width);
     LayoutUnit stretchSize() const { return m_isVertical ? m_stretchHeightAboveBaseline + m_stretchDepthBelowBaseline : m_stretchWidth; }
     void resetStretchSize();
@@ -51,42 +52,27 @@ public:
     // FIXME: The displaystyle property is not implemented (https://bugs.webkit.org/show_bug.cgi?id=118737).
     bool isLargeOperatorInDisplayStyle() const { return !hasOperatorFlag(MathMLOperatorDictionary::Stretchy) && hasOperatorFlag(MathMLOperatorDictionary::LargeOp); }
     bool isVertical() const { return m_isVertical; }
-    LayoutUnit italicCorrection() const { return m_italicCorrection; }
+    LayoutUnit italicCorrection() const { return m_mathOperator.italicCorrection(); }
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
     void updateStyle() final;
 
-    void paint(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) final;
 
     void updateTokenContent(const String& operatorString);
     void updateTokenContent() final;
     void updateOperatorProperties();
     void updateFromElement() final;
-    LayoutUnit trailingSpaceError();
 
 protected:
     virtual void setOperatorProperties();
-    void computePreferredLogicalWidths() override;
-    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    void computePreferredLogicalWidths() final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
     void setLeadingSpace(LayoutUnit leadingSpace) { m_leadingSpace = leadingSpace; }
     void setTrailingSpace(LayoutUnit trailingSpace) { m_trailingSpace = trailingSpace; }
     UChar textContent() const { return m_textContent; }
 
 private:
-    struct GlyphAssemblyData {
-        GlyphData topOrRight;
-        GlyphData extension;
-        GlyphData bottomOrLeft;
-        GlyphData middle;
-    };
-    enum class StretchType { Unstretched, SizeVariant, GlyphAssembly };
-    StretchType m_stretchType;
-    union {
-        GlyphData m_variant;
-        GlyphAssemblyData m_assembly;
-    };
-    LayoutUnit m_italicCorrection;
-
     const char* renderName() const override { return isAnonymous() ? "RenderMathMLOperator (anonymous)" : "RenderMathMLOperator"; }
     void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) final;
     bool isRenderMathMLOperator() const final { return true; }
@@ -99,28 +85,8 @@ private:
     void rebuildTokenContent(const String& operatorString);
 
     bool shouldAllowStretching() const;
+    bool useMathOperator() const;
 
-    bool getBaseGlyph(const RenderStyle&, GlyphData&) const;
-    void setSizeVariant(const GlyphData&);
-    void setGlyphAssembly(const GlyphAssemblyData&);
-    bool calculateGlyphAssemblyFallBack(const Vector<OpenTypeMathData::AssemblyPart>&, GlyphAssemblyData&) const;
-    void calculateDisplayStyleLargeOperator();
-    void calculateStretchyData(float* maximumGlyphWidth, LayoutUnit targetSize = 0);
-
-    enum GlyphPaintTrimming {
-        TrimTop,
-        TrimBottom,
-        TrimTopAndBottom,
-        TrimLeft,
-        TrimRight,
-        TrimLeftAndRight
-    };
-
-    LayoutRect paintGlyph(PaintInfo&, const GlyphData&, const LayoutPoint& origin, GlyphPaintTrimming);
-    void fillWithVerticalExtensionGlyph(PaintInfo&, const LayoutPoint& from, const LayoutPoint& to);
-    void fillWithHorizontalExtensionGlyph(PaintInfo&, const LayoutPoint& from, const LayoutPoint& to);
-    void paintVerticalGlyphAssembly(PaintInfo&, const LayoutPoint&);
-    void paintHorizontalGlyphAssembly(PaintInfo&, const LayoutPoint&);
     void setOperatorFlagFromAttribute(MathMLOperatorDictionary::Flag, const QualifiedName&);
     void setOperatorFlagFromAttributeValue(MathMLOperatorDictionary::Flag, const AtomicString& attributeValue);
     void setOperatorPropertiesFromOpDictEntry(const MathMLOperatorDictionary::Entry*);
@@ -137,6 +103,7 @@ private:
     LayoutUnit m_trailingSpace;
     LayoutUnit m_minSize;
     LayoutUnit m_maxSize;
+    MathOperator m_mathOperator;
 };
 
 } // namespace WebCore

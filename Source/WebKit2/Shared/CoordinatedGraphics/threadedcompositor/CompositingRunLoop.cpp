@@ -29,6 +29,7 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
 #include <wtf/CurrentTime.h>
+#include <wtf/MainThread.h>
 
 namespace WebKit {
 
@@ -36,21 +37,28 @@ CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
     : m_runLoop(RunLoop::current())
     , m_updateTimer(m_runLoop, this, &CompositingRunLoop::updateTimerFired)
     , m_updateFunction(WTFMove(updateFunction))
-    , m_lastUpdateTime(0)
 {
 }
 
-void CompositingRunLoop::callOnCompositingRunLoop(std::function<void ()>&& function)
+void CompositingRunLoop::performTask(NoncopyableFunction<void ()>&& function)
 {
-    if (&m_runLoop == &RunLoop::current()) {
-        function();
-        return;
-    }
-
+    ASSERT(isMainThread());
     m_runLoop.dispatch(WTFMove(function));
 }
 
-void CompositingRunLoop::setUpdateTimer(UpdateTiming timing)
+void CompositingRunLoop::performTaskSync(NoncopyableFunction<void ()>&& function)
+{
+    ASSERT(isMainThread());
+    LockHolder locker(m_dispatchSyncConditionMutex);
+    m_runLoop.dispatch([this, function = WTFMove(function)] {
+        LockHolder locker(m_dispatchSyncConditionMutex);
+        function();
+        m_dispatchSyncCondition.notifyOne();
+    });
+    m_dispatchSyncCondition.wait(m_dispatchSyncConditionMutex);
+}
+
+void CompositingRunLoop::startUpdateTimer(UpdateTiming timing)
 {
     if (m_updateTimer.isActive())
         return;
@@ -65,14 +73,24 @@ void CompositingRunLoop::setUpdateTimer(UpdateTiming timing)
 
 void CompositingRunLoop::stopUpdateTimer()
 {
-    if (m_updateTimer.isActive())
-        m_updateTimer.stop();
+    m_updateTimer.stop();
 }
 
 void CompositingRunLoop::updateTimerFired()
 {
     m_updateFunction();
     m_lastUpdateTime = monotonicallyIncreasingTime();
+}
+
+void CompositingRunLoop::run()
+{
+    m_runLoop.run();
+}
+
+void CompositingRunLoop::stop()
+{
+    m_updateTimer.stop();
+    m_runLoop.stop();
 }
 
 } // namespace WebKit

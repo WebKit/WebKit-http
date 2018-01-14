@@ -58,6 +58,8 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         this.addEventListener(WebInspector.DataGrid.Event.SortChanged, this._sort, this);
 
         window.addEventListener("resize", this);
+
+        this.columnChooserEnabled = true;
     }
 
     static createColumnScopeBar(prefix, map)
@@ -489,7 +491,7 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
 
         // The element might be hidden if it does not have a width and height.
         let rect = WebInspector.Rect.rectFromClientRect(targetPopoverElement.getBoundingClientRect());
-        if (!rect.size.width && !targetFrame.rect.height)
+        if (!rect.size.width && !rect.size.height)
             return;
 
         if (this._hidePopoverContentClearTimeout) {

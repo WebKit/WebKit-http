@@ -910,12 +910,12 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
 
         if (m_codeType == FunctionCode && isNewTargetUsedInInnerArrowFunction()) {
             offset = functionSymbolTable->takeNextScopeOffset();
-            functionSymbolTable->set(NoLockingNecessary, propertyNames().newTargetLocalPrivateName.impl(), SymbolTableEntry(VarOffset(offset)));
+            functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().newTargetLocalPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
         
         if (isConstructor() && constructorKind() == ConstructorKind::Derived && isSuperUsedInInnerArrowFunction()) {
             offset = functionSymbolTable->takeNextScopeOffset(NoLockingNecessary);
-            functionSymbolTable->set(NoLockingNecessary, propertyNames().derivedConstructorPrivateName.impl(), SymbolTableEntry(VarOffset(offset)));
+            functionSymbolTable->set(NoLockingNecessary, propertyNames().builtinNames().derivedConstructorPrivateName().impl(), SymbolTableEntry(VarOffset(offset)));
         }
 
         return;
@@ -930,13 +930,13 @@ void BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded(SymbolTable*
     }
     
     if (m_codeType == FunctionCode && isNewTargetUsedInInnerArrowFunction()) {
-        auto addTarget = environment.add(propertyNames().newTargetLocalPrivateName);
+        auto addTarget = environment.add(propertyNames().builtinNames().newTargetLocalPrivateName());
         addTarget.iterator->value.setIsCaptured();
         addTarget.iterator->value.setIsLet();
     }
 
     if (isConstructor() && constructorKind() == ConstructorKind::Derived && isSuperUsedInInnerArrowFunction()) {
-        auto derivedConstructor = environment.add(propertyNames().derivedConstructorPrivateName);
+        auto derivedConstructor = environment.add(propertyNames().builtinNames().derivedConstructorPrivateName());
         derivedConstructor.iterator->value.setIsCaptured();
         derivedConstructor.iterator->value.setIsLet();
     }
@@ -1727,9 +1727,11 @@ RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, bool b)
 
 RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, const Identifier& identifier)
 {
+    ASSERT(!identifier.isSymbol());
     JSString*& stringInMap = m_stringMap.add(identifier.impl(), nullptr).iterator->value;
     if (!stringInMap)
         stringInMap = jsOwnedString(vm(), identifier.string());
+
     return emitLoad(dst, JSValue(stringInMap));
 }
 
@@ -2975,9 +2977,9 @@ RegisterID* BytecodeGenerator::emitCallEval(RegisterID* dst, RegisterID* func, C
 
 ExpectedFunction BytecodeGenerator::expectedFunctionForIdentifier(const Identifier& identifier)
 {
-    if (identifier == m_vm->propertyNames->Object || identifier == m_vm->propertyNames->ObjectPrivateName)
+    if (identifier == propertyNames().Object || identifier == propertyNames().builtinNames().ObjectPrivateName())
         return ExpectObjectConstructor;
-    if (identifier == m_vm->propertyNames->Array || identifier == m_vm->propertyNames->ArrayPrivateName)
+    if (identifier == propertyNames().Array || identifier == propertyNames().builtinNames().ArrayPrivateName())
         return ExpectArrayConstructor;
     return NoExpectedFunction;
 }
@@ -3113,6 +3115,12 @@ RegisterID* BytecodeGenerator::emitConstructVarargs(RegisterID* dst, RegisterID*
 {
     return emitCallVarargs(op_construct_varargs, dst, func, thisRegister, arguments, firstFreeRegister, firstVarArgOffset, divot, divotStart, divotEnd);
 }
+
+RegisterID* BytecodeGenerator::emitCallForwardArgumentsInTailPosition(RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
+{
+    ASSERT(m_inTailPosition);
+    return emitCallVarargs(op_tail_call_forward_arguments, dst, func, thisRegister, nullptr, firstFreeRegister, firstVarArgOffset, divot, divotStart, divotEnd);
+}
     
 RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst, RegisterID* func, RegisterID* thisRegister, RegisterID* arguments, RegisterID* firstFreeRegister, int32_t firstVarArgOffset, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd)
 {
@@ -3128,7 +3136,7 @@ RegisterID* BytecodeGenerator::emitCallVarargs(OpcodeID opcode, RegisterID* dst,
     instructions().append(dst->index());
     instructions().append(func->index());
     instructions().append(thisRegister ? thisRegister->index() : 0);
-    instructions().append(arguments->index());
+    instructions().append(arguments ? arguments->index() : 0);
     instructions().append(firstFreeRegister->index());
     instructions().append(firstVarArgOffset);
     instructions().append(arrayProfile);
@@ -4037,7 +4045,7 @@ RegisterID* BytecodeGenerator::emitGetTemplateObject(RegisterID* dst, TaggedTemp
     }
 
     RefPtr<RegisterID> getTemplateObject = nullptr;
-    Variable var = variable(propertyNames().getTemplateObjectPrivateName);
+    Variable var = variable(propertyNames().builtinNames().getTemplateObjectPrivateName());
     if (RegisterID* local = var.local())
         getTemplateObject = emitMove(newTemporary(), local);
     else {
@@ -4227,16 +4235,16 @@ void BytecodeGenerator::emitLoadThisFromArrowFunctionLexicalEnvironment()
     
 RegisterID* BytecodeGenerator::emitLoadNewTargetFromArrowFunctionLexicalEnvironment()
 {
-    Variable newTargetVar = variable(propertyNames().newTargetLocalPrivateName);
+    Variable newTargetVar = variable(propertyNames().builtinNames().newTargetLocalPrivateName());
 
-    return emitGetFromScope(m_newTargetRegister, emitLoadArrowFunctionLexicalEnvironment(propertyNames().newTargetLocalPrivateName), newTargetVar, ThrowIfNotFound);
+    return emitGetFromScope(m_newTargetRegister, emitLoadArrowFunctionLexicalEnvironment(propertyNames().builtinNames().newTargetLocalPrivateName()), newTargetVar, ThrowIfNotFound);
     
 }
 
 RegisterID* BytecodeGenerator::emitLoadDerivedConstructorFromArrowFunctionLexicalEnvironment()
 {
-    Variable protoScopeVar = variable(propertyNames().derivedConstructorPrivateName);
-    return emitGetFromScope(newTemporary(), emitLoadArrowFunctionLexicalEnvironment(propertyNames().derivedConstructorPrivateName), protoScopeVar, ThrowIfNotFound);
+    Variable protoScopeVar = variable(propertyNames().builtinNames().derivedConstructorPrivateName());
+    return emitGetFromScope(newTemporary(), emitLoadArrowFunctionLexicalEnvironment(propertyNames().builtinNames().derivedConstructorPrivateName()), protoScopeVar, ThrowIfNotFound);
 }
 
 RegisterID* BytecodeGenerator::ensureThis()
@@ -4280,7 +4288,7 @@ void BytecodeGenerator::emitPutNewTargetToArrowFunctionContextScope()
     if (isNewTargetUsedInInnerArrowFunction()) {
         ASSERT(m_arrowFunctionContextLexicalEnvironmentRegister);
         
-        Variable newTargetVar = variable(propertyNames().newTargetLocalPrivateName);
+        Variable newTargetVar = variable(propertyNames().builtinNames().newTargetLocalPrivateName());
         emitPutToScope(m_arrowFunctionContextLexicalEnvironmentRegister, newTargetVar, newTarget(), DoNotThrowIfNotFound, InitializationMode::Initialization);
     }
 }
@@ -4291,7 +4299,7 @@ void BytecodeGenerator::emitPutDerivedConstructorToArrowFunctionContextScope()
         if (isSuperUsedInInnerArrowFunction()) {
             ASSERT(m_arrowFunctionContextLexicalEnvironmentRegister);
             
-            Variable protoScope = variable(propertyNames().derivedConstructorPrivateName);
+            Variable protoScope = variable(propertyNames().builtinNames().derivedConstructorPrivateName());
             emitPutToScope(m_arrowFunctionContextLexicalEnvironmentRegister, protoScope, &m_calleeRegister, DoNotThrowIfNotFound, InitializationMode::Initialization);
         }
     }
@@ -4556,7 +4564,7 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
 void BytecodeGenerator::emitGeneratorStateChange(int32_t state)
 {
     RegisterID* completedState = emitLoad(nullptr, jsNumber(state));
-    emitPutById(generatorRegister(), propertyNames().generatorStatePrivateName, completedState);
+    emitPutById(generatorRegister(), propertyNames().builtinNames().generatorStatePrivateName(), completedState);
 }
 
 void BytecodeGenerator::emitGeneratorStateLabel()

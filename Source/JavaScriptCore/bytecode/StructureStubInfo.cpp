@@ -65,6 +65,11 @@ void StructureStubInfo::initGetByIdSelf(CodeBlock* codeBlock, Structure* baseObj
     u.byIdSelf.offset = offset;
 }
 
+void StructureStubInfo::initArrayLength()
+{
+    cacheType = CacheType::ArrayLength;
+}
+
 void StructureStubInfo::initPutByIdReplace(CodeBlock* codeBlock, Structure* baseObjectStructure, PropertyOffset offset)
 {
     cacheType = CacheType::PutByIdReplace;
@@ -89,6 +94,7 @@ void StructureStubInfo::deref()
     case CacheType::Unset:
     case CacheType::GetByIdSelf:
     case CacheType::PutByIdReplace:
+    case CacheType::ArrayLength:
         return;
     }
 
@@ -104,6 +110,7 @@ void StructureStubInfo::aboutToDie()
     case CacheType::Unset:
     case CacheType::GetByIdSelf:
     case CacheType::PutByIdReplace:
+    case CacheType::ArrayLength:
         return;
     }
 
@@ -259,6 +266,7 @@ bool StructureStubInfo::propagateTransitions(SlotVisitor& visitor)
 {
     switch (cacheType) {
     case CacheType::Unset:
+    case CacheType::ArrayLength:
         return true;
     case CacheType::GetByIdSelf:
     case CacheType::PutByIdReplace:
@@ -277,6 +285,7 @@ bool StructureStubInfo::containsPC(void* pc) const
         return false;
     return u.stub->containsPC(pc);
 }
-#endif
+
+#endif // ENABLE(JIT)
 
 } // namespace JSC

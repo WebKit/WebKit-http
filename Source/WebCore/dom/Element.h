@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -58,6 +58,12 @@ enum SpellcheckAttributeState {
     SpellcheckAttributeTrue,
     SpellcheckAttributeFalse,
     SpellcheckAttributeDefault
+};
+
+enum class SelectionRevealMode {
+    Reveal,
+    RevealUpToMainFrame, // Scroll overflow and iframes, but not the main frame.
+    DoNotReveal
 };
 
 class Element : public ContainerNode {
@@ -254,10 +260,8 @@ public:
         ShadowRootMode mode;
     };
 
-#if ENABLE(SHADOW_DOM)
     ShadowRoot* shadowRootForBindings(JSC::ExecState&) const;
     RefPtr<ShadowRoot> attachShadow(const ShadowRootInit&, ExceptionCode&);
-#endif
 
     ShadowRoot* userAgentShadowRoot() const;
     WEBCORE_EXPORT ShadowRoot& ensureUserAgentShadowRoot();
@@ -269,10 +273,12 @@ public:
     bool active() const { return isUserActionElement() && isUserActionElementActive(); }
     bool hovered() const { return isUserActionElement() && isUserActionElementHovered(); }
     bool focused() const { return isUserActionElement() && isUserActionElementFocused(); }
+    bool hasFocusWithin() const { return getFlag(HasFocusWithin); };
 
     virtual void setActive(bool flag = true, bool pause = false);
     virtual void setHovered(bool flag = true);
     virtual void setFocus(bool flag);
+    void setHasFocusWithin(bool flag);
 
     bool tabIndexSetExplicitly() const;
     virtual bool supportsFocus() const;
@@ -292,6 +298,7 @@ public:
 
     // Methods for indicating the style is affected by dynamic updates (e.g., children changing, our position changing in our sibling list, etc.)
     bool styleAffectedByEmpty() const { return hasRareData() && rareDataStyleAffectedByEmpty(); }
+    bool styleAffectedByFocusWithin() const { return hasRareData() && rareDataStyleAffectedByFocusWithin(); }
     bool childrenAffectedByHover() const { return getFlag(ChildrenAffectedByHoverRulesFlag); }
     bool childrenAffectedByActive() const { return hasRareData() && rareDataChildrenAffectedByActive(); }
     bool childrenAffectedByDrag() const { return hasRareData() && rareDataChildrenAffectedByDrag(); }
@@ -305,6 +312,7 @@ public:
     bool hasFlagsSetDuringStylingOfChildren() const;
 
     void setStyleAffectedByEmpty();
+    void setStyleAffectedByFocusWithin();
     void setChildrenAffectedByHover() { setFlag(ChildrenAffectedByHoverRulesFlag); }
     void setChildrenAffectedByActive();
     void setChildrenAffectedByDrag();
@@ -387,7 +395,11 @@ public:
     bool childNeedsShadowWalker() const;
     void didShadowTreeAwareChildrenChange();
 
+    virtual bool matchesValidPseudoClass() const;
+    virtual bool matchesInvalidPseudoClass() const;
     virtual bool matchesReadWritePseudoClass() const;
+    virtual bool matchesIndeterminatePseudoClass() const;
+    virtual bool matchesDefaultPseudoClass() const;
     bool matches(const String& selectors, ExceptionCode&);
     Element* closest(const String& selectors, ExceptionCode&);
     virtual bool shouldAppearIndeterminate() const;
@@ -400,14 +412,11 @@ public:
     virtual bool isMediaElement() const { return false; }
 #endif
 
-    virtual bool matchesValidPseudoClass() const { return false; }
-    virtual bool matchesInvalidPseudoClass() const { return false; }
     virtual bool isFormControlElement() const { return false; }
     virtual bool isSpinButtonElement() const { return false; }
     virtual bool isTextFormControl() const { return false; }
     virtual bool isOptionalFormControl() const { return false; }
     virtual bool isRequiredFormControl() const { return false; }
-    virtual bool isDefaultButtonForForm() const { return false; }
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
     virtual bool isFrameElementBase() const { return false; }
@@ -516,6 +525,10 @@ public:
     using ContainerNode::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
+    bool isNamedFlowContentElement() const { return hasRareData() && rareDataIsNamedFlowContentElement(); }
+    void setIsNamedFlowContentElement();
+    void clearIsNamedFlowContentElement();
+
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
 
@@ -602,6 +615,8 @@ private:
     const RenderStyle& resolveComputedStyle();
 
     bool rareDataStyleAffectedByEmpty() const;
+    bool rareDataStyleAffectedByFocusWithin() const;
+    bool rareDataIsNamedFlowContentElement() const;
     bool rareDataChildrenAffectedByHover() const;
     bool rareDataChildrenAffectedByActive() const;
     bool rareDataChildrenAffectedByDrag() const;
@@ -742,6 +757,15 @@ inline UniqueElementData& Element::ensureUniqueElementData()
 inline bool shouldIgnoreAttributeCase(const Element& element)
 {
     return element.isHTMLElement() && element.document().isHTMLDocument();
+}
+
+inline void Element::setHasFocusWithin(bool flag)
+{
+    if (hasFocusWithin() == flag)
+        return;
+    setFlag(flag, HasFocusWithin);
+    if (styleAffectedByFocusWithin())
+        setNeedsStyleRecalc();
 }
 
 } // namespace WebCore

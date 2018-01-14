@@ -308,12 +308,7 @@ webkit.org/b/140234 fast/text/midword-break-before-surrogate-pair.html [ Failure
 webkit.org/b/140234 fast/text/midword-break-before-surrogate-pair-2.html [ Failure ]
 webkit.org/b/140234 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure ]
 
-# TODO DRT doesn't support showModalDialog
-webkit.org/b/53675 fast/events/show-modal-dialog-onblur-onfocus.html [ Skip ]
-webkit.org/b/53675 fast/harness/show-modal-dialog.html [ Skip ]
-webkit.org/b/53675 fast/events/scroll-event-during-modal-dialog.html [ Skip ]
-webkit.org/b/53675 fast/dom/Window/open-window-min-size.html [ Skip ]
-webkit.org/b/53675 js/dom/function-length.html [ Skip ]
+fast/events/scroll-event-during-modal-dialog.html [ Failure ]
 
 webkit.org/b/151506 fast/events/beforeunload-showModalDialog.html [ Skip ]
 webkit.org/b/151506 fast/events/pagehide-showModalDialog.html [ Skip ]
@@ -785,11 +780,9 @@ webkit.org/b/47091 http/tests/misc/copy-resolves-urls.html [ Skip ]
 # Sometimes fail or timeout
 webkit.org/b/48455 transitions/cancel-transition.html [ Pass Failure ]
 webkit.org/b/48456 transitions/change-values-during-transition.html [ Pass Failure ]
-webkit.org/b/106415 fast/workers/worker-close-more.html [ Skip ]
 webkit.org/b/48750 fast/frames/sandboxed-iframe-storage.html [ Failure ]
 webkit.org/b/48753 http/tests/security/window-events-clear-port.html [ Pass Timeout ]
 webkit.org/b/48753 http/tests/security/window-properties-clear-port.html [ Pass Timeout ]
-fast/workers/worker-document-leak.html [ Skip ] # Timeout
 ################################################################################
 ######################            Media tests             ######################
 ################################################################################
@@ -2213,7 +2206,6 @@ webkit.org/b/140703 http/tests/security/XFrameOptions/x-frame-options-parent-sam
 webkit.org/b/140703 http/tests/xmlhttprequest/remember-bad-password.html [ Failure ]
 webkit.org/b/140703 http/tests/xmlhttprequest/failed-auth.html [ Failure ]
 
-[ Release ] http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Pass Crash ] # Flaky!
 [ Debug ] http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Skip ] # Crashing
 
 # CSP Stuff
@@ -2303,9 +2295,6 @@ webkit.org/b/25189 http/tests/incremental/slow-utf8-text.pl [ Pass Timeout ]
 webkit.org/b/25483 http/tests/navigation/redirect-cycle.html [ Pass Timeout ]
 webkit.org/b/28467 [ Release ] http/tests/loading/preload-img-test.html [ Pass Timeout ]
 webkit.org/b/28467 [ Debug ] http/tests/loading/preload-img-test.html [ Skip ] # Crashing
-
-# Different tests sometimes time out on apple-windows-5
-#webkit.org/b/55579 http/tests/websocket [ Skip ]
 
 # Times out <rdar://problem/9304941>
 http/tests/multipart/invalid-image-data-standalone.html [ Skip ] # Timeout
@@ -3148,7 +3137,6 @@ security/autocomplete-cleared-on-back.html [ Skip ]  # Timeout
 
 transitions/move-after-transition.html [ Failure Timeout ]
 
-fast/workers/worker-lifecycle.html [ Skip ] # Timeout
 inspector/css/stylesheet-with-mutations.html [ Skip ] # Timeout
 
 webkit.org/b/142017 fast/attachment/attachment-dom.html [ Skip ]
@@ -3358,7 +3346,10 @@ webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-heade
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Failure ]
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Failure ]
 
-webkit.org/b/153772 fast/shadow-dom/slot-removal-crash-2.html [ Timeout ]
+webkit.org/b/148695 fast/shadow-dom [ Pass ]
+
+# Touch events is not enabled on Windows
+webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]
 
 # The SVG -> OTF Font converter outputs 'kern' tables instead of 'GPOS' tables.
 webkit.org/b/137204 fast/text/svg-font-face-with-kerning.html [ Failure ]
@@ -3388,3 +3379,7 @@ fast/text/arabic-blacklisted-expected.html [ Pass ImageOnlyFailure ]
 
 # dumpPolicyDelegateCallbacks is not supported in DumpRenderTree
 fast/loader/iframe-src-invalid-url.html [ Skip ]
+
+# These tests hardcode platform-specific font aliases.
+webkit.org/b/158649 fast/text/chinese-font-name-aliases.html [ ImageOnlyFailure ]
+webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]

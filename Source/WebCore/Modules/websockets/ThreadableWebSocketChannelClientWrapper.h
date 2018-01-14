@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThreadableWebSocketChannelClientWrapper_h
-#define ThreadableWebSocketChannelClientWrapper_h
+#pragma once
 
 #if ENABLE(WEB_SOCKETS)
 
@@ -50,7 +49,7 @@ class WebSocketChannelClient;
 
 class ThreadableWebSocketChannelClientWrapper : public ThreadSafeRefCounted<ThreadableWebSocketChannelClientWrapper> {
 public:
-    static Ref<ThreadableWebSocketChannelClientWrapper> create(ScriptExecutionContext*, WebSocketChannelClient*);
+    static Ref<ThreadableWebSocketChannelClientWrapper> create(ScriptExecutionContext&, WebSocketChannelClient&);
 
     void clearSyncMethodDone();
     void setSyncMethodDone();
@@ -72,28 +71,28 @@ public:
     ThreadableWebSocketChannel::SendResult sendRequestResult() const;
     void setSendRequestResult(ThreadableWebSocketChannel::SendResult);
 
-    unsigned long bufferedAmount() const;
-    void setBufferedAmount(unsigned long);
+    unsigned bufferedAmount() const;
+    void setBufferedAmount(unsigned);
 
     void clearClient();
 
     void didConnect();
     void didReceiveMessage(const String& message);
     void didReceiveBinaryData(Vector<uint8_t>&&);
-    void didUpdateBufferedAmount(unsigned long bufferedAmount);
+    void didUpdateBufferedAmount(unsigned bufferedAmount);
     void didStartClosingHandshake();
-    void didClose(unsigned long unhandledBufferedAmount, WebSocketChannelClient::ClosingHandshakeCompletionStatus, unsigned short code, const String& reason);
+    void didClose(unsigned unhandledBufferedAmount, WebSocketChannelClient::ClosingHandshakeCompletionStatus, unsigned short code, const String& reason);
     void didReceiveMessageError();
 
     void suspend();
     void resume();
 
 private:
-    ThreadableWebSocketChannelClientWrapper(ScriptExecutionContext*, WebSocketChannelClient*);
+    ThreadableWebSocketChannelClientWrapper(ScriptExecutionContext&, WebSocketChannelClient&);
 
     void processPendingTasks();
 
-    ScriptExecutionContext* m_context;
+    ScriptExecutionContext& m_context;
     WebSocketChannelClient* m_client;
     WorkerThreadableWebSocketChannel::Peer* m_peer;
     bool m_failedWebSocketChannelCreation;
@@ -102,7 +101,7 @@ private:
     Vector<UChar> m_subprotocol;
     Vector<UChar> m_extensions;
     ThreadableWebSocketChannel::SendResult m_sendRequestResult;
-    unsigned long m_bufferedAmount;
+    unsigned m_bufferedAmount;
     bool m_suspended;
     Vector<std::unique_ptr<ScriptExecutionContext::Task>> m_pendingTasks;
 };
@@ -110,5 +109,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(WEB_SOCKETS)
-
-#endif // ThreadableWebSocketChannelClientWrapper_h

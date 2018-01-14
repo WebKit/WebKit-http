@@ -200,6 +200,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ExitingJITType.cpp
     bytecode/GetByIdStatus.cpp
     bytecode/GetByIdVariant.cpp
+    bytecode/InlineAccess.cpp
     bytecode/InlineCallFrame.cpp
     bytecode/InlineCallFrameSet.cpp
     bytecode/JumpTable.cpp
@@ -555,6 +556,7 @@ set(JavaScriptCore_SOURCES
     jit/JITSubGenerator.cpp
     jit/JITThunks.cpp
     jit/JITToDFGDeferredCompilationCallback.cpp
+    jit/JITWorklist.cpp
     jit/PCToCodeOriginMap.cpp
     jit/PolymorphicCallStubRoutine.cpp
     jit/Reg.cpp
@@ -683,12 +685,11 @@ set(JavaScriptCore_SOURCES
     runtime/JSArrayBufferConstructor.cpp
     runtime/JSArrayBufferPrototype.cpp
     runtime/JSArrayBufferView.cpp
-    runtime/JSArrayIterator.cpp
     runtime/JSBoundFunction.cpp
-    runtime/JSBoundSlotBaseFunction.cpp
     runtime/JSCJSValue.cpp
     runtime/JSCallee.cpp
     runtime/JSCell.cpp
+    runtime/JSCustomGetterSetterFunction.cpp
     runtime/JSDataView.cpp
     runtime/JSDataViewPrototype.cpp
     runtime/JSDateMath.cpp

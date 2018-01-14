@@ -131,6 +131,31 @@ Vector<RefPtr<MediaPayload>> MockMediaEndpoint::getDefaultVideoPayloads()
     return payloads;
 }
 
+MediaPayloadVector MockMediaEndpoint::filterPayloads(const MediaPayloadVector& remotePayloads, const MediaPayloadVector& defaultPayloads)
+{
+    MediaPayloadVector filteredPayloads;
+
+    for (auto& remotePayload : remotePayloads) {
+        MediaPayload* defaultPayload = nullptr;
+        for (auto& payload : defaultPayloads) {
+            if (payload->encodingName() == remotePayload->encodingName().convertToASCIIUppercase()) {
+                defaultPayload = payload.get();
+                break;
+            }
+        }
+        if (!defaultPayload)
+            continue;
+
+        if (defaultPayload->parameters().contains("packetizationMode") && remotePayload->parameters().contains("packetizationMode")
+            && (defaultPayload->parameters().get("packetizationMode") != defaultPayload->parameters().get("packetizationMode")))
+            continue;
+
+        filteredPayloads.append(remotePayload);
+    }
+
+    return filteredPayloads;
+}
+
 MediaEndpoint::UpdateResult MockMediaEndpoint::updateReceiveConfiguration(MediaEndpointSessionConfiguration* configuration, bool isInitiator)
 {
     UNUSED_PARAM(configuration);
@@ -139,18 +164,19 @@ MediaEndpoint::UpdateResult MockMediaEndpoint::updateReceiveConfiguration(MediaE
     return UpdateResult::Success;
 }
 
-MediaEndpoint::UpdateResult MockMediaEndpoint::updateSendConfiguration(MediaEndpointSessionConfiguration* configuration, bool isInitiator)
+MediaEndpoint::UpdateResult MockMediaEndpoint::updateSendConfiguration(MediaEndpointSessionConfiguration* configuration, const RealtimeMediaSourceMap& sendSourceMap, bool isInitiator)
 {
     UNUSED_PARAM(configuration);
+    UNUSED_PARAM(sendSourceMap);
     UNUSED_PARAM(isInitiator);
 
     return UpdateResult::Success;
 }
 
-void MockMediaEndpoint::addRemoteCandidate(IceCandidate& candidate, unsigned mdescIndex, const String& ufrag, const String& password)
+void MockMediaEndpoint::addRemoteCandidate(IceCandidate& candidate, const String& mid, const String& ufrag, const String& password)
 {
     UNUSED_PARAM(candidate);
-    UNUSED_PARAM(mdescIndex);
+    UNUSED_PARAM(mid);
     UNUSED_PARAM(ufrag);
     UNUSED_PARAM(password);
 }
@@ -164,10 +190,10 @@ Ref<RealtimeMediaSource> MockMediaEndpoint::createMutedRemoteSource(const String
     return MockRealtimeVideoSource::createMuted("remote video");
 }
 
-void MockMediaEndpoint::replaceSendSource(RealtimeMediaSource& newSource, unsigned mdescIndex)
+void MockMediaEndpoint::replaceSendSource(RealtimeMediaSource& newSource, const String& mid)
 {
     UNUSED_PARAM(newSource);
-    UNUSED_PARAM(mdescIndex);
+    UNUSED_PARAM(mid);
 }
 
 void MockMediaEndpoint::stop()

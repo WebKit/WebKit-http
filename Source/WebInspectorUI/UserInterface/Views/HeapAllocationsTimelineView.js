@@ -51,6 +51,12 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
                 sortable: true,
                 aligned: "right",
             },
+            liveSize: {
+                title: WebInspector.UIString("Live Size"),
+                width: "80px",
+                sortable: true,
+                aligned: "right",
+            },
         };
 
         let snapshotTooltip = WebInspector.UIString("Take snapshot");
@@ -77,9 +83,11 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
         this._snapshotListPathComponent.addEventListener(WebInspector.HierarchicalPathComponent.Event.Clicked, this._snapshotListPathComponentClicked, this);
 
         this._dataGrid = new WebInspector.TimelineDataGrid(columns);
-        this._dataGrid.sortColumnIdentifierSetting = new WebInspector.Setting("heap-allocations-timeline-view-sort", "timestamp");
-        this._dataGrid.sortOrderSetting = new WebInspector.Setting("heap-allocations-timeline-view-sort-order", WebInspector.DataGrid.SortOrder.Ascending);
+        this._dataGrid.sortColumnIdentifier = "timestamp";
+        this._dataGrid.sortOrder = WebInspector.DataGrid.SortOrder.Ascending;
+        this._dataGrid.createSettings("heap-allocations-timeline-view");
         this._dataGrid.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
+
         this.addSubview(this._dataGrid);
 
         this._contentViewContainer = new WebInspector.ContentViewContainer;
@@ -231,6 +239,7 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
 
         this._contentViewContainer.closeAllContentViews();
 
+        WebInspector.ContentView.removeEventListener(null, null, this);
         WebInspector.HeapSnapshotWorkerProxy.singleton().removeEventListener("HeapSnapshot.CollectionEvent", this._heapSnapshotCollectionEvent, this);
     }
 
@@ -294,8 +303,6 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
             updateHeapSnapshotForEvent(record.heapSnapshot);
         if (this._heapSnapshotDiff)
             updateHeapSnapshotForEvent(this._heapSnapshotDiff);
-
-        // FIXME: <https://webkit.org/b/157904> Web Inspector: Snapshot List should show the total size and the total live size
     }
 
     _snapshotListPathComponentClicked(event)
@@ -417,6 +424,9 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
         // Selected Comparison.
         let snapshot1 = this._baselineHeapSnapshotTimelineRecord.heapSnapshot;
         let snapshot2 = heapAllocationsTimelineRecord.heapSnapshot;
+        if (snapshot1.identifier > snapshot2.identifier)
+            [snapshot1, snapshot2] = [snapshot2, snapshot1];
+
         let workerProxy = WebInspector.HeapSnapshotWorkerProxy.singleton();
         workerProxy.createSnapshotDiff(snapshot1.proxyObjectId, snapshot2.proxyObjectId, ({objectId, snapshotDiff: serializedSnapshotDiff}) => {
             let diff = WebInspector.HeapSnapshotDiffProxy.deserialize(objectId, serializedSnapshotDiff);
@@ -424,6 +434,7 @@ WebInspector.HeapAllocationsTimelineView = class HeapAllocationsTimelineView ext
         });
 
         this._baselineDataGridNode.clearBaseline();
+        this._baselineDataGridNode = null;
         this._selectingComparisonHeapSnapshots = false;
         this._compareHeapSnapshotsButtonItem.activated = false;
     }

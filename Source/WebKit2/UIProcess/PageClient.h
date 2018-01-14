@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,12 +27,12 @@
 #define PageClient_h
 
 #include "ShareableBitmap.h"
-#include "UserInterfaceLayoutDirection.h"
 #include "WebColorPicker.h"
 #include "WebPageProxy.h"
 #include "WebPopupMenuProxy.h"
 #include <WebCore/AlternativeTextClient.h>
 #include <WebCore/EditorClient.h>
+#include <WebCore/UserInterfaceLayoutDirection.h>
 #include <wtf/Forward.h>
 
 #if PLATFORM(COCOA)
@@ -305,7 +305,6 @@ public:
     virtual void overflowScrollViewDidScroll() = 0;
     virtual void overflowScrollWillStartScroll() = 0;
     virtual void overflowScrollDidEndScroll() = 0;
-    virtual void didFinishDrawingPagesToPDF(const IPC::DataReference&) = 0;
     virtual Vector<String> mimeTypesWithCustomContentProviders() = 0;
 
     virtual void showInspectorHighlight(const WebCore::Highlight&) = 0;
@@ -365,7 +364,7 @@ public:
 
     virtual bool windowIsFrontWindowUnderMouse(const NativeWebMouseEvent&) { return false; }
 
-    virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() = 0;
+    virtual WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() = 0;
 };
 
 } // namespace WebKit

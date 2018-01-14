@@ -50,12 +50,13 @@ public:
     virtual void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) = 0;
     virtual void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&) = 0;
     virtual void doneGatheringCandidates(unsigned mdescIndex) = 0;
-    virtual void gotRemoteSource(unsigned mdescIndex, RefPtr<RealtimeMediaSource>&&) = 0;
 
     virtual ~MediaEndpointClient() { }
 };
 
 typedef std::unique_ptr<MediaEndpoint> (*CreateMediaEndpoint)(MediaEndpointClient&);
+typedef Vector<RefPtr<MediaPayload>> MediaPayloadVector;
+typedef HashMap<String, RealtimeMediaSource*> RealtimeMediaSourceMap;
 
 class MediaEndpoint {
 public:
@@ -73,14 +74,15 @@ public:
     virtual void generateDtlsInfo() = 0;
     virtual Vector<RefPtr<MediaPayload>> getDefaultAudioPayloads() = 0;
     virtual Vector<RefPtr<MediaPayload>> getDefaultVideoPayloads() = 0;
+    virtual MediaPayloadVector filterPayloads(const MediaPayloadVector& remotePayloads, const MediaPayloadVector& defaultPayloads) = 0;
 
     virtual UpdateResult updateReceiveConfiguration(MediaEndpointSessionConfiguration*, bool isInitiator) = 0;
-    virtual UpdateResult updateSendConfiguration(MediaEndpointSessionConfiguration*, bool isInitiator) = 0;
+    virtual UpdateResult updateSendConfiguration(MediaEndpointSessionConfiguration*, const RealtimeMediaSourceMap&, bool isInitiator) = 0;
 
-    virtual void addRemoteCandidate(IceCandidate&, unsigned mdescIndex, const String& ufrag, const String& password) = 0;
+    virtual void addRemoteCandidate(IceCandidate&, const String& mid, const String& ufrag, const String& password) = 0;
 
     virtual Ref<RealtimeMediaSource> createMutedRemoteSource(const String& mid, RealtimeMediaSource::Type) = 0;
-    virtual void replaceSendSource(RealtimeMediaSource&, unsigned mdescIndex) = 0;
+    virtual void replaceSendSource(RealtimeMediaSource&, const String& mid) = 0;
 
     virtual void stop() = 0;
 };

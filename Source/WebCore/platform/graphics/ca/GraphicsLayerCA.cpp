@@ -676,6 +676,15 @@ void GraphicsLayerCA::setContentsVisible(bool contentsVisible)
         noteSublayersChanged();
 }
 
+void GraphicsLayerCA::setUserInteractionEnabled(bool userInteractionEnabled)
+{
+    if (userInteractionEnabled == m_userInteractionEnabled)
+        return;
+    
+    GraphicsLayer::setUserInteractionEnabled(userInteractionEnabled);
+    noteLayerPropertyChanged(UserInteractionEnabledChanged);
+}
+
 void GraphicsLayerCA::setAcceleratesDrawing(bool acceleratesDrawing)
 {
     if (acceleratesDrawing == m_acceleratesDrawing)
@@ -1430,7 +1439,8 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
         FloatRect initialClip(boundsOrigin(), size());
 
         GraphicsContext context;
-        DisplayList::Recorder recorder(context, *m_displayList, initialClip, AffineTransform());
+        // The Recorder is large, so heap-allocate.
+        std::unique_ptr<DisplayList::Recorder> recorder = std::make_unique<DisplayList::Recorder>(context, *m_displayList, initialClip, AffineTransform());
         paintGraphicsLayerContents(context, FloatRect(FloatPoint(), size()));
 
 #ifdef LOG_RECORDING_TIME
@@ -1578,6 +1588,9 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
     
     if (m_uncommittedChanges & ContentsVisibilityChanged)
         updateContentsVisibility();
+
+    if (m_uncommittedChanges & UserInteractionEnabledChanged)
+        updateUserInteractionEnabled();
 
     // Note that contentsScale can affect whether the layer can be opaque.
     if (m_uncommittedChanges & ContentsOpaqueChanged)
@@ -1882,6 +1895,11 @@ void GraphicsLayerCA::updateContentsVisibility()
     }
 
     m_layer->setContentsHidden(!m_contentsVisible);
+}
+
+void GraphicsLayerCA::updateUserInteractionEnabled()
+{
+    m_layer->setUserInteractionEnabled(m_userInteractionEnabled);
 }
 
 void GraphicsLayerCA::updateContentsOpaque(float pageScaleFactor)
@@ -3798,8 +3816,8 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
 
         for (auto* childLayer : childLayers) {
             GraphicsLayerCA& childLayerCA = downcast<GraphicsLayerCA>(*childLayer);
-            if (RefPtr<PlatformCALayer> platformLayer = childLayerCA.fetchCloneLayers(replicaRoot, replicaState, IntermediateCloneLevel))
-                clonalSublayers.append(platformLayer.release());
+            if (auto platformLayer = childLayerCA.fetchCloneLayers(replicaRoot, replicaState, IntermediateCloneLevel))
+                clonalSublayers.append(WTFMove(platformLayer));
         }
 
         replicaState.pop();

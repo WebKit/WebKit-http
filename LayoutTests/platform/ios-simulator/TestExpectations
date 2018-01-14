@@ -254,7 +254,8 @@ fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
 fast/events/prevent-default-prevents-interaction-with-scrollbars.html [ Skip ]
 fast/text/text-disappear-on-deselect.html [ ImageOnlyFailure ]
-
+http/tests/dom/window-open-about-blank-and-access-document.html [ Skip ]
+http/tests/dom/window-open-about-webkit-org-and-access-document.html [ Skip ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 
@@ -263,6 +264,7 @@ fast/shadow-dom/focus-across-details-element.html [ Failure ]
 fast/shadow-dom/focus-navigation-across-slots.html [ Failure ]
 fast/shadow-dom/focus-on-iframe.html [ Failure ]
 fast/shadow-dom/negative-tabindex-on-shadow-host.html [ Failure ]
+webkit.org/b/116046 fast/events/sequential-focus-navigation-starting-point.html [ Skip ]
 
 webkit.org/b/150225 fast/custom-elements [ Pass ]
 
@@ -1387,6 +1389,8 @@ fast/canvas/draw-focus-if-needed.html [ Failure ]
 fast/clip/clip-when-rect-has-fractional-pixel-value.html [ ImageOnlyFailure ]
 fast/css-generated-content/table-parts-before-and-after.html [ Failure ]
 fast/css/absolute-child-with-percent-height-inside-relative-parent.html [ Failure ]
+fast/css/ancestor-of-hovered-element-detached.html [ Failure ]
+fast/css/ancestor-of-hovered-element-removed.html [ Failure ]
 fast/css/background-image-with-baseurl.html [ Failure ]
 fast/css/button-height.html [ Failure ]
 fast/css/caption-width-absolute-position-offset-top.htm [ Failure ]
@@ -1757,9 +1761,9 @@ fast/forms/onselect-textarea.html [ Failure ]
 fast/forms/onselect-textfield.html [ Failure ]
 fast/forms/option-mouseevents.html [ Failure ]
 fast/forms/password-doubleclick-selection.html [ Failure ]
-fast/forms/password-placeholder-text-security.html [ ImageOnlyFailure ]
+fast/forms/password-placeholder-text-security.html [ Pass ImageOnlyFailure ]
 fast/forms/placeholder-position.html [ Failure ]
-fast/forms/radio/indeterminate-radio.html [ Failure ]
+fast/forms/radio/indeterminate-radio.html [ Pass Failure ]
 fast/forms/range/range-drag-when-toggled-disabled.html [ Failure ]
 fast/forms/range/range-drag.html [ Failure ]
 fast/forms/range/range-hit-test-with-padding.html [ Failure ]
@@ -2686,8 +2690,6 @@ platform/ios-simulator/ios/accessibility/set-value.html [ Failure ]
 platform/ios-simulator/ios/fast/css/webkit-overflow-scrolling-parsing.html [ Failure ]
 svg/custom/bug78807.svg [ Failure ]
 
-css3/line-break-language-sensitive/line-break-loose-hyphens.html [ ImageOnlyFailure ]
-css3/line-break-language-sensitive/line-break-normal-hyphens.html [ ImageOnlyFailure ]
 fast/filter-image/background-filter-image.html [ ImageOnlyFailure ]
 fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
 fast/text/han-generic-font-families.html [ ImageOnlyFailure ]
@@ -2756,16 +2758,21 @@ webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nes
 
 # Flaky tests ( these tests were affected by https://bugs.webkit.org/show_bug.cgi?id=149320 )
 
-css3/line-break-language-sensitive/line-break-loose-centered.html [ ImageOnlyFailure Pass ]
-css3/line-break-language-sensitive/line-break-loose-postfixes.html [ ImageOnlyFailure Pass ]
-css3/line-break-language-sensitive/line-break-loose-sound-marks.html [ ImageOnlyFailure Pass ]
-css3/line-break-language-sensitive/line-break-normal-sound-marks.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-loose-hyphens.html [ ImageOnlyFailure ]
+css3/line-break/line-break-normal-hyphens.html [ ImageOnlyFailure ]
+css3/line-break/line-break-loose-centered.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-loose-postfixes.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-loose-sound-marks.html [ ImageOnlyFailure Pass ]
+css3/line-break/line-break-normal-sound-marks.html [ ImageOnlyFailure Pass ]
 
 # Enable "aria-current" test for iOS
 webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
 
 # Enable "aria-table-attributes" test for iOS
 webkit.org/b/150366 accessibility/aria-table-attributes.html [ Pass ]
+
+# Enable "attachment element" test for iOS
+accessibility/attachment-element.html [ Pass ]
 
 # Enable Text marker tests for iOS
 webkit.org/b/153292 accessibility/text-marker [ Pass ]
@@ -2827,19 +2834,6 @@ imported/blink/svg/text/text-outline-2.html [ ImageOnlyFailure Pass ]
 imported/blink/svg/text/tspan-outline-crash.html [ ImageOnlyFailure Pass ]
 imported/blink/transitions/transition-shape-outside-crash.html [ Pass Timeout ]
 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirks-mode.html [ ImageOnlyFailure ]
-
-webkit.org/b/152134 fast/events/ios/clicking-document-should-not-trigger-focus.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/focused-input-should-assist-on-touch.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/input-value-after-oninput.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/keyboard-should-not-trigger-resize.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/single-tap-generates-click.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/unscalable-viewport-clicks-on-doubletap.html [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/viewport-device-width-at-initial-scale-fast-clicks.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/viewport-no-width-value-allows-double-tap.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/fast-click-double-tap-sends-click.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/fast-click-double-tap-zooms-on-text.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/fast-click-double-tap-zooms-on-image.html  [ Pass Timeout ]
-webkit.org/b/152134 fast/events/ios/no-fast-click-double-tap-causes-zoom.html  [ Pass Timeout ]
 
 # Failing tests related to picture element
 webkit.org/b/152141 fast/picture/image-picture-1x.html [ Skip ]
@@ -2949,7 +2943,7 @@ fast/css3-text/css3-text-decoration/text-decoration-line-through-mispositioned.h
 fast/forms/select-size.html [ ImageOnlyFailure ]
 fast/inline/inline-with-outline-offset.html [ ImageOnlyFailure ]
 fast/inline/outline-corners-with-offset.html [ ImageOnlyFailure ]
-fast/overflow/overflow-hidden-scroll-into-view.html [ ImageOnlyFailure ]
+fast/overflow/overflow-hidden-scroll-into-view.html [ Pass ImageOnlyFailure ]
 fast/regions/layers/region-removed-during-animation.html [ ImageOnlyFailure ]
 fast/sub-pixel/table-with-subpixel-cell-size.html [ ImageOnlyFailure ]
 svg/text/tspan-multiple-outline.svg [ ImageOnlyFailure ]
@@ -2995,3 +2989,8 @@ imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation
 imported/w3c/web-platform-tests/html/semantics/selectors/pseudo-classes/inrange-outofrange.html [ Failure ]
 
 webkit.org/b/157916 http/tests/misc/slow-loading-animated-image.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/158618 fast/hidpi/hidpi-3x-device-pixel-ratio.html [ Failure ]
+
+# These tests hardcode platform-specific font aliases.
+webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]

@@ -125,6 +125,11 @@ void InspectorDebuggerAgent::disable(ErrorString&)
     disable(false);
 }
 
+bool InspectorDebuggerAgent::breakpointsActive() const
+{
+    return m_scriptDebugServer.breakpointsActive();
+}
+
 void InspectorDebuggerAgent::setBreakpointsActive(ErrorString&, bool active)
 {
     if (active)
@@ -133,7 +138,7 @@ void InspectorDebuggerAgent::setBreakpointsActive(ErrorString&, bool active)
         m_scriptDebugServer.deactivateBreakpoints();
 }
 
-bool InspectorDebuggerAgent::isPaused()
+bool InspectorDebuggerAgent::isPaused() const
 {
     return m_scriptDebugServer.isPaused();
 }
@@ -750,7 +755,7 @@ void InspectorDebuggerAgent::breakpointActionProbe(JSC::ExecState& scriptState, 
         .setBatchId(batchId)
         .setSampleId(sampleId)
         .setTimestamp(m_injectedScriptManager.inspectorEnvironment().executionStopwatch()->elapsedTime())
-        .setPayload(payload.release())
+        .setPayload(WTFMove(payload))
         .release();
     m_frontendDispatcher->didSampleProbe(WTFMove(result));
 }

@@ -1926,6 +1926,13 @@ sub shouldRemoveCMakeCache(@)
         return 1;
     }
 
+    if(isAnyWindows()) {
+        my $winConfiguration = File::Spec->catdir(sourceDir(), "Source", "cmake", "OptionsWin.cmake");
+        if ($cacheFileModifiedTime < stat($winConfiguration)->mtime) {
+            return 1;
+        }
+    }
+
     return 0;
 }
 
@@ -1997,7 +2004,7 @@ sub generateBuildSystemFromCMakeProject
     my @args;
     push @args, "-DPORT=\"$port\"";
     push @args, "-DCMAKE_INSTALL_PREFIX=\"$prefixPath\"" if $prefixPath;
-    push @args, "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" if isGtk();
+    push @args, "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON";
     if ($config =~ /release/i) {
         push @args, "-DCMAKE_BUILD_TYPE=Release";
     } elsif ($config =~ /debug/i) {
@@ -2274,6 +2281,7 @@ sub waitUntilIOSSimulatorDeviceIsInState($$)
 {
     my ($deviceUDID, $waitUntilState) = @_;
     my $device = iosSimulatorDeviceByUDID($deviceUDID);
+    # FIXME: We should add a maximum time limit to wait here.
     while ($device->{state} ne $waitUntilState) {
         usleep(500 * 1000); # Waiting 500ms between file system polls does not make script run-safari feel sluggish.
         $device = iosSimulatorDeviceByUDID($deviceUDID);
@@ -2300,8 +2308,9 @@ sub relaunchIOSSimulator($)
     quitIOSSimulator($simulatedDevice->{UDID});
 
     # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
-    my $iosSimulatorBundleID = "com.apple.iphonesimulator";
-    system("open", "-b", $iosSimulatorBundleID, "--args", "-CurrentDeviceUDID", $simulatedDevice->{UDID}) == 0 or die "Failed to open $iosSimulatorBundleID: $!";
+    chomp(my $developerDirectory = $ENV{DEVELOPER_DIR} || `xcode-select --print-path`); 
+    my $iosSimulatorPath = File::Spec->catfile($developerDirectory, "Applications", "Simulator.app"); 
+    system("open", "-a", $iosSimulatorPath, "--args", "-CurrentDeviceUDID", $simulatedDevice->{UDID}) == 0 or die "Failed to open $iosSimulatorPath: $!"; 
 
     waitUntilIOSSimulatorDeviceIsInState($simulatedDevice->{UDID}, SIMULATOR_DEVICE_STATE_BOOTED);
 }
@@ -2310,7 +2319,11 @@ sub quitIOSSimulator(;$)
 {
     my ($waitForShutdownOfSimulatedDeviceUDID) = @_;
     # FIXME: <rdar://problem/20916140> Switch to using CoreSimulator.framework for launching and quitting iOS Simulator
-    exitStatus(system {"osascript"} "osascript", "-e", 'tell application id "com.apple.iphonesimulator" to quit') == 0 or die "Failed to quit iOS Simulator: $!";
+    if (exitStatus(system {"osascript"} "osascript", "-e", 'tell application id "com.apple.iphonesimulator" to quit')) {
+        # osascript returns a non-zero exit status if Simulator.app is not registered in LaunchServices.
+        return;
+    }
+
     if (!defined($waitForShutdownOfSimulatedDeviceUDID)) {
         return;
     }

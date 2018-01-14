@@ -73,14 +73,14 @@ protected:
 
     ScrollingStateTree* scrollingStateTree() { return m_scrollingStateTree.get(); }
 
-    PassRefPtr<ScrollingTree> releaseScrollingTree() { return m_scrollingTree.release(); }
+    PassRefPtr<ScrollingTree> releaseScrollingTree() { return WTFMove(m_scrollingTree); }
 
     void updateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, bool programmaticScroll, SetOrSyncScrollingLayerPosition);
 
     WEBCORE_EXPORT String scrollingStateTreeAsText() const override;
     WEBCORE_EXPORT void willCommitTree() override;
 
-    bool nonFastScrollableRegionDirty() const { return m_nonFastScrollableRegionDirty; }
+    bool eventTrackingRegionsDirty() const { return m_eventTrackingRegionsDirty; }
 
 private:
     bool isAsyncScrollingCoordinator() const override { return true; }
@@ -90,7 +90,7 @@ private:
 
     WEBCORE_EXPORT void frameViewLayoutUpdated(FrameView&) override;
     WEBCORE_EXPORT void frameViewRootLayerDidChange(FrameView&) override;
-    WEBCORE_EXPORT void frameViewNonFastScrollableRegionChanged(FrameView&) override;
+    WEBCORE_EXPORT void frameViewEventTrackingRegionsChanged(FrameView&) override;
 
     WEBCORE_EXPORT bool requestScrollPositionUpdate(FrameView&, const IntPoint&) override;
 
@@ -121,8 +121,8 @@ private:
     void updateMainFrameScrollLayerPosition();
 
     void updateScrollPositionAfterAsyncScrollTimerFired();
-    void setNonFastScrollableRegionDirty();
-    void updateNonFastScrollableRegion();
+    void setEventTrackingRegionsDirty();
+    void updateEventTrackingRegions();
     
     FrameView* frameViewForScrollingNode(ScrollingNodeID) const;
 
@@ -160,7 +160,7 @@ private:
     std::unique_ptr<ScrollingStateTree> m_scrollingStateTree;
     RefPtr<ScrollingTree> m_scrollingTree;
 
-    bool m_nonFastScrollableRegionDirty { false };
+    bool m_eventTrackingRegionsDirty { false };
 };
 
 } // namespace WebCore

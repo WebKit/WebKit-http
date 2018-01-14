@@ -110,15 +110,14 @@ void BlobRegistryImpl::appendStorageItems(BlobData* blobData, const BlobDataItem
     ASSERT(!length);
 }
 
-void BlobRegistryImpl::registerFileBlobURL(const URL& url, RefPtr<BlobDataFileReference>&& file, const String& contentType)
+void BlobRegistryImpl::registerFileBlobURL(const URL& url, Ref<BlobDataFileReference>&& file, const String& contentType)
 {
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create(contentType);
-
-    blobData->appendFile(file);
-    m_blobs.set(url.string(), blobData.release());
+    auto blobData = BlobData::create(contentType);
+    blobData->appendFile(WTFMove(file));
+    m_blobs.set(url.string(), WTFMove(blobData));
 }
 
 void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobParts, const String& contentType)
@@ -126,7 +125,7 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create(contentType);
+    auto blobData = BlobData::create(contentType);
 
     // The blob data is stored in the "canonical" way. That is, it only contains a list of Data and File items.
     // 1) The Data item is denoted by the raw data and the range.
@@ -152,7 +151,7 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
         }
     }
 
-    m_blobs.set(url.string(), blobData.release());
+    m_blobs.set(url.string(), WTFMove(blobData));
 }
 
 void BlobRegistryImpl::registerBlobURL(const URL& url, const URL& srcURL)
@@ -171,13 +170,13 @@ void BlobRegistryImpl::registerBlobURLOptionallyFileBacked(const URL& url, const
         return;
     }
 
-    if (file == nullptr || file->path().isEmpty())
+    if (!file || file->path().isEmpty())
         return;
 
-    RefPtr<BlobData> backingFile = BlobData::create({ });
-    backingFile->appendFile(WTFMove(file));
+    auto backingFile = BlobData::create({ });
+    backingFile->appendFile(file.releaseNonNull());
 
-    m_blobs.set(url.string(), backingFile.release());
+    m_blobs.set(url.string(), WTFMove(backingFile));
 }
 
 void BlobRegistryImpl::registerBlobURLForSlice(const URL& url, const URL& srcURL, long long start, long long end)
@@ -209,11 +208,11 @@ void BlobRegistryImpl::registerBlobURLForSlice(const URL& url, const URL& srcURL
         end = originalSize;
 
     unsigned long long newLength = end - start;
-    RefPtr<BlobData> newData = BlobData::create(originalData->contentType());
+    auto newData = BlobData::create(originalData->contentType());
 
-    appendStorageItems(newData.get(), originalData->items(), start, newLength);
+    appendStorageItems(newData.ptr(), originalData->items(), start, newLength);
 
-    m_blobs.set(url.string(), newData.release());
+    m_blobs.set(url.string(), WTFMove(newData));
 }
 
 void BlobRegistryImpl::unregisterBlobURL(const URL& url)

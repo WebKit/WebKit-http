@@ -25,7 +25,6 @@
 #include "ArrayPrototype.h"
 #include "BuiltinExecutableCreator.h"
 #include "ButterflyInlines.h"
-#include "BytecodeGenerator.h"
 #include "CodeBlock.h"
 #include "Completion.h"
 #include "CopiedSpaceInlines.h"
@@ -51,6 +50,8 @@
 #include "JSProxy.h"
 #include "JSString.h"
 #include "JSWASMModule.h"
+#include "LLIntData.h"
+#include "ParserError.h"
 #include "ProfilerDatabase.h"
 #include "SamplingProfiler.h"
 #include "ShadowChicken.h"
@@ -1983,6 +1984,8 @@ int main(int argc, char** argv)
     EXCEPT(res = 3)
     if (Options::logHeapStatisticsAtExit())
         HeapStatistics::reportSuccess();
+    if (Options::reportLLIntStats())
+        LLInt::Data::dumpStats();
 
 #if PLATFORM(EFL)
     ecore_shutdown();

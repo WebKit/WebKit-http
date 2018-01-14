@@ -1495,6 +1495,17 @@ void webkit_dom_test_obj_method_with_exception_with_message(WebKitDOMTestObj* se
     item->methodWithExceptionWithMessage();
 }
 
+gchar* webkit_dom_test_obj_public_and_private_method(WebKitDOMTestObj* self, const gchar* argument)
+{
+    WebCore::JSMainThreadNullState state;
+    g_return_val_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self), 0);
+    g_return_val_if_fail(argument, 0);
+    WebCore::TestObj* item = WebKit::core(self);
+    WTF::String convertedArgument = WTF::String::fromUTF8(argument);
+    gchar* result = convertToUTF8String(item->publicAndPrivateMethod(convertedArgument));
+    return result;
+}
+
 void webkit_dom_test_obj_with_script_state_void(WebKitDOMTestObj* self)
 {
     WebCore::JSMainThreadNullState state;
@@ -1992,36 +2003,51 @@ gboolean webkit_dom_test_obj_strict_function_with_array(WebKitDOMTestObj* self, 
     return result;
 }
 
-void webkit_dom_test_obj_variadic_string_method(WebKitDOMTestObj* self, const gchar* head, const gchar* tail)
+void webkit_dom_test_obj_variadic_string_method(WebKitDOMTestObj* self, const gchar* head, ...)
 {
     WebCore::JSMainThreadNullState state;
     g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
     g_return_if_fail(head);
-    g_return_if_fail(tail);
     WebCore::TestObj* item = WebKit::core(self);
     WTF::String convertedHead = WTF::String::fromUTF8(head);
-    WTF::String convertedTail = WTF::String::fromUTF8(tail);
-    item->variadicStringMethod(convertedHead, convertedTail);
+    va_list variadicParameterList;
+    Vector<WTF::String> convertedTail;
+    va_start(variadicParameterList, head);
+    while (gchar* variadicParameter = va_arg(variadicParameterList, gchar*))
+        convertedTail.append(WTF::String::fromUTF8(variadicParameter));
+    va_end(variadicParameterList);
+    item->variadicStringMethod(convertedHead, WTFMove(convertedTail));
 }
 
-void webkit_dom_test_obj_variadic_double_method(WebKitDOMTestObj* self, gdouble head, gdouble tail)
+void webkit_dom_test_obj_variadic_double_method(WebKitDOMTestObj* self, gdouble head, guint n_tail, ...)
 {
     WebCore::JSMainThreadNullState state;
     g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
     WebCore::TestObj* item = WebKit::core(self);
-    item->variadicDoubleMethod(head, tail);
+    va_list variadicParameterList;
+    Vector<gdouble> convertedTail;
+    va_start(variadicParameterList, head);
+    convertedTail.reserveInitialCapacity(n_tail);
+    for (unsigned i = 0; i < n_tail; ++i) {
+        convertedTail.uncheckedAppend(va_arg(variadicParameterList, gdouble));
+    va_end(variadicParameterList);
+    item->variadicDoubleMethod(head, WTFMove(convertedTail));
 }
 
-void webkit_dom_test_obj_variadic_node_method(WebKitDOMTestObj* self, WebKitDOMNode* head, WebKitDOMNode* tail)
+void webkit_dom_test_obj_variadic_node_method(WebKitDOMTestObj* self, WebKitDOMNode* head, ...)
 {
     WebCore::JSMainThreadNullState state;
     g_return_if_fail(WEBKIT_DOM_IS_TEST_OBJ(self));
     g_return_if_fail(WEBKIT_DOM_IS_NODE(head));
-    g_return_if_fail(WEBKIT_DOM_IS_NODE(tail));
     WebCore::TestObj* item = WebKit::core(self);
     WebCore::Node* convertedHead = WebKit::core(head);
-    WebCore::Node* convertedTail = WebKit::core(tail);
-    item->variadicNodeMethod(*convertedHead, convertedTail);
+    va_list variadicParameterList;
+    Vector<WebCore::Node*> convertedTail;
+    va_start(variadicParameterList, head);
+    while (WebKitDOMNode* variadicParameter = va_arg(variadicParameterList, WebKitDOMNode*))
+        convertedTail.append(WebKit::core(variadicParameter));
+    va_end(variadicParameterList);
+    item->variadicNodeMethod(*convertedHead, WTFMove(convertedTail));
 }
 
 void webkit_dom_test_obj_any(WebKitDOMTestObj* self, gfloat a, glong b)

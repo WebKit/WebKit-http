@@ -40,6 +40,7 @@
 #include "HeapVerifier.h"
 #include "IncrementalSweeper.h"
 #include "Interpreter.h"
+#include "JITWorklist.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSLock.h"
@@ -250,20 +251,6 @@ static inline bool isValidThreadState(VM* vm)
 
     return true;
 }
-
-struct MarkObject : public MarkedBlock::VoidFunctor {
-    inline void visit(JSCell* cell)
-    {
-        if (cell->isZapped())
-            return;
-        Heap::heap(cell)->setMarked(cell);
-    }
-    IterationStatus operator()(JSCell* cell)
-    {
-        visit(cell);
-        return IterationStatus::Continue;
-    }
-};
 
 struct Count : public MarkedBlock::CountFunctor {
     void operator()(JSCell*) { count(1); }
@@ -519,8 +506,11 @@ void Heap::didFinishIterating()
     m_objectSpace.didFinishIterating();
 }
 
-void Heap::completeAllDFGPlans()
+void Heap::completeAllJITPlans()
 {
+#if ENABLE(JIT)
+    JITWorklist::instance()->completeAllForVM(*m_vm);
+#endif // ENABLE(JIT)
 #if ENABLE(DFG_JIT)
     DFG::completeAllPlansForVM(*m_vm);
 #endif
@@ -1045,7 +1035,7 @@ void Heap::deleteAllCodeBlocks()
     RELEASE_ASSERT(!m_vm->entryScope);
     ASSERT(m_operationInProgress == NoOperation);
 
-    completeAllDFGPlans();
+    completeAllJITPlans();
 
     for (ExecutableBase* executable : m_executables)
         executable->clearCode();
@@ -1140,6 +1130,13 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
         DeferGCForAWhile awhile(*this);
         vm()->typeProfilerLog()->processLogEntries(ASCIILiteral("GC"));
     }
+
+#if ENABLE(JIT)
+    {
+        DeferGCForAWhile awhile(*this);
+        JITWorklist::instance()->completeAllForVM(*m_vm);
+    }
+#endif // ENABLE(JIT)
 
     vm()->shadowChicken().update(*vm(), vm()->topCallFrame);
 
@@ -1461,9 +1458,6 @@ void Heap::didFinishCollection(double gcStartTime)
     if (Options::useZombieMode())
         zombifyDeadObjects();
 
-    if (Options::useImmortalObjects())
-        markDeadObjects();
-
     if (Options::dumpObjectStatistics())
         HeapStatistics::dumpObjectStatistics(this);
 
@@ -1490,12 +1484,6 @@ void Heap::resumeCompilerThreads()
         worklist->resumeAllThreads();
     m_suspendedCompilerWorklists.clear();
 #endif
-}
-
-void Heap::markDeadObjects()
-{
-    HeapIterationScope iterationScope(*this);
-    m_objectSpace.forEachDeadCell<MarkObject>(iterationScope);
 }
 
 void Heap::setFullActivityCallback(PassRefPtr<FullGCActivityCallback> activityCallback)

@@ -180,6 +180,8 @@
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_process->connection())
 #define MESSAGE_CHECK_URL(url) MESSAGE_CHECK_BASE(m_process->checkURLReceivedFromWebProcess(url), m_process->connection())
 
+#define WEBPAGEPROXY_LOG_ALWAYS(...) LOG_ALWAYS(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
+
 using namespace WebCore;
 
 // Represents the number of wheel events we can hold in the queue before we start pushing them preemptively.
@@ -348,6 +350,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #if PLATFORM(IOS)
     , m_alwaysRunsAtForegroundPriority(m_configuration->alwaysRunsAtForegroundPriority())
 #endif
+    , m_initialCapitalizationEnabled(m_configuration->initialCapitalizationEnabled())
     , m_backForwardList(WebBackForwardList::create(*this))
     , m_maintainsInactiveSelection(false)
     , m_isEditable(false)
@@ -383,9 +386,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_syncNavigationActionPolicyAction(PolicyUse)
     , m_syncNavigationActionPolicyDownloadID(0)
     , m_processingMouseMoveEvent(false)
-#if ENABLE(TOUCH_EVENTS)
-    , m_isTrackingTouchEvents(false)
-#endif
     , m_pageID(pageID)
     , m_sessionID(m_configuration->sessionID())
     , m_isPageSuspended(false)
@@ -1487,6 +1487,11 @@ void WebPageProxy::dispatchViewStateChange()
     m_viewWasEverInWindow |= isNowInWindow;
 }
 
+bool WebPageProxy::isAlwaysOnLoggingAllowed() const
+{
+    return sessionID().isAlwaysOnLoggingAllowed();
+}
+
 void WebPageProxy::updateActivityToken()
 {
     if (m_viewState & ViewState::IsVisuallyIdle)
@@ -1495,10 +1500,16 @@ void WebPageProxy::updateActivityToken()
         m_pageIsUserObservableCount = m_process->processPool().userObservablePageCount();
 
 #if PLATFORM(IOS)
-    if (!isViewVisible() && !m_alwaysRunsAtForegroundPriority)
+    if (!isViewVisible() && !m_alwaysRunsAtForegroundPriority) {
+        WEBPAGEPROXY_LOG_ALWAYS("UIProcess is releasing a foreground assertion because the view is no longer visible");
         m_activityToken = nullptr;
-    else if (!m_activityToken)
+    } else if (!m_activityToken) {
+        if (isViewVisible())
+            WEBPAGEPROXY_LOG_ALWAYS("UIProcess is taking a foreground assertion because the view is visible");
+        else
+            WEBPAGEPROXY_LOG_ALWAYS("UIProcess is taking a foreground assertion even though the view is not visible because m_alwaysRunsAtForegroundPriority is true");
         m_activityToken = m_process->throttler().foregroundActivityToken();
+    }
 #endif
 }
 
@@ -1939,19 +1950,24 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
 
 #if ENABLE(TOUCH_EVENTS)
 
-bool WebPageProxy::shouldStartTrackingTouchEvents(const WebTouchEvent& touchStartEvent) const
+TrackingType WebPageProxy::touchEventTrackingType(const WebTouchEvent& touchStartEvent) const
 {
 #if ENABLE(ASYNC_SCROLLING)
+    TrackingType trackingType = TrackingType::NotTracking;
     for (auto& touchPoint : touchStartEvent.touchPoints()) {
-        if (m_scrollingCoordinatorProxy->isPointInNonFastScrollableRegion(touchPoint.location()))
-            return true;
+        TrackingType touchPointTrackingType = m_scrollingCoordinatorProxy->eventTrackingTypeForPoint(touchPoint.location());
+        if (touchPointTrackingType == TrackingType::Synchronous)
+            return TrackingType::Synchronous;
+
+        if (touchPointTrackingType == TrackingType::Asynchronous)
+            trackingType = touchPointTrackingType;
     }
 
-    return false;
+    return trackingType;
 #else
     UNUSED_PARAM(touchStartEvent);
 #endif // ENABLE(ASYNC_SCROLLING)
-    return true;
+    return TrackingType::Synchronous;
 }
 
 #endif
@@ -1971,18 +1987,31 @@ void WebPageProxy::handleGestureEvent(const NativeWebGestureEvent& event)
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-void WebPageProxy::handleTouchEventSynchronously(const NativeWebTouchEvent& event)
+void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
 {
     if (!isValid())
         return;
 
     if (event.type() == WebEvent::TouchStart) {
-        m_isTrackingTouchEvents = shouldStartTrackingTouchEvents(event);
+        m_touchEventsTrackingType = touchEventTrackingType(event);
         m_layerTreeTransactionIdAtLastTouchStart = downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea()).lastCommittedLayerTreeTransactionID();
     }
 
-    if (!m_isTrackingTouchEvents)
+    if (m_touchEventsTrackingType == TrackingType::NotTracking)
         return;
+
+    if (m_touchEventsTrackingType == TrackingType::Asynchronous) {
+        // We can end up here if a native gesture has not started but the event handlers are passive.
+        //
+        // The client of WebPageProxy asks the event to be sent synchronously since the touch event
+        // can prevent a native gesture.
+        // But, here we know that all events handlers that can handle this events are passive.
+        // We can use asynchronous dispatch and pretend to the client that the page does nothing with the events.
+        event.setCanPreventNativeGestures(false);
+        handleTouchEventAsynchronously(event);
+        didReceiveEvent(event.type(), false);
+        return;
+    }
 
     m_process->responsivenessTimer().start();
     bool handled = false;
@@ -1992,7 +2021,7 @@ void WebPageProxy::handleTouchEventSynchronously(const NativeWebTouchEvent& even
     m_process->responsivenessTimer().stop();
 
     if (event.allTouchPointsAreReleased())
-        m_isTrackingTouchEvents = false;
+        m_touchEventsTrackingType = TrackingType::NotTracking;
 }
 
 void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& event)
@@ -2000,13 +2029,13 @@ void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& eve
     if (!isValid())
         return;
 
-    if (!m_isTrackingTouchEvents)
+    if (m_touchEventsTrackingType == TrackingType::NotTracking)
         return;
 
     m_process->send(Messages::EventDispatcher::TouchEvent(m_pageID, event), 0);
 
     if (event.allTouchPointsAreReleased())
-        m_isTrackingTouchEvents = false;
+        m_touchEventsTrackingType = TrackingType::NotTracking;
 }
 
 #elif ENABLE(TOUCH_EVENTS)
@@ -2016,9 +2045,9 @@ void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
         return;
 
     if (event.type() == WebEvent::TouchStart)
-        m_isTrackingTouchEvents = shouldStartTrackingTouchEvents(event);
+        m_touchEventsTrackingType = touchEventTrackingType(event);
 
-    if (!m_isTrackingTouchEvents)
+    if (m_touchEventsTrackingType == TrackingType::NotTracking)
         return;
 
     // If the page is suspended, which should be the case during panning, pinching
@@ -2041,7 +2070,7 @@ void WebPageProxy::handleTouchEvent(const NativeWebTouchEvent& event)
     }
 
     if (event.allTouchPointsAreReleased())
-        m_isTrackingTouchEvents = false;
+        m_touchEventsTrackingType = TrackingType::NotTracking;
 }
 #endif // ENABLE(TOUCH_EVENTS)
 
@@ -4495,7 +4524,7 @@ int64_t WebPageProxy::spellDocumentTag()
 #if USE(UNIFIED_TEXT_CHECKING)
 void WebPageProxy::checkTextOfParagraph(const String& text, uint64_t checkingTypes, int32_t insertionPoint, Vector<TextCheckingResult>& results)
 {
-    results = TextChecker::checkTextOfParagraph(spellDocumentTag(), text, insertionPoint, checkingTypes);
+    results = TextChecker::checkTextOfParagraph(spellDocumentTag(), text, insertionPoint, checkingTypes, m_initialCapitalizationEnabled);
 }
 #endif
 
@@ -4526,7 +4555,7 @@ void WebPageProxy::updateSpellingUIWithGrammarString(const String& badGrammarPhr
 
 void WebPageProxy::getGuessesForWord(const String& word, const String& context, int32_t insertionPoint, Vector<String>& guesses)
 {
-    TextChecker::getGuessesForWord(spellDocumentTag(), word, context, insertionPoint, guesses);
+    TextChecker::getGuessesForWord(spellDocumentTag(), word, context, insertionPoint, guesses, m_initialCapitalizationEnabled);
 }
 
 void WebPageProxy::learnWord(const String& word)
@@ -5060,7 +5089,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     }
 
 #if ENABLE(TOUCH_EVENTS)
-    m_isTrackingTouchEvents = false;
+    m_touchEventsTrackingType = TrackingType::NotTracking;
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -5259,6 +5288,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.appleMailPaginationQuirkEnabled = false;
 #endif
     parameters.shouldScaleViewToFitDocument = m_shouldScaleViewToFitDocument;
+    parameters.userInterfaceLayoutDirection = m_pageClient.userInterfaceLayoutDirection();
 
     return parameters;
 }
@@ -6152,11 +6182,11 @@ void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHand
     }
 
     auto copiedCompletionHandler = Block_copy(completionHandler);
-    RefPtr<VoidCallback> voidCallback = VoidCallback::create([copiedCompletionHandler] (CallbackBase::Error) {
+    auto voidCallback = VoidCallback::create([copiedCompletionHandler] (CallbackBase::Error) {
         copiedCompletionHandler();
         Block_release(copiedCompletionHandler);
     }, m_process->throttler().backgroundActivityToken());
-    uint64_t callbackID = m_callbacks.put(voidCallback.release());
+    uint64_t callbackID = m_callbacks.put(WTFMove(voidCallback));
     m_nextViewStateChangeCallbacks.append(callbackID);
 }
 
@@ -6291,9 +6321,17 @@ void WebPageProxy::setResourceCachingDisabled(bool disabled)
     m_process->send(Messages::WebPage::SetResourceCachingDisabled(disabled), m_pageID);
 }
 
-UserInterfaceLayoutDirection WebPageProxy::userInterfaceLayoutDirection()
+WebCore::UserInterfaceLayoutDirection WebPageProxy::userInterfaceLayoutDirection()
 {
     return m_pageClient.userInterfaceLayoutDirection();
+}
+
+void WebPageProxy::setUserInterfaceLayoutDirection(WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetUserInterfaceLayoutDirection(static_cast<uint32_t>(userInterfaceLayoutDirection)), m_pageID);
 }
 
 } // namespace WebKit

@@ -62,6 +62,7 @@
 #include "RenderBox.h"
 #include "RenderStyle.h"
 #include "SVGElement.h"
+#include "ShapeValue.h"
 #include "StyleInheritedData.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
@@ -78,10 +79,6 @@
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
 #include "RenderGrid.h"
-#endif
-
-#if ENABLE(CSS_SHAPES)
-#include "ShapeValue.h"
 #endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -1124,10 +1121,11 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
     // Handle the 'none' case.
     bool trackListIsEmpty = trackSizes.isEmpty() && autoRepeatTrackSizes.isEmpty();
     if (isRenderGrid && trackListIsEmpty) {
-        // For grids we should consider every listed track, whether implicitly or explicitly created. If we don't have
-        // any explicit track and there are no children then there are no implicit tracks. We cannot simply check the
-        // number of rows/columns in our internal grid representation because it's always at least 1x1 (see r143331).
-        trackListIsEmpty = !downcast<RenderBlock>(*renderer).firstChild();
+        // For grids we should consider every listed track, whether implicitly or explicitly
+        // created. Empty grids have a sole grid line per axis.
+        auto& grid = downcast<RenderGrid>(*renderer);
+        auto& positions = isRowAxis ? grid.columnPositions() : grid.rowPositions();
+        trackListIsEmpty = positions.size() == 1;
     }
 
     if (trackListIsEmpty)
@@ -4058,9 +4056,9 @@ Ref<MutableStyleProperties> ComputedStyleExtractor::copyPropertiesInSet(const CS
     Vector<CSSProperty, 256> list;
     list.reserveInitialCapacity(length);
     for (unsigned i = 0; i < length; ++i) {
-        RefPtr<CSSValue> value = propertyValue(set[i]);
+        auto value = propertyValue(set[i]);
         if (value)
-            list.append(CSSProperty(set[i], value.release(), false));
+            list.append(CSSProperty(set[i], WTFMove(value), false));
     }
     return MutableStyleProperties::create(list.data(), list.size());
 }

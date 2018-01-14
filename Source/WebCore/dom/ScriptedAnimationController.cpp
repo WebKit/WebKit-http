@@ -36,9 +36,11 @@
 #include "InspectorInstrumentation.h"
 #include "Logging.h"
 #include "MainFrame.h"
+#include "Page.h"
 #include "RequestAnimationFrameCallback.h"
 #include "Settings.h"
 #include <wtf/Ref.h>
+#include <wtf/SystemTracing.h>
 
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
 #include <algorithm>
@@ -62,6 +64,11 @@ ScriptedAnimationController::ScriptedAnimationController(Document* document, Pla
 
 ScriptedAnimationController::~ScriptedAnimationController()
 {
+}
+
+bool ScriptedAnimationController::requestAnimationFrameEnabled() const
+{
+    return m_document && (!m_document->settings() || m_document->settings()->requestAnimationFrameEnabled());
 }
 
 void ScriptedAnimationController::suspend()
@@ -135,9 +142,11 @@ void ScriptedAnimationController::cancelCallback(CallbackId id)
 
 void ScriptedAnimationController::serviceScriptedAnimations(double monotonicTimeNow)
 {
-    if (!m_callbacks.size() || m_suspendCount || (m_document->settings() && !m_document->settings()->requestAnimationFrameEnabled()))
+    if (!m_callbacks.size() || m_suspendCount || !requestAnimationFrameEnabled())
         return;
 
+    TraceScope tracingScope(RAFCallbackStart, RAFCallbackEnd);
+    
     double highResNowMs = 1000.0 * m_document->loader()->timing().monotonicTimeToZeroBasedDocumentTime(monotonicTimeNow);
     double legacyHighResNowMs = 1000.0 * m_document->loader()->timing().monotonicTimeToPseudoWallTime(monotonicTimeNow);
 
@@ -175,7 +184,7 @@ void ScriptedAnimationController::serviceScriptedAnimations(double monotonicTime
 
 void ScriptedAnimationController::windowScreenDidChange(PlatformDisplayID displayID)
 {
-    if (m_document->settings() && !m_document->settings()->requestAnimationFrameEnabled())
+    if (!requestAnimationFrameEnabled())
         return;
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     DisplayRefreshMonitorManager::sharedManager().windowScreenDidChange(displayID, *this);
@@ -186,7 +195,7 @@ void ScriptedAnimationController::windowScreenDidChange(PlatformDisplayID displa
 
 void ScriptedAnimationController::scheduleAnimation()
 {
-    if (!m_document || (m_document->settings() && !m_document->settings()->requestAnimationFrameEnabled()))
+    if (!requestAnimationFrameEnabled())
         return;
 
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
