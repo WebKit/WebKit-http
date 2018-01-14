@@ -1,3 +1,125 @@
+2016-06-23  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestFrameAnimation() callback timestamp should be very close to Performance.now() 
+        https://bugs.webkit.org/show_bug.cgi?id=159038
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/Cocoa/RemoteLayerTreeDisplayRefreshMonitor.mm:
+        (WebKit::RemoteLayerTreeDisplayRefreshMonitor::didUpdateLayers):
+
+2016-06-23  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] A WebPageProxy in closed state should not be allowed to hold a process assertion
+        https://bugs.webkit.org/show_bug.cgi?id=159068
+        <rdar://problem/17665473>
+
+        Reviewed by Tim Horton.
+
+        A WebPageProxy in closed state should not be allowed to hold a process assertion. It
+        currently happens that WebPageProxy::close() gets called but that the WebPageProxy is
+        kept alive by Safari (e.g. In case of top-hit preloading). In such cases, we fail to
+        release the foreground process assertion that the WebPageProxy holds.
+
+        We should clear the foreground process assertion that the WebPageProxy holds as soon
+        as WebPageProxy::close() is called.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::close):
+
+2016-06-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [OS X][WK2] Expand sandbox for new mach endpoints
+        https://bugs.webkit.org/show_bug.cgi?id=159040
+        <rdar://problem/25238336>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Grant the WebContent and Networking processes the mach lookup capability for
+        various Security-related mach endpoints..
+
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2016-06-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r201194.
+        https://bugs.webkit.org/show_bug.cgi?id=159059
+
+        Not needed for iOS (Requested by bfulgham on #webkit).
+
+        Reverted changeset:
+
+        "[OS X][WK2] Expand sandbox for new mach endpoints"
+        https://bugs.webkit.org/show_bug.cgi?id=157919
+        http://trac.webkit.org/changeset/201194
+
+2016-06-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.13.2 release.
+
+        * gtk/NEWS: Add release notes for 2.13.2.
+
+2016-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r201880): WebSockets based remote inspector is broken since r201880
+        https://bugs.webkit.org/show_bug.cgi?id=158613
+
+        Reviewed by Michael Catanzaro.
+
+        In r201880 SocketStreamHandleClient was modified to receive references instead of
+        pointers. WebSocketServerConnection also implements SocketStreamHandleClient but since it's doesn't use
+        override, it was unnoticed and not updated, so we ended up using the default empty implementation instead of
+        the WebSocketServerConnection one.
+
+        * UIProcess/InspectorServer/WebSocketServerConnection.cpp:
+        (WebKit::WebSocketServerConnection::WebSocketServerConnection):
+        (WebKit::WebSocketServerConnection::setSocketHandle):
+        (WebKit::WebSocketServerConnection::shutdownNow):
+        (WebKit::WebSocketServerConnection::didCloseSocketStream):
+        (WebKit::WebSocketServerConnection::didReceiveSocketStreamData):
+        (WebKit::WebSocketServerConnection::didUpdateBufferedAmount):
+        (WebKit::WebSocketServerConnection::didFailSocketStream): Deleted.
+        * UIProcess/InspectorServer/WebSocketServerConnection.h:
+
+2016-06-22  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS][WK2] Expand sandbox to read voice services preferences
+        https://bugs.webkit.org/show_bug.cgi?id=159046
+        <rdar://problem/26926722>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Expand the sandbox to permit read-only access to voice services preferences.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2016-06-22  Sam Weinig  <sam@webkit.org>
+
+        Add SPI to allow creating a WKCertificateInfoRef from a SecTrustRef
+        https://bugs.webkit.org/show_bug.cgi?id=159025
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/c/mac/WKCertificateInfoMac.h:
+        * Shared/API/c/mac/WKCertificateInfoMac.mm:
+        (WKCertificateInfoCreateWithServerTrust):
+
+2016-06-22  Brady Eidson  <beidson@apple.com>
+
+        DatabaseProcess doesn't handle WebProcesses going away uncleanly.
+        https://bugs.webkit.org/show_bug.cgi?id=158894
+
+        Reviewed by Alex Christensen.
+
+        * DatabaseProcess/DatabaseToWebProcessConnection.cpp:
+        (WebKit::DatabaseToWebProcessConnection::didClose):
+        
+        * DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::disconnectedFromWebProcess): Actually unregister this connection
+          from the IDBServer so it can clean up.
+        (WebKit::WebIDBConnectionToClient::~WebIDBConnectionToClient):
+        
 2016-06-22  Chris Dumez  <cdumez@apple.com>
 
         Stop using PassRefPtr in ShareableResource

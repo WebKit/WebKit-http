@@ -1,3 +1,73 @@
+2016-06-23  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestFrameAnimation() callback timestamp should be very close to Performance.now() 
+        https://bugs.webkit.org/show_bug.cgi?id=159038
+
+        Reviewed by Simon Fraser.
+
+        * animations/animation-callback-timestamp-expected.txt: Added.
+        * animations/animation-callback-timestamp.html: Added.
+        * animations/animation-multiple-callbacks-timestamp-expected.txt: Added.
+        * animations/animation-multiple-callbacks-timestamp.html: Added.
+
+2016-06-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Land test expectations for rdar://problem/26952627.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-06-23  Alexey Proskuryakov  <ap@apple.com>
+
+        Handle (0, 0) ranges from Lookup
+        https://bugs.webkit.org/show_bug.cgi?id=159062
+        rdar://problem/26960385
+
+        Reviewed by Tim Horton.
+
+        * platform/mac/TestExpectations: Unmark the test that was broken due to this.
+
+2016-06-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        CSSComputedStyleDeclaration::length should recalculate styles if needed to provide the correct value
+        https://bugs.webkit.org/show_bug.cgi?id=159053
+        <rdar://problem/26638119>
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/variables/custom-property-computed-style-length-update-expected.txt: Added.
+        * fast/css/variables/custom-property-computed-style-length-update.html: Added.
+
+2016-06-23  Adam Bergkvist  <adam.bergkvist@ericsson.com>
+
+        WebRTC: Add support for RTCPeerConnection legacy MediaStream-based API
+        https://bugs.webkit.org/show_bug.cgi?id=158940
+
+        Reviewed by Eric Carlson.
+
+        Add test for RTCPeerConnection legacy MediaStream-based API.
+
+        * fast/mediastream/RTCPeerConnection-legacy-stream-based-api-expected.txt: Added.
+        * fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html: Added.
+        * platform/mac/TestExpectations:
+        Skip test for mac port (not building with WEB_RTC yet)
+
+2016-06-23  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening.
+        
+        Update test expectations for passing accessibility tests after r202149,
+        and fix style issues in test expectations file.
+
+        * platform/win/TestExpectations:
+
+2016-06-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Test expectations gardening for rdar://problem/26960385
+
+        * platform/mac/TestExpectations:
+
 2016-06-22  Benjamin Poulain  <bpoulain@apple.com>
 
         AX: Add support for CSS4 :focus-within pseudo

@@ -362,7 +362,7 @@ void SpeculativeJIT::addSlowPathGenerator(std::unique_ptr<SlowPathGenerator> slo
 
 void SpeculativeJIT::addSlowPathGenerator(std::function<void()> lambda)
 {
-    m_slowPathLambdas.append(std::make_pair(lambda, m_origin.semantic));
+    m_slowPathLambdas.append(std::make_pair(lambda, m_currentNode));
 }
 
 void SpeculativeJIT::runSlowPathGenerators(PCToCodeOriginMapBuilder& pcToCodeOriginMapBuilder)
@@ -372,7 +372,9 @@ void SpeculativeJIT::runSlowPathGenerators(PCToCodeOriginMapBuilder& pcToCodeOri
         slowPathGenerator->generate(this);
     }
     for (auto& generatorPair : m_slowPathLambdas) {
-        pcToCodeOriginMapBuilder.appendItem(m_jit.label(), generatorPair.second);
+        Node* currentNode = generatorPair.second;
+        m_currentNode = currentNode;
+        pcToCodeOriginMapBuilder.appendItem(m_jit.label(), currentNode->origin.semantic);
         generatorPair.first();
     }
 }
@@ -3444,6 +3446,36 @@ void SpeculativeJIT::compileIsRegExpObject(Node* node)
     m_jit.compare8(JITCompiler::Equal,
         JITCompiler::Address(valueRegs.payloadGPR(), JSCell::typeInfoTypeOffset()),
         TrustedImm32(RegExpObjectType),
+        resultGPR);
+    blessBoolean(resultGPR);
+    JITCompiler::Jump done = m_jit.jump();
+
+    isNotCell.link(&m_jit);
+    moveFalseTo(resultGPR);
+
+    done.link(&m_jit);
+    blessedBooleanResult(resultGPR, node);
+}
+
+void SpeculativeJIT::compileIsTypedArrayView(Node* node)
+{
+    JSValueOperand value(this, node->child1());
+#if USE(JSVALUE64)
+    GPRTemporary result(this, Reuse, value);
+#else
+    GPRTemporary result(this, Reuse, value, PayloadWord);
+#endif
+
+    JSValueRegs valueRegs = value.jsValueRegs();
+    GPRReg resultGPR = result.gpr();
+
+    JITCompiler::Jump isNotCell = m_jit.branchIfNotCell(valueRegs);
+
+    m_jit.load8(JITCompiler::Address(valueRegs.payloadGPR(), JSCell::typeInfoTypeOffset()), resultGPR);
+    m_jit.sub32(TrustedImm32(Int8ArrayType), resultGPR);
+    m_jit.compare32(JITCompiler::BelowOrEqual,
+        resultGPR,
+        TrustedImm32(Float64ArrayType - Int8ArrayType),
         resultGPR);
     blessBoolean(resultGPR);
     JITCompiler::Jump done = m_jit.jump();

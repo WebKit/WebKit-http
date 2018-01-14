@@ -1902,6 +1902,7 @@ set(WebCore_SOURCES
     inspector/NetworkResourcesData.cpp
     inspector/PageConsoleAgent.cpp
     inspector/PageDebuggerAgent.cpp
+    inspector/PageHeapAgent.cpp
     inspector/PageRuntimeAgent.cpp
     inspector/PageScriptDebugServer.cpp
     inspector/TimelineRecordFactory.cpp
