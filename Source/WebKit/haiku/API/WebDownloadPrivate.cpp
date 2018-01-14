@@ -66,7 +66,7 @@ WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request,
 {
 }
 
-void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
+void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, ResourceResponse&& response)
 {
     if (!response.isNull()) {
     	if (!response.suggestedFilename().isEmpty())

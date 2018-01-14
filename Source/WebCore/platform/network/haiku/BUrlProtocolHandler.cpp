@@ -558,12 +558,13 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
 
         // Notify the client that we are redirecting.
         ResourceRequest request = m_resourceHandle->firstRequest();
-		ResourceResponse responseCopy = response;
+        ResourceResponse responseCopy = response;
         request.setURL(url);
 
         client->willSendRequest(m_resourceHandle, WTFMove(request), WTFMove(responseCopy));
     } else {
-        client->didReceiveResponse(m_resourceHandle, response);
+        ResourceResponse responseCopy = response;
+        client->didReceiveResponse(m_resourceHandle, WTFMove(responseCopy));
     }
 }
 

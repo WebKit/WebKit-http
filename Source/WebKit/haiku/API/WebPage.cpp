@@ -77,6 +77,7 @@
 #include "ResourceRequest.h"
 #include "ScriptController.h"
 #include "Settings.h"
+#include "SocketProvider.h"
 #include "TextEncoding.h"
 #include "UserContentController.h"
 #include "WebApplicationCache.h"
@@ -236,7 +237,7 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     RefPtr<WebViewGroup> viewGroup = WebViewGroup::getOrCreate("default",
         storagePath.Path());
 
-    PageConfiguration pageClients;
+    PageConfiguration pageClients(makeUniqueRef<EditorClientHaiku>(this), makeUniqueRef<SocketProvider>());
 	//pageClients.backForwardClient = this;
 	//pluginClient
 	//validationMessageClient
@@ -244,7 +245,6 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
 	//applicationCacheStorage
     pageClients.chromeClient = new ChromeClientHaiku(this, webView);
     pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
-    pageClients.editorClient = new EditorClientHaiku(this);
     pageClients.dragClient = new DragClientHaiku(webView);
     pageClients.inspectorClient = new InspectorClientHaiku();
     pageClients.loaderClientForMainFrame = new FrameLoaderClientHaiku(this);
@@ -255,7 +255,7 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     pageClients.userContentProvider = &viewGroup->userContentController();
     pageClients.visitedLinkStore = &viewGroup->visitedLinkStore();
 
-    fPage = new Page(pageClients);
+    fPage = new Page(WTFMove(pageClients));
 
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(fPage, new GeolocationClientMock());

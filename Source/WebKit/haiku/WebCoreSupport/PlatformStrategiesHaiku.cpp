@@ -27,6 +27,7 @@
 #include "PlatformStrategiesHaiku.h"
 
 #include "BlobRegistryImpl.h"
+#include "NetworkStorageSession.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PageGroup.h"
@@ -92,6 +93,11 @@ bool PlatformStrategiesHaiku::cookiesEnabled(const NetworkStorageSession& sessio
 String PlatformStrategiesHaiku::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
 {
     return WebCore::cookieRequestHeaderFieldValue(session, firstParty, url);
+}
+
+String PlatformStrategiesHaiku::cookieRequestHeaderFieldValue(SessionID sessionID, const URL& firstParty, const URL& url)
+{
+    return WebCore::cookieRequestHeaderFieldValue(NetworkStorageSession::defaultStorageSession(), firstParty, url);
 }
 
 bool PlatformStrategiesHaiku::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, Vector<Cookie>& rawCookies)

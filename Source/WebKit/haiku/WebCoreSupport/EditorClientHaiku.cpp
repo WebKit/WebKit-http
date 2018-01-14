@@ -57,11 +57,6 @@ EditorClientHaiku::EditorClientHaiku(BWebPage* page)
 {
 }
 
-void EditorClientHaiku::pageDestroyed()
-{
-    delete this;
-}
-
 bool EditorClientHaiku::shouldDeleteRange(Range* range)
 {
     BMessage message(EDITOR_DELETE_RANGE);

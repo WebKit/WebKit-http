@@ -31,6 +31,7 @@
 #include "FrameNetworkingContextHaiku.h"
 
 #include "NotImplemented.h"
+#include "Page.h"
 #include "ResourceHandle.h"
 
 #include <UrlContext.h>

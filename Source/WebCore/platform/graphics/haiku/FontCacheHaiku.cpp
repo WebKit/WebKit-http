@@ -94,5 +94,12 @@ WTF::Vector<WebCore::FontTraitsMask> FontCache::getTraitsInFamily(const AtomicSt
     return WTF::Vector<WebCore::FontTraitsMask>();
 }
 
+
+const AtomicString& FontCache::platformAlternateFamilyName(const AtomicString& familyName)
+{
+    return nullAtom;
+}
+
+
 } // namespace WebCore
 

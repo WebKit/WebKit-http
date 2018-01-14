@@ -43,6 +43,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
         static void registerMediaEngine(MediaEngineRegistrar);
 
         MediaPlayerPrivate(MediaPlayer*);
+        MediaPlayerPrivate() = delete;
 
         ~MediaPlayerPrivate();
 

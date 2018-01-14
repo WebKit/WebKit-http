@@ -50,7 +50,6 @@ class PlatformKeyboardEvent;
 class EditorClientHaiku : public EditorClient, public TextCheckerClient {
 public:
     EditorClientHaiku(BWebPage* page);
-    void pageDestroyed() override;
 
     bool shouldDeleteRange(Range*) override;
     bool smartInsertDeleteEnabled() override;

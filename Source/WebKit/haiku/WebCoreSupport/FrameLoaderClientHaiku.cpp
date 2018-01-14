@@ -683,8 +683,7 @@ void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(DocumentLoader*,
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
 {
     ResourceError error = ResourceError(String(), WebKitErrorCannotShowURL,
-                                        request.url(), "Load request cancelled");
-    error.setIsCancellation(true);
+        request.url(), "Load request cancelled", ResourceError::Type::Cancellation);
     return error;
 }
 
@@ -709,8 +708,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore:
 WebCore::ResourceError FrameLoaderClientHaiku::interruptedForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
     ResourceError error = ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange,
-                                        request.url(), "Frame load was interrupted");
-    error.setIsCancellation(true);
+        request.url(), "Frame load was interrupted", ResourceError::Type::Cancellation);
     return error;
 }
 
