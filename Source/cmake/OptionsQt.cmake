@@ -1,3 +1,4 @@
+include(CheckCXXSourceCompiles)
 include(FeatureSummary)
 include(ECMEnableSanitizers)
 include(ECMPackageConfigHelpers)
@@ -50,6 +51,30 @@ macro(CONVERT_PRL_LIBS_TO_CMAKE _qt_component)
             --component ${_qt_component}
             --compiler ${CMAKE_CXX_COMPILER_ID}
         )
+    endif ()
+endmacro()
+
+macro(CHECK_QT5_PRIVATE_INCLUDE_DIRS _qt_component _header)
+    set(INCLUDE_TEST_SOURCE
+    "
+        #include <${_header}>
+        int main() { return 0; }
+    "
+    )
+    set(CMAKE_REQUIRED_INCLUDES ${Qt5${_qt_component}_PRIVATE_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_LIBRARIES Qt5::${_qt_component})
+
+    # Avoid check_include_file_cxx() because it performs linking but doesn't support CMAKE_REQUIRED_LIBRARIES (doh!)
+    check_cxx_source_compiles("${INCLUDE_TEST_SOURCE}" Qt5${_qt_component}_PRIVATE_HEADER_FOUND)
+
+    unset(INCLUDE_TEST_SOURCE)
+    unset(CMAKE_REQUIRED_INCLUDES)
+    unset(CMAKE_REQUIRED_LIBRARIES)
+
+    if (NOT Qt5${_qt_component}_PRIVATE_HEADER_FOUND)
+        message(FATAL_ERROR "Header ${_header} is not found. Please make sure that:
+    1. Private headers of Qt5${_qt_component} are installed
+    2. Qt5${_qt_component}_PRIVATE_INCLUDE_DIRS is correctly defined in Qt5${_qt_component}Config.cmake")
     endif ()
 endmacro()
 
@@ -581,6 +606,12 @@ if (ENABLE_QT_WEBCHANNEL)
 endif ()
 
 find_package(Qt5 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS ${QT_REQUIRED_COMPONENTS})
+
+CHECK_QT5_PRIVATE_INCLUDE_DIRS(Gui private/qhexstring_p.h)
+if (ENABLE_WEBKIT2)
+    CHECK_QT5_PRIVATE_INCLUDE_DIRS(Quick private/qsgrendernode_p.h)
+endif ()
+
 if (QT_STATIC_BUILD)
     foreach (qt_module ${QT_REQUIRED_COMPONENTS})
         CONVERT_PRL_LIBS_TO_CMAKE(${qt_module})
