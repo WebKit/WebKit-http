@@ -584,14 +584,11 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
     WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
 
     GRefPtr<GstCaps> caps;
-    // We may not have enough data available for the video sink yet.
-    if (!GST_IS_SAMPLE(m_sample.get()))
-        return { };
-
-    if (GST_IS_SAMPLE(m_sample.get()) && !caps)
+    if (GST_IS_SAMPLE(m_sample.get())) {
+	// If there's a sample, get the caps from it.
         caps = gst_sample_get_caps(m_sample.get());
-
-    if (!caps) {
+    } else {
+	// If there's no sample, try to get the caps from the video sink.
         GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
         if (videoSinkPad)
             caps = gst_pad_get_current_caps(videoSinkPad.get());
