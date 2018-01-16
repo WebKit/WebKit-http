@@ -1252,4 +1252,9 @@ void WebChromeClient::didInvalidateDocumentMarkerRects()
     m_page.findController().didInvalidateDocumentMarkerRects();
 }
 
+uint64_t WebChromeClient::nativeWindowID() const
+{
+    return m_page.drawingArea()->nativeWindowID();
+}
+
 } // namespace WebKit

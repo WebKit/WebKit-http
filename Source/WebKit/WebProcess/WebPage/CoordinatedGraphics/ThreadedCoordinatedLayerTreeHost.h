@@ -49,6 +49,7 @@ class ThreadedCoordinatedLayerTreeHost final : public CoordinatedLayerTreeHost, 
 public:
     static Ref<ThreadedCoordinatedLayerTreeHost> create(WebPage&);
     virtual ~ThreadedCoordinatedLayerTreeHost();
+    virtual uint64_t nativeWindowID() override { return m_surface->window(); }
 
 private:
     explicit ThreadedCoordinatedLayerTreeHost(WebPage&);

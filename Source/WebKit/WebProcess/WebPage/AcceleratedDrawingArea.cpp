@@ -67,6 +67,11 @@ AcceleratedDrawingArea::AcceleratedDrawingArea(WebPage& webPage, const WebPageCr
     m_webPage.corePage()->setDeviceScaleFactor(parameters.deviceScaleFactor);
 }
 
+uint64_t AcceleratedDrawingArea::nativeWindowID() const
+{
+    return m_layerTreeHost ? m_layerTreeHost->nativeWindowID() : 0;
+}
+
 void AcceleratedDrawingArea::setNeedsDisplay()
 {
     if (!m_isPaintingEnabled)
@@ -153,6 +158,7 @@ void AcceleratedDrawingArea::setPaintingEnabled(bool paintingEnabled)
 void AcceleratedDrawingArea::updatePreferences(const WebPreferencesStore& store)
 {
     m_webPage.corePage()->settings().setForceCompositingMode(store.getBoolValueForKey(WebPreferencesKey::forceCompositingModeKey()));
+    m_webPage.corePage()->settings().setNonCompositedWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::nonCompositedWebGLEnabledKey()));
     if (!m_layerTreeHost)
         enterAcceleratedCompositingMode(nullptr);
 }

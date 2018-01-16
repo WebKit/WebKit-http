@@ -1939,3 +1939,13 @@ bool WKPreferencesGetScrollToFocusedElementEnabled(WKPreferencesRef preferencesR
 {
     return toImpl(preferencesRef)->scrollToFocusedElementEnabled();
 }
+
+void WKPreferencesSetNonCompositedWebGLEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setNonCompositedWebGLEnabled(enabled);
+}
+
+bool WKPreferencesGetNonCompositedWebGLEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->nonCompositedWebGLEnabled();
+}

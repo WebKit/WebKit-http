@@ -164,6 +164,7 @@
     macro(NeedsSiteSpecificQuirks, needsSiteSpecificQuirks, Bool, bool, false, "", "") \
     macro(AcceleratedCompositingEnabled, acceleratedCompositingEnabled, Bool, bool, true, "", "") \
     macro(ForceCompositingMode, forceCompositingMode, Bool, bool, false, "", "") \
+    macro(NonCompositedWebGLEnabled, nonCompositedWebGLEnabled, Bool, bool, false, "", "") \
     macro(CanvasUsesAcceleratedDrawing, canvasUsesAcceleratedDrawing, Bool, bool, DEFAULT_CANVAS_USES_ACCELERATED_DRAWING, "", "") \
     macro(WebGLEnabled, webGLEnabled, Bool, bool, true, "", "") \
     macro(ForceSoftwareWebGLRendering, forceSoftwareWebGLRendering, Bool, bool, false, "", "") \

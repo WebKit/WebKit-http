@@ -326,8 +326,12 @@ void GraphicsContext3D::reshape(int width, int height)
 
     TemporaryOpenGLSetting scopedScissor(GL_SCISSOR_TEST, GL_FALSE);
     TemporaryOpenGLSetting scopedDither(GL_DITHER, GL_FALSE);
-    
-    bool mustRestoreFBO = reshapeFBOs(IntSize(width, height));
+
+    bool mustRestoreFBO;
+    if (m_renderStyle == RenderDirectlyToHostWindow)
+        mustRestoreFBO = false;
+    else
+        mustRestoreFBO = reshapeFBOs(IntSize(width, height));
 
     // Initialize renderbuffers to 0.
     GLfloat clearColor[] = {0, 0, 0, 0}, clearDepth = 0;

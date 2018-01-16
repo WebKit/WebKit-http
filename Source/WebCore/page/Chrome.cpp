@@ -482,6 +482,11 @@ PlatformDisplayID Chrome::displayID() const
     return m_displayID;
 }
 
+uint64_t Chrome::nativeWindowID() const
+{
+    return m_client.nativeWindowID();
+}
+
 void Chrome::windowScreenDidChange(PlatformDisplayID displayID)
 {
     if (displayID == m_displayID)

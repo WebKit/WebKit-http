@@ -30,7 +30,9 @@
 
 #include "CompositingRunLoop.h"
 #include "ThreadedDisplayRefreshMonitor.h"
+#include "WebPage.h"
 #include <WebCore/PlatformDisplay.h>
+#include <WebCore/Settings.h>
 #include <WebCore/TransformationMatrix.h>
 #include <wtf/SetForScope.h>
 
@@ -55,6 +57,7 @@ ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const I
     : m_client(client)
     , m_doFrameSync(doFrameSync)
     , m_paintFlags(paintFlags)
+    , m_webPage(webPage)
     , m_compositingRunLoop(std::make_unique<CompositingRunLoop>([this] { renderLayerTree(); }))
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(*this))
@@ -192,8 +195,35 @@ void ThreadedCompositor::forceRepaint()
 #endif
 }
 
+void ThreadedCompositor::renderNonCompositedWebGL()
+{
+    m_client.willRenderFrame();
+
+    // Retrieve the scene attributes in a thread-safe manner.
+    // Do this in order to free the structures memory, as they are not really used in this case.
+    Vector<WebCore::CoordinatedGraphicsState> states;
+    Vector<uint32_t> atlasesToRemove;
+
+    {
+        LockHolder locker(m_attributes.lock);
+        states = WTFMove(m_attributes.states);
+        atlasesToRemove = WTFMove(m_attributes.atlasesToRemove);
+    }
+
+    RunLoop::main().dispatch([protectedThis = makeRef(*this)] {
+        protectedThis->renderNextFrame();
+    });
+
+    m_client.didRenderFrame();
+}
+
 void ThreadedCompositor::renderLayerTree()
 {
+    if (m_webPage.corePage()->settings().nonCompositedWebGLEnabled()) {
+        renderNonCompositedWebGL();
+        return;
+    }
+
     if (!m_scene || !m_scene->isActive())
         return;
 

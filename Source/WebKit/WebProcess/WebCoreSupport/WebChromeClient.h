@@ -340,6 +340,8 @@ private:
 
     void didInvalidateDocumentMarkerRects() final;
 
+    virtual uint64_t nativeWindowID() const override;
+
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;
     mutable bool m_cachedMainFrameHasHorizontalScrollbar { false };

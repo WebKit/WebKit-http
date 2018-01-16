@@ -67,10 +67,6 @@ namespace WebCore {
 
 RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
 {
-    // This implementation doesn't currently support rendering directly to the HostWindow.
-    if (renderStyle == RenderDirectlyToHostWindow)
-        return nullptr;
-
     static bool initialized = false;
     static bool success = true;
     if (!initialized) {
@@ -94,11 +90,12 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
     return context;
 }
 
-GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
+GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
     : m_attrs(attributes)
+    , m_renderStyle(renderStyle)
 {
 #if USE(TEXTURE_MAPPER)
-    m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle);
+    m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle, hostWindow);
 #else
     m_private = std::make_unique<GraphicsContext3DPrivate>(this, renderStyle);
 #endif
@@ -221,7 +218,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, Hos
 GraphicsContext3D::~GraphicsContext3D()
 {
 #if USE(TEXTURE_MAPPER)
-    if (m_texmapLayer->renderStyle() == RenderToCurrentGLContext)
+    if (m_texmapLayer->renderStyle() == RenderToCurrentGLContext || m_texmapLayer->renderStyle() == RenderDirectlyToHostWindow)
         return;
 #else
     if (m_private->renderStyle() == RenderToCurrentGLContext)

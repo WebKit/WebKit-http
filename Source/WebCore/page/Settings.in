@@ -305,3 +305,5 @@ paymentRequestEnabled initial=false, conditional=PAYMENT_REQUEST
 storageAccessAPIEnabled initial=false
 
 scrollToFocusedElementEnabled initial=true
+
+nonCompositedWebGLEnabled initial=false

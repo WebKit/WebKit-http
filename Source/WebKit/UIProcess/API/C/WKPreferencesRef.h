@@ -344,6 +344,9 @@ WK_EXPORT bool WKPreferencesGetWebSecurityEnabled(WKPreferencesRef preferences);
 WK_EXPORT void WKPreferencesSetScrollToFocusedElementEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetScrollToFocusedElementEnabled(WKPreferencesRef preferences);
 
+WK_EXPORT void WKPreferencesSetNonCompositedWebGLEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetNonCompositedWebGLEnabled(WKPreferencesRef preferences);
+
 #ifdef __cplusplus
 }
 #endif

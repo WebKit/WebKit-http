@@ -30,11 +30,12 @@ namespace WebCore {
 
 class BitmapTextureGL;
 class GLContext;
+class HostWindow;
 class TextureMapperPlatformLayerProxy;
 
 class TextureMapperGC3DPlatformLayer : public PlatformLayer {
 public:
-    TextureMapperGC3DPlatformLayer(GraphicsContext3D&, GraphicsContext3D::RenderStyle);
+    TextureMapperGC3DPlatformLayer(GraphicsContext3D&, GraphicsContext3D::RenderStyle, HostWindow*);
     virtual ~TextureMapperGC3DPlatformLayer();
 
     bool makeContextCurrent();

@@ -462,7 +462,8 @@ public:
     virtual void reportProcessCPUTime(Seconds, ActivityStateForCPUSampling) { }
     virtual RefPtr<Icon> createIconForFiles(const Vector<String>& /* filenames */) = 0;
 
-protected:
+    virtual uint64_t nativeWindowID() const { return 0; }
+ protected:
     virtual ~ChromeClient() { }
 };
 

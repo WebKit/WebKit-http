@@ -32,12 +32,13 @@
 
 #include "BitmapTextureGL.h"
 #include "GLContext.h"
+#include "HostWindow.h"
 #include "TextureMapperPlatformLayerBuffer.h"
 #include "TextureMapperPlatformLayerProxy.h"
 
 namespace WebCore {
 
-TextureMapperGC3DPlatformLayer::TextureMapperGC3DPlatformLayer(GraphicsContext3D& context, GraphicsContext3D::RenderStyle renderStyle)
+TextureMapperGC3DPlatformLayer::TextureMapperGC3DPlatformLayer(GraphicsContext3D& context, GraphicsContext3D::RenderStyle renderStyle, HostWindow* hostWindow)
     : m_context(context)
     , m_renderStyle(renderStyle)
 {
@@ -48,7 +49,7 @@ TextureMapperGC3DPlatformLayer::TextureMapperGC3DPlatformLayer(GraphicsContext3D
     case GraphicsContext3D::RenderToCurrentGLContext:
         break;
     case GraphicsContext3D::RenderDirectlyToHostWindow:
-        ASSERT_NOT_REACHED();
+        m_glContext = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(hostWindow->nativeWindowID()), &PlatformDisplay::sharedDisplayForCompositing());
         break;
     }
 
@@ -84,6 +85,11 @@ RefPtr<TextureMapperPlatformLayerProxy> TextureMapperGC3DPlatformLayer::proxy() 
 
 void TextureMapperGC3DPlatformLayer::swapBuffersIfNeeded()
 {
+    if (m_renderStyle == GraphicsContext3D::RenderDirectlyToHostWindow) {
+        m_glContext->swapBuffers();
+        return;
+    }
+
     ASSERT(m_renderStyle == GraphicsContext3D::RenderOffscreen);
     if (m_context.layerComposited())
         return;

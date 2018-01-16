@@ -433,7 +433,8 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(HTM
         return renderingContext;
     }
 
-    auto context = GraphicsContext3D::create(attributes, document.view()->root()->hostWindow());
+    GraphicsContext3D::RenderStyle renderStyle = frame->settings().nonCompositedWebGLEnabled() ? GraphicsContext3D::RenderDirectlyToHostWindow : GraphicsContext3D::RenderOffscreen;
+    auto context = GraphicsContext3D::create(attributes, document.view()->root()->hostWindow(), renderStyle);
     if (!context || !context->makeContextCurrent()) {
         canvas.dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent, false, true, "Could not create a WebGL context."));
         return nullptr;
@@ -5695,7 +5696,8 @@ void WebGLRenderingContextBase::maybeRestoreContext()
     if (!hostWindow)
         return;
 
-    RefPtr<GraphicsContext3D> context(GraphicsContext3D::create(m_attributes, hostWindow));
+    GraphicsContext3D::RenderStyle renderStyle = frame->settings().nonCompositedWebGLEnabled() ? GraphicsContext3D::RenderDirectlyToHostWindow : GraphicsContext3D::RenderOffscreen;
+    RefPtr<GraphicsContext3D> context(GraphicsContext3D::create(m_attributes, hostWindow, renderStyle));
     if (!context) {
         if (m_contextLostMode == RealLostContext)
             m_restoreTimer.startOneShot(secondsBetweenRestoreAttempts);

@@ -100,6 +100,7 @@ private:
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
     void renderLayerTree();
+    void renderNonCompositedWebGL();
     void sceneUpdateFinished();
 
     void createGLContext();
@@ -112,6 +113,7 @@ private:
     ShouldDoFrameSync m_doFrameSync;
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_inForceRepaint { false };
+    WebPage& m_webPage;
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
