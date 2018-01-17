@@ -34,6 +34,7 @@
 #include "HostWindow.h"
 #include "NotImplemented.h"
 #if USE(CAIRO)
+#include "CairoOperations.h"
 #include "PlatformContextCairo.h"
 #endif
 #include <wtf/SoftLinking.h>
@@ -2960,7 +2961,7 @@ void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(Web
         FloatRect srcRect(0, 0, width, height);
         if (image) {
             WebCore::PlatformContextCairo* ctxt = context.platformContext();
-            ctxt->drawSurfaceToContext(image, destRect, srcRect, context);
+            ctxt->drawSurfaceToContext(image, destRect, srcRect, Cairo::ShadowState(context.state()), context);
             cairo_surface_destroy(image);
         }
 #else
