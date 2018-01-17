@@ -122,8 +122,6 @@ public:
             gint framerateNumerator, framerateDenominator;
             if (gst_structure_get_fraction(structure, "framerate", &framerateNumerator, &framerateDenominator) && framerateNumerator)
                 m_sampleDuration = MediaTime(framerateDenominator, framerateNumerator);
-            else if (gst_structure_get_int(structure, "rate", &framerateNumerator))
-                m_sampleDuration = MediaTime(1, framerateNumerator);
         }
     }
 
