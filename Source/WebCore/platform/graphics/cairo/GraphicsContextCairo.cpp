@@ -141,7 +141,8 @@ void GraphicsContext::drawNativeImage(const NativeImagePtr& image, const FloatSi
     }
 
     ASSERT(hasPlatformContext());
-    Cairo::drawNativeImage(*platformContext(), image.get(), destRect, srcRect, compositeOperator, blendMode, orientation, Cairo::ShadowState(state()), *this);
+    auto& state = this->state();
+    Cairo::drawNativeImage(*platformContext(), image.get(), destRect, srcRect, compositeOperator, blendMode, orientation, state.imageInterpolationQuality, state.alpha, Cairo::ShadowState(state), *this);
 }
 
 // This is only used to draw borders, so we should not draw shadows.
@@ -575,9 +576,8 @@ void GraphicsContext::setMiterLimit(float miter)
     Cairo::setMiterLimit(*platformContext(), miter);
 }
 
-void GraphicsContext::setPlatformAlpha(float alpha)
+void GraphicsContext::setPlatformAlpha(float)
 {
-    Cairo::State::setGlobalAlpha(*platformContext(), alpha);
 }
 
 void GraphicsContext::setPlatformCompositeOperation(CompositeOperator compositeOperator, BlendMode blendMode)
@@ -698,10 +698,8 @@ void GraphicsContext::setPlatformShouldAntialias(bool enable)
     Cairo::State::setShouldAntialias(*platformContext(), enable);
 }
 
-void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality quality)
+void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality)
 {
-    ASSERT(hasPlatformContext());
-    Cairo::State::setImageInterpolationQuality(*platformContext(), quality);
 }
 
 bool GraphicsContext::isAcceleratedContext() const
