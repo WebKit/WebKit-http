@@ -56,11 +56,15 @@ typedef void* xpc_connection_t;
 
 typedef const struct _xpc_type_s* xpc_type_t;
 
+#if PLATFORM(IOS) && __has_attribute(noescape)
+#define XPC_NOESCAPE __attribute__((__noescape__))
+#endif
+
 #if COMPILER_SUPPORTS(BLOCKS)
 typedef bool (^xpc_array_applier_t)(size_t index, xpc_object_t);
 typedef bool (^xpc_dictionary_applier_t)(const char *key, xpc_object_t value);
 typedef void (^xpc_handler_t)(xpc_object_t);
-#endif
+#endif // COMPILER_SUPPORTS(BLOCKS)
 
 typedef void (*xpc_connection_handler_t)(xpc_connection_t connection);
 
@@ -79,6 +83,10 @@ typedef void (*xpc_connection_handler_t)(xpc_connection_t connection);
 #include <xpc/private.h>
 #endif
 
+#if !defined(XPC_NOESCAPE)
+#define XPC_NOESCAPE
+#endif
+
 EXTERN_C const struct _xpc_dictionary_s _xpc_error_connection_invalid;
 EXTERN_C const struct _xpc_dictionary_s _xpc_error_termination_imminent;
 
@@ -90,8 +98,8 @@ EXTERN_C const struct _xpc_type_s _xpc_type_string;
 
 EXTERN_C xpc_object_t xpc_array_create(const xpc_object_t*, size_t count);
 #if COMPILER_SUPPORTS(BLOCKS)
-EXTERN_C bool xpc_array_apply(xpc_object_t, xpc_array_applier_t);
-EXTERN_C bool xpc_dictionary_apply(xpc_object_t xdict, xpc_dictionary_applier_t applier);
+EXTERN_C bool xpc_array_apply(xpc_object_t, XPC_NOESCAPE xpc_array_applier_t);
+EXTERN_C bool xpc_dictionary_apply(xpc_object_t xdict, XPC_NOESCAPE xpc_dictionary_applier_t applier);
 #endif
 EXTERN_C size_t xpc_array_get_count(xpc_object_t);
 EXTERN_C const char* xpc_array_get_string(xpc_object_t, size_t index);
