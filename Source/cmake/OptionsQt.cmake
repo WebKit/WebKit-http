@@ -162,7 +162,7 @@ if (APPLE)
     option(MACOS_USE_SYSTEM_ICU "Use system installation of ICU on macOS" ON)
     option(USE_UNIX_DOMAIN_SOCKETS "Use Unix domain sockets instead of native IPC code on macOS" OFF)
     option(USE_APPSTORE_COMPLIANT_CODE "Avoid using private macOS APIs which are not allowed on App Store (experimental)" OFF)
-    set(MACOS_BUILD_FRAMEWORKS ON) # TODO: Make it an option
+    option(MACOS_BUILD_FRAMEWORKS "Build QtWebKit as framework bundles" ON)
 
     if (USE_APPSTORE_COMPLIANT_CODE)
         set(MACOS_USE_SYSTEM_ICU OFF)
