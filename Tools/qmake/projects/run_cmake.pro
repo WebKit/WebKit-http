@@ -83,6 +83,8 @@ build_pass|!debug_and_release {
         debug_and_release:build_all:CONFIG(debug, debug|release) {
             CMAKE_CONFIG += CMAKE_INSTALL_PREFIX=\"$$[QT_INSTALL_PREFIX]/debug\"
         }
+
+        !qt_framework: CMAKE_CONFIG += MACOS_BUILD_FRAMEWORKS=OFF
     }
 
     !isEmpty(use_ninja): cmake_args += "-G Ninja"
