@@ -861,7 +861,8 @@ endif ()
 
 if (MACOS_BUILD_FRAMEWORKS)
     set_target_properties(WebKitWidgets PROPERTIES
-        FRAMEWORK_VERSION 5
+        FRAMEWORK_VERSION ${PROJECT_VERSION_MAJOR}
+        SOVERSION ${MACOS_COMPATIBILITY_VERSION}
         MACOSX_FRAMEWORK_IDENTIFIER org.qt-project.QtWebKitWidgets
     )
 endif ()

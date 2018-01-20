@@ -156,6 +156,8 @@ endif ()
 WEBKIT_OPTION_BEGIN()
 
 if (APPLE)
+    set(MACOS_COMPATIBILITY_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}" CACHE STRING "Compatibility version that macOS dylibs should have")
+
     option(MACOS_FORCE_SYSTEM_XML_LIBRARIES "Use system installation of libxml2 and libxslt on macOS" ON)
     option(MACOS_USE_SYSTEM_ICU "Use system installation of ICU on macOS" ON)
     option(USE_UNIX_DOMAIN_SOCKETS "Use Unix domain sockets instead of native IPC code on macOS" OFF)

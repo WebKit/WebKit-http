@@ -70,7 +70,8 @@ if (${PORT} STREQUAL "Qt")
 
     if (MACOS_BUILD_FRAMEWORKS)
         set_target_properties(WebKit PROPERTIES
-            FRAMEWORK_VERSION 5
+            FRAMEWORK_VERSION ${PROJECT_VERSION_MAJOR}
+            SOVERSION ${MACOS_COMPATIBILITY_VERSION}
             MACOSX_FRAMEWORK_IDENTIFIER org.qt-project.QtWebKit
         )
     endif ()
