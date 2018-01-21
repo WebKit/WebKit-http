@@ -47,7 +47,7 @@ class HaikuPort(Port):
         return "--haiku"
 
     def setup_test_run(self, device_class=None):
-        super(HaikuPort, self).setup_test_run(device_class)
+        super(HaikuPort, self).setup_test_run()
 
     def setup_environ_for_server(self, server_name=None):
         env = super(HaikuPort, self).setup_environ_for_server(server_name)
