@@ -439,14 +439,14 @@ void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
         if (!m_documentLoader->response().isHttpVersion0_9()) {
             String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 and the document was loaded with a different HTTP version.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error("", 0, url, message);
+            ResourceError error(emptyString(), 0, url, message);
             didFail(error);
             return;
         }
         if (!isDefaultPortForProtocol(url.port(), url.protocol())) {
             String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error("", 0, url, message);
+            ResourceError error(emptyString(), 0, url, message);
             didFail(error);
             return;
         }
@@ -712,14 +712,6 @@ void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChall
 #else
     didFail(blockedError());
 #endif
-}
-
-void ResourceLoader::didCancelAuthenticationChallenge(const AuthenticationChallenge& challenge)
-{
-    // Protect this in this delegate method since the additional processing can do
-    // anything including possibly derefing this; one example of this is Radar 3266216.
-    Ref<ResourceLoader> protectedThis(*this);
-    frameLoader()->notifier().didCancelAuthenticationChallenge(this, challenge);
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)

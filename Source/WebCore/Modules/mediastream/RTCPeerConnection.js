@@ -49,6 +49,7 @@ function initializeRTCPeerConnection(configuration)
         throw new @TypeError(message);
     }
 
+    this.@operations = [];
     this.@localStreams = [];
 
     return this;
@@ -145,7 +146,7 @@ function createOffer()
     }, function (successCallback, errorCallback, options) {
         // Legacy callbacks mode
         @enqueueOperation(peerConnection, function () {
-            return peerConnection.@queuedCreateOffer(options).then(successCallback, errorCallback);
+            return peerConnection.@queuedCreateOffer(options).@then(successCallback, errorCallback);
         });
 
         return @Promise.@resolve(@undefined);
@@ -169,7 +170,7 @@ function createAnswer()
     }, function (successCallback, errorCallback, options) {
         // Legacy callbacks mode
         @enqueueOperation(peerConnection, function () {
-            return peerConnection.@queuedCreateAnswer(options).then(successCallback, errorCallback);
+            return peerConnection.@queuedCreateAnswer(options).@then(successCallback, errorCallback);
         });
 
         return @Promise.@resolve(@undefined);
@@ -198,7 +199,7 @@ function setLocalDescription()
     }, function (description, successCallback, errorCallback) {
         // Legacy callbacks mode
         @enqueueOperation(peerConnection, function () {
-            return peerConnection.@queuedSetLocalDescription(description).then(successCallback, errorCallback);
+            return peerConnection.@queuedSetLocalDescription(description).@then(successCallback, errorCallback);
         });
 
         return @Promise.@resolve(@undefined);
@@ -227,7 +228,7 @@ function setRemoteDescription()
     }, function (description, successCallback, errorCallback) {
         // Legacy callbacks mode
         @enqueueOperation(peerConnection, function () {
-            return peerConnection.@queuedSetRemoteDescription(description).then(successCallback, errorCallback);
+            return peerConnection.@queuedSetRemoteDescription(description).@then(successCallback, errorCallback);
         });
 
         return @Promise.@resolve(@undefined);
@@ -256,7 +257,7 @@ function addIceCandidate()
     }, function (candidate, successCallback, errorCallback) {
         // Legacy callbacks mode
         @enqueueOperation(peerConnection, function () {
-            return peerConnection.@queuedAddIceCandidate(candidate).then(successCallback, errorCallback);
+            return peerConnection.@queuedAddIceCandidate(candidate).@then(successCallback, errorCallback);
         });
 
         return @Promise.@resolve(@undefined);
@@ -283,7 +284,7 @@ function getStats()
         return peerConnection.@privateGetStats(selector);
     }, function (selector, successCallback, errorCallback) {
         // Legacy callbacks mode
-        peerConnection.@privateGetStats(selector).then(successCallback, errorCallback);
+        peerConnection.@privateGetStats(selector).@then(successCallback, errorCallback);
 
         return @Promise.@resolve(@undefined);
     });

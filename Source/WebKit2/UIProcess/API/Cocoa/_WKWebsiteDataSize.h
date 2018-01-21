@@ -31,12 +31,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-WK_CLASS_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA)
+WK_CLASS_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))
 @interface _WKWebsiteDataSize : NSObject
 
 @property (nonatomic, readonly) unsigned long long totalSize;
 
-- (unsigned long long)sizeOfDataTypes:(WK_SET(NSString *) *)dataTypes;
+- (unsigned long long)sizeOfDataTypes:(NSSet<NSString *> *)dataTypes;
 
 @end
 

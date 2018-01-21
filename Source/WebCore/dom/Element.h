@@ -74,7 +74,7 @@ public:
     WEBCORE_EXPORT bool hasAttribute(const QualifiedName&) const;
     WEBCORE_EXPORT const AtomicString& getAttribute(const QualifiedName&) const;
     WEBCORE_EXPORT void setAttribute(const QualifiedName&, const AtomicString& value);
-    void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
+    WEBCORE_EXPORT void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
     void setSynchronizedLazyAttribute(const QualifiedName&, const AtomicString& value);
     bool removeAttribute(const QualifiedName&);
 
@@ -86,8 +86,8 @@ public:
 
     // Call this to get the value of an attribute that is known not to be the style
     // attribute or one of the SVG animatable attributes.
-    bool fastHasAttribute(const QualifiedName&) const;
-    const AtomicString& fastGetAttribute(const QualifiedName&) const;
+    bool hasAttributeWithoutSynchronization(const QualifiedName&) const;
+    const AtomicString& attributeWithoutSynchronization(const QualifiedName&) const;
 #ifndef NDEBUG
     WEBCORE_EXPORT bool fastAttributeLookupAllowed(const QualifiedName&) const;
 #endif
@@ -297,10 +297,10 @@ public:
     bool needsStyleInvalidation() const;
 
     // Methods for indicating the style is affected by dynamic updates (e.g., children changing, our position changing in our sibling list, etc.)
+    bool styleAffectedByActive() const { return hasRareData() && rareDataStyleAffectedByActive(); }
     bool styleAffectedByEmpty() const { return hasRareData() && rareDataStyleAffectedByEmpty(); }
     bool styleAffectedByFocusWithin() const { return hasRareData() && rareDataStyleAffectedByFocusWithin(); }
     bool childrenAffectedByHover() const { return getFlag(ChildrenAffectedByHoverRulesFlag); }
-    bool childrenAffectedByActive() const { return hasRareData() && rareDataChildrenAffectedByActive(); }
     bool childrenAffectedByDrag() const { return hasRareData() && rareDataChildrenAffectedByDrag(); }
     bool childrenAffectedByFirstChildRules() const { return getFlag(ChildrenAffectedByFirstChildRulesFlag); }
     bool childrenAffectedByLastChildRules() const { return getFlag(ChildrenAffectedByLastChildRulesFlag); }
@@ -314,7 +314,7 @@ public:
     void setStyleAffectedByEmpty();
     void setStyleAffectedByFocusWithin();
     void setChildrenAffectedByHover() { setFlag(ChildrenAffectedByHoverRulesFlag); }
-    void setChildrenAffectedByActive();
+    void setStyleAffectedByActive();
     void setChildrenAffectedByDrag();
     void setChildrenAffectedByFirstChildRules() { setFlag(ChildrenAffectedByFirstChildRulesFlag); }
     void setChildrenAffectedByLastChildRules() { setFlag(ChildrenAffectedByLastChildRulesFlag); }
@@ -537,6 +537,7 @@ protected:
     void childrenChanged(const ChildChange&) override;
     void removeAllEventListeners() final;
     virtual void parserDidSetAttributes();
+    void didMoveToNewDocument(Document*) override;
 
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(int);
@@ -618,7 +619,7 @@ private:
     bool rareDataStyleAffectedByFocusWithin() const;
     bool rareDataIsNamedFlowContentElement() const;
     bool rareDataChildrenAffectedByHover() const;
-    bool rareDataChildrenAffectedByActive() const;
+    bool rareDataStyleAffectedByActive() const;
     bool rareDataChildrenAffectedByDrag() const;
     bool rareDataChildrenAffectedByLastChildRules() const;
     bool rareDataChildrenAffectedByBackwardPositionalRules() const;
@@ -662,13 +663,13 @@ inline Element* Node::parentElement() const
     return is<Element>(parent) ? downcast<Element>(parent) : nullptr;
 }
 
-inline bool Element::fastHasAttribute(const QualifiedName& name) const
+inline bool Element::hasAttributeWithoutSynchronization(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
     return elementData() && findAttributeByName(name);
 }
 
-inline const AtomicString& Element::fastGetAttribute(const QualifiedName& name) const
+inline const AtomicString& Element::attributeWithoutSynchronization(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
     if (elementData()) {
@@ -704,7 +705,7 @@ inline const AtomicString& Element::getNameAttribute() const
 
 inline void Element::setIdAttribute(const AtomicString& value)
 {
-    setAttribute(HTMLNames::idAttr, value);
+    setAttributeWithoutSynchronization(HTMLNames::idAttr, value);
 }
 
 inline const SpaceSplitString& Element::classNames() const

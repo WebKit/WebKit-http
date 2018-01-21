@@ -101,25 +101,25 @@ void SVGSVGElement::didMoveToNewDocument(Document* oldDocument)
 const AtomicString& SVGSVGElement::contentScriptType() const
 {
     static NeverDestroyed<AtomicString> defaultScriptType { "text/ecmascript" };
-    const AtomicString& type = fastGetAttribute(SVGNames::contentScriptTypeAttr);
+    const AtomicString& type = attributeWithoutSynchronization(SVGNames::contentScriptTypeAttr);
     return type.isNull() ? defaultScriptType.get() : type;
 }
 
 void SVGSVGElement::setContentScriptType(const AtomicString& type)
 {
-    setAttribute(SVGNames::contentScriptTypeAttr, type);
+    setAttributeWithoutSynchronization(SVGNames::contentScriptTypeAttr, type);
 }
 
 const AtomicString& SVGSVGElement::contentStyleType() const
 {
     static NeverDestroyed<AtomicString> defaultStyleType { "text/css" };
-    const AtomicString& type = fastGetAttribute(SVGNames::contentStyleTypeAttr);
+    const AtomicString& type = attributeWithoutSynchronization(SVGNames::contentStyleTypeAttr);
     return type.isNull() ? defaultStyleType.get() : type;
 }
 
 void SVGSVGElement::setContentStyleType(const AtomicString& type)
 {
-    setAttribute(SVGNames::contentStyleTypeAttr, type);
+    setAttributeWithoutSynchronization(SVGNames::contentStyleTypeAttr, type);
 }
 
 FloatRect SVGSVGElement::viewport() const
@@ -316,7 +316,7 @@ Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(const FloatRect&
         if (checkFunction(&element, rect))
             elements.append(element);
     }
-    return RefPtr<NodeList>(StaticElementList::adopt(elements)).releaseNonNull();
+    return StaticElementList::create(WTFMove(elements));
 }
 
 Ref<NodeList> SVGSVGElement::getIntersectionList(const FloatRect& rect, SVGElement* referenceElement)

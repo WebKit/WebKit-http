@@ -118,8 +118,10 @@ StyleCachedImageSet* CSSImageSetValue::cachedImageSet(CachedResourceLoader& load
         ImageWithScale image = bestImageForScaleFactor();
         CachedResourceRequest request(ResourceRequest(document->completeURL(image.imageURL)), options);
         request.setInitiator(cachedResourceRequestInitiators().css);
-        if (options.requestOriginPolicy() == PotentiallyCrossOriginEnabled)
-            updateRequestForAccessControl(request.mutableResourceRequest(), document->securityOrigin(), options.allowCredentials());
+        if (options.mode == FetchOptions::Mode::Cors) {
+            ASSERT(document->securityOrigin());
+            updateRequestForAccessControl(request.mutableResourceRequest(), *document->securityOrigin(), options.allowCredentials());
+        }
         if (CachedResourceHandle<CachedImage> cachedImage = loader.requestImage(request)) {
             detachPendingImage();
             m_imageSet = StyleCachedImageSet::create(cachedImage.get(), image.scaleFactor, this);
@@ -130,7 +132,7 @@ StyleCachedImageSet* CSSImageSetValue::cachedImageSet(CachedResourceLoader& load
     return is<StyleCachedImageSet>(m_imageSet.get()) ? downcast<StyleCachedImageSet>(m_imageSet.get()) : nullptr;
 }
 
-StyleImage* CSSImageSetValue::cachedOrPendingImageSet(Document& document)
+StyleImage* CSSImageSetValue::cachedOrPendingImageSet(const Document& document)
 {
     if (!m_imageSet)
         m_imageSet = StylePendingImage::create(this);
@@ -152,7 +154,7 @@ StyleImage* CSSImageSetValue::cachedOrPendingImageSet(Document& document)
 String CSSImageSetValue::customCSSText() const
 {
     StringBuilder result;
-    result.appendLiteral("-webkit-image-set(");
+    result.appendLiteral("image-set(");
 
     size_t length = this->length();
     size_t i = 0;

@@ -29,6 +29,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/API"
     "${WEBKIT2_DIR}/UIProcess/API/C"
     "${WEBKIT2_DIR}/UIProcess/API/cpp"
+    "${WEBKIT2_DIR}/UIProcess/ApplePay"
     "${WEBKIT2_DIR}/UIProcess/Authentication"
     "${WEBKIT2_DIR}/UIProcess/Automation"
     "${WEBKIT2_DIR}/UIProcess/Databases"
@@ -43,6 +44,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/UserContent"
     "${WEBKIT2_DIR}/UIProcess/WebsiteData"
     "${WEBKIT2_DIR}/WebProcess"
+    "${WEBKIT2_DIR}/WebProcess/ApplePay"
     "${WEBKIT2_DIR}/WebProcess/ApplicationCache"
     "${WEBKIT2_DIR}/WebProcess/Automation"
     "${WEBKIT2_DIR}/WebProcess/Battery"
@@ -128,6 +130,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/svg"
     "${WEBCORE_DIR}/svg/graphics"
     "${WEBCORE_DIR}/svg/properties"
+    "${WEBCORE_DIR}/workers"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${JAVASCRIPTCORE_DIR}/API"
@@ -177,7 +180,6 @@ endif ()
 set(NetworkProcess_COMMON_SOURCES
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkLoad.cpp
-    NetworkProcess/NetworkLoadParameters.cpp
     NetworkProcess/NetworkProcess.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
     NetworkProcess/NetworkResourceLoader.cpp
@@ -242,6 +244,7 @@ set(WebKit2_SOURCES
     Shared/EditorState.cpp
     Shared/FontInfo.cpp
     Shared/LayerTreeContext.cpp
+    Shared/LoadParameters.cpp
     Shared/NavigationActionData.cpp
     Shared/PlatformPopupMenuData.cpp
     Shared/PrintInfo.cpp
@@ -327,6 +330,7 @@ set(WebKit2_SOURCES
     Shared/Databases/DatabaseProcessCreationParameters.cpp
 
     Shared/Databases/IndexedDB/IDBUtilities.cpp
+    Shared/Databases/IndexedDB/WebIDBResult.cpp
 
     Shared/Plugins/NPIdentifierData.cpp
     Shared/Plugins/NPObjectMessageReceiver.cpp
@@ -574,6 +578,7 @@ set(WebKit2_SOURCES
     WebProcess/Network/NetworkProcessConnection.cpp
     WebProcess/Network/WebLoaderStrategy.cpp
     WebProcess/Network/WebResourceLoader.cpp
+    WebProcess/Network/WebSocketProvider.cpp
 
     WebProcess/Notifications/NotificationPermissionRequestManager.cpp
     WebProcess/Notifications/WebNotificationManager.cpp

@@ -34,6 +34,7 @@
 #include "Dictionary.h"
 #include "ExceptionCode.h"
 #include "FetchRequest.h"
+#include "HTTPParsers.h"
 #include "JSFetchResponse.h"
 #include "ScriptExecutionContext.h"
 
@@ -65,7 +66,7 @@ RefPtr<FetchResponse> FetchResponse::redirect(ScriptExecutionContext& context, c
         return nullptr;
     }
     if (!isRedirectStatus(status)) {
-        ec = TypeError;
+        ec = RangeError;
         return nullptr;
     }
     auto redirectResponse = adoptRef(*new FetchResponse(context, { }, FetchHeaders::create(FetchHeaders::Guard::Immutable), { }));
@@ -86,9 +87,8 @@ void FetchResponse::initializeWith(const Dictionary& init, ExceptionCode& ec)
         return;
     }
 
-    // FIXME: Validate reason phrase (https://tools.ietf.org/html/rfc7230#section-3.1.2).
     String statusText;
-    if (!init.get("statusText", statusText)) {
+    if (!init.get("statusText", statusText) || !isValidReasonPhrase(statusText)) {
         ec = TypeError;
         return;
     }
@@ -149,6 +149,13 @@ void FetchResponse::fetch(ScriptExecutionContext& context, FetchRequest& input, 
     }
     ASSERT(fetchRequest);
     startFetching(context, *fetchRequest, WTFMove(promise));
+}
+
+const String& FetchResponse::url() const
+{
+    if (m_responseURL.isNull())
+        m_responseURL = m_response.url().serialize(true);
+    return m_responseURL;
 }
 
 void FetchResponse::fetch(ScriptExecutionContext& context, const String& url, const Dictionary& dictionary, FetchPromise&& promise)
@@ -287,6 +294,13 @@ RefPtr<SharedBuffer> FetchResponse::BodyLoader::startStreaming()
     ASSERT(m_loader);
     return m_loader->startStreaming();
 }
+
+void FetchResponse::cancel()
+{
+    m_isDisturbed = true;
+    stop();
+}
+
 #endif
 
 void FetchResponse::stop()

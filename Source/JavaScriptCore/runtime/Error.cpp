@@ -98,12 +98,6 @@ JSObject* createURIError(ExecState* exec, const String& message, ErrorInstance::
     return ErrorInstance::create(exec, globalObject->vm(), globalObject->URIErrorConstructor()->errorStructure(), message, appender, TypeNothing, true);
 }
 
-JSObject* createOutOfMemoryError(ExecState* exec, ErrorInstance::SourceAppender appender) 
-{
-    return createError(exec, ASCIILiteral("Out of memory"), appender);
-}
-
-
 class FindFirstCallerFrameWithCodeblockFunctor {
 public:
     FindFirstCallerFrameWithCodeblockFunctor(CallFrame* startCallFrame)
@@ -208,12 +202,17 @@ bool hasErrorInfo(ExecState* exec, JSObject* error)
 
 JSObject* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState* exec, const char* constructorName)
 {
-    return exec->vm().throwException(exec, createTypeError(exec, makeString("calling ", constructorName, " constructor without new is invalid")));
+    return throwTypeError(exec, makeString("calling ", constructorName, " constructor without new is invalid"));
 }
 
 JSObject* throwTypeError(ExecState* exec)
 {
     return exec->vm().throwException(exec, createTypeError(exec));
+}
+
+JSObject* throwTypeError(ExecState* exec, ASCIILiteral errorMessage)
+{
+    return throwTypeError(exec, String(errorMessage));
 }
 
 JSObject* throwTypeError(ExecState* exec, const String& message)
@@ -278,7 +277,7 @@ JSObject* createURIError(ExecState* exec, const String& message)
 
 JSObject* createOutOfMemoryError(ExecState* exec)
 {
-    return createOutOfMemoryError(exec, nullptr);
+    return createError(exec, ASCIILiteral("Out of memory"), nullptr);
 }
 
 

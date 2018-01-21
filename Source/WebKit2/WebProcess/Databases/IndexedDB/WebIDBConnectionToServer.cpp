@@ -33,10 +33,12 @@
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
 #include "WebIDBConnectionToClientMessages.h"
+#include "WebIDBResult.h"
 #include "WebProcess.h"
 #include "WebToDatabaseProcessConnection.h"
 #include <WebCore/IDBConnectionToServer.h>
 #include <WebCore/IDBCursorInfo.h>
+#include <WebCore/IDBDatabaseException.h>
 #include <WebCore/IDBError.h>
 #include <WebCore/IDBIndexInfo.h>
 #include <WebCore/IDBKeyRangeData.h>
@@ -73,7 +75,7 @@ WebIDBConnectionToServer::~WebIDBConnectionToServer()
 
 IPC::Connection* WebIDBConnectionToServer::messageSenderConnection()
 {
-    return WebProcess::singleton().webToDatabaseProcessConnection()->connection();
+    return &WebProcess::singleton().webToDatabaseProcessConnection()->connection();
 }
 
 IDBClient::IDBConnectionToServer& WebIDBConnectionToServer::coreConnectionToServer()
@@ -246,20 +248,26 @@ void WebIDBConnectionToServer::didPutOrAdd(const IDBResultData& result)
     m_connectionToServer->didPutOrAdd(result);
 }
 
-void WebIDBConnectionToServer::didGetRecord(const IDBResultData& result)
+static void preregisterSandboxExtensionsIfNecessary(const WebIDBResult& result)
 {
-    m_connectionToServer->didGetRecord(result);
+    auto resultType = result.resultData().type();
+    if (resultType != IDBResultType::GetRecordSuccess && resultType != IDBResultType::OpenCursorSuccess && resultType != IDBResultType::IterateCursorSuccess) {
+        ASSERT(resultType == IDBResultType::Error);
+        return;
+    }
+
+    const auto& filePaths = result.resultData().getResult().value().blobFilePaths();
+
+    ASSERT(filePaths.size() == result.handles().size());
+
+    if (!filePaths.isEmpty())
+        WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, result.handles()), 0);
 }
 
-void WebIDBConnectionToServer::didGetRecordWithSandboxExtensions(const WebCore::IDBResultData& result, const SandboxExtension::HandleArray& handles)
+void WebIDBConnectionToServer::didGetRecord(const WebIDBResult& result)
 {
-    const auto& filePaths = result.getResult().value().blobFilePaths();
-
-    ASSERT(filePaths.size() == handles.size());
-
-    WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, handles), 0);
-
-    m_connectionToServer->didGetRecord(result);
+    preregisterSandboxExtensionsIfNecessary(result);
+    m_connectionToServer->didGetRecord(result.resultData());
 }
 
 void WebIDBConnectionToServer::didGetCount(const IDBResultData& result)
@@ -272,14 +280,16 @@ void WebIDBConnectionToServer::didDeleteRecord(const IDBResultData& result)
     m_connectionToServer->didDeleteRecord(result);
 }
 
-void WebIDBConnectionToServer::didOpenCursor(const IDBResultData& result)
+void WebIDBConnectionToServer::didOpenCursor(const WebIDBResult& result)
 {
-    m_connectionToServer->didOpenCursor(result);
+    preregisterSandboxExtensionsIfNecessary(result);
+    m_connectionToServer->didOpenCursor(result.resultData());
 }
 
-void WebIDBConnectionToServer::didIterateCursor(const IDBResultData& result)
+void WebIDBConnectionToServer::didIterateCursor(const WebIDBResult& result)
 {
-    m_connectionToServer->didIterateCursor(result);
+    preregisterSandboxExtensionsIfNecessary(result);
+    m_connectionToServer->didIterateCursor(result.resultData());
 }
 
 void WebIDBConnectionToServer::fireVersionChangeEvent(uint64_t uniqueDatabaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion)
@@ -305,6 +315,11 @@ void WebIDBConnectionToServer::notifyOpenDBRequestBlocked(const IDBResourceIdent
 void WebIDBConnectionToServer::didGetAllDatabaseNames(uint64_t callbackID, const Vector<String>& databaseNames)
 {
     m_connectionToServer->didGetAllDatabaseNames(callbackID, databaseNames);
+}
+
+void WebIDBConnectionToServer::connectionToServerLost()
+{
+    m_connectionToServer->connectionToServerLost({ WebCore::IDBDatabaseException::UnknownError, ASCIILiteral("An internal error was encountered in the Indexed Database server") });
 }
 
 } // namespace WebKit

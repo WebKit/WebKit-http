@@ -273,6 +273,8 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp
 
+    UIProcess/linux/MemoryPressureMonitor.cpp
+
     UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
@@ -339,6 +341,7 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
 
+    WebProcess/WebPage/AcceleratedDrawingArea.cpp
     WebProcess/WebPage/DrawingAreaImpl.cpp
 
     WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp
@@ -512,6 +515,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/Plugins/gtk"
     "${WEBKIT2_DIR}/UIProcess/gstreamer"
     "${WEBKIT2_DIR}/UIProcess/gtk"
+    "${WEBKIT2_DIR}/UIProcess/linux"
     "${WEBKIT2_DIR}/UIProcess/soup"
     "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/gtk"
     "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape/unix"
@@ -826,7 +830,11 @@ if (ENABLE_THREADED_COMPOSITOR)
         Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
         Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
 
+        WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
+        WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
+        WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
         WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp
+        WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp
     )
     list(APPEND WebKit2_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"

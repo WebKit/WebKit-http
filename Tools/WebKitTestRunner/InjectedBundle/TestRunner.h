@@ -105,6 +105,7 @@ public:
     void setXSSAuditorEnabled(bool);
     void setShadowDOMEnabled(bool);
     void setCustomElementsEnabled(bool);
+    void setDOMIteratorEnabled(bool);
     void setWebGL2Enabled(bool);
     void setFetchAPIEnabled(bool);
     void setAllowUniversalAccessFromFileURLs(bool);
@@ -167,6 +168,7 @@ public:
 
     // Authentication
     void setHandlesAuthenticationChallenges(bool);
+    void setShouldLogCanAuthenticateAgainstProtectionSpace(bool);
     void setAuthenticationUsername(JSStringRef);
     void setAuthenticationPassword(JSStringRef);
 
@@ -309,6 +311,7 @@ public:
     bool shouldDecideNavigationPolicyAfterDelay() const { return m_shouldDecideNavigationPolicyAfterDelay; }
     void setShouldDecideNavigationPolicyAfterDelay(bool);
     void setNavigationGesturesEnabled(bool);
+    void setIgnoresViewportScaleLimits(bool);
 
     void runUIScript(JSStringRef script, JSValueRef callback);
     void runUIScriptCallback(unsigned callbackID, JSStringRef result);

@@ -36,6 +36,7 @@
 #include "B3DataSection.h"
 #include "B3Dominators.h"
 #include "B3OpaqueByproducts.h"
+#include "B3PhiChildren.h"
 #include "B3StackSlot.h"
 #include "B3ValueInlines.h"
 #include "B3Variable.h"
@@ -172,13 +173,35 @@ void Procedure::resetReachability()
         }
     }
     
-    B3::resetReachability(
-        m_blocks,
-        [&] (BasicBlock* deleted) {
-            // Gotta delete the values in this block.
-            for (Value* value : *deleted)
+    recomputePredecessors(m_blocks);
+    
+    // The common case is that this does not find any dead blocks.
+    bool foundDead = false;
+    for (auto& block : m_blocks) {
+        if (isBlockDead(block.get())) {
+            foundDead = true;
+            break;
+        }
+    }
+    if (!foundDead)
+        return;
+    
+    resetValueOwners();
+
+    for (Value* value : values()) {
+        if (UpsilonValue* upsilon = value->as<UpsilonValue>()) {
+            if (isBlockDead(upsilon->phi()->owner))
+                upsilon->replaceWithNop();
+        }
+    }
+    
+    for (auto& block : m_blocks) {
+        if (isBlockDead(block.get())) {
+            for (Value* value : *block)
                 deleteValue(value);
-        });
+            block = nullptr;
+        }
+    }
 }
 
 void Procedure::invalidateCFG()

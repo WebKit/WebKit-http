@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,6 +46,7 @@
 #include "MouseEvent.h"
 #include "RenderObject.h"
 #include "RenderView.h"
+#include "ScopedEventQueue.h"
 #include "ScriptController.h"
 #include "ShadowRoot.h"
 
@@ -174,6 +175,7 @@ void ColorInputType::didChooseColor(const Color& color)
 {
     if (element().isDisabledOrReadOnly() || color == valueAsColor())
         return;
+    EventQueueScope scope;
     element().setValueFromRenderer(color.serialized());
     updateColorSwatch();
     element().dispatchFormControlChangeEvent();
@@ -220,7 +222,7 @@ Color ColorInputType::currentColor()
 bool ColorInputType::shouldShowSuggestions() const
 {
 #if ENABLE(DATALIST_ELEMENT)
-    return element().fastHasAttribute(listAttr);
+    return element().hasAttributeWithoutSynchronization(listAttr);
 #else
     return false;
 #endif

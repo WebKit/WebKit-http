@@ -64,8 +64,6 @@ namespace JSC {
     macro(abs) \
     macro(floor) \
     macro(trunc) \
-    macro(isFinite) \
-    macro(isNaN) \
     macro(create) \
     macro(defineProperty) \
     macro(getPrototypeOf) \
@@ -78,6 +76,7 @@ namespace JSC {
     macro(typedArrayLength) \
     macro(typedArraySort) \
     macro(typedArrayGetOriginalConstructor) \
+    macro(typedArraySubarrayCreate) \
     macro(BuiltinLog) \
     macro(homeObject) \
     macro(getTemplateObject) \

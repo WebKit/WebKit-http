@@ -62,3 +62,11 @@ if (HAIKU)
     set_target_properties(WebKit PROPERTIES VERSION ${WEBKIT_VERSION} SOVERSION ${WEBKIT_VERSION_MAJOR})
     install(TARGETS WebKit DESTINATION "${LIB_INSTALL_DIR}")
 endif ()
+
+if (MSVC)
+    add_custom_command(
+        TARGET WebKit
+        POST_BUILD
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_WEBKIT_DIR} $<TARGET_FILE:WebKit>
+        VERBATIM)
+endif ()

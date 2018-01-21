@@ -38,59 +38,59 @@ namespace WebCore {
 using namespace JSC;
 
 #if ENABLE(CUSTOM_ELEMENTS)
-EncodedJSValue JSC_HOST_CALL constructJSHTMLElement(ExecState* state)
+EncodedJSValue JSC_HOST_CALL constructJSHTMLElement(ExecState& exec)
 {
-    auto* jsConstructor = jsCast<DOMConstructorObject*>(state->callee());
+    auto* jsConstructor = jsCast<DOMConstructorObject*>(exec.callee());
 
     auto* context = jsConstructor->scriptExecutionContext();
     if (!is<Document>(context))
-        return throwConstructorDocumentUnavailableError(*state, "HTMLElement");
+        return throwConstructorDocumentUnavailableError(exec, "HTMLElement");
     auto& document = downcast<Document>(*context);
 
     auto* definitions = document.customElementDefinitions();
     if (!definitions)
-        return throwVMTypeError(state, "new.target is not a valid custom element constructor");
+        return throwVMTypeError(&exec, "new.target is not a valid custom element constructor");
 
-    VM& vm = state->vm();
-    JSValue newTargetValue = state->thisValue();
+    VM& vm = exec.vm();
+    JSValue newTargetValue = exec.thisValue();
     JSObject* newTarget = newTargetValue.getObject();
-    auto* interface = definitions->findInterface(newTarget);
-    if (!interface)
-        return throwVMTypeError(state, "new.target does not define a custom element");
+    auto* elementInterface = definitions->findInterface(newTarget);
+    if (!elementInterface)
+        return throwVMTypeError(&exec, "new.target does not define a custom element");
 
-    if (!interface->isUpgradingElement()) {
+    if (!elementInterface->isUpgradingElement()) {
         auto* globalObject = jsConstructor->globalObject();
         Structure* baseStructure = getDOMStructure<JSHTMLElement>(vm, *globalObject);
-        auto* newElementStructure = InternalFunction::createSubclassStructure(state, newTargetValue, baseStructure);
-        if (UNLIKELY(state->hadException()))
+        auto* newElementStructure = InternalFunction::createSubclassStructure(&exec, newTargetValue, baseStructure);
+        if (UNLIKELY(exec.hadException()))
             return JSValue::encode(jsUndefined());
 
-        Ref<HTMLElement> element = HTMLElement::create(interface->name(), document);
+        Ref<HTMLElement> element = HTMLElement::create(elementInterface->name(), document);
         element->setIsUnresolvedCustomElement();
         auto* jsElement = JSHTMLElement::create(newElementStructure, globalObject, element.get());
         cacheWrapper(globalObject->world(), element.ptr(), jsElement);
         return JSValue::encode(jsElement);
     }
 
-    Element* elementToUpgrade = interface->lastElementInConstructionStack();
+    Element* elementToUpgrade = elementInterface->lastElementInConstructionStack();
     if (!elementToUpgrade) {
-        throwInvalidStateError(*state, "Cannot instantiate a custom element inside its own constrcutor during upgrades");
+        throwInvalidStateError(exec, "Cannot instantiate a custom element inside its own constrcutor during upgrades");
         return JSValue::encode(jsUndefined());
     }
 
-    JSValue elementWrapperValue = toJS(state, jsConstructor->globalObject(), *elementToUpgrade);
+    JSValue elementWrapperValue = toJS(&exec, jsConstructor->globalObject(), *elementToUpgrade);
     ASSERT(elementWrapperValue.isObject());
 
-    JSValue newPrototype = newTarget->get(state, vm.propertyNames->prototype);
-    if (state->hadException())
+    JSValue newPrototype = newTarget->get(&exec, vm.propertyNames->prototype);
+    if (exec.hadException())
         return JSValue::encode(jsUndefined());
 
     JSObject* elementWrapperObject = asObject(elementWrapperValue);
-    JSObject::setPrototype(elementWrapperObject, state, newPrototype, true /* shouldThrowIfCantSet */);
-    if (state->hadException())
+    JSObject::setPrototype(elementWrapperObject, &exec, newPrototype, true /* shouldThrowIfCantSet */);
+    if (exec.hadException())
         return JSValue::encode(jsUndefined());
 
-    interface->didUpgradeLastElementInConstructionStack();
+    elementInterface->didUpgradeLastElementInConstructionStack();
 
     return JSValue::encode(elementWrapperValue);
 }

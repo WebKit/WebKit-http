@@ -36,9 +36,6 @@ function enqueueOperation(peerConnection, operation)
 {
     "use strict";
 
-    if (!peerConnection.@operations)
-        peerConnection.@operations = [];
-
     const operations = peerConnection.@operations;
 
     function runNext() {
@@ -49,7 +46,7 @@ function enqueueOperation(peerConnection, operation)
 
     return new @Promise(function (resolve, reject) {
         operations.@push(function() {
-            operation().then(resolve, reject).then(runNext, runNext);
+            operation().@then(resolve, reject).@then(runNext, runNext);
         });
 
         if (operations.length == 1)
@@ -133,6 +130,5 @@ function isRTCPeerConnection(connection)
 {
     "use strict";
 
-    // FIXME: Robustify this check (http://webkit.org/b/158831)
-    return @isObject(connection) && !!connection.@queuedCreateOffer;
+    return @isObject(connection) && !!connection.@operations;
 }

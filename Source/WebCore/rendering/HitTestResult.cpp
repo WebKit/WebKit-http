@@ -313,7 +313,7 @@ String HitTestResult::altDisplayString() const
     
     if (is<HTMLImageElement>(*m_innerNonSharedNode)) {
         HTMLImageElement& image = downcast<HTMLImageElement>(*m_innerNonSharedNode);
-        return displayString(image.fastGetAttribute(altAttr), m_innerNonSharedNode.get());
+        return displayString(image.attributeWithoutSynchronization(altAttr), m_innerNonSharedNode.get());
     }
     
     if (is<HTMLInputElement>(*m_innerNonSharedNode)) {
@@ -470,7 +470,7 @@ void HitTestResult::toggleMediaFullscreenState() const
 #if ENABLE(VIDEO)
     if (HTMLMediaElement* mediaElement = this->mediaElement()) {
         if (mediaElement->isVideo() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
             mediaElement->toggleStandardFullscreenState();
         }
     }
@@ -484,7 +484,7 @@ void HitTestResult::enterFullscreenForVideo() const
     if (is<HTMLVideoElement>(mediaElement)) {
         HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
         if (!videoElement.isFullscreen() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
             videoElement.enterFullscreen();
         }
     }
@@ -814,7 +814,7 @@ void HitTestResult::toggleEnhancedFullscreenForVideo() const
         return;
 
     HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
-    UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+    UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
     if (videoElement.fullscreenMode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture)
         videoElement.exitFullscreen();
     else

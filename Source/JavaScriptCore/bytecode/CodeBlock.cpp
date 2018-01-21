@@ -992,6 +992,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_to_number: {
             printUnaryOp(out, exec, location, it, "to_number");
+            dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_to_string: {
@@ -1665,7 +1666,9 @@ void CodeBlock::dumpBytecode(
             int generator = (++it)->u.operand;
             unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
             int offset = (++it)->u.operand;
-            const FastBitVector& liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
+            FastBitVector liveness;
+            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
+                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
             printLocationAndOp(out, exec, location, it, "save");
             out.printf("%s, ", registerName(generator).data());
             liveness.dump(out);
@@ -1675,7 +1678,9 @@ void CodeBlock::dumpBytecode(
         case op_resume: {
             int generator = (++it)->u.operand;
             unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
-            const FastBitVector& liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
+            FastBitVector liveness;
+            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
+                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
             printLocationAndOp(out, exec, location, it, "resume");
             out.printf("%s, ", registerName(generator).data());
             liveness.dump(out);
@@ -2093,7 +2098,8 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         }
         case op_get_direct_pname:
         case op_get_by_id:
-        case op_get_from_arguments: {
+        case op_get_from_arguments:
+        case op_to_number: {
             ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
             ASSERT(profile->m_bytecodeOffset == -1);
             profile->m_bytecodeOffset = i;
@@ -2240,7 +2246,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 instructions[i + 5].u.watchpointSet = op.watchpointSet;
             else if (op.type == ClosureVar || op.type == ClosureVarWithVarInjectionChecks) {
                 if (op.watchpointSet)
-                    op.watchpointSet->invalidate(PutToScopeFireDetail(this, ident));
+                    op.watchpointSet->invalidate(vm, PutToScopeFireDetail(this, ident));
             } else if (op.structure)
                 instructions[i + 5].u.structure.set(vm, this, op.structure);
             instructions[i + 6].u.pointer = reinterpret_cast<void*>(op.operand);
@@ -2477,7 +2483,12 @@ void CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& consta
                     ConcurrentJITLocker locker(symbolTable->m_lock);
                     symbolTable->prepareForTypeProfiling(locker);
                 }
-                constant = symbolTable->cloneScopePart(*m_vm);
+
+                SymbolTable* clone = symbolTable->cloneScopePart(*m_vm);
+                if (wasCompiledWithDebuggingOpcodes())
+                    clone->setRareDataCodeBlock(this);
+
+                constant = clone;
             }
         }
 
@@ -3436,7 +3447,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         // This accomplishes (1), and does its own book-keeping about whether it has already happened.
         if (!jitCode()->dfgCommon()->invalidate()) {
             // We've already been invalidated.
-            RELEASE_ASSERT(this != replacement());
+            RELEASE_ASSERT(this != replacement() || (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable())));
             return;
         }
     }
@@ -3465,6 +3476,11 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     if (reason != Profiler::JettisonDueToOldAge)
         tallyFrequentExitSites();
 #endif // ENABLE(DFG_JIT)
+
+    // Jettison can happen during GC. We don't want to install code to a dead executable
+    // because that would add a dead object to the remembered set.
+    if (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable()))
+        return;
 
     // This accomplishes (2).
     ownerScriptExecutable()->installCode(

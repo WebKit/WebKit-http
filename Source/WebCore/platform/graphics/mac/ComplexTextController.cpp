@@ -30,7 +30,7 @@
 #include "FontCascade.h"
 #include "RenderBlock.h"
 #include "RenderText.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextRun.h"
 #include <wtf/Optional.h>
 #include <wtf/StdLibExtras.h>
@@ -269,7 +269,7 @@ static bool advanceByCombiningCharacterSequence(const UChar*& iterator, const UC
         bool shouldContinue = false;
         U16_NEXT(iterator, markLength, end - iterator, nextCharacter);
 
-        if (isVariationSelector(nextCharacter) || isEmojiModifier(nextCharacter))
+        if (isVariationSelector(nextCharacter) || isEmojiFitzpatrickModifier(nextCharacter))
             shouldContinue = true;
 
         if (sawJoiner && isEmojiGroupCandidate(nextCharacter))

@@ -212,8 +212,6 @@ list(APPEND WebCore_SOURCES
     platform/text/Hyphenation.cpp
     platform/text/LocaleICU.cpp
 
-    platform/text/efl/TextBreakIteratorInternalICUEfl.cpp
-
     platform/text/enchant/TextCheckerEnchant.cpp
 
     platform/text/hyphen/HyphenationLibHyphen.cpp
@@ -232,6 +230,8 @@ if (USE_GEOCLUE2)
          OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.h
          COMMAND gdbus-codegen --interface-prefix org.freedesktop.GeoClue2. --c-namespace Geoclue --generate-c-code ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface ${GEOCLUE_DBUS_INTERFACE}
     )
+    # Geoclue2Interface.c generates unused-parameter build warning, it causes build error when using geoclue2 library.
+    set_source_files_properties(${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c PROPERTIES COMPILE_FLAGS -Wno-error)
 endif ()
 
 if (ENABLE_GAMEPAD_DEPRECATED)
@@ -249,14 +249,6 @@ set(WebCore_USER_AGENT_SCRIPTS
     ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
 )
-
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h
-    MAIN_DEPENDENCY ${WEBKIT_DIR}/scripts/generate-webkitversion.pl
-    DEPENDS ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/scripts/generate-webkitversion.pl --config ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig --outputDir ${DERIVED_SOURCES_WEBCORE_DIR}
-    VERBATIM)
-list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h)
 
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/efl/RenderThemeEfl.cpp)
 

@@ -822,7 +822,53 @@ public:
 
     void load16Unaligned(BaseIndex address, RegisterID dest)
     {
-        load16(address, dest);
+        if (address.offset >= -32768 && address.offset <= 32767 && !m_fixedWidth) {
+            /*
+                sll     addrtemp, address.index, address.scale
+                addu    addrtemp, addrtemp, address.base
+                lbu     immTemp, address.offset+x(addrtemp) (x=0 for LE, x=1 for BE)
+                lbu     dest, address.offset+x(addrtemp)    (x=1 for LE, x=0 for BE)
+                sll     dest, dest, 8
+                or      dest, dest, immTemp
+            */
+            m_assembler.sll(addrTempRegister, address.index, address.scale);
+            m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
+#if CPU(BIG_ENDIAN)
+            m_assembler.lbu(immTempRegister, addrTempRegister, address.offset + 1);
+            m_assembler.lbu(dest, addrTempRegister, address.offset);
+#else
+            m_assembler.lbu(immTempRegister, addrTempRegister, address.offset);
+            m_assembler.lbu(dest, addrTempRegister, address.offset + 1);
+#endif
+            m_assembler.sll(dest, dest, 8);
+            m_assembler.orInsn(dest, dest, immTempRegister);
+        } else {
+            /*
+                sll     addrTemp, address.index, address.scale
+                addu    addrTemp, addrTemp, address.base
+                lui     immTemp, address.offset >> 16
+                ori     immTemp, immTemp, address.offset & 0xffff
+                addu    addrTemp, addrTemp, immTemp
+                lbu     immTemp, x(addrtemp) (x=0 for LE, x=1 for BE)
+                lbu     dest, x(addrtemp)    (x=1 for LE, x=0 for BE)
+                sll     dest, dest, 8
+                or      dest, dest, immTemp
+            */
+            m_assembler.sll(addrTempRegister, address.index, address.scale);
+            m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
+            m_assembler.lui(immTempRegister, address.offset >> 16);
+            m_assembler.ori(immTempRegister, immTempRegister, address.offset);
+            m_assembler.addu(addrTempRegister, addrTempRegister, immTempRegister);
+#if CPU(BIG_ENDIAN)
+            m_assembler.lbu(immTempRegister, addrTempRegister, 1);
+            m_assembler.lbu(dest, addrTempRegister, 0);
+#else
+            m_assembler.lbu(immTempRegister, addrTempRegister, 0);
+            m_assembler.lbu(dest, addrTempRegister, 1);
+#endif
+            m_assembler.sll(dest, dest, 8);
+            m_assembler.orInsn(dest, dest, immTempRegister);
+        }
     }
 
     void load32WithUnalignedHalfWords(BaseIndex address, RegisterID dest)
@@ -1045,11 +1091,12 @@ public:
             li  addrTemp, address
             sb  src, 0(addrTemp)
         */
-        if (!imm.m_value && !m_fixedWidth) {
+        TrustedImm32 imm8(static_cast<int8_t>(imm.m_value));
+        if (!imm8.m_value && !m_fixedWidth) {
             move(TrustedImmPtr(address), addrTempRegister);
             m_assembler.sb(MIPSRegisters::zero, addrTempRegister, 0);
         } else {
-            move(imm, immTempRegister);
+            move(imm8, immTempRegister);
             move(TrustedImmPtr(address), addrTempRegister);
             m_assembler.sb(immTempRegister, addrTempRegister, 0);
         }
@@ -1057,12 +1104,13 @@ public:
 
     void store8(TrustedImm32 imm, ImplicitAddress address)
     {
+        TrustedImm32 imm8(static_cast<int8_t>(imm.m_value));
         if (address.offset >= -32768 && address.offset <= 32767
             && !m_fixedWidth) {
-            if (!imm.m_value)
+            if (!imm8.m_value)
                 m_assembler.sb(MIPSRegisters::zero, address.base, address.offset);
             else {
-                move(imm, immTempRegister);
+                move(imm8, immTempRegister);
                 m_assembler.sb(immTempRegister, address.base, address.offset);
             }
         } else {
@@ -1073,10 +1121,10 @@ public:
               */
             m_assembler.lui(addrTempRegister, (address.offset + 0x8000) >> 16);
             m_assembler.addu(addrTempRegister, addrTempRegister, address.base);
-            if (!imm.m_value && !m_fixedWidth)
+            if (!imm8.m_value && !m_fixedWidth)
                 m_assembler.sb(MIPSRegisters::zero, addrTempRegister, address.offset);
             else {
-                move(imm, immTempRegister);
+                move(imm8, immTempRegister);
                 m_assembler.sb(immTempRegister, addrTempRegister, address.offset);
             }
         }
@@ -1398,38 +1446,35 @@ public:
 
     Jump branch8(RelationalCondition cond, Address left, TrustedImm32 right)
     {
-        // Make sure the immediate value is unsigned 8 bits.
-        ASSERT(!(right.m_value & 0xFFFFFF00));
+        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
         load8(left, dataTempRegister);
-        move(right, immTempRegister);
+        move(right8, immTempRegister);
         return branch32(cond, dataTempRegister, immTempRegister);
     }
 
     Jump branch8(RelationalCondition cond, AbsoluteAddress left, TrustedImm32 right)
     {
-        // Make sure the immediate value is unsigned 8 bits.
-        ASSERT(!(right.m_value & 0xFFFFFF00));
+        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
         load8(left, dataTempRegister);
-        move(right, immTempRegister);
+        move(right8, immTempRegister);
         return branch32(cond, dataTempRegister, immTempRegister);
     }
 
     void compare8(RelationalCondition cond, Address left, TrustedImm32 right, RegisterID dest)
     {
-        // Make sure the immediate value is unsigned 8 bits.
-        ASSERT(!(right.m_value & 0xFFFFFF00));
+        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
         load8(left, dataTempRegister);
-        move(right, immTempRegister);
+        move(right8, immTempRegister);
         compare32(cond, dataTempRegister, immTempRegister, dest);
     }
 
     Jump branch8(RelationalCondition cond, BaseIndex left, TrustedImm32 right)
     {
-        ASSERT(!(right.m_value & 0xFFFFFF00));
+        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
         load8(left, dataTempRegister);
         // Be careful that the previous load8() uses immTempRegister.
         // So, we need to put move() after load8().
-        move(right, immTempRegister);
+        move(right8, immTempRegister);
         return branch32(cond, dataTempRegister, immTempRegister);
     }
 
@@ -1584,21 +1629,24 @@ public:
 
     Jump branchTest8(ResultCondition cond, BaseIndex address, TrustedImm32 mask = TrustedImm32(-1))
     {
+        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
         load8(address, dataTempRegister);
-        return branchTest32(cond, dataTempRegister, mask);
+        return branchTest32(cond, dataTempRegister, mask8);
     }
 
     Jump branchTest8(ResultCondition cond, Address address, TrustedImm32 mask = TrustedImm32(-1))
     {
+        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
         load8(address, dataTempRegister);
-        return branchTest32(cond, dataTempRegister, mask);
+        return branchTest32(cond, dataTempRegister, mask8);
     }
 
     Jump branchTest8(ResultCondition cond, AbsoluteAddress address, TrustedImm32 mask = TrustedImm32(-1))
     {
+        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
         move(TrustedImmPtr(address.m_ptr), dataTempRegister);
         load8(Address(dataTempRegister), dataTempRegister);
-        return branchTest32(cond, dataTempRegister, mask);
+        return branchTest32(cond, dataTempRegister, mask8);
     }
 
     Jump jump()
@@ -2171,14 +2219,15 @@ public:
     void test8(ResultCondition cond, Address address, TrustedImm32 mask, RegisterID dest)
     {
         ASSERT((cond == Zero) || (cond == NonZero));
+        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
         load8(address, dataTempRegister);
-        if (mask.m_value == -1 && !m_fixedWidth) {
+        if (mask8.m_value == -1 && !m_fixedWidth) {
             if (cond == Zero)
                 m_assembler.sltiu(dest, dataTempRegister, 1);
             else
                 m_assembler.sltu(dest, MIPSRegisters::zero, dataTempRegister);
         } else {
-            move(mask, immTempRegister);
+            move(mask8, immTempRegister);
             m_assembler.andInsn(cmpTempRegister, dataTempRegister, immTempRegister);
             if (cond == Zero)
                 m_assembler.sltiu(dest, cmpTempRegister, 1);

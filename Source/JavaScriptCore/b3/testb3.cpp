@@ -38,11 +38,13 @@
 #include "B3MathExtras.h"
 #include "B3MemoryValue.h"
 #include "B3Procedure.h"
+#include "B3ReduceStrength.h"
 #include "B3SlotBaseValue.h"
 #include "B3StackSlot.h"
 #include "B3StackmapGenerationParams.h"
 #include "B3SwitchValue.h"
 #include "B3UpsilonValue.h"
+#include "B3Validate.h"
 #include "B3ValueInlines.h"
 #include "CCallHelpers.h"
 #include "InitializeThreading.h"
@@ -7285,6 +7287,46 @@ void testBranchLoad16Z()
     CHECK(invoke<int>(*code, &cond) == 0);
 }
 
+void testBranch8WithLoad8ZIndex()
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    int logScale = 1;
+    root->appendNew<ControlValue>(
+        proc, Branch, Origin(),
+        root->appendNew<Value>(
+            proc, Above, Origin(),
+            root->appendNew<MemoryValue>(
+                proc, Load8Z, Origin(),
+                root->appendNew<Value>(
+                    proc, Add, Origin(),
+                    root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                    root->appendNew<Value>(
+                        proc, Shl, Origin(),
+                        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1),
+                        root->appendNew<Const32Value>(proc, Origin(), logScale)))),
+            root->appendNew<Const32Value>(proc, Origin(), 250)),
+        FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 1));
+
+    elseCase->appendNew<ControlValue>(
+        proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), 0));
+
+    auto code = compile(proc);
+    uint32_t cond;
+    cond = 0xffffffffU; // All bytes are 0xff.
+    CHECK(invoke<int>(*code, &cond - 2, (sizeof(uint32_t) * 2) >> logScale) == 1);
+    cond = 0x00000000U; // All bytes are 0.
+    CHECK(invoke<int>(*code, &cond - 2, (sizeof(uint32_t) * 2) >> logScale) == 0);
+}
+
 void testComplex(unsigned numVars, unsigned numConstructs)
 {
     double before = monotonicallyIncreasingTimeMS();
@@ -12050,6 +12092,58 @@ void testLateRegister()
     CHECK(invoke<uint64_t>(*code) == result);
 }
 
+void testReduceStrengthCheckBottomUseInAnotherBlock()
+{
+    Procedure proc;
+    
+    BasicBlock* one = proc.addBlock();
+    BasicBlock* two = proc.addBlock();
+    
+    CheckValue* check = one->appendNew<CheckValue>(
+        proc, Check, Origin(), one->appendNew<Const32Value>(proc, Origin(), 1));
+    check->setGenerator(
+        [&] (CCallHelpers& jit, const StackmapGenerationParams&) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+
+            jit.move(CCallHelpers::TrustedImm32(666), GPRInfo::returnValueGPR);
+            jit.emitFunctionEpilogue();
+            jit.ret();
+        });
+    Value* arg = one->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    one->appendNew<ControlValue>(proc, Jump, Origin(), FrequentedBlock(two));
+    
+    check = two->appendNew<CheckValue>(
+        proc, CheckAdd, Origin(), arg,
+        two->appendNew<ConstPtrValue>(proc, Origin(), 1));
+    check->setGenerator(
+        [&] (CCallHelpers&, const StackmapGenerationParams&) {
+            CHECK(!"Should not execute");
+        });
+    two->appendNew<ControlValue>(proc, Return, Origin(), check);
+    
+    proc.resetReachability();
+    reduceStrength(proc);
+}
+
+void testResetReachabilityDanglingReference()
+{
+    Procedure proc;
+    
+    BasicBlock* one = proc.addBlock();
+    BasicBlock* two = proc.addBlock();
+    
+    UpsilonValue* upsilon = one->appendNew<UpsilonValue>(
+        proc, Origin(), one->appendNew<Const32Value>(proc, Origin(), 42));
+    one->appendNew<ControlValue>(proc, Oops, Origin());
+    
+    Value* phi = two->appendNew<Value>(proc, Phi, Int32, Origin());
+    upsilon->setPhi(phi);
+    two->appendNew<ControlValue>(proc, Oops, Origin());
+    
+    proc.resetReachability();
+    validate(proc);
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -12846,6 +12940,7 @@ void run(const char* filter)
     RUN(testBranchLoad8Z());
     RUN(testBranchLoad16S());
     RUN(testBranchLoad16Z());
+    RUN(testBranch8WithLoad8ZIndex());
 
     RUN(testComplex(64, 128));
     RUN(testComplex(4, 128));
@@ -13449,11 +13544,11 @@ void run(const char* filter)
     RUN(testLShiftSelf64());
 
     RUN(testPatchpointDoubleRegs());
-
     RUN(testSpillDefSmallerThanUse());
     RUN(testSpillUseLargerThanDef());
-
     RUN(testLateRegister());
+    RUN(testReduceStrengthCheckBottomUseInAnotherBlock());
+    RUN(testResetReachabilityDanglingReference());
 
     if (tasks.isEmpty())
         usage();

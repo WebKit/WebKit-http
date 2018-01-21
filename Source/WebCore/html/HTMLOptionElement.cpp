@@ -81,7 +81,7 @@ RefPtr<HTMLOptionElement> HTMLOptionElement::createForJSConstructor(Document& do
     if (!value.isNull())
         element->setValue(value);
     if (defaultSelected)
-        element->setAttribute(selectedAttr, emptyAtom);
+        element->setAttributeWithoutSynchronization(selectedAttr, emptyAtom);
     element->setSelected(selected);
 
     return WTFMove(element);
@@ -98,7 +98,7 @@ bool HTMLOptionElement::isFocusable() const
 
 bool HTMLOptionElement::matchesDefaultPseudoClass() const
 {
-    return fastHasAttribute(selectedAttr);
+    return hasAttributeWithoutSynchronization(selectedAttr);
 }
 
 String HTMLOptionElement::text() const
@@ -194,7 +194,7 @@ void HTMLOptionElement::parseAttribute(const QualifiedName& name, const AtomicSt
 
 String HTMLOptionElement::value() const
 {
-    const AtomicString& value = fastGetAttribute(valueAttr);
+    const AtomicString& value = attributeWithoutSynchronization(valueAttr);
     if (!value.isNull())
         return value;
     return collectOptionInnerText().stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
@@ -202,7 +202,7 @@ String HTMLOptionElement::value() const
 
 void HTMLOptionElement::setValue(const String& value)
 {
-    setAttribute(valueAttr, value);
+    setAttributeWithoutSynchronization(valueAttr, value);
 }
 
 bool HTMLOptionElement::selected()
@@ -272,7 +272,7 @@ HTMLSelectElement* HTMLOptionElement::ownerSelectElement() const
 
 String HTMLOptionElement::label() const
 {
-    String label = fastGetAttribute(labelAttr);
+    String label = attributeWithoutSynchronization(labelAttr);
     if (!label.isNull())
         return label.stripWhiteSpace(isHTMLSpace);
     return collectOptionInnerText().stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
@@ -280,7 +280,7 @@ String HTMLOptionElement::label() const
 
 void HTMLOptionElement::setLabel(const String& label)
 {
-    setAttribute(labelAttr, label);
+    setAttributeWithoutSynchronization(labelAttr, label);
 }
 
 void HTMLOptionElement::willResetComputedStyle()

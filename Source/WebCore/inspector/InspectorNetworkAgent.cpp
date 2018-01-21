@@ -122,15 +122,9 @@ public:
         dispose();
     }
 
-    void didFail(const ResourceError&) override
+    void didFail(const ResourceError& error) override
     {
-        m_callback->sendFailure(ASCIILiteral("Loading resource for inspector failed"));
-        dispose();
-    }
-
-    void didFailRedirectCheck() override
-    {
-        m_callback->sendFailure(ASCIILiteral("Loading resource for inspector failed redirect check"));
+        m_callback->sendFailure(error.isAccessControl() ? ASCIILiteral("Loading resource for inspector failed access control check") : ASCIILiteral("Loading resource for inspector failed"));
         dispose();
     }
 
@@ -211,8 +205,11 @@ static Ref<Inspector::Protocol::Network::Request> buildObjectForResourceRequest(
         .setMethod(request.httpMethod())
         .setHeaders(buildObjectForHeaders(request.httpHeaderFields()))
         .release();
-    if (request.httpBody() && !request.httpBody()->isEmpty())
-        requestObject->setPostData(request.httpBody()->flattenToString());
+    if (request.httpBody() && !request.httpBody()->isEmpty()) {
+        Vector<char> bytes;
+        request.httpBody()->flatten(bytes);
+        requestObject->setPostData(String::fromUTF8WithLatin1Fallback(bytes.data(), bytes.size()));
+    }
     return requestObject;
 }
 

@@ -171,6 +171,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/gstreamer/WebPageProxyGStreamer.cpp
 
+    UIProcess/linux/MemoryPressureMonitor.cpp
+
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebProcessPoolSoup.cpp
 
@@ -196,10 +198,13 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
 
+    WebProcess/WebPage/AcceleratedDrawingArea.cpp
     WebProcess/WebPage/DrawingAreaImpl.cpp
 
-    WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp
+    WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
+    WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
+    WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp
     WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp
 
     WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp
@@ -253,6 +258,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/CoordinatedGraphics"
     "${WEBKIT2_DIR}/UIProcess/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/UIProcess/efl"
+    "${WEBKIT2_DIR}/UIProcess/linux"
     "${WEBKIT2_DIR}/UIProcess/soup"
     "${WEBKIT2_DIR}/WebProcess/efl"
     "${WEBKIT2_DIR}/WebProcess/soup"

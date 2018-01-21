@@ -351,12 +351,9 @@ public:
             m_alternative->m_terms.append(PatternTerm(m_pattern.spacesCharacterClass(), invert));
             break;
         case WordClassID:
-            if (m_pattern.unicode() && m_pattern.ignoreCase()) {
-                if (invert)
-                    m_alternative->m_terms.append(PatternTerm(m_pattern.nonwordUnicodeIgnoreCaseCharCharacterClass(), false));
-                else
-                    m_alternative->m_terms.append(PatternTerm(m_pattern.wordUnicodeIgnoreCaseCharCharacterClass(), false));
-            } else
+            if (m_pattern.unicode() && m_pattern.ignoreCase())
+                m_alternative->m_terms.append(PatternTerm(m_pattern.wordUnicodeIgnoreCaseCharCharacterClass(), invert));
+            else
                 m_alternative->m_terms.append(PatternTerm(m_pattern.wordcharCharacterClass(), invert));
             break;
         case NewlineClassID:
@@ -583,7 +580,7 @@ public:
 
     bool setupAlternativeOffsets(PatternAlternative* alternative, unsigned currentCallFrameSize, unsigned initialInputPosition, unsigned& newCallFrameSize) WARN_UNUSED_RETURN
     {
-        if (!isSafeToRecurse())
+        if (UNLIKELY(!isSafeToRecurse()))
             return false;
 
         alternative->m_hasFixedSize = true;
@@ -685,7 +682,7 @@ public:
 
     bool setupDisjunctionOffsets(PatternDisjunction* disjunction, unsigned initialCallFrameSize, unsigned initialInputPosition, unsigned& callFrameSize) WARN_UNUSED_RETURN
     {
-        if (!isSafeToRecurse())
+        if (UNLIKELY(!isSafeToRecurse()))
             return false;
 
         if ((disjunction != m_pattern.m_body) && (disjunction->m_alternatives.size() > 1))

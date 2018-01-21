@@ -109,8 +109,6 @@ list(APPEND WebCore_SOURCES
 
     platform/text/cf/HyphenationCF.cpp
 
-    platform/text/win/TextBreakIteratorInternalICUWin.cpp
-
     platform/win/BString.cpp
     platform/win/BitmapInfo.cpp
     platform/win/ClipboardUtilitiesWin.cpp
@@ -167,6 +165,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     css
     dom
     editing
+    fileapi
     history
     html
     inspector
@@ -184,6 +183,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     Modules/geolocation
     Modules/indexeddb
+    Modules/websockets
 
     Modules/indexeddb/client
     Modules/indexeddb/legacy

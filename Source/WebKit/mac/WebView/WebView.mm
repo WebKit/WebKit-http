@@ -100,7 +100,6 @@
 #import "WebScriptDebugDelegate.h"
 #import "WebScriptWorldInternal.h"
 #import "WebSelectionServiceController.h"
-#import "WebSocketProvider.h"
 #import "WebStorageManagerInternal.h"
 #import "WebStorageNamespaceProvider.h"
 #import "WebSystemInterface.h"
@@ -179,6 +178,7 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/Settings.h>
+#import <WebCore/SocketProvider.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
@@ -869,7 +869,7 @@ static bool shouldAllowPictureInPictureMediaPlayback()
 static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol()
 {
 #if PLATFORM(IOS)
-    static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol = (IOSApplication::isEcobee() || IOSApplication::isQuora() || IOSApplication::isXtraMath()) && !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CONTENT_SECURITY_POLICY_SOURCE_STAR_PROTOCOL_RESTRICTION);
+    static bool shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol = !WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITH_CONTENT_SECURITY_POLICY_SOURCE_STAR_PROTOCOL_RESTRICTION);
     return shouldAllowContentSecurityPolicySourceStarToMatchAnyProtocol;
 #else
     return false;
@@ -891,7 +891,7 @@ static bool shouldConvertInvalidURLsToBlank()
 #if PLATFORM(IOS)
     static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_10_0;
 #elif PLATFORM(MAC)
-    static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= 0x000A0C00;
+    static bool shouldConvertInvalidURLsToBlank = dyld_get_program_sdk_version() >= DYLD_MACOSX_VERSION_10_12;
 #else
     static bool shouldConvertInvalidURLsToBlank = true;
 #endif
@@ -996,7 +996,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
-    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), makeUniqueRef<WebSocketProvider>());
+    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), SocketProvider::create());
 #if !PLATFORM(IOS)
     pageConfiguration.chromeClient = new WebChromeClient(self);
     pageConfiguration.contextMenuClient = new WebContextMenuClient(self);
@@ -1011,10 +1011,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 #if ENABLE(APPLE_PAY)
     pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinatorClient();
-#endif
-
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebViewInitialization.mm>
 #endif
 
     pageConfiguration.alternativeTextClient = new WebAlternativeTextClient(self);
@@ -1250,14 +1246,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     _private->group = WebViewGroup::getOrCreate(groupName, _private->preferences._localStorageDatabasePath);
     _private->group->addWebView(self);
 
-    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), makeUniqueRef<WebSocketProvider>());
+    PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(self), SocketProvider::create());
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
 #if ENABLE(DRAG_SUPPORT)
     pageConfiguration.dragClient = new WebDragClient(self);
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebViewInitialization.mm>
+#if ENABLE(APPLE_PAY)
+    pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinatorClient();
 #endif
 
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
@@ -2502,6 +2498,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled([preferences shadowDOMEnabled]);
 
+    RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled([preferences DOMIteratorEnabled]);
+
 #if ENABLE(CUSTOM_ELEMENTS)
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
 #endif
@@ -2584,7 +2582,6 @@ static inline IMP getMethod(id o, SEL s)
         return;
     }
 
-    cache->didCancelAuthenticationChallengeFunc = getMethod(delegate, @selector(webView:resource:didCancelAuthenticationChallenge:fromDataSource:));
     cache->didFailLoadingWithErrorFromDataSourceFunc = getMethod(delegate, @selector(webView:resource:didFailLoadingWithError:fromDataSource:));
     cache->didFinishLoadingFromDataSourceFunc = getMethod(delegate, @selector(webView:resource:didFinishLoadingFromDataSource:));
     cache->didLoadResourceFromMemoryCacheFunc = getMethod(delegate, @selector(webView:didLoadResourceFromMemoryCache:response:length:fromDataSource:));
@@ -6726,6 +6723,10 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 {
 }
 
+- (void)forceRequestCandidatesForTesting
+{
+}
+
 - (BOOL)shouldRequestCandidates
 {
     return NO;
@@ -8613,9 +8614,9 @@ bool LayerFlushController::flushLayers()
     [self updateWebViewAdditions];
 }
 
-- (void)_clearPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement
+- (void)_clearPlaybackControlsManager
 {
-    if (!_private->playbackSessionModel || _private->playbackSessionModel->mediaElement() != &mediaElement)
+    if (!_private->playbackSessionModel || !_private->playbackSessionModel->mediaElement())
         return;
 
     _private->playbackSessionModel->setMediaElement(nullptr);

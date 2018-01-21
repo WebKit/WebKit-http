@@ -255,7 +255,7 @@ OBJC_CLASS NSTextAlternatives;
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 - (BOOL)_hasActiveVideoForControlsInterface;
 - (void)_setUpPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement;
-- (void)_clearPlaybackControlsManagerForMediaElement:(WebCore::HTMLMediaElement&)mediaElement;
+- (void)_clearPlaybackControlsManager;
 #endif
 #endif
 
@@ -297,7 +297,6 @@ OBJC_CLASS NSTextAlternatives;
 
 @interface WebView (WebUpdateWebViewAdditions)
 - (void)updateWebViewAdditions;
-- (BOOL)shouldRequestCandidates;
 - (void)webViewAdditionsWillDestroyView;
 - (id)candidateList;
 @end

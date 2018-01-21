@@ -40,6 +40,7 @@
 #include "MediaStreamEvent.h"
 #include "MediaStreamTrack.h"
 #include "PeerMediaDescription.h"
+#include "RTCConfiguration.h"
 #include "RTCIceCandidate.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpTransceiver.h"
@@ -53,6 +54,13 @@ namespace WebCore {
 using namespace PeerConnection;
 using namespace PeerConnectionStates;
 
+// We use base64 to generate the random strings so we need a size that avoids padding to get ice-chars.
+static const size_t cnameSize = 18;
+// Size range from 4 to 256 ice-chars defined in RFC 5245.
+static const size_t iceUfragSize = 6;
+// Size range from 22 to 256 ice-chars defined in RFC 5245.
+static const size_t icePasswordSize = 24;
+
 static std::unique_ptr<PeerConnectionBackend> createMediaEndpointPeerConnection(PeerConnectionBackendClient* client)
 {
     return std::unique_ptr<PeerConnectionBackend>(new MediaEndpointPeerConnection(client));
@@ -60,9 +68,8 @@ static std::unique_ptr<PeerConnectionBackend> createMediaEndpointPeerConnection(
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createMediaEndpointPeerConnection;
 
-static String randomString(size_t length)
+static String randomString(size_t size)
 {
-    const size_t size = ceil(length * 3 / 4);
     unsigned char randomValues[size];
     cryptographicallyRandomValues(randomValues, size);
     return base64Encode(randomValues, size);
@@ -70,12 +77,12 @@ static String randomString(size_t length)
 
 MediaEndpointPeerConnection::MediaEndpointPeerConnection(PeerConnectionBackendClient* client)
     : m_client(client)
+    , m_mediaEndpoint(MediaEndpoint::create(*this))
     , m_sdpProcessor(std::unique_ptr<SDPProcessor>(new SDPProcessor(m_client->scriptExecutionContext())))
-    , m_cname(randomString(16))
-    , m_iceUfrag(randomString(4))
-    , m_icePassword(randomString(22))
+    , m_cname(randomString(cnameSize))
+    , m_iceUfrag(randomString(iceUfragSize))
+    , m_icePassword(randomString(icePasswordSize))
 {
-    m_mediaEndpoint = MediaEndpoint::create(*this);
     ASSERT(m_mediaEndpoint);
 
     m_defaultAudioPayloads = m_mediaEndpoint->getDefaultAudioPayloads();
@@ -108,7 +115,7 @@ static bool hasUnassociatedTransceivers(const RtpTransceiverVector& transceivers
     });
 }
 
-void MediaEndpointPeerConnection::runTask(NoncopyableFunction<void ()>&& task)
+void MediaEndpointPeerConnection::runTask(Function<void ()>&& task)
 {
     if (m_dtlsFingerprint.isNull()) {
         // Only one task needs to be deferred since it will hold off any others until completed.
@@ -603,9 +610,11 @@ RefPtr<RTCSessionDescription> MediaEndpointPeerConnection::pendingRemoteDescript
 
 void MediaEndpointPeerConnection::setConfiguration(RTCConfiguration& configuration)
 {
-    UNUSED_PARAM(configuration);
+    Vector<RefPtr<IceServerInfo>> iceServers;
+    for (auto& server : configuration.iceServers())
+        iceServers.append(IceServerInfo::create(server->urls(), server->credential(), server->username()));
 
-    notImplemented();
+    m_mediaEndpoint->setConfiguration(MediaEndpointConfiguration::create(iceServers, configuration.iceTransportPolicy(), configuration.bundlePolicy()));
 }
 
 void MediaEndpointPeerConnection::addIceCandidate(RTCIceCandidate& rtcCandidate, PeerConnection::VoidPromise&& promise)

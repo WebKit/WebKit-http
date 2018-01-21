@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -82,6 +82,7 @@
 #include "HTMLHtmlElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
+#include "HTMLInputElement.h"
 #include "HTMLLinkElement.h"
 #include "HTMLMediaElement.h"
 #include "HTMLNameCollection.h"
@@ -145,6 +146,7 @@
 #include "SVGElement.h"
 #include "SVGElementFactory.h"
 #include "SVGNames.h"
+#include "SVGSVGElement.h"
 #include "SVGTitleElement.h"
 #include "SVGZoomEvent.h"
 #include "SchemeRegistry.h"
@@ -160,6 +162,7 @@
 #include "SelectorQuery.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "SocketProvider.h"
 #include "StorageEvent.h"
 #include "StyleProperties.h"
 #include "StyleResolveForDocument.h"
@@ -538,9 +541,10 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_cookieCacheExpiryTimer(*this, &Document::invalidateDOMCookieCache)
     , m_disabledFieldsetElementsCount(0)
     , m_hasInjectedPlugInsScript(false)
-    , m_renderTreeBeingDestroyed(false)
-    , m_hasPreparedForDestruction(false)
     , m_hasStyleWithViewportUnits(false)
+#if ENABLE(WEB_SOCKETS)
+    , m_socketProvider(page() ? &page()->socketProvider() : nullptr)
+#endif
 {
     allDocuments().add(this);
 
@@ -674,6 +678,7 @@ void Document::removedLastRef()
         // until after removeDetachedChildren returns, so we protect ourselves.
         incrementReferencingNodeCount();
 
+        prepareForDestruction();
         // We must make sure not to be retaining any of our children through
         // these extra pointers or we will create a reference cycle.
         m_focusedElement = nullptr;
@@ -743,7 +748,7 @@ void Document::buildAccessKeyMap(TreeScope* scope)
 {
     ASSERT(scope);
     for (auto& element : descendantsOfType<Element>(scope->rootNode())) {
-        const AtomicString& accessKey = element.fastGetAttribute(accesskeyAttr);
+        const AtomicString& accessKey = element.attributeWithoutSynchronization(accesskeyAttr);
         if (!accessKey.isEmpty())
             m_elementsByAccessKey.set(accessKey.impl(), &element);
 
@@ -842,7 +847,7 @@ DOMImplementation& Document::implementation()
 
 bool Document::hasManifest() const
 {
-    return documentElement() && documentElement()->hasTagName(htmlTag) && documentElement()->fastHasAttribute(manifestAttr);
+    return documentElement() && documentElement()->hasTagName(htmlTag) && documentElement()->hasAttributeWithoutSynchronization(manifestAttr);
 }
 
 DocumentType* Document::doctype() const
@@ -883,8 +888,8 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
 #if ENABLE(CUSTOM_ELEMENTS)
     auto* definitions = document.customElementDefinitions();
     if (UNLIKELY(definitions)) {
-        if (auto* interface = definitions->findInterface(localName))
-            return interface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
+        if (auto* elementInterface = definitions->findInterface(localName))
+            return elementInterface->constructElement(localName, JSCustomElementInterface::ShouldClearException::DoNotClear);
     }
 #endif
 
@@ -896,7 +901,8 @@ static RefPtr<Element> createHTMLElementWithNameValidation(Document& document, c
     QualifiedName qualifiedName(nullAtom, localName, xhtmlNamespaceURI);
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    if (Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
+    if (RuntimeEnabledFeatures::sharedFeatures().customElementsEnabled()
+        && Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid) {
         Ref<HTMLElement> element = HTMLElement::create(qualifiedName, document);
         element->setIsUnresolvedCustomElement();
         document.ensureCustomElementDefinitions().addUpgradeCandidate(element.get());
@@ -1073,10 +1079,10 @@ static Ref<HTMLElement> createFallbackHTMLElement(Document& document, const Qual
 #if ENABLE(CUSTOM_ELEMENTS)
     auto* definitions = document.customElementDefinitions();
     if (UNLIKELY(definitions)) {
-        if (auto* interface = definitions->findInterface(name)) {
+        if (auto* elementInterface = definitions->findInterface(name)) {
             Ref<HTMLElement> element = HTMLElement::create(name, document);
             element->setIsUnresolvedCustomElement();
-            LifecycleCallbackQueue::enqueueElementUpgrade(element.get(), *interface);
+            LifecycleCallbackQueue::enqueueElementUpgrade(element.get(), *elementInterface);
             return element;
         }
     }
@@ -1135,7 +1141,7 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
 #if ENABLE(MATHML)
     const auto& annotationXmlLocalName = MathMLNames::annotation_xmlTag.localName();
 #else
-    static NeverDestroyed<const AtomicString> annotationXmlLocalName(ASCIILiteral("annotation-xml"));
+    static NeverDestroyed<const AtomicString> annotationXmlLocalName("annotation-xml", AtomicString::ConstructFromLiteral);
 #endif
 
     if (localName == SVGNames::color_profileTag.localName()
@@ -1617,35 +1623,45 @@ void Document::updateTitleFromTitleElement()
     }
 }
 
-void Document::setTitle(const String& title)
+void Document::setTitle(const String& title, ExceptionCode& ec)
 {
-    if (!isHTMLDocument() && !isXHTMLDocument())
+    if (!m_titleElement) {
+        if (isHTMLDocument() || isXHTMLDocument()) {
+            auto* headElement = head();
+            if (!headElement)
+                return;
+            m_titleElement = HTMLTitleElement::create(HTMLNames::titleTag, *this);
+            headElement->appendChild(*m_titleElement);
+        } else if (isSVGDocument()) {
+            auto* element = documentElement();
+            if (!is<SVGSVGElement>(element))
+                return;
+            m_titleElement = SVGTitleElement::create(SVGNames::titleTag, *this);
+            element->insertBefore(*m_titleElement, element->firstChild());
+        }
+    } else if (!isHTMLDocument() && !isXHTMLDocument() && !isSVGDocument())
         m_titleElement = nullptr;
-    else if (!m_titleElement) {
-        auto* headElement = head();
-        if (!headElement)
-            return;
-        m_titleElement = createElement(titleTag, false);
-        headElement->appendChild(*m_titleElement, ASSERT_NO_EXCEPTION);
-    }
 
     // The DOM API has no method of specifying direction, so assume LTR.
     updateTitle(StringWithDirection(title, LTR));
 
     if (is<HTMLTitleElement>(m_titleElement.get()))
-        downcast<HTMLTitleElement>(*m_titleElement).setText(title);
+        downcast<HTMLTitleElement>(*m_titleElement).setTextContent(title, ec);
+    else if (is<SVGTitleElement>(m_titleElement.get()))
+        downcast<SVGTitleElement>(*m_titleElement).setTextContent(title, ec);
 }
 
 void Document::updateTitleElement(Element* newTitleElement)
 {
-    // Only allow the first title element in tree order to change the title -- others have no effect.
-    if (m_titleElement) {
-        if (isHTMLDocument() || isXHTMLDocument())
-            m_titleElement = descendantsOfType<HTMLTitleElement>(*this).first();
-        else if (isSVGDocument())
-            m_titleElement = descendantsOfType<SVGTitleElement>(*this).first();
-    } else
-        m_titleElement = newTitleElement;
+    if (is<SVGSVGElement>(documentElement()))
+        m_titleElement = childrenOfType<SVGTitleElement>(*documentElement()).first();
+    else {
+        if (m_titleElement) {
+            if (isHTMLDocument() || isXHTMLDocument())
+                m_titleElement = descendantsOfType<HTMLTitleElement>(*this).first();
+        } else
+            m_titleElement = newTitleElement;
+    }
 
     updateTitleFromTitleElement();
 }
@@ -2332,7 +2348,7 @@ void Document::prepareForDestruction()
         return;
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    clearTouchEventListeners();
+    clearTouchEventHandlersAndListeners();
 #endif
 
 #if HAVE(ACCESSIBILITY)
@@ -2401,7 +2417,7 @@ void Document::removeAllEventListeners()
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
 #if ENABLE(IOS_TOUCH_EVENTS)
-    clearTouchEventListeners();
+    clearTouchEventHandlersAndListeners();
 #endif
     for (Node* node = firstChild(); node; node = NodeTraversal::next(*node))
         node->removeAllEventListeners();
@@ -2612,7 +2628,7 @@ HTMLElement* Document::bodyOrFrameset() const
 {
     // Return the first body or frameset child of the html element.
     auto* element = documentElement();
-    if (!element)
+    if (!is<HTMLHtmlElement>(element))
         return nullptr;
     for (auto& child : childrenOfType<HTMLElement>(*element)) {
         if (is<HTMLBodyElement>(child) || is<HTMLFrameSetElement>(child))
@@ -2623,27 +2639,26 @@ HTMLElement* Document::bodyOrFrameset() const
 
 void Document::setBodyOrFrameset(RefPtr<HTMLElement>&& newBody, ExceptionCode& ec)
 {
-    // FIXME: This does not support setting a <frameset> Element, only a <body>. This does
-    // not match the HTML specification:
-    // https://html.spec.whatwg.org/multipage/dom.html#dom-document-body
-    if (!newBody || !documentElement() || !newBody->hasTagName(bodyTag)) { 
+    if (!is<HTMLBodyElement>(newBody.get()) && !is<HTMLFrameSetElement>(newBody.get())) {
         ec = HIERARCHY_REQUEST_ERR;
         return;
     }
 
-    if (&newBody->document() != this) {
-        ec = 0;
-        RefPtr<Node> node = importNode(*newBody, true, ec);
-        if (ec)
-            return;
-        
-        newBody = downcast<HTMLElement>(node.get());
+    auto* currentBody = bodyOrFrameset();
+    if (newBody == currentBody)
+        return;
+
+    if (currentBody) {
+        documentElement()->replaceChild(*newBody, *currentBody, ec);
+        return;
     }
 
-    if (auto* body = bodyOrFrameset())
-        documentElement()->replaceChild(*newBody, *body, ec);
-    else
-        documentElement()->appendChild(*newBody, ec);
+    if (!documentElement()) {
+        ec = HIERARCHY_REQUEST_ERR;
+        return;
+    }
+
+    documentElement()->appendChild(*newBody, ec);
 }
 
 Location* Document::location() const
@@ -3016,7 +3031,7 @@ void Document::processBaseElement()
     auto baseDescendants = descendantsOfType<HTMLBaseElement>(*this);
     for (auto& base : baseDescendants) {
         if (!href) {
-            const AtomicString& value = base.fastGetAttribute(hrefAttr);
+            const AtomicString& value = base.attributeWithoutSynchronization(hrefAttr);
             if (!value.isNull()) {
                 href = &value;
                 if (target)
@@ -3024,7 +3039,7 @@ void Document::processBaseElement()
             }
         }
         if (!target) {
-            const AtomicString& value = base.fastGetAttribute(targetAttr);
+            const AtomicString& value = base.attributeWithoutSynchronization(targetAttr);
             if (!value.isNull()) {
                 target = &value;
                 if (href)
@@ -3076,6 +3091,13 @@ IDBClient::IDBConnectionProxy* Document::idbConnectionProxy()
 }
 #endif // ENABLE(INDEXED_DATABASE)
 
+#if ENABLE(WEB_SOCKETS)
+SocketProvider* Document::socketProvider()
+{
+    return m_socketProvider.get();
+}
+#endif
+    
 bool Document::canNavigate(Frame* targetFrame)
 {
     if (!m_frame)
@@ -3777,9 +3799,6 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
 
     // Remove focus from the existing focus node (if any)
     if (oldFocusedElement) {
-        if (oldFocusedElement->active())
-            oldFocusedElement->setActive(false);
-
         oldFocusedElement->setFocus(false);
         setFocusNavigationStartingNode(nullptr);
 
@@ -3810,8 +3829,11 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
                 focusChangeBlocked = true;
                 newFocusedElement = nullptr;
             }
-        } else
+        } else {
+            if (is<HTMLInputElement>(*oldFocusedElement))
+                downcast<HTMLInputElement>(*oldFocusedElement).endEditing();
             ASSERT(!m_focusedElement);
+        }
 
         if (oldFocusedElement->isRootEditableElement())
             frame()->editor().didEndEditing();
@@ -3938,6 +3960,8 @@ Element* Document::focusNavigationStartingNode(FocusDirection direction) const
     // the previous sibling of the removed node.
     if (m_focusNavigationStartingNodeIsRemoved) {
         Node* nextNode = NodeTraversal::next(*node);
+        if (!nextNode)
+            nextNode = node;
         if (direction == FocusDirectionForward)
             return ElementTraversal::previous(*nextNode);
         if (is<Element>(*nextNode))
@@ -5224,6 +5248,20 @@ RefPtr<XPathResult> Document::evaluate(const String& expression, Node* contextNo
     return m_xpathEvaluator->evaluate(expression, contextNode, WTFMove(resolver), type, result, ec);
 }
 
+static bool shouldInheritSecurityOriginFromOwner(const URL& url)
+{
+    // Paraphrased from <https://html.spec.whatwg.org/multipage/browsers.html#origin> (8 July 2016)
+    //
+    // If a Document has the address "about:blank"
+    //      The origin of the document is the origin it was assigned when its browsing context was created.
+    // If a Document has the address "about:srcdoc"
+    //      The origin of the document is the origin of its parent document.
+    //
+    // Note: We generalize this to invalid URLs because we treat such URLs as about:blank.
+    //
+    return url.isEmpty() || equalIgnoringASCIICase(url.string(), blankURL()) || equalLettersIgnoringASCIICase(url.string(), "about:srcdoc");
+}
+
 void Document::initSecurityContext()
 {
     if (haveInitializedSecurityOrigin()) {
@@ -5276,7 +5314,7 @@ void Document::initSecurityContext()
         setBaseURLOverride(parentDocument->baseURL());
     }
 
-    if (!m_url.shouldInheritSecurityOriginFromOwner())
+    if (!shouldInheritSecurityOriginFromOwner(m_url))
         return;
 
     // If we do not obtain a meaningful origin from the URL, then we try to
@@ -5319,7 +5357,7 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree().parent() || (!m_url.shouldInheritSecurityOriginFromOwner() && !isPluginDocument()))
+    if (!m_frame->tree().parent() || (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()))
         return;
 
     contentSecurityPolicy()->copyStateFrom(m_frame->tree().parent()->document()->contentSecurityPolicy());

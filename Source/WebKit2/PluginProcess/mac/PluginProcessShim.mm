@@ -330,6 +330,20 @@ DYLD_INTERPOSE(shim_shmdt, shmdt);
 DYLD_INTERPOSE(shim_shmget, shmget);
 DYLD_INTERPOSE(shim_shmctl, shmctl);
 
+static CFComparisonResult shimCFStringCompare(CFStringRef a, CFStringRef b, CFStringCompareFlags options)
+{
+    if (pluginProcessShimCallbacks.stringCompare) {
+        CFComparisonResult result;
+        if (pluginProcessShimCallbacks.stringCompare(a, b, options, __builtin_return_address(0), result))
+            return result;
+    }
+
+    return CFStringCompare(a, b, options);
+}
+
+DYLD_INTERPOSE(shimCFStringCompare, CFStringCompare);
+
+
 __attribute__((visibility("default")))
 void WebKitPluginProcessShimInitialize(const PluginProcessShimCallbacks& callbacks)
 {

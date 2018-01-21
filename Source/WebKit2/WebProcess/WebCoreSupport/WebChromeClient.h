@@ -236,15 +236,13 @@ private:
 #endif
 
 #if PLATFORM(IOS)
-    void elementDidFocus(const WebCore::Node*) override;
-    void elementDidBlur(const WebCore::Node*) override;
     void elementDidRefocus(const WebCore::Node*) override;
 #endif
 
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
     void setUpPlaybackControlsManager(WebCore::HTMLMediaElement&) override;
-    void clearPlaybackControlsManager(WebCore::HTMLMediaElement&) override;
+    void clearPlaybackControlsManager() override;
     void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode) override;
     void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) override;
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -259,6 +257,9 @@ private:
 #endif
 
 #if PLATFORM(COCOA)
+    void elementDidFocus(const WebCore::Node*) override;
+    void elementDidBlur(const WebCore::Node*) override;
+
     void makeFirstResponder() override;
 #endif
 

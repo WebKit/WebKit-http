@@ -82,6 +82,7 @@
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
+#import <WebCore/GraphicsContextCG.h>
 #import <WebCore/IOSurface.h>
 #import <WebCore/JSDOMBinding.h>
 #import <WebCore/NSTextFinderSPI.h>
@@ -159,6 +160,16 @@ enum class DynamicViewportUpdateMode {
 
 #if PLATFORM(IOS)
 static const uint32_t firstSDKVersionWithLinkPreviewEnabledByDefault = 0xA0000;
+#endif
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKWebViewAdditionsBefore.mm>
+#else
+@implementation WKWebView (Additions)
+- (void)_setIsBlankBeforeFirstNonEmptyLayout:(BOOL)isBlank
+{
+}
+@end
 #endif
 
 #if PLATFORM(MAC)
@@ -322,15 +333,6 @@ static bool shouldAllowPictureInPictureMediaPlayback()
     return shouldAllowPictureInPictureMediaPlayback;
 }
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-static void forceAlwaysUserScalableChangedCallback(CFNotificationCenterRef, void* observer, CFStringRef, const void*, CFDictionaryRef)
-{
-    ASSERT(observer);
-    WKWebView* webview = static_cast<WKWebView*>(observer);
-    [webview _updateForceAlwaysUserScalable];
-}
-#endif
-
 #endif
 
 #if ENABLE(DATA_DETECTION) && PLATFORM(IOS)
@@ -480,8 +482,8 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsAirPlayForMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsAirPlayForMediaPlayback]));
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewInitialization.mm>
+#if ENABLE(APPLE_PAY)
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::applePayEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _applePayEnabled]));
 #endif
 
 #if PLATFORM(IOS)
@@ -489,6 +491,8 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
+
+    [self _setIsBlankBeforeFirstNonEmptyLayout:YES];
 
     [self addSubview:_scrollView.get()];
 
@@ -520,12 +524,9 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     [center addObserver:self selector:@selector(_windowDidRotate:) name:UIWindowDidRotateNotification object:nil];
     [center addObserver:self selector:@selector(_contentSizeCategoryDidChange:) name:UIContentSizeCategoryDidChangeNotification object:nil];
     _page->contentSizeCategoryDidChange([self _contentSizeCategory]);
-    
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), forceAlwaysUserScalableChangedCallback, kAXSAllowForceWebScalingEnabledNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
-#endif
 
     [[_configuration _contentProviderRegistry] addPage:*_page];
+    _page->setForceAlwaysUserScalable([_configuration ignoresViewportScaleLimits]);
 #endif
 
 #if PLATFORM(MAC)
@@ -945,6 +946,12 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
     if (!CGSizeEqualToSize(oldBounds.size, bounds.size))
         [self _frameOrBoundsChanged];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    [self _frameOrBoundsChanged];
 }
 
 - (UIScrollView *)scrollView
@@ -1379,7 +1386,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
 #if USE(IOSURFACE)
     WebCore::IOSurface::Format snapshotFormat = WebCore::screenSupportsExtendedColor() ? WebCore::IOSurface::Format::RGB10 : WebCore::IOSurface::Format::RGBA;
-    auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(snapshotSize), WebCore::ColorSpaceSRGB, snapshotFormat);
+    auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(snapshotSize), WebCore::sRGBColorSpaceRef(), snapshotFormat);
     CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform);
 
     WebCore::IOSurface::Format compressedFormat = WebCore::IOSurface::Format::YUV422;
@@ -2076,6 +2083,11 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
         enclosedInScrollableAncestorView:scrollViewCanScroll([self _scroller])];
 }
 
+- (void)_didFirstVisuallyNonEmptyLayoutForMainFrame
+{
+    [self _setIsBlankBeforeFirstNonEmptyLayout:NO];
+}
+
 - (void)_didFinishLoadForMainFrame
 {
     if (_gestureController)
@@ -2215,11 +2227,6 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
 {
     _frozenVisibleContentRect = Nullopt;
     _frozenUnobscuredContentRect = Nullopt;
-}
-
-- (void)_updateForceAlwaysUserScalable
-{
-    _page->updateForceAlwaysUserScalable();
 }
 
 #endif // PLATFORM(IOS)
@@ -3355,6 +3362,18 @@ static int32_t activeOrientation(WKWebView *webView)
     return adoptNS([[_WKSessionState alloc] _initWithSessionState:_page->sessionState()]).autorelease();
 }
 
+- (_WKSessionState *)_sessionStateWithFilter:(BOOL (^)(WKBackForwardListItem *item))filter
+{
+    WebKit::SessionState sessionState = _page->sessionState([filter](WebKit::WebBackForwardListItem& item) {
+        if (!filter)
+            return true;
+
+        return (bool)filter(wrapper(item));
+    });
+
+    return adoptNS([[_WKSessionState alloc] _initWithSessionState:sessionState]).autorelease();
+}
+
 - (void)_restoreFromSessionStateData:(NSData *)sessionStateData
 {
     // FIXME: This should not use the legacy session state decoder.
@@ -4211,7 +4230,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 #if USE(IOSURFACE)
     // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
     if (CADisplay *display = self.window.screen._display) {
-        auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::ColorSpaceSRGB);
+        auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::sRGBColorSpaceRef());
         CGFloat imageScaleInViewCoordinates = imageWidth / rectInViewCoordinates.size.width;
         CATransform3D transform = CATransform3DMakeScale(imageScaleInViewCoordinates, imageScaleInViewCoordinates, 1);
         transform = CATransform3DTranslate(transform, -rectInViewCoordinates.origin.x, -rectInViewCoordinates.origin.y, 0);
@@ -4619,12 +4638,8 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 @end
 
-#if PLATFORM(IOS) && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewAdditions.mm>
-#endif
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewAdditionsMac.mm>
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKWebViewAdditionsAfter.mm>
 #endif
 
 #endif // WK_API_ENABLED

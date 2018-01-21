@@ -156,7 +156,7 @@ void AuthorStyleSheets::collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>& she
 #endif
         } else if (is<HTMLLinkElement>(*node) || is<HTMLStyleElement>(*node) || is<SVGStyleElement>(*node)) {
             Element& element = downcast<Element>(*node);
-            AtomicString title = element.fastGetAttribute(titleAttr);
+            AtomicString title = element.attributeWithoutSynchronization(titleAttr);
             bool enabledViaScript = false;
             if (is<HTMLLinkElement>(element)) {
                 // <LINK> element
@@ -167,7 +167,7 @@ void AuthorStyleSheets::collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>& she
                 if (linkElement.styleSheetIsLoading()) {
                     // it is loading but we should still decide which style sheet set to use
                     if (!enabledViaScript && !title.isEmpty() && m_preferredStylesheetSetName.isEmpty()) {
-                        if (!linkElement.fastGetAttribute(relAttr).contains("alternate")) {
+                        if (!linkElement.attributeWithoutSynchronization(relAttr).contains("alternate")) {
                             m_preferredStylesheetSetName = title;
                             m_selectedStylesheetSetName = title;
                         }
@@ -188,7 +188,7 @@ void AuthorStyleSheets::collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>& she
             // Check to see if this sheet belongs to a styleset
             // (thus making it PREFERRED or ALTERNATE rather than
             // PERSISTENT).
-            auto& rel = element.fastGetAttribute(relAttr);
+            auto& rel = element.attributeWithoutSynchronization(relAttr);
             if (!enabledViaScript && !title.isEmpty()) {
                 // Yes, we have a title.
                 if (m_preferredStylesheetSetName.isEmpty()) {
@@ -291,10 +291,10 @@ static void filterEnabledNonemptyCSSStyleSheets(Vector<RefPtr<CSSStyleSheet>>& r
 
 bool AuthorStyleSheets::updateActiveStyleSheets(UpdateFlag updateFlag)
 {
-    if (m_document.inStyleRecalc()) {
-        // SVG <use> element may manage to invalidate style selector in the middle of a style recalc.
-        // https://bugs.webkit.org/show_bug.cgi?id=54344
-        // FIXME: This should be fixed in SVG and the call site replaced by ASSERT(!m_inStyleRecalc).
+    if (m_document.inStyleRecalc() || m_document.inRenderTreeUpdate()) {
+        // Protect against deleting style resolver in the middle of a style resolution.
+        // Crash stacks indicate we can get here when z resource load fails synchronously (for example due to content blocking).
+        // FIXME: These kind of cases should be eliminated and this path replaced by an assert.
         m_pendingUpdateType = FullUpdate;
         m_document.scheduleForcedStyleRecalc();
         return false;

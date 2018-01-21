@@ -713,9 +713,8 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.setSniffContent(DoNotSniffContent);
     options.preflightPolicy = uploadEvents ? ForcePreflight : ConsiderPreflight;
     options.setAllowCredentials((m_sameOriginRequest || m_includeCredentials) ? AllowStoredCredentials : DoNotAllowStoredCredentials);
-    options.setCredentialRequest(m_includeCredentials ? ClientRequestedCredentials : ClientDidNotRequestCredentials);
+    options.credentials = m_includeCredentials ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
     options.crossOriginRequestPolicy = UseAccessControl;
-    options.securityOrigin = securityOrigin();
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
 
@@ -1035,11 +1034,6 @@ void XMLHttpRequest::didFail(const ResourceError& error)
     }
 
     m_exceptionCode = NETWORK_ERR;
-    networkError();
-}
-
-void XMLHttpRequest::didFailRedirectCheck()
-{
     networkError();
 }
 

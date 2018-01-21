@@ -25,7 +25,7 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
+#if WK_API_ENABLED && !TARGET_OS_IPHONE
 
 #import <Foundation/Foundation.h>
 
@@ -33,7 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /*! WKOpenPanelParameters contains parameters that a file upload control has specified.
  */
-WK_CLASS_AVAILABLE(WK_MAC_TBA, NA)
+WK_CLASS_AVAILABLE(macosx(WK_MAC_TBA))
 @interface WKOpenPanelParameters : NSObject
 
 /*! @abstract Whether the file upload control supports multiple files.

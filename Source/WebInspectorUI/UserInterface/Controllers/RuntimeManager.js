@@ -31,6 +31,8 @@ WebInspector.RuntimeManager = class RuntimeManager extends WebInspector.Object
 
         // Enable the RuntimeAgent to receive notification of execution contexts.
         RuntimeAgent.enable();
+
+        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ExecutionContextsCleared, this._frameExecutionContextsCleared, this);
     }
 
     // Public
@@ -82,7 +84,7 @@ WebInspector.RuntimeManager = class RuntimeManager extends WebInspector.Object
         }
 
         // COMPATIBILITY (iOS 8): "saveResult" did not exist.
-        var contextId = WebInspector.quickConsole.executionContextIdentifier;
+        let contextId = this.defaultExecutionContextIdentifier;
         RuntimeAgent.evaluate.invoke({expression, objectGroup, includeCommandLineAPI, doNotPauseOnExceptionsAndMuteConsole, contextId, returnByValue, generatePreview, saveResult}, evalCallback.bind(this));
     }
 
@@ -104,7 +106,7 @@ WebInspector.RuntimeManager = class RuntimeManager extends WebInspector.Object
         if (remoteObject.objectId)
             RuntimeAgent.saveResult(remoteObject.asCallArgument(), mycallback);
         else
-            RuntimeAgent.saveResult(remoteObject.asCallArgument(), WebInspector.quickConsole.executionContextIdentifier, mycallback);
+            RuntimeAgent.saveResult(remoteObject.asCallArgument(), this.defaultExecutionContextIdentifier, mycallback);
     }
 
     getPropertiesForRemoteObject(objectId, callback)
@@ -122,10 +124,34 @@ WebInspector.RuntimeManager = class RuntimeManager extends WebInspector.Object
             callback(null, properties);
         });
     }
+
+    get defaultExecutionContextIdentifier() { return this._defaultExecutionContextIdentifier; }
+    set defaultExecutionContextIdentifier(value)
+    {
+        if (this._defaultExecutionContextIdentifier === value)
+            return;
+
+        this._defaultExecutionContextIdentifier = value;
+        this.dispatchEventToListeners(WebInspector.RuntimeManager.Event.DefaultExecutionContextChanged);
+    }
+
+    // Private
+
+    _frameExecutionContextsCleared(event)
+    {
+        let contexts = event.data.contexts || [];
+
+        let currentContextWasDestroyed = contexts.some((context) => context.id === this._defaultExecutionContextIdentifier);
+        if (currentContextWasDestroyed)
+            this.defaultExecutionContextIdentifier = WebInspector.RuntimeManager.TopLevelExecutionContextIdentifier;
+    }
 };
 
+WebInspector.RuntimeManager.TopLevelExecutionContextIdentifier = undefined;
+
 WebInspector.RuntimeManager.Event = {
-    DidEvaluate: "runtime-manager-did-evaluate"
+    DidEvaluate: Symbol("runtime-manager-did-evaluate"),
+    DefaultExecutionContextChanged: Symbol("runtime-manager-default-execution-context-changed"),
 };
 
 WebInspector.RuntimeManager.ConsoleObjectGroup = "console";

@@ -178,7 +178,7 @@ static CommonSlowPaths::ArityCheckData* setupArityCheckData(VM& vm, int slotsToA
 SLOW_PATH_DECL(slow_path_call_arityCheck)
 {
     BEGIN();
-    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, &vm.interpreter->stack(), CodeForCall);
+    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, vm, CodeForCall);
     if (slotsToAdd < 0) {
         exec = exec->callerFrame();
         ErrorHandlingScope errorScope(exec->vm());
@@ -191,7 +191,7 @@ SLOW_PATH_DECL(slow_path_call_arityCheck)
 SLOW_PATH_DECL(slow_path_construct_arityCheck)
 {
     BEGIN();
-    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, &vm.interpreter->stack(), CodeForConstruct);
+    int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, vm, CodeForConstruct);
     if (slotsToAdd < 0) {
         exec = exec->callerFrame();
         ErrorHandlingScope errorScope(exec->vm());
@@ -346,12 +346,6 @@ SLOW_PATH_DECL(slow_path_dec)
     RETURN(jsNumber(OP(1).jsValue().toNumber(exec) - 1));
 }
 
-SLOW_PATH_DECL(slow_path_to_number)
-{
-    BEGIN();
-    RETURN(jsNumber(OP_C(2).jsValue().toNumber(exec)));
-}
-
 SLOW_PATH_DECL(slow_path_to_string)
 {
     BEGIN();
@@ -397,6 +391,14 @@ static void updateResultProfileForBinaryArithOp(ExecState* exec, Instruction* pc
 #else
 static void updateResultProfileForBinaryArithOp(ExecState*, Instruction*, JSValue, JSValue, JSValue) { }
 #endif
+
+SLOW_PATH_DECL(slow_path_to_number)
+{
+    BEGIN();
+    JSValue argument = OP_C(2).jsValue();
+    JSValue result = jsNumber(argument.toNumber(exec));
+    RETURN_PROFILED(op_to_number, result);
+}
 
 SLOW_PATH_DECL(slow_path_add)
 {

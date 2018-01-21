@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,14 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NetworkBlobRegistry_h
-#define NetworkBlobRegistry_h
+#pragma once
 
 #include <WebCore/URLHash.h>
-#include <functional>
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/NoncopyableFunction.h>
 
 namespace WebCore {
 class BlobDataFileReference;
@@ -51,11 +49,11 @@ public:
     void registerFileBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&, const String& path, RefPtr<SandboxExtension>&&, const String& contentType);
     void registerBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&, Vector<WebCore::BlobPart>, const String& contentType);
     void registerBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&, const WebCore::URL& srcURL);
-    void registerBlobURLOptionallyFileBacked(NetworkConnectionToWebProcess*, const WebCore::URL&, const WebCore::URL& srcURL, const String& fileBackedPath);
+    void registerBlobURLOptionallyFileBacked(NetworkConnectionToWebProcess*, const WebCore::URL&, const WebCore::URL& srcURL, const String& fileBackedPath, const String& contentType);
     void registerBlobURLForSlice(NetworkConnectionToWebProcess*, const WebCore::URL&, const WebCore::URL& srcURL, int64_t start, int64_t end);
     void unregisterBlobURL(NetworkConnectionToWebProcess*, const WebCore::URL&);
     uint64_t blobSize(NetworkConnectionToWebProcess*, const WebCore::URL&);
-    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, NoncopyableFunction<void(const Vector<String>&)>&& completionHandler);
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>&)>&& completionHandler);
 
     void connectionToWebProcessDidClose(NetworkConnectionToWebProcess*);
 
@@ -69,5 +67,3 @@ private:
 };
 
 }
-
-#endif // NetworkBlobRegistry_h

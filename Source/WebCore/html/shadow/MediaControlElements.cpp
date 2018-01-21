@@ -388,7 +388,7 @@ void MediaControlStatusDisplayElement::update()
 
     switch (m_stateBeingDisplayed) {
     case Nothing:
-        setInnerText("", IGNORE_EXCEPTION);
+        setInnerText(emptyString(), IGNORE_EXCEPTION);
         break;
     case Loading:
         setInnerText(mediaElementLoadingStateText(), IGNORE_EXCEPTION);
@@ -656,7 +656,7 @@ MediaControlClosedCaptionsContainerElement::MediaControlClosedCaptionsContainerE
 Ref<MediaControlClosedCaptionsContainerElement> MediaControlClosedCaptionsContainerElement::create(Document& document)
 {
     Ref<MediaControlClosedCaptionsContainerElement> element = adoptRef(*new MediaControlClosedCaptionsContainerElement(document));
-    element->setAttribute(dirAttr, "auto");
+    element->setAttributeWithoutSynchronization(dirAttr, AtomicString("auto", AtomicString::ConstructFromLiteral));
     element->hide();
     return element;
 }
@@ -837,8 +837,7 @@ Ref<MediaControlTimelineElement> MediaControlTimelineElement::create(Document& d
     Ref<MediaControlTimelineElement> timeline = adoptRef(*new MediaControlTimelineElement(document, controls));
     timeline->ensureUserAgentShadowRoot();
     timeline->setType("range");
-    timeline->setPseudo(AtomicString("-webkit-media-controls-timeline", AtomicString::ConstructFromLiteral));
-    timeline->setAttribute(precisionAttr, "float");
+    timeline->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
     return timeline;
 }
 
@@ -903,9 +902,8 @@ Ref<MediaControlPanelVolumeSliderElement> MediaControlPanelVolumeSliderElement::
     Ref<MediaControlPanelVolumeSliderElement> slider = adoptRef(*new MediaControlPanelVolumeSliderElement(document));
     slider->ensureUserAgentShadowRoot();
     slider->setType("range");
-    slider->setPseudo(AtomicString("-webkit-media-controls-volume-slider", AtomicString::ConstructFromLiteral));
-    slider->setAttribute(precisionAttr, "float");
-    slider->setAttribute(maxAttr, "1");
+    slider->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(maxAttr, AtomicString("1", AtomicString::ConstructFromLiteral));
     return slider;
 }
 
@@ -921,9 +919,8 @@ Ref<MediaControlFullscreenVolumeSliderElement> MediaControlFullscreenVolumeSlide
     Ref<MediaControlFullscreenVolumeSliderElement> slider = adoptRef(*new MediaControlFullscreenVolumeSliderElement(document));
     slider->ensureUserAgentShadowRoot();
     slider->setType("range");
-    slider->setPseudo(AtomicString("-webkit-media-controls-fullscreen-volume-slider", AtomicString::ConstructFromLiteral));
-    slider->setAttribute(precisionAttr, "float");
-    slider->setAttribute(maxAttr, "1");
+    slider->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(maxAttr, AtomicString("1", AtomicString::ConstructFromLiteral));
     return slider;
 }
 

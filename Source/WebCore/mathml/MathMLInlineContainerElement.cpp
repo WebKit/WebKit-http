@@ -33,7 +33,6 @@
 #include "MathMLNames.h"
 #include "RenderMathMLBlock.h"
 #include "RenderMathMLFenced.h"
-#include "RenderMathMLFraction.h"
 #include "RenderMathMLMenclose.h"
 #include "RenderMathMLRoot.h"
 #include "RenderMathMLRow.h"
@@ -41,7 +40,7 @@
 #include "RenderMathMLUnderOver.h"
 
 namespace WebCore {
-    
+
 using namespace MathMLNames;
 
 MathMLInlineContainerElement::MathMLInlineContainerElement(const QualifiedName& tagName, Document& document)
@@ -65,26 +64,12 @@ void MathMLInlineContainerElement::childrenChanged(const ChildChange& change)
 
 RenderPtr<RenderElement> MathMLInlineContainerElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
-    if (hasTagName(annotation_xmlTag))
+    if (hasTagName(annotation_xmlTag) || hasTagName(merrorTag) || hasTagName(mphantomTag) || hasTagName(mrowTag) || hasTagName(mstyleTag))
         return createRenderer<RenderMathMLRow>(*this, WTFMove(style));
-    if (hasTagName(merrorTag) || hasTagName(mphantomTag) || hasTagName(mrowTag) || hasTagName(mstyleTag))
-        return createRenderer<RenderMathMLRow>(*this, WTFMove(style));
-    if (hasTagName(msubTag))
+    if (hasTagName(msubTag) || hasTagName(msupTag) || hasTagName(msubsupTag) || hasTagName(mmultiscriptsTag))
         return createRenderer<RenderMathMLScripts>(*this, WTFMove(style));
-    if (hasTagName(msupTag))
-        return createRenderer<RenderMathMLScripts>(*this, WTFMove(style));
-    if (hasTagName(msubsupTag))
-        return createRenderer<RenderMathMLScripts>(*this, WTFMove(style));
-    if (hasTagName(mmultiscriptsTag))
-        return createRenderer<RenderMathMLScripts>(*this, WTFMove(style));
-    if (hasTagName(moverTag))
+    if (hasTagName(moverTag) || hasTagName(munderTag) || hasTagName(munderoverTag))
         return createRenderer<RenderMathMLUnderOver>(*this, WTFMove(style));
-    if (hasTagName(munderTag))
-        return createRenderer<RenderMathMLUnderOver>(*this, WTFMove(style));
-    if (hasTagName(munderoverTag))
-        return createRenderer<RenderMathMLUnderOver>(*this, WTFMove(style));
-    if (hasTagName(mfracTag))
-        return createRenderer<RenderMathMLFraction>(*this, WTFMove(style));
     if (hasTagName(msqrtTag) || hasTagName(mrootTag))
         return createRenderer<RenderMathMLRoot>(*this, WTFMove(style));
     if (hasTagName(mfencedTag))
@@ -93,6 +78,16 @@ RenderPtr<RenderElement> MathMLInlineContainerElement::createElementRenderer(Ren
         return createRenderer<RenderMathMLTable>(*this, WTFMove(style));
 
     return createRenderer<RenderMathMLBlock>(*this, WTFMove(style));
+}
+
+void MathMLInlineContainerElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+{
+    bool displayStyleAttribute = (name == displaystyleAttr && (hasTagName(mstyleTag) || hasTagName(mtableTag)));
+    bool mathVariantAttribute = (name == mathvariantAttr && (hasTagName(mathTag) || hasTagName(mstyleTag)));
+    if ((displayStyleAttribute || mathVariantAttribute) && renderer())
+        MathMLStyle::resolveMathMLStyleTree(renderer());
+
+    MathMLElement::parseAttribute(name, value);
 }
 
 }

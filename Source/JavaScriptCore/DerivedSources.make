@@ -76,6 +76,10 @@ BUILTINS_GENERATOR_SCRIPTS = \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins/builtins_generate_combined_implementation.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins/builtins_generate_separate_header.py \
     $(JavaScriptCore_SCRIPTS_DIR)/builtins/builtins_generate_separate_implementation.py \
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins/builtins_generate_wrapper_header.py \
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins/builtins_generate_wrapper_implementation.py \
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins/builtins_generate_internals_wrapper_header.py \
+    ${JavaScriptCore_SCRIPTS_DIR}/builtins/builtins_generate_internals_wrapper_implementation.py \
     $(JavaScriptCore_SCRIPTS_DIR)/generate-js-builtins.py \
     $(JavaScriptCore_SCRIPTS_DIR)/lazywriter.py \
 #
@@ -88,11 +92,13 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/FunctionPrototype.js \
     $(JavaScriptCore)/builtins/GeneratorPrototype.js \
     $(JavaScriptCore)/builtins/GlobalObject.js \
+    $(JavaScriptCore)/builtins/GlobalOperations.js \
     $(JavaScriptCore)/builtins/InspectorInstrumentationObject.js \
     $(JavaScriptCore)/builtins/InternalPromiseConstructor.js \
     $(JavaScriptCore)/builtins/IteratorPrototype.js \
     $(JavaScriptCore)/builtins/MapPrototype.js \
     $(JavaScriptCore)/builtins/ModuleLoaderObject.js \
+    $(JavaScriptCore)/builtins/NumberConstructor.js \
     $(JavaScriptCore)/builtins/NumberPrototype.js \
     $(JavaScriptCore)/builtins/ObjectConstructor.js \
     $(JavaScriptCore)/builtins/PromiseConstructor.js \

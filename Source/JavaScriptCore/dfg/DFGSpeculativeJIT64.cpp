@@ -806,7 +806,7 @@ void SpeculativeJIT::emitCall(Node* node)
 
             shuffleData.setupCalleeSaveRegisters(m_jit.codeBlock());
         } else {
-            m_jit.store32(MacroAssembler::TrustedImm32(numPassedArgs), JITCompiler::calleeFramePayloadSlot(JSStack::ArgumentCount));
+            m_jit.store32(MacroAssembler::TrustedImm32(numPassedArgs), JITCompiler::calleeFramePayloadSlot(CallFrameSlot::argumentCount));
 
             for (int i = 0; i < numPassedArgs; i++) {
                 Edge argEdge = m_jit.graph().m_varArgChildren[node->firstChild() + 1 + i];
@@ -824,7 +824,7 @@ void SpeculativeJIT::emitCall(Node* node)
         JSValueOperand callee(this, calleeEdge);
         calleeGPR = callee.gpr();
         callee.use();
-        m_jit.store64(calleeGPR, JITCompiler::calleeFrameSlot(JSStack::Callee));
+        m_jit.store64(calleeGPR, JITCompiler::calleeFrameSlot(CallFrameSlot::callee));
 
         flushRegisters();
     }
@@ -3520,23 +3520,57 @@ void SpeculativeJIT::compile(Node* node)
         
     case ToPrimitive: {
         DFG_ASSERT(m_jit.graph(), node, node->child1().useKind() == UntypedUse);
-        JSValueOperand op1(this, node->child1());
-        GPRTemporary result(this, Reuse, op1);
+        JSValueOperand argument(this, node->child1());
+        GPRTemporary result(this, Reuse, argument);
         
-        GPRReg op1GPR = op1.gpr();
+        GPRReg argumentGPR = argument.gpr();
         GPRReg resultGPR = result.gpr();
         
-        op1.use();
+        argument.use();
         
-        MacroAssembler::Jump alreadyPrimitive = m_jit.branchIfNotCell(JSValueRegs(op1GPR));
-        MacroAssembler::Jump notPrimitive = m_jit.branchIfObject(op1GPR);
+        MacroAssembler::Jump alreadyPrimitive = m_jit.branchIfNotCell(JSValueRegs(argumentGPR));
+        MacroAssembler::Jump notPrimitive = m_jit.branchIfObject(argumentGPR);
         
         alreadyPrimitive.link(&m_jit);
-        m_jit.move(op1GPR, resultGPR);
+        m_jit.move(argumentGPR, resultGPR);
         
         addSlowPathGenerator(
-            slowPathCall(notPrimitive, this, operationToPrimitive, resultGPR, op1GPR));
+            slowPathCall(notPrimitive, this, operationToPrimitive, resultGPR, argumentGPR));
         
+        jsValueResult(resultGPR, node, UseChildrenCalledExplicitly);
+        break;
+    }
+
+    case ToNumber: {
+        JSValueOperand argument(this, node->child1());
+        GPRTemporary result(this, Reuse, argument);
+
+        GPRReg argumentGPR = argument.gpr();
+        GPRReg resultGPR = result.gpr();
+
+        argument.use();
+
+        // We have several attempts to remove ToNumber. But ToNumber still exists.
+        // It means that converting non-numbers to numbers by this ToNumber is not rare.
+        // Instead of the slow path generator, we emit callOperation here.
+        if (!(m_state.forNode(node->child1()).m_type & SpecBytecodeNumber)) {
+            flushRegisters();
+            callOperation(operationToNumber, resultGPR, argumentGPR);
+            m_jit.exceptionCheck();
+        } else {
+            MacroAssembler::Jump notNumber = m_jit.branchIfNotNumber(argumentGPR);
+            m_jit.move(argumentGPR, resultGPR);
+            MacroAssembler::Jump done = m_jit.jump();
+
+            notNumber.link(&m_jit);
+            silentSpillAllRegisters(resultGPR);
+            callOperation(operationToNumber, resultGPR, argumentGPR);
+            silentFillAllRegisters(resultGPR);
+            m_jit.exceptionCheck();
+
+            done.link(&m_jit);
+        }
+
         jsValueResult(resultGPR, node, UseChildrenCalledExplicitly);
         break;
     }
@@ -4013,14 +4047,14 @@ void SpeculativeJIT::compile(Node* node)
 
     case GetCallee: {
         GPRTemporary result(this);
-        m_jit.loadPtr(JITCompiler::addressFor(JSStack::Callee), result.gpr());
+        m_jit.loadPtr(JITCompiler::addressFor(CallFrameSlot::callee), result.gpr());
         cellResult(result.gpr(), node);
         break;
     }
         
     case GetArgumentCountIncludingThis: {
         GPRTemporary result(this);
-        m_jit.load32(JITCompiler::payloadFor(JSStack::ArgumentCount), result.gpr());
+        m_jit.load32(JITCompiler::payloadFor(CallFrameSlot::argumentCount), result.gpr());
         int32Result(result.gpr(), node);
         break;
     }

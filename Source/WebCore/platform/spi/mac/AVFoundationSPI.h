@@ -99,7 +99,46 @@ NS_ASSUME_NONNULL_END
 
 #endif // PLATFORM(IOS)
 
-// FIXME: Wrap in a #if USE(APPLE_INTERNAL_SDK) once this SPI lands
+#pragma mark -
+#pragma mark AVStreamDataParser
+#if !PLATFORM(IOS)
+#if USE(APPLE_INTERNAL_SDK)
+#import <AVFoundation/AVStreamDataParser.h>
+#else
+
+@protocol AVStreamDataParserOutputHandling <NSObject>
+@end
+
+typedef int32_t CMPersistentTrackID;
+
+NS_ASSUME_NONNULL_BEGIN
+typedef NS_ENUM(NSUInteger, AVStreamDataParserOutputMediaDataFlags) {
+    AVStreamDataParserOutputMediaDataReserved = 1 << 0
+};
+
+@interface AVStreamDataParser : NSObject
+- (void)setDelegate:(nullable id<AVStreamDataParserOutputHandling>)delegate;
+- (void)appendStreamData:(NSData *)data;
+- (void)setShouldProvideMediaData:(BOOL)shouldProvideMediaData forTrackID:(CMPersistentTrackID)trackID;
+- (BOOL)shouldProvideMediaDataForTrackID:(CMPersistentTrackID)trackID;
+- (void)providePendingMediaData;
+- (void)processContentKeyResponseData:(NSData *)contentKeyResponseData forTrackID:(CMPersistentTrackID)trackID;
+- (void)processContentKeyResponseError:(NSError *)error forTrackID:(CMPersistentTrackID)trackID;
+- (void)renewExpiringContentKeyResponseDataForTrackID:(CMPersistentTrackID)trackID;
+- (NSData *)streamingContentKeyRequestDataForApp:(NSData *)appIdentifier contentIdentifier:(NSData *)contentIdentifier trackID:(CMPersistentTrackID)trackID options:(NSDictionary *)options error:(NSError **)outError;
+@end
+NS_ASSUME_NONNULL_END
+#endif // USE(APPLE_INTERNAL_SDK)
+
+NS_ASSUME_NONNULL_BEGIN
+@interface AVStreamDataParser (AVStreamDataParserPrivate)
++ (NSString *)outputMIMECodecParameterForInputMIMECodecParameter:(NSString *)inputMIMECodecParameter;
+@end
+NS_ASSUME_NONNULL_END
+
+#endif // !PLATFORM(IOS)
+
+// FIXME: Wrap in a #if USE(APPLE_INTERNAL_SDK) once these SPI land
 #import <AVFoundation/AVAssetResourceLoader.h>
 
 NS_ASSUME_NONNULL_BEGIN

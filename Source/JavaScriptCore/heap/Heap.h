@@ -66,7 +66,6 @@ class HeapVerifier;
 class IncrementalSweeper;
 class JITStubRoutine;
 class JSCell;
-class JSStack;
 class JSValue;
 class LLIntOffsetsExtractor;
 class MarkedArgumentBuffer;
@@ -183,7 +182,7 @@ public:
 #if ENABLE(RESOURCE_USAGE)
     // Use this API to report the subset of extra memory that lives outside this process.
     void reportExternalMemoryVisited(CellState cellStateBeforeVisiting, size_t);
-    size_t externalMemorySize() { return m_extraMemorySize; }
+    size_t externalMemorySize() { return m_externalMemorySize; }
 #endif
 
     // Use this API to report non-GC memory if you can't use the better API above.
@@ -229,8 +228,6 @@ public:
     void deleteAllUnlinkedCodeBlocks();
 
     void didAllocate(size_t);
-    void didAbandon(size_t);
-
     bool isPagedOut(double deadline);
     
     const JITStubRoutineSet& jitStubRoutines() { return m_jitStubRoutines; }
@@ -357,8 +354,6 @@ private:
 
     bool shouldDoFullCollection(HeapOperation requestedCollectionType) const;
 
-    JSStack& stack();
-    
     void incrementDeferralDepth();
     void decrementDeferralDepth();
     void decrementDeferralDepthAndGCIfNeeded();

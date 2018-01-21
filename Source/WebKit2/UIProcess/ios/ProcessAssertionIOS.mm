@@ -31,6 +31,7 @@
 #import "AssertionServicesSPI.h"
 #import <UIKit/UIApplication.h>
 #import <wtf/HashSet.h>
+#import <wtf/RunLoop.h>
 #import <wtf/Vector.h>
 
 #if !PLATFORM(IOS_SIMULATOR)
@@ -91,15 +92,28 @@ using WebKit::ProcessAssertionClient;
     _clients.remove(&client);
 }
 
+- (void)_notifyClientsOfImminentSuspension
+{
+    ASSERT(RunLoop::isMain());
+    Vector<ProcessAssertionClient*> clientsToNotify;
+    copyToVector(_clients, clientsToNotify);
+    for (auto* client : clientsToNotify)
+        client->assertionWillExpireImminently();
+}
+
 - (void)_updateBackgroundTask
 {
     if (_needsToRunInBackgroundCount && _backgroundTask == UIBackgroundTaskInvalid) {
         _backgroundTask = [[UIApplication sharedApplication] beginBackgroundTaskWithName:@"com.apple.WebKit.ProcessAssertion" expirationHandler:^{
-            NSLog(@"Background task expired while holding WebKit ProcessAssertion.");
-            Vector<ProcessAssertionClient*> clientsToNotify;
-            copyToVector(_clients, clientsToNotify);
-            for (auto* client : clientsToNotify)
-                client->assertionWillExpireImminently();
+            LOG_ALWAYS_ERROR(true, "Background task expired while holding WebKit ProcessAssertion (isMainThread? %d).", RunLoop::isMain());
+            // The expiration handler gets called on a non-main thread when the underlying assertion could not be taken (rdar://problem/27278419).
+            if (RunLoop::isMain())
+                [self _notifyClientsOfImminentSuspension];
+            else {
+                dispatch_sync(dispatch_get_main_queue(), ^{
+                    [self _notifyClientsOfImminentSuspension];
+                });
+            }
             [[UIApplication sharedApplication] endBackgroundTask:_backgroundTask];
             _backgroundTask = UIBackgroundTaskInvalid;
         }];
@@ -143,21 +157,28 @@ static BKSProcessAssertionFlags flagsForState(AssertionState assertionState)
     }
 }
 
-ProcessAssertion::ProcessAssertion(pid_t pid, AssertionState assertionState)
+ProcessAssertion::ProcessAssertion(pid_t pid, AssertionState assertionState, std::function<void()> invalidationCallback)
+    : m_assertionState(assertionState)
 {
-    m_assertionState = assertionState;
-    
     BKSProcessAssertionAcquisitionHandler handler = ^(BOOL acquired) {
         if (!acquired) {
-            LOG_ERROR("Unable to acquire assertion for process %d", pid);
+            LOG_ALWAYS_ERROR(true, "Unable to acquire assertion for process %d", pid);
             ASSERT_NOT_REACHED();
+            m_validity = Validity::No;
+            invalidationCallback();
         }
     };
     m_assertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:pid flags:flagsForState(assertionState) reason:BKSProcessAssertionReasonExtension name:@"Web content visible" withHandler:handler]);
+    m_assertion.get().invalidationHandler = ^() {
+        m_validity = Validity::No;
+        invalidationCallback();
+    };
 }
 
 ProcessAssertion::~ProcessAssertion()
 {
+    m_assertion.get().invalidationHandler = nil;
+
     if (ProcessAssertionClient* client = this->client())
         [[WKProcessAssertionBackgroundTaskManager shared] removeClient:*client];
     [m_assertion invalidate];
@@ -172,27 +193,37 @@ void ProcessAssertion::setState(AssertionState assertionState)
     [m_assertion setFlags:flagsForState(assertionState)];
 }
 
-ProcessAndUIAssertion::ProcessAndUIAssertion(pid_t pid, AssertionState assertionState)
-    : ProcessAssertion(pid, assertionState)
+void ProcessAndUIAssertion::updateRunInBackgroundCount()
 {
-    if (assertionState != AssertionState::Suspended)
-        [[WKProcessAssertionBackgroundTaskManager shared] incrementNeedsToRunInBackgroundCount];
+    bool shouldHoldBackgroundAssertion = validity() != Validity::No && state() != AssertionState::Suspended;
+
+    if (shouldHoldBackgroundAssertion) {
+        if (!m_isHoldingBackgroundAssertion)
+            [[WKProcessAssertionBackgroundTaskManager shared] incrementNeedsToRunInBackgroundCount];
+    } else {
+        if (m_isHoldingBackgroundAssertion)
+            [[WKProcessAssertionBackgroundTaskManager shared] decrementNeedsToRunInBackgroundCount];
+    }
+
+    m_isHoldingBackgroundAssertion = shouldHoldBackgroundAssertion;
+}
+
+ProcessAndUIAssertion::ProcessAndUIAssertion(pid_t pid, AssertionState assertionState)
+    : ProcessAssertion(pid, assertionState, [this] { updateRunInBackgroundCount(); })
+{
+    updateRunInBackgroundCount();
 }
 
 ProcessAndUIAssertion::~ProcessAndUIAssertion()
 {
-    if (state() != AssertionState::Suspended)
+    if (m_isHoldingBackgroundAssertion)
         [[WKProcessAssertionBackgroundTaskManager shared] decrementNeedsToRunInBackgroundCount];
 }
 
 void ProcessAndUIAssertion::setState(AssertionState assertionState)
 {
-    if ((state() == AssertionState::Suspended) && (assertionState != AssertionState::Suspended))
-        [[WKProcessAssertionBackgroundTaskManager shared] incrementNeedsToRunInBackgroundCount];
-    if ((state() != AssertionState::Suspended) && (assertionState == AssertionState::Suspended))
-        [[WKProcessAssertionBackgroundTaskManager shared] decrementNeedsToRunInBackgroundCount];
-
     ProcessAssertion::setState(assertionState);
+    updateRunInBackgroundCount();
 }
 
 void ProcessAndUIAssertion::setClient(ProcessAssertionClient& newClient)
@@ -209,7 +240,7 @@ void ProcessAndUIAssertion::setClient(ProcessAssertionClient& newClient)
 
 namespace WebKit {
 
-ProcessAssertion::ProcessAssertion(pid_t, AssertionState assertionState)
+ProcessAssertion::ProcessAssertion(pid_t, AssertionState assertionState, std::function<void()>)
     : m_assertionState(assertionState)
 {
 }

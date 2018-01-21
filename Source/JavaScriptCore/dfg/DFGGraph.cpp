@@ -754,6 +754,9 @@ void Graph::killBlockAndItsContents(BasicBlock* block)
 
 void Graph::killUnreachableBlocks()
 {
+    // FIXME: This probably creates dangling references from Upsilons to Phis in SSA.
+    // https://bugs.webkit.org/show_bug.cgi?id=159164
+    
     for (BlockIndex blockIndex = 0; blockIndex < numBlocks(); ++blockIndex) {
         BasicBlock* block = this->block(blockIndex);
         if (!block)
@@ -1009,19 +1012,19 @@ bool Graph::isLiveInBytecode(VirtualRegister operand, CodeOrigin codeOrigin)
         if (verbose)
             dataLog("reg = ", reg, "\n");
         
-        if (operand.offset() < codeOriginPtr->stackOffset() + JSStack::CallFrameHeaderSize) {
+        if (operand.offset() < codeOriginPtr->stackOffset() + CallFrame::headerSizeInRegisters) {
             if (reg.isArgument()) {
-                RELEASE_ASSERT(reg.offset() < JSStack::CallFrameHeaderSize);
+                RELEASE_ASSERT(reg.offset() < CallFrame::headerSizeInRegisters);
                 
                 if (codeOriginPtr->inlineCallFrame->isClosureCall
-                    && reg.offset() == JSStack::Callee) {
+                    && reg.offset() == CallFrameSlot::callee) {
                     if (verbose)
                         dataLog("Looks like a callee.\n");
                     return true;
                 }
                 
                 if (codeOriginPtr->inlineCallFrame->isVarargs()
-                    && reg.offset() == JSStack::ArgumentCount) {
+                    && reg.offset() == CallFrameSlot::argumentCount) {
                     if (verbose)
                         dataLog("Looks like the argument count.\n");
                     return true;

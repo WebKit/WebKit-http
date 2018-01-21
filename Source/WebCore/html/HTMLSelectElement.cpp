@@ -405,7 +405,7 @@ void HTMLSelectElement::setMultiple(bool multiple)
 {
     bool oldMultiple = this->multiple();
     int oldSelectedIndex = selectedIndex();
-    setAttribute(multipleAttr, multiple ? "" : 0);
+    setAttributeWithoutSynchronization(multipleAttr, multiple ? emptyAtom : nullAtom);
 
     // Restore selectedIndex after changing the multiple flag to preserve
     // selection as single-line and multi-line has different defaults.
@@ -1062,7 +1062,7 @@ void HTMLSelectElement::reset()
             continue;
 
         HTMLOptionElement& option = downcast<HTMLOptionElement>(*element);
-        if (option.fastHasAttribute(selectedAttr)) {
+        if (option.hasAttributeWithoutSynchronization(selectedAttr)) {
             if (selectedOption && !m_multiple)
                 selectedOption->setSelectedState(false);
             option.setSelectedState(true);

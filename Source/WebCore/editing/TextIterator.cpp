@@ -53,7 +53,7 @@
 #include "SimpleLineLayout.h"
 #include "SimpleLineLayoutResolver.h"
 #include "TextBoundaries.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextControlInnerElements.h"
 #include "VisiblePosition.h"
 #include "VisibleUnits.h"
@@ -63,8 +63,8 @@
 #include <wtf/unicode/CharacterNames.h>
 
 #if !UCONFIG_NO_COLLATION
-#include "TextBreakIteratorInternalICU.h"
 #include <unicode/usearch.h>
+#include <wtf/text/TextBreakIteratorInternalICU.h>
 #endif
 
 using namespace WTF::Unicode;
@@ -278,7 +278,7 @@ bool isRendererReplacedElement(RenderObject* renderer)
         Element& element = downcast<Element>(*renderer->node());
         if (is<HTMLFormControlElement>(element) || is<HTMLLegendElement>(element) || is<HTMLProgressElement>(element) || element.hasTagName(meterTag))
             return true;
-        if (equalLettersIgnoringASCIICase(element.fastGetAttribute(roleAttr), "img"))
+        if (equalLettersIgnoringASCIICase(element.attributeWithoutSynchronization(roleAttr), "img"))
             return true;
     }
 

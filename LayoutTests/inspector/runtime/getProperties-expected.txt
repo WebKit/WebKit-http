@@ -13,7 +13,6 @@ Properties:
   0 string red
   1 string green
   2 string blue
-  length number 3
 
 -- Running test case: CheckPropertiesOfBoundConstructor
 Evaluating expression: Number.bind({}, 5)
@@ -21,8 +20,8 @@ Properties:
   __proto__ function function () {
     [native code]
 }
-  arguments object TypeError: 'arguments', 'callee', and 'caller' cannot be accessed in strict mode.
-  caller object TypeError: 'arguments', 'callee', and 'caller' cannot be accessed in strict mode.
+  arguments getter setter
+  caller getter setter
   length number 0
   name string bound Number
 Internal properties:
@@ -38,8 +37,8 @@ Properties:
   __proto__ function function () {
     [native code]
 }
-  arguments object TypeError: 'arguments', 'callee', and 'caller' cannot be accessed in strict mode.
-  caller object TypeError: 'arguments', 'callee', and 'caller' cannot be accessed in strict mode.
+  arguments getter setter
+  caller getter setter
   length number 0
   name string bound 
 Internal properties:

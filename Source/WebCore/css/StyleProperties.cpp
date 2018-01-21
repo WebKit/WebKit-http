@@ -639,7 +639,16 @@ bool MutableStyleProperties::removeShorthandProperty(CSSPropertyID propertyID)
     StylePropertyShorthand shorthand = shorthandForProperty(propertyID);
     if (!shorthand.length())
         return false;
-    return removePropertiesInSet(shorthand.properties(), shorthand.length());
+
+    bool propertiesWereRemoved = removePropertiesInSet(shorthand.properties(), shorthand.length());
+
+    CSSPropertyID prefixingVariant = prefixingVariantForPropertyId(propertyID);
+    if (prefixingVariant == propertyID)
+        return propertiesWereRemoved;
+
+    StylePropertyShorthand shorthandPrefixingVariant = shorthandForProperty(prefixingVariant);
+    bool prefixedVariantPropertiesWereRemoved = removePropertiesInSet(shorthandPrefixingVariant.properties(), shorthandPrefixingVariant.length());
+    return propertiesWereRemoved || prefixedVariantPropertiesWereRemoved;
 }
 
 bool MutableStyleProperties::removeProperty(CSSPropertyID propertyID, String* returnText)
@@ -647,14 +656,14 @@ bool MutableStyleProperties::removeProperty(CSSPropertyID propertyID, String* re
     if (removeShorthandProperty(propertyID)) {
         // FIXME: Return an equivalent shorthand when possible.
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return true;
     }
 
     int foundPropertyIndex = findPropertyIndex(propertyID);
     if (foundPropertyIndex == -1) {
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return false;
     }
 
@@ -673,7 +682,7 @@ bool MutableStyleProperties::removeCustomProperty(const String& propertyName, St
     int foundPropertyIndex = findCustomPropertyIndex(propertyName);
     if (foundPropertyIndex == -1) {
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return false;
     }
 

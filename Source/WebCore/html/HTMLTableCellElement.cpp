@@ -36,6 +36,11 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
+Ref<HTMLTableCellElement> HTMLTableCellElement::create(const QualifiedName& tagName, Document& document)
+{
+    return adoptRef(*new HTMLTableCellElement(tagName, document));
+}
+
 HTMLTableCellElement::HTMLTableCellElement(const QualifiedName& tagName, Document& document)
     : HTMLTablePartElement(tagName, document)
 {
@@ -49,7 +54,7 @@ unsigned HTMLTableCellElement::colSpan() const
 
 unsigned HTMLTableCellElement::colSpanForBindings() const
 {
-    return limitToOnlyHTMLNonNegative(fastGetAttribute(colspanAttr), 1u);
+    return limitToOnlyHTMLNonNegative(attributeWithoutSynchronization(colspanAttr), 1u);
 }
 
 unsigned HTMLTableCellElement::rowSpan() const
@@ -61,7 +66,7 @@ unsigned HTMLTableCellElement::rowSpan() const
 
 unsigned HTMLTableCellElement::rowSpanForBindings() const
 {
-    return limitToOnlyHTMLNonNegative(fastGetAttribute(rowspanAttr), 1u);
+    return limitToOnlyHTMLNonNegative(attributeWithoutSynchronization(rowspanAttr), 1u);
 }
 
 int HTMLTableCellElement::cellIndex() const
@@ -131,12 +136,12 @@ bool HTMLTableCellElement::isURLAttribute(const Attribute& attribute) const
 
 String HTMLTableCellElement::abbr() const
 {
-    return fastGetAttribute(abbrAttr);
+    return attributeWithoutSynchronization(abbrAttr);
 }
 
 String HTMLTableCellElement::axis() const
 {
-    return fastGetAttribute(axisAttr);
+    return attributeWithoutSynchronization(axisAttr);
 }
 
 void HTMLTableCellElement::setColSpanForBindings(unsigned n)
@@ -146,7 +151,7 @@ void HTMLTableCellElement::setColSpanForBindings(unsigned n)
 
 String HTMLTableCellElement::headers() const
 {
-    return fastGetAttribute(headersAttr);
+    return attributeWithoutSynchronization(headersAttr);
 }
 
 void HTMLTableCellElement::setRowSpanForBindings(unsigned n)
@@ -154,16 +159,41 @@ void HTMLTableCellElement::setRowSpanForBindings(unsigned n)
     setAttributeWithoutSynchronization(rowspanAttr, AtomicString::number(limitToOnlyHTMLNonNegative(n, 1)));
 }
 
-String HTMLTableCellElement::scope() const
+const AtomicString& HTMLTableCellElement::scope() const
 {
-    return fastGetAttribute(scopeAttr);
+    // https://html.spec.whatwg.org/multipage/tables.html#attr-th-scope
+    static NeverDestroyed<const AtomicString> row("row", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> col("col", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> rowgroup("rowgroup", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomicString> colgroup("colgroup", AtomicString::ConstructFromLiteral);
+
+    const AtomicString& value = attributeWithoutSynchronization(HTMLNames::scopeAttr);
+
+    // Only conforming for th elements.
+    if (!hasTagName(thTag))
+        return value;
+
+    if (equalIgnoringASCIICase(value, row))
+        return row;
+    if (equalIgnoringASCIICase(value, col))
+        return col;
+    if (equalIgnoringASCIICase(value, rowgroup))
+        return rowgroup;
+    if (equalIgnoringASCIICase(value, colgroup))
+        return colgroup;
+    return emptyAtom;
+}
+
+void HTMLTableCellElement::setScope(const AtomicString& scope)
+{
+    setAttributeWithoutSynchronization(scopeAttr, scope);
 }
 
 void HTMLTableCellElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLTablePartElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document().completeURL(fastGetAttribute(backgroundAttr)));
+    addSubresourceURL(urls, document().completeURL(attributeWithoutSynchronization(backgroundAttr)));
 }
 
 HTMLTableCellElement* HTMLTableCellElement::cellAbove() const

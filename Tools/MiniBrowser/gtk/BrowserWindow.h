@@ -38,15 +38,16 @@ G_BEGIN_DECLS
 #define BROWSER_IS_WINDOW_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass),  BROWSER_TYPE_WINDOW))
 #define BROWSER_WINDOW_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS((obj),  BROWSER_TYPE_WINDOW, BrowserWindowClass))
 #define BROWSER_DEFAULT_URL            "http://www.webkitgtk.org/"
+#define BROWSER_ABOUT_SCHEME           "minibrowser-about"
 
 typedef struct _BrowserWindow        BrowserWindow;
 typedef struct _BrowserWindowClass   BrowserWindowClass;
 
 GType browser_window_get_type(void);
 
-GtkWidget* browser_window_new(WebKitWebView*, GtkWindow*);
-WebKitWebView* browser_window_get_view(BrowserWindow*);
-void browser_window_load_uri(BrowserWindow *, const char *uri);
+GtkWidget* browser_window_new(GtkWindow*);
+void browser_window_append_view(BrowserWindow*, WebKitWebView*);
+void browser_window_load_uri(BrowserWindow*, const char *uri);
 void browser_window_load_session(BrowserWindow *, const char *sessionFile);
 void browser_window_set_background_color(BrowserWindow*, GdkRGBA*);
 

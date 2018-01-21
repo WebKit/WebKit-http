@@ -4,6 +4,7 @@ guardFactoryWith="ENABLE(MATHML)"
 attrsNullNamespace
 
 accent
+accentunder
 actiontype
 alttext
 background
@@ -14,6 +15,8 @@ definitionURL
 denomalign
 depth
 dir
+display
+displaystyle
 encoding
 fence
 fontfamily
@@ -22,6 +25,7 @@ fontstyle
 fontweight
 form
 height
+href
 largeop
 linethickness
 lspace
@@ -45,4 +49,5 @@ stretchy
 symmetric
 subscriptshift
 superscriptshift
+voffset
 width

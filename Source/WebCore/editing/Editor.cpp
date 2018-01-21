@@ -1661,7 +1661,7 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
     if (is<HTMLTextFormControlElement>(focusedElement)) {
         if (direction == NaturalWritingDirection)
             return;
-        downcast<HTMLTextFormControlElement>(*focusedElement).setAttribute(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
+        downcast<HTMLTextFormControlElement>(*focusedElement).setAttributeWithoutSynchronization(dirAttr, direction == LeftToRightWritingDirection ? "ltr" : "rtl");
         focusedElement->dispatchInputEvent();
         document().updateStyleIfNeeded();
         return;
@@ -2805,7 +2805,13 @@ void Editor::revealSelectionAfterEditingOperation(const ScrollAlignment& alignme
     if (m_ignoreCompositionSelectionChange)
         return;
 
-    m_frame.selection().revealSelection(SelectionRevealMode::Reveal, alignment, revealExtentOption);
+#if PLATFORM(IOS)
+    SelectionRevealMode revealMode = SelectionRevealMode::RevealUpToMainFrame;
+#else
+    SelectionRevealMode revealMode = SelectionRevealMode::Reveal;
+#endif
+
+    m_frame.selection().revealSelection(revealMode, alignment, revealExtentOption);
 }
 
 void Editor::setIgnoreCompositionSelectionChange(bool ignore, RevealSelection shouldRevealExistingSelection)
@@ -2823,15 +2829,15 @@ void Editor::setIgnoreCompositionSelectionChange(bool ignore, RevealSelection sh
         revealSelectionAfterEditingOperation(ScrollAlignment::alignToEdgeIfNeeded, RevealExtent);
 }
 
-PassRefPtr<Range> Editor::compositionRange() const
+RefPtr<Range> Editor::compositionRange() const
 {
     if (!m_compositionNode)
-        return 0;
+        return nullptr;
     unsigned length = m_compositionNode->length();
     unsigned start = std::min(m_compositionStart, length);
     unsigned end = std::min(std::max(start, m_compositionEnd), length);
     if (start >= end)
-        return 0;
+        return nullptr;
     return Range::create(m_compositionNode->document(), m_compositionNode.get(), start, m_compositionNode.get(), end);
 }
 

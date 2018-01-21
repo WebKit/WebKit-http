@@ -64,6 +64,10 @@ void ChildProcess::initialize(const ChildProcessInitializationParameters& parame
 {
     platformInitialize();
 
+#if PLATFORM(COCOA)
+    m_priorityBoostMessage = parameters.priorityBoostMessage;
+#endif
+
     initializeProcess(parameters);
     initializeProcessName(parameters);
 
@@ -116,6 +120,11 @@ void ChildProcess::removeMessageReceiver(IPC::StringReference messageReceiverNam
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName);
 }
 
+void ChildProcess::removeMessageReceiver(IPC::MessageReceiver& messageReceiver)
+{
+    m_messageReceiverMap.removeMessageReceiver(messageReceiver);
+}
+
 void ChildProcess::disableTermination()
 {
     m_terminationCounter++;
@@ -158,8 +167,15 @@ void ChildProcess::terminationTimerFired()
 
 void ChildProcess::stopRunLoop()
 {
+    platformStopRunLoop();
+}
+
+#if !PLATFORM(IOS)
+void ChildProcess::platformStopRunLoop()
+{
     RunLoop::main().stop();
 }
+#endif
 
 void ChildProcess::terminate()
 {

@@ -35,7 +35,7 @@
 #include "RenderMathMLOperator.h"
 
 namespace WebCore {
-    
+
 using namespace MathMLNames;
 
 static bool isPrescriptDelimiter(const RenderObject& renderObject)
@@ -53,6 +53,12 @@ RenderMathMLScripts::RenderMathMLScripts(Element& element, RenderStyle&& style)
         m_scriptType = Super;
     else if (element.hasTagName(MathMLNames::msubsupTag))
         m_scriptType = SubSup;
+    else if (element.hasTagName(MathMLNames::munderTag))
+        m_scriptType = Under;
+    else if (element.hasTagName(MathMLNames::moverTag))
+        m_scriptType = Over;
+    else if (element.hasTagName(MathMLNames::munderoverTag))
+        m_scriptType = UnderOver;
     else {
         ASSERT(element.hasTagName(MathMLNames::mmultiscriptsTag));
         m_scriptType = Multiscripts;
@@ -61,7 +67,7 @@ RenderMathMLScripts::RenderMathMLScripts(Element& element, RenderStyle&& style)
 
 RenderMathMLOperator* RenderMathMLScripts::unembellishedOperator()
 {
-    RenderBox* base = firstChildBox();
+    auto base = firstChildBox();
     if (!is<RenderMathMLBlock>(base))
         return nullptr;
     return downcast<RenderMathMLBlock>(base)->unembellishedOperator();
@@ -80,20 +86,26 @@ bool RenderMathMLScripts::getBaseAndScripts(RenderBox*& base, RenderBox*& firstP
     switch (m_scriptType) {
     case Sub:
     case Super:
+    case Under:
+    case Over:
         // These elements must have exactly two children.
         // The second child is a postscript and there are no prescripts.
         // <msub> base subscript </msub>
         // <msup> base superscript </msup>
+        // <munder> base underscript </munder>
+        // <mover> base overscript </mover>
         firstPostScript = base->nextSiblingBox();
         return firstPostScript && !isPrescriptDelimiter(*firstPostScript) && !firstPostScript->nextSiblingBox();
-    case SubSup: {
-        // This element must have exactly three children.
+    case SubSup:
+    case UnderOver: {
+        // These elements must have exactly three children.
         // The second and third children are postscripts and there are no prescripts.
         // <msubsup> base subscript superscript </msubsup>
+        // <munderover> base subscript superscript </munderover>
         firstPostScript = base->nextSiblingBox();
         if (!firstPostScript || isPrescriptDelimiter(*firstPostScript))
             return false;
-        RenderBox* superScript = firstPostScript->nextSiblingBox();
+        auto superScript = firstPostScript->nextSiblingBox();
         return superScript && !isPrescriptDelimiter(*superScript) && !superScript->nextSiblingBox();
     }
     case Multiscripts: {
@@ -118,7 +130,7 @@ bool RenderMathMLScripts::getBaseAndScripts(RenderBox*& base, RenderBox*& firstP
         //   b) That the list of prescripts can be grouped into pairs of subscript/superscript.
         //   c) That there is at most one <mprescripts/>.
         bool numberOfScriptIsEven = true;
-        for (RenderBox* script = base->nextSiblingBox(); script; script = script->nextSiblingBox()) {
+        for (auto script = base->nextSiblingBox(); script; script = script->nextSiblingBox()) {
             if (isPrescriptDelimiter(*script)) {
                 // This is a <mprescripts/>. Let's check 2a) and 2c).
                 if (!numberOfScriptIsEven || firstPreScript)
@@ -169,24 +181,27 @@ void RenderMathMLScripts::computePreferredLogicalWidths()
 
     switch (m_scriptType) {
     case Sub:
+    case Under:
         m_maxPreferredLogicalWidth += base->maxPreferredLogicalWidth();
         m_maxPreferredLogicalWidth += std::max(LayoutUnit(0), firstPostScript->maxPreferredLogicalWidth() - baseItalicCorrection + space);
         break;
     case Super:
+    case Over:
         m_maxPreferredLogicalWidth += base->maxPreferredLogicalWidth();
         m_maxPreferredLogicalWidth += std::max(LayoutUnit(0), firstPostScript->maxPreferredLogicalWidth() + space);
         break;
     case SubSup:
+    case UnderOver:
     case Multiscripts: {
         RenderBox* supScript;
-        for (RenderBox* subScript = firstPreScript; subScript; subScript = supScript->nextSiblingBox()) {
+        for (auto* subScript = firstPreScript; subScript; subScript = supScript->nextSiblingBox()) {
             supScript = subScript->nextSiblingBox();
             ASSERT(supScript);
             LayoutUnit subSupPairWidth = std::max(subScript->maxPreferredLogicalWidth(), supScript->maxPreferredLogicalWidth());
             m_maxPreferredLogicalWidth += subSupPairWidth + space;
         }
         m_maxPreferredLogicalWidth += base->maxPreferredLogicalWidth();
-        for (RenderBox* subScript = firstPostScript; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
+        for (auto* subScript = firstPostScript; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
             supScript = subScript->nextSiblingBox();
             ASSERT(supScript);
             LayoutUnit subSupPairWidth = std::max(std::max(LayoutUnit(0), subScript->maxPreferredLogicalWidth() - baseItalicCorrection), supScript->maxPreferredLogicalWidth());
@@ -233,21 +248,26 @@ void RenderMathMLScripts::getScriptMetricsAndLayoutIfNeeded(RenderBox* base, Ren
         superscriptBottomMaxWithSubscript = 4 * style().fontMetrics().xHeight() / 5;
     }
 
-    if (m_scriptType == Sub || m_scriptType == SubSup || m_scriptType == Multiscripts) {
-        LayoutUnit specifiedMinSubShift = 0;
-        parseMathMLLength(element()->fastGetAttribute(MathMLNames::subscriptshiftAttr), specifiedMinSubShift, &style(), false);
+    if (m_scriptType == Sub || m_scriptType == SubSup || m_scriptType == Multiscripts || m_scriptType == Under || m_scriptType == UnderOver) {
         minSubScriptShift = std::max(subscriptShiftDown, baseDescent + subscriptBaselineDropMin);
-        minSubScriptShift = std::max(minSubScriptShift, specifiedMinSubShift);
+        if (!isRenderMathMLUnderOver()) {
+            LayoutUnit specifiedMinSubShift = 0;
+            parseMathMLLength(element()->attributeWithoutSynchronization(MathMLNames::subscriptshiftAttr), specifiedMinSubShift, &style(), false);
+            minSubScriptShift = std::max(minSubScriptShift, specifiedMinSubShift);
+        }
     }
-    if (m_scriptType == Super || m_scriptType == SubSup || m_scriptType == Multiscripts) {
-        LayoutUnit specifiedMinSupShift = 0;
-        parseMathMLLength(element()->fastGetAttribute(MathMLNames::superscriptshiftAttr), specifiedMinSupShift, &style(), false);
+    if (m_scriptType == Super || m_scriptType == SubSup || m_scriptType == Multiscripts  || m_scriptType == Over || m_scriptType == UnderOver) {
         minSupScriptShift = std::max(superscriptShiftUp, baseAscent - superScriptBaselineDropMax);
-        minSupScriptShift = std::max(minSupScriptShift, specifiedMinSupShift);
+        if (!isRenderMathMLUnderOver()) {
+            LayoutUnit specifiedMinSupShift = 0;
+            parseMathMLLength(element()->attributeWithoutSynchronization(MathMLNames::superscriptshiftAttr), specifiedMinSupShift, &style(), false);
+            minSupScriptShift = std::max(minSupScriptShift, specifiedMinSupShift);
+        }
     }
 
     switch (m_scriptType) {
-    case Sub: {
+    case Sub:
+    case Under: {
         script->layoutIfNeeded();
         LayoutUnit subAscent = ascentForChild(*script);
         LayoutUnit subDescent = script->logicalHeight() - subAscent;
@@ -255,7 +275,8 @@ void RenderMathMLScripts::getScriptMetricsAndLayoutIfNeeded(RenderBox* base, Ren
         minSubScriptShift = std::max(minSubScriptShift, subAscent - subscriptTopMax);
     }
         break;
-    case Super: {
+    case Super:
+    case Over: {
         script->layoutIfNeeded();
         LayoutUnit supAscent = ascentForChild(*script);
         LayoutUnit supDescent = script->logicalHeight() - supAscent;
@@ -264,9 +285,10 @@ void RenderMathMLScripts::getScriptMetricsAndLayoutIfNeeded(RenderBox* base, Ren
     }
         break;
     case SubSup:
+    case UnderOver:
     case Multiscripts: {
         RenderBox* supScript;
-        for (RenderBox* subScript = script; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
+        for (auto* subScript = script; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
             supScript = subScript->nextSiblingBox();
             ASSERT(supScript);
             subScript->layoutIfNeeded();
@@ -342,7 +364,8 @@ void RenderMathMLScripts::layoutBlock(bool relayoutChildren, LayoutUnit)
     setLogicalHeight(ascent + descent);
 
     switch (m_scriptType) {
-    case Sub: {
+    case Sub:
+    case Under: {
         setLogicalWidth(base->logicalWidth() + std::max(LayoutUnit(0), firstPostScript->logicalWidth() - baseItalicCorrection + space));
         LayoutPoint baseLocation(mirrorIfNeeded(horizontalOffset, *base), ascent - baseAscent);
         base->setLocation(baseLocation);
@@ -352,7 +375,8 @@ void RenderMathMLScripts::layoutBlock(bool relayoutChildren, LayoutUnit)
         firstPostScript->setLocation(scriptLocation);
     }
         break;
-    case Super: {
+    case Super:
+    case Over: {
         setLogicalWidth(base->logicalWidth() + std::max(LayoutUnit(0), firstPostScript->logicalWidth() + space));
         LayoutPoint baseLocation(mirrorIfNeeded(horizontalOffset, *base), ascent - baseAscent);
         base->setLocation(baseLocation);
@@ -363,19 +387,20 @@ void RenderMathMLScripts::layoutBlock(bool relayoutChildren, LayoutUnit)
     }
         break;
     case SubSup:
+    case UnderOver:
     case Multiscripts: {
         RenderBox* supScript;
 
         // Calculate the logical width.
         LayoutUnit logicalWidth = 0;
-        for (RenderBox* subScript = firstPreScript; subScript; subScript = supScript->nextSiblingBox()) {
+        for (auto* subScript = firstPreScript; subScript; subScript = supScript->nextSiblingBox()) {
             supScript = subScript->nextSiblingBox();
             ASSERT(supScript);
             LayoutUnit subSupPairWidth = std::max(subScript->logicalWidth(), supScript->logicalWidth());
             logicalWidth += subSupPairWidth + space;
         }
         logicalWidth += base->logicalWidth();
-        for (RenderBox* subScript = firstPostScript; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
+        for (auto* subScript = firstPostScript; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
             supScript = subScript->nextSiblingBox();
             ASSERT(supScript);
             LayoutUnit subSupPairWidth = std::max(std::max(LayoutUnit(0), subScript->logicalWidth() - baseItalicCorrection), supScript->logicalWidth());
@@ -383,7 +408,7 @@ void RenderMathMLScripts::layoutBlock(bool relayoutChildren, LayoutUnit)
         }
         setLogicalWidth(logicalWidth);
 
-        for (RenderBox* subScript = firstPreScript; subScript; subScript = supScript->nextSiblingBox()) {
+        for (auto* subScript = firstPreScript; subScript; subScript = supScript->nextSiblingBox()) {
             supScript = subScript->nextSiblingBox();
             ASSERT(supScript);
             LayoutUnit subSupPairWidth = std::max(subScript->logicalWidth(), supScript->logicalWidth());
@@ -398,7 +423,7 @@ void RenderMathMLScripts::layoutBlock(bool relayoutChildren, LayoutUnit)
         LayoutPoint baseLocation(mirrorIfNeeded(horizontalOffset, *base), ascent - baseAscent);
         base->setLocation(baseLocation);
         horizontalOffset += base->logicalWidth();
-        for (RenderBox* subScript = firstPostScript; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
+        for (auto* subScript = firstPostScript; subScript && !isPrescriptDelimiter(*subScript); subScript = supScript->nextSiblingBox()) {
             supScript = subScript->nextSiblingBox();
             ASSERT(supScript);
             LayoutUnit subAscent = ascentForChild(*subScript);
@@ -420,20 +445,12 @@ void RenderMathMLScripts::layoutBlock(bool relayoutChildren, LayoutUnit)
 Optional<int> RenderMathMLScripts::firstLineBaseline() const
 {
     ASSERT(!needsLayout());
-    RenderBox* base = firstChildBox();
+    auto* base = firstChildBox();
     if (!base)
         return Optional<int>();
     return Optional<int>(static_cast<int>(lroundf(ascentForChild(*base) + base->logicalTop())));
 }
 
-void RenderMathMLScripts::paintChildren(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintInfo& paintInfoForChild, bool usePrintRect)
-{
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (!paintChild(*child, paintInfo, paintOffset, paintInfoForChild, usePrintRect, PaintAsInlineBlock))
-            return;
-    }
 }
-
-}    
 
 #endif // ENABLE(MATHML)

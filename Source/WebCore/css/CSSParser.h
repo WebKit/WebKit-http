@@ -149,6 +149,7 @@ public:
     static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     std::unique_ptr<MediaQuery> parseMediaQuery(const String&);
 
+    void addPropertyWithPrefixingVariant(CSSPropertyID, RefPtr<CSSValue>&&, bool important, bool implicit = false);
     void addProperty(CSSPropertyID, RefPtr<CSSValue>&&, bool important, bool implicit = false);
     void rollbackLastProperties(int num);
     bool hasProperties() const { return !m_parsedProperties.isEmpty(); }
@@ -175,7 +176,7 @@ public:
         SourceSize(MediaQueryExpression&&, Ref<CSSValue>&&);
     };
     Vector<SourceSize> parseSizesAttribute(StringView);
-    SourceSize sourceSize(MediaQueryExpression&&, CSSParserValue&);
+    Optional<SourceSize> sourceSize(MediaQueryExpression&&, CSSParserValue&);
 
     bool parseFillImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
@@ -234,14 +235,15 @@ public:
     bool isCSSGridLayoutEnabled() const;
     RefPtr<CSSValue> parseGridPosition();
     bool parseGridItemPositionShorthand(CSSPropertyID, bool important);
-    RefPtr<CSSValue> parseGridTemplateColumns();
+    enum TrackListType { AllowRepeat, DisallowRepeat };
+    RefPtr<CSSValue> parseGridTemplateColumns(TrackListType = AllowRepeat);
     bool parseGridTemplateRowsAndAreasAndColumns(bool important);
     bool parseGridTemplateShorthand(bool important);
     bool parseGridShorthand(bool important);
     bool parseGridAreaShorthand(bool important);
     bool parseGridGapShorthand(bool important);
     bool parseSingleGridAreaLonghand(RefPtr<CSSValue>&);
-    RefPtr<CSSValue> parseGridTrackList();
+    RefPtr<CSSValue> parseGridTrackList(TrackListType = AllowRepeat);
     bool parseGridTrackRepeatFunction(CSSValueList&, bool& isAutoRepeat, bool& allTracksAreFixedSized);
     RefPtr<CSSValue> parseGridTrackSize(CSSParserValueList& inputList);
     RefPtr<CSSPrimitiveValue> parseGridBreadth(CSSParserValue&);

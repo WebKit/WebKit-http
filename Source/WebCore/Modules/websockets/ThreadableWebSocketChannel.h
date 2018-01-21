@@ -45,18 +45,18 @@ namespace WebCore {
 class Blob;
 class URL;
 class ScriptExecutionContext;
+class SocketProvider;
 class WebSocketChannelClient;
 
 class ThreadableWebSocketChannel {
     WTF_MAKE_NONCOPYABLE(ThreadableWebSocketChannel);
 public:
+    static Ref<ThreadableWebSocketChannel> create(ScriptExecutionContext&, WebSocketChannelClient&, SocketProvider&);
     ThreadableWebSocketChannel() { }
-    static Ref<ThreadableWebSocketChannel> create(ScriptExecutionContext&, WebSocketChannelClient&);
 
     enum SendResult {
         SendSuccess,
-        SendFail,
-        InvalidMessage
+        SendFail
     };
 
     virtual void connect(const URL&, const String& protocol) = 0;

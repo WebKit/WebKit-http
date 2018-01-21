@@ -94,12 +94,12 @@ void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const Atomi
 {
     if (name == srcdocAttr)
         setLocation("about:srcdoc");
-    else if (name == srcAttr && !fastHasAttribute(srcdocAttr))
+    else if (name == srcAttr && !hasAttributeWithoutSynchronization(srcdocAttr))
         setLocation(stripLeadingAndTrailingHTMLSpaces(value));
     else if (name == idAttr) {
         HTMLFrameOwnerElement::parseAttribute(name, value);
         // Falling back to using the 'id' attribute is not standard but some content relies on this behavior.
-        if (!hasAttribute(nameAttr))
+        if (!hasAttributeWithoutSynchronization(nameAttr))
             m_frameName = value;
     } else if (name == nameAttr) {
         m_frameName = value;
@@ -167,9 +167,9 @@ void HTMLFrameElementBase::didAttachRenderers()
 
 URL HTMLFrameElementBase::location() const
 {
-    if (fastHasAttribute(srcdocAttr))
+    if (hasAttributeWithoutSynchronization(srcdocAttr))
         return URL(ParsedURLString, "about:srcdoc");
-    return document().completeURL(fastGetAttribute(srcAttr));
+    return document().completeURL(attributeWithoutSynchronization(srcAttr));
 }
 
 void HTMLFrameElementBase::setLocation(const String& str)

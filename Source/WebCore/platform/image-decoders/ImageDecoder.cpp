@@ -312,8 +312,7 @@ float ImageDecoder::frameDurationAtIndex(size_t index)
 
 NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel)
 {
-    // Zero-height images can cause problems for some ports. If we have an
-    // empty image dimension, just bail.
+    // Zero-height images can cause problems for some ports. If we have an empty image dimension, just bail.
     if (size().isEmpty())
         return nullptr;
 

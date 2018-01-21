@@ -203,9 +203,9 @@ static DatabaseGuid guidForOriginAndName(const String& origin, const String& nam
     return guid;
 }
 
-Database::Database(PassRefPtr<DatabaseContext> databaseContext, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize)
+Database::Database(RefPtr<DatabaseContext>&& databaseContext, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize)
     : m_scriptExecutionContext(databaseContext->scriptExecutionContext())
-    , m_databaseContext(databaseContext)
+    , m_databaseContext(WTFMove(databaseContext))
     , m_deleted(false)
     , m_name(name.isolatedCopy())
     , m_expectedVersion(expectedVersion.isolatedCopy())
@@ -440,7 +440,7 @@ bool Database::performOpenAndVerify(bool shouldSetVersionInNewDatabase, Database
 
     if (currentVersion.isNull()) {
         LOG(StorageAPI, "Database %s does not have its version set", databaseDebugName().ascii().data());
-        currentVersion = "";
+        currentVersion = emptyString();
     }
 
     // If the expected version isn't the empty string, ensure that the current database version we have matches that version. Otherwise, set an exception.
@@ -463,7 +463,7 @@ bool Database::performOpenAndVerify(bool shouldSetVersionInNewDatabase, Database
     onExitCaller.setOpenSucceeded();
 
     if (m_new && !shouldSetVersionInNewDatabase)
-        m_expectedVersion = ""; // The caller provided a creationCallback which will set the expected version.
+        m_expectedVersion = emptyString(); // The caller provided a creationCallback which will set the expected version.
 
     if (databaseContext()->databaseThread())
         databaseContext()->databaseThread()->recordDatabaseOpen(this);
@@ -571,7 +571,7 @@ void Database::scheduleTransaction()
         transaction = m_transactionQueue.takeFirst();
 
     if (transaction && databaseContext()->databaseThread()) {
-        auto task = std::make_unique<DatabaseTransactionTask>(transaction);
+        auto task = std::make_unique<DatabaseTransactionTask>(WTFMove(transaction));
         LOG(StorageAPI, "Scheduling DatabaseTransactionTask %p for transaction %p\n", task.get(), task->transaction());
         m_transactionInProgress = true;
         databaseContext()->databaseThread()->scheduleTask(WTFMove(task));
@@ -589,7 +589,7 @@ RefPtr<SQLTransactionBackend> Database::runTransaction(Ref<SQLTransaction>&& tra
     if (data)
         wrapper = ChangeVersionWrapper::create(data->oldVersion(), data->newVersion());
 
-    RefPtr<SQLTransactionBackend> transactionBackend = SQLTransactionBackend::create(this, WTFMove(transaction), wrapper, readOnly);
+    RefPtr<SQLTransactionBackend> transactionBackend = SQLTransactionBackend::create(this, WTFMove(transaction), WTFMove(wrapper), readOnly);
     m_transactionQueue.append(transactionBackend);
     if (!m_transactionInProgress)
         scheduleTransaction();

@@ -211,16 +211,6 @@
 #include "MediaPlaybackTargetContext.h"
 #endif
 
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-#if __has_include(<AccessibilitySupport.h>)
-#include <AccessibilitySupport.h>
-#else
-extern "C" {
-void _AXSSetForceAllowWebScaling(Boolean);
-}
-#endif
-#endif
-
 using JSC::CallData;
 using JSC::CallType;
 using JSC::CodeBlock;
@@ -415,10 +405,6 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.setShowAllPlugins(false);
-    
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    _AXSSetForceAllowWebScaling(false);
-#endif
 }
 
 Internals::Internals(Document& document)
@@ -442,6 +428,7 @@ Internals::Internals(Document& document)
     if (document.page())
         document.page()->setMockMediaPlaybackTargetPickerEnabled(true);
 #endif
+    RuntimeEnabledFeatures::sharedFeatures().reset();
 }
 
 Document* Internals::contextDocument() const
@@ -1468,7 +1455,7 @@ RefPtr<NodeList> Internals::nodesFromRect(Document& document, int centerX, int c
             matches.uncheckedAppend(*node);
     }
 
-    return StaticNodeList::adopt(matches);
+    return StaticNodeList::create(WTFMove(matches));
 }
 
 class GetCallerCodeBlockFunctor {
@@ -3286,15 +3273,6 @@ String Internals::composedTreeAsText(Node& node)
     if (!is<ContainerNode>(node))
         return emptyString();
     return WebCore::composedTreeAsText(downcast<ContainerNode>(node));
-}
-
-void Internals::setViewportForceAlwaysUserScalable(bool scalable)
-{
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    _AXSSetForceAllowWebScaling(scalable);
-#else
-    UNUSED_PARAM(scalable);
-#endif
 }
 
 void Internals::setLinkPreloadSupport(bool enable)

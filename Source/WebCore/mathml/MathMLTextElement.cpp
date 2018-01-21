@@ -32,11 +32,10 @@
 
 #include "MathMLNames.h"
 #include "RenderMathMLOperator.h"
-#include "RenderMathMLSpace.h"
 #include "RenderMathMLToken.h"
 
 namespace WebCore {
-    
+
 using namespace MathMLNames;
 
 inline MathMLTextElement::MathMLTextElement(const QualifiedName& tagName, Document& document)
@@ -66,11 +65,14 @@ void MathMLTextElement::childrenChanged(const ChildChange& change)
 
 void MathMLTextElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (name == stretchyAttr || name == lspaceAttr || name == rspaceAttr) {
+    if (name == stretchyAttr || name == lspaceAttr || name == rspaceAttr || name == movablelimitsAttr) {
         if (is<RenderMathMLOperator>(renderer()))
             downcast<RenderMathMLOperator>(*renderer()).updateFromElement();
         return;
     }
+
+    if (name == mathvariantAttr && renderer())
+        MathMLStyle::resolveMathMLStyleTree(renderer());
 
     MathMLElement::parseAttribute(name, value);
 }
@@ -79,8 +81,6 @@ RenderPtr<RenderElement> MathMLTextElement::createElementRenderer(RenderStyle&& 
 {
     if (hasTagName(MathMLNames::moTag))
         return createRenderer<RenderMathMLOperator>(*this, WTFMove(style));
-    if (hasTagName(MathMLNames::mspaceTag))
-        return createRenderer<RenderMathMLSpace>(*this, WTFMove(style));
     if (hasTagName(MathMLNames::annotationTag))
         return MathMLElement::createElementRenderer(WTFMove(style), insertionPosition);
 
@@ -94,8 +94,7 @@ bool MathMLTextElement::childShouldCreateRenderer(const Node& child) const
     if (hasTagName(MathMLNames::mspaceTag))
         return false;
 
-    // FIXME: phrasing content should be accepted in <mo> elements too (https://bugs.webkit.org/show_bug.cgi?id=130245).
-    if (hasTagName(MathMLNames::annotationTag) || hasTagName(MathMLNames::moTag))
+    if (hasTagName(MathMLNames::annotationTag))
         return child.isTextNode();
 
     // The HTML specification defines <mi>, <mo>, <mn>, <ms> and <mtext> as insertion points.

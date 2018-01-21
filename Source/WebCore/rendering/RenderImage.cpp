@@ -28,6 +28,7 @@
 #include "config.h"
 #include "RenderImage.h"
 
+#include "AXObjectCache.h"
 #include "BitmapImage.h"
 #include "CachedImage.h"
 #include "FocusController.h"
@@ -250,6 +251,11 @@ void RenderImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
             return;
         }
         imageSizeChange = setImageSizeForAltText(imageResource().cachedImage());
+    }
+
+    if (UNLIKELY(AXObjectCache::accessibilityEnabled())) {
+        if (AXObjectCache* cache = document().existingAXObjectCache())
+            cache->recomputeIsIgnored(this);
     }
 
     repaintOrMarkForLayout(imageSizeChange, rect);
@@ -599,7 +605,7 @@ LayoutUnit RenderImage::minimumReplacedHeight() const
 HTMLMapElement* RenderImage::imageMap() const
 {
     HTMLImageElement* image = is<HTMLImageElement>(element()) ? downcast<HTMLImageElement>(element()) : nullptr;
-    return image ? image->treeScope().getImageMap(image->fastGetAttribute(usemapAttr)) : nullptr;
+    return image ? image->treeScope().getImageMap(image->attributeWithoutSynchronization(usemapAttr)) : nullptr;
 }
 
 bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)

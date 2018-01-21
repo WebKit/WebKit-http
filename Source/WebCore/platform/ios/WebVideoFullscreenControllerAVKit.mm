@@ -435,7 +435,7 @@ void WebVideoFullscreenControllerContext::setLegibleMediaSelectionOptions(const 
 void WebVideoFullscreenControllerContext::setExternalPlayback(bool enabled, ExternalPlaybackTargetType type, String localizedDeviceName)
 {
     ASSERT(WebThreadIsCurrent());
-    callOnMainThread([protectedThis = Ref<WebVideoFullscreenControllerContext>(*this), this, enabled, type, localizedDeviceName = localizedDeviceName.isolatedCopy()] {
+    callOnMainThread([protectedThis = makeRef(*this), this, enabled, type, localizedDeviceName = localizedDeviceName.isolatedCopy()] {
         if (m_interface)
             m_interface->setExternalPlayback(enabled, type, localizedDeviceName);
     });
@@ -661,8 +661,8 @@ void WebVideoFullscreenControllerContext::setUpFullscreen(HTMLVideoElement& vide
         WebThreadRun([protectedThis, this, viewRef, mode] {
             m_model = WebVideoFullscreenModelVideoElement::create(WebPlaybackSessionModelMediaElement::create().get());
             m_model->setWebVideoFullscreenInterface(this);
-            m_model->setVideoElement(m_videoElement.get());
             m_model->playbackSessionModel().setMediaElement(m_videoElement.get());
+            m_model->setVideoElement(m_videoElement.get());
 
             IntRect videoElementClientRect = elementRectInWindow(m_videoElement.get());
             FloatRect videoLayerFrame = FloatRect(FloatPoint(), videoElementClientRect.size());

@@ -191,7 +191,7 @@ static inline ContentEditableType contentEditableType(const AtomicString& value)
 
 static ContentEditableType contentEditableType(const HTMLElement& element)
 {
-    return contentEditableType(element.fastGetAttribute(contenteditableAttr));
+    return contentEditableType(element.attributeWithoutSynchronization(contenteditableAttr));
 }
 
 void HTMLElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
@@ -243,7 +243,7 @@ void HTMLElement::collectStyleForPresentationAttribute(const QualifiedName& name
         mapLanguageAttributeToLocale(value, style);
     else if (name == langAttr) {
         // xml:lang has a higher priority than lang.
-        if (!fastHasAttribute(XMLNames::langAttr))
+        if (!hasAttributeWithoutSynchronization(XMLNames::langAttr))
             mapLanguageAttributeToLocale(value, style);
     } else
         StyledElement::collectStyleForPresentationAttribute(name, value, style);
@@ -536,12 +536,12 @@ static inline const AtomicString& toValidDirValue(const AtomicString& value)
 
 const AtomicString& HTMLElement::dir() const
 {
-    return toValidDirValue(fastGetAttribute(dirAttr));
+    return toValidDirValue(attributeWithoutSynchronization(dirAttr));
 }
 
 void HTMLElement::setDir(const AtomicString& value)
 {
-    setAttribute(dirAttr, value);
+    setAttributeWithoutSynchronization(dirAttr, value);
 }
 
 void HTMLElement::setInnerText(const String& text, ExceptionCode& ec)
@@ -764,11 +764,11 @@ String HTMLElement::contentEditable() const
 void HTMLElement::setContentEditable(const String& enabled, ExceptionCode& ec)
 {
     if (equalLettersIgnoringASCIICase(enabled, "true"))
-        setAttribute(contenteditableAttr, AtomicString("true", AtomicString::ConstructFromLiteral));
+        setAttributeWithoutSynchronization(contenteditableAttr, AtomicString("true", AtomicString::ConstructFromLiteral));
     else if (equalLettersIgnoringASCIICase(enabled, "false"))
-        setAttribute(contenteditableAttr, AtomicString("false", AtomicString::ConstructFromLiteral));
+        setAttributeWithoutSynchronization(contenteditableAttr, AtomicString("false", AtomicString::ConstructFromLiteral));
     else if (equalLettersIgnoringASCIICase(enabled, "plaintext-only"))
-        setAttribute(contenteditableAttr, AtomicString("plaintext-only", AtomicString::ConstructFromLiteral));
+        setAttributeWithoutSynchronization(contenteditableAttr, AtomicString("plaintext-only", AtomicString::ConstructFromLiteral));
     else if (equalLettersIgnoringASCIICase(enabled, "inherit"))
         removeAttribute(contenteditableAttr);
     else
@@ -777,12 +777,12 @@ void HTMLElement::setContentEditable(const String& enabled, ExceptionCode& ec)
 
 bool HTMLElement::draggable() const
 {
-    return equalLettersIgnoringASCIICase(fastGetAttribute(draggableAttr), "true");
+    return equalLettersIgnoringASCIICase(attributeWithoutSynchronization(draggableAttr), "true");
 }
 
 void HTMLElement::setDraggable(bool value)
 {
-    setAttribute(draggableAttr, value
+    setAttributeWithoutSynchronization(draggableAttr, value
         ? AtomicString("true", AtomicString::ConstructFromLiteral)
         : AtomicString("false", AtomicString::ConstructFromLiteral));
 }
@@ -794,7 +794,7 @@ bool HTMLElement::spellcheck() const
 
 void HTMLElement::setSpellcheck(bool enable)
 {
-    setAttribute(spellcheckAttr, enable
+    setAttributeWithoutSynchronization(spellcheckAttr, enable
         ? AtomicString("true", AtomicString::ConstructFromLiteral)
         : AtomicString("false", AtomicString::ConstructFromLiteral));
 }
@@ -811,7 +811,7 @@ void HTMLElement::accessKeyAction(bool sendMouseEvents)
 
 String HTMLElement::title() const
 {
-    return fastGetAttribute(titleAttr);
+    return attributeWithoutSynchronization(titleAttr);
 }
 
 int HTMLElement::tabIndex() const
@@ -823,7 +823,7 @@ int HTMLElement::tabIndex() const
 
 TranslateAttributeMode HTMLElement::translateAttributeMode() const
 {
-    const AtomicString& value = fastGetAttribute(translateAttr);
+    const AtomicString& value = attributeWithoutSynchronization(translateAttr);
 
     if (value.isNull())
         return TranslateAttributeInherit;
@@ -851,7 +851,7 @@ bool HTMLElement::translate() const
 
 void HTMLElement::setTranslate(bool enable)
 {
-    setAttribute(translateAttr, enable ? "yes" : "no");
+    setAttributeWithoutSynchronization(translateAttr, enable ? "yes" : "no");
 }
 
 bool HTMLElement::rendererIsNeeded(const RenderStyle& style)
@@ -883,7 +883,7 @@ static inline bool elementAffectsDirectionality(const Node& node)
     if (!is<HTMLElement>(node))
         return false;
     const HTMLElement& element = downcast<HTMLElement>(node);
-    return is<HTMLBDIElement>(element) || element.fastHasAttribute(dirAttr);
+    return is<HTMLBDIElement>(element) || element.hasAttributeWithoutSynchronization(dirAttr);
 }
 
 static void setHasDirAutoFlagRecursively(Node* firstNode, bool flag, Node* lastNode = nullptr)
@@ -917,7 +917,7 @@ void HTMLElement::childrenChanged(const ChildChange& change)
 
 bool HTMLElement::hasDirectionAuto() const
 {
-    const AtomicString& direction = fastGetAttribute(dirAttr);
+    const AtomicString& direction = attributeWithoutSynchronization(dirAttr);
     return (hasTagName(bdiTag) && direction.isNull()) || equalLettersIgnoringASCIICase(direction, "auto");
 }
 
@@ -954,7 +954,7 @@ TextDirection HTMLElement::directionality(Node** strongDirectionalityTextNode) c
 
         // Skip elements with valid dir attribute
         if (is<Element>(*node)) {
-            AtomicString dirAttributeValue = downcast<Element>(*node).fastGetAttribute(dirAttr);
+            AtomicString dirAttributeValue = downcast<Element>(*node).attributeWithoutSynchronization(dirAttr);
             if (isLTROrRTLIgnoringCase(dirAttributeValue) || equalLettersIgnoringASCIICase(dirAttributeValue, "auto")) {
                 node = NodeTraversal::nextSkippingChildren(*node, this);
                 continue;

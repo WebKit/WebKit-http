@@ -70,7 +70,7 @@
 #include "ShadowRoot.h"
 #include "SubmitInputType.h"
 #include "TelephoneInputType.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextInputType.h"
 #include "TimeInputType.h"
 #include "URLInputType.h"
@@ -1018,7 +1018,7 @@ void InputType::applyStep(int count, AnyStepHandling anyStepHandling, TextFieldE
     if (newValue < stepRange.minimum())
         newValue = stepRange.minimum();
 
-    if (!equalLettersIgnoringASCIICase(element().fastGetAttribute(stepAttr), "any"))
+    if (!equalLettersIgnoringASCIICase(element().attributeWithoutSynchronization(stepAttr), "any"))
         newValue = stepRange.alignValueForStep(current, newValue);
 
     if (newValue - stepRange.maximum() > acceptableErrorValue) {

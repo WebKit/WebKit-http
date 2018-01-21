@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Frédéric Wang (fred.wang@free.fr). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +24,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLToken_h
-#define RenderMathMLToken_h
+#pragma once
 
 #if ENABLE(MATHML)
 
 #include "MathMLTextElement.h"
 #include "RenderMathMLBlock.h"
-#include "RenderText.h"
 
 namespace WebCore {
-    
+
 class RenderMathMLToken : public RenderMathMLBlock {
 public:
     RenderMathMLToken(Element&, RenderStyle&&);
@@ -41,22 +40,29 @@ public:
 
     MathMLTextElement& element() { return static_cast<MathMLTextElement&>(nodeForNonAnonymous()); }
 
-    bool isChildAllowed(const RenderObject&, const RenderStyle&) const override { return true; };
-    void addChild(RenderObject* newChild, RenderObject* beforeChild) override;
     virtual void updateTokenContent();
     void updateFromElement() override;
 
 protected:
-    void createWrapperIfNeeded();
+    void paint(PaintInfo&, const LayoutPoint&) override;
+    void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) override;
+    Optional<int> firstLineBaseline() const override;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+    void computePreferredLogicalWidths() override;
 
 private:
     bool isRenderMathMLToken() const final { return true; }
-    const char* renderName() const override { return isAnonymous() ? "RenderMathMLToken (anonymous)" : "RenderMathMLToken"; }
+    const char* renderName() const override { return "RenderMathMLToken"; }
+    bool isChildAllowed(const RenderObject&, const RenderStyle&) const final { return true; };
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    virtual void updateStyle();
-
-    // This boolean indicates whether the token element contains some RenderElement descendants, other than the anonymous renderers created for layout purpose.
-    bool m_containsElement;
+    void updateMathVariantGlyph();
+    void setMathVariantGlyphDirty()
+    {
+        m_mathVariantGlyphDirty = true;
+        setNeedsLayoutAndPrefWidthsRecalc();
+    }
+    GlyphData m_mathVariantGlyph;
+    bool m_mathVariantGlyphDirty;
 };
 
 } // namespace WebCore
@@ -64,4 +70,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLToken, isRenderMathMLToken())
 
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLToken_h

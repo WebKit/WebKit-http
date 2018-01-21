@@ -53,7 +53,7 @@ Ref<HTMLButtonElement> HTMLButtonElement::create(const QualifiedName& tagName, D
 
 void HTMLButtonElement::setType(const AtomicString& type)
 {
-    setAttribute(typeAttr, type);
+    setAttributeWithoutSynchronization(typeAttr, type);
 }
 
 RenderPtr<RenderElement> HTMLButtonElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
@@ -206,7 +206,7 @@ bool HTMLButtonElement::isURLAttribute(const Attribute& attribute) const
 
 const AtomicString& HTMLButtonElement::value() const
 {
-    return fastGetAttribute(valueAttr);
+    return attributeWithoutSynchronization(valueAttr);
 }
 
 bool HTMLButtonElement::computeWillValidate() const

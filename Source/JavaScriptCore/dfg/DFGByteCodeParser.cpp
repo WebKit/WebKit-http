@@ -42,9 +42,10 @@
 #include "DFGJITCode.h"
 #include "GetByIdStatus.h"
 #include "Heap.h"
-#include "JSLexicalEnvironment.h"
 #include "JSCInlines.h"
+#include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
+#include "NumberConstructor.h"
 #include "ObjectConstructor.h"
 #include "PreciseJumpTargets.h"
 #include "PutByIdFlags.h"
@@ -215,7 +216,7 @@ private:
     template<typename ChecksFunctor>
     bool handleTypedArrayConstructor(int resultOperand, InternalFunction*, int registerOffset, int argumentCountIncludingThis, TypedArrayType, const ChecksFunctor& insertChecks);
     template<typename ChecksFunctor>
-    bool handleConstantInternalFunction(Node* callTargetNode, int resultOperand, InternalFunction*, int registerOffset, int argumentCountIncludingThis, CodeSpecializationKind, const ChecksFunctor& insertChecks);
+    bool handleConstantInternalFunction(Node* callTargetNode, int resultOperand, InternalFunction*, int registerOffset, int argumentCountIncludingThis, CodeSpecializationKind, SpeculatedType, const ChecksFunctor& insertChecks);
     Node* handlePutByOffset(Node* base, unsigned identifier, PropertyOffset, const InferredType::Descriptor&, Node* value);
     Node* handleGetByOffset(SpeculatedType, Node* base, unsigned identifierNumber, PropertyOffset, const InferredType::Descriptor&, NodeType = GetByOffset);
 
@@ -330,10 +331,10 @@ private:
         if (inlineCallFrame()) {
             if (!inlineCallFrame()->isClosureCall) {
                 JSFunction* callee = inlineCallFrame()->calleeConstant();
-                if (operand.offset() == JSStack::Callee)
+                if (operand.offset() == CallFrameSlot::callee)
                     return weakJSConstant(callee);
             }
-        } else if (operand.offset() == JSStack::Callee) {
+        } else if (operand.offset() == CallFrameSlot::callee) {
             // We have to do some constant-folding here because this enables CreateThis folding. Note
             // that we don't have such watchpoint-based folding for inlined uses of Callee, since in that
             // case if the function is a singleton then we already know it.
@@ -541,7 +542,7 @@ private:
             InlineCallFrame* inlineCallFrame = stack->m_inlineCallFrame;
             if (!inlineCallFrame)
                 break;
-            if (operand.offset() < static_cast<int>(inlineCallFrame->stackOffset + JSStack::CallFrameHeaderSize))
+            if (operand.offset() < static_cast<int>(inlineCallFrame->stackOffset + CallFrame::headerSizeInRegisters))
                 continue;
             if (operand.offset() == inlineCallFrame->stackOffset + CallFrame::thisArgumentOffset())
                 continue;
@@ -596,9 +597,9 @@ private:
             ASSERT(!m_hasDebuggerEnabled);
             numArguments = inlineCallFrame->arguments.size();
             if (inlineCallFrame->isClosureCall)
-                flushDirect(inlineStackEntry->remapOperand(VirtualRegister(JSStack::Callee)));
+                flushDirect(inlineStackEntry->remapOperand(VirtualRegister(CallFrameSlot::callee)));
             if (inlineCallFrame->isVarargs())
-                flushDirect(inlineStackEntry->remapOperand(VirtualRegister(JSStack::ArgumentCount)));
+                flushDirect(inlineStackEntry->remapOperand(VirtualRegister(CallFrameSlot::argumentCount)));
         } else
             numArguments = inlineStackEntry->m_codeBlock->numParameters();
         for (unsigned argument = numArguments; argument-- > 1;)
@@ -765,9 +766,9 @@ private:
         OpInfo prediction)
     {
         addVarArgChild(callee);
-        size_t frameSize = JSStack::CallFrameHeaderSize + argCount;
+        size_t frameSize = CallFrame::headerSizeInRegisters + argCount;
         size_t alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
-        size_t parameterSlots = alignedFrameSize - JSStack::CallerFrameAndPCSize;
+        size_t parameterSlots = alignedFrameSize - CallerFrameAndPC::sizeInRegisters;
 
         if (parameterSlots > m_parameterSlots)
             m_parameterSlots = parameterSlots;
@@ -1336,7 +1337,7 @@ Node* ByteCodeParser::getArgumentCount()
     Node* argumentCount;
     if (m_inlineStackTop->m_inlineCallFrame) {
         if (m_inlineStackTop->m_inlineCallFrame->isVarargs())
-            argumentCount = get(VirtualRegister(JSStack::ArgumentCount));
+            argumentCount = get(VirtualRegister(CallFrameSlot::argumentCount));
         else
             argumentCount = jsConstant(m_graph.freeze(jsNumber(m_inlineStackTop->m_inlineCallFrame->arguments.size()))->value());
     } else
@@ -1471,11 +1472,11 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
 
     // FIXME: Don't flush constants!
     
-    int inlineCallFrameStart = m_inlineStackTop->remapOperand(VirtualRegister(registerOffset)).offset() + JSStack::CallFrameHeaderSize;
+    int inlineCallFrameStart = m_inlineStackTop->remapOperand(VirtualRegister(registerOffset)).offset() + CallFrame::headerSizeInRegisters;
     
     ensureLocals(
         VirtualRegister(inlineCallFrameStart).toLocal() + 1 +
-        JSStack::CallFrameHeaderSize + codeBlock->m_numCalleeLocals);
+        CallFrame::headerSizeInRegisters + codeBlock->m_numCalleeLocals);
     
     size_t argumentPositionStart = m_graph.m_argumentPositions.size();
 
@@ -1486,7 +1487,7 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
     VariableAccessData* calleeVariable = nullptr;
     if (callee.isClosureCall()) {
         Node* calleeSet = set(
-            VirtualRegister(registerOffset + JSStack::Callee), callTargetNode, ImmediateNakedSet);
+            VirtualRegister(registerOffset + CallFrameSlot::callee), callTargetNode, ImmediateNakedSet);
         
         calleeVariable = calleeSet->variableAccessData();
         calleeVariable->mergeShouldNeverUnbox(true);
@@ -1651,7 +1652,7 @@ bool ByteCodeParser::attemptToInlineCall(Node* callTargetNode, int resultOperand
         };
     
         if (InternalFunction* function = callee.internalFunction()) {
-            if (handleConstantInternalFunction(callTargetNode, resultOperand, function, registerOffset, argumentCountIncludingThis, specializationKind, insertChecksWithAccounting)) {
+            if (handleConstantInternalFunction(callTargetNode, resultOperand, function, registerOffset, argumentCountIncludingThis, specializationKind, prediction, insertChecksWithAccounting)) {
                 RELEASE_ASSERT(didInsertChecks);
                 addToGraph(Phantom, callTargetNode);
                 emitArgumentPhantoms(registerOffset, argumentCountIncludingThis);
@@ -1745,7 +1746,7 @@ bool ByteCodeParser::handleInlining(
             
             registerOffset = registerOffsetOrFirstFreeReg + 1;
             registerOffset -= maxNumArguments; // includes "this"
-            registerOffset -= JSStack::CallFrameHeaderSize;
+            registerOffset -= CallFrame::headerSizeInRegisters;
             registerOffset = -WTF::roundUpToMultipleOf(
                 stackAlignmentRegisters(),
                 -registerOffset);
@@ -1765,13 +1766,13 @@ bool ByteCodeParser::handleInlining(
                     
                     ensureLocals(VirtualRegister(remappedRegisterOffset).toLocal());
                     
-                    int argumentStart = registerOffset + JSStack::CallFrameHeaderSize;
+                    int argumentStart = registerOffset + CallFrame::headerSizeInRegisters;
                     int remappedArgumentStart =
                         m_inlineStackTop->remapOperand(VirtualRegister(argumentStart)).offset();
 
                     LoadVarargsData* data = m_graph.m_loadVarargsData.add();
                     data->start = VirtualRegister(remappedArgumentStart + 1);
-                    data->count = VirtualRegister(remappedRegisterOffset + JSStack::ArgumentCount);
+                    data->count = VirtualRegister(remappedRegisterOffset + CallFrameSlot::argumentCount);
                     data->offset = argumentsOffset;
                     data->limit = maxNumArguments;
                     data->mandatoryMinimum = mandatoryMinimum;
@@ -1792,7 +1793,7 @@ bool ByteCodeParser::handleInlining(
                     // before SSA.
             
                     VariableAccessData* countVariable = newVariableAccessData(
-                        VirtualRegister(remappedRegisterOffset + JSStack::ArgumentCount));
+                        VirtualRegister(remappedRegisterOffset + CallFrameSlot::argumentCount));
                     // This is pretty lame, but it will force the count to be flushed as an int. This doesn't
                     // matter very much, since our use of a SetArgument and Flushes for this local slot is
                     // mostly just a formality.
@@ -1903,7 +1904,7 @@ bool ByteCodeParser::handleInlining(
     // yet.
     if (verbose)
         dataLog("Register offset: ", registerOffset);
-    VirtualRegister calleeReg(registerOffset + JSStack::Callee);
+    VirtualRegister calleeReg(registerOffset + CallFrameSlot::callee);
     calleeReg = m_inlineStackTop->remapOperand(calleeReg);
     if (verbose)
         dataLog("Callee is going to be ", calleeReg, "\n");
@@ -2637,7 +2638,7 @@ bool ByteCodeParser::handleTypedArrayConstructor(
 template<typename ChecksFunctor>
 bool ByteCodeParser::handleConstantInternalFunction(
     Node* callTargetNode, int resultOperand, InternalFunction* function, int registerOffset,
-    int argumentCountIncludingThis, CodeSpecializationKind kind, const ChecksFunctor& insertChecks)
+    int argumentCountIncludingThis, CodeSpecializationKind kind, SpeculatedType prediction, const ChecksFunctor& insertChecks)
 {
     if (verbose)
         dataLog("    Handling constant internal function ", JSValue(function), "\n");
@@ -2668,6 +2669,19 @@ bool ByteCodeParser::handleConstantInternalFunction(
             addToGraph(Node::VarArg, NewArray, OpInfo(ArrayWithUndecided), OpInfo(0)));
         return true;
     }
+
+    if (function->classInfo() == NumberConstructor::info()) {
+        if (kind == CodeForConstruct)
+            return false;
+
+        insertChecks();
+        if (argumentCountIncludingThis <= 1)
+            set(VirtualRegister(resultOperand), jsConstant(jsNumber(0)));
+        else
+            set(VirtualRegister(resultOperand), addToGraph(ToNumber, OpInfo(0), OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset))));
+
+        return true;
+    }
     
     if (function->classInfo() == StringConstructor::info()) {
         insertChecks();
@@ -2690,7 +2704,11 @@ bool ByteCodeParser::handleConstantInternalFunction(
     if (function->classInfo() == ObjectConstructor::info() && kind == CodeForCall) {
         insertChecks();
 
-        Node* result = addToGraph(CallObjectConstructor, get(virtualRegisterForArgument(1, registerOffset)));
+        Node* result;
+        if (argumentCountIncludingThis <= 1)
+            result = addToGraph(NewObject, OpInfo(function->globalObject()->objectStructureForObjectConstructor()));
+        else
+            result = addToGraph(CallObjectConstructor, get(virtualRegisterForArgument(1, registerOffset)));
         set(VirtualRegister(resultOperand), result);
         return true;
     }
@@ -3253,7 +3271,7 @@ void ByteCodeParser::handleGetById(
     int registerOffset = virtualRegisterForLocal(
         m_inlineStackTop->m_profiledBlock->m_numCalleeLocals - 1).offset();
     registerOffset -= numberOfParameters;
-    registerOffset -= JSStack::CallFrameHeaderSize;
+    registerOffset -= CallFrame::headerSizeInRegisters;
     
     // Get the alignment right.
     registerOffset = -WTF::roundUpToMultipleOf(
@@ -3270,7 +3288,7 @@ void ByteCodeParser::handleGetById(
     //    the dreaded arguments object on the getter, the right things happen. Well, sort of -
     //    since we only really care about 'this' in this case. But we're not going to take that
     //    shortcut.
-    int nextRegister = registerOffset + JSStack::CallFrameHeaderSize;
+    int nextRegister = registerOffset + CallFrame::headerSizeInRegisters;
     set(VirtualRegister(nextRegister++), base, ImmediateNakedSet);
 
     // We've set some locals, but they are not user-visible. It's still OK to exit from here.
@@ -3422,7 +3440,7 @@ void ByteCodeParser::handlePutById(
         int registerOffset = virtualRegisterForLocal(
             m_inlineStackTop->m_profiledBlock->m_numCalleeLocals - 1).offset();
         registerOffset -= numberOfParameters;
-        registerOffset -= JSStack::CallFrameHeaderSize;
+        registerOffset -= CallFrame::headerSizeInRegisters;
     
         // Get the alignment right.
         registerOffset = -WTF::roundUpToMultipleOf(
@@ -3433,7 +3451,7 @@ void ByteCodeParser::handlePutById(
             m_inlineStackTop->remapOperand(
                 VirtualRegister(registerOffset)).toLocal());
     
-        int nextRegister = registerOffset + JSStack::CallFrameHeaderSize;
+        int nextRegister = registerOffset + CallFrame::headerSizeInRegisters;
         set(VirtualRegister(nextRegister++), base, ImmediateNakedSet);
         set(VirtualRegister(nextRegister++), value, ImmediateNakedSet);
 
@@ -4954,7 +4972,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // only helps for the first basic block. It's extremely important not to constant fold
             // loads from the scope register later, as that would prevent the DFG from tracking the
             // bytecode-level liveness of the scope register.
-            Node* callee = get(VirtualRegister(JSStack::Callee));
+            Node* callee = get(VirtualRegister(CallFrameSlot::callee));
             Node* result;
             if (JSFunction* function = callee->dynamicCastConstant<JSFunction*>())
                 result = weakJSConstant(function->scope());
@@ -5046,9 +5064,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_to_number: {
-            Node* node = get(VirtualRegister(currentInstruction[2].u.operand));
-            addToGraph(Phantom, Edge(node, NumberUse));
-            set(VirtualRegister(currentInstruction[1].u.operand), node);
+            SpeculatedType prediction = getPrediction();
+            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(ToNumber, OpInfo(0), OpInfo(prediction), value));
             NEXT_OPCODE(op_to_number);
         }
 
@@ -5265,7 +5283,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         // The owner is the machine code block, and we already have a barrier on that when the
         // plan finishes.
         m_inlineCallFrame->baselineCodeBlock.setWithoutWriteBarrier(codeBlock->baselineVersion());
-        m_inlineCallFrame->setStackOffset(inlineCallFrameStart.offset() - JSStack::CallFrameHeaderSize);
+        m_inlineCallFrame->setStackOffset(inlineCallFrameStart.offset() - CallFrame::headerSizeInRegisters);
         if (callee) {
             m_inlineCallFrame->calleeRecovery = ValueRecovery::constant(callee);
             m_inlineCallFrame->isClosureCall = false;

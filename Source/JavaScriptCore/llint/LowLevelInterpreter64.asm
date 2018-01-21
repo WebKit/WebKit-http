@@ -140,7 +140,11 @@ macro doVMEntry(makeCall)
     # Ensure that we have enough additional stack capacity for the incoming args,
     # and the frame for the JS code we're executing. We need to do this check
     # before we start copying the args from the protoCallFrame below.
-    bpaeq t3, VM::m_jsStackLimit[vm], .stackHeightOK
+    if C_LOOP
+        bpaeq t3, VM::m_cloopStackLimit[vm], .stackHeightOK
+    else
+        bpaeq t3, VM::m_softStackLimit[vm], .stackHeightOK
+    end
 
     if C_LOOP
         move entry, t4
@@ -834,11 +838,12 @@ _llint_op_to_number:
     btqz t2, tagTypeNumber, .opToNumberSlow
 .opToNumberIsImmediate:
     storeq t2, [cfr, t1, 8]
-    dispatch(3)
+    valueProfile(t2, 3, t0)
+    dispatch(4)
 
 .opToNumberSlow:
     callOpcodeSlowPath(_slow_path_to_number)
-    dispatch(3)
+    dispatch(4)
 
 
 _llint_op_to_string:

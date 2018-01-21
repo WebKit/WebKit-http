@@ -45,6 +45,7 @@
 #include "LinkIconType.h"
 #include "MainFrame.h"
 #include "Page.h"
+#include "PageConsoleClient.h"
 #include "PaymentAuthorizationStatus.h"
 #include "PaymentContact.h"
 #include "PaymentCoordinator.h"
@@ -162,29 +163,29 @@ static Optional<int64_t> parseAmount(const String& amountString)
     return amount;
 }
 
-static Optional<PaymentRequest::AddressFields> createAddressFields(DOMWindow& window, const ArrayValue& addressFieldsArray)
+static Optional<PaymentRequest::ContactFields> createContactFields(DOMWindow& window, const ArrayValue& contactFieldsArray)
 {
-    PaymentRequest::AddressFields result;
+    PaymentRequest::ContactFields result;
 
-    size_t addressFieldsCount;
-    if (!addressFieldsArray.length(addressFieldsCount))
+    size_t contactFieldsCount;
+    if (!contactFieldsArray.length(contactFieldsCount))
         return Nullopt;
 
-    for (size_t i = 0; i < addressFieldsCount; ++i) {
-        String addressField;
-        if (!addressFieldsArray.get(i, addressField))
+    for (size_t i = 0; i < contactFieldsCount; ++i) {
+        String contactField;
+        if (!contactFieldsArray.get(i, contactField))
             return Nullopt;
 
-        if (addressField == "postalAddress")
+        if (contactField == "postalAddress")
             result.postalAddress = true;
-        else if (addressField == "phone")
+        else if (contactField == "phone")
             result.phone = true;
-        else if (addressField == "email")
+        else if (contactField == "email")
             result.email = true;
-        else if (addressField == "name")
+        else if (contactField == "name")
             result.name = true;
         else {
-            auto message = makeString("\"" + addressField, "\" is not a valid address field.");
+            auto message = makeString("\"" + contactField, "\" is not a valid contact field.");
             window.printErrorMessage(message);
             return Nullopt;
         }
@@ -462,14 +463,19 @@ static bool isValidPaymentRequestPropertyName(const String& propertyName)
         "supportedNetworks",
         "countryCode",
         "currencyCode",
-        "requiredBillingAddressFields",
+        "requiredBillingContactFields",
         "billingContact",
-        "requiredShippingAddressFields",
+        "requiredShippingContactFields",
         "shippingContact",
+        "shippingType",
         "shippingMethods",
         "total",
         "lineItems",
         "applicationData",
+
+        // FIXME: Get rid of these.
+        "requiredBillingAddressFields",
+        "requiredShippingAddressFields",
     };
 
     for (auto& validPropertyName : validPropertyNames) {
@@ -516,13 +522,23 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
     if (auto currencyCode = dictionary.get<String>("currencyCode"))
         paymentRequest.setCurrencyCode(*currencyCode);
 
-    if (auto requiredBillingAddressFieldsArray = dictionary.get<ArrayValue>("requiredBillingAddressFields")) {
-        auto requiredBillingAddressFields = createAddressFields(window, *requiredBillingAddressFieldsArray);
+    if (auto requiredBillingContactFieldsArray = dictionary.get<ArrayValue>("requiredBillingContactFields")) {
+        auto requiredBillingContactFields = createContactFields(window, *requiredBillingContactFieldsArray);
+        if (!requiredBillingContactFields)
+            return Nullopt;
+
+        paymentRequest.setRequiredBillingContactFields(*requiredBillingContactFields);
+    } else if (auto requiredBillingAddressFieldsArray = dictionary.get<ArrayValue>("requiredBillingAddressFields")) {
+        if (PageConsoleClient* pageConsole = window.console())
+            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredBillingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredBillingContactFields\" instead.");
+
+        auto requiredBillingAddressFields = createContactFields(window, *requiredBillingAddressFieldsArray);
         if (!requiredBillingAddressFields)
             return Nullopt;
 
-        paymentRequest.setRequiredBillingAddressFields(*requiredBillingAddressFields);
+        paymentRequest.setRequiredBillingContactFields(*requiredBillingAddressFields);
     }
+
 
     if (auto billingContactValue = dictionary.get<JSC::JSValue>("billingContact")) {
         String errorMessage;
@@ -535,13 +551,23 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
         paymentRequest.setBillingContact(*billingContact);
     }
 
-    if (auto requiredShippingAddressFieldsArray = dictionary.get<ArrayValue>("requiredShippingAddressFields")) {
-        auto requiredShippingAddressFields = createAddressFields(window, *requiredShippingAddressFieldsArray);
+    if (auto requiredShippingContactFieldsArray = dictionary.get<ArrayValue>("requiredShippingContactFields")) {
+        auto requiredShippingContactFields = createContactFields(window, *requiredShippingContactFieldsArray);
+        if (!requiredShippingContactFields)
+            return Nullopt;
+
+        paymentRequest.setRequiredShippingContactFields(*requiredShippingContactFields);
+    } else if (auto requiredShippingAddressFieldsArray = dictionary.get<ArrayValue>("requiredShippingAddressFields")) {
+        if (PageConsoleClient* pageConsole = window.console())
+            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredShippingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredShippingContactFields\" instead.");
+
+        auto requiredShippingAddressFields = createContactFields(window, *requiredShippingAddressFieldsArray);
         if (!requiredShippingAddressFields)
             return Nullopt;
 
-        paymentRequest.setRequiredShippingAddressFields(*requiredShippingAddressFields);
+        paymentRequest.setRequiredShippingContactFields(*requiredShippingAddressFields);
     }
+
 
     if (auto shippingContactValue = dictionary.get<JSC::JSValue>("shippingContact")) {
         String errorMessage;
@@ -646,9 +672,16 @@ RefPtr<ApplePaySession> ApplePaySession::create(Document& document, unsigned ver
         return nullptr;
     }
 
+    if (!ScriptController::processingUserGesture()) {
+        window.printErrorMessage("Must create a new ApplePaySession from a user gesture handler.");
+        ec = INVALID_ACCESS_ERR;
+        return nullptr;
+    }
+
     auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
 
-    if (!paymentCoordinator.supportsVersion(version)) {
+    if (!version || !paymentCoordinator.supportsVersion(version)) {
+        window.printErrorMessage(makeString("\"" + String::number(version), "\" is not a supported version."));
         ec = INVALID_ACCESS_ERR;
         return nullptr;
     }
@@ -760,13 +793,6 @@ void ApplePaySession::begin(ExceptionCode& ec)
     auto& document = *downcast<Document>(scriptExecutionContext());
     auto& window = *document.domWindow();
 
-    if (!ScriptController::processingUserGesture()) {
-        window.printErrorMessage("Must call ApplePaySession.begin from a user gesture handler.");
-
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
     if (!canBegin()) {
         window.printErrorMessage("Payment session is already active.");
         ec = INVALID_ACCESS_ERR;
@@ -780,15 +806,18 @@ void ApplePaySession::begin(ExceptionCode& ec)
         return;
     }
 
-    paymentCoordinator().beginPaymentSession(*this);
-
     Vector<URL> linkIconURLs;
     for (auto& icon : LinkIconCollector { document }.iconsOfTypes({ LinkIconType::TouchIcon, LinkIconType::TouchPrecomposedIcon }))
         linkIconURLs.append(icon.url);
 
-    m_state = State::Active;
+    if (!paymentCoordinator().beginPaymentSession(*this, document.url(), linkIconURLs, m_paymentRequest)) {
+        window.printErrorMessage("There is already has an active payment session.");
 
-    paymentCoordinator().showPaymentUI(document.url(), linkIconURLs, m_paymentRequest);
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    m_state = State::Active;
 
     setPendingActivity(this);
 }
@@ -806,47 +835,6 @@ void ApplePaySession::abort(ExceptionCode& ec)
     didReachFinalState();
 }
 
-static Optional<PaymentMerchantSession> createMerchantSession(DOMWindow& window, const Dictionary& merchantSessionDictionary)
-{
-    auto merchantIdentifier = merchantSessionDictionary.get<String>("merchantIdentifier");
-    if (!merchantIdentifier) {
-        window.printErrorMessage("Missing merchant identifier.");
-        return Nullopt;
-    }
-
-    auto sessionIdentifier = merchantSessionDictionary.get<String>("merchantSessionIdentifier");
-    if (!sessionIdentifier) {
-        window.printErrorMessage("Missing merchant session identifier.");
-        return Nullopt;
-    }
-
-    auto nonce = merchantSessionDictionary.get<String>("nonce");
-    if (!nonce) {
-        window.printErrorMessage("Missing nonce.");
-        return Nullopt;
-    }
-
-    auto domainName = merchantSessionDictionary.get<String>("domainName");
-    if (!domainName) {
-        window.printErrorMessage("Missing domain name.");
-        return Nullopt;
-    }
-
-    auto epochTimestamp = merchantSessionDictionary.get<uint64_t>("epochTimestamp");
-    if (!epochTimestamp) {
-        window.printErrorMessage("Missing epoch time stamp.");
-        return Nullopt;
-    }
-
-    auto signature = merchantSessionDictionary.get<String>("signature");
-    if (!signature) {
-        window.printErrorMessage("Missing signature.");
-        return Nullopt;
-    }
-
-    return PaymentMerchantSession { *merchantIdentifier, *sessionIdentifier, *nonce, *domainName, *epochTimestamp, *signature };
-}
-
 void ApplePaySession::completeMerchantValidation(const Dictionary& merchantSessionDictionary, ExceptionCode& ec)
 {
     if (!canCompleteMerchantValidation()) {
@@ -857,8 +845,10 @@ void ApplePaySession::completeMerchantValidation(const Dictionary& merchantSessi
     auto& document = *downcast<Document>(scriptExecutionContext());
     auto& window = *document.domWindow();
 
-    auto merchantSession = createMerchantSession(window, merchantSessionDictionary);
+    String errorMessage;
+    auto merchantSession = PaymentMerchantSession::fromJS(*merchantSessionDictionary.execState(), merchantSessionDictionary.initializerObject(), errorMessage);
     if (!merchantSession) {
+        window.printErrorMessage(errorMessage);
         ec = INVALID_ACCESS_ERR;
         return;
     }
