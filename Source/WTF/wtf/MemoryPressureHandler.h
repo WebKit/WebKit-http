@@ -89,6 +89,8 @@ public:
     void setUnderMemoryPressure(bool);
 
 #if OS(LINUX)
+    static void waitForMemoryPressureEvent(void*);
+    static void pollMemoryPressure();
     void setMemoryPressureMonitorHandle(int fd);
 #endif
 
@@ -183,9 +185,8 @@ private:
         WTF::Function<void ()> m_notifyHandler;
 #if USE(GLIB)
         GRefPtr<GSource> m_source;
-#else
-        RefPtr<Thread> m_thread;
 #endif
+        RefPtr<Thread> m_thread;
     };
 #endif
 

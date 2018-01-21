@@ -31,6 +31,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <malloc.h>
 #include <sys/eventfd.h>
 #include <sys/stat.h>
@@ -39,6 +40,7 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 #include <wtf/MemoryFootprint.h>
+#include <wtf/Threading.h>
 #include <wtf/linux/CurrentProcessMemoryStatus.h>
 #include <wtf/text/WTFString.h>
 
@@ -63,9 +65,18 @@ static const unsigned s_minimumHoldOffTime = 5;
 static const unsigned s_maximumHoldOffTime = 30;
 static const size_t s_minimumBytesFreedToUseMinimumHoldOffTime = 1 * MB;
 static const unsigned s_holdOffMultiplier = 20;
+static const unsigned s_pollTimeSec = 1;
+static const size_t s_memCriticalLimit = 3 * KB * KB; // 3 MB
+static const size_t s_memNonCriticalLimit = 5 * KB * KB; // 5 MB
+static size_t s_pollMaximumProcessMemoryCriticalLimit = 0;
+static size_t s_pollMaximumProcessMemoryNonCriticalLimit = 0;
 
 static const char* s_cgroupMemoryPressureLevel = "/sys/fs/cgroup/memory/memory.pressure_level";
 static const char* s_cgroupEventControl = "/sys/fs/cgroup/memory/cgroup.event_control";
+
+static const char* s_processStatus = "/proc/self/status";
+static const char* s_memInfo = "/proc/meminfo";
+static const char* s_cmdline = "/proc/self/cmdline";
 
 #if USE(GLIB)
 typedef struct {
@@ -104,6 +115,14 @@ MemoryPressureHandler::EventFDPoller::EventFDPoller(int fd, WTF::Function<void (
     , m_notifyHandler(WTFMove(notifyHandler))
 {
 #if USE(GLIB)
+    if (m_fd.value() == -1) {
+        m_thread = Thread::create("WTF: MemoryPressureHandler",
+            [this] {
+                pollMemoryPressure();
+            });
+        return;
+    }
+
     m_source = adoptGRef(g_source_new(&eventFDSourceFunctions, sizeof(EventFDSource)));
     g_source_set_priority(m_source.get(), RunLoopSourcePriority::MemoryPressureHandlerTimer);
     g_source_set_name(m_source.get(), "WTF: MemoryPressureHandler");
@@ -131,10 +150,11 @@ MemoryPressureHandler::EventFDPoller::~EventFDPoller()
 {
     m_fd = std::nullopt;
 #if USE(GLIB)
-    g_source_destroy(m_source.get());
-#else
-    m_thread->detach();
+    if (m_source)
+        g_source_destroy(m_source.get());
 #endif
+    if (m_thread)
+        m_thread->detach();
 }
 
 static inline bool isFatalReadError(int error)
@@ -167,6 +187,139 @@ void MemoryPressureHandler::EventFDPoller::readAndNotify() const
     m_notifyHandler();
 }
 
+static inline String nextToken(FILE* file)
+{
+    if (!file)
+        return String();
+
+    static const unsigned bufferSize = 128;
+    char buffer[bufferSize] = {0, };
+    unsigned index = 0;
+    while (index < bufferSize) {
+        int ch = fgetc(file);
+        if (ch == EOF || (isASCIISpace(ch) && index)) // Break on non-initial ASCII space.
+            break;
+        if (!isASCIISpace(ch)) {
+            buffer[index] = ch;
+            index++;
+        }
+    }
+
+    return String(buffer);
+}
+
+size_t readToken(const char* filename, const char* key, size_t fileUnits)
+{
+    size_t result = static_cast<size_t>(-1);
+    FILE* file = fopen(filename, "r");
+    if (!file)
+        return result;
+
+    String token = nextToken(file);
+    while (!token.isEmpty()) {
+        if (token == key) {
+            result = nextToken(file).toUInt64() * fileUnits;
+            break;
+        }
+        token = nextToken(file);
+    }
+    fclose(file);
+    return result;
+}
+
+static String getProcessName()
+{
+    FILE* file = fopen(s_cmdline, "r");
+    if (!file)
+        return String();
+
+    String result = nextToken(file);
+    fclose(file);
+
+    return result;
+}
+
+static bool defaultPollMaximumProcessMemory(size_t &criticalLimit, size_t &nonCriticalLimit)
+{
+    // Syntax: Case insensitive, process name, wildcard (*), unit multipliers (M=Mb, K=Kb, <empty>=bytes).
+    // Example: WPE_POLL_MAX_MEMORY='WPEWebProcess:500M,*Process:150M'
+
+    String processName(getProcessName().convertToLowercaseWithoutLocale());
+    String s(getenv("WPE_POLL_MAX_MEMORY"));
+    if (!s.isEmpty()) {
+        Vector<String> entries;
+        s.split(',', false, entries);
+        for (const String& entry : entries) {
+            Vector<String> keyvalue;
+            entry.split(':', false, keyvalue);
+            if (keyvalue.size() != 2)
+                continue;
+            String key = "*"+keyvalue[0].stripWhiteSpace().convertToLowercaseWithoutLocale();
+            String value = keyvalue[1].stripWhiteSpace().convertToLowercaseWithoutLocale();
+            size_t units = 1;
+            if (value.endsWith('k'))
+                units = 1024;
+            else if (value.endsWith('m'))
+                units = 1024 * 1024;
+            if (units != 1)
+                value = value.substring(0, value.length()-1);
+            bool ok = false;
+            size_t size = size_t(value.toUInt64(&ok));
+            if (!ok)
+                continue;
+
+            if (!fnmatch(key.utf8().data(), processName.utf8().data(), 0)) {
+                criticalLimit = size * units;
+                nonCriticalLimit = criticalLimit * 0.95; //0.75;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+void MemoryPressureHandler::pollMemoryPressure()
+{
+    ASSERT(!isMainThread());
+
+    bool critical;
+    String processName(getProcessName());
+    do {
+        if (s_pollMaximumProcessMemoryCriticalLimit) {
+            size_t vmRSS = readToken(s_processStatus, "VmRSS:", KB);
+
+            if (!vmRSS)
+                return;
+
+            if (vmRSS > s_pollMaximumProcessMemoryNonCriticalLimit) {
+                critical = vmRSS > s_pollMaximumProcessMemoryCriticalLimit;
+                break;
+            }
+        }
+
+        size_t memFree = readToken(s_memInfo, "MemFree:", KB);
+
+        if (!memFree)
+            return;
+
+        if (memFree < s_memNonCriticalLimit) {
+            critical = memFree < s_memCriticalLimit;
+            break;
+        }
+
+        sleep(s_pollTimeSec);
+    } while (true);
+
+    if (ReliefLogger::loggingEnabled())
+        LOG(MemoryPressure, "Polled memory pressure (%s)", critical ? "critical" : "non-critical");
+
+    MemoryPressureHandler::singleton().setUnderMemoryPressure(critical);
+    callOnMainThread([critical] {
+        MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
+    });
+}
+
 inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
 {
     if (log)
@@ -184,6 +337,12 @@ inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
 
 bool MemoryPressureHandler::tryEnsureEventFD()
 {
+    // If the env var to use the poll method based on meminfo is set, this method overrides anything else.
+    if (m_eventFD != -1 && defaultPollMaximumProcessMemory(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit)) {
+        m_eventFD = -1;
+        return true;
+    }
+
     if (m_eventFD)
         return true;
 
@@ -295,6 +454,7 @@ void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchrono
 
     double startTime = monotonicallyIncreasingTime();
     int64_t processMemory = processMemoryUsage();
+
     releaseMemory(critical, synchronous);
     int64_t bytesFreed = processMemory - processMemoryUsage();
     unsigned holdOffTime = s_maximumHoldOffTime;
