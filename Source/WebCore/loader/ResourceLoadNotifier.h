@@ -59,6 +59,8 @@ public:
     void didReceiveData(ResourceLoader*, const char*, int dataLength, int encodedDataLength);
     void didFinishLoad(ResourceLoader*, double finishTime);
     void didFailToLoad(ResourceLoader*, const ResourceError&);
+    void didCancelAuthenticationChallenge(long unsigned int, WebCore::DocumentLoader*, const WebCore::AuthenticationChallenge&);
+    void didCancelAuthenticationChallenge(WebCore::ResourceLoader*, const WebCore::AuthenticationChallenge&);
 
     void assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*, const ResourceRequest&);
     void dispatchWillSendRequest(DocumentLoader*, unsigned long identifier, ResourceRequest&, const ResourceResponse& redirectResponse);

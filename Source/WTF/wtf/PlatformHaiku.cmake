@@ -1,6 +1,8 @@
 LIST(APPEND WTF_SOURCES
 	PlatformUserPreferredLanguagesHaiku.cpp
 
+    text/haiku/TextBreakIteratorInternalICUHaiku.cpp
+
     haiku/MainThreadHaiku.cpp
 
 	generic/RunLoopGeneric.cpp

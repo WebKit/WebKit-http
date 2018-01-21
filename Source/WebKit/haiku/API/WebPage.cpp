@@ -237,7 +237,7 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     RefPtr<WebViewGroup> viewGroup = WebViewGroup::getOrCreate("default",
         storagePath.Path());
 
-    PageConfiguration pageClients(makeUniqueRef<EditorClientHaiku>(this), makeUniqueRef<SocketProvider>());
+    PageConfiguration pageClients(makeUniqueRef<EditorClientHaiku>(this), SocketProvider::create());
 	//pageClients.backForwardClient = this;
 	//pluginClient
 	//validationMessageClient

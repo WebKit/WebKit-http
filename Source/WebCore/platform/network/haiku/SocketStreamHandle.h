@@ -49,8 +49,8 @@ namespace WebCore {
 
     class SocketStreamHandle : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
     public:
-        static 				PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext& context, bool)
-								{ return adoptRef(new SocketStreamHandle(url, client)); }
+        static 				Ref<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient& client, NetworkingContext& context, SessionID id)
+								{ return adoptRef(*new SocketStreamHandle(url, client)); }
         virtual 			~SocketStreamHandle();
 
     protected:
@@ -58,7 +58,7 @@ namespace WebCore {
         virtual void 		platformClose() override;
 
     private:
-        					SocketStreamHandle(const URL&, SocketStreamHandleClient*);
+        					SocketStreamHandle(const URL&, SocketStreamHandleClient&);
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);

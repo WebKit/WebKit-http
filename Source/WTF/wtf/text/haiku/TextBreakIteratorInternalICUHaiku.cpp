@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
+ * Copyright (C) 2007 Alp Toker <alp@atoker.com>
+ * Copyright (C) 2009-2010 ProFUSION embedded systems
+ * Copyright (C) 2009-2010 Samsung Electronics
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -13,41 +15,24 @@
  *
  * You should have received a copy of the GNU Library General Public License
  * along with this library; see the file COPYING.LIB.  If not, write to
- * the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
- *
+ * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
  */
 
 #include "config.h"
 #include "TextBreakIteratorInternalICU.h"
 
-#include <mutex>
-
-#include "Language.h"
-#include <wtf/text/CString.h>
-#include <wtf/text/WTFString.h>
-
-namespace WebCore {
-
-static std::once_flag defaultLanguageCacheOnceFlag;
-static CString defaultLanguageCache;
-
-static void defaultLanguageCacheOnce()
-{
-    defaultLanguageCache = defaultLanguage().utf8();
-}
+namespace WTF {
 
 const char* currentSearchLocaleID()
 {
-    std::call_once(defaultLanguageCacheOnceFlag, defaultLanguageCacheOnce);
-    return defaultLanguageCache.data();
+    // FIXME: Should use system locale.
+    return "";
 }
 
 const char* currentTextBreakLocaleID()
 {
-    std::call_once(defaultLanguageCacheOnceFlag, defaultLanguageCacheOnce);
-    return defaultLanguageCache.data();
+    return "en_us";
 }
 
-} // namespace WebCore
-
+}

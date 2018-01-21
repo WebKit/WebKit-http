@@ -155,7 +155,6 @@ list(APPEND WebCore_SOURCES
   platform/text/Hyphenation.cpp
   platform/text/LocaleICU.cpp
 
-  platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
   platform/text/haiku/StringHaiku.cpp
 )
 

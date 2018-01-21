@@ -40,7 +40,7 @@ namespace WebCore {
 
 static const int kReadBufferSize = 1024;
 
-SocketStreamHandle::SocketStreamHandle(const URL& url, SocketStreamHandleClient* client)
+SocketStreamHandle::SocketStreamHandle(const URL& url, SocketStreamHandleClient& client)
     : 
     SocketStreamHandleBase(url, client)
 {
@@ -55,13 +55,13 @@ SocketStreamHandle::SocketStreamHandle(const URL& url, SocketStreamHandleClient*
     liveObjects.insert(this);
 
 	if(error != B_OK)
-		m_client->didFailSocketStream(*this,SocketStreamError(error));
+		m_client.didFailSocketStream(*this,SocketStreamError(error));
 	else {
 		fReadThreadId = spawn_thread(AsyncReadThread, "AsyncReadThread",
             B_NORMAL_PRIORITY, (void*)this);
     	resume_thread(fReadThreadId);
     	m_state = Open;
-    	m_client->didOpenSocketStream(*this);
+    	m_client.didOpenSocketStream(*this);
 	}
 }
 
@@ -71,7 +71,6 @@ SocketStreamHandle::~SocketStreamHandle()
     liveObjects.erase(this);
     LOG(Network, "SocketStreamHandle %p delete", this);
 
-    setClient(0);
     socket->Disconnect();
 
     delete socket;
@@ -91,7 +90,7 @@ int SocketStreamHandle::platformSend(const char* buffer, int length)
     } else if(response == B_TIMED_OUT || response == B_WOULD_BLOCK)
     	flagForPending = true;
     else
-    	m_client->didFailSocketStream(*this, SocketStreamError(response));
+    	m_client.didFailSocketStream(*this, SocketStreamError(response));
     
     if(flagForPending) {
     	fWriteThreadId = spawn_thread(AsyncWriteThread, "AsyncWriteThread",
@@ -107,9 +106,7 @@ void SocketStreamHandle::platformClose()
     LOG(Network, "SocketStreamHandle %p platformClose", this);
     if (socket)
         socket->Disconnect();
-    if (m_client)
-        m_client->didCloseSocketStream(*this);
-    setClient(0);
+    m_client.didCloseSocketStream(*this);
 }
 
 
@@ -195,16 +192,11 @@ void SocketStreamHandle::AsyncHandleRead(void* object)
 
     SocketStreamHandle* handle = packet->handle;
 
-    if(!handle->m_client) {
-        release_sem(packet->sem);
-        return;
-    }
-
 	if (packet->length < 0) {
-		handle->m_client->didFailSocketStream(*handle,
+		handle->m_client.didFailSocketStream(*handle,
             SocketStreamError(packet->length));
     } else {
-		handle->m_client->didReceiveSocketStreamData(*handle,
+		handle->m_client.didReceiveSocketStreamData(*handle,
             packet->readBuffer, packet->length);
     }
 
