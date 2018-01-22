@@ -178,6 +178,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_byte_reader_set_pos(reader.get(), 0);
 
         // Decrypt cipher.
+        GST_TRACE("decrypting");
         if ((errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
             ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
@@ -202,6 +203,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     } else {
         // Decrypt cipher.
+        GST_TRACE("decrypting");
         if ((errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
             ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);

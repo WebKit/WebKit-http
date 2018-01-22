@@ -260,12 +260,14 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     else if (GStreamerEMEUtilities::isWidevineKeySystem(m_keySystem))
         mimeType = "video/mp4";
 
-    GST_TRACE("Going to request a new session ID");
+    GST_TRACE("Going to request a new session ID, init data size %u", initData->size());
+    GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
 
     bool createdSession = m_openCdmBackend->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
         initData->size(), sessionId, webKitLicenseTypeToOpenCDM(licenseType));
 
     if (!createdSession) {
+        GST_ERROR("could not create session Id");
         callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
     }

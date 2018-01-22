@@ -1366,10 +1366,14 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
             // Retrieve SessionId using initData.
             String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initDataProtectionEventsMapping.first);
             if (sessionId.isEmpty()) {
-                if (m_initDataProtectionEventsMapping.size() == 1)
+                GST_TRACE("session not found");
+                if (m_initDataProtectionEventsMapping.size() == 1) {
                     sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+                    GST_TRACE("got %s as backup", sessionId.utf8().data());
+                }
             }
             if (!sessionId.isEmpty()) {
+                GST_TRACE("using %s", sessionId.utf8().data());
                 for (const auto& protectionEvent : initDataProtectionEventsMapping.second)
                     dispatchOrStoreDecryptionSession(sessionId, protectionEvent);
 
