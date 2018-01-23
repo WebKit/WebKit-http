@@ -126,7 +126,7 @@ void ProcessLauncher::launchProcess()
 #if ENABLE(DATABASE_PROCESS)
     } else if (m_launchOptions.processType == ProcessType::Database) {
         commandLine = QLatin1String("%1 \"%2\" %3 %4");
-        QByteArray processPrefix = qgetenv("QT_WEBKIT2_DP_CMD_PREFIX");
+        QByteArray processPrefix = qgetenv("QT_WEBKIT2_SP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(processPrefix.constData())).arg(QString(executablePathOfDatabaseProcess()));
 #endif
     } else {
