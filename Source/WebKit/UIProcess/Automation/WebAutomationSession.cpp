@@ -508,7 +508,9 @@ void WebAutomationSession::waitForNavigationToCompleteOnFrame(WebFrameProxy& fra
 void WebAutomationSession::respondToPendingPageNavigationCallbacksWithTimeout(HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>>& map)
 {
     Inspector::ErrorString timeoutError = STRING_FOR_PREDEFINED_ERROR_NAME(Timeout);
-    for (auto id : map.keys()) {
+    Vector<uint64_t> keys;
+    copyKeysToVector(map, keys);
+    for (auto id : keys) {
         auto page = WebProcessProxy::webPage(id);
         auto callback = map.take(id);
         if (page && m_client->isShowingJavaScriptDialogOnPage(*this, *page))
@@ -530,7 +532,9 @@ static WebPageProxy* findPageForFrameID(const WebProcessPool& processPool, uint6
 void WebAutomationSession::respondToPendingFrameNavigationCallbacksWithTimeout(HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>>& map)
 {
     Inspector::ErrorString timeoutError = STRING_FOR_PREDEFINED_ERROR_NAME(Timeout);
-    for (auto id : map.keys()) {
+    Vector<uint64_t> keys;
+    copyKeysToVector(map, keys);
+    for (auto id : keys) {
         auto* page = findPageForFrameID(*m_processPool, id);
         auto callback = map.take(id);
         if (page && m_client->isShowingJavaScriptDialogOnPage(*this, *page))
@@ -566,7 +570,9 @@ void WebAutomationSession::willShowJavaScriptDialog(WebPageProxy& page)
 
         if (!m_evaluateJavaScriptFunctionCallbacks.isEmpty()) {
             Inspector::ErrorString unexpectedAlertOpenError = STRING_FOR_PREDEFINED_ERROR_NAME(UnexpectedAlertOpen);
-            for (auto key : m_evaluateJavaScriptFunctionCallbacks.keys()) {
+            Vector<uint64_t> keys;
+            copyKeysToVector(m_evaluateJavaScriptFunctionCallbacks, keys);
+            for (auto key : keys) {
                 auto callback = m_evaluateJavaScriptFunctionCallbacks.take(key);
                 callback->sendFailure(unexpectedAlertOpenError);
             }
