@@ -66,6 +66,7 @@ class ImageGStreamer : public RefCounted<ImageGStreamer> {
 
 #if USE(CAIRO)
         GstVideoFrame m_videoFrame;
+        bool m_frameMapped { false };
 #endif
     };
 }

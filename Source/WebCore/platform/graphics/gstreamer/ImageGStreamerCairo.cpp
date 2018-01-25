@@ -47,6 +47,7 @@ ImageGStreamer::ImageGStreamer(GstSample* sample)
     if (!gst_video_frame_map(&m_videoFrame, &videoInfo, buffer, GST_MAP_READ))
         return;
 
+    m_frameMapped = true;
     unsigned char* bufferData = reinterpret_cast<unsigned char*>(GST_VIDEO_FRAME_PLANE_DATA(&m_videoFrame, 0));
     int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&m_videoFrame, 0);
     int width = GST_VIDEO_FRAME_WIDTH(&m_videoFrame);
@@ -109,8 +110,10 @@ ImageGStreamer::~ImageGStreamer()
     if (m_image)
         m_image = nullptr;
 
-    // We keep the buffer memory mapped until the image is destroyed because the internal
-    // cairo_surface_t was created using cairo_image_surface_create_for_data().
-    gst_video_frame_unmap(&m_videoFrame);
+    if (m_frameMapped) {
+        // We keep the buffer memory mapped until the image is destroyed because the internal
+        // cairo_surface_t was created using cairo_image_surface_create_for_data().
+        gst_video_frame_unmap(&m_videoFrame);
+    }
 }
 #endif // USE(GSTREAMER)
