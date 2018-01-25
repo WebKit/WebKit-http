@@ -82,15 +82,13 @@ void GraphicsContext::platformDestroy()
     }
 }
 
-AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
+AffineTransform GraphicsContext::getCTM(IncludeDeviceScale includeScale) const
 {
     if (paintingDisabled())
         return AffineTransform();
 
-    if (m_impl) {
-        WTFLogAlways("GraphicsContext::getCTM() is not yet compatible with recording contexts.");
-        return AffineTransform();
-    }
+    if (m_impl)
+        return m_impl->getCTM(includeScale);
 
     ASSERT(hasPlatformContext());
     return Cairo::State::getCTM(*platformContext());
@@ -98,6 +96,8 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 
 PlatformContextCairo* GraphicsContext::platformContext() const
 {
+    if (m_impl)
+        return m_impl->platformContext();
     return &m_data->platformContext;
 }
 
@@ -286,10 +286,8 @@ IntRect GraphicsContext::clipBounds() const
     if (paintingDisabled())
         return IntRect();
 
-    if (m_impl) {
-        WTFLogAlways("Getting the clip bounds not yet supported with display lists");
-        return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
-    }
+    if (m_impl)
+        return m_impl->clipBounds();
 
     ASSERT(hasPlatformContext());
     return Cairo::State::getClipBounds(*platformContext());
@@ -364,15 +362,13 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float 
     Cairo::drawLineForDocumentMarker(*platformContext(), origin, width, style);
 }
 
-FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMode)
+FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMode roundingMode)
 {
     if (paintingDisabled())
         return rect;
 
-    if (m_impl) {
-        WTFLogAlways("GraphicsContext::roundToDevicePixels() is not yet compatible with recording contexts.");
-        return rect;
-    }
+    if (m_impl)
+        return m_impl->roundToDevicePixels(rect, roundingMode);
 
     return Cairo::State::roundToDevicePixels(*platformContext(), rect);
 }
@@ -446,7 +442,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
         return;
 
     if (m_impl) {
-        WTFLogAlways("GraphicsContext::setCTM() is not compatible with recording contexts.");
+        m_impl->setCTM(transform);
         return;
     }
 
