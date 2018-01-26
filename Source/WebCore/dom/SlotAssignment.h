@@ -28,6 +28,7 @@
 
 #if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
 
+#include <functional>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
