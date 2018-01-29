@@ -356,11 +356,7 @@ FloatRect Path::strokeBoundingRect(StrokeStyleApplier* applier) const
 
     cairo_t* cr = platformPath()->context();
     if (applier) {
-        GraphicsContext gc(
-            [cr](GraphicsContext& context)
-            {
-                return std::make_unique<GraphicsContextImplCairo>(context, cr);
-            });
+        GraphicsContext gc(GraphicsContextImplCairo::createFactory(cr));
         applier->strokeStyle(&gc);
     }
 
@@ -389,11 +385,7 @@ bool Path::strokeContains(StrokeStyleApplier* applier, const FloatPoint& point) 
     ASSERT(applier);
     cairo_t* cr = platformPath()->context();
     {
-        GraphicsContext gc(
-            [cr](GraphicsContext& context)
-            {
-                return std::make_unique<GraphicsContextImplCairo>(context, cr);
-            });
+        GraphicsContext gc(GraphicsContextImplCairo::createFactory(cr));
         applier->strokeStyle(&gc);
     }
 

@@ -280,8 +280,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     // Disable antialiasing if cairo is using the NOAA compositor.
     if (cairoIsUsingNOAA())
         cairo_set_antialias(cr.get(), CAIRO_ANTIALIAS_NONE);
-    m_data.m_context = std::make_unique<GraphicsContext>(
-        [this](GraphicsContext& context) { return std::make_unique<GraphicsContextImplCairo>(context, m_data.m_platformContext); });
+    m_data.m_context = std::make_unique<GraphicsContext>(GraphicsContextImplCairo::createFactory(m_data.m_platformContext));
     success = true;
 }
 
