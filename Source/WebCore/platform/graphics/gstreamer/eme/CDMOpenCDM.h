@@ -70,8 +70,9 @@ public:
     const String& keySystem() const override { return m_keySystem; }
 
     // FIXME: Session handling needs a lot of love here.
-    String getCurrentSessionId() const;
-    String sessionIdByInitData(const Vector<uint8_t>&) const;
+    using InitData = String;
+    String currentSessionId() const;
+    String sessionIdByInitData(const InitData&) const;
 
 private:
     MediaKeyStatus getKeyStatus(std::string &);

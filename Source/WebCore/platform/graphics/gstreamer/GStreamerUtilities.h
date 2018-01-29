@@ -27,6 +27,7 @@
 
 namespace WebCore {
 
+using GstEventSeqNum = uint32_t;
 class IntSize;
 
 inline bool webkitGstCheckVersion(guint major, guint minor, guint micro)

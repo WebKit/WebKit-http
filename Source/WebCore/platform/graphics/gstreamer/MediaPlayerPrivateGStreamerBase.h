@@ -26,6 +26,7 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
+#include "GStreamerUtilities.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
 #include "PlatformLayer.h"
@@ -151,9 +152,10 @@ public:
     void handleProtectionEvent(GstEvent*);
     void attemptToDecryptWithLocalInstance();
     void attemptToDecryptWithInstance(const CDMInstance&) override;
-#endif
 #if USE(OPENCDM)
-    void addPendingProtectionEventToInitDataMapping(const Vector<uint8_t>&, uint32_t);
+    using InitData = String;
+    void addPendingProtectionEventToInitDataMapping(const InitData&, GstEventSeqNum);
+#endif
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -276,15 +278,16 @@ protected:
     Lock m_protectionMutex;
     Condition m_protectionCondition;
     RefPtr<const CDMInstance> m_cdmInstance;
-    HashSet<uint32_t> m_handledProtectionEvents;
+    Vector<GstEventSeqNum> m_reportedProtectionEvents;
     bool m_needToResendCredentials { false };
+
+#if USE(OPENCDM)
+    HashMap<unsigned, String> m_protectionEventSessionMap;
+    Vector<std::pair<InitData, HashSet<GstEventSeqNum>>> m_initDataProtectionEventsMapping;
+#endif
 #endif
 
     WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
-#if USE(OPENCDM)
-    HashMap<unsigned, String> m_protectionEventSessionMap;
-    Vector<std::pair<Vector<uint8_t>, HashSet<uint32_t>>> m_initDataProtectionEventsMapping;
-#endif
 };
 
 }

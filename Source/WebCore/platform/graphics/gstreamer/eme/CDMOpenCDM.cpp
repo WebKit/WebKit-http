@@ -451,7 +451,7 @@ void CDMInstanceOpenCDM::storeRecordOfKeyUsage(const String&)
 {
 }
 
-String CDMInstanceOpenCDM::getCurrentSessionId() const
+String CDMInstanceOpenCDM::currentSessionId() const
 {
     ASSERT(sessionIdMap.size() == 1);
 
@@ -465,7 +465,7 @@ String CDMInstanceOpenCDM::getCurrentSessionId() const
     return sessionIdMap.begin()->key;
 }
 
-String CDMInstanceOpenCDM::sessionIdByInitData(const Vector<uint8_t>& initData) const
+String CDMInstanceOpenCDM::sessionIdByInitData(const InitData& initData) const
 {
     if (sessionIdMap.isEmpty()) {
         GST_WARNING("no sessions");
@@ -473,8 +473,8 @@ String CDMInstanceOpenCDM::sessionIdByInitData(const Vector<uint8_t>& initData) 
     }
 
     for (auto& sessionIdInitDataMap : sessionIdMap) {
-        if (sessionIdInitDataMap.value->size() == initData.size()) {
-            if (!memcmp(sessionIdInitDataMap.value->data(), initData.data(), sessionIdInitDataMap.value->size()))
+        if (sessionIdInitDataMap.value->size() == initData.sizeInBytes()) {
+            if (!memcmp(sessionIdInitDataMap.value->data(), initData.latin1().data(), sessionIdInitDataMap.value->size()))
                 return sessionIdInitDataMap.key;
         }
     }

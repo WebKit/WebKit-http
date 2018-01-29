@@ -31,7 +31,6 @@
 #include "AppendPipeline.h"
 #include "AudioTrackPrivateGStreamer.h"
 #include "GStreamerEMEUtilities.h"
-#include "GStreamerUtilities.h"
 #include "InbandTextTrackPrivateGStreamer.h"
 #include "MIMETypeRegistry.h"
 #include "MediaDescription.h"
@@ -1064,10 +1063,10 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
             String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData());
             if (sessionId.isEmpty()) {
                 if (m_initDataProtectionEventsMapping.size() == 1)
-                    sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+                    sessionId = cdmInstanceOpenCDM.currentSessionId();
             }
             if (!sessionId.isEmpty()) {
-                if (m_handledProtectionEvents.contains(protectionEvent)) {
+                if (m_reportedProtectionEvents.contains(protectionEvent)) {
                     m_protectionEventSessionMap.add(protectionEvent, sessionId);
                     it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
                 } else {
