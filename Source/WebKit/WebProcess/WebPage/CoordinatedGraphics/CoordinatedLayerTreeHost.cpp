@@ -194,7 +194,7 @@ void CoordinatedLayerTreeHost::layerFlushTimerFired()
     m_coordinator.syncDisplayState();
     m_webPage.flushPendingEditorStateUpdate();
 
-    if (!m_isValid || !m_coordinator.rootCompositingLayer())
+    if (!m_isValid)
         return;
 
     // If a force-repaint callback was registered, we should force a 'frame sync' that
