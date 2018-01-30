@@ -153,7 +153,7 @@ public:
             // If the first sample (DTS=0) doesn't start with PTS=0, compute a negative offset.
             if (!GST_BUFFER_DTS(buffer) && GST_BUFFER_PTS(buffer) && !m_ptsOffset.isValid()) {
                 m_ptsOffset = MediaTime(GST_BUFFER_DTS(buffer), GST_SECOND) - MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND);
-                printf("### %s: Setting an offset of %s\n", __PRETTY_FUNCTION__, m_ptsOffset.toString().utf8().data()); fflush(stdout);
+                GST_TRACE("Setting an offset of %s\n", m_ptsOffset.toString().utf8().data());
             }
 
             // Apply the offset to zero-align the first sample and also correct the next ones.
