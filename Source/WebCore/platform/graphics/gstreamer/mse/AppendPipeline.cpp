@@ -827,6 +827,8 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
         return;
     }
 
+    // This increases sample refcount, as GStreamerMediaSample manages its own reference.
+    // We must still unref our own current ref before exiting this method.
     RefPtr<GStreamerMediaSample> mediaSample = WebCore::GStreamerMediaSample::create(sample, m_presentationSize, trackId());
 
     GST_TRACE("append: trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f %s%s",
@@ -843,6 +845,7 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
     if (duration.isValid() && !duration.isIndefinite() && mediaSample->presentationTime() > duration) {
         GST_DEBUG("Detected sample (%f) beyond the duration (%f), declaring LastSample", mediaSample->presentationTime().toFloat(), duration.toFloat());
         setAppendState(AppendState::LastSample);
+        gst_sample_unref(sample);
         return;
     }
 
@@ -856,6 +859,7 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
 
     m_sourceBufferPrivate->didReceiveSample(*mediaSample);
     setAppendState(AppendState::Sampling);
+    gst_sample_unref(sample);
 }
 
 void AppendPipeline::appsinkEOS()
