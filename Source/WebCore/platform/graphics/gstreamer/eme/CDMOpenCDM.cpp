@@ -287,7 +287,12 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     unsigned char temporaryUrl[1024] = { };
     std::string message;
     int messageLength = 0;
-    int destinationUrlLength = 0;
+    // FIXME: The interface for GetKeyMessage should store messages and license urls in std::strings
+    // rather than C buffers and all their potential foot guns.
+    // Note that opencdm will store 0 into this out-parameter in the case of a failure, so the checks
+    // below will detect an failure to retrieve a key message. That awkwardness will go when we move
+    // to std::string.
+    int destinationUrlLength = sizeof(temporaryUrl);
     m_openCdmSession->GetKeyMessage(message, &messageLength, temporaryUrl, &destinationUrlLength);
     if (!messageLength || !destinationUrlLength) {
         callback(WTFMove(initData), sessionIdValue, false, Failed);
