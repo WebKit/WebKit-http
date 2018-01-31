@@ -42,15 +42,11 @@ using namespace Inspector;
 
 namespace WebCore {
 
-class CDMPrivateOpenCDM : public CDMPrivate {
-
-    String m_openCdmKeySystem;
-    static std::unique_ptr<media::OpenCdm> s_openCdm;
-
+// FIXME: Move these classes to their own files like the rest of WebKit.
+class CDMPrivateOpenCDM final : public CDMPrivate {
 public:
-
     CDMPrivateOpenCDM(const String&);
-    virtual ~CDMPrivateOpenCDM();
+    ~CDMPrivateOpenCDM() override = default;
 
     bool supportsInitDataType(const AtomicString&) const override;
     bool supportsConfiguration(const MediaKeySystemConfiguration&) const override;
@@ -67,10 +63,11 @@ public:
     bool supportsInitData(const AtomicString&, const SharedBuffer&) const override;
     RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&) const override;
     std::optional<String> sanitizeSessionId(const String&) const override;
-    static media::OpenCdm* getOpenCdmInstance();
-};
 
-std::unique_ptr<media::OpenCdm> CDMPrivateOpenCDM::s_openCdm;
+private:
+    String m_openCdmKeySystem;
+    std::unique_ptr<media::OpenCdm> m_openCdmBackend;
+};
 
 static media::OpenCdm::LicenseType webKitLicenseTypeToOpenCDM(CDMInstance::LicenseType licenseType)
 {
@@ -116,10 +113,10 @@ static CDMInstance::KeyStatus openCDMKeyStatusToWebKit(media::OpenCdm::KeyStatus
 
 CDMPrivateOpenCDM::CDMPrivateOpenCDM(const String& keySystem)
     : m_openCdmKeySystem(keySystem)
+    , m_openCdmBackend(std::make_unique<media::OpenCdm>())
 {
+    RELEASE_ASSERT(m_openCdmBackend);
 }
-
-CDMPrivateOpenCDM::~CDMPrivateOpenCDM() = default;
 
 bool CDMPrivateOpenCDM::supportsInitDataType(const AtomicString& initDataType) const
 {
@@ -129,11 +126,11 @@ bool CDMPrivateOpenCDM::supportsInitDataType(const AtomicString& initDataType) c
 bool CDMPrivateOpenCDM::supportsConfiguration(const MediaKeySystemConfiguration& config) const
 {
     for (auto& audioCapability : config.audioCapabilities) {
-        if (!getOpenCdmInstance()->IsTypeSupported(m_openCdmKeySystem.utf8().data(), audioCapability.contentType.utf8().data()))
+        if (!m_openCdmBackend->IsTypeSupported(m_openCdmKeySystem.utf8().data(), audioCapability.contentType.utf8().data()))
             return false;
     }
     for (auto& videoCapability : config.videoCapabilities) {
-        if (!getOpenCdmInstance()->IsTypeSupported(m_openCdmKeySystem.utf8().data(), videoCapability.contentType.utf8().data()))
+        if (!m_openCdmBackend->IsTypeSupported(m_openCdmKeySystem.utf8().data(), videoCapability.contentType.utf8().data()))
             return false;
     }
     return true;
@@ -154,13 +151,6 @@ bool CDMPrivateOpenCDM::supportsRobustness(const String&) const
     return false;
 }
 
-media::OpenCdm* CDMPrivateOpenCDM::getOpenCdmInstance()
-{
-    if (!s_openCdm)
-        s_openCdm = std::make_unique<media::OpenCdm>();
-    return s_openCdm.get();
-}
-
 MediaKeysRequirement CDMPrivateOpenCDM::distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const
 {
     return MediaKeysRequirement::Optional;
@@ -178,8 +168,8 @@ bool CDMPrivateOpenCDM::distinctiveIdentifiersAreUniquePerOriginAndClearable(con
 
 RefPtr<CDMInstance> CDMPrivateOpenCDM::createInstance()
 {
-    getOpenCdmInstance()->SelectKeySystem(m_openCdmKeySystem.utf8().data());
-    return adoptRef(new CDMInstanceOpenCDM(getOpenCdmInstance(), m_openCdmKeySystem));
+    m_openCdmBackend->SelectKeySystem(m_openCdmKeySystem.utf8().data());
+    return adoptRef(new CDMInstanceOpenCDM(std::move(m_openCdmBackend), m_openCdmKeySystem));
 }
 
 void CDMPrivateOpenCDM::loadAndInitialize()
@@ -230,13 +220,11 @@ bool CDMFactoryOpenCDM::supportsKeySystem(const String& keySystem)
     return GStreamerEMEUtilities::isPlayReadyKeySystem(keySystem) || GStreamerEMEUtilities::isWidevineKeySystem(keySystem);
 }
 
-CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm* session, const String& keySystem)
-    : m_openCdmSession(session)
+CDMInstanceOpenCDM::CDMInstanceOpenCDM(std::unique_ptr<media::OpenCdm> backend, const String& keySystem)
+    : m_openCdmBackend(std::move(backend))
     , m_keySystem(keySystem)
 {
 }
-
-CDMInstanceOpenCDM::~CDMInstanceOpenCDM() = default;
 
 CDMInstance::SuccessValue CDMInstanceOpenCDM::initializeWithConfiguration(const MediaKeySystemConfiguration&)
 {
@@ -256,7 +244,7 @@ CDMInstance::SuccessValue CDMInstanceOpenCDM::setPersistentStateAllowed(bool)
 CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuffer>&& certificate)
 {
     CDMInstance::SuccessValue ret = WebCore::CDMInstance::SuccessValue::Failed;
-    if (m_openCdmSession->SetServerCertificate(reinterpret_cast<unsigned char*>(const_cast<char*>(certificate->data())), certificate->size()))
+    if (m_openCdmBackend->SetServerCertificate(reinterpret_cast<unsigned char*>(const_cast<char*>(certificate->data())), certificate->size()))
         ret = WebCore::CDMInstance::SuccessValue::Succeeded;
     return ret;
 }
@@ -273,7 +261,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 
     GST_TRACE("Going to request a new session ID");
 
-    bool createdSession = m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
+    bool createdSession = m_openCdmBackend->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(const_cast<char*>(initData->data())),
         initData->size(), sessionId, webKitLicenseTypeToOpenCDM(licenseType));
 
     if (!createdSession) {
@@ -293,7 +281,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     // below will detect an failure to retrieve a key message. That awkwardness will go when we move
     // to std::string.
     int destinationUrlLength = sizeof(temporaryUrl);
-    m_openCdmSession->GetKeyMessage(message, &messageLength, temporaryUrl, &destinationUrlLength);
+    m_openCdmBackend->GetKeyMessage(message, &messageLength, temporaryUrl, &destinationUrlLength);
     if (!messageLength || !destinationUrlLength) {
         callback(WTFMove(initData), sessionIdValue, false, Failed);
         return;
@@ -319,7 +307,7 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
 {
     // FIXME: At some point we will probably need to fix the API in OpenCDM, handle a key status vector and probably call the update key statuses algoritm.
     std::string responseMessage;
-    media::OpenCdm::KeyStatus keyStatus = m_openCdmSession->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
+    media::OpenCdm::KeyStatus keyStatus = m_openCdmBackend->Update(reinterpret_cast<unsigned char*>(const_cast<char*>(response.data())), response.size(), responseMessage);
     GST_DEBUG("session id %s, key status is %ld", sessionId.utf8().data(), static_cast<long>(keyStatus));
     if (keyStatus == media::OpenCdm::KeyStatus::Usable) {
         SharedBuffer* initData = sessionIdMap.get(sessionId);
@@ -398,7 +386,7 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
 {
     std::string responseMessage;
     SessionLoadFailure sessionFailure = SessionLoadFailure::None;
-    int ret = m_openCdmSession->Load(responseMessage);
+    int ret = m_openCdmBackend->Load(responseMessage);
     if (!ret) {
         std::string request = "message:";
         if (!responseMessage.compare(0, request.length(), request.c_str())) {
@@ -421,7 +409,7 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
 
 void CDMInstanceOpenCDM::closeSession(const String&, CloseSessionCallback callback)
 {
-    m_openCdmSession->Close();
+    m_openCdmBackend->Close();
     callback();
 }
 
@@ -429,7 +417,7 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
 {
     std::string responseMessage;
     KeyStatusVector keys;
-    int ret = m_openCdmSession->Remove(responseMessage);
+    int ret = m_openCdmBackend->Remove(responseMessage);
     if (!ret) {
         std::string request = "message:";
         if (!responseMessage.compare(0, request.length(), request.c_str())) {

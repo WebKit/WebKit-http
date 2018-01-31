@@ -51,8 +51,8 @@ private:
 
 class CDMInstanceOpenCDM final : public CDMInstance {
 public:
-    CDMInstanceOpenCDM(media::OpenCdm*, const String&);
-    virtual ~CDMInstanceOpenCDM();
+    CDMInstanceOpenCDM(std::unique_ptr<media::OpenCdm> openCdmBackend, const String&);
+    ~CDMInstanceOpenCDM() override = default;
 
     ImplementationType implementationType() const { return  ImplementationType::OpenCDM; }
     SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
@@ -77,7 +77,7 @@ private:
     SessionLoadFailure getSessionLoadStatus(std::string &);
     size_t checkMessageLength(std::string &, std::string &);
 
-    media::OpenCdm* m_openCdmSession;
+    std::unique_ptr<media::OpenCdm> m_openCdmBackend;
     HashMap<String, Ref<SharedBuffer>> sessionIdMap;
     String m_keySystem;
 };
