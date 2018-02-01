@@ -285,7 +285,7 @@ protected:
     bool m_needToResendCredentials { false };
 
 #if USE(OPENCDM)
-    HashMap<unsigned, String> m_protectionEventSessionMap;
+    HashMap<GstEventSeqNum, String> m_protectionEventToSessionCache;
     HashMap<InitData, Vector<GstEventSeqNum>> m_initDataToProtectionEventsMap;
 #endif
 #endif

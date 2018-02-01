@@ -1410,12 +1410,12 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionSession(const String& se
 void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
 {
     if (m_reportedProtectionEvents.contains(eventId))
-        m_protectionEventSessionMap.add(eventId, sessionId);
+        m_protectionEventToSessionCache.add(eventId, sessionId);
     else {
         dispatchDecryptionSession(sessionId, eventId);
 
-        if (m_protectionEventSessionMap.contains(eventId))
-            m_protectionEventSessionMap.remove(eventId);
+        if (m_protectionEventToSessionCache.contains(eventId))
+            m_protectionEventToSessionCache.remove(eventId);
     }
 }
 
@@ -1438,8 +1438,8 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
         }
 #if USE(OPENCDM)
         else {
-            if (m_protectionEventSessionMap.contains(GST_EVENT_SEQNUM(event)))
-                dispatchOrStoreDecryptionSession(m_protectionEventSessionMap.get(GST_EVENT_SEQNUM(event)), GST_EVENT_SEQNUM(event));
+            if (m_protectionEventToSessionCache.contains(GST_EVENT_SEQNUM(event)))
+                dispatchOrStoreDecryptionSession(m_protectionEventToSessionCache.get(GST_EVENT_SEQNUM(event)), GST_EVENT_SEQNUM(event));
         }
 #endif
         return;
