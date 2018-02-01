@@ -99,7 +99,7 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
 
     GUniqueOutPtr<char> session;
     unsigned protectionEvent;
-    gst_structure_get(structure, "session", G_TYPE_STRING, &session.outPtr(), "protectionevent", G_TYPE_UINT, &protectionEvent, nullptr);
+    gst_structure_get(structure, "session", G_TYPE_STRING, &session.outPtr(), "protection-event", G_TYPE_UINT, &protectionEvent, nullptr);
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
     ASSERT(session);
     ASSERT(protectionEvent);

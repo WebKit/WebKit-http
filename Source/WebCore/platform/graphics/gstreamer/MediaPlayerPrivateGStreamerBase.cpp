@@ -1369,9 +1369,7 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
             }
             if (!sessionId.isEmpty()) {
                 GST_TRACE("using %s", sessionId.utf8().data());
-                for (const auto& protectionEvent : initDataEventsMatch.value)
-                    dispatchOrStoreDecryptionSession(sessionId, protectionEvent);
-
+                dispatchOrStoreDecryptionSession(sessionId, initDataEventsMatch.value);
                 m_initDataToProtectionEventsMap.remove(initDataEventsMatch.key);
                 break;
             } else
@@ -1402,19 +1400,30 @@ void MediaPlayerPrivateGStreamerBase::mapProtectionEventToInitData(const InitDat
     eventIds.append(eventId);
 }
 
-void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, const unsigned& protectionEvent)
+void MediaPlayerPrivateGStreamerBase::dispatchDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
 {
-    if (m_reportedProtectionEvents.contains(protectionEvent))
-        m_protectionEventSessionMap.add(protectionEvent, sessionId);
-    else {
-        bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-            gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, protectionEvent, nullptr)));
-        GST_TRACE("emitted decryption session %s on pipeline, event handled %s", sessionId.utf8().data(), boolForPrinting(eventHandled));
+    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr)));
+    GST_TRACE("emitted decryption session %s on pipeline for event %u, event handled %s", sessionId.utf8().data(), eventId, boolForPrinting(eventHandled));
+ }
 
-        if (m_protectionEventSessionMap.contains(protectionEvent))
-            m_protectionEventSessionMap.remove(protectionEvent);
+void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
+{
+    if (m_reportedProtectionEvents.contains(eventId))
+        m_protectionEventSessionMap.add(eventId, sessionId);
+    else {
+        dispatchDecryptionSession(sessionId, eventId);
+
+        if (m_protectionEventSessionMap.contains(eventId))
+            m_protectionEventSessionMap.remove(eventId);
     }
 }
+
+void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, const Vector<GstEventSeqNum>& eventIds)
+{
+    for (auto eventId : eventIds)
+        dispatchOrStoreDecryptionSession(sessionId, eventId);
+ }
 #endif
 
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)

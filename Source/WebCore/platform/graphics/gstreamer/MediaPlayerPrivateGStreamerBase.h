@@ -148,13 +148,16 @@ public:
     void cdmInstanceAttached(const CDMInstance&) override;
     void cdmInstanceDetached(const CDMInstance&) override;
     void dispatchDecryptionKey(GstBuffer*);
-    virtual void dispatchOrStoreDecryptionSession(const String&, const unsigned&);
     void handleProtectionEvent(GstEvent*);
     void attemptToDecryptWithLocalInstance();
     void attemptToDecryptWithInstance(const CDMInstance&) override;
+
 #if USE(OPENCDM)
     using InitData = String;
     void mapProtectionEventToInitData(const InitData&, GstEventSeqNum);
+    virtual void dispatchDecryptionSession(const String&, GstEventSeqNum);
+    void dispatchOrStoreDecryptionSession(const String&, GstEventSeqNum);
+    void dispatchOrStoreDecryptionSession(const String&, const Vector<GstEventSeqNum>&);
 #endif
 #endif
 

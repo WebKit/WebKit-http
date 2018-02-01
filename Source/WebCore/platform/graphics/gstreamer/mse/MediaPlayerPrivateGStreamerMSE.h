@@ -91,7 +91,10 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(const CDMInstance&) final;
-    void dispatchOrStoreDecryptionSession(const String&, const unsigned&) override;
+
+#if USE(OPENCDM)
+    void dispatchDecryptionSession(const String&, GstEventSeqNum) override;
+#endif
 #endif
 
 private:

@@ -1072,7 +1072,7 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
                     m_protectionEventSessionMap.add(protectionEvent, sessionId);
                     it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
                 } else {
-                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, protectionEvent, nullptr));
+                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, protectionEvent, nullptr));
                     it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
                 }
             } else
@@ -1081,14 +1081,18 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
     }
 #endif // USE(OPENCDM)
 }
-void MediaPlayerPrivateGStreamerMSE::dispatchOrStoreDecryptionSession(const String& sessionId, const unsigned& protectionEvent)
+
+#if USE(OPENCDM)
+void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
 {
     for (const auto& it : m_appendPipelinesMap) {
-        GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, protectionEvent, nullptr));
+        GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr));
         it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
     }
-    m_protectionEventSessionMap.remove(protectionEvent);
+    m_protectionEventSessionMap.remove(eventId);
 }
+#endif
+
 #endif
 
 } // namespace WebCore.
