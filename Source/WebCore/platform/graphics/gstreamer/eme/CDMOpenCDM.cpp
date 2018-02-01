@@ -407,14 +407,18 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
     }
 }
 
-void CDMInstanceOpenCDM::closeSession(const String&, CloseSessionCallback callback)
+void CDMInstanceOpenCDM::closeSession(const String& sessionId, CloseSessionCallback callback)
 {
+    if (!sessionIdMap.remove(sessionId)) {
+        GST_WARNING("%s is an unknown session", sessionId.utf8().data());
+    }
     m_openCdmBackend->Close();
     callback();
 }
 
 void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType, RemoveSessionDataCallback callback)
 {
+    // FIXME: Should the session id be removed from the map here as well as in closeSession?
     std::string responseMessage;
     KeyStatusVector keys;
     int ret = m_openCdmBackend->Remove(responseMessage);
