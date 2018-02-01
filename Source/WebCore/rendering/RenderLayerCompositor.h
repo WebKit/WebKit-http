@@ -468,7 +468,7 @@ private:
     void startLayerFlushTimerIfNeeded();
     void layerFlushTimerFired();
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
     const char* logReasonsForCompositing(const RenderLayer&);
     void logLayerInfo(const RenderLayer&, int depth);
 #endif
@@ -547,7 +547,7 @@ private:
     bool m_layerNeedsCompositingUpdate { false };
     bool m_viewBackgroundIsTransparent { false };
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
     int m_rootLayerUpdateCount { 0 };
     int m_obligateCompositedLayerCount { 0 }; // count of layer that have to be composited.
     int m_secondaryCompositedLayerCount { 0 }; // count of layers that have to be composited because of stacking or overlap.

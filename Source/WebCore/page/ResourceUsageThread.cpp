@@ -80,8 +80,6 @@ void ResourceUsageThread::removeObserver(void* key)
 void ResourceUsageThread::setTotalLayerInfo(double layerBackingStoreBytes)
 {
     auto& resourceUsageThread = ResourceUsageThread::singleton();
-    if (!resourceUsageThread.m_threadIdentifier)
-        return;
     resourceUsageThread.totalLayerBackingStoreBytes = layerBackingStoreBytes;
 }
 
