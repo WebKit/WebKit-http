@@ -154,7 +154,7 @@ public:
     void attemptToDecryptWithInstance(const CDMInstance&) override;
 #if USE(OPENCDM)
     using InitData = String;
-    void addPendingProtectionEventToInitDataMapping(const InitData&, GstEventSeqNum);
+    void mapProtectionEventToInitData(const InitData&, GstEventSeqNum);
 #endif
 #endif
 
@@ -283,7 +283,7 @@ protected:
 
 #if USE(OPENCDM)
     HashMap<unsigned, String> m_protectionEventSessionMap;
-    Vector<std::pair<InitData, HashSet<GstEventSeqNum>>> m_initDataProtectionEventsMapping;
+    HashMap<InitData, Vector<GstEventSeqNum>> m_initDataToProtectionEventsMap;
 #endif
 #endif
 

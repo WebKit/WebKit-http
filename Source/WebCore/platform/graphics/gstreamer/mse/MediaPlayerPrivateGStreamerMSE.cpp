@@ -1061,11 +1061,13 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         for (const auto& it : m_appendPipelinesMap) {
             unsigned protectionEvent = it.value->keySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem()));
             String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData());
-            if (sessionId.isEmpty()) {
-                if (m_initDataProtectionEventsMapping.size() == 1)
-                    sessionId = cdmInstanceOpenCDM.currentSessionId();
+            if (sessionId.isEmpty() && m_initDataToProtectionEventsMap.size() == 1) {
+                // FIXME: In some cases, the JS app will send us new init data rather than the one reported by the media stream.
+                sessionId = cdmInstanceOpenCDM.currentSessionId();
+                GST_TRACE("session id not found, got %s as backup", sessionId.utf8().data());
             }
             if (!sessionId.isEmpty()) {
+                GST_TRACE("using %s", sessionId.utf8().data());
                 if (m_reportedProtectionEvents.contains(protectionEvent)) {
                     m_protectionEventSessionMap.add(protectionEvent, sessionId);
                     it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
@@ -1073,7 +1075,8 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
                     GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protectionevent", G_TYPE_UINT, protectionEvent, nullptr));
                     it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
                 }
-            }
+            } else
+                GST_WARNING("found no session id to dispatch");
         }
     }
 #endif // USE(OPENCDM)

@@ -467,7 +467,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, preferredKeySystemUuid, nullptr);
             gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
 #if USE(OPENCDM)
-            addPendingProtectionEventToInitDataMapping(concatenatedInitDataChunks, keySystemProtectionEventMap.get(preferredKeySystemUuid));
+            mapProtectionEventToInitData(concatenatedInitDataChunks, keySystemProtectionEventMap.get(preferredKeySystemUuid));
 #endif
         } else
             GST_WARNING("no proper CDM instance attached");
@@ -1358,33 +1358,33 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
     if (is<CDMInstanceOpenCDM>(*m_cdmInstance)) {
         GST_DEBUG("handling OpenCDM %s keys", m_cdmInstance->keySystem().utf8().data());
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(*m_cdmInstance);
-        size_t index = 0;
-        // In case we don't get the sessionId after searching the map, we will use the current SessionId if there is only one cached init data.
-        // In some cases, the JS app will send us new init data rather than the one reported by the media stream (in this case, this would be a FIXME).
         LockHolder lock(m_protectionMutex);
-        for (const auto& initDataProtectionEventsMapping : m_initDataProtectionEventsMapping) {
+        for (const auto& initDataEventsMatch : m_initDataToProtectionEventsMap) {
             // Retrieve SessionId using initData.
-            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initDataProtectionEventsMapping.first);
-            if (sessionId.isEmpty()) {
-                GST_TRACE("session not found");
-                if (m_initDataProtectionEventsMapping.size() == 1) {
-                    sessionId = cdmInstanceOpenCDM.currentSessionId();
-                    GST_TRACE("got %s as backup", sessionId.utf8().data());
-                }
+            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initDataEventsMatch.key);
+            if (sessionId.isEmpty() && m_initDataToProtectionEventsMap.size() == 1) {
+                // FIXME: In some cases, the JS app will send us new init data rather than the one reported by the media stream.
+                sessionId = cdmInstanceOpenCDM.currentSessionId();
+                GST_TRACE("session id not found, got %s as backup", sessionId.utf8().data());
             }
             if (!sessionId.isEmpty()) {
                 GST_TRACE("using %s", sessionId.utf8().data());
-                for (const auto& protectionEvent : initDataProtectionEventsMapping.second)
+                for (const auto& protectionEvent : initDataEventsMatch.value)
                     dispatchOrStoreDecryptionSession(sessionId, protectionEvent);
 
-                m_initDataProtectionEventsMapping.remove(index);
+                m_initDataToProtectionEventsMap.remove(initDataEventsMatch.key);
                 break;
-            }
-            index++;
+            } else
+                GST_WARNING("found no session id to dispatch");
         }
         lock.unlockEarly();
-    }
+    } else
 #endif
+    {
+        // FIXME.
+        GST_ERROR("wrong CDM instance");
+        ASSERT_NOT_REACHED();
+    }
 }
 
 void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
@@ -1396,18 +1396,10 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 }
 
 #if USE(OPENCDM)
-void MediaPlayerPrivateGStreamerBase::addPendingProtectionEventToInitDataMapping(const InitData& initData, GstEventSeqNum protectionEvent)
+void MediaPlayerPrivateGStreamerBase::mapProtectionEventToInitData(const InitData& initData, GstEventSeqNum eventId)
 {
-    for (auto& initDataProtectionEventsMapping : m_initDataProtectionEventsMapping) {
-        if (initDataProtectionEventsMapping.first == initData) {
-            initDataProtectionEventsMapping.second.add(protectionEvent);
-            return;
-        }
-    }
-
-    HashSet<GstEventSeqNum> protectionEvents;
-    protectionEvents.add(protectionEvent);
-    m_initDataProtectionEventsMapping.append(std::make_pair(initData, protectionEvents));
+    auto& eventIds = m_initDataToProtectionEventsMap.ensure(initData, [] { return Vector<GstEventSeqNum> { }; }).iterator->value;
+    eventIds.append(eventId);
 }
 
 void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, const unsigned& protectionEvent)
