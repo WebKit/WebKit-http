@@ -1157,7 +1157,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 GUniqueOutPtr<gchar> uri;
                 GstClockTime time;
                 gst_structure_get(structure, "uri", G_TYPE_STRING, &uri.outPtr(), "fragment-download-time", GST_TYPE_CLOCK_TIME, &time, nullptr);
-                GST_INFO("Fragment %s download time %" GST_TIME_FORMAT, uri.get(), GST_TIME_ARGS(time));
+                GST_DEBUG("Fragment %s download time %" GST_TIME_FORMAT, uri.get(), GST_TIME_ARGS(time));
             } else if (gst_structure_has_name(structure, "GstCacheDownloadComplete")) {
                 m_downloadFinished = true;
                 m_buffering = false;
