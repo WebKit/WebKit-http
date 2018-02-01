@@ -3354,8 +3354,13 @@ if (ENABLE_USER_MESSAGE_HANDLERS)
 endif ()
 
 if (USE_WOFF2)
-  list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/woff2/include")
-  list(APPEND WebCore_LIBRARIES woff2)
+    if (WOFF2DEC_FOUND)
+        list(APPEND WebCore_INCLUDE_DIRECTORIES "${WOFF2DEC_INCLUDE_DIRS}")
+        list(APPEND WebCore_LIBRARIES "${WOFF2DEC_LIBRARIES}")
+    else ()
+        list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/woff2/include")
+        list(APPEND WebCore_LIBRARIES woff2)
+    endif ()
 endif ()
 
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES
