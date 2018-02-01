@@ -1055,6 +1055,9 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         //  Also, it's unpleasant that we have duplicated the structure creation code here and in
         //  MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance, which incidently doesn't support
         //  ClearKey for some reason.
+
+        LockHolder lock(m_protectionMutex);
+
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(instance);
         GST_TRACE("instance is OpenCDM, continuing with %s", cdmInstanceOpenCDM.keySystem().utf8().data());
 

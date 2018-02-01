@@ -1349,16 +1349,17 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInst
 {
     ASSERT(m_cdmInstance.get() == &instance);
     GST_TRACE("instance %p, current stored %p", &instance, m_cdmInstance.get());
+    LockHolder lock(m_protectionMutex);
     attemptToDecryptWithLocalInstance();
 }
 
+// This method needs to be called with the protection lock held.
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
 {
 #if USE(OPENCDM)
     if (is<CDMInstanceOpenCDM>(*m_cdmInstance)) {
         GST_DEBUG("handling OpenCDM %s keys", m_cdmInstance->keySystem().utf8().data());
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(*m_cdmInstance);
-        LockHolder lock(m_protectionMutex);
         for (const auto& initDataEventsMatch : m_initDataToProtectionEventsMap) {
             // Retrieve SessionId using initData.
             String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initDataEventsMatch.key);
@@ -1375,7 +1376,6 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
             } else
                 GST_WARNING("found no session id to dispatch");
         }
-        lock.unlockEarly();
     } else
 #endif
     {
@@ -1428,6 +1428,8 @@ void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const Str
 
 void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
+    LockHolder lock(m_protectionMutex);
+
     size_t eventPosition = m_reportedProtectionEvents.find(GST_EVENT_SEQNUM(event));
     if (eventPosition != notFound) {
         GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
