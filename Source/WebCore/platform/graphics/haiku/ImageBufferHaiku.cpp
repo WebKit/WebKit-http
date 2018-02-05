@@ -279,7 +279,6 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
 static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
 {
     RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
-    unsigned char* data = result->data();
 
     // If the destination image is larger than the source image, the outside
     // regions need to be transparent. This way is simply, although with a
@@ -319,7 +318,7 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
     sourceRect = BRect(rect) & sourceRect;
 
     unsigned destBytesPerRow = 4 * rect.width();
-    unsigned char* destRows = data;
+    unsigned char* destRows = result->data();
     // Offset the destination pointer to point at the first pixel of the
     // intersection rect.
     destRows += destx * 4 + desty * destBytesPerRow;
@@ -338,18 +337,32 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
     return result.release();
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem) const
+template<typename Unit>
+inline Unit backingStoreUnit(const Unit& value, ImageBuffer::CoordinateSystem coordinateSystemOfValue, float resolutionScale)
 {
-    // Make sure all asynchronous drawing has finished
-    m_data.m_view->Sync();
-    return getImageData(rect, m_data, m_size, false);
+    if (coordinateSystemOfValue == ImageBuffer::BackingStoreCoordinateSystem || resolutionScale == 1.0)
+        return value;
+    Unit result(value);
+    result.scale(resolutionScale);
+    return result;
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view->Sync();
-    return getImageData(rect, m_data, m_size, true);
+
+    IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+
+    return getImageData(backingStoreRect, m_data, m_size, false);
+}
+
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+{
+    // Make sure all asynchronous drawing has finished
+    m_data.m_view->Sync();
+    IntRect backingStoreRect = backingStoreUnit(rect, coordinateSystem, m_resolutionScale);
+    return getImageData(backingStoreRect, m_data, m_size, true);
 }
 
 void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
