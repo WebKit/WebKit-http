@@ -25,6 +25,7 @@
 #include "FormData.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
+#include "NetworkStorageSession.h"
 #include "ProtectionSpace.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleClient.h"

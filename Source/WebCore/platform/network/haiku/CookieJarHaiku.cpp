@@ -33,6 +33,7 @@
 
 #include "URL.h"
 #include "NetworkingContext.h"
+#include "NetworkStorageSession.h"
 #include "NotImplemented.h"
 #include "PlatformCookieJar.h"
 

@@ -28,7 +28,6 @@
 
 #include <WebCore/platform/LinkHash.h>
 #include <WebCore/page/VisitedLinkStore.h>
-#include <wtf/PassRef.h>
 
 class WebVisitedLinkStore final : public WebCore::VisitedLinkStore {
 public:

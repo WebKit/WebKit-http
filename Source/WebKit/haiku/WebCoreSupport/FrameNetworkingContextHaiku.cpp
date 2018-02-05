@@ -30,6 +30,7 @@
 #include "config.h"
 #include "FrameNetworkingContextHaiku.h"
 
+#include "NetworkStorageSession.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "ResourceHandle.h"

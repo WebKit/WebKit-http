@@ -47,18 +47,21 @@ bool FontCascade::canReturnFallbackFontsForComplexText()
     return false;
 }
 
-float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, int from, int to, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot forTextEmphasis) const
+float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run,
+        unsigned from, unsigned to, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot forTextEmphasis) const
 {
     return getGlyphsAndAdvancesForSimpleText(run, from, to, glyphBuffer);
 }
 
-void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
+void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */,
+        const TextRun& /* run */, const AtomicString& /* mark */,
+        const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
 {
     notImplemented();
 }
 
 void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
-    const GlyphBuffer& glyphBuffer, int from, int numGlyphs,
+    const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs,
     const FloatPoint& point, WebCore::FontSmoothingMode smoothing)
 {
     BView* view = graphicsContext.platformContext();
@@ -125,7 +128,7 @@ int FontCascade::offsetForPositionForComplexText(const TextRun& run, float posit
 }
 
 void FontCascade::adjustSelectionRectForComplexText(const TextRun& run,
-    LayoutRect& rect, int from, int to) const
+    LayoutRect& rect, unsigned from, unsigned to) const
 {
     adjustSelectionRectForSimpleText(run, rect, from, to);
 }

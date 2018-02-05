@@ -24,9 +24,8 @@
 #include "LoaderStrategy.h"
 #include "PasteboardStrategy.h"
 #include "PlatformStrategies.h"
-#include "PluginStrategy.h"
 
-class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PluginStrategy {
+class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy {
 public:
     static void initialize();
 
@@ -37,7 +36,6 @@ private:
     virtual WebCore::CookiesStrategy* createCookiesStrategy() override;
     virtual WebCore::LoaderStrategy* createLoaderStrategy() override;
     virtual WebCore::PasteboardStrategy* createPasteboardStrategy() override;
-    virtual WebCore::PluginStrategy* createPluginStrategy() override;
     virtual WebCore::BlobRegistry* createBlobRegistry() override;
 
     // WebCore::CookiesStrategy
@@ -48,12 +46,7 @@ private:
     virtual String cookieRequestHeaderFieldValue(WebCore::SessionID, const WebCore::URL& firstParty, const WebCore::URL&) override;
     virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&) override;
     virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
-	virtual void addCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const WebCore::Cookie&) override;
-
-    // WebCore::PluginStrategy
-    virtual void refreshPlugins() override;
-    virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
-    virtual void getWebVisiblePluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
+    virtual void addCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const WebCore::Cookie&) override;
 };
 
 #endif // PlatformStrategiesHaiku_h

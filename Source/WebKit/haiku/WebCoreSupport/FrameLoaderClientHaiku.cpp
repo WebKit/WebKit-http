@@ -915,7 +915,7 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, cons
 {
     CALLED();
     if (url.isEmpty() && !originalMimeType.length())
-        return ObjectContentNone;
+        return ObjectContentType::None;
 
     String mimeType = originalMimeType;
     if (!mimeType.length()) {
@@ -932,10 +932,10 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, cons
     }
 
     if (!mimeType.length())
-        return ObjectContentFrame;
+        return ObjectContentType::Frame;
 
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return ObjectContentImage;
+        return ObjectContentType::Image;
 
 #if 0
     if (PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
@@ -943,12 +943,12 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, cons
 #endif
 
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
-        return ObjectContentFrame;
+        return ObjectContentType::Frame;
 
     if (url.protocol() == "about")
-        return ObjectContentFrame;
+        return ObjectContentType::Frame;
 
-    return ObjectContentNone;
+    return ObjectContentType::None;
 }
 
 RefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,

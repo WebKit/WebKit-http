@@ -29,12 +29,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SocketStreamHandle_h
-#define SocketStreamHandle_h
+#ifndef SocketStreamHandleImpl_h
+#define SocketStreamHandleImpl_h
 
-#include "SocketStreamHandleBase.h"
+#include "SocketStreamHandle.h"
 
 #include "NetworkingContext.h"
+#include "SessionID.h"
 
 #include <Socket.h>
 #include <set>
@@ -47,18 +48,18 @@ namespace WebCore {
     class Credential;
     class SocketStreamHandleClient;
 
-    class SocketStreamHandle : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
+    class SocketStreamHandleImpl : public SocketStreamHandle {
     public:
-        static 				Ref<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient& client, NetworkingContext& context, SessionID id)
-								{ return adoptRef(*new SocketStreamHandle(url, client)); }
-        virtual 			~SocketStreamHandle();
+        static 				Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID id)
+								{ return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+        virtual 			~SocketStreamHandleImpl();
 
     protected:
-        virtual int 		platformSend(const char* data, int length) override;
-        virtual void 		platformClose() override;
+        Optional<size_t>	platformSend(const char* data, size_t length) final;
+        virtual void 		platformClose() final;
 
     private:
-        					SocketStreamHandle(const URL&, SocketStreamHandleClient&);
+        					SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
@@ -82,4 +83,4 @@ namespace WebCore {
 
 }  // namespace WebCore
 
-#endif  // SocketStreamHandle_h
+#endif  // SocketStreamHandleImpl_h

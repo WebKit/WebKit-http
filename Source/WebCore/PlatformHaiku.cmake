@@ -29,7 +29,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_SOURCES
-  bindings/js/JSSubtleCryptoCustom.cpp
   bindings/js/ScriptControllerHaiku.cpp
 
   editing/haiku/EditorHaiku.cpp

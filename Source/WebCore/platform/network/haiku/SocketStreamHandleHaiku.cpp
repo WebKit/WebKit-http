@@ -24,7 +24,7 @@ THE SOFTWARE.
 */
 
 #include "config.h"
-#include "SocketStreamHandle.h"
+#include "SocketStreamHandleImpl.h"
 #include "SocketStreamError.h"
 
 #include "URL.h"
@@ -40,9 +40,9 @@ namespace WebCore {
 
 static const int kReadBufferSize = 1024;
 
-SocketStreamHandle::SocketStreamHandle(const URL& url, SocketStreamHandleClient& client)
+SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client)
     : 
-    SocketStreamHandleBase(url, client)
+    SocketStreamHandle(url, client)
 {
     LOG(Network, "SocketStreamHandle %p new client %p", this, m_client);
 	fReadThreadId = 0;
@@ -66,7 +66,7 @@ SocketStreamHandle::SocketStreamHandle(const URL& url, SocketStreamHandleClient&
 }
 
 
-SocketStreamHandle::~SocketStreamHandle()
+SocketStreamHandleImpl::~SocketStreamHandleImpl()
 {
     liveObjects.erase(this);
     LOG(Network, "SocketStreamHandle %p delete", this);
@@ -77,14 +77,14 @@ SocketStreamHandle::~SocketStreamHandle()
 }
 
 
-int SocketStreamHandle::platformSend(const char* buffer, int length)
+Optional<size_t> SocketStreamHandleImpl::platformSend(const char* buffer, size_t length)
 {
 	int32 writtenLength = 0;
 	bool flagForPending = false;
     LOG(Network, "SocketStreamHandle %p platformSend", this);
     status_t response=socket->WaitForWritable(0);
     if(response == B_OK) {
-    	writtenLength=socket->Write(buffer,length);
+    	writtenLength = socket->Write(buffer,length);
     	if(writtenLength < length)
     		flagForPending = true;
     } else if(response == B_TIMED_OUT || response == B_WOULD_BLOCK)
@@ -101,7 +101,7 @@ int SocketStreamHandle::platformSend(const char* buffer, int length)
 }
 
 
-void SocketStreamHandle::platformClose()
+void SocketStreamHandleImpl::platformClose()
 {
     LOG(Network, "SocketStreamHandle %p platformClose", this);
     if (socket)
@@ -110,37 +110,37 @@ void SocketStreamHandle::platformClose()
 }
 
 
-void SocketStreamHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge&)
+void SocketStreamHandleImpl::didReceiveAuthenticationChallenge(const AuthenticationChallenge&)
 {
     notImplemented();
 }
 
 
-void SocketStreamHandle::receivedCredential(const AuthenticationChallenge&, const Credential&)
+void SocketStreamHandleImpl::receivedCredential(const AuthenticationChallenge&, const Credential&)
 {
     notImplemented();
 }
 
 
-void SocketStreamHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
+void SocketStreamHandleImpl::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
 {
     notImplemented();
 }
 
 
-void SocketStreamHandle::receivedCancellation(const AuthenticationChallenge&)
+void SocketStreamHandleImpl::receivedCancellation(const AuthenticationChallenge&)
 {
     notImplemented();
 }
 
 
-void SocketStreamHandle::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
+void SocketStreamHandleImpl::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
 {
     notImplemented();
 }
 
 
-void SocketStreamHandle::receivedChallengeRejection(const AuthenticationChallenge&)
+void SocketStreamHandleImpl::receivedChallengeRejection(const AuthenticationChallenge&)
 {
     notImplemented();
 }
@@ -149,12 +149,12 @@ void SocketStreamHandle::receivedChallengeRejection(const AuthenticationChalleng
 // #pragma mark - Private static methods
 
 
-std::set<void*> SocketStreamHandle::liveObjects;
+std::set<void*> SocketStreamHandleImpl::liveObjects;
 
 
-int32 SocketStreamHandle::AsyncWriteThread(void* object)
+int32 SocketStreamHandleImpl::AsyncWriteThread(void* object)
 {
-	SocketStreamHandle* handle = (SocketStreamHandle*)object;
+	SocketStreamHandleImpl* handle = (SocketStreamHandleImpl*)object;
 	status_t response = handle->socket->WaitForWritable(B_INFINITE_TIMEOUT);
 	if(isMainThread())
 	{
@@ -175,14 +175,14 @@ int32 SocketStreamHandle::AsyncWriteThread(void* object)
 
 
 struct Packet {
-    SocketStreamHandle* handle;
+    SocketStreamHandleImpl* handle;
     char*				readBuffer;
     ssize_t             length;
     sem_id              sem;
 };
 
 
-void SocketStreamHandle::AsyncHandleRead(void* object)
+void SocketStreamHandleImpl::AsyncHandleRead(void* object)
 {
     Packet* packet = (Packet*)object;
     if (liveObjects.find(packet->handle) == liveObjects.end()) {
@@ -190,7 +190,7 @@ void SocketStreamHandle::AsyncHandleRead(void* object)
         return;
     }
 
-    SocketStreamHandle* handle = packet->handle;
+    SocketStreamHandleImpl* handle = packet->handle;
 
 	if (packet->length < 0) {
 		handle->m_client.didFailSocketStream(*handle,
@@ -204,10 +204,10 @@ void SocketStreamHandle::AsyncHandleRead(void* object)
 }
 
 
-int32 SocketStreamHandle::AsyncReadThread(void* data)
+int32 SocketStreamHandleImpl::AsyncReadThread(void* data)
 {
     Packet p;
-    p.handle = (SocketStreamHandle*)data;
+    p.handle = (SocketStreamHandleImpl*)data;
     p.readBuffer = new char[kReadBufferSize];
 
     p.sem = create_sem(0, "AsyncRead");

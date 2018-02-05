@@ -60,12 +60,6 @@ NetworkStorageSession& NetworkStorageSession::defaultStorageSession()
     return *defaultSession();
 }
 
-std::unique_ptr<NetworkStorageSession> NetworkStorageSession::createPrivateBrowsingSession(SessionID sessionID, const String&)
-{
-    auto session = std::make_unique<NetworkStorageSession>(sessionID, new BUrlContext());
-    return session;
-}
-
 void NetworkStorageSession::switchToNewTestingSession()
 {
     defaultSession() = std::make_unique<NetworkStorageSession>(SessionID::defaultSessionID(), new BUrlContext());

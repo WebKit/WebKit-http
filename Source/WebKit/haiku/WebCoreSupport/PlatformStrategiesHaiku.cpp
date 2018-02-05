@@ -64,11 +64,6 @@ PasteboardStrategy* PlatformStrategiesHaiku::createPasteboardStrategy()
     return 0;
 }
 
-PluginStrategy* PlatformStrategiesHaiku::createPluginStrategy()
-{
-    return this;
-}
-
 WebCore::BlobRegistry* PlatformStrategiesHaiku::createBlobRegistry()
 {
     return new BlobRegistryImpl();
@@ -113,51 +108,5 @@ void PlatformStrategiesHaiku::deleteCookie(const NetworkStorageSession& session,
 void PlatformStrategiesHaiku::addCookie(const NetworkStorageSession& session, const URL& url, const Cookie& cookie)
 {
 	WebCore::addCookie(session, url, cookie);
-}
-
-void PlatformStrategiesHaiku::refreshPlugins()
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    PluginDatabase::installedPlugins()->refresh();
-#endif
-}
-
-void PlatformStrategiesHaiku::getPluginInfo(const Page*, Vector<PluginInfo>& outPlugins)
-{
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    PluginDatabase::installedPlugins()->refresh();
-    const Vector<PluginPackage*>& plugins = PluginDatabase::installedPlugins()->plugins();
-    outPlugins.resize(plugins.size());
-
-    for (size_t i = 0; i < plugins.size(); ++i) {
-        PluginPackage* package = plugins[i];
-
-        PluginInfo pluginInfo;
-        pluginInfo.name = package->name();
-        pluginInfo.file = package->fileName();
-        pluginInfo.desc = package->description();
-
-        const MIMEToDescriptionsMap& mimeToDescriptions = package->mimeToDescriptions();
-        MIMEToDescriptionsMap::const_iterator end = mimeToDescriptions.end();
-        for (MIMEToDescriptionsMap::const_iterator it = mimeToDescriptions.begin(); it != end; ++it) {
-            MimeClassInfo mime;
-
-            mime.type = it->key;
-            mime.desc = it->value;
-            mime.extensions = package->mimeToExtensions().get(mime.type);
-            pluginInfo.mimes.append(mime);
-        }
-
-        outPlugins.append(pluginInfo);
-    }
-#else
-    UNUSED_PARAM(outPlugins);
-#endif
-}
-
-
-void PlatformStrategiesHaiku::getWebVisiblePluginInfo(const Page* page, Vector<PluginInfo>& plugins)
-{
-    getPluginInfo(page, plugins);
 }
 

@@ -45,6 +45,7 @@
 #include "DragClientHaiku.h"
 #include "Editor.h"
 #include "EditorClientHaiku.h"
+#include "EmptyClients.h"
 #include "EventHandler.h"
 #include "FileChooser.h"
 #include "FocusController.h"
@@ -70,6 +71,7 @@
 #include "PlatformMouseEvent.h"
 #include "PlatformStrategiesHaiku.h"
 #include "PlatformWheelEvent.h"
+#include "PlugInClient.h"
 #include "PointerLockController.h"
 #include "ProgressTrackerClient.h"
 #include "ProgressTrackerHaiku.h"
@@ -238,8 +240,9 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
         storagePath.Path());
 
     PageConfiguration pageClients(makeUniqueRef<EditorClientHaiku>(this), SocketProvider::create());
+    fillWithEmptyClients(pageClients);
 	//pageClients.backForwardClient = this;
-	//pluginClient
+    // pluginClient
 	//validationMessageClient
 	//alternativeTextClient
 	//applicationCacheStorage

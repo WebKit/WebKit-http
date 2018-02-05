@@ -32,6 +32,7 @@
 #include "FrameNetworkingContext.h"
 
 #include <Referenceable.h>
+#include <UrlContext.h>
 
 namespace WebCore {
 
