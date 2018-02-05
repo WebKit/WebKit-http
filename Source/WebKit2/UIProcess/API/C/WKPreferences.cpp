@@ -30,7 +30,6 @@
 #include "WKAPICast.h"
 #include "WebPreferences.h"
 #include <WebCore/Settings.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 using namespace WebKit;
@@ -1260,6 +1259,16 @@ void WKPreferencesSetNewBlockInsideInlineModelEnabled(WKPreferencesRef preferenc
 bool WKPreferencesGetNewBlockInsideInlineModelEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->newBlockInsideInlineModelEnabled();
+}
+
+void WKPreferencesSetNewCSSParserEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setNewCSSParserEnabled(flag);
+}
+
+bool WKPreferencesGetNewCSSParserEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->newCSSParserEnabled();
 }
 
 void WKPreferencesSetSubpixelCSSOMElementMetricsEnabled(WKPreferencesRef preferencesRef, bool flag)

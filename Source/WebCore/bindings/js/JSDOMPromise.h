@@ -29,7 +29,6 @@
 #include "JSDOMBinding.h"
 #include <heap/StrongInlines.h>
 #include <runtime/JSPromiseDeferred.h>
-#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -118,6 +117,8 @@ public:
     template<class RejectResultType> typename std::enable_if<PromiseResultInspector<RejectResultType>::passByConstRef, void>::type
     reject(const RejectResultType& result) { rejectWithValue(result); }
 
+    template<class ResolveResultType> void resolveWithNewlyCreated(Ref<ResolveResultType>&&);
+
     void reject(ExceptionCode, const String& = { });
 
     JSDOMGlobalObject& globalObject() const;
@@ -179,6 +180,16 @@ inline void DeferredWrapper::resolveWithValue(ResolveResultType&& result)
     JSC::ExecState* exec = m_globalObject->globalExec();
     JSC::JSLockHolder locker(exec);
     resolve(*exec, toJS(exec, m_globalObject.get(), std::forward<ResolveResultType>(result)));
+}
+
+template<class ResolveResultType>
+inline void DeferredWrapper::resolveWithNewlyCreated(Ref<ResolveResultType>&& result)
+{
+    ASSERT(m_deferred);
+    ASSERT(m_globalObject);
+    JSC::ExecState* exec = m_globalObject->globalExec();
+    JSC::JSLockHolder locker(exec);
+    resolve(*exec, toJSNewlyCreated(exec, m_globalObject.get(), WTFMove(result)));
 }
 
 template<class RejectResultType>

@@ -6,13 +6,13 @@
  * are met:
  *
  * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
+ *     notice, this list of conditions and the following disclaimer.
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
+ *     documentation and/or other materials provided with the distribution.
  * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -151,8 +151,7 @@ bool SubresourceLoader::init(const ResourceRequest& request)
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=155633.
     // SubresourceLoader could use the document origin as a default and set PotentiallyCrossOriginEnabled requests accordingly.
     // This would simplify resource loader users as they would only need to set fetch mode to Cors.
-    if (options().mode == FetchOptions::Mode::Cors)
-        m_origin = SecurityOrigin::createFromString(request.httpOrigin());
+    m_origin = m_resource->origin();
 
     return true;
 }
@@ -180,8 +179,10 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
                 cancel();
                 return;
             }
-            m_resource->setOpaqueRedirect();
-            m_resource->responseReceived({ });
+
+            ResourceResponse opaqueRedirectedResponse;
+            opaqueRedirectedResponse.setType(ResourceResponse::Type::Opaqueredirect);
+            m_resource->responseReceived(opaqueRedirectedResponse);
             didFinishLoading(currentTime());
             return;
         }
@@ -202,8 +203,12 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
             return;
         }
 
-        if (options().mode == FetchOptions::Mode::Cors && !checkCrossOriginAccessControl(request(), redirectResponse, newRequest)) {
-            cancel();
+        String errorDescription;
+        if (!checkRedirectionCrossOriginAccessControl(request(), redirectResponse, newRequest, errorDescription)) {
+            String errorMessage = "Cross-origin redirection to " + newRequest.url().string() + " denied by Cross-Origin Resource Sharing policy: " + errorDescription;
+            if (m_frame && m_frame->document())
+                m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, errorMessage);
+            cancel(ResourceError(String(), 0, request().url(), errorMessage, ResourceError::Type::AccessControl));
             return;
         }
 
@@ -295,8 +300,8 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
         // The resource data will change as the next part is loaded, so we need to make a copy.
         m_resource->finishLoading(buffer->copy().ptr());
         clearResourceData();
-        // Since a subresource loader does not load multipart sections progressively, data was delivered to the loader all at once.        
-        // After the first multipart section is complete, signal to delegates that this load is "finished" 
+        // Since a subresource loader does not load multipart sections progressively, data was delivered to the loader all at once.
+        // After the first multipart section is complete, signal to delegates that this load is "finished"
         m_documentLoader->subresourceLoaderFinishedLoadingOnePart(this);
         didFinishLoadingOnePart(0);
     }
@@ -396,27 +401,45 @@ static void logResourceLoaded(Frame* frame, CachedResource::Type type)
     frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceKey(), DiagnosticLoggingKeys::loadedKey(), resourceType, ShouldSample::Yes);
 }
 
-bool SubresourceLoader::checkCrossOriginAccessControl(const ResourceRequest& previousRequest, const ResourceResponse& redirectResponse, ResourceRequest& newRequest)
+bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceRequest& previousRequest, const ResourceResponse& redirectResponse, ResourceRequest& newRequest, String& errorMessage)
 {
-    if (m_origin->canRequest(newRequest.url()))
+    bool crossOriginFlag = m_resource->isCrossOrigin();
+    bool isNextRequestCrossOrigin = m_origin && !m_origin->canRequest(newRequest.url());
+
+    if (isNextRequestCrossOrigin)
+        m_resource->setCrossOrigin();
+
+    ASSERT(options().mode != FetchOptions::Mode::SameOrigin || !m_resource->isCrossOrigin());
+
+    if (options().mode != FetchOptions::Mode::Cors)
         return true;
 
-    String errorDescription;
-    bool responsePassesCORS = m_origin->canRequest(previousRequest.url())
-        || passesAccessControlCheck(redirectResponse, options().allowCredentials(), *m_origin, errorDescription);
-    if (!responsePassesCORS || !isValidCrossOriginRedirectionURL(newRequest.url())) {
-        if (m_frame && m_frame->document()) {
-            String errorMessage = "Cross-origin redirection denied by Cross-Origin Resource Sharing policy: " +
-                (!responsePassesCORS ? errorDescription : "Redirected to either a non-HTTP URL or a URL that contains credentials.");
-            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, errorMessage);
-        }
+    // Implementing https://fetch.spec.whatwg.org/#concept-http-redirect-fetch step 8 & 9.
+    if (m_resource->isCrossOrigin() && !isValidCrossOriginRedirectionURL(newRequest.url())) {
+        errorMessage = ASCIILiteral("URL is either a non-HTTP URL or contains credentials.");
         return false;
     }
 
-    // If the request URL origin is not the same as the original origin, the request origin should be set to a globally unique identifier.
-    m_origin = SecurityOrigin::createUnique();
-    cleanRedirectedRequestForAccessControl(newRequest);
-    updateRequestForAccessControl(newRequest, *m_origin, options().allowCredentials());
+    ASSERT(m_origin);
+    if (crossOriginFlag && !passesAccessControlCheck(redirectResponse, options().allowCredentials, *m_origin, errorMessage))
+        return false;
+
+    bool redirectingToNewOrigin = false;
+    if (m_resource->isCrossOrigin()) {
+        if (!crossOriginFlag && isNextRequestCrossOrigin)
+            redirectingToNewOrigin = true;
+        else
+            redirectingToNewOrigin = !SecurityOrigin::create(previousRequest.url())->canRequest(newRequest.url());
+    }
+
+    // Implementing https://fetch.spec.whatwg.org/#concept-http-redirect-fetch step 10.
+    if (crossOriginFlag && redirectingToNewOrigin)
+        m_origin = SecurityOrigin::createUnique();
+
+    if (redirectingToNewOrigin) {
+        cleanRedirectedRequestForAccessControl(newRequest);
+        updateRequestForAccessControl(newRequest, *m_origin, options().allowCredentials);
+    }
 
     return true;
 }

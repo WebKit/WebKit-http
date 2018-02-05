@@ -76,7 +76,7 @@ void DatabaseProcessProxy::processWillShutDown(IPC::Connection& connection)
     ASSERT_UNUSED(connection, this->connection() == &connection);
 }
 
-void DatabaseProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void DatabaseProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::DatabaseProcessProxy::messageReceiverName()) {
         didReceiveDatabaseProcessProxyMessage(connection, decoder);
@@ -196,6 +196,7 @@ void DatabaseProcessProxy::didDeleteWebsiteDataForOrigins(uint64_t callbackID)
     callback();
 }
 
+#if ENABLE(SANDBOX_EXTENSIONS)
 void DatabaseProcessProxy::getSandboxExtensionsForBlobFiles(uint64_t requestID, const Vector<String>& paths)
 {
     SandboxExtension::HandleArray extensions;
@@ -207,6 +208,7 @@ void DatabaseProcessProxy::getSandboxExtensionsForBlobFiles(uint64_t requestID, 
 
     send(Messages::DatabaseProcess::DidGetSandboxExtensionsForBlobFiles(requestID, extensions), 0);
 }
+#endif
 
 void DatabaseProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
 {

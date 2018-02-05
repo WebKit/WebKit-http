@@ -67,9 +67,6 @@ CGSize CTRunGetInitialAdvance(CTRunRef run);
 CTLineRef CTLineCreateWithUniCharProvider(CTUniCharProviderCallback provide, CTUniCharDisposeCallback dispose, void* refCon);
 CTTypesetterRef CTTypesetterCreateWithUniCharProviderAndOptions(CTUniCharProviderCallback provide, CTUniCharDisposeCallback dispose, void* refCon, CFDictionaryRef options);
 bool CTFontGetVerticalGlyphsForCharacters(CTFontRef, const UniChar characters[], CGGlyph glyphs[], CFIndex count);
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000
-bool CTFontSetRenderingStyle(CTFontRef, CGContextRef, CGFontRenderingStyle* originalStyle, CGSize* originalDilation);
-#endif
 
 CTFontDescriptorRef CTFontDescriptorCreateForUIType(CTFontUIFontType, CGFloat size, CFStringRef language);
 CTFontDescriptorRef CTFontDescriptorCreateWithTextStyle(CFStringRef style, CFStringRef size, CFStringRef language);
@@ -87,6 +84,7 @@ typedef CF_OPTIONS(uint32_t, CTFontDescriptorOptions)
 CTFontDescriptorRef CTFontDescriptorCreateWithAttributesAndOptions(CFDictionaryRef attributes, CTFontDescriptorOptions);
 
 extern const CFStringRef kCTFontDescriptorTextStyleAttribute;
+extern const CFStringRef kCTFontUIFontDesignTrait;
 #endif
 #endif
 
@@ -110,6 +108,16 @@ extern const CFStringRef kCTUIFontTextStyleCaption1;
 extern const CFStringRef kCTUIFontTextStyleCaption2;
 
 extern const CFStringRef kCTFontDescriptorTextStyleEmphasized;
+
+extern const CGFloat kCTFontWeightUltraLight;
+extern const CGFloat kCTFontWeightThin;
+extern const CGFloat kCTFontWeightLight;
+extern const CGFloat kCTFontWeightRegular;
+extern const CGFloat kCTFontWeightMedium;
+extern const CGFloat kCTFontWeightSemibold;
+extern const CGFloat kCTFontWeightBold;
+extern const CGFloat kCTFontWeightHeavy;
+extern const CGFloat kCTFontWeightBlack;
 #endif
 
 #if PLATFORM(IOS)

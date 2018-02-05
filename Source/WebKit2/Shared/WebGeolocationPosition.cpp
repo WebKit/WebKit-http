@@ -27,7 +27,6 @@
 #include "WebGeolocationPosition.h"
 
 #include "ArgumentCoders.h"
-#include "Arguments.h"
 
 namespace WebKit {
 
@@ -51,12 +50,12 @@ WebGeolocationPosition::~WebGeolocationPosition()
 {
 }
 
-void WebGeolocationPosition::Data::encode(IPC::ArgumentEncoder& encoder) const
+void WebGeolocationPosition::Data::encode(IPC::Encoder& encoder) const
 {
     IPC::SimpleArgumentCoder<WebGeolocationPosition::Data>::encode(encoder, *this);
 }
 
-bool WebGeolocationPosition::Data::decode(IPC::ArgumentDecoder& decoder, Data& data)
+bool WebGeolocationPosition::Data::decode(IPC::Decoder& decoder, Data& data)
 {
     return IPC::SimpleArgumentCoder<WebGeolocationPosition::Data>::decode(decoder, data);
 }

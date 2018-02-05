@@ -63,20 +63,22 @@ private:
     void processWillShutDown(IPC::Connection&) override;
 
     // IPC::Connection::Client
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
     IPC::ProcessType localProcessType() override { return IPC::ProcessType::UI; }
     IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Database; }
 
-    void didReceiveDatabaseProcessProxyMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveDatabaseProcessProxyMessage(IPC::Connection&, IPC::Decoder&);
 
     // Message handlers
     void didCreateDatabaseToWebProcessConnection(const IPC::Attachment&);
     void didFetchWebsiteData(uint64_t callbackID, const WebsiteData&);
     void didDeleteWebsiteData(uint64_t callbackID);
     void didDeleteWebsiteDataForOrigins(uint64_t callbackID);
+#if ENABLE(SANDBOX_EXTENSIONS)
     void getSandboxExtensionsForBlobFiles(uint64_t requestID, const Vector<String>& paths);
+#endif
 
     // ProcessLauncher::Client
     void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;

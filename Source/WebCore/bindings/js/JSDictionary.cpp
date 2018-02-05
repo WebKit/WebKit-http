@@ -40,7 +40,7 @@
 #include "JSVoidCallback.h"
 #include "SerializedScriptValue.h"
 #include <runtime/JSTypedArrays.h>
-#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/AtomicString.h>
 
@@ -178,7 +178,12 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, RefPtr<Serialize
 
 void JSDictionary::convertValue(ExecState* state, JSValue value, RefPtr<DOMWindow>& result)
 {
-    result = JSDOMWindow::toWrapped(*state, value);
+    auto* window = JSDOMWindow::toWrapped(*state, value);
+    if (UNLIKELY(!window) && !value.isUndefinedOrNull()) {
+        throwVMTypeError(state, "Dictionary member is not of type Window");
+        return;
+    }
+    result = window;
 }
 
 void JSDictionary::convertValue(ExecState* state, JSValue value, RefPtr<EventTarget>& result)

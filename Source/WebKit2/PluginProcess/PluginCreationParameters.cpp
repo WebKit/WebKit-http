@@ -44,7 +44,7 @@ PluginCreationParameters::PluginCreationParameters()
 {
 }
 
-void PluginCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
+void PluginCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << pluginInstanceID;
     encoder << windowNPObjectID;
@@ -58,7 +58,7 @@ void PluginCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << isAcceleratedCompositingEnabled;
 }
 
-bool PluginCreationParameters::decode(IPC::ArgumentDecoder& decoder, PluginCreationParameters& result)
+bool PluginCreationParameters::decode(IPC::Decoder& decoder, PluginCreationParameters& result)
 {
     if (!decoder.decode(result.pluginInstanceID) || !result.pluginInstanceID)
         return false;

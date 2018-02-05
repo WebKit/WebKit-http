@@ -267,7 +267,7 @@ PASS createDocument test 153: "foo:","xmlns:foo",null,"NAMESPACE_ERR"
 PASS createDocument test 154: "foo:","xmlfoo:bar",null,null 
 PASS createDocument test 154: metadata for "foo:","xmlfoo:bar",null 
 PASS createDocument test 154: characterSet aliases for "foo:","xmlfoo:bar",null 
-FAIL createDocument test 155: null,null,false,object "TypeError" assert_throws: function "function () { document.implementation.createDocument(name..." did not throw
+PASS createDocument test 155: null,null,false,object "TypeError" 
 PASS createDocument test 156: null,null,null,null 
 PASS createDocument test 156: metadata for null,null,null 
 PASS createDocument test 156: characterSet aliases for null,null,null 
@@ -340,7 +340,7 @@ PASS createDocument test 178: characterSet aliases for "foo","bar",DocumentType 
 PASS createDocument test 179: "http://www.w3.org/1999/xhtml","",null,null 
 PASS createDocument test 179: metadata for "http://www.w3.org/1999/xhtml","",null 
 PASS createDocument test 179: characterSet aliases for "http://www.w3.org/1999/xhtml","",null 
-FAIL createDocument test 180: "http://www.w3.org/2000/svg","",null,null assert_equals: expected object "[object XMLDocumentPrototype]" but got object "[object SVGDocumentPrototype]"
+PASS createDocument test 180: "http://www.w3.org/2000/svg","",null,null 
 PASS createDocument test 180: metadata for "http://www.w3.org/2000/svg","",null 
 PASS createDocument test 180: characterSet aliases for "http://www.w3.org/2000/svg","",null 
 PASS createDocument test 181: "http://www.w3.org/1998/Math/MathML","",null,null 
@@ -358,6 +358,5 @@ PASS createDocument test 184: characterSet aliases for null,"math",null
 PASS createDocument test 185: null,"",DocumentType node 
 PASS createDocument test 186: null,"",DocumentType node 
 PASS createDocument test 187: null,"",DocumentType node 
-FAIL createDocument with missing arguments assert_throws: createDocument() should throw function "function () {
-    document.implementation.createDocument(..." did not throw
+PASS createDocument with missing arguments 
 

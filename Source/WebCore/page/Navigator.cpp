@@ -37,7 +37,6 @@
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
-#include <wtf/HashSet.h>
 #include <wtf/StdLibExtras.h>
 
 using namespace WTF;
@@ -112,7 +111,11 @@ bool Navigator::cookieEnabled() const
     if (m_frame->page() && !m_frame->page()->settings().cookieEnabled())
         return false;
 
-    return cookiesEnabled(m_frame->document());
+    auto* document = m_frame->document();
+    if (!document)
+        return false;
+    
+    return cookiesEnabled(*document);
 }
 
 bool Navigator::javaEnabled() const

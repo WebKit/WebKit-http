@@ -30,6 +30,7 @@ list(APPEND WebKit2_SOURCES
 
     NetworkProcess/Downloads/mac/DownloadMac.mm
 
+    NetworkProcess/cache/NetworkCacheCodersCocoa.cpp
     NetworkProcess/cache/NetworkCacheDataCocoa.mm
     NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm
 
@@ -104,6 +105,7 @@ list(APPEND WebKit2_SOURCES
     Shared/Cocoa/WKNSData.mm
     Shared/Cocoa/WKNSDictionary.mm
     Shared/Cocoa/WKNSError.mm
+    Shared/Cocoa/WKNSNumber.mm
     Shared/Cocoa/WKNSString.mm
     Shared/Cocoa/WKNSURL.mm
     Shared/Cocoa/WKNSURLExtras.mm
@@ -579,7 +581,7 @@ foreach (_file ${WebKitLegacyForwardingHeaders})
     file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/${_file} "#import <WebKitLegacy/${_file}>")
 endforeach ()
 
-set(WebCoreForwardingHeaders
+set(ObjCForwardingHeaders
     DOMAbstractView.h
     DOMAttr.h
     DOMBeforeLoadEvent.h
@@ -719,8 +721,8 @@ set(WebCoreForwardingHeaders
     DOMXPathNSResolver.h
     DOMXPathResult.h
 )
-foreach (_file ${WebCoreForwardingHeaders})
-    file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/${_file} "#import <WebCore/${_file}>")
+foreach (_file ${ObjCForwardingHeaders})
+    file(WRITE ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit/${_file} "#import <WebKitLegacy/${_file}>")
 endforeach ()
 
 # FIXME: These should not be necessary.

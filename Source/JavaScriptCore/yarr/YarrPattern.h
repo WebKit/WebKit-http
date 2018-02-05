@@ -29,7 +29,6 @@
 
 #include "RegExpKey.h"
 #include <wtf/CheckedArithmetic.h>
-#include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -305,6 +304,27 @@ struct TermChain {
 
 struct YarrPattern {
     JS_EXPORT_PRIVATE YarrPattern(const String& pattern, RegExpFlags, const char** error, void* stackLimit = nullptr);
+
+    enum ErrorCode {
+        NoError,
+        PatternTooLarge,
+        QuantifierOutOfOrder,
+        QuantifierWithoutAtom,
+        QuantifierTooLarge,
+        MissingParentheses,
+        ParenthesesUnmatched,
+        ParenthesesTypeInvalid,
+        CharacterClassUnmatched,
+        CharacterClassOutOfOrder,
+        EscapeUnterminated,
+        InvalidUnicodeEscape,
+        InvalidIdentityEscape,
+        TooManyDisjunctions,
+        OffsetTooLarge,
+        NumberOfErrorCodes
+    };
+    
+    WTF_EXPORT_PRIVATE static const char* errorMessage(ErrorCode);
 
     void reset()
     {

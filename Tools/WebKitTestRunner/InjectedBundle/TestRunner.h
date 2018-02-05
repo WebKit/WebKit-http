@@ -167,6 +167,7 @@ public:
     void setPrinting() { m_isPrinting = true; }
 
     // Authentication
+    void setRejectsProtectionSpaceAndContinueForAuthenticationChallenges(bool);
     void setHandlesAuthenticationChallenges(bool);
     void setShouldLogCanAuthenticateAgainstProtectionSpace(bool);
     void setAuthenticationUsername(JSStringRef);
@@ -271,10 +272,10 @@ public:
     bool hasCustomFullScreenBehavior() const { return m_customFullScreenBehavior; }
 
     // Web notifications.
-    void grantWebNotificationPermission(JSStringRef origin);
-    void denyWebNotificationPermission(JSStringRef origin);
-    void removeAllWebNotificationPermissions();
-    void simulateWebNotificationClick(JSValueRef notification);
+    static void grantWebNotificationPermission(JSStringRef origin);
+    static void denyWebNotificationPermission(JSStringRef origin);
+    static void removeAllWebNotificationPermissions();
+    static void simulateWebNotificationClick(JSValueRef notification);
 
     // Geolocation.
     void setGeolocationPermission(bool);
@@ -330,6 +331,13 @@ public:
     void accummulateLogsForChannel(JSStringRef channel);
 
     unsigned imageCountInGeneralPasteboard() const;
+
+    // Gamepads
+    void connectMockGamepad(unsigned index);
+    void disconnectMockGamepad(unsigned index);
+    void setMockGamepadDetails(unsigned index, JSStringRef gamepadID, unsigned axisCount, unsigned buttonCount);
+    void setMockGamepadAxisValue(unsigned index, unsigned axisIndex, double value);
+    void setMockGamepadButtonValue(unsigned index, unsigned buttonIndex, double value);
 
 private:
     TestRunner();

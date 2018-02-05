@@ -43,7 +43,6 @@
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
-#include <wtf/MessageQueue.h>
 #include <wtf/Ref.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -92,7 +91,7 @@ public:
     void createIndex(UniqueIDBDatabaseTransaction&, const IDBIndexInfo&, ErrorCallback);
     void deleteIndex(UniqueIDBDatabaseTransaction&, uint64_t objectStoreIdentifier, const String& indexName, ErrorCallback);
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, IndexedDB::ObjectStoreOverwriteMode, KeyDataCallback);
-    void getRecord(const IDBRequestData&, const IDBKeyRangeData&, GetResultCallback);
+    void getRecord(const IDBRequestData&, const IDBGetRecordData&, GetResultCallback);
     void getCount(const IDBRequestData&, const IDBKeyRangeData&, CountCallback);
     void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&, ErrorCallback);
     void openCursor(const IDBRequestData&, const IDBCursorInfo&, GetResultCallback);

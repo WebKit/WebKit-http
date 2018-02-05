@@ -385,12 +385,19 @@ private:
             }
             break;
         }
-            
-        case ArithSqrt:
-        case ArithFRound:
-        case ArithSin:
+
         case ArithCos:
-        case ArithLog: {
+        case ArithLog:
+        case ArithSin:
+        case ArithSqrt: {
+            Edge& child1 = node->child1();
+            if (child1->shouldSpeculateNumberOrBoolean())
+                fixDoubleOrBooleanEdge(child1);
+            else
+                fixEdge<UntypedUse>(child1);
+            break;
+        }
+        case ArithFRound: {
             fixDoubleOrBooleanEdge(node->child1());
             node->setResult(NodeResultDouble);
             break;
@@ -590,6 +597,14 @@ private:
                 fixEdge<ObjectUse>(node->child2());
                 break;
             }
+            if (node->child1()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child1());
+                break;
+            }
+            if (node->child2()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateMisc()) {
                 fixEdge<MiscUse>(node->child1());
                 break;
@@ -620,7 +635,7 @@ private:
             }
             break;
         }
-
+            
         case StringFromCharCode:
             if (node->child1()->shouldSpeculateInt32())
                 fixEdge<Int32Use>(node->child1());
@@ -1206,12 +1221,8 @@ private:
             break;
         }
 
-        case CheckIdent: {
-            UniquedStringImpl* uid = node->uidOperand();
-            if (uid->isSymbol())
-                fixEdge<SymbolUse>(node->child1());
-            else
-                fixEdge<StringIdentUse>(node->child1());
+        case CheckStringIdent: {
+            fixEdge<StringIdentUse>(node->child1());
             break;
         }
             
@@ -1448,12 +1459,22 @@ private:
             RefPtr<TypeSet> typeSet = node->typeLocation()->m_instructionTypeSet;
             RuntimeTypeMask seenTypes = typeSet->seenTypes();
             if (typeSet->doesTypeConformTo(TypeAnyInt)) {
-                if (node->child1()->shouldSpeculateInt32())
+                if (node->child1()->shouldSpeculateInt32()) {
                     fixEdge<Int32Use>(node->child1());
-                else
+                    node->remove();
+                    break;
+                }
+
+                if (enableInt52()) {
                     fixEdge<AnyIntUse>(node->child1());
-                node->remove();
-            } else if (typeSet->doesTypeConformTo(TypeNumber | TypeAnyInt)) {
+                    node->remove();
+                    break;
+                }
+
+                // Must not perform fixEdge<NumberUse> here since the type set only includes TypeAnyInt. Double values should be logged.
+            }
+
+            if (typeSet->doesTypeConformTo(TypeNumber | TypeAnyInt)) {
                 fixEdge<NumberUse>(node->child1());
                 node->remove();
             } else if (typeSet->doesTypeConformTo(TypeString)) {
@@ -1496,9 +1517,9 @@ private:
             break;
         }
 
-        case CopyRest: {
-            fixEdge<KnownCellUse>(node->child1());
-            fixEdge<KnownInt32Use>(node->child2());
+        case CreateRest: {
+            watchHavingABadTime(node);
+            fixEdge<KnownInt32Use>(node->child1());
             break;
         }
 
@@ -1535,12 +1556,12 @@ private:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case NotifyWrite:
-        case VarInjectionWatchpoint:
         case Call:
         case CheckTypeInfoFlags:
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -1589,6 +1610,7 @@ private:
         case PutByIdWithThis:
         case PutByValWithThis:
         case GetByValWithThis:
+        case CompareEqPtr:
             break;
             
             break;

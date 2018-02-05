@@ -26,11 +26,12 @@
 #pragma once
 
 #if ENABLE(MATHML)
-#include "MathMLInlineContainerElement.h"
+
+#include "MathMLPresentationElement.h"
 
 namespace WebCore {
 
-class MathMLFractionElement final : public MathMLInlineContainerElement {
+class MathMLFractionElement final : public MathMLPresentationElement {
 public:
     static Ref<MathMLFractionElement> create(const QualifiedName& tagName, Document&);
     const Length& lineThickness();
@@ -47,15 +48,11 @@ private:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    struct FractionAlignmentAttribute {
-        FractionAlignment value { FractionAlignmentCenter };
-        bool dirty { true };
-    };
-    FractionAlignment cachedFractionAlignment(const QualifiedName&, FractionAlignmentAttribute&);
+    FractionAlignment cachedFractionAlignment(const QualifiedName&, Optional<FractionAlignment>&);
 
-    Length m_lineThickness;
-    FractionAlignmentAttribute m_numeratorAlignment;
-    FractionAlignmentAttribute m_denominatorAlignment;
+    Optional<Length> m_lineThickness;
+    Optional<FractionAlignment> m_numeratorAlignment;
+    Optional<FractionAlignment> m_denominatorAlignment;
 };
 
 }

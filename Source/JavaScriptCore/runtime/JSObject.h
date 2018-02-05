@@ -529,7 +529,7 @@ public:
     JSValue ordinaryToPrimitive(ExecState*, PreferredPrimitiveType) const;
 
     JS_EXPORT_PRIVATE bool hasInstance(ExecState*, JSValue value, JSValue hasInstanceValue);
-    bool hasInstance(ExecState*, JSValue);
+    JS_EXPORT_PRIVATE bool hasInstance(ExecState*, JSValue);
     static bool defaultHasInstance(ExecState*, JSValue, JSValue prototypeProperty);
 
     JS_EXPORT_PRIVATE static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
@@ -773,7 +773,7 @@ public:
         return &m_butterfly;
     }
 
-    JSValue getMethod(ExecState* exec, CallData& callData, CallType& callType, const Identifier& ident, const String& errorMessage);
+    JS_EXPORT_PRIVATE JSValue getMethod(ExecState*, CallData&, CallType&, const Identifier&, const String& errorMessage);
 
     DECLARE_EXPORT_INFO;
 

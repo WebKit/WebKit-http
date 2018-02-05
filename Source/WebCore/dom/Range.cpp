@@ -27,6 +27,7 @@
 
 #include "ClientRect.h"
 #include "ClientRectList.h"
+#include "Comment.h"
 #include "DocumentFragment.h"
 #include "Event.h"
 #include "Frame.h"
@@ -160,7 +161,7 @@ static inline bool checkForDifferentRootContainer(const RangeBoundaryPoint& star
     return startRootContainer != endRootContainer || (Range::compareBoundaryPoints(start, end, ASSERT_NO_EXCEPTION) > 0);
 }
 
-void Range::setStart(Ref<Node>&& refNode, int offset, ExceptionCode& ec)
+void Range::setStart(Ref<Node>&& refNode, unsigned offset, ExceptionCode& ec)
 {
     bool didMoveDocument = false;
     if (&refNode->document() != &ownerDocument()) {
@@ -179,7 +180,7 @@ void Range::setStart(Ref<Node>&& refNode, int offset, ExceptionCode& ec)
         collapse(true);
 }
 
-void Range::setEnd(Ref<Node>&& refNode, int offset, ExceptionCode& ec)
+void Range::setEnd(Ref<Node>&& refNode, unsigned offset, ExceptionCode& ec)
 {
     bool didMoveDocument = false;
     if (&refNode->document() != &ownerDocument()) {
@@ -226,7 +227,7 @@ void Range::collapse(bool toStart)
         m_start = m_end;
 }
 
-bool Range::isPointInRange(Node& refNode, int offset, ExceptionCode& ec)
+bool Range::isPointInRange(Node& refNode, unsigned offset, ExceptionCode& ec)
 {
     if (&refNode.document() != &ownerDocument()) {
         return false;
@@ -249,7 +250,7 @@ bool Range::isPointInRange(Node& refNode, int offset, ExceptionCode& ec)
     return result;
 }
 
-short Range::comparePoint(Node& refNode, int offset, ExceptionCode& ec) const
+short Range::comparePoint(Node& refNode, unsigned offset, ExceptionCode& ec) const
 {
     // http://developer.mozilla.org/en/docs/DOM:range.comparePoint
     // This method returns -1, 0 or 1 depending on if the point described by the 
@@ -367,7 +368,7 @@ short Range::compareBoundaryPointsForBindings(unsigned short compareHow, const R
     return compareBoundaryPoints(static_cast<CompareHow>(compareHow), sourceRange, ec);
 }
 
-short Range::compareBoundaryPoints(Node* containerA, int offsetA, Node* containerB, int offsetB, ExceptionCode& ec)
+short Range::compareBoundaryPoints(Node* containerA, unsigned offsetA, Node* containerB, unsigned offsetB, ExceptionCode& ec)
 {
     ASSERT(containerA);
     ASSERT(containerB);
@@ -394,7 +395,7 @@ short Range::compareBoundaryPoints(Node* containerA, int offsetA, Node* containe
     while (c && c->parentNode() != containerA)
         c = c->parentNode();
     if (c) {
-        int offsetC = 0;
+        unsigned offsetC = 0;
         Node* n = containerA->firstChild();
         while (n != c && offsetC < offsetA) {
             offsetC++;
@@ -412,7 +413,7 @@ short Range::compareBoundaryPoints(Node* containerA, int offsetA, Node* containe
     while (c && c->parentNode() != containerB)
         c = c->parentNode();
     if (c) {
-        int offsetC = 0;
+        unsigned offsetC = 0;
         Node* n = containerB->firstChild();
         while (n != c && offsetC < offsetB) {
             offsetC++;
@@ -814,12 +815,20 @@ RefPtr<DocumentFragment> Range::cloneContents(ExceptionCode& ec)
 
 void Range::insertNode(Ref<Node>&& node, ExceptionCode& ec)
 {
-    bool startIsCharacterData = is<CharacterData>(startContainer());
-    if (startIsCharacterData && !startContainer().parentNode()) {
+    if (is<Comment>(startContainer()) || is<ProcessingInstruction>(startContainer())) {
         ec = HIERARCHY_REQUEST_ERR;
         return;
     }
-    bool startIsText = startIsCharacterData && startContainer().nodeType() == Node::TEXT_NODE;
+    bool startIsText = startContainer().nodeType() == Node::TEXT_NODE;
+    if (startIsText && !startContainer().parentNode()) {
+        ec = HIERARCHY_REQUEST_ERR;
+        return;
+    }
+    if (node.ptr() == &startContainer()) {
+        ec = HIERARCHY_REQUEST_ERR;
+        return;
+    }
+
     RefPtr<Node> referenceNode = startIsText ? &startContainer() : startContainer().traverseToChildAt(startOffset());
     Node* parentNode = referenceNode ? referenceNode->parentNode() : &startContainer();
     if (!is<ContainerNode>(parentNode)) {
@@ -869,9 +878,9 @@ String Range::toString() const
     for (Node* n = firstNode(); n != pastLast; n = NodeTraversal::next(*n)) {
         if (n->nodeType() == Node::TEXT_NODE || n->nodeType() == Node::CDATA_SECTION_NODE) {
             const String& data = static_cast<CharacterData*>(n)->data();
-            int length = data.length();
-            int start = n == &startContainer() ? std::min(std::max(0, m_start.offset()), length) : 0;
-            int end = n == &endContainer() ? std::min(std::max(start, m_end.offset()), length) : length;
+            unsigned length = data.length();
+            unsigned start = n == &startContainer() ? std::min(std::max(0U, m_start.offset()), length) : 0U;
+            unsigned end = n == &endContainer() ? std::min(std::max(start, m_end.offset()), length) : length;
             builder.append(data, start, end - start);
         }
     }
@@ -907,12 +916,8 @@ RefPtr<DocumentFragment> Range::createContextualFragment(const String& markup, E
 
     if (!element || (is<HTMLDocument>(element->document()) && is<HTMLHtmlElement>(*element)))
         element = HTMLBodyElement::create(node.document());
-    else if (!is<HTMLElement>(*element)) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
 
-    return WebCore::createContextualFragment(downcast<HTMLElement>(*element), markup, AllowScriptingContentAndDoNotMarkAlreadyStarted, ec);
+    return WebCore::createContextualFragment(*element, markup, AllowScriptingContentAndDoNotMarkAlreadyStarted, ec);
 }
 
 
@@ -921,7 +926,7 @@ void Range::detach()
     // This is now a no-op as per the DOM specification.
 }
 
-Node* Range::checkNodeWOffset(Node& node, int offset, ExceptionCode& ec) const
+Node* Range::checkNodeWOffset(Node& node, unsigned offset, ExceptionCode& ec) const
 {
     switch (node.nodeType()) {
         case Node::DOCUMENT_TYPE_NODE:
@@ -931,7 +936,7 @@ Node* Range::checkNodeWOffset(Node& node, int offset, ExceptionCode& ec) const
         case Node::COMMENT_NODE:
         case Node::TEXT_NODE:
         case Node::PROCESSING_INSTRUCTION_NODE:
-            if (static_cast<unsigned>(offset) > downcast<CharacterData>(node).length())
+            if (offset > downcast<CharacterData>(node).length())
                 ec = INDEX_SIZE_ERR;
             return nullptr;
         case Node::ATTRIBUTE_NODE:
@@ -1017,12 +1022,12 @@ void Range::selectNodeContents(Node& refNode, ExceptionCode& ec)
     m_end.setToEndOfNode(refNode);
 }
 
-void Range::surroundContents(Node& passNewParent, ExceptionCode& ec)
+// https://dom.spec.whatwg.org/#dom-range-surroundcontents
+void Range::surroundContents(Node& newParent, ExceptionCode& ec)
 {
-    Ref<Node> newParent = passNewParent;
+    Ref<Node> protectedNewParent(newParent);
 
-    // INVALID_STATE_ERR: Raised if the Range partially selects a non-Text node.
-    // https://dom.spec.whatwg.org/#dom-range-surroundcontents (step 1).
+    // Step 1: If a non-Text node is partially contained in the context object, then throw an InvalidStateError.
     Node* startNonTextContainer = &startContainer();
     if (startNonTextContainer->nodeType() == Node::TEXT_NODE)
         startNonTextContainer = startNonTextContainer->parentNode();
@@ -1034,9 +1039,8 @@ void Range::surroundContents(Node& passNewParent, ExceptionCode& ec)
         return;
     }
 
-    // INVALID_NODE_TYPE_ERR: Raised if node is an Attr, Entity, DocumentType,
-    // Document, or DocumentFragment node.
-    switch (newParent->nodeType()) {
+    // Step 2: If newParent is a Document, DocumentType, or DocumentFragment node, then throw an InvalidNodeTypeError.
+    switch (newParent.nodeType()) {
         case Node::ATTRIBUTE_NODE:
         case Node::DOCUMENT_FRAGMENT_NODE:
         case Node::DOCUMENT_NODE:
@@ -1051,42 +1055,31 @@ void Range::surroundContents(Node& passNewParent, ExceptionCode& ec)
             break;
     }
 
-    // Raise a HIERARCHY_REQUEST_ERR if startContainer() doesn't accept children like newParent.
-    Node* parentOfNewParent = &startContainer();
-
-    // If startContainer() is a character data node, it will be split and it will be its parent that will
-    // need to accept newParent (or in the case of a comment, it logically "would" be inserted into the parent,
-    // although this will fail below for another reason).
-    if (parentOfNewParent->isCharacterDataNode())
-        parentOfNewParent = parentOfNewParent->parentNode();
-    if (!parentOfNewParent || !parentOfNewParent->childTypeAllowed(newParent->nodeType())) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return;
-    }
-    
-    if (newParent->contains(&startContainer())) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return;
-    }
-
-    // FIXME: Do we need a check if the node would end up with a child node of a type not
-    // allowed by the type of node?
-
     ec = 0;
-    while (Node* n = newParent->firstChild()) {
-        downcast<ContainerNode>(newParent.get()).removeChild(*n, ec);
-        if (ec)
-            return;
-    }
+
+    // Step 3: Let fragment be the result of extracting context object.
     RefPtr<DocumentFragment> fragment = extractContents(ec);
     if (ec)
         return;
-    insertNode(newParent.copyRef(), ec);
+
+    // Step 4: If newParent has children, replace all with null within newParent.
+    while (Node* n = newParent.firstChild()) {
+        downcast<ContainerNode>(newParent).removeChild(*n, ec);
+        if (ec)
+            return;
+    }
+
+    // Step 5: Insert newParent into context object.
+    insertNode(newParent, ec);
     if (ec)
         return;
-    newParent->appendChild(*fragment, ec);
+
+    // Step 6: Append fragment to newParent.
+    newParent.appendChild(*fragment, ec);
     if (ec)
         return;
+
+    // Step 7: Select newParent within context object.
     selectNode(newParent, ec);
 }
 
@@ -1149,8 +1142,8 @@ void Range::absoluteTextRects(Vector<IntRect>& rects, bool useSelectionHeight, R
         if (renderer->isBR())
             renderer->absoluteRects(rects, flooredLayoutPoint(renderer->localToAbsolute()));
         else if (is<RenderText>(*renderer)) {
-            int startOffset = node == &startContainer() ? m_start.offset() : 0;
-            int endOffset = node == &endContainer() ? m_end.offset() : std::numeric_limits<int>::max();
+            unsigned startOffset = node == &startContainer() ? m_start.offset() : 0;
+            unsigned endOffset = node == &endContainer() ? m_end.offset() : std::numeric_limits<unsigned>::max();
             rects.appendVector(downcast<RenderText>(*renderer).absoluteRectsForRange(startOffset, endOffset, useSelectionHeight, &isFixed));
         } else
             continue;
@@ -1176,8 +1169,8 @@ void Range::absoluteTextQuads(Vector<FloatQuad>& quads, bool useSelectionHeight,
         if (renderer->isBR())
             renderer->absoluteQuads(quads, &isFixed);
         else if (is<RenderText>(*renderer)) {
-            int startOffset = node == &startContainer() ? m_start.offset() : 0;
-            int endOffset = node == &endContainer() ? m_end.offset() : std::numeric_limits<int>::max();
+            unsigned startOffset = node == &startContainer() ? m_start.offset() : 0;
+            unsigned endOffset = node == &endContainer() ? m_end.offset() : std::numeric_limits<unsigned>::max();
             quads.appendVector(downcast<RenderText>(*renderer).absoluteQuadsForRange(startOffset, endOffset, useSelectionHeight, &isFixed));
         } else
             continue;
@@ -1644,7 +1637,7 @@ static inline void boundaryTextNodesMerged(RangeBoundaryPoint& boundary, NodeWit
 {
     if (boundary.container() == oldNode.node())
         boundary.set(*oldNode.node()->previousSibling(), boundary.offset() + offset, 0);
-    else if (boundary.container() == oldNode.node()->parentNode() && boundary.offset() == oldNode.index())
+    else if (boundary.container() == oldNode.node()->parentNode() && static_cast<int>(boundary.offset()) == oldNode.index())
         boundary.set(*oldNode.node()->previousSibling(), offset, 0);
 }
 
@@ -1662,14 +1655,20 @@ void Range::textNodesMerged(NodeWithIndex& oldNode, unsigned offset)
 
 static inline void boundaryTextNodesSplit(RangeBoundaryPoint& boundary, Text* oldNode)
 {
+    auto* parent = oldNode->parentNode();
     if (boundary.container() == oldNode) {
         unsigned splitOffset = oldNode->length();
         unsigned boundaryOffset = boundary.offset();
-        if (boundaryOffset > splitOffset)
-            boundary.set(*oldNode->nextSibling(), boundaryOffset - splitOffset, 0);
+        if (boundaryOffset > splitOffset) {
+            if (parent)
+                boundary.set(*oldNode->nextSibling(), boundaryOffset - splitOffset, 0);
+            else
+                boundary.setOffset(splitOffset);
+        }
         return;
     }
-    auto* parent = oldNode->parentNode();
+    if (!parent)
+        return;
     if (boundary.container() == parent && boundary.childBefore() == oldNode) {
         auto* newChild = oldNode->nextSibling();
         ASSERT(newChild);
@@ -1681,10 +1680,9 @@ void Range::textNodeSplit(Text* oldNode)
 {
     ASSERT(oldNode);
     ASSERT(&oldNode->document() == &ownerDocument());
-    ASSERT(oldNode->parentNode());
     ASSERT(oldNode->isTextNode());
-    ASSERT(oldNode->nextSibling());
-    ASSERT(oldNode->nextSibling()->isTextNode());
+    ASSERT(!oldNode->parentNode() || oldNode->nextSibling());
+    ASSERT(!oldNode->parentNode() || oldNode->nextSibling()->isTextNode());
     boundaryTextNodesSplit(m_start, oldNode);
     boundaryTextNodesSplit(m_end, oldNode);
 }
@@ -1763,8 +1761,8 @@ void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads, CoordinateSpace spac
             }
         } else if (is<Text>(*node)) {
             if (RenderText* renderText = downcast<Text>(*node).renderer()) {
-                int startOffset = node == &startContainer() ? m_start.offset() : 0;
-                int endOffset = node == &endContainer() ? m_end.offset() : INT_MAX;
+                unsigned startOffset = node == &startContainer() ? m_start.offset() : 0;
+                unsigned endOffset = node == &endContainer() ? m_end.offset() : std::numeric_limits<unsigned>::max();
                 
                 auto textQuads = renderText->absoluteQuadsForRange(startOffset, endOffset);
 

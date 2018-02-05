@@ -74,7 +74,6 @@
 #include "DFGVarargsForwardingPhase.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
 #include "DFGWatchpointCollectionPhase.h"
-#include "Debugger.h"
 #include "JSCInlines.h"
 #include "OperandsInlines.h"
 #include "ProfilerDatabase.h"
@@ -238,6 +237,8 @@ void Plan::compileInThread(LongLivedState& longLivedState, ThreadData* threadDat
 
 Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
 {
+    cleanMustHandleValuesIfNecessary();
+    
     if (verboseCompilationEnabled(mode) && osrEntryBytecodeIndex != UINT_MAX) {
         dataLog("\n");
         dataLog("Compiler must handle OSR entry from bc#", osrEntryBytecodeIndex, " with values: ", mustHandleValues, "\n");
@@ -308,7 +309,6 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         validate(dfg);
         
     performStrengthReduction(dfg);
-    performLocalCSE(dfg);
     performCPSRethreading(dfg);
     performCFA(dfg);
     performConstantFolding(dfg);
@@ -426,6 +426,8 @@ Plan::CompilationPath Plan::compileInThreadImpl(LongLivedState& longLivedState)
         // wrong with running LICM earlier, if we wanted to put other CFG transforms above this point.
         // Alternatively, we could run loop pre-header creation after SSA conversion - but if we did that
         // then we'd need to do some simple SSA fix-up.
+        performLivenessAnalysis(dfg);
+        performCFA(dfg);
         performLICM(dfg);
 
         // FIXME: Currently: IntegerRangeOptimization *must* be run after LICM.
@@ -547,11 +549,6 @@ void Plan::notifyCompiling()
     stage = Compiling;
 }
 
-void Plan::notifyCompiled()
-{
-    stage = Compiled;
-}
-
 void Plan::notifyReady()
 {
     callback->compilationDidBecomeReadyAsynchronously(codeBlock, profiledDFGCodeBlock);
@@ -626,7 +623,8 @@ void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
 {
     if (!isKnownToBeLiveDuringGC())
         return;
-    
+
+    cleanMustHandleValuesIfNecessary();
     for (unsigned i = mustHandleValues.size(); i--;)
         visitor.appendUnbarrieredValue(&mustHandleValues[i]);
 
@@ -673,6 +671,29 @@ void Plan::cancel()
     transitions = DesiredTransitions();
     callback = nullptr;
     stage = Cancelled;
+}
+
+void Plan::cleanMustHandleValuesIfNecessary()
+{
+    LockHolder locker(mustHandleValueCleaningLock);
+    
+    if (!mustHandleValuesMayIncludeGarbage)
+        return;
+    
+    mustHandleValuesMayIncludeGarbage = false;
+    
+    if (!codeBlock)
+        return;
+    
+    if (!mustHandleValues.numberOfLocals())
+        return;
+    
+    FastBitVector liveness = codeBlock->alternative()->livenessAnalysis().getLivenessInfoAtBytecodeOffset(osrEntryBytecodeIndex);
+    
+    for (unsigned local = mustHandleValues.numberOfLocals(); local--;) {
+        if (!liveness.get(local))
+            mustHandleValues.local(local) = jsUndefined();
+    }
 }
 
 } } // namespace JSC::DFG

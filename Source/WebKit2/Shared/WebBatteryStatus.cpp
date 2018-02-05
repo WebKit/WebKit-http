@@ -29,7 +29,6 @@
 #if ENABLE(BATTERY_STATUS)
 
 #include "ArgumentCoders.h"
-#include "Arguments.h"
 
 namespace WebKit {
 
@@ -45,7 +44,7 @@ WebBatteryStatus::~WebBatteryStatus()
 {
 }
 
-void WebBatteryStatus::Data::encode(IPC::ArgumentEncoder& encoder) const
+void WebBatteryStatus::Data::encode(IPC::Encoder& encoder) const
 {
     encoder << isCharging;
     encoder << chargingTime;
@@ -53,7 +52,7 @@ void WebBatteryStatus::Data::encode(IPC::ArgumentEncoder& encoder) const
     encoder << level;
 }
 
-bool WebBatteryStatus::Data::decode(IPC::ArgumentDecoder& decoder, Data& result)
+bool WebBatteryStatus::Data::decode(IPC::Decoder& decoder, Data& result)
 {
     if (!decoder.decode(result.isCharging))
         return false;

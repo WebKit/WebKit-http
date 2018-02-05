@@ -127,10 +127,9 @@ bool doesGC(Graph& graph, Node* node)
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
     case PutGlobalVariable:
-    case VarInjectionWatchpoint:
     case CheckCell:
     case CheckNotEmpty:
-    case CheckIdent:
+    case CheckStringIdent:
     case RegExpExec:
     case RegExpTest:
     case CompareLess:
@@ -139,10 +138,12 @@ bool doesGC(Graph& graph, Node* node)
     case CompareGreaterEq:
     case CompareEq:
     case CompareStrictEq:
+    case CompareEqPtr:
     case Call:
     case TailCallInlinedCaller:
     case Construct:
     case CallVarargs:
+    case CallEval:
     case TailCallVarargsInlinedCaller:
     case ConstructVarargs:
     case LoadVarargs:
@@ -244,7 +245,6 @@ bool doesGC(Graph& graph, Node* node)
     case GetStack:
     case GetFromArguments:
     case PutToArguments:
-    case CopyRest:
     case LogShadowChickenPrologue:
     case LogShadowChickenTail:
     case GetDynamicVar:
@@ -284,6 +284,7 @@ bool doesGC(Graph& graph, Node* node)
     case StrCat:
     case StringReplace:
     case StringReplaceRegExp:
+    case CreateRest:
         return true;
         
     case MultiPutByOffset:

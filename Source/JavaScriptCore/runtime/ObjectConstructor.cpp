@@ -84,6 +84,8 @@ const ClassInfo ObjectConstructor::s_info = { "Function", &InternalFunction::s_i
   isExtensible              objectConstructorIsExtensible               DontEnum|Function 1
   is                        objectConstructorIs                         DontEnum|Function 2
   assign                    JSBuiltin                                   DontEnum|Function 2
+  values                    JSBuiltin                                   DontEnum|Function 1
+  entries                   JSBuiltin                                   DontEnum|Function 1
 @end
 */
 
@@ -263,8 +265,16 @@ JSValue objectConstructorGetOwnPropertyDescriptors(ExecState* exec, JSObject* ob
         return jsUndefined();
 
     for (auto& propertyName : properties) {
-        JSValue fromDescriptor = objectConstructorGetOwnPropertyDescriptor(exec, object, propertyName);
+        PropertyDescriptor descriptor;
+        bool didGetDescriptor = object->getOwnPropertyDescriptor(exec, propertyName, descriptor);
         if (exec->hadException())
+            return jsUndefined();
+
+        if (!didGetDescriptor)
+            continue;
+
+        JSObject* fromDescriptor = constructObjectFromPropertyDescriptor(exec, descriptor);
+        if (!fromDescriptor)
             return jsUndefined();
 
         PutPropertySlot slot(descriptors);

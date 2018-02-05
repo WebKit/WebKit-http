@@ -42,7 +42,7 @@
 
 namespace IPC {
 class Connection;
-class MessageDecoder;
+class Decoder;
 }
 
 namespace WebCore {
@@ -115,7 +115,7 @@ public:
 #endif
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&) = 0;
+    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::Decoder&) = 0;
 #endif
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(std::function<void ()>);
@@ -131,7 +131,7 @@ public:
 
     virtual void setShouldScaleViewToFitDocument(bool) { }
 
-    virtual bool dispatchDidLayout(WebCore::LayoutMilestones) { return false; }
+    virtual bool dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) { return false; }
 
 #if PLATFORM(COCOA)
     // Used by TiledCoreAnimationDrawingArea.
@@ -146,14 +146,14 @@ protected:
     DrawingAreaType m_type;
     WebPage& m_webPage;
 
-#if PLATFORM(GTK) && USE(TEXTURE_MAPPER)
+#if PLATFORM(GTK) && USE(TEXTURE_MAPPER) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     uint64_t m_nativeSurfaceHandleForCompositing { 0 };
 #endif
 
 private:
     // IPC::MessageReceiver.
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     // Message handlers.
     // FIXME: These should be pure virtual.
@@ -172,7 +172,7 @@ private:
     virtual void addTransactionCallbackID(uint64_t callbackID) { ASSERT_NOT_REACHED(); }
 #endif
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK)
+#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     virtual void setNativeSurfaceHandleForCompositing(uint64_t) = 0;
     virtual void destroyNativeSurfaceHandleForCompositing(bool&) = 0;
 #endif

@@ -74,6 +74,19 @@ struct CGFontDescriptor {
 typedef const struct CGColorTransform* CGColorTransformRef;
 
 typedef enum {
+    kCGContextTypeUnknown,
+    kCGContextTypePDF,
+    kCGContextTypePostScript,
+    kCGContextTypeWindow,
+    kCGContextTypeBitmap,
+    kCGContextTypeGL,
+    kCGContextTypeDisplayList,
+    kCGContextTypeKSeparation,
+    kCGContextTypeIOSurface,
+    kCGContextTypeCount
+} CGContextType;
+
+typedef enum {
     kCGCompositeCopy = 1,
     kCGCompositeSover = 2,
 } CGCompositeOperation;
@@ -156,10 +169,7 @@ void CGContextSetCTM(CGContextRef, CGAffineTransform);
 void CGContextSetCompositeOperation(CGContextRef, CGCompositeOperation);
 void CGContextSetShouldAntialiasFonts(CGContextRef, bool shouldAntialiasFonts);
 void CGContextResetClip(CGContextRef);
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
-void CGContextSetFontDilation(CGContextRef, CGSize);
-void CGContextSetFontRenderingStyle(CGContextRef, CGFontRenderingStyle);
-#endif
+CGContextType CGContextGetType(CGContextRef);
 
 CFStringRef CGFontCopyFamilyName(CGFontRef);
 bool CGFontGetDescriptor(CGFontRef, CGFontDescriptor*);
@@ -182,6 +192,7 @@ void CGContextSetFontAntialiasingStyle(CGContextRef, CGFontAntialiasingStyle);
 CGContextRef CGIOSurfaceContextCreate(IOSurfaceRef, size_t, size_t, size_t, size_t, CGColorSpaceRef, CGBitmapInfo);
 CGImageRef CGIOSurfaceContextCreateImage(CGContextRef);
 CGImageRef CGIOSurfaceContextCreateImageReference(CGContextRef);
+CGColorSpaceRef CGIOSurfaceContextGetColorSpace(CGContextRef);
 #endif
 
 #if PLATFORM(COCOA)

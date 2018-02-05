@@ -540,7 +540,7 @@ static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterch
         // the structure and appearance of the copied markup.
         specialCommonAncestor = ancestorToRetainStructureAndAppearance(commonAncestor);
 
-        if (auto* parentListNode = downcast<Element>(enclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isListItem))) {
+        if (auto* parentListNode = enclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isListItem)) {
             if (!editingIgnoresContent(*parentListNode) && WebCore::areRangesEqual(VisibleSelection::selectionFromContentsOfNode(parentListNode).toNormalizedRange().get(), range)) {
                 specialCommonAncestor = parentListNode->parentNode();
                 while (specialCommonAncestor && !isListHTMLElement(specialCommonAncestor))
@@ -951,7 +951,7 @@ static void removeElementFromFragmentPreservingChildren(DocumentFragment& fragme
     fragment.removeChild(element, ASSERT_NO_EXCEPTION);
 }
 
-RefPtr<DocumentFragment> createContextualFragment(HTMLElement& element, const String& markup, ParserContentPolicy parserContentPolicy, ExceptionCode& ec)
+RefPtr<DocumentFragment> createContextualFragment(Element& element, const String& markup, ParserContentPolicy parserContentPolicy, ExceptionCode& ec)
 {
     if (element.ieForbidsInsertHTML()) {
         ec = NOT_SUPPORTED_ERR;

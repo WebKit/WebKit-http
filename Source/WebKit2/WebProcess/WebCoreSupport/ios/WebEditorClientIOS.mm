@@ -29,6 +29,7 @@
 #if PLATFORM(IOS)
 
 #import "WebPage.h"
+#import <WebCore/DocumentFragment.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/NotImplemented.h>
 
@@ -63,12 +64,6 @@ NSURL *WebEditorClient::canonicalizeURLString(NSString *)
 {
     notImplemented();
     return nil;
-}
-
-DocumentFragment* WebEditorClient::documentFragmentFromAttributedString(NSAttributedString *, Vector<RefPtr<ArchiveResource> >&)
-{
-    notImplemented();
-    return nullptr;
 }
 
 void WebEditorClient::setInsertionPasteboard(const String&)
@@ -116,10 +111,10 @@ int WebEditorClient::getPasteboardItemsCount()
     return 0;
 }
 
-WebCore::DocumentFragment* WebEditorClient::documentFragmentFromDelegate(int)
+RefPtr<WebCore::DocumentFragment> WebEditorClient::documentFragmentFromDelegate(int)
 {
     notImplemented();
-    return 0;
+    return nullptr;
 }
 
 bool WebEditorClient::performsTwoStepPaste(WebCore::DocumentFragment*)

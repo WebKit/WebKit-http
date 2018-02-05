@@ -53,12 +53,12 @@ void URLRequest::setDefaultTimeoutInterval(double timeoutInterval)
         processPool->setDefaultRequestTimeoutInterval(timeoutInterval);
 }
 
-void URLRequest::encode(IPC::ArgumentEncoder& encoder) const
+void URLRequest::encode(IPC::Encoder& encoder) const
 {
     encoder << resourceRequest();
 }
 
-bool URLRequest::decode(IPC::ArgumentDecoder& decoder, RefPtr<Object>& result)
+bool URLRequest::decode(IPC::Decoder& decoder, RefPtr<Object>& result)
 {
     ResourceRequest request;
     if (!decoder.decode(request))

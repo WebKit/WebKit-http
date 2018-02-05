@@ -43,7 +43,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 MathMLSelectElement::MathMLSelectElement(const QualifiedName& tagName, Document& document)
-    : MathMLInlineContainerElement(tagName, document)
+    : MathMLRowElement(tagName, document)
     , m_selectedChild(nullptr)
 {
 }
@@ -89,13 +89,13 @@ bool MathMLSelectElement::childShouldCreateRenderer(const Node& child) const
 void MathMLSelectElement::finishParsingChildren()
 {
     updateSelectedChild();
-    MathMLInlineContainerElement::finishParsingChildren();
+    MathMLRowElement::finishParsingChildren();
 }
 
 void MathMLSelectElement::childrenChanged(const ChildChange& change)
 {
     updateSelectedChild();
-    MathMLInlineContainerElement::childrenChanged(change);
+    MathMLRowElement::childrenChanged(change);
 }
 
 void MathMLSelectElement::attributeChanged(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason reason)
@@ -103,7 +103,7 @@ void MathMLSelectElement::attributeChanged(const QualifiedName& name, const Atom
     if (hasTagName(mactionTag) && (name == MathMLNames::actiontypeAttr || name == MathMLNames::selectionAttr))
         updateSelectedChild();
 
-    MathMLInlineContainerElement::attributeChanged(name, oldValue, newValue, reason);
+    MathMLRowElement::attributeChanged(name, oldValue, newValue, reason);
 }
 
 int MathMLSelectElement::getSelectedActionChildAndIndex(Element*& selectedChild)
@@ -136,7 +136,7 @@ Element* MathMLSelectElement::getSelectedActionChild()
         return child;
 
     // The value of the actiontype attribute is case-sensitive.
-    const AtomicString& actiontype = attributeWithoutSynchronization(MathMLNames::actiontypeAttr);
+    auto& actiontype = attributeWithoutSynchronization(MathMLNames::actiontypeAttr);
     if (actiontype == "statusline")
         // FIXME: implement user interaction for the "statusline" action type (http://wkbug/124922).
         { }
@@ -185,7 +185,7 @@ Element* MathMLSelectElement::getSelectedSemanticsChild()
             if (child->hasAttributeWithoutSynchronization(MathMLNames::srcAttr))
                 continue;
             // If the <annotation-xml> element has an encoding attribute describing presentation MathML, SVG or HTML we assume the content can be displayed and we stop here.
-            const AtomicString& value = child->attributeWithoutSynchronization(MathMLNames::encodingAttr);
+            auto& value = child->attributeWithoutSynchronization(MathMLNames::encodingAttr);
             if (isMathMLEncoding(value) || isSVGEncoding(value) || isHTMLEncoding(value))
                 return child;
         }
@@ -219,12 +219,12 @@ void MathMLSelectElement::defaultEventHandler(Event* event)
         }
     }
 
-    MathMLInlineContainerElement::defaultEventHandler(event);
+    MathMLRowElement::defaultEventHandler(event);
 }
 
 bool MathMLSelectElement::willRespondToMouseClickEvents()
 {
-    return attributeWithoutSynchronization(MathMLNames::actiontypeAttr) == "toggle" || MathMLInlineContainerElement::willRespondToMouseClickEvents();
+    return attributeWithoutSynchronization(MathMLNames::actiontypeAttr) == "toggle" || MathMLRowElement::willRespondToMouseClickEvents();
 }
 
 void MathMLSelectElement::toggle()

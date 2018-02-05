@@ -71,7 +71,7 @@ WEBKIT_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 
 #undef DECLARE_LOG_CHANNEL
 
-void WebKitInitializeLoggingChannelsIfNecessary(void);
+void WebKitInitializeLogChannelsIfNecessary(void);
 #endif // !LOG_DISABLED
 
 void ReportDiscardedDelegateException(SEL delegateSelector, id exception);

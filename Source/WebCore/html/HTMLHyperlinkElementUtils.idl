@@ -26,26 +26,16 @@
 [
     NoInterfaceObject
 ] interface HTMLHyperlinkElementUtils {
-    [Reflect, URL] attribute DOMString href;
-    readonly attribute DOMString origin;
+    [Reflect, URL] stringifier attribute USVString href;
+    readonly attribute USVString origin;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute DOMString protocol;
-    readonly attribute DOMString host;
-    readonly attribute DOMString hostname;
-    readonly attribute DOMString port;
-    readonly attribute DOMString pathname;
-    readonly attribute DOMString search;
-    readonly attribute DOMString hash;
-#else
-    attribute DOMString protocol;
-    attribute DOMString username;
-    attribute DOMString password;
-    attribute DOMString host;
-    attribute DOMString hostname;
-    attribute DOMString port;
-    attribute DOMString pathname;
-    attribute DOMString search;
-    attribute DOMString hash;
-#endif
+    attribute USVString protocol;
+    attribute USVString username;
+    attribute USVString password;
+    attribute USVString host;
+    attribute USVString hostname;
+    attribute USVString port;
+    attribute USVString pathname;
+    attribute USVString search;
+    attribute USVString hash;
 };

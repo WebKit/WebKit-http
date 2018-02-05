@@ -99,7 +99,6 @@
 #include "WeakMapData.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
-#include <wtf/RetainPtr.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
@@ -166,6 +165,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , emptyList(new MarkedArgumentBuffer)
     , customGetterSetterFunctionMap(*this)
     , stringCache(*this)
+    , symbolImplToSymbolMap(*this)
     , prototypeMap(*this)
     , interpreter(0)
     , jsArrayClassInfo(JSArray::info())
@@ -349,6 +349,7 @@ VM::~VM()
     // no point to doing so.
     for (unsigned i = DFG::numberOfWorklists(); i--;) {
         if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i)) {
+            worklist->removeNonCompilingPlansForVM(*this);
             worklist->waitUntilAllPlansForVMAreReady(*this);
             worklist->removeAllReadyPlansForVM(*this);
         }

@@ -46,6 +46,7 @@ class PaymentMethod;
 class URL;
 }
 
+OBJC_CLASS NSObject;
 OBJC_CLASS NSWindow;
 OBJC_CLASS PKPaymentAuthorizationViewController;
 OBJC_CLASS WKPaymentAuthorizationViewControllerDelegate;
@@ -70,8 +71,8 @@ public:
 
 private:
     // IPC::MessageReceiver.
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     // Message handlers.
     void canMakePayments(bool& reply);
@@ -143,6 +144,7 @@ private:
 #if PLATFORM(MAC)
     uint64_t m_showPaymentUIRequestSeed { 0 };
     RetainPtr<NSWindow> m_sheetWindow;
+    RetainPtr<NSObject *> m_sheetWindowWillCloseObserver;
 #endif
 };
 

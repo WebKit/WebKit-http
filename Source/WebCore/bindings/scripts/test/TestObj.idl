@@ -44,6 +44,7 @@ enum ObjSize { "small", "much-much-larger" };
 enum TestConfidence { "high", "kinda-low" };
 
 [
+    ConstructorCallWith=Document,
     Constructor(TestCallback testCallback, TestCallbackFunction testCallbackFunction),
     InterfaceName=TestObject
 ] interface TestObj {
@@ -58,7 +59,7 @@ enum TestConfidence { "high", "kinda-low" };
     attribute TestEnumType             enumAttr;
     attribute byte                     byteAttr;
     attribute octet                    octetAttr;
-    attribute short                    shortAttr;
+    [Unscopable] attribute short                    shortAttr;
     [Clamp] attribute short            clampedShortAttr;
     [EnforceRange] attribute short     enforceRangeShortAttr;
     attribute unsigned short           unsignedShortAttr;
@@ -66,11 +67,17 @@ enum TestConfidence { "high", "kinda-low" };
     attribute long long                longLongAttr;
     attribute unsigned long long       unsignedLongLongAttr;
     attribute DOMString                stringAttr;
+#if defined(TESTING_JS)
+    attribute USVString                usvstringAttr;
+#endif
     attribute TestObj                  testObjAttr;
     attribute TestObj?                 testNullableObjAttr;
     [LenientThis] attribute TestObj    lenientTestObjAttr;
     [Unforgeable] readonly attribute DOMString unforgeableAttr;
     [TreatNullAs=EmptyString] attribute DOMString stringAttrTreatingNullAsEmptyString;
+#if defined(TESTING_JS)
+    [TreatNullAs=EmptyString] attribute USVString usvstringAttrTreatingNullAsEmptyString;
+#endif
 
     // WK_ucfirst, WK_lcfirst exceptional cases.
     attribute TestObj                  XMLObjAttr;
@@ -78,10 +85,16 @@ enum TestConfidence { "high", "kinda-low" };
 
     // Reflected DOM attributes
     [Reflect] attribute DOMString reflectedStringAttr;
+#if defined(TESTING_JS)
+    [Reflect] attribute USVString reflectedUSVStringAttr;
+#endif
     [Reflect] attribute long reflectedIntegralAttr;
     [Reflect] attribute unsigned long reflectedUnsignedIntegralAttr;
     [Reflect] attribute boolean reflectedBooleanAttr;
     [Reflect, URL] attribute DOMString reflectedURLAttr;
+#if defined(TESTING_JS)
+    [Reflect, URL] attribute USVString reflectedUSVURLAttr;
+#endif
     [Reflect=customContentStringAttr] attribute DOMString reflectedStringAttr;
     [Reflect=customContentIntegralAttr] attribute long reflectedCustomIntegralAttr;
     [Reflect=customContentBooleanAttr] attribute boolean reflectedCustomBooleanAttr;
@@ -98,7 +111,7 @@ enum TestConfidence { "high", "kinda-low" };
     [EnabledAtRuntime=DOMIterator] iterable<DOMString>;
 
     // Methods
-    void    voidMethod();
+    [Unscopable] void    voidMethod();
     void    voidMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
     byte    byteMethod();
     byte    byteMethodWithArgs(byte byteArg, DOMString strArg, TestObj objArg);
@@ -122,6 +135,12 @@ enum TestConfidence { "high", "kinda-low" };
     void methodWithOptionalEnumArgAndDefaultValue(optional TestEnumType enumArg = "EnumValue1");
     [RaisesException] TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg);
 
+#if defined(TESTING_JS)
+    void methodWithUSVStringArg(USVString str);
+    void methodWithNullableUSVStringArg(USVString? str);
+    void methodWithUSVStringArgTreatingNullAsEmptyString([TreatNullAs=EmptyString] USVString str);
+#endif
+
     void serializedValue(SerializedScriptValue serializedArg);
     void optionsObject(Dictionary oo, optional Dictionary ooo);
 
@@ -134,9 +153,6 @@ enum TestConfidence { "high", "kinda-low" };
     [SetterRaisesExceptionWithMessage] attribute long attrWithSetterExceptionWithMessage;
     [GetterRaisesException] attribute DOMString stringAttrWithGetterException;
     [SetterRaisesException] attribute DOMString stringAttrWithSetterException;
-
-    // Strict type checking.
-    [StrictTypeChecking] attribute TestObj? strictTypeCheckingAttribute;
 
     // 'Custom' extended attribute
     [Custom] attribute long            customAttr;
@@ -188,6 +204,9 @@ enum TestConfidence { "high", "kinda-low" };
     void    methodWithNonOptionalArgAndOptionalArg(long nonOpt, optional long opt);
     void    methodWithNonOptionalArgAndTwoOptionalArgs(long nonOpt, optional long opt1, optional long opt2);
     void    methodWithOptionalString(optional DOMString str);
+#if defined(TESTING_JS)
+    void    methodWithOptionalUSVString(optional USVString str);
+#endif
     void    methodWithOptionalAtomicString([AtomicString] optional DOMString str);
     void    methodWithOptionalStringAndDefaultValue(optional DOMString str = "foo");
     void    methodWithOptionalAtomicStringAndDefaultValue([AtomicString] optional DOMString str = "foo");
@@ -195,16 +214,18 @@ enum TestConfidence { "high", "kinda-low" };
     void    methodWithOptionalStringIsUndefined(optional DOMString str = "undefined");
     void    methodWithOptionalAtomicStringIsNull([AtomicString] optional DOMString str = null);
     void    methodWithOptionalStringIsEmptyString(optional DOMString str = "");
+#if defined(TESTING_JS)
+    void    methodWithOptionalUSVStringIsEmptyString(optional USVString str = "");
+#endif
     void    methodWithOptionalAtomicStringIsEmptyString([AtomicString] optional DOMString str = "");
     void    methodWithOptionalDoubleIsNaN(optional unrestricted double number = NaN);
     void    methodWithOptionalFloatIsNaN(optional unrestricted float number = NaN);
-    void    methodWithOptionalSequence(optional sequence<DOMString> sequence = []);
     void    methodWithOptionalLongLong(optional long long number);
     void    methodWithOptionalLongLongIsZero(optional long long number = 0);
     void    methodWithOptionalUnsignedLongLong(optional unsigned long long number);
     void    methodWithOptionalUnsignedLongLongIsZero(optional unsigned long long number = 0);
-    void    methodWithOptionalArray(optional DOMString[] array);
-    void    methodWithOptionalArrayIsEmpty(optional DOMString[] array = []);
+    void    methodWithOptionalSequence(optional sequence<DOMString> array);
+    void    methodWithOptionalSequenceIsEmpty(optional sequence<DOMString> array = []);
     void    methodWithOptionalBoolean(optional boolean b);
     void    methodWithOptionalBooleanIsFalse(optional boolean b = false);
     void    methodWithOptionalAny(optional any a);
@@ -253,22 +274,22 @@ enum TestConfidence { "high", "kinda-low" };
 
 #if defined(TESTING_JS)
     // Overloads
-    void    overloadedMethod(TestObj? objArg, [StrictTypeChecking] DOMString strArg);
+    void    overloadedMethod(TestObj? objArg, DOMString strArg);
     void    overloadedMethod(TestObj? objArg, optional long longArg);
-    void    overloadedMethod([StrictTypeChecking] DOMString strArg);
+    void    overloadedMethod(DOMString strArg);
     void    overloadedMethod(long longArg);
     void    overloadedMethod(TestCallback callback);
     void    overloadedMethod(DOMStringList? listArg);
-    void    overloadedMethod(DOMString[]? arrayArg);
+    void    overloadedMethod(sequence<DOMString>? arrayArg);
     void    overloadedMethod(TestObj objArg);
-    void    overloadedMethod(DOMString[] arrayArg);
+    void    overloadedMethod(sequence<DOMString> arrayArg);
     void    overloadedMethod(sequence<unsigned long> arrayArg);
     void    overloadedMethod(DOMString strArg);
 
     // FIXME: Implement support for overloaded functions with variadic arguments.
     void    overloadedMethod(Blob... blobArgs);
 
-    void overloadedMethodWithOptionalParameter(TestObj? objArg1, optional TestObj? objArg2 = null);
+    void overloadedMethodWithOptionalParameter(DOMString strArg, optional TestObj? objArg = null);
     void overloadedMethodWithOptionalParameter(TestObj? objArg, optional long longArg);
 #endif
 
@@ -279,18 +300,17 @@ enum TestConfidence { "high", "kinda-low" };
 
     // Static method with conditional on overloaded methods
     [Conditional=Condition1] static void overloadedMethod1(long arg);
-    [Conditional=Condition1] static void overloadedMethod1([StrictTypeChecking] DOMString type);
+    [Conditional=Condition1] static void overloadedMethod1(DOMString type);
 
     void classMethodWithClamp([Clamp] unsigned short objArgsShort, [Clamp] unsigned long objArgsLong);
     void classMethodWithEnforceRange([EnforceRange] unsigned short objArgsShort, [EnforceRange] unsigned long objArgsLong);
 
 #if defined(TESTING_JS)
     void methodWithUnsignedLongSequence(sequence<unsigned long> unsignedLongSequence);
-    [RaisesException] DOMString[] stringArrayFunction(DOMString[] values);
+    [RaisesException] sequence<DOMString> stringArrayFunction(sequence<DOMString> values);
     [RaisesException] DOMStringList domStringListFunction(DOMStringList values);
 
     void methodWithAndWithoutNullableSequence(sequence<unsigned long> arrayArg, sequence<unsigned long>? nullableArrayArg);
-    void methodWithAndWithoutNullableSequence2(unsigned long[] arrayArg, unsigned long[]? nullableArrayArg);
 
     Element? getElementById([RequiresExistingAtomicString] DOMString elementId);
 #endif
@@ -310,12 +330,6 @@ enum TestConfidence { "high", "kinda-low" };
 
     [ImplementedAs=banana] void orange();
     [ImplementedAs=blueberry] attribute long strawberry;
-
-    [StrictTypeChecking] attribute unrestricted float strictFloat;
-    [StrictTypeChecking, RaisesException] boolean strictFunction(DOMString str, unrestricted float a, long b);
-
-    [StrictTypeChecking, RaisesException] boolean strictFunctionWithSequence(TestObj? objArg, sequence<unsigned long> a);
-    [StrictTypeChecking, RaisesException] boolean strictFunctionWithArray(TestObj objArg, long[] array);
 
     // ObjectiveC reserved words.
     readonly attribute long      description;
@@ -349,6 +363,9 @@ enum TestConfidence { "high", "kinda-low" };
 
     attribute long? nullableLongSettableAttribute;
     attribute DOMString? nullableStringSettableAttribute;
+#if defined(TESTING_JS)
+    attribute USVString? nullableUSVStringSettableAttribute;
+#endif
 
     [GetterRaisesException] attribute long? nullableStringValue;
 
@@ -373,14 +390,18 @@ enum TestConfidence { "high", "kinda-low" };
     [PutForwards=name] readonly attribute TestNode? putForwardsNullableAttribute;
 
 #if defined(TESTING_JS)
-    [InvokesCustomElementLifecycleCallbacks] void methodWithNeedsLifecycleProcessingStack();
+    [CEReactions] void methodWithNeedsCustomElementReactionStack();
 #endif
 
     void attachShadowRoot(TestDictionary init);
+
+    stringifier attribute USVString stringifierAttribute;
 };
 
 // The following comment should not generate any code.
 // TestObj implements TestImplements;
+
+typedef any AnyTypedef;
 
 dictionary TestDictionary {
     TestEnumType enumerationValueWithoutDefault;
@@ -411,11 +432,17 @@ dictionary TestDictionary {
     long long largeIntegerWithDefault = 0;
     unsigned long long unsignedLargeInteger;
     unsigned long long unsignedLargeIntegerWithDefault = 0;
+    Node? nullableNode = null;
+    any anyValue;
+    AnyTypedef anyTypedefValue;
+    TestDictionaryThatShouldTolerateNull dictionaryMember;
 };
 
 dictionary TestDictionaryThatShouldNotTolerateNull {
     required TestEnumType requiredEnumerationValue;
     boolean booleanWithoutDefault;
+    required Node nonNullableNode;
+    required TestDictionary requiredDictionaryMember;
 };
 
 dictionary TestDictionaryThatShouldTolerateNull {

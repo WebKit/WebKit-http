@@ -23,10 +23,6 @@
 [
     JSGenerateToNativeObject,
 ] interface SVGElement : Element {
-    // FIXME: the xmlbase attribute is no longer part of SVG2 and Chrome already dropped it.
-    // FIXME: This should not use [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString, SetterRaisesException] attribute DOMString xmlbase;
-
     readonly attribute SVGSVGElement ownerSVGElement;
     readonly attribute SVGElement viewportElement;
 
@@ -41,9 +37,11 @@
     // FIXME: Using "undefined" as default parameter value is wrong.
     CSSValue getPresentationAttribute(optional DOMString name = "undefined");
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     void focus();
     void blur();
+
+    readonly attribute DOMStringMap dataset;
 #endif
 };
 

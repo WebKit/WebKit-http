@@ -28,6 +28,7 @@
 #if ENABLE(MATHML)
 
 #include <unicode/utypes.h>
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -42,6 +43,7 @@ enum Flag {
     Stretchy = 0x20,
     Symmetric = 0x40
 };
+const unsigned allFlags = Accent | Fence | LargeOp | MovableLimits | Separator | Stretchy | Symmetric;
 struct Entry {
     UChar character;
     unsigned form : 2;
@@ -49,8 +51,7 @@ struct Entry {
     unsigned rspace : 3;
     unsigned flags : 8;
 };
-const Entry* getEntry(UChar, Form);
-const Entry* getEntry(UChar);
+Optional<Entry> search(UChar, Form, bool explicitForm);
 bool isVertical(UChar);
 }
 

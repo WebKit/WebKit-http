@@ -88,6 +88,7 @@
 #include "MediaPlayer.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
+#include "MemoryPressureHandler.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
@@ -374,6 +375,9 @@ void Internals::resetToConsistentState(Page& page)
         page.setTopContentInset(0);
         mainFrameView->setUseFixedLayout(false);
         mainFrameView->setFixedLayoutSize(IntSize());
+#if USE(COORDINATED_GRAPHICS)
+        mainFrameView->setFixedVisibleContentRect(IntRect());
+#endif
     }
 
     WebCore::overrideUserPreferredLanguages(Vector<String>());
@@ -782,10 +786,10 @@ bool Internals::hasPausedImageAnimations(Element& element)
     return element.renderer() && element.renderer()->hasPausedImageAnimations();
 }
 
-RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Node& node) const
+RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Element& element) const
 {
     bool allowVisitedStyle = true;
-    return CSSComputedStyleDeclaration::create(&node, allowVisitedStyle);
+    return CSSComputedStyleDeclaration::create(element, allowVisitedStyle);
 }
 
 Node* Internals::ensureShadowRoot(Element& host, ExceptionCode& ec)
@@ -818,12 +822,12 @@ String Internals::shadowRootType(const Node& root, ExceptionCode& ec) const
         return String();
     }
 
-    switch (downcast<ShadowRoot>(root).type()) {
-    case ShadowRoot::Type::UserAgent:
+    switch (downcast<ShadowRoot>(root).mode()) {
+    case ShadowRoot::Mode::UserAgent:
         return String("UserAgentShadowRoot");
-    case ShadowRoot::Type::Closed:
+    case ShadowRoot::Mode::Closed:
         return String("ClosedShadowRoot");
-    case ShadowRoot::Type::Open:
+    case ShadowRoot::Mode::Open:
         return String("OpenShadowRoot");
     default:
         ASSERT_NOT_REACHED();
@@ -2031,6 +2035,21 @@ void Internals::garbageCollectDocumentResources(ExceptionCode& ec) const
     document->cachedResourceLoader().garbageCollectDocumentResources();
 }
 
+bool Internals::isUnderMemoryPressure()
+{
+    return MemoryPressureHandler::singleton().isUnderMemoryPressure();
+}
+
+void Internals::beginSimulatedMemoryPressure()
+{
+    MemoryPressureHandler::singleton().beginSimulatedMemoryPressure();
+}
+
+void Internals::endSimulatedMemoryPressure()
+{
+    MemoryPressureHandler::singleton().endSimulatedMemoryPressure();
+}
+
 void Internals::insertAuthorCSS(const String& css, ExceptionCode& ec) const
 {
     Document* document = contextDocument();
@@ -2755,6 +2774,8 @@ void Internals::beginMediaSessionInterruption(const String& interruptionString, 
         interruption = PlatformMediaSession::SystemSleep;
     else if (equalLettersIgnoringASCIICase(interruptionString, "enteringbackground"))
         interruption = PlatformMediaSession::EnteringBackground;
+    else if (equalLettersIgnoringASCIICase(interruptionString, "suspendedunderlock"))
+        interruption = PlatformMediaSession::SuspendedUnderLock;
     else {
         ec = INVALID_ACCESS_ERR;
         return;
@@ -2859,10 +2880,11 @@ void Internals::setMediaElementRestrictions(HTMLMediaElement& element, const Str
     element.mediaSession().addBehaviorRestriction(restrictions);
 }
 
-void Internals::postRemoteControlCommand(const String& commandString, ExceptionCode& ec)
+void Internals::postRemoteControlCommand(const String& commandString, float argument, ExceptionCode& ec)
 {
     PlatformMediaSession::RemoteControlCommandType command;
-    
+    PlatformMediaSession::RemoteCommandArgument parameter { argument };
+
     if (equalLettersIgnoringASCIICase(commandString, "play"))
         command = PlatformMediaSession::PlayCommand;
     else if (equalLettersIgnoringASCIICase(commandString, "pause"))
@@ -2879,12 +2901,14 @@ void Internals::postRemoteControlCommand(const String& commandString, ExceptionC
         command = PlatformMediaSession::BeginSeekingForwardCommand;
     else if (equalLettersIgnoringASCIICase(commandString, "endseekingforward"))
         command = PlatformMediaSession::EndSeekingForwardCommand;
+    else if (equalLettersIgnoringASCIICase(commandString, "seektoplaybackposition"))
+        command = PlatformMediaSession::SeekToPlaybackPositionCommand;
     else {
         ec = INVALID_ACCESS_ERR;
         return;
     }
     
-    PlatformMediaSessionManager::sharedManager().didReceiveRemoteControlCommand(command);
+    PlatformMediaSessionManager::sharedManager().didReceiveRemoteControlCommand(command, &parameter);
 }
 
 bool Internals::elementIsBlockingDisplaySleep(HTMLMediaElement& element) const
@@ -3106,16 +3130,16 @@ static void appendOffsets(StringBuilder& builder, const Vector<LayoutUnit>& snap
 {
     bool justStarting = true;
 
-    builder.append("{ ");
+    builder.appendLiteral("{ ");
     for (auto& coordinate : snapOffsets) {
         if (!justStarting)
-            builder.append(", ");
+            builder.appendLiteral(", ");
         else
             justStarting = false;
         
         builder.append(String::number(coordinate.toUnsigned()));
     }
-    builder.append(" }");
+    builder.appendLiteral(" }");
 }
     
 String Internals::scrollSnapOffsets(Element& element, ExceptionCode& ec)

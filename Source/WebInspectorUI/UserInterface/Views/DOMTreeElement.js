@@ -175,9 +175,11 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     get editable()
     {
-        var node = this.representedObject;
-        if (node.isInShadowTree())
+        let node = this.representedObject;
+
+        if (node.isShadowRoot() || node.isInUserAgentShadowTree())
             return false;
+
         if (node.isPseudoElement())
             return false;
 
@@ -615,7 +617,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (this.treeOutline.selectedDOMNode() !== this.representedObject)
             return false;
 
-        if (this.representedObject.isInShadowTree() || this.representedObject.isPseudoElement())
+        if (this.representedObject.isShadowRoot() || this.representedObject.isInUserAgentShadowTree())
+            return false;
+
+        if (this.representedObject.isPseudoElement())
             return false;
 
         if (this.representedObject.nodeType() !== Node.ELEMENT_NODE && this.representedObject.nodeType() !== Node.TEXT_NODE)
@@ -638,9 +643,32 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _populateTagContextMenu(contextMenu, event)
     {
-        var node = this.representedObject;
-        if (!node.isInShadowTree()) {
-            var attribute = event.target.enclosingNodeOrSelfWithClass("html-attribute");
+        let node = this.representedObject;
+        if (!node.isInUserAgentShadowTree()) {
+            let attribute = event.target.enclosingNodeOrSelfWithClass("html-attribute");
+
+            if (event.target && event.target.tagName === "A") {
+                let url = event.target.href;
+
+                contextMenu.appendItem(WebInspector.UIString("Open in New Tab"), () => {
+                    const frame = null;
+                    const alwaysOpenExternally = true;
+                    WebInspector.openURL(url, frame, alwaysOpenExternally);
+                });
+
+                if (WebInspector.frameResourceManager.resourceForURL(url)) {
+                    contextMenu.appendItem(WebInspector.UIString("Reveal in Resources Tab"), () => {
+                        let frame = WebInspector.frameResourceManager.frameForIdentifier(node.frameIdentifier);
+                        WebInspector.openURL(url, frame);
+                    });
+                }
+
+                contextMenu.appendItem(WebInspector.UIString("Copy Link Address"), () => {
+                    InspectorFrontendHost.copyText(url);
+                });
+
+                contextMenu.appendSeparator();
+            }
 
             // Add attribute-related actions.
             if (this.editable) {
@@ -651,7 +679,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             }
 
             if (WebInspector.cssStyleManager.canForcePseudoClasses()) {
-                var pseudoSubMenu = contextMenu.appendSubMenuItem(WebInspector.UIString("Forced Pseudo-Classes"));
+                let pseudoSubMenu = contextMenu.appendSubMenuItem(WebInspector.UIString("Forced Pseudo-Classes"));
                 this._populateForcedPseudoStateItems(pseudoSubMenu);
                 contextMenu.appendSeparator();
             }
@@ -1305,9 +1333,6 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                         docTypeElement.append(" \"" + node.systemId + "\"");
                 } else if (node.systemId)
                     docTypeElement.append(" SYSTEM \"" + node.systemId + "\"");
-
-                if (node.internalSubset)
-                    docTypeElement.append(" [" + node.internalSubset + "]");
 
                 docTypeElement.append(">");
                 break;

@@ -101,6 +101,8 @@ WK_EXPORT void WKPageIsWebProcessResponsive(WKPageRef page, void* context, WKPag
     
 WK_EXPORT WKArrayRef WKPageCopyRelatedPages(WKPageRef page);
 
+WK_EXPORT WKFrameRef WKPageLookUpFrameFromHandle(WKPageRef page, WKFrameHandleRef handle);
+
 enum {
     kWKScrollPinningBehaviorDoNotPin,
     kWKScrollPinningBehaviorPinToTop,
@@ -148,6 +150,8 @@ WK_EXPORT void WKPageSetResourceCachingDisabled(WKPageRef page, bool disabled);
 WK_EXPORT void WKPageRestoreFromSessionStateWithoutNavigation(WKPageRef page, WKTypeRef sessionState);
 
 WK_EXPORT void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportScaleLimits);
+
+WK_EXPORT pid_t WKPageGetProcessIdentifier(WKPageRef page);
 
 #ifdef __cplusplus
 }

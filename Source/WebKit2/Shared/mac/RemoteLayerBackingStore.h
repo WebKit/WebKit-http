@@ -67,8 +67,8 @@ public:
 
     void applyBackingStoreToLayer(CALayer *);
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RemoteLayerBackingStore&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RemoteLayerBackingStore&);
 
     void enumerateRectsBeingDrawn(CGContextRef, void (^)(CGRect));
 

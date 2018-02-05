@@ -19,12 +19,12 @@ function runNextTest()
 
 function testPlaysInline(requiresPlaysInline, hasWebkitPlaysInline, expectedDisplayingFullscreen)
 {
-    run('internals.settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(' + requiresPlaysInline + ')');
+    run(`internals.settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(${requiresPlaysInline})`);
     video = media = document.createElement('video');
     document.body.appendChild(video);
     video.controls = true;
     video.src = findMediaFile('video', 'content/test');
-    run('video.' + (hasWebkitPlaysInline ? 'set' : 'remove') + 'Attribute("webkit-playsinline")');
+    run(`video.${hasWebkitPlaysInline ? 'set' : 'remove'}Attribute("webkit-playsinline", "")`);
     waitForEventOnce('canplaythrough', () => {
         runWithKeyDown(() => {
             run('video.play()');
@@ -44,7 +44,7 @@ function testRequiresPlaysInlineAndDoesntHaveIt()
 
 function testRequiresPlaysInlineAndDoesHaveIt()
 {
-    testPlaysInline(true, true, false);
+    testPlaysInline(true, true, true);
 }
 
 function testDoesNotRequirePlaysInlineAndDoesntHaveIt()

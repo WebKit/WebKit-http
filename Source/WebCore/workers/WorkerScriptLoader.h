@@ -34,8 +34,8 @@
 #include "ThreadableLoaderClient.h"
 #include <memory>
 #include <wtf/FastMalloc.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -54,8 +54,8 @@ namespace WebCore {
             return adoptRef(*new WorkerScriptLoader);
         }
 
-        void loadSynchronously(ScriptExecutionContext*, const URL&, CrossOriginRequestPolicy, ContentSecurityPolicyEnforcement);
-        void loadAsynchronously(ScriptExecutionContext*, const URL&, CrossOriginRequestPolicy, ContentSecurityPolicyEnforcement, WorkerScriptLoaderClient*);
+        void loadSynchronously(ScriptExecutionContext*, const URL&, FetchOptions::Mode, ContentSecurityPolicyEnforcement);
+        void loadAsynchronously(ScriptExecutionContext*, const URL&, FetchOptions::Mode, ContentSecurityPolicyEnforcement, WorkerScriptLoaderClient*);
 
         void notifyError();
 

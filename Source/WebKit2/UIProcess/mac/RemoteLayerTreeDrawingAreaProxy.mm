@@ -227,16 +227,16 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
     m_webPageProxy.layerTreeCommitComplete();
 
 #if PLATFORM(IOS)
-    if (std::exchange(m_didUpdateMessageState, NotSent) == MissedCommit)
+    if (std::exchange(m_didUpdateMessageState, NeedsDidUpdate) == MissedCommit)
         didRefreshDisplay(monotonicallyIncreasingTime());
     [m_displayLinkHandler schedule];
 #else
-    m_didUpdateMessageState = NotSent;
+    m_didUpdateMessageState = NeedsDidUpdate;
     didRefreshDisplay(monotonicallyIncreasingTime());
 #endif
 
     if (auto milestones = layerTreeTransaction.newlyReachedLayoutMilestones())
-        m_webPageProxy.didLayout(milestones);
+        m_webPageProxy.didReachLayoutMilestone(milestones);
 
     for (auto& callbackID : layerTreeTransaction.callbackIDs()) {
         if (auto callback = m_callbacks.take<VoidCallback>(callbackID))
@@ -399,7 +399,7 @@ void RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay(double)
     if (!m_webPageProxy.isValid())
         return;
 
-    if (m_didUpdateMessageState != NotSent) {
+    if (m_didUpdateMessageState != NeedsDidUpdate) {
         m_didUpdateMessageState = MissedCommit;
 #if PLATFORM(IOS)
         [m_displayLinkHandler pause];
@@ -407,7 +407,7 @@ void RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay(double)
         return;
     }
     
-    m_didUpdateMessageState = Sent;
+    m_didUpdateMessageState = DoesNotNeedDidUpdate;
 
     TraceScope tracingScope(RAFDidRefreshDisplayStart, RAFDidRefreshDisplayEnd);
 
@@ -423,6 +423,11 @@ void RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay(double)
 
 void RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateViewState()
 {
+    // We must send the didUpdate message before blocking on the next commit, otherwise
+    // we can be guaranteed that the next commit won't come until after the waitForAndDispatchImmediately times out.
+    if (m_didUpdateMessageState != DoesNotNeedDidUpdate)
+        didRefreshDisplay(monotonicallyIncreasingTime());
+
     static std::chrono::milliseconds viewStateUpdateTimeout = [] {
         if (id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"WebKitOverrideViewStateUpdateTimeout"])
             return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>([value doubleValue]));

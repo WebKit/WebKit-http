@@ -18,25 +18,26 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// Introduced in DOM Level 2:
 [
     CustomToJSObject,
     Exposed=(Window,Worker),
     JSCustomHeader,
     JSCustomToNativeObject,
-    ObjCProtocol,
 ] interface EventTarget {
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? listener, optional AddEventListenerOptions options);
-    [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? listener, optional EventListenerOptions options);
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
+    // FIXME: Should be:
+    // void addEventListener(DOMString type, EventListener? callback, optional (AddEventListenerOptions or boolean) options);
+    // void removeEventListener(DOMString type, EventListener? callback, optional (EventListenerOptions or boolean) options);
+    [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? listener);
+    [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? listener, AddEventListenerOptions options);
+    [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? listener);
+    [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? listener, EventListenerOptions options);
 #endif
 
-    // FIXME: The 'type' and 'listener' parameters should not be optional.
-    [ObjCLegacyUnnamedParameters, ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] optional DOMString type = "undefined", optional EventListener? listener, optional boolean useCapture = false);
-    [ObjCLegacyUnnamedParameters, ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] optional DOMString type = "undefined", optional EventListener? listener, optional boolean useCapture = false);
+    [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? listener, boolean useCapture);
+    [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? listener, boolean useCapture);
 
-    // FIXME: event should not be nullable.
-    [ImplementedAs=dispatchEventForBindings, RaisesException] boolean dispatchEvent(Event? event);
+    [ImplementedAs=dispatchEventForBindings, RaisesException] boolean dispatchEvent(Event event);
 };
 
 dictionary EventListenerOptions {

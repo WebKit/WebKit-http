@@ -1,3 +1,117 @@
+2016-08-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Add svn:global-ignores to the root to ignore *.pyc files everythere in the repository.
+
+        * .: Added property svn:global-ignores.
+
+2016-08-19  Dean Jackson  <dino@apple.com>
+
+        Implement preferLowPowerToHighPerformance for WebGL
+        https://bugs.webkit.org/show_bug.cgi?id=161017
+        <rdar://problem/26819135>
+
+        Reviewed by Myles Maxfield.
+
+        A manual test that creates contexts with and without preferLowPowerToHighPerformance
+        to see what is used. This has to be manual because it depends on the hardware
+        configuration, and we don't have a way to detect it up-front. Also, if the
+        code was failing, it would be the same result as on a single GPU system.
+
+        * ManualTests/webgl-preferLowPowerToHighPerformance.html: Added.
+
+2016-08-19  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Warning fix.
+        https://bugs.webkit.org/show_bug.cgi?id=160994
+
+        Reviewed by Anders Carlsson.
+
+        Ignore warning when function declared with __declspec(noreturn) has non void return type.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2016-08-17  Don Olmstead  <don.olmstead@am.sony.com>
+
+        Use find_library within Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=160904
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/FindICU.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2016-08-17  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        [EFL] Bump efl version from 1.17 to 1.18
+        https://bugs.webkit.org/show_bug.cgi?id=160899
+
+        Reviewed by Antonio Gomes.
+
+        * Source/cmake/OptionsEfl.cmake: Update ewebkit version to 1.18.0.
+
+2016-08-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Mac][cmake] Fix the build after Objective-C bindings generator removal
+        https://bugs.webkit.org/show_bug.cgi?id=160545
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2016-08-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Lacking support on a arm-traditional disassembler.
+        https://bugs.webkit.org/show_bug.cgi?id=123717
+
+        Reviewed by Mark Lam.
+
+        * Source/cmake/FindLLVM.cmake: Added back the r196749 state.
+        * Source/cmake/OptionsCommon.cmake: Added back the r196749 state.
+
+2016-08-01  Keith Miller  <keith_miller@apple.com>
+
+        We should not keep the JavaScript tests inside the Source/JavaScriptCore/ directory.
+        https://bugs.webkit.org/show_bug.cgi?id=160372
+
+        Rubber stamped by Geoffrey Garen.
+
+        This patch moves all the JavaScript tests from Source/JavaScriptCore/tests to
+        a new top level directory, JSTests. Having the tests in the Source directory
+        was both confusing and inconvenient for people that just want to checkout the
+        source code of WebKit. Since there is no other obvious place to put all the
+        JavaScript tests a new top level directory seemed the most sensible.
+
+        * JSTests/: Copied from Source/JavaScriptCore/tests.
+        * Source/JavaScriptCore/tests/: Deleted.
+        * Scripts/import-test262-tests:
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/update-javascriptcore-test-res:
+
+
+2016-07-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.13.4 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2016-07-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Enable threaded compositor by default
+        https://bugs.webkit.org/show_bug.cgi?id=160079
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-07-20  Csaba Osztrogonác  <ossy@webkit.org>
+
+        JSC JIT Broken on ARMv7 Traditional (without Thumb2)
+        https://bugs.webkit.org/show_bug.cgi?id=159880
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsCommon.cmake: Use the BFD linker on ARM traditional because of a gold linker bug.
+
 2016-07-18  Alexey Proskuryakov  <ap@apple.com>
 
         "make ARCHS=x86_64" fails to build

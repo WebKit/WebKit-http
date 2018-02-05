@@ -30,6 +30,7 @@
 
 #import "APIUIClient.h"
 #import "EditingRange.h"
+#import "Logging.h"
 #import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
@@ -73,6 +74,7 @@
 #import <WebCore/Scrollbar.h>
 #import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
+#import <WebCore/TextStream.h>
 #import <WebCore/WebCoreNSURLExtras.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
@@ -148,6 +150,26 @@ inline bool operator==(const WKSelectionDrawingInfo& a, const WKSelectionDrawing
 inline bool operator!=(const WKSelectionDrawingInfo& a, const WKSelectionDrawingInfo& b)
 {
     return !(a == b);
+}
+
+static WebCore::TextStream& operator<<(WebCore::TextStream& stream, WKSelectionDrawingInfo::SelectionType type)
+{
+    switch (type) {
+    case WKSelectionDrawingInfo::SelectionType::None: stream << "none"; break;
+    case WKSelectionDrawingInfo::SelectionType::Plugin: stream << "plugin"; break;
+    case WKSelectionDrawingInfo::SelectionType::Range: stream << "range"; break;
+    }
+    
+    return stream;
+}
+
+WebCore::TextStream& operator<<(WebCore::TextStream& stream, const WKSelectionDrawingInfo& info)
+{
+    TextStream::GroupScope group(stream);
+    stream.dumpProperty("type", info.type);
+    stream.dumpProperty("caret rect", info.caretRect);
+    stream.dumpProperty("selection rects", info.selectionRects);
+    return stream;
 }
 
 } // namespace WebKit
@@ -264,8 +286,8 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
     RetainPtr<UIView> _customInputView;
     RetainPtr<NSArray<UITextSuggestion *>> _suggestions;
-    RetainPtr<NSString> _textContentType;
     BOOL _accessoryViewShouldNotShow;
+    BOOL _forceSecureTextEntry;
 }
 
 - (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject
@@ -324,6 +346,20 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     [_contentView reloadInputViews];
 }
 
+- (BOOL)forceSecureTextEntry
+{
+    return _forceSecureTextEntry;
+}
+
+- (void)setForceSecureTextEntry:(BOOL)forceSecureTextEntry
+{
+    if (_forceSecureTextEntry == forceSecureTextEntry)
+        return;
+
+    _forceSecureTextEntry = forceSecureTextEntry;
+    [_contentView reloadInputViews];
+}
+
 - (UIView *)customInputView
 {
     return _customInputView.get();
@@ -350,20 +386,6 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     _suggestions = adoptNS([suggestions copy]);
     [suggestionDelegate setSuggestions:suggestions];
 #endif
-}
-
-- (NSString *)textContentType
-{
-    return _textContentType.get();
-}
-
-- (void)setTextContentType:(NSString *)textContentType
-{
-    if (textContentType == _textContentType || [textContentType isEqualToString:_textContentType.get()])
-        return;
-
-    _textContentType = adoptNS([textContentType copy]);
-    [_contentView reloadInputViews];
 }
 
 - (void)invalidate
@@ -748,6 +770,15 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     return _isEditable;
 }
 
+- (BOOL)setIsEditable:(BOOL)isEditable
+{
+    if (isEditable == _isEditable)
+        return NO;
+
+    _isEditable = isEditable;
+    return YES;
+}
+
 - (BOOL)canBecomeFirstResponder
 {
     if (_resigningFirstResponder)
@@ -1072,8 +1103,8 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
               maximumScale:_assistedNodeInformation.maximumScaleFactor
-              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && (!UICurrentUserInterfaceIdiomIsPad() || _forceIPadStyleZoomOnInputFocus))
-               forceScroll:[self requiresAccessoryView:_forceIPadStyleZoomOnInputFocus]];
+              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && !UICurrentUserInterfaceIdiomIsPad())
+               forceScroll:[self requiresAccessoryView]];
 
     _didAccessoryTabInitiateFocus = NO;
     [self _ensureFormAccessoryView];
@@ -1573,7 +1604,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     [_textSelectionAssistant didEndScrollingOverflow];
 }
 
-- (BOOL)requiresAccessoryView:(BOOL)forceIPadBehavior
+- (BOOL)requiresAccessoryView
 {
     if ([_formInputSession accessoryViewShouldNotShow])
         return NO;
@@ -1598,7 +1629,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Month:
     case InputType::Week:
     case InputType::Time:
-        return !(UICurrentUserInterfaceIdiomIsPad() || forceIPadBehavior);
+        return !UICurrentUserInterfaceIdiomIsPad();
     }
 }
 
@@ -1613,7 +1644,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (UIView *)inputAccessoryView
 {
-    if (![self requiresAccessoryView:NO])
+    if (![self requiresAccessoryView])
         return nil;
 
     return self.formAccessoryView;
@@ -2974,7 +3005,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (!_traits)
         _traits = adoptNS([[UITextInputTraits alloc] init]);
 
-    [_traits setSecureTextEntry:_assistedNodeInformation.elementType == InputType::Password];
+    [_traits setSecureTextEntry:_assistedNodeInformation.elementType == InputType::Password || [_formInputSession forceSecureTextEntry]];
     [_traits setShortcutConversionType:_assistedNodeInformation.elementType == InputType::Password ? UITextShortcutConversionTypeNo : UITextShortcutConversionTypeDefault];
 
     if (!_assistedNodeInformation.formAction.isEmpty())
@@ -3009,10 +3040,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     }
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    if (NSString *textContentType = [_formInputSession textContentType])
-        [_traits setTextContentType:textContentType];
-    else
-        [_traits setTextContentType:contentTypeFromFieldName(_assistedNodeInformation.autofillFieldName)];
+    [_traits setTextContentType:contentTypeFromFieldName(_assistedNodeInformation.autofillFieldName)];
 #endif
 
     return _traits.get();
@@ -3582,7 +3610,7 @@ static bool isAssistableInputType(InputType type)
     if (_assistedNodeInformation.elementType == information.elementType && _assistedNodeInformation.elementRect == information.elementRect)
         return;
 
-    _isEditable = YES;
+    BOOL editableChanged = [self setIsEditable:YES];
     _assistedNodeInformation = information;
     _inputPeripheral = nil;
     _traits = nil;
@@ -3603,7 +3631,8 @@ static bool isAssistableInputType(InputType type)
         break;
     }
     
-    if (information.insideFixedPosition)
+    // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
+    if (editableChanged)
         [_webView _updateVisibleContentRects];
     
     [self _displayFormNodeInputView];
@@ -3615,13 +3644,17 @@ static bool isAssistableInputType(InputType type)
         _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get() userObject:userObject]);
         [inputDelegate _webView:_webView didStartInputSession:_formInputSession.get()];
     }
+    
+    [_webView didStartFormControlInteraction];
 }
 
 - (void)_stopAssistingNode
 {
     [_formInputSession invalidate];
     _formInputSession = nil;
-    _isEditable = NO;
+
+    BOOL editableChanged = [self setIsEditable:NO];
+
     _assistedNodeInformation.elementType = InputType::None;
     _inputPeripheral = nil;
 
@@ -3631,6 +3664,12 @@ static bool isAssistableInputType(InputType type)
     [self _updateAccessory];
     // The name is misleading, but this actually clears the selection views and removes any selection.
     [_webSelectionAssistant resignedFirstResponder];
+
+    // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
+    if (editableChanged)
+        [_webView _updateVisibleContentRects];
+
+    [_webView didEndFormControlInteraction];
 }
 
 - (void)_selectionChanged
@@ -3660,6 +3699,8 @@ static bool isAssistableInputType(InputType type)
     WKSelectionDrawingInfo selectionDrawingInfo(_page->editorState());
     if (!force && selectionDrawingInfo == _lastSelectionDrawingInfo)
         return;
+
+    LOG_WITH_STREAM(Selection, stream << "_updateChangedSelection " << selectionDrawingInfo);
 
     _lastSelectionDrawingInfo = selectionDrawingInfo;
 
@@ -3800,6 +3841,16 @@ static bool isAssistableInputType(InputType type)
 
 @end
 
+@implementation WKContentView (WKTesting)
+
+- (void)selectFormAccessoryPickerRow:(NSInteger)rowIndex
+{
+    if ([_inputPeripheral isKindOfClass:[WKFormSelectControl self]])
+        [(WKFormSelectControl *)_inputPeripheral selectRow:rowIndex inComponent:0 extendingSelection:NO];
+}
+
+@end
+
 #if HAVE(LINK_PREVIEW)
 
 @implementation WKContentView (WKInteractionPreview)
@@ -3861,7 +3912,9 @@ static bool isAssistableInputType(InputType type)
     BOOL canShowImagePreview = _positionInformation.isImage && supportsImagePreview;
     BOOL canShowLinkPreview = _positionInformation.isLink || canShowImagePreview;
     BOOL useImageURLForLink = NO;
-    BOOL supportsAttachmentPreview = [uiDelegate respondsToSelector:@selector(_attachmentListForWebView:)] && [uiDelegate respondsToSelector:@selector(_webView:indexIntoAttachmentListForElement:)];
+    BOOL respondsToAttachmentListForWebViewSourceIsManaged = [uiDelegate respondsToSelector:@selector(_attachmentListForWebView:sourceIsManaged:)];
+    BOOL supportsAttachmentPreview = ([uiDelegate respondsToSelector:@selector(_attachmentListForWebView:)] || respondsToAttachmentListForWebViewSourceIsManaged)
+        && [uiDelegate respondsToSelector:@selector(_webView:indexIntoAttachmentListForElement:)];
     BOOL canShowAttachmentPreview = (_positionInformation.isAttachment || _positionInformation.isImage) && supportsAttachmentPreview;
 
     if (canShowImagePreview && _positionInformation.isAnimatedImage) {
@@ -3917,15 +3970,22 @@ static bool isAssistableInputType(InputType type)
         *type = UIPreviewItemTypeImage;
         dataForPreview[UIPreviewDataLink] = [NSURL _web_URLWithWTFString:_positionInformation.imageURL];
     } else if (canShowAttachmentPreview) {
-        // FIXME: Should use UIKit constants.
-        enum { WKUIPreviewItemTypeAttachment = 5 };
-        *type = static_cast<UIPreviewItemType>(WKUIPreviewItemTypeAttachment);
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+        *type = UIPreviewItemTypeAttachment;
         auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
         NSUInteger index = [uiDelegate _webView:_webView indexIntoAttachmentListForElement:element.get()];
         if (index != NSNotFound) {
-            dataForPreview[@"UIPreviewDataAttachmentList"] = [uiDelegate _attachmentListForWebView:_webView];
-            dataForPreview[@"UIPreviewDataAttachmentIndex"] = [NSNumber numberWithUnsignedInteger:index];
+            BOOL sourceIsManaged = NO;
+            if (respondsToAttachmentListForWebViewSourceIsManaged)
+                dataForPreview[UIPreviewDataAttachmentList] = [uiDelegate _attachmentListForWebView:_webView sourceIsManaged:&sourceIsManaged];
+            else
+                dataForPreview[UIPreviewDataAttachmentList] = [uiDelegate _attachmentListForWebView:_webView];
+            dataForPreview[UIPreviewDataAttachmentIndex] = [NSNumber numberWithUnsignedInteger:index];
+
+            // FIXME: Replace the following NSString literal with a UIKit NSString constant.
+            dataForPreview[@"UIPreviewDataAttachmentListSourceIsManaged"] = [NSNumber numberWithBool:sourceIsManaged];
         }
+#endif
     }
     
     return dataForPreview;
@@ -4102,22 +4162,7 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 
 @end
 
-#endif
-
-@implementation WKContentView (WKInteractionTesting)
-
-- (BOOL)forceIPadStyleZoomOnInputFocus
-{
-    return _forceIPadStyleZoomOnInputFocus;
-}
-
-- (void)setForceIPadStyleZoomOnInputFocus:(BOOL)forceIPadStyleZoom
-{
-    _forceIPadStyleZoomOnInputFocus = forceIPadStyleZoom;
-}
-
-@end
-
+#endif // HAVE(LINK_PREVIEW)
 
 // UITextRange, UITextPosition and UITextSelectionRect implementations for WK2
 

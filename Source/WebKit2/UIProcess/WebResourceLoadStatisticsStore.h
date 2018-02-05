@@ -29,7 +29,6 @@
 #include "APIObject.h"
 #include "Connection.h"
 #include <WebCore/ResourceLoadStatisticsStore.h>
-#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -75,7 +74,7 @@ private:
     String persistentStoragePath(const String& label) const;
 
     // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     void writeEncoderToDisk(WebCore::KeyedEncoder&, const String& label) const;
     std::unique_ptr<WebCore::KeyedDecoder> createDecoderFromDisk(const String& label) const;

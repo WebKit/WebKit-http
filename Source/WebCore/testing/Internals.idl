@@ -98,7 +98,7 @@ enum UserInterfaceLayoutDirection {
     void clearPageCache();
     unsigned long pageCacheSize();
 
-    CSSStyleDeclaration computedStyleIncludingVisitedInfo(Node node);
+    CSSStyleDeclaration computedStyleIncludingVisitedInfo(Element element);
 
     [RaisesException] Node ensureShadowRoot(Element host);
     Node ensureUserAgentShadowRoot(Element host);
@@ -128,7 +128,7 @@ enum UserInterfaceLayoutDirection {
 
     DOMString visiblePlaceholder(Element element);
     void selectColorInColorChooser(HTMLInputElement element, DOMString colorValue);
-    [RaisesException] DOMString[] formControlStateOfPreviousHistoryItem();
+    [RaisesException] sequence<DOMString> formControlStateOfPreviousHistoryItem();
     [RaisesException] void setFormControlStateOfPreviousHistoryItem(sequence<DOMString> values);
 
     [RaisesException] ClientRect absoluteCaretBounds();
@@ -258,6 +258,10 @@ enum UserInterfaceLayoutDirection {
     [RaisesException] void insertAuthorCSS(DOMString css);
     [RaisesException] void insertUserCSS(DOMString css);
 
+    readonly attribute boolean isUnderMemoryPressure;
+    void beginSimulatedMemoryPressure();
+    void endSimulatedMemoryPressure();
+
 #if defined(ENABLE_BATTERY_STATUS) && ENABLE_BATTERY_STATUS
     [RaisesException] void setBatteryStatus(DOMString eventType, boolean charging, unrestricted double chargingTime, unrestricted double dischargingTime, unrestricted double level);
 #endif
@@ -274,7 +278,7 @@ enum UserInterfaceLayoutDirection {
 
     DOMString counterValue(Element element);
     long pageNumber(Element element, optional unrestricted float pageWidth = 800, optional unrestricted float pageHeight = 600);
-    DOMString[] shortcutIconURLs();
+    sequence<DOMString> shortcutIconURLs();
     long numberOfPages(optional unrestricted double pageWidthInPixels = 800, optional unrestricted double pageHeightInPixels = 600);
     [RaisesException] DOMString pageProperty(DOMString propertyName, long pageNumber);
     [RaisesException] DOMString pageSizeAndMarginsInPixels(long pageIndex, long width, long height, long marginTop, long marginRight, long marginBottom, long marginLeft);
@@ -309,7 +313,7 @@ enum UserInterfaceLayoutDirection {
     TypeConversions typeConversions();
     MemoryInfo memoryInfo();
 
-    DOMString[] getReferencedFilePaths();
+    sequence<DOMString> getReferencedFilePaths();
 
     // These functions both reset the tracked repaint rects. They are intended to be used in the following order:
     //  startTrackingRepaints, repaintRectsAsText, stopTrackingRepaints.
@@ -387,7 +391,7 @@ enum UserInterfaceLayoutDirection {
     [RaisesException] ClientRect selectionBounds();
 
     [Conditional=MEDIA_SOURCE] void initializeMockMediaSource();
-    [Conditional=MEDIA_SOURCE] DOMString[] bufferedSamplesForTrackID(SourceBuffer buffer, DOMString trackID);
+    [Conditional=MEDIA_SOURCE] sequence<DOMString> bufferedSamplesForTrackID(SourceBuffer buffer, DOMString trackID);
     [Conditional=MEDIA_SOURCE] void setShouldGenerateTimestamps(SourceBuffer buffer, boolean flag);
 
     [Conditional=VIDEO, RaisesException] void beginMediaSessionInterruption(DOMString interruptionType);
@@ -402,7 +406,7 @@ enum UserInterfaceLayoutDirection {
     [Conditional=VIDEO, RaisesException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
     [Conditional=VIDEO] void setMediaElementRestrictions(HTMLMediaElement element, DOMString restrictions);
     [Conditional=WEB_AUDIO] void setAudioContextRestrictions(AudioContext context, DOMString restrictions);
-    [Conditional=VIDEO, RaisesException] void postRemoteControlCommand(DOMString command);
+    [Conditional=VIDEO, RaisesException] void postRemoteControlCommand(DOMString command, optional unrestricted float argument = 0);
     [Conditional=WIRELESS_PLAYBACK_TARGET] void setMockMediaPlaybackTargetPickerEnabled(boolean enabled);
     [Conditional=WIRELESS_PLAYBACK_TARGET, RaisesException] void setMockMediaPlaybackTargetPickerState(DOMString deviceName, DOMString deviceState);
     [Conditional=MEDIA_STREAM] void setMockMediaCaptureDevicesEnabled(boolean enabled);

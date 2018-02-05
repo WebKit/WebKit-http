@@ -280,13 +280,6 @@ public:
         m_marginBox.setEnd(value, styleToUse->writingMode(), styleToUse->direction());
     }
 
-    // The following five functions are used to implement collapsing margins.
-    // All objects know their maximal positive and negative margins.  The
-    // formula for computing a collapsed margin is |maxPosMargin| - |maxNegmargin|.
-    // For a non-collapsing box, such as a leaf element, this formula will simply return
-    // the margin of the element.  Blocks override the maxMarginBefore and maxMarginAfter
-    // methods.
-    enum MarginSign { PositiveMargin, NegativeMargin };
     virtual bool isSelfCollapsingBlock() const { return false; }
     virtual LayoutUnit collapsedMarginBefore() const { return marginBefore(); }
     virtual LayoutUnit collapsedMarginAfter() const { return marginAfter(); }
@@ -488,7 +481,7 @@ public:
     bool hasUnsplittableScrollingOverflow() const;
     bool isUnsplittableForPagination() const;
 
-    LayoutRect localCaretRect(InlineBox*, int caretOffset, LayoutUnit* extraWidthToEndOfLine = nullptr) override;
+    LayoutRect localCaretRect(InlineBox*, unsigned caretOffset, LayoutUnit* extraWidthToEndOfLine = nullptr) override;
 
     virtual LayoutRect overflowClipRect(const LayoutPoint& location, RenderRegion*, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhaseBlockBackground);
     virtual LayoutRect overflowClipRectForChildLayers(const LayoutPoint& location, RenderRegion* region, OverlayScrollbarSizeRelevancy relevancy) { return overflowClipRect(location, region, relevancy); }
@@ -605,13 +598,11 @@ public:
         return layoutOverflowRect.y() < y() || layoutOverflowRect.maxY() > y() + logicalHeight();
     }
 
-    virtual RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject*) const
+    virtual std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const
     {
         ASSERT_NOT_REACHED();
         return nullptr;
     }
-
-    bool hasSameDirectionAs(const RenderBox* object) const { return style().direction() == object->style().direction(); }
 
 #if ENABLE(CSS_SHAPES)
     ShapeOutsideInfo* shapeOutsideInfo() const

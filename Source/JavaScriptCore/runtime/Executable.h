@@ -44,7 +44,6 @@
 namespace JSC {
 
 class CodeBlock;
-class Debugger;
 class EvalCodeBlock;
 class FunctionCodeBlock;
 class JSScope;
@@ -287,8 +286,6 @@ public:
         
     DECLARE_INFO;
 
-    Intrinsic intrinsic() const;
-
     const String& name() const { return m_name; }
 
 protected:
@@ -301,8 +298,6 @@ private:
 
     NativeFunction m_function;
     NativeFunction m_constructor;
-        
-    Intrinsic m_intrinsic;
 
     String m_name;
 };
@@ -342,12 +337,14 @@ public:
     void setNeverOptimize(bool value) { m_neverOptimize = value; }
     void setNeverFTLOptimize(bool value) { m_neverFTLOptimize = value; }
     void setDidTryToEnterInLoop(bool value) { m_didTryToEnterInLoop = value; }
+    void setCanUseOSRExitFuzzing(bool value) { m_canUseOSRExitFuzzing = value; }
     bool neverInline() const { return m_neverInline; }
     bool neverOptimize() const { return m_neverOptimize; }
     bool neverFTLOptimize() const { return m_neverFTLOptimize; }
     bool didTryToEnterInLoop() const { return m_didTryToEnterInLoop; }
     bool isInliningCandidate() const { return !neverInline(); }
     bool isOkToOptimize() const { return !neverOptimize(); }
+    bool canUseOSRExitFuzzing() const { return m_canUseOSRExitFuzzing; }
     
     bool* addressOfDidTryToEnterInLoop() { return &m_didTryToEnterInLoop; }
 
@@ -371,19 +368,21 @@ public:
     void installCode(VM&, CodeBlock*, CodeType, CodeSpecializationKind);
     CodeBlock* newCodeBlockFor(CodeSpecializationKind, JSFunction*, JSScope*, JSObject*& exception);
     CodeBlock* newReplacementCodeBlockFor(CodeSpecializationKind);
-    
-    JSObject* prepareForExecution(ExecState* exec, JSFunction* function, JSScope* scope, CodeSpecializationKind kind)
-    {
-        if (hasJITCodeFor(kind))
-            return 0;
-        return prepareForExecutionImpl(exec, function, scope, kind);
-    }
+
+    // This function has an interesting GC story. Callers of this function are asking us to create a CodeBlock
+    // that is not jettisoned before this function returns. Callers are essentially asking for a strong reference
+    // to the CodeBlock. Because the Executable may be allocating the CodeBlock, we require callers to pass in
+    // their CodeBlock*& reference because it's safe for CodeBlock to be jettisoned if Executable is the only thing
+    // to point to it. This forces callers to have a CodeBlock* in a register or on the stack that will be marked
+    // by conservative GC if a GC happens after we create the CodeBlock.
+    template <typename ExecutableType>
+    JSObject* prepareForExecution(ExecState*, JSFunction*, JSScope*, CodeSpecializationKind, CodeBlock*& resultCodeBlock);
 
     template <typename Functor> void forEachCodeBlock(Functor&&);
 
 private:
     friend class ExecutableBase;
-    JSObject* prepareForExecutionImpl(ExecState*, JSFunction*, JSScope*, CodeSpecializationKind);
+    JSObject* prepareForExecutionImpl(ExecState*, JSFunction*, JSScope*, CodeSpecializationKind, CodeBlock*&);
 
 protected:
     ScriptExecutable(Structure*, VM&, const SourceCode&, bool isInStrictContext, DerivedContextType, bool isInArrowFunctionContext, EvalContextType, Intrinsic);
@@ -406,6 +405,7 @@ protected:
     bool m_neverOptimize : 1;
     bool m_neverFTLOptimize : 1;
     bool m_isArrowFunctionContext : 1;
+    bool m_canUseOSRExitFuzzing : 1;
     unsigned m_derivedContextType : 2; // DerivedContextType
     unsigned m_evalContextType : 2; // EvalContextType
 
@@ -446,7 +446,7 @@ public:
         
     DECLARE_INFO;
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false, evalContextType()); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, JSParserCommentMode::Classic, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false, evalContextType()); }
 
     unsigned numVariables() { return m_unlinkedEvalCodeBlock->numVariables(); }
     unsigned numberOfFunctionDecls() { return m_unlinkedEvalCodeBlock->numberOfFunctionDecls(); }
@@ -500,7 +500,7 @@ public:
         
     DECLARE_INFO;
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false, EvalContextType::None); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, JSParserCommentMode::Classic, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false, EvalContextType::None); }
 
 private:
     friend class ExecutableBase;
@@ -541,7 +541,7 @@ public:
 
     DECLARE_INFO;
 
-    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, SuperBinding::NotNeeded, SourceParseMode::ModuleEvaluateMode, derivedContextType(), isArrowFunctionContext(), false, EvalContextType::None); }
+    ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, JSParserCommentMode::Module, SuperBinding::NotNeeded, SourceParseMode::ModuleEvaluateMode, derivedContextType(), isArrowFunctionContext(), false, EvalContextType::None); }
 
     UnlinkedModuleProgramCodeBlock* unlinkedModuleProgramCodeBlock() { return m_unlinkedModuleProgramCodeBlock.get(); }
 
@@ -661,6 +661,7 @@ public:
     const Identifier& inferredName() { return m_unlinkedExecutable->inferredName(); }
     size_t parameterCount() const { return m_unlinkedExecutable->parameterCount(); } // Excluding 'this'!
     SourceParseMode parseMode() const { return m_unlinkedExecutable->parseMode(); }
+    JSParserCommentMode commentMode() const { return m_unlinkedExecutable->commentMode(); }
     const SourceCode& classSource() const { return m_unlinkedExecutable->classSource(); }
 
     static void visitChildren(JSCell*, SlotVisitor&);
@@ -742,6 +743,25 @@ private:
     WriteBarrier<WebAssemblyCodeBlock> m_codeBlockForCall;
 };
 #endif
+
+template <typename ExecutableType>
+JSObject* ScriptExecutable::prepareForExecution(ExecState* exec, JSFunction* function, JSScope* scope, CodeSpecializationKind kind, CodeBlock*& resultCodeBlock)
+{
+    if (hasJITCodeFor(kind)) {
+        if (std::is_same<ExecutableType, EvalExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<EvalExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, ProgramExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<ProgramExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, ModuleProgramExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<ModuleProgramExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, FunctionExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<FunctionExecutable*>(this)->codeBlockFor(kind));
+        else
+            RELEASE_ASSERT_NOT_REACHED();
+        return nullptr;
+    }
+    return prepareForExecutionImpl(exec, function, scope, kind, resultCodeBlock);
+}
 
 } // namespace JSC
 

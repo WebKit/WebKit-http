@@ -80,12 +80,11 @@ public:
     void resume() override;
 
     // SocketStreamHandleClient functions.
-    void willOpenSocketStream(SocketStreamHandle&) override;
-    void didOpenSocketStream(SocketStreamHandle&) override;
-    void didCloseSocketStream(SocketStreamHandle&) override;
-    void didReceiveSocketStreamData(SocketStreamHandle&, const char*, int) override;
-    void didUpdateBufferedAmount(SocketStreamHandle&, size_t bufferedAmount) override;
-    void didFailSocketStream(SocketStreamHandle&, const SocketStreamError&) override;
+    void didOpenSocketStream(SocketStreamHandle&) final;
+    void didCloseSocketStream(SocketStreamHandle&) final;
+    void didReceiveSocketStreamData(SocketStreamHandle&, const char*, Optional<size_t>) final;
+    void didUpdateBufferedAmount(SocketStreamHandle&, size_t bufferedAmount) final;
+    void didFailSocketStream(SocketStreamHandle&, const SocketStreamError&) final;
 
     enum CloseEventCode {
         CloseEventCodeNotSpecified = -1,

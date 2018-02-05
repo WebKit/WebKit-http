@@ -28,8 +28,8 @@
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 #include "PluginProcessConnection.h"
 #include "PluginProcessConnectionManagerMessages.h"
 #include "WebCoreArgumentCoders.h"

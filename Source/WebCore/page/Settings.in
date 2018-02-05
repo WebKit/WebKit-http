@@ -251,6 +251,8 @@ attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
 
 newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
+newCSSParserEnabled initial=false
+
 httpEquivEnabled initial=true
 
 # Some ports (e.g. iOS) might choose to display attachments inline, regardless of whether the response includes the
@@ -271,3 +273,8 @@ selectionPaintingWithoutSelectionGapsEnabled initial=false
 shouldConvertInvalidURLsToBlank initial=true
 
 springTimingFunctionEnabled initial=false
+
+treatIPAddressAsDomain initial=false
+
+# Runtime-enabled features
+visualViewportEnabled initial=false

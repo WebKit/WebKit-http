@@ -228,7 +228,7 @@ JSValue JSInjectedScriptHost::functionDetails(ExecState* exec)
     JSObject* result = constructEmptyObject(exec);
     result->putDirect(vm, Identifier::fromString(exec, "location"), location);
 
-    String name = function->name();
+    String name = function->name(vm);
     if (!name.isEmpty())
         result->putDirect(vm, Identifier::fromString(exec, "name"), jsString(exec, name));
 
@@ -320,13 +320,13 @@ JSValue JSInjectedScriptHost::getInternalProperties(ExecState* exec)
     if (JSMapIterator* mapIterator = jsDynamicCast<JSMapIterator*>(value)) {
         String kind;
         switch (mapIterator->kind()) {
-        case MapIterateKey:
+        case IterateKey:
             kind = ASCIILiteral("key");
             break;
-        case MapIterateValue:
+        case IterateValue:
             kind = ASCIILiteral("value");
             break;
-        case MapIterateKeyValue:
+        case IterateKeyValue:
             kind = ASCIILiteral("key+value");
             break;
         }
@@ -342,13 +342,13 @@ JSValue JSInjectedScriptHost::getInternalProperties(ExecState* exec)
     if (JSSetIterator* setIterator = jsDynamicCast<JSSetIterator*>(value)) {
         String kind;
         switch (setIterator->kind()) {
-        case SetIterateKey:
+        case IterateKey:
             kind = ASCIILiteral("key");
             break;
-        case SetIterateValue:
+        case IterateValue:
             kind = ASCIILiteral("value");
             break;
-        case SetIterateKeyValue:
+        case IterateKeyValue:
             kind = ASCIILiteral("key+value");
             break;
         }

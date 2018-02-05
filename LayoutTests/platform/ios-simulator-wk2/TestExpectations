@@ -6,10 +6,9 @@
 # Platform-specific directories. Skipped globally, then re-enabled here.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
-fast/harness/ui-side-scripts.html [ Pass ]
-fast/harness/concurrent-ui-side-scripts.html [ Pass ]
-fast/zooming/ios [ Pass ]
 fast/scrolling/ios [ Pass ]
+fast/viewport/ios [ Pass ]
+fast/zooming/ios [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -32,18 +31,16 @@ compositing/fixed-positioned-pseudo-content-no-compositing.html [ Failure ]
 compositing/reflections/nested-reflection-on-overflow.html [ Failure ]
 compositing/geometry/limit-layer-bounds-opacity-transition.html [ Failure ]
 
+webkit.org/b/152439 compositing/overflow/dynamic-composited-scrolling-status.html [ Failure ]
+
 webkit.org/b/157105 compositing/contents-scale/incremental-change.html [ Pass ImageOnlyFailure ]
 
 # Compositing test that time out:
-compositing/animation/animation-compositing.html
-compositing/backing/backface-visibility-flip.html
 compositing/checkerboard.html
 compositing/contents-scale/animating.html
 compositing/layer-creation/animation-overlap-with-children.html
-compositing/overflow/overflow-compositing-descendant.html
 compositing/overflow/scroll-ancestor-update.html
 compositing/visible-rect/animated.html
-compositing/video/video-border-radius.html
 
 # CSS tests that fail:
 css3/blending/blend-mode-simple-composited.html [ Failure ]
@@ -53,18 +50,6 @@ css3/flexbox/flexbox-baseline-margins.html [ Failure ]
 css3/flexbox/flexbox-baseline.html [ Failure ]
 css3/masking/mask-base64.html [ ImageOnlyFailure ]
 css3/viewport-percentage-lengths/vh-resize.html [ ImageOnlyFailure ]
-
-# CSS tests that time out:
-css3/filters/composited-during-animation.html
-css3/filters/crash-filter-animation-invalid-url.html
-css3/filters/filter-animation-from-none-hw.html
-css3/filters/filter-animation-from-none-multi.html
-css3/filters/filter-animation-from-none.html
-css3/filters/filter-animation-hw.html
-css3/filters/filter-animation-multi-hw.html
-css3/filters/filter-animation-multi.html
-css3/filters/filter-animation.html
-css3/masking/clip-path-animation.html
 
 # jquery test that time out:
 jquery/manipulation.html
@@ -77,36 +62,10 @@ storage/domstorage/storage-close-database-on-idle.html
 ietestcenter/css3/bordersbackgrounds/background-attachment-local-scrolling.htm [ Failure ]
 
 # <rdar://problem/17349058> Assertion in WebProcessProxy::didNavigateWithNavigationData() when running layout tests in WTR
-loader/go-back-cached-main-resource.html
-js/dom/function-constructor-this-value.html
-storage/domstorage/localstorage/access-storage-after-window-close.html
-storage/domstorage/localstorage/set-value-in-storage-after-window-close.html
-storage/domstorage/localstorage/window-open.html
-storage/domstorage/localstorage/access-storage-then-set-value-in-storage-after-window-close.html
-fast/loader/ping-error.html
-fast/loader/stateobjects/popstate-fires-with-page-cache.html
-fast/loader/stateobjects/replacestate-in-iframe.html
-fast/loader/stateobjects/pushstate-without-history.html
-fast/frames/sandboxed-iframe-close-top-noclose.html
-fast/frames/sandboxed-iframe-close-top.html
-fast/frames/frame-crash-with-page-cache.html
-fast/events/show-modal-dialog-onblur-onfocus.html
-fast/dom/HTMLBaseElement/href-attribute-resolves-with-respect-to-document.html
-fast/dom/open-and-close-by-DOM.html
-fast/dom/Geolocation/window-close-crash.html
-fast/dom/Window/window-early-properties.html
-fast/dom/Window/open-zero-size-as-default.html
-fast/dom/Window/window-property-invalid-characters-ignored.html
-fast/dom/Window/setting-properties-on-closed-window.html
-fast/dom/Window/dom-access-from-closure-window-with-gc.html
 fast/dom/Window/mozilla-focus-blur.html
-fast/dom/Window/closure-access-after-navigation-window.html
-fast/dom/Window/open-invalid-url.html
-fast/dom/Window/dom-access-from-closure-window.html
-fast/dom/Window/Location/set-location-after-close.html
+fast/dom/Window/window-property-invalid-characters-ignored.html
+fast/events/show-modal-dialog-onblur-onfocus.html
 fast/harness/show-modal-dialog.html
-fast/harness/page-cache-crash-on-data-urls.html
-fast/harness/use-page-cache.html
 
 # JavaScript tests that fail:
 js/dom/dom-static-property-for-in-iteration.html [ Failure ]
@@ -416,50 +375,12 @@ http/tests/security/setDomainRelaxationForbiddenForURLScheme.html [ Failure ]
 http/tests/uri/css-href.php [ Failure ]
 
 # HTTP tests that assert:
-http/tests/appcache/crash-when-navigating-away-then-back.html
-http/tests/cache/display-image-unset-allows-cached-image-load.html
-http/tests/cache/history-only-cached-subresource-loads.html
-http/tests/misc/iframe-reparenting-id-collision.html
-http/tests/misc/set-window-opener-to-null.html
-http/tests/misc/slow-preload-cancel.html
 http/tests/navigation/new-window-redirect-history.html
-http/tests/navigation/target-frame-from-window.html
 http/tests/plugins/plugin-document-has-focus.html
-http/tests/security/aboutBlank/security-context-window-open.html
-http/tests/security/dataURL/xss-DENIED-from-data-url-in-foreign-domain-window-open.html
-http/tests/security/dataURL/xss-DENIED-from-javascript-url-window-open.html
-http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-window-open.html
-http/tests/security/dataURL/xss-DENIED-to-data-url-window-open.html
-http/tests/security/frameNavigation/cross-origin-opener.html
-http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html
-http/tests/security/frameNavigation/not-opener.html
-http/tests/security/frameNavigation/opener.html
-http/tests/security/frameNavigation/xss-DENIED-targeted-link-navigation.html
 http/tests/security/inactive-document-with-empty-security-origin.html
-http/tests/security/javascriptURL/xss-DENIED-from-javascript-url-in-foreign-domain-window-open.html
-http/tests/security/javascriptURL/xss-DENIED-to-javascript-url-in-foreign-domain-window-open.html
-http/tests/security/mixedContent/data-url-iframe-in-main-frame.html
 http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html
-http/tests/security/mixedContent/insecure-css-in-main-frame.html
-http/tests/security/mixedContent/insecure-iframe-in-main-frame.html
-http/tests/security/mixedContent/insecure-image-in-main-frame.html
-http/tests/security/mixedContent/insecure-xhr-in-main-frame.html
-http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame.html
-http/tests/security/originHeader/origin-header-for-empty.html
-http/tests/security/popup-allowed-by-sandbox-is-sandboxed-control.html
-http/tests/security/popup-allowed-by-sandbox-is-sandboxed.html
-http/tests/security/popup-allowed-by-sandbox-when-allowed.html
 http/tests/security/popup-blocked-from-fake-event.html
 http/tests/security/popup-blocked-from-window-open.html
-http/tests/security/referrer-policy-window-open.html
-http/tests/security/window-events-clear-domain.html
-http/tests/security/window-events-clear-port.html
-http/tests/security/window-events-pass.html
-http/tests/security/xss-DENIED-synchronous-frame-load-in-javascript-url.html
-http/tests/security/xss-DENIED-xsl-document-securityOrigin.xml
-http/tests/security/xssAuditor/link-opens-new-window.html
-http/tests/xmlhttprequest/close-window.html
-http/tests/xmlhttprequest/cross-origin-authorization.html
 http/tests/xmlhttprequest/cross-origin-no-authorization.html
 
 # HTTP tests that time out:
@@ -484,9 +405,6 @@ http/tests/navigation/no-referrer-reset.html
 http/tests/navigation/no-referrer-same-window.html
 http/tests/navigation/no-referrer-subframe.html
 http/tests/navigation/no-referrer-target-blank.html
-http/tests/navigation/ping-attribute/anchor-cross-origin-from-https.html
-http/tests/navigation/ping-attribute/anchor-cross-origin.html
-http/tests/navigation/ping-attribute/anchor-same-origin.html
 http/tests/navigation/redirect-preserves-referrer.html
 http/tests/navigation/redirect-to-random-url-versus-memory-cache.html
 http/tests/security/aboutBlank/xss-DENIED-navigate-opener-document-write.html
@@ -893,7 +811,6 @@ fast/dom/MutationObserver/observer-wrapper-dropoff-transient.html
 fast/dom/Window/window-open-pending-url.html
 fast/events/media-element-focus-tab.html
 fast/events/message-port-no-wrapper.html
-fast/events/page-visibility-iframe-move-test.html
 fast/events/scroll-event-during-modal-dialog.html
 fast/forms/fallback-content-submission.html
 fast/frames/hover-timer-crash.html
@@ -1480,7 +1397,6 @@ fast/dom/Geolocation/delayed-permission-denied.html
 fast/dom/Geolocation/disconnected-frame-permission-denied.html
 fast/dom/Geolocation/error.html
 fast/events/mouse-cursor-multiframecur.html
-fast/html/marquee-scrollamount.html [ Failure ]
 fast/loader/frames-with-unload-handlers-in-page-cache.html
 http/tests/cache/cache-redirections.html
 js/promises-tests/promises-tests-2-2-6.html
@@ -1810,7 +1726,7 @@ fast/forms/onchange-select-check-validity.html [ Failure ]
 fast/replaced/border-radius-clip.html [ Failure ]
 fast/writing-mode/japanese-lr-selection.html [ Failure ]
 fast/writing-mode/japanese-rl-selection.html [ Failure ]
-platform/ios-simulator/ios/accessibility/press-fires-touch-events.html [ Failure ]
+accessibility/ios-simulator/press-fires-touch-events.html [ Skip ]
 
 fast/text/combining-character-sequence-vertical.html [ ImageOnlyFailure ]
 fast/text/vertical-quotation-marks.html [ ImageOnlyFailure ]
@@ -1821,9 +1737,6 @@ fast/forms/focus-option-control-on-page.html [ Skip ]
 # Skip timeouts
 fast/dom/Geolocation/startUpdatingOnlyWhenPageVisible.html [ Skip ]
 fast/dom/Geolocation/stopUpdatingForHiddenPage.html [ Skip ]
-http/tests/navigation/ping-attribute/anchor-cookie.html [ Skip ]
-webkit.org/b/148709 fast/events/wheelevent-basic.html [ Skip ]
-webkit.org/b/148709 fast/events/wheelevent-mousewheel-interaction.html [ Skip ]
 
 # Flaky tests that need bugs
 fast/dom/Window/post-message-crash.html [ Pass Failure ]
@@ -1844,6 +1757,7 @@ http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Skip ]
+http/tests/navigation/ping-attribute [ Skip ]
 
 webkit.org/b/153380 webarchive/loading/object.html [ Pass Crash ]
 webkit.org/b/153380 webarchive/loading/missing-data.html [ Pass Crash ]
@@ -1856,6 +1770,11 @@ webkit.org/b/155201 storage/domstorage/events/basic-body-attribute.html [ Pass F
 
 # Forcing always allow user scalable is not supported on certain OS version.
 webkit.org/b/155056 fast/viewport/ios/force-always-user-scalable.html [ Skip ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
+webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
+fast/viewport/ios/width-is-device-width.html [ Pass ]
+fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass ]
 
 webkit.org/b/155501 animations/3d/transform-origin-vs-functions.html [ Pass Failure ]
 
@@ -1909,6 +1828,21 @@ svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure ]
 
 webkit.org/b/159379 fast/history/page-cache-webdatabase-pending-transaction.html [ Pass Failure ]
 
-webkit.org/b/159724 [ Release ] imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure ]
-
 webkit.org/b/159840 [ Release ] http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
+
+webkit.org/b/159884 [ Debug ] http/tests/loading/basic-auth-resend-wrong-credentials.html [ Pass Failure ]
+
+webkit.org/b/159881 [ Release ] fast/shapes/shape-outside-floats/shape-outside-big-box-border-radius-002.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]
+
+webkit.org/b/160368 [ Release ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
+
+webkit.org/b/160367 media/track/media-element-enqueue-event-crash.html [ Pass Crash ]
+webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
+webkit.org/b/160367 media/track/track-remove-crash.html [ Skip ]
+
+webkit.org/b/160591 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure Timeout ]
+
+webkit.org/b/153809 transitions/clip-path-transitions.html [ Pass Failure ]
+webkit.org/b/153809 transitions/clip-path-path-transitions.html [ Pass Failure ]

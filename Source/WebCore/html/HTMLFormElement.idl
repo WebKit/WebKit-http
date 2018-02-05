@@ -23,19 +23,18 @@
     OverrideBuiltins,
 ] interface HTMLFormElement : HTMLElement {
     [Reflect=accept_charset] attribute DOMString acceptCharset;
-    [Reflect, URL] attribute DOMString action;
+    [Reflect, URL] attribute USVString action;
     attribute DOMString autocomplete;
 
-    // FIXME: These should not have [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString enctype;
-    [TreatNullAs=LegacyNullString] attribute DOMString encoding;
-    [TreatNullAs=LegacyNullString] attribute DOMString method;
+    attribute DOMString enctype;
+    [ImplementedAs=enctype] attribute DOMString encoding;
+    attribute DOMString method;
 
     [Reflect] attribute DOMString name;
     [Reflect] attribute boolean noValidate;
     [Reflect] attribute DOMString target;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     [ImplementedAs=elementsForNativeBindings] readonly attribute HTMLCollection elements;
 #else
     readonly attribute HTMLFormControlsCollection elements;
@@ -46,10 +45,9 @@
 
     [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
 
-    // FIXME: This should not use [TreatNullAs=LegacyNullString].
-    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=LegacyNullString] attribute DOMString autocapitalize;
+    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=EmptyString] attribute DOMString autocapitalize;
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     [ImplementedAs=submitFromJavaScript] void submit();
 #else
     void submit();

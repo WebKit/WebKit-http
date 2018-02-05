@@ -36,7 +36,6 @@
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
-#include <wtf/text/StringBuilder.h>
 
 #include <windows.h>
 #include <shlobj.h>
@@ -445,6 +444,12 @@ Vector<String> listDirectory(const String& directory, const String& filter)
     } while (walker.step());
 
     return entries;
+}
+
+bool getVolumeFreeSpace(const String&, uint64_t&)
+{
+    notImplemented();
+    return false;
 }
 
 } // namespace WebCore

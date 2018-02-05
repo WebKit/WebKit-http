@@ -177,6 +177,17 @@ void MemoryPressureHandler::jettisonExpensiveObjectsOnTopLevelNavigation()
 #endif
 }
 
+void MemoryPressureHandler::beginSimulatedMemoryPressure()
+{
+    m_isSimulatingMemoryPressure = true;
+    MemoryPressureHandler::singleton().respondToMemoryPressure(Critical::Yes, Synchronous::Yes);
+}
+
+void MemoryPressureHandler::endSimulatedMemoryPressure()
+{
+    m_isSimulatingMemoryPressure = false;
+}
+
 void MemoryPressureHandler::releaseMemory(Critical critical, Synchronous synchronous)
 {
     if (critical == Critical::Yes)
@@ -207,9 +218,9 @@ void MemoryPressureHandler::releaseMemory(Critical critical, Synchronous synchro
 
 void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
 {
-#if !LOG_ALWAYS_DISABLED
+#if !RELEASE_LOG_DISABLED
 #define STRING_SPECIFICATION "%{public}s"
-#define MEMORYPRESSURE_LOG(...) LOG_ALWAYS(true, __VA_ARGS__)
+#define MEMORYPRESSURE_LOG(...) RELEASE_LOG(__VA_ARGS__)
 #else
 #define STRING_SPECIFICATION "%s"
 #define MEMORYPRESSURE_LOG(...) WTFLogAlways(__VA_ARGS__)

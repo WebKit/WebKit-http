@@ -26,10 +26,10 @@
 #include "config.h"
 #include "Editor.h"
 
-#include "CachedImage.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPrimitiveValueMappings.h"
-#include "DOMRangeInternal.h"
+#include "CachedImage.h"
+#include "CachedResourceLoader.h"
 #include "DataTransfer.h"
 #include "DocumentFragment.h"
 #include "DocumentLoader.h"
@@ -549,30 +549,37 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, Ma
 
 RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedString *string)
 {
-    if (!m_frame.page() || !m_frame.document() || !m_frame.document()->isHTMLDocument())
+    if (!m_frame.page() || !m_frame.document())
         return nullptr;
 
-    if (!string)
+    auto& document = *m_frame.document();
+    if (!document.isHTMLDocument() || !string)
         return nullptr;
 
     bool wasDeferringCallbacks = m_frame.page()->defersLoading();
     if (!wasDeferringCallbacks)
         m_frame.page()->setDefersLoading(true);
 
-    Vector<RefPtr<ArchiveResource>> resources;
-    RefPtr<DocumentFragment> fragment = client()->documentFragmentFromAttributedString(string, resources);
+    auto& cachedResourceLoader = document.cachedResourceLoader();
+    bool wasImagesEnabled = cachedResourceLoader.imagesEnabled();
+    if (wasImagesEnabled)
+        cachedResourceLoader.setImagesEnabled(false);
+
+    auto fragmentAndResources = createFragment(string);
 
     if (DocumentLoader* loader = m_frame.loader().documentLoader()) {
-        for (auto& resource : resources) {
+        for (auto& resource : fragmentAndResources.resources) {
             if (resource)
                 loader->addArchiveResource(resource.releaseNonNull());
         }
     }
 
+    if (wasImagesEnabled)
+        cachedResourceLoader.setImagesEnabled(true);
     if (!wasDeferringCallbacks)
         m_frame.page()->setDefersLoading(false);
     
-    return fragment;
+    return WTFMove(fragmentAndResources.fragment);
 }
 
 RefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResource(RefPtr<ArchiveResource>&& resource)

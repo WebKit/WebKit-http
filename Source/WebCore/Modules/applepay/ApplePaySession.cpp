@@ -313,9 +313,9 @@ static Optional<PaymentRequest::MerchantCapabilities> createMerchantCapabilities
     return result;
 }
 
-static Optional<PaymentRequest::SupportedNetworks> createSupportedNetworks(DOMWindow& window, const ArrayValue& supportedNetworksArray)
+static Optional<Vector<String>> createSupportedNetworks(unsigned version, DOMWindow& window, const ArrayValue& supportedNetworksArray)
 {
-    PaymentRequest::SupportedNetworks result;
+    Vector<String> result;
 
     size_t supportedNetworksCount;
     if (!supportedNetworksArray.length(supportedNetworksCount))
@@ -326,25 +326,13 @@ static Optional<PaymentRequest::SupportedNetworks> createSupportedNetworks(DOMWi
         if (!supportedNetworksArray.get(i, supportedNetwork))
             return Nullopt;
 
-        if (supportedNetwork == "amex")
-            result.amex = true;
-        else if (supportedNetwork == "chinaUnionPay")
-            result.chinaUnionPay = true;
-        else if (supportedNetwork == "discover")
-            result.discover = true;
-        else if (supportedNetwork == "interac")
-            result.interac = true;
-        else if (supportedNetwork == "masterCard")
-            result.masterCard = true;
-        else if (supportedNetwork == "privateLabel")
-            result.privateLabel = true;
-        else if (supportedNetwork == "visa")
-            result.visa = true;
-        else {
+        if (!PaymentRequest::isValidSupportedNetwork(version, supportedNetwork)) {
             auto message = makeString("\"" + supportedNetwork, "\" is not a valid payment network.");
             window.printErrorMessage(message);
             return Nullopt;
         }
+
+        result.append(WTFMove(supportedNetwork));
     }
 
     return result;
@@ -472,10 +460,6 @@ static bool isValidPaymentRequestPropertyName(const String& propertyName)
         "total",
         "lineItems",
         "applicationData",
-
-        // FIXME: Get rid of these.
-        "requiredBillingAddressFields",
-        "requiredShippingAddressFields",
     };
 
     for (auto& validPropertyName : validPropertyNames) {
@@ -486,7 +470,7 @@ static bool isValidPaymentRequestPropertyName(const String& propertyName)
     return false;
 }
 
-static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Dictionary& dictionary)
+static Optional<PaymentRequest> createPaymentRequest(unsigned version, DOMWindow& window, const Dictionary& dictionary)
 {
     PaymentRequest paymentRequest;
 
@@ -494,6 +478,16 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
     dictionary.getOwnPropertyNames(propertyNames);
 
     for (auto& propertyName : propertyNames) {
+        if (propertyName == "requiredShippingAddressFields") {
+            window.printErrorMessage("\"requiredShippingAddressFields\" has been deprecated. Please switch to \"requiredShippingContactFields\" instead.");
+            return Nullopt;
+        }
+
+        if (propertyName == "requiredBillingAddressFields") {
+            window.printErrorMessage("\"requiredBillingAddressFields\" has been deprecated. Please switch to \"requiredBillingContactFields\" instead.");
+            return Nullopt;
+        }
+
         if (!isValidPaymentRequestPropertyName(propertyName)) {
             auto message = makeString("\"" + propertyName, "\" is not a valid payment request property name.");
             window.printErrorMessage(message);
@@ -510,7 +504,7 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
     }
 
     if (auto supportedNetworksArray = dictionary.get<ArrayValue>("supportedNetworks")) {
-        auto supportedNetworks = createSupportedNetworks(window, *supportedNetworksArray);
+        auto supportedNetworks = createSupportedNetworks(version, window, *supportedNetworksArray);
         if (!supportedNetworks)
             return Nullopt;
 
@@ -528,17 +522,7 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
             return Nullopt;
 
         paymentRequest.setRequiredBillingContactFields(*requiredBillingContactFields);
-    } else if (auto requiredBillingAddressFieldsArray = dictionary.get<ArrayValue>("requiredBillingAddressFields")) {
-        if (PageConsoleClient* pageConsole = window.console())
-            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredBillingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredBillingContactFields\" instead.");
-
-        auto requiredBillingAddressFields = createContactFields(window, *requiredBillingAddressFieldsArray);
-        if (!requiredBillingAddressFields)
-            return Nullopt;
-
-        paymentRequest.setRequiredBillingContactFields(*requiredBillingAddressFields);
     }
-
 
     if (auto billingContactValue = dictionary.get<JSC::JSValue>("billingContact")) {
         String errorMessage;
@@ -557,17 +541,7 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
             return Nullopt;
 
         paymentRequest.setRequiredShippingContactFields(*requiredShippingContactFields);
-    } else if (auto requiredShippingAddressFieldsArray = dictionary.get<ArrayValue>("requiredShippingAddressFields")) {
-        if (PageConsoleClient* pageConsole = window.console())
-            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredShippingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredShippingContactFields\" instead.");
-
-        auto requiredShippingAddressFields = createContactFields(window, *requiredShippingAddressFieldsArray);
-        if (!requiredShippingAddressFields)
-            return Nullopt;
-
-        paymentRequest.setRequiredShippingContactFields(*requiredShippingAddressFields);
     }
-
 
     if (auto shippingContactValue = dictionary.get<JSC::JSValue>("shippingContact")) {
         String errorMessage;
@@ -686,7 +660,7 @@ RefPtr<ApplePaySession> ApplePaySession::create(Document& document, unsigned ver
         return nullptr;
     }
 
-    auto paymentRequest = createPaymentRequest(window, dictionary);
+    auto paymentRequest = createPaymentRequest(version, window, dictionary);
     if (!paymentRequest) {
         ec = TYPE_MISMATCH_ERR;
         return nullptr;
@@ -1019,6 +993,12 @@ void ApplePaySession::completePayment(unsigned short status, ExceptionCode& ec)
     }
 
     paymentCoordinator().completePaymentSession(*authorizationStatus);
+
+    if (!isFinalStateStatus(*authorizationStatus)) {
+        m_state = State::Active;
+        return;
+    }
+
     m_state = State::Completed;
     unsetPendingActivity(this);
 }

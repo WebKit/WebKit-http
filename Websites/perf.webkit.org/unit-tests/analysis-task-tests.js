@@ -151,7 +151,7 @@ describe('AnalysisTask', function () {
             requests[0].resolve(sampleAnalysisTask());
 
             var anotherCallCount = 0;
-            return promise.then(function () {
+            promise.then(function () {
                 assert.equal(callCount, 1);
                 AnalysisTask.fetchAll().then(function () { anotherCallCount++; });
             }).then(function () {
@@ -166,7 +166,7 @@ describe('AnalysisTask', function () {
             var promise = AnalysisTask.fetchAll();
             requests[0].resolve(sampleAnalysisTask());
 
-            return promise.then(function () {
+            promise.then(function () {
                 assert.equal(AnalysisTask.all().length, 1);
                 var task = AnalysisTask.all()[0];
                 assert.equal(task.id(), 1082);
@@ -175,7 +175,7 @@ describe('AnalysisTask', function () {
                 assert.ok(task.hasResults());
                 assert.ok(task.hasPendingRequests());
                 assert.equal(task.requestLabel(), '6 of 14');
-                assert.equal(task.category(), 'identified');
+                assert.equal(task.category(), 'investigated');
                 assert.equal(task.changeType(), 'regression');
                 assert.equal(task.startMeasurementId(), 37117949);
                 assert.equal(task.startTime(), 1454444458791);
@@ -189,7 +189,7 @@ describe('AnalysisTask', function () {
             var promise = AnalysisTask.fetchAll();
             requests[0].resolve(sampleAnalysisTask());
 
-            return promise.then(function () {
+            promise.then(function () {
                 assert.equal(AnalysisTask.all().length, 1);
                 var task = AnalysisTask.all()[0];
 
@@ -212,7 +212,7 @@ describe('AnalysisTask', function () {
             var promise = AnalysisTask.fetchAll();
             requests[0].resolve(sampleAnalysisTask());
 
-            return promise.then(function () {
+            promise.then(function () {
                 assert.equal(AnalysisTask.all().length, 1);
                 var task = AnalysisTask.all()[0];
 

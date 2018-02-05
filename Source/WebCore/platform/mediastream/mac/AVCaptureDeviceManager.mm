@@ -45,7 +45,7 @@
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
-typedef AVCaptureDevice AVCaptureDeviceType;
+typedef AVCaptureDevice AVCaptureDeviceTypedef;
 typedef AVCaptureSession AVCaptureSessionType;
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
@@ -147,7 +147,7 @@ Vector<CaptureDeviceInfo>& AVCaptureDeviceManager::captureDeviceList()
     return m_devices;
 }
 
-inline static bool shouldConsiderDeviceInDeviceList(AVCaptureDeviceType *device)
+inline static bool shouldConsiderDeviceInDeviceList(AVCaptureDeviceTypedef *device)
 {
     if (![device isConnected])
         return false;
@@ -162,7 +162,7 @@ inline static bool shouldConsiderDeviceInDeviceList(AVCaptureDeviceType *device)
 
 void AVCaptureDeviceManager::refreshCaptureDeviceList()
 {
-    for (AVCaptureDeviceType *platformDevice in [getAVCaptureDeviceClass() devices]) {
+    for (AVCaptureDeviceTypedef *platformDevice in [getAVCaptureDeviceClass() devices]) {
         if (!shouldConsiderDeviceInDeviceList(platformDevice))
             continue;
 
@@ -224,7 +224,7 @@ AVCaptureDeviceManager::~AVCaptureDeviceManager()
     [m_objcObserver disconnect];
 }
 
-Vector<RefPtr<RealtimeMediaSource>> AVCaptureDeviceManager::bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type type, PassRefPtr<MediaConstraints> constraints)
+Vector<RefPtr<RealtimeMediaSource>> AVCaptureDeviceManager::bestSourcesForTypeAndConstraints(RealtimeMediaSource::Type type, MediaConstraints& constraints)
 {
     if (!isAvailable())
         return Vector<RefPtr<RealtimeMediaSource>>();
@@ -248,7 +248,7 @@ TrackSourceInfoVector AVCaptureDeviceManager::getSourcesInfo(const String& reque
     return CaptureDeviceManager::getSourcesInfo(requestOrigin);
 }
 
-bool AVCaptureDeviceManager::verifyConstraintsForMediaType(RealtimeMediaSource::Type type, MediaConstraints* constraints, const CaptureSessionInfo* session, String& invalidConstraint)
+bool AVCaptureDeviceManager::verifyConstraintsForMediaType(RealtimeMediaSource::Type type, const MediaConstraints& constraints, const CaptureSessionInfo* session, String& invalidConstraint)
 {
     if (!isAvailable())
         return false;
@@ -264,11 +264,11 @@ CaptureSessionInfo AVCaptureDeviceManager::defaultCaptureSession() const
     return AVCaptureSessionInfo([allocAVCaptureSessionInstance() init]);
 }
 
-bool AVCaptureDeviceManager::sessionSupportsConstraint(const CaptureSessionInfo* session, RealtimeMediaSource::Type type, const String& name, const String& value)
+bool AVCaptureDeviceManager::sessionSupportsConstraint(const CaptureSessionInfo* session, RealtimeMediaSource::Type type, const MediaConstraint& constraint)
 {
     const RealtimeMediaSourceSupportedConstraints& supportedConstraints = RealtimeMediaSourceCenter::singleton().supportedConstraints();
-    MediaConstraintType constraint = supportedConstraints.constraintFromName(name);
-    if (!supportedConstraints.supportsConstraint(constraint))
+    MediaConstraintType constraintType = constraint.type();
+    if (!supportedConstraints.supportsConstraint(constraintType))
         return false;
 
     CaptureSessionInfo defaultSession = defaultCaptureSession();
@@ -276,18 +276,30 @@ bool AVCaptureDeviceManager::sessionSupportsConstraint(const CaptureSessionInfo*
         session = &defaultSession;
 
     if (type == RealtimeMediaSource::Video) {
-        if (constraint == MediaConstraintType::Width)
-            return session->bestSessionPresetForVideoDimensions(value.toInt(), 0) != emptyString();
+        if (constraintType == MediaConstraintType::Width) {
+            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=160578. Support min, max constraints.
+            int exact;
+            if (!constraint.getExact(exact))
+                return false;
 
-        if (constraint == MediaConstraintType::Height)
-            return session->bestSessionPresetForVideoDimensions(0, value.toInt()) != emptyString();
+            return !session->bestSessionPresetForVideoDimensions(exact, 0).isEmpty();
+        }
+
+        if (constraintType == MediaConstraintType::Height) {
+            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=160578. Support min, max constraints.
+            int exact;
+            if (!constraint.getExact(exact))
+                return false;
+
+            return !session->bestSessionPresetForVideoDimensions(0, exact).isEmpty();
+        }
     }
-    return CaptureDeviceManager::sessionSupportsConstraint(session, type, name, value);
+    return CaptureDeviceManager::sessionSupportsConstraint(session, type, constraint);
 }
 
 RealtimeMediaSource* AVCaptureDeviceManager::createMediaSourceForCaptureDeviceWithConstraints(const CaptureDeviceInfo& captureDevice, MediaConstraints* constraints)
 {
-    AVCaptureDeviceType *device = [getAVCaptureDeviceClass() deviceWithUniqueID:captureDevice.m_persistentDeviceID];
+    AVCaptureDeviceTypedef *device = [getAVCaptureDeviceClass() deviceWithUniqueID:captureDevice.m_persistentDeviceID];
     if (!device)
         return nullptr;
 
@@ -303,7 +315,7 @@ RealtimeMediaSource* AVCaptureDeviceManager::createMediaSourceForCaptureDeviceWi
             captureSession = AVCaptureSessionInfo(captureSource->session());
 
         String ignoredInvalidConstraints;
-        if (!verifyConstraintsForMediaType(captureDevice.m_sourceType, constraints, &captureSession, ignoredInvalidConstraints))
+        if (!verifyConstraintsForMediaType(captureDevice.m_sourceType, *constraints, &captureSession, ignoredInvalidConstraints))
             return nullptr;
     }
     return captureSource.leakRef();
@@ -320,7 +332,7 @@ void AVCaptureDeviceManager::deviceConnected()
     refreshCaptureDeviceList();
 }
 
-void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceType* device)
+void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
 {
     Vector<CaptureDeviceInfo>& devices = captureDeviceList();
 
@@ -337,11 +349,11 @@ void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceType* device)
     }
 }
 
-bool AVCaptureDeviceManager::isSupportedFrameRate(float frameRate) const
+bool AVCaptureDeviceManager::isSupportedFrameRate(const MediaConstraint& constraint) const
 {
     // FIXME: We should use [AVCaptureConnection videoMinFrameDuration] and [AVCaptureConnection videoMaxFrameDuration],
     // but they only work with a "live" AVCaptureConnection. For now, just use the default platform-independent behavior.
-    return CaptureDeviceManager::isSupportedFrameRate(frameRate);
+    return CaptureDeviceManager::isSupportedFrameRate(constraint);
 }
 
 const RealtimeMediaSourceSupportedConstraints& AVCaptureDeviceManager::supportedConstraints()
@@ -395,7 +407,7 @@ const RealtimeMediaSourceSupportedConstraints& AVCaptureDeviceManager::supported
 
     dispatch_async(dispatch_get_main_queue(), ^{
         if (m_callback) {
-            AVCaptureDeviceType *device = [notification object];
+            AVCaptureDeviceTypedef *device = [notification object];
             m_callback->deviceDisconnected(device);
         }
     });

@@ -111,8 +111,19 @@ private:
     
 void Connection::platformInvalidate()
 {
-    if (!m_isConnected)
+    if (!m_isConnected) {
+        if (m_sendPort) {
+            mach_port_deallocate(mach_task_self(), m_sendPort);
+            m_sendPort = MACH_PORT_NULL;
+        }
+
+        if (m_receivePort) {
+            mach_port_mod_refs(mach_task_self(), m_receivePort, MACH_PORT_RIGHT_RECEIVE, -1);
+            m_receivePort = MACH_PORT_NULL;
+        }
+
         return;
+    }
 
     m_isConnected = false;
 
@@ -138,8 +149,6 @@ void Connection::platformInvalidate()
         m_exceptionPort = MACH_PORT_NULL;
     }
 #endif
-
-    m_xpcConnection = nullptr;
 }
     
 void Connection::terminateSoon(double intervalInSeconds)
@@ -202,7 +211,7 @@ bool Connection::open()
         m_isConnected = true;
         
         // Send the initialize message, which contains a send right for the server to use.
-        auto encoder = std::make_unique<MessageEncoder>("IPC", "InitializeConnection", 0);
+        auto encoder = std::make_unique<Encoder>("IPC", "InitializeConnection", 0);
         encoder->encode(MachPort(m_receivePort, MACH_MSG_TYPE_MAKE_SEND));
 
         sendMessage(WTFMove(encoder));
@@ -225,7 +234,7 @@ bool Connection::open()
             connection->exceptionSourceEventHandler();
         });
 
-        auto encoder = std::make_unique<MessageEncoder>("IPC", "SetExceptionPort", 0);
+        auto encoder = std::make_unique<Encoder>("IPC", "SetExceptionPort", 0);
         encoder->encode(MachPort(m_exceptionPort, MACH_MSG_TYPE_MAKE_SEND));
 
         sendMessage(WTFMove(encoder));
@@ -267,7 +276,7 @@ bool Connection::platformCanSendOutgoingMessages() const
     return true;
 }
 
-bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
+bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
 {
     Vector<Attachment> attachments = encoder->releaseAttachments();
     
@@ -384,14 +393,14 @@ void Connection::initializeDeadNameSource()
     });
 }
 
-static std::unique_ptr<MessageDecoder> createMessageDecoder(mach_msg_header_t* header)
+static std::unique_ptr<Decoder> createMessageDecoder(mach_msg_header_t* header)
 {
     if (!(header->msgh_bits & MACH_MSGH_BITS_COMPLEX)) {
         // We have a simple message.
         uint8_t* body = reinterpret_cast<uint8_t*>(header + 1);
         size_t bodySize = header->msgh_size - sizeof(mach_msg_header_t);
 
-        return std::make_unique<MessageDecoder>(DataReference(body, bodySize), Vector<Attachment>());
+        return std::make_unique<Decoder>(DataReference(body, bodySize), Vector<Attachment>());
     }
 
     bool messageBodyIsOOL = header->msgh_id & MessageBodyIsOutOfLine;
@@ -430,7 +439,7 @@ static std::unique_ptr<MessageDecoder> createMessageDecoder(mach_msg_header_t* h
         uint8_t* messageBody = static_cast<uint8_t*>(descriptor->out_of_line.address);
         size_t messageBodySize = descriptor->out_of_line.size;
 
-        auto decoder = std::make_unique<MessageDecoder>(DataReference(messageBody, messageBodySize), WTFMove(attachments));
+        auto decoder = std::make_unique<Decoder>(DataReference(messageBody, messageBodySize), WTFMove(attachments));
 
         vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(descriptor->out_of_line.address), descriptor->out_of_line.size);
 
@@ -440,7 +449,7 @@ static std::unique_ptr<MessageDecoder> createMessageDecoder(mach_msg_header_t* h
     uint8_t* messageBody = descriptorData;
     size_t messageBodySize = header->msgh_size - (descriptorData - reinterpret_cast<uint8_t*>(header));
 
-    return std::make_unique<MessageDecoder>(DataReference(messageBody, messageBodySize), attachments);
+    return std::make_unique<Decoder>(DataReference(messageBody, messageBodySize), attachments);
 }
 
 // The receive buffer size should always include the maximum trailer size.
@@ -481,7 +490,21 @@ void Connection::receiveSourceEventHandler()
     if (!header)
         return;
 
-    std::unique_ptr<MessageDecoder> decoder = createMessageDecoder(header);
+    switch (header->msgh_id) {
+    case MACH_NOTIFY_NO_SENDERS:
+        ASSERT(m_isServer);
+        if (!m_sendPort)
+            connectionDidClose();
+        return;
+
+    case MACH_NOTIFY_SEND_ONCE:
+        return;
+
+    default:
+        break;
+    }
+
+    std::unique_ptr<Decoder> decoder = createMessageDecoder(header);
     ASSERT(decoder);
 
 #if PLATFORM(MAC)
@@ -502,6 +525,12 @@ void Connection::receiveSourceEventHandler()
         m_sendPort = port.port();
         
         if (m_sendPort) {
+            mach_port_t previousNotificationPort;
+            mach_port_request_notification(mach_task_self(), m_receivePort, MACH_NOTIFY_NO_SENDERS, 0, MACH_PORT_NULL, MACH_MSG_TYPE_MOVE_SEND_ONCE, &previousNotificationPort);
+
+            if (previousNotificationPort != MACH_PORT_NULL)
+                mach_port_deallocate(mach_task_self(), previousNotificationPort);
+
             initializeDeadNameSource();
             dispatch_resume(m_deadNameSource);
         }

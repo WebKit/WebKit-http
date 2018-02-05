@@ -27,10 +27,10 @@
  */
 
 [
-    EnabledAtRuntime=WebAnimations,
     Conditional=WEB_ANIMATIONS
 ] partial interface Document {
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT) // Work around problems with GObject binding generator.
     readonly attribute DocumentTimeline timeline;
+    sequence<WebAnimation> getAnimations();
 #endif
 }; 

@@ -31,6 +31,7 @@
 #include "StringFunctions.h"
 #include "TestController.h"
 #include "UIScriptController.h"
+#include "WebCoreTestSupport.h"
 #include <WebKit/WKContextPrivate.h>
 #include <WebKit/WKCookieManager.h>
 #include <WebKit/WKData.h>
@@ -41,6 +42,7 @@
 #include <WebKit/WKWebsiteDataStoreRef.h>
 #include <climits>
 #include <cstdio>
+#include <unistd.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 
@@ -189,15 +191,24 @@ void TestInvocation::dumpWebProcessUnresponsiveness()
 void TestInvocation::dumpWebProcessUnresponsiveness(const char* errorMessage)
 {
     fprintf(stderr, "%s", errorMessage);
-    char errorMessageToStderr[1024];
+    char buffer[1024] = { };
 #if PLATFORM(COCOA)
     pid_t pid = WKPageGetProcessIdentifier(TestController::singleton().mainWebView()->page());
-    sprintf(errorMessageToStderr, "#PROCESS UNRESPONSIVE - %s (pid %ld)\n", TestController::webProcessName(), static_cast<long>(pid));
+    snprintf(buffer, sizeof(buffer), "#PROCESS UNRESPONSIVE - %s (pid %ld)\n", TestController::webProcessName(), static_cast<long>(pid));
 #else
-    sprintf(errorMessageToStderr, "#PROCESS UNRESPONSIVE - %s\n", TestController::webProcessName());
+    snprintf(buffer, sizeof(buffer), "#PROCESS UNRESPONSIVE - %s\n", TestController::webProcessName());
 #endif
 
-    dump(errorMessage, errorMessageToStderr, true);
+    dump(errorMessage, buffer, true);
+    
+    if (!TestController::singleton().usingServerMode())
+        return;
+    
+    if (isatty(fileno(stdin)) || isatty(fileno(stderr)))
+        fputs("Grab an image of the stack, then hit enter...\n", stderr);
+    
+    if (!fgets(buffer, sizeof(buffer), stdin) || strcmp(buffer, "#SAMPLE FINISHED\n"))
+        fprintf(stderr, "Failed receive expected sample response, got:\n\t\"%s\"\nContinuing...\n", buffer);
 }
 
 void TestInvocation::dump(const char* textToStdout, const char* textToStderr, bool seenError)
@@ -599,7 +610,14 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         return;
     }
 
-    if (WKStringIsEqualToUTF8CString(messageName, "SetHandlesAuthenticationChallenge")) {
+    if (WKStringIsEqualToUTF8CString(messageName, "SetRejectsProtectionSpaceAndContinueForAuthenticationChallenges")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::singleton().setRejectsProtectionSpaceAndContinueForAuthenticationChallenges(WKBooleanGetValue(value));
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetHandlesAuthenticationChallenges")) {
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
         WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
         TestController::singleton().setHandlesAuthenticationChallenges(WKBooleanGetValue(value));
@@ -735,6 +753,78 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         return nullptr;
     }
 
+#if PLATFORM(MAC)
+    if (WKStringIsEqualToUTF8CString(messageName, "ConnectMockGamepad")) {
+        ASSERT(WKGetTypeID(messageBody) == WKUInt64GetTypeID());
+
+        uint64_t index = WKUInt64GetValue(static_cast<WKUInt64Ref>(messageBody));
+        WebCoreTestSupport::connectMockGamepad(index);
+        
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "DisconnectMockGamepad")) {
+        ASSERT(WKGetTypeID(messageBody) == WKUInt64GetTypeID());
+
+        uint64_t index = WKUInt64GetValue(static_cast<WKUInt64Ref>(messageBody));
+        WebCoreTestSupport::disconnectMockGamepad(index);
+
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetMockGamepadDetails")) {
+        ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
+
+        WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
+        WKRetainPtr<WKStringRef> gamepadIndexKey(AdoptWK, WKStringCreateWithUTF8CString("GamepadIndex"));
+        WKRetainPtr<WKStringRef> gamepadIDKey(AdoptWK, WKStringCreateWithUTF8CString("GamepadID"));
+        WKRetainPtr<WKStringRef> axisCountKey(AdoptWK, WKStringCreateWithUTF8CString("AxisCount"));
+        WKRetainPtr<WKStringRef> buttonCountKey(AdoptWK, WKStringCreateWithUTF8CString("ButtonCount"));
+
+        WKUInt64Ref gamepadIndex = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, gamepadIndexKey.get()));
+        WKStringRef gamepadID = static_cast<WKStringRef>(WKDictionaryGetItemForKey(messageBodyDictionary, gamepadIDKey.get()));
+        WKUInt64Ref axisCount = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, axisCountKey.get()));
+        WKUInt64Ref buttonCount = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, buttonCountKey.get()));
+
+        WebCoreTestSupport::setMockGamepadDetails(WKUInt64GetValue(gamepadIndex), toWTFString(gamepadID), WKUInt64GetValue(axisCount), WKUInt64GetValue(buttonCount));
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetMockGamepadAxisValue")) {
+        ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
+
+        WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
+        WKRetainPtr<WKStringRef> gamepadIndexKey(AdoptWK, WKStringCreateWithUTF8CString("GamepadIndex"));
+        WKRetainPtr<WKStringRef> axisIndexKey(AdoptWK, WKStringCreateWithUTF8CString("AxisIndex"));
+        WKRetainPtr<WKStringRef> valueKey(AdoptWK, WKStringCreateWithUTF8CString("Value"));
+
+        WKUInt64Ref gamepadIndex = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, gamepadIndexKey.get()));
+        WKUInt64Ref axisIndex = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, axisIndexKey.get()));
+        WKDoubleRef value = static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, valueKey.get()));
+
+        WebCoreTestSupport::setMockGamepadAxisValue(WKUInt64GetValue(gamepadIndex), WKUInt64GetValue(axisIndex), WKDoubleGetValue(value));
+
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetMockGamepadButtonValue")) {
+        ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
+
+        WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
+        WKRetainPtr<WKStringRef> gamepadIndexKey(AdoptWK, WKStringCreateWithUTF8CString("GamepadIndex"));
+        WKRetainPtr<WKStringRef> buttonIndexKey(AdoptWK, WKStringCreateWithUTF8CString("ButtonIndex"));
+        WKRetainPtr<WKStringRef> valueKey(AdoptWK, WKStringCreateWithUTF8CString("Value"));
+
+        WKUInt64Ref gamepadIndex = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, gamepadIndexKey.get()));
+        WKUInt64Ref buttonIndex = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, buttonIndexKey.get()));
+        WKDoubleRef value = static_cast<WKDoubleRef>(WKDictionaryGetItemForKey(messageBodyDictionary, valueKey.get()));
+
+        WebCoreTestSupport::setMockGamepadButtonValue(WKUInt64GetValue(gamepadIndex), WKUInt64GetValue(buttonIndex), WKDoubleGetValue(value));
+
+        return nullptr;
+    }
+#endif // PLATFORM(MAC)
+
     ASSERT_NOT_REACHED();
     return nullptr;
 }
@@ -756,10 +846,10 @@ void TestInvocation::runUISideScript(WKStringRef script, unsigned scriptCallback
     if (!m_UIScriptContext)
         m_UIScriptContext = std::make_unique<UIScriptContext>(*this);
     
-    m_UIScriptContext->runUIScript(script, scriptCallbackID);
+    m_UIScriptContext->runUIScript(toWTFString(script), scriptCallbackID);
 }
 
-void TestInvocation::uiScriptDidComplete(WKStringRef result, unsigned scriptCallbackID)
+void TestInvocation::uiScriptDidComplete(const String& result, unsigned scriptCallbackID)
 {
     WKRetainPtr<WKStringRef> messageName = adoptWK(WKStringCreateWithUTF8CString("CallUISideScriptCallback"));
 
@@ -768,7 +858,7 @@ void TestInvocation::uiScriptDidComplete(WKStringRef result, unsigned scriptCall
     WKRetainPtr<WKStringRef> callbackIDKey(AdoptWK, WKStringCreateWithUTF8CString("CallbackID"));
     WKRetainPtr<WKUInt64Ref> callbackIDValue = adoptWK(WKUInt64Create(scriptCallbackID));
 
-    WKDictionarySetItem(messageBody.get(), resultKey.get(), result);
+    WKDictionarySetItem(messageBody.get(), resultKey.get(), toWK(result).get());
     WKDictionarySetItem(messageBody.get(), callbackIDKey.get(), callbackIDValue.get());
 
     WKPagePostMessageToInjectedBundle(TestController::singleton().mainWebView()->page(), messageName.get(), messageBody.get());

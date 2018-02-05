@@ -49,7 +49,6 @@
 #include <wtf/CompilationThread.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/PrintStream.h>
-#include <wtf/RefCounted.h>
 
 namespace WTF {
 
@@ -700,6 +699,7 @@ private:
     bool isValid(ExecState*, StructureChain* cachedPrototypeChain) const;
         
     void pin();
+    void pinForCaching();
     
     bool isRareData(JSCell* cell) const
     {

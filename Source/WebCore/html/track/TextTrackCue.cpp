@@ -49,21 +49,10 @@
 #include "VTTCue.h"
 #include "VTTRegionList.h"
 #include <wtf/MathExtras.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
 static const int invalidCueIndex = -1;
-
-Ref<TextTrackCue> TextTrackCue::create(ScriptExecutionContext& context, double start, double end, const String& content)
-{
-    return create(context, MediaTime::createWithDouble(start), MediaTime::createWithDouble(end), content);
-}
-
-Ref<TextTrackCue> TextTrackCue::create(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, const String& content)
-{
-    return VTTCue::create(context, start, end, content);
-}
 
 TextTrackCue::TextTrackCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end)
     : m_startTime(start)

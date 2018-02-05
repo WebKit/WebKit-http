@@ -25,24 +25,26 @@
  */
 
 #include "config.h"
+#include "RenderMathMLUnderOver.h"
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLUnderOver.h"
-
 #include "MathMLElement.h"
-#include "MathMLNames.h"
 #include "MathMLOperatorDictionary.h"
+#include "MathMLUnderOverElement.h"
 #include "RenderIterator.h"
 #include "RenderMathMLOperator.h"
 
 namespace WebCore {
 
-using namespace MathMLNames;
-
-RenderMathMLUnderOver::RenderMathMLUnderOver(Element& element, RenderStyle&& style)
+RenderMathMLUnderOver::RenderMathMLUnderOver(MathMLUnderOverElement& element, RenderStyle&& style)
     : RenderMathMLScripts(element, WTFMove(style))
 {
+}
+
+MathMLUnderOverElement& RenderMathMLUnderOver::element() const
+{
+    return static_cast<MathMLUnderOverElement&>(nodeForNonAnonymous());
 }
 
 void RenderMathMLUnderOver::computeOperatorsHorizontalStretch()
@@ -165,10 +167,10 @@ bool RenderMathMLUnderOver::hasAccent(bool accentUnder) const
 {
     ASSERT(m_scriptType == UnderOver || (accentUnder && m_scriptType == Under) || (!accentUnder && m_scriptType == Over));
 
-    const AtomicString& attributeValue = element()->attributeWithoutSynchronization(accentUnder ? accentunderAttr : accentAttr);
-    if (attributeValue == "true")
+    const MathMLElement::BooleanValue& attributeValue = accentUnder ? element().accentUnder() : element().accent();
+    if (attributeValue == MathMLElement::BooleanValue::True)
         return true;
-    if (attributeValue == "false")
+    if (attributeValue == MathMLElement::BooleanValue::False)
         return false;
     RenderBox& script = accentUnder ? under() : over();
     if (!is<RenderMathMLBlock>(script))

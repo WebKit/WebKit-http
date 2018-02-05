@@ -173,16 +173,13 @@ var Statistics = new (function () {
     }
 
     this.debuggingSegmentation = false;
-    this.segmentTimeSeriesByMaximizingSchwarzCriterion = function (values) {
-        if (values.length < 2)
-            return [0];
-
+    this.segmentTimeSeriesByMaximizingSchwarzCriterion = function (values, segmentCountWeight, gridSize) {
         // Split the time series into grids since splitIntoSegmentsUntilGoodEnough is O(n^2).
-        var gridLength = 500;
+        var gridLength = gridSize || 500;
         var totalSegmentation = [0];
         for (var gridCount = 0; gridCount < Math.ceil(values.length / gridLength); gridCount++) {
             var gridValues = values.slice(gridCount * gridLength, (gridCount + 1) * gridLength);
-            var segmentation = splitIntoSegmentsUntilGoodEnough(gridValues);
+            var segmentation = splitIntoSegmentsUntilGoodEnough(gridValues, segmentCountWeight);
 
             if (Statistics.debuggingSegmentation)
                 console.log('grid=' + gridCount, segmentation);
@@ -274,7 +271,7 @@ var Statistics = new (function () {
     function oneSidedToTwoSidedProbability(probability) { return 2 * probability - 1; }
     function twoSidedToOneSidedProbability(probability) { return (1 - (1 - probability) / 2); }
 
-    function splitIntoSegmentsUntilGoodEnough(values) {
+    function splitIntoSegmentsUntilGoodEnough(values, BirgeAndMassartC) {
         if (values.length < 2)
             return [0, values.length];
 
@@ -282,7 +279,7 @@ var Statistics = new (function () {
 
         var SchwarzCriterionBeta = Math.log1p(values.length - 1) / values.length;
 
-        var BirgeAndMassartC = 2.5; // Suggested by the authors.
+        BirgeAndMassartC = BirgeAndMassartC || 2.5; // Suggested by the authors.
         var BirgeAndMassartPenalization = function (segmentCount) {
             return segmentCount * (1 + BirgeAndMassartC * Math.log1p(values.length / segmentCount - 1));
         }
@@ -308,17 +305,26 @@ var Statistics = new (function () {
         return segmentation;
     }
 
-    function findOptimalSegmentation(values, costMatrix, segmentCount) {
+    function allocateCostUpperTriangularForSegmentation(values, segmentCount)
+    {
         // Dynamic programming. cost[i][k] = The cost to segmenting values up to i into k segments.
         var cost = new Array(values.length);
         for (var segmentEnd = 0; segmentEnd < values.length; segmentEnd++)
             cost[segmentEnd] = new Float32Array(segmentCount + 1);
+        return cost;
+    }
 
+    function allocatePreviousNodeForSegmentation(values, segmentCount)
+    {
         // previousNode[i][k] = The start of the last segment in an optimal segmentation that ends at i with k segments.
         var previousNode = new Array(values.length);
         for (var i = 0; i < values.length; i++)
             previousNode[i] = new Array(segmentCount + 1);
+        return previousNode;
+    }
 
+    function findOptimalSegmentationInternal(cost, previousNode, values, costMatrix, segmentCount)
+    {
         cost[0] = [0]; // The cost of segmenting single value is always 0.
         previousNode[0] = [-1];
         for (var segmentStart = 0; segmentStart < values.length; segmentStart++) {
@@ -338,6 +344,13 @@ var Statistics = new (function () {
                 }
             }
         }
+    }
+
+    function findOptimalSegmentation(values, costMatrix, segmentCount) {
+        var cost = allocateCostUpperTriangularForSegmentation(values, segmentCount);
+        var previousNode = allocatePreviousNodeForSegmentation(values, segmentCount);
+
+        findOptimalSegmentationInternal(cost, previousNode, values, costMatrix, segmentCount);
 
         if (Statistics.debuggingSegmentation) {
             console.log('findOptimalSegmentation with', segmentCount, 'segments');
@@ -392,8 +405,6 @@ var Statistics = new (function () {
             return 0; // The cost of the segment that starts at the last data point is 0.
         return this.costMatrix[from][to - from - 1];
     }
-
-    this.debuggingTestingRangeNomination = false;
 
 })();
 

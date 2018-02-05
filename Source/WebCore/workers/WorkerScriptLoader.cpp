@@ -54,8 +54,10 @@ WorkerScriptLoader::~WorkerScriptLoader()
 {
 }
 
-void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecutionContext, const URL& url, CrossOriginRequestPolicy crossOriginRequestPolicy, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement)
+void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecutionContext, const URL& url, FetchOptions::Mode mode, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement)
 {
+    ASSERT(scriptExecutionContext);
+
     m_url = url;
 
     std::unique_ptr<ResourceRequest> request(createResourceRequest());
@@ -64,18 +66,23 @@ void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecuti
 
     ASSERT_WITH_SECURITY_IMPLICATION(is<WorkerGlobalScope>(scriptExecutionContext));
 
+    // Only used for importScripts that prescribes NoCors mode.
+    ASSERT(mode == FetchOptions::Mode::NoCors);
+
     ThreadableLoaderOptions options;
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.crossOriginRequestPolicy = crossOriginRequestPolicy;
-    options.setSendLoadCallbacks(SendCallbacks);
+    options.credentials = FetchOptions::Credentials::Include;
+    options.mode = mode;
+    options.sendLoadCallbacks = SendCallbacks;
     options.contentSecurityPolicyEnforcement = contentSecurityPolicyEnforcement;
 
-    WorkerThreadableLoader::loadResourceSynchronously(downcast<WorkerGlobalScope>(scriptExecutionContext), *request, *this, options);
+    WorkerThreadableLoader::loadResourceSynchronously(downcast<WorkerGlobalScope>(*scriptExecutionContext), WTFMove(*request), *this, options);
 }
 
-void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext* scriptExecutionContext, const URL& url, CrossOriginRequestPolicy crossOriginRequestPolicy, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, WorkerScriptLoaderClient* client)
+void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext* scriptExecutionContext, const URL& url, FetchOptions::Mode mode, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, WorkerScriptLoaderClient* client)
 {
     ASSERT(client);
+    ASSERT(scriptExecutionContext);
+
     m_client = client;
     m_url = url;
 
@@ -83,15 +90,19 @@ void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext* scriptExecut
     if (!request)
         return;
 
+    // Only used for loading worker scripts in classic mode.
+    // FIXME: We should add an option to set credential mode.
+    ASSERT(mode == FetchOptions::Mode::SameOrigin);
+
     ThreadableLoaderOptions options;
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.crossOriginRequestPolicy = crossOriginRequestPolicy;
-    options.setSendLoadCallbacks(SendCallbacks);
+    options.credentials = FetchOptions::Credentials::SameOrigin;
+    options.mode = mode;
+    options.sendLoadCallbacks = SendCallbacks;
     options.contentSecurityPolicyEnforcement = contentSecurityPolicyEnforcement;
 
     // During create, callbacks may happen which remove the last reference to this object.
     Ref<WorkerScriptLoader> protectedThis(*this);
-    m_threadableLoader = ThreadableLoader::create(scriptExecutionContext, this, *request, options);
+    m_threadableLoader = ThreadableLoader::create(*scriptExecutionContext, *this, WTFMove(*request), options);
 }
 
 const URL& WorkerScriptLoader::responseURL() const

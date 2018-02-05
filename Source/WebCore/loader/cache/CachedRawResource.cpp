@@ -32,7 +32,6 @@
 #include "HTTPHeaderNames.h"
 #include "SharedBuffer.h"
 #include "SubresourceLoader.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/StringView.h>
 
 namespace WebCore {
@@ -220,7 +219,7 @@ void CachedRawResource::setDefersLoading(bool defers)
 
 void CachedRawResource::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
 {
-    m_options.setDataBufferingPolicy(dataBufferingPolicy);
+    m_options.dataBufferingPolicy = dataBufferingPolicy;
 }
 
 static bool shouldIgnoreHeaderForCacheReuse(HTTPHeaderName name)

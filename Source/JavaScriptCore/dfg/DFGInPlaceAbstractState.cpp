@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@ static const bool verbose = false;
 
 InPlaceAbstractState::InPlaceAbstractState(Graph& graph)
     : m_graph(graph)
+    , m_abstractValues(graph.abstractValuesCache())
     , m_variables(m_graph.m_codeBlock->numParameters(), graph.m_localVars)
     , m_block(0)
 {
@@ -55,6 +56,11 @@ void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
     ASSERT(basicBlock->variablesAtHead.numberOfLocals() == basicBlock->valuesAtHead.numberOfLocals());
     ASSERT(basicBlock->variablesAtTail.numberOfLocals() == basicBlock->valuesAtTail.numberOfLocals());
     ASSERT(basicBlock->variablesAtHead.numberOfLocals() == basicBlock->variablesAtTail.numberOfLocals());
+
+    // Certain phases insert nodes in a block after running through it.
+    // We cannot reserve the space for AbstractValues when initializing AbstractState because the number of values
+    // can increase as we execute. Instead, we increase the size as needed before processing each block.
+    m_abstractValues.resize(m_graph.maxNodeCount());
     
     for (size_t i = 0; i < basicBlock->size(); i++)
         forNode(basicBlock->at(i)).clear();
@@ -74,17 +80,7 @@ void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
     m_structureClobberState = basicBlock->cfaStructureClobberStateAtHead;
 }
 
-static void setLiveValues(HashMap<Node*, AbstractValue>& values, HashSet<Node*>& live)
-{
-    values.clear();
-    
-    HashSet<Node*>::iterator iter = live.begin();
-    HashSet<Node*>::iterator end = live.end();
-    for (; iter != end; ++iter)
-        values.add(*iter, AbstractValue());
-}
-
-static void setLiveValues(Vector<BasicBlock::SSAData::NodeAbstractValuePair>& values, HashSet<Node*>& live)
+static void setLiveValues(Vector<BasicBlock::SSAData::NodeAbstractValuePair>& values, const Vector<Node*>& live)
 {
     values.resize(0);
     values.reserveCapacity(live.size());
@@ -182,32 +178,31 @@ bool InPlaceAbstractState::endBasicBlock()
         reset();
         return false;
     }
-    
-    bool changed = checkAndSet(block->cfaStructureClobberStateAtTail, m_structureClobberState);
-    
+
+    block->cfaStructureClobberStateAtTail = m_structureClobberState;
+
     switch (m_graph.m_form) {
     case ThreadedCPS: {
         for (size_t argument = 0; argument < block->variablesAtTail.numberOfArguments(); ++argument) {
             AbstractValue& destination = block->valuesAtTail.argument(argument);
-            changed |= mergeStateAtTail(destination, m_variables.argument(argument), block->variablesAtTail.argument(argument));
+            mergeStateAtTail(destination, m_variables.argument(argument), block->variablesAtTail.argument(argument));
         }
 
         for (size_t local = 0; local < block->variablesAtTail.numberOfLocals(); ++local) {
             AbstractValue& destination = block->valuesAtTail.local(local);
-            changed |= mergeStateAtTail(destination, m_variables.local(local), block->variablesAtTail.local(local));
+            mergeStateAtTail(destination, m_variables.local(local), block->variablesAtTail.local(local));
         }
         break;
     }
 
     case SSA: {
         for (size_t i = 0; i < block->valuesAtTail.size(); ++i)
-            changed |= block->valuesAtTail[i].merge(m_variables[i]);
+            block->valuesAtTail[i].merge(m_variables[i]);
 
-        HashSet<Node*>::iterator iter = block->ssa->liveAtTail.begin();
-        HashSet<Node*>::iterator end = block->ssa->liveAtTail.end();
-        for (; iter != end; ++iter) {
-            Node* node = *iter;
-            changed |= block->ssa->valuesAtTail.find(node)->value.merge(forNode(node));
+        for (auto& valueAtTail : block->ssa->valuesAtTail) {
+            AbstractValue& valueAtNode = forNode(valueAtTail.node);
+            valueAtTail.value.merge(valueAtNode);
+            valueAtNode = valueAtTail.value;
         }
         break;
     }
@@ -229,12 +224,12 @@ void InPlaceAbstractState::reset()
     m_structureClobberState = StructuresAreWatched;
 }
 
-bool InPlaceAbstractState::mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node* node)
+void InPlaceAbstractState::mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node* node)
 {
     if (!node)
-        return false;
-        
-    AbstractValue source;
+        return;
+
+    const AbstractValue* source = nullptr;
     
     switch (node->op()) {
     case Phi:
@@ -242,38 +237,27 @@ bool InPlaceAbstractState::mergeStateAtTail(AbstractValue& destination, Abstract
     case PhantomLocal:
     case Flush:
         // The block transfers the value from head to tail.
-        source = inVariable;
+        source = &inVariable;
         break;
             
     case GetLocal:
         // The block refines the value with additional speculations.
-        source = forNode(node);
+        source = &forNode(node);
         break;
             
     case SetLocal:
         // The block sets the variable, and potentially refines it, both
         // before and after setting it.
-        source = forNode(node->child1());
+        source = &forNode(node->child1());
         if (node->variableAccessData()->flushFormat() == FlushedDouble)
-            RELEASE_ASSERT(!(source.m_type & ~SpecFullDouble));
+            RELEASE_ASSERT(!(source->m_type & ~SpecFullDouble));
         break;
         
     default:
         RELEASE_ASSERT_NOT_REACHED();
         break;
     }
-    
-    if (destination == source) {
-        // Abstract execution did not change the output value of the variable, for this
-        // basic block, on this iteration.
-        return false;
-    }
-    
-    // Abstract execution reached a new conclusion about the speculations reached about
-    // this variable after execution of this basic block. Update the state, and return
-    // true to indicate that the fixpoint must go on!
-    destination = source;
-    return true;
+    destination = *source;
 }
 
 bool InPlaceAbstractState::merge(BasicBlock* from, BasicBlock* to)
@@ -310,9 +294,19 @@ bool InPlaceAbstractState::merge(BasicBlock* from, BasicBlock* to)
         for (auto& entry : to->ssa->valuesAtHead) {
             Node* node = entry.node;
             if (verbose)
-                dataLog("      Merging for ", node, ": from ", from->ssa->valuesAtTail.find(node)->value, " to ", entry.value, "\n");
-            changed |= entry.value.merge(
-                from->ssa->valuesAtTail.find(node)->value);
+                dataLog("      Merging for ", node, ": from ", forNode(node), " to ", entry.value, "\n");
+#ifndef NDEBUG
+            unsigned valueCountInFromBlock = 0;
+            for (auto& fromBlockValueAtTail : from->ssa->valuesAtTail) {
+                if (fromBlockValueAtTail.node == node) {
+                    ASSERT(fromBlockValueAtTail.value == forNode(node));
+                    ++valueCountInFromBlock;
+                }
+            }
+            ASSERT(valueCountInFromBlock == 1);
+#endif
+
+            changed |= entry.value.merge(forNode(node));
 
             if (verbose)
                 dataLog("         Result: ", entry.value, "\n");

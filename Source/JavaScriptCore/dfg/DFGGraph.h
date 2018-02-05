@@ -182,12 +182,27 @@ public:
     }
     
     template<typename... Params>
+    Node* addNode(Params... params)
+    {
+        Node* node = new (m_allocator) Node(params...);
+        addNodeToMapByIndex(node);
+        return node;
+    }
+    template<typename... Params>
     Node* addNode(SpeculatedType type, Params... params)
     {
         Node* node = new (m_allocator) Node(params...);
         node->predict(type);
+        addNodeToMapByIndex(node);
         return node;
     }
+
+    void deleteNode(Node*);
+    unsigned maxNodeCount() const { return m_nodesByIndex.size(); }
+    Node* nodeAt(unsigned index) const { return m_nodesByIndex[index]; }
+    void packNodeIndices();
+
+    Vector<AbstractValue, 0, UnsafeVectorOverflow>& abstractValuesCache() { return m_abstractValuesCache; }
 
     void dethread();
     
@@ -533,6 +548,7 @@ public:
     void substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, VariableAccessData* variableAccessData, Node* newGetLocal);
     
     void invalidateCFG();
+    void invalidateNodeLiveness();
     
     void clearFlagsOnAllNodes(NodeFlags);
     
@@ -642,6 +658,12 @@ public:
         bool result = false;
         doToChildren(node, [&] (Edge edge) { result |= edge == child; });
         return result;
+    }
+
+    bool isWatchingHavingABadTimeWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        return watchpoints().isWatched(globalObject->havingABadTimeWatchpoint());
     }
     
     Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
@@ -813,6 +835,9 @@ public:
     // because it queries the m_hasExceptionHandlers boolean whose value
     // is only fully determined after bytcode parsing.
     bool willCatchExceptionInMachineFrame(CodeOrigin, CodeOrigin& opCatchOriginOut, HandlerInfo*& catchHandlerOut);
+    
+    bool needsScopeRegister() const { return m_hasDebuggerEnabled || m_codeBlock->usesEval(); }
+    bool needsFlushedThis() const { return m_codeBlock->usesEval(); }
 
     VM& m_vm;
     Plan& m_plan;
@@ -908,6 +933,7 @@ public:
     bool m_hasDebuggerEnabled;
     bool m_hasExceptionHandlers { false };
 private:
+    void addNodeToMapByIndex(Node*);
 
     bool isStringPrototypeMethodSane(JSGlobalObject*, UniquedStringImpl*);
 
@@ -940,6 +966,10 @@ private:
         
         return bytecodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateInt32AndTruncateConstants : DontSpeculateInt32;
     }
+
+    Vector<Node*, 0, UnsafeVectorOverflow> m_nodesByIndex;
+    Vector<unsigned, 0, UnsafeVectorOverflow> m_nodeIndexFreeList;
+    Vector<AbstractValue, 0, UnsafeVectorOverflow> m_abstractValuesCache;
 };
 
 } } // namespace JSC::DFG

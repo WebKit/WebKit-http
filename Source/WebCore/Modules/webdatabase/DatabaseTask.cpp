@@ -30,6 +30,7 @@
 
 #include "Database.h"
 #include "Logging.h"
+#include "SQLTransaction.h"
 
 namespace WebCore {
 
@@ -144,8 +145,8 @@ const char* DatabaseCloseTask::debugTaskName() const
 // *** DatabaseTransactionTask ***
 // Starts a transaction that will report its results via a callback.
 
-DatabaseTransactionTask::DatabaseTransactionTask(RefPtr<SQLTransactionBackend>&& transaction)
-    : DatabaseTask(*transaction->database(), 0)
+DatabaseTransactionTask::DatabaseTransactionTask(RefPtr<SQLTransaction>&& transaction)
+    : DatabaseTask(transaction->database(), 0)
     , m_transaction(WTFMove(transaction))
     , m_didPerformTask(false)
 {

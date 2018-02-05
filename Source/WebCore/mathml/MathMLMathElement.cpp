@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,10 +26,9 @@
  */
 
 #include "config.h"
+#include "MathMLMathElement.h"
 
 #if ENABLE(MATHML)
-
-#include "MathMLMathElement.h"
 
 #include "MathMLNames.h"
 #include "RenderMathMLMath.h"
@@ -38,7 +38,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 inline MathMLMathElement::MathMLMathElement(const QualifiedName& tagName, Document& document)
-    : MathMLInlineContainerElement(tagName, document)
+    : MathMLRowElement(tagName, document)
 {
     setHasCustomStyleResolveCallbacks();
 }
@@ -53,17 +53,36 @@ RenderPtr<RenderElement> MathMLMathElement::createElementRenderer(RenderStyle&& 
     return createRenderer<RenderMathMLMath>(*this, WTFMove(style));
 }
 
+Optional<bool> MathMLMathElement::specifiedDisplayStyle()
+{
+    if (cachedBooleanAttribute(displaystyleAttr, m_displayStyle) == BooleanValue::Default) {
+        // The default displaystyle value of the <math> depends on the display attribute, so we parse it here.
+        auto& value = attributeWithoutSynchronization(displayAttr);
+        if (value == "block")
+            m_displayStyle = BooleanValue::True;
+        else if (value == "inline")
+            m_displayStyle = BooleanValue::False;
+    }
+    return toOptionalBool(m_displayStyle.value());
+}
+
 void MathMLMathElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if ((name == displaystyleAttr || name == displayAttr || name == mathvariantAttr) && renderer())
+    bool displayStyleAttribute = (name == displaystyleAttr || name == displayAttr);
+    bool mathVariantAttribute = name == mathvariantAttr;
+    if (displayStyleAttribute)
+        m_displayStyle = Nullopt;
+    if (mathVariantAttribute)
+        m_mathVariant = Nullopt;
+    if ((displayStyleAttribute || mathVariantAttribute) && renderer())
         MathMLStyle::resolveMathMLStyleTree(renderer());
 
-    MathMLInlineContainerElement::parseAttribute(name, value);
+    MathMLElement::parseAttribute(name, value);
 }
 
 void MathMLMathElement::didAttachRenderers()
 {
-    MathMLInlineContainerElement::didAttachRenderers();
+    MathMLRowElement::didAttachRenderers();
 
     MathMLStyle::resolveMathMLStyleTree(renderer());
 }

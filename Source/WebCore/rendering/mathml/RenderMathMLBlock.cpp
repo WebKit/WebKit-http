@@ -25,10 +25,9 @@
  */
 
 #include "config.h"
+#include "RenderMathMLBlock.h"
 
 #if ENABLE(MATHML)
-
-#include "RenderMathMLBlock.h"
 
 #include "CSSHelper.h"
 #include "GraphicsContext.h"
@@ -165,25 +164,12 @@ LayoutUnit toUserUnits(const MathMLElement::Length& length, const RenderStyle& s
         return referenceValue * length.value;
     case MathMLElement::LengthType::ParsingFailed:
         return referenceValue;
+    case MathMLElement::LengthType::Infinity:
+        return intMaxForLayoutUnit;
     default:
         ASSERT_NOT_REACHED();
         return referenceValue;
     }
-}
-
-bool parseMathMLLength(const String& string, LayoutUnit& lengthValue, const RenderStyle* style, bool allowNegative)
-{
-    MathMLElement::Length length = MathMLElement::parseMathMLLength(string);
-    if (length.type == MathMLElement::LengthType::ParsingFailed)
-        return false;
-
-    LayoutUnit value = toUserUnits(length, *style, lengthValue);
-
-    if (!allowNegative && value < 0)
-        return false;
-
-    lengthValue = value;
-    return true;
 }
 
 Optional<int> RenderMathMLTable::firstLineBaseline() const

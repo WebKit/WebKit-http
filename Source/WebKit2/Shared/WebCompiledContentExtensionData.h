@@ -33,8 +33,8 @@
 #include <wtf/RefPtr.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -59,8 +59,8 @@ public:
     {
     }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebCompiledContentExtensionData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebCompiledContentExtensionData&);
 
     RefPtr<SharedMemory> data;
     NetworkCache::Data fileData;

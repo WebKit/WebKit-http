@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLAnchorElement_h
-#define HTMLAnchorElement_h
+#pragma once
 
 #include "HTMLElement.h"
 #include "HTMLNames.h"
@@ -63,17 +62,15 @@ public:
 
     virtual ~HTMLAnchorElement();
 
-    URL href() const;
+    WEBCORE_EXPORT URL href() const;
     void setHref(const AtomicString&);
 
     const AtomicString& name() const;
 
-    String origin() const;
+    WEBCORE_EXPORT String origin() const;
 
-    String text();
+    WEBCORE_EXPORT String text();
     void setText(const String&, ExceptionCode&);
-
-    String toString() const;
 
     bool isLiveLink() const;
 
@@ -84,7 +81,7 @@ public:
     LinkHash visitedLinkHash() const;
     void invalidateCachedVisitedLinkHash() { m_cachedVisitedLinkHash = 0; }
 
-    DOMTokenList& relList();
+    WEBCORE_EXPORT DOMTokenList& relList();
 
 protected:
     HTMLAnchorElement(const QualifiedName&, Document&);
@@ -141,5 +138,3 @@ bool isEnterKeyKeydownEvent(Event*);
 bool shouldProhibitLinks(Element*);
 
 } // namespace WebCore
-
-#endif // HTMLAnchorElement_h

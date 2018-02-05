@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -44,7 +44,7 @@ namespace WebCore {
 
 class MockMediaSample final : public MediaSample {
 public:
-    static RefPtr<MockMediaSample> create(const MockSampleBox& box) { return adoptRef(new MockMediaSample(box)); }
+    static Ref<MockMediaSample> create(const MockSampleBox& box) { return adoptRef(*new MockMediaSample(box)); }
     virtual ~MockMediaSample() { }
 
 private:
@@ -58,6 +58,7 @@ private:
     MediaTime decodeTime() const override { return m_box.decodeTimestamp(); }
     MediaTime duration() const override { return m_box.duration(); }
     AtomicString trackID() const override { return m_id; }
+    void setTrackID(const String& id) override { m_id = id; }
     size_t sizeInBytes() const override { return sizeof(m_box); }
     SampleFlags flags() const override;
     PlatformSample platformSample() override;

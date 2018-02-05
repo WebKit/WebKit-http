@@ -10,6 +10,7 @@ accessibility/ios-simulator [ Pass ]
 displaylists [ Pass ]
 quicklook [ Pass ]
 http/tests/quicklook [ Pass ]
+media/controls/ipad [ Pass ]
 
 fast/text-autosizing/ios [ Pass ]
 
@@ -59,13 +60,31 @@ fast/history/page-cache-suspended-audiocontext.html
 # WebRTC tests are skipped on iOS for now.
 fast/events/constructors/media-stream-event-constructor.html
 
-# No mousewheel events on iOS
+# No wheel events on iOS
 fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
 fast/events/wheel-event-destroys-frame.html [ Skip ]
 fast/events/wheel-event-destroys-overflow.html [ Skip ]
 fast/events/wheel-event-outside-body.html [ Skip ]
 fast/scrolling/scroll-container-horizontally.html [ Failure ]
+fast/events/wheelevent-basic.html [ Skip ]
+fast/events/wheelevent-direction-inverted-from-device.html [ Skip ]
+fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Skip ]
+fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Skip ]
+fast/events/wheelevent-mousewheel-interaction.html [ Skip ]
+fast/events/platform-wheelevent-in-scrolling-div.html [ Skip ]
+fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html [ Skip ]
+fast/events/platform-wheelevent-paging-x-in-non-scrolling-page.html [ Skip ]
+fast/events/platform-wheelevent-paging-x-in-scrolling-div.html [ Skip ]
+fast/events/platform-wheelevent-paging-x-in-scrolling-page.html [ Skip ]
+fast/events/platform-wheelevent-paging-xy-in-scrolling-div.html [ Skip ]
+fast/events/platform-wheelevent-paging-xy-in-scrolling-page.html [ Skip ]
+fast/events/platform-wheelevent-paging-y-in-non-scrolling-div.html [ Skip ]
+fast/events/platform-wheelevent-paging-y-in-non-scrolling-page.html [ Skip ]
+fast/events/platform-wheelevent-paging-y-in-scrolling-div.html [ Skip ]
+fast/events/platform-wheelevent-paging-y-in-scrolling-page.html [ Skip ]
+fast/events/wheelevent-in-text-node.html [ Skip ]
+fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Skip ]
 
 # Not supported on iOS
 batterystatus
@@ -114,7 +133,6 @@ pointer-lock
 http/tests/pointer-lock
 
 # FIXME: Media tests not supported on iOS
-media
 http/tests/media
 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
 
@@ -126,7 +144,29 @@ platform/ios-simulator/ios/fast/forms/range-input-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone.html [ Skip ]
 
+# WebKitDataCue is supported, not DataCue
+media/track/track-datacue.html
+
+# Codecs not supported
+media/media-can-play-ogg.html [ WontFix ]
+media/media-can-play-flac-audio.html  [ WontFix ]
+media/track/in-band [ WontFix ]
+media/track/audio [ WontFix ]
+media/track/video [ WontFix ]
+
+media/video-controls-captions.html [ WontFix ]
+
+# The logic in this test is no longer correct for Apple ports
+media/track/track-user-preferences.html [ WontFix ]
+
+# This test requires the QuickTime LOOP user data property, which AVFoundation and QTKit64 do not support.
+media/video-does-not-loop.html [ WontFix ]
+
+# This test uses movie matricies, which AVFoundation and QTKit64 do not support.
+media/video-size-intrinsic-scale.html [ WontFix ]
+
 # MediaSource is not currently supported on iOS.
+media/media-source
 fast/history/page-cache-media-source-closed-2.html [ Skip ]
 fast/history/page-cache-media-source-closed.html [ Skip ]
 fast/history/page-cache-media-source-opened.html [ Skip ]
@@ -267,6 +307,7 @@ fast/css/pseudo-active-style-sharing-5.html [ Skip ]
 fast/css/pseudo-active-style-sharing-6.html [ Skip ]
 fast/css/pseudo-active-with-programmatic-focus.html [ Skip ]
 http/tests/security/history-username-password.html [ Skip ]
+fast/selectors/hover-invalidation-descendant-dynamic.html [ Skip ]
 
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 
@@ -293,8 +334,6 @@ fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
-
-webkit.org/b/156857 http/tests/navigation/ping-attribute [ Skip ]
 
 # RTL Scrollbars are only implemented on certain versions of OS X
 fast/scrolling/rtl-scrollbars-iframe-scrolled.html [ Skip ]
@@ -344,6 +383,7 @@ webkit.org/b/137530 canvas/philip/tests/2d.text.draw.space.collapse.other.html [
 webkit.org/b/137530 canvas/philip/tests/2d.text.draw.space.collapse.space.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.text.draw.space.collapse.start.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.text.measure.width.space.html [ Failure ]
+webkit.org/b/137530 imported/w3c/web-platform-tests/2dcontext/transformations/canvas_transformations_reset_001.html [ ImageOnlyFailure ]
 
 # Canvas tests that have stderr:
 canvas/philip/tests/2d.canvas.readonly.html [ Skip ]
@@ -445,8 +485,6 @@ compositing/geometry/preserve-3d-switching.html [ Failure ]
 compositing/geometry/clipped-video-controller.html
 compositing/geometry/video-fixed-scrolling.html
 compositing/geometry/video-opacity-overlay.html
-compositing/overflow/overflow-compositing-descendant.html
-compositing/overflow/scroll-ancestor-update.html
 compositing/reflections/load-video-in-reflection.html
 compositing/regions/floated-region-with-transformed-child.html
 compositing/regions/propagate-region-box-shadow-border-padding-for-video.html
@@ -671,6 +709,7 @@ mathml/opentype/horizontal-munderover.html [ Skip ]
 mathml/opentype/fraction-line.html [ Skip ]
 mathml/presentation/fractions-linethickness.html [ Skip ]
 mathml/opentype/large-operators-italic-correction.html [ Skip ]
+mathml/presentation/bug159513.html [ Skip ]
 
 # These reftests require a font with Mathematical Alphanumeric Symbols.
 mathml/presentation/attributes-mathvariant.html [ Skip ]
@@ -1095,8 +1134,6 @@ svg/carto.net/slider.svg [ Failure ]
 svg/carto.net/tabgroup.svg [ Failure ]
 svg/carto.net/textbox.svg [ Failure ]
 svg/carto.net/window.svg [ Failure ]
-svg/clip-path/clip-path-on-svg-001.svg [ ImageOnlyFailure ]
-svg/clip-path/clip-path-on-svg-002.svg [ ImageOnlyFailure ]
 svg/css/composite-shadow-example.html [ Failure ]
 svg/css/composite-shadow-with-opacity.html [ Failure ]
 svg/css/css-box-min-width.html [ Failure ]
@@ -1535,17 +1572,6 @@ fast/dom/attr_dead_doc.html [ Failure ]
 fast/dom/client-width-height-quirks.html [ Failure ]
 fast/dom/client-width-height.html [ Failure ]
 fast/dom/comment-not-documentElement.html [ Failure ]
-fast/dom/custom/document-register-basic.html [ Failure ]
-fast/dom/custom/document-register-namespace.html [ Failure ]
-fast/dom/custom/document-register-reentrant-null-constructor.html [ Failure ]
-fast/dom/custom/document-register-reentrant-returning-fake.html [ Failure ]
-fast/dom/custom/document-register-type-extensions.html [ Failure ]
-fast/dom/custom/lifecycle-ready-createElement-recursion.html [ Failure ]
-fast/dom/custom/lifecycle-ready-createElement-reentrancy.html [ Failure ]
-fast/dom/custom/lifecycle-ready-creation-api.html [ Failure ]
-fast/dom/custom/lifecycle-ready-innerHTML.html [ Failure ]
-fast/dom/custom/lifecycle-ready-parser-only.html [ ImageOnlyFailure ]
-fast/dom/custom/lifecycle-ready-parser-script.html [ Failure ]
 fast/dom/horizontal-scrollbar-in-rtl.html [ Failure ]
 fast/dom/horizontal-scrollbar-when-dir-change.html [ Failure ]
 fast/dom/jsDevicePixelRatio.html [ Failure ]
@@ -1580,7 +1606,6 @@ fast/events/constructors/mouse-event-constructor.html [ Failure ]
 fast/events/constructors/wheel-event-constructor.html [ Failure ]
 fast/events/context-onmousedown-event.html [ Failure ]
 fast/events/contextmenu-scrolled-page-with-frame.html [ Failure ]
-fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Failure ]
 fast/events/data-transfer-files-attribute-identity.html [ Failure ]
 fast/events/dblclick-addEventListener.html [ Failure ]
 fast/events/document-elementFromPoint.html [ Failure ]
@@ -1637,17 +1662,6 @@ fast/events/ondrop-text-html.html [ Failure ]
 fast/events/overflow-scroll-fake-mouse-move.html [ Failure ]
 fast/events/page-scaled-mouse-click-iframe.html [ Failure ]
 fast/events/page-scaled-mouse-click.html [ Failure ]
-fast/events/platform-wheelevent-in-scrolling-div.html [ Failure ]
-fast/events/platform-wheelevent-paging-x-in-non-scrolling-div.html [ Failure ]
-fast/events/platform-wheelevent-paging-x-in-non-scrolling-page.html [ Failure ]
-fast/events/platform-wheelevent-paging-x-in-scrolling-div.html [ Failure ]
-fast/events/platform-wheelevent-paging-x-in-scrolling-page.html [ Failure ]
-fast/events/platform-wheelevent-paging-xy-in-scrolling-div.html [ Failure ]
-fast/events/platform-wheelevent-paging-xy-in-scrolling-page.html [ Failure ]
-fast/events/platform-wheelevent-paging-y-in-non-scrolling-div.html [ Failure ]
-fast/events/platform-wheelevent-paging-y-in-non-scrolling-page.html [ Failure ]
-fast/events/platform-wheelevent-paging-y-in-scrolling-div.html [ Failure ]
-fast/events/platform-wheelevent-paging-y-in-scrolling-page.html [ Failure ]
 fast/events/remove-target-with-shadow-in-drag.html [ Failure ]
 fast/events/right-click-focus.html [ Failure ]
 fast/events/scale-and-scroll-body.html [ Failure ]
@@ -1674,12 +1688,6 @@ fast/events/tabindex-focus-blur-all.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/image01.html [ ImageOnlyFailure ]
 # Ref-test imported form W3C that is failing because the test is off by a couple of pixels on iOS.
 imported/w3c/css/css-multicol-1/multicol-fill-auto-block-children-001.xht [ ImageOnlyFailure ]
-
-fast/events/wheelevent-basic.html [ Failure ]
-fast/events/wheelevent-direction-inverted-from-device.html [ Failure ]
-fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html [ Failure ]
-fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html [ Failure ]
-fast/events/wheelevent-mousewheel-interaction.html [ Failure ]
 
 fast/events/zoom-dblclick.html [ Failure ]
 fast/files/file-list-test.html [ Failure ]
@@ -1846,7 +1854,6 @@ fast/frames/sandboxed-iframe-navigation-allowed.html [ Failure ]
 fast/frames/valid.html [ Failure ]
 fast/gradients/background-clipped.html [ Failure ]
 fast/hidpi/image-srcset-data-srcset.html [ Failure ]
-fast/history/back-forward-reset-after-error-handling.html [ Failure ]
 fast/images/gif-large-checkerboard.html [ Failure ]
 fast/images/gray-scale-jpeg-with-color-profile.html [ Failure ]
 fast/images/icon-decoding.html [ Failure ]
@@ -2360,7 +2367,6 @@ fast/events/mouse-cursor-image-set.html
 fast/events/recorded-keydown-event.html
 fast/events/remove-child-onscroll.html
 fast/events/resize-subframe.html
-fast/events/wheelevent-in-text-node.html
 fast/events/will-reveal-edges-body-attributes.html
 fast/events/will-reveal-edges-event-listeners.html
 fast/events/will-reveal-edges-window-attributes.html
@@ -2556,8 +2562,6 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 # iOS tests that assert:
 platform/ios-simulator/ios/fast/text/combining-enclosing-keycap.html
-platform/ios-simulator/ios/plugin/youtube-flash-plugin-iframe-no-height-or-width.html
-platform/ios-simulator/ios/plugin/youtube-flash-plugin-iframe.html
 
 # Kerning, Ligatures, and Printer Fonts caused these tests to fail.
 # The following tests are reftests (and also fail on Mac):
@@ -2649,7 +2653,6 @@ editing/style/apply-through-end-of-document.html [ Skip ]
 editing/style/font-family-with-space.html [ Skip ]
 editing/style/non-inheritable-styles.html [ Skip ]
 editing/undo/undo-paste-when-caret-is-not-in-range.html [ Skip ]
-fast/dom/custom/lifecycle-ready-paste.html [ Skip ]
 http/tests/misc/copy-resolves-urls.html [ Skip ]
 editing/inserting/insert-3907422-fix.html [ Skip ]
 fast/forms/textarea-paste-newline.html [ Skip ]
@@ -2871,19 +2874,10 @@ webkit.org/b/152449 fast/events/can-click-element-on-page-with-active-pseudo-cla
 
 webkit.org/b/152701 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
-webkit.org/b/152439 compositing/overflow/dynamic-composited-scrolling-status.html [ Failure ]
-
 webkit.org/b/152282 css3/filters/composited-during-animation-layertree.html [ Failure ]
 webkit.org/b/152282 css3/filters/composited-during-transition-layertree.html [ Failure ]
 
 webkit.org/b/152935 fast/scrolling/scroll-position-on-reload-rtl.html [ Failure ]
-
-# Since this test directory is explicitly enabled for iOS, the passing tests are being re-enabled individually until flakiness is resolved
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
-fast/viewport/ios/width-is-device-width.html [ Pass ]
-fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass ]
 
 webkit.org/b/153371 imported/w3c/web-platform-tests/XMLHttpRequest/getresponseheader-chunked-trailer.htm [ Pass Failure ]
 
@@ -3005,6 +2999,7 @@ webkit.org/b/158618 fast/hidpi/hidpi-3x-device-pixel-ratio.html [ Failure ]
 # These tests hardcode platform-specific font aliases.
 webkit.org/b/158649 fast/text/chinese-font-name-aliases-2.html [ ImageOnlyFailure ]
 
+
 webkit.org/b/159214 fast/multicol/fixed-stack.html [ ImageOnlyFailure ]
 
 webkit.org/b/157592 fast/images/composited-animated-gif-outside-viewport.html [ Pass Timeout ]
@@ -3016,3 +3011,141 @@ webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-ca
 webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
 
 webkit.org/b/142969 editing/spelling/copy-paste-crash.html
+
+# This test is iPad only
+platform/ios-simulator/media/video-interruption-suspendunderlock.html [ Skip ]
+
+# System font on iOS 9 cannot be bold and italic.
+fast/text/system-font-weight-italic.html [ Failure ]
+
+media/accessibility-closed-captions-has-aria-owns.html
+media/airplay-autoplay.html
+media/airplay-target-availability.html
+media/audio-delete-while-slider-thumb-clicked.html
+media/audio-playback-restriction-play.html
+media/audio-playback-restriction-removed-track-enabled.html
+
+# needs enhanced eventSender.contextMenu() return value
+webkit.org/b/116651 media/context-menu-actions.html
+
+media/crash-closing-page-with-media-as-plugin-fallback.html
+
+webkit.org/b/122042 media/media-controller-playback.html
+
+media/media-controls-drag-timeline-set-controls-property.html
+media/media-event-listeners.html
+media/media-fullscreen-inline.html
+
+webkit.org/b/136708 media/media-fullscreen-not-in-document.html
+
+media/media-controls-accessibility.html [ Timeout ]
+media/media-fullscreen-return-to-inline.html
+media/no-autoplay-with-user-gesture-requirement.html
+media/video-controls-drag.html
+media/video-controls-fullscreen-volume.html
+media/video-controls-no-display-with-text-track.html
+media/video-controls-show-on-kb-or-ax-event.html
+media/video-fullscreen-restriction-removed.html
+media/video-play-require-user-gesture.html
+media/video-playsinline.html
+media/video-remote-control-playpause.html
+media/video-volume-slider-drag.html
+media/video-webkit-playsinline.html
+media/volume-bar-empty-when-muted.html
+
+webkit.org/b/103926 media/track/opera
+
+webkit.org/b/35297 media/video-display-aspect-ratio.html [ Pass Failure ]
+webkit.org/b/112659 media/video-playing-and-pause.html [ Skip ]
+
+webkit.org/b/122021 media/track/track-cue-rendering-mode-changed.html
+webkit.org/b/112492 media/track/track-prefer-captions.html
+
+webkit.org/b/160367 media/track/track-remove-crash.html
+
+# WebVTT tests don't work because they need more than a 800x600 snapshot.
+# They are also flakily failing on WebKit2, as snapshot sometimes has a black rectangle for video element instead of white one.
+webkit.org/b/131476 media/track/w3c/track/webvtt
+
+media/video-object-fit-change.html [ ImageOnlyFailure ]
+media/video-object-fit.html [ ImageOnlyFailure ]
+
+media/W3C/video/canPlayType/canPlayType_codecs_order_2.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_supported_but_no_codecs_parameter_2.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_3.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_4.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_5.html [ Failure ]
+media/W3C/video/canPlayType/canPlayType_two_implies_one_6.html [ Failure ]
+media/audio-as-video-fullscreen.html [ Failure ]
+media/audio-delete-while-step-button-clicked.html [ Failure ]
+media/audio-mpeg-supported.html [ Failure ]
+media/audio-playback-restriction-removed-muted.html [ Failure ]
+media/click-volume-bar-not-pausing.html [ Failure ]
+media/controls-drag-timebar.html [ Failure ]
+media/event-attributes.html [ Failure ]
+media/media-can-play-wav-audio.html [ Failure ]
+media/media-can-play-webm.html [ Failure ]
+media/media-captions-no-controls.html [ Failure ]
+media/media-controller-drag-crash.html [ Failure ]
+media/media-controls-cancel-events.html [ Failure ]
+media/media-controls-invalid-url.html [ Failure ]
+media/media-controls-play-button-updates.html [ Failure ]
+media/media-controls-timeline-updates-after-playing.html [ Failure ]
+media/media-controls-timeline-updates-when-hovered.html [ Failure ]
+media/media-controls-timeline-updates.html [ Failure ]
+media/media-document-audio-repaint.html [ Failure ]
+media/media-higher-prio-audio-stream.html [ Failure ]
+media/media-volume-slider-rendered-below.html [ Failure ]
+media/media-volume-slider-rendered-normal.html [ Failure ]
+media/nodesFromRect-shadowContent.html [ Failure ]
+media/progress-events-generated-correctly.html [ Failure ]
+media/restore-from-page-cache.html [ Failure ]
+media/tab-focus-inside-media-elements.html [ Failure ]
+media/track/track-cue-rendering-on-resize.html [ Failure ]
+media/track/track-cue-rendering-snap-to-lines-not-set.html [ Failure ]
+media/track/track-cue-rendering.html [ Failure ]
+media/track/track-forced-subtitles-in-band.html [ Failure ]
+media/track/track-in-band-mode.html [ Failure ]
+media/track/track-in-band-subtitles-too-large.html [ Failure ]
+media/track/track-long-word-container-sizing.html [ Failure ]
+media/track/track-manual-mode.html [ Failure ]
+media/track/w3c/interfaces/TextTrackCue/align.html [ Failure ]
+media/track/w3c/interfaces/TextTrackCue/endTime.html [ Failure ]
+media/track/w3c/interfaces/TextTrackCue/id.html [ Failure ]
+media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html [ Failure ]
+media/track/w3c/interfaces/TextTrackCue/startTime.html [ Failure ]
+media/track/w3c/interfaces/TextTrackCue/track.html [ Failure ]
+media/video-autoplay-allowed-but-fullscreen-required.html [ Failure ]
+media/video-background-tab-playback.html [ Failure ]
+media/video-colorspace-yuv420.html [ Failure ]
+media/video-colorspace-yuv422.html [ Failure ]
+media/video-controls-audiotracks-trackmenu.html [ Failure ]
+media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Failure ]
+media/video-controls-captions-trackmenu-includes-enabled-track.html [ Failure ]
+media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles.html [ Failure ]
+media/video-controls-drop-and-restore-timeline.html [ Failure ]
+media/video-controls-in-media-document.html [ Failure ]
+media/video-controls-no-scripting.html [ Failure ]
+media/video-controls-toggling.html [ Failure ]
+media/video-controls-transformed.html [ Failure ]
+media/video-controls-visible-audio-only.html [ Failure ]
+media/video-controls-visible-exiting-fullscreen.html [ Failure ]
+media/video-controls-zoomed.html [ Failure ]
+media/video-frame-accurate-seek.html [ Failure ]
+media/video-fullscreeen-only-controls.html [ Failure ]
+media/video-fullscreeen-only-playback.html [ Failure ]
+media/video-initially-hidden-volume-slider-up.html [ Failure ]
+media/video-play-audio-require-user-gesture.html [ Failure ]
+media/video-trackmenu-selection.html [ Failure ]
+media/video-volume.html [ Failure ]
+
+media/track/track-in-band-legacy-api.html [ Failure ]
+media/track/video-track-alternate-groups.html [ Failure ]
+
+media/W3C/audio/canPlayType/canPlayType_supported_but_no_codecs_parameter_1.html [ Failure ]
+
+media/video-seek-to-current-time.html [ Failure ]
+
+fast/attachment/attachment-wrapping-action.html [ Pass ]
+
+fast/events/page-visibility-iframe-move-test.html [ Skip ]

@@ -63,7 +63,7 @@ WebIDBConnectionToServer::WebIDBConnectionToServer()
 {
     relaxAdoptionRequirement();
 
-    m_isOpenInServer = sendSync(Messages::DatabaseToWebProcessConnection::EstablishIDBConnectionToServer(), m_identifier);
+    m_isOpenInServer = sendSync(Messages::DatabaseToWebProcessConnection::EstablishIDBConnectionToServer(), Messages::DatabaseToWebProcessConnection::EstablishIDBConnectionToServer::Reply(m_identifier));
     m_connectionToServer = IDBClient::IDBConnectionToServer::create(*this);
 }
 
@@ -138,9 +138,9 @@ void WebIDBConnectionToServer::putOrAdd(const IDBRequestData& requestData, const
     send(Messages::WebIDBConnectionToClient::PutOrAdd(requestData, keyData, value, static_cast<unsigned>(mode)));
 }
 
-void WebIDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& range)
+void WebIDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordData& getRecordData)
 {
-    send(Messages::WebIDBConnectionToClient::GetRecord(requestData, range));
+    send(Messages::WebIDBConnectionToClient::GetRecord(requestData, getRecordData));
 }
 
 void WebIDBConnectionToServer::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& range)
@@ -258,7 +258,9 @@ static void preregisterSandboxExtensionsIfNecessary(const WebIDBResult& result)
 
     const auto& filePaths = result.resultData().getResult().value().blobFilePaths();
 
+#if ENABLE(SANDBOX_EXTENSIONS)
     ASSERT(filePaths.size() == result.handles().size());
+#endif
 
     if (!filePaths.isEmpty())
         WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, result.handles()), 0);

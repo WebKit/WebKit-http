@@ -31,7 +31,6 @@
 #include <wtf/HashSet.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/PrintStream.h>
 #include <wtf/RefPtr.h>
 
@@ -82,7 +81,7 @@ public:
     // Visits each CodeBlock in the heap until the visitor function returns true
     // to indicate that it is done iterating, or until every CodeBlock has been
     // visited.
-    template<typename Functor> void iterate(Functor& functor)
+    template<typename Functor> void iterate(const Functor& functor)
     {
         LockHolder locker(m_lock);
         for (auto& codeBlock : m_oldCodeBlocks) {

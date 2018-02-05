@@ -70,6 +70,7 @@
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
+#import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NetworkingContext.h>
 #import <WebCore/Page.h>
 #import <WebCore/PageOverlayController.h>
@@ -352,7 +353,15 @@ void WebPage::attributedSubstringForCharacterRangeAsync(const EditingRange& edit
         result.string = [attributedString attributedSubstringFromRange:NSMakeRange(0, editingRange.length)];
     }
 
-    send(Messages::WebPageProxy::AttributedStringForCharacterRangeCallback(result, EditingRange(editingRange.location, [result.string length]), callbackID));
+    EditingRange rangeToSend(editingRange.location, [result.string length]);
+    ASSERT(rangeToSend.isValid());
+    if (!rangeToSend.isValid()) {
+        // Send an empty EditingRange as a last resort for <rdar://problem/27078089>.
+        send(Messages::WebPageProxy::AttributedStringForCharacterRangeCallback(result, EditingRange(), callbackID));
+        return;
+    }
+
+    send(Messages::WebPageProxy::AttributedStringForCharacterRangeCallback(result, rangeToSend, callbackID));
 }
 
 void WebPage::fontAtSelection(uint64_t callbackID)

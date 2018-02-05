@@ -26,14 +26,14 @@
  */
 
 #include "config.h"
+#include "RenderMathMLRoot.h"
 
 #if ENABLE(MATHML)
-
-#include "RenderMathMLRoot.h"
 
 #include "FontCache.h"
 #include "GraphicsContext.h"
 #include "MathMLNames.h"
+#include "MathMLRowElement.h"
 #include "PaintInfo.h"
 #include "RenderIterator.h"
 #include "RenderMathMLMenclose.h"
@@ -43,7 +43,7 @@ static const UChar gRadicalCharacter = 0x221A;
 
 namespace WebCore {
 
-RenderMathMLRoot::RenderMathMLRoot(Element& element, RenderStyle&& style)
+RenderMathMLRoot::RenderMathMLRoot(MathMLRowElement& element, RenderStyle&& style)
     : RenderMathMLRow(element, WTFMove(style))
 {
     // Determine what kind of expression we have by element name
@@ -251,7 +251,7 @@ void RenderMathMLRoot::paint(PaintInfo& info, const LayoutPoint& paintOffset)
 {
     RenderMathMLRow::paint(info, paintOffset);
 
-    if (isEmpty() || info.context().paintingDisabled() || style().visibility() != VISIBLE || !isValid())
+    if (!firstChild() || info.context().paintingDisabled() || style().visibility() != VISIBLE || !isValid())
         return;
 
     // We draw the radical operator.

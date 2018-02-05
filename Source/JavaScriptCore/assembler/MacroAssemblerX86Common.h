@@ -48,7 +48,7 @@ public:
         return s_scratchRegister;
     }
 #endif
-
+    
 protected:
     static const int DoubleConditionBitInvert = 0x10;
     static const int DoubleConditionBitSpecial = 0x20;
@@ -2262,6 +2262,12 @@ public:
     void jump(Address address)
     {
         m_assembler.jmp_m(address.offset, address.base);
+    }
+
+    // Address is a memory location containing the address to jump to
+    void jump(BaseIndex address)
+    {
+        m_assembler.jmp_m(address.offset, address.base, address.index, address.scale);
     }
 
 

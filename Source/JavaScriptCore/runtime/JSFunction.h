@@ -81,7 +81,7 @@ public:
     JS_EXPORT_PRIVATE static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*);
     static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*, const String& name);
 
-    JS_EXPORT_PRIVATE String name();
+    JS_EXPORT_PRIVATE String name(VM&);
     JS_EXPORT_PRIVATE String displayName(VM&);
     const String calculatedDisplayName(VM&);
 
@@ -191,6 +191,7 @@ private:
     bool hasReifiedName() const;
     void reifyLength(ExecState*);
     void reifyName(ExecState*);
+    void reifyBoundNameIfNeeded(ExecState*, PropertyName);
     void reifyName(ExecState*, String name);
     void reifyLazyPropertyIfNeeded(ExecState*, PropertyName propertyName);
 

@@ -1960,16 +1960,6 @@
             "maheshkk"
          ]
       },
-      "Manuel Rego Casasnovas" : {
-         "emails" : [
-            "rego@igalia.com"
-         ],
-         "expertise" : "WebKitGTK+ port, WebKit2",
-         "nicks" : [
-            "rego",
-            "mrego"
-         ]
-      },
       "Marcelo Lira" : {
          "emails" : [
             "marcelo.lira@openbossa.org",
@@ -2008,11 +1998,6 @@
          ],
          "nicks" : [
             "marywu"
-         ]
-      },
-      "Matt Baker" : {
-         "emails" : [
-            "mattbaker@apple.com"
          ]
       },
       "Matt Daiter" : {
@@ -2838,6 +2823,7 @@
       },
       "Tibor Meszaros" : {
          "emails" : [
+            "mtiborinf@gmail.com",
             "tmeszaros.u-szeged@partner.samsung.com",
             "mtibor@inf.u-szeged.hu",
             "tmeszaros@inf.u-szeged.hu"
@@ -4611,6 +4597,16 @@
             "othermaciej"
          ]
       },
+      "Manuel Rego Casasnovas" : {
+         "emails" : [
+            "rego@igalia.com"
+         ],
+         "expertise" : "Layout, CSS, Selection, WebKitGTK+ port",
+         "nicks" : [
+            "rego",
+            "mrego"
+         ]
+      },
       "Mario Sanchez Prada" : {
          "emails" : [
             "mario@webkit.org",
@@ -4652,6 +4648,15 @@
          "expertise" : "The WebKitGTK+ Port, Cairo graphics backend, soup HTTP backend",
          "nicks" : [
             "mrobinson"
+         ]
+      },
+      "Matt Baker" : {
+         "emails" : [
+            "mattbaker@apple.com"
+         ],
+         "expertise" : "Web Inspector",
+         "nicks" : [
+            "mattbaker"
          ]
       },
       "Michael Catanzaro" : {

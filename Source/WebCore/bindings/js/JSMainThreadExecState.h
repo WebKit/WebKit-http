@@ -23,11 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSMainThreadExecState_h
-#define JSMainThreadExecState_h
+#pragma once
 
+#include "CustomElementReactionQueue.h"
 #include "JSDOMBinding.h"
-#include "LifecycleCallbackQueue.h"
 #include <runtime/Completion.h>
 #include <runtime/Microtask.h>
 #include <wtf/MainThread.h>
@@ -120,7 +119,7 @@ private:
 
     template<typename Type, Type jsType, typename DataType> static InspectorInstrumentationCookie instrumentFunctionInternal(ScriptExecutionContext*, Type, const DataType&);
 
-    static JSC::ExecState* s_mainThreadState;
+    WEBCORE_EXPORT static JSC::ExecState* s_mainThreadState;
     JSC::ExecState* m_previousState;
     JSC::JSLockHolder m_lock;
 
@@ -148,7 +147,7 @@ public:
 private:
     JSC::ExecState* m_previousState;
 #if ENABLE(CUSTOM_ELEMENTS)
-    CustomElementLifecycleProcessingStack m_lifecycleProcessingStack;
+    CustomElementReactionStack m_customElementReactionStack;
 #endif
 };
 
@@ -156,5 +155,3 @@ JSC::JSValue functionCallHandlerFromAnyThread(JSC::ExecState*, JSC::JSValue func
 JSC::JSValue evaluateHandlerFromAnyThread(JSC::ExecState*, const JSC::SourceCode&, JSC::JSValue thisValue, NakedPtr<JSC::Exception>& returnedException);
 
 } // namespace WebCore
-
-#endif // JSMainThreadExecState_h

@@ -25,12 +25,12 @@
  */
 
 #include "config.h"
+#include "RenderMathMLRow.h"
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLRow.h"
-
 #include "MathMLNames.h"
+#include "MathMLRowElement.h"
 #include "RenderIterator.h"
 #include "RenderMathMLOperator.h"
 #include "RenderMathMLRoot.h"
@@ -39,22 +39,15 @@ namespace WebCore {
 
 using namespace MathMLNames;
 
-RenderMathMLRow::RenderMathMLRow(Element& element, RenderStyle&& style)
+RenderMathMLRow::RenderMathMLRow(MathMLRowElement& element, RenderStyle&& style)
     : RenderMathMLBlock(element, WTFMove(style))
 {
 }
 
-void RenderMathMLRow::updateOperatorProperties()
+MathMLRowElement& RenderMathMLRow::element() const
 {
-    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (is<RenderMathMLBlock>(*child)) {
-            if (auto* renderOperator = downcast<RenderMathMLBlock>(*child).unembellishedOperator())
-                renderOperator->updateOperatorProperties();
-        }
-    }
-    setNeedsLayoutAndPrefWidthsRecalc();
+    return static_cast<MathMLRowElement&>(nodeForNonAnonymous());
 }
-
 
 Optional<int> RenderMathMLRow::firstLineBaseline() const
 {

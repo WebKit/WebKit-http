@@ -82,8 +82,6 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         sourceCode.requestContent().then(this._contentAvailable.bind(this));
 
-        // FIXME: Cmd+L shortcut doesn't actually work.
-        new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Command, "L", this.showGoToLineDialog.bind(this), this.element);
         new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.Control, "G", this.showGoToLineDialog.bind(this), this.element);
 
         WebInspector.logManager.addEventListener(WebInspector.LogManager.Event.Cleared, this._logCleared, this);
@@ -1606,6 +1604,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             this.createColorMarkers(range);
             this.createGradientMarkers(range);
             this.createCubicBezierMarkers(range);
+            this.createSpringMarkers(range);
         }
 
         this._updateTokenTrackingControllerState();
@@ -1616,7 +1615,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         // Look for the outermost editable marker.
         var editableMarker;
         for (var marker of markers) {
-            if (!marker.range || (marker.type !== WebInspector.TextMarker.Type.Color && marker.type !== WebInspector.TextMarker.Type.Gradient && marker.type !== WebInspector.TextMarker.Type.CubicBezier))
+            if (!marker.range || !Object.values(WebInspector.TextMarker.Type).includes(marker.type))
                 continue;
 
             if (!editableMarker || (marker.range.startLine < editableMarker.range.startLine || (marker.range.startLine === editableMarker.range.startLine && marker.range.startColumn < editableMarker.range.startColumn)))
@@ -1694,6 +1693,8 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
             console.assert(this.visible, "Annotators should not be enabled if the TextEditor is not visible");
 
             RuntimeAgent.enableTypeProfiler();
+            if (RuntimeAgent.enableControlFlowProfiler)
+                RuntimeAgent.enableControlFlowProfiler();
 
             this._typeTokenAnnotator.reset();
             if (this._basicBlockAnnotator) {

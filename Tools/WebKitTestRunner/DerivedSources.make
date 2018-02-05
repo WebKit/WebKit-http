@@ -23,7 +23,7 @@
 
 VPATH = \
     $(WebKitTestRunner)/InjectedBundle/Bindings \
-    $(WebKitTestRunner)/UIScriptContext/Bindings \
+    $(WebKitTestRunner)/../TestRunnerShared/UIScriptContext/Bindings \
 #
 
 INJECTED_BUNDLE_INTERFACES = \

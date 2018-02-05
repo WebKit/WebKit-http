@@ -32,7 +32,6 @@
 
 #include "ContextDestructionObserver.h"
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -45,26 +44,24 @@ namespace WebCore {
 typedef int ExceptionCode;
 
 class Document;
-class SubtleCrypto;
+class WebKitSubtleCrypto;
 
 class Crypto : public ContextDestructionObserver, public RefCounted<Crypto> {
 public:
-    static Ref<Crypto> create(Document& document) { return adoptRef(*new Crypto(document)); }
+    static Ref<Crypto> create(ScriptExecutionContext& context) { return adoptRef(*new Crypto(context)); }
     virtual ~Crypto();
-
-    Document* document() const;
 
     void getRandomValues(JSC::ArrayBufferView*, ExceptionCode&);
 
 #if ENABLE(SUBTLE_CRYPTO)
-    SubtleCrypto* subtle();
+    WebKitSubtleCrypto* webkitSubtle(ExceptionCode&);
 #endif
 
 private:
-    Crypto(Document&);
+    Crypto(ScriptExecutionContext&);
 
 #if ENABLE(SUBTLE_CRYPTO)
-    RefPtr<SubtleCrypto> m_subtle;
+    RefPtr<WebKitSubtleCrypto> m_webkitSubtle;
 #endif
 };
 

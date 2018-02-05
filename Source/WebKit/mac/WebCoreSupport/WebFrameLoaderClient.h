@@ -116,7 +116,7 @@ private:
     void dispatchDidFailLoad(const WebCore::ResourceError&) override;
     void dispatchDidFinishDocumentLoad() override;
     void dispatchDidFinishLoad() override;
-    void dispatchDidLayout(WebCore::LayoutMilestones) override;
+    void dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) override;
 
     WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) override;
     void dispatchShow() override;
@@ -162,7 +162,9 @@ private:
     WebCore::ResourceError blockedByContentBlockerError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError cannotShowURLError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError interruptedForPolicyChangeError(const WebCore::ResourceRequest&) override;
+#if ENABLE(CONTENT_FILTERING)
     WebCore::ResourceError blockedByContentFilterError(const WebCore::ResourceRequest&) override;
+#endif
 
     WebCore::ResourceError cannotShowMIMETypeError(const WebCore::ResourceResponse&) override;
     WebCore::ResourceError fileDoesNotExistError(const WebCore::ResourceResponse&) override;

@@ -813,7 +813,7 @@ WebInspector.NativePrototypeFunctionParameters = {
     },
 
     Event: {
-        initEvent: "[type], [canBubble], [cancelable]",
+        initEvent: "type, canBubble, cancelable",
         __proto__: null,
     },
 
@@ -871,8 +871,8 @@ WebInspector.NativePrototypeFunctionParameters = {
     },
 
     HTMLCanvasElement: {
-        getContext: "[contextId]",
-        probablySupportsContext: "[contextId]",
+        getContext: "contextId",
+        probablySupportsContext: "contextId",
         toDataURL: "[type]",
         __proto__: null,
     },
@@ -909,7 +909,7 @@ WebInspector.NativePrototypeFunctionParameters = {
     HTMLInputElement: {
         setCustomValidity: "error",
         setRangeText: "replacement",
-        setSelectionRange: "[start], [end], [direction]",
+        setSelectionRange: "start, end, [direction]",
         stepDown: "[n]",
         stepUp: "[n]",
         __proto__: null,
@@ -962,19 +962,19 @@ WebInspector.NativePrototypeFunctionParameters = {
     },
 
     HTMLTableElement: {
-        deleteRow: "[index]",
+        deleteRow: "index",
         insertRow: "[index]",
         __proto__: null,
     },
 
     HTMLTableRowElement: {
-        deleteCell: "[index]",
+        deleteCell: "index",
         insertCell: "[index]",
         __proto__: null,
     },
 
     HTMLTableSectionElement: {
-        deleteRow: "[index]",
+        deleteRow: "index",
         insertRow: "[index]",
         __proto__: null,
     },

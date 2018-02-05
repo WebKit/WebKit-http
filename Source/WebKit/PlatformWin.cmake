@@ -25,6 +25,7 @@ else ()
         PRIVATE CFNetwork${DEBUG_SUFFIX}
         PRIVATE CoreFoundation${DEBUG_SUFFIX}
         PRIVATE CoreGraphics${DEBUG_SUFFIX}
+        PRIVATE CoreText${DEBUG_SUFFIX}
         PRIVATE SQLite3${DEBUG_SUFFIX}
         PRIVATE WebKitSystemInterface${DEBUG_SUFFIX}
         PRIVATE libdispatch${DEBUG_SUFFIX}
@@ -246,6 +247,8 @@ list(APPEND WebKit_SOURCES_WebCoreSupport
     win/WebCoreSupport/WebInspectorDelegate.h
     win/WebCoreSupport/WebPlatformStrategies.cpp
     win/WebCoreSupport/WebPlatformStrategies.h
+    win/WebCoreSupport/WebPluginInfoProvider.cpp
+    win/WebCoreSupport/WebPluginInfoProvider.h
     win/WebCoreSupport/WebVisitedLinkStore.cpp
     win/WebCoreSupport/WebVisitedLinkStore.h
 )

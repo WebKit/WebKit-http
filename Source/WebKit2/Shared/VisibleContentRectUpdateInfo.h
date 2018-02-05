@@ -29,8 +29,8 @@
 #include <WebCore/FloatRect.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -80,8 +80,8 @@ public:
 
     uint64_t lastLayerTreeTransactionID() const { return m_lastLayerTreeTransactionID; }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, VisibleContentRectUpdateInfo&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, VisibleContentRectUpdateInfo&);
 
 private:
     WebCore::FloatRect m_exposedContentRect;

@@ -105,12 +105,6 @@ void AbstractInterpreter<AbstractStateType>::executeEdges(Node* node)
 }
 
 template<typename AbstractStateType>
-void AbstractInterpreter<AbstractStateType>::executeEdges(unsigned indexInBlock)
-{
-    executeEdges(m_state.block()->at(indexInBlock));
-}
-
-template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::executeKnownEdgeTypes(Node* node)
 {
     // Some use kinds are required to not have checks, because we know somehow that the incoming
@@ -967,7 +961,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, jsDoubleNumber(sqrt(child.asNumber())));
             break;
         }
-        forNode(node).setType(typeOfDoubleUnaryOp(forNode(node->child1()).m_type));
+        SpeculatedType sqrtType = SpecFullNumber;
+        if (node->child1().useKind() == DoubleRepUse)
+            sqrtType = typeOfDoubleUnaryOp(forNode(node->child1()).m_type);
+        forNode(node).setType(sqrtType);
         break;
     }
         
@@ -987,7 +984,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, jsDoubleNumber(sin(child.asNumber())));
             break;
         }
-        forNode(node).setType(typeOfDoubleUnaryOp(forNode(node->child1()).m_type));
+        SpeculatedType sinType = SpecFullNumber;
+        if (node->child1().useKind() == DoubleRepUse)
+            sinType = typeOfDoubleUnaryOp(forNode(node->child1()).m_type);
+        forNode(node).setType(sinType);
         break;
     }
     
@@ -997,7 +997,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, jsDoubleNumber(cos(child.asNumber())));
             break;
         }
-        forNode(node).setType(typeOfDoubleUnaryOp(forNode(node->child1()).m_type));
+        SpeculatedType cosType = SpecFullNumber;
+        if (node->child1().useKind() == DoubleRepUse)
+            cosType = typeOfDoubleUnaryOp(forNode(node->child1()).m_type);
+        forNode(node).setType(cosType);
         break;
     }
 
@@ -1007,7 +1010,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, jsDoubleNumber(log(child.asNumber())));
             break;
         }
-        forNode(node).setType(typeOfDoubleUnaryOp(forNode(node->child1()).m_type));
+        SpeculatedType logType = SpecFullNumber;
+        if (node->child1().useKind() == DoubleRepUse)
+            logType = typeOfDoubleUnaryOp(forNode(node->child1()).m_type);
+        forNode(node).setType(logType);
         break;
     }
             
@@ -1398,7 +1404,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
 
             if (node->op() == CompareEq && leftConst.isSymbol() && rightConst.isSymbol()) {
-                setConstant(node, jsBoolean(asSymbol(leftConst)->privateName() == asSymbol(rightConst)->privateName()));
+                setConstant(node, jsBoolean(asSymbol(leftConst) == asSymbol(rightConst)));
                 break;
             }
         }
@@ -1518,6 +1524,18 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
 
+        forNode(node).setType(SpecBoolean);
+        break;
+    }
+        
+    case CompareEqPtr: {
+        Node* childNode = node->child1().node();
+        JSValue childValue = forNode(childNode).value();
+        if (childValue) {
+            setConstant(node, jsBoolean(childValue.isCell() && childValue.asCell() == node->cellOperand()->cell()));
+            break;
+        }
+        
         forNode(node).setType(SpecBoolean);
         break;
     }
@@ -2614,29 +2632,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case CheckIdent: {
+    case CheckStringIdent: {
         AbstractValue& value = forNode(node->child1());
         UniquedStringImpl* uid = node->uidOperand();
-        ASSERT(uid->isSymbol() ? !(value.m_type & ~SpecSymbol) : !(value.m_type & ~SpecStringIdent)); // Edge filtering should have already ensured this.
+        ASSERT(!(value.m_type & ~SpecStringIdent)); // Edge filtering should have already ensured this.
 
         JSValue childConstant = value.value();
         if (childConstant) {
-            if (uid->isSymbol()) {
-                ASSERT(childConstant.isSymbol());
-                if (asSymbol(childConstant)->privateName().uid() == uid) {
-                    m_state.setFoundConstants(true);
-                    break;
-                }
-            } else {
-                ASSERT(childConstant.isString());
-                if (asString(childConstant)->tryGetValueImpl() == uid) {
-                    m_state.setFoundConstants(true);
-                    break;
-                }
+            ASSERT(childConstant.isString());
+            if (asString(childConstant)->tryGetValueImpl() == uid) {
+                m_state.setFoundConstants(true);
+                break;
             }
         }
 
-        filter(value, uid->isSymbol() ? SpecSymbol : SpecStringIdent);
+        filter(value, SpecStringIdent);
         break;
     }
 
@@ -2789,7 +2799,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).setType(m_graph, SpecObject);
         break;
         
-    case VarInjectionWatchpoint:
     case PutGlobalVariable:
     case NotifyWrite:
         break;
@@ -2835,6 +2844,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ConstructVarargs:
     case ConstructForwardVarargs:
     case TailCallForwardVarargsInlinedCaller:
+    case CallEval:
         clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).makeHeapTop();
         break;
@@ -2863,7 +2873,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CheckTypeInfoFlags:
         break;
 
-    case CopyRest:
+    case CreateRest:
+        if (!m_graph.isWatchingHavingABadTimeWatchpoint(node)) // This means we're already having a bad time.
+            clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).setType(m_graph, SpecArray);
         break;
             
     case Check: {
@@ -2959,10 +2972,8 @@ void AbstractInterpreter<AbstractStateType>::forAllValues(
     for (size_t i = clobberLimit; i--;)
         functor(forNode(m_state.block()->at(i)));
     if (m_graph.m_form == SSA) {
-        HashSet<Node*>::iterator iter = m_state.block()->ssa->liveAtHead.begin();
-        HashSet<Node*>::iterator end = m_state.block()->ssa->liveAtHead.end();
-        for (; iter != end; ++iter)
-            functor(forNode(*iter));
+        for (Node* node : m_state.block()->ssa->liveAtHead)
+            functor(forNode(node));
     }
     for (size_t i = m_state.variables().numberOfArguments(); i--;)
         functor(m_state.variables().argument(i));
@@ -3020,10 +3031,7 @@ void AbstractInterpreter<AbstractStateType>::dump(PrintStream& out)
     CommaPrinter comma(" ");
     HashSet<Node*> seen;
     if (m_graph.m_form == SSA) {
-        HashSet<Node*>::iterator iter = m_state.block()->ssa->liveAtHead.begin();
-        HashSet<Node*>::iterator end = m_state.block()->ssa->liveAtHead.end();
-        for (; iter != end; ++iter) {
-            Node* node = *iter;
+        for (Node* node : m_state.block()->ssa->liveAtHead) {
             seen.add(node);
             AbstractValue& value = forNode(node);
             if (value.isClear())
@@ -3040,10 +3048,7 @@ void AbstractInterpreter<AbstractStateType>::dump(PrintStream& out)
         out.print(comma, node, ":", value);
     }
     if (m_graph.m_form == SSA) {
-        HashSet<Node*>::iterator iter = m_state.block()->ssa->liveAtTail.begin();
-        HashSet<Node*>::iterator end = m_state.block()->ssa->liveAtTail.end();
-        for (; iter != end; ++iter) {
-            Node* node = *iter;
+        for (Node* node : m_state.block()->ssa->liveAtTail) {
             if (seen.contains(node))
                 continue;
             AbstractValue& value = forNode(node);

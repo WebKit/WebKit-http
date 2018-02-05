@@ -31,6 +31,9 @@
 /* Text track display name format that includes the country and language of the subtitle, in the form of 'Title (Language-Country)' */
 "%@ (%@-%@)" = "%@ (%@-%@)";
 
+/* Text track contains Audio Descriptions */
+"%@ AD" = "%@ AD";
+
 /* Text track contains closed captions */
 "%@ CC" = "%@ CC";
 
@@ -79,6 +82,9 @@
 /* File Upload single video label */
 "1 Video (file upload on page label for one video)" = "1 Video";
 
+/* Option in segmented control for choosing list type in text editing */
+"1. 2. 3.…" = "1. 2. 3.…";
+
 /* Menu item title for KEYGEN pop-up menu */
 "1024 (Medium Grade)" = "1024 (Medium Grade)";
 
@@ -123,6 +129,9 @@
 
 /* Undo action name */
 "Bold (Undo action name)" = "Bold";
+
+/* Option in segmented control for inserting a bulleted list in text editing */
+"Bulleted list" = "Bulleted list";
 
 /* menu item title for phone number */
 "Call Using iPhone:" = "Call Using iPhone:";
@@ -239,13 +248,13 @@
 "Enter Full Screen" = "Enter Full Screen";
 
 /* menu item */
-"Enter Picture-in-Picture" = "Enter Picture-in-Picture";
+"Enter Picture in Picture" = "Enter Picture in Picture";
 
 /* Video Exit Fullscreen context menu item */
 "Exit Full Screen" = "Exit Full Screen";
 
 /* menu item */
-"Exit Picture-in-Picture" = "Exit Picture-in-Picture";
+"Exit Picture in Picture" = "Exit Picture in Picture";
 
 /* Default application name for Open With context menu */
 "Finder" = "Finder";
@@ -367,8 +376,14 @@
 /* Label for only item in menu that appears when clicking on the search field image, when no searches have been performed */
 "No recent searches" = "No recent searches";
 
+/* Option in segmented control for choosing list type in text editing */
+"None" = "None";
+
 /* WebKitErrorCannotUseRestrictedPort description */
 "Not allowed to use restricted network port" = "Not allowed to use restricted network port";
+
+/* Option in segmented control for inserting a numbered list in text editing */
+"Numbered list" = "Numbered list";
 
 /* OK button label in PDF password failure alert */
 "OK (PDF password failure alert)" = "OK";
@@ -603,6 +618,9 @@
 
 /* WebKitErrorBlockedByContentBlocker description */
 "The URL was blocked by a content blocker" = "The URL was blocked by a content blocker";
+
+/* WebKitErrorFrameLoadBlockedByContentFilter description */
+"The URL was blocked by a content filter" = "The URL was blocked by a content filter";
 
 /* WKErrorWebViewInvalidated description */
 "The WKWebView was invalidated" = "The WKWebView was invalidated";
@@ -1117,5 +1135,6 @@
 /* An ARIA accessibility group that acts as an dialog. */
 "web dialog" = "web dialog";
 
-/* WebKitErrorFrameLoadBlockedByContentFilter description */
-"The URL was blocked by a content filter" = "The URL was blocked by a content filter";
+/* Option in segmented control for choosing list type in text editing */
+"•" = "•";
+

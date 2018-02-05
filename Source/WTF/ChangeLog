@@ -1,3 +1,563 @@
+2016-08-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out r204901, r204897, r204866, r204856, r204854.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::tryFastAlignedMalloc): Deleted.
+        * wtf/FastMalloc.h:
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::forEach):
+        (WTF::ParkingLot::forEachImpl): Deleted.
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::forEach): Deleted.
+        * wtf/ScopedLambda.h:
+        (WTF::scopedLambdaRef): Deleted.
+
+2016-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Butterflies should be allocated in Auxiliary MarkedSpace instead of CopiedSpace and we should rewrite as much of the GC as needed to make this not a regression
+        https://bugs.webkit.org/show_bug.cgi?id=160125
+
+        Reviewed by Geoffrey Garen.
+        
+        I needed tryFastAlignedMalloc() so I added it.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastAlignedMalloc):
+        (WTF::tryFastAlignedMalloc):
+        (WTF::fastAlignedFree):
+        * wtf/FastMalloc.h:
+
+2016-08-22  Keith Miller  <keith_miller@apple.com>
+
+        Actually enable the WASM build.
+        https://bugs.webkit.org/show_bug.cgi?id=160933
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/FeatureDefines.h:
+
+2016-08-17  Don Olmstead  <don.olmstead@am.sony.com>
+
+        Use find_library within Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=160904
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/CMakeLists.txt:
+
+2016-08-17  Anders Carlsson  <andersca@apple.com>
+
+        Move WKSignedPublicKeyAndChallengeString into WebCore and make it proper C++
+        https://bugs.webkit.org/show_bug.cgi?id=160945
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::operator&):
+        Cast this to the right type.
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Add new SPI.
+
+2016-08-17  Antti Koivisto  <antti@apple.com>
+
+        Remove CSS_IMAGE_SET feature define
+        https://bugs.webkit.org/show_bug.cgi?id=160944
+
+        Reviewed by Dean Jackson.
+
+        * wtf/FeatureDefines.h:
+
+2016-08-16  Keith Miller  <keith_miller@apple.com>
+
+        Enable WebAssembly in the build.
+        https://bugs.webkit.org/show_bug.cgi?id=160916
+
+        Reviewed by Benjamin Poulain.
+
+        This patch turns on WebAssembly on all the platforms that support B3.
+        Turning on WebAssembly by default lets us check the build on every
+        platform.
+
+        * wtf/FeatureDefines.h:
+
+2016-08-16  Anders Carlsson  <andersca@apple.com>
+
+        Fix a thinko.
+
+        * wtf/Scope.h:
+
+2016-08-16  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF::ScopeExit
+        https://bugs.webkit.org/show_bug.cgi?id=160908
+
+        Reviewed by Geoffrey Garen.
+
+        WTF::ScopeExit and WTF::makeScopeExit let you define an object that will invoke a function when the
+        object goes out of scope. This is going to be used to avoid spagetti-code and gotos in a future patch.
+
+        The class is modeled after the LWG paper "P0052 - Generic Scope Guard and RAII Wrapper for the Standard Library".
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Scope.h: Added.
+        (WTF::makeScopeExit):
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Add an address-of operator to RetainPtr
+        https://bugs.webkit.org/show_bug.cgi?id=160879
+
+        Reviewed by Tim Horton.
+
+        This will make some security-related code from WebKitSystemInterface easier to port.
+
+        * wtf/HashIterators.h:
+        (WTF::HashTableValuesIterator::get):
+        * wtf/HashTable.h:
+        (WTF::HashTableBucketInitializer<true>::initialize):
+        Use std::addressof instead of &, in case & is overloaded.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::operator&):
+        Implement this.
+
+2016-08-15  Sam Weinig  <sam@webkit.org>
+
+        Speed up compile times by not including wtf/Variant.h so much
+        https://bugs.webkit.org/show_bug.cgi?id=160847
+
+        Reviewed by Alex Christensen and Saam Barati.
+
+        * wtf/Forward.h:
+        Add forward declaration of std::variant.
+
+        * wtf/StdLibExtras.h:
+        Remove references to std::variant. Move them to wtf/Variant.h
+
+2016-08-15  Keith Miller  <keith_miller@apple.com>
+
+        Implement WASM Parser and B3 IR generator
+        https://bugs.webkit.org/show_bug.cgi?id=160681
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/DataLog.h:
+        (WTF::dataLogLn): Add a new dataLog function, dataLogLn that
+        automagically includes a new line at the end of the print.
+        * wtf/LEBDecoder.h:
+        (decodeUInt32):
+        (decodeInt32): Change the LEBDecoder to take a pointer and length
+        rather than a Vector.
+
+2016-08-15  Keith Rollin  <krollin@apple.com>
+
+        Rename LOG_ALWAYS
+        https://bugs.webkit.org/show_bug.cgi?id=160768
+
+        Rename LOG_ALWAYS and friends, given that the first parameter to it is
+        a boolean expression that determines whether or not logging should be
+        performed.
+
+        Reviewed by Chris Dumez.
+
+        * wtf/Assertions.h:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * wtf/BackwardsGraph.h:
+        * wtf/DataLog.cpp:
+        * wtf/WorkQueue.cpp:
+        * wtf/text/StringImpl.cpp:
+        * wtf/unicode/icu/CollatorICU.cpp:
+
+2016-08-14  Daniel Bates  <dabates@apple.com>
+
+        Fix compiler errors when building iOS WebKit using the iOS 10 beta SDK
+        https://bugs.webkit.org/show_bug.cgi?id=160725
+
+        Reviewed by Sam Weinig.
+
+        For now, disable OS_LOG when building with the iOS 10 beta SDK until
+        we have the fix for <rdar://problem/27758343>.
+
+        * wtf/Platform.h:
+
+2016-08-13  Dan Bernstein  <mitz@apple.com>
+
+        Build fix follow-up to r204433.
+
+        * wtf/StdLibExtras.h:
+        (WTF::makeVisitor): Don’t use an auto return type.
+
+2016-08-12  Sam Weinig  <sam@webkit.org>
+
+        Make variant only available when compiling for C++14 or greater
+        https://bugs.webkit.org/show_bug.cgi?id=160813
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h:
+        * wtf/StdLibExtras.h:
+        * wtf/Variant.h:
+
+2016-08-11  Maureen Daum  <mdaum@apple.com>
+
+        Add NSButtonType to AppKitCompatibilityDeclarations.h.
+        https://bugs.webkit.org/show_bug.cgi?id=160767.
+
+        Reviewed by Dan Bernstein.
+
+        Add NSButtonType to AppKitCompatibilityDeclarations.h so that we can use the new
+        names but still build successfully on older OS versions.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
+2016-08-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] TinyPtrSet::deleteListIfNecessary() no longer needs to test for reservedValue
+        https://bugs.webkit.org/show_bug.cgi?id=160721
+
+        Reviewed by Sam Weinig.
+
+        Previously, TinyPtrSet was using a ThinFlag if there was no OutOfLineList.
+        A side effect is that isThin() was false for reservedValue. When deleting
+        the list, we had to consider both cases: isThin() and reservedValue.
+
+        In r204065, I changed the flag to a FatFlag to ensure TinyPtrSet can be initialized
+        with bzero().
+        This changes the value of isThin() of reservedValue to true since reservedValue
+        does not have the FatFlag bit set.
+        This patch removes the useless condition from deleteListIfNecessary().
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::deleteListIfNecessary):
+
+2016-08-09  Sam Weinig  <sam@webkit.org>
+
+        Fix windows build.
+
+        * wtf/Variant.h:
+        (std::experimental::__visit_helper2::__visit):
+        MSVC does not support extended constexpr. Use a ternary operator instead of an if statement.
+
+2016-08-06  Sam Weinig  <sam@webkit.org>
+
+        Replace NodeOrString with std::variant<RefPtr<Node>, String>
+        https://bugs.webkit.org/show_bug.cgi?id=160638
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/StdLibExtras.h:
+        (WTF::Visitor::Visitor):
+        (WTF::makeVisitor):
+        Add WTF::makeVisitor() which takes a list of lambdas to use
+        an an overload set for a visitor object.
+
+        Also, re-export std::experimental::variant (and helpers) in the std
+        namespace using type aliasing.
+
+        * wtf/Variant.h:
+        Make std::experimental::variant work in WebCore.
+
+2016-08-06  Sam Weinig  <sam@webkit.org>
+
+        WTF needs a variant implementation
+        https://bugs.webkit.org/show_bug.cgi?id=160618
+
+        Reviewed by Darin Adler.
+
+        Add an implementation of std::experimental::variant matching the C++17 draft http://wg21.link/n4606 
+        taken from https://bitbucket.org/anthonyw/variant/src (5bce47fa788648f79e5ea1d77b0eef2e8f0b2999) and
+        modified to support compiling without exceptions (where it used to throw, we lovingly CRASH()).
+
+        * WTF.xcodeproj/project.pbxproj:
+        Add new file.
+
+        * wtf/Compiler.h:
+        Add COMPILER_SUPPORTS define for C++ exceptions.
+
+        * wtf/Variant.h: Added.
+
+2016-08-05  Keith Miller  <keith_miller@apple.com>
+
+        Add LEBDecoder and tests
+        https://bugs.webkit.org/show_bug.cgi?id=160625
+
+        Reviewed by Benjamin Poulain.
+
+        Adds some LEB decoder functions to WTF. These are used in the
+        WASM spec to encode numbers in a semi-compressed format.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/LEBDecoder.h: Added.
+        (decodeUInt32):
+        (decodeInt32):
+
+2016-08-05  Keith Miller  <keith_miller@apple.com>
+
+        Delete out of date WASM code.
+        https://bugs.webkit.org/show_bug.cgi?id=160603
+
+        Reviewed by Saam Barati.
+
+        Add Feature define for WebAssembly on mac.
+
+        * wtf/FeatureDefines.h:
+
+2016-08-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Lacking support on a arm-traditional disassembler.
+        https://bugs.webkit.org/show_bug.cgi?id=123717
+
+        Reviewed by Mark Lam.
+
+        * wtf/Platform.h:
+
+2016-08-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update breaking rules to match ICU 57
+        https://bugs.webkit.org/show_bug.cgi?id=160488
+        <rdar://problem/25856238>
+
+        Reviewed by Darin Adler.
+
+        This patch fixes a typo in the uax14AssignmentsAfter rules which
+        was causing flag emoji to have line breaking opportunities in their
+        middles. It also fixes significant language issues for languages
+        such as Hebrew, and adds correct breaking opportunities around
+        hyphens.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::cursorMovementIterator):
+        (WTF::uax14AssignmentsAfter):
+        (WTF::uax14Forward):
+        (WTF::uax14Reverse):
+
+2016-08-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Simplify the initialization of AbstractValue in the AbstractInterpreter
+        https://bugs.webkit.org/show_bug.cgi?id=160370
+
+        Reviewed by Saam Barati.
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::isThin):
+        (WTF::TinyPtrSet::set):
+
+2016-08-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Clean up some useless AtomicString atoms
+        https://bugs.webkit.org/show_bug.cgi?id=160471
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringStatics.cpp:
+        (WTF::AtomicString::init): Deleted.
+
+2016-08-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC][ARM64] Fix branchTest32/64 taking an immediate as mask
+        https://bugs.webkit.org/show_bug.cgi?id=160439
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/MathExtras.h:
+        (getLSBSet):
+        This was not working at all for MacroAssembler.
+        Since TrustedImm32/64 are signed integers, the arithmetic shift would
+        never get rid of the top bit and we get an infinite loop.
+
+2016-07-29  Mark Lam  <mark.lam@apple.com>
+
+        Make StringView capable of being passed or returned in only 2 registers.
+        https://bugs.webkit.org/show_bug.cgi?id=160344
+
+        Reviewed by Geoffrey Garen.
+
+        We just need to #if out copy and move constructors and assignment operators.
+
+        After this change, the following test code:
+
+            JS_EXPORT_PRIVATE StringView returnStringView(StringView sv)
+            {
+                return sv;
+            }
+
+        ... compiles to the following for x86_64:
+
+            __ZN3JSC16returnStringViewEN3WTF10StringViewE:
+            000000000093fb20        pushq   %rbp
+            000000000093fb21        movq    %rsp, %rbp
+            000000000093fb24        movq    %rdi, %rax // Copy from arg word 0 to ret word 0.
+            000000000093fb27        movq    %rsi, %rdx // Copy from arg word 1 to ret word 1.
+            000000000093fb2a        popq    %rbp
+            000000000093fb2b        retq
+
+        ... and this for arm64:
+
+            __ZN3JSC16returnStringViewEN3WTF10StringViewE:
+            0000000000818504        ret // arg word 0 and 1 are in the same regs as ret word 0 and 1.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::StringView):
+        (WTF::StringView::~StringView):
+        (WTF::StringView::operator=):
+
+2016-07-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove PassRef.h after r177259
+        https://bugs.webkit.org/show_bug.cgi?id=160348
+
+        Reviewed by Andreas Kling.
+
+        * wtf/PassRef.h: Removed.
+
+2016-07-28  Mark Lam  <mark.lam@apple.com>
+
+        StringView should have an explicit m_is8Bit field.
+        https://bugs.webkit.org/show_bug.cgi?id=160282
+        <rdar://problem/27327943>
+
+        Reviewed by Benjamin Poulain.
+
+        The current implementation reserves 1 bit in the 32-bit m_length field as an
+        is16Bit flag.  As a result, a StringView is incapable of handling strings that
+        have a length of 32-bit in size.  This results in a mismatch with the
+        expectations of String, StringImpl, and JavaScriptCore's JSString which all
+        support a 32-bit unsigned length.
+
+        This patch fixes this issue by introducing an explicit m_is8Bit field, thereby
+        allowing m_length to be a full 32-bit again.
+
+        We also introduced a clear() convenience method to set the fields of StringView
+        to empty values.  Previously, we were duplicating the code for clearing those
+        fields.  We now call clear() in all those places instead.
+
+        Note: in clear(), we set m_is8Bit to true because we want an empty StringView
+        to be 8-bit rather than 16-bit.  This is consistent with what the empty() method
+        returns.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::setUnderlyingString):
+        (WTF::StringView::StringView):
+        (WTF::StringView::operator=):
+        (WTF::StringView::initialize):
+        (WTF::StringView::clear):
+        (WTF::StringView::empty):
+        (WTF::StringView::length):
+        (WTF::StringView::operator bool):
+        (WTF::StringView::is8Bit):
+        (WTF::StringView::substring):
+        (WTF::StringView::getCharactersWithUpconvert):
+        (WTF::StringView::toString):
+        (WTF::StringView::toAtomicString):
+        (WTF::StringView::toFloat):
+        (WTF::StringView::toInt):
+        (WTF::StringView::toIntStrict):
+        (WTF::StringView::toStringWithoutCopying):
+        (WTF::StringView::find):
+
+2016-07-24  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should support multiple entrypoints
+        https://bugs.webkit.org/show_bug.cgi?id=159391
+
+        Reviewed by Saam Barati.
+
+        * wtf/GraphNodeWorklist.h: Expose some handy functionality.
+        (WTF::GraphNodeWorklist::pop):
+        (WTF::GraphNodeWorklist::saw):
+        (WTF::GraphNodeWorklist::seen):
+        * wtf/VectorTraits.h: Fix a bug! Otherwise filling a vector of byte-sized enum classes doesn't work.
+
+2016-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] Caret placement occurs in the middle of new emoji group candidates
+        https://bugs.webkit.org/show_bug.cgi?id=160008
+        <rdar://problem/27430111>
+
+        Reviewed by Simon Fraser.
+
+        r203330 added support for new emoji group candidates. This patch updates the rules
+        governing caret placement around these new emoji groups.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::cursorMovementIterator):
+
+2016-07-20  Rajeev Misra  <rajeevmisraforapple@gmail.com>
+
+        Remove unnecessary if check from ParkingLot.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=159961
+
+        Reviewed by Alex Christensen.
+
+        A good practice is to have as less conditional statement
+        or special cases as possible in code. This change
+        simply removes a unnecessary "if" statement for
+        condition which was already evaluated by switch/case
+        and thus there was no need to evaluate again.
+
+        * wtf/ParkingLot.cpp:
+
+2016-07-18  Anders Carlsson  <andersca@apple.com>
+
+        WebKit nightly fails to build on macOS Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=159902
+        rdar://problem/27365672
+
+        Reviewed by Tim Horton.
+
+        * icu/unicode/ucurr.h: Added.
+        Add ucurr.h from ICU.
+
+2016-07-18  Michael Saboff  <msaboff@apple.com>
+
+        ASSERTION FAILED: : (year >= 1970 && yearday >= 0) || (year < 1970 && yearday < 0) -- WTF/wtf/DateMath.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=159883
+
+        Reviewed by Filip Pizlo.
+
+        The function daysFrom1970ToYear() takes an integer year and returns a double result.
+        The calculation uses 1970 as a baseline year and subtracts 1970 from the argument year.
+        It does that subtraction using integer arithmetic, which given negative years close to
+        INT_MIN can underflow as a result of subtracting 1970.  Since we want a double result,
+        the fix is to cast year as a double before the subtraction, which eliminates the underflow.
+
+        * wtf/DateMath.cpp:
+        (WTF::daysFrom1970ToYear):
+
+2016-07-17  Filip Pizlo  <fpizlo@apple.com>
+
+        RegisterSet should use a Bitmap instead of a BitVector so that it never allocates memory and is trivial to copy
+        https://bugs.webkit.org/show_bug.cgi?id=159863
+
+        Reviewed by Saam Barati.
+        
+        Give Bitmap all of the power of BitVector (except for automatic resizing). This means a
+        variant of set() that takes a bool, and a bunch of helper methods (merge, filter, exclude,
+        forEachSetBit, ==, !=, and hash).
+
+        * wtf/Bitmap.h:
+        (WTF::WordType>::set):
+        (WTF::WordType>::testAndSet):
+        (WTF::WordType>::isFull):
+        (WTF::WordType>::merge):
+        (WTF::WordType>::filter):
+        (WTF::WordType>::exclude):
+        (WTF::WordType>::forEachSetBit):
+        (WTF::=):
+        (WTF::WordType>::hash):
+
 2016-07-02  Filip Pizlo  <fpizlo@apple.com>
 
         WTF::Lock should be fair eventually

@@ -67,8 +67,6 @@ bool SecurityOrigin::shouldUseInnerURL(const URL& url)
 // security origin can be parsed using this algorithm.
 URL SecurityOrigin::extractInnerURL(const URL& url)
 {
-    if (url.innerURL())
-        return *url.innerURL();
     // FIXME: Update this callsite to use the innerURL member function when
     // we finish implementing it.
     return URL(ParsedURLString, decodeURLEscapeSequences(url.path()));
@@ -373,9 +371,6 @@ bool SecurityOrigin::canAccessStorage(const SecurityOrigin* topOrigin, ShouldAll
         return false;
 
     if (m_storageBlockingPolicy == BlockAllStorage)
-        return false;
-
-    if (isLocal() && !m_universalAccess && shouldAllowFromThirdParty != AlwaysAllowFromThirdParty)
         return false;
 
     // FIXME: This check should be replaced with an ASSERT once we can guarantee that topOrigin is not null.

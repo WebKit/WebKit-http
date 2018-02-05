@@ -29,7 +29,6 @@
 
 #if PLATFORM(MAC)
 
-#include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
@@ -41,6 +40,8 @@ public:
 
 protected:
     WeakPtr<RemoteCommandListenerMac> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+
+    void updateSupportedCommands() override;
 
     WeakPtrFactory<RemoteCommandListenerMac> m_weakPtrFactory { this };
     void* m_commandHandler { nullptr };

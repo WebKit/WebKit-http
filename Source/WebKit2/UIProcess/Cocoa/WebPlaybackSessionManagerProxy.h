@@ -33,7 +33,6 @@
 #include <WebCore/TimeRanges.h>
 #include <WebCore/WebPlaybackSessionModel.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -146,7 +145,7 @@ private:
     friend class WebVideoFullscreenManagerProxy;
 
     explicit WebPlaybackSessionManagerProxy(WebPageProxy&);
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) final;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
 
     typedef std::tuple<RefPtr<WebPlaybackSessionModelContext>, RefPtr<PlatformWebPlaybackSessionInterface>> ModelInterfaceTuple;
     ModelInterfaceTuple createModelAndInterface(uint64_t contextId);

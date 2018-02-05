@@ -16,6 +16,7 @@
 if (self.testRunner) {
     testRunner.dumpAsText();
     testRunner.waitUntilDone();
+    testRunner.setCanOpenWindows();
     // Let's restrict calling testharness timeout() to wptserve tests for the moment.
     // That will limit the impact to a small number of tests.
     // The risk is that testharness timeout() might be called to late on slow bots to finish properly.
@@ -68,7 +69,12 @@ if (self.testRunner) {
         }
 
         results.innerText = resultStr;
-        document.body.appendChild(results);
+        var log = document.getElementById("log");
+        if (log)
+            log.appendChild(results);
+        else
+            document.body.appendChild(results);
+
         testRunner.notifyDone();
     });
 }

@@ -1036,11 +1036,12 @@ static Ref<CSSValue> specifiedValueForGridTrackSize(const GridTrackSize& trackSi
 class OrderedNamedLinesCollector {
     WTF_MAKE_NONCOPYABLE(OrderedNamedLinesCollector);
 public:
-    OrderedNamedLinesCollector(const RenderStyle& style, bool isRowAxis, unsigned repetitions)
+    OrderedNamedLinesCollector(const RenderStyle& style, bool isRowAxis, unsigned autoRepeatTracksCount)
         : m_orderedNamedGridLines(isRowAxis ? style.orderedNamedGridColumnLines() : style.orderedNamedGridRowLines())
         , m_orderedNamedAutoRepeatGridLines(isRowAxis ? style.autoRepeatOrderedNamedGridColumnLines() : style.autoRepeatOrderedNamedGridRowLines())
         , m_insertionPoint(isRowAxis ? style.gridAutoRepeatColumnsInsertionPoint() : style.gridAutoRepeatRowsInsertionPoint())
-        , m_repetitions(repetitions)
+        , m_autoRepeatTotalTracks(autoRepeatTracksCount)
+        , m_autoRepeatTrackListLength(isRowAxis ? style.gridAutoRepeatColumns().size() : style.gridAutoRepeatRows().size())
     {
     }
 
@@ -1055,7 +1056,8 @@ private:
     const OrderedNamedGridLinesMap& m_orderedNamedGridLines;
     const OrderedNamedGridLinesMap& m_orderedNamedAutoRepeatGridLines;
     unsigned m_insertionPoint;
-    unsigned m_repetitions;
+    unsigned m_autoRepeatTotalTracks;
+    unsigned m_autoRepeatTrackListLength;
 };
 
 void OrderedNamedLinesCollector::appendLines(CSSGridLineNamesValue& lineNamesValue, unsigned index, NamedLinesType type) const
@@ -1078,9 +1080,10 @@ void OrderedNamedLinesCollector::collectLineNamesForIndex(CSSGridLineNamesValue&
         return;
     }
 
-    ASSERT(m_repetitions);
-    if (i > m_insertionPoint + m_repetitions) {
-        appendLines(lineNamesValue, i - (m_repetitions - 1), NamedLines);
+    ASSERT(m_autoRepeatTotalTracks);
+
+    if (i > m_insertionPoint + m_autoRepeatTotalTracks) {
+        appendLines(lineNamesValue, i - (m_autoRepeatTotalTracks - 1), NamedLines);
         return;
     }
 
@@ -1090,14 +1093,16 @@ void OrderedNamedLinesCollector::collectLineNamesForIndex(CSSGridLineNamesValue&
         return;
     }
 
-    if (i == m_insertionPoint + m_repetitions) {
-        appendLines(lineNamesValue, 1, AutoRepeatNamedLines);
+    if (i == m_insertionPoint + m_autoRepeatTotalTracks) {
+        appendLines(lineNamesValue, m_autoRepeatTrackListLength, AutoRepeatNamedLines);
         appendLines(lineNamesValue, m_insertionPoint + 1, NamedLines);
         return;
     }
 
-    appendLines(lineNamesValue, 1, AutoRepeatNamedLines);
-    appendLines(lineNamesValue, 0, AutoRepeatNamedLines);
+    unsigned autoRepeatIndexInFirstRepetition = (i - m_insertionPoint) % m_autoRepeatTrackListLength;
+    if (!autoRepeatIndexInFirstRepetition && i > m_insertionPoint)
+        appendLines(lineNamesValue, m_autoRepeatTrackListLength, AutoRepeatNamedLines);
+    appendLines(lineNamesValue, autoRepeatIndexInFirstRepetition, AutoRepeatNamedLines);
 }
 
 static void addValuesForNamedGridLinesAtIndex(OrderedNamedLinesCollector& collector, unsigned i, CSSValueList& list)
@@ -1109,6 +1114,16 @@ static void addValuesForNamedGridLinesAtIndex(OrderedNamedLinesCollector& collec
     collector.collectLineNamesForIndex(lineNames.get(), i);
     if (lineNames->length())
         list.append(WTFMove(lineNames));
+}
+
+static Ref<CSSValueList> valueForGridTrackSizeList(GridTrackSizingDirection direction, const RenderStyle& style)
+{
+    auto& autoTrackSizes = direction == ForColumns ? style.gridAutoColumns() : style.gridAutoRows();
+
+    auto list = CSSValueList::createSpaceSeparated();
+    for (auto& trackSize : autoTrackSizes)
+        list->append(specifiedValueForGridTrackSize(trackSize, style));
+    return list;
 }
 
 static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, RenderObject* renderer, const RenderStyle& style)
@@ -1131,28 +1146,20 @@ static Ref<CSSValue> valueForGridTrackList(GridTrackSizingDirection direction, R
     if (trackListIsEmpty)
         return CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
 
-    unsigned repetitions = isRenderGrid ? downcast<RenderGrid>(renderer)->autoRepeatCountForDirection(direction) : 0;
-    OrderedNamedLinesCollector collector(style, isRowAxis, repetitions);
+    unsigned autoRepeatTotalTracks = isRenderGrid ? downcast<RenderGrid>(renderer)->autoRepeatCountForDirection(direction) : 0;
+    OrderedNamedLinesCollector collector(style, isRowAxis, autoRepeatTotalTracks);
     auto list = CSSValueList::createSpaceSeparated();
     unsigned insertionIndex;
     if (isRenderGrid) {
-        auto& grid = downcast<RenderGrid>(*renderer);
-        const auto& trackPositions = direction == ForColumns ? grid.columnPositions() : grid.rowPositions();
-        // There are at least #tracks + 1 grid lines (trackPositions). Apart from that, the grid container can generate implicit grid tracks,
-        // so we'll have more trackPositions than trackSizes as the latter only contain the explicit grid.
-        ASSERT(trackPositions.size() - 1 >= trackSizes.size());
+        auto computedTrackSizes = downcast<RenderGrid>(*renderer).trackSizesForComputedStyle(direction);
+        unsigned numTracks = computedTrackSizes.size();
 
-        unsigned i = 0;
-        LayoutUnit gutterSize = grid.guttersSize(direction, 2);
-        LayoutUnit offsetBetweenTracks = grid.offsetBetweenTracks(direction);
-        for (; i < trackPositions.size() - 2; ++i) {
+        for (unsigned i = 0; i < numTracks; ++i) {
             addValuesForNamedGridLinesAtIndex(collector, i, list.get());
-            list.get().append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i] - gutterSize - offsetBetweenTracks, style));
+            list->append(zoomAdjustedPixelValue(computedTrackSizes[i], style));
         }
-        // Last track line does not have any gutter or distribution offset.
-        addValuesForNamedGridLinesAtIndex(collector, i, list.get());
-        list.get().append(zoomAdjustedPixelValue(trackPositions[i + 1] - trackPositions[i], style));
-        insertionIndex = trackPositions.size() - 1;
+        addValuesForNamedGridLinesAtIndex(collector, numTracks + 1, list.get());
+        insertionIndex = numTracks;
     } else {
         for (unsigned i = 0; i < trackSizes.size(); ++i) {
             addValuesForNamedGridLinesAtIndex(collector, i, list.get());
@@ -1581,16 +1588,16 @@ static Ref<CSSValue> createLineBoxContainValue(unsigned lineBoxContain)
     return CSSLineBoxContainValue::create(lineBoxContain);
 }
 
-ComputedStyleExtractor::ComputedStyleExtractor(PassRefPtr<Node> node, bool allowVisitedStyle, PseudoId pseudoElementSpecifier)
-    : m_node(node)
+ComputedStyleExtractor::ComputedStyleExtractor(RefPtr<Node>&& node, bool allowVisitedStyle, PseudoId pseudoElementSpecifier)
+    : m_node(WTFMove(node))
     , m_pseudoElementSpecifier(pseudoElementSpecifier)
     , m_allowVisitedStyle(allowVisitedStyle)
 {
 }
 
 
-CSSComputedStyleDeclaration::CSSComputedStyleDeclaration(PassRefPtr<Node> n, bool allowVisitedStyle, const String& pseudoElementName)
-    : m_node(n)
+CSSComputedStyleDeclaration::CSSComputedStyleDeclaration(Element& element, bool allowVisitedStyle, const String& pseudoElementName)
+    : m_element(element)
     , m_allowVisitedStyle(allowVisitedStyle)
     , m_refCount(1)
 {
@@ -2322,12 +2329,12 @@ static StyleSelfAlignmentData resolveAlignSelfAuto(const StyleSelfAlignmentData&
 
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropertyID propertyID, EUpdateLayout updateLayout) const
 {
-    return ComputedStyleExtractor(m_node, m_allowVisitedStyle, m_pseudoElementSpecifier).propertyValue(propertyID, updateLayout);
+    return ComputedStyleExtractor(m_element.copyRef(), m_allowVisitedStyle, m_pseudoElementSpecifier).propertyValue(propertyID, updateLayout);
 }
 
 Ref<MutableStyleProperties> CSSComputedStyleDeclaration::copyProperties() const
 {
-    return ComputedStyleExtractor(m_node, m_allowVisitedStyle, m_pseudoElementSpecifier).copyProperties();
+    return ComputedStyleExtractor(m_element.copyRef(), m_allowVisitedStyle, m_pseudoElementSpecifier).copyProperties();
 }
 
 static inline bool nodeOrItsAncestorNeedsStyleRecalc(const Node& node)
@@ -2889,14 +2896,14 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         }
 
         // Specs mention that getComputedStyle() should return the used value of the property instead of the computed
-        // one for grid-definition-{rows|columns} but not for the grid-auto-{rows|columns} as things like
+        // one for grid-template-{rows|columns} but not for the grid-auto-{rows|columns} as things like
         // grid-auto-columns: 2fr; cannot be resolved to a value in pixels as the '2fr' means very different things
         // depending on the size of the explicit grid or the number of implicit tracks added to the grid. See
         // http://lists.w3.org/Archives/Public/www-style/2013Nov/0014.html
         case CSSPropertyGridAutoColumns:
-            return specifiedValueForGridTrackSize(style->gridAutoColumns(), *style);
+            return valueForGridTrackSizeList(ForColumns, *style);
         case CSSPropertyGridAutoRows:
-            return specifiedValueForGridTrackSize(style->gridAutoRows(), *style);
+            return valueForGridTrackSizeList(ForRows, *style);
 
         case CSSPropertyGridTemplateColumns:
             return valueForGridTrackList(ForColumns, renderer, *style);
@@ -3944,13 +3951,10 @@ String CSSComputedStyleDeclaration::getPropertyValue(CSSPropertyID propertyID) c
 
 unsigned CSSComputedStyleDeclaration::length() const
 {
-    Node* node = m_node.get();
-    if (!node)
-        return 0;
+    auto& element = m_element.get();
+    updateStyleIfNeededForNode(element);
 
-    updateStyleIfNeededForNode(*node);
-
-    auto* style = node->computedStyle(m_pseudoElementSpecifier);
+    auto* style = const_cast<Element&>(element).computedStyle(m_pseudoElementSpecifier);
     if (!style)
         return 0;
 
@@ -3965,11 +3969,8 @@ String CSSComputedStyleDeclaration::item(unsigned i) const
     if (i < numComputedProperties)
         return getPropertyNameString(computedProperties[i]);
     
-    Node* node = m_node.get();
-    if (!node)
-        return String();
-
-    auto* style = node->computedStyle(m_pseudoElementSpecifier);
+    auto& element = m_element.get();
+    auto* style = const_cast<Element&>(element).computedStyle(m_pseudoElementSpecifier);
     if (!style)
         return String();
     
@@ -4073,7 +4074,7 @@ CSSRule* CSSComputedStyleDeclaration::parentRule() const
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(const String& propertyName)
 {
     if (isCustomPropertyName(propertyName))
-        return ComputedStyleExtractor(m_node, m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyValue(propertyName);
+        return ComputedStyleExtractor(m_element.copyRef(), m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyValue(propertyName);
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
@@ -4085,7 +4086,7 @@ RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(const String& 
 String CSSComputedStyleDeclaration::getPropertyValue(const String &propertyName)
 {
     if (isCustomPropertyName(propertyName))
-        return ComputedStyleExtractor(m_node, m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyText(propertyName);
+        return ComputedStyleExtractor(m_element.copyRef(), m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyText(propertyName);
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)

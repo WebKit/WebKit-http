@@ -32,27 +32,23 @@
 #define BytecodeGenerator_h
 
 #include "CodeBlock.h"
-#include <wtf/HashTraits.h>
 #include "Instruction.h"
+#include "Interpreter.h"
 #include "Label.h"
 #include "LabelScope.h"
-#include "Interpreter.h"
+#include "Nodes.h"
 #include "ParserError.h"
 #include "RegisterID.h"
 #include "SetForScope.h"
-#include "SymbolTable.h"
-#include "Debugger.h"
-#include "Nodes.h"
 #include "StaticPropertyAnalyzer.h"
+#include "SymbolTable.h"
 #include "TemplateRegistryKey.h"
 #include "UnlinkedCodeBlock.h"
-
 #include <functional>
-
+#include <wtf/HashTraits.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/SegmentedVector.h>
 #include <wtf/Vector.h>
-
 
 namespace JSC {
 
@@ -289,6 +285,7 @@ namespace JSC {
         bool usesThis() const { return m_scopeNode->usesThis(); }
         ConstructorKind constructorKind() const { return m_codeBlock->constructorKind(); }
         SuperBinding superBinding() const { return m_codeBlock->superBinding(); }
+        JSParserCommentMode commentMode() const { return m_codeBlock->commentMode(); }
 
         template<typename... Args>
         static ParserError generate(VM& vm, Args&& ...args)
@@ -829,7 +826,7 @@ namespace JSC {
             DerivedContextType newDerivedContextType = DerivedContextType::None;
 
             if (metadata->parseMode() == SourceParseMode::ArrowFunctionMode) {
-                if (constructorKind() == ConstructorKind::Derived || isDerivedConstructorContext())
+                if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())
                     newDerivedContextType = DerivedContextType::DerivedConstructorContext;
                 else if (m_codeBlock->isClassContext() || isDerivedClassContext())
                     newDerivedContextType = DerivedContextType::DerivedMethodContext;
@@ -847,7 +844,7 @@ namespace JSC {
             else if (parseMode == SourceParseMode::MethodMode && metadata->constructorKind() == ConstructorKind::None)
                 constructAbility = ConstructAbility::CannotConstruct;
 
-            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, variablesUnderTDZ, newDerivedContextType);
+            return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, commentMode(), variablesUnderTDZ, newDerivedContextType);
         }
 
         void getVariablesUnderTDZ(VariableEnvironment&);
@@ -910,6 +907,7 @@ namespace JSC {
         RegisterID* m_emptyValueRegister { nullptr };
         RegisterID* m_globalObjectRegister { nullptr };
         RegisterID* m_newTargetRegister { nullptr };
+        RegisterID* m_isDerivedConstuctor { nullptr };
         RegisterID* m_linkTimeConstantRegisters[LinkTimeConstantCount];
         RegisterID* m_arrowFunctionContextLexicalEnvironmentRegister { nullptr };
 

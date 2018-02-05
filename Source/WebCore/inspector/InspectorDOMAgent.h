@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorDOMAgent_h
-#define InspectorDOMAgent_h
+#pragma once
 
 #include "EventTarget.h"
 #include "InspectorWebAgentBase.h"
@@ -80,10 +79,10 @@ typedef String ErrorString;
 typedef int BackendNodeId;
 
 struct EventListenerInfo {
-    EventListenerInfo(Node* node, const AtomicString& eventType, const EventListenerVector& eventListenerVector)
+    EventListenerInfo(Node* node, const AtomicString& eventType, EventListenerVector&& eventListenerVector)
         : node(node)
         , eventType(eventType)
-        , eventListenerVector(eventListenerVector)
+        , eventListenerVector(WTFMove(eventListenerVector))
     {
     }
 
@@ -280,5 +279,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(InspectorDOMAgent_h)

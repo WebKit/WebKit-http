@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef Attr_h
-#define Attr_h
+#pragma once
 
 #include "ContainerNode.h"
 #include "QualifiedName.h"
@@ -50,21 +49,25 @@ public:
     bool specified() const { return true; }
     Element* ownerElement() const { return m_element; }
 
-    const AtomicString& value() const;
+    WEBCORE_EXPORT const AtomicString& value() const;
     void setValue(const AtomicString&);
     const AtomicString& valueForBindings() const { return value(); }
-    void setValueForBindings(const AtomicString&);
+    WEBCORE_EXPORT void setValueForBindings(const AtomicString&);
 
     const QualifiedName& qualifiedName() const { return m_name; }
 
-    bool isId() const;
+    WEBCORE_EXPORT bool isId() const;
 
-    CSSStyleDeclaration* style();
+    WEBCORE_EXPORT CSSStyleDeclaration* style();
 
     void attachToElement(Element*);
     void detachFromElementWithValue(const AtomicString&);
 
-    const AtomicString& namespaceURI() const override { return m_name.namespaceURI(); }
+    const AtomicString& namespaceURI() const final { return m_name.namespaceURI(); }
+    const AtomicString& localName() const final { return m_name.localName(); }
+    const AtomicString& prefix() const final { return m_name.prefix(); }
+
+    void setPrefix(const AtomicString&, ExceptionCode&) final;
 
 private:
     Attr(Element*, const QualifiedName&);
@@ -74,11 +77,6 @@ private:
 
     String nodeName() const override { return name(); }
     NodeType nodeType() const override { return ATTRIBUTE_NODE; }
-
-    const AtomicString& localName() const override { return m_name.localName(); }
-    const AtomicString& prefix() const override { return m_name.prefix(); }
-
-    void setPrefix(const AtomicString&, ExceptionCode&) override;
 
     String nodeValue() const override { return value(); }
     void setNodeValue(const String&, ExceptionCode&) override;
@@ -106,5 +104,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Attr)
     static bool isType(const WebCore::Node& node) { return node.isAttributeNode(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // Attr_h

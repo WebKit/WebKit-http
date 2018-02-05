@@ -47,14 +47,14 @@ IDBIndex::IDBIndex(ScriptExecutionContext& context, const IDBIndexInfo& info, ID
     , m_info(info)
     , m_objectStore(objectStore)
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
     suspendIfNeeded();
 }
 
 IDBIndex::~IDBIndex()
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 }
 
 const char* IDBIndex::activeDOMObjectName() const
@@ -69,43 +69,43 @@ bool IDBIndex::canSuspendForDocumentSuspension() const
 
 bool IDBIndex::hasPendingActivity() const
 {
-    return !m_objectStore.modernTransaction().isFinished();
+    return !m_objectStore.transaction().isFinished();
 }
 
 const String& IDBIndex::name() const
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
     return m_info.name();
 }
 
-RefPtr<IDBObjectStore> IDBIndex::objectStore()
+IDBObjectStore& IDBIndex::objectStore()
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
-    return &m_objectStore;
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
+    return m_objectStore;
 }
 
 const IDBKeyPath& IDBIndex::keyPath() const
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
     return m_info.keyPath();
 }
 
 bool IDBIndex::unique() const
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
     return m_info.unique();
 }
 
 bool IDBIndex::multiEntry() const
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
     return m_info.multiEntry();
 }
 
-RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, IDBKeyRange* range, const String& directionString, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::openCursor(ExecState& execState, IDBKeyRange* range, const String& directionString, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::openCursor");
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
@@ -113,7 +113,7 @@ RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, IDBKeyR
         return nullptr;
     }
 
-    if (!m_objectStore.modernTransaction().isActive()) {
+    if (!m_objectStore.transaction().isActive()) {
         ec.code = IDBDatabaseException::TransactionInactiveError;
         ec.message = ASCIILiteral("Failed to execute 'openCursor' on 'IDBIndex': The transaction is inactive or finished.");
         return nullptr;
@@ -131,55 +131,48 @@ RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, IDBKeyR
     if (rangeData.upperKey.isNull())
         rangeData.upperKey = IDBKeyData::maximum();
 
-    auto info = IDBCursorInfo::indexCursor(m_objectStore.modernTransaction(), m_objectStore.info().identifier(), m_info.identifier(), rangeData, direction, IndexedDB::CursorType::KeyAndValue);
-    return m_objectStore.modernTransaction().requestOpenCursor(context, *this, info);
+    auto info = IDBCursorInfo::indexCursor(m_objectStore.transaction(), m_objectStore.info().identifier(), m_info.identifier(), rangeData, direction, IndexedDB::CursorType::KeyAndValue);
+    return m_objectStore.transaction().requestOpenCursor(execState, *this, info);
 }
 
-RefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext& context, JSValue key, const String& direction, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::openCursor(ExecState& execState, JSValue key, const String& direction, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::openCursor");
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
-    RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(context, key, ec.code);
+    RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(execState, key, ec.code);
     if (ec.code) {
         ec.message = ASCIILiteral("Failed to execute 'openCursor' on 'IDBIndex': The parameter is not a valid key.");
         return nullptr;
     }
 
-    return openCursor(context, keyRange.get(), direction, ec);
+    return openCursor(execState, keyRange.get(), direction, ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::count(ScriptExecutionContext& context, IDBKeyRange* range, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::count(ExecState& execState, IDBKeyRange* range, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::count");
 
-    return doCount(context, range ? IDBKeyRangeData(range) : IDBKeyRangeData::allKeys(), ec);
+    return doCount(execState, range ? IDBKeyRangeData(range) : IDBKeyRangeData::allKeys(), ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::count(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::count(ExecState& execState, JSValue key, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::count");
 
-    auto exec = context.execState();
-    if (!exec) {
-        ec.code = IDBDatabaseException::UnknownError;
-        ec.message = ASCIILiteral("Failed to execute 'count' on 'IDBIndex': Script execution context does not have an execution state.");
-        return 0;
-    }
-
-    Ref<IDBKey> idbKey = scriptValueToIDBKey(*exec, key);
+    Ref<IDBKey> idbKey = scriptValueToIDBKey(execState, key);
     if (!idbKey->isValid()) {
         ec.code = IDBDatabaseException::DataError;
         ec.message = ASCIILiteral("Failed to execute 'count' on 'IDBIndex': The parameter is not a valid key.");
         return nullptr;
     }
 
-    return doCount(context, IDBKeyRangeData(idbKey.ptr()), ec);
+    return doCount(execState, IDBKeyRangeData(idbKey.ptr()), ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::doCount(ScriptExecutionContext& context, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::doCount(ExecState& execState, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
@@ -192,20 +185,20 @@ RefPtr<IDBRequest> IDBIndex::doCount(ScriptExecutionContext& context, const IDBK
         return nullptr;
     }
 
-    auto& transaction = m_objectStore.modernTransaction();
+    auto& transaction = m_objectStore.transaction();
     if (!transaction.isActive()) {
         ec.code = IDBDatabaseException::TransactionInactiveError;
         ec.message = ASCIILiteral("Failed to execute 'count' on 'IDBIndex': The transaction is inactive or finished.");
         return nullptr;
     }
 
-    return transaction.requestCount(context, *this, range);
+    return transaction.requestCount(execState, *this, range);
 }
 
-RefPtr<IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext& context, IDBKeyRange* range, const String& directionString, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::openKeyCursor(ExecState& execState, IDBKeyRange* range, const String& directionString, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::openKeyCursor");
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
@@ -213,7 +206,7 @@ RefPtr<IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext& context, IDBK
         return nullptr;
     }
 
-    if (!m_objectStore.modernTransaction().isActive()) {
+    if (!m_objectStore.transaction().isActive()) {
         ec.code = IDBDatabaseException::TransactionInactiveError;
         ec.message = ASCIILiteral("Failed to execute 'openKeyCursor' on 'IDBIndex': The transaction is inactive or finished.");
         return nullptr;
@@ -225,52 +218,45 @@ RefPtr<IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext& context, IDBK
         return nullptr;
     }
 
-    auto info = IDBCursorInfo::indexCursor(m_objectStore.modernTransaction(), m_objectStore.info().identifier(), m_info.identifier(), range, direction, IndexedDB::CursorType::KeyOnly);
-    return m_objectStore.modernTransaction().requestOpenCursor(context, *this, info);
+    auto info = IDBCursorInfo::indexCursor(m_objectStore.transaction(), m_objectStore.info().identifier(), m_info.identifier(), range, direction, IndexedDB::CursorType::KeyOnly);
+    return m_objectStore.transaction().requestOpenCursor(execState, *this, info);
 }
 
-RefPtr<IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext& context, JSValue key, const String& direction, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::openKeyCursor(ExecState& execState, JSValue key, const String& direction, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::openKeyCursor");
-    RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(context, key, ec.code);
+    RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(execState, key, ec.code);
     if (ec.code) {
         ec.message = ASCIILiteral("Failed to execute 'openKeyCursor' on 'IDBIndex': The parameter is not a valid key.");
         return nullptr;
     }
-    return openKeyCursor(context, keyRange.get(), direction, ec);
+    return openKeyCursor(execState, keyRange.get(), direction, ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::get(ScriptExecutionContext& context, IDBKeyRange* range, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::get(ExecState& execState, IDBKeyRange* range, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::get");
 
-    return doGet(context, IDBKeyRangeData(range), ec);
+    return doGet(execState, IDBKeyRangeData(range), ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::get(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::get(ExecState& execState, JSValue key, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::get");
 
-    auto exec = context.execState();
-    if (!exec) {
-        ec.code = IDBDatabaseException::UnknownError;
-        ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBIndex': Script execution context does not have an execution state.");
-        return nullptr;
-    }
-
-    Ref<IDBKey> idbKey = scriptValueToIDBKey(*exec, key);
+    Ref<IDBKey> idbKey = scriptValueToIDBKey(execState, key);
     if (!idbKey->isValid()) {
         ec.code = IDBDatabaseException::DataError;
         ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBIndex': The parameter is not a valid key.");
         return nullptr;
     }
 
-    return doGet(context, IDBKeyRangeData(idbKey.ptr()), ec);
+    return doGet(execState, IDBKeyRangeData(idbKey.ptr()), ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::doGet(ScriptExecutionContext& context, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::doGet(ExecState& execState, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
@@ -283,47 +269,40 @@ RefPtr<IDBRequest> IDBIndex::doGet(ScriptExecutionContext& context, const IDBKey
         return nullptr;
     }
 
-    auto& transaction = m_objectStore.modernTransaction();
+    auto& transaction = m_objectStore.transaction();
     if (!transaction.isActive()) {
         ec.code = IDBDatabaseException::TransactionInactiveError;
         ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBIndex': The transaction is inactive or finished.");
         return nullptr;
     }
 
-    return transaction.requestGetValue(context, *this, range);
+    return transaction.requestGetValue(execState, *this, range);
 }
 
-RefPtr<IDBRequest> IDBIndex::getKey(ScriptExecutionContext& context, IDBKeyRange* range, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::getKey(ExecState& execState, IDBKeyRange* range, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::getKey");
 
-    return doGetKey(context, IDBKeyRangeData(range), ec);
+    return doGetKey(execState, IDBKeyRangeData(range), ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::getKey(ScriptExecutionContext& context, JSValue key, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::getKey(ExecState& execState, JSValue key, ExceptionCodeWithMessage& ec)
 {
     LOG(IndexedDB, "IDBIndex::getKey");
 
-    auto exec = context.execState();
-    if (!exec) {
-        ec.code = IDBDatabaseException::UnknownError;
-        ec.message = ASCIILiteral("Failed to execute 'get' on 'IDBIndex': Script execution context does not have an execution state.");
-        return nullptr;
-    }
-
-    Ref<IDBKey> idbKey = scriptValueToIDBKey(*exec, key);
+    Ref<IDBKey> idbKey = scriptValueToIDBKey(execState, key);
     if (!idbKey->isValid()) {
         ec.code = IDBDatabaseException::DataError;
         ec.message = ASCIILiteral("Failed to execute 'getKey' on 'IDBIndex': The parameter is not a valid key.");
         return nullptr;
     }
 
-    return doGetKey(context, IDBKeyRangeData(idbKey.ptr()), ec);
+    return doGetKey(execState, IDBKeyRangeData(idbKey.ptr()), ec);
 }
 
-RefPtr<IDBRequest> IDBIndex::doGetKey(ScriptExecutionContext& context, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
+RefPtr<IDBRequest> IDBIndex::doGetKey(ExecState& execState, const IDBKeyRangeData& range, ExceptionCodeWithMessage& ec)
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
     if (m_deleted || m_objectStore.isDeleted()) {
         ec.code = IDBDatabaseException::InvalidStateError;
@@ -336,19 +315,19 @@ RefPtr<IDBRequest> IDBIndex::doGetKey(ScriptExecutionContext& context, const IDB
         return nullptr;
     }
 
-    auto& transaction = m_objectStore.modernTransaction();
+    auto& transaction = m_objectStore.transaction();
     if (!transaction.isActive()) {
         ec.code = IDBDatabaseException::TransactionInactiveError;
         ec.message = ASCIILiteral("Failed to execute 'getKey' on 'IDBIndex': The transaction is inactive or finished.");
         return nullptr;
     }
 
-    return transaction.requestGetKey(context, *this, range);
+    return transaction.requestGetKey(execState, *this, range);
 }
 
 void IDBIndex::markAsDeleted()
 {
-    ASSERT(currentThread() == m_objectStore.modernTransaction().database().originThreadID());
+    ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
 
     ASSERT(!m_deleted);
     m_deleted = true;

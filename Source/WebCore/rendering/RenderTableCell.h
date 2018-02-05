@@ -109,8 +109,8 @@ public:
     bool cellWidthChanged() const { return m_cellWidthChanged; }
     void setCellWidthChanged(bool b = true) { m_cellWidthChanged = b; }
 
-    static RenderTableCell* createAnonymousWithParentRenderer(const RenderObject*);
-    RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const override { return createAnonymousWithParentRenderer(parent); }
+    static std::unique_ptr<RenderTableCell> createAnonymousWithParentRenderer(const RenderTableRow&);
+    std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const override;
 
     // This function is used to unify which table part's style we use for computing direction and
     // writing mode. Writing modes are not allowed on row group and row but direction is.
@@ -121,8 +121,8 @@ public:
 
     const BorderValue& borderAdjoiningTableStart() const;
     const BorderValue& borderAdjoiningTableEnd() const;
-    const BorderValue& borderAdjoiningCellBefore(const RenderTableCell*);
-    const BorderValue& borderAdjoiningCellAfter(const RenderTableCell*);
+    const BorderValue& borderAdjoiningCellBefore(const RenderTableCell&);
+    const BorderValue& borderAdjoiningCellAfter(const RenderTableCell&);
 
     using RenderBlockFlow::nodeAtPoint;
 #ifndef NDEBUG
@@ -139,6 +139,8 @@ protected:
     void computePreferredLogicalWidths() override;
 
 private:
+    static std::unique_ptr<RenderTableCell> createTableCellWithStyle(Document&, const RenderStyle&);
+
     const char* renderName() const override { return (isAnonymous() || isPseudoElement()) ? "RenderTableCell (anonymous)" : "RenderTableCell"; }
 
     bool isTableCell() const override { return true; }
@@ -301,7 +303,7 @@ inline bool RenderTableCell::isBaselineAligned() const
 inline const BorderValue& RenderTableCell::borderAdjoiningTableStart() const
 {
     ASSERT(isFirstOrLastCellInRow());
-    if (section()->hasSameDirectionAs(table()))
+    if (isDirectionSame(section(), table()))
         return style().borderStart();
 
     return style().borderEnd();
@@ -310,22 +312,22 @@ inline const BorderValue& RenderTableCell::borderAdjoiningTableStart() const
 inline const BorderValue& RenderTableCell::borderAdjoiningTableEnd() const
 {
     ASSERT(isFirstOrLastCellInRow());
-    if (section()->hasSameDirectionAs(table()))
+    if (isDirectionSame(section(), table()))
         return style().borderEnd();
 
     return style().borderStart();
 }
 
-inline const BorderValue& RenderTableCell::borderAdjoiningCellBefore(const RenderTableCell* cell)
+inline const BorderValue& RenderTableCell::borderAdjoiningCellBefore(const RenderTableCell& cell)
 {
-    ASSERT_UNUSED(cell, table()->cellAfter(cell) == this);
+    ASSERT_UNUSED(cell, table()->cellAfter(&cell) == this);
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderStart();
 }
 
-inline const BorderValue& RenderTableCell::borderAdjoiningCellAfter(const RenderTableCell* cell)
+inline const BorderValue& RenderTableCell::borderAdjoiningCellAfter(const RenderTableCell& cell)
 {
-    ASSERT_UNUSED(cell, table()->cellBefore(cell) == this);
+    ASSERT_UNUSED(cell, table()->cellBefore(&cell) == this);
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderEnd();
 }
@@ -370,6 +372,11 @@ inline void RenderTableCell::invalidateHasEmptyCollapsedBorders()
     m_hasEmptyCollapsedAfterBorder = false;
     m_hasEmptyCollapsedStartBorder = false;
     m_hasEmptyCollapsedEndBorder = false;
+}
+
+inline std::unique_ptr<RenderBox> RenderTableCell::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
+{
+    return RenderTableCell::createTableCellWithStyle(renderer.document(), renderer.style());
 }
 
 } // namespace WebCore

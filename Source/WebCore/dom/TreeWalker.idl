@@ -18,17 +18,14 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// Introduced in DOM Level 2:
 [
-    JSCustomMarkFunction,
+    ExportToWrappedFunction,
     ImplementationLacksVTable,
+    JSCustomMarkFunction,
 ] interface TreeWalker {
     readonly attribute Node root;
     readonly attribute unsigned long whatToShow;
     readonly attribute NodeFilter filter;
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute boolean expandEntityReferences;
-#endif
     attribute Node currentNode;
 
     Node parentNode();
@@ -39,4 +36,3 @@
     Node previousNode();
     Node nextNode();
 };
-

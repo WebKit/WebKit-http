@@ -113,7 +113,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors4(ExecState* s
     auto string = state->argument(0).toWTFString(state);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    auto object = TestOverloadedConstructors::create(string);
+    auto object = TestOverloadedConstructors::create(WTFMove(string));
     return JSValue::encode(asObject(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object))));
 }
 
@@ -123,26 +123,28 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors5(ExecState* s
     Vector<int32_t> longArgs = toNativeArguments<int32_t>(*state, 0);
     if (UNLIKELY(state->hadException()))
         return JSValue::encode(jsUndefined());
-    auto object = TestOverloadedConstructors::create(longArgs);
+    auto object = TestOverloadedConstructors::create(WTFMove(longArgs));
     return JSValue::encode(asObject(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object))));
 }
 
 template<> EncodedJSValue JSC_HOST_CALL JSTestOverloadedConstructorsConstructor::construct(ExecState* state)
 {
     size_t argsCount = std::min<size_t>(1, state->argumentCount());
-    JSValue arg0(state->argument(0));
-    if ((argsCount == 1 && ((arg0.isObject() && asObject(arg0)->inherits(JSArrayBuffer::info())))))
-        return constructJSTestOverloadedConstructors1(state);
-    if ((argsCount == 1 && ((arg0.isObject() && asObject(arg0)->inherits(JSArrayBufferView::info())))))
-        return constructJSTestOverloadedConstructors2(state);
-    if ((argsCount == 1 && ((arg0.isObject() && asObject(arg0)->inherits(JSBlob::info())))))
-        return constructJSTestOverloadedConstructors3(state);
-    if (argsCount == 1)
-        return constructJSTestOverloadedConstructors4(state);
-    if ()
+    if (argsCount == 0) {
         return constructJSTestOverloadedConstructors5(state);
-    if (UNLIKELY(argsCount < 1))
-        return throwVMError(state, createNotEnoughArgumentsError(state));
+    }
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSArrayBuffer::info()))
+            return constructJSTestOverloadedConstructors1(state);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSArrayBufferView::info()))
+            return constructJSTestOverloadedConstructors2(state);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSBlob::info()))
+            return constructJSTestOverloadedConstructors3(state);
+        if (distinguishingArg.isNumber())
+            return constructJSTestOverloadedConstructors5(state);
+        return constructJSTestOverloadedConstructors4(state);
+    }
     return throwVMTypeError(state);
 }
 

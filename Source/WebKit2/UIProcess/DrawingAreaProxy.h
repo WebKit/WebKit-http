@@ -118,7 +118,7 @@ protected:
     WebCore::IntSize m_scrollOffset;
 
     // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
 private:
     virtual void sizeDidChange() = 0;
@@ -130,7 +130,6 @@ private:
     virtual void enterAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
     virtual void exitAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const UpdateInfo&) { }
     virtual void updateAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
-    virtual void willEnterAcceleratedCompositingMode(uint64_t /* backingStoreStateID */) { }
 #if PLATFORM(COCOA)
     virtual void didUpdateGeometry() { }
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize&) { }

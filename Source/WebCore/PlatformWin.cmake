@@ -34,8 +34,8 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/win"
     "${WEBCORE_DIR}/platform/network/win"
+    "${WEBCORE_DIR}/platform/spi/win"
     "${WEBCORE_DIR}/platform/win"
-    "${WEBCORE_DIR}/plugins/win"
     "${THIRDPARTY_DIR}/ANGLE/include"
     "${THIRDPARTY_DIR}/ANGLE/include/egl"
 )
@@ -199,6 +199,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     bridge/c
     bridge/jsc
+
+    css/parser
 
     history/cf
 

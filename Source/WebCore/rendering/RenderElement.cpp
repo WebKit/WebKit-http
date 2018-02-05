@@ -27,7 +27,6 @@
 
 #include "AXObjectCache.h"
 #include "ContentData.h"
-#include "ControlStates.h"
 #include "CursorList.h"
 #include "ElementChildIterator.h"
 #include "EventHandler.h"
@@ -80,12 +79,6 @@ namespace WebCore {
 bool RenderElement::s_affectsParentBlock = false;
 bool RenderElement::s_noLongerAffectsParentBlock = false;
     
-static HashMap<const RenderObject*, ControlStates*>& controlStatesRendererMap()
-{
-    static NeverDestroyed<HashMap<const RenderObject*, ControlStates*>> map;
-    return map;
-}
-
 inline RenderElement::RenderElement(ContainerNode& elementOrDocument, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : RenderObject(elementOrDocument)
     , m_baseTypeFlags(baseTypeFlags)
@@ -492,7 +485,7 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
         if (afterChild && afterChild->isAnonymous() && is<RenderTable>(*afterChild) && !afterChild->isBeforeContent())
             table = downcast<RenderTable>(afterChild);
         else {
-            table = RenderTable::createAnonymousWithParentRenderer(this);
+            table = RenderTable::createAnonymousWithParentRenderer(*this).release();
             addChild(table, beforeChild);
         }
         table->addChild(newChild);
@@ -652,6 +645,29 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->childrenChanged(this);
+}
+
+RenderBlock* RenderElement::containingBlockForFixedPosition() const
+{
+    auto* renderer = parent();
+    while (renderer && !renderer->canContainFixedPositionObjects())
+        renderer = renderer->parent();
+
+    ASSERT(!renderer || !renderer->isAnonymousBlock());
+    return downcast<RenderBlock>(renderer);
+}
+
+RenderBlock* RenderElement::containingBlockForAbsolutePosition() const
+{
+    // A relatively positioned RenderInline forwards its absolute positioned descendants to
+    // its nearest non-anonymous containing block (to avoid having a positioned objects list in all RenderInlines).
+    auto* renderer = isRenderInline() ? const_cast<RenderElement*>(downcast<RenderElement>(this)) : parent();
+    while (renderer && !renderer->canContainAbsolutelyPositionedObjects())
+        renderer = renderer->parent();
+    // Make sure we only return non-anonymous RenderBlock as containing block.
+    while (renderer && (!is<RenderBlock>(*renderer) || renderer->isAnonymousBlock()))
+        renderer = renderer->containingBlock();
+    return downcast<RenderBlock>(renderer);
 }
 
 static void addLayers(RenderElement& renderer, RenderLayer* parentLayer, RenderElement*& newObject, RenderLayer*& beforeChild)
@@ -1510,30 +1526,6 @@ RenderNamedFlowThread* RenderElement::renderNamedFlowThreadWrapper()
     return is<RenderNamedFlowThread>(renderer) ? downcast<RenderNamedFlowThread>(renderer) : nullptr;
 }
 
-bool RenderElement::hasControlStatesForRenderer(const RenderObject* o)
-{
-    return controlStatesRendererMap().contains(o);
-}
-
-ControlStates* RenderElement::controlStatesForRenderer(const RenderObject* o)
-{
-    return controlStatesRendererMap().get(o);
-}
-
-void RenderElement::removeControlStatesForRenderer(const RenderObject* o)
-{
-    ControlStates* states = controlStatesRendererMap().get(o);
-    if (states) {
-        controlStatesRendererMap().remove(o);
-        delete states;
-    }
-}
-
-void RenderElement::addControlStatesForRenderer(const RenderObject* o, ControlStates* states)
-{
-    controlStatesRendererMap().add(o, states);
-}
-
 const RenderStyle* RenderElement::getCachedPseudoStyle(PseudoId pseudo, const RenderStyle* parentStyle) const
 {
     if (pseudo < FIRST_INTERNAL_PSEUDOID && !style().hasPseudoStyle(pseudo))
@@ -1614,7 +1606,7 @@ std::unique_ptr<RenderStyle> RenderElement::selectionPseudoStyle() const
         return nullptr;
 
     if (ShadowRoot* root = element()->containingShadowRoot()) {
-        if (root->type() == ShadowRoot::Type::UserAgent) {
+        if (root->mode() == ShadowRoot::Mode::UserAgent) {
             if (Element* shadowHost = element()->shadowHost())
                 return shadowHost->renderer()->getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
         }

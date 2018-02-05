@@ -88,6 +88,7 @@
 #include "JSMap.h"
 #include "JSMapIterator.h"
 #include "JSModuleEnvironment.h"
+#include "JSModuleLoader.h"
 #include "JSModuleNamespaceObject.h"
 #include "JSModuleRecord.h"
 #include "JSNativeStdFunction.h"
@@ -117,7 +118,7 @@
 #include "MapPrototype.h"
 #include "MathObject.h"
 #include "Microtask.h"
-#include "ModuleLoaderObject.h"
+#include "ModuleLoaderPrototype.h"
 #include "NativeErrorConstructor.h"
 #include "NativeErrorPrototype.h"
 #include "NullGetterFunction.h"
@@ -512,10 +513,6 @@ void JSGlobalObject::init(VM& vm)
         m_callableProxyObjectStructure.set(vm, this, ProxyObject::createStructure(vm, this, m_objectPrototype.get(), isCallable));
     }
     m_proxyRevokeStructure.set(vm, this, ProxyRevoke::createStructure(vm, this, m_functionPrototype.get()));
-    
-#if ENABLE(WEBASSEMBLY)
-    m_wasmModuleStructure.set(vm, this, JSWASMModule::createStructure(vm, this));
-#endif
 
     m_parseIntFunction.set(vm, this, JSFunction::create(vm, this, 2, vm.propertyNames->parseInt.string(), globalFuncParseInt, NoIntrinsic));
     putDirectWithoutTransition(vm, vm.propertyNames->parseInt, m_parseIntFunction.get(), DontEnum);
@@ -553,6 +550,7 @@ m_ ## properName ## Structure.set(vm, this, instanceType::createStructure(vm, th
 
     m_propertyNameIteratorStructure.set(vm, this, JSPropertyNameIterator::createStructure(vm, this, m_iteratorPrototype.get()));
     m_generatorPrototype.set(vm, this, GeneratorPrototype::create(vm, this, GeneratorPrototype::createStructure(vm, this, m_iteratorPrototype.get())));
+    m_moduleLoaderPrototype.set(vm, this, ModuleLoaderPrototype::create(vm, this, ModuleLoaderPrototype::createStructure(vm, this, m_objectPrototype.get())));
     
     // Constructors
 
@@ -642,7 +640,8 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     ReflectObject* reflectObject = ReflectObject::create(vm, this, ReflectObject::createStructure(vm, this, m_objectPrototype.get()));
     putDirectWithoutTransition(vm, vm.propertyNames->Reflect, reflectObject, DontEnum);
 
-    m_moduleLoader.set(vm, this, ModuleLoaderObject::create(vm, this, ModuleLoaderObject::createStructure(vm, this, m_objectPrototype.get())));
+    m_moduleLoaderStructure.set(vm, this, JSModuleLoader::createStructure(vm, this, m_moduleLoaderPrototype.get()));
+    m_moduleLoader.set(vm, this, JSModuleLoader::create(vm, this, m_moduleLoaderStructure.get()));
     if (Options::exposeInternalModuleLoader())
         putDirectWithoutTransition(vm, vm.propertyNames->Loader, m_moduleLoader.get(), DontEnum);
 
@@ -869,7 +868,7 @@ namespace {
 class ObjectsWithBrokenIndexingFinder : public MarkedBlock::VoidFunctor {
 public:
     ObjectsWithBrokenIndexingFinder(MarkedArgumentBuffer&, JSGlobalObject*);
-    IterationStatus operator()(JSCell*);
+    IterationStatus operator()(HeapCell*, HeapCell::Kind) const;
 
 private:
     void visit(JSCell*);
@@ -926,9 +925,13 @@ inline void ObjectsWithBrokenIndexingFinder::visit(JSCell* cell)
     m_foundObjects.append(object);
 }
 
-IterationStatus ObjectsWithBrokenIndexingFinder::operator()(JSCell* cell)
+IterationStatus ObjectsWithBrokenIndexingFinder::operator()(HeapCell* cell, HeapCell::Kind kind) const
 {
-    visit(cell);
+    if (kind == HeapCell::JSCell) {
+        // FIXME: This const_cast exists because this isn't a C++ lambda.
+        // https://bugs.webkit.org/show_bug.cgi?id=159644
+        const_cast<ObjectsWithBrokenIndexingFinder*>(this)->visit(static_cast<JSCell*>(cell));
+    }
     return IterationStatus::Continue;
 }
 
@@ -1053,6 +1056,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_iteratorPrototype);
     visitor.append(&thisObject->m_generatorFunctionPrototype);
     visitor.append(&thisObject->m_generatorPrototype);
+    visitor.append(&thisObject->m_moduleLoaderPrototype);
 
     thisObject->m_debuggerScopeStructure.visit(visitor);
     thisObject->m_withScopeStructure.visit(visitor);
@@ -1096,9 +1100,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_proxyObjectStructure);
     visitor.append(&thisObject->m_callableProxyObjectStructure);
     visitor.append(&thisObject->m_proxyRevokeStructure);
-#if ENABLE(WEBASSEMBLY)
-    visitor.append(&thisObject->m_wasmModuleStructure);
-#endif
+    visitor.append(&thisObject->m_moduleLoaderStructure);
 
 #define VISIT_SIMPLE_TYPE(CapitalName, lowerName, properName, instanceType, jsName) \
     visitor.append(&thisObject->m_ ## lowerName ## Prototype); \

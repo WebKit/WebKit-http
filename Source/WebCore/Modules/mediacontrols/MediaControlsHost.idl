@@ -34,15 +34,15 @@ enum DeviceType {
     ImplementationLacksVTable,
     NoInterfaceObject,
 ] interface MediaControlsHost {
-    TextTrack[] sortedTrackListForMenu(TextTrackList? trackList);
-    AudioTrack[] sortedTrackListForMenu(AudioTrackList? trackList);
+    sequence<TextTrack> sortedTrackListForMenu(TextTrackList? trackList);
+    sequence<AudioTrack> sortedTrackListForMenu(AudioTrackList? trackList);
     DOMString displayNameForTrack(TextTrack? track);
     DOMString displayNameForTrack(AudioTrack? track);
     readonly attribute TextTrack captionMenuOffItem;
     readonly attribute TextTrack captionMenuAutomaticItem;
     readonly attribute DOMString captionDisplayMode;
     void setSelectedTextTrack(TextTrack? track);
-    void setPreparedForInline(boolean prepared);
+    void setPreparedToReturnVideoLayerToInline(boolean prepared);
     readonly attribute HTMLElement textTrackContainer;
     readonly attribute boolean allowsInlineMediaPlayback;
     readonly attribute boolean supportsFullscreen;

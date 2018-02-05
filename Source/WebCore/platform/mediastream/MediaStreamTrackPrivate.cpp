@@ -34,7 +34,6 @@
 #include "IntRect.h"
 #include "MediaSourceSettings.h"
 #include "UUID.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -211,6 +210,13 @@ bool MediaStreamTrackPrivate::preventSourceFromStopping()
 {
     // Do not allow the source to stop if we are still using it.
     return !m_isEnded;
+}
+
+void MediaStreamTrackPrivate::sourceHasMoreMediaData(MediaSample& mediaSample)
+{
+    mediaSample.setTrackID(id());
+    for (auto& observer : m_observers)
+        observer->sampleBufferUpdated(*this, mediaSample);
 }
 
 } // namespace WebCore

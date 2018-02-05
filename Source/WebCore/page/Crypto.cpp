@@ -33,24 +33,19 @@
 
 #include "Document.h"
 #include "ExceptionCode.h"
-#include "SubtleCrypto.h"
+#include "WebKitSubtleCrypto.h"
 #include <runtime/ArrayBufferView.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 
 namespace WebCore {
 
-Crypto::Crypto(Document& document)
-    : ContextDestructionObserver(&document)
+Crypto::Crypto(ScriptExecutionContext& context)
+    : ContextDestructionObserver(&context)
 {
 }
 
 Crypto::~Crypto()
 {
-}
-
-Document* Crypto::document() const
-{
-    return downcast<Document>(scriptExecutionContext());
 }
 
 void Crypto::getRandomValues(ArrayBufferView* array, ExceptionCode& ec)
@@ -67,13 +62,17 @@ void Crypto::getRandomValues(ArrayBufferView* array, ExceptionCode& ec)
 }
 
 #if ENABLE(SUBTLE_CRYPTO)
-SubtleCrypto* Crypto::subtle()
+WebKitSubtleCrypto* Crypto::webkitSubtle(ExceptionCode& ec)
 {
-    ASSERT(isMainThread());
-    if (!m_subtle)
-        m_subtle = SubtleCrypto::create(*document());
+    if (!isMainThread()) {
+        ec = NOT_SUPPORTED_ERR;
+        return 0;
+    }
 
-    return m_subtle.get();
+    if (!m_webkitSubtle)
+        m_webkitSubtle = WebKitSubtleCrypto::create(*downcast<Document>(scriptExecutionContext()));
+
+    return m_webkitSubtle.get();
 }
 #endif
 

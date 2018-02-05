@@ -37,9 +37,10 @@ class UnableToApplyPatch(Exception):
 
 
 class PatchIsNotValid(Exception):
-    def __init__(self, patch):
+    def __init__(self, patch, failure_message):
         Exception.__init__(self)
         self.patch = patch
+        self.failure_message = failure_message
 
 
 class PatchAnalysisTaskDelegate(object):
@@ -82,8 +83,11 @@ class PatchAnalysisTask(object):
         self._script_error = None
         self._results_archive_from_patch_test_run = None
         self._results_from_patch_test_run = None
+        self.error = None
 
     def _run_command(self, command, success_message, failure_message):
+        if not self.validate():
+            raise PatchIsNotValid(self._patch, self.error)
         try:
             self._delegate.run_command(command)
             self._delegate.command_passed(success_message, patch=self._patch)

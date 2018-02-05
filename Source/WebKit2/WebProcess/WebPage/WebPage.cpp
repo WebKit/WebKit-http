@@ -31,7 +31,6 @@
 
 #include "APIArray.h"
 #include "APIGeometry.h"
-#include "Arguments.h"
 #include "AssistedNodeInformation.h"
 #include "DataReference.h"
 #include "DragControllerAction.h"
@@ -79,6 +78,7 @@
 #include "WebFrameLoaderClient.h"
 #include "WebFullScreenManager.h"
 #include "WebFullScreenManagerMessages.h"
+#include "WebGamepadProvider.h"
 #include "WebGeolocationClient.h"
 #include "WebImage.h"
 #include "WebInspector.h"
@@ -96,6 +96,7 @@
 #include "WebPageProxyMessages.h"
 #include "WebPaymentCoordinator.h"
 #include "WebPlugInClient.h"
+#include "WebPluginInfoProvider.h"
 #include "WebPopupMenu.h"
 #include "WebPreferencesDefinitions.h"
 #include "WebPreferencesKeys.h"
@@ -254,8 +255,8 @@ static const double pageScrollHysteresisSeconds = 0.3;
 static const std::chrono::milliseconds initialLayerVolatilityTimerInterval { 20 };
 static const std::chrono::seconds maximumLayerVolatilityTimerInterval { 2 };
 
-#define WEBPAGE_LOG_ALWAYS(...) LOG_ALWAYS(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
-#define WEBPAGE_LOG_ALWAYS_ERROR(...) LOG_ALWAYS_ERROR(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
+#define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
+#define RELEASE_LOG_ERROR_IF_ALLOWED(...) RELEASE_LOG_ERROR_IF(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
 
 class SendStopResponsivenessTimer {
 public:
@@ -411,6 +412,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     pageConfiguration.applicationCacheStorage = &WebProcess::singleton().applicationCacheStorage();
     pageConfiguration.databaseProvider = WebDatabaseProvider::getOrCreate(m_pageGroup->pageGroupID());
+    pageConfiguration.pluginInfoProvider = &WebPluginInfoProvider::singleton();
     pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::getOrCreate(m_pageGroup->pageGroupID());
     pageConfiguration.userContentProvider = m_userContentController.ptr();
     pageConfiguration.visitedLinkStore = VisitedLinkTableController::getOrCreate(parameters.visitedLinkTableID);
@@ -1362,16 +1364,10 @@ void WebPage::setSize(const WebCore::IntSize& viewSize)
 }
 
 #if USE(COORDINATED_GRAPHICS)
-void WebPage::setFixedVisibleContentRect(const IntRect& rect)
-{
-    ASSERT(m_useFixedLayout);
-
-    m_page->mainFrame().view()->setFixedVisibleContentRect(rect);
-}
-
 void WebPage::sendViewportAttributesChanged()
 {
-    ASSERT(m_useFixedLayout);
+    FrameView* view = m_page->mainFrame().view();
+    ASSERT(view && view->useFixedLayout());
 
     // Viewport properties have no impact on zero sized fixed viewports.
     if (m_viewSize.isEmpty())
@@ -1388,8 +1384,6 @@ void WebPage::sendViewportAttributesChanged()
 
     ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, 1, m_viewSize);
 
-    FrameView* view = m_page->mainFrame().view();
-
     // If no layout was done yet set contentFixedOrigin to (0,0).
     IntPoint contentFixedOrigin = view->didFirstLayout() ? view->fixedVisibleContentRect().location() : IntPoint();
 
@@ -1404,7 +1398,7 @@ void WebPage::sendViewportAttributesChanged()
 #endif
 
     contentFixedSize.scale(1 / attr.initialScale);
-    setFixedVisibleContentRect(IntRect(contentFixedOrigin, roundedIntSize(contentFixedSize)));
+    view->setFixedVisibleContentRect(IntRect(contentFixedOrigin, roundedIntSize(contentFixedSize)));
 
     attr.initialScale = m_page->viewportArguments().zoom; // Resets auto (-1) if no value was set by user.
 
@@ -2070,12 +2064,12 @@ void WebPage::layerVolatilityTimerFired()
     bool didSucceed = markLayersVolatileImmediatelyIfPossible();
     if (didSucceed || newInterval > maximumLayerVolatilityTimerInterval) {
         m_layerVolatilityTimer.stop();
-        WEBPAGE_LOG_ALWAYS("%p - WebPage - Attempted to mark surfaces as volatile, success? %d", this, didSucceed);
+        RELEASE_LOG_IF_ALLOWED("%p - WebPage - Attempted to mark surfaces as volatile, success? %d", this, didSucceed);
         callVolatilityCompletionHandlers();
         return;
     }
 
-    WEBPAGE_LOG_ALWAYS_ERROR("%p - WebPage - Failed to mark all layers as volatile, will retry in %lld ms", this, static_cast<long long>(newInterval.count()));
+    RELEASE_LOG_ERROR_IF_ALLOWED("%p - WebPage - Failed to mark all layers as volatile, will retry in %lld ms", this, static_cast<long long>(newInterval.count()));
     m_layerVolatilityTimer.startRepeating(newInterval);
 }
 
@@ -2086,7 +2080,7 @@ bool WebPage::markLayersVolatileImmediatelyIfPossible()
 
 void WebPage::markLayersVolatile(std::function<void ()> completionHandler)
 {
-    WEBPAGE_LOG_ALWAYS("%p - WebPage::markLayersVolatile()", this);
+    RELEASE_LOG_IF_ALLOWED("%p - WebPage::markLayersVolatile()", this);
 
     if (m_layerVolatilityTimer.isActive())
         m_layerVolatilityTimer.stop();
@@ -2097,22 +2091,22 @@ void WebPage::markLayersVolatile(std::function<void ()> completionHandler)
     bool didSucceed = markLayersVolatileImmediatelyIfPossible();
     if (didSucceed || m_isSuspendedUnderLock) {
         if (didSucceed)
-            WEBPAGE_LOG_ALWAYS("%p - WebPage - Successfully marked layers as volatile", this);
+            RELEASE_LOG_IF_ALLOWED("%p - WebPage - Successfully marked layers as volatile", this);
         else {
             // If we get suspended when locking the screen, it is expected that some IOSurfaces cannot be marked as purgeable so we do not keep retrying.
-            WEBPAGE_LOG_ALWAYS("%p - WebPage - Did what we could to mark IOSurfaces as purgeable after locking the screen", this);
+            RELEASE_LOG_IF_ALLOWED("%p - WebPage - Did what we could to mark IOSurfaces as purgeable after locking the screen", this);
         }
         callVolatilityCompletionHandlers();
         return;
     }
 
-    WEBPAGE_LOG_ALWAYS("%p - Failed to mark all layers as volatile, will retry in %lld ms", this, initialLayerVolatilityTimerInterval.count());
+    RELEASE_LOG_IF_ALLOWED("%p - Failed to mark all layers as volatile, will retry in %lld ms", this, initialLayerVolatilityTimerInterval.count());
     m_layerVolatilityTimer.startRepeating(initialLayerVolatilityTimerInterval);
 }
 
 void WebPage::cancelMarkLayersVolatile()
 {
-    WEBPAGE_LOG_ALWAYS("%p - WebPage::cancelMarkLayersVolatile()", this);
+    RELEASE_LOG_IF_ALLOWED("%p - WebPage::cancelMarkLayersVolatile()", this);
     m_layerVolatilityTimer.stop();
     m_markLayersAsVolatileCompletionHandlers.clear();
 }
@@ -3099,7 +3093,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
     
     settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
-    
+    settings.setNewCSSParserEnabled(store.getBoolValueForKey(WebPreferencesKey::newCSSParserEnabledKey()));
+
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));
 
     settings.setUseLegacyTextAlignPositionedElementBehavior(store.getBoolValueForKey(WebPreferencesKey::useLegacyTextAlignPositionedElementBehaviorKey()));
@@ -3183,6 +3178,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
     settings.setSpringTimingFunctionEnabled(store.getBoolValueForKey(WebPreferencesKey::springTimingFunctionEnabledKey()));
+
+    settings.setVisualViewportEnabled(store.getBoolValueForKey(WebPreferencesKey::visualViewportEnabledKey()));
 
     bool processSuppressionEnabled = store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey());
     if (m_processSuppressionEnabled != processSuppressionEnabled) {
@@ -3881,7 +3878,7 @@ bool WebPage::windowAndWebPageAreFocused() const
     return m_page->focusController().isFocused() && m_page->focusController().isActive();
 }
 
-void WebPage::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void WebPage::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     if (decoder.messageReceiverName() == Messages::CoordinatedLayerTreeHost::messageReceiverName()) {
@@ -3913,7 +3910,7 @@ void WebPage::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder
     didReceiveWebPageMessage(connection, decoder);
 }
 
-void WebPage::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void WebPage::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {   
     didReceiveSyncWebPageMessage(connection, decoder, replyEncoder);
 }
@@ -5438,19 +5435,19 @@ void WebPage::removeAllUserContent()
     m_userContentController->removeAllUserContent();
 }
 
-void WebPage::dispatchDidLayout(WebCore::LayoutMilestones milestones)
+void WebPage::dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones milestones)
 {
     RefPtr<API::Object> userData;
-    injectedBundleLoaderClient().didLayout(this, milestones, userData);
+    injectedBundleLoaderClient().didReachLayoutMilestone(this, milestones, userData);
 
     // Clients should not set userData for this message, and it won't be passed through.
     ASSERT(!userData);
 
     // The drawing area might want to defer dispatch of didLayout to the UI process.
-    if (m_drawingArea && m_drawingArea->dispatchDidLayout(milestones))
+    if (m_drawingArea && m_drawingArea->dispatchDidReachLayoutMilestone(milestones))
         return;
 
-    send(Messages::WebPageProxy::DidLayout(milestones));
+    send(Messages::WebPageProxy::DidReachLayoutMilestone(milestones));
 }
 
 void WebPage::didRestoreScrollPosition()
@@ -5468,5 +5465,14 @@ void WebPage::setUserInterfaceLayoutDirection(uint32_t direction)
     m_userInterfaceLayoutDirection = static_cast<WebCore::UserInterfaceLayoutDirection>(direction);
     m_page->setUserInterfaceLayoutDirection(m_userInterfaceLayoutDirection);
 }
+
+#if ENABLE(GAMEPAD)
+
+void WebPage::gamepadActivity(const Vector<GamepadData>& gamepadDatas)
+{
+    WebGamepadProvider::singleton().gamepadActivity(gamepadDatas);
+}
+
+#endif
 
 } // namespace WebKit

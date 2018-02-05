@@ -201,10 +201,10 @@ static RefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
     return keyPath;
 }
 
-static RefPtr<IDBTransaction> transactionForDatabase(ScriptExecutionContext* scriptExecutionContext, IDBDatabase* idbDatabase, const String& objectStoreName, const String& mode = IDBTransaction::modeReadOnly())
+static RefPtr<IDBTransaction> transactionForDatabase(IDBDatabase* idbDatabase, const String& objectStoreName, const String& mode = IDBTransaction::modeReadOnly())
 {
     ExceptionCodeWithMessage ec;
-    RefPtr<IDBTransaction> idbTransaction = idbDatabase->transaction(scriptExecutionContext, objectStoreName, mode, ec);
+    RefPtr<IDBTransaction> idbTransaction = idbDatabase->transaction(objectStoreName, mode, ec);
     if (ec.code)
         return nullptr;
     return idbTransaction;
@@ -472,7 +472,7 @@ public:
         if (!requestCallback().isActive())
             return;
 
-        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(context(), &database, m_objectStoreName);
+        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(&database, m_objectStoreName);
         if (!idbTransaction) {
             m_requestCallback->sendFailure("Could not get transaction");
             return;
@@ -486,6 +486,7 @@ public:
         TransactionActivator activator(idbTransaction.get());
         ExceptionCodeWithMessage ec;
         RefPtr<IDBRequest> idbRequest;
+        JSC::ExecState* exec = context() ? context()->execState() : nullptr;
         if (!m_indexName.isEmpty()) {
             RefPtr<IDBIndex> idbIndex = indexForObjectStore(idbObjectStore.get(), m_indexName);
             if (!idbIndex) {
@@ -493,9 +494,9 @@ public:
                 return;
             }
 
-            idbRequest = idbIndex->openCursor(*context(), m_idbKeyRange.get(), IDBCursor::directionNext(), ec);
+            idbRequest = exec ? idbIndex->openCursor(*exec, m_idbKeyRange.get(), IDBCursor::directionNext(), ec) : nullptr;
         } else
-            idbRequest = idbObjectStore->openCursor(*context(), m_idbKeyRange.get(), IDBCursor::directionNext(), ec);
+            idbRequest = exec ? idbObjectStore->openCursor(*exec, m_idbKeyRange.get(), IDBCursor::directionNext(), ec) : nullptr;
 
         if (!idbRequest) {
             m_requestCallback->sendFailure("Could not open cursor to populate database data");
@@ -705,7 +706,7 @@ public:
         if (!requestCallback().isActive())
             return;
 
-        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(context(), &database, m_objectStoreName);
+        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(&database, m_objectStoreName);
         if (!idbTransaction) {
             m_requestCallback->sendFailure("Could not get transaction");
             return;
@@ -718,7 +719,8 @@ public:
         }
 
         ExceptionCodeWithMessage ec;
-        RefPtr<IDBRequest> idbRequest = idbObjectStore->clear(*context(), ec);
+        JSC::ExecState* exec = context() ? context()->execState() : nullptr;
+        RefPtr<IDBRequest> idbRequest = exec ? idbObjectStore->clear(*exec, ec) : nullptr;
         ASSERT(!ec.code);
         if (ec.code) {
             m_requestCallback->sendFailure(String::format("Could not clear object store '%s': %d", m_objectStoreName.utf8().data(), ec.code));
@@ -748,5 +750,4 @@ void InspectorIndexedDBAgent::clearObjectStore(ErrorString& errorString, const S
 }
 
 } // namespace WebCore
-
 #endif // ENABLE(INDEXED_DATABASE)

@@ -69,6 +69,7 @@
 #include "PageThrottler.h"
 #include "PlugInClient.h"
 #include "PluginData.h"
+#include "PluginInfoProvider.h"
 #include "PluginViewBase.h"
 #include "PointerLockController.h"
 #include "ProgressTracker.h"
@@ -96,7 +97,6 @@
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
 #include "Widget.h"
-#include <wtf/HashMap.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/Base64.h>
@@ -233,6 +233,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_socketProvider(WTFMove(pageConfiguration.socketProvider))
     , m_applicationCacheStorage(*WTFMove(pageConfiguration.applicationCacheStorage))
     , m_databaseProvider(*WTFMove(pageConfiguration.databaseProvider))
+    , m_pluginInfoProvider(*WTFMove(pageConfiguration.pluginInfoProvider))
     , m_storageNamespaceProvider(*WTFMove(pageConfiguration.storageNamespaceProvider))
     , m_userContentProvider(*WTFMove(pageConfiguration.userContentProvider))
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
@@ -241,8 +242,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
 {
     updateTimerThrottlingState();
 
+    m_pluginInfoProvider->addPage(*this);
     m_storageNamespaceProvider->addPage(*this);
-
     m_userContentProvider->addPage(*this);
     m_visitedLinkStore->addPage(*this);
 
@@ -298,6 +299,7 @@ Page::~Page()
     pageCounter.decrement();
 #endif
 
+    m_pluginInfoProvider->removePage(*this);
     m_storageNamespaceProvider->removePage(*this);
     m_userContentProvider->removePage(*this);
     m_visitedLinkStore->removePage(*this);
@@ -507,11 +509,12 @@ void Page::refreshPlugins(bool reload)
     if (!allPages)
         return;
 
-    PluginData::refresh();
+    HashSet<PluginInfoProvider*> pluginInfoProviders;
 
     Vector<Ref<Frame>> framesNeedingReload;
 
     for (auto& page : *allPages) {
+        pluginInfoProviders.add(&page->pluginInfoProvider());
         page->m_pluginData = nullptr;
 
         if (!reload)
@@ -523,14 +526,17 @@ void Page::refreshPlugins(bool reload)
         }
     }
 
+    for (auto& pluginInfoProvider : pluginInfoProviders)
+        pluginInfoProvider->refreshPlugins();
+
     for (auto& frame : framesNeedingReload)
         frame->loader().reload();
 }
 
-PluginData& Page::pluginData() const
+PluginData& Page::pluginData()
 {
     if (!m_pluginData)
-        m_pluginData = PluginData::create(this);
+        m_pluginData = PluginData::create(*this);
     return *m_pluginData;
 }
 
@@ -1723,7 +1729,7 @@ void Page::addRelevantRepaintedObject(RenderObject* object, const LayoutRect& ob
         m_isCountingRelevantRepaintedObjects = false;
         resetRelevantPaintedObjectCounter();
         if (Frame* frame = &mainFrame())
-            frame->loader().didLayout(DidHitRelevantRepaintedObjectsAreaThreshold);
+            frame->loader().didReachLayoutMilestone(DidHitRelevantRepaintedObjectsAreaThreshold);
     }
 }
 
@@ -1845,6 +1851,11 @@ void Page::allowPrompts()
 bool Page::arePromptsAllowed()
 {
     return !m_forbidPromptsDepth;
+}
+
+PluginInfoProvider& Page::pluginInfoProvider()
+{
+    return m_pluginInfoProvider;
 }
 
 UserContentProvider& Page::userContentProvider()

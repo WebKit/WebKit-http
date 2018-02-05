@@ -38,7 +38,6 @@
 #include "ActiveDOMObject.h"
 #include "MediaDevices.h"
 #include "MediaStreamCreationClient.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -56,7 +55,7 @@ typedef int ExceptionCode;
 
 class UserMediaRequest : public MediaStreamCreationClient, public ContextDestructionObserver {
 public:
-    static void start(Document*, const Dictionary&, MediaDevices::Promise&&, ExceptionCode&);
+    static void start(Document*, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&&, ExceptionCode&);
 
     ~UserMediaRequest();
 
@@ -74,20 +73,20 @@ public:
     const String& allowedVideoDeviceUID() const { return m_allowedVideoDeviceUID; }
 
 private:
-    UserMediaRequest(ScriptExecutionContext*, UserMediaController*, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints, MediaDevices::Promise&&);
+    UserMediaRequest(ScriptExecutionContext*, UserMediaController*, Ref<MediaConstraints>&& audioConstraints, Ref<MediaConstraints>&& videoConstraints, MediaDevices::Promise&&);
 
     // MediaStreamCreationClient
     void constraintsValidated(const Vector<RefPtr<RealtimeMediaSource>>& audioTracks, const Vector<RefPtr<RealtimeMediaSource>>& videoTracks) final;
     void constraintsInvalid(const String& constraintName) final;
-    void didCreateStream(PassRefPtr<MediaStreamPrivate>) final;
+    void didCreateStream(RefPtr<MediaStreamPrivate>&&) final;
     void failedToCreateStreamWithConstraintsError(const String& constraintName) final;
     void failedToCreateStreamWithPermissionError() final;
 
     // ContextDestructionObserver
     void contextDestroyed() final;
     
-    RefPtr<MediaConstraints> m_audioConstraints;
-    RefPtr<MediaConstraints> m_videoConstraints;
+    Ref<MediaConstraints> m_audioConstraints;
+    Ref<MediaConstraints> m_videoConstraints;
 
     Vector<String> m_videoDeviceUIDs;
     Vector<String> m_audioDeviceUIDs;

@@ -128,7 +128,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckCell:
     case CheckBadCell:
     case CheckNotEmpty:
-    case CheckIdent:
+    case CheckStringIdent:
     case CheckWatchdogTimer:
     case StringCharCodeAt:
     case StringFromCharCode:
@@ -142,6 +142,7 @@ inline CapabilityLevel canCompile(Node* node)
     case TailCallInlinedCaller:
     case Construct:
     case CallVarargs:
+    case CallEval:
     case TailCallVarargs:
     case TailCallVarargsInlinedCaller:
     case ConstructVarargs:
@@ -228,7 +229,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PutGetterSetterById:
     case PutGetterByVal:
     case PutSetterByVal:
-    case CopyRest:
+    case CreateRest:
     case GetRestLength:
     case RegExpExec:
     case RegExpTest:
@@ -244,6 +245,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ResolveScope:
     case GetDynamicVar:
     case PutDynamicVar:
+    case CompareEqPtr:
         // These are OK.
         break;
 
@@ -408,6 +410,10 @@ inline CapabilityLevel canCompile(Node* node)
         if (node->isBinaryUseKind(UntypedUse))
             break;
         if (node->isBinaryUseKind(SymbolUse))
+            break;
+        if (node->isBinaryUseKind(SymbolUse, UntypedUse))
+            break;
+        if (node->isBinaryUseKind(UntypedUse, SymbolUse))
             break;
         if (node->isBinaryUseKind(MiscUse, UntypedUse))
             break;

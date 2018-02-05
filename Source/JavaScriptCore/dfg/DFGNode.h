@@ -230,6 +230,7 @@ struct StackAccessData {
 //
 // Node represents a single operation in the data flow graph.
 struct Node {
+public:
     enum VarArgTag { VarArg };
     
     Node() { }
@@ -346,9 +347,8 @@ struct Node {
     
     NodeType op() const { return static_cast<NodeType>(m_op); }
     NodeFlags flags() const { return m_flags; }
-    
-    // This is not a fast method.
-    unsigned index() const;
+
+    unsigned index() const { return m_index; }
     
     void setOp(NodeType op)
     {
@@ -805,7 +805,7 @@ struct Node {
     }
     
     bool hasVariableAccessData(Graph&);
-    bool hasLocal(Graph& graph)
+    bool accessesStack(Graph& graph)
     {
         return hasVariableAccessData(graph);
     }
@@ -1423,6 +1423,7 @@ struct Node {
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -1467,6 +1468,7 @@ struct Node {
         case NewGeneratorFunction:
         case CreateActivation:
         case MaterializeCreateActivation:
+        case CompareEqPtr:
             return true;
         default:
             return false;
@@ -1515,7 +1517,7 @@ struct Node {
 
     bool hasUidOperand()
     {
-        return op() == CheckIdent;
+        return op() == CheckStringIdent;
     }
 
     UniquedStringImpl* uidOperand()
@@ -2317,7 +2319,7 @@ struct Node {
 
     unsigned numberOfArgumentsToSkip()
     {
-        ASSERT(op() == CopyRest || op() == GetRestLength);
+        ASSERT(op() == CreateRest || op() == GetRestLength);
         return static_cast<unsigned>(m_opInfo);
     }
 
@@ -2342,6 +2344,9 @@ struct Node {
     AdjacencyList children;
 
 private:
+    friend class Graph;
+
+    unsigned m_index { std::numeric_limits<unsigned>::max() };
     unsigned m_op : 10; // real type is NodeType
     unsigned m_flags : 20;
     // The virtual register number (spill location) associated with this .
@@ -2349,16 +2354,12 @@ private:
     // The number of uses of the result of this operation (+1 for 'must generate' nodes, which have side-effects).
     unsigned m_refCount;
     // The prediction ascribed to this node after propagation.
-    SpeculatedType m_prediction;
+    SpeculatedType m_prediction { SpecNone };
     // Immediate values, accesses type-checked via accessors above. The first one is
     // big enough to store a pointer.
     uintptr_t m_opInfo;
     uintptr_t m_opInfo2;
 
-public:
-    // Fields used by various analyses.
-    AbstractValue value;
-    
     // Miscellaneous data that is usually meaningless, but can hold some analysis results
     // if you ask right. For example, if you do Graph::initializeNodeOwners(), Node::owner
     // will tell you which basic block a node belongs to. You cannot rely on this persisting

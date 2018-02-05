@@ -154,16 +154,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArithMin:
     case ArithMax:
     case ArithPow:
-    case ArithSqrt:
     case ArithFRound:
-    case ArithSin:
-    case ArithCos:
-    case ArithLog:
     case GetScope:
     case SkipScope:
     case GetGlobalObject:
     case StringCharCodeAt:
     case CompareStrictEq:
+    case CompareEqPtr:
     case IsJSArray:
     case IsEmpty:
     case IsUndefined:
@@ -187,6 +184,18 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case BottomValue:
     case TypeOf:
         def(PureValue(node));
+        return;
+
+    case ArithCos:
+    case ArithLog:
+    case ArithSin:
+    case ArithSqrt:
+        if (node->child1().useKind() == DoubleRepUse)
+            def(PureValue(node));
+        else {
+            read(World);
+            write(Heap);
+        }
         return;
 
     case BitAnd:
@@ -343,8 +352,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(PureValue(CheckNotEmpty, AdjacencyList(AdjacencyList::Fixed, node->child1())));
         return;
 
-    case CheckIdent:
-        def(PureValue(CheckIdent, AdjacencyList(AdjacencyList::Fixed, node->child1()), node->uidOperand()));
+    case CheckStringIdent:
+        def(PureValue(CheckStringIdent, AdjacencyList(AdjacencyList::Fixed, node->child1()), node->uidOperand()));
         return;
 
     case ConstantStoragePointer:
@@ -430,11 +439,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
-    case VarInjectionWatchpoint:
-        read(MiscFields);
-        def(HeapLocation(VarInjectionWatchpointLoc, MiscFields), LazyNode(node));
-        return;
-
     case IsObjectOrNull:
         read(MiscFields);
         def(HeapLocation(IsObjectOrNullLoc, MiscFields, node->child1()), LazyNode(node));
@@ -479,6 +483,14 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetDynamicVar:
     case PutDynamicVar:
     case ResolveScope:
+        read(World);
+        write(Heap);
+        return;
+
+    case CallEval:
+        ASSERT(!node->origin.semantic.inlineCallFrame);
+        read(AbstractHeap(Stack, graph.m_codeBlock->scopeRegister()));
+        read(AbstractHeap(Stack, virtualRegisterForArgument(0)));
         read(World);
         write(Heap);
         return;
@@ -1093,9 +1105,16 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
     }
 
-    case CopyRest: {
+    case CreateRest: {
+        if (!graph.isWatchingHavingABadTimeWatchpoint(node)) {
+            // This means we're already having a bad time.
+            read(World);
+            write(Heap);
+            return;
+        }
         read(Stack);
-        write(Heap);
+        read(HeapObjectCount);
+        write(HeapObjectCount);
         return;
     }
 

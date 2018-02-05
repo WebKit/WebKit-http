@@ -441,8 +441,11 @@ HRESULT DOMNode::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (FAILED(hr))
         return hr;
 
+    if (!domEvent->coreEvent())
+        return E_FAIL;
+
     WebCore::ExceptionCode ec = 0;
-    *result = m_node->dispatchEventForBindings(domEvent->coreEvent(), ec) ? TRUE : FALSE;
+    *result = m_node->dispatchEventForBindings(*domEvent->coreEvent(), ec) ? TRUE : FALSE;
     return ec ? E_FAIL : S_OK;
 }
 
@@ -791,6 +794,8 @@ HRESULT DOMDocument::getComputedStyle(_In_opt_ IDOMElement* elt, _In_ BSTR pseud
     if (FAILED(hr))
         return hr;
     Element* element = domEle->element();
+    if (!element)
+        return E_FAIL;
 
     WebCore::DOMWindow* dv = m_document->defaultView();
     String pseudoEltString(pseudoElt);
@@ -798,7 +803,7 @@ HRESULT DOMDocument::getComputedStyle(_In_opt_ IDOMElement* elt, _In_ BSTR pseud
     if (!dv)
         return E_FAIL;
     
-    *result = DOMCSSStyleDeclaration::createInstance(dv->getComputedStyle(element, pseudoEltString.impl()).get());
+    *result = DOMCSSStyleDeclaration::createInstance(dv->getComputedStyle(*element, pseudoEltString.impl()).get());
     return *result ? S_OK : E_FAIL;
 }
 
@@ -938,8 +943,11 @@ HRESULT DOMWindow::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (FAILED(hr))
         return hr;
 
+    if (!domEvent->coreEvent())
+        return E_FAIL;
+
     WebCore::ExceptionCode ec = 0;
-    *result = m_window->dispatchEventForBindings(domEvent->coreEvent(), ec) ? TRUE : FALSE;
+    *result = m_window->dispatchEventForBindings(*domEvent->coreEvent(), ec) ? TRUE : FALSE;
     return ec ? E_FAIL : S_OK;
 }
 

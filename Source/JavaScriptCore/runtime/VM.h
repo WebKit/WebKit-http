@@ -65,7 +65,6 @@
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/ThreadSpecific.h>
 #include <wtf/WTFThreadData.h>
-#include <wtf/WeakRandom.h>
 #include <wtf/text/SymbolRegistry.h>
 #include <wtf/text/WTFString.h>
 #if ENABLE(REGEXP_TRACING)
@@ -108,6 +107,7 @@ class Structure;
 #if ENABLE(REGEXP_TRACING)
 class RegExp;
 #endif
+class Symbol;
 class UnlinkedCodeBlock;
 class UnlinkedEvalCodeBlock;
 class UnlinkedFunctionExecutable;
@@ -278,7 +278,11 @@ public:
     VMType vmType;
     ClientData* clientData;
     VMEntryFrame* topVMEntryFrame;
-    ExecState* topCallFrame;
+    // NOTE: When throwing an exception while rolling back the call frame, this may be equal to
+    // topVMEntryFrame.
+    // FIXME: This should be a void*, because it might not point to a CallFrame.
+    // https://bugs.webkit.org/show_bug.cgi?id=160441
+    ExecState* topCallFrame; 
     Strong<Structure> structureStructure;
     Strong<Structure> structureRareDataStructure;
     Strong<Structure> terminatedExecutionErrorStructure;
@@ -344,6 +348,8 @@ public:
 
     AtomicStringTable* atomicStringTable() const { return m_atomicStringTable; }
     WTF::SymbolRegistry& symbolRegistry() { return m_symbolRegistry; }
+
+    WeakGCMap<SymbolImpl*, Symbol, PtrHash<SymbolImpl*>> symbolImplToSymbolMap;
 
     enum class DeletePropertyMode {
         // Default behaviour of deleteProperty, matching the spec.
@@ -619,7 +625,6 @@ public:
 
 private:
     friend class LLIntOffsetsExtractor;
-    friend class ClearExceptionScope;
 
     VM(VMType, HeapType);
     static VM*& sharedInstanceInternal();

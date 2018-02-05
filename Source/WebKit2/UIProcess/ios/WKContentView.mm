@@ -31,6 +31,7 @@
 #import "APIPageConfiguration.h"
 #import "AccessibilityIOS.h"
 #import "ApplicationStateTracker.h"
+#import "Logging.h"
 #import "PageClientImplIOS.h"
 #import "PrintInfo.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
@@ -58,6 +59,7 @@
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/QuartzCoreSPI.h>
+#import <WebCore/TextStream.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/RetainPtr.h>
 
@@ -284,7 +286,7 @@ private:
         return;
 
     ASSERT(!_applicationStateTracker);
-    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationDidFinishSnapshottingAfterEnteringBackground), @selector(_applicationWillEnterForeground));
+    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationDidCreateWindowContext), @selector(_applicationDidFinishSnapshottingAfterEnteringBackground), @selector(_applicationWillEnterForeground));
 }
 
 - (WKBrowsingContextController *)browsingContextController
@@ -376,6 +378,8 @@ private:
         _historicalKinematicData.clear();
 
     FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredRect, zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect);
+
+    LOG_WITH_STREAM(VisibleRects, stream << "didUpdateVisibleRect: visibleRect:" << visibleRect << " unobscuredRect:" << unobscuredRect << " fixedPositionRectForLayout:" << fixedPositionRectForLayout);
 
     VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
         visibleRect,
@@ -601,6 +605,12 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow);
 }
 
+- (void)_applicationDidCreateWindowContext
+{
+    if (auto drawingArea = _page->drawingArea())
+        drawingArea->hideContentUntilAnyUpdate();
+}
+
 - (void)_applicationDidFinishSnapshottingAfterEnteringBackground
 {
     _page->applicationDidFinishSnapshottingAfterEnteringBackground();
@@ -609,8 +619,6 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 - (void)_applicationWillEnterForeground
 {
     _page->applicationWillEnterForeground();
-    if (auto drawingArea = _page->drawingArea())
-        drawingArea->hideContentUntilAnyUpdate();
     _page->viewStateDidChange(ViewState::AllFlags & ~ViewState::IsInWindow, true, WebPageProxy::ViewStateChangeDispatchMode::Immediate);
 }
 

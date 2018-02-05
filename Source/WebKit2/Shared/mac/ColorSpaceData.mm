@@ -27,8 +27,8 @@
 #include "ColorSpaceData.h"
 
 #include "ArgumentCodersCF.h"
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace WebKit {
 
@@ -38,7 +38,7 @@ enum EncodedDataType {
     Data,
 };
 
-void ColorSpaceData::encode(IPC::ArgumentEncoder& encoder) const
+void ColorSpaceData::encode(IPC::Encoder& encoder) const
 {
 #if !PLATFORM(IOS)
     if (cgColorSpace) {
@@ -67,7 +67,7 @@ void ColorSpaceData::encode(IPC::ArgumentEncoder& encoder) const
     encoder.encodeEnum(Null);
 }
 
-bool ColorSpaceData::decode(IPC::ArgumentDecoder& decoder, ColorSpaceData& colorSpaceData)
+bool ColorSpaceData::decode(IPC::Decoder& decoder, ColorSpaceData& colorSpaceData)
 {
     EncodedDataType dataType;
     if (!decoder.decodeEnum(dataType))

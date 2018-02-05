@@ -32,7 +32,6 @@
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
-#include "Entity.h"
 #include "ExceptionCode.h"
 #include "HTMLAudioElement.h"
 #include "HTMLCanvasElement.h"
@@ -66,7 +65,6 @@
 #include "StyleSheet.h"
 #include "StyledElement.h"
 #include "Text.h"
-#include <wtf/RefPtr.h>
 
 using namespace JSC;
 
@@ -114,13 +112,16 @@ bool JSNodeOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, v
 
 JSValue JSNode::insertBefore(ExecState& state)
 {
-    JSValue newChildValue = state.argument(0);
+    if (UNLIKELY(state.argumentCount() < 2))
+        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+
+    JSValue newChildValue = state.uncheckedArgument(0);
     auto* newChild = JSNode::toWrapped(newChildValue);
     if (UNLIKELY(!newChild))
         return JSValue::decode(throwArgumentTypeError(state, 0, "node", "Node", "insertBefore", "Node"));
 
     ExceptionCode ec = 0;
-    if (UNLIKELY(!wrapped().insertBefore(*newChild, JSNode::toWrapped(state.argument(1)), ec))) {
+    if (UNLIKELY(!wrapped().insertBefore(*newChild, JSNode::toWrapped(state.uncheckedArgument(1)), ec))) {
         setDOMException(&state, ec);
         return jsUndefined();
     }
@@ -131,8 +132,11 @@ JSValue JSNode::insertBefore(ExecState& state)
 
 JSValue JSNode::replaceChild(ExecState& state)
 {
-    auto* newChild = JSNode::toWrapped(state.argument(0));
-    JSValue oldChildValue = state.argument(1);
+    if (UNLIKELY(state.argumentCount() < 2))
+        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+
+    auto* newChild = JSNode::toWrapped(state.uncheckedArgument(0));
+    JSValue oldChildValue = state.uncheckedArgument(1);
     auto* oldChild = JSNode::toWrapped(oldChildValue);
     if (UNLIKELY(!newChild || !oldChild)) {
         if (!newChild)

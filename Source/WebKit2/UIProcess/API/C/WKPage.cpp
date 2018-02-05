@@ -33,6 +33,7 @@
 #include "APIDictionary.h"
 #include "APIFindClient.h"
 #include "APIFindMatchesClient.h"
+#include "APIFrameHandle.h"
 #include "APIFrameInfo.h"
 #include "APIGeometry.h"
 #include "APIHitTestResult.h"
@@ -1086,7 +1087,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didFirstVisuallyNonEmptyLayoutForFrame(toAPI(&page), toAPI(&frame), toAPI(userData), m_client.base.clientInfo);
         }
 
-        void didLayout(WebPageProxy& page, LayoutMilestones milestones) override
+        void didReachLayoutMilestone(WebPageProxy& page, LayoutMilestones milestones) override
         {
             if (!m_client.didLayout)
                 return;
@@ -2639,6 +2640,16 @@ WKArrayRef WKPageCopyRelatedPages(WKPageRef pageRef)
     return toAPI(&API::Array::create(WTFMove(relatedPages)).leakRef());
 }
 
+WKFrameRef WKPageLookUpFrameFromHandle(WKPageRef pageRef, WKFrameHandleRef handleRef)
+{
+    auto page = toImpl(pageRef);
+    auto frame = page->process().webFrame(toImpl(handleRef)->frameID());
+    if (!frame || frame->page() != page)
+        return nullptr;
+
+    return toAPI(frame);
+}
+
 void WKPageSetMayStartMediaWhenInWindow(WKPageRef pageRef, bool mayStartMedia)
 {
     toImpl(pageRef)->setMayStartMediaWhenInWindow(mayStartMedia);
@@ -2750,6 +2761,11 @@ void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportSca
 #if PLATFORM(IOS)
     toImpl(page)->setForceAlwaysUserScalable(ignoresViewportScaleLimits);
 #endif
+}
+
+pid_t WKPageGetProcessIdentifier(WKPageRef page)
+{
+    return toImpl(page)->processIdentifier();
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

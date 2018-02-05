@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,11 +28,12 @@
 #pragma once
 
 #if ENABLE(MATHML)
-#include "MathMLInlineContainerElement.h"
+
+#include "MathMLRowElement.h"
 
 namespace WebCore {
 
-class MathMLMathElement final : public MathMLInlineContainerElement {
+class MathMLMathElement final : public MathMLRowElement {
 public:
     static Ref<MathMLMathElement> create(const QualifiedName& tagName, Document&);
 
@@ -39,6 +41,10 @@ private:
     MathMLMathElement(const QualifiedName& tagName, Document&);
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     void didAttachRenderers() final;
+
+    bool acceptsDisplayStyleAttribute() final { return true; }
+    bool acceptsMathVariantAttribute() final { return true; }
+    Optional<bool> specifiedDisplayStyle() final;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 };

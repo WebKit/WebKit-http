@@ -34,7 +34,6 @@
 #include <WebCore/WebVideoFullscreenChangeObserver.h>
 #include <WebCore/WebVideoFullscreenModel.h>
 #include <wtf/HashMap.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -114,7 +113,7 @@ private:
     friend class WebVideoFullscreenModelContext;
 
     explicit WebVideoFullscreenManagerProxy(WebPageProxy&, WebPlaybackSessionManagerProxy&);
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     typedef std::tuple<RefPtr<WebVideoFullscreenModelContext>, RefPtr<PlatformWebVideoFullscreenInterface>> ModelInterfaceTuple;
     ModelInterfaceTuple createModelAndInterface(uint64_t contextId);

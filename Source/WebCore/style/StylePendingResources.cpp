@@ -35,7 +35,6 @@
 #include "RenderStyle.h"
 #include "SVGURIReference.h"
 #include "StyleCachedImage.h"
-#include "StyleCachedImageSet.h"
 #include "StyleGeneratedImage.h"
 #include "StylePendingImage.h"
 #include "TransformFunctions.h"
@@ -48,12 +47,12 @@ static RefPtr<StyleImage> loadPendingImage(Document& document, const StyleImage&
 {
     auto& pendingImage = downcast<StylePendingImage>(image);
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
-    options.setContentSecurityPolicyImposition(element && element->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
+    options.contentSecurityPolicyImposition = element && element->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
 
     // FIXME: Why does shape-outside have different policy than other properties?
     if (loadPolicy == LoadPolicy::ShapeOutside) {
         options.mode = FetchOptions::Mode::Cors;
-        options.setAllowCredentials(DoNotAllowStoredCredentials);
+        options.allowCredentials = DoNotAllowStoredCredentials;
     }
 
     if (auto imageValue = pendingImage.cssImageValue())
@@ -67,10 +66,8 @@ static RefPtr<StyleImage> loadPendingImage(Document& document, const StyleImage&
     if (auto cursorImageValue = pendingImage.cssCursorImageValue())
         return cursorImageValue->cachedImage(document.cachedResourceLoader(), options);
 
-#if ENABLE(CSS_IMAGE_SET)
     if (auto imageSetValue = pendingImage.cssImageSetValue())
-        return imageSetValue->cachedImageSet(document.cachedResourceLoader(), options);
-#endif
+        return imageSetValue->bestFitImage(document.cachedResourceLoader(), options);
 
     return nullptr;
 }
@@ -171,7 +168,7 @@ static void loadPendingSVGFilters(const PendingResources& pendingResources, Docu
         return;
 
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
-    options.setContentSecurityPolicyImposition(element && element->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
+    options.contentSecurityPolicyImposition = element && element->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
 
     for (auto& filterOperation : pendingResources.pendingSVGFilters)
         filterOperation->getOrCreateCachedSVGDocumentReference()->load(document.cachedResourceLoader(), options);

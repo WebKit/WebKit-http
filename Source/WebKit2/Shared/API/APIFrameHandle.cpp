@@ -26,8 +26,8 @@
 #include "config.h"
 #include "APIFrameHandle.h"
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace API {
 
@@ -51,13 +51,13 @@ FrameHandle::~FrameHandle()
 {
 }
 
-void FrameHandle::encode(IPC::ArgumentEncoder& encoder) const
+void FrameHandle::encode(IPC::Encoder& encoder) const
 {
     encoder << m_frameID;
     encoder << m_isAutoconverting;
 }
 
-bool FrameHandle::decode(IPC::ArgumentDecoder& decoder, RefPtr<Object>& result)
+bool FrameHandle::decode(IPC::Decoder& decoder, RefPtr<Object>& result)
 {
     uint64_t frameID;
     if (!decoder.decode(frameID))

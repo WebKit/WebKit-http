@@ -269,8 +269,7 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
     dispatch_async(dispatch_get_main_queue(), ^{
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(resolveBounds) object:nil];
 
-        if (!CGAffineTransformIsIdentity(transform))
-            [self performSelector:@selector(resolveBounds) withObject:nil afterDelay:animationDuration + 0.1];
+        [self performSelector:@selector(resolveBounds) withObject:nil afterDelay:animationDuration + 0.1];
     });
 }
 
@@ -283,13 +282,18 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
     if ([_videoSublayer superlayer] != self)
         return;
     
+    if (CGRectEqualToRect(self.modelVideoLayerFrame, [self bounds]) && CGAffineTransformIsIdentity([(UIView *)[_videoSublayer delegate] transform]))
+        return;
+    
     [CATransaction begin];
     [CATransaction setAnimationDuration:0];
     [CATransaction setDisableActions:YES];
     
-    self.modelVideoLayerFrame = [self bounds];
-    ASSERT(_fullscreenInterface->model());
-    _fullscreenInterface->model()->setVideoLayerFrame(self.modelVideoLayerFrame);
+    if (!CGRectEqualToRect(self.modelVideoLayerFrame, [self bounds])) {
+        self.modelVideoLayerFrame = [self bounds];
+        ASSERT(_fullscreenInterface->model());
+        _fullscreenInterface->model()->setVideoLayerFrame(self.modelVideoLayerFrame);
+    }
     [(UIView *)[_videoSublayer delegate] setTransform:CGAffineTransformIdentity];
     
     [CATransaction commit];
@@ -393,7 +397,7 @@ static UIView *WebAVPlayerLayerView_videoView(id aSelf, SEL)
     __AVPlayerLayerView *playerLayer = aSelf;
     WebAVPlayerLayer *webAVPlayerLayer = (WebAVPlayerLayer *)[playerLayer playerLayer];
     CALayer* videoLayer = [webAVPlayerLayer videoSublayer];
-    if (!videoLayer)
+    if (!videoLayer || !videoLayer.delegate)
         return nil;
     ASSERT([[videoLayer delegate] isKindOfClass:getUIViewClass()]);
     return (UIView *)[videoLayer delegate];
@@ -426,7 +430,8 @@ static void WebAVPlayerLayerView_startRoutingVideoToPictureInPicturePlayerLayerV
 static void WebAVPlayerLayerView_stopRoutingVideoToPictureInPicturePlayerLayerView(id aSelf, SEL)
 {
     WebAVPlayerLayerView *playerLayerView = aSelf;
-    [playerLayerView addSubview:playerLayerView.videoView];
+    if (UIView *videoView = playerLayerView.videoView)
+        [playerLayerView addSubview:videoView];
     WebAVPictureInPicturePlayerLayerView *pipView = (WebAVPictureInPicturePlayerLayerView *)[playerLayerView pictureInPicturePlayerLayerView];
     WebAVPlayerLayer *playerLayer = (WebAVPlayerLayer *)[playerLayerView playerLayer];
     WebAVPlayerLayer *pipPlayerLayer = (WebAVPlayerLayer *)[pipView layer];
@@ -776,6 +781,7 @@ void WebVideoFullscreenInterfaceAVKit::exitFullscreen(const WebCore::IntRect& fi
     } else if (isMode(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture | HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
         RefPtr<WebVideoFullscreenInterfaceAVKit> protectedThis(this);
         [m_playerViewController exitFullScreenAnimated:NO completionHandler:[protectedThis, this] (BOOL, NSError*) {
+            clearMode(HTMLMediaElementEnums::VideoFullscreenModeStandard);
             [m_window setHidden:NO];
             [m_playerViewController stopPictureInPicture];
         }];

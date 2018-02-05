@@ -52,9 +52,11 @@ public:
     void json(DeferredWrapper&&);
     void text(DeferredWrapper&&);
 
-    void loadBlob(Blob&, FetchLoader::Type);
+    void loadBlob(Blob&, FetchBodyConsumer*);
 
     bool isActive() const { return !!m_blobLoader; }
+
+    FetchBody::Type bodyType() const { return m_body.type(); }
 
 protected:
     const FetchBody& body() const { return m_body; }
@@ -67,8 +69,6 @@ protected:
 
 private:
     // Blob loading routines
-    void loadedBlobAsText(String&&);
-    void loadedBlobAsArrayBuffer(RefPtr<ArrayBuffer>&& buffer) { m_body.loadedAsArrayBuffer(WTFMove(buffer)); }
     void blobChunk(const char*, size_t);
     void blobLoadingSucceeded();
     void blobLoadingFailed();
@@ -78,8 +78,6 @@ private:
         BlobLoader(FetchBodyOwner&);
 
         // FetchLoaderClient API
-        void didFinishLoadingAsText(String&& text) final { owner.loadedBlobAsText(WTFMove(text)); }
-        void didFinishLoadingAsArrayBuffer(RefPtr<ArrayBuffer>&& buffer) final { owner.loadedBlobAsArrayBuffer(WTFMove(buffer)); }
         void didReceiveResponse(const ResourceResponse&) final;
         void didReceiveData(const char* data, size_t size) final { owner.blobChunk(data, size); }
         void didFail() final;

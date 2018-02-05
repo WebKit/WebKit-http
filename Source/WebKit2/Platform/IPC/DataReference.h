@@ -31,8 +31,8 @@
 
 namespace IPC {
 
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
     
 class DataReference {
 public:
@@ -73,8 +73,8 @@ public:
         return result;
     }
 
-    virtual void encode(ArgumentEncoder&) const;
-    static bool decode(ArgumentDecoder&, DataReference&);
+    virtual void encode(Encoder&) const;
+    static bool decode(Decoder&, DataReference&);
 
     virtual ~DataReference() { }
 
@@ -102,7 +102,7 @@ private:
     const uint8_t* data() const = delete;
     Vector<uint8_t> vector() const = delete;
 
-    void encode(ArgumentEncoder&) const override;
+    void encode(Encoder&) const override;
 
     RefPtr<WebCore::SharedBuffer> m_buffer;
 };

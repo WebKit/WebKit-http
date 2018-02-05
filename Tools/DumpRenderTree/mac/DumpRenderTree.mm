@@ -59,7 +59,7 @@
 #import <JavaScriptCore/HeapStatistics.h>
 #import <JavaScriptCore/LLIntData.h>
 #import <JavaScriptCore/Options.h>
-#import <WebCore/Logging.h>
+#import <WebCore/LogInitialization.h>
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMExtensions.h>
 #import <WebKit/DOMRange.h>
@@ -820,6 +820,10 @@ WebView *createWebViewAndOffscreenWindow()
     uiWindowRect.origin.y += [UIApp statusBarHeight];
     UIWindow *uiWindow = [[[UIWindow alloc] initWithFrame:uiWindowRect] autorelease];
 
+    UIViewController *viewController = [[UIViewController alloc] init];
+    [uiWindow setRootViewController:viewController];
+    [viewController release];
+
     // The UIWindow and UIWebBrowserView are released when the DumpRenderTreeWindow is closed.
     drtWindow.uiWindow = uiWindow;
     drtWindow.browserView = webBrowserView;
@@ -827,7 +831,7 @@ WebView *createWebViewAndOffscreenWindow()
     UIWebScrollView *scrollView = [[UIWebScrollView alloc] initWithFrame:layoutTestViewportRect];
     [scrollView addSubview:webBrowserView];
 
-    [uiWindow addSubview:scrollView];
+    [viewController.view addSubview:scrollView];
     [scrollView release];
 
     adjustWebDocumentForStandardViewport(webBrowserView, scrollView);
@@ -1887,7 +1891,7 @@ static void resetWebViewToConsistentStateBeforeTesting()
     [mainFrame _clearOpener];
 
     resetAccumulatedLogs();
-    WebCoreTestSupport::initializeLoggingChannelsIfNecessary();
+    WebCoreTestSupport::initializeLogChannelsIfNecessary();
 }
 
 #if PLATFORM(IOS)
@@ -2102,6 +2106,7 @@ static void runTest(const string& inputLine)
     ASSERT(CFArrayGetCount(openWindowsRef) == 1);
     ASSERT(CFArrayGetValueAtIndex(openWindowsRef, 0) == [[mainFrame webView] window]);
 
+    gTestRunner->cleanup();
     gTestRunner = nullptr;
 
     if (ignoreWebCoreNodeLeaks)

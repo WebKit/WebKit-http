@@ -34,19 +34,19 @@
 #import "IntRect.h"
 #import "Logging.h"
 #import "MediaConstraints.h"
+#import "MediaSampleAVFObjC.h"
 #import "NotImplemented.h"
 #import "PlatformLayer.h"
 #import "RealtimeMediaSourceCenter.h"
 #import "RealtimeMediaSourceSettings.h"
 #import <AVFoundation/AVFoundation.h>
 #import <objc/runtime.h>
-#import <wtf/BlockObjCExceptions.h>
 
 #import "CoreMediaSoftLink.h"
 #import "CoreVideoSoftLink.h"
 
 typedef AVCaptureConnection AVCaptureConnectionType;
-typedef AVCaptureDevice AVCaptureDeviceType;
+typedef AVCaptureDevice AVCaptureDeviceTypedef;
 typedef AVCaptureDeviceInput AVCaptureDeviceInputType;
 typedef AVCaptureOutput AVCaptureOutputType;
 typedef AVCaptureVideoDataOutput AVCaptureVideoDataOutputType;
@@ -83,12 +83,12 @@ SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPresetLow, NSString *)
 
 namespace WebCore {
 
-RefPtr<AVMediaCaptureSource> AVVideoCaptureSource::create(AVCaptureDeviceType* device, const AtomicString& id, PassRefPtr<MediaConstraints> constraint)
+RefPtr<AVMediaCaptureSource> AVVideoCaptureSource::create(AVCaptureDeviceTypedef* device, const AtomicString& id, PassRefPtr<MediaConstraints> constraint)
 {
     return adoptRef(new AVVideoCaptureSource(device, id, constraint));
 }
 
-AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceType* device, const AtomicString& id, PassRefPtr<MediaConstraints> constraint)
+AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, const AtomicString& id, PassRefPtr<MediaConstraints> constraint)
     : AVMediaCaptureSource(device, id, RealtimeMediaSource::Video, constraint)
 {
 }
@@ -128,7 +128,7 @@ void AVVideoCaptureSource::updateSettings(RealtimeMediaSourceSettings& settings)
     settings.setAspectRatio(static_cast<float>(m_width) / m_height);
 }
 
-bool AVVideoCaptureSource::setFrameRateConstraint(float minFrameRate, float maxFrameRate)
+bool AVVideoCaptureSource::setFrameRateConstraint(double minFrameRate, double maxFrameRate)
 {
     AVFrameRateRange *bestFrameRateRange = 0;
 
@@ -173,42 +173,45 @@ bool AVVideoCaptureSource::applyConstraints(MediaConstraints* constraints)
 {
     ASSERT(constraints);
 
-    const RealtimeMediaSourceSupportedConstraints& supportedConstraints = RealtimeMediaSourceCenter::singleton().supportedConstraints();
-    String widthConstraintValue;
-    String heightConstraintValue;
-    String widthConstraintName = supportedConstraints.nameForConstraint(MediaConstraintType::Width);
-    String heightConstraintName = supportedConstraints.nameForConstraint(MediaConstraintType::Height);
+    // FIXME: Below needs to be refactored for https://bugs.webkit.org/show_bug.cgi?id=160579.
 
-    constraints->getMandatoryConstraintValue(widthConstraintName, widthConstraintValue);
-    constraints->getMandatoryConstraintValue(heightConstraintName, heightConstraintValue);
+    auto& mandatoryConstraints = constraints->mandatoryConstraints();
+    int intValue;
 
-    int width = widthConstraintValue.toInt();
-    int height = heightConstraintValue.toInt();
-    if (!width && !height) {
-        constraints->getOptionalConstraintValue(widthConstraintName, widthConstraintValue);
-        constraints->getOptionalConstraintValue(heightConstraintName, heightConstraintValue);
-        width = widthConstraintValue.toInt();
-        height = heightConstraintValue.toInt();
-    }
+    String widthConstraintName = RealtimeMediaSourceSupportedConstraints::nameForConstraint(MediaConstraintType::Width);
+    auto widthConstraint = mandatoryConstraints.get(widthConstraintName);
+    Optional<int> width;
+    if (widthConstraint && widthConstraint->getExact(intValue))
+        width = intValue;
+
+    String heightConstraintName = RealtimeMediaSourceSupportedConstraints::nameForConstraint(MediaConstraintType::Height);
+    auto heightConstraint = mandatoryConstraints.get(heightConstraintName);
+    Optional<int> height;
+    if (heightConstraint && heightConstraint->getExact(intValue))
+        height = intValue;
     
-    if (width || height) {
-        NSString *preset = AVCaptureSessionInfo(session()).bestSessionPresetForVideoDimensions(width, height);
-        if (!preset || ![session() canSetSessionPreset:preset])
+    if (width && height) {
+        NSString *preset = AVCaptureSessionInfo(session()).bestSessionPresetForVideoDimensions(width.value(), height.value());
+        if (!preset || ![session() canSetSessionPreset:preset]) {
+            LOG(Media, "AVVideoCaptureSource::applyConstraints(%p), unable find or set preset for width: %i, height: %i", this, width.value(), height.value());
             return false;
-        
+        }
+
         [session() setSessionPreset:preset];
     }
 
-    String frameRateConstraintValue;
-    String frameRateConstraintName = supportedConstraints.nameForConstraint(MediaConstraintType::FrameRate);
-    constraints->getMandatoryConstraintValue(frameRateConstraintName, frameRateConstraintValue);
-    float frameRate = frameRateConstraintValue.toFloat();
-    if (!frameRate) {
-        constraints->getOptionalConstraintValue(frameRateConstraintName, frameRateConstraintValue);
-        frameRate = frameRateConstraintValue.toFloat();
-    }
-    if (frameRate && !setFrameRateConstraint(frameRate, 0))
+    String frameRateConstraintName = RealtimeMediaSourceSupportedConstraints::nameForConstraint(MediaConstraintType::FrameRate);
+    auto frameRateConstraint = mandatoryConstraints.get(frameRateConstraintName);
+
+    Optional<double> frameRate;
+    double doubleValue;
+    if (frameRateConstraint && frameRateConstraint->getExact(doubleValue))
+        frameRate = doubleValue;
+
+    if (frameRate && !setFrameRateConstraint(frameRate.value(), 0)) {
+        LOG(Media, "AVVideoCaptureSource::applyConstraints(%p), unable set frame rate to %f", this, frameRate.value());
         return false;
+    }
 
     return true;
 }
@@ -298,7 +301,9 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
     }
 
     if (settingsChanged)
-        this->settingsDidChanged();
+        settingsDidChange();
+
+    mediaDataUpdated(MediaSampleAVFObjC::create(sampleBuffer.get()));
 }
 
 void AVVideoCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutputType*, CMSampleBufferRef sampleBuffer, AVCaptureConnectionType*)

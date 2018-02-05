@@ -40,7 +40,6 @@
 #include "WebCertificateInfo.h"
 #include "WebIconDatabase.h"
 #include "WebProcessPool.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -571,4 +570,14 @@ void WKContextSetMemoryCacheDisabled(WKContextRef contextRef, bool disabled)
 void WKContextSetFontWhitelist(WKContextRef contextRef, WKArrayRef arrayRef)
 {
     toImpl(contextRef)->setFontWhitelist(toImpl(arrayRef));
+}
+
+pid_t WKContextGetNetworkProcessIdentifier(WKContextRef contextRef)
+{
+    return toImpl(contextRef)->networkProcessIdentifier();
+}
+
+pid_t WKContextGetDatabaseProcessIdentifier(WKContextRef contextRef)
+{
+    return toImpl(contextRef)->databaseProcessIdentifier();
 }

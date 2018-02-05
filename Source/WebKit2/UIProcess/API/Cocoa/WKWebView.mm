@@ -35,6 +35,7 @@
 #import "DiagnosticLoggingClient.h"
 #import "FindClient.h"
 #import "LegacySessionStateCoding.h"
+#import "Logging.h"
 #import "NavigationState.h"
 #import "ObjCObjectGraph.h"
 #import "RemoteLayerTreeScrollingPerformanceData.h"
@@ -75,7 +76,6 @@
 #import "WebViewImpl.h"
 #import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
-#import "_WKFormDelegate.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKInputDelegate.h"
@@ -89,6 +89,7 @@
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
+#import <WebCore/TextStream.h>
 #import <WebCore/WritingMode.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
@@ -233,7 +234,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     uint64_t _firstPaintAfterCommitLoadTransactionID;
     DynamicViewportUpdateMode _dynamicViewportUpdateMode;
     CATransform3D _resizeAnimationTransformAdjustments;
-    uint64_t _resizeAnimationTransformTransactionID;
+    Optional<uint64_t> _resizeAnimationTransformTransactionID;
     RetainPtr<UIView> _resizeAnimationView;
     CGFloat _lastAdjustmentForScroller;
     Optional<CGRect> _frozenVisibleContentRect;
@@ -1232,7 +1233,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         return;
 
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
-        if (layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID) {
+        if (_resizeAnimationTransformTransactionID && layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID.value()) {
+            _resizeAnimationTransformTransactionID = Nullopt;
             [_resizeAnimationView layer].sublayerTransform = _resizeAnimationTransformAdjustments;
             if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::ResizingWithDocumentHidden) {
                 [_contentView setHidden:NO];
@@ -1387,13 +1389,16 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 #if USE(IOSURFACE)
     WebCore::IOSurface::Format snapshotFormat = WebCore::screenSupportsExtendedColor() ? WebCore::IOSurface::Format::RGB10 : WebCore::IOSurface::Format::RGBA;
     auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(snapshotSize), WebCore::sRGBColorSpaceRef(), snapshotFormat);
+    if (!surface)
+        return nullptr;
     CARenderServerRenderLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, reinterpret_cast<uint64_t>(self.layer), surface->surface(), 0, 0, &transform);
 
     WebCore::IOSurface::Format compressedFormat = WebCore::IOSurface::Format::YUV422;
     if (WebCore::IOSurface::allowConversionFromFormatToFormat(snapshotFormat, compressedFormat)) {
         RefPtr<WebKit::ViewSnapshot> viewSnapshot = WebKit::ViewSnapshot::create(nullptr);
         WebCore::IOSurface::convertToFormat(WTFMove(surface), WebCore::IOSurface::Format::YUV422, [viewSnapshot](std::unique_ptr<WebCore::IOSurface> convertedSurface) {
-            viewSnapshot->setSurface(WTFMove(convertedSurface));
+            if (convertedSurface)
+                viewSnapshot->setSurface(WTFMove(convertedSurface));
         });
 
         return viewSnapshot;
@@ -1427,6 +1432,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
     if (scale != zoomScale)
         _page->willStartUserTriggeredZooming();
+
+    LOG_WITH_STREAM(VisibleRects, stream << "_zoomToPoint:" << point << " scale: " << scale << " duration:" << duration);
 
     [_scrollView _zoomToCenter:point scale:scale duration:duration];
 }
@@ -1528,6 +1535,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     [_contentView willStartZoomOrScroll];
 
+    LOG_WITH_STREAM(VisibleRects, stream << "_scrollToRect: scrolling to " << [_scrollView contentOffset] + scrollViewOffsetDelta);
+
     [_scrollView setContentOffset:([_scrollView contentOffset] + scrollViewOffsetDelta) animated:YES];
     return true;
 }
@@ -1544,6 +1553,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (CGPointEqualToPoint(boundedOffset, currentOffset))
         return;
     [_contentView willStartZoomOrScroll];
+
+    LOG_WITH_STREAM(VisibleRects, stream << "_scrollByContentOffset: scrolling to " << boundedOffset);
+
     [_scrollView setContentOffset:boundedOffset animated:YES];
 }
 
@@ -1668,6 +1680,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     if (scale != contentZoomScale(self))
         _page->willStartUserTriggeredZooming();
+
+    LOG_WITH_STREAM(VisibleRects, stream << "_zoomToFocusRect: zooming to " << newCenter << " scale:" << scale);
 
     // The newCenter has been computed in the new scale, but _zoomToCenter expected the center to be in the original scale.
     newCenter.scale(1 / scale, 1 / scale);
@@ -1913,7 +1927,10 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (CGRect)_visibleContentRect
 {
-    CGRect visibleRectInContentCoordinates = _frozenVisibleContentRect ? _frozenVisibleContentRect.value() : [self convertRect:self.bounds toView:_contentView.get()];
+    if (_frozenVisibleContentRect)
+        return _frozenVisibleContentRect.value();
+
+    CGRect visibleRectInContentCoordinates = [self convertRect:self.bounds toView:_contentView.get()];
     
     if (UIScrollView *enclosingScroller = [self _scroller]) {
         CGRect viewVisibleRect = [self _visibleRectInEnclosingScrollView:enclosingScroller];
@@ -2072,7 +2089,7 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
         }
     }
 #endif
-    
+
     [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates
         unobscuredRect:unobscuredRectInContentCoordinates
         unobscuredRectInScrollViewCoordinates:unobscuredRect
@@ -2221,6 +2238,8 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
 
     _frozenVisibleContentRect = [self convertRect:fullViewRect toView:_contentView.get()];
     _frozenUnobscuredContentRect = [self convertRect:unobscuredRect toView:_contentView.get()];
+    
+    LOG_WITH_STREAM(VisibleRects, stream << "_navigationGestureDidBegin: freezing visibleContentRect " << _frozenVisibleContentRect.value() << " UnobscuredContentRect " << _frozenUnobscuredContentRect.value());
 }
 
 - (void)_navigationGestureDidEnd
@@ -3710,11 +3729,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _inputDelegate.getAutoreleased();
 }
 
-- (id <_WKFormDelegate>)_formDelegate
-{
-    return (id <_WKFormDelegate>)[self _inputDelegate];
-}
-
 - (void)_setInputDelegate:(id <_WKInputDelegate>)inputDelegate
 {
     _inputDelegate = inputDelegate;
@@ -3776,11 +3790,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         _page->setFormClient(std::make_unique<FormClient>(self));
     else
         _page->setFormClient(nullptr);
-}
-
-- (void)_setFormDelegate:(id <_WKFormDelegate>)formDelegate
-{
-    [self _setInputDelegate:(id <_WKInputDelegate>)formDelegate];
 }
 
 - (BOOL)_isDisplayingStandaloneImageDocument
@@ -4231,6 +4240,10 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
     if (CADisplay *display = self.window.screen._display) {
         auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::sRGBColorSpaceRef());
+        if (!surface) {
+            completionHandler(nullptr);
+            return;
+        }
         CGFloat imageScaleInViewCoordinates = imageWidth / rectInViewCoordinates.size.width;
         CATransform3D transform = CATransform3DMakeScale(imageScaleInViewCoordinates, imageScaleInViewCoordinates, 1);
         transform = CATransform3DTranslate(transform, -rectInViewCoordinates.origin.x, -rectInViewCoordinates.origin.y, 0);
@@ -4513,14 +4526,24 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [_contentView accessoryTab:NO];
 }
 
-- (BOOL)forceIPadStyleZoomOnInputFocus
+- (void)dismissFormAccessoryView
 {
-    return [_contentView forceIPadStyleZoomOnInputFocus];
+    [_contentView accessoryDone];
 }
 
-- (void)setForceIPadStyleZoomOnInputFocus:(BOOL)forceIPadStyleZoom
+- (void)selectFormAccessoryPickerRow:(int)rowIndex
 {
-    [_contentView setForceIPadStyleZoomOnInputFocus:forceIPadStyleZoom];
+    [_contentView selectFormAccessoryPickerRow:rowIndex];
+}
+
+- (void)didStartFormControlInteraction
+{
+    // For subclasses to override.
+}
+
+- (void)didEndFormControlInteraction
+{
+    // For subclasses to override.
 }
 
 #endif // PLATFORM(IOS)
@@ -4634,6 +4657,20 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
         return @[ ];
 
     return (NSArray *)certificateInfo->certificateInfo().certificateChain() ?: @[ ];
+}
+
+@end
+
+@implementation WKWebView (WKBinaryCompatibilityWithIOS10)
+
+- (id <_WKInputDelegate>)_formDelegate
+{
+    return self._inputDelegate;
+}
+
+- (void)_setFormDelegate:(id <_WKInputDelegate>)formDelegate
+{
+    self._inputDelegate = formDelegate;
 }
 
 @end

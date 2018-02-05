@@ -31,7 +31,6 @@
 #include "IDBConnectionToServerDelegate.h"
 #include "IDBResourceIdentifier.h"
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -44,6 +43,8 @@ class IDBObjectStoreInfo;
 class IDBResultData;
 class IDBValue;
 class SecurityOrigin;
+
+struct IDBGetRecordData;
 
 namespace IDBClient {
 
@@ -79,7 +80,7 @@ public:
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode);
     WEBCORE_EXPORT void didPutOrAdd(const IDBResultData&);
 
-    void getRecord(const IDBRequestData&, const IDBKeyRangeData&);
+    void getRecord(const IDBRequestData&, const IDBGetRecordData&);
     WEBCORE_EXPORT void didGetRecord(const IDBResultData&);
 
     void getCount(const IDBRequestData&, const IDBKeyRangeData&);

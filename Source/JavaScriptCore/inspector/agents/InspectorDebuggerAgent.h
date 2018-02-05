@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorDebuggerAgent_h
-#define InspectorDebuggerAgent_h
+#pragma once
 
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
@@ -41,7 +40,6 @@
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
-#include <wtf/text/StringHash.h>
 
 namespace Inspector {
 
@@ -172,5 +170,3 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // !defined(InspectorDebuggerAgent_h)

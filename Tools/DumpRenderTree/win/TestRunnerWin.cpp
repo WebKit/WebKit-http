@@ -74,6 +74,11 @@ TestRunner::~TestRunner()
         editingDelegate->setAcceptsEditing(TRUE);
 }
 
+JSContextRef TestRunner::mainFrameJSContext()
+{
+    return frame->globalContext();
+}
+
 void TestRunner::addDisallowedURL(JSStringRef url)
 {
     // FIXME: Implement!

@@ -40,6 +40,9 @@ class MacroAssemblerARM : public AbstractMacroAssembler<ARMAssembler, MacroAssem
     static const int DoubleConditionBitSpecial = 0x10;
     COMPILE_ASSERT(!(DoubleConditionBitSpecial & DoubleConditionMask), DoubleConditionBitSpecial_should_not_interfere_with_ARMAssembler_Condition_codes);
 public:
+    static const unsigned numGPRs = 16;
+    static const unsigned numFPRs = 16;
+    
     typedef ARMRegisters::FPRegisterID FPRegisterID;
 
     enum RelationalCondition {
@@ -1457,8 +1460,7 @@ public:
     
     static ptrdiff_t maxJumpReplacementSize()
     {
-        ARMAssembler::maxJumpReplacementSize();
-        return 0;
+        return ARMAssembler::maxJumpReplacementSize();
     }
 
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }

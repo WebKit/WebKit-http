@@ -27,6 +27,8 @@
 // MarkedArgumentBuffer of property names, passed to a macro so we can do set them up various
 // ways without repeating the list.
 #define JSC_COMMON_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
+    macro(Animation) \
+    macro(AnimationEffectReadOnly) \
     macro(AnimationTimeline) \
     macro(Array) \
     macro(ArrayBuffer) \
@@ -35,6 +37,7 @@
     macro(BYTES_PER_ELEMENT) \
     macro(Boolean) \
     macro(Collator) \
+    macro(CustomElementRegistry) \
     macro(Date) \
     macro(DateTimeFormat) \
     macro(DocumentTimeline) \
@@ -133,6 +136,7 @@
     macro(constructor) \
     macro(count) \
     macro(counters) \
+    macro(customElements) \
     macro(day) \
     macro(defineProperty) \
     macro(description) \
@@ -182,6 +186,7 @@
     macro(isWatchpoint) \
     macro(jettisonReason) \
     macro(join) \
+    macro(KeyframeEffect) \
     macro(lastIndex) \
     macro(length) \
     macro(line) \

@@ -704,6 +704,7 @@ private:
         case TailCallInlinedCaller:
         case Construct:
         case CallVarargs:
+        case CallEval:
         case TailCallVarargsInlinedCaller:
         case ConstructVarargs:
         case CallForwardVarargs:
@@ -781,6 +782,7 @@ private:
         case CompareGreaterEq:
         case CompareEq:
         case CompareStrictEq:
+        case CompareEqPtr:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
@@ -834,6 +836,7 @@ private:
             
         case NewArray:
         case NewArrayWithSize:
+        case CreateRest:
         case NewArrayBuffer: {
             setPrediction(SpecArray);
             break;
@@ -1043,10 +1046,9 @@ private:
         case CheckStructure:
         case CheckCell:
         case CheckNotEmpty:
-        case CheckIdent:
+        case CheckStringIdent:
         case CheckBadCell:
         case PutStructure:
-        case VarInjectionWatchpoint:
         case Phantom:
         case Check:
         case PutGlobalVariable:
@@ -1062,7 +1064,6 @@ private:
         case ExitOK:
         case LoadVarargs:
         case ForwardVarargs:
-        case CopyRest:
         case PutDynamicVar:
             break;
             

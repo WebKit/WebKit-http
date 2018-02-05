@@ -30,7 +30,7 @@
 
 namespace WebKit {
 
-void LoadParameters::encode(IPC::ArgumentEncoder& encoder) const
+void LoadParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << navigationID;
     encoder << request;
@@ -48,7 +48,7 @@ void LoadParameters::encode(IPC::ArgumentEncoder& encoder) const
     platformEncode(encoder);
 }
 
-bool LoadParameters::decode(IPC::ArgumentDecoder& decoder, LoadParameters& data)
+bool LoadParameters::decode(IPC::Decoder& decoder, LoadParameters& data)
 {
     if (!decoder.decode(data.navigationID))
         return false;
@@ -94,11 +94,11 @@ bool LoadParameters::decode(IPC::ArgumentDecoder& decoder, LoadParameters& data)
 
 #if !PLATFORM(COCOA)
 
-void LoadParameters::platformEncode(IPC::ArgumentEncoder&) const
+void LoadParameters::platformEncode(IPC::Encoder&) const
 {
 }
 
-bool LoadParameters::platformDecode(IPC::ArgumentDecoder&, LoadParameters&)
+bool LoadParameters::platformDecode(IPC::Decoder&, LoadParameters&)
 {
     return true;
 }

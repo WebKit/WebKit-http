@@ -53,7 +53,6 @@
 #include "SimpleLineLayoutFunctions.h"
 #include "VerticalPositionCache.h"
 #include "VisiblePosition.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -3598,7 +3597,8 @@ bool RenderBlockFlow::relayoutForPagination(LayoutStateMaintainer& statePusher)
 
 bool RenderBlockFlow::hasLines() const
 {
-    ASSERT(childrenInline());
+    if (!childrenInline())
+        return false;
 
     if (auto simpleLineLayout = this->simpleLineLayout())
         return simpleLineLayout->lineCount();

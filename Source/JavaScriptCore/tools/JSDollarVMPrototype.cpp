@@ -129,7 +129,7 @@ void JSDollarVMPrototype::edenGC(ExecState* exec)
 {
     if (!ensureCurrentThreadOwnsJSLock(exec))
         return;
-    exec->heap()->collectAndSweep(EdenCollection);
+    exec->heap()->collect(EdenCollection);
 }
 
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState* exec)
@@ -161,7 +161,7 @@ struct CellAddressCheckFunctor : MarkedBlock::CountFunctor {
     {
     }
 
-    IterationStatus operator()(JSCell* cell) const
+    IterationStatus operator()(HeapCell* cell, HeapCell::Kind) const
     {
         if (cell == candidate) {
             found = true;

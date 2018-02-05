@@ -31,6 +31,7 @@
 #include "LayerTreeContext.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 
 namespace IPC {
 class Connection;
@@ -80,7 +81,7 @@ public:
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() { return nullptr; }
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&) = 0;
+    virtual void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::Decoder&) = 0;
 #endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED)

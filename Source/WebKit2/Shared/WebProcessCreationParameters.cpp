@@ -56,7 +56,7 @@ WebProcessCreationParameters::~WebProcessCreationParameters()
 {
 }
 
-void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
+void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << injectedBundlePath;
     encoder << injectedBundlePathExtensionHandle;
@@ -147,7 +147,7 @@ void WebProcessCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
 #endif
 }
 
-bool WebProcessCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebProcessCreationParameters& parameters)
+bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreationParameters& parameters)
 {
     if (!decoder.decode(parameters.injectedBundlePath))
         return false;

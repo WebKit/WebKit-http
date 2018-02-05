@@ -42,7 +42,7 @@ public:
     enum DeferOption { NoDefer, DeferredByClient };
 
     explicit CachedResourceRequest(const ResourceRequest&, const String& charset = String(), Optional<ResourceLoadPriority> = Nullopt);
-    CachedResourceRequest(const ResourceRequest&, const ResourceLoaderOptions&);
+    CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&);
     CachedResourceRequest(const ResourceRequest&, Optional<ResourceLoadPriority>);
     ~CachedResourceRequest();
 
@@ -60,10 +60,7 @@ public:
     void setInitiator(PassRefPtr<Element>);
     void setInitiator(const AtomicString& name);
     const AtomicString& initiatorName() const;
-    bool allowsCaching() const { return m_options.cachingPolicy() == CachingPolicy::AllowCaching; }
-
-    void setInitiator(DocumentLoader&);
-    DocumentLoader* initiatingDocumentLoader() const { return m_initiatingDocumentLoader.get(); }
+    bool allowsCaching() const { return m_options.cachingPolicy == CachingPolicy::AllowCaching; }
 
     void setAsPotentiallyCrossOrigin(const String&, Document&);
 
@@ -76,7 +73,6 @@ private:
     DeferOption m_defer;
     RefPtr<Element> m_initiatorElement;
     AtomicString m_initiatorName;
-    RefPtr<DocumentLoader> m_initiatingDocumentLoader;
 };
 
 } // namespace WebCore

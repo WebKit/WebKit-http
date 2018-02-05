@@ -35,7 +35,10 @@
 
 #include "FontCascade.h"
 #include "MockRealtimeVideoSource.h"
-#include <wtf/RunLoop.h>
+
+typedef struct __CVBuffer *CVBufferRef;
+typedef CVBufferRef CVImageBufferRef;
+typedef CVImageBufferRef CVPixelBufferRef;
 
 namespace WebCore {
 
@@ -48,8 +51,12 @@ private:
     friend class MockRealtimeVideoSource;
     MockRealtimeVideoSourceMac();
 
+    RetainPtr<CMSampleBufferRef> CMSampleBufferFromPixelBuffer(CVPixelBufferRef);
+    RetainPtr<CVPixelBufferRef> pixelBufferFromCGImage(CGImageRef) const;
+
     PlatformLayer* platformLayer() const override;
     void updatePlatformLayer() const override;
+    void updateSampleBuffer() override;
 
     mutable RetainPtr<CGImageRef> m_previewImage;
     mutable RetainPtr<PlatformLayer> m_previewLayer;

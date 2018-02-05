@@ -174,9 +174,10 @@ public:
         if (m_layoutRoot) {
             RenderView& view = m_layoutRoot->view();
             view.pushLayoutState(*m_layoutRoot);
-            m_disableLayoutState = view.shouldDisableLayoutStateForSubtree(m_layoutRoot);
-            if (m_disableLayoutState)
+            if (shouldDisableLayoutStateForSubtree()) {
                 view.disableLayoutState();
+                m_didDisableLayoutState = true;
+            }
         }
     }
 
@@ -185,14 +186,23 @@ public:
         if (m_layoutRoot) {
             RenderView& view = m_layoutRoot->view();
             view.popLayoutState(*m_layoutRoot);
-            if (m_disableLayoutState)
+            if (m_didDisableLayoutState)
                 view.enableLayoutState();
         }
     }
 
+    bool shouldDisableLayoutStateForSubtree()
+    {
+        for (auto* renderer = m_layoutRoot; renderer; renderer = renderer->container()) {
+            if (renderer->hasTransform() || renderer->hasReflection())
+                return true;
+        }
+        return false;
+    }
+    
 private:
     RenderElement* m_layoutRoot { nullptr };
-    bool m_disableLayoutState { false };
+    bool m_didDisableLayoutState { false };
 };
 
 FrameView::FrameView(Frame& frame)
@@ -2105,7 +2115,7 @@ bool FrameView::scrollToAnchor(const String& name)
     document.setCSSTarget(anchorElement);
 
     if (is<SVGDocument>(document)) {
-        if (auto* rootElement = downcast<SVGDocument>(document).rootElement()) {
+        if (auto* rootElement = SVGDocument::rootElement(document)) {
             rootElement->scrollToAnchor(name, anchorElement);
             if (!anchorElement)
                 return true;
@@ -2737,7 +2747,9 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
     ASSERT(!renderView.documentBeingDestroyed());
     ASSERT(frame().view() == this);
 
-    if (renderView.needsLayout()) {
+    // When m_layoutRoot is already set, ignore the renderView's needsLayout bit
+    // since we need to resolve the conflict between the m_layoutRoot and newRelayoutRoot layouts.
+    if (renderView.needsLayout() && !m_layoutRoot) {
         m_layoutRoot = &newRelayoutRoot;
         convertSubtreeLayoutToFullLayout();
         return;
@@ -2745,7 +2757,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
 
     if (!layoutPending() && m_layoutSchedulingEnabled) {
         std::chrono::milliseconds delay = renderView.document().minimumLayoutDelay();
-        ASSERT(!newRelayoutRoot.container() || !newRelayoutRoot.container()->needsLayout());
+        ASSERT(!newRelayoutRoot.container() || is<RenderView>(newRelayoutRoot.container()) || !newRelayoutRoot.container()->needsLayout());
         m_layoutRoot = &newRelayoutRoot;
         InspectorInstrumentation::didInvalidateLayout(frame());
         m_delayedLayout = delay.count();
@@ -2766,7 +2778,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
     if (isObjectAncestorContainerOf(m_layoutRoot, &newRelayoutRoot)) {
         // Keep the current root.
         newRelayoutRoot.markContainingBlocksForLayout(ScheduleRelayout::No, m_layoutRoot);
-        ASSERT(!m_layoutRoot->container() || !m_layoutRoot->container()->needsLayout());
+        ASSERT(!m_layoutRoot->container() || is<RenderView>(m_layoutRoot->container()) || !m_layoutRoot->container()->needsLayout());
         return;
     }
 
@@ -2774,7 +2786,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
         // Re-root at newRelayoutRoot.
         m_layoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No, &newRelayoutRoot);
         m_layoutRoot = &newRelayoutRoot;
-        ASSERT(!m_layoutRoot->container() || !m_layoutRoot->container()->needsLayout());
+        ASSERT(!m_layoutRoot->container() || is<RenderView>(m_layoutRoot->container()) || !m_layoutRoot->container()->needsLayout());
         InspectorInstrumentation::didInvalidateLayout(frame());
         return;
     }
@@ -3114,7 +3126,7 @@ void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
             return;
         }
         if (pluginElement.needsWidgetUpdate())
-            pluginElement.updateWidget(CreateAnyWidgetType);
+            pluginElement.updateWidget(CreatePlugins::Yes);
     } else
         ASSERT_NOT_REACHED();
 
@@ -4837,7 +4849,7 @@ void FrameView::fireLayoutRelatedMilestonesIfNeeded()
     }
 
     if (milestonesAchieved && frame().isMainFrame())
-        frame().loader().didLayout(milestonesAchieved);
+        frame().loader().didReachLayoutMilestone(milestonesAchieved);
 }
 
 void FrameView::firePaintRelatedMilestonesIfNeeded()
@@ -4862,7 +4874,7 @@ void FrameView::firePaintRelatedMilestonesIfNeeded()
     m_milestonesPendingPaint = 0;
 
     if (milestonesAchieved)
-        page->mainFrame().loader().didLayout(milestonesAchieved);
+        page->mainFrame().loader().didReachLayoutMilestone(milestonesAchieved);
 }
 
 void FrameView::setVisualUpdatesAllowedByClient(bool visualUpdatesAllowed)

@@ -38,7 +38,6 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityOriginData.h>
 #import <WebKitSystemInterface.h>
-#import <wtf/RAMSize.h>
 
 namespace WebKit {
 
@@ -87,6 +86,8 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
 
+    WebCore::NetworkStorageSession::setCookieStoragePartitioningEnabled(parameters.cookieStoragePartitioningEnabled);
+
     // FIXME: Most of what this function does for cache size gets immediately overridden by setCacheModel().
     // - memory cache size passed from UI process is always ignored;
     // - disk cache size passed from UI process is effectively a minimum size.
@@ -124,46 +125,12 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     }
 }
 
-static uint64_t volumeFreeSize(const String& path)
+void NetworkProcess::platformSetURLCacheSize(unsigned urlCacheMemoryCapacity, uint64_t urlCacheDiskCapacity)
 {
-    NSDictionary *fileSystemAttributesDictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:(NSString *)path error:NULL];
-    return [[fileSystemAttributesDictionary objectForKey:NSFileSystemFreeSize] unsignedLongLongValue];
-}
-
-void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
-{
-    uint64_t memSize = ramSize() / 1024 / 1024;
-
-    // As a fudge factor, use 1000 instead of 1024, in case the reported byte
-    // count doesn't align exactly to a megabyte boundary.
-    uint64_t diskFreeSize = volumeFreeSize(m_diskCacheDirectory) / 1024 / 1000;
-
-    unsigned cacheTotalCapacity = 0;
-    unsigned cacheMinDeadCapacity = 0;
-    unsigned cacheMaxDeadCapacity = 0;
-    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
-    unsigned pageCacheCapacity = 0;
-    unsigned long urlCacheMemoryCapacity = 0;
-    unsigned long urlCacheDiskCapacity = 0;
-
-    calculateCacheSizes(cacheModel, memSize, diskFreeSize,
-        cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
-        pageCacheCapacity, urlCacheMemoryCapacity, urlCacheDiskCapacity);
-
-    if (m_diskCacheSizeOverride >= 0)
-        urlCacheDiskCapacity = m_diskCacheSizeOverride;
-
-#if ENABLE(NETWORK_CACHE)
-    auto& networkCache = NetworkCache::singleton();
-    if (networkCache.isEnabled()) {
-        networkCache.setCapacity(urlCacheDiskCapacity);
-        return;
-    }
-#endif
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
     [nsurlCache setMemoryCapacity:urlCacheMemoryCapacity];
     if (!m_diskCacheIsDisabledForTesting)
-        [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
+        [nsurlCache setDiskCapacity:std::max<uint64_t>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
 
 static RetainPtr<CFStringRef> partitionName(CFStringRef domain)
@@ -268,6 +235,11 @@ void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifi
 #else
     clearNSURLCache(m_clearCacheDispatchGroup, modifiedSince, completionHandler);
 #endif
+}
+
+void NetworkProcess::setCookieStoragePartitioningEnabled(bool enabled)
+{
+    WebCore::NetworkStorageSession::setCookieStoragePartitioningEnabled(enabled);
 }
 
 }

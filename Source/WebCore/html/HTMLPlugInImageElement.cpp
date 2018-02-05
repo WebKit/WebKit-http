@@ -23,6 +23,7 @@
 
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ContentSecurityPolicy.h"
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -161,7 +162,7 @@ bool HTMLPlugInImageElement::isImageType()
 
     if (Frame* frame = document().frame()) {
         URL completedURL = document().completeURL(m_url);
-        return frame->loader().client().objectContentType(completedURL, m_serviceType) == ObjectContentImage;
+        return frame->loader().client().objectContentType(completedURL, m_serviceType) == ObjectContentType::Image;
     }
 
     return Image::supportsType(m_serviceType);
@@ -182,7 +183,7 @@ bool HTMLPlugInImageElement::allowedToLoadFrameURL(const String& url)
 
 // We don't use m_url, or m_serviceType as they may not be the final values
 // that <object> uses depending on <param> values.
-bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const String& serviceType)
+bool HTMLPlugInImageElement::wouldLoadAsPlugIn(const String& url, const String& serviceType)
 {
     ASSERT(document().frame());
     URL completedURL;
@@ -190,7 +191,7 @@ bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const 
         completedURL = document().completeURL(url);
 
     FrameLoader& frameLoader = document().frame()->loader();
-    if (frameLoader.client().objectContentType(completedURL, serviceType) == ObjectContentNetscapePlugin)
+    if (frameLoader.client().objectContentType(completedURL, serviceType) == ObjectContentType::PlugIn)
         return true;
     return false;
 }
@@ -294,7 +295,7 @@ void HTMLPlugInImageElement::updateWidgetIfNecessary()
     if (!renderEmbeddedObject() || renderEmbeddedObject()->isPluginUnavailable())
         return;
 
-    updateWidget(CreateOnlyNonNetscapePlugins);
+    updateWidget(CreatePlugins::No);
 }
 
 void HTMLPlugInImageElement::finishParsingChildren()
@@ -770,8 +771,33 @@ void HTMLPlugInImageElement::defaultEventHandler(Event* event)
     HTMLPlugInElement::defaultEventHandler(event);
 }
 
+bool HTMLPlugInImageElement::allowedToLoadPluginContent(const String& url, const String& mimeType) const
+{
+    URL completedURL;
+    if (!url.isEmpty())
+        completedURL = document().completeURL(url);
+
+    ASSERT(document().contentSecurityPolicy());
+    const ContentSecurityPolicy& contentSecurityPolicy = *document().contentSecurityPolicy();
+
+    contentSecurityPolicy.upgradeInsecureRequestIfNeeded(completedURL, ContentSecurityPolicy::InsecureRequestType::Load);
+
+    String declaredMimeType = document().isPluginDocument() && document().ownerElement() ?
+        document().ownerElement()->attributeWithoutSynchronization(HTMLNames::typeAttr) : attributeWithoutSynchronization(HTMLNames::typeAttr);
+    bool isInUserAgentShadowTree = this->isInUserAgentShadowTree();
+    return contentSecurityPolicy.allowObjectFromSource(completedURL, isInUserAgentShadowTree) && contentSecurityPolicy.allowPluginType(mimeType, declaredMimeType, completedURL, isInUserAgentShadowTree);
+}
+
 bool HTMLPlugInImageElement::requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
+    if (url.isEmpty() && mimeType.isEmpty())
+        return false;
+
+    if (!allowedToLoadPluginContent(url, mimeType)) {
+        renderEmbeddedObject()->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy);
+        return false;
+    }
+
     if (HTMLPlugInElement::requestObject(url, mimeType, paramNames, paramValues))
         return true;
     

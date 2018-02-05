@@ -74,7 +74,7 @@ public:
 
     void jettisonExpensiveObjectsOnTopLevelNavigation();
 
-    bool isUnderMemoryPressure() const { return m_underMemoryPressure; }
+    bool isUnderMemoryPressure() const { return m_underMemoryPressure || m_isSimulatingMemoryPressure; }
     void setUnderMemoryPressure(bool b) { m_underMemoryPressure = b; }
 
 #if PLATFORM(IOS)
@@ -92,7 +92,7 @@ public:
     public:
         explicit ReliefLogger(const char *log)
             : m_logString(log)
-#if !LOG_ALWAYS_DISABLED
+#if !RELEASE_LOG_DISABLED
             , m_initialMemory(platformMemoryUsage())
 #else
             , m_initialMemory(s_loggingEnabled ? platformMemoryUsage() : 0)
@@ -102,7 +102,7 @@ public:
 
         ~ReliefLogger()
         {
-#if !LOG_ALWAYS_DISABLED
+#if !RELEASE_LOG_DISABLED
             logMemoryUsageChange();
 #else
             if (s_loggingEnabled)
@@ -125,6 +125,9 @@ public:
     };
 
     WEBCORE_EXPORT void releaseMemory(Critical, Synchronous = Synchronous::No);
+
+    WEBCORE_EXPORT void beginSimulatedMemoryPressure();
+    WEBCORE_EXPORT void endSimulatedMemoryPressure();
 
 private:
     void platformInitialize();
@@ -166,7 +169,7 @@ private:
     LowMemoryHandler m_lowMemoryHandler;
 
     std::atomic<bool> m_underMemoryPressure;
-    bool m_isSimulatedMemoryPressure { false };
+    bool m_isSimulatingMemoryPressure { false };
 
 #if PLATFORM(IOS)
     uint32_t m_memoryPressureReason;

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CommonSlowPaths.h"
 
+#include "ArithProfile.h"
 #include "ArrayConstructor.h"
 #include "BuiltinNames.h"
 #include "CallFrame.h"
@@ -181,7 +182,8 @@ SLOW_PATH_DECL(slow_path_call_arityCheck)
     int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, vm, CodeForCall);
     if (slotsToAdd < 0) {
         exec = exec->callerFrame();
-        ErrorHandlingScope errorScope(exec->vm());
+        vm.topCallFrame = exec;
+        ErrorHandlingScope errorScope(vm);
         CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
         RETURN_TWO(bitwise_cast<void*>(static_cast<uintptr_t>(1)), exec);
     }
@@ -194,7 +196,8 @@ SLOW_PATH_DECL(slow_path_construct_arityCheck)
     int slotsToAdd = CommonSlowPaths::arityCheckFor(exec, vm, CodeForConstruct);
     if (slotsToAdd < 0) {
         exec = exec->callerFrame();
-        ErrorHandlingScope errorScope(exec->vm());
+        vm.topCallFrame = exec;
+        ErrorHandlingScope errorScope(vm);
         CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
         RETURN_TWO(bitwise_cast<void*>(static_cast<uintptr_t>(1)), exec);
     }
@@ -359,22 +362,21 @@ SLOW_PATH_DECL(slow_path_negate)
 }
 
 #if ENABLE(DFG_JIT)
-static void updateResultProfileForBinaryArithOp(ExecState* exec, Instruction* pc, JSValue result, JSValue left, JSValue right)
+static void updateArithProfileForBinaryArithOp(ExecState* exec, Instruction* pc, JSValue result, JSValue left, JSValue right)
 {
     CodeBlock* codeBlock = exec->codeBlock();
-    unsigned bytecodeOffset = codeBlock->bytecodeOffset(pc);
-    ResultProfile* profile = codeBlock->ensureResultProfile(bytecodeOffset);
+    ArithProfile& profile = codeBlock->arithProfileForPC(pc);
 
     if (result.isNumber()) {
         if (!result.isInt32()) {
             if (left.isInt32() && right.isInt32())
-                profile->setObservedInt32Overflow();
+                profile.setObservedInt32Overflow();
 
             double doubleVal = result.asNumber();
             if (!doubleVal && std::signbit(doubleVal))
-                profile->setObservedNegZeroDouble();
+                profile.setObservedNegZeroDouble();
             else {
-                profile->setObservedNonNegZeroDouble();
+                profile.setObservedNonNegZeroDouble();
 
                 // The Int52 overflow check here intentionally omits 1ll << 51 as a valid negative Int52 value.
                 // Therefore, we will get a false positive if the result is that value. This is intentionally
@@ -382,14 +384,14 @@ static void updateResultProfileForBinaryArithOp(ExecState* exec, Instruction* pc
                 static const int64_t int52OverflowPoint = (1ll << 51);
                 int64_t int64Val = static_cast<int64_t>(std::abs(doubleVal));
                 if (int64Val >= int52OverflowPoint)
-                    profile->setObservedInt52Overflow();
+                    profile.setObservedInt52Overflow();
             }
         }
     } else
-        profile->setObservedNonNumber();
+        profile.setObservedNonNumber();
 }
 #else
-static void updateResultProfileForBinaryArithOp(ExecState*, Instruction*, JSValue, JSValue, JSValue) { }
+static void updateArithProfileForBinaryArithOp(ExecState*, Instruction*, JSValue, JSValue, JSValue) { }
 #endif
 
 SLOW_PATH_DECL(slow_path_to_number)
@@ -407,6 +409,9 @@ SLOW_PATH_DECL(slow_path_add)
     JSValue v2 = OP_C(3).jsValue();
     JSValue result;
 
+    ArithProfile& arithProfile = exec->codeBlock()->arithProfileForPC(pc);
+    arithProfile.observeLHSAndRHS(v1, v2);
+
     if (v1.isString() && !v2.isObject())
         result = jsString(exec, asString(v1), v2.toString(exec));
     else if (v1.isNumber() && v2.isNumber())
@@ -415,7 +420,7 @@ SLOW_PATH_DECL(slow_path_add)
         result = jsAddSlowCase(exec, v1, v2);
 
     RETURN_WITH_PROFILING(result, {
-        updateResultProfileForBinaryArithOp(exec, pc, result, v1, v2);
+        updateArithProfileForBinaryArithOp(exec, pc, result, v1, v2);
     });
 }
 
@@ -429,10 +434,12 @@ SLOW_PATH_DECL(slow_path_mul)
     JSValue left = OP_C(2).jsValue();
     JSValue right = OP_C(3).jsValue();
     double a = left.toNumber(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     double b = right.toNumber(exec);
     JSValue result = jsNumber(a * b);
     RETURN_WITH_PROFILING(result, {
-        updateResultProfileForBinaryArithOp(exec, pc, result, left, right);
+        updateArithProfileForBinaryArithOp(exec, pc, result, left, right);
     });
 }
 
@@ -442,10 +449,12 @@ SLOW_PATH_DECL(slow_path_sub)
     JSValue left = OP_C(2).jsValue();
     JSValue right = OP_C(3).jsValue();
     double a = left.toNumber(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     double b = right.toNumber(exec);
     JSValue result = jsNumber(a - b);
     RETURN_WITH_PROFILING(result, {
-        updateResultProfileForBinaryArithOp(exec, pc, result, left, right);
+        updateArithProfileForBinaryArithOp(exec, pc, result, left, right);
     });
 }
 
@@ -455,10 +464,14 @@ SLOW_PATH_DECL(slow_path_div)
     JSValue left = OP_C(2).jsValue();
     JSValue right = OP_C(3).jsValue();
     double a = left.toNumber(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     double b = right.toNumber(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     JSValue result = jsNumber(a / b);
     RETURN_WITH_PROFILING(result, {
-        updateResultProfileForBinaryArithOp(exec, pc, result, left, right);
+        updateArithProfileForBinaryArithOp(exec, pc, result, left, right);
     });
 }
 
@@ -466,14 +479,30 @@ SLOW_PATH_DECL(slow_path_mod)
 {
     BEGIN();
     double a = OP_C(2).jsValue().toNumber(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     double b = OP_C(3).jsValue().toNumber(exec);
     RETURN(jsNumber(jsMod(a, b)));
+}
+
+SLOW_PATH_DECL(slow_path_pow)
+{
+    BEGIN();
+    double a = OP_C(2).jsValue().toNumber(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
+    double b = OP_C(3).jsValue().toNumber(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
+    RETURN(jsNumber(operationMathPow(a, b)));
 }
 
 SLOW_PATH_DECL(slow_path_lshift)
 {
     BEGIN();
     int32_t a = OP_C(2).jsValue().toInt32(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     uint32_t b = OP_C(3).jsValue().toUInt32(exec);
     RETURN(jsNumber(a << (b & 31)));
 }
@@ -482,6 +511,8 @@ SLOW_PATH_DECL(slow_path_rshift)
 {
     BEGIN();
     int32_t a = OP_C(2).jsValue().toInt32(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     uint32_t b = OP_C(3).jsValue().toUInt32(exec);
     RETURN(jsNumber(a >> (b & 31)));
 }
@@ -490,6 +521,8 @@ SLOW_PATH_DECL(slow_path_urshift)
 {
     BEGIN();
     uint32_t a = OP_C(2).jsValue().toUInt32(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     uint32_t b = OP_C(3).jsValue().toUInt32(exec);
     RETURN(jsNumber(static_cast<int32_t>(a >> (b & 31))));
 }
@@ -505,6 +538,8 @@ SLOW_PATH_DECL(slow_path_bitand)
 {
     BEGIN();
     int32_t a = OP_C(2).jsValue().toInt32(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     int32_t b = OP_C(3).jsValue().toInt32(exec);
     RETURN(jsNumber(a & b));
 }
@@ -513,6 +548,8 @@ SLOW_PATH_DECL(slow_path_bitor)
 {
     BEGIN();
     int32_t a = OP_C(2).jsValue().toInt32(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     int32_t b = OP_C(3).jsValue().toInt32(exec);
     RETURN(jsNumber(a | b));
 }
@@ -521,6 +558,8 @@ SLOW_PATH_DECL(slow_path_bitxor)
 {
     BEGIN();
     int32_t a = OP_C(2).jsValue().toInt32(exec);
+    if (UNLIKELY(vm.exception()))
+        RETURN(JSValue());
     int32_t b = OP_C(3).jsValue().toInt32(exec);
     RETURN(jsNumber(a ^ b));
 }
@@ -809,20 +848,15 @@ SLOW_PATH_DECL(slow_path_resolve_scope)
     RETURN(resolvedScope);
 }
 
-SLOW_PATH_DECL(slow_path_copy_rest)
+SLOW_PATH_DECL(slow_path_create_rest)
 {
     BEGIN();
     unsigned arraySize = OP_C(2).jsValue().asUInt32();
-    if (!arraySize) {
-        ASSERT(!jsCast<JSArray*>(OP(1).jsValue())->length());
-        END();
-    }
-    JSArray* array = jsCast<JSArray*>(OP(1).jsValue());
-    ASSERT(arraySize == array->length());
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
     unsigned numParamsToSkip = pc[3].u.unsignedValue;
-    for (unsigned i = 0; i < arraySize; i++)
-        array->putDirectIndex(exec, i, exec->uncheckedArgument(i + numParamsToSkip));
-    END();
+    JSValue* argumentsToCopyRegion = exec->addressOfArgumentsStart() + numParamsToSkip;
+    RETURN(constructArray(exec, structure, argumentsToCopyRegion, arraySize));
 }
 
 SLOW_PATH_DECL(slow_path_get_by_id_with_this)

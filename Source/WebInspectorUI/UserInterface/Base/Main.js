@@ -160,8 +160,11 @@ WebInspector.loaded = function()
 
     // COMPATIBILITY (iOS 8): Page.enableTypeProfiler did not exist.
     this.showJavaScriptTypeInformationSetting = new WebInspector.Setting("show-javascript-type-information", false);
-    if (this.showJavaScriptTypeInformationSetting.value && window.RuntimeAgent && RuntimeAgent.enableTypeProfiler)
+    if (this.showJavaScriptTypeInformationSetting.value && window.RuntimeAgent && RuntimeAgent.enableTypeProfiler) {
         RuntimeAgent.enableTypeProfiler();
+        if (RuntimeAgent.enableControlFlowProfiler)
+            RuntimeAgent.enableControlFlowProfiler();
+    }
 
     // COMPATIBILITY (iOS 8): Page.setShowPaintRects did not exist.
     this.showPaintRectsSetting = new WebInspector.Setting("show-paint-rects", false);
@@ -803,11 +806,32 @@ WebInspector.saveDataToFile = function(saveData, forceSaveAs)
     }
 
     console.assert(saveData.url);
-    console.assert(typeof saveData.content === "string");
-    if (!saveData.url || typeof saveData.content !== "string")
+    console.assert(saveData.content);
+    if (!saveData.url || !saveData.content)
         return;
 
-    InspectorFrontendHost.save(saveData.url, saveData.content, false, forceSaveAs || saveData.forceSaveAs);
+    let suggestedName = parseURL(saveData.url).lastPathComponent;
+    if (!suggestedName) {
+        suggestedName = WebInspector.UIString("Untitled");
+        let dataURLTypeMatch = /^data:([^;]+)/.exec(saveData.url);
+        if (dataURLTypeMatch)
+            suggestedName += WebInspector.fileExtensionForMIMEType(dataURLTypeMatch[1]) || "";
+    }
+
+    if (typeof saveData.content === "string") {
+        const base64Encoded = false;
+        InspectorFrontendHost.save(suggestedName, saveData.content, base64Encoded, forceSaveAs || saveData.forceSaveAs);
+        return;
+    }
+
+    let fileReader = new FileReader;
+    fileReader.readAsDataURL(saveData.content);
+    fileReader.addEventListener("loadend", () => {
+        let dataURLComponents = parseDataURL(fileReader.result);
+
+        const base64Encoded = true;
+        InspectorFrontendHost.save(suggestedName, dataURLComponents.data, base64Encoded, forceSaveAs || saveData.forceSaveAs);
+    });
 };
 
 WebInspector.isConsoleFocused = function()
@@ -1867,7 +1891,7 @@ WebInspector._focusedOrVisibleContentBrowser = function()
     return null;
 };
 
-WebInspector._focusedOrVisibleContentView = function()
+WebInspector.focusedOrVisibleContentView = function()
 {
     let focusedContentView = this._focusedContentView();
     if (focusedContentView)
@@ -1919,7 +1943,7 @@ WebInspector._find = function(event)
 
 WebInspector._save = function(event)
 {
-    var contentView = this._focusedOrVisibleContentView();
+    var contentView = this.focusedOrVisibleContentView();
     if (!contentView || !contentView.supportsSave)
         return;
 
@@ -1928,7 +1952,7 @@ WebInspector._save = function(event)
 
 WebInspector._saveAs = function(event)
 {
-    var contentView = this._focusedOrVisibleContentView();
+    var contentView = this.focusedOrVisibleContentView();
     if (!contentView || !contentView.supportsSave)
         return;
 
@@ -2464,5 +2488,5 @@ WebInspector.dialogWasDismissed = function(dialog)
     if (!representedObject)
         return;
 
-    WebInspector.showRepresentedObject(representedObject);
+    WebInspector.showRepresentedObject(representedObject, dialog.cookie);
 };

@@ -21,6 +21,8 @@
 #ifndef CoordinatedGraphicsLayer_h
 #define CoordinatedGraphicsLayer_h
 
+#if USE(COORDINATED_GRAPHICS)
+
 #include "CoordinatedGraphicsState.h"
 #include "CoordinatedImageBacking.h"
 #include "FloatPoint3D.h"
@@ -37,8 +39,6 @@
 #include "GraphicsSurfaceToken.h"
 #endif
 #include <wtf/text/StringHash.h>
-
-#if USE(COORDINATED_GRAPHICS)
 
 namespace WebCore {
 class CoordinatedGraphicsLayer;
@@ -194,7 +194,7 @@ private:
     void createBackingStore();
     void releaseImageBackingIfNeeded();
 
-    bool notifyFlushRequired();
+    void notifyFlushRequired();
 
     // CoordinatedImageBacking::Host
     bool imageBackingVisible() override;

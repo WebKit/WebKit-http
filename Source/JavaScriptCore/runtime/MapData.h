@@ -32,9 +32,7 @@
 #include <wtf/HashFunctions.h>
 #include <wtf/HashMap.h>
 #include <wtf/MathExtras.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
 
 namespace JSC {
 
@@ -119,7 +117,6 @@ private:
     typedef HashMap<JSCell*, int32_t, typename WTF::DefaultHash<JSCell*>::Hash, WTF::HashTraits<JSCell*>, IndexTraits> CellKeyedMap;
     typedef HashMap<EncodedJSValue, int32_t, EncodedJSValueHash, EncodedJSValueHashTraits, IndexTraits> ValueKeyedMap;
     typedef HashMap<StringImpl*, int32_t, typename WTF::DefaultHash<StringImpl*>::Hash, WTF::HashTraits<StringImpl*>, IndexTraits> StringKeyedMap;
-    typedef HashMap<SymbolImpl*, int32_t, typename WTF::PtrHash<SymbolImpl*>, WTF::HashTraits<SymbolImpl*>, IndexTraits> SymbolKeyedMap;
 
     ALWAYS_INLINE Entry* find(ExecState*, KeyType);
     ALWAYS_INLINE Entry* add(ExecState*, JSCell* owner, KeyType);
@@ -134,7 +131,6 @@ private:
     CellKeyedMap m_cellKeyedTable;
     ValueKeyedMap m_valueKeyedTable;
     StringKeyedMap m_stringKeyedTable;
-    SymbolKeyedMap m_symbolKeyedTable;
     int32_t m_capacity;
     int32_t m_size;
     int32_t m_deletedCount;

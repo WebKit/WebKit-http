@@ -2,6 +2,7 @@
  * Copyright (C) 2009 Alex Milowski (alex@milowski.com). All rights reserved.
  * Copyright (C) 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2010 François Sausset (sausset@gmail.com). All rights reserved.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,16 +42,8 @@ public:
     unsigned colSpan() const;
     unsigned rowSpan() const;
 
-    bool isMathMLToken() const
-    {
-        return hasTagName(MathMLNames::miTag) || hasTagName(MathMLNames::mnTag) || hasTagName(MathMLNames::moTag) || hasTagName(MathMLNames::msTag) || hasTagName(MathMLNames::mtextTag);
-    }
-
-    bool isSemanticAnnotation() const
-    {
-        return hasTagName(MathMLNames::annotationTag) || hasTagName(MathMLNames::annotation_xmlTag);
-    }
-
+    virtual bool isMathMLToken() const { return false; }
+    virtual bool isSemanticAnnotation() const { return false; }
     virtual bool isPresentationMathML() const;
 
     bool hasTagName(const MathMLQualifiedName& name) const { return hasLocalName(name.localName()); }
@@ -58,20 +51,52 @@ public:
     // MathML lengths (https://www.w3.org/TR/MathML3/chapter2.html#fund.units)
     // TeX's Math Unit is used internally for named spaces (1 mu = 1/18 em).
     // Unitless values are interpreted as a multiple of a reference value.
-    enum class LengthType { Cm, Em, Ex, In, MathUnit, Mm, ParsingFailed, Pc, Percentage, Pt, Px, UnitLess };
+    enum class LengthType { Cm, Em, Ex, In, MathUnit, Mm, ParsingFailed, Pc, Percentage, Pt, Px, UnitLess, Infinity };
     struct Length {
         LengthType type { LengthType::ParsingFailed };
         float value { 0 };
-        bool dirty { true };
     };
     static Length parseMathMLLength(const String&);
+
+    enum class BooleanValue { True, False, Default };
+
+    // These are the mathvariant values from the MathML recommendation.
+    // The special value none means that no explicit mathvariant value has been specified.
+    // Note that the numeral values are important for the computation performed in the mathVariant function of RenderMathMLToken, do not change them!
+    enum class MathVariant {
+        None = 0,
+        Normal = 1,
+        Bold = 2,
+        Italic = 3,
+        BoldItalic = 4,
+        Script = 5,
+        BoldScript = 6,
+        Fraktur = 7,
+        DoubleStruck = 8,
+        BoldFraktur = 9,
+        SansSerif = 10,
+        BoldSansSerif = 11,
+        SansSerifItalic = 12,
+        SansSerifBoldItalic = 13,
+        Monospace = 14,
+        Initial = 15,
+        Tailed = 16,
+        Looped = 17,
+        Stretched = 18
+    };
+
+    virtual Optional<bool> specifiedDisplayStyle();
+    Optional<MathVariant> specifiedMathVariant();
+
+    virtual void updateSelectedChild() { }
 
 protected:
     MathMLElement(const QualifiedName& tagName, Document&);
 
+    static StringView stripLeadingAndTrailingWhitespace(const StringView&);
+
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     bool childShouldCreateRenderer(const Node&) const override;
-    void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason) override;
 
     bool isPresentationAttribute(const QualifiedName&) const override;
     void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
@@ -82,12 +107,20 @@ protected:
     bool willRespondToMouseClickEvents() override;
     void defaultEventHandler(Event*) override;
 
-    const Length& cachedMathMLLength(const QualifiedName&, Length&);
+    const Length& cachedMathMLLength(const QualifiedName&, Optional<Length>&);
+    const BooleanValue& cachedBooleanAttribute(const QualifiedName&, Optional<BooleanValue>&);
+
+    virtual bool acceptsDisplayStyleAttribute() { return false; }
+    virtual bool acceptsMathVariantAttribute() { return false; }
+
+    static Optional<bool> toOptionalBool(const BooleanValue& value) { return value == BooleanValue::Default ? Nullopt : Optional<bool>(value == BooleanValue::True); }
+    Optional<BooleanValue> m_displayStyle;
+    Optional<MathVariant> m_mathVariant;
 
 private:
-    virtual void updateSelectedChild() { }
     static Length parseNumberAndUnit(const StringView&);
     static Length parseNamedSpace(const StringView&);
+    static MathVariant parseMathVariantAttribute(const AtomicString& attributeValue);
 
     bool canStartSelection() const final;
     bool isFocusable() const final;

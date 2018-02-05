@@ -497,6 +497,11 @@ namespace JSC {
     {
     }
 
+    inline PowNode::PowNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments)
+        : BinaryOpNode(location, ResultType::numberType(), expr1, expr2, op_pow, rightHasAssignments)
+    {
+    }
+
     inline MultNode::MultNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments)
         : BinaryOpNode(location, ResultType::numberType(), expr1, expr2, op_mul, rightHasAssignments)
     {
@@ -1043,13 +1048,12 @@ namespace JSC {
     {
     }
 
-    inline RestParameterNode::RestParameterNode(const Identifier& name, unsigned numParametersToSkip, const JSTextPosition& start, const JSTextPosition& end)
+    inline RestParameterNode::RestParameterNode(DestructuringPatternNode* pattern, unsigned numParametersToSkip)
         : DestructuringPatternNode()
-        , m_name(name)
+        , m_pattern(pattern)
         , m_numParametersToSkip(numParametersToSkip)
-        , m_divotStart(start)
-        , m_divotEnd(end)
     {
+        ASSERT(!pattern->isRestParameter());
     }
 
     inline DestructuringAssignmentNode::DestructuringAssignmentNode(const JSTokenLocation& location, DestructuringPatternNode* bindings, ExpressionNode* initializer)

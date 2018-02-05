@@ -30,7 +30,6 @@
 #include "DatabaseToWebProcessConnectionMessages.h"
 #include "WebIDBConnectionToServerMessages.h"
 #include "WebProcess.h"
-#include <wtf/RunLoop.h>
 
 #if ENABLE(DATABASE_PROCESS)
 
@@ -48,7 +47,7 @@ WebToDatabaseProcessConnection::~WebToDatabaseProcessConnection()
 {
 }
 
-void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
 #if ENABLE(INDEXED_DATABASE)
     if (decoder.messageReceiverName() == Messages::WebIDBConnectionToServer::messageReceiverName()) {

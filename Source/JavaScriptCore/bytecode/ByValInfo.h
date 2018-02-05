@@ -35,6 +35,8 @@
 
 namespace JSC {
 
+class Symbol;
+
 #if ENABLE(JIT)
 
 class StructureStubInfo;
@@ -205,10 +207,11 @@ inline JITArrayMode jitArrayModeForStructure(Structure* structure)
 struct ByValInfo {
     ByValInfo() { }
 
-    ByValInfo(unsigned bytecodeIndex, CodeLocationJump notIndexJump, CodeLocationJump badTypeJump, JITArrayMode arrayMode, ArrayProfile* arrayProfile, int16_t badTypeJumpToDone, int16_t badTypeJumpToNextHotPath, int16_t returnAddressToSlowPath)
+    ByValInfo(unsigned bytecodeIndex, CodeLocationJump notIndexJump, CodeLocationJump badTypeJump, CodeLocationLabel exceptionHandler, JITArrayMode arrayMode, ArrayProfile* arrayProfile, int16_t badTypeJumpToDone, int16_t badTypeJumpToNextHotPath, int16_t returnAddressToSlowPath)
         : bytecodeIndex(bytecodeIndex)
         , notIndexJump(notIndexJump)
         , badTypeJump(badTypeJump)
+        , exceptionHandler(exceptionHandler)
         , arrayMode(arrayMode)
         , arrayProfile(arrayProfile)
         , badTypeJumpToDone(badTypeJumpToDone)
@@ -224,6 +227,7 @@ struct ByValInfo {
     unsigned bytecodeIndex;
     CodeLocationJump notIndexJump;
     CodeLocationJump badTypeJump;
+    CodeLocationLabel exceptionHandler;
     JITArrayMode arrayMode; // The array mode that was baked into the inline JIT code.
     ArrayProfile* arrayProfile;
     int16_t badTypeJumpToDone;
@@ -232,6 +236,7 @@ struct ByValInfo {
     unsigned slowPathCount;
     RefPtr<JITStubRoutine> stubRoutine;
     Identifier cachedId;
+    WriteBarrier<Symbol> cachedSymbol;
     StructureStubInfo* stubInfo;
     bool tookSlowPath : 1;
     bool seen : 1;

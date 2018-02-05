@@ -32,6 +32,8 @@
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
 #import "WKFormPopover.h"
+#import "WKFormSelectPicker.h"
+#import "WKFormSelectPopover.h"
 #import "WebPageProxy.h"
 #import <UIKit/UIPickerView.h>
 #import <wtf/RetainPtr.h>
@@ -58,7 +60,7 @@ CGFloat adjustedFontSize(CGFloat textWidth, UIFont *font, CGFloat initialFontSiz
 }
 
 @implementation WKFormSelectControl {
-    RetainPtr<id<WKFormControl>> _control;
+    RetainPtr<NSObject<WKFormControl>> _control;
 }
 
 - (instancetype)initWithView:(WKContentView *)view
@@ -97,6 +99,16 @@ CGFloat adjustedFontSize(CGFloat textWidth, UIFont *font, CGFloat initialFontSiz
 - (void)endEditing
 {
     [_control controlEndEditing];
+}
+
+@end
+
+@implementation WKFormSelectControl(WKTesting)
+
+- (void)selectRow:(NSInteger)rowIndex inComponent:(NSInteger)componentIndex extendingSelection:(BOOL)extendingSelection
+{
+    if ([_control respondsToSelector:@selector(selectRow:inComponent:extendingSelection:)])
+        [id<WKSelectTesting>(_control.get()) selectRow:rowIndex inComponent:componentIndex extendingSelection:extendingSelection];
 }
 
 @end

@@ -107,38 +107,6 @@ int HTMLDocument::height()
     return frameView ? frameView->contentsHeight() : 0;
 }
 
-const AtomicString& HTMLDocument::dir() const
-{
-    auto* documentElement = this->documentElement();
-    if (!is<HTMLHtmlElement>(documentElement))
-        return nullAtom;
-    return downcast<HTMLHtmlElement>(*documentElement).dir();
-}
-
-void HTMLDocument::setDir(const AtomicString& value)
-{
-    auto* documentElement = this->documentElement();
-    if (is<HTMLHtmlElement>(documentElement))
-        downcast<HTMLHtmlElement>(*documentElement).setDir(value);
-}
-
-String HTMLDocument::designMode() const
-{
-    return inDesignMode() ? ASCIILiteral("on") : ASCIILiteral("off");
-}
-
-void HTMLDocument::setDesignMode(const String& value)
-{
-    InheritedBool mode;
-    if (equalLettersIgnoringASCIICase(value, "on"))
-        mode = on;
-    else if (equalLettersIgnoringASCIICase(value, "off"))
-        mode = off;
-    else
-        mode = inherit;
-    Document::setDesignMode(mode);
-}
-
 const AtomicString& HTMLDocument::bgColor() const
 {
     auto* bodyElement = body();

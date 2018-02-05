@@ -26,6 +26,8 @@
 #ifndef WebKitLogging_h
 #define WebKitLogging_h
 
+#include <WebCore/LogMacros.h>
+#include <functional>
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
@@ -35,10 +37,13 @@
 #define LOG_CHANNEL_PREFIX WebKit2Log
 #endif
 
-namespace WebKit {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define WEBKIT2_LOG_CHANNELS(M) \
     M(ContextMenu) \
+    M(Gamepad) \
     M(IDB) \
     M(IconDatabase) \
     M(IndexedDB) \
@@ -54,10 +59,12 @@ namespace WebKit {
     M(Printing) \
     M(RemoteLayerTree) \
     M(Resize) \
+    M(Selection) \
     M(SessionState) \
     M(StorageAPI) \
     M(TextInput) \
     M(ViewGestures) \
+    M(VisibleRects) \
 
 #define DECLARE_LOG_CHANNEL(name) \
     extern WTFLogChannel JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, name);
@@ -66,10 +73,9 @@ WEBKIT2_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 
 #undef DECLARE_LOG_CHANNEL
 
-void initializeLogChannelsIfNecessary(void);
-String logLevelString();
-
-} // namespace WebKit
+#ifdef __cplusplus
+}
+#endif
 
 #endif // !LOG_DISABLED
 

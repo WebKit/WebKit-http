@@ -30,8 +30,6 @@
 
 #import "ArgumentCoders.h"
 #import "GraphicsLayerCARemote.h"
-#import "MessageDecoder.h"
-#import "MessageEncoder.h"
 #import "RemoteLayerTreeDrawingArea.h"
 #import "RemoteScrollingCoordinatorMessages.h"
 #import "RemoteScrollingCoordinatorTransaction.h"

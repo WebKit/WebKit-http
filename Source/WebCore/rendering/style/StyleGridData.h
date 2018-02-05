@@ -31,7 +31,7 @@
 #include "GridArea.h"
 #include "GridTrackSize.h"
 #include "RenderStyleConstants.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -85,8 +85,8 @@ public:
 
     unsigned m_gridAutoFlow : GridAutoFlowBits;
 
-    GridTrackSize m_gridAutoRows;
-    GridTrackSize m_gridAutoColumns;
+    Vector<GridTrackSize> m_gridAutoRows;
+    Vector<GridTrackSize> m_gridAutoColumns;
 
     NamedGridAreaMap m_namedGridArea;
     // Because m_namedGridArea doesn't store the unnamed grid areas, we need to keep track

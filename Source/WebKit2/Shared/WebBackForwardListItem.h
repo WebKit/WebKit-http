@@ -36,8 +36,8 @@ class Data;
 }
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {

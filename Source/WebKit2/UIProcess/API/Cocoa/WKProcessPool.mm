@@ -290,6 +290,16 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
     _processPool->terminateDatabaseProcess();
 }
 
+- (BOOL)_isCookieStoragePartitioningEnabled
+{
+    return _processPool->cookieStoragePartitioningEnabled();
+}
+
+- (void)_setCookieStoragePartitioningEnabled:(BOOL)enabled
+{
+    _processPool->setCookieStoragePartitioningEnabled(enabled);
+}
+
 @end
 
 #endif // WK_API_ENABLED

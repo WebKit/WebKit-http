@@ -22,11 +22,11 @@ interface HTMLTableCellElement : HTMLElement {
     readonly attribute long cellIndex;
     [Reflect] attribute DOMString align;
     [Reflect] attribute DOMString axis;
-    [Reflect] attribute DOMString bgColor;
+    [Reflect, TreatNullAs=EmptyString] attribute DOMString bgColor;
     [Reflect=char] attribute DOMString ch;
     [Reflect=charoff] attribute DOMString chOff;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     [ImplementedAs=colSpanForBindings] attribute long colSpan;
     [ImplementedAs=rowSpanForBindings] attribute long rowSpan;
 #else

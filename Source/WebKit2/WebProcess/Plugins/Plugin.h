@@ -48,8 +48,8 @@ OBJC_CLASS PDFSelection;
 struct NPObject;
 
 namespace IPC {
-    class ArgumentEncoder;
-    class ArgumentDecoder;
+class Encoder;
+class Decoder;
 }
 
 namespace WebCore {
@@ -92,8 +92,8 @@ public:
         LayerHostingMode layerHostingMode;
 #endif
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Parameters&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Parameters&);
     };
 
     // Sets the active plug-in controller and initializes the plug-in.

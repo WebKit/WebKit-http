@@ -1,9 +1,6 @@
-#ifndef HandleMessage_h
-#define HandleMessage_h
+#pragma once
 
-#include "Arguments.h"
-#include "MessageDecoder.h"
-#include "MessageEncoder.h"
+#include "ArgumentCoders.h"
 #include <wtf/StdLibExtras.h>
 
 namespace IPC {
@@ -80,10 +77,20 @@ void callMemberFunction(Connection& connection, ArgsTuple&& args, ReplyArgsTuple
 
 // Main dispatch functions
 
+template<typename T>
+struct CodingType {
+    typedef std::remove_const_t<std::remove_reference_t<T>> Type;
+};
+
+template<typename... Ts>
+struct CodingType<std::tuple<Ts...>> {
+    typedef std::tuple<typename CodingType<Ts>::Type...> Type;
+};
+
 template<typename T, typename C, typename MF>
-void handleMessage(MessageDecoder& decoder, C* object, MF function)
+void handleMessage(Decoder& decoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
@@ -93,37 +100,37 @@ void handleMessage(MessageDecoder& decoder, C* object, MF function)
 }
 
 template<typename T, typename C, typename MF>
-void handleMessage(MessageDecoder& decoder, MessageEncoder& replyEncoder, C* object, MF function)
+void handleMessage(Decoder& decoder, Encoder& replyEncoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
     }
 
-    typename T::Reply::ValueType replyArguments;
+    typename CodingType<typename T::Reply>::Type replyArguments;
     callMemberFunction(WTFMove(arguments), replyArguments, object, function);
     replyEncoder << replyArguments;
 }
 
 template<typename T, typename C, typename MF>
-void handleMessage(Connection& connection, MessageDecoder& decoder, MessageEncoder& replyEncoder, C* object, MF function)
+void handleMessage(Connection& connection, Decoder& decoder, Encoder& replyEncoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
     }
 
-    typename T::Reply::ValueType replyArguments;
+    typename CodingType<typename T::Reply>::Type replyArguments;
     callMemberFunction(connection, WTFMove(arguments), replyArguments, object, function);
     replyEncoder << replyArguments;
 }
 
 template<typename T, typename C, typename MF>
-void handleMessage(Connection& connection, MessageDecoder& decoder, C* object, MF function)
+void handleMessage(Connection& connection, Decoder& decoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
@@ -132,9 +139,9 @@ void handleMessage(Connection& connection, MessageDecoder& decoder, C* object, M
 }
 
 template<typename T, typename C, typename MF>
-void handleMessageDelayed(Connection& connection, MessageDecoder& decoder, std::unique_ptr<MessageEncoder>& replyEncoder, C* object, MF function)
+void handleMessageDelayed(Connection& connection, Decoder& decoder, std::unique_ptr<Encoder>& replyEncoder, C* object, MF function)
 {
-    typename T::DecodeType arguments;
+    typename CodingType<typename T::Arguments>::Type arguments;
     if (!decoder.decode(arguments)) {
         ASSERT(decoder.isInvalid());
         return;
@@ -145,5 +152,3 @@ void handleMessageDelayed(Connection& connection, MessageDecoder& decoder, std::
 }
 
 } // namespace IPC
-
-#endif // HandleMessage_h

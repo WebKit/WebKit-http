@@ -60,7 +60,7 @@ class Data;
 }
 
 namespace IPC {
-class ArgumentDecoder;
+class Decoder;
 class Connection;
 class DataReference;
 }

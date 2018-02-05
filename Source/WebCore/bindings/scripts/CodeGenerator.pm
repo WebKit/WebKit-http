@@ -332,7 +332,7 @@ sub SkipIncludeHeader
     return 1 if $object->IsPrimitiveType($type);
     return 1 if $object->IsTypedArrayType($type);
     return 1 if $type eq "Array";
-    return 1 if $type eq "DOMString";
+    return 1 if $type eq "DOMString" or $type eq "USVString";
     return 1 if $type eq "DOMTimeStamp";
     return 1 if $type eq "SVGNumber";
     return 1 if $type eq "any";
@@ -355,6 +355,15 @@ sub IsNumericType
 
     return 1 if $integerTypeHash{$type};
     return 1 if $floatingPointTypeHash{$type};
+    return 0;
+}
+
+sub IsStringOrEnumType
+{
+    my ($object, $type) = @_;
+    
+    return 1 if $type eq "DOMString" or $type eq "USVString";
+    return 1 if $object->IsEnumType($type);
     return 0;
 }
 
@@ -383,14 +392,15 @@ sub IsPrimitiveType
     return 0;
 }
 
-# Deprecated: Just check for "DOMString" instead.
 # Currently used outside WebKit in an internal Apple project; can be removed soon.
 sub IsStringType
 {
     my $object = shift;
     my $type = shift;
 
-    return $type eq "DOMString";
+    return 1 if $type eq "DOMString";
+    return 1 if $type eq "USVString";
+    return 0;
 }
 
 sub IsEnumType
@@ -461,8 +471,8 @@ sub IsRefPtrType
     return 0 if $object->IsPrimitiveType($type);
     return 0 if $object->IsDictionaryType($type);
     return 0 if $object->IsEnumType($type);
-    return 0 if $object->GetArrayOrSequenceType($type);
-    return 0 if $type eq "DOMString";
+    return 0 if $object->IsSequenceOrFrozenArrayType($type);
+    return 0 if $type eq "DOMString" or $type eq "USVString";
     return 0 if $type eq "any";
 
     return 1;
@@ -507,7 +517,15 @@ sub IsSVGAnimatedType
     return $type =~ /^SVGAnimated/;
 }
 
-sub GetSequenceType
+sub IsSequenceType
+{
+    my $object = shift;
+    my $type = shift;
+
+    return $type =~ /^sequence</;
+}
+
+sub GetSequenceInnerType
 {
     my $object = shift;
     my $type = shift;
@@ -516,28 +534,39 @@ sub GetSequenceType
     return "";
 }
 
-sub GetArrayType
+sub IsFrozenArrayType
 {
     my $object = shift;
     my $type = shift;
 
-    return $1 if $type =~ /^([\w\d_\s]+)\[\]/;
+    return $type =~ /^FrozenArray</;
+}
+
+sub GetFrozenArrayInnerType
+{
+    my $object = shift;
+    my $type = shift;
+
+    return $1 if $type =~ /^FrozenArray<([\w\d_\s]+)>.*/;
     return "";
 }
 
-sub GetArrayOrSequenceType
+sub IsSequenceOrFrozenArrayType
 {
     my $object = shift;
     my $type = shift;
 
-    return $object->GetArrayType($type) || $object->GetSequenceType($type);
+    return $object->IsSequenceType($type) || $object->IsFrozenArrayType($type);
 }
 
-sub AssertNotSequenceType
+sub GetSequenceOrFrozenArrayInnerType
 {
     my $object = shift;
     my $type = shift;
-    die "Sequences must not be used as the type of an attribute, constant or exception field." if $object->GetSequenceType($type);
+
+    return $object->GetSequenceInnerType($type) if $object->IsSequenceType($type);
+    return $object->GetFrozenArrayInnerType($type) if $object->IsFrozenArrayType($type);
+    return "";
 }
 
 # These match WK_lcfirst and WK_ucfirst defined in builtins_generator.py.
@@ -559,6 +588,7 @@ sub WK_lcfirst
 {
     my ($object, $param) = @_;
     my $ret = lcfirst($param);
+    $ret =~ s/dOM/dom/ if $ret =~ /^dOM/;
     $ret =~ s/hTML/html/ if $ret =~ /^hTML/;
     $ret =~ s/uRL/url/ if $ret =~ /^uRL/;
     $ret =~ s/jS/js/ if $ret =~ /^jS/;
@@ -603,6 +633,13 @@ sub LinkOverloadedFunctions
         push(@{$nameToFunctionsMap{$name}}, $function);
         $function->{overloads} = $nameToFunctionsMap{$name};
         $function->{overloadIndex} = @{$nameToFunctionsMap{$name}};
+    }
+
+    my $index = 1;
+    foreach my $constructor (@{$interface->constructors}) {
+        $constructor->{overloads} = $interface->constructors;
+        $constructor->{overloadIndex} = $index;
+        $index++;
     }
 }
 

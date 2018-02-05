@@ -92,16 +92,16 @@ void RenderTableRow::styleDidChange(StyleDifference diff, const RenderStyle* old
     }
 }
 
-const BorderValue& RenderTableRow::borderAdjoiningStartCell(const RenderTableCell* cell) const
+const BorderValue& RenderTableRow::borderAdjoiningStartCell(const RenderTableCell& cell) const
 {
-    ASSERT_UNUSED(cell, cell->isFirstOrLastCellInRow());
+    ASSERT_UNUSED(cell, cell.isFirstOrLastCellInRow());
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderStart();
 }
 
-const BorderValue& RenderTableRow::borderAdjoiningEndCell(const RenderTableCell* cell) const
+const BorderValue& RenderTableRow::borderAdjoiningEndCell(const RenderTableCell& cell) const
 {
-    ASSERT_UNUSED(cell, cell->isFirstOrLastCellInRow());
+    ASSERT_UNUSED(cell, cell.isFirstOrLastCellInRow());
     // FIXME: https://webkit.org/b/79272 - Add support for mixed directionality at the cell level.
     return style().borderEnd();
 }
@@ -134,7 +134,7 @@ void RenderTableRow::addChild(RenderObject* child, RenderObject* beforeChild)
             return;
         }
 
-        RenderTableCell* cell = RenderTableCell::createAnonymousWithParentRenderer(this);
+        auto* cell = RenderTableCell::createAnonymousWithParentRenderer(*this).release();
         addChild(cell, beforeChild);
         cell->addChild(child);
         return;
@@ -260,11 +260,16 @@ void RenderTableRow::imageChanged(WrappedImagePtr, const IntRect*)
     repaint();
 }
 
-RenderTableRow* RenderTableRow::createAnonymousWithParentRenderer(const RenderObject* parent)
+std::unique_ptr<RenderTableRow> RenderTableRow::createTableRowWithStyle(Document& document, const RenderStyle& style)
 {
-    auto newRow = new RenderTableRow(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_ROW));
-    newRow->initializeStyle();
-    return newRow;
+    auto row = std::make_unique<RenderTableRow>(document, RenderStyle::createAnonymousStyleWithDisplay(style, TABLE_ROW));
+    row->initializeStyle();
+    return row;
+}
+
+std::unique_ptr<RenderTableRow> RenderTableRow::createAnonymousWithParentRenderer(const RenderTableSection& parent)
+{
+    return RenderTableRow::createTableRowWithStyle(parent.document(), parent.style());
 }
 
 } // namespace WebCore

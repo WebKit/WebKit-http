@@ -148,8 +148,8 @@
     };
 
     NSError *error = nil;
-    [self.device installApplication:[NSURL fileURLWithPath:self.appPath] withOptions:installOptions error:&error];
-    if (error) {
+    BOOL installed = [self.device installApplication:[NSURL fileURLWithPath:self.appPath] withOptions:installOptions error:&error];
+    if (!installed) {
         NSLog(@"Couldn't install %@: %@", self.appPath, error.description);
         exit(EXIT_FAILURE);
     }

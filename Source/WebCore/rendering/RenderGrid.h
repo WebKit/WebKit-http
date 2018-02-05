@@ -57,11 +57,10 @@ public:
     bool avoidsFloats() const override { return true; }
     bool canDropAnonymousBlockChild() const override { return false; }
 
+    Vector<LayoutUnit> trackSizesForComputedStyle(GridTrackSizingDirection) const;
+
     const Vector<LayoutUnit>& columnPositions() const { return m_columnPositions; }
     const Vector<LayoutUnit>& rowPositions() const { return m_rowPositions; }
-
-    LayoutUnit guttersSize(GridTrackSizingDirection, unsigned span) const;
-    LayoutUnit offsetBetweenTracks(GridTrackSizingDirection) const;
 
     size_t autoRepeatCountForDirection(GridTrackSizingDirection) const;
 
@@ -84,6 +83,12 @@ private:
     void insertItemIntoGrid(RenderBox&, const GridArea&);
 
     unsigned computeAutoRepeatTracksCount(GridTrackSizingDirection) const;
+
+    typedef ListHashSet<size_t> OrderedTrackIndexSet;
+    std::unique_ptr<OrderedTrackIndexSet> computeEmptyTracksForAutoRepeat(GridTrackSizingDirection) const;
+
+    bool hasAutoRepeatEmptyTracks(GridTrackSizingDirection) const;
+    bool isEmptyAutoRepeatTrack(GridTrackSizingDirection, unsigned track) const;
 
     void placeItemsOnGrid();
     void populateExplicitGridAndOrderIterator();
@@ -166,7 +171,13 @@ private:
     LayoutUnit marginLogicalHeightForChild(const RenderBox&) const;
     LayoutUnit computeMarginLogicalSizeForChild(GridTrackSizingDirection, const RenderBox&) const;
     LayoutUnit availableAlignmentSpaceForChildBeforeStretching(LayoutUnit gridAreaBreadthForChild, const RenderBox&) const;
+    StyleSelfAlignmentData justifySelfForChild(const RenderBox&) const;
+    StyleSelfAlignmentData alignSelfForChild(const RenderBox&) const;
     void applyStretchAlignmentToChildIfNeeded(RenderBox&);
+    bool hasAutoSizeInColumnAxis(const RenderBox& child) const { return isHorizontalWritingMode() ? child.style().height().isAuto() : child.style().width().isAuto(); }
+    bool hasAutoSizeInRowAxis(const RenderBox& child) const { return isHorizontalWritingMode() ? child.style().width().isAuto() : child.style().height().isAuto(); }
+    bool allowedToStretchChildAlongColumnAxis(const RenderBox& child) const { return alignSelfForChild(child).position() == ItemPositionStretch && hasAutoSizeInColumnAxis(child) && !hasAutoMarginsInColumnAxis(child); }
+    bool allowedToStretchChildAlongRowAxis(const RenderBox& child) const { return justifySelfForChild(child).position() == ItemPositionStretch && hasAutoSizeInRowAxis(child) && !hasAutoMarginsInRowAxis(child); }
     bool hasAutoMarginsInColumnAxis(const RenderBox&) const;
     bool hasAutoMarginsInRowAxis(const RenderBox&) const;
     void resetAutoMarginsAndLogicalTopInColumnAxis(RenderBox& child);
@@ -176,6 +187,9 @@ private:
 #ifndef NDEBUG
     bool tracksAreWiderThanMinTrackBreadth(GridTrackSizingDirection, GridSizingData&);
 #endif
+
+    LayoutUnit gridGapForDirection(GridTrackSizingDirection) const;
+    LayoutUnit guttersSize(GridTrackSizingDirection, unsigned startLine, unsigned span) const;
 
     bool spanningItemCrossesFlexibleSizedTracks(const GridSpan&, GridTrackSizingDirection, SizingOperation) const;
 
@@ -207,6 +221,9 @@ private:
     bool m_hasAnyOrthogonalChild;
 
     bool m_gridIsDirty { true };
+
+    std::unique_ptr<OrderedTrackIndexSet> m_autoRepeatEmptyColumns { nullptr };
+    std::unique_ptr<OrderedTrackIndexSet> m_autoRepeatEmptyRows { nullptr };
 };
 
 size_t inline RenderGrid::autoRepeatCountForDirection(GridTrackSizingDirection direction) const

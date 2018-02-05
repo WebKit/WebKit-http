@@ -184,10 +184,10 @@ static Ref<InspectorObject> buildObjectForHeaders(const HTTPHeaderMap& headers)
     return headersObject;
 }
 
-static Ref<Inspector::Protocol::Network::ResourceTiming> buildObjectForTiming(const ResourceLoadTiming& timing, DocumentLoader* loader)
+static Ref<Inspector::Protocol::Network::ResourceTiming> buildObjectForTiming(const NetworkLoadTiming& timing, DocumentLoader* loader)
 {
     return Inspector::Protocol::Network::ResourceTiming::create()
-        .setNavigationStart(loader->timing().navigationStart())
+        .setNavigationStart(loader->timing().startTime())
         .setDomainLookupStart(timing.domainLookupStart)
         .setDomainLookupEnd(timing.domainLookupEnd)
         .setConnectStart(timing.connectStart)
@@ -230,7 +230,7 @@ static RefPtr<Inspector::Protocol::Network::Response> buildObjectForResourceResp
         .release();
 
     responseObject->setFromDiskCache(response.source() == ResourceResponse::Source::DiskCache || response.source() == ResourceResponse::Source::DiskCacheAfterValidation);
-    responseObject->setTiming(buildObjectForTiming(response.resourceLoadTiming(), loader));
+    responseObject->setTiming(buildObjectForTiming(response.networkLoadTiming(), loader));
 
     return WTFMove(responseObject);
 }
@@ -670,16 +670,16 @@ void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String&
     request.setHiddenFromInspector(true);
 
     ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks); // So we remove this from m_hiddenRequestIdentifiers on completion.
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.setDefersLoadingPolicy(DefersLoadingPolicy::DisallowDefersLoading); // So the request is never deferred.
-    options.crossOriginRequestPolicy = AllowCrossOriginRequests;
+    options.sendLoadCallbacks = SendCallbacks; // So we remove this from m_hiddenRequestIdentifiers on completion.
+    options.defersLoadingPolicy = DefersLoadingPolicy::DisallowDefersLoading; // So the request is never deferred.
+    options.mode = FetchOptions::Mode::NoCors;
+    options.credentials = FetchOptions::Credentials::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
 
     // InspectorThreadableLoaderClient deletes itself when the load completes.
     InspectorThreadableLoaderClient* inspectorThreadableLoaderClient = new InspectorThreadableLoaderClient(callback.copyRef());
 
-    auto loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, request, options);
+    auto loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, WTFMove(request), options);
     if (!loader) {
         inspectorThreadableLoaderClient->didFailLoaderCreation();
         return;

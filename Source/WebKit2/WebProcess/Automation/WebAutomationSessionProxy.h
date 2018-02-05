@@ -55,7 +55,7 @@ private:
     WebCore::Element* elementForNodeHandle(WebFrame&, const String&);
 
     // Implemented in generated WebAutomationSessionProxyMessageReceiver.cpp
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
     // Called by WebAutomationSessionProxy messages
     void evaluateJavaScriptFunction(uint64_t pageID, uint64_t frameID, const String& function, Vector<String> arguments, bool expectsImplicitCallbackArgument, int callbackTimeout, uint64_t callbackID);
@@ -71,8 +71,8 @@ private:
 
     String m_sessionIdentifier;
 
-    HashMap<uint64_t, JSObjectRef> m_webFrameScriptObjectMap;
-    HashMap<uint64_t, Vector<uint64_t>> m_webFramePendingEvaluateJavaScriptCallbacksMap;
+    HashMap<uint64_t, JSObjectRef, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> m_webFrameScriptObjectMap;
+    HashMap<uint64_t, Vector<uint64_t>, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> m_webFramePendingEvaluateJavaScriptCallbacksMap;
 };
 
 } // namespace WebKit

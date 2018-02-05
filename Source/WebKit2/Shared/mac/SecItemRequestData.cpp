@@ -49,7 +49,7 @@ SecItemRequestData::SecItemRequestData(Type type, CFDictionaryRef query, CFDicti
 {
 }
 
-void SecItemRequestData::encode(IPC::ArgumentEncoder& encoder) const
+void SecItemRequestData::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(m_type);
 
@@ -62,7 +62,7 @@ void SecItemRequestData::encode(IPC::ArgumentEncoder& encoder) const
         IPC::encode(encoder, m_attributesToMatch.get());
 }
 
-bool SecItemRequestData::decode(IPC::ArgumentDecoder& decoder, SecItemRequestData& secItemRequestData)
+bool SecItemRequestData::decode(IPC::Decoder& decoder, SecItemRequestData& secItemRequestData)
 {
     if (!decoder.decodeEnum(secItemRequestData.m_type))
         return false;

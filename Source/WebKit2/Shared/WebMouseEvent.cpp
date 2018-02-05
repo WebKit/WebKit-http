@@ -26,7 +26,6 @@
 #include "config.h"
 #include "WebEvent.h"
 
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 using namespace WebCore;
@@ -70,7 +69,7 @@ WebMouseEvent::WebMouseEvent(Type type, Button button, const IntPoint& position,
     ASSERT(isMouseEventType(type));
 }
 
-void WebMouseEvent::encode(IPC::ArgumentEncoder& encoder) const
+void WebMouseEvent::encode(IPC::Encoder& encoder) const
 {
     WebEvent::encode(encoder);
 
@@ -89,7 +88,7 @@ void WebMouseEvent::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_syntheticClickType;
 }
 
-bool WebMouseEvent::decode(IPC::ArgumentDecoder& decoder, WebMouseEvent& result)
+bool WebMouseEvent::decode(IPC::Decoder& decoder, WebMouseEvent& result)
 {
     if (!WebEvent::decode(decoder, result))
         return false;

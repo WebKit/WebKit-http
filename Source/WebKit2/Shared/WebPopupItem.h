@@ -30,8 +30,8 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -46,8 +46,8 @@ struct WebPopupItem {
     WebPopupItem(Type);
     WebPopupItem(Type, const String& text, WebCore::TextDirection, bool hasTextDirectionOverride, const String& toolTip, const String& accessibilityText, bool isEnabled, bool isLabel, bool isSelected);
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebPopupItem&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebPopupItem&);
 
     Type m_type;
     String m_text;

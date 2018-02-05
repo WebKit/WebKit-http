@@ -28,8 +28,8 @@
 
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 #if ENABLE(SANDBOX_EXTENSIONS)
@@ -37,8 +37,8 @@ typedef struct __WKSandboxExtension* WKSandboxExtensionRef;
 #endif
 
 namespace IPC {
-    class ArgumentEncoder;
-    class ArgumentDecoder;
+class Encoder;
+class Decoder;
 }
 
 namespace WebKit {
@@ -57,8 +57,8 @@ public:
         Handle(Handle&&) = default;
         ~Handle();
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Handle&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Handle&);
 
     private:
         friend class SandboxExtension;
@@ -77,8 +77,8 @@ public:
         Handle& operator[](size_t i);
         const Handle& operator[](size_t i) const;
         size_t size() const;
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, HandleArray&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, HandleArray&);
        
     private:
 #if ENABLE(SANDBOX_EXTENSIONS)
@@ -113,16 +113,16 @@ private:
 #if !ENABLE(SANDBOX_EXTENSIONS)
 inline SandboxExtension::Handle::Handle() { }
 inline SandboxExtension::Handle::~Handle() { }
-inline void SandboxExtension::Handle::encode(IPC::ArgumentEncoder&) const { }
-inline bool SandboxExtension::Handle::decode(IPC::ArgumentDecoder&, Handle&) { return true; }
+inline void SandboxExtension::Handle::encode(IPC::Encoder&) const { }
+inline bool SandboxExtension::Handle::decode(IPC::Decoder&, Handle&) { return true; }
 inline SandboxExtension::HandleArray::HandleArray() { }
 inline SandboxExtension::HandleArray::~HandleArray() { }
 inline void SandboxExtension::HandleArray::allocate(size_t) { }
 inline size_t SandboxExtension::HandleArray::size() const { return 0; }    
 inline const SandboxExtension::Handle& SandboxExtension::HandleArray::operator[](size_t) const { return m_emptyHandle; }
 inline SandboxExtension::Handle& SandboxExtension::HandleArray::operator[](size_t) { return m_emptyHandle; }
-inline void SandboxExtension::HandleArray::encode(IPC::ArgumentEncoder&) const { }
-inline bool SandboxExtension::HandleArray::decode(IPC::ArgumentDecoder&, HandleArray&) { return true; }
+inline void SandboxExtension::HandleArray::encode(IPC::Encoder&) const { }
+inline bool SandboxExtension::HandleArray::decode(IPC::Decoder&, HandleArray&) { return true; }
 inline RefPtr<SandboxExtension> SandboxExtension::create(const Handle&) { return nullptr; }
 inline bool SandboxExtension::createHandle(const String&, Type, Handle&) { return true; }
 inline bool SandboxExtension::createHandleForReadWriteDirectory(const String&, Handle&) { return true; }

@@ -145,6 +145,7 @@ public:
     bool isBusy();
     MarkedSpace::Subspace& subspaceForObjectWithoutDestructor() { return m_objectSpace.subspaceForObjectsWithoutDestructor(); }
     MarkedSpace::Subspace& subspaceForObjectDestructor() { return m_objectSpace.subspaceForObjectsWithDestructor(); }
+    MarkedSpace::Subspace& subspaceForAuxiliaryData() { return m_objectSpace.subspaceForAuxiliaryData(); }
     template<typename ClassType> MarkedSpace::Subspace& subspaceForObjectOfType();
     MarkedAllocator& allocatorForObjectWithoutDestructor(size_t bytes) { return m_objectSpace.allocatorFor(bytes); }
     MarkedAllocator& allocatorForObjectWithDestructor(size_t bytes) { return m_objectSpace.destructorAllocatorFor(bytes); }
@@ -164,8 +165,8 @@ public:
     JS_EXPORT_PRIVATE bool isHeapSnapshotting() const;
 
     JS_EXPORT_PRIVATE void collectAllGarbageIfNotDoneRecently();
-    void collectAllGarbage() { collectAndSweep(FullCollection); }
-    JS_EXPORT_PRIVATE void collectAndSweep(HeapOperation collectionType = AnyCollection);
+    JS_EXPORT_PRIVATE void collectAllGarbage();
+
     bool shouldCollect();
     JS_EXPORT_PRIVATE void collect(HeapOperation collectionType = AnyCollection);
     bool collectIfNecessaryOrDefer(); // Returns true if it did collect.
@@ -205,9 +206,8 @@ public:
 
     HashSet<MarkedArgumentBuffer*>& markListSet();
     
-    template<typename Functor> typename Functor::ReturnType forEachProtectedCell(Functor&);
-    template<typename Functor> typename Functor::ReturnType forEachProtectedCell();
-    template<typename Functor> void forEachCodeBlock(Functor&);
+    template<typename Functor> void forEachProtectedCell(const Functor&);
+    template<typename Functor> void forEachCodeBlock(const Functor&);
 
     HandleSet* handleSet() { return &m_handleSet; }
     HandleStack* handleStack() { return &m_handleStack; }

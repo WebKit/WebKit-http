@@ -90,8 +90,7 @@ void computeUsesForBytecodeOffset(
     case op_jngreatereq:
     case op_jless:
     case op_set_function_name:
-    case op_log_shadow_chicken_tail:
-    case op_copy_rest: {
+    case op_log_shadow_chicken_tail: {
         ASSERT(opcodeLengths[opcodeID] > 2);
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
@@ -190,6 +189,7 @@ void computeUsesForBytecodeOffset(
     case op_new_generator_func:
     case op_get_parent_scope:
     case op_create_scoped_arguments:
+    case op_create_rest:
     case op_get_from_arguments: {
         ASSERT(opcodeLengths[opcodeID] > 2);
         functor(codeBlock, instruction, opcodeID, instruction[2].u.operand);
@@ -208,6 +208,7 @@ void computeUsesForBytecodeOffset(
     case op_div:
     case op_mod:
     case op_sub:
+    case op_pow:
     case op_lshift:
     case op_rshift:
     case op_urshift:
@@ -282,6 +283,8 @@ void computeUsesForBytecodeOffset(
         int lastArg = registerOffset + CallFrame::thisArgumentOffset();
         for (int i = 0; i < argCount; i++)
             functor(codeBlock, instruction, opcodeID, lastArg + i);
+        if (opcodeID == op_call_eval)
+            functor(codeBlock, instruction, opcodeID, codeBlock->scopeRegister().offset());
         return;
     }
     case op_save: {
@@ -315,7 +318,6 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     OpcodeID opcodeID = interpreter->getOpcodeID(instruction->u.opcode);
     switch (opcodeID) {
     // These don't define anything.
-    case op_copy_rest:
     case op_put_to_scope:
     case op_end:
     case op_throw:
@@ -429,6 +431,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_div:
     case op_mod:
     case op_sub:
+    case op_pow:
     case op_lshift:
     case op_rshift:
     case op_urshift:
@@ -460,6 +463,7 @@ void computeDefsForBytecodeOffset(CodeBlock* codeBlock, BytecodeBasicBlock* bloc
     case op_del_by_val:
     case op_unsigned:
     case op_get_from_arguments: 
+    case op_create_rest:
     case op_get_rest_length: {
         ASSERT(opcodeLengths[opcodeID] > 1);
         functor(codeBlock, instruction, opcodeID, instruction[1].u.operand);

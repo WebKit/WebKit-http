@@ -34,16 +34,16 @@
 #if ENABLE(WEB_TIMING)
 
 #include "DOMWindowProperty.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
-class DocumentLoadTiming;
+class LoadTiming;
 class DocumentLoader;
 struct DocumentTiming;
 class Frame;
-class ResourceLoadTiming;
+class NetworkLoadTiming;
 
 class PerformanceTiming : public RefCounted<PerformanceTiming>, public DOMWindowProperty {
 public:
@@ -76,8 +76,8 @@ private:
 
     const DocumentTiming* documentTiming() const;
     DocumentLoader* documentLoader() const;
-    DocumentLoadTiming* documentLoadTiming() const;
-    unsigned long long resourceLoadTimeRelativeToFetchStart(int) const;
+    LoadTiming* loadTiming() const;
+    unsigned long long resourceLoadTimeRelativeToFetchStart(double) const;
     unsigned long long monotonicTimeToIntegerMilliseconds(double) const;
 };
 

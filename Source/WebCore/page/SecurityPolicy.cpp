@@ -29,11 +29,12 @@
 #include "config.h"
 #include "SecurityPolicy.h"
 
-#include "URL.h"
-#include <wtf/MainThread.h>
 #include "OriginAccessEntry.h"
 #include "SecurityOrigin.h"
+#include "URL.h"
 #include <memory>
+#include <wtf/HashMap.h>
+#include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringHash.h>
 
@@ -68,6 +69,8 @@ bool SecurityPolicy::shouldHideReferrer(const URL& url, const String& referrer)
 
 String SecurityPolicy::generateReferrerHeader(ReferrerPolicy referrerPolicy, const URL& url, const String& referrer)
 {
+    ASSERT(referrer == URL(URL(), referrer).strippedForUseAsReferrer());
+
     if (referrer.isEmpty())
         return String();
 
@@ -139,7 +142,7 @@ void SecurityPolicy::addOriginAccessWhitelistEntry(const SecurityOrigin& sourceO
         result.iterator->value = std::make_unique<OriginAccessWhiteList>();
 
     OriginAccessWhiteList* list = result.iterator->value.get();
-    list->append(OriginAccessEntry(destinationProtocol, destinationDomain, allowDestinationSubdomains ? OriginAccessEntry::AllowSubdomains : OriginAccessEntry::DisallowSubdomains));
+    list->append(OriginAccessEntry(destinationProtocol, destinationDomain, allowDestinationSubdomains ? OriginAccessEntry::AllowSubdomains : OriginAccessEntry::DisallowSubdomains, OriginAccessEntry::TreatIPAddressAsIPAddress));
 }
 
 void SecurityPolicy::removeOriginAccessWhitelistEntry(const SecurityOrigin& sourceOrigin, const String& destinationProtocol, const String& destinationDomain, bool allowDestinationSubdomains)
@@ -156,7 +159,7 @@ void SecurityPolicy::removeOriginAccessWhitelistEntry(const SecurityOrigin& sour
         return;
 
     OriginAccessWhiteList& list = *it->value;
-    OriginAccessEntry originAccessEntry(destinationProtocol, destinationDomain, allowDestinationSubdomains ? OriginAccessEntry::AllowSubdomains : OriginAccessEntry::DisallowSubdomains);
+    OriginAccessEntry originAccessEntry(destinationProtocol, destinationDomain, allowDestinationSubdomains ? OriginAccessEntry::AllowSubdomains : OriginAccessEntry::DisallowSubdomains, OriginAccessEntry::TreatIPAddressAsIPAddress);
     if (!list.removeFirst(originAccessEntry))
         return;
 

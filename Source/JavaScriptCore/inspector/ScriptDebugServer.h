@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptDebugServer_h
-#define ScriptDebugServer_h
+#pragma once
 
 #include "ScriptBreakpoint.h"
 #include "ScriptDebugListener.h"
@@ -93,7 +92,6 @@ private:
     typedef HashMap<JSC::BreakpointID, BreakpointActions> BreakpointIDToActionsMap;
 
     void sourceParsed(JSC::ExecState*, JSC::SourceProvider*, int errorLine, const String& errorMsg) final;
-    bool needPauseHandling(JSC::JSGlobalObject*) final { return true; }
     void handleBreakpointHit(JSC::JSGlobalObject*, const JSC::Breakpoint&) final;
     void handleExceptionInBreakpointCondition(JSC::ExecState*, JSC::Exception*) const final;
     void handlePause(JSC::JSGlobalObject*, JSC::Debugger::ReasonForPause) final;
@@ -111,5 +109,3 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // ScriptDebugServer_h

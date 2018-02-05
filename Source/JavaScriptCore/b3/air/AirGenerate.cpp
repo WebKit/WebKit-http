@@ -39,6 +39,7 @@
 #include "AirIteratedRegisterCoalescing.h"
 #include "AirLogRegisterPressure.h"
 #include "AirLowerAfterRegAlloc.h"
+#include "AirLowerEntrySwitch.h"
 #include "AirLowerMacros.h"
 #include "AirOpcodeUtils.h"
 #include "AirOptimizeBlockOrder.h"
@@ -50,8 +51,10 @@
 #include "B3IndexMap.h"
 #include "B3Procedure.h"
 #include "B3TimingScope.h"
+#include "B3ValueInlines.h"
 #include "CCallHelpers.h"
 #include "DisallowMacroScratchRegisterUsage.h"
+#include "LinkBuffer.h"
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -125,10 +128,6 @@ void prepareForGeneration(Code& code)
     // phase.
     simplifyCFG(code);
 
-    // This sorts the basic blocks in Code to achieve an ordering that maximizes the likelihood that a high
-    // frequency successor is also the fall-through target.
-    optimizeBlockOrder(code);
-
     // This is needed to satisfy a requirement of B3::StackmapValue.
     reportUsedRegisters(code);
 
@@ -137,6 +136,16 @@ void prepareForGeneration(Code& code)
     // use. We _must_ run this after reportUsedRegisters(), since that kills variable assignments
     // that seem dead. Luckily, this phase does not change register liveness, so that's OK.
     fixPartialRegisterStalls(code);
+    
+    // Actually create entrypoints.
+    lowerEntrySwitch(code);
+    
+    // The control flow graph can be simplified further after we have lowered EntrySwitch.
+    simplifyCFG(code);
+
+    // This sorts the basic blocks in Code to achieve an ordering that maximizes the likelihood that a high
+    // frequency successor is also the fall-through target.
+    optimizeBlockOrder(code);
 
     if (shouldValidateIR())
         validate(code);
@@ -155,30 +164,23 @@ void generate(Code& code, CCallHelpers& jit)
 
     DisallowMacroScratchRegisterUsage disallowScratch(jit);
 
-    // And now, we generate code.
-    jit.emitFunctionPrologue();
-    if (code.frameSize())
-        jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), MacroAssembler::stackPointerRegister);
-
     auto argFor = [&] (const RegisterAtOffset& entry) -> CCallHelpers::Address {
         return CCallHelpers::Address(GPRInfo::callFrameRegister, entry.offset());
     };
     
-    for (const RegisterAtOffset& entry : code.calleeSaveRegisters()) {
-        if (entry.reg().isGPR())
-            jit.storePtr(entry.reg().gpr(), argFor(entry));
-        else
-            jit.storeDouble(entry.reg().fpr(), argFor(entry));
-    }
-
+    // And now, we generate code.
     GenerationContext context;
     context.code = &code;
-    IndexMap<BasicBlock, CCallHelpers::Label> blockLabels(code.size());
+    context.blockLabels.resize(code.size());
+    for (BasicBlock* block : code) {
+        if (block)
+            context.blockLabels[block] = Box<CCallHelpers::Label>::create();
+    }
     IndexMap<BasicBlock, CCallHelpers::JumpList> blockJumps(code.size());
 
     auto link = [&] (CCallHelpers::Jump jump, BasicBlock* target) {
-        if (blockLabels[target].isSet()) {
-            jump.linkTo(blockLabels[target], &jit);
+        if (context.blockLabels[target]->isSet()) {
+            jump.linkTo(*context.blockLabels[target], &jit);
             return;
         }
 
@@ -195,16 +197,36 @@ void generate(Code& code, CCallHelpers& jit)
     };
 
     for (BasicBlock* block : code) {
+        context.currentBlock = block;
+        context.indexInBlock = UINT_MAX;
         blockJumps[block].link(&jit);
-        blockLabels[block] = jit.label();
+        CCallHelpers::Label label = jit.label();
+        *context.blockLabels[block] = label;
+
+        if (code.isEntrypoint(block)) {
+            jit.emitFunctionPrologue();
+            if (code.frameSize())
+                jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), MacroAssembler::stackPointerRegister);
+            
+            for (const RegisterAtOffset& entry : code.calleeSaveRegisters()) {
+                if (entry.reg().isGPR())
+                    jit.storePtr(entry.reg().gpr(), argFor(entry));
+                else
+                    jit.storeDouble(entry.reg().fpr(), argFor(entry));
+            }
+        }
+        
         ASSERT(block->size() >= 1);
         for (unsigned i = 0; i < block->size() - 1; ++i) {
+            context.indexInBlock = i;
             Inst& inst = block->at(i);
             addItem(inst);
             CCallHelpers::Jump jump = inst.generate(jit, context);
             ASSERT_UNUSED(jump, !jump.isSet());
         }
 
+        context.indexInBlock = block->size() - 1;
+        
         if (block->last().opcode == Jump
             && block->successorBlock(0) == code.findNextBlock(block))
             continue;
@@ -230,24 +252,33 @@ void generate(Code& code, CCallHelpers& jit)
         }
 
         CCallHelpers::Jump jump = block->last().generate(jit, context);
-        switch (block->numSuccessors()) {
-        case 0:
-            ASSERT(!jump.isSet());
-            break;
-        case 1:
-            link(jump, block->successorBlock(0));
-            break;
-        case 2:
-            link(jump, block->successorBlock(0));
-            if (block->successorBlock(1) != code.findNextBlock(block))
-                link(jit.jump(), block->successorBlock(1));
-            break;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            break;
+        // The jump won't be set for patchpoints. It won't be set for Oops because then it won't have
+        // any successors.
+        if (jump.isSet()) {
+            switch (block->numSuccessors()) {
+            case 1:
+                link(jump, block->successorBlock(0));
+                break;
+            case 2:
+                link(jump, block->successorBlock(0));
+                if (block->successorBlock(1) != code.findNextBlock(block))
+                    link(jit.jump(), block->successorBlock(1));
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+            }
         }
         addItem(block->last());
     }
+    
+    context.currentBlock = nullptr;
+    context.indexInBlock = UINT_MAX;
+    
+    Vector<CCallHelpers::Label> entrypointLabels(code.numEntrypoints());
+    for (unsigned i = code.numEntrypoints(); i--;)
+        entrypointLabels[i] = *context.blockLabels[code.entrypoint(i).block()];
+    code.setEntrypointLabels(WTFMove(entrypointLabels));
 
     pcToOriginMap.appendItem(jit.label(), Origin());
     // FIXME: Make late paths have Origins: https://bugs.webkit.org/show_bug.cgi?id=153689

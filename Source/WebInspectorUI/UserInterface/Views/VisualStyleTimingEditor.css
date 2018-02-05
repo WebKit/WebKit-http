@@ -31,12 +31,13 @@
     order: 1;
 }
 
-.visual-style-property-container.timing-editor > .visual-style-property-value-container > .inline-swatch.bezier {
+.visual-style-property-container.timing-editor > .visual-style-property-value-container > .inline-swatch:matches(.bezier, .spring) {
     width: 23px;
     height: 20px;
 }
 
-.visual-style-property-container.timing-editor > .visual-style-property-value-container:not(.bezier-value) > .inline-swatch.bezier {
+.visual-style-property-container.timing-editor > .visual-style-property-value-container:not(.bezier-value) > .inline-swatch.bezier,
+.visual-style-property-container.timing-editor > .visual-style-property-value-container:not(.spring-value) > .inline-swatch.spring {
     display: none;
 }
 

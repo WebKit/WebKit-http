@@ -30,7 +30,7 @@
 
 namespace WebKit {
 
-void WebPageGroupData::encode(IPC::ArgumentEncoder& encoder) const
+void WebPageGroupData::encode(IPC::Encoder& encoder) const
 {
     encoder << identifier;
     encoder << pageGroupID;
@@ -39,7 +39,7 @@ void WebPageGroupData::encode(IPC::ArgumentEncoder& encoder) const
     encoder << userContentControllerIdentifier;
 }
 
-bool WebPageGroupData::decode(IPC::ArgumentDecoder& decoder, WebPageGroupData& data)
+bool WebPageGroupData::decode(IPC::Decoder& decoder, WebPageGroupData& data)
 {
     if (!decoder.decode(data.identifier))
         return false;

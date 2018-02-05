@@ -32,13 +32,13 @@
 
 namespace WebKit {
 
-void WebIDBResult::encode(IPC::ArgumentEncoder& encoder) const
+void WebIDBResult::encode(IPC::Encoder& encoder) const
 {
     m_resultData.encode(encoder);
     m_handles.encode(encoder);
 }
 
-bool WebIDBResult::decode(IPC::ArgumentDecoder& decoder, WebIDBResult& result)
+bool WebIDBResult::decode(IPC::Decoder& decoder, WebIDBResult& result)
 {
     if (!WebCore::IDBResultData::decode(decoder, result.m_resultData))
         return false;

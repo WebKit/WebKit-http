@@ -252,6 +252,12 @@ const IsInvalidated = 2
 # ShadowChicken data
 const ShadowChickenTailMarker = 0x7a11
 
+# ArithProfile data
+const ArithProfileIntInt = 0x120000
+const ArithProfileNumberInt = 0x220000
+const ArithProfileNumberNumber = 0x240000
+const ArithProfileIntNumber = 0x140000
+
 # Some register conventions.
 if JSVALUE64
     # - Use a pair of registers to represent the PC: one register for the
@@ -286,6 +292,10 @@ if JSVALUE64
         loadp offset * 8[PB, PC, 8], dest
     end
     
+    macro storeisToInstruction(value, offset)
+        storei value, offset * 8[PB, PC, 8]
+    end
+
     macro storepToInstruction(value, offset)
         storep value, offset * 8[PB, PC, 8]
     end
@@ -298,6 +308,10 @@ else
     
     macro loadpFromInstruction(offset, dest)
         loadp offset * 4[PC], dest
+    end
+
+    macro storeisToInstruction(value, offset)
+        storei value, offset * 4[PC]
     end
 end
 
@@ -420,6 +434,45 @@ macro assert(assertion)
         assertion(.ok)
         crash()
     .ok:
+    end
+end
+
+# The probe macro can be used to insert some debugging code without perturbing scalar
+# registers. Presently, the probe macro only preserves scalar registers. Hence, the
+# C probe callback function should not trash floating point registers.
+#
+# The macro you pass to probe() can pass whatever registers you like to your probe
+# callback function. However, you need to be mindful of which of the registers are
+# also used as argument registers, and ensure that you don't trash the register value
+# before storing it in the probe callback argument register that you desire.
+#
+# Here's an example of how it's used:
+#
+#     probe(
+#         macro()
+#             move cfr, a0 # pass the ExecState* as arg0.
+#             move t0, a1 # pass the value of register t0 as arg1.
+#             call _cProbeCallbackFunction # to do whatever you want.
+#         end
+#     )
+#
+if X86_64
+    macro probe(action)
+        # save all the registers that the LLInt may use.
+        push a0, a1
+        push a2, a3
+        push t0, t1
+        push t2, t3
+        push t4, t5
+
+        action()
+
+        # restore all the registers we saved previously.
+        pop t5, t4
+        pop t3, t2
+        pop t1, t0
+        pop a3, a2
+        pop a1, a0
     end
 end
 
@@ -1320,6 +1373,12 @@ _llint_op_mod:
     dispatch(4)
 
 
+_llint_op_pow:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_pow)
+    dispatch(4)
+
+
 _llint_op_typeof:
     traceExecution()
     callOpcodeSlowPath(_slow_path_typeof)
@@ -1742,9 +1801,9 @@ _llint_op_to_index_string:
     callOpcodeSlowPath(_slow_path_to_index_string)
     dispatch(3)
 
-_llint_op_copy_rest:
+_llint_op_create_rest:
     traceExecution()
-    callOpcodeSlowPath(_slow_path_copy_rest)
+    callOpcodeSlowPath(_slow_path_create_rest)
     dispatch(4)
 
 _llint_op_instanceof:

@@ -389,26 +389,20 @@ void MarkupAccumulator::appendDocumentType(StringBuilder& result, const Document
 
     result.appendLiteral("<!DOCTYPE ");
     result.append(documentType.name());
-    if (!documentType.publicId().isNull()) {
+    if (!documentType.publicId().isEmpty()) {
         result.appendLiteral(" PUBLIC \"");
         result.append(documentType.publicId());
         result.append('"');
-        if (!documentType.systemId().isNull()) {
+        if (!documentType.systemId().isEmpty()) {
             result.append(' ');
             result.append('"');
             result.append(documentType.systemId());
             result.append('"');
         }
-    } else if (!documentType.systemId().isNull()) {
+    } else if (!documentType.systemId().isEmpty()) {
         result.appendLiteral(" SYSTEM \"");
         result.append(documentType.systemId());
         result.append('"');
-    }
-    if (!documentType.internalSubset().isNull()) {
-        result.append(' ');
-        result.append('[');
-        result.append(documentType.internalSubset());
-        result.append(']');
     }
     result.append('>');
 }

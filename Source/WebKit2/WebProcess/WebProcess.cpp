@@ -47,6 +47,7 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebFrame.h"
 #include "WebFrameNetworkingContext.h"
+#include "WebGamepadProvider.h"
 #include "WebGeolocationManager.h"
 #include "WebIconDatabaseProxy.h"
 #include "WebLoaderStrategy.h"
@@ -55,6 +56,7 @@
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
 #include "WebPlatformStrategies.h"
+#include "WebPluginInfoProvider.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
@@ -84,6 +86,7 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/MemoryPressureHandler.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageCache.h>
 #include <WebCore/PageGroup.h>
@@ -101,7 +104,6 @@
 #include <unistd.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashCountedSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
 
@@ -141,8 +143,6 @@ static const double plugInAutoStartExpirationTimeUpdateThreshold = 29 * 24 * 60 
 
 // This should be greater than tileRevalidationTimeout in TileController.
 static const double nonVisibleProcessCleanupDelay = 10;
-
-#define WEBPROCESS_LOG_ALWAYS(...) LOG_ALWAYS(true, __VA_ARGS__)
 
 namespace WebKit {
 
@@ -205,7 +205,7 @@ WebProcess::WebProcess()
     RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) || PLATFORM(GTK)
     PageCache::singleton().setShouldClearBackingStores(true);
 #endif
 
@@ -396,9 +396,13 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     for (auto hostIter = parameters.pluginLoadClientPolicies.begin(); hostIter != parameters.pluginLoadClientPolicies.end(); ++hostIter) {
         for (auto bundleIdentifierIter = hostIter->value.begin(); bundleIdentifierIter != hostIter->value.end(); ++bundleIdentifierIter) {
             for (auto versionIter = bundleIdentifierIter->value.begin(); versionIter != bundleIdentifierIter->value.end(); ++versionIter)
-                platformStrategies()->pluginStrategy()->setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(versionIter->value), hostIter->key, bundleIdentifierIter->key, versionIter->key);
+                WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(versionIter->value), hostIter->key, bundleIdentifierIter->key, versionIter->key);
         }
     }
+#endif
+
+#if ENABLE(GAMEPAD)
+    GamepadProvider::singleton().setSharedProvider(WebGamepadProvider::singleton());
 #endif
 }
 
@@ -529,11 +533,25 @@ void WebProcess::setCacheModel(uint32_t cm)
 {
     CacheModel cacheModel = static_cast<CacheModel>(cm);
 
-    if (!m_hasSetCacheModel || cacheModel != m_cacheModel) {
-        m_hasSetCacheModel = true;
-        m_cacheModel = cacheModel;
-        platformSetCacheModel(cacheModel);
-    }
+    if (m_hasSetCacheModel && (cacheModel == m_cacheModel))
+        return;
+
+    m_hasSetCacheModel = true;
+    m_cacheModel = cacheModel;
+
+    unsigned cacheTotalCapacity = 0;
+    unsigned cacheMinDeadCapacity = 0;
+    unsigned cacheMaxDeadCapacity = 0;
+    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
+    unsigned pageCacheSize = 0;
+    calculateMemoryCacheSizes(cacheModel, cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval, pageCacheSize);
+
+    auto& memoryCache = MemoryCache::singleton();
+    memoryCache.setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache.setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    PageCache::singleton().setMaxSize(pageCacheSize);
+
+    platformSetCacheModel(cacheModel);
 }
 
 void WebProcess::clearCachedCredentials()
@@ -614,7 +632,7 @@ void WebProcess::terminate()
     ChildProcess::terminate();
 }
 
-void WebProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void WebProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     if (messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
@@ -622,7 +640,7 @@ void WebProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Message
     didReceiveSyncWebProcessMessage(connection, decoder, replyEncoder);
 }
 
-void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
@@ -751,8 +769,6 @@ void WebProcess::userGestureTokenDestroyed(UserGestureToken& token)
 
 void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear)
 {
-    platformClearResourceCaches(resourceCachesToClear);
-
     // Toggling the cache model like this forces the cache to evict all its in-memory resources.
     // FIXME: We need a better way to do this.
     CacheModel cacheModel = m_cacheModel;
@@ -898,14 +914,14 @@ void WebProcess::plugInDidReceiveUserInteraction(const String& pageOrigin, const
 void WebProcess::setPluginLoadClientPolicy(uint8_t policy, const String& host, const String& bundleIdentifier, const String& versionString)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
-    platformStrategies()->pluginStrategy()->setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(policy), host, bundleIdentifier, versionString);
+    WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(policy), host, bundleIdentifier, versionString);
 #endif
 }
 
 void WebProcess::clearPluginClientPolicies()
 {
 #if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
-    platformStrategies()->pluginStrategy()->clearPluginClientPolicies();
+    WebPluginInfoProvider::singleton().clearPluginClientPolicies();
 #endif
 }
 
@@ -1011,6 +1027,25 @@ void WebProcess::mainThreadPing()
 {
     parentProcessConnection()->send(Messages::WebProcessProxy::DidReceiveMainThreadPing(), 0);
 }
+
+#if ENABLE(GAMEPAD)
+
+void WebProcess::setInitialGamepads(const Vector<WebKit::GamepadData>& gamepadDatas)
+{
+    WebGamepadProvider::singleton().setInitialGamepads(gamepadDatas);
+}
+
+void WebProcess::gamepadConnected(const GamepadData& gamepadData)
+{
+    WebGamepadProvider::singleton().gamepadConnected(gamepadData);
+}
+
+void WebProcess::gamepadDisconnected(unsigned index)
+{
+    WebGamepadProvider::singleton().gamepadDisconnected(index);
+}
+
+#endif
 
 void WebProcess::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
 {
@@ -1242,10 +1277,10 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
     setAllLayerTreeStatesFrozen(true);
 
     markAllLayersVolatile([this, shouldAcknowledgeWhenReadyToSuspend] {
-        WEBPROCESS_LOG_ALWAYS("%p - WebProcess::markAllLayersVolatile() Successfuly marked all layers as volatile", this);
+        RELEASE_LOG("%p - WebProcess::markAllLayersVolatile() Successfuly marked all layers as volatile", this);
 
         if (shouldAcknowledgeWhenReadyToSuspend == ShouldAcknowledgeWhenReadyToSuspend::Yes) {
-            WEBPROCESS_LOG_ALWAYS("%p - WebProcess::actualPrepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
+            RELEASE_LOG("%p - WebProcess::actualPrepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
             parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
         }
     });
@@ -1261,7 +1296,7 @@ void WebProcess::processWillSuspendImminently(bool& handled)
         return;
     }
 
-    WEBPROCESS_LOG_ALWAYS("%p - WebProcess::processWillSuspendImminently()", this);
+    RELEASE_LOG("%p - WebProcess::processWillSuspendImminently()", this);
     DatabaseTracker::tracker().closeAllDatabases(CurrentQueryBehavior::Interrupt);
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     handled = true;
@@ -1269,13 +1304,13 @@ void WebProcess::processWillSuspendImminently(bool& handled)
 
 void WebProcess::prepareToSuspend()
 {
-    WEBPROCESS_LOG_ALWAYS("%p - WebProcess::prepareToSuspend()", this);
+    RELEASE_LOG("%p - WebProcess::prepareToSuspend()", this);
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::Yes);
 }
 
 void WebProcess::cancelPrepareToSuspend()
 {
-    WEBPROCESS_LOG_ALWAYS("%p - WebProcess::cancelPrepareToSuspend()", this);
+    RELEASE_LOG("%p - WebProcess::cancelPrepareToSuspend()", this);
     setAllLayerTreeStatesFrozen(false);
 
     // If we've already finished cleaning up and sent ProcessReadyToSuspend, we
@@ -1285,13 +1320,13 @@ void WebProcess::cancelPrepareToSuspend()
 
     cancelMarkAllLayersVolatile();
 
-    WEBPROCESS_LOG_ALWAYS("%p - WebProcess::cancelPrepareToSuspend() Sending DidCancelProcessSuspension IPC message", this);
+    RELEASE_LOG("%p - WebProcess::cancelPrepareToSuspend() Sending DidCancelProcessSuspension IPC message", this);
     parentProcessConnection()->send(Messages::WebProcessProxy::DidCancelProcessSuspension(), 0);
 }
 
 void WebProcess::markAllLayersVolatile(std::function<void()> completionHandler)
 {
-    WEBPROCESS_LOG_ALWAYS("%p - WebProcess::markAllLayersVolatile()", this);
+    RELEASE_LOG("%p - WebProcess::markAllLayersVolatile()", this);
     m_pagesMarkingLayersAsVolatile = m_pageMap.size();
     if (!m_pagesMarkingLayersAsVolatile) {
         completionHandler();
@@ -1324,7 +1359,7 @@ void WebProcess::setAllLayerTreeStatesFrozen(bool frozen)
     
 void WebProcess::processDidResume()
 {
-    WEBPROCESS_LOG_ALWAYS("%p - WebProcess::processDidResume()", this);
+    RELEASE_LOG("%p - WebProcess::processDidResume()", this);
 
     cancelMarkAllLayersVolatile();
     setAllLayerTreeStatesFrozen(false);

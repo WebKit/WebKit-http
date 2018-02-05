@@ -119,7 +119,7 @@ ChildProcessProxy::State ChildProcessProxy::state() const
     return ChildProcessProxy::State::Running;
 }
 
-bool ChildProcessProxy::sendMessage(std::unique_ptr<IPC::MessageEncoder> encoder, unsigned messageSendFlags)
+bool ChildProcessProxy::sendMessage(std::unique_ptr<IPC::Encoder> encoder, unsigned messageSendFlags)
 {
     switch (state()) {
     case State::Launching:
@@ -157,12 +157,12 @@ void ChildProcessProxy::removeMessageReceiver(IPC::StringReference messageReceiv
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName);
 }
 
-bool ChildProcessProxy::dispatchMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+bool ChildProcessProxy::dispatchMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     return m_messageReceiverMap.dispatchMessage(connection, decoder);
 }
 
-bool ChildProcessProxy::dispatchSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+bool ChildProcessProxy::dispatchSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     return m_messageReceiverMap.dispatchSyncMessage(connection, decoder, replyEncoder);
 }
@@ -170,6 +170,9 @@ bool ChildProcessProxy::dispatchSyncMessage(IPC::Connection& connection, IPC::Me
 void ChildProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier connectionIdentifier)
 {
     ASSERT(!m_connection);
+
+    if (IPC::Connection::identifierIsNull(connectionIdentifier))
+        return;
 
     m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
@@ -180,7 +183,7 @@ void ChildProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::Id
     m_connection->open();
 
     for (size_t i = 0; i < m_pendingMessages.size(); ++i) {
-        std::unique_ptr<IPC::MessageEncoder> message = WTFMove(m_pendingMessages[i].first);
+        std::unique_ptr<IPC::Encoder> message = WTFMove(m_pendingMessages[i].first);
         unsigned messageSendFlags = m_pendingMessages[i].second;
         m_connection->sendMessage(WTFMove(message), messageSendFlags);
     }

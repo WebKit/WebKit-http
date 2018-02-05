@@ -61,7 +61,6 @@
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
-#include "WASMModuleParser.h"
 #include <locale.h>
 #include <math.h>
 #include <stdio.h>
@@ -590,6 +589,7 @@ static EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState*);
 #endif
 static EncodedJSValue JSC_HOST_CALL functionVersion(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionRun(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionRunString(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionLoad(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionLoadString(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionReadFile(ExecState*);
@@ -599,6 +599,7 @@ static EncodedJSValue JSC_HOST_CALL functionPreciseTime(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionNeverInlineFunction(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionNoDFG(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionNoFTL(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionNoOSRExitFuzzing(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionOptimizeNextInvocation(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionNumberOfDFGCompiles(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionReoptimizationRetryCount(ExecState*);
@@ -624,9 +625,6 @@ static EncodedJSValue JSC_HOST_CALL functionBasicBlockExecutionCount(ExecState*)
 static EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDrainMicrotasks(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionIs32BitPlatform(ExecState*);
-#if ENABLE(WEBASSEMBLY)
-static EncodedJSValue JSC_HOST_CALL functionLoadWebAssembly(ExecState*);
-#endif
 static EncodedJSValue JSC_HOST_CALL functionLoadModule(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCheckModuleSyntax(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionPlatformSupportsSamplingProfiler(ExecState*);
@@ -788,6 +786,7 @@ protected:
 #endif
         addFunction(vm, "version", functionVersion, 1);
         addFunction(vm, "run", functionRun, 1);
+        addFunction(vm, "runString", functionRunString, 1);
         addFunction(vm, "load", functionLoad, 1);
         addFunction(vm, "loadString", functionLoadString, 1);
         addFunction(vm, "readFile", functionReadFile, 1);
@@ -799,6 +798,7 @@ protected:
         addFunction(vm, "noInline", functionNeverInlineFunction, 1);
         addFunction(vm, "noDFG", functionNoDFG, 1);
         addFunction(vm, "noFTL", functionNoFTL, 1);
+        addFunction(vm, "noOSRExitFuzzing", functionNoOSRExitFuzzing, 1);
         addFunction(vm, "numberOfDFGCompiles", functionNumberOfDFGCompiles, 1);
         addFunction(vm, "optimizeNextInvocation", functionOptimizeNextInvocation, 1);
         addFunction(vm, "reoptimizationRetryCount", functionReoptimizationRetryCount, 1);
@@ -853,9 +853,6 @@ protected:
 
         addFunction(vm, "is32BitPlatform", functionIs32BitPlatform, 0);
 
-#if ENABLE(WEBASSEMBLY)
-        addFunction(vm, "loadWebAssembly", functionLoadWebAssembly, 3);
-#endif
         addFunction(vm, "loadModule", functionLoadModule, 1);
         addFunction(vm, "checkModuleSyntax", functionCheckModuleSyntax, 1);
 
@@ -888,8 +885,8 @@ protected:
         putDirect(vm, identifier, JSFunction::create(vm, this, arguments, identifier.string(), function, NoIntrinsic, function));
     }
 
-    static JSInternalPromise* moduleLoaderResolve(JSGlobalObject*, ExecState*, JSValue, JSValue);
-    static JSInternalPromise* moduleLoaderFetch(JSGlobalObject*, ExecState*, JSValue);
+    static JSInternalPromise* moduleLoaderResolve(JSGlobalObject*, ExecState*, JSModuleLoader*, JSValue, JSValue);
+    static JSInternalPromise* moduleLoaderFetch(JSGlobalObject*, ExecState*, JSModuleLoader*, JSValue);
 };
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, nullptr, CREATE_METHOD_TABLE(GlobalObject) };
@@ -1020,7 +1017,7 @@ static String resolvePath(const DirectoryName& directoryName, const ModuleName& 
     return builder.toString();
 }
 
-JSInternalPromise* GlobalObject::moduleLoaderResolve(JSGlobalObject* globalObject, ExecState* exec, JSValue keyValue, JSValue referrerValue)
+JSInternalPromise* GlobalObject::moduleLoaderResolve(JSGlobalObject* globalObject, ExecState* exec, JSModuleLoader*, JSValue keyValue, JSValue referrerValue)
 {
     JSInternalPromiseDeferred* deferred = JSInternalPromiseDeferred::create(exec, globalObject);
     const Identifier key = keyValue.toPropertyKey(exec);
@@ -1125,7 +1122,7 @@ static bool fetchModuleFromLocalFileSystem(const String& fileName, Vector<char>&
     return result;
 }
 
-JSInternalPromise* GlobalObject::moduleLoaderFetch(JSGlobalObject* globalObject, ExecState* exec, JSValue key)
+JSInternalPromise* GlobalObject::moduleLoaderFetch(JSGlobalObject* globalObject, ExecState* exec, JSModuleLoader*, JSValue key)
 {
     JSInternalPromiseDeferred* deferred = JSInternalPromiseDeferred::create(exec, globalObject);
     String moduleKey = key.toWTFString(exec);
@@ -1238,7 +1235,7 @@ EncodedJSValue JSC_HOST_CALL functionCreateElement(ExecState* exec)
     JSLockHolder lock(exec);
     Root* root = jsDynamicCast<Root*>(exec->argument(0));
     if (!root)
-        return JSValue::encode(jsUndefined());
+        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Cannot create Element without a Root."))));
     return JSValue::encode(Element::create(exec->vm(), exec->lexicalGlobalObject(), root));
 }
 
@@ -1448,6 +1445,31 @@ EncodedJSValue JSC_HOST_CALL functionRun(ExecState* exec)
     return JSValue::encode(jsNumber(stopWatch.getElapsedMS()));
 }
 
+EncodedJSValue JSC_HOST_CALL functionRunString(ExecState* exec)
+{
+    String source = exec->argument(0).toWTFString(exec);
+    if (exec->hadException())
+        return JSValue::encode(jsUndefined());
+
+    GlobalObject* globalObject = GlobalObject::create(exec->vm(), GlobalObject::createStructure(exec->vm(), jsNull()), Vector<String>());
+
+    JSArray* array = constructEmptyArray(globalObject->globalExec(), 0);
+    for (unsigned i = 1; i < exec->argumentCount(); ++i)
+        array->putDirectIndex(globalObject->globalExec(), i - 1, exec->uncheckedArgument(i));
+    globalObject->putDirect(
+        exec->vm(), Identifier::fromString(globalObject->globalExec(), "arguments"), array);
+
+    NakedPtr<Exception> exception;
+    evaluate(globalObject->globalExec(), makeSource(source), JSValue(), exception);
+
+    if (exception) {
+        exec->vm().throwException(globalObject->globalExec(), exception);
+        return JSValue::encode(jsUndefined());
+    }
+    
+    return JSValue::encode(globalObject);
+}
+
 EncodedJSValue JSC_HOST_CALL functionLoad(ExecState* exec)
 {
     String fileName = exec->argument(0).toWTFString(exec);
@@ -1585,6 +1607,11 @@ EncodedJSValue JSC_HOST_CALL functionNoFTL(ExecState* exec)
     }
 
     return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL functionNoOSRExitFuzzing(ExecState* exec)
+{
+    return JSValue::encode(setCannotUseOSRExitFuzzing(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL functionOptimizeNextInvocation(ExecState* exec)
@@ -1780,28 +1807,6 @@ EncodedJSValue JSC_HOST_CALL functionIs32BitPlatform(ExecState*)
     return JSValue::encode(JSValue(JSC::JSValue::JSTrue));
 #endif
 }
-
-#if ENABLE(WEBASSEMBLY)
-EncodedJSValue JSC_HOST_CALL functionLoadWebAssembly(ExecState* exec)
-{
-    String fileName = exec->argument(0).toWTFString(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    Vector<char> buffer;
-    if (!fillBufferWithContentsOfFile(fileName, buffer))
-        return JSValue::encode(exec->vm().throwException(exec, createError(exec, ASCIILiteral("Could not open file."))));
-    RefPtr<WebAssemblySourceProvider> sourceProvider = WebAssemblySourceProvider::create(reinterpret_cast<Vector<uint8_t>&>(buffer), fileName);
-    SourceCode source(sourceProvider);
-    JSObject* imports = exec->argument(1).getObject();
-    JSArrayBuffer* arrayBuffer = jsDynamicCast<JSArrayBuffer*>(exec->argument(2));
-
-    String errorMessage;
-    JSWASMModule* module = parseWebAssembly(exec, source, imports, arrayBuffer, errorMessage);
-    if (!module)
-        return JSValue::encode(exec->vm().throwException(exec, createSyntaxError(exec, errorMessage)));
-    return JSValue::encode(module);
-}
-#endif
 
 EncodedJSValue JSC_HOST_CALL functionLoadModule(ExecState* exec)
 {
@@ -2039,22 +2044,28 @@ static void dumpException(GlobalObject* globalObject, JSValue exception)
 
 static bool checkUncaughtException(VM& vm, GlobalObject* globalObject, JSValue exception, const String& expectedExceptionName)
 {
+    vm.clearException();
     if (!exception) {
         printf("Expected uncaught exception with name '%s' but none was thrown\n", expectedExceptionName.utf8().data());
         return false;
     }
 
-    JSValue exceptionName = exception.get(globalObject->globalExec(), vm.propertyNames->name);
-
-    if (JSString* exceptionNameStr = jsDynamicCast<JSString*>(exceptionName)) {
-        const String& name = exceptionNameStr->value(globalObject->globalExec());
-        if (name == expectedExceptionName)
-            return true;
-        printf("Expected uncaught exception with name '%s' but got one with name '%s'\n", expectedExceptionName.utf8().data(), name.utf8().data());
-        dumpException(globalObject, exception);
+    ExecState* exec = globalObject->globalExec();
+    JSValue exceptionClass = globalObject->get(exec, Identifier::fromString(exec, expectedExceptionName));
+    if (!exceptionClass.isObject() || vm.exception()) {
+        printf("Expected uncaught exception with name '%s' but given exception class is not defined\n", expectedExceptionName.utf8().data());
         return false;
     }
-    printf("Expected uncaught exception with name '%s' but exception value did not have a name property\n", expectedExceptionName.utf8().data());
+
+    bool isInstanceOfExpectedException = jsCast<JSObject*>(exceptionClass)->hasInstance(exec, exception);
+    if (vm.exception()) {
+        printf("Expected uncaught exception with name '%s' but given exception class fails performing hasInstance\n", expectedExceptionName.utf8().data());
+        return false;
+    }
+    if (isInstanceOfExpectedException)
+        return true;
+
+    printf("Expected uncaught exception with name '%s' but exception value is not instance of this exception class\n", expectedExceptionName.utf8().data());
     dumpException(globalObject, exception);
     return false;
 }

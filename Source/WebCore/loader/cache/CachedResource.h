@@ -200,10 +200,16 @@ public:
     virtual void responseReceived(const ResourceResponse&);
     virtual bool shouldCacheResponse(const ResourceResponse&) { return true; }
     void setResponse(const ResourceResponse&);
-    void setOpaqueRedirect() { m_responseType = ResourceResponseBase::Type::Opaqueredirect; }
     const ResourceResponse& response() const { return m_response; }
     // This is the same as response() except after HTTP redirect to data: URL.
     const ResourceResponse& responseForSameOriginPolicyChecks() const;
+
+    void setCrossOrigin();
+    bool isCrossOrigin() const;
+    bool isClean() const;
+    ResourceResponse::Tainting responseTainting() const { return m_responseTainting; }
+
+    SecurityOrigin* origin() const { return m_origin.get(); }
 
     bool canDelete() const { return !hasClients() && !m_loader && !m_preloadCount && !m_handleCount && !m_resourceToRevalidate && !m_proxyResource; }
     bool hasOneHandle() const { return m_handleCount == 1; }
@@ -220,11 +226,12 @@ public:
     bool errorOccurred() const { return m_status == LoadError || m_status == DecodeError; }
     bool loadFailedOrCanceled() const { return !m_error.isNull(); }
 
-    bool shouldSendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks() == SendCallbacks; }
-    DataBufferingPolicy dataBufferingPolicy() const { return m_options.dataBufferingPolicy(); }
+    bool shouldSendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks == SendCallbacks; }
+    DataBufferingPolicy dataBufferingPolicy() const { return m_options.dataBufferingPolicy; }
 
-    bool allowsCaching() const { return m_options.cachingPolicy() == CachingPolicy::AllowCaching; }
-    
+    bool allowsCaching() const { return m_options.cachingPolicy == CachingPolicy::AllowCaching; }
+    const FetchOptions& options() const { return m_options; }
+
     virtual void destroyDecodedData() { }
 
     void setOwningCachedResourceLoader(CachedResourceLoader* cachedResourceLoader) { m_owningCachedResourceLoader = cachedResourceLoader; }
@@ -284,7 +291,7 @@ protected:
     RefPtr<SubresourceLoader> m_loader;
     ResourceLoaderOptions m_options;
     ResourceResponse m_response;
-    ResourceResponseBase::Type m_responseType { ResourceResponseBase::Type::Basic };
+    ResourceResponse::Tainting m_responseTainting { ResourceResponse::Tainting::Basic };
     ResourceResponse m_redirectResponseForSameOriginPolicyChecks;
     RefPtr<SharedBuffer> m_data;
     DeferrableOneShotTimer m_decodedDataDeletionTimer;
@@ -313,6 +320,7 @@ private:
     String m_fragmentIdentifierForRequest;
 
     ResourceError m_error;
+    RefPtr<SecurityOrigin> m_origin;
 
     double m_lastDecodedAccessTime; // Used as a "thrash guard" in the cache
     double m_loadFinishTime;

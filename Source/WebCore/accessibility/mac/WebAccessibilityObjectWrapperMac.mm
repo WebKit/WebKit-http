@@ -161,6 +161,10 @@ using namespace HTMLNames;
 #define NSAccessibilityValueAutofillAvailableAttribute @"AXValueAutofillAvailable"
 #endif
 
+#ifndef NSAccessibilityValueAutofillTypeAttribute
+#define NSAccessibilityValueAutofillTypeAttribute @"AXValueAutofillType"
+#endif
+
 #ifndef NSAccessibilityLanguageAttribute
 #define NSAccessibilityLanguageAttribute @"AXLanguage"
 #endif
@@ -1190,7 +1194,7 @@ static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, 
     }
 }
 
-static void AXAttributeStringSetexpandedTextValue(NSMutableAttributedString *attrString, RenderObject* renderer, NSRange range)
+static void AXAttributeStringSetExpandedTextValue(NSMutableAttributedString *attrString, RenderObject* renderer, NSRange range)
 {
     if (!renderer || !AXAttributedStringRangeIsValid(attrString, range))
         return;
@@ -1279,7 +1283,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     AXAttributeStringSetStyle(attrString, renderer, attrStringRange);
     AXAttributeStringSetHeadingLevel(attrString, renderer, attrStringRange);
     AXAttributeStringSetBlockquoteLevel(attrString, renderer, attrStringRange);
-    AXAttributeStringSetexpandedTextValue(attrString, renderer, attrStringRange);
+    AXAttributeStringSetExpandedTextValue(attrString, renderer, attrStringRange);
     AXAttributeStringSetElement(attrString, NSAccessibilityLinkTextAttribute, AccessibilityObject::anchorElementForNode(node), attrStringRange);
     
     // do spelling last because it tends to break up the range
@@ -3236,6 +3240,17 @@ static NSString* roleValueToNSString(AccessibilityRole value)
 
     if ([attributeName isEqualToString:NSAccessibilityValueAutofillAvailableAttribute])
         return @(m_object->isValueAutofillAvailable());
+    
+    if ([attributeName isEqualToString:NSAccessibilityValueAutofillTypeAttribute]) {
+        switch (m_object->valueAutofillButtonType()) {
+        case AutoFillButtonType::None:
+            return @"none";
+        case AutoFillButtonType::Credentials:
+            return @"credentials";
+        case AutoFillButtonType::Contacts:
+            return @"contacts";
+        }
+    }
     
     if ([attributeName isEqualToString:NSAccessibilityValueAutofilledAttribute])
         return @(m_object->isValueAutofilled());

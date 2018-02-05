@@ -31,12 +31,10 @@
 #include "JIT.h"
 
 #include "CCallHelpers.h"
-#include "Debugger.h"
 #include "Exception.h"
 #include "JITInlines.h"
 #include "JSArray.h"
 #include "JSCell.h"
-#include "JSEnvironmentRecord.h"
 #include "JSFunction.h"
 #include "JSPropertyNameEnumerator.h"
 #include "LinkBuffer.h"
@@ -172,7 +170,9 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
     RegisterID scratchReg = regT3;
 
     move(TrustedImmPtr(allocator), allocatorReg);
-    emitAllocateJSObject(allocatorReg, TrustedImmPtr(structure), resultReg, scratchReg);
+    JumpList slowCases;
+    emitAllocateJSObject(resultReg, allocatorReg, TrustedImmPtr(structure), TrustedImmPtr(0), scratchReg, slowCases);
+    addSlowCase(slowCases);
     emitStoreCell(currentInstruction[1].u.operand, resultReg);
 }
 
@@ -589,8 +589,12 @@ void JIT::emit_op_jneq_ptr(Instruction* currentInstruction)
     unsigned target = currentInstruction[3].u.operand;
 
     emitLoad(src, regT1, regT0);
-    addJump(branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag)), target);
-    addJump(branchPtr(NotEqual, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr))), target);
+    CCallHelpers::Jump notCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
+    CCallHelpers::Jump equal = branchPtr(Equal, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr)));
+    notCell.link(this);
+    store32(TrustedImm32(1), &currentInstruction[4].u.operand);
+    addJump(jump(), target);
+    equal.link(this);
 }
 
 void JIT::emit_op_eq(Instruction* currentInstruction)
@@ -1027,7 +1031,9 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     addSlowCase(branchPtr(NotEqual, calleeReg, cachedFunctionReg));
     hasSeenMultipleCallees.link(this);
 
-    emitAllocateJSObject(allocatorReg, structureReg, resultReg, scratchReg);
+    JumpList slowCases;
+    emitAllocateJSObject(resultReg, allocatorReg, structureReg, TrustedImmPtr(0), scratchReg, slowCases);
+    addSlowCase(slowCases);
     emitStoreCell(currentInstruction[1].u.operand, resultReg);
 }
 

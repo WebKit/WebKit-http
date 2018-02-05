@@ -30,14 +30,7 @@
     [Custom] void write(optional DOMString text);
     [Custom] void writeln(optional DOMString text);
 
-    readonly attribute HTMLCollection embeds;
-    readonly attribute HTMLCollection plugins;
-    readonly attribute HTMLCollection scripts;
-
-    // Extensions
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // FIXME: This should eventually be available (if they are wanted) for all languages.
+#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     [Custom, Replaceable, Deletable] readonly attribute HTMLAllCollection all;
 #endif
 
@@ -46,23 +39,16 @@
     void captureEvents();
     void releaseEvents();
 
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
+#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
     readonly attribute long width;
     readonly attribute long height;
+    attribute DOMString dir;
 #endif
 
-    // FIXME: This should not have [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString dir;
-
-    attribute DOMString designMode;
-    readonly attribute DOMString compatMode;
-
     // Deprecated attributes.
-    // FIXME: These should not have [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString bgColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString fgColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString alinkColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString linkColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString vlinkColor;
+    [TreatNullAs=EmptyString] attribute DOMString bgColor;
+    [TreatNullAs=EmptyString] attribute DOMString fgColor;
+    [TreatNullAs=EmptyString] attribute DOMString alinkColor;
+    [TreatNullAs=EmptyString] attribute DOMString linkColor;
+    [TreatNullAs=EmptyString] attribute DOMString vlinkColor;
 };
-

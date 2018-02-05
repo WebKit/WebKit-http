@@ -1,12 +1,12 @@
 description("Test to check if setBaseAndExtent guard node with null owner document (Bug 31680)");
 
 var sel = window.getSelection();
-var docType = document.implementation.createDocumentType('c');
+var docType = document.implementation.createDocumentType('c', '', '');
 
-sel.setBaseAndExtent(docType);
+sel.setBaseAndExtent(docType, 0, docType, 0);
 shouldBeNull("sel.anchorNode");
 
-sel.setBaseAndExtent(null, 0, docType, 0);
+sel.setBaseAndExtent(docType, 0, docType, 0);
 shouldBeNull("sel.anchorNode");
 
 sel.collapse(docType);

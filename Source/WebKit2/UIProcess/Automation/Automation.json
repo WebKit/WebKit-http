@@ -53,6 +53,7 @@
                 "WindowNotFound",
                 "FrameNotFound",
                 "NodeNotFound",
+                "InvalidElementState",
                 "NoJavaScriptDialog",
                 "NotImplemented",
                 "MissingParameter",
@@ -338,7 +339,8 @@
             "parameters": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context which should receive key." },
                 { "name": "interactions", "type": "array", "items": { "$ref": "KeyboardInteraction" }, "description": "An ordered list of key sequences to be delivered using native key events." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "takeScreenshot",
@@ -469,8 +471,7 @@
             "description": "Delete all cookies that are visible to the specified browsing context.",
             "parameters": [
                 { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." }
-            ],
-            "async": true
+            ]
         }
     ]
 }

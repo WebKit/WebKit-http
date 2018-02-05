@@ -25,7 +25,6 @@
 
 #include "CallFrame.h"
 #include "CodeProfiling.h"
-#include "Debugger.h"
 #include "Exception.h"
 #include "IdentifierInlines.h"
 #include "Interpreter.h"
@@ -34,10 +33,10 @@
 #include "JSInternalPromise.h"
 #include "JSInternalPromiseDeferred.h"
 #include "JSLock.h"
+#include "JSModuleLoader.h"
 #include "JSModuleRecord.h"
 #include "JSWithScope.h"
 #include "ModuleAnalyzer.h"
-#include "ModuleLoaderObject.h"
 #include "Parser.h"
 #include "ScriptProfilingScope.h"
 #include <wtf/WTFThreadData.h>
@@ -66,7 +65,7 @@ bool checkSyntax(VM& vm, const SourceCode& source, ParserError& error)
     RELEASE_ASSERT(vm.atomicStringTable() == wtfThreadData().atomicStringTable());
     return !!parse<ProgramNode>(
         &vm, source, Identifier(), JSParserBuiltinMode::NotBuiltin,
-        JSParserStrictMode::NotStrict, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error);
+        JSParserStrictMode::NotStrict, JSParserCommentMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error);
 }
 
 bool checkModuleSyntax(ExecState* exec, const SourceCode& source, ParserError& error)
@@ -76,7 +75,7 @@ bool checkModuleSyntax(ExecState* exec, const SourceCode& source, ParserError& e
     RELEASE_ASSERT(vm.atomicStringTable() == wtfThreadData().atomicStringTable());
     std::unique_ptr<ModuleProgramNode> moduleProgramNode = parse<ModuleProgramNode>(
         &vm, source, Identifier(), JSParserBuiltinMode::NotBuiltin,
-        JSParserStrictMode::Strict, SourceParseMode::ModuleAnalyzeMode, SuperBinding::NotNeeded, error);
+        JSParserStrictMode::Strict, JSParserCommentMode::Module, SourceParseMode::ModuleAnalyzeMode, SuperBinding::NotNeeded, error);
     if (!moduleProgramNode)
         return false;
 
@@ -186,7 +185,7 @@ JSInternalPromise* loadAndEvaluateModule(ExecState* exec, const SourceCode& sour
     JSGlobalObject* globalObject = exec->vmEntryGlobalObject();
 
     // Insert the given source code to the ModuleLoader registry as the fetched registry entry.
-    globalObject->moduleLoader()->provide(exec, key, ModuleLoaderObject::Status::Fetch, source.view().toString());
+    globalObject->moduleLoader()->provide(exec, key, JSModuleLoader::Status::Fetch, source.view().toString());
     if (exec->hadException())
         return rejectPromise(exec, globalObject);
 
@@ -223,7 +222,7 @@ JSInternalPromise* loadModule(ExecState* exec, const SourceCode& source)
     JSGlobalObject* globalObject = exec->vmEntryGlobalObject();
 
     // Insert the given source code to the ModuleLoader registry as the fetched registry entry.
-    globalObject->moduleLoader()->provide(exec, key, ModuleLoaderObject::Status::Fetch, source.view().toString());
+    globalObject->moduleLoader()->provide(exec, key, JSModuleLoader::Status::Fetch, source.view().toString());
     if (exec->hadException())
         return rejectPromise(exec, globalObject);
 

@@ -15,9 +15,6 @@ fast/events/force-click-link-selection-behavior.html [ Pass ]
 fast/events/force-click-on-link-navigation.html [ Pass ]
 fast/events/force-click-text-selection-behavior.html [ Failure ]
 
-fast/harness/ui-side-scripts.html [ Pass ]
-fast/harness/concurrent-ui-side-scripts.html [ Pass ]
-
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -373,6 +370,9 @@ webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 
 [ Debug ] editing/undo/remove-css-property-and-remove-style.html [ Pass Failure ]
 
+# This test fails every time on El Capitan
+[ ElCapitan ] fast/mediastream/MediaStream-video-element-video-tracks-disabled.html [ Skip ]
+
 ### END OF (3) Unclassified failures
 ########################################
 
@@ -437,6 +437,7 @@ webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout
 
 # Content Extensions tests must be enabled explicitly on mac-wk2.
 http/tests/contentextensions [ Pass ]
+http/tests/websocket/tests/hybi/contentextensions [ Pass ]
 webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.html [ Pass Failure ]
 
 # WebKit1-only failure.
@@ -463,23 +464,20 @@ webkit.org/b/158237 fast/scrolling/scroll-container-horizontally.html [ Pass Tim
 
 webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-delete-objectstore-db.html [ Pass Timeout ]
 
-# This test only produces an RTL token on Sierra.
-[ Yosemite ElCapitan ] fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
-
 # PiP tests are only enabled for Sierra WebKit2.
+# rdar://problem/27574303
 [ Sierra+ ] media/controls/picture-in-picture.html [ Pass ]
+[ Sierra+ ] media/controls/pip-placeholder-without-video-controls.html [ Pass ]
 [ Sierra+ ] media/element-containing-pip-video-going-into-fullscreen.html [ Pass ]
 [ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Pass ]
 [ Sierra+ ] media/fullscreen-video-going-into-pip.html [ Pass ]
 [ Sierra+ ] media/navigate-with-pip-should-not-crash.html [ Pass ]
+[ Sierra+ ] media/pip-video-going-into-fullscreen.html [ Pass ]
 [ Sierra+ ] media/video-contained-in-fullscreen-element-going-into-pip.html [ Pass ]
 
 # rdar://problem/26885345
 [ Release Sierra+ ] media/click-placeholder-not-pausing.html [ Pass ]
 [ Debug Sierra+ ] media/click-placeholder-not-pausing.html [ Skip ]
-
-# rdar://problem/26901714
-[ Sierra+ ] media/pip-video-going-into-fullscreen.html [ Pass Failure ]
 
 # RTL Scrollbars are enabled on Sierra WebKit2.
 [ Sierra+ ] fast/scrolling/rtl-scrollbars.html [ Pass ]
@@ -509,6 +507,9 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement.html [ Pass ]
 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement-2.html [ Pass ]
 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html [ Pass ]
+[ Sierra+ ] fast/scrolling/rtl-scrollbars-animation-property.html [ Pass ]
+# This test only produces an RTL token on Sierra.
+[ Yosemite ElCapitan ] fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
 
 # <rdar://problem/25063128>
 [ Sierra+ ] media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]
@@ -519,8 +520,21 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 [ Sierra+ ] swipe/pushState-cached-back-swipe.html [ Skip ]
 [ Sierra+ ] swipe/swipe-start-hysteresis-failures.html [ Skip ]
 
+# Hitting "The certificate for this server is invalid" loading error (not happening in WK1)
+webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure ]
+webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-main-frame.html [ Failure ]
+
 webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-entry.html [ Pass Failure ]
 
 webkit.org/b/159430 [ Debug Sierra+ ] media/restore-from-page-cache.html [ Pass Crash ]
 
-webkit.org/b/159724 [ Release ] imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure ]
+webkit.org/b/159884 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Pass Failure ]
+
+webkit.org/b/159896 storage/indexeddb/modern/handle-user-delete.html [ Pass Timeout ]
+
+webkit.org/b/160042 [ ElCapitan ] accessibility/mac/value-change/value-change-user-info-contenteditable.html [ Pass Failure ]
+
+webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]
+
+webkit.org/b/160309 fast/dom/Window/child-window-focus.html [ Pass Failure ]
+

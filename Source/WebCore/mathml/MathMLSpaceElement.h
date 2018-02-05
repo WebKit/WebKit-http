@@ -26,6 +26,7 @@
 #pragma once
 
 #if ENABLE(MATHML)
+
 #include "MathMLElement.h"
 
 namespace WebCore {
@@ -42,9 +43,9 @@ private:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    Length m_width;
-    Length m_height;
-    Length m_depth;
+    Optional<Length> m_width;
+    Optional<Length> m_height;
+    Optional<Length> m_depth;
 };
 
 }

@@ -105,7 +105,6 @@
 #include "htmlediting.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
@@ -186,6 +185,12 @@ static inline RenderObject* firstChildConsideringContinuation(RenderObject& rend
 {
     RenderObject* firstChild = renderer.firstChildSlow();
 
+    // We don't want to include the end of a continuation as the firstChild of the
+    // anonymous parent, because everything has already been linked up via continuation.
+    // CSS first-letter selector is an example of this case.
+    if (renderer.isAnonymous() && firstChild && firstChild->isInlineElementContinuation())
+        firstChild = nullptr;
+    
     if (!firstChild && isInlineWithContinuation(renderer))
         firstChild = firstChildInContinuation(downcast<RenderInline>(renderer));
 
@@ -2977,7 +2982,7 @@ AccessibilitySVGRoot* AccessibilityRenderObject::remoteSVGRootElement(CreationCh
     if (!is<SVGDocument>(document))
         return nullptr;
     
-    SVGSVGElement* rootElement = downcast<SVGDocument>(*document).rootElement();
+    SVGSVGElement* rootElement = SVGDocument::rootElement(*document);
     if (!rootElement)
         return nullptr;
     RenderObject* rendererRoot = rootElement->renderer();

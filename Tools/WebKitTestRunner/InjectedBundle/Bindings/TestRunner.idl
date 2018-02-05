@@ -199,6 +199,7 @@ interface TestRunner {
     void queueNonLoadingScript(DOMString script);
 
     // Authentication
+    void setRejectsProtectionSpaceAndContinueForAuthenticationChallenges(boolean value);
     void setHandlesAuthenticationChallenges(boolean value);
     void setShouldLogCanAuthenticateAgainstProtectionSpace(boolean value);
     void setAuthenticationUsername(DOMString username);
@@ -231,5 +232,11 @@ interface TestRunner {
     void clearTestRunnerCallbacks();
 
     void accummulateLogsForChannel(DOMString channel);
-};
 
+    // Gamepad
+    void setMockGamepadDetails(unsigned long index, DOMString id, unsigned long axisCount, unsigned long buttonCount);
+    void setMockGamepadAxisValue(unsigned long index, unsigned long axisIndex, double value);
+    void setMockGamepadButtonValue(unsigned long index, unsigned long buttonIndex, double value);
+    void connectMockGamepad(unsigned long index);
+    void disconnectMockGamepad(unsigned long index);
+};

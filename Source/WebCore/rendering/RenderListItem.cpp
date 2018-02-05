@@ -39,7 +39,6 @@
 #include "StyleInheritedData.h"
 #include <wtf/StackStats.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -218,11 +217,6 @@ void RenderListItem::updateValueNow() const
 {
     m_value = calcValue();
     m_isValueUpToDate = true;
-}
-
-bool RenderListItem::isEmpty() const
-{
-    return lastChild() == m_marker;
 }
 
 static RenderBlock* getParentOfFirstLineBox(RenderBlock& current, RenderObject& marker)

@@ -105,7 +105,7 @@ using WebKit::ProcessAssertionClient;
 {
     if (_needsToRunInBackgroundCount && _backgroundTask == UIBackgroundTaskInvalid) {
         _backgroundTask = [[UIApplication sharedApplication] beginBackgroundTaskWithName:@"com.apple.WebKit.ProcessAssertion" expirationHandler:^{
-            LOG_ALWAYS_ERROR(true, "Background task expired while holding WebKit ProcessAssertion (isMainThread? %d).", RunLoop::isMain());
+            RELEASE_LOG_ERROR("Background task expired while holding WebKit ProcessAssertion (isMainThread? %d).", RunLoop::isMain());
             // The expiration handler gets called on a non-main thread when the underlying assertion could not be taken (rdar://problem/27278419).
             if (RunLoop::isMain())
                 [self _notifyClientsOfImminentSuspension];
@@ -157,21 +157,28 @@ static BKSProcessAssertionFlags flagsForState(AssertionState assertionState)
     }
 }
 
-ProcessAssertion::ProcessAssertion(pid_t pid, AssertionState assertionState, std::function<void()> invalidationCallback)
-    : m_assertionState(assertionState)
+ProcessAssertion::ProcessAssertion(pid_t pid, AssertionState assertionState, Function<void()>&& invalidationCallback)
+    : m_weakFactory(this)
+    , m_invalidationCallback(WTFMove(invalidationCallback))
+    , m_assertionState(assertionState)
 {
+    auto weakThis = createWeakPtr();
     BKSProcessAssertionAcquisitionHandler handler = ^(BOOL acquired) {
         if (!acquired) {
-            LOG_ALWAYS_ERROR(true, "Unable to acquire assertion for process %d", pid);
+            RELEASE_LOG_ERROR("Unable to acquire assertion for process %d", pid);
             ASSERT_NOT_REACHED();
-            m_validity = Validity::No;
-            invalidationCallback();
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (weakThis)
+                    markAsInvalidated();
+            });
         }
     };
     m_assertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:pid flags:flagsForState(assertionState) reason:BKSProcessAssertionReasonExtension name:@"Web content visible" withHandler:handler]);
     m_assertion.get().invalidationHandler = ^() {
-        m_validity = Validity::No;
-        invalidationCallback();
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (weakThis)
+                markAsInvalidated();
+        });
     };
 }
 
@@ -182,6 +189,14 @@ ProcessAssertion::~ProcessAssertion()
     if (ProcessAssertionClient* client = this->client())
         [[WKProcessAssertionBackgroundTaskManager shared] removeClient:*client];
     [m_assertion invalidate];
+}
+
+void ProcessAssertion::markAsInvalidated()
+{
+    ASSERT(RunLoop::isMain());
+
+    m_validity = Validity::No;
+    m_invalidationCallback();
 }
 
 void ProcessAssertion::setState(AssertionState assertionState)
@@ -240,7 +255,7 @@ void ProcessAndUIAssertion::setClient(ProcessAssertionClient& newClient)
 
 namespace WebKit {
 
-ProcessAssertion::ProcessAssertion(pid_t, AssertionState assertionState, std::function<void()>)
+ProcessAssertion::ProcessAssertion(pid_t, AssertionState assertionState, Function<void()>&&)
     : m_assertionState(assertionState)
 {
 }

@@ -35,7 +35,6 @@
 #include <wtf/CrossThreadTask.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
-#include <wtf/MessageQueue.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -45,6 +44,8 @@ namespace WebCore {
 class IDBCursorInfo;
 class IDBRequestData;
 class IDBValue;
+
+struct IDBGetRecordData;
 
 namespace IDBServer {
 
@@ -70,7 +71,7 @@ public:
     WEBCORE_EXPORT void createIndex(const IDBRequestData&, const IDBIndexInfo&);
     WEBCORE_EXPORT void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName);
     WEBCORE_EXPORT void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, IndexedDB::ObjectStoreOverwriteMode);
-    WEBCORE_EXPORT void getRecord(const IDBRequestData&, const IDBKeyRangeData&);
+    WEBCORE_EXPORT void getRecord(const IDBRequestData&, const IDBGetRecordData&);
     WEBCORE_EXPORT void getCount(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void openCursor(const IDBRequestData&, const IDBCursorInfo&);

@@ -97,7 +97,7 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/InternalPromiseConstructor.js \
     $(JavaScriptCore)/builtins/IteratorPrototype.js \
     $(JavaScriptCore)/builtins/MapPrototype.js \
-    $(JavaScriptCore)/builtins/ModuleLoaderObject.js \
+    $(JavaScriptCore)/builtins/ModuleLoaderPrototype.js \
     $(JavaScriptCore)/builtins/NumberConstructor.js \
     $(JavaScriptCore)/builtins/NumberPrototype.js \
     $(JavaScriptCore)/builtins/ObjectConstructor.js \
@@ -117,8 +117,7 @@ JavaScriptCore_BUILTINS_SOURCES = \
 # The combined output file depends on the contents of builtins and generator scripts, so
 # adding, modifying, or removing builtins or scripts will trigger regeneration of files.
 
-.PHONY: force
-JavaScriptCore_BUILTINS_DEPENDENCIES_LIST : $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py force
+JavaScriptCore_BUILTINS_DEPENDENCIES_LIST : $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py DerivedSources.make
 	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/UpdateContents.py '$(JavaScriptCore_BUILTINS_SOURCES) $(BUILTINS_GENERATOR_SCRIPTS)' $@
 
 JSCBuiltins.h: $(BUILTINS_GENERATOR_SCRIPTS) $(JavaScriptCore_BUILTINS_SOURCES) JavaScriptCore_BUILTINS_DEPENDENCIES_LIST
@@ -148,7 +147,7 @@ OBJECT_LUT_HEADERS = \
     JSPromisePrototype.lut.h \
     JSPromiseConstructor.lut.h \
     MapPrototype.lut.h \
-    ModuleLoaderObject.lut.h \
+    ModuleLoaderPrototype.lut.h \
     NumberConstructor.lut.h \
     NumberPrototype.lut.h \
     ObjectConstructor.lut.h \

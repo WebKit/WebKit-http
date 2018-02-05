@@ -26,7 +26,6 @@
 #include "WebDatabaseProvider.h"
 
 #include <WebCore/page/SessionID.h>
-#include <wtf/NeverDestroyed.h>
 
 WebDatabaseProvider& WebDatabaseProvider::singleton()
 {

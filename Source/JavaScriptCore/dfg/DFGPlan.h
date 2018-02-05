@@ -66,7 +66,6 @@ struct Plan : public ThreadSafeRefCounted<Plan> {
     void finalizeAndNotifyCallback();
     
     void notifyCompiling();
-    void notifyCompiled();
     void notifyReady();
     
     CompilationKey key();
@@ -77,6 +76,8 @@ struct Plan : public ThreadSafeRefCounted<Plan> {
     void cancel();
 
     bool canTierUpAndOSREnter() const { return !tierUpAndOSREnterBytecodes.isEmpty(); }
+    
+    void cleanMustHandleValuesIfNecessary();
     
     // Warning: pretty much all of the pointer fields in this object get nulled by cancel(). So, if
     // you're writing code that is callable on the cancel path, be sure to null check everything!
@@ -90,6 +91,8 @@ struct Plan : public ThreadSafeRefCounted<Plan> {
     CompilationMode mode;
     const unsigned osrEntryBytecodeIndex;
     Operands<JSValue> mustHandleValues;
+    bool mustHandleValuesMayIncludeGarbage { true };
+    Lock mustHandleValueCleaningLock;
     
     ThreadData* threadData;
 
@@ -108,7 +111,7 @@ struct Plan : public ThreadSafeRefCounted<Plan> {
     HashMap<unsigned, Vector<unsigned>> tierUpInLoopHierarchy;
     Vector<unsigned> tierUpAndOSREnterBytecodes;
 
-    enum Stage { Preparing, Compiling, Compiled, Ready, Cancelled };
+    enum Stage { Preparing, Compiling, Ready, Cancelled };
     Stage stage;
 
     RefPtr<DeferredCompilationCallback> callback;

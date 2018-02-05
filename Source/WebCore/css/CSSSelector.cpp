@@ -32,7 +32,6 @@
 #include "SelectorPseudoTypeMap.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -669,7 +668,7 @@ String CSSSelector::selectorText(const String& rightSide) const
         } else if (cs->isAttributeSelector()) {
             str.append('[');
             const AtomicString& prefix = cs->attribute().prefix();
-            if (!prefix.isNull()) {
+            if (!prefix.isEmpty()) {
                 str.append(prefix);
                 str.append('|');
             }

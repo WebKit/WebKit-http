@@ -26,12 +26,11 @@
 #include "config.h"
 #include "EditorState.h"
 
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
 
-void EditorState::encode(IPC::ArgumentEncoder& encoder) const
+void EditorState::encode(IPC::Encoder& encoder) const
 {
     encoder << shouldIgnoreCompositionSelectionChange;
     encoder << selectionIsNone;
@@ -55,7 +54,7 @@ void EditorState::encode(IPC::ArgumentEncoder& encoder) const
 #endif
 }
 
-bool EditorState::decode(IPC::ArgumentDecoder& decoder, EditorState& result)
+bool EditorState::decode(IPC::Decoder& decoder, EditorState& result)
 {
     if (!decoder.decode(result.shouldIgnoreCompositionSelectionChange))
         return false;
@@ -104,7 +103,7 @@ bool EditorState::decode(IPC::ArgumentDecoder& decoder, EditorState& result)
 }
 
 #if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
-void EditorState::PostLayoutData::encode(IPC::ArgumentEncoder& encoder) const
+void EditorState::PostLayoutData::encode(IPC::Encoder& encoder) const
 {
     encoder << typingAttributes;
 #if PLATFORM(IOS) || PLATFORM(GTK)
@@ -134,7 +133,7 @@ void EditorState::PostLayoutData::encode(IPC::ArgumentEncoder& encoder) const
 #endif
 }
 
-bool EditorState::PostLayoutData::decode(IPC::ArgumentDecoder& decoder, PostLayoutData& result)
+bool EditorState::PostLayoutData::decode(IPC::Decoder& decoder, PostLayoutData& result)
 {
     if (!decoder.decode(result.typingAttributes))
         return false;

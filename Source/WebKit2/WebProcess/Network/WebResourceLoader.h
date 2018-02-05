@@ -29,7 +29,6 @@
 #include "Connection.h"
 #include "MessageSender.h"
 #include "ShareableResource.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -60,7 +59,7 @@ public:
 
     ~WebResourceLoader();
 
-    void didReceiveWebResourceLoaderMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveWebResourceLoaderMessage(IPC::Connection&, IPC::Decoder&);
 
     WebCore::ResourceLoader* resourceLoader() const { return m_coreLoader.get(); }
 

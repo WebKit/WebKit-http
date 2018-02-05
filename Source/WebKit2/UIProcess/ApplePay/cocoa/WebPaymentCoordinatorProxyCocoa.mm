@@ -29,8 +29,7 @@
 #if ENABLE(APPLE_PAY)
 
 #import "WebPaymentCoordinatorProxy.h"
-#import <PassKit/PKPaymentAuthorizationViewController_Private.h>
-#import <PassKitCore/PKPaymentMerchantSession.h>
+#import <WebCore/PassKitSPI.h>
 #import <WebCore/PaymentAuthorizationStatus.h>
 #import <WebCore/PaymentHeaders.h>
 #import <WebCore/SoftLinking.h>
@@ -41,13 +40,6 @@
 SOFT_LINK_PRIVATE_FRAMEWORK(PassKit)
 #else
 SOFT_LINK_FRAMEWORK(PassKit)
-#endif
-
-#if PLATFORM(MAC)
-// FIXME: Once <rdar://problem/26074851> has been fixed we no longer
-// have to fall back to PKInAppPaymentService.
-#import <PassKitCore/PKInAppPaymentService.h>
-SOFT_LINK_CLASS(PassKit, PKInAppPaymentService)
 #endif
 
 SOFT_LINK_CLASS(PassKit, PKPaymentAuthorizationViewController);
@@ -133,7 +125,7 @@ SOFT_LINK_FUNCTION_MAY_FAIL_FOR_SOURCE(WebKit, PassKit, PKCanMakePaymentsWithMer
     if (!_webPaymentCoordinatorProxy)
         return;
 
-    if (!_authorized)
+    if (!_didReachFinalState)
         _webPaymentCoordinatorProxy->didCancelPayment();
 
     _webPaymentCoordinatorProxy->hidePaymentUI();
@@ -282,24 +274,43 @@ static PKMerchantCapability toPKMerchantCapabilities(const WebCore::PaymentReque
     return result;
 }
 
-static RetainPtr<NSArray> toSupportedNetworks(const WebCore::PaymentRequest::SupportedNetworks& supportedNetworks)
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebPaymentCoordinatorProxyCocoaAdditions.mm>)
+#import <WebKitAdditions/WebPaymentCoordinatorProxyCocoaAdditions.mm>
+#else
+static inline NSString *toAdditionalSupportedNetwork(const String&)
+{
+    return nullptr;
+}
+#endif
+
+static NSString *toSupportedNetwork(const String& supportedNetwork)
+{
+    if (supportedNetwork == "amex")
+        return getPKPaymentNetworkAmex();
+    if (supportedNetwork == "chinaUnionPay")
+        return getPKPaymentNetworkChinaUnionPay();
+    if (supportedNetwork == "discover")
+        return getPKPaymentNetworkDiscover();
+    if (supportedNetwork == "interac")
+        return getPKPaymentNetworkInterac();
+    if (supportedNetwork == "masterCard")
+        return getPKPaymentNetworkMasterCard();
+    if (supportedNetwork == "privateLabel")
+        return getPKPaymentNetworkPrivateLabel();
+    if (supportedNetwork == "visa")
+        return getPKPaymentNetworkVisa();
+
+    return toAdditionalSupportedNetwork(supportedNetwork);
+}
+
+static RetainPtr<NSArray> toSupportedNetworks(const Vector<String>& supportedNetworks)
 {
     auto result = adoptNS([[NSMutableArray alloc] init]);
 
-    if (supportedNetworks.amex)
-        [result addObject:getPKPaymentNetworkAmex()];
-    if (supportedNetworks.chinaUnionPay)
-        [result addObject:getPKPaymentNetworkChinaUnionPay()];
-    if (supportedNetworks.discover)
-        [result addObject:getPKPaymentNetworkDiscover()];
-    if (supportedNetworks.interac)
-        [result addObject:getPKPaymentNetworkInterac()];
-    if (supportedNetworks.masterCard)
-        [result addObject:getPKPaymentNetworkMasterCard()];
-    if (supportedNetworks.privateLabel)
-        [result addObject:getPKPaymentNetworkPrivateLabel()];
-    if (supportedNetworks.visa)
-        [result addObject:getPKPaymentNetworkVisa()];
+    for (auto& supportedNetwork : supportedNetworks) {
+        if (auto network = toSupportedNetwork(supportedNetwork))
+            [result addObject:network];
+    }
 
     return result;
 }
@@ -410,7 +421,7 @@ void WebPaymentCoordinatorProxy::platformCompletePaymentSession(WebCore::Payment
     ASSERT(m_paymentAuthorizationViewController);
     ASSERT(m_paymentAuthorizationViewControllerDelegate);
 
-    m_paymentAuthorizationViewControllerDelegate->_authorized = YES;
+    m_paymentAuthorizationViewControllerDelegate->_didReachFinalState = WebCore::isFinalStateStatus(status);
     m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion(toPKPaymentAuthorizationStatus(status));
     m_paymentAuthorizationViewControllerDelegate->_paymentAuthorizedCompletion = nullptr;
 }

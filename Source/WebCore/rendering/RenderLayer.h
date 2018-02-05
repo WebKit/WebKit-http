@@ -41,8 +41,7 @@
  * version of this file under any of the LGPL, the MPL or the GPL.
  */
 
-#ifndef RenderLayer_h
-#define RenderLayer_h
+#pragma once
 
 #include "ClipRect.h"
 #include "GraphicsLayer.h"
@@ -193,7 +192,7 @@ public:
     // Scrolling methods for layers that can scroll their overflow.
     void scrollByRecursively(const IntSize& delta, ScrollOffsetClamping = ScrollOffsetUnclamped, ScrollableArea** scrolledArea = nullptr);
 
-    void scrollToOffset(const ScrollOffset&, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    WEBCORE_EXPORT void scrollToOffset(const ScrollOffset&, ScrollOffsetClamping = ScrollOffsetUnclamped);
     void scrollToXOffset(int x, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(ScrollOffset(x, scrollOffset().y()), clamp); }
     void scrollToYOffset(int y, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(ScrollOffset(scrollOffset().x(), y), clamp); }
 
@@ -466,7 +465,7 @@ public:
     // paints the layers that intersect the damage rect from back to
     // front.  The hitTest method looks for mouse events by walking
     // layers that intersect the point from front to back.
-    void paint(GraphicsContext&, const LayoutRect& damageRect, const LayoutSize& subpixelAccumulation = LayoutSize(), PaintBehavior = PaintBehaviorNormal,
+    void paint(GraphicsContext&, const LayoutRect& damageRect, const LayoutSize& subpixelOffset = LayoutSize(), PaintBehavior = PaintBehaviorNormal,
         RenderObject* subtreePaintRoot = nullptr, PaintLayerFlags = 0);
     bool hitTest(const HitTestRequest&, HitTestResult&);
     bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
@@ -678,11 +677,11 @@ private:
     enum CollectLayersBehavior { StopAtStackingContexts, StopAtStackingContainers };
 
     struct LayerPaintingInfo {
-        LayerPaintingInfo(RenderLayer* inRootLayer, const LayoutRect& inDirtyRect, PaintBehavior inPaintBehavior, const LayoutSize& inSubpixelAccumulation, RenderObject* inSubtreePaintRoot = nullptr, OverlapTestRequestMap* inOverlapTestRequests = nullptr)
+        LayerPaintingInfo(RenderLayer* inRootLayer, const LayoutRect& inDirtyRect, PaintBehavior inPaintBehavior, const LayoutSize& inSupixelOffset, RenderObject* inSubtreePaintRoot = nullptr, OverlapTestRequestMap* inOverlapTestRequests = nullptr)
             : rootLayer(inRootLayer)
             , subtreePaintRoot(inSubtreePaintRoot)
             , paintDirtyRect(inDirtyRect)
-            , subpixelAccumulation(inSubpixelAccumulation)
+            , subpixelOffset(inSupixelOffset)
             , overlapTestRequests(inOverlapTestRequests)
             , paintBehavior(inPaintBehavior)
             , clipToDirtyRect(true)
@@ -690,7 +689,7 @@ private:
         RenderLayer* rootLayer;
         RenderObject* subtreePaintRoot; // only paint descendants of this object
         LayoutRect paintDirtyRect; // relative to rootLayer;
-        LayoutSize subpixelAccumulation;
+        LayoutSize subpixelOffset;
         OverlapTestRequestMap* overlapTestRequests; // May be null.
         PaintBehavior paintBehavior;
         bool clipToDirtyRect;
@@ -1203,5 +1202,3 @@ bool compositedWithOwnBackingStore(const RenderLayer&);
 void showLayerTree(const WebCore::RenderLayer*);
 void showLayerTree(const WebCore::RenderObject*);
 #endif
-
-#endif // RenderLayer_h

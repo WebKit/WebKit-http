@@ -52,6 +52,7 @@ namespace WebCore {
 class Color;
 class FloatQuad;
 class IntSize;
+class TextStream;
 }
 
 namespace WebKit {
@@ -76,6 +77,7 @@ typedef void (^UIWKSelectionWithDirectionCompletionHandler)(BOOL selectionEndIsM
 typedef void (^UIWKKeyWebEventCompletionHandler)(WebIOSEvent *theEvent, BOOL wasHandled);
 
 namespace WebKit {
+
 struct WKSelectionDrawingInfo {
     enum class SelectionType { None, Plugin, Range };
     WKSelectionDrawingInfo();
@@ -84,6 +86,9 @@ struct WKSelectionDrawingInfo {
     WebCore::IntRect caretRect;
     Vector<WebCore::SelectionRect> selectionRects;
 };
+
+WebCore::TextStream& operator<<(WebCore::TextStream&, const WKSelectionDrawingInfo&);
+
 struct WKAutoCorrectionData {
     String fontName;
     CGFloat fontSize;
@@ -171,9 +176,6 @@ struct WKAutoCorrectionData {
     BOOL _showDebugTapHighlightsForFastClicking;
 
     BOOL _resigningFirstResponder;
-
-    // For testing.
-    BOOL _forceIPadStyleZoomOnInputFocus;
 }
 
 @end
@@ -226,6 +228,12 @@ struct WKAutoCorrectionData {
 - (NSArray *)_dataDetectionResults;
 @end
 
+@interface WKContentView (WKTesting)
+
+- (void)selectFormAccessoryPickerRow:(NSInteger)rowIndex;
+
+@end
+
 #if HAVE(LINK_PREVIEW)
 @interface WKContentView (WKInteractionPreview) <UIPreviewItemDelegate>
 
@@ -233,11 +241,5 @@ struct WKAutoCorrectionData {
 - (void)_unregisterPreview;
 @end
 #endif
-
-@interface WKContentView (WKInteractionTesting)
-
-@property (nonatomic) BOOL forceIPadStyleZoomOnInputFocus;
-
-@end
 
 #endif // PLATFORM(IOS)

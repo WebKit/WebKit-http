@@ -32,11 +32,9 @@
 #import "WebPageProxy.h"
 #import "WebPaymentCoordinatorProxyCocoa.h"
 #import <PassKit/PassKit.h>
-#import <PassKitCore/PKPaymentMerchantSession.h>
 #import <UIKit/UIViewController.h>
 #import <WebCore/PaymentAuthorizationStatus.h>
 #import <WebCore/SoftLinking.h>
-#import <wtf/BlockPtr.h>
 
 SOFT_LINK_FRAMEWORK(PassKit)
 SOFT_LINK_CLASS(PassKit, PKPaymentAuthorizationViewController);

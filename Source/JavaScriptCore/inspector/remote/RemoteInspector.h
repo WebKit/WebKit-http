@@ -23,17 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(REMOTE_INSPECTOR)
+#pragma once
 
-#ifndef RemoteInspector_h
-#define RemoteInspector_h
+#if ENABLE(REMOTE_INSPECTOR)
 
 #import "RemoteInspectorXPCConnection.h"
 #import <wtf/Forward.h>
 #import <wtf/HashMap.h>
 #import <wtf/Lock.h>
 #import <wtf/RetainPtr.h>
-#import <wtf/Vector.h>
 
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSString;
@@ -151,7 +149,5 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // RemoteInspector_h
 
 #endif // ENABLE(REMOTE_INSPECTOR)

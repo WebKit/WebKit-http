@@ -43,12 +43,16 @@ class CommitQueueTask(PatchAnalysisTask):
         # commit-queue is processing.
         self._patch = self._delegate.refetch_patch(self._patch)
         if self._patch.is_obsolete():
+            self.error = "Patch is obsolete."
             return False
         if self._patch.bug().is_closed():
+            self.error = "Bug is already closed."
             return False
         if not self._patch.committer():
+            self.error = "No patch committer found."
             return False
         if self._patch.review() == "-":
+            self.error = "Patch is marked r-."
             return False
         return True
 
@@ -68,8 +72,6 @@ class CommitQueueTask(PatchAnalysisTask):
         return self._test_patch()
 
     def run(self):
-        if not self.validate():
-            raise PatchIsNotValid(self._patch)
         if not self._clean():
             return False
         if not self._update():
@@ -85,10 +87,6 @@ class CommitQueueTask(PatchAnalysisTask):
                 return self.report_failure()
             if not self._did_pass_tests_recently():
                 return False
-        # Make sure the patch is still valid before landing (e.g., make sure
-        # no one has set commit-queue- since we started working on the patch.)
-        if not self.validate():
-            raise PatchIsNotValid(self._patch)
         # FIXME: We should understand why the land failure occurred and retry if possible.
         if not self._land():
             return self.report_failure()
