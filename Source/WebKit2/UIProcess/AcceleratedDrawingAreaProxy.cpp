@@ -220,6 +220,8 @@ void AcceleratedDrawingAreaProxy::waitForAndDispatchDidUpdateBackingStoreState()
         return;
     if (m_webPageProxy.process().state() == WebProcessProxy::State::Launching)
         return;
+    if (!m_webPageProxy.isViewVisible())
+        return;
 
 #if PLATFORM(WAYLAND)
     // Never block the UI process in Wayland when waiting for DidUpdateBackingStoreState after a resize,
@@ -268,7 +270,7 @@ void AcceleratedDrawingAreaProxy::setNativeSurfaceHandleForCompositing(uint64_t 
         m_pendingNativeSurfaceHandleForCompositing = handle;
         return;
     }
-    m_webPageProxy.process().send(Messages::DrawingArea::SetNativeSurfaceHandleForCompositing(handle), m_webPageProxy.pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_webPageProxy.process().send(Messages::DrawingArea::SetNativeSurfaceHandleForCompositing(handle), m_webPageProxy.pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
 void AcceleratedDrawingAreaProxy::destroyNativeSurfaceHandleForCompositing()

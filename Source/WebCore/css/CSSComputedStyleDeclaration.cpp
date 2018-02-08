@@ -36,6 +36,7 @@
 #include "CSSCustomPropertyValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
+#include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSParser.h"
@@ -53,7 +54,7 @@
 #include "CursorList.h"
 #include "Document.h"
 #include "ExceptionCode.h"
-#include "FontFeatureSettings.h"
+#include "FontTaggedSettings.h"
 #include "HTMLFrameOwnerElement.h"
 #include "Pair.h"
 #include "PseudoElement.h"
@@ -62,12 +63,14 @@
 #include "RenderBox.h"
 #include "RenderStyle.h"
 #include "SVGElement.h"
+#include "Settings.h"
 #include "ShapeValue.h"
 #include "StyleInheritedData.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
 #include "StylePropertyShorthandFunctions.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 #include "WebKitCSSFilterValue.h"
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
@@ -392,7 +395,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitTextFillColor,
     CSSPropertyWebkitTextOrientation,
     CSSPropertyWebkitTextSecurity,
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     CSSPropertyWebkitTextSizeAdjust,
 #endif
     CSSPropertyWebkitTextStrokeColor,
@@ -2492,7 +2495,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         // FIXME: Some of these cases could be narrowed down or optimized better.
         forceFullLayout = isLayoutDependent(propertyID, style, renderer)
             || styledNode->isInShadowTree()
-            || (document.styleResolverIfExists() && document.styleResolverIfExists()->hasViewportDependentMediaQueries() && document.ownerElement());
+            || (document.styleScope().resolverIfExists() && document.styleScope().resolverIfExists()->hasViewportDependentMediaQueries() && document.ownerElement());
 
         if (forceFullLayout) {
             document.updateLayoutIgnorePendingStylesheets();
@@ -2876,9 +2879,23 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 return cssValuePool.createIdentifierValue(CSSValueNormal);
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
             for (auto& feature : featureSettings)
-                list->append(CSSFontFeatureValue::create(FontFeatureTag(feature.tag()), feature.value()));
+                list->append(CSSFontFeatureValue::create(FontTag(feature.tag()), feature.value()));
             return list;
         }
+#if ENABLE(VARIATION_FONTS)
+        case CSSPropertyFontVariationSettings: {
+            if (styledNode->document().settings() && styledNode->document().settings()->variationFontsEnabled()) {
+                const FontVariationSettings& variationSettings = style->fontDescription().variationSettings();
+                if (variationSettings.isEmpty())
+                    return cssValuePool.createIdentifierValue(CSSValueNormal);
+                RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
+                for (auto& feature : variationSettings)
+                    list->append(CSSFontVariationValue::create(feature.tag(), feature.value()));
+                return list;
+            }
+            break;
+        }
+#endif
 #if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyGridAutoFlow: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
@@ -3208,7 +3225,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createIdentifierValue(CSSValueClip);
         case CSSPropertyWebkitTextSecurity:
             return cssValuePool.createValue(style->textSecurity());
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
         case CSSPropertyWebkitTextSizeAdjust:
             if (style->textSizeAdjust().isAuto())
                 return cssValuePool.createIdentifierValue(CSSValueAuto);

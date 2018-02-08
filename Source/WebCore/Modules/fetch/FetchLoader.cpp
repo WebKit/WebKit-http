@@ -47,7 +47,7 @@
 
 namespace WebCore {
 
-void FetchLoader::start(ScriptExecutionContext& context, Blob& blob)
+void FetchLoader::start(ScriptExecutionContext& context, const Blob& blob)
 {
     auto urlForReading = BlobURL::createPublicURL(context.securityOrigin());
     if (urlForReading.isEmpty()) {
@@ -85,9 +85,11 @@ void FetchLoader::start(ScriptExecutionContext& context, const FetchRequest& req
     ResourceRequest fetchRequest = request.internalRequest();
 
     ASSERT(context.contentSecurityPolicy());
-    context.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(fetchRequest, ContentSecurityPolicy::InsecureRequestType::Load);
+    auto& contentSecurityPolicy = *context.contentSecurityPolicy();
 
-    if (!context.contentSecurityPolicy()->allowConnectToSource(fetchRequest.url(), context.shouldBypassMainWorldContentSecurityPolicy())) {
+    contentSecurityPolicy.upgradeInsecureRequestIfNeeded(fetchRequest, ContentSecurityPolicy::InsecureRequestType::Load);
+
+    if (!context.shouldBypassMainWorldContentSecurityPolicy() && !contentSecurityPolicy.allowConnectToSource(fetchRequest.url())) {
         m_client.didFail();
         return;
     }

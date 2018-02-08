@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CodeBlockSet_h
-#define CodeBlockSet_h
+#pragma once
 
 #include "GCSegmentedArray.h"
 #include "HeapOperation.h"
@@ -39,7 +38,6 @@ namespace JSC {
 class CodeBlock;
 class Heap;
 class JSCell;
-class SlotVisitor;
 
 // CodeBlockSet tracks all CodeBlocks. Every CodeBlock starts out with one
 // reference coming in from GC. The GC is responsible for freeing CodeBlocks
@@ -73,7 +71,9 @@ public:
     
     // Add all currently executing CodeBlocks to the remembered set to be 
     // re-scanned during the next collection.
-    void writeBarrierCurrentlyExecutingCodeBlocks(Heap*);
+    void writeBarrierCurrentlyExecuting(Heap*);
+
+    void clearCurrentlyExecuting();
 
     bool contains(const LockHolder&, void* candidateCodeBlock);
     Lock& getLock() { return m_lock; }
@@ -109,6 +109,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // CodeBlockSet_h
-

@@ -32,25 +32,30 @@ function privateInitializeReadableStreamDefaultReader(stream)
     "use strict";
 
     if (!@isReadableStream(stream))
-       throw new @TypeError("ReadableStreamDefaultReader needs a ReadableStream");
+       @throwTypeError("ReadableStreamDefaultReader needs a ReadableStream");
     if (@isReadableStreamLocked(stream))
-       throw new @TypeError("ReadableStream is locked");
+       @throwTypeError("ReadableStream is locked");
 
+    @readableStreamReaderGenericInitialize(this, stream);
     this.@readRequests = [];
-    this.@ownerReadableStream = stream;
-    stream.@reader = this;
-    if (stream.@state === @streamReadable) {
-        this.@closedPromiseCapability = @newPromiseCapability(@Promise);
-        return this;
-    }
-    if (stream.@state === @streamClosed) {
-        this.@closedPromiseCapability = { @promise: @Promise.@resolve() };
-        return this;
-    }
-    @assert(stream.@state === @streamErrored);
-    this.@closedPromiseCapability = { @promise: @Promise.@reject(stream.@storedError) };
 
     return this;
+}
+
+function readableStreamReaderGenericInitialize(reader, stream)
+{
+    "use strict";
+
+    reader.@ownerReadableStream = stream;
+    stream.@reader = reader;
+    if (stream.@state === @streamReadable)
+        reader.@closedPromiseCapability = @newPromiseCapability(@Promise);
+    else if (stream.@state === @streamClosed)
+        reader.@closedPromiseCapability = { @promise: @Promise.@resolve() };
+    else {
+        @assert(stream.@state === @streamErrored);
+        reader.@closedPromiseCapability = { @promise: @Promise.@reject(stream.@storedError) };
+    }
 }
 
 function privateInitializeReadableStreamDefaultController(stream, underlyingSource, size, highWaterMark)
@@ -58,11 +63,11 @@ function privateInitializeReadableStreamDefaultController(stream, underlyingSour
     "use strict";
 
     if (!@isReadableStream(stream))
-        throw new @TypeError("ReadableStreamDefaultController needs a ReadableStream");
+        @throwTypeError("ReadableStreamDefaultController needs a ReadableStream");
 
     // readableStreamController is initialized with null value.
     if (stream.@readableStreamController !== null)
-        throw new @TypeError("ReadableStream already has a controller");
+        @throwTypeError("ReadableStream already has a controller");
 
     this.@controlledReadableStream = stream;
     this.@underlyingSource = underlyingSource;
@@ -76,28 +81,15 @@ function privateInitializeReadableStreamDefaultController(stream, underlyingSour
     const controller = this;
     const startResult = @promiseInvokeOrNoopNoCatch(underlyingSource, "start", [this]).@then(() => {
         controller.@started = true;
-        @requestReadableStreamPull(controller);
+        @readableStreamDefaultControllerCallPullIfNeeded(controller);
     }, (error) => {
         if (stream.@state === @streamReadable)
             @readableStreamDefaultControllerError(controller, error);
     });
 
-    this.@pull = function() {
-        "use strict";
+    this.@cancel = @readableStreamDefaultControllerCancel;
 
-        const stream = controller.@controlledReadableStream;
-        if (controller.@queue.content.length) {
-            const chunk = @dequeueValue(controller.@queue);
-            if (controller.@closeRequested && controller.@queue.content.length === 0)
-                @closeReadableStream(stream);
-            else
-                @requestReadableStreamPull(controller);
-            return @Promise.@resolve({value: chunk, done: false});
-        }
-        const pendingPromise = @readableStreamAddReadRequest(stream);
-        @requestReadableStreamPull(controller);
-        return pendingPromise;
-    }
+    this.@pull = @readableStreamDefaultControllerPull;
 
     return this;
 }
@@ -109,10 +101,10 @@ function readableStreamDefaultControllerError(controller, error)
     const stream = controller.@controlledReadableStream;
     @assert(stream.@state === @streamReadable);
     controller.@queue = @newQueue();
-    @errorReadableStream(stream, error);
+    @readableStreamError(stream, error);
 }
 
-function teeReadableStream(stream, shouldClone)
+function readableStreamTee(stream, shouldClone)
 {
     "use strict";
 
@@ -131,15 +123,15 @@ function teeReadableStream(stream, shouldClone)
 
     teeState.cancelPromiseCapability = @newPromiseCapability(@InternalPromise);
 
-    const pullFunction = @teeReadableStreamPullFunction(teeState, reader, shouldClone);
+    const pullFunction = @readableStreamTeePullFunction(teeState, reader, shouldClone);
 
     const branch1 = new @ReadableStream({
         "pull": pullFunction,
-        "cancel": @teeReadableStreamBranch1CancelFunction(teeState, stream)
+        "cancel": @readableStreamTeeBranch1CancelFunction(teeState, stream)
     });
     const branch2 = new @ReadableStream({
         "pull": pullFunction,
-        "cancel": @teeReadableStreamBranch2CancelFunction(teeState, stream)
+        "cancel": @readableStreamTeeBranch2CancelFunction(teeState, stream)
     });
 
     reader.@closedPromiseCapability.@promise.@then(@undefined, function(e) {
@@ -170,15 +162,15 @@ function doStructuredClone(object)
     if (@ArrayBuffer.@isView(object))
         return @structuredCloneArrayBufferView(object);
 
-    throw new @TypeError("structuredClone not implemented for: " + object);
+    @throwTypeError("structuredClone not implemented for: " + object);
 }
 
-function teeReadableStreamPullFunction(teeState, reader, shouldClone)
+function readableStreamTeePullFunction(teeState, reader, shouldClone)
 {
     "use strict";
 
     return function() {
-        @Promise.prototype.@then.@call(@readFromReadableStreamDefaultReader(reader), function(result) {
+        @Promise.prototype.@then.@call(@readableStreamDefaultReaderRead(reader), function(result) {
             @assert(@isObject(result));
             @assert(typeof result.done === "boolean");
             if (result.done && !teeState.closedOrErrored) {
@@ -191,14 +183,14 @@ function teeReadableStreamPullFunction(teeState, reader, shouldClone)
             if (teeState.closedOrErrored)
                 return;
             if (!teeState.canceled1)
-                @enqueueInReadableStream(teeState.branch1.@readableStreamController, shouldClone ? @doStructuredClone(result.value) : result.value);
+                @readableStreamDefaultControllerEnqueue(teeState.branch1.@readableStreamController, shouldClone ? @doStructuredClone(result.value) : result.value);
             if (!teeState.canceled2)
-                @enqueueInReadableStream(teeState.branch2.@readableStreamController, shouldClone ? @doStructuredClone(result.value) : result.value);
+                @readableStreamDefaultControllerEnqueue(teeState.branch2.@readableStreamController, shouldClone ? @doStructuredClone(result.value) : result.value);
         });
     }
 }
 
-function teeReadableStreamBranch1CancelFunction(teeState, stream)
+function readableStreamTeeBranch1CancelFunction(teeState, stream)
 {
     "use strict";
 
@@ -206,7 +198,7 @@ function teeReadableStreamBranch1CancelFunction(teeState, stream)
         teeState.canceled1 = true;
         teeState.reason1 = r;
         if (teeState.canceled2) {
-            @cancelReadableStream(stream, [teeState.reason1, teeState.reason2]).@then(
+            @readableStreamCancel(stream, [teeState.reason1, teeState.reason2]).@then(
                 teeState.cancelPromiseCapability.@resolve,
                 teeState.cancelPromiseCapability.@reject);
         }
@@ -214,7 +206,7 @@ function teeReadableStreamBranch1CancelFunction(teeState, stream)
     }
 }
 
-function teeReadableStreamBranch2CancelFunction(teeState, stream)
+function readableStreamTeeBranch2CancelFunction(teeState, stream)
 {
     "use strict";
 
@@ -222,7 +214,7 @@ function teeReadableStreamBranch2CancelFunction(teeState, stream)
         teeState.canceled2 = true;
         teeState.reason2 = r;
         if (teeState.canceled1) {
-            @cancelReadableStream(stream, [teeState.reason1, teeState.reason2]).@then(
+            @readableStreamCancel(stream, [teeState.reason1, teeState.reason2]).@then(
                 teeState.cancelPromiseCapability.@resolve,
                 teeState.cancelPromiseCapability.@reject);
         }
@@ -261,7 +253,7 @@ function isReadableStreamDefaultController(controller)
     return @isObject(controller) && !!controller.@underlyingSource;
 }
 
-function errorReadableStream(stream, error)
+function readableStreamError(stream, error)
 {
     "use strict";
 
@@ -282,12 +274,12 @@ function errorReadableStream(stream, error)
         reader.@readRequests = [];
     } else
         // FIXME: Implement ReadableStreamBYOBReader.
-        throw new @TypeError("Only ReadableStreamDefaultReader is currently supported");
+        @throwTypeError("Only ReadableStreamDefaultReader is currently supported");
 
     reader.@closedPromiseCapability.@reject.@call(@undefined, error);
 }
 
-function requestReadableStreamPull(controller)
+function readableStreamDefaultControllerCallPullIfNeeded(controller)
 {
     "use strict";
 
@@ -313,7 +305,7 @@ function requestReadableStreamPull(controller)
         controller.@pulling = false;
         if (controller.@pullAgain) {
             controller.@pullAgain = false;
-            @requestReadableStreamPull(controller);
+            @readableStreamDefaultControllerCallPullIfNeeded(controller);
         }
     }, function(error) {
         if (stream.@state === @streamReadable)
@@ -336,7 +328,17 @@ function readableStreamDefaultControllerGetDesiredSize(controller)
    return controller.@strategy.highWaterMark - controller.@queue.size;
 }
 
-function cancelReadableStream(stream, reason)
+
+function readableStreamReaderGenericCancel(reader, reason)
+{
+    "use strict";
+
+    const stream = reader.@ownerReadableStream;
+    @assert(!!stream);
+    return @readableStreamCancel(stream, reason);
+}
+
+function readableStreamCancel(stream, reason)
 {
     "use strict";
 
@@ -345,18 +347,35 @@ function cancelReadableStream(stream, reason)
         return @Promise.@resolve();
     if (stream.@state === @streamErrored)
         return @Promise.@reject(stream.@storedError);
-    @closeReadableStream(stream);
-    // FIXME: Fix below, which is a temporary solution to the case where controller is undefined.
-    // This issue is due to the fact that in previous version of the spec, cancel was associated
-    // to underlyingSource, whereas in new version it is associated to controller. As this patch
-    // does not yet fully implement the new version, this solution is used.
-    const controller = stream.@readableStreamController;
-    var underlyingSource = @undefined;
-    if (controller !== @undefined)
-        underlyingSource = controller.@underlyingSource;
-    return @promiseInvokeOrNoop(underlyingSource, "cancel", [reason]).@then(function() { });
+    @readableStreamClose(stream);
+    return stream.@readableStreamController.@cancel(stream.@readableStreamController, reason).@then(function() {  });
 }
 
+function readableStreamDefaultControllerCancel(controller, reason)
+{
+    "use strict";
+
+    controller.@queue = @newQueue();
+    return @promiseInvokeOrNoop(controller.@underlyingSource, "cancel", [reason]);
+}
+
+function readableStreamDefaultControllerPull(controller)
+{
+    "use strict";
+
+    const stream = controller.@controlledReadableStream;
+    if (controller.@queue.content.length) {
+        const chunk = @dequeueValue(controller.@queue);
+        if (controller.@closeRequested && controller.@queue.content.length === 0)
+            @readableStreamClose(stream);
+        else
+            @readableStreamDefaultControllerCallPullIfNeeded(controller);
+        return @Promise.@resolve({value: chunk, done: false});
+    }
+    const pendingPromise = @readableStreamAddReadRequest(stream);
+    @readableStreamDefaultControllerCallPullIfNeeded(controller);
+    return pendingPromise;
+}
 
 function readableStreamDefaultControllerClose(controller)
 {
@@ -367,10 +386,10 @@ function readableStreamDefaultControllerClose(controller)
     @assert(stream.@state === @streamReadable);
     controller.@closeRequested = true;
     if (controller.@queue.content.length === 0)
-        @closeReadableStream(stream);
+        @readableStreamClose(stream);
 }
 
-function closeReadableStream(stream)
+function readableStreamClose(stream)
 {
     "use strict";
 
@@ -391,7 +410,7 @@ function closeReadableStream(stream)
     reader.@closedPromiseCapability.@resolve.@call();
 }
 
-function enqueueInReadableStream(controller, chunk)
+function readableStreamDefaultControllerEnqueue(controller, chunk)
 {
     "use strict";
 
@@ -401,7 +420,7 @@ function enqueueInReadableStream(controller, chunk)
 
     if (@isReadableStreamLocked(stream) && stream.@reader.@readRequests.length) {
         stream.@reader.@readRequests.@shift().@resolve.@call(@undefined, {value: chunk, done: false});
-        @requestReadableStreamPull(controller);
+        @readableStreamDefaultControllerCallPullIfNeeded(controller);
         return;
     }
 
@@ -416,19 +435,15 @@ function enqueueInReadableStream(controller, chunk)
             @readableStreamDefaultControllerError(controller, error);
         throw error;
     }
-    @requestReadableStreamPull(controller);
+    @readableStreamDefaultControllerCallPullIfNeeded(controller);
 }
 
-function readFromReadableStreamDefaultReader(reader)
+function readableStreamDefaultReaderRead(reader)
 {
     "use strict";
 
     const stream = reader.@ownerReadableStream;
     @assert(!!stream);
-
-    // Native sources may want to start enqueueing at the time of the first read request.
-    if (!stream.@disturbed && stream.@state === @streamReadable && stream.@readableStreamController.@underlyingSource.@firstReadCallback)
-        stream.@readableStreamController.@underlyingSource.@firstReadCallback();
 
     stream.@disturbed = true;
     if (stream.@state === @streamClosed)
@@ -437,7 +452,7 @@ function readFromReadableStreamDefaultReader(reader)
         return @Promise.@reject(stream.@storedError);
     @assert(stream.@state === @streamReadable);
 
-    return stream.@readableStreamController.@pull();
+    return stream.@readableStreamController.@pull(stream.@readableStreamController);
 }
 
 function readableStreamAddReadRequest(stream)
@@ -459,4 +474,20 @@ function isReadableStreamDisturbed(stream)
 
     @assert(@isReadableStream(stream));
     return stream.@disturbed;
+}
+
+function readableStreamReaderGenericRelease(reader)
+{
+    "use strict";
+
+    @assert(!!reader.@ownerReadableStream);
+    @assert(reader.@ownerReadableStream.@reader === reader);
+
+    if (reader.@ownerReadableStream.@state === @streamReadable)
+        reader.@closedPromiseCapability.@reject.@call(@undefined, new @TypeError("releasing lock of reader whose stream is still in readable state"));
+    else
+        reader.@closedPromiseCapability = { @promise: @Promise.@reject(new @TypeError("reader released lock")) };
+
+    reader.@ownerReadableStream.@reader = @undefined;
+    reader.@ownerReadableStream = null;
 }

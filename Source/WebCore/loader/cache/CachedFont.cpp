@@ -40,6 +40,10 @@
 #include "WOFFFileFormat.h"
 #include <wtf/Vector.h>
 
+#if USE(DIRECT2D)
+#include <dwrite.h>
+#endif
+
 namespace WebCore {
 
 CachedFont::CachedFont(CachedResourceRequest&& request, SessionID sessionID, Type type)
@@ -59,11 +63,11 @@ void CachedFont::load(CachedResourceLoader&)
     setLoading(true);
 }
 
-void CachedFont::didAddClient(CachedResourceClient* client)
+void CachedFont::didAddClient(CachedResourceClient& client)
 {
-    ASSERT(client->resourceClientType() == CachedFontClient::expectedType());
+    ASSERT(client.resourceClientType() == CachedFontClient::expectedType());
     if (!isLoading())
-        static_cast<CachedFontClient*>(client)->fontLoaded(*this);
+        static_cast<CachedFontClient&>(client).fontLoaded(*this);
 }
 
 void CachedFont::finishLoading(SharedBuffer* data)

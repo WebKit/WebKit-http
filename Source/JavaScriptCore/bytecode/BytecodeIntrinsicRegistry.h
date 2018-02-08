@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BytecodeIntrinsicRegistry_h
-#define BytecodeIntrinsicRegistry_h
+#pragma once
 
 #include "Identifier.h"
 #include <wtf/Noncopyable.h>
@@ -49,6 +48,9 @@ class Identifier;
     macro(isMap) \
     macro(isSet) \
     macro(tailCallForwardArguments) \
+    macro(throwTypeError) \
+    macro(throwRangeError) \
+    macro(throwOutOfMemoryError) \
     macro(tryGetById) \
     macro(putByValDirect) \
     macro(toNumber) \
@@ -102,5 +104,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // BytecodeIntrinsicRegistry_h

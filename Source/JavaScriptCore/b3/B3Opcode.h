@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Opcode_h
-#define B3Opcode_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -33,6 +32,9 @@
 #include <wtf/StdLibExtras.h>
 
 namespace JSC { namespace B3 {
+
+// Warning: In B3, an Opcode is just one part of a Kind. Kind is used the way that an opcode
+// would be used in simple IRs. See B3Kind.h.
 
 enum Opcode : int16_t {
     // A no-op that returns Void, useful for when you want to remove a value.
@@ -84,8 +86,6 @@ enum Opcode : int16_t {
     Neg,
 
     // Integer math.
-    ChillDiv, // doesn't trap ever, behaves like JS (x/y)|0.
-    ChillMod, // doesn't trap ever, behaves like JS (x%y)|0.
     BitAnd,
     BitOr,
     BitXor,
@@ -209,6 +209,12 @@ enum Opcode : int16_t {
     // WarmAny. It will not have an output constraint.
     Check,
 
+    // Special Wasm opcode that takes a Int32, a special pinned gpr and an offset. This node exists
+    // to allow us to CSE WasmBoundsChecks if both use the same pointer and one dominates the other.
+    // Without some such node B3 would not have enough information about the inner workings of wasm
+    // to be able to perform such optimizations.
+    WasmBoundsCheck,
+
     // SSA support, in the style of DFG SSA.
     Upsilon, // This uses the UpsilonValue class.
     Phi,
@@ -295,6 +301,3 @@ JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Opcode);
 } // namespace WTF
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Opcode_h
-

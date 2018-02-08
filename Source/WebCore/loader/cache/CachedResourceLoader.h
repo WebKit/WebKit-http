@@ -30,6 +30,7 @@
 #include "CachedResource.h"
 #include "CachedResourceHandle.h"
 #include "CachedResourceRequest.h"
+#include "ContentSecurityPolicy.h"
 #include "ResourceLoadPriority.h"
 #include "ResourceTimingInformation.h"
 #include "Timer.h"
@@ -122,7 +123,7 @@ public:
     void loadDone(CachedResource*, bool shouldPerformPostLoadActions = true);
 
     WEBCORE_EXPORT void garbageCollectDocumentResources();
-    
+
     void incrementRequestCount(const CachedResource&);
     void decrementRequestCount(const CachedResource&);
     int requestCount() const { return m_requestCount; }
@@ -135,7 +136,7 @@ public:
     void checkForPendingPreloads();
     void printPreloadStats();
 
-    bool canRequest(CachedResource::Type, const URL&, const ResourceLoaderOptions&, bool forPreload = false, bool didReceiveRedirectResponse = false);
+    bool canRequestAfterRedirection(CachedResource::Type, const URL&, const ResourceLoaderOptions&);
 
     static const ResourceLoaderOptions& defaultCachedResourceOptions();
 
@@ -150,21 +151,27 @@ public:
 private:
     explicit CachedResourceLoader(DocumentLoader*);
 
-    CachedResourceHandle<CachedResource> requestResource(CachedResource::Type, CachedResourceRequest&&);
+    enum class ForPreload { Yes, No };
+    enum class DeferOption { NoDefer, DeferredByClient };
+
+    void updateHTTPRequestHeaders(CachedResourceRequest&);
+    CachedResourceHandle<CachedResource> requestResource(CachedResource::Type, CachedResourceRequest&&, ForPreload = ForPreload::No, DeferOption = DeferOption::NoDefer);
     void prepareFetch(CachedResource::Type, CachedResourceRequest&);
     CachedResourceHandle<CachedResource> revalidateResource(CachedResourceRequest&&, CachedResource&);
     CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, CachedResourceRequest&&);
     CachedResourceHandle<CachedResource> requestPreload(CachedResource::Type, CachedResourceRequest&&);
 
+    bool canRequest(CachedResource::Type, const URL&, const CachedResourceRequest&, ForPreload);
+
     enum RevalidationPolicy { Use, Revalidate, Reload, Load };
-    RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, CachedResourceRequest&, CachedResource* existingResource) const;
+    RevalidationPolicy determineRevalidationPolicy(CachedResource::Type, CachedResourceRequest&, CachedResource* existingResource, ForPreload, DeferOption) const;
 
     bool shouldUpdateCachedResourceWithCurrentRequest(const CachedResource&, const CachedResourceRequest&);
     CachedResourceHandle<CachedResource> updateCachedResourceWithCurrentRequest(const CachedResource&, CachedResourceRequest&&);
 
     bool shouldContinueAfterNotifyingLoadedFromMemoryCache(const CachedResourceRequest&, CachedResource*);
     bool checkInsecureContent(CachedResource::Type, const URL&) const;
-    bool allowedByContentSecurityPolicy(CachedResource::Type, const URL&, const ResourceLoaderOptions&, bool);
+    bool allowedByContentSecurityPolicy(CachedResource::Type, const URL&, const ResourceLoaderOptions&, ContentSecurityPolicy::RedirectResponseReceived);
 
     void performPostLoadActions();
 

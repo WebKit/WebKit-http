@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef A64DOpcode_h
-#define A64DOpcode_h
+#pragma once
 
 #include <wtf/Assertions.h>
 #include <stdint.h>
@@ -510,6 +509,30 @@ public:
     unsigned immediate7() { return (m_opcode >> 5) & 0x7f; }
 };
 
+class A64DOpcodeDmbIsh : public A64DOpcode {
+public:
+    static const uint32_t mask = 0xffffffff;
+    static const uint32_t pattern = 0xd5033bbf;
+
+    DEFINE_STATIC_FORMAT(A64DOpcodeDmbIsh, thisObj);
+
+    const char* format();
+
+    const char* opName() { return "dmb"; }
+};
+
+class A64DOpcodeDmbIshSt : public A64DOpcode {
+public:
+    static const uint32_t mask = 0xffffffff;
+    static const uint32_t pattern = 0xd5033abf;
+
+    DEFINE_STATIC_FORMAT(A64DOpcodeDmbIshSt, thisObj);
+
+    const char* format();
+
+    const char* opName() { return "dmb"; }
+};
+
 class A64DOpcodeLoadStore : public A64DOpcode {
 private:
     static const char* const s_opNames[32];
@@ -704,5 +727,3 @@ public:
 } } // namespace JSC::ARM64Disassembler
 
 using JSC::ARM64Disassembler::A64DOpcode;
-
-#endif // A64DOpcode_h

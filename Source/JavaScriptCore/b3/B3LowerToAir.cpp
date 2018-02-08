@@ -181,6 +181,7 @@ private:
     }
 
     class ArgPromise {
+        WTF_MAKE_NONCOPYABLE(ArgPromise);
     public:
         ArgPromise() { }
 
@@ -188,6 +189,37 @@ private:
             : m_arg(arg)
             , m_value(valueToLock)
         {
+        }
+        
+        void swap(ArgPromise& other)
+        {
+            std::swap(m_arg, other.m_arg);
+            std::swap(m_value, other.m_value);
+            std::swap(m_wasConsumed, other.m_wasConsumed);
+            std::swap(m_wasWrapped, other.m_wasWrapped);
+            std::swap(m_traps, other.m_traps);
+        }
+        
+        ArgPromise(ArgPromise&& other)
+        {
+            swap(other);
+        }
+        
+        ArgPromise& operator=(ArgPromise&& other)
+        {
+            swap(other);
+            return *this;
+        }
+        
+        ~ArgPromise()
+        {
+            if (m_wasConsumed)
+                RELEASE_ASSERT(m_wasWrapped);
+        }
+        
+        void setTraps(bool value)
+        {
+            m_traps = value;
         }
 
         static ArgPromise tmp(Value* value)
@@ -211,13 +243,23 @@ private:
             return m_arg;
         }
 
-        Arg consume(LowerToAir& lower) const
+        Arg consume(LowerToAir& lower)
         {
+            m_wasConsumed = true;
             if (!m_arg && m_value)
                 return lower.tmp(m_value);
             if (m_value)
                 lower.commitInternal(m_value);
             return m_arg;
+        }
+        
+        template<typename... Args>
+        Inst inst(Args&&... args)
+        {
+            Inst result(std::forward<Args>(args)...);
+            result.kind.traps |= m_traps;
+            m_wasWrapped = true;
+            return result;
         }
         
     private:
@@ -227,7 +269,10 @@ private:
         // Arg null, value non-null: it's a tmp, pin it when necessary.
         // Arg non-null, value non-null: use the arg, lock the value.
         Arg m_arg;
-        Value* m_value;
+        Value* m_value { nullptr };
+        bool m_wasConsumed { false };
+        bool m_wasWrapped { false };
+        bool m_traps { false };
     };
 
     // Consider using tmpPromise() in cases where you aren't sure that you want to pin the value yet.
@@ -246,11 +291,12 @@ private:
     //         append(Foo, tmp(bar))
     //
     // Idiom #3: Same as Idiom #2, but using tmpPromise. Notice that this calls consume() only after
-    // it's sure it will use the tmp. That's deliberate.
+    // it's sure it will use the tmp. That's deliberate. Also note that you're required to pass any
+    // Inst you create with consumed promises through that promise's inst() function.
     //
     //     ArgPromise promise = tmpPromise(bar);
     //     if (isValidForm(Foo, promise.kind()))
-    //         append(Foo, promise.consume(*this))
+    //         append(promise.inst(Foo, promise.consume(*this)))
     //
     // In both idiom #2 and idiom #3, we don't pin the value to a temporary except when we actually
     // emit the instruction. Both tmp() and tmpPromise().consume(*this) will pin it. Pinning means
@@ -288,9 +334,9 @@ private:
     // loadAddr() helper and require you to balance ArgPromise's in code like this. Such code will
     // work fine if written as:
     //
-    //     auto tryThings = [this] (const ArgPromise& left, const ArgPromise& right) {
+    //     auto tryThings = [this] (ArgPromise& left, ArgPromise& right) {
     //         if (isValidForm(Foo, left.kind(), right.kind()))
-    //             return Inst(Foo, m_value, left.consume(*this), right.consume(*this));
+    //             return left.inst(right.inst(Foo, m_value, left.consume(*this), right.consume(*this)));
     //         return Inst();
     //     };
     //     if (Inst result = tryThings(loadPromise(left), tmpPromise(right)))
@@ -353,7 +399,8 @@ private:
     // short, you should avoid this by using the pattern matcher to match patterns.
     void commitInternal(Value* value)
     {
-        m_locked.add(value);
+        if (value)
+            m_locked.add(value);
     }
 
     bool crossesInterference(Value* value)
@@ -378,6 +425,28 @@ private:
         ASSERT_NOT_REACHED();
         return true;
     }
+    
+    Optional<unsigned> scaleForShl(Value* shl, int32_t offset, Optional<Arg::Width> width = Nullopt)
+    {
+        if (shl->opcode() != Shl)
+            return Nullopt;
+        if (!shl->child(1)->hasInt32())
+            return Nullopt;
+        unsigned logScale = shl->child(1)->asInt32();
+        if (shl->type() == Int32)
+            logScale &= 31;
+        else
+            logScale &= 63;
+        // Use 64-bit math to perform the shift so that <<32 does the right thing, but then switch
+        // to signed since that's what all of our APIs want.
+        int64_t bigScale = static_cast<uint64_t>(1) << static_cast<uint64_t>(logScale);
+        if (!isRepresentableAs<int32_t>(bigScale))
+            return Nullopt;
+        unsigned scale = static_cast<int32_t>(bigScale);
+        if (!Arg::isValidIndexForm(scale, offset, width))
+            return Nullopt;
+        return scale;
+    }
 
     // This turns the given operand into an address.
     Arg effectiveAddr(Value* address, int32_t offset, Arg::Width width)
@@ -400,18 +469,12 @@ private:
             Value* right = address->child(1);
 
             auto tryIndex = [&] (Value* index, Value* base) -> Arg {
-                if (index->opcode() != Shl)
+                Optional<unsigned> scale = scaleForShl(index, offset, width);
+                if (!scale)
                     return Arg();
                 if (m_locked.contains(index->child(0)) || m_locked.contains(base))
                     return Arg();
-                if (!index->child(1)->hasInt32())
-                    return Arg();
-                
-                unsigned scale = 1 << (index->child(1)->asInt32() & 31);
-                if (!Arg::isValidIndexForm(scale, offset, width))
-                    return Arg();
-
-                return Arg::index(tmp(base), tmp(index->child(0)), scale, offset);
+                return Arg::index(tmp(base), tmp(index->child(0)), *scale, offset);
             };
 
             if (Arg result = tryIndex(left, right))
@@ -466,14 +529,31 @@ private:
 
         return result;
     }
-
+    
+    template<typename... Args>
+    Inst trappingInst(bool traps, Args&&... args)
+    {
+        Inst result(std::forward<Args>(args)...);
+        result.kind.traps |= traps;
+        return result;
+    }
+    
+    template<typename... Args>
+    Inst trappingInst(Value* value, Args&&... args)
+    {
+        return trappingInst(value->traps(), std::forward<Args>(args)...);
+    }
+    
     ArgPromise loadPromiseAnyOpcode(Value* loadValue)
     {
         if (!canBeInternal(loadValue))
             return Arg();
         if (crossesInterference(loadValue))
             return Arg();
-        return ArgPromise(addr(loadValue), loadValue);
+        ArgPromise result(addr(loadValue), loadValue);
+        if (loadValue->traps())
+            result.setTraps(true);
+        return result;
     }
 
     ArgPromise loadPromise(Value* loadValue, B3::Opcode loadOpcode)
@@ -488,13 +568,17 @@ private:
         return loadPromise(loadValue, Load);
     }
 
+    Arg imm(int64_t intValue)
+    {
+        if (Arg::isValidImmForm(intValue))
+            return Arg::imm(intValue);
+        return Arg();
+    }
+
     Arg imm(Value* value)
     {
-        if (value->hasInt()) {
-            int64_t intValue = value->asInt();
-            if (Arg::isValidImmForm(intValue))
-                return Arg::imm(intValue);
-        }
+        if (value->hasInt())
+            return imm(value->asInt());
         return Arg();
     }
 
@@ -583,7 +667,7 @@ private:
 
         ArgPromise addr = loadPromise(value);
         if (isValidForm(opcode, addr.kind(), Arg::Tmp)) {
-            append(opcode, addr.consume(*this), result);
+            append(addr.inst(opcode, m_value, addr.consume(*this), result));
             return;
         }
 
@@ -717,34 +801,34 @@ private:
         if (left != right) {
             ArgPromise leftAddr = loadPromise(left);
             if (isValidForm(opcode, leftAddr.kind(), Arg::Tmp, Arg::Tmp)) {
-                append(opcode, leftAddr.consume(*this), tmp(right), result);
+                append(leftAddr.inst(opcode, m_value, leftAddr.consume(*this), tmp(right), result));
                 return;
             }
 
             if (commutativity == Commutative) {
                 if (isValidForm(opcode, leftAddr.kind(), Arg::Tmp)) {
                     append(relaxedMoveForType(m_value->type()), tmp(right), result);
-                    append(opcode, leftAddr.consume(*this), result);
+                    append(leftAddr.inst(opcode, m_value, leftAddr.consume(*this), result));
                     return;
                 }
             }
 
             ArgPromise rightAddr = loadPromise(right);
             if (isValidForm(opcode, Arg::Tmp, rightAddr.kind(), Arg::Tmp)) {
-                append(opcode, tmp(left), rightAddr.consume(*this), result);
+                append(rightAddr.inst(opcode, m_value, tmp(left), rightAddr.consume(*this), result));
                 return;
             }
 
             if (commutativity == Commutative) {
                 if (isValidForm(opcode, rightAddr.kind(), Arg::Tmp, Arg::Tmp)) {
-                    append(opcode, rightAddr.consume(*this), tmp(left), result);
+                    append(rightAddr.inst(opcode, m_value, rightAddr.consume(*this), tmp(left), result));
                     return;
                 }
             }
 
             if (isValidForm(opcode, rightAddr.kind(), Arg::Tmp)) {
                 append(relaxedMoveForType(m_value->type()), tmp(left), result);
-                append(opcode, rightAddr.consume(*this), result);
+                append(rightAddr.inst(opcode, m_value, rightAddr.consume(*this), result));
                 return;
             }
         }
@@ -823,7 +907,7 @@ private:
             return false;
         
         loadPromise.consume(*this);
-        append(opcode, storeAddr);
+        append(trappingInst(m_value, loadPromise.inst(opcode, m_value, storeAddr)));
         return true;
     }
 
@@ -875,7 +959,7 @@ private:
 
         if (isValidForm(opcode, Arg::Imm, storeAddr.kind()) && imm(otherValue)) {
             loadPromise.consume(*this);
-            append(opcode, imm(otherValue), storeAddr);
+            append(trappingInst(m_value, loadPromise.inst(opcode, m_value, imm(otherValue), storeAddr)));
             return true;
         }
 
@@ -883,7 +967,7 @@ private:
             return false;
 
         loadPromise.consume(*this);
-        append(opcode, tmp(otherValue), storeAddr);
+        append(trappingInst(m_value, loadPromise.inst(opcode, m_value, tmp(otherValue), storeAddr)));
         return true;
     }
 
@@ -901,9 +985,10 @@ private:
         return createStore(moveOpcode, value, dest);
     }
 
-    void appendStore(Value* value, const Arg& dest)
+    template<typename... Args>
+    void appendStore(Args&&... args)
     {
-        m_insts.last().append(createStore(value, dest));
+        append(trappingInst(m_value, createStore(std::forward<Args>(args)...)));
     }
 
     Air::Opcode moveForType(Type type)
@@ -962,6 +1047,15 @@ private:
     void append(Air::Opcode opcode, Arguments&&... arguments)
     {
         m_insts.last().append(Inst(opcode, m_value, std::forward<Arguments>(arguments)...));
+    }
+    
+    void append(Inst&& inst)
+    {
+        m_insts.last().append(WTFMove(inst));
+    }
+    void append(const Inst& inst)
+    {
+        m_insts.last().append(inst);
     }
 
     template<typename T, typename... Arguments>
@@ -1190,7 +1284,7 @@ private:
                 Arg rightImm = imm(right);
 
                 auto tryCompare = [&] (
-                    Arg::Width width, const ArgPromise& left, const ArgPromise& right) -> Inst {
+                    Arg::Width width, ArgPromise&& left, ArgPromise&& right) -> Inst {
                     if (Inst result = compare(width, relCond, left, right))
                         return result;
                     if (Inst result = compare(width, relCond.flipped(), right, left))
@@ -1279,20 +1373,24 @@ private:
                 }
 
                 // Finally, handle comparison between tmps.
-                return compare(width, relCond, tmpPromise(left), tmpPromise(right));
+                ArgPromise leftPromise = tmpPromise(left);
+                ArgPromise rightPromise = tmpPromise(right);
+                return compare(width, relCond, leftPromise, rightPromise);
             }
 
             // Floating point comparisons can't really do anything smart.
+            ArgPromise leftPromise = tmpPromise(left);
+            ArgPromise rightPromise = tmpPromise(right);
             if (value->child(0)->type() == Float)
-                return compareFloat(doubleCond, tmpPromise(left), tmpPromise(right));
-            return compareDouble(doubleCond, tmpPromise(left), tmpPromise(right));
+                return compareFloat(doubleCond, leftPromise, rightPromise);
+            return compareDouble(doubleCond, leftPromise, rightPromise);
         };
 
         Arg::Width width = Arg::widthForB3Type(value->type());
         Arg resCond = Arg::resCond(MacroAssembler::NonZero).inverted(inverted);
         
         auto tryTest = [&] (
-            Arg::Width width, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            Arg::Width width, ArgPromise&& left, ArgPromise&& right) -> Inst {
             if (Inst result = test(width, resCond, left, right))
                 return result;
             if (Inst result = test(width, resCond, right, left))
@@ -1420,8 +1518,7 @@ private:
                 if (hasRightConst) {
                     if ((width == Arg::Width32 && rightConst == 0xffffffff)
                         || (width == Arg::Width64 && rightConst == -1)) {
-                        ArgPromise argPromise = tmpPromise(left);
-                        if (Inst result = tryTest(width, argPromise, argPromise))
+                        if (Inst result = tryTest(width, tmpPromise(left), tmpPromise(left)))
                             return result;
                     }
                     if (isRepresentableAs<uint32_t>(rightConst)) {
@@ -1481,13 +1578,17 @@ private:
                 }
             }
 
-            if (Inst result = test(width, resCond, tmpPromise(value), Arg::bitImm(-1)))
+            ArgPromise leftPromise = tmpPromise(value);
+            ArgPromise rightPromise = Arg::bitImm(-1);
+            if (Inst result = test(width, resCond, leftPromise, rightPromise))
                 return result;
         }
         
         // Sometimes this is the only form of test available. We prefer not to use this because
         // it's less canonical.
-        return test(width, resCond, tmpPromise(value), tmpPromise(value));
+        ArgPromise leftPromise = tmpPromise(value);
+        ArgPromise rightPromise = tmpPromise(value);
+        return test(width, resCond, leftPromise, rightPromise);
     }
 
     Inst createBranch(Value* value, bool inverted = false)
@@ -1496,29 +1597,29 @@ private:
             value,
             [this] (
                 Arg::Width width, const Arg& relCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
                 case Arg::Width8:
                     if (isValidForm(Branch8, Arg::RelCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Branch8, m_value, relCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 case Arg::Width16:
                     return Inst();
                 case Arg::Width32:
                     if (isValidForm(Branch32, Arg::RelCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Branch32, m_value, relCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 case Arg::Width64:
                     if (isValidForm(Branch64, Arg::RelCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Branch64, m_value, relCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 }
@@ -1526,47 +1627,47 @@ private:
             },
             [this] (
                 Arg::Width width, const Arg& resCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
                 case Arg::Width8:
                     if (isValidForm(BranchTest8, Arg::ResCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             BranchTest8, m_value, resCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 case Arg::Width16:
                     return Inst();
                 case Arg::Width32:
                     if (isValidForm(BranchTest32, Arg::ResCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             BranchTest32, m_value, resCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 case Arg::Width64:
                     if (isValidForm(BranchTest64, Arg::ResCond, left.kind(), right.kind())) {
-                        return Inst(
+                        return left.inst(right.inst(
                             BranchTest64, m_value, resCond,
-                            left.consume(*this), right.consume(*this));
+                            left.consume(*this), right.consume(*this)));
                     }
                     return Inst();
                 }
                 ASSERT_NOT_REACHED();
             },
-            [this] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(BranchDouble, Arg::DoubleCond, left.kind(), right.kind())) {
-                    return Inst(
+                    return left.inst(right.inst(
                         BranchDouble, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this));
+                        left.consume(*this), right.consume(*this)));
                 }
                 return Inst();
             },
-            [this] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(BranchFloat, Arg::DoubleCond, left.kind(), right.kind())) {
-                    return Inst(
+                    return left.inst(right.inst(
                         BranchFloat, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this));
+                        left.consume(*this), right.consume(*this)));
                 }
                 return Inst();
             },
@@ -1579,23 +1680,23 @@ private:
             value,
             [this] (
                 Arg::Width width, const Arg& relCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
                 case Arg::Width8:
                 case Arg::Width16:
                     return Inst();
                 case Arg::Width32:
                     if (isValidForm(Compare32, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Compare32, m_value, relCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
                 case Arg::Width64:
                     if (isValidForm(Compare64, Arg::RelCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Compare64, m_value, relCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
                 }
@@ -1603,41 +1704,41 @@ private:
             },
             [this] (
                 Arg::Width width, const Arg& resCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
                 case Arg::Width8:
                 case Arg::Width16:
                     return Inst();
                 case Arg::Width32:
                     if (isValidForm(Test32, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Test32, m_value, resCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
                 case Arg::Width64:
                     if (isValidForm(Test64, Arg::ResCond, left.kind(), right.kind(), Arg::Tmp)) {
-                        return Inst(
+                        return left.inst(right.inst(
                             Test64, m_value, resCond,
-                            left.consume(*this), right.consume(*this), tmp(m_value));
+                            left.consume(*this), right.consume(*this), tmp(m_value)));
                     }
                     return Inst();
                 }
                 ASSERT_NOT_REACHED();
             },
-            [this] (const Arg& doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (const Arg& doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(CompareDouble, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp)) {
-                    return Inst(
+                    return left.inst(right.inst(
                         CompareDouble, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this), tmp(m_value));
+                        left.consume(*this), right.consume(*this), tmp(m_value)));
                 }
                 return Inst();
             },
-            [this] (const Arg& doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [this] (const Arg& doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 if (isValidForm(CompareFloat, Arg::DoubleCond, left.kind(), right.kind(), Arg::Tmp)) {
-                    return Inst(
+                    return left.inst(right.inst(
                         CompareFloat, m_value, doubleCond,
-                        left.consume(*this), right.consume(*this), tmp(m_value));
+                        left.consume(*this), right.consume(*this), tmp(m_value)));
                 }
                 return Inst();
             },
@@ -1654,22 +1755,22 @@ private:
     };
     Inst createSelect(const MoveConditionallyConfig& config)
     {
-        auto createSelectInstruction = [&] (Air::Opcode opcode, const Arg& condition, const ArgPromise& left, const ArgPromise& right) -> Inst {
+        auto createSelectInstruction = [&] (Air::Opcode opcode, const Arg& condition, ArgPromise& left, ArgPromise& right) -> Inst {
             if (isValidForm(opcode, condition.kind(), left.kind(), right.kind(), Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
                 Tmp result = tmp(m_value);
                 Tmp thenCase = tmp(m_value->child(1));
                 Tmp elseCase = tmp(m_value->child(2));
-                return Inst(
+                return left.inst(right.inst(
                     opcode, m_value, condition,
-                    left.consume(*this), right.consume(*this), thenCase, elseCase, result);
+                    left.consume(*this), right.consume(*this), thenCase, elseCase, result));
             }
             if (isValidForm(opcode, condition.kind(), left.kind(), right.kind(), Arg::Tmp, Arg::Tmp)) {
                 Tmp result = tmp(m_value);
                 Tmp source = tmp(m_value->child(1));
                 append(relaxedMoveForType(m_value->type()), tmp(m_value->child(2)), result);
-                return Inst(
+                return left.inst(right.inst(
                     opcode, m_value, condition,
-                    left.consume(*this), right.consume(*this), source, result);
+                    left.consume(*this), right.consume(*this), source, result));
             }
             return Inst();
         };
@@ -1678,7 +1779,7 @@ private:
             m_value->child(0),
             [&] (
                 Arg::Width width, const Arg& relCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
                 case Arg::Width8:
                     // FIXME: Support these things.
@@ -1695,7 +1796,7 @@ private:
             },
             [&] (
                 Arg::Width width, const Arg& resCond,
-                const ArgPromise& left, const ArgPromise& right) -> Inst {
+                ArgPromise& left, ArgPromise& right) -> Inst {
                 switch (width) {
                 case Arg::Width8:
                     // FIXME: Support more things.
@@ -1710,13 +1811,142 @@ private:
                 }
                 ASSERT_NOT_REACHED();
             },
-            [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [&] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 return createSelectInstruction(config.moveConditionallyDouble, doubleCond, left, right);
             },
-            [&] (Arg doubleCond, const ArgPromise& left, const ArgPromise& right) -> Inst {
+            [&] (Arg doubleCond, ArgPromise& left, ArgPromise& right) -> Inst {
                 return createSelectInstruction(config.moveConditionallyFloat, doubleCond, left, right);
             },
             false);
+    }
+    
+    bool tryAppendLea()
+    {
+        Air::Opcode leaOpcode = tryOpcodeForType(Lea32, Lea64, m_value->type());
+        if (!isValidForm(leaOpcode, Arg::Index, Arg::Tmp))
+            return false;
+        
+        // This lets us turn things like this:
+        //
+        //     Add(Add(@x, Shl(@y, $2)), $100)
+        //
+        // Into this:
+        //
+        //     lea 100(%rdi,%rsi,4), %rax
+        //
+        // We have a choice here between committing the internal bits of an index or sharing
+        // them. There are solid arguments for both.
+        //
+        // Sharing: The word on the street is that the cost of a lea is one cycle no matter
+        // what it does. Every experiment I've ever seen seems to confirm this. So, sharing
+        // helps us in situations where Wasm input did this:
+        //
+        //     x = a[i].x;
+        //     y = a[i].y;
+        //
+        // With sharing we would do:
+        //
+        //     leal (%a,%i,4), %tmp
+        //     cmp (%size, %tmp)
+        //     ja _fail
+        //     movl (%base, %tmp), %x
+        //     leal 4(%a,%i,4), %tmp
+        //     cmp (%size, %tmp)
+        //     ja _fail
+        //     movl (%base, %tmp), %y
+        //
+        // In the absence of sharing, we may find ourselves needing separate registers for
+        // the innards of the index. That's relatively unlikely to be a thing due to other
+        // optimizations that we already have, but it could happen
+        //
+        // Committing: The worst case is that there is a complicated graph of additions and
+        // shifts, where each value has multiple uses. In that case, it's better to compute
+        // each one separately from the others since that way, each calculation will use a
+        // relatively nearby tmp as its input. That seems uncommon, but in those cases,
+        // committing is a clear winner: it would result in a simple interference graph
+        // while sharing would result in a complex one. Interference sucks because it means
+        // more time in IRC and it means worse code.
+        //
+        // It's not super clear if any of these corner cases would ever arise. Committing
+        // has the benefit that it's easier to reason about, and protects a much darker
+        // corner case (more interference).
+                
+        // Here are the things we want to match:
+        // Add(Add(@x, @y), $c)
+        // Add(Shl(@x, $c), @y)
+        // Add(@x, Shl(@y, $c))
+        // Add(Add(@x, Shl(@y, $c)), $d)
+        // Add(Add(Shl(@x, $c), @y), $d)
+        //
+        // Note that if you do Add(Shl(@x, $c), $d) then we will treat $d as a non-constant and
+        // force it to materialize. You'll get something like this:
+        //
+        // movl $d, %tmp
+        // leal (%tmp,%x,1<<c), %result
+        //
+        // Which is pretty close to optimal and has the nice effect of being able to handle large
+        // constants gracefully.
+        
+        Value* innerAdd = nullptr;
+        
+        Value* value = m_value;
+        
+        // We're going to consume Add(Add(_), $c). If we succeed at consuming it then we have these
+        // patterns left (i.e. in the Add(_)):
+        //
+        // Add(Add(@x, @y), $c)
+        // Add(Add(@x, Shl(@y, $c)), $d)
+        // Add(Add(Shl(@x, $c), @y), $d)
+        //
+        // Otherwise we are looking at these patterns:
+        //
+        // Add(Shl(@x, $c), @y)
+        // Add(@x, Shl(@y, $c))
+        //
+        // This means that the subsequent code only has to worry about three patterns:
+        //
+        // Add(Shl(@x, $c), @y)
+        // Add(@x, Shl(@y, $c))
+        // Add(@x, @y) (only if offset != 0)
+        int32_t offset = 0;
+        if (value->child(1)->isRepresentableAs<int32_t>()
+            && canBeInternal(value->child(0))
+            && value->child(0)->opcode() == Add) {
+            innerAdd = value->child(0);
+            offset = value->child(1)->asInt32();
+            value = value->child(0);
+        }
+        
+        auto tryShl = [&] (Value* shl, Value* other) -> bool {
+            Optional<unsigned> scale = scaleForShl(shl, offset);
+            if (!scale)
+                return false;
+            if (!canBeInternal(shl))
+                return false;
+            
+            ASSERT(!m_locked.contains(shl->child(0)));
+            ASSERT(!m_locked.contains(other));
+            
+            append(leaOpcode, Arg::index(tmp(other), tmp(shl->child(0)), *scale, offset), tmp(m_value));
+            commitInternal(innerAdd);
+            commitInternal(shl);
+            return true;
+        };
+        
+        if (tryShl(value->child(0), value->child(1)))
+            return true;
+        if (tryShl(value->child(1), value->child(0)))
+            return true;
+        
+        // The remaining pattern is just:
+        // Add(@x, @y) (only if offset != 0)
+        if (!offset)
+            return false;
+        ASSERT(!m_locked.contains(value->child(0)));
+        ASSERT(!m_locked.contains(value->child(1)));
+        append(leaOpcode, Arg::index(tmp(value->child(0)), tmp(value->child(1)), 1, offset), tmp(m_value));
+        commitInternal(innerAdd);
+        return true;
     }
 
     void lower()
@@ -1729,36 +1959,36 @@ private:
         }
             
         case Load: {
-            append(
-                moveForType(m_value->type()),
-                addr(m_value), tmp(m_value));
+            append(trappingInst(m_value, moveForType(m_value->type()), m_value, addr(m_value), tmp(m_value)));
             return;
         }
             
         case Load8S: {
-            append(Load8SignedExtendTo32, addr(m_value), tmp(m_value));
+            append(trappingInst(m_value, Load8SignedExtendTo32, m_value, addr(m_value), tmp(m_value)));
             return;
         }
 
         case Load8Z: {
-            append(Load8, addr(m_value), tmp(m_value));
+            append(trappingInst(m_value, Load8, m_value, addr(m_value), tmp(m_value)));
             return;
         }
 
         case Load16S: {
-            append(Load16SignedExtendTo32, addr(m_value), tmp(m_value));
+            append(trappingInst(m_value, Load16SignedExtendTo32, m_value, addr(m_value), tmp(m_value)));
             return;
         }
 
         case Load16Z: {
-            append(Load16, addr(m_value), tmp(m_value));
+            append(trappingInst(m_value, Load16, m_value, addr(m_value), tmp(m_value)));
             return;
         }
 
         case Add: {
+            if (tryAppendLea())
+                return;
+            
             Air::Opcode multiplyAddOpcode = tryOpcodeForType(MultiplyAdd32, MultiplyAdd64, m_value->type());
-            if (multiplyAddOpcode != Air::Oops
-                && isValidForm(multiplyAddOpcode, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
+            if (isValidForm(multiplyAddOpcode, Arg::Tmp, Arg::Tmp, Arg::Tmp, Arg::Tmp)) {
                 Value* left = m_value->child(0);
                 Value* right = m_value->child(1);
                 if (!imm(right) || m_valueToTmp[right]) {
@@ -1768,7 +1998,7 @@ private:
 
                         Value* multiplyLeft = left->child(0);
                         Value* multiplyRight = left->child(1);
-                        if (m_locked.contains(multiplyLeft) || m_locked.contains(multiplyRight))
+                        if (canBeInternal(multiplyLeft) || canBeInternal(multiplyRight))
                             return false;
 
                         append(multiplyAddOpcode, tmp(multiplyLeft), tmp(multiplyRight), tmp(right), tmp(m_value));
@@ -1846,10 +2076,9 @@ private:
             return;
         }
 
-        case ChillDiv:
-            RELEASE_ASSERT(isARM64());
-            FALLTHROUGH;
         case Div: {
+            if (m_value->isChill())
+                RELEASE_ASSERT(isARM64());
 #if CPU(X86) || CPU(X86_64)
             if (isInt(m_value->type())) {
                 lowerX86Div();
@@ -1865,6 +2094,7 @@ private:
 
         case Mod: {
             RELEASE_ASSERT(isX86());
+            RELEASE_ASSERT(!m_value->isChill());
 #if CPU(X86) || CPU(X86_64)
             lowerX86Div();
             append(Move, Tmp(X86Registers::edx), tmp(m_value));
@@ -2022,7 +2252,7 @@ private:
                     return;
                 }
             }
-            m_insts.last().append(createStore(Air::Store8, valueToStore, addr(m_value)));
+            appendStore(Air::Store8, valueToStore, addr(m_value));
             return;
         }
 
@@ -2043,16 +2273,24 @@ private:
                     return;
                 }
             }
-            m_insts.last().append(createStore(Air::Store16, valueToStore, addr(m_value)));
+            appendStore(Air::Store16, valueToStore, addr(m_value));
             return;
         }
             
         case Fence: {
             FenceValue* fence = m_value->as<FenceValue>();
-            if (isX86() && !fence->write)
+            if (!fence->write && !fence->read)
                 return;
-            // FIXME: Optimize this on ARM.
-            // https://bugs.webkit.org/show_bug.cgi?id=162342
+            if (!fence->write) {
+                // A fence that reads but does not write is for protecting motion of stores.
+                append(StoreFence);
+                return;
+            }
+            if (!fence->read) {
+                // A fence that writes but does not read is for protecting motion of loads.
+                append(LoadFence);
+                return;
+            }
             append(MemoryFence);
             return;
         }
@@ -2129,7 +2367,7 @@ private:
 
         case SlotBase: {
             append(
-                Lea,
+                pointerType() == Int64 ? Lea64 : Lea32,
                 Arg::stack(m_stackToStack.get(m_value->as<SlotBaseValue>()->slot())),
                 tmp(m_value));
             return;
@@ -2390,6 +2628,26 @@ private:
             fillStackmap(inst, checkValue, 1);
             
             m_insts.last().append(WTFMove(inst));
+            return;
+        }
+
+        case B3::WasmBoundsCheck: {
+            WasmBoundsCheckValue* value = m_value->as<WasmBoundsCheckValue>();
+
+            Value* ptr = value->child(0);
+
+            Arg temp = m_code.newTmp(Arg::GP);
+            append(Inst(Move32, value, tmp(ptr), temp));
+            if (value->offset()) {
+                if (imm(value->offset()))
+                    append(Add64, imm(value->offset()), temp);
+                else {
+                    Arg bigImm = m_code.newTmp(Arg::GP);
+                    append(Move, Arg::bigImm(value->offset()), bigImm);
+                    append(Add64, bigImm, temp);
+                }
+            }
+            append(Inst(Air::WasmBoundsCheck, value, temp, Arg(value->pinnedGPR())));
             return;
         }
 

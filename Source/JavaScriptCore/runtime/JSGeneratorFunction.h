@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSGeneratorFunction_h
-#define JSGeneratorFunction_h
+#pragma once
 
 #include "JSFunction.h"
 
@@ -70,6 +69,7 @@ public:
     DECLARE_EXPORT_INFO;
 
     static JSGeneratorFunction* create(VM&, FunctionExecutable*, JSScope*);
+    static JSGeneratorFunction* create(VM&, FunctionExecutable*, JSScope*, Structure*);
     static JSGeneratorFunction* createWithInvalidatedReallocationWatchpoint(VM&, FunctionExecutable*, JSScope*);
 
     static size_t allocationSize(size_t inlineCapacity)
@@ -85,13 +85,11 @@ public:
     }
 
 private:
-    JSGeneratorFunction(VM&, FunctionExecutable*, JSScope*);
+    JSGeneratorFunction(VM&, FunctionExecutable*, JSScope*, Structure*);
 
-    static JSGeneratorFunction* createImpl(VM&, FunctionExecutable*, JSScope*);
+    static JSGeneratorFunction* createImpl(VM&, FunctionExecutable*, JSScope*, Structure*);
 
     friend class LLIntOffsetsExtractor;
 };
 
 } // namespace JSC
-
-#endif // JSGeneratorFunction_h

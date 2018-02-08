@@ -159,6 +159,10 @@ void UIScriptController::doubleTapAtPoint(long x, long y, JSValueRef)
 void UIScriptController::dragFromPointToPoint(long startX, long startY, long endX, long endY, double durationSeconds, JSValueRef callback)
 {
 }
+    
+void UIScriptController::longPressAtPoint(long x, long y, JSValueRef)
+{
+}
 
 void UIScriptController::stylusDownAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
 {
@@ -173,6 +177,10 @@ void UIScriptController::stylusUpAtPoint(long x, long y, JSValueRef callback)
 }
 
 void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
 {
 }
 
@@ -194,6 +202,11 @@ void UIScriptController::dismissFormAccessoryView()
 
 void UIScriptController::selectFormAccessoryPickerRow(long)
 {
+}
+    
+JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
+{
+    return nullptr;
 }
 
 void UIScriptController::scrollToOffset(long x, long y)
@@ -224,6 +237,11 @@ double UIScriptController::maximumZoomScale() const
 }
 
 JSObjectRef UIScriptController::contentVisibleRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionRangeViewRects() const
 {
     return nullptr;
 }

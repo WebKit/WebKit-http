@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CommonSlowPaths_h
-#define CommonSlowPaths_h
+#pragma once
 
 #include "CodeBlock.h"
 #include "CodeSpecializationKind.h"
@@ -87,8 +86,7 @@ inline bool opIn(ExecState* exec, JSValue propName, JSValue baseVal)
         return baseObj->hasProperty(exec, i);
 
     auto property = propName.toPropertyKey(exec);
-    if (scope.exception())
-        return false;
+    RETURN_IF_EXCEPTION(scope, false);
     return baseObj->hasProperty(exec, property);
 }
 
@@ -258,7 +256,8 @@ SLOW_PATH_HIDDEN_DECL(slow_path_get_by_id_with_this);
 SLOW_PATH_HIDDEN_DECL(slow_path_get_by_val_with_this);
 SLOW_PATH_HIDDEN_DECL(slow_path_put_by_id_with_this);
 SLOW_PATH_HIDDEN_DECL(slow_path_put_by_val_with_this);
+SLOW_PATH_HIDDEN_DECL(slow_path_define_data_property);
+SLOW_PATH_HIDDEN_DECL(slow_path_define_accessor_property);
+SLOW_PATH_HIDDEN_DECL(slow_path_throw_static_error);
 
 } // namespace JSC
-
-#endif // CommonSlowPaths_h

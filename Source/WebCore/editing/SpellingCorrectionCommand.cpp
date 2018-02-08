@@ -82,7 +82,7 @@ private:
 #endif
 
 SpellingCorrectionCommand::SpellingCorrectionCommand(PassRefPtr<Range> rangeToBeCorrected, const String& correction)
-    : CompositeEditCommand(rangeToBeCorrected->startContainer().document())
+    : CompositeEditCommand(rangeToBeCorrected->startContainer().document(), EditActionInsertReplacement)
     , m_rangeToBeCorrected(rangeToBeCorrected)
     , m_selectionToBeCorrected(*m_rangeToBeCorrected)
     , m_correction(correction)
@@ -109,6 +109,14 @@ void SpellingCorrectionCommand::doApply()
 #endif
 
     applyCommandToComposite(ReplaceSelectionCommand::create(document(), WTFMove(fragment), ReplaceSelectionCommand::MatchStyle, EditActionPaste));
+}
+
+String SpellingCorrectionCommand::inputEventData() const
+{
+    if (isEditingTextAreaOrTextInput())
+        return m_correction;
+
+    return CompositeEditCommand::inputEventData();
 }
 
 bool SpellingCorrectionCommand::shouldRetainAutocorrectionIndicator() const

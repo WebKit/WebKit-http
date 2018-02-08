@@ -136,6 +136,7 @@
 #include "JSCSSUnknownRule.cpp"
 #include "JSCSSValue.cpp"
 #include "JSCSSValueList.cpp"
+#include "JSClipboardEvent.cpp"
 #if ENABLE(CUSTOM_ELEMENTS)
 #include "JSCustomElementRegistry.cpp"
 #endif
@@ -188,6 +189,8 @@
 #include "JSElement.cpp"
 #include "JSErrorEvent.cpp"
 #include "JSEvent.cpp"
+#include "JSEventInit.cpp"
+#include "JSEventModifierInit.cpp"
 #include "JSEventSource.cpp"
 #include "JSEventTarget.cpp"
 #include "JSFetchBody.cpp"
@@ -309,6 +312,7 @@
 #include "JSIDBVersionChangeEvent.cpp"
 #endif
 #include "JSImageData.cpp"
+#include "JSInputEvent.cpp"
 #include "JSInspectorFrontendHost.cpp"
 #include "JSKeyboardEvent.cpp"
 #include "JSLocation.cpp"
@@ -325,13 +329,6 @@
 #endif
 #include "JSMediaError.cpp"
 #include "JSMediaList.cpp"
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-#include "JSMediaKeyError.cpp"
-#include "JSMediaKeyMessageEvent.cpp"
-#include "JSMediaKeyNeededEvent.cpp"
-#include "JSMediaKeySession.cpp"
-#include "JSMediaKeys.cpp"
-#endif
 #include "JSMediaQueryList.cpp"
 #include "JSMediaQueryListListener.cpp"
 #include "JSMediaRemoteControls.cpp"
@@ -350,6 +347,7 @@
 #include "JSMessageEvent.cpp"
 #include "JSMessagePort.cpp"
 #include "JSMouseEvent.cpp"
+#include "JSMouseEventInit.cpp"
 #include "JSMutationEvent.cpp"
 #include "JSMutationObserver.cpp"
 #include "JSMutationRecord.cpp"
@@ -418,6 +416,7 @@
 #include "JSRTCTrackEvent.cpp"
 #include "JSScreen.cpp"
 #include "JSScriptProcessorNode.cpp"
+#include "JSScrollToOptions.cpp"
 #include "JSSecurityPolicyViolationEvent.cpp"
 #include "JSSourceBuffer.cpp"
 #include "JSSourceBufferList.cpp"
@@ -597,6 +596,7 @@
 #include "JSStyleMedia.cpp"
 #include "JSStyleSheet.cpp"
 #include "JSStyleSheetList.cpp"
+#include "JSSubtleCrypto.cpp"
 #include "JSText.cpp"
 #include "JSTextEvent.cpp"
 #include "JSTextMetrics.cpp"
@@ -625,6 +625,7 @@
 #include "JSTransitionEvent.cpp"
 #include "JSTreeWalker.cpp"
 #include "JSUIEvent.cpp"
+#include "JSUIEventInit.cpp"
 #include "JSUIRequestEvent.cpp"
 #include "JSURLUtils.cpp"
 #if ENABLE(USER_MESSAGE_HANDLERS)
@@ -642,6 +643,13 @@
 #include "JSWebKitCSSMatrix.cpp"
 #include "JSWebKitCSSRegionRule.cpp"
 #include "JSWebKitCSSViewportRule.cpp"
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#include "JSWebKitMediaKeyError.cpp"
+#include "JSWebKitMediaKeyMessageEvent.cpp"
+#include "JSWebKitMediaKeyNeededEvent.cpp"
+#include "JSWebKitMediaKeySession.cpp"
+#include "JSWebKitMediaKeys.cpp"
+#endif
 #include "JSWebKitNamedFlow.cpp"
 #include "JSWebKitPlaybackTargetAvailabilityEvent.cpp"
 #include "JSWebKitPoint.cpp"

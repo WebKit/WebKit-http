@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef NodeConstructors_h
-#define NodeConstructors_h
+#pragma once
 
 #include "Nodes.h"
 #include "Lexer.h"
@@ -938,6 +937,12 @@ namespace JSC {
     {
     }
 
+    inline AwaitExprNode::AwaitExprNode(const JSTokenLocation& location, ExpressionNode* argument)
+        : ExpressionNode(location)
+        , m_argument(argument)
+    {
+    }
+
     inline ClassDeclNode::ClassDeclNode(const JSTokenLocation& location, ExpressionNode* classDeclaration)
         : StatementNode(location)
         , m_classDeclaration(classDeclaration)
@@ -1065,5 +1070,3 @@ namespace JSC {
     }
     
 } // namespace JSC
-
-#endif // NodeConstructors_h

@@ -35,7 +35,6 @@
 
 #include "MediaEndpoint.h"
 #include "MediaEndpointSessionDescription.h"
-#include "NotImplemented.h"
 #include "PeerConnectionBackend.h"
 #include <wtf/Function.h>
 #include <wtf/RefPtr.h>
@@ -84,6 +83,8 @@ public:
     void markAsNeedingNegotiation();
     void clearNegotiationNeededState() override { m_negotiationNeeded = false; };
 
+    void emulatePlatformEvent(const String& action) override;
+
 private:
     void runTask(Function<void ()>&&);
     void startRunningTasks();
@@ -107,8 +108,9 @@ private:
 
     // MediaEndpointClient
     void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) override;
-    void gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&&) override;
-    void doneGatheringCandidates(unsigned mdescIndex) override;
+    void gotIceCandidate(const String& mid, RefPtr<IceCandidate>&&) override;
+    void doneGatheringCandidates(const String& mid) override;
+    void iceTransportStateChanged(const String& mid, MediaEndpoint::IceTransportState) override;
 
     PeerConnectionBackendClient* m_client;
     std::unique_ptr<MediaEndpoint> m_mediaEndpoint;

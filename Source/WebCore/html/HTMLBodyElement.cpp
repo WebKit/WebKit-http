@@ -82,7 +82,7 @@ void HTMLBodyElement::collectStyleForPresentationAttribute(const QualifiedName& 
     if (name == backgroundAttr) {
         String url = stripLeadingAndTrailingHTMLSpaces(value);
         if (!url.isEmpty()) {
-            auto imageValue = CSSImageValue::create(document().completeURL(url).string());
+            auto imageValue = CSSImageValue::create(document().completeURL(url));
             imageValue.get().setInitiator(localName());
             style.setProperty(CSSProperty(CSSPropertyBackgroundImage, WTFMove(imageValue)));
         }
@@ -113,6 +113,7 @@ HTMLElement::EventHandlerNameMap HTMLBodyElement::createWindowEventHandlerNameMa
         &onfocusinAttr,
         &onfocusoutAttr,
         &onhashchangeAttr,
+        &onlanguagechangeAttr,
         &onloadAttr,
         &onmessageAttr,
         &onofflineAttr,
@@ -157,8 +158,8 @@ void HTMLBodyElement::parseAttribute(const QualifiedName& name, const AtomicStri
             else
                 document().resetActiveLinkColor();
         } else {
-            RGBA32 color;
-            if (CSSParser::parseColor(color, value, !document().inQuirksMode())) {
+            Color color = CSSParser::parseColor(value, !document().inQuirksMode());
+            if (color.isValid()) {
                 if (name == linkAttr)
                     document().setLinkColor(color);
                 else if (name == vlinkAttr)
@@ -306,7 +307,7 @@ void HTMLBodyElement::scrollTo(const ScrollToOptions& options)
         if (!window)
             return;
 
-        window->scrollTo({ options.left, options.top });
+        window->scrollTo(options);
         return;
     }
     return HTMLElement::scrollTo(options);

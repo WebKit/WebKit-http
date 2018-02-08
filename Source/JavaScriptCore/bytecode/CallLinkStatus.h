@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CallLinkStatus_h
-#define CallLinkStatus_h
+#pragma once
 
 #include "CallLinkInfo.h"
 #include "CallVariant.h"
@@ -38,7 +37,6 @@
 namespace JSC {
 
 class CodeBlock;
-class ExecutableBase;
 class InternalFunction;
 class JSFunction;
 class Structure;
@@ -134,6 +132,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // CallLinkStatus_h
-

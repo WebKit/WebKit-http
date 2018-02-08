@@ -180,8 +180,9 @@ void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg
     slowCases.append(gen.slowPathJump());
     
     auto slowPath = slowPathCall(
-        slowCases, this, type == AccessType::Get ? operationGetByIdOptimize : operationTryGetByIdOptimize, resultGPR, gen.stubInfo(), baseGPR,
-        identifierUID(identifierNumber), spillMode);
+        slowCases, this, type == AccessType::Get ? operationGetByIdOptimize : operationTryGetByIdOptimize,
+        spillMode, ExceptionCheckRequirement::CheckNeeded,
+        resultGPR, gen.stubInfo(), baseGPR, identifierUID(identifierNumber));
     
     m_jit.addGetById(gen, slowPath.get());
     addSlowPathGenerator(WTFMove(slowPath));
@@ -1373,18 +1374,6 @@ GPRReg SpeculativeJIT::fillSpeculateBoolean(Edge edge)
         DFG_CRASH(m_jit.graph(), m_currentNode, "Corrupt data format");
         return InvalidGPRReg;
     }
-}
-
-void SpeculativeJIT::compileBaseValueStoreBarrier(Edge& baseEdge, Edge& valueEdge)
-{
-    ASSERT(!isKnownNotCell(valueEdge.node()));
-
-    SpeculateCellOperand base(this, baseEdge);
-    JSValueOperand value(this, valueEdge);
-    GPRTemporary scratch1(this);
-    GPRTemporary scratch2(this);
-
-    writeBarrier(base.gpr(), value.gpr(), valueEdge, scratch1.gpr(), scratch2.gpr());
 }
 
 void SpeculativeJIT::compileObjectEquality(Node* node)
@@ -3490,7 +3479,7 @@ void SpeculativeJIT::compile(Node* node)
     }
         
     case Throw:
-    case ThrowReferenceError: {
+    case ThrowStaticError: {
         // We expect that throw statements are rare and are intended to exit the code block
         // anyway, so we just OSR back to the old JIT for now.
         terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
@@ -4448,6 +4437,16 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case DefineDataProperty: {
+        compileDefineDataProperty(node);
+        break;
+    }
+
+    case DefineAccessorProperty: {
+        compileDefineAccessorProperty(node);
+        break;
+    }
+
     case GetGlobalLexicalVariable:
     case GetGlobalVar: {
         GPRTemporary result(this);
@@ -4613,6 +4612,79 @@ void SpeculativeJIT::compile(Node* node)
     }
         
     case MapHash: {
+        switch (node->child1().useKind()) {
+        case BooleanUse:
+        case Int32Use:
+        case SymbolUse:
+        case ObjectUse: {
+            JSValueOperand input(this, node->child1(), ManualOperandSpeculation);
+            GPRTemporary result(this, Reuse, input);
+            GPRTemporary temp(this);
+
+            GPRReg inputGPR = input.gpr();
+            GPRReg resultGPR = result.gpr();
+            GPRReg tempGPR = temp.gpr();
+
+            speculate(node, node->child1());
+
+            m_jit.move(inputGPR, resultGPR);
+            m_jit.wangsInt64Hash(resultGPR, tempGPR);
+            int32Result(resultGPR, node);
+            break;
+        }
+        case CellUse:
+        case StringUse: {
+            SpeculateCellOperand input(this, node->child1());
+            GPRTemporary result(this);
+            Optional<GPRTemporary> temp;
+
+            GPRReg tempGPR = InvalidGPRReg;
+            if (node->child1().useKind() == CellUse) {
+                temp = GPRTemporary(this);
+                tempGPR = temp->gpr();
+            }
+
+            GPRReg inputGPR = input.gpr();
+            GPRReg resultGPR = result.gpr();
+
+            MacroAssembler::JumpList slowPath;
+            MacroAssembler::JumpList done;
+
+            if (node->child1().useKind() == StringUse)
+                speculateString(node->child1(), inputGPR);
+            else {
+                auto isString = m_jit.branch8(MacroAssembler::Equal, MacroAssembler::Address(inputGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType));
+                m_jit.move(inputGPR, resultGPR);
+                m_jit.wangsInt64Hash(resultGPR, tempGPR);
+                done.append(m_jit.jump());
+                isString.link(&m_jit);
+            }
+
+            m_jit.loadPtr(MacroAssembler::Address(inputGPR, JSString::offsetOfValue()), resultGPR);
+            slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, resultGPR));
+            m_jit.load32(MacroAssembler::Address(resultGPR, StringImpl::flagsOffset()), resultGPR);
+            m_jit.urshift32(MacroAssembler::TrustedImm32(StringImpl::s_flagCount), resultGPR);
+            slowPath.append(m_jit.branchTest32(MacroAssembler::Zero, resultGPR));
+            done.append(m_jit.jump());
+
+            slowPath.link(&m_jit);
+            silentSpillAllRegisters(resultGPR);
+            callOperation(operationMapHash, resultGPR, JSValueRegs(inputGPR));
+            silentFillAllRegisters(resultGPR);
+            m_jit.exceptionCheck();
+
+            done.link(&m_jit);
+            int32Result(resultGPR, node);
+            break;
+        }
+        default:
+            RELEASE_ASSERT(node->child1().useKind() == UntypedUse);
+            break;
+        }
+        
+        if (node->child1().useKind() != UntypedUse)
+            break;
+
         JSValueOperand input(this, node->child1());
         GPRTemporary temp(this);
         GPRTemporary result(this);
@@ -4655,7 +4727,7 @@ void SpeculativeJIT::compile(Node* node)
     }
     case GetMapBucket: {
         SpeculateCellOperand map(this, node->child1());
-        JSValueOperand key(this, node->child2());
+        JSValueOperand key(this, node->child2(), ManualOperandSpeculation);
         SpeculateInt32Operand hash(this, node->child3());
         GPRTemporary mask(this);
         GPRTemporary index(this);
@@ -4679,6 +4751,9 @@ void SpeculativeJIT::compile(Node* node)
         else
             RELEASE_ASSERT_NOT_REACHED();
 
+        if (node->child2().useKind() != UntypedUse)
+            speculate(node, node->child2());
+
         m_jit.loadPtr(MacroAssembler::Address(mapGPR, node->child1().useKind() == MapObjectUse ? JSMap::offsetOfHashMapImpl() : JSSet::offsetOfHashMapImpl()), bufferGPR);
         m_jit.load32(MacroAssembler::Address(bufferGPR, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfCapacity()), maskGPR);
         m_jit.loadPtr(MacroAssembler::Address(bufferGPR, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfBuffer()), bufferGPR);
@@ -4701,40 +4776,79 @@ void SpeculativeJIT::compile(Node* node)
         m_jit.load64(MacroAssembler::Address(bucketGPR, HashMapBucket<HashMapBucketDataKey>::offsetOfKey()), bucketGPR);
 
         // Perform Object.is()
-        done.append(m_jit.branch64(MacroAssembler::Equal, bucketGPR, keyGPR)); // They're definitely the same value, we found the bucket we were looking for!
-        auto oneIsntCell = m_jit.branchIfNotCell(JSValueRegs(bucketGPR));
-        // first is a cell here.
-        loopAround.append(m_jit.branchIfNotCell(JSValueRegs(keyGPR)));
-        // Both are cells here.
-        loopAround.append(m_jit.branch8(JITCompiler::NotEqual,
-            JITCompiler::Address(bucketGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
-        // The first is a string here.
-        slowPathCases.append(m_jit.branch8(JITCompiler::Equal,
-            JITCompiler::Address(keyGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
-        // The first is a string, but the second is not, we continue to loop around.
-        loopAround.append(m_jit.jump());
+        switch (node->child2().useKind()) {
+        case BooleanUse:
+        case Int32Use:
+        case SymbolUse:
+        case ObjectUse: {
+            done.append(m_jit.branch64(MacroAssembler::Equal, bucketGPR, keyGPR)); // They're definitely the same value, we found the bucket we were looking for!
+            // Otherwise, loop around.
+            break;
+        }
+        case CellUse: {
+            done.append(m_jit.branch64(MacroAssembler::Equal, bucketGPR, keyGPR));
+            loopAround.append(m_jit.branchIfNotCell(JSValueRegs(bucketGPR)));
+            loopAround.append(m_jit.branch8(JITCompiler::NotEqual,
+                JITCompiler::Address(bucketGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+            loopAround.append(m_jit.branch8(JITCompiler::NotEqual,
+                JITCompiler::Address(keyGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+            // They're both strings.
+            slowPathCases.append(m_jit.jump());
+            break;
+        }
+        case StringUse: {
+            done.append(m_jit.branch64(MacroAssembler::Equal, bucketGPR, keyGPR)); // They're definitely the same value, we found the bucket we were looking for!
+            loopAround.append(m_jit.branchIfNotCell(JSValueRegs(bucketGPR)));
+            loopAround.append(m_jit.branch8(JITCompiler::NotEqual,
+                JITCompiler::Address(bucketGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+            slowPathCases.append(m_jit.jump());
+            break;
+        }
+        case UntypedUse: { 
+            done.append(m_jit.branch64(MacroAssembler::Equal, bucketGPR, keyGPR)); // They're definitely the same value, we found the bucket we were looking for!
+            auto oneIsntCell = m_jit.branchIfNotCell(JSValueRegs(bucketGPR));
+            // first is a cell here.
+            loopAround.append(m_jit.branchIfNotCell(JSValueRegs(keyGPR)));
+            // Both are cells here.
+            loopAround.append(m_jit.branch8(JITCompiler::NotEqual,
+                JITCompiler::Address(bucketGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+            // The first is a string here.
+            slowPathCases.append(m_jit.branch8(JITCompiler::Equal,
+                JITCompiler::Address(keyGPR, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType)));
+            // The first is a string, but the second is not, we continue to loop around.
+            loopAround.append(m_jit.jump());
 
-        oneIsntCell.link(&m_jit);
-        // We've already done a 64-bit compare at this point, so if one is not a number, they're definitely not equal.
-        loopAround.append(m_jit.branchIfNotNumber(bucketGPR));
-        loopAround.append(m_jit.branchIfNotNumber(keyGPR));
-        // Both are definitely numbers. If we see a double, we go to the slow path.
-        slowPathCases.append(m_jit.branchIfNotInt32(bucketGPR));
-        slowPathCases.append(m_jit.branchIfNotInt32(keyGPR));
-        
-        loopAround.link(&m_jit);
+            oneIsntCell.link(&m_jit);
+            // We've already done a 64-bit compare at this point, so if one is not a number, they're definitely not equal.
+            loopAround.append(m_jit.branchIfNotNumber(bucketGPR));
+            loopAround.append(m_jit.branchIfNotNumber(keyGPR));
+            // Both are definitely numbers. If we see a double, we go to the slow path.
+            slowPathCases.append(m_jit.branchIfNotInt32(bucketGPR));
+            slowPathCases.append(m_jit.branchIfNotInt32(keyGPR));
+            break;
+        }
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+
+            
+        if (!loopAround.empty())
+            loopAround.link(&m_jit);
+
         m_jit.add32(TrustedImm32(1), indexGPR);
         m_jit.jump().linkTo(loop, &m_jit);
 
-        slowPathCases.link(&m_jit);
-        silentSpillAllRegisters(indexGPR);
-        if (node->child1().useKind() == MapObjectUse)
-            callOperation(operationJSMapFindBucket, resultGPR, mapGPR, keyGPR, hashGPR);
-        else
-            callOperation(operationJSSetFindBucket, resultGPR, mapGPR, keyGPR, hashGPR);
-        silentFillAllRegisters(indexGPR);
-        m_jit.exceptionCheck();
-        done.append(m_jit.jump());
+        if (!slowPathCases.empty()) {
+            slowPathCases.link(&m_jit);
+            silentSpillAllRegisters(indexGPR);
+            if (node->child1().useKind() == MapObjectUse)
+                callOperation(operationJSMapFindBucket, resultGPR, mapGPR, keyGPR, hashGPR);
+            else
+                callOperation(operationJSSetFindBucket, resultGPR, mapGPR, keyGPR, hashGPR);
+            silentFillAllRegisters(indexGPR);
+            m_jit.exceptionCheck();
+            done.append(m_jit.jump());
+        }
 
         notPresentInTable.link(&m_jit);
         m_jit.move(TrustedImmPtr(nullptr), resultGPR);
@@ -4771,6 +4885,11 @@ void SpeculativeJIT::compile(Node* node)
         m_jit.comparePtr(MacroAssembler::NotEqual, bucketGPR, TrustedImm32(0), resultGPR);
         m_jit.or32(TrustedImm32(ValueFalse), resultGPR);
         jsValueResult(resultGPR, node, DataFormatJSBoolean);
+        break;
+    }
+
+    case ToLowerCase: {
+        compileToLowerCase(node);
         break;
     }
 
@@ -5078,11 +5197,12 @@ void SpeculativeJIT::compile(Node* node)
         unreachable(node);
         break;
 
-    case StoreBarrier: {
+    case StoreBarrier:
+    case FencedStoreBarrier: {
         compileStoreBarrier(node);
         break;
     }
-
+        
     case GetEnumerableLength: {
         SpeculateCellOperand enumerator(this, node->child1());
         GPRFlushedCallResult result(this);
@@ -5446,6 +5566,14 @@ void SpeculativeJIT::compile(Node* node)
         compileMaterializeNewObject(node);
         break;
 
+    case CallDOM:
+        compileCallDOM(node);
+        break;
+
+    case CheckDOM:
+        compileCheckDOM(node);
+        break;
+
 #if ENABLE(FTL_JIT)        
     case CheckTierUpInLoop: {
         MacroAssembler::Jump callTierUp = m_jit.branchAdd32(
@@ -5572,20 +5700,6 @@ void SpeculativeJIT::compile(Node* node)
     
     if (node->hasResult() && node->mustGenerate())
         use(node);
-}
-
-void SpeculativeJIT::writeBarrier(GPRReg ownerGPR, GPRReg valueGPR, Edge valueUse, GPRReg scratch1, GPRReg scratch2)
-{
-    JITCompiler::Jump isNotCell;
-    if (!isKnownCell(valueUse.node()))
-        isNotCell = m_jit.branchIfNotCell(JSValueRegs(valueGPR));
-    
-    JITCompiler::Jump ownerIsRememberedOrInEden = m_jit.jumpIfIsRememberedOrInEden(ownerGPR);
-    storeToWriteBarrierBuffer(ownerGPR, scratch1, scratch2);
-    ownerIsRememberedOrInEden.link(&m_jit);
-
-    if (!isKnownCell(valueUse.node()))
-        isNotCell.link(&m_jit);
 }
 
 void SpeculativeJIT::moveTrueTo(GPRReg gpr)

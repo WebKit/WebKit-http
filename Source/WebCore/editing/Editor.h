@@ -198,6 +198,11 @@ public:
     WEBCORE_EXPORT void applyStyleToSelection(Ref<EditingStyle>&&, EditAction);
     void applyParagraphStyleToSelection(StyleProperties*, EditAction);
 
+    // Returns whether or not we should proceed with editing.
+    bool willApplyEditing(CompositeEditCommand&) const;
+    bool willUnapplyEditing(const EditCommandComposition&) const;
+    bool willReapplyEditing(const EditCommandComposition&) const;
+
     void appliedEditing(PassRefPtr<CompositeEditCommand>);
     void unappliedEditing(PassRefPtr<EditCommandComposition>);
     void reappliedEditing(PassRefPtr<EditCommandComposition>);
@@ -372,7 +377,6 @@ public:
     WEBCORE_EXPORT bool findString(const String&, FindOptions);
 
     RefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
-    RefPtr<Range> findStringAndScrollToVisible(const String&, Range*, FindOptions);
 
     const VisibleSelection& mark() const; // Mark, to be used as emacs uses it.
     void setMark(const VisibleSelection&);
@@ -504,6 +508,7 @@ private:
 
 #if PLATFORM(COCOA)
     RefPtr<SharedBuffer> selectionInWebArchiveFormat();
+    RefPtr<SharedBuffer> imageInWebArchiveFormat(Element&);
     RefPtr<Range> adjustedSelectionRange();
     RefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(RefPtr<ArchiveResource>&&);
     RefPtr<DocumentFragment> createFragmentAndAddResources(NSAttributedString *);

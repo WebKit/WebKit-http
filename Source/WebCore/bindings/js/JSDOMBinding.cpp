@@ -32,6 +32,7 @@
 #include "HTMLParserIdioms.h"
 #include "IDBDatabaseException.h"
 #include "JSDOMConvert.h"
+#include "JSDOMPromise.h"
 #include "JSDOMWindowCustom.h"
 #include "JSExceptionBase.h"
 #include "SecurityOrigin.h"
@@ -117,35 +118,35 @@ String valueToStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
     return value.toString(exec)->value(exec);
 }
 
+static inline bool hasUnpairedSurrogate(StringView string)
+{
+    // Fast path for 8-bit strings; they can't have any surrogates.
+    if (string.is8Bit())
+        return false;
+    for (auto codePoint : string.codePoints()) {
+        if (U_IS_SURROGATE(codePoint))
+            return true;
+    }
+    return false;
+}
+
 String valueToUSVString(ExecState* exec, JSValue value)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     String string = value.toWTFString(exec);
-    if (UNLIKELY(scope.exception()))
-        return { };
-    StringView view { string };
-
-    // Fast path for 8-bit strings, since they can't have any surrogates.
-    if (view.is8Bit())
-        return string;
+    RETURN_IF_EXCEPTION(scope, { });
 
     // Fast path for the case where there are no unpaired surrogates.
-    bool foundUnpairedSurrogate = false;
-    for (auto codePoint : view.codePoints()) {
-        if (U_IS_SURROGATE(codePoint)) {
-            foundUnpairedSurrogate = true;
-            break;
-        }
-    }
-    if (!foundUnpairedSurrogate)
+    if (!hasUnpairedSurrogate(string))
         return string;
 
     // Slow path: http://heycam.github.io/webidl/#dfn-obtain-unicode
     // Replaces unpaired surrogates with the replacement character.
     StringBuilder result;
-    result.reserveCapacity(view.length());
+    result.reserveCapacity(string.length());
+    StringView view { string };
     for (auto codePoint : view.codePoints()) {
         if (U_IS_SURROGATE(codePoint))
             result.append(replacementCharacter);
@@ -191,17 +192,17 @@ void reportException(ExecState* exec, JSValue exceptionValue, CachedScript* cach
 {
     VM& vm = exec->vm();
     RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
-    Exception* exception = jsDynamicCast<Exception*>(exceptionValue);
+    auto* exception = jsDynamicCast<JSC::Exception*>(exceptionValue);
     if (!exception) {
         exception = vm.lastException();
         if (!exception)
-            exception = Exception::create(exec->vm(), exceptionValue, Exception::DoNotCaptureStack);
+            exception = JSC::Exception::create(exec->vm(), exceptionValue, JSC::Exception::DoNotCaptureStack);
     }
 
     reportException(exec, exception, cachedScript);
 }
 
-void reportException(ExecState* exec, Exception* exception, CachedScript* cachedScript, ExceptionDetails* exceptionDetails)
+void reportException(ExecState* exec, JSC::Exception* exception, CachedScript* cachedScript, ExceptionDetails* exceptionDetails)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
@@ -264,17 +265,12 @@ void reportCurrentException(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
-    Exception* exception = scope.exception();
+    auto* exception = scope.exception();
     scope.clearException();
     reportException(exec, exception);
 }
 
-#define TRY_TO_CREATE_EXCEPTION(interfaceName) \
-    case interfaceName##Type: \
-        errorObject = toJS(exec, globalObject, interfaceName::create(description)); \
-        break;
-
-static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String* message)
+static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String* message = nullptr)
 {
     if (!ec)
         return jsUndefined();
@@ -339,9 +335,33 @@ JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String& mess
     return createDOMException(exec, ec, &message);
 }
 
-JSValue createDOMException(ExecState* exec, ExceptionCode ec)
+JSValue createDOMException(ExecState& state, Exception&& exception)
 {
-    return createDOMException(exec, ec, nullptr);
+    return createDOMException(&state, exception.code(), exception.releaseMessage());
+}
+
+ALWAYS_INLINE static void throwDOMException(ExecState* exec, ThrowScope& throwScope, ExceptionCode ec)
+{
+    ASSERT(ec && !throwScope.exception());
+    throwException(exec, throwScope, createDOMException(exec, ec));
+}
+
+void propagateExceptionSlowPath(JSC::ExecState& state, JSC::ThrowScope& throwScope, Exception&& exception)
+{
+    ASSERT(!throwScope.exception());
+    throwException(&state, throwScope, createDOMException(state, WTFMove(exception)));
+}
+
+void propagateException(JSC::ExecState& state, Exception&& exception)
+{
+    auto throwScope = DECLARE_THROW_SCOPE(state.vm());
+    if (!throwScope.exception())
+        propagateExceptionSlowPath(state, throwScope, WTFMove(exception));
+}
+
+void setDOMExceptionSlow(ExecState* exec, ThrowScope& throwScope, ExceptionCode ec)
+{
+    throwDOMException(exec, throwScope, ec);
 }
 
 void setDOMException(ExecState* exec, ExceptionCode ec)
@@ -352,21 +372,8 @@ void setDOMException(ExecState* exec, ExceptionCode ec)
     if (!ec || scope.exception())
         return;
 
-    throwException(exec, scope, createDOMException(exec, ec));
+    throwDOMException(exec, scope, ec);
 }
-
-void setDOMException(JSC::ExecState* exec, const ExceptionCodeWithMessage& ec)
-{
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (!ec.code || scope.exception())
-        return;
-
-    throwException(exec, scope, createDOMException(exec, ec.code, ec.message));
-}
-
-#undef TRY_TO_CREATE_EXCEPTION
 
 bool hasIteratorMethod(JSC::ExecState& state, JSC::JSValue value)
 {
@@ -380,8 +387,7 @@ bool hasIteratorMethod(JSC::ExecState& state, JSC::JSValue value)
     CallData callData;
     CallType callType;
     JSValue applyMethod = object->getMethod(&state, callData, callType, vm.propertyNames->iteratorSymbol, ASCIILiteral("Symbol.iterator property should be callable"));
-    if (UNLIKELY(scope.exception()))
-        return false;
+    RETURN_IF_EXCEPTION(scope, false);
 
     return !applyMethod.isUndefined();
 }
@@ -519,8 +525,7 @@ static inline T toSmallerInt(ExecState& state, JSValue value, IntegerConversionC
     }
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(scope.exception()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
 
     switch (configuration) {
     case NormalConversion:
@@ -566,8 +571,7 @@ static inline T toSmallerUInt(ExecState& state, JSValue value, IntegerConversion
     }
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(scope.exception()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
 
     switch (configuration) {
     case NormalConversion:
@@ -659,8 +663,7 @@ int32_t toInt32EnforceRange(ExecState& state, JSValue value)
         return value.asInt32();
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(scope.exception()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, kMinInt32, kMaxInt32);
 }
 
@@ -692,8 +695,7 @@ uint32_t toUInt32EnforceRange(ExecState& state, JSValue value)
         return value.asUInt32();
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(scope.exception()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, 0, kMaxUInt32);
 }
 
@@ -703,8 +705,7 @@ int64_t toInt64EnforceRange(ExecState& state, JSC::JSValue value)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(scope.exception()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, -kJSMaxInteger, kJSMaxInteger);
 }
 
@@ -714,8 +715,7 @@ uint64_t toUInt64EnforceRange(ExecState& state, JSC::JSValue value)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(scope.exception()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, 0, kJSMaxInteger);
 }
 
@@ -957,6 +957,11 @@ JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState& state, JSC::ThrowScope&
     return throwVMTypeError(&state, scope, makeGetterTypeErrorMessage(interfaceName, attributeName));
 }
 
+JSC::EncodedJSValue rejectPromiseWithGetterTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName)
+{
+    return createRejectedPromiseWithTypeError(state, makeGetterTypeErrorMessage(interfaceName, attributeName));
+}
+
 bool throwSetterTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* attributeName)
 {
     throwTypeError(state, scope, makeString("The ", interfaceName, '.', attributeName, " setter can only be used on instances of ", interfaceName));
@@ -971,6 +976,17 @@ String makeThisTypeErrorMessage(const char* interfaceName, const char* functionN
 EncodedJSValue throwThisTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* functionName)
 {
     return throwTypeError(state, scope, makeThisTypeErrorMessage(interfaceName, functionName));
+}
+
+JSC::EncodedJSValue rejectPromiseWithThisTypeError(DeferredPromise& promise, const char* interfaceName, const char* methodName)
+{
+    promise.reject(TypeError, makeThisTypeErrorMessage(interfaceName, methodName));
+    return JSValue::encode(jsUndefined());
+}
+
+JSC::EncodedJSValue rejectPromiseWithThisTypeError(JSC::ExecState& state, const char* interfaceName, const char* methodName)
+{
+    return createRejectedPromiseWithTypeError(state, makeThisTypeErrorMessage(interfaceName, methodName));
 }
 
 void callFunctionWithCurrentArguments(JSC::ExecState& state, JSC::JSObject& thisObject, JSC::JSFunction& function)

@@ -79,7 +79,7 @@ Ref<SVGUseElement> SVGUseElement::create(const QualifiedName& tagName, Document&
 SVGUseElement::~SVGUseElement()
 {
     if (m_externalDocument)
-        m_externalDocument->removeClient(this);
+        m_externalDocument->removeClient(*this);
 }
 
 void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -535,12 +535,12 @@ bool SVGUseElement::selfHasRelativeLengths() const
     return targetClone && targetClone->hasRelativeLengths();
 }
 
-void SVGUseElement::notifyFinished(CachedResource* resource)
+void SVGUseElement::notifyFinished(CachedResource& resource)
 {
     invalidateShadowTree();
-    if (resource->errorOccurred())
+    if (resource.errorOccurred())
         dispatchEvent(Event::create(eventNames().errorEvent, false, false));
-    else if (!resource->wasCanceled())
+    else if (!resource.wasCanceled())
         SVGExternalResourcesRequired::dispatchLoadEvent(this);
 }
 
@@ -563,7 +563,7 @@ void SVGUseElement::updateExternalDocument()
         return;
 
     if (m_externalDocument)
-        m_externalDocument->removeClient(this);
+        m_externalDocument->removeClient(*this);
 
     if (externalDocumentURL.isNull())
         m_externalDocument = nullptr;
@@ -575,7 +575,7 @@ void SVGUseElement::updateExternalDocument()
         request.setInitiator(this);
         m_externalDocument = document().cachedResourceLoader().requestSVGDocument(WTFMove(request));
         if (m_externalDocument)
-            m_externalDocument->addClient(this);
+            m_externalDocument->addClient(*this);
     }
 
     invalidateShadowTree();

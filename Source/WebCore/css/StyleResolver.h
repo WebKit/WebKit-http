@@ -245,15 +245,9 @@ public:
         ~MatchedProperties();
         
         RefPtr<StyleProperties> properties;
-        union {
-            struct {
-                unsigned linkMatchType : 2;
-                unsigned whitelistType : 2;
-                unsigned treeContextOrdinal : 28;
-            };
-            // Used to make sure all memory is zero-initialized since we compute the hash over the bytes of this object.
-            void* possiblyPaddedMember;
-        };
+        uint16_t linkMatchType;
+        uint16_t whitelistType;
+        int treeContextOrdinal;
     };
 
     struct MatchResult {
@@ -264,7 +258,7 @@ public:
 
         const Vector<MatchedProperties, 64>& matchedProperties() const { return m_matchedProperties; }
 
-        void addMatchedProperties(const StyleProperties&, StyleRule* = nullptr, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone, unsigned treeContextOrdinal = 0);
+        void addMatchedProperties(const StyleProperties&, StyleRule* = nullptr, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone, int treeContextOrdinal = 0);
     private:
         Vector<MatchedProperties, 64> m_matchedProperties;
     };
@@ -316,7 +310,7 @@ private:
     // This function fixes up the default font size if it detects that the current generic font family has changed. -dwh
     void checkForGenericFamilyChange(RenderStyle*, const RenderStyle* parentStyle);
     void checkForZoomChange(RenderStyle*, const RenderStyle* parentStyle);
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     void checkForTextSizeAdjust(RenderStyle*);
 #endif
 
@@ -391,7 +385,7 @@ public:
         bool hasUAAppearance() const { return m_hasUAAppearance; }
         BorderData borderData() const { return m_borderData; }
         FillLayer backgroundData() const { return m_backgroundData; }
-        Color backgroundColor() const { return m_backgroundColor; }
+        const Color& backgroundColor() const { return m_backgroundColor; }
 
         const FontCascadeDescription& fontDescription() { return m_style->fontDescription(); }
         const FontCascadeDescription& parentFontDescription() { return m_parentStyle->fontDescription(); }

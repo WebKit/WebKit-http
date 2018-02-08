@@ -48,7 +48,7 @@
     [CallWith=ActiveWindow, ForwardDeclareInHeader] void reload();
 
     // URI decomposition attributes
-    [SetterCallWith=ActiveWindow&FirstWindow, SetterRaisesException] attribute USVString protocol;
+    [SetterCallWith=ActiveWindow&FirstWindow, SetterMayThrowLegacyException] attribute USVString protocol;
     [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString host;
     [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString hostname;
     [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString port;
@@ -58,6 +58,5 @@
 
     readonly attribute USVString origin;
 
-    // FIXME: Add support for SameObject
-    [Unforgeable, CachedAttribute] readonly attribute FrozenArray<USVString> ancestorOrigins;
+    [Unforgeable, SameObject] readonly attribute FrozenArray<USVString> ancestorOrigins;
 };

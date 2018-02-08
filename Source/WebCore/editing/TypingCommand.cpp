@@ -76,10 +76,41 @@ private:
     const String& m_text;
 };
 
+static inline EditAction editActionForTypingCommand(TypingCommand::ETypingCommand command, TextGranularity granularity)
+{
+    switch (command) {
+    case TypingCommand::DeleteSelection:
+        return EditActionTypingDeleteSelection;
+    case TypingCommand::DeleteKey: {
+        if (granularity == WordGranularity)
+            return EditActionTypingDeleteWordBackward;
+        if (granularity == LineBoundary)
+            return EditActionTypingDeleteLineBackward;
+        return EditActionTypingDeleteBackward;
+    }
+    case TypingCommand::ForwardDeleteKey:
+        if (granularity == WordGranularity)
+            return EditActionTypingDeleteWordForward;
+        if (granularity == LineBoundary)
+            return EditActionTypingDeleteLineForward;
+        return EditActionTypingDeleteForward;
+    case TypingCommand::InsertText:
+        return EditActionTypingInsertText;
+    case TypingCommand::InsertLineBreak:
+        return EditActionTypingInsertLineBreak;
+    case TypingCommand::InsertParagraphSeparator:
+    case TypingCommand::InsertParagraphSeparatorInQuotedContent:
+        return EditActionTypingInsertParagraph;
+    default:
+        return EditActionUnspecified;
+    }
+}
+
 TypingCommand::TypingCommand(Document& document, ETypingCommand commandType, const String &textToInsert, Options options, TextGranularity granularity, TextCompositionType compositionType)
-    : TextInsertionBaseCommand(document, EditActionTyping)
+    : TextInsertionBaseCommand(document, editActionForTypingCommand(commandType, granularity))
     , m_commandType(commandType)
     , m_textToInsert(textToInsert)
+    , m_currentTextToInsert(textToInsert)
     , m_openForMoreTyping(true)
     , m_selectInsertedText(options & SelectInsertedText)
     , m_smartDelete(options & SmartDelete)
@@ -90,6 +121,7 @@ TypingCommand::TypingCommand(Document& document, ETypingCommand commandType, con
     , m_shouldRetainAutocorrectionIndicator(options & RetainAutocorrectionIndicator)
     , m_shouldPreventSpellChecking(options & PreventSpellChecking)
 {
+    m_currentTypingEditAction = editingAction();
     updatePreservesTypingStyle(m_commandType);
 }
 
@@ -262,6 +294,16 @@ void TypingCommand::postTextStateChangeNotificationForDeletion(const VisibleSele
     composition()->setRangeDeletedByUnapply(range);
 }
 
+bool TypingCommand::willApplyCommand()
+{
+    if (!m_isHandlingInitialTypingCommand) {
+        // The TypingCommand will handle the willApplyCommand logic separately in TypingCommand::willAddTypingToOpenCommand.
+        return true;
+    }
+
+    return CompositeEditCommand::willApplyCommand();
+}
+
 void TypingCommand::doApply()
 {
     if (endingSelection().isNoneOrOrphaned())
@@ -296,6 +338,25 @@ void TypingCommand::doApply()
     }
 
     ASSERT_NOT_REACHED();
+}
+
+String TypingCommand::inputEventTypeName() const
+{
+    return inputTypeNameForEditingAction(m_currentTypingEditAction);
+}
+
+String TypingCommand::inputEventData() const
+{
+    if (m_currentTypingEditAction == EditActionTypingInsertText)
+        return m_currentTextToInsert;
+
+    return CompositeEditCommand::inputEventData();
+}
+
+void TypingCommand::didApplyCommand()
+{
+    // TypingCommands handle applied editing separately (see TypingCommand::typingAddedToOpenCommand).
+    m_isHandlingInitialTypingCommand = false;
 }
 
 void TypingCommand::markMisspellingsAfterTyping(ETypingCommand commandType)
@@ -352,6 +413,16 @@ void TypingCommand::markMisspellingsAfterTyping(ETypingCommand commandType)
     }
 }
 
+bool TypingCommand::willAddTypingToOpenCommand(ETypingCommand commandType, TextGranularity granularity, const String& text)
+{
+    if (m_isHandlingInitialTypingCommand)
+        return true;
+
+    m_currentTextToInsert = text;
+    m_currentTypingEditAction = editActionForTypingCommand(commandType, granularity);
+    return frame().editor().willApplyEditing(*this);
+}
+
 void TypingCommand::typingAddedToOpenCommand(ETypingCommand commandTypeForAddedTyping)
 {
     Frame& frame = this->frame();
@@ -393,8 +464,11 @@ void TypingCommand::insertTextAndNotifyAccessibility(const String &text, bool se
 
 void TypingCommand::insertTextRunWithoutNewlines(const String &text, bool selectInsertedText)
 {
+    if (!willAddTypingToOpenCommand(InsertText, CharacterGranularity, text))
+        return;
+
     RefPtr<InsertTextCommand> command = InsertTextCommand::create(document(), text, selectInsertedText,
-        m_compositionType == TextCompositionNone ? InsertTextCommand::RebalanceLeadingAndTrailingWhitespaces : InsertTextCommand::RebalanceAllWhitespaces, EditActionTyping);
+        m_compositionType == TextCompositionNone ? InsertTextCommand::RebalanceLeadingAndTrailingWhitespaces : InsertTextCommand::RebalanceAllWhitespaces, EditActionTypingInsertText);
 
     applyCommandToComposite(command, endingSelection());
 
@@ -404,6 +478,9 @@ void TypingCommand::insertTextRunWithoutNewlines(const String &text, bool select
 void TypingCommand::insertLineBreak()
 {
     if (!canAppendNewLineFeedToSelection(endingSelection()))
+        return;
+
+    if (!willAddTypingToOpenCommand(InsertLineBreak, LineGranularity))
         return;
 
     applyCommandToComposite(InsertLineBreakCommand::create(document()));
@@ -423,7 +500,10 @@ void TypingCommand::insertParagraphSeparator()
     if (!canAppendNewLineFeedToSelection(endingSelection()))
         return;
 
-    applyCommandToComposite(InsertParagraphSeparatorCommand::create(document(), false, false, EditActionTyping));
+    if (!willAddTypingToOpenCommand(InsertParagraphSeparator, ParagraphGranularity))
+        return;
+
+    applyCommandToComposite(InsertParagraphSeparatorCommand::create(document(), false, false, EditActionTypingInsertParagraph));
     typingAddedToOpenCommand(InsertParagraphSeparator);
 }
 
@@ -437,6 +517,9 @@ void TypingCommand::insertParagraphSeparatorAndNotifyAccessibility()
 
 void TypingCommand::insertParagraphSeparatorInQuotedContent()
 {
+    if (!willAddTypingToOpenCommand(InsertParagraphSeparatorInQuotedContent, ParagraphGranularity))
+        return;
+
     // If the selection starts inside a table, just insert the paragraph separator normally
     // Breaking the blockquote would also break apart the table, which is unecessary when inserting a newline
     if (enclosingNodeOfType(endingSelection().start(), &isTableStructureNode)) {
@@ -479,6 +562,9 @@ bool TypingCommand::makeEditableRootEmpty()
 
 void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAddToKillRing)
 {
+    if (!willAddTypingToOpenCommand(DeleteKey, granularity))
+        return;
+
     Frame& frame = this->frame();
 
     frame.editor().updateMarkersForWordsAffectedByEditing(false);
@@ -592,6 +678,9 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
 
 void TypingCommand::forwardDeleteKeyPressed(TextGranularity granularity, bool shouldAddToKillRing)
 {
+    if (!willAddTypingToOpenCommand(ForwardDeleteKey, granularity))
+        return;
+
     Frame& frame = this->frame();
 
     frame.editor().updateMarkersForWordsAffectedByEditing(false);
@@ -690,6 +779,9 @@ void TypingCommand::forwardDeleteKeyPressed(TextGranularity granularity, bool sh
 
 void TypingCommand::deleteSelection(bool smartDelete)
 {
+    if (!willAddTypingToOpenCommand(DeleteSelection, CharacterGranularity))
+        return;
+
     CompositeEditCommand::deleteSelection(smartDelete);
     typingAddedToOpenCommand(DeleteSelection);
 }

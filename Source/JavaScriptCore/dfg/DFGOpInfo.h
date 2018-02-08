@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOpInfo_h
-#define DFGOpInfo_h
+#pragma once
 
 #include <wtf/StdLibExtras.h>
 
@@ -44,12 +43,10 @@ struct OpInfo {
     explicit OpInfo(uintptr_t value) : m_value(static_cast<uint64_t>(value)) { }
 #endif
     explicit OpInfo(void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
+    explicit OpInfo(const void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
     uint64_t m_value;
 };
 
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOpInfo_h
-

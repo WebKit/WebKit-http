@@ -670,9 +670,9 @@ private:
 
 class DrawPattern : public DrawingItem {
 public:
-    static Ref<DrawPattern> create(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+    static Ref<DrawPattern> create(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
     {
-        return adoptRef(*new DrawPattern(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode));
+        return adoptRef(*new DrawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode));
     }
 
     const Image& image() const { return m_image.get(); }
@@ -683,7 +683,7 @@ public:
     FloatSize spacing() const { return m_spacing; }
 
 private:
-    DrawPattern(Image&, const FloatRect& srcRect, const AffineTransform&, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
+    DrawPattern(Image&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform&, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
 
     void apply(GraphicsContext&) const override;
 
@@ -909,7 +909,7 @@ public:
     const Path& path() const { return m_path; }
     int width() const { return m_width; }
     int offset() const { return m_offset; }
-    Color color() const { return m_color; }
+    const Color& color() const { return m_color; }
 
 private:
     DrawFocusRingPath(const Path& path, int width, int offset, const Color& color)
@@ -941,7 +941,7 @@ public:
     const Vector<FloatRect> rects() const { return m_rects; }
     int width() const { return m_width; }
     int offset() const { return m_offset; }
-    Color color() const { return m_color; }
+    const Color& color() const { return m_color; }
 
 private:
     DrawFocusRingRects(const Vector<FloatRect>& rects, int width, int offset, const Color& color)
@@ -994,7 +994,7 @@ public:
     }
 
     FloatRect rect() const { return m_rect; }
-    Color color() const { return m_color; }
+    const Color& color() const { return m_color; }
 
 private:
     FillRectWithColor(const FloatRect& rect, const Color& color)
@@ -1043,7 +1043,7 @@ public:
     }
 
     FloatRect rect() const { return m_rect; }
-    Color color() const { return m_color; }
+    const Color& color() const { return m_color; }
     CompositeOperator compositeOperator() const { return m_op; }
     BlendMode blendMode() const { return m_blendMode; }
 
@@ -1074,7 +1074,7 @@ public:
     }
 
     const FloatRoundedRect& roundedRect() const { return m_rect; }
-    Color color() const { return m_color; }
+    const Color& color() const { return m_color; }
     BlendMode blendMode() const { return m_blendMode; }
 
 private:
@@ -1103,7 +1103,7 @@ public:
 
     const FloatRect& rect() const { return m_rect; }
     const FloatRoundedRect& roundedHoleRect() const { return m_roundedHoleRect; }
-    Color color() const { return m_color; }
+    const Color& color() const { return m_color; }
 
 private:
     FillRectWithRoundedHole(const FloatRect& rect, const FloatRoundedRect& roundedHoleRect, const Color& color)

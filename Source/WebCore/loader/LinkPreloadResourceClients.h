@@ -46,7 +46,7 @@ class LinkPreloadResourceClient {
 public:
     virtual ~LinkPreloadResourceClient() { }
 
-    void triggerEvents(const CachedResource*);
+    void triggerEvents(const CachedResource&);
 
     virtual void clear() = 0;
 
@@ -54,12 +54,12 @@ protected:
 
     LinkPreloadResourceClient(LinkLoader&, CachedResource&);
 
-    void addResource(CachedResourceClient* client)
+    void addResource(CachedResourceClient& client)
     {
         m_resource->addClient(client);
     }
 
-    void clearResource(CachedResourceClient* client)
+    void clearResource(CachedResourceClient& client)
     {
         if (m_resource)
             m_resource->removeClient(client);
@@ -83,19 +83,15 @@ public:
     virtual ~LinkPreloadScriptResourceClient() { }
 
 
-    void notifyFinished(CachedResource* resource) override
-    {
-        ASSERT(ownedResource() == resource);
-        triggerEvents(resource);
-    }
+    void notifyFinished(CachedResource& resource) override { triggerEvents(resource); }
 
-    void clear() override { clearResource(this); }
+    void clear() override { clearResource(*this); }
 
 private:
     LinkPreloadScriptResourceClient(LinkLoader& loader, CachedScript& resource)
         : LinkPreloadResourceClient(loader, resource)
     {
-        addResource(this);
+        addResource(*this);
     }
 };
 
@@ -110,17 +106,18 @@ public:
 
     void setCSSStyleSheet(const String&, const URL&, const String&, const CachedCSSStyleSheet* resource) override
     {
+        ASSERT(resource);
         ASSERT(ownedResource() == resource);
-        triggerEvents(resource);
+        triggerEvents(*resource);
     }
 
-    void clear() override { clearResource(this); }
+    void clear() override { clearResource(*this); }
 
 private:
     LinkPreloadStyleResourceClient(LinkLoader& loader, CachedCSSStyleSheet& resource)
         : LinkPreloadResourceClient(loader, resource)
     {
-        addResource(this);
+        addResource(*this);
     }
 };
 
@@ -133,19 +130,15 @@ public:
 
     virtual ~LinkPreloadImageResourceClient() { }
 
-    void notifyFinished(CachedResource* resource) override
-    {
-        ASSERT(ownedResource() == resource);
-        triggerEvents(resource);
-    }
+    void notifyFinished(CachedResource& resource) override { triggerEvents(resource); }
 
-    void clear() override { clearResource(this); }
+    void clear() override { clearResource(*this); }
 
 private:
     LinkPreloadImageResourceClient(LinkLoader& loader, CachedImage& resource)
         : LinkPreloadResourceClient(loader, dynamic_cast<CachedResource&>(resource))
     {
-        addResource(this);
+        addResource(*this);
     }
 };
 
@@ -161,16 +154,16 @@ public:
     void fontLoaded(CachedFont& resource) override
     {
         ASSERT(ownedResource() == &resource);
-        triggerEvents(&resource);
+        triggerEvents(resource);
     }
 
-    void clear() override { clearResource(this); }
+    void clear() override { clearResource(*this); }
 
 private:
     LinkPreloadFontResourceClient(LinkLoader& loader, CachedFont& resource)
         : LinkPreloadResourceClient(loader, resource)
     {
-        addResource(this);
+        addResource(*this);
     }
 };
 
@@ -183,19 +176,15 @@ public:
 
     virtual ~LinkPreloadRawResourceClient() { }
 
-    void notifyFinished(CachedResource* resource) override
-    {
-        ASSERT(ownedResource() == resource);
-        triggerEvents(resource);
-    }
+    void notifyFinished(CachedResource& resource) override { triggerEvents(resource); }
 
-    void clear() override { clearResource(this); }
+    void clear() override { clearResource(*this); }
 
 private:
     LinkPreloadRawResourceClient(LinkLoader& loader, CachedRawResource& resource)
         : LinkPreloadResourceClient(loader, resource)
     {
-        addResource(this);
+        addResource(*this);
     }
 };
 

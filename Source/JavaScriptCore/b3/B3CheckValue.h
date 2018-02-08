@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3CheckValue_h
-#define B3CheckValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,9 +33,9 @@ namespace JSC { namespace B3 {
 
 class CheckValue : public StackmapValue {
 public:
-    static bool accepts(Opcode opcode)
+    static bool accepts(Kind kind)
     {
-        switch (opcode) {
+        switch (kind.opcode()) {
         case CheckAdd:
         case CheckSub:
         case CheckMul:
@@ -58,16 +57,12 @@ private:
     friend class Procedure;
 
     // Use this form for CheckAdd, CheckSub, and CheckMul.
-    JS_EXPORT_PRIVATE CheckValue(Opcode, Origin, Value* left, Value* right);
+    JS_EXPORT_PRIVATE CheckValue(Kind, Origin, Value* left, Value* right);
 
     // Use this form for Check.
-    JS_EXPORT_PRIVATE CheckValue(Opcode, Origin, Value* predicate);
+    JS_EXPORT_PRIVATE CheckValue(Kind, Origin, Value* predicate);
 };
 
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3CheckValue_h
-
-

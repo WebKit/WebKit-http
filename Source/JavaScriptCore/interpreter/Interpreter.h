@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Interpreter_h
-#define Interpreter_h
+#pragma once
 
 #include "ArgList.h"
 #include "CatchScope.h"
@@ -36,12 +35,9 @@
 #include "JSCell.h"
 #include "JSObject.h"
 #include "Opcode.h"
-#include "SourceProvider.h"
 #include "StackAlignment.h"
 #include "StackFrame.h"
-#include "ThrowScope.h"
 #include <wtf/HashMap.h>
-#include <wtf/text/StringBuilder.h>
 
 #if !ENABLE(JIT)
 #include "CLoopStack.h"
@@ -52,7 +48,6 @@ namespace JSC {
 
     class CodeBlock;
     class EvalExecutable;
-    class ExecutableBase;
     class FunctionExecutable;
     class VM;
     class JSFunction;
@@ -72,13 +67,14 @@ namespace JSC {
 
     enum UnwindStart : uint8_t { UnwindFromCurrentFrame, UnwindFromCallerFrame };
 
-    enum DebugHookID {
+    enum DebugHookType {
         WillExecuteProgram,
         DidExecuteProgram,
         DidEnterCallFrame,
         DidReachBreakpoint,
         WillLeaveCallFrame,
-        WillExecuteStatement
+        WillExecuteStatement,
+        WillExecuteExpression,
     };
 
     enum StackFrameCodeType {
@@ -214,7 +210,7 @@ namespace JSC {
         
         NEVER_INLINE HandlerInfo* unwind(VM&, CallFrame*&, Exception*, UnwindStart);
         void notifyDebuggerOfExceptionToBeThrown(CallFrame*, Exception*);
-        NEVER_INLINE void debug(CallFrame*, DebugHookID);
+        NEVER_INLINE void debug(CallFrame*, DebugHookType);
         static JSString* stackTraceAsString(VM&, const Vector<StackFrame>&);
 
         static EncodedJSValue JSC_HOST_CALL constructWithErrorConstructor(ExecState*);
@@ -283,5 +279,3 @@ namespace JSC {
     void setupForwardArgumentsFrameAndSetThis(CallFrame* execCaller, CallFrame* execCallee, JSValue thisValue, uint32_t length);
     
 } // namespace JSC
-
-#endif // Interpreter_h

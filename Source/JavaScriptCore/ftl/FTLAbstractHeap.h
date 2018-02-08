@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLAbstractHeap_h
-#define FTLAbstractHeap_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -196,12 +195,12 @@ public:
     
     const AbstractHeap& atAnyAddress() const { return m_indexedHeap.atAnyIndex(); }
     
-    const AbstractHeap& at(void* address)
+    const AbstractHeap& at(const void* address)
     {
         return m_indexedHeap.at(bitwise_cast<ptrdiff_t>(address));
     }
     
-    const AbstractHeap& operator[](void* address) { return at(address); }
+    const AbstractHeap& operator[](const void* address) { return at(address); }
 
     void dump(PrintStream&) const;
 
@@ -215,6 +214,3 @@ private:
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLAbstractHeap_h
-

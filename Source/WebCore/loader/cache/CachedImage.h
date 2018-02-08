@@ -48,12 +48,10 @@ class CachedImage final : public CachedResource, public ImageObserver {
     friend class MemoryCache;
 
 public:
-    enum CacheBehaviorType { AutomaticallyCached, ManuallyCached };
-
     CachedImage(CachedResourceRequest&&, SessionID);
     CachedImage(Image*, SessionID);
+    // Constructor to use for manually cached images.
     CachedImage(const URL&, Image*, SessionID);
-    CachedImage(const URL&, Image*, CacheBehaviorType, SessionID);
     virtual ~CachedImage();
 
     WEBCORE_EXPORT Image* image(); // Returns the nullImage() if the image is not available yet.
@@ -101,11 +99,11 @@ private:
     void notifyObservers(const IntRect* changeRect = nullptr);
     void checkShouldPaintBrokenImage();
 
-    void switchClientsToRevalidatedResource() override;
-    bool mayTryReplaceEncodedData() const override { return true; }
+    void switchClientsToRevalidatedResource() final;
+    bool mayTryReplaceEncodedData() const final { return true; }
 
-    void didAddClient(CachedResourceClient*) override;
-    void didRemoveClient(CachedResourceClient*) override;
+    void didAddClient(CachedResourceClient&) final;
+    void didRemoveClient(CachedResourceClient&) final;
 
     void allClientsRemoved() override;
     void destroyDecodedData() override;
@@ -120,7 +118,7 @@ private:
     bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
 
     // ImageObserver
-    void decodedSizeChanged(const Image*, int delta) override;
+    void decodedSizeChanged(const Image*, long long delta) override;
     void didDraw(const Image*) override;
 
     void animationAdvanced(const Image*) override;
@@ -136,8 +134,8 @@ private:
 
     RefPtr<Image> m_image;
     std::unique_ptr<SVGImageCache> m_svgImageCache;
-    unsigned m_isManuallyCached : 1;
-    unsigned m_shouldPaintBrokenImage : 1;
+    bool m_isManuallyCached { false };
+    bool m_shouldPaintBrokenImage { true };
 };
 
 } // namespace WebCore

@@ -192,7 +192,7 @@ inline void StyleResolver::State::clear()
     m_cssToLengthConversionData = CSSToLengthConversionData();
 }
 
-void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& properties, StyleRule* rule, unsigned linkMatchType, PropertyWhitelistType propertyWhitelistType, unsigned treeContextOrdinal)
+void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& properties, StyleRule* rule, unsigned linkMatchType, PropertyWhitelistType propertyWhitelistType, int treeContextOrdinal)
 {
     m_matchedProperties.grow(m_matchedProperties.size() + 1);
     StyleResolver::MatchedProperties& newProperties = m_matchedProperties.last();
@@ -1081,7 +1081,7 @@ void StyleResolver::updateFont()
         return;
 
     RenderStyle* style = m_state.style();
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     checkForTextSizeAdjust(style);
 #endif
     checkForGenericFamilyChange(style, m_state.parentStyle());
@@ -1699,7 +1699,7 @@ RefPtr<StyleImage> StyleResolver::styleImage(CSSValue& value)
     return nullptr;
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 void StyleResolver::checkForTextSizeAdjust(RenderStyle* style)
 {
     if (style->textSizeAdjust().isAuto())
@@ -1831,7 +1831,7 @@ bool StyleResolver::colorFromPrimitiveValueIsDerivedFromElement(const CSSPrimiti
 Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, bool forVisitedLink) const
 {
     if (value.isRGBColor())
-        return Color(value.getRGBA32Value());
+        return value.color();
 
     const State& state = m_state;
     CSSValueID ident = value.getValueID();
@@ -2032,7 +2032,6 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
 }
 
 inline StyleResolver::MatchedProperties::MatchedProperties()
-    : possiblyPaddedMember(nullptr)
 {
 }
 
@@ -2196,7 +2195,7 @@ void StyleResolver::CascadedProperties::addImportantMatches(const MatchResult& m
 
     struct IndexAndOrdinal {
         int index;
-        unsigned ordinal;
+        int ordinal;
     };
     Vector<IndexAndOrdinal> shadowTreeMatches;
 

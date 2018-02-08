@@ -55,16 +55,15 @@ void FetchResponseSource::setInactive()
     m_response.unsetPendingActivity(&m_response);
 }
 
-void FetchResponseSource::firstReadCallback()
+void FetchResponseSource::doStart()
 {
     m_response.consumeBodyAsStream();
 }
 
-void FetchResponseSource::doStart()
+void FetchResponseSource::doPull()
 {
-    // startFinished should not be called as this is a push source, hence overriding default implementation.
+    m_response.feedStream();
 }
-
 
 void FetchResponseSource::doCancel()
 {
@@ -74,13 +73,11 @@ void FetchResponseSource::doCancel()
 
 void FetchResponseSource::close()
 {
-    ASSERT(isStarting());
     controller().close();
     clean();
 }
 void FetchResponseSource::error(const String& value)
 {
-    ASSERT(isStarting());
     controller().error(value);
     clean();
 }

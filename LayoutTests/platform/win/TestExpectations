@@ -202,6 +202,7 @@ fast/dom/Window/slow-unload-handler-only-frame-is-stopped.html [ Skip ]
 
 # These tests require touch support
 fast/events/touch/ [ Skip ]
+imported/w3c/web-platform-tests/touch-events/ [ Skip ]
 
 # TODO No support for key event location in EventSender.
 webkit.org/b/140526 [ Release ] fast/events/keydown-numpad-keys.html [ Failure ]
@@ -256,10 +257,10 @@ http/tests/security/cross-origin-indexeddb.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
-crypto/subtle/rsa-indexeddb-non-exportable-private.html [ Skip ]
-crypto/subtle/rsa-indexeddb-non-exportable.html [ Skip ]
-crypto/subtle/rsa-indexeddb-private.html [ Skip ]
-crypto/subtle/rsa-indexeddb.html [ Skip ]
+crypto/webkitSubtle/rsa-indexeddb-non-exportable-private.html [ Skip ]
+crypto/webkitSubtle/rsa-indexeddb-non-exportable.html [ Skip ]
+crypto/webkitSubtle/rsa-indexeddb-private.html [ Skip ]
+crypto/webkitSubtle/rsa-indexeddb.html [ Skip ]
 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 fast/history/page-cache-indexed-opened-db.html [ Skip ]
 
@@ -441,6 +442,11 @@ fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+http/tests/download/area-download.html [ Skip ]
+http/tests/security/anchor-download-allow-data.html [ Skip ]
+http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 
 # TODO Expose title direction in WebKit API (Chromium Only)
 webkit.org/b/58845 fast/dom/title-directionality.html [ Skip ]
@@ -1241,7 +1247,7 @@ editing/execCommand/enabling-and-selection-2.html [ Failure ]
 webkit.org/b/101539 editing/execCommand/switch-list-type-with-orphaned-li.html [ Failure ]
 
 ###### Inserting
-# TODO testRunner::setAutomaticLinkDetectionEnabled isn't implemented
+# Windows does not implement setAutomaticLinkDetectionEnabled
 editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Skip ]
 editing/inserting/smart-quote-with-all-configurations.html [ Skip ]
@@ -2552,6 +2558,8 @@ webkit.org/b/149632 fast/forms/textarea-input-event.html [ Skip ]
 
 webkit.org/b/150830 fast/text/woff2.html [ Skip ]
 
+webkit.org/b/162668 fast/text/woff2-totalsfntsize.html [ Skip ]
+
 ################################################################################
 ######################### Start list of UNREVIEWED failures ########################
 ################################################################################
@@ -3441,8 +3449,6 @@ http/tests/loading/hidpi-preload-picture-sizes.html [ Failure ]
 http/tests/loading/multiple-prioritization.html [ Failure ]
 http/tests/misc/favicon-loads-with-icon-loading-override.html [ Failure ]
 http/tests/navigation/post-308-response.html [ Failure ]
-http/tests/security/anchor-download-allow-data.html [ Failure ]
-http/tests/security/anchor-download-allow-sameorigin.html [ Failure ]
 http/tests/security/canvas-remote-read-remote-video-redirect.html [ Failure ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child.html [ Failure ]
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid.html [ Failure ]
@@ -3610,3 +3616,6 @@ fast/events/ghostly-mousemoves-in-subframe.html [ Missing ]
 fast/events/overflow-viewport-renderer-deleted.html [ Missing ]
 fast/repaint/selection-gap-flipped-fixed-child.html [ Missing ]
 mathml/presentation/bug159513.html [ Missing ]
+
+# html/syntax web platform tests are failing on Windows.
+webkit.org/b/162415 imported/w3c/web-platform-tests/html/syntax [ Skip ]

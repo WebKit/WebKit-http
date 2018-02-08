@@ -35,15 +35,14 @@
     [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? listener, boolean useCapture);
     [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? listener, boolean useCapture);
 
-    [ImplementedAs=dispatchEventForBindings, RaisesException] boolean dispatchEvent(Event event);
+    [ImplementedAs=dispatchEventForBindings, MayThrowLegacyException] boolean dispatchEvent(Event event);
 };
 
 dictionary EventListenerOptions {
     boolean capture = false;
 };
 
-dictionary AddEventListenerOptions {
-    boolean capture = false;
+dictionary AddEventListenerOptions : EventListenerOptions {
     boolean passive = false;
     boolean once = false;
 };

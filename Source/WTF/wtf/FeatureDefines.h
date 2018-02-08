@@ -98,8 +98,8 @@
 #define ENABLE_IOS_GESTURE_EVENTS 1
 #endif
 
-#if !defined(ENABLE_IOS_TEXT_AUTOSIZING)
-#define ENABLE_IOS_TEXT_AUTOSIZING 1
+#if !defined(ENABLE_TEXT_AUTOSIZING)
+#define ENABLE_TEXT_AUTOSIZING 1
 #endif
 
 #if !defined(ENABLE_IOS_TOUCH_EVENTS) && USE(APPLE_INTERNAL_SDK)
@@ -177,11 +177,8 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_DASHBOARD_SUPPORT 1
 #endif
 
-#if !defined(ENABLE_ENCRYPTED_MEDIA)
-#define ENABLE_ENCRYPTED_MEDIA 1
-#endif
-#if !defined(ENABLE_ENCRYPTED_MEDIA_V2)
-#define ENABLE_ENCRYPTED_MEDIA_V2 1
+#if !defined(ENABLE_LEGACY_ENCRYPTED_MEDIA)
+#define ENABLE_LEGACY_ENCRYPTED_MEDIA 1
 #endif
 
 #if !defined(ENABLE_FULLSCREEN_API)
@@ -250,12 +247,20 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_MAC_GESTURE_EVENTS 1
 #endif
 
+#if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
+#define ENABLE_KEYBOARD_CODE_ATTRIBUTE 1
+#endif
+
 #endif /* PLATFORM(MAC) */
 
 #if PLATFORM(COCOA)
 
 #if !defined(ENABLE_DATA_DETECTION)
 #define ENABLE_DATA_DETECTION 1
+#endif
+
+#if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
+#define ENABLE_KEYBOARD_KEY_ATTRIBUTE 1
 #endif
 
 #endif /* PLATFORM(COCOA) */
@@ -360,6 +365,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_ES6_MODULES 0
 #endif
 
+#if !defined(ENABLE_ES2017_ASYNCFUNCTION_SYNTAX)
+#define ENABLE_ES2017_ASYNCFUNCTION_SYNTAX 0
+#endif
+
 #if !defined(ENABLE_CONTENT_EXTENSIONS)
 #define ENABLE_CONTENT_EXTENSIONS 0
 #endif
@@ -434,10 +443,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_ENCRYPTED_MEDIA)
 #define ENABLE_ENCRYPTED_MEDIA 0
-#endif
-
-#if !defined(ENABLE_ENCRYPTED_MEDIA_V2)
-#define ENABLE_ENCRYPTED_MEDIA_V2 0
 #endif
 
 #if !defined(ENABLE_FETCH_API)
@@ -540,6 +545,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_LEGACY_CSS_VENDOR_PREFIXES)
 #define ENABLE_LEGACY_CSS_VENDOR_PREFIXES 0
+#endif
+
+#if !defined(ENABLE_LEGACY_ENCRYPTED_MEDIA)
+#define ENABLE_LEGACY_ENCRYPTED_MEDIA 0
 #endif
 
 #if !defined(ENABLE_LEGACY_NOTIFICATIONS)
@@ -770,6 +779,14 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_XSLT)
 #define ENABLE_XSLT 1
+#endif
+
+#if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
+#define ENABLE_KEYBOARD_KEY_ATTRIBUTE 0
+#endif
+
+#if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
+#define ENABLE_KEYBOARD_CODE_ATTRIBUTE 0
 #endif
 
 /* Asserts, invariants for macro definitions */

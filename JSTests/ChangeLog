@@ -1,3 +1,399 @@
+2016-10-12  Keith Miller  <keith_miller@apple.com>
+
+        Handle non-function, non-undefined comparator in Array.prototype.sort
+        https://bugs.webkit.org/show_bug.cgi?id=163085
+
+        Reviewed by Yusuke Suzuki.
+
+        * ChakraCore/test/Array/array_sort.baseline-jsc:
+        * stress/array-sort-bad-comparator.js: Added.
+        (test):
+
+2016-10-12  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.slice should not modify frozen objects.
+        https://bugs.webkit.org/show_bug.cgi?id=163338
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-slice-on-frozen-object.js: Added.
+
+2016-10-11  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.concat should not modify frozen objects.
+        https://bugs.webkit.org/show_bug.cgi?id=163302
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-concat-on-frozen-object.js: Added.
+
+2016-10-11  Saam Barati  <sbarati@apple.com>
+
+        ValueAdd should be constant folded if the operands are constant String,Primitive or Primitive,String
+        https://bugs.webkit.org/show_bug.cgi?id=163182
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/string-add-constant-folding.js: Added.
+        (assert):
+        (runTests):
+        (add):
+        (test):
+
+2016-10-07  Mark Lam  <mark.lam@apple.com>
+
+        Object.freeze() and seal() should throw if [[PreventExtensions]]() fails.
+        https://bugs.webkit.org/show_bug.cgi?id=163160
+
+        Reviewed by Saam Barati.
+
+        * stress/object-freeze-with-proxy-preventExtensions.js: Added.
+        * stress/object-seal-with-proxy-preventExtensions.js: Added.
+
+2016-10-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Add initial CheckDOM and CallDOM implementations
+        https://bugs.webkit.org/show_bug.cgi?id=162941
+
+        Reviewed by Filip Pizlo.
+
+        * stress/domjit-getter-poly.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-proto.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-super-poly.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter.js: Added.
+        (shouldBe):
+        (access):
+
+2016-10-04  Saam Barati  <sbarati@apple.com>
+
+        String.prototype.toLowerCase should be a DFG/FTL intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=162887
+
+        Reviewed by Filip Pizlo and Yusuke Suzuki.
+
+        * microbenchmarks/to-lower-case.js: Added.
+        (assert):
+        (foo):
+        (bar):
+        * stress/to-lower-case.js: Added.
+        (assert):
+        (foo):
+
+2016-10-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: handle a few corner cases
+        https://bugs.webkit.org/show_bug.cgi?id=162884
+
+        Reviewed by Keith Miller.
+
+        * stress/wasm/generate-wasmops-header.js:
+        (const.opcodeIterator): max opcode value
+
+2016-10-03  JF Bastien  <jfbastien@apple.com>
+
+        Auto-generate WASMOps.h, share with testing JSON file
+        https://bugs.webkit.org/show_bug.cgi?id=162870
+
+        Reviewed by Keith Miller.
+
+        * stress/wasm/to-c++.js: Added. Generates WASMOps.h, siilar to the current one but with more data.
+        (const.opcode_iterator):
+        (opcode_macroizer):
+        * stress/wasm/wasm.json: Added. Data from 0xC binary format version.
+
+2016-10-03  Saam Barati  <sbarati@apple.com>
+
+        MapHash should speculate on the type of its child node
+        https://bugs.webkit.org/show_bug.cgi?id=161922
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/map-key-well-typed.js: Added.
+        (assert):
+        (intKey):
+        (doubleKey):
+        (objectKey):
+        (stringKey):
+        (booleanKey):
+        (symbolKey):
+        (cellKey):
+        (assert.doubleKey):
+        (assert.booleanKey):
+
+2016-10-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] GeneratorFunction (a.k.a. GeneratorWrapperFunction)'s prototype object does not have constructor property
+        https://bugs.webkit.org/show_bug.cgi?id=162849
+
+        Reviewed by Geoffrey Garen.
+
+        * test262.yaml:
+
+2016-10-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Align attributes of Generator related properties to spec
+        https://bugs.webkit.org/show_bug.cgi?id=162839
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2016-10-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] GeneratorFunction constructor should instantiate generator function
+        https://bugs.webkit.org/show_bug.cgi?id=162838
+
+        Reviewed by Saam Barati.
+
+        * stress/generator-function-constructor-is-subclassible.js: Added.
+        (shouldBe):
+        (GeneratorFunction):
+        (prototype.hello):
+        * stress/generator-function-constructor.js:
+        * test262.yaml:
+
+2016-09-30  Saam Barati  <sbarati@apple.com>
+
+        Arrow functions should not allow duplicate parameter names
+        https://bugs.webkit.org/show_bug.cgi?id=162741
+
+        Reviewed by Filip Pizlo.
+
+        * test262.yaml:
+
+2016-09-30  Saam Barati  <sbarati@apple.com>
+
+        Make some microbenchmarks run for less time.
+
+        Rubber stamped by Filip Pizlo.
+
+        * microbenchmarks/bound-function-construction-performance.js:
+        (foo):
+        * microbenchmarks/getter-richards-try-catch.js:
+
+2016-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Arrow functions do not infer name from computed property but normal functions do
+        https://bugs.webkit.org/show_bug.cgi?id=162720
+
+        Reviewed by Saam Barati.
+
+        * stress/inferred-names.js:
+
+2016-09-29  Mark Lam  <mark.lam@apple.com>
+
+        Break some slow running tests into smaller bits so they don't time out.
+        https://bugs.webkit.org/show_bug.cgi?id=162743
+
+        Reviewed by Keith Miller.
+
+        The following tests have shown to be slow running:
+            op_div.js
+            op_lshift.js
+            op_mod.js
+            op_mul.js
+            op_rshift.js
+            op_sub.js
+            op_urshift
+
+        These tests auto-generate permutations of values to apply to binary operations.
+        They also test the operations with 3 permutations of value types:
+            1. VarVar - both operands variables
+            2. VarConst - variable operand 1, constant / literal operand 2
+            3. ConstVar - constant / literal operand 1, variable operand 2
+
+        We can prevent these tests from timing out by breaking each up to only run 1 of
+        the 3 permutations of value types.
+
+        * stress/op_div-ConstVar.js: Added.
+        * stress/op_div-VarConst.js: Added.
+        * stress/op_div-VarVar.js: Copied from JSTests/stress/op_div.js.
+        (o1.valueOf): Deleted.
+        * stress/op_div.js: Removed.
+        * stress/op_lshift-ConstVar.js: Added.
+        * stress/op_lshift-VarConst.js: Added.
+        * stress/op_lshift-VarVar.js: Copied from JSTests/stress/op_lshift.js.
+        (o1.valueOf): Deleted.
+        * stress/op_lshift.js: Removed.
+        * stress/op_mod-ConstVar.js: Added.
+        * stress/op_mod-VarConst.js: Added.
+        * stress/op_mod-VarVar.js: Copied from JSTests/stress/op_mod.js.
+        (o1.valueOf): Deleted.
+        * stress/op_mod.js: Removed.
+        * stress/op_mul-ConstVar.js: Added.
+        * stress/op_mul-VarConst.js: Added.
+        * stress/op_mul-VarVar.js: Copied from JSTests/stress/op_mul.js.
+        (o1.valueOf): Deleted.
+        * stress/op_mul.js: Removed.
+        * stress/op_rshift-ConstVar.js: Added.
+        * stress/op_rshift-VarConst.js: Added.
+        * stress/op_rshift-VarVar.js: Copied from JSTests/stress/op_rshift.js.
+        (o1.valueOf): Deleted.
+        * stress/op_rshift.js: Removed.
+        * stress/op_sub-ConstVar.js: Added.
+        * stress/op_sub-VarConst.js: Added.
+        * stress/op_sub-VarVar.js: Copied from JSTests/stress/op_sub.js.
+        (o1.valueOf): Deleted.
+        * stress/op_sub.js: Removed.
+        * stress/op_urshift-ConstVar.js: Added.
+        * stress/op_urshift-VarConst.js: Added.
+        * stress/op_urshift-VarVar.js: Copied from JSTests/stress/op_urshift.js.
+        (o1.valueOf): Deleted.
+        * stress/op_urshift.js: Removed.
+        * stress/resources/binary-op-values.js: Added.
+        (o1.valueOf):
+
+2016-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: class and function names should be inferred in assignment
+        https://bugs.webkit.org/show_bug.cgi?id=146262
+
+        Reviewed by Saam Barati.
+
+        * stress/arrowfunction-name.js: Added.
+        Quick tests for arrow function names.
+
+        * stress/inferred-names.js: Added.
+        General test for inferred function names.
+
+        * test262.yaml:
+        Pass many tests checking inferred function names.
+
+2016-09-29  Saam Barati  <sbarati@apple.com>
+
+        We don't properly propagate non-simple-parameter-list when parsing a setter
+        https://bugs.webkit.org/show_bug.cgi?id=160483
+
+        Reviewed by Joseph Pecoraro.
+
+        * test262.yaml:
+
+2016-09-28  Saam Barati  <sbarati@apple.com>
+
+        stringProtoFuncRepeatCharacter will return `null` when it should not
+        https://bugs.webkit.org/show_bug.cgi?id=161944
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/pad-start-calls-repeat-character-with-double.js: Added.
+        (logLinesWithContext):
+
+2016-09-27  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::lowerMacros forgets to before->updatePredecessorsAfter() when lowering ChillMod on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=162644
+
+        Reviewed by Keith Miller.
+
+        * stress/chill-mod-chill-mod.js: Added.
+        (foo):
+
+2016-09-26  Csaba Osztrogonác  <oszi@inf.u-szeged.hu>
+
+        Skip stress/string-joining-long-strings-should-not-crash.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+
+        Unreviewed, relanding r206317 after typo fix.
+
+        * stress/string-joining-long-strings-should-not-crash.js:
+
+2016-09-24  Caitlin Potter  <caitp@igalia.com>
+
+        [JSTests] fix test262 expectations following r206333
+        https://bugs.webkit.org/show_bug.cgi?id=162533
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2016-09-23  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Implement parsing of Async Functions
+        https://bugs.webkit.org/show_bug.cgi?id=161409
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-await-syntax.js: Added.
+        (testSyntax):
+        (testSyntaxError):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntax):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode):
+        (testTopLevelAsyncAwaitSyntaxStrictMode):
+        (testTopLevelAsyncAwaitSyntaxStrictMode.testSyntax):
+        (testNestedAsyncAwaitSyntax.async):
+        (testNestedAsyncAwaitSyntax.foo):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntaxError):
+
+2016-09-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206317.
+
+        This change caused timeouts on El Capitan Release JSC tests
+
+        Reverted changeset:
+
+        "Skip stress/string-joining-long-strings-should-not-crash.js
+        on memory limited devices"
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+        http://trac.webkit.org/changeset/206317
+
+2016-09-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip mozilla-tests.yaml/js1_5/Array/regress-157652 on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162381
+
+        Reviewed by Mark Lam.
+
+        * mozilla/mozilla-tests.yaml:
+
+2016-09-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip stress/string-joining-long-strings-should-not-crash.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+
+        Reviewed by Mark Lam.
+
+        * stress/string-joining-long-strings-should-not-crash.js:
+
+2016-09-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Use an inline cache to generate op_negate
+        https://bugs.webkit.org/show_bug.cgi?id=162371
+
+        Reviewed by Saam Barati.
+
+        * stress/op-negate-inline-cache.js: Added.
+
+2016-09-22  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.join should do overflow checks on string joins.
+        https://bugs.webkit.org/show_bug.cgi?id=162459
+
+        Reviewed by Saam Barati.
+
+        * stress/array-join-on-strings-need-overflow-checks.js: Added.
+        (assert):
+        (catch):
+
+2016-09-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Function length should be number of parameters before parameters with default values
+        https://bugs.webkit.org/show_bug.cgi?id=162377
+
+        Reviewed by Saam Barati.
+
+        * stress/es6-default-parameters.js:
+        Add our own tests for function lengths with default parameters.
+
+        * test262.yaml:
+        We now pass all dflt-length tests.
+
 2016-09-20  Benjamin Poulain  <bpoulain@apple.com>
 
         [JSC] Do not use EagerRun on tests counting recompilation

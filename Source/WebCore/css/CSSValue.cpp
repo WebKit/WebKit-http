@@ -43,6 +43,7 @@
 #include "CSSFontFaceSrcValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
+#include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
 #include "CSSImageSetValue.h"
@@ -123,21 +124,6 @@ CSSValue::Type CSSValue::cssValueType() const
     return CSS_CUSTOM;
 }
 
-void CSSValue::addSubresourceStyleURLs(ListHashSet<URL>& urls, const StyleSheetContents* styleSheet) const
-{
-    // This should get called for internal instances only.
-    ASSERT(!isCSSOMSafe());
-
-    if (is<CSSPrimitiveValue>(*this))
-        downcast<CSSPrimitiveValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSValueList>(*this))
-        downcast<CSSValueList>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSFontFaceSrcValue>(*this))
-        downcast<CSSFontFaceSrcValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSReflectValue>(*this))
-        downcast<CSSReflectValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-}
-
 bool CSSValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     // This should get called for internal instances only.
@@ -191,6 +177,10 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSFontFaceSrcValue>(*this, other);
         case FontFeatureClass:
             return compareCSSValues<CSSFontFeatureValue>(*this, other);
+#if ENABLE(VARIATION_FONTS)
+        case FontVariationClass:
+            return compareCSSValues<CSSFontVariationValue>(*this, other);
+#endif
         case FunctionClass:
             return compareCSSValues<CSSFunctionValue>(*this, other);
         case LinearGradientClass:
@@ -297,6 +287,10 @@ String CSSValue::cssText() const
         return downcast<CSSFontFaceSrcValue>(*this).customCSSText();
     case FontFeatureClass:
         return downcast<CSSFontFeatureValue>(*this).customCSSText();
+#if ENABLE(VARIATION_FONTS)
+    case FontVariationClass:
+        return downcast<CSSFontVariationValue>(*this).customCSSText();
+#endif
     case FunctionClass:
         return downcast<CSSFunctionValue>(*this).customCSSText();
     case LinearGradientClass:
@@ -411,6 +405,11 @@ void CSSValue::destroy()
     case FontFeatureClass:
         delete downcast<CSSFontFeatureValue>(this);
         return;
+#if ENABLE(VARIATION_FONTS)
+    case FontVariationClass:
+        delete downcast<CSSFontVariationValue>(this);
+        return;
+#endif
     case FunctionClass:
         delete downcast<CSSFunctionValue>(this);
         return;

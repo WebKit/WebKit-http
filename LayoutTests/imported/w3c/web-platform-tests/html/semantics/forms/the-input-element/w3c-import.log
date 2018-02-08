@@ -18,10 +18,10 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/button.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/checkbox.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/checked.xhtml
+/LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/cloning-steps.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/color.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/contains.json
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/date.html
-/LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/datetime-2.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/datetime-local.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/datetime.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/email.html
@@ -32,6 +32,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-type-button.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/input-type-checkbox.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/maxlength.html
+/LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/minlength.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/month.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/number.html
 /LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/password.html

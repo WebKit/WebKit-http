@@ -63,24 +63,19 @@ JSValue JSHistory::pushState(ExecState& state)
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     auto historyState = SerializedScriptValue::create(&state, state.uncheckedArgument(0), 0, 0);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     // FIXME: title should not be nullable.
     String title = valueToStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(1));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     String url;
     if (argCount > 2) {
         url = valueToUSVStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(2));
-        if (UNLIKELY(scope.exception()))
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
     }
 
-    ExceptionCodeWithMessage ec;
-    wrapped().stateObjectAdded(WTFMove(historyState), title, url, History::StateObjectType::Push, ec);
-    setDOMException(&state, ec);
+    propagateException(state, scope, wrapped().stateObjectAdded(WTFMove(historyState), title, url, History::StateObjectType::Push));
 
     m_state.clear();
 
@@ -97,24 +92,19 @@ JSValue JSHistory::replaceState(ExecState& state)
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     auto historyState = SerializedScriptValue::create(&state, state.uncheckedArgument(0), 0, 0);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     // FIXME: title should not be nullable.
     String title = valueToStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(1));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     String url;
     if (argCount > 2) {
         url = valueToUSVStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(2));
-        if (UNLIKELY(scope.exception()))
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
     }
 
-    ExceptionCodeWithMessage ec;
-    wrapped().stateObjectAdded(WTFMove(historyState), title, url, History::StateObjectType::Replace, ec);
-    setDOMException(&state, ec);
+    propagateException(state, scope, wrapped().stateObjectAdded(WTFMove(historyState), title, url, History::StateObjectType::Replace));
 
     m_state.clear();
 

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirUseCounts_h
-#define AirUseCounts_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -89,7 +88,7 @@ public:
                             counts.numDefs += frequency;
                     });
 
-                if ((inst.opcode == Move || inst.opcode == Move32)
+                if ((inst.kind.opcode == Move || inst.kind.opcode == Move32)
                     && inst.args[0].isSomeImm()
                     && inst.args[1].is<Thing>())
                     m_counts.add(inst.args[1].as<Thing>(), Counts()).iterator->value.numConstDefs++;
@@ -117,6 +116,3 @@ private:
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirUseCounts_h
-

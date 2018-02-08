@@ -21,13 +21,13 @@
 interface HTMLTableRowElement : HTMLElement {
     readonly attribute long rowIndex;
     readonly attribute long sectionRowIndex;
-    readonly attribute HTMLCollection cells;
+    [SameObject] readonly attribute HTMLCollection cells;
     [Reflect] attribute DOMString align;
     [Reflect, TreatNullAs=EmptyString] attribute DOMString bgColor;
     [Reflect=char] attribute DOMString ch;
     [Reflect=charoff] attribute DOMString chOff;
     [Reflect] attribute DOMString vAlign;
-    [RaisesException] HTMLElement insertCell(optional long index = -1);
-    [RaisesException] void deleteCell(long index);
+    [MayThrowLegacyException] HTMLElement insertCell(optional long index = -1);
+    [MayThrowLegacyException] void deleteCell(long index);
 };
 

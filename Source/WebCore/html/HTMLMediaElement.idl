@@ -48,11 +48,7 @@
     readonly attribute TimeRanges buffered;
     void load();
 
-#if (defined(ENABLE_ENCRYPTED_MEDIA) && ENABLE_ENCRYPTED_MEDIA) || (defined(ENABLE_ENCRYPTED_MEDIA_V2) && ENABLE_ENCRYPTED_MEDIA_V2)
-    DOMString canPlayType(DOMString type, optional DOMString? keySystem = null);
-#else
     DOMString canPlayType(DOMString type);
-#endif
 
     // ready state
     const unsigned short HAVE_NOTHING = 0;
@@ -64,7 +60,7 @@
     readonly attribute boolean seeking;
 
     // playback state
-    [SetterRaisesException] attribute unrestricted double currentTime;
+    [SetterMayThrowLegacyException] attribute unrestricted double currentTime;
     readonly attribute unrestricted double duration;
     Date getStartDate();
     readonly attribute boolean paused;
@@ -81,7 +77,7 @@
 
     // controls
     attribute boolean controls;
-    [SetterRaisesException] attribute unrestricted double volume;
+    [SetterMayThrowLegacyException] attribute unrestricted double volume;
     attribute boolean muted;
     [Reflect=muted] attribute boolean defaultMuted;
 
@@ -95,17 +91,13 @@
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitAudioDecodedByteCount;
     [Conditional=MEDIA_STATISTICS] readonly attribute unsigned long webkitVideoDecodedByteCount;
 
-    [Conditional=ENCRYPTED_MEDIA, RaisesException] void webkitGenerateKeyRequest(DOMString? keySystem, optional Uint8Array? initData = null);
-    [Conditional=ENCRYPTED_MEDIA, RaisesException] void webkitAddKey(DOMString? keySystem, Uint8Array key, optional Uint8Array? initData = null, optional DOMString sessionId);
-    [Conditional=ENCRYPTED_MEDIA, RaisesException] void webkitCancelKeyRequest(DOMString? keySystem, optional DOMString sessionId);
+    [Conditional=LEGACY_ENCRYPTED_MEDIA] readonly attribute WebKitMediaKeys webkitKeys;
+    [Conditional=LEGACY_ENCRYPTED_MEDIA] void webkitSetMediaKeys(WebKitMediaKeys? mediaKeys);
 
-    [Conditional=ENCRYPTED_MEDIA_V2, ImplementedAs=keys] readonly attribute MediaKeys webkitKeys;
-    [Conditional=ENCRYPTED_MEDIA_V2, ImplementedAs=setMediaKeys] void webkitSetMediaKeys(MediaKeys? mediaKeys);
-
-    [Conditional=VIDEO_TRACK, RaisesException] TextTrack addTextTrack(DOMString kind, optional DOMString label = "", optional DOMString language = "");
-    [Conditional=VIDEO_TRACK] readonly attribute AudioTrackList audioTracks;
-    [Conditional=VIDEO_TRACK] readonly attribute TextTrackList textTracks;
-    [Conditional=VIDEO_TRACK] readonly attribute VideoTrackList videoTracks;
+    [Conditional=VIDEO_TRACK, MayThrowLegacyException] TextTrack addTextTrack(DOMString kind, optional DOMString label = "", optional DOMString language = "");
+    [Conditional=VIDEO_TRACK, SameObject] readonly attribute AudioTrackList audioTracks;
+    [Conditional=VIDEO_TRACK, SameObject] readonly attribute TextTrackList textTracks;
+    [Conditional=VIDEO_TRACK, SameObject] readonly attribute VideoTrackList videoTracks;
 
     [Reflect] attribute DOMString mediaGroup;
 

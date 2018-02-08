@@ -49,7 +49,6 @@ class DOMWindow;
 class EventTarget;
 class Gamepad;
 class FetchHeaders;
-class MediaKeyError;
 class MediaStream;
 class MediaStreamTrack;
 class OverconstrainedError;
@@ -61,6 +60,7 @@ class Storage;
 class TouchList;
 class TrackBase;
 class VoidCallback;
+class WebKitMediaKeyError;
 
 class JSDictionary {
 public:
@@ -143,8 +143,8 @@ private:
     static void convertValue(JSC::ExecState*, JSC::JSValue, HashSet<AtomicString>& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, ArrayValue& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<JSC::Uint8Array>& result);
-#if ENABLE(ENCRYPTED_MEDIA)
-    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<MediaKeyError>& result);
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<WebKitMediaKeyError>& result);
 #endif
 #if ENABLE(FETCH_API)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<FetchHeaders>& result);
@@ -215,8 +215,7 @@ JSDictionary::GetPropertyResult JSDictionary::tryGetPropertyAndResult(const char
         Result result;
         convertValue(m_exec, value, result);
 
-        if (UNLIKELY(scope.exception()))
-            return ExceptionThrown;
+        RETURN_IF_EXCEPTION(scope, ExceptionThrown);
 
         setter(context, result);
         break;

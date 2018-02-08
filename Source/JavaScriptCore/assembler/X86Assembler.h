@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef X86Assembler_h
-#define X86Assembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && (CPU(X86) || CPU(X86_64))
 
@@ -249,6 +248,7 @@ private:
         OP_ESCAPE_DD                    = 0xDD,
         OP_CALL_rel32                   = 0xE8,
         OP_JMP_rel32                    = 0xE9,
+        PRE_LOCK                        = 0xF0,
         PRE_SSE_F2                      = 0xF2,
         PRE_SSE_F3                      = 0xF3,
         OP_HLT                          = 0xF4,
@@ -2684,6 +2684,11 @@ public:
         m_formatter.prefix(PRE_PREDICT_BRANCH_NOT_TAKEN);
     }
     
+    void lock()
+    {
+        m_formatter.prefix(PRE_LOCK);
+    }
+    
     void mfence()
     {
         m_formatter.threeByteOp(OP2_3BYTE_ESCAPE_AE, OP3_MFENCE);
@@ -3705,5 +3710,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(X86)
-
-#endif // X86Assembler_h

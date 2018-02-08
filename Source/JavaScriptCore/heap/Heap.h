@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef Heap_h
-#define Heap_h
+#pragma once
 
 #include "ArrayBuffer.h"
 #include "GCIncomingRefCountedSet.h"
@@ -52,6 +51,7 @@ namespace JSC {
 class AllocationScope;
 class CodeBlock;
 class CodeBlockSet;
+class GCDeferralContext;
 class EdenGCActivityCallback;
 class ExecutableBase;
 class FullGCActivityCallback;
@@ -104,9 +104,14 @@ public:
     
     static size_t cellSize(const void*);
 
-    void writeBarrier(const JSCell*);
-    void writeBarrier(const JSCell*, JSValue);
-    void writeBarrier(const JSCell*, JSCell*);
+    void writeBarrier(const JSCell* from);
+    void writeBarrier(const JSCell* from, JSValue to);
+    void writeBarrier(const JSCell* from, JSCell* to);
+    
+    void writeBarrierWithoutFence(const JSCell* from);
+    
+    // Take this if you know that from->cellState() < barrierThreshold.
+    JS_EXPORT_PRIVATE void writeBarrierSlowPath(const JSCell* from);
 
     WriteBarrierBuffer& writeBarrierBuffer() { return m_writeBarrierBuffer; }
     void flushWriteBarrierBuffer(JSCell*);
@@ -149,6 +154,7 @@ public:
     MarkedAllocator* allocatorForAuxiliaryData(size_t bytes) { return m_objectSpace.auxiliaryAllocatorFor(bytes); }
     void* allocateAuxiliary(JSCell* intendedOwner, size_t);
     void* tryAllocateAuxiliary(JSCell* intendedOwner, size_t);
+    void* tryAllocateAuxiliary(GCDeferralContext*, JSCell* intendedOwner, size_t);
     void* tryReallocateAuxiliary(JSCell* intendedOwner, void* oldBase, size_t oldSize, size_t newSize);
     void ascribeOwner(JSCell* intendedOwner, void*);
 
@@ -166,7 +172,7 @@ public:
 
     bool shouldCollect();
     JS_EXPORT_PRIVATE void collect(HeapOperation collectionType = AnyCollection);
-    bool collectIfNecessaryOrDefer(); // Returns true if it did collect.
+    bool collectIfNecessaryOrDefer(GCDeferralContext* = nullptr); // Returns true if it did collect.
     void collectAccordingToDeferGCProbability();
 
     void completeAllJITPlans();
@@ -175,11 +181,11 @@ public:
     // call both of these functions: Calling only one may trigger catastropic
     // memory growth.
     void reportExtraMemoryAllocated(size_t);
-    void reportExtraMemoryVisited(CellState cellStateBeforeVisiting, size_t);
+    void reportExtraMemoryVisited(CellState oldState, size_t);
 
 #if ENABLE(RESOURCE_USAGE)
     // Use this API to report the subset of extra memory that lives outside this process.
-    void reportExternalMemoryVisited(CellState cellStateBeforeVisiting, size_t);
+    void reportExternalMemoryVisited(CellState oldState, size_t);
     size_t externalMemorySize() { return m_externalMemorySize; }
 #endif
 
@@ -254,6 +260,12 @@ public:
 
     void didAllocateBlock(size_t capacity);
     void didFreeBlock(size_t capacity);
+    
+    bool barrierShouldBeFenced() const { return m_barrierShouldBeFenced; }
+    const bool* addressOfBarrierShouldBeFenced() const { return &m_barrierShouldBeFenced; }
+    
+    unsigned barrierThreshold() const { return m_barrierThreshold; }
+    const unsigned* addressOfBarrierThreshold() const { return &m_barrierThreshold; }
 
 private:
     friend class AllocationScope;
@@ -278,12 +290,17 @@ private:
     friend class WeakSet;
     template<typename T> friend void* allocateCell(Heap&);
     template<typename T> friend void* allocateCell(Heap&, size_t);
+    template<typename T> friend void* allocateCell(Heap&, GCDeferralContext*);
+    template<typename T> friend void* allocateCell(Heap&, GCDeferralContext*, size_t);
 
     void collectWithoutAnySweep(HeapOperation collectionType = AnyCollection);
 
     void* allocateWithDestructor(size_t); // For use with objects with destructors.
     void* allocateWithoutDestructor(size_t); // For use with objects without destructors.
+    void* allocateWithDestructor(GCDeferralContext*, size_t);
+    void* allocateWithoutDestructor(GCDeferralContext*, size_t);
     template<typename ClassType> void* allocateObjectOfType(size_t); // Chooses one of the methods above based on type.
+    template<typename ClassType> void* allocateObjectOfType(GCDeferralContext*, size_t);
 
     static const size_t minExtraMemory = 256;
     
@@ -332,7 +349,6 @@ private:
     void snapshotUnswept();
     void deleteSourceProviderCaches();
     void notifyIncrementalSweeper();
-    void writeBarrierCurrentlyExecutingCodeBlocks();
     void prepareForAllocation();
     void harvestWeakReferences();
     void finalizeUnconditionalFinalizers();
@@ -411,6 +427,8 @@ private:
     bool m_isSafeToCollect;
 
     WriteBarrierBuffer m_writeBarrierBuffer;
+    bool m_barrierShouldBeFenced { Options::forceFencedBarrier() };
+    unsigned m_barrierThreshold { Options::forceFencedBarrier() ? tautologicalThreshold : blackThreshold };
 
     VM* m_vm;
     double m_lastFullGCLength;
@@ -463,5 +481,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // Heap_h

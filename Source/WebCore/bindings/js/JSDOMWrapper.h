@@ -19,19 +19,36 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef JSDOMWrapper_h
-#define JSDOMWrapper_h
+#pragma once
 
 #include "JSDOMGlobalObject.h"
+#include "NodeConstants.h"
 #include <runtime/JSDestructibleObject.h>
 
 namespace WebCore {
 
+class JSDOMWindow;
 class ScriptExecutionContext;
 
-static const uint8_t JSNodeType = JSC::LastJSCObjectType + 1;
-static const uint8_t JSDocumentWrapperType = JSC::LastJSCObjectType + 2;
-static const uint8_t JSElementType = JSC::LastJSCObjectType + 3;
+// We encode Node type into JSType. The format is the following.
+// offset | 7 | 6 5 4 | 3 2 1 0  |
+// value  | 1 | Kind  | NodeType |
+static const uint8_t JSNodeTypeMask                  = 0b00001111;
+
+static const uint8_t JSDOMWrapperType                = 0b10000000;
+static const uint8_t JSNodeType                      = 0b10010000;
+static const uint8_t JSTextNodeType                  = JSNodeType | NodeConstants::TEXT_NODE;
+static const uint8_t JSProcessingInstructionNodeType = JSNodeType | NodeConstants::PROCESSING_INSTRUCTION_NODE;
+static const uint8_t JSDocumentTypeNodeType          = JSNodeType | NodeConstants::DOCUMENT_TYPE_NODE;
+static const uint8_t JSDocumentFragmentNodeType      = JSNodeType | NodeConstants::DOCUMENT_FRAGMENT_NODE;
+static const uint8_t JSDocumentWrapperType           = JSNodeType | NodeConstants::DOCUMENT_NODE;
+static const uint8_t JSCommentNodeType               = JSNodeType | NodeConstants::COMMENT_NODE;
+static const uint8_t JSCDATASectionNodeType          = JSNodeType | NodeConstants::CDATA_SECTION_NODE;
+static const uint8_t JSAttrNodeType                  = JSNodeType | NodeConstants::ATTRIBUTE_NODE;
+static const uint8_t JSElementType                   = 0b10100000 | NodeConstants::ELEMENT_NODE;
+
+static_assert(JSDOMWrapperType > JSC::LastJSCObjectType, "JSC::JSType offers the highest bit.");
+static_assert(NodeConstants::LastNodeType <= JSNodeTypeMask, "NodeType should be represented in 4bit.");
 
 class JSDOMObject : public JSC::JSDestructibleObject {
 public:
@@ -41,8 +58,10 @@ public:
     JSDOMGlobalObject* globalObject() const { return JSC::jsCast<JSDOMGlobalObject*>(JSC::JSNonFinalObject::globalObject()); }
     ScriptExecutionContext* scriptExecutionContext() const { return globalObject()->scriptExecutionContext(); }
 
+    JSDOMWindow& domWindow() const;
+
 protected:
-    JSDOMObject(JSC::Structure* structure, JSC::JSGlobalObject& globalObject) 
+    JSDOMObject(JSC::Structure* structure, JSC::JSGlobalObject& globalObject)
         : Base(globalObject.vm(), structure)
     {
         ASSERT(scriptExecutionContext());
@@ -56,6 +75,7 @@ public:
     static constexpr bool isDOMWrapper = true;
 
     ImplementationClass& wrapped() const { return const_cast<ImplementationClass&>(m_wrapped.get()); }
+    static ptrdiff_t offsetOfWrapped() { return OBJECT_OFFSETOF(JSDOMWrapper<ImplementationClass>, m_wrapped); }
 
 protected:
     JSDOMWrapper(JSC::Structure* structure, JSC::JSGlobalObject& globalObject, Ref<ImplementationClass>&& impl)
@@ -65,6 +85,13 @@ protected:
 private:
     Ref<ImplementationClass> m_wrapped;
 };
+
+ALWAYS_INLINE bool isJSDOMWrapperType(JSC::JSValue value)
+{
+    if (UNLIKELY(!value.isCell()))
+        return false;
+    return value.asCell()->type() >= JSDOMWrapperType;
+}
 
 template<typename ImplementationClass> struct JSDOMWrapperConverterTraits;
 
@@ -89,5 +116,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // JSDOMWrapper_h

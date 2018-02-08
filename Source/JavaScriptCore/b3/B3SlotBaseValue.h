@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3SlotBaseValue_h
-#define B3SlotBaseValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -36,7 +35,7 @@ class StackSlot;
 
 class JS_EXPORT_PRIVATE SlotBaseValue : public Value {
 public:
-    static bool accepts(Opcode opcode) { return opcode == SlotBase; }
+    static bool accepts(Kind kind) { return kind == SlotBase; }
 
     ~SlotBaseValue();
 
@@ -62,6 +61,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3SlotBaseValue_h
-

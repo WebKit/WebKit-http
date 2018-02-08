@@ -24,6 +24,7 @@
 #include "config.h"
 #include "HTMLStyleElement.h"
 
+#include "CachedResource.h"
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
@@ -33,6 +34,7 @@
 #include "RuntimeEnabledFeatures.h"
 #include "ScriptableDocumentParser.h"
 #include "ShadowRoot.h"
+#include "StyleScope.h"
 #include "StyleSheetContents.h"
 
 namespace WebCore {
@@ -56,9 +58,7 @@ inline HTMLStyleElement::HTMLStyleElement(const QualifiedName& tagName, Document
 
 HTMLStyleElement::~HTMLStyleElement()
 {
-    // During tear-down, willRemove isn't called, so m_scopedStyleRegistrationState may still be RegisteredAsScoped or RegisteredInShadowRoot here.
-    // Therefore we can't ASSERT(m_scopedStyleRegistrationState == NotRegistered).
-    m_styleSheetOwner.clearDocumentData(document(), *this);
+    m_styleSheetOwner.clearDocumentData(*this);
 
     styleLoadEventSender().cancelEvent(*this);
 }
@@ -76,9 +76,10 @@ void HTMLStyleElement::parseAttribute(const QualifiedName& name, const AtomicStr
         m_styleSheetOwner.setMedia(value);
         if (sheet()) {
             sheet()->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(value));
-            if (inDocument() && document().hasLivingRenderTree())
-                document().styleResolverChanged(RecalcStyleImmediately);
-        }
+            if (auto* scope = m_styleSheetOwner.styleScope())
+                scope->didChangeContentsOrInterpretation();
+        } else
+            m_styleSheetOwner.childrenChanged(*this);
     } else if (name == typeAttr)
         m_styleSheetOwner.setContentType(value);
     else
@@ -95,7 +96,7 @@ Node::InsertionNotificationRequest HTMLStyleElement::insertedInto(ContainerNode&
 {
     HTMLElement::insertedInto(insertionPoint);
     if (insertionPoint.inDocument())
-        m_styleSheetOwner.insertedIntoDocument(document(), *this);
+        m_styleSheetOwner.insertedIntoDocument(*this);
 
     return InsertionDone;
 }
@@ -105,7 +106,7 @@ void HTMLStyleElement::removedFrom(ContainerNode& insertionPoint)
     HTMLElement::removedFrom(insertionPoint);
 
     if (insertionPoint.inDocument())
-        m_styleSheetOwner.removedFromDocument(document(), *this);
+        m_styleSheetOwner.removedFromDocument(*this);
 }
 
 void HTMLStyleElement::childrenChanged(const ChildChange& change)
@@ -141,8 +142,12 @@ void HTMLStyleElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {    
     HTMLElement::addSubresourceAttributeURLs(urls);
 
-    if (CSSStyleSheet* styleSheet = const_cast<HTMLStyleElement*>(this)->sheet())
-        styleSheet->contents().addSubresourceStyleURLs(urls);
+    if (auto* styleSheet = this->sheet()) {
+        styleSheet->contents().traverseSubresources([&] (auto& resource) {
+            urls.add(resource.url());
+            return false;
+        });
+    }
 }
 
 bool HTMLStyleElement::disabled() const

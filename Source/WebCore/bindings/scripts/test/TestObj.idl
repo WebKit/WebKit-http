@@ -115,14 +115,14 @@ enum TestConfidence { "high", "kinda-low" };
     [EnabledAtRuntime=DOMIterator] iterable<DOMString>;
 
     // Methods
-    [Unscopable] void    voidMethod();
-    void    voidMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
-    byte    byteMethod();
-    byte    byteMethodWithArgs(byte byteArg, DOMString strArg, TestObj objArg);
-    octet   octetMethod();
-    octet   octetMethodWithArgs(octet octetArg, DOMString strArg, TestObj objArg);
-    long    longMethod();
-    long    longMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
+    [Unscopable] void voidMethod();
+    void voidMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
+    byte byteMethod();
+    byte byteMethodWithArgs(byte byteArg, DOMString strArg, TestObj objArg);
+    octet octetMethod();
+    octet octetMethodWithArgs(octet octetArg, DOMString strArg, TestObj objArg);
+    long longMethod();
+    long longMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
     TestObj objMethod();
     TestObj objMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
     [Unforgeable] long unforgeableMethod();
@@ -137,7 +137,7 @@ enum TestConfidence { "high", "kinda-low" };
     void methodWithEnumArg(TestEnumType enumArg);
     void methodWithOptionalEnumArg(optional TestEnumType enumArg);
     void methodWithOptionalEnumArgAndDefaultValue(optional TestEnumType enumArg = "EnumValue1");
-    [RaisesException] TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg);
+    [MayThrowLegacyException] TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg);
 
 #if defined(TESTING_JS)
     void methodWithUSVStringArg(USVString str);
@@ -149,14 +149,16 @@ enum TestConfidence { "high", "kinda-low" };
     void optionsObject(Dictionary oo, optional Dictionary ooo);
 
     // Exceptions
-    [RaisesException] void methodWithException();
-    [RaisesExceptionWithMessage] void methodWithExceptionWithMessage();
-    [GetterRaisesException] attribute long attrWithGetterException;
-    [GetterRaisesExceptionWithMessage] attribute long attrWithGetterExceptionWithMessage;
-    [SetterRaisesException] attribute long attrWithSetterException;
-    [SetterRaisesExceptionWithMessage] attribute long attrWithSetterExceptionWithMessage;
-    [GetterRaisesException] attribute DOMString stringAttrWithGetterException;
-    [SetterRaisesException] attribute DOMString stringAttrWithSetterException;
+    [MayThrowException] void methodWithException();
+    [MayThrowException] long methodWithExceptionReturningLong();
+    [MayThrowException] TestObj methodWithExceptionReturningObject();
+    [MayThrowLegacyException] void methodWithLegacyException();
+    [GetterMayThrowException] attribute long attributeWithGetterException;
+    [GetterMayThrowLegacyException] attribute long attributeWithGetterLegacyException;
+    [SetterMayThrowException] attribute long attributeWithSetterException;
+    [SetterMayThrowLegacyException] attribute long attributeWithSetterLegacyException;
+    [GetterMayThrowLegacyException] attribute DOMString stringAttrWithGetterException;
+    [SetterMayThrowLegacyException] attribute DOMString stringAttrWithSetterException;
 
     // 'Custom' extended attribute
     [Custom] attribute long            customAttr;
@@ -181,11 +183,11 @@ enum TestConfidence { "high", "kinda-low" };
     // 'CallWith' extended attribute
     [CallWith=ScriptState] void withScriptStateVoid();
     [CallWith=ScriptState] TestObj withScriptStateObj();
-    [CallWith=ScriptState, RaisesException] void withScriptStateVoidException();
-    [CallWith=ScriptState, RaisesException] TestObj withScriptStateObjException();
+    [CallWith=ScriptState, MayThrowLegacyException] void withScriptStateVoidException();
+    [CallWith=ScriptState, MayThrowLegacyException] TestObj withScriptStateObjException();
     [CallWith=ScriptExecutionContext] void withScriptExecutionContext();
     [CallWith=ScriptExecutionContext&ScriptState] void withScriptExecutionContextAndScriptState();
-    [CallWith=ScriptExecutionContext&ScriptState, RaisesException] TestObj withScriptExecutionContextAndScriptStateObjException();
+    [CallWith=ScriptExecutionContext&ScriptState, MayThrowLegacyException] TestObj withScriptExecutionContextAndScriptStateObjException();
     [CallWith=  ScriptExecutionContext  &  ScriptState  ] TestObj withScriptExecutionContextAndScriptStateWithSpaces();
     [CallWith=ScriptArguments&CallStack] void withScriptArgumentsAndCallStack();
     [CallWith=Document] void withDocumentArgument();
@@ -195,10 +197,10 @@ enum TestConfidence { "high", "kinda-low" };
     [CallWith=ScriptState] attribute long withScriptStateAttribute;
     [CallWith=ScriptState, SetterCallWith=ActiveWindow&FirstWindow] attribute long withCallWithAndSetterCallWithAttribute;
     [CallWith=ScriptExecutionContext] attribute TestObj withScriptExecutionContextAttribute;
-    [CallWith=ScriptState, GetterRaisesException] attribute TestObj withScriptStateAttributeRaises;
-    [CallWith=ScriptExecutionContext, GetterRaisesException] attribute TestObj withScriptExecutionContextAttributeRaises;
+    [CallWith=ScriptState, GetterMayThrowLegacyException] attribute TestObj withScriptStateAttributeRaises;
+    [CallWith=ScriptExecutionContext, GetterMayThrowLegacyException] attribute TestObj withScriptExecutionContextAttributeRaises;
     [CallWith=ScriptExecutionContext&ScriptState] attribute TestObj withScriptExecutionContextAndScriptStateAttribute;
-    [CallWith=ScriptExecutionContext&ScriptState,GetterRaisesException] attribute TestObj withScriptExecutionContextAndScriptStateAttributeRaises;
+    [CallWith=ScriptExecutionContext&ScriptState,GetterMayThrowLegacyException] attribute TestObj withScriptExecutionContextAndScriptStateAttributeRaises;
     [CallWith=  ScriptExecutionContext  &  ScriptState  ] attribute TestObj withScriptExecutionContextAndScriptStateWithSpacesAttribute;
     [CallWith=ScriptArguments&CallStack] attribute TestObj withScriptArgumentsAndCallStackAttribute;
 
@@ -286,6 +288,7 @@ enum TestConfidence { "high", "kinda-low" };
     void    overloadedMethod(DOMStringList? listArg);
     void    overloadedMethod(sequence<DOMString>? arrayArg);
     void    overloadedMethod(TestObj objArg);
+    void    overloadedMethod(DOMWindow window);
     void    overloadedMethod(sequence<DOMString> arrayArg);
     void    overloadedMethod(sequence<unsigned long> arrayArg);
     void    overloadedMethod(DOMString strArg);
@@ -311,8 +314,8 @@ enum TestConfidence { "high", "kinda-low" };
 
 #if defined(TESTING_JS)
     void methodWithUnsignedLongSequence(sequence<unsigned long> unsignedLongSequence);
-    [RaisesException] sequence<DOMString> stringArrayFunction(sequence<DOMString> values);
-    [RaisesException] DOMStringList domStringListFunction(DOMStringList values);
+    [MayThrowLegacyException] sequence<DOMString> stringArrayFunction(sequence<DOMString> values);
+    [MayThrowLegacyException] DOMStringList domStringListFunction(DOMStringList values);
 
     void methodWithAndWithoutNullableSequence(sequence<unsigned long> arrayArg, sequence<unsigned long>? nullableArrayArg);
 
@@ -320,7 +323,7 @@ enum TestConfidence { "high", "kinda-low" };
 #endif
 
     [CheckSecurityForNode] readonly attribute Document contentDocument;
-    [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
+    [CheckSecurityForNode, MayThrowLegacyException] SVGDocument getSVGDocument();
 
     void convert1(TestNode value);
     void convert2(TestNode? value);
@@ -358,6 +361,7 @@ enum TestConfidence { "high", "kinda-low" };
     void variadicStringMethod(DOMString head, DOMString... tail);
     void variadicDoubleMethod(unrestricted double head, unrestricted double... tail);
     void variadicNodeMethod(Node head, Node... tail);
+    void variadicUnionMethod(DOMString head, (Node or DOMString)... tail);
 
     // Nullable attributes.
     readonly attribute unrestricted double? nullableDoubleAttribute;
@@ -371,7 +375,7 @@ enum TestConfidence { "high", "kinda-low" };
     attribute USVString? nullableUSVStringSettableAttribute;
 #endif
 
-    [GetterRaisesException] attribute long? nullableStringValue;
+    [GetterMayThrowLegacyException] attribute long? nullableStringValue;
 
     // Identifiers with a leading underscore, which should be removed.
     const unsigned short               _readonly = 0;
@@ -379,24 +383,22 @@ enum TestConfidence { "high", "kinda-low" };
     attribute _optional                attributeWithReservedEnumType;
     void _any(unrestricted float a, long b);
 
+
+    readonly attribute Promise testReadOnlyPromiseAttribute;
     // Promise function
     Promise testPromiseFunction();
     Promise testPromiseFunctionWithFloatArgument(float a);
-    [RaisesException] Promise testPromiseFunctionWithException();
+    [MayThrowLegacyException] Promise testPromiseFunctionWithException();
     Promise testPromiseFunctionWithOptionalIntArgument(optional long a);
     Promise testPromiseOverloadedFunction(float a);
     Promise testPromiseOverloadedFunction(FetchRequest request);
     static Promise testStaticPromiseFunction();
-    [RaisesException] static Promise testStaticPromiseFunctionWithException();
+    [MayThrowLegacyException] static Promise testStaticPromiseFunctionWithException();
     [Custom] Promise testCustomPromiseFunction();
 
     // PutForwards
     [PutForwards=name] readonly attribute TestNode putForwardsAttribute;
     [PutForwards=name] readonly attribute TestNode? putForwardsNullableAttribute;
-
-#if defined(TESTING_JS)
-    [CEReactions] void methodWithNeedsCustomElementReactionStack();
-#endif
 
 #if defined(TESTING_JS)
     // Overloading with conditionals.
@@ -408,8 +410,12 @@ enum TestConfidence { "high", "kinda-low" };
 #endif
 
     void attachShadowRoot(TestDictionary init);
+    void operationWithExternalDictionaryParameter(TestStandaloneDictionary dict);
 
     stringifier attribute USVString stringifierAttribute;
+
+
+    serializer = {readOnlyStringAttr, create, enumAttr, longAttr};
 };
 
 // The following comment should not generate any code.
@@ -423,6 +429,7 @@ dictionary TestDictionary {
     TestEnumType enumerationValueWithEmptyStringDefault = "";
     DOMString stringWithDefault = "defaultString";
     DOMString stringWithoutDefault;
+    DOMString? nullableStringWithDefault = null;
     boolean booleanWithDefault = false;
     boolean booleanWithoutDefault;
     sequence<DOMString> sequenceOfStrings;
@@ -446,8 +453,10 @@ dictionary TestDictionary {
     long long largeIntegerWithDefault = 0;
     unsigned long long unsignedLargeInteger;
     unsigned long long unsignedLargeIntegerWithDefault = 0;
+    long? nullableIntegerWithDefault = null;
     Node? nullableNode = null;
     any anyValue;
+    any anyValueWithNullDefault = null;
     AnyTypedef anyTypedefValue;
     TestDictionaryThatShouldTolerateNull dictionaryMember;
 };
@@ -470,3 +479,14 @@ dictionary TestDictionaryThatShouldTolerateNull {
     TestEnumType enumerationValue;
     boolean booleanWithoutDefault;
 };
+
+dictionary ParentDictionary {
+    boolean parentMember2;
+    boolean parentMember1;
+};
+
+dictionary ChildDictionary : ParentDictionary {
+    boolean childMember2;
+    boolean childMember1;
+};
+

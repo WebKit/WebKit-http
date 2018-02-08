@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AssemblyHelpers_h
-#define AssemblyHelpers_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -1205,14 +1204,24 @@ public:
         move(TrustedImm32(JSValue::Int32Tag), boxedRegs.tagGPR());
 #endif
     }
+
+    void boxCell(GPRReg cellGPR, JSValueRegs boxedRegs)
+    {
+#if USE(JSVALUE64)
+        move(cellGPR, boxedRegs.gpr());
+#else
+        move(cellGPR, boxedRegs.payloadGPR());
+        move(TrustedImm32(JSValue::CellTag), boxedRegs.tagGPR());
+#endif
+    }
     
     void callExceptionFuzz();
     
     enum ExceptionCheckKind { NormalExceptionCheck, InvertedExceptionCheck };
     enum ExceptionJumpWidth { NormalJumpWidth, FarJumpWidth };
-    Jump emitExceptionCheck(
+    JS_EXPORT_PRIVATE Jump emitExceptionCheck(
         ExceptionCheckKind = NormalExceptionCheck, ExceptionJumpWidth = NormalJumpWidth);
-    Jump emitNonPatchableExceptionCheck();
+    JS_EXPORT_PRIVATE Jump emitNonPatchableExceptionCheck();
 
 #if ENABLE(SAMPLING_COUNTERS)
     static void emitCount(MacroAssembler& jit, AbstractSamplingCounter& counter, int32_t increment = 1)
@@ -1306,15 +1315,42 @@ public:
 
     static void emitStoreStructureWithTypeInfo(AssemblyHelpers& jit, TrustedImmPtr structure, RegisterID dest);
 
-    Jump jumpIfIsRememberedOrInEden(GPRReg cell)
+    Jump barrierBranchWithoutFence(GPRReg cell)
     {
-        return branchTest8(MacroAssembler::NonZero, MacroAssembler::Address(cell, JSCell::cellStateOffset()));
+        return branch8(Above, Address(cell, JSCell::cellStateOffset()), TrustedImm32(blackThreshold));
     }
 
-    Jump jumpIfIsRememberedOrInEden(JSCell* cell)
+    Jump barrierBranchWithoutFence(JSCell* cell)
     {
         uint8_t* address = reinterpret_cast<uint8_t*>(cell) + JSCell::cellStateOffset();
-        return branchTest8(MacroAssembler::NonZero, MacroAssembler::AbsoluteAddress(address));
+        return branch8(Above, AbsoluteAddress(address), TrustedImm32(blackThreshold));
+    }
+    
+    Jump barrierBranch(GPRReg cell, GPRReg scratchGPR)
+    {
+        load8(Address(cell, JSCell::cellStateOffset()), scratchGPR);
+        return branch32(Above, scratchGPR, AbsoluteAddress(vm()->heap.addressOfBarrierThreshold()));
+    }
+
+    Jump barrierBranch(JSCell* cell, GPRReg scratchGPR)
+    {
+        uint8_t* address = reinterpret_cast<uint8_t*>(cell) + JSCell::cellStateOffset();
+        load8(address, scratchGPR);
+        return branch32(Above, scratchGPR, AbsoluteAddress(vm()->heap.addressOfBarrierThreshold()));
+    }
+    
+    void barrierStoreLoadFence()
+    {
+        if (!Options::useConcurrentBarriers())
+            return;
+        Jump ok = jumpIfBarrierStoreLoadFenceNotNeeded();
+        memoryFence();
+        ok.link(this);
+    }
+    
+    Jump jumpIfBarrierStoreLoadFenceNotNeeded()
+    {
+        return branchTest8(Zero, AbsoluteAddress(vm()->heap.addressOfBarrierShouldBeFenced()));
     }
     
     // Emits the branch structure for typeof. The code emitted by this doesn't fall through. The
@@ -1550,6 +1586,3 @@ protected:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // AssemblyHelpers_h
-

@@ -40,22 +40,26 @@
 
 namespace WebCore {
 
-FetchBodyOwner::FetchBodyOwner(ScriptExecutionContext& context, FetchBody&& body)
+FetchBodyOwner::FetchBodyOwner(ScriptExecutionContext& context, Optional<FetchBody>&& body, Ref<FetchHeaders>&& headers)
     : ActiveDOMObject(&context)
     , m_body(WTFMove(body))
+    , m_headers(WTFMove(headers))
 {
     suspendIfNeeded();
 }
 
 void FetchBodyOwner::stop()
 {
-    m_body.cleanConsumePromise();
+    if (m_body)
+        m_body->cleanConsumePromise();
 
     if (m_blobLoader) {
+        bool isUniqueReference = hasOneRef();
         if (m_blobLoader->loader)
             m_blobLoader->loader->stop();
+        // After that point, 'this' may be destroyed, since unsetPendingActivity should have been called.
+        ASSERT_UNUSED(isUniqueReference, isUniqueReference || !m_blobLoader);
     }
-    ASSERT(!m_blobLoader);
 }
 
 bool FetchBodyOwner::isDisturbedOrLocked() const
@@ -71,9 +75,9 @@ bool FetchBodyOwner::isDisturbedOrLocked() const
     return false;
 }
 
-void FetchBodyOwner::arrayBuffer(Ref<DeferredWrapper>&& promise)
+void FetchBodyOwner::arrayBuffer(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
+    if (isBodyNull()) {
         fulfillPromiseWithArrayBuffer(WTFMove(promise), nullptr, 0);
         return;
     }
@@ -82,13 +86,13 @@ void FetchBodyOwner::arrayBuffer(Ref<DeferredWrapper>&& promise)
         return;
     }
     m_isDisturbed = true;
-    m_body.arrayBuffer(*this, WTFMove(promise));
+    m_body->arrayBuffer(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::blob(Ref<DeferredWrapper>&& promise)
+void FetchBodyOwner::blob(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
-        promise->resolve(Blob::create(Vector<uint8_t>(), Blob::normalizedContentType(extractMIMETypeFromMediaType(m_body.contentType()))));
+    if (isBodyNull()) {
+        promise->resolve(Blob::create(Vector<uint8_t>(), Blob::normalizedContentType(extractMIMETypeFromMediaType(m_contentType))));
         return;
     }
     if (isDisturbedOrLocked()) {
@@ -96,12 +100,46 @@ void FetchBodyOwner::blob(Ref<DeferredWrapper>&& promise)
         return;
     }
     m_isDisturbed = true;
-    m_body.blob(*this, WTFMove(promise));
+    m_body->blob(*this, WTFMove(promise), m_contentType);
 }
 
-void FetchBodyOwner::formData(Ref<DeferredWrapper>&& promise)
+void FetchBodyOwner::cloneBody(const FetchBodyOwner& owner)
 {
-    if (m_body.isEmpty()) {
+    m_contentType = owner.m_contentType;
+    if (owner.isBodyNull())
+        return;
+    m_body = owner.m_body->clone();
+}
+
+void FetchBodyOwner::extractBody(ScriptExecutionContext& context, JSC::ExecState& state, JSC::JSValue value)
+{
+    m_body = FetchBody::extract(context, state, value, m_contentType);
+}
+
+void FetchBodyOwner::updateContentType()
+{
+    String contentType = m_headers->fastGet(HTTPHeaderName::ContentType);
+    if (!contentType.isNull()) {
+        m_contentType = WTFMove(contentType);
+        return;
+    }
+    if (!m_contentType.isNull())
+        m_headers->fastSet(HTTPHeaderName::ContentType, m_contentType);
+}
+
+void FetchBodyOwner::consumeOnceLoadingFinished(FetchBodyConsumer::Type type, Ref<DeferredPromise>&& promise)
+{
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
+        return;
+    }
+    m_isDisturbed = true;
+    m_body->consumeOnceLoadingFinished(type, WTFMove(promise));
+}
+
+void FetchBodyOwner::formData(Ref<DeferredPromise>&& promise)
+{
+    if (isBodyNull()) {
         promise->reject(0);
         return;
     }
@@ -110,12 +148,12 @@ void FetchBodyOwner::formData(Ref<DeferredWrapper>&& promise)
         return;
     }
     m_isDisturbed = true;
-    m_body.formData(*this, WTFMove(promise));
+    m_body->formData(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::json(Ref<DeferredWrapper>&& promise)
+void FetchBodyOwner::json(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
+    if (isBodyNull()) {
         promise->reject(SYNTAX_ERR);
         return;
     }
@@ -124,12 +162,12 @@ void FetchBodyOwner::json(Ref<DeferredWrapper>&& promise)
         return;
     }
     m_isDisturbed = true;
-    m_body.json(*this, WTFMove(promise));
+    m_body->json(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::text(Ref<DeferredWrapper>&& promise)
+void FetchBodyOwner::text(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
+    if (isBodyNull()) {
         promise->resolve(String());
         return;
     }
@@ -138,17 +176,18 @@ void FetchBodyOwner::text(Ref<DeferredWrapper>&& promise)
         return;
     }
     m_isDisturbed = true;
-    m_body.text(*this, WTFMove(promise));
+    m_body->text(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::loadBlob(Blob& blob, FetchBodyConsumer* consumer)
+void FetchBodyOwner::loadBlob(const Blob& blob, FetchBodyConsumer* consumer)
 {
     // Can only be called once for a body instance.
     ASSERT(isDisturbed());
     ASSERT(!m_blobLoader);
+    ASSERT(!isBodyNull());
 
     if (!scriptExecutionContext()) {
-        m_body.loadingFailed();
+        m_body->loadingFailed();
         return;
     }
 
@@ -157,7 +196,7 @@ void FetchBodyOwner::loadBlob(Blob& blob, FetchBodyConsumer* consumer)
 
     m_blobLoader->loader->start(*scriptExecutionContext(), blob);
     if (!m_blobLoader->loader->isStarted()) {
-        m_body.loadingFailed();
+        m_body->loadingFailed();
         m_blobLoader = Nullopt;
         return;
     }
@@ -174,20 +213,20 @@ void FetchBodyOwner::finishBlobLoading()
 
 void FetchBodyOwner::blobLoadingSucceeded()
 {
-    ASSERT(m_body.type() == FetchBody::Type::Blob);
-
+    ASSERT(!isBodyNull());
 #if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource) {
         m_readableStreamSource->close();
         m_readableStreamSource = nullptr;
     }
 #endif
-    m_body.loadingSucceeded();
+    m_body->loadingSucceeded();
     finishBlobLoading();
 }
 
 void FetchBodyOwner::blobLoadingFailed()
 {
+    ASSERT(!isBodyNull());
 #if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource) {
         if (!m_readableStreamSource->isCancelling())
@@ -195,7 +234,7 @@ void FetchBodyOwner::blobLoadingFailed()
         m_readableStreamSource = nullptr;
     } else
 #endif
-        m_body.loadingFailed();
+        m_body->loadingFailed();
 
     finishBlobLoading();
 }

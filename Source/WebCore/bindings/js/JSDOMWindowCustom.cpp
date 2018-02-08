@@ -133,7 +133,7 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
             || propertyName == exec->propertyNames().top) {
             bool shouldExposeSetter = propertyName == exec->propertyNames().location;
             CustomGetterSetter* customGetterSetter = CustomGetterSetter::create(vm, entry->propertyGetter(), shouldExposeSetter ? entry->propertyPutter() : nullptr);
-            slot.setCacheableCustomGetterSetter(thisObject, DontEnum | CustomAccessor, customGetterSetter);
+            slot.setCustomGetterSetter(thisObject, DontEnum | CustomAccessor, customGetterSetter);
             return true;
         }
 
@@ -339,7 +339,8 @@ void JSDOMWindow::getOwnPropertyNames(JSObject* object, ExecState* exec, Propert
 {
     JSDOMWindow* thisObject = jsCast<JSDOMWindow*>(object);
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped(), DoNotReportSecurityError)) {
-        addCrossOriginWindowPropertyNames(*exec, propertyNames);
+        if (mode.includeDontEnumProperties())
+            addCrossOriginWindowPropertyNames(*exec, propertyNames);
         return;
     }
     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
@@ -396,8 +397,7 @@ void JSDOMWindow::setLocation(ExecState& state, JSValue value)
 #endif
 
     String locationString = value.toString(&state)->value(&state);
-    if (UNLIKELY(scope.exception()))
-        return;
+    RETURN_IF_EXCEPTION(scope, void());
 
     if (Location* location = wrapped().location())
         location->setHref(activeDOMWindow(&state), firstDOMWindow(&state), locationString);
@@ -424,19 +424,16 @@ JSValue JSDOMWindow::open(ExecState& state)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     String urlString = valueToUSVStringWithUndefinedOrNullCheck(&state, state.argument(0));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     JSValue targetValue = state.argument(1);
     AtomicString target = targetValue.isUndefinedOrNull() ? AtomicString("_blank", AtomicString::ConstructFromLiteral) : targetValue.toString(&state)->toAtomicString(&state);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     String windowFeaturesString = valueToStringWithUndefinedOrNullCheck(&state, state.argument(2));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     RefPtr<DOMWindow> openedWindow = wrapped().open(urlString, target, windowFeaturesString, activeDOMWindow(&state), firstDOMWindow(&state));
     if (!openedWindow)
-        return jsUndefined();
+        return jsNull();
     return toJS(&state, openedWindow.get());
 }
 
@@ -487,11 +484,9 @@ JSValue JSDOMWindow::showModalDialog(ExecState& state)
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     String urlString = valueToStringWithUndefinedOrNullCheck(&state, state.argument(0));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     String dialogFeaturesString = valueToStringWithUndefinedOrNullCheck(&state, state.argument(2));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     DialogHandler handler(state);
 
@@ -528,17 +523,14 @@ static JSValue handlePostMessage(DOMWindow& impl, ExecState& state)
         }
         fillMessagePortArray(state, state.argument(transferablesArgIndex), messagePorts, arrayBuffers);
     }
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     auto message = SerializedScriptValue::create(&state, state.uncheckedArgument(0), &messagePorts, &arrayBuffers);
 
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     String targetOrigin = valueToUSVStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(targetOriginArgIndex));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     ExceptionCode ec = 0;
     impl.postMessage(WTFMove(message), &messagePorts, targetOrigin, callerDOMWindow(&state), ec);
@@ -562,8 +554,7 @@ JSValue JSDOMWindow::setTimeout(ExecState& state)
 
     ContentSecurityPolicy* contentSecurityPolicy = wrapped().document() ? wrapped().document()->contentSecurityPolicy() : nullptr;
     std::unique_ptr<ScheduledAction> action = ScheduledAction::create(&state, globalObject()->world(), contentSecurityPolicy);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     if (!action)
         return jsNumber(0);
@@ -587,8 +578,7 @@ JSValue JSDOMWindow::setInterval(ExecState& state)
 
     ContentSecurityPolicy* contentSecurityPolicy = wrapped().document() ? wrapped().document()->contentSecurityPolicy() : nullptr;
     std::unique_ptr<ScheduledAction> action = ScheduledAction::create(&state, globalObject()->world(), contentSecurityPolicy);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     int delay = state.argument(1).toInt32(&state);
 
     if (!action)
@@ -601,7 +591,7 @@ JSValue JSDOMWindow::setInterval(ExecState& state)
     return jsNumber(result);
 }
 
-DOMWindow* JSDOMWindow::toWrapped(ExecState&, JSValue value)
+DOMWindow* JSDOMWindow::toWrapped(JSValue value)
 {
     if (!value.isObject())
         return nullptr;

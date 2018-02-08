@@ -67,7 +67,7 @@ namespace WebCore {
 
 InternalSettings::Backup::Backup(Settings& settings)
     : m_originalEditingBehavior(settings.editingBehaviorType())
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     , m_originalTextAutosizingEnabled(settings.textAutosizingEnabled())
     , m_originalTextAutosizingWindowSizeOverride(settings.textAutosizingWindowSizeOverride())
 #endif
@@ -108,9 +108,14 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
 #endif
+#if ENABLE(VARIATION_FONTS)
+    , m_variationFontsEnabled(settings.variationFontsEnabled())
+#endif
+    , m_inputEventsEnabled(settings.inputEventsEnabled())
     , m_userInterfaceDirectionPolicy(settings.userInterfaceDirectionPolicy())
     , m_systemLayoutDirection(settings.systemLayoutDirection())
     , m_pdfImageCachingPolicy(settings.pdfImageCachingPolicy())
+    , m_forcedPrefersReducedMotionValue(settings.forcedPrefersReducedMotionValue())
 {
 }
 
@@ -146,7 +151,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
         settings.setPictographFontFamily(pictographFont.value, static_cast<UScriptCode>(pictographFont.key));
     m_pictographFontFamilies.clear();
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     settings.setTextAutosizingEnabled(m_originalTextAutosizingEnabled);
     settings.setTextAutosizingWindowSizeOverride(m_originalTextAutosizingWindowSizeOverride);
 #endif
@@ -183,9 +188,14 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
 #endif
+#if ENABLE(VARIATION_FONTS)
+    settings.setVariationFontsEnabled(m_variationFontsEnabled);
+#endif
+    settings.setInputEventsEnabled(m_inputEventsEnabled);
     settings.setUserInterfaceDirectionPolicy(m_userInterfaceDirectionPolicy);
     settings.setSystemLayoutDirection(m_systemLayoutDirection);
     settings.setPdfImageCachingPolicy(m_pdfImageCachingPolicy);
+    settings.setForcedPrefersReducedMotionValue(m_forcedPrefersReducedMotionValue);
     Settings::setAllowsAnySSLCertificate(false);
 }
 
@@ -335,7 +345,7 @@ void InternalSettings::setPictographFontFamily(const String& family, const Strin
 
 void InternalSettings::setTextAutosizingEnabled(bool enabled, ExceptionCode& ec)
 {
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     InternalSettingsGuardForSettings();
     settings()->setTextAutosizingEnabled(enabled);
 #else
@@ -346,7 +356,7 @@ void InternalSettings::setTextAutosizingEnabled(bool enabled, ExceptionCode& ec)
 
 void InternalSettings::setTextAutosizingWindowSizeOverride(int width, int height, ExceptionCode& ec)
 {
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     InternalSettingsGuardForSettings();
     settings()->setTextAutosizingWindowSizeOverride(IntSize(width, height));
 #else
@@ -647,6 +657,58 @@ void InternalSettings::setSystemLayoutDirection(const String& direction, Excepti
 void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
 {
     Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
+}
+
+bool InternalSettings::variationFontsEnabled(ExceptionCode& ec)
+{
+#if ENABLE(VARIATION_FONTS)
+    InternalSettingsGuardForSettingsReturn(true);
+    return settings()->variationFontsEnabled();
+#else
+    UNUSED_PARAM(ec);
+    return false;
+#endif
+}
+
+void InternalSettings::setVariationFontsEnabled(bool enabled, ExceptionCode& ec)
+{
+#if ENABLE(VARIATION_FONTS)
+    InternalSettingsGuardForSettings();
+    settings()->setVariationFontsEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+    UNUSED_PARAM(ec);
+#endif
+}
+
+InternalSettings::ForcedPrefersReducedMotionValue InternalSettings::forcedPrefersReducedMotionValue() const
+{
+    switch (settings()->forcedPrefersReducedMotionValue()) {
+    case Settings::ForcedPrefersReducedMotionValue::System:
+        return InternalSettings::ForcedPrefersReducedMotionValue::System;
+    case Settings::ForcedPrefersReducedMotionValue::On:
+        return InternalSettings::ForcedPrefersReducedMotionValue::On;
+    case Settings::ForcedPrefersReducedMotionValue::Off:
+        return InternalSettings::ForcedPrefersReducedMotionValue::Off;
+    }
+
+    ASSERT_NOT_REACHED();
+    return InternalSettings::ForcedPrefersReducedMotionValue::Off;
+}
+
+void InternalSettings::setForcedPrefersReducedMotionValue(InternalSettings::ForcedPrefersReducedMotionValue value)
+{
+    switch (value) {
+    case InternalSettings::ForcedPrefersReducedMotionValue::System:
+        settings()->setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::System);
+        break;
+    case InternalSettings::ForcedPrefersReducedMotionValue::On:
+        settings()->setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::On);
+        break;
+    case InternalSettings::ForcedPrefersReducedMotionValue::Off:
+        settings()->setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::Off);
+        break;
+    }
 }
 
 // If you add to this list, make sure that you update the Backup class for test reproducability!

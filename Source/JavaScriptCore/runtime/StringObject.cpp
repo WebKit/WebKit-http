@@ -25,7 +25,6 @@
 #include "JSGlobalObject.h"
 #include "JSCInlines.h"
 #include "PropertyNameArray.h"
-#include "Reject.h"
 
 namespace JSC {
 
@@ -73,7 +72,7 @@ bool StringObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName,
 
     if (propertyName == exec->propertyNames().length) {
         if (slot.isStrictMode())
-            throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+            throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
     if (Optional<uint32_t> index = parseIndex(propertyName))
@@ -89,7 +88,7 @@ bool StringObject::putByIndex(JSCell* cell, ExecState* exec, unsigned propertyNa
     StringObject* thisObject = jsCast<StringObject*>(cell);
     if (thisObject->internalValue()->canGetIndex(propertyName)) {
         if (shouldThrow)
-            throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+            throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
     return JSObject::putByIndex(cell, exec, propertyName, value, shouldThrow);
@@ -122,8 +121,7 @@ bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, Property
         bool isCurrentDefined = thisObject->getOwnPropertyDescriptor(exec, propertyName, current);
         ASSERT(isCurrentDefined);
         bool isExtensible = thisObject->isExtensible(exec);
-        if (UNLIKELY(scope.exception()))
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         return validateAndApplyPropertyDescriptor(exec, nullptr, propertyName, isExtensible, descriptor, isCurrentDefined, current, throwException);
     }
 

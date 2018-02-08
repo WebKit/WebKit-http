@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FTLOutput_h
-#define FTLOutput_h
+#pragma once
 
 #include "DFGCommon.h"
 
@@ -62,6 +61,7 @@ struct Node;
 } // namespace DFG
 
 namespace B3 {
+class FenceValue;
 class SlotBaseValue;
 } // namespace B3
 
@@ -189,6 +189,7 @@ public:
 
     LValue load(TypedPointer, LType);
     void store(LValue, TypedPointer);
+    B3::FenceValue* fence();
 
     LValue load8SignExt32(TypedPointer);
     LValue load8ZeroExt32(TypedPointer);
@@ -285,7 +286,7 @@ public:
         return heap.baseIndex(*this, base, index, indexAsConstant, offset);
     }
 
-    TypedPointer absolute(void* address);
+    TypedPointer absolute(const void* address);
 
     LValue load8SignExt32(LValue base, const AbstractHeap& field) { return load8SignExt32(address(base, field)); }
     LValue load8ZeroExt32(LValue base, const AbstractHeap& field) { return load8ZeroExt32(address(base, field)); }
@@ -464,5 +465,3 @@ inline void Output::addIncomingToPhi(LValue phi, ValueFromBlock value, Params...
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLOutput_h

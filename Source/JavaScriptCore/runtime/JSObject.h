@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef JSObject_h
-#define JSObject_h
+#pragma once
 
 #include "ArgList.h"
 #include "ArrayConventions.h"
@@ -69,7 +68,7 @@ struct HashTable;
 struct HashTableValue;
 
 JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*, ThrowScope&, const String&);
-extern JS_EXPORTDATA const char* StrictModeReadonlyPropertyWriteError;
+extern JS_EXPORTDATA const char* ReadonlyPropertyWriteError;
 extern JS_EXPORTDATA const char* UnconfigurablePropertyChangeAccessMechanismError;
 
 COMPILE_ASSERT(None < FirstInternalAttribute, None_is_below_FirstInternalAttribute);
@@ -418,7 +417,7 @@ public:
 
     // NOTE: Clients of this method may call it more than once for any index, and this is supposed
     // to work.
-    void initializeIndex(VM& vm, unsigned i, JSValue v, IndexingType indexingType)
+    ALWAYS_INLINE void initializeIndex(VM& vm, unsigned i, JSValue v, IndexingType indexingType)
     {
         Butterfly* butterfly = m_butterfly.get();
         switch (indexingType) {
@@ -461,6 +460,54 @@ public:
             ASSERT(i < storage->length());
             ASSERT(i < storage->m_numValuesInVector);
             storage->m_vector[i].set(vm, this, v);
+            break;
+        }
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+    }
+        
+    void initializeIndexWithoutBarrier(unsigned i, JSValue v)
+    {
+        initializeIndexWithoutBarrier(i, v, indexingType());
+    }
+
+    // This version of initializeIndex is for cases where you know that you will not need any
+    // barriers. This implies not having any data format conversions.
+    ALWAYS_INLINE void initializeIndexWithoutBarrier(unsigned i, JSValue v, IndexingType indexingType)
+    {
+        Butterfly* butterfly = m_butterfly.get();
+        switch (indexingType) {
+        case ALL_UNDECIDED_INDEXING_TYPES: {
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
+        case ALL_INT32_INDEXING_TYPES: {
+            ASSERT(i < butterfly->publicLength());
+            ASSERT(i < butterfly->vectorLength());
+            RELEASE_ASSERT(v.isInt32());
+            FALLTHROUGH;
+        }
+        case ALL_CONTIGUOUS_INDEXING_TYPES: {
+            ASSERT(i < butterfly->publicLength());
+            ASSERT(i < butterfly->vectorLength());
+            butterfly->contiguous()[i].setWithoutWriteBarrier(v);
+            break;
+        }
+        case ALL_DOUBLE_INDEXING_TYPES: {
+            ASSERT(i < butterfly->publicLength());
+            ASSERT(i < butterfly->vectorLength());
+            RELEASE_ASSERT(v.isNumber());
+            double value = v.asNumber();
+            RELEASE_ASSERT(value == value);
+            butterfly->contiguousDouble()[i] = value;
+            break;
+        }
+        case ALL_ARRAY_STORAGE_INDEXING_TYPES: {
+            ArrayStorage* storage = butterfly->arrayStorage();
+            ASSERT(i < storage->length());
+            ASSERT(i < storage->m_numValuesInVector);
+            storage->m_vector[i].setWithoutWriteBarrier(v);
             break;
         }
         default:
@@ -642,6 +689,7 @@ public:
     // Fast access to known property offsets.
     JSValue getDirect(PropertyOffset offset) const { return locationForOffset(offset)->get(); }
     void putDirect(VM& vm, PropertyOffset offset, JSValue value) { locationForOffset(offset)->set(vm, this, value); }
+    void putDirectWithoutBarrier(PropertyOffset offset, JSValue value) { locationForOffset(offset)->setWithoutWriteBarrier(value); }
     void putDirectUndefined(PropertyOffset offset) { locationForOffset(offset)->setUndefined(); }
 
     JS_EXPORT_PRIVATE bool putDirectNativeIntrinsicGetter(VM&, JSGlobalObject*, Identifier, NativeFunction, Intrinsic, unsigned attributes);
@@ -1093,7 +1141,7 @@ inline JSFinalObject* JSFinalObject::create(VM& vm, Structure* structure)
 
 inline bool isJSFinalObject(JSCell* cell)
 {
-    return cell->classInfo() == JSFinalObject::info();
+    return cell->type() == FinalObjectType;
 }
 
 inline bool isJSFinalObject(JSValue value)
@@ -1242,7 +1290,7 @@ ALWAYS_INLINE void JSObject::fillCustomGetterPropertySlot(PropertySlot& slot, JS
 
     // This access is cacheable because Structure requires an attributeChangedTransition
     // if this property stops being an accessor.
-    slot.setCacheableCustom(this, attributes, jsCast<CustomGetterSetter*>(customGetterSetter)->getter());
+    slot.setCacheableCustom(this, attributes, jsCast<CustomGetterSetter*>(customGetterSetter)->getter(), jsCast<CustomGetterSetter*>(customGetterSetter)->domJIT());
 }
 
 // It may seem crazy to inline a function this large, especially a virtual function,
@@ -1627,5 +1675,3 @@ JS_EXPORT_PRIVATE NEVER_INLINE bool ordinarySetSlow(ExecState*, JSObject*, Prope
 
 
 } // namespace JSC
-
-#endif // JSObject_h

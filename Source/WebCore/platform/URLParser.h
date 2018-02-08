@@ -28,7 +28,6 @@
 #include "TextEncoding.h"
 #include "URL.h"
 #include <wtf/Forward.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -36,8 +35,8 @@ template<typename CharacterType> class CodePointIterator;
 
 class URLParser {
 public:
-    WEBCORE_EXPORT URL parse(const String&, const URL& = { }, const TextEncoding& = UTF8Encoding());
-    WEBCORE_EXPORT URL parseSerializedURL(const String&);
+    WEBCORE_EXPORT URLParser(const String&, const URL& = { }, const TextEncoding& = UTF8Encoding());
+    URL result() { return m_url; }
 
     WEBCORE_EXPORT static bool allValuesEqual(const URL&, const URL&);
     WEBCORE_EXPORT static bool internalValuesConsistent(const URL&);
@@ -52,18 +51,62 @@ public:
 private:
     URL m_url;
     Vector<LChar> m_asciiBuffer;
-    Vector<UChar> m_unicodeFragmentBuffer;
     bool m_urlIsSpecial { false };
     bool m_hostHasPercentOrNonASCII { false };
+    String m_inputString;
+    const void* m_inputBegin { nullptr };
 
-    template<bool serialized, typename CharacterType> URL parse(const CharacterType*, const unsigned length, const URL&, const TextEncoding&);
-    template<bool serialized, typename CharacterType> void parseAuthority(CodePointIterator<CharacterType>);
-    template<bool serialized, typename CharacterType> bool parseHostAndPort(CodePointIterator<CharacterType>);
-    template<bool serialized, typename CharacterType> bool parsePort(CodePointIterator<CharacterType>&);
-    template<typename CharacterType> URL failure(const CharacterType*, unsigned length);
+    bool m_didSeeSyntaxViolation { false };
+
+    template<typename CharacterType> void parse(const CharacterType*, const unsigned length, const URL&, const TextEncoding&);
+    template<typename CharacterType> void parseAuthority(CodePointIterator<CharacterType>);
+    template<typename CharacterType> bool parseHostAndPort(CodePointIterator<CharacterType>);
+    template<typename CharacterType> bool parsePort(CodePointIterator<CharacterType>&);
+
+    void failure();
+    enum class ReportSyntaxViolation { No, Yes };
+    template<typename CharacterType, ReportSyntaxViolation reportSyntaxViolation = ReportSyntaxViolation::Yes>
+    void advance(CodePointIterator<CharacterType>& iterator) { advance<CharacterType, reportSyntaxViolation>(iterator, iterator); }
+    template<typename CharacterType, ReportSyntaxViolation = ReportSyntaxViolation::Yes>
+    void advance(CodePointIterator<CharacterType>&, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
+    template<typename CharacterType> bool takesTwoAdvancesUntilEnd(CodePointIterator<CharacterType>);
+    template<typename CharacterType> void syntaxViolation(const CodePointIterator<CharacterType>&);
+    template<typename CharacterType> bool isPercentEncodedDot(CodePointIterator<CharacterType>);
+    template<typename CharacterType> bool isWindowsDriveLetter(CodePointIterator<CharacterType>);
+    template<typename CharacterType> bool isSingleDotPathSegment(CodePointIterator<CharacterType>);
+    template<typename CharacterType> bool isDoubleDotPathSegment(CodePointIterator<CharacterType>);
+    template<typename CharacterType> bool shouldCopyFileURL(CodePointIterator<CharacterType>);
+    template<typename CharacterType> bool checkLocalhostCodePoint(CodePointIterator<CharacterType>&, UChar32);
+    template<typename CharacterType> bool isAtLocalhost(CodePointIterator<CharacterType>);
+    bool isLocalhost(StringView);
+    template<typename CharacterType> void consumeSingleDotPathSegment(CodePointIterator<CharacterType>&);
+    template<typename CharacterType> void consumeDoubleDotPathSegment(CodePointIterator<CharacterType>&);
+    template<typename CharacterType> void appendWindowsDriveLetter(CodePointIterator<CharacterType>&);
+    template<typename CharacterType> size_t currentPosition(const CodePointIterator<CharacterType>&);
+    template<typename UnsignedIntegerType> void appendNumberToASCIIBuffer(UnsignedIntegerType);
+    template<bool(*isInCodeSet)(UChar32), typename CharacterType> void utf8PercentEncode(const CodePointIterator<CharacterType>&);
+    template<typename CharacterType> void utf8QueryEncode(const CodePointIterator<CharacterType>&);
+    void percentEncodeByte(uint8_t);
+    void appendToASCIIBuffer(UChar32);
+    void appendToASCIIBuffer(const char*, size_t);
+    void appendToASCIIBuffer(const LChar* characters, size_t size) { appendToASCIIBuffer(reinterpret_cast<const char*>(characters), size); }
+    template<typename CharacterType> void encodeQuery(const Vector<UChar>& source, const TextEncoding&, CodePointIterator<CharacterType>);
+    void copyASCIIStringUntil(const String&, size_t length);
+    StringView parsedDataView(size_t start, size_t length);
+
+    using IPv4Address = uint32_t;
+    void serializeIPv4(IPv4Address);
+    template<typename CharacterType> Optional<IPv4Address> parseIPv4Host(CodePointIterator<CharacterType>);
+    template<typename CharacterType> Optional<uint32_t> parseIPv4Piece(CodePointIterator<CharacterType>&, bool& syntaxViolation);
+    using IPv6Address = std::array<uint16_t, 8>;
+    template<typename CharacterType> Optional<IPv6Address> parseIPv6Host(CodePointIterator<CharacterType>);
+    template<typename CharacterType> Optional<uint32_t> parseIPv4PieceInsideIPv6(CodePointIterator<CharacterType>&);
+    template<typename CharacterType> Optional<IPv4Address> parseIPv4AddressInsideIPv6(CodePointIterator<CharacterType>);
+    void serializeIPv6Piece(uint16_t piece);
+    void serializeIPv6(IPv6Address);
 
     enum class URLPart;
-    void copyURLPartsUntil(const URL& base, URLPart);
+    template<typename CharacterType> void copyURLPartsUntil(const URL& base, URLPart, const CodePointIterator<CharacterType>&, bool& isUTF8Encoding);
     static size_t urlLengthUntilPart(const URL&, URLPart);
     void popPath();
 };

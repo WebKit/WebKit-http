@@ -253,7 +253,9 @@ const IsInvalidated = 2
 const ShadowChickenTailMarker = 0x7a11
 
 # ArithProfile data
+const ArithProfileInt = 0x100000
 const ArithProfileIntInt = 0x120000
+const ArithProfileNumber = 0x200000
 const ArithProfileNumberInt = 0x220000
 const ArithProfileNumberNumber = 0x240000
 const ArithProfileIntNumber = 0x140000
@@ -348,19 +350,19 @@ const FinalObjectType = 21
 const JSFunctionType = 23
 const ArrayType = 31
 const DerivedArrayType = 32
-const ProxyObjectType = 116
+const ProxyObjectType = 49
 
 # The typed array types need to be numbered in a particular order because of the manually written
 # switch statement in get_by_val and put_by_val.
-const Int8ArrayType = 100
-const Int16ArrayType = 101
-const Int32ArrayType = 102
-const Uint8ArrayType = 103
-const Uint8ClampedArrayType = 104
-const Uint16ArrayType = 105
-const Uint32ArrayType = 106
-const Float32ArrayType = 107
-const Float64ArrayType = 108
+const Int8ArrayType = 33
+const Int16ArrayType = 34
+const Int32ArrayType = 35
+const Uint8ArrayType = 36
+const Uint8ClampedArrayType = 37
+const Uint16ArrayType = 38
+const Uint32ArrayType = 39
+const Float32ArrayType = 40
+const Float64ArrayType = 41
 
 const FirstArrayType = Int8ArrayType
 const LastArrayType = Float64ArrayType
@@ -406,6 +408,8 @@ const NotInitialization = 2
 
 const MarkedBlockSize = 16 * 1024
 const MarkedBlockMask = ~(MarkedBlockSize - 1)
+
+const BlackThreshold = 0
 
 # Allocation constants
 if JSVALUE64
@@ -886,9 +890,11 @@ macro arrayProfile(cellAndIndexingType, profile, scratch)
     loadb JSCell::m_indexingType[cell], indexingType
 end
 
-macro skipIfIsRememberedOrInEden(cell, scratch1, scratch2, continuation)
-    loadb JSCell::m_cellState[cell], scratch1
-    continuation(scratch1)
+macro skipIfIsRememberedOrInEden(cell, slowPath)
+    memfence
+    bba JSCell::m_cellState[cell], BlackThreshold, .done
+    slowPath()
+.done:
 end
 
 macro notifyWrite(set, slow)
@@ -1452,6 +1458,18 @@ _llint_op_put_setter_by_val:
     dispatch(5)
 
 
+_llint_op_define_data_property:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_define_data_property)
+    dispatch(5)
+
+
+_llint_op_define_accessor_property:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_define_accessor_property)
+    dispatch(6)
+
+
 _llint_op_jtrue:
     traceExecution()
     jumpTrueOrFalse(
@@ -1723,7 +1741,7 @@ _llint_op_throw:
 
 _llint_op_throw_static_error:
     traceExecution()
-    callOpcodeSlowPath(_llint_slow_path_throw_static_error)
+    callOpcodeSlowPath(_slow_path_throw_static_error)
     dispatch(3)
 
 

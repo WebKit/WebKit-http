@@ -41,6 +41,7 @@
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
+#include "StyleScope.h"
 #include <math.h>
 
 namespace WebCore {
@@ -266,7 +267,7 @@ void SVGFontFaceElement::rebuildFontFace()
         }
     }
 
-    document().styleResolverChanged(DeferRecalcStyle);
+    document().styleScope().didChangeContentsOrInterpretation();
 }
 
 Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNode& rootParent)
@@ -291,7 +292,7 @@ void SVGFontFaceElement::removedFrom(ContainerNode& rootParent)
         document().accessSVGExtensions().unregisterSVGFontFaceElement(this);
         m_fontFaceRule->mutableProperties().clear();
 
-        document().styleResolverChanged(DeferRecalcStyle);
+        document().styleScope().didChangeContentsOrInterpretation();
     } else
         ASSERT(!m_fontElement);
 }

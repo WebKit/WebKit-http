@@ -31,7 +31,6 @@
 #include "InjectedBundleScriptWorld.h"
 #include "NotificationPermissionRequestManager.h"
 #include "SessionTracker.h"
-#include "TextChecker.h"
 #include "UserData.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
@@ -213,6 +212,9 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(enabled);
 #endif
 
+    if (preference == "WebKitModernMediaControlsEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled(enabled);
+
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
     macro(WebKitAcceleratedCompositingEnabled, AcceleratedCompositingEnabled, acceleratedCompositingEnabled) \
@@ -302,16 +304,6 @@ void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGrou
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings().setJavaScriptCanAccessClipboard(enabled);
-}
-
-void InjectedBundle::setAutomaticLinkDetectionEnabled(WebPageGroupProxy* pageGroup, bool enabled)
-{
-#if USE(APPKIT)
-    if (enabled == TextChecker::state().isAutomaticLinkDetectionEnabled)
-        return;
-    TextChecker::setAutomaticLinkDetectionEnabled(enabled);
-    WebProcess::singleton().setTextCheckerState(TextChecker::state());
-#endif
 }
 
 void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, bool enabled)

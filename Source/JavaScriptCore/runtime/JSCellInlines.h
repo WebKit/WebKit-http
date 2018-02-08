@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSCellInlines_h
-#define JSCellInlines_h
+#pragma once
 
 #include "CallFrame.h"
 #include "DeferGC.h"
@@ -140,6 +139,25 @@ template<typename T>
 void* allocateCell(Heap& heap)
 {
     return allocateCell<T>(heap, sizeof(T));
+}
+    
+template<typename T>
+void* allocateCell(Heap& heap, GCDeferralContext* deferralContext, size_t size)
+{
+    ASSERT(size >= sizeof(T));
+    JSCell* result = static_cast<JSCell*>(heap.allocateObjectOfType<T>(deferralContext, size));
+#if ENABLE(GC_VALIDATION)
+    ASSERT(!heap.vm()->isInitializingObject());
+    heap.vm()->setInitializingObjectClass(T::info());
+#endif
+    result->clearStructure();
+    return result;
+}
+    
+template<typename T>
+void* allocateCell(Heap& heap, GCDeferralContext* deferralContext)
+{
+    return allocateCell<T>(heap, deferralContext, sizeof(T));
 }
     
 inline bool JSCell::isObject() const
@@ -274,5 +292,3 @@ inline void JSCell::callDestructor(VM& vm)
 }
 
 } // namespace JSC
-
-#endif // JSCellInlines_h

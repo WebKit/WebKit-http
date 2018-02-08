@@ -58,6 +58,7 @@ bool SecurityOrigin::shouldUseInnerURL(const URL& url)
     // FIXME: Blob URLs don't have inner URLs. Their form is "blob:<inner-origin>/<UUID>", so treating the part after "blob:" as a URL is incorrect.
     if (url.protocolIsBlob())
         return true;
+    UNUSED_PARAM(url);
     return false;
 }
 
@@ -98,12 +99,7 @@ static bool shouldTreatAsUniqueOrigin(const URL& url)
         return true;
 
     // This is the common case.
-    return !innerURL.protocolIsInHTTPFamily()
-        && !innerURL.protocolIs("file")
-        && !innerURL.protocolIs("ftp")
-        && !innerURL.protocolIs("gopher")
-        && !innerURL.protocolIs("ws")
-        && !innerURL.protocolIs("wss");
+    return false;
 }
 
 SecurityOrigin::SecurityOrigin(const URL& url)
@@ -524,7 +520,9 @@ RefPtr<SecurityOrigin> SecurityOrigin::maybeCreateFromDatabaseIdentifier(const S
     String host = databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1);
     
     host = decodeURLEscapeSequences(host);
-    return create(URL(URL(), protocol + "://" + host + ":" + String::number(port) + "/"));
+    auto origin = create(URL(URL(), protocol + "://" + host + "/"));
+    origin->m_port = port;
+    return WTFMove(origin);
 }
 
 Ref<SecurityOrigin> SecurityOrigin::createFromDatabaseIdentifier(const String& databaseIdentifier)
@@ -539,7 +537,9 @@ Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String&
     if (port < 0 || port > MaxAllowedPort)
         return createUnique();
     String decodedHost = decodeURLEscapeSequences(host);
-    return create(URL(URL(), protocol + "://" + host + ":" + String::number(port) + "/"));
+    auto origin = create(URL(URL(), protocol + "://" + host + "/"));
+    origin->m_port = port;
+    return origin;
 }
 
 String SecurityOrigin::databaseIdentifier() const 

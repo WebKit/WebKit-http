@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef MachineThreads_h
-#define MachineThreads_h
+#pragma once
 
 #include <setjmp.h>
 #include <wtf/Lock.h>
@@ -191,5 +190,3 @@ private:
     MachineThreads::RegisterState registers REGISTER_BUFFER_ALIGNMENT; \
     setjmp(registers)
 #endif
-
-#endif // MachineThreads_h

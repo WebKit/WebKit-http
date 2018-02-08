@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssemblerX86Common_h
-#define MacroAssemblerX86Common_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
 
@@ -2629,9 +2628,22 @@ public:
         m_assembler.nop();
     }
     
+    // We take memoryFence to mean acqrel. This has acqrel semantics on x86.
     void memoryFence()
     {
-        m_assembler.mfence();
+        // lock; orl $0, (%rsp)
+        m_assembler.lock();
+        m_assembler.orl_im(0, 0, X86Registers::esp);
+    }
+
+    // We take this to mean that it prevents motion of normal stores. So, it's a no-op on x86.
+    void storeFence()
+    {
+    }
+
+    // We take this to mean that it prevents motion of normal loads. So, it's a no-op on x86.
+    void loadFence()
+    {
     }
 
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
@@ -2949,5 +2961,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssemblerX86Common_h

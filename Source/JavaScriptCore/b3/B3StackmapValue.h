@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3StackmapValue_h
-#define B3StackmapValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -44,10 +43,10 @@ typedef SharedTask<StackmapGeneratorFunction> StackmapGenerator;
 
 class JS_EXPORT_PRIVATE StackmapValue : public Value {
 public:
-    static bool accepts(Opcode opcode)
+    static bool accepts(Kind kind)
     {
         // This needs to include opcodes of all subclasses.
-        switch (opcode) {
+        switch (kind.opcode()) {
         case CheckAdd:
         case CheckSub:
         case CheckMul:
@@ -289,7 +288,7 @@ protected:
     void dumpChildren(CommaPrinter&, PrintStream&) const override;
     void dumpMeta(CommaPrinter&, PrintStream&) const override;
 
-    StackmapValue(CheckedOpcodeTag, Opcode, Type, Origin);
+    StackmapValue(CheckedOpcodeTag, Kind, Type, Origin);
 
 private:
     friend class CheckSpecial;
@@ -307,6 +306,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3StackmapValue_h
-

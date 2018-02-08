@@ -4,7 +4,7 @@ include(CMakeParseArguments)
 macro(WEBKIT_SET_EXTRA_COMPILER_FLAGS _target)
     set(options ENABLE_WERROR IGNORECXX_WARNINGS)
     CMAKE_PARSE_ARGUMENTS("OPTION" "${options}" "" "" ${ARGN})
-    if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if (COMPILER_IS_GCC_OR_CLANG)
         get_target_property(OLD_COMPILE_FLAGS ${_target} COMPILE_FLAGS)
         if (${OLD_COMPILE_FLAGS} STREQUAL "OLD_COMPILE_FLAGS-NOTFOUND")
             set(OLD_COMPILE_FLAGS "")
@@ -16,7 +16,7 @@ macro(WEBKIT_SET_EXTRA_COMPILER_FLAGS _target)
         endif ()
 
         # Suppress -Wparentheses-equality warning of Clang
-        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        if (COMPILER_IS_CLANG)
             set(OLD_COMPILE_FLAGS "-Wno-parentheses-equality ${OLD_COMPILE_FLAGS}")
         endif ()
 

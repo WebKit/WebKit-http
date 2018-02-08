@@ -1,3 +1,291 @@
+2016-10-13  Brian Burg  <bburg@apple.com>
+
+        [CMake] Split the definition of CODE_GENERATOR_PREPROCESSOR so it can be used in a custom command
+        https://bugs.webkit.org/show_bug.cgi?id=163401
+
+        Reviewed by Michael Catanzaro.
+
+        In another patch, we need to use CODE_GENERATOR_PREPROCESSOR as the COMMAND argument
+        when defining an add_custom_command. Previously, it has only been used as a quoted argument
+        to various Perl code generation scripts.
+
+        To support both use cases, we need to be able to provide the executable and its arguments as
+        an unbroken quoted string, and as a CMake list suitable for passing as an argument to COMMAND.
+
+        * Source/cmake/OptionsCommon.cmake:
+        Split out the executable and argument string into separate variables that can be used elsewhere.
+        Compute the final unbroken quoted string using the two separate variables to arrive at the same result.
+
+        * Source/cmake/WebKitMacros.cmake:
+        Drive-by cleanup to add quotes around the use of CODE_GENERATOR_PREPROCESSOR so it matches other uses.
+
+2016-10-12  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Drop support for legacy [ConstructorConditional=*]
+        https://bugs.webkit.org/show_bug.cgi?id=163368
+
+        Reviewed by Ryosuke Niwa.
+
+        Drop ENABLE_DOM4_EVENTS_CONSTRUCTOR compiler flag.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2016-10-11  Alex Christensen  <achristensen@webkit.org>
+
+        Remove dead networking code
+        https://bugs.webkit.org/show_bug.cgi?id=163263
+
+        Reviewed by Daniel Bates.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+
+2016-10-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Make INDEXED_DATABASE_IN_WORKERS depending on INDEXED_DATABASE
+        https://bugs.webkit.org/show_bug.cgi?id=163280
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-10-11  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win][Direct2D] Compile fix.
+        https://bugs.webkit.org/show_bug.cgi?id=163273
+
+        Reviewed by Brent Fulgham.
+
+        Define USE_DIRECT2D.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+
+2016-10-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add ENABLE_ENCRYPTED_MEDIA configuration option
+        https://bugs.webkit.org/show_bug.cgi?id=163219
+
+        Reviewed by Darin Adler.
+
+        Add the ENABLE_ENCRYPTED_MEDIA configuration option to the
+        CMake and MSVC build systems. It will be used to enable or
+        disable the new EME implementation at build-time.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2016-10-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206972.
+        https://bugs.webkit.org/show_bug.cgi?id=163227
+
+        Making EWS flaky (Requested by bfulgham_ on #webkit).
+
+        Reverted changeset:
+
+        "[CMake] CMake does not support the dep files for implicit
+        dependency"
+        https://bugs.webkit.org/show_bug.cgi?id=161433
+        http://trac.webkit.org/changeset/206972
+
+2016-10-09  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] CMake does not support the dep files for implicit dependency
+        https://bugs.webkit.org/show_bug.cgi?id=161433
+
+        Reviewed by Brent Fulgham.
+
+        Created a Perl script to generate all IDL bindings for CMake.
+        This script can regenerate outdated bindings by based on the
+        supplemental dependency and dep files created by
+        '--write-dependencies' switch of generate-bindings.pl.
+
+        add_custom_target is used to invoke the script instead of
+        add_custom_command because Ninja deletes all output files before
+        executing the command in case of add_custom_command.
+
+        USES_TERMINAL option of add_custom_target has two effects:
+        1) Not buffering output of the command
+        2) Invoking the command in the special Ninja pool which inhibits parallel build
+        One needs to use CMake 3.2 or later to enable this feature.
+
+        * Source/cmake/WebKitMacros.cmake (GENERATE_BINDINGS): Included
+        ProcessorCount.  Added a new argument 'target'.  Use
+        add_custom_target instead of add_custom_command.  Invoke the new
+        script.
+
+2016-10-07  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use 'use lib $FindBin::Bin' to append Perl module include path
+        https://bugs.webkit.org/show_bug.cgi?id=162256
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/WebKitMacros.cmake: Removed '-I' options from
+        invocation of Perl.
+
+2016-10-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win][Direct2D] Add Direct2D CMake rules
+        https://bugs.webkit.org/show_bug.cgi?id=162925
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/OptionsAppleWin.cmake: Add a new 'USE_DIRECT2D' option
+        flag for the build. Currently this is commented out and is unused.
+
+2016-10-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Rename ENABLE_ENCRYPTED_MEDIA_V2 to ENABLE_LEGACY_ENCRYPTED_MEDIA
+        https://bugs.webkit.org/show_bug.cgi?id=162903
+
+        Reviewed by Alex Christensen.
+
+        Rename build guards for the remaining implementation of the legacy EME API
+        to ENABLE_LEGACY_ENCRYPTED_MEDIA. This will allow for the future implementation
+        of the near-finished API to be guarded with the simple ENABLE_ENCRYPTED_MEDIA guards.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2016-10-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Cleanup persistent credential storage code
+        https://bugs.webkit.org/show_bug.cgi?id=162777
+
+        Reviewed by Alex Christensen.
+
+        Remove ENABLE(CREDENTIAL_STORAGE) build flag and replace it by USE(LIBSECRET).
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-09-29  Aaron Chu  <aaron_chu@apple.com>
+
+        Web Inspector: AXI: linkified refs to #document and #text are not usually navigable nodes; consider delinkifying them
+        https://bugs.webkit.org/show_bug.cgi?id=130600
+        <rdar://problem/16391333>
+
+        Reviewed by Brian Burg.
+
+        Added a manual test to test the node links in the Accessibility Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=130600
+
+        * ManualTests/accessibility/delinkified-non-navigable-links.html: Added.
+
+2016-09-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Remove obsolete comment from OptionsGTK.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=162622
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-09-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for several CMake ports after r206440
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-09-27  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE_LOCALTIME_R definition
+        https://bugs.webkit.org/show_bug.cgi?id=162636
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2016-09-27  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Use CMake to determine HAVE_* defines
+        https://bugs.webkit.org/show_bug.cgi?id=162368
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2016-09-27  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Simplify Clang checks and prepare for compiler ID split
+        https://bugs.webkit.org/show_bug.cgi?id=162609
+
+        Reviewed by Michael Catanzaro.
+
+        CMake 3.x introduces separate compiler id for AppleClang, making condition
+        (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") inappropriate as check for
+        any clang version. Introduce COMPILER_IS_CLANG instead, which is also
+        shorter that CMAKE_CXX_COMPILER_ID comparison.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/WebKitHelpers.cmake:
+        * Source/cmake/OptionsEfl.cmake: Use CMAKE_COMPILER_IS_GNUCXX instead of
+        !Clang check because this is what was really meant here.
+
+2016-09-27  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Added COMPILER_IS_GCC_OR_CLANG variable to simplify conditions.
+        https://bugs.webkit.org/show_bug.cgi?id=162605
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/WebKitHelpers.cmake:
+
+2016-09-26  Daniel Bates  <dabates@apple.com>
+
+        Rename IOS_TEXT_AUTOSIZING to TEXT_AUTOSIZING
+        https://bugs.webkit.org/show_bug.cgi?id=162365
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake: Substitute ENABLE_TEXT_AUTOSIZING for ENABLE_IOS_TEXT_AUTOSIZING,
+        update the description of this feature to better describe what it does and re-order the define in the
+        list of defines such that it is in sorted order.
+
+2016-09-26  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Added an option to disable thin archives when they are undesirable.
+        https://bugs.webkit.org/show_bug.cgi?id=162561
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake: Added USE_THIN_ARCHIVES option.
+
+2016-09-23  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Implement parsing of Async Functions
+        https://bugs.webkit.org/show_bug.cgi?id=161409
+
+        Reviewed by Yusuke Suzuki.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-09-22  Daniel Bates  <dabates@apple.com>
+
+        Remove more ENABLE(TEXT_AUTOSIZING) code
+        https://bugs.webkit.org/show_bug.cgi?id=162456
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
 2016-09-20  Don Olmstead  <don.olmstead@am.sony.com>
 
         [WinCairo] Use find_package cairo in build

@@ -26,7 +26,7 @@
 #import "config.h"
 #import "CDMSessionAVStreamSession.h"
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 #import "AVFoundationSPI.h"
 #import "CDM.h"
@@ -257,6 +257,11 @@ bool CDMSessionAVStreamSession::update(Uint8Array* key, RefPtr<Uint8Array>& next
 
         nextMessage = Uint8Array::create([request length]);
         [request getBytes:nextMessage->data() length:nextMessage->length()];
+        return false;
+    }
+
+    if (!protectedSourceBuffer) {
+        errorCode = MediaPlayer::InvalidPlayerState;
         return false;
     }
 

@@ -42,7 +42,6 @@
 #include "EvalCodeCache.h"
 #include "Exception.h"
 #include "ExceptionHelpers.h"
-#include "GetterSetter.h"
 #include "JSArrayInlines.h"
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
@@ -58,7 +57,6 @@
 #include "Parser.h"
 #include "ProtoCallFrame.h"
 #include "RegExpObject.h"
-#include "RegExpPrototype.h"
 #include "Register.h"
 #include "ScopedArguments.h"
 #include "StackAlignment.h"
@@ -105,8 +103,7 @@ JSValue eval(CallFrame* callFrame)
         return jsUndefined();
     }
     String programSource = asString(program)->value(callFrame);
-    if (UNLIKELY(scope.exception()))
-        return JSValue();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     
     CallFrame* callerFrame = callFrame->callerFrame();
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
@@ -188,8 +185,7 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
     default:
         RELEASE_ASSERT(arguments.isObject());
         length = getLength(callFrame, jsCast<JSObject*>(cell));
-        if (UNLIKELY(scope.exception()))
-            return 0;
+        RETURN_IF_EXCEPTION(scope, 0);
         break;
     }
 
@@ -587,14 +583,14 @@ private:
 ALWAYS_INLINE static void notifyDebuggerOfUnwinding(CallFrame* callFrame)
 {
     VM& vm = callFrame->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    auto catchScope = DECLARE_CATCH_SCOPE(vm);
     if (Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger()) {
         SuspendExceptionScope scope(&vm);
         if (jsDynamicCast<JSFunction*>(callFrame->callee()))
-            debugger->returnEvent(callFrame);
+            debugger->unwindEvent(callFrame);
         else
             debugger->didExecuteProgram(callFrame);
-        ASSERT_UNUSED(throwScope, !throwScope.exception());
+        ASSERT_UNUSED(catchScope, !catchScope.exception());
     }
 }
 
@@ -682,7 +678,7 @@ private:
 
 NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exception* exception, UnwindStart unwindStart)
 {
-    auto scope = DECLARE_THROW_SCOPE(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     if (unwindStart == UnwindFromCallerFrame) {
         if (callFrame->callerFrameOrVMEntryFrame() == vm.topVMEntryFrame)
@@ -806,8 +802,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                     if (i == 0) {
                         PropertySlot slot(globalObject, PropertySlot::InternalMethodType::Get);
                         if (!globalObject->getPropertySlot(callFrame, JSONPPath[i].m_pathEntryName, slot)) {
-                            if (throwScope.exception())
-                                return jsUndefined();
+                            RETURN_IF_EXCEPTION(throwScope, JSValue());
                             if (entry)
                                 return throwException(callFrame, throwScope, createUndefinedVariableError(callFrame, JSONPPath[i].m_pathEntryName));
                             goto failedJSONP;
@@ -815,14 +810,12 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                         baseObject = slot.getValue(callFrame, JSONPPath[i].m_pathEntryName);
                     } else
                         baseObject = baseObject.get(callFrame, JSONPPath[i].m_pathEntryName);
-                    if (throwScope.exception())
-                        return jsUndefined();
+                    RETURN_IF_EXCEPTION(throwScope, JSValue());
                     continue;
                 }
                 case JSONPPathEntryTypeLookup: {
                     baseObject = baseObject.get(callFrame, static_cast<unsigned>(JSONPPath[i].m_pathIndex));
-                    if (throwScope.exception())
-                        return jsUndefined();
+                    RETURN_IF_EXCEPTION(throwScope, JSValue());
                     continue;
                 }
                 default:
@@ -834,8 +827,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
             switch (JSONPPath.last().m_type) {
             case JSONPPathEntryTypeCall: {
                 JSValue function = baseObject.get(callFrame, JSONPPath.last().m_pathEntryName);
-                if (throwScope.exception())
-                    return jsUndefined();
+                RETURN_IF_EXCEPTION(throwScope, JSValue());
                 CallData callData;
                 CallType callType = getCallData(function, callData);
                 if (callType == CallType::None)
@@ -844,20 +836,17 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                 jsonArg.append(JSONPValue);
                 JSValue thisValue = JSONPPath.size() == 1 ? jsUndefined(): baseObject;
                 JSONPValue = JSC::call(callFrame, function, callType, callData, thisValue, jsonArg);
-                if (throwScope.exception())
-                    return jsUndefined();
+                RETURN_IF_EXCEPTION(throwScope, JSValue());
                 break;
             }
             case JSONPPathEntryTypeDot: {
                 baseObject.put(callFrame, JSONPPath.last().m_pathEntryName, JSONPValue, slot);
-                if (throwScope.exception())
-                    return jsUndefined();
+                RETURN_IF_EXCEPTION(throwScope, JSValue());
                 break;
             }
             case JSONPPathEntryTypeLookup: {
                 baseObject.putByIndex(callFrame, JSONPPath.last().m_pathIndex, JSONPValue, slot.isStrictMode());
-                if (throwScope.exception())
-                    return jsUndefined();
+                RETURN_IF_EXCEPTION(throwScope, JSValue());
                 break;
             }
             default:
@@ -960,8 +949,7 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
             throwScope.release();
         } else {
             result = JSValue::decode(vmEntryToNative(reinterpret_cast<void*>(callData.native.function), &vm, &protoCallFrame));
-            if (throwScope.exception())
-                result = jsNull();
+            RETURN_IF_EXCEPTION(throwScope, JSValue());
         }
     }
 
@@ -1029,8 +1017,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
         }
     }
 
-    if (UNLIKELY(throwScope.exception()))
-        return 0;
+    RETURN_IF_EXCEPTION(throwScope, 0);
     ASSERT(result.isObject());
     return checkedReturn(asObject(result));
 }
@@ -1233,7 +1220,7 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
     return checkedReturn(result);
 }
 
-NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookID debugHookID)
+NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookType debugHookType)
 {
     VM& vm = callFrame->vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
@@ -1244,7 +1231,7 @@ NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookID debugHook
     ASSERT(callFrame->codeBlock()->hasDebuggerRequests());
     ASSERT_UNUSED(scope, !scope.exception());
 
-    switch (debugHookID) {
+    switch (debugHookType) {
         case DidEnterCallFrame:
             debugger->callEvent(callFrame);
             break;
@@ -1253,6 +1240,9 @@ NEVER_INLINE void Interpreter::debug(CallFrame* callFrame, DebugHookID debugHook
             break;
         case WillExecuteStatement:
             debugger->atStatement(callFrame);
+            break;
+        case WillExecuteExpression:
+            debugger->atExpression(callFrame);
             break;
         case WillExecuteProgram:
             debugger->willExecuteProgram(callFrame);

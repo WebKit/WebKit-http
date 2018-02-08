@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SlotVisitor_h
-#define SlotVisitor_h
+#pragma once
 
 #include "CellState.h"
 #include "HandleTypes.h"
@@ -38,7 +37,6 @@ class GCThreadSharedData;
 class Heap;
 class HeapCell;
 class HeapSnapshotBuilder;
-template<typename T> class JITWriteBarrier;
 class MarkedBlock;
 class UnconditionalFinalizer;
 template<typename T> class Weak;
@@ -167,8 +165,7 @@ private:
 
     HeapSnapshotBuilder* m_heapSnapshotBuilder { nullptr };
     JSCell* m_currentCell { nullptr };
-
-    CellState m_currentObjectCellStateBeforeVisiting { CellState::NewWhite };
+    CellState m_oldCellState;
 
 public:
 #if !ASSERT_DISABLED
@@ -197,5 +194,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // SlotVisitor_h

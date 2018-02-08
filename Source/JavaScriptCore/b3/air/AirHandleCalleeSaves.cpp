@@ -48,13 +48,14 @@ void handleCalleeSaves(Code& code)
                     usedCalleeSaves.set(tmp.reg());
                 });
 
-            if (inst.opcode == Patch)
+            if (inst.kind.opcode == Patch)
                 usedCalleeSaves.merge(inst.extraClobberedRegs());
         }
     }
 
     // Now we filter to really get the callee saves.
     usedCalleeSaves.filter(RegisterSet::calleeSaveRegisters());
+    usedCalleeSaves.filter(code.mutableRegs());
     usedCalleeSaves.exclude(RegisterSet::stackRegisters()); // We don't need to save FP here.
 
     if (!usedCalleeSaves.numberOfSetRegisters())

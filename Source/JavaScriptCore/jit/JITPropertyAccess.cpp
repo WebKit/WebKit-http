@@ -442,13 +442,13 @@ JITPutByIdGenerator JIT::emitPutByValWithCachedId(ByValInfo* byValInfo, Instruct
 
     // Write barrier breaks the registers. So after issuing the write barrier,
     // reload the registers.
-    emitWriteBarrier(base, value, ShouldFilterValue);
     emitGetVirtualRegisters(base, regT0, value, regT1);
 
     JITPutByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), CallSiteIndex(m_bytecodeOffset), RegisterSet::stubUnavailableRegisters(),
         JSValueRegs(regT0), JSValueRegs(regT1), regT2, m_codeBlock->ecmaMode(), putKind);
     gen.generateFastPath(*this);
+    emitWriteBarrier(base, value, ShouldFilterBase);
     doneCases.append(jump());
 
     Label coldPathBegin = label();
@@ -666,8 +666,6 @@ void JIT::emit_op_put_by_id(Instruction* currentInstruction)
     int valueVReg = currentInstruction[3].u.operand;
     unsigned direct = currentInstruction[8].u.putByIdFlags & PutByIdIsDirect;
 
-    emitWriteBarrier(baseVReg, valueVReg, ShouldFilterBase);
-
     // In order to be able to patch both the Structure, and the object offset, we store one pointer,
     // to just after the arguments have been loaded into registers 'hotPathBegin', and we generate code
     // such that the Structure & offset are always at the same distance from this.
@@ -684,6 +682,8 @@ void JIT::emit_op_put_by_id(Instruction* currentInstruction)
     gen.generateFastPath(*this);
     addSlowCase(gen.slowPathJump());
     
+    emitWriteBarrier(baseVReg, valueVReg, ShouldFilterBase);
+
     m_putByIds.append(gen);
 }
 
@@ -1180,8 +1180,8 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBaseAndValue || mode == ShouldFilterBase)
         ownerNotCell = branchTest64(NonZero, regT0, tagMaskRegister);
 
-    Jump ownerIsRememberedOrInEden = jumpIfIsRememberedOrInEden(regT0);
-    callOperation(operationUnconditionalWriteBarrier, regT0);
+    Jump ownerIsRememberedOrInEden = barrierBranch(regT0, regT1);
+    callOperation(operationWriteBarrierSlowPath, regT0);
     ownerIsRememberedOrInEden.link(this);
 
     if (mode == ShouldFilterBaseAndValue || mode == ShouldFilterBase)
@@ -1218,8 +1218,8 @@ void JIT::emitWriteBarrier(unsigned owner, unsigned value, WriteBarrierMode mode
     if (mode == ShouldFilterBase || mode == ShouldFilterBaseAndValue)
         ownerNotCell = branch32(NotEqual, regT0, TrustedImm32(JSValue::CellTag));
 
-    Jump ownerIsRememberedOrInEden = jumpIfIsRememberedOrInEden(regT1);
-    callOperation(operationUnconditionalWriteBarrier, regT1);
+    Jump ownerIsRememberedOrInEden = barrierBranch(regT1, regT2);
+    callOperation(operationWriteBarrierSlowPath, regT1);
     ownerIsRememberedOrInEden.link(this);
 
     if (mode == ShouldFilterBase || mode == ShouldFilterBaseAndValue)
@@ -1246,12 +1246,9 @@ void JIT::emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode mode)
 
 void JIT::emitWriteBarrier(JSCell* owner)
 {
-    if (!owner->cellContainer().isMarked(owner)) {
-        Jump ownerIsRememberedOrInEden = jumpIfIsRememberedOrInEden(owner);
-        callOperation(operationUnconditionalWriteBarrier, owner);
-        ownerIsRememberedOrInEden.link(this);
-    } else
-        callOperation(operationUnconditionalWriteBarrier, owner);
+    Jump ownerIsRememberedOrInEden = barrierBranch(owner, regT0);
+    callOperation(operationWriteBarrierSlowPath, owner);
+    ownerIsRememberedOrInEden.link(this);
 }
 
 void JIT::emitByValIdentifierCheck(ByValInfo* byValInfo, RegisterID cell, RegisterID scratch, const Identifier& propertyName, JumpList& slowCases)
@@ -1390,8 +1387,8 @@ void JIT::privateCompilePutByVal(ByValInfo* byValInfo, ReturnAddressPtr returnAd
     patchBuffer.link(slowCases, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(done, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
     if (needsLinkForWriteBarrier) {
-        ASSERT(m_calls.last().to == operationUnconditionalWriteBarrier);
-        patchBuffer.link(m_calls.last().from, operationUnconditionalWriteBarrier);
+        ASSERT(m_calls.last().to == operationWriteBarrierSlowPath);
+        patchBuffer.link(m_calls.last().from, operationWriteBarrierSlowPath);
     }
     
     bool isDirect = m_interpreter->getOpcodeID(currentInstruction->u.opcode) == op_put_by_val_direct;
@@ -1771,6 +1768,18 @@ JIT::JumpList JIT::emitFloatTypedArrayPutByVal(Instruction* currentInstruction, 
     }
     
     return slowCases;
+}
+
+void JIT::emit_op_define_data_property(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_define_data_property);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_define_accessor_property(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_define_accessor_property);
+    slowPathCall.call();
 }
 
 } // namespace JSC

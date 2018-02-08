@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ExceptionScope_h
-#define ExceptionScope_h
+#pragma once
 
 #include "VM.h"
 
@@ -70,7 +69,10 @@ protected:
 };
     
 #endif // ENABLE(EXCEPTION_SCOPE_VERIFICATION)
-    
-} // namespace JSC
 
-#endif // ExceptionScope_h
+#define RETURN_IF_EXCEPTION(scope__, value__) do { \
+        if (UNLIKELY((scope__).exception())) \
+            return value__; \
+    } while (false)
+
+} // namespace JSC

@@ -79,6 +79,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}/ForwardingHeaders/bindings"
     "${WEBCORE_DIR}/ForwardingHeaders/bytecode"
+    "${WEBCORE_DIR}/ForwardingHeaders/domjit"
     "${WEBCORE_DIR}/ForwardingHeaders/debugger"
     "${WEBCORE_DIR}/ForwardingHeaders/heap"
     "${WEBCORE_DIR}/ForwardingHeaders/inspector"
@@ -179,6 +180,7 @@ list(APPEND WebCore_SOURCES
     crypto/CryptoAlgorithmRegistry.cpp
     crypto/CryptoKey.cpp
     crypto/CryptoKeyPair.cpp
+    crypto/SubtleCrypto.cpp
     crypto/WebKitSubtleCrypto.cpp
 
     crypto/algorithms/CryptoAlgorithmAES_CBC.cpp

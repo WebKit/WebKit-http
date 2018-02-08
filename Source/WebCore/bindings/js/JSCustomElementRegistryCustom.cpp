@@ -46,8 +46,7 @@ static JSObject* getCustomElementCallback(ExecState& state, JSObject& prototype,
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSValue callback = prototype.get(&state, id);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     if (callback.isUndefined())
         return nullptr;
     if (!callback.isFunction()) {
@@ -88,8 +87,7 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     AtomicString localName(state.uncheckedArgument(0).toString(&state)->toAtomicString(&state));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     JSValue constructorValue = state.uncheckedArgument(1);
     if (!constructorValue.isConstructor())
@@ -118,8 +116,7 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
     }
 
     JSValue prototypeValue = constructor->get(&state, vm.propertyNames->prototype);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     if (!prototypeValue.isObject())
         return throwTypeError(&state, scope, ASCIILiteral("Custom element constructor's prototype must be an object"));
     JSObject& prototypeObject = *asObject(prototypeValue);
@@ -129,28 +126,26 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
 
     if (auto* connectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "connectedCallback")))
         elementInterface->setConnectedCallback(connectedCallback);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     if (auto* disconnectedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "disconnectedCallback")))
         elementInterface->setDisconnectedCallback(disconnectedCallback);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     if (auto* adoptedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "adoptedCallback")))
         elementInterface->setAdoptedCallback(adoptedCallback);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     auto* attributeChangedCallback = getCustomElementCallback(state, prototypeObject, Identifier::fromString(&vm, "attributeChangedCallback"));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     if (attributeChangedCallback) {
-        auto value = convertOptional<Vector<String>>(state, constructor->get(&state, Identifier::fromString(&state, "observedAttributes")));
-        if (UNLIKELY(scope.exception()))
-            return jsUndefined();
-        if (value)
-            elementInterface->setAttributeChangedCallback(attributeChangedCallback, *value);
+        auto observedAttributesValue = constructor->get(&state, Identifier::fromString(&state, "observedAttributes"));
+        RETURN_IF_EXCEPTION(scope, JSValue());
+        if (!observedAttributesValue.isUndefined()) {
+            auto observedAttributes = convert<IDLSequence<IDLDOMString>>(state, observedAttributesValue);
+            RETURN_IF_EXCEPTION(scope, JSValue());
+            elementInterface->setAttributeChangedCallback(attributeChangedCallback, observedAttributes);
+        }
     }
 
     PrivateName uniquePrivateName;
@@ -162,7 +157,7 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
 }
 
 // https://html.spec.whatwg.org/#dom-customelementregistry-whendefined
-static JSValue whenDefinedPromise(ExecState& state, JSDOMGlobalObject& globalObject, CustomElementRegistry& registry)
+static JSValue whenDefinedPromise(ExecState& state, JSDOMGlobalObject& globalObject, CustomElementRegistry& registry, JSPromiseDeferred& promiseDeferred)
 {
     auto scope = DECLARE_THROW_SCOPE(state.vm());
 
@@ -170,20 +165,20 @@ static JSValue whenDefinedPromise(ExecState& state, JSDOMGlobalObject& globalObj
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     AtomicString localName(state.uncheckedArgument(0).toString(&state)->toAtomicString(&state));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
-    if (!validateCustomElementNameAndThrowIfNeeded(state, localName))
+    if (!validateCustomElementNameAndThrowIfNeeded(state, localName)) {
+        ASSERT(scope.exception());
         return jsUndefined();
+    }
 
     if (registry.findInterface(localName)) {
-        auto& jsPromise = *JSPromiseDeferred::create(&state, &globalObject);
-        DeferredWrapper::create(&state, &globalObject, &jsPromise)->resolve(nullptr);
-        return jsPromise.promise();
+        DeferredPromise::create(globalObject, promiseDeferred)->resolve(nullptr);
+        return promiseDeferred.promise();
     }
 
     auto result = registry.promiseMap().ensure(localName, [&] {
-        return DeferredWrapper::create(&state, &globalObject, JSPromiseDeferred::create(&state, &globalObject));
+        return DeferredPromise::create(globalObject, promiseDeferred);
     });
 
     return result.iterator->value->promise();
@@ -193,14 +188,15 @@ JSValue JSCustomElementRegistry::whenDefined(ExecState& state)
 {
     auto scope = DECLARE_CATCH_SCOPE(state.vm());
 
-    JSDOMGlobalObject& globalObject = *jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject());
-    auto& promiseDeferred = *JSPromiseDeferred::create(&state, &globalObject);
-    JSValue promise = whenDefinedPromise(state, globalObject, wrapped());
+    ASSERT(globalObject());
+    auto promiseDeferred = JSPromiseDeferred::create(&state, globalObject());
+    ASSERT(promiseDeferred);
+    JSValue promise = whenDefinedPromise(state, *globalObject(), wrapped(), *promiseDeferred);
 
     if (UNLIKELY(scope.exception())) {
-        rejectPromiseWithExceptionIfAny(state, globalObject, promiseDeferred);
+        rejectPromiseWithExceptionIfAny(state, *globalObject(), *promiseDeferred);
         ASSERT(!scope.exception());
-        return promiseDeferred.promise();
+        return promiseDeferred->promise();
     }
 
     return promise;

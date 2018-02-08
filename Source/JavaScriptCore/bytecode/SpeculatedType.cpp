@@ -30,12 +30,13 @@
 #include "SpeculatedType.h"
 
 #include "DirectArguments.h"
-#include "JSCInlines.h"
 #include "JSArray.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSMap.h"
 #include "JSSet.h"
 #include "ProxyObject.h"
+#include "RegExpObject.h"
 #include "ScopedArguments.h"
 #include "StringObject.h"
 #include "ValueProfile.h"
@@ -352,6 +353,12 @@ SpeculatedType speculationFromTypedArrayType(TypedArrayType type)
 
 SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
 {
+    if (classInfo == JSString::info())
+        return SpecString;
+
+    if (classInfo == Symbol::info())
+        return SpecSymbol;
+
     if (classInfo == JSFinalObject::info())
         return SpecFinalObject;
     
@@ -384,6 +391,9 @@ SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
     
     if (isTypedView(classInfo->typedArrayStorageType))
         return speculationFromTypedArrayType(classInfo->typedArrayStorageType);
+
+    if (classInfo->isSubClassOf(JSArray::info()))
+        return SpecDerivedArray;
     
     if (classInfo->isSubClassOf(JSObject::info()))
         return SpecObjectOther;

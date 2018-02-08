@@ -118,9 +118,14 @@ public:
 
     bool wantsToObserveViewportVisibilityForMediaControls() const;
     bool wantsToObserveViewportVisibilityForAutoplay() const;
-    bool canShowControlsManager() const;
+
+    enum class PlaybackControlsPurpose { ControlsManager, NowPlaying };
+    bool canShowControlsManager(PlaybackControlsPurpose) const;
     bool isLargeEnoughForMainContent(MediaSessionMainContentPurpose) const;
     double mostRecentUserInteractionTime() const;
+
+    bool allowsPlaybackControlsForAutoplayingAudio() const;
+    bool allowsNowPlayingControlsVisibility() const override;
 
 private:
 

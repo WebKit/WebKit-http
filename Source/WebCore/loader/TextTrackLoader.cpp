@@ -56,7 +56,7 @@ TextTrackLoader::TextTrackLoader(TextTrackLoaderClient& client, ScriptExecutionC
 TextTrackLoader::~TextTrackLoader()
 {
     if (m_resource)
-        m_resource->removeClient(this);
+        m_resource->removeClient(*this);
 }
 
 void TextTrackLoader::cueLoadTimerFired()
@@ -73,19 +73,19 @@ void TextTrackLoader::cueLoadTimerFired()
 void TextTrackLoader::cancelLoad()
 {
     if (m_resource) {
-        m_resource->removeClient(this);
+        m_resource->removeClient(*this);
         m_resource = nullptr;
     }
 }
 
-void TextTrackLoader::processNewCueData(CachedResource* resource)
+void TextTrackLoader::processNewCueData(CachedResource& resource)
 {
-    ASSERT(m_resource == resource);
-    
-    if (m_state == Failed || !resource->resourceBuffer())
+    ASSERT_UNUSED(resource, m_resource == &resource);
+
+    if (m_state == Failed || !m_resource->resourceBuffer())
         return;
-    
-    auto* buffer = resource->resourceBuffer();
+
+    auto* buffer = m_resource->resourceBuffer();
     if (m_parseOffset == buffer->size())
         return;
 
@@ -102,14 +102,14 @@ void TextTrackLoader::processNewCueData(CachedResource* resource)
 }
 
 // FIXME: This is a very unusual pattern, no other CachedResourceClient does this. Refactor to use notifyFinished() instead.
-void TextTrackLoader::deprecatedDidReceiveCachedResource(CachedResource* resource)
+void TextTrackLoader::deprecatedDidReceiveCachedResource(CachedResource& resource)
 {
-    ASSERT(m_resource == resource);
-    
-    if (!resource->resourceBuffer())
+    ASSERT_UNUSED(resource, m_resource == &resource);
+
+    if (!m_resource->resourceBuffer())
         return;
-    
-    processNewCueData(resource);
+
+    processNewCueData(*m_resource);
 }
 
 void TextTrackLoader::corsPolicyPreventedLoad()
@@ -120,19 +120,19 @@ void TextTrackLoader::corsPolicyPreventedLoad()
     m_state = Failed;
 }
 
-void TextTrackLoader::notifyFinished(CachedResource* resource)
+void TextTrackLoader::notifyFinished(CachedResource& resource)
 {
-    ASSERT(m_resource == resource);
+    ASSERT_UNUSED(resource, m_resource == &resource);
 
-    if (resource->resourceError().isAccessControl())
+    if (m_resource->resourceError().isAccessControl())
         corsPolicyPreventedLoad();
 
     if (m_state != Failed) {
-        processNewCueData(resource);
+        processNewCueData(*m_resource);
         if (m_cueParser)
             m_cueParser->fileFinished();
         if (m_state != Failed)
-            m_state = resource->errorOccurred() ? Failed : Finished;
+            m_state = m_resource->errorOccurred() ? Failed : Finished;
     }
 
     if (m_state == Finished && m_cueParser)
@@ -161,7 +161,7 @@ bool TextTrackLoader::load(const URL& url, const String& crossOriginMode, bool i
     if (!m_resource)
         return false;
 
-    m_resource->addClient(this);
+    m_resource->addClient(*this);
 
     return true;
 }

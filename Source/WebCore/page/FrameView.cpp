@@ -91,6 +91,7 @@
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 #include "TextResourceDecoder.h"
 #include "TextStream.h"
 #include "TiledBacking.h"
@@ -200,6 +201,40 @@ private:
     RenderElement* m_layoutRoot { nullptr };
     bool m_didDisableLayoutState { false };
 };
+
+#ifndef NDEBUG
+class RenderTreeNeedsLayoutChecker {
+public :
+    RenderTreeNeedsLayoutChecker(const RenderElement& layoutRoot)
+        : m_layoutRoot(layoutRoot)
+    {
+    }
+
+    ~RenderTreeNeedsLayoutChecker()
+    {
+        auto reportNeedsLayoutError = [] (const RenderObject& renderer) {
+            WTFReportError(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, "post-layout: dirty renderer(s)");
+            renderer.showRenderTreeForThis();
+        };
+
+        if (m_layoutRoot.needsLayout()) {
+            reportNeedsLayoutError(m_layoutRoot);
+            return;
+        }
+
+        for (auto* descendant = m_layoutRoot.firstChild(); descendant; descendant = descendant->nextInPreOrder(&m_layoutRoot)) {
+            if (!descendant->needsLayout())
+                continue;
+            
+            reportNeedsLayoutError(*descendant);
+            return;
+        }
+    }
+
+private:
+    const RenderElement& m_layoutRoot;
+};
+#endif
 
 FrameView::FrameView(Frame& frame)
     : m_frame(frame)
@@ -1297,10 +1332,10 @@ void FrameView::layout(bool allowSubtree)
         m_layoutPhase = InPreLayoutStyleUpdate;
 
         // Viewport-dependent media queries may cause us to need completely different style information.
-        StyleResolver* styleResolver = document.styleResolverIfExists();
+        auto* styleResolver = document.styleScope().resolverIfExists();
         if (!styleResolver || styleResolver->hasMediaQueriesAffectedByViewportChange()) {
             LOG(Layout, "  hasMediaQueriesAffectedByViewportChange, enqueueing style recalc");
-            document.styleResolverChanged(DeferRecalcStyle);
+            document.styleScope().didChangeContentsOrInterpretation();
             // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
             InspectorInstrumentation::mediaQueryResultChanged(document);
         } else
@@ -1420,10 +1455,12 @@ void FrameView::layout(bool allowSubtree)
         forceLayoutParentViewIfNeeded();
 
         ASSERT(m_layoutPhase == InRenderTreeLayout);
-
+#ifndef NDEBUG
+        RenderTreeNeedsLayoutChecker checker(*root);
+#endif
         root->layout();
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
         if (frame().settings().textAutosizingEnabled() && !root->view().printing()) {
             float minimumZoomFontSize = frame().settings().minimumZoomFontSize();
             float textAutosizingWidth = frame().page() ? frame().page()->textAutosizingWidth() : 0;
@@ -3495,7 +3532,7 @@ void FrameView::setPagination(const Pagination& pagination)
 
     m_pagination = pagination;
 
-    frame().document()->styleResolverChanged(DeferRecalcStyle);
+    frame().document()->styleScope().didChangeContentsOrInterpretation();
 }
 
 IntRect FrameView::windowClipRect() const
@@ -4964,7 +5001,7 @@ void FrameView::setViewportSizeForCSSViewportUnits(IntSize size)
     if (Document* document = frame().document()) {
         // FIXME: this should probably be updateViewportUnitsOnResize(), but synchronously
         // dirtying style here causes assertions on iOS (rdar://problem/19998166).
-        document->styleResolverChanged(DeferRecalcStyle);
+        document->styleScope().didChangeContentsOrInterpretation();
     }
 }
     

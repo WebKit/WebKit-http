@@ -81,7 +81,7 @@ public:
     ContentSecurityPolicyResponseHeaders responseHeaders() const;
     enum ReportParsingErrors { No, Yes };
     void didReceiveHeaders(const ContentSecurityPolicyResponseHeaders&, ReportParsingErrors = ReportParsingErrors::Yes);
-    void processHTTPEquiv(const String& content, ContentSecurityPolicyHeaderType type) { didReceiveHeader(content, type, ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta); }
+    void didReceiveHeader(const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicy::PolicyFrom);
 
     bool allowScriptWithNonce(const String& nonce, bool overrideContentSecurityPolicy = false) const;
     bool allowStyleWithNonce(const String& nonce, bool overrideContentSecurityPolicy = false) const;
@@ -98,17 +98,18 @@ public:
     bool allowFrameAncestors(const Frame&, const URL&, bool overrideContentSecurityPolicy = false) const;
 
     enum class RedirectResponseReceived { No, Yes };
-    bool allowScriptFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowChildFrameFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowChildContextFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowImageFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowStyleFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowFontFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowMediaFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowConnectToSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowFormAction(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowScriptFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowImageFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowStyleFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowFontFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowMediaFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
 
-    bool allowObjectFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowChildFrameFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowChildContextFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowConnectToSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowFormAction(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+
+    bool allowObjectFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
     bool allowBaseURI(const URL&, bool overrideContentSecurityPolicy = false) const;
 
     void setOverrideAllowInlineStyle(bool);
@@ -168,8 +169,6 @@ private:
     void updateSourceSelf(const SecurityOrigin&);
     void applyPolicyToScriptExecutionContext();
 
-    void didReceiveHeader(const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicy::PolicyFrom);
-
     const TextEncoding& documentEncoding() const;
 
     enum class Disposition {
@@ -187,6 +186,9 @@ private:
 
     template<typename Predicate, typename... Args>
     bool allPoliciesAllow(ViolatedDirectiveCallback&&, Predicate&&, Args&&...) const WARN_UNUSED_RETURN;
+
+    using ResourcePredicate = const ContentSecurityPolicyDirective *(ContentSecurityPolicyDirectiveList::*)(const URL &, bool) const;
+    bool allowResourceFromSource(const URL&, RedirectResponseReceived, const char*, ResourcePredicate) const;
 
     using HashInEnforcedAndReportOnlyPoliciesPair = std::pair<bool, bool>;
     template<typename Predicate> HashInEnforcedAndReportOnlyPoliciesPair findHashOfContentInPolicies(Predicate&&, const String& content, OptionSet<ContentSecurityPolicyHashAlgorithm>) const WARN_UNUSED_RETURN;

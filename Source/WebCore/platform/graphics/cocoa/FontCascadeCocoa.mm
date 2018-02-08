@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc.
+ * Copyright (C) 2003, 2006-2011, 2016 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -49,8 +49,6 @@ SOFT_LINK_CLASS(CoreUI, CUIStyleEffectConfiguration)
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK(UIKit, _UIKitGetTextEffectsCatalog, CUICatalog *, (void), ())
 #endif
-
-#define SYNTHETIC_OBLIQUE_ANGLE 14
 
 #ifdef __LP64__
 #define URefCon void*
@@ -120,7 +118,13 @@ static void showLetterpressedGlyphsWithAdvances(const FloatPoint& point, const F
         styleConfiguration.useSimplifiedEffect = YES;
     }
 
+    CGContextSetFont(context, adoptCF(CTFontCopyGraphicsFont(ctFont, nullptr)).get());
+    CGContextSetFontSize(context, platformData.size());
+
     [catalog drawGlyphs:glyphs atPositions:positions.data() inContext:context withFont:ctFont count:count stylePresetName:@"_UIKitNewLetterpressStyle" styleConfiguration:styleConfiguration foregroundColor:CGContextGetFillColorAsColor(context)];
+
+    CGContextSetFont(context, nullptr);
+    CGContextSetFontSize(context, 0);
 #else
     UNUSED_PARAM(point);
     UNUSED_PARAM(font);
@@ -238,7 +242,7 @@ void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const G
     matrix.b = -matrix.b;
     matrix.d = -matrix.d;
     if (platformData.syntheticOblique()) {
-        static float obliqueSkew = tanf(SYNTHETIC_OBLIQUE_ANGLE * piFloat / 180);
+        static float obliqueSkew = tanf(syntheticObliqueAngle() * piFloat / 180);
         if (platformData.orientation() == Vertical)
             matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, obliqueSkew, 0, 1, 0, 0));
         else

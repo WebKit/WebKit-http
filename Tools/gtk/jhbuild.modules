@@ -461,9 +461,9 @@
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/gtk-doc/1.20/gtk-doc-1.20.tar.xz" version="1.20"
+    <branch module="/pub/GNOME/sources/gtk-doc/${version}/gtk-doc-${version}.tar.xz" version="1.25"
             repo="ftp.gnome.org"
-            hash="sha256:3e6ecf134dbf92a74c24d79848fea3a48e59ab95408a38c6405905d95a293011"/>
+            hash="sha256:1ea46ed400e6501f975acaafea31479cea8f32f911dca4dff036f59e6464fd42"/>
   </autotools>
 
   <autotools id="libdrm" autogen-sh="configure">
@@ -514,7 +514,7 @@
       <dep package="gst-plugins-openwebrtc"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="c997bff14a9389582bc107e2aea7ce77fb700ed9"/>
+    <branch repo="github.com" module="EricssonResearch/openwebrtc.git" checkoutdir="openwebrtc" tag="0b28b080d61af3adb1f779e693fc029f9c1ad499"/>
   </autotools>
 
   <autotools id="llvm"

@@ -63,6 +63,7 @@ class NodeList;
 class Page;
 class Range;
 class RenderedDocumentMarker;
+class RTCPeerConnection;
 class SerializedScriptValue;
 class SourceBuffer;
 class TimeRanges;
@@ -211,12 +212,12 @@ public:
     bool hasSpellingMarker(int from, int length, ExceptionCode&);
     bool hasGrammarMarker(int from, int length, ExceptionCode&);
     bool hasAutocorrectedMarker(int from, int length, ExceptionCode&);
-    void setContinuousSpellCheckingEnabled(bool enabled, ExceptionCode&);
-    void setAutomaticQuoteSubstitutionEnabled(bool enabled, ExceptionCode&);
-    void setAutomaticLinkDetectionEnabled(bool enabled, ExceptionCode&);
-    void setAutomaticDashSubstitutionEnabled(bool enabled, ExceptionCode&);
-    void setAutomaticTextReplacementEnabled(bool enabled, ExceptionCode&);
-    void setAutomaticSpellingCorrectionEnabled(bool enabled, ExceptionCode&);
+    void setContinuousSpellCheckingEnabled(bool);
+    void setAutomaticQuoteSubstitutionEnabled(bool);
+    void setAutomaticLinkDetectionEnabled(bool);
+    void setAutomaticDashSubstitutionEnabled(bool);
+    void setAutomaticTextReplacementEnabled(bool);
+    void setAutomaticSpellingCorrectionEnabled(bool);
 
     void handleAcceptedCandidate(const String& candidate, unsigned location, unsigned length, ExceptionCode&);
 
@@ -353,7 +354,7 @@ public:
 
     void enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight);
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void initializeMockCDM();
 #endif
 
@@ -368,6 +369,7 @@ public:
 #if ENABLE(WEB_RTC)
     void enableMockMediaEndpoint();
     void enableMockRTCPeerConnectionHandler();
+    void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
 #endif
 
     String getImageSourceURL(Element&);
@@ -401,6 +403,7 @@ public:
 #if ENABLE(MEDIA_SOURCE)
     WEBCORE_TESTSUPPORT_EXPORT void initializeMockMediaSource();
     Vector<String> bufferedSamplesForTrackID(SourceBuffer&, const AtomicString&);
+    Vector<String> enqueuedSamplesForTrackID(SourceBuffer&, const AtomicString&);
     void setShouldGenerateTimestamps(SourceBuffer&, bool);
 #endif
 
@@ -491,6 +494,8 @@ public:
 
     enum class UserInterfaceLayoutDirection { LTR, RTL };
     void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection);
+
+    bool userPrefersReducedMotion() const;
 
 private:
     explicit Internals(Document&);

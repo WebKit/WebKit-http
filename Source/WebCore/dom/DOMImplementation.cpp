@@ -97,7 +97,7 @@ ExceptionOr<Ref<DocumentType>> DOMImplementation::createDocumentType(const Strin
     String localName;
     Document::parseQualifiedName(qualifiedName, prefix, localName, ec);
     if (ec)
-        return Exception(ec);
+        return Exception { ec };
 
     return DocumentType::create(m_document, qualifiedName, publicId, systemId);
 }
@@ -114,7 +114,7 @@ static inline Ref<XMLDocument> createXMLDocument(const String& namespaceURI)
 ExceptionOr<Ref<XMLDocument>> DOMImplementation::createDocument(const String& namespaceURI, const String& qualifiedName, DocumentType* documentType)
 {
     auto document = createXMLDocument(namespaceURI);
-
+    document->setContextDocument(m_document.contextDocument());
     document->setSecurityOriginPolicy(m_document.securityOriginPolicy());
 
     RefPtr<Element> documentElement;
@@ -122,7 +122,7 @@ ExceptionOr<Ref<XMLDocument>> DOMImplementation::createDocument(const String& na
         ExceptionCode ec = 0;
         documentElement = document->createElementNS(namespaceURI, qualifiedName, ec);
         if (ec)
-            return Exception(ec);
+            return Exception { ec };
     }
 
     if (documentType)
@@ -153,6 +153,7 @@ Ref<HTMLDocument> DOMImplementation::createHTMLDocument(const String& title)
         ASSERT(document->head());
         document->head()->appendChild(titleElement);
     }
+    document->setContextDocument(m_document.contextDocument());
     document->setSecurityOriginPolicy(m_document.securityOriginPolicy());
     return document;
 }

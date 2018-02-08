@@ -24,15 +24,17 @@
  */
 
 #include "config.h"
-
 #include "NetworkLoad.h"
 
 #include "AuthenticationManager.h"
+#include "DownloadProxyMessages.h"
 #include "NetworkProcess.h"
 #include "SessionTracker.h"
+#include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceHandle.h>
+#include <WebCore/ResourceRequest.h>
 #include <WebCore/SessionID.h>
 #include <WebCore/SharedBuffer.h>
 #include <wtf/MainThread.h>
@@ -76,8 +78,10 @@ NetworkLoad::~NetworkLoad()
 #if USE(NETWORK_SESSION)
     if (m_responseCompletionHandler)
         m_responseCompletionHandler(PolicyIgnore);
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     if (m_challengeCompletionHandler)
         m_challengeCompletionHandler(AuthenticationChallengeDisposition::Cancel, { });
+#endif
     if (m_task)
         m_task->clearClient();
 #elif USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -149,7 +153,6 @@ void NetworkLoad::continueWillSendRequest(WebCore::ResourceRequest&& newRequest)
 void NetworkLoad::continueDidReceiveResponse()
 {
 #if USE(NETWORK_SESSION)
-    ASSERT(m_responseCompletionHandler);
     if (m_responseCompletionHandler) {
         m_responseCompletionHandler(PolicyUse);
         m_responseCompletionHandler = nullptr;
@@ -186,6 +189,7 @@ void NetworkLoad::convertTaskToDownload(DownloadID downloadID, const ResourceReq
     if (!m_task)
         return;
 
+    NetworkProcess::singleton().downloadManager().downloadProxyConnection()->send(Messages::DownloadProxy::DidStart(updatedRequest, String()), downloadID.downloadID());
     m_task->setPendingDownloadID(downloadID);
     
     ASSERT(m_responseCompletionHandler);
@@ -199,6 +203,14 @@ void NetworkLoad::setPendingDownloadID(DownloadID downloadID)
         return;
 
     m_task->setPendingDownloadID(downloadID);
+}
+
+void NetworkLoad::setSuggestedFilename(const String& suggestedName)
+{
+    if (!m_task)
+        return;
+
+    m_task->setSuggestedFilename(suggestedName);
 }
 
 void NetworkLoad::setPendingDownload(PendingDownload& pendingDownload)
@@ -219,6 +231,7 @@ void NetworkLoad::willPerformHTTPRedirection(ResourceResponse&& response, Resour
 void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, ChallengeCompletionHandler&& completionHandler)
 {
     // Handle server trust evaluation at platform-level if requested, for performance reasons.
+#if PLATFORM(COCOA)
     if (challenge.protectionSpace().authenticationScheme() == ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested
         && !NetworkProcess::singleton().canHandleHTTPSServerTrustEvaluation()) {
         if (m_task && m_task->allowsSpecificHTTPSCertificateForHost(challenge))
@@ -227,11 +240,31 @@ void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, 
             completionHandler(AuthenticationChallengeDisposition::RejectProtectionSpace, { });
         return;
     }
+#endif
 
-    m_challengeCompletionHandler = WTFMove(completionHandler);
     m_challenge = challenge;
-
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    m_challengeCompletionHandler = WTFMove(completionHandler);
     m_client.canAuthenticateAgainstProtectionSpaceAsync(challenge.protectionSpace());
+#else
+    completeAuthenticationChallenge(WTFMove(completionHandler));
+#endif
+}
+
+void NetworkLoad::completeAuthenticationChallenge(ChallengeCompletionHandler&& completionHandler)
+{
+    if (m_parameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials) {
+        completionHandler(AuthenticationChallengeDisposition::UseCredential, { });
+        return;
+    }
+
+    if (!m_task)
+        return;
+
+    if (auto* pendingDownload = m_task->pendingDownload())
+        NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(*pendingDownload, *m_challenge, WTFMove(completionHandler));
+    else
+        NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, *m_challenge, WTFMove(completionHandler));
 }
 
 void NetworkLoad::didReceiveResponseNetworkSession(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
@@ -357,17 +390,7 @@ void NetworkLoad::continueCanAuthenticateAgainstProtectionSpace(bool result)
         return;
     }
 
-    if (m_parameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials) {
-        completionHandler(AuthenticationChallengeDisposition::UseCredential, { });
-        return;
-    }
-    
-    if (m_task) {
-        if (auto* pendingDownload = m_task->pendingDownload())
-            NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(*pendingDownload, *m_challenge, WTFMove(completionHandler));
-        else
-            NetworkProcess::singleton().authenticationManager().didReceiveAuthenticationChallenge(m_parameters.webPageID, m_parameters.webFrameID, *m_challenge, WTFMove(completionHandler));
-    }
+    completeAuthenticationChallenge(WTFMove(completionHandler));
 #else
     m_waitingForContinueCanAuthenticateAgainstProtectionSpace = false;
 #endif

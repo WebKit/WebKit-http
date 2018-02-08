@@ -64,7 +64,6 @@
 #include "JSFunction.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSInternalPromiseDeferred.h"
-#include "JSLexicalEnvironment.h"
 #include "JSLock.h"
 #include "JSMap.h"
 #include "JSPromiseDeferred.h"
@@ -907,11 +906,10 @@ void VM::verifyExceptionCheckNeedIsSatisfied(unsigned recursionDepth, ExceptionE
         dataLog(
             "ERROR: Unchecked JS exception:\n"
             "    This scope can throw a JS exception: ", throwLocation, "\n"
-            "        (ExceptionScope::m_recursionDepth was  ", throwDepth, ")\n"
+            "        (ExceptionScope::m_recursionDepth was ", throwDepth, ")\n"
             "    But the exception was unchecked as of this scope: ", location, "\n"
-            "        (ExceptionScope::m_recursionDepth was  ", recursionDepth, ")\n"
+            "        (ExceptionScope::m_recursionDepth was ", recursionDepth, ")\n"
             "\n");
-        WTFReportBacktrace();
 
         RELEASE_ASSERT(!m_needExceptionCheck);
     }

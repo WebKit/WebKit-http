@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGStructureAbstractValue_h
-#define DFGStructureAbstractValue_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -164,6 +163,12 @@ public:
         if (isNeitherClearNorTop())
             filterSlow(type);
     }
+
+    ALWAYS_INLINE void filterClassInfo(const ClassInfo* classInfo)
+    {
+        if (isNeitherClearNorTop())
+            filterClassInfoSlow(classInfo);
+    }
     
     ALWAYS_INLINE bool operator==(const StructureAbstractValue& other) const
     {
@@ -232,6 +237,8 @@ public:
     
     bool overlaps(const StructureSet& other) const;
     bool overlaps(const StructureAbstractValue& other) const;
+
+    bool isSubClassOf(const ClassInfo*) const;
     
     void validateReferences(const TrackedReferences&) const;
     
@@ -242,6 +249,7 @@ private:
     static const unsigned clobberedSupremacyThreshold = 2;
     
     void filterSlow(SpeculatedType type);
+    void filterClassInfoSlow(const ClassInfo*);
     bool mergeSlow(const StructureAbstractValue& other);
     
     bool equalsSlow(const StructureAbstractValue& other) const;
@@ -266,7 +274,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGStructureAbstractValue_h
-
-

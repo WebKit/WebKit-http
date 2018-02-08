@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSValueInlines_h
-#define JSValueInlines_h
+#pragma once
 
 #include "ExceptionHelpers.h"
 #include "Identifier.h"
@@ -642,8 +641,7 @@ inline PreferredPrimitiveType toPreferredPrimitiveType(ExecState* exec, JSValue 
     }
 
     StringImpl* hintString = jsCast<JSString*>(value)->value(exec).impl();
-    if (UNLIKELY(scope.exception()))
-        return NoPreference;
+    RETURN_IF_EXCEPTION(scope, NoPreference);
 
     if (WTF::equal(hintString, "default"))
         return NoPreference;
@@ -786,8 +784,7 @@ ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(bool, PropertySlot
 {
     auto scope = DECLARE_THROW_SCOPE(exec->vm());
     bool found = getPropertySlot(exec, propertyName, slot);
-    if (UNLIKELY(scope.exception()))
-        return { };
+    RETURN_IF_EXCEPTION(scope, { });
     return callback(found, slot);
 }
 
@@ -926,8 +923,7 @@ ALWAYS_INLINE bool JSValue::equalSlowCaseInline(ExecState* exec, JSValue v1, JSV
             if (v2.isObject())
                 return v1 == v2;
             JSValue p1 = v1.toPrimitive(exec);
-            if (UNLIKELY(scope.exception()))
-                return false;
+            RETURN_IF_EXCEPTION(scope, false);
             v1 = p1;
             if (v1.isInt32() && v2.isInt32())
                 return v1 == v2;
@@ -936,8 +932,7 @@ ALWAYS_INLINE bool JSValue::equalSlowCaseInline(ExecState* exec, JSValue v1, JSV
 
         if (v2.isObject()) {
             JSValue p2 = v2.toPrimitive(exec);
-            if (UNLIKELY(scope.exception()))
-                return false;
+            RETURN_IF_EXCEPTION(scope, false);
             v2 = p2;
             if (v1.isInt32() && v2.isInt32())
                 return v1 == v2;
@@ -1077,6 +1072,3 @@ ALWAYS_INLINE bool sameValue(ExecState* exec, JSValue a, JSValue b)
 }
 
 } // namespace JSC
-
-#endif // JSValueInlines_h
-

@@ -17,8 +17,7 @@
  *
  */
 
-#ifndef JSArrayInlines_h
-#define JSArrayInlines_h
+#pragma once
 
 #include "JSArray.h"
 #include "JSCellInlines.h"
@@ -76,8 +75,7 @@ ALWAYS_INLINE unsigned getLength(ExecState* exec, JSObject* obj)
         return jsCast<JSArray*>(obj)->length();
 
     JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
-    if (UNLIKELY(scope.exception()))
-        return UINT_MAX;
+    RETURN_IF_EXCEPTION(scope, UINT_MAX);
     return lengthValue.toUInt32(exec);
 }
 
@@ -89,11 +87,8 @@ ALWAYS_INLINE double toLength(ExecState* exec, JSObject* obj)
         return jsCast<JSArray*>(obj)->length();
 
     JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
-    if (UNLIKELY(scope.exception()))
-        return PNaN;
+    RETURN_IF_EXCEPTION(scope, PNaN);
     return lengthValue.toLength(exec);
 }
 
 } // namespace JSC
-
-#endif /* JSArrayInlines_h */

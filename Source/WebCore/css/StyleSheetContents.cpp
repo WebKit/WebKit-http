@@ -67,7 +67,6 @@ StyleSheetContents::StyleSheetContents(StyleRuleImport* ownerRule, const String&
     , m_isUserStyleSheet(ownerRule && ownerRule->parentStyleSheet() && ownerRule->parentStyleSheet()->isUserStyleSheet())
     , m_hasSyntacticallyValidCSSHeader(true)
     , m_didLoadErrorOccur(false)
-    , m_usesRemUnits(false)
     , m_usesStyleBasedEditability(false)
     , m_isMutable(false)
     , m_isInMemoryCache(false)
@@ -88,7 +87,6 @@ StyleSheetContents::StyleSheetContents(const StyleSheetContents& o)
     , m_isUserStyleSheet(o.m_isUserStyleSheet)
     , m_hasSyntacticallyValidCSSHeader(o.m_hasSyntacticallyValidCSSHeader)
     , m_didLoadErrorOccur(false)
-    , m_usesRemUnits(o.m_usesRemUnits)
     , m_usesStyleBasedEditability(o.m_usesStyleBasedEditability)
     , m_isMutable(false)
     , m_isInMemoryCache(false)
@@ -410,29 +408,6 @@ URL StyleSheetContents::completeURL(const String& url) const
     return CSSParser::completeURL(m_parserContext, url);
 }
 
-void StyleSheetContents::addSubresourceStyleURLs(ListHashSet<URL>& urls)
-{
-    Deque<StyleSheetContents*> styleSheetQueue;
-    styleSheetQueue.append(this);
-
-    while (!styleSheetQueue.isEmpty()) {
-        StyleSheetContents* styleSheet = styleSheetQueue.takeFirst();
-        
-        for (auto& importRule : styleSheet->m_importRules) {
-            if (importRule->styleSheet()) {
-                styleSheetQueue.append(importRule->styleSheet());
-                addSubresourceURL(urls, importRule->styleSheet()->baseURL());
-            }
-        }
-        for (auto& rule : styleSheet->m_childRules) {
-            if (is<StyleRule>(*rule))
-                downcast<StyleRule>(*rule).properties().addSubresourceStyleURLs(urls, this);
-            else if (is<StyleRuleFontFace>(*rule))
-                downcast<StyleRuleFontFace>(*rule).properties().addSubresourceStyleURLs(urls, this);
-        }
-    }
-}
-
 static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rules, const std::function<bool (const CachedResource&)>& handler)
 {
     for (auto& rule : rules) {
@@ -477,9 +452,12 @@ static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rul
 bool StyleSheetContents::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     for (auto& importRule : m_importRules) {
-        if (!importRule->styleSheet())
-            continue;
-        if (traverseSubresourcesInRules(importRule->styleSheet()->m_childRules, handler))
+        if (auto* cachedResource = importRule->cachedCSSStyleSheet()) {
+            if (handler(*cachedResource))
+                return true;
+        }
+        auto* importedStyleSheet = importRule->styleSheet();
+        if (importedStyleSheet && importedStyleSheet->traverseSubresources(handler))
             return true;
     }
     return traverseSubresourcesInRules(m_childRules, handler);

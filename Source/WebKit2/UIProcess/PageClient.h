@@ -157,7 +157,7 @@ public:
     virtual void didChangeContentSize(const WebCore::IntSize&) = 0;
 
 #if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
-    virtual void startDrag(Ref<WebCore::DataObjectGtk>&&, WebCore::DragOperation, RefPtr<ShareableBitmap>&& dragImage) = 0;
+    virtual void startDrag(Ref<WebCore::SelectionData>&&, WebCore::DragOperation, RefPtr<ShareableBitmap>&& dragImage) = 0;
 #endif
 
     virtual void setCursor(const WebCore::Cursor&) = 0;
@@ -248,6 +248,7 @@ public:
     virtual void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle) = 0;
     virtual void removeNavigationGestureSnapshot() = 0;
     virtual void handleControlledElementIDResponse(const String&) = 0;
+    virtual void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) = 0;
 
     virtual CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const = 0;
 

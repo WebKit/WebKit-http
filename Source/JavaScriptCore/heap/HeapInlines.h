@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HeapInlines_h
-#define HeapInlines_h
+#pragma once
 
+#include "GCDeferralContext.h"
 #include "Heap.h"
 #include "HeapCellInlines.h"
 #include "IndexingHeader.h"
@@ -125,19 +125,31 @@ inline void Heap::writeBarrier(const JSCell* from, JSCell* to)
 #if ENABLE(WRITE_BARRIER_PROFILING)
     WriteBarrierCounters::countWriteBarrier();
 #endif
-    if (!from || from->cellState() != CellState::OldBlack)
+    if (!from)
         return;
-    if (!to || to->cellState() != CellState::NewWhite)
+    if (!isWithinThreshold(from->cellState(), barrierThreshold()))
         return;
-    addToRememberedSet(from);
+    if (LIKELY(!to || to->cellState() != CellState::NewWhite))
+        return;
+    writeBarrierSlowPath(from);
 }
 
 inline void Heap::writeBarrier(const JSCell* from)
 {
     ASSERT_GC_OBJECT_LOOKS_VALID(const_cast<JSCell*>(from));
-    if (!from || from->cellState() != CellState::OldBlack)
+    if (!from)
         return;
-    addToRememberedSet(from);
+    if (UNLIKELY(isWithinThreshold(from->cellState(), barrierThreshold())))
+        writeBarrierSlowPath(from);
+}
+
+inline void Heap::writeBarrierWithoutFence(const JSCell* from)
+{
+    ASSERT_GC_OBJECT_LOOKS_VALID(const_cast<JSCell*>(from));
+    if (!from)
+        return;
+    if (UNLIKELY(isWithinThreshold(from->cellState(), blackThreshold)))
+        addToRememberedSet(from);
 }
 
 inline void Heap::reportExtraMemoryAllocated(size_t size)
@@ -146,10 +158,10 @@ inline void Heap::reportExtraMemoryAllocated(size_t size)
         reportExtraMemoryAllocatedSlowCase(size);
 }
 
-inline void Heap::reportExtraMemoryVisited(CellState dataBeforeVisiting, size_t size)
+inline void Heap::reportExtraMemoryVisited(CellState oldState, size_t size)
 {
     // We don't want to double-count the extra memory that was reported in previous collections.
-    if (operationInProgress() == EdenCollection && dataBeforeVisiting == CellState::OldGrey)
+    if (operationInProgress() == EdenCollection && oldState == CellState::OldGrey)
         return;
 
     size_t* counter = &m_extraMemorySize;
@@ -162,10 +174,10 @@ inline void Heap::reportExtraMemoryVisited(CellState dataBeforeVisiting, size_t 
 }
 
 #if ENABLE(RESOURCE_USAGE)
-inline void Heap::reportExternalMemoryVisited(CellState dataBeforeVisiting, size_t size)
+inline void Heap::reportExternalMemoryVisited(CellState oldState, size_t size)
 {
     // We don't want to double-count the external memory that was reported in previous collections.
-    if (operationInProgress() == EdenCollection && dataBeforeVisiting == CellState::OldGrey)
+    if (operationInProgress() == EdenCollection && oldState == CellState::OldGrey)
         return;
 
     size_t* counter = &m_externalMemorySize;
@@ -214,6 +226,18 @@ inline void* Heap::allocateWithoutDestructor(size_t bytes)
     return m_objectSpace.allocateWithoutDestructor(bytes);
 }
 
+inline void* Heap::allocateWithDestructor(GCDeferralContext* deferralContext, size_t bytes)
+{
+    ASSERT(isValidAllocation(bytes));
+    return m_objectSpace.allocateWithDestructor(deferralContext, bytes);
+}
+
+inline void* Heap::allocateWithoutDestructor(GCDeferralContext* deferralContext, size_t bytes)
+{
+    ASSERT(isValidAllocation(bytes));
+    return m_objectSpace.allocateWithoutDestructor(deferralContext, bytes);
+}
+
 template<typename ClassType>
 inline void* Heap::allocateObjectOfType(size_t bytes)
 {
@@ -223,6 +247,16 @@ inline void* Heap::allocateObjectOfType(size_t bytes)
     if (ClassType::needsDestruction)
         return allocateWithDestructor(bytes);
     return allocateWithoutDestructor(bytes);
+}
+
+template<typename ClassType>
+inline void* Heap::allocateObjectOfType(GCDeferralContext* deferralContext, size_t bytes)
+{
+    ASSERT((!ClassType::needsDestruction || (ClassType::StructureFlags & StructureIsImmortal) || std::is_convertible<ClassType, JSDestructibleObject>::value));
+
+    if (ClassType::needsDestruction)
+        return allocateWithDestructor(deferralContext, bytes);
+    return allocateWithoutDestructor(deferralContext, bytes);
 }
 
 template<typename ClassType>
@@ -274,6 +308,17 @@ inline void* Heap::tryAllocateAuxiliary(JSCell* intendedOwner, size_t bytes)
     return result;
 }
 
+inline void* Heap::tryAllocateAuxiliary(GCDeferralContext* deferralContext, JSCell* intendedOwner, size_t bytes)
+{
+    void* result = m_objectSpace.tryAllocateAuxiliary(deferralContext, bytes);
+#if ENABLE(ALLOCATION_LOGGING)
+    dataLogF("JSC GC allocating %lu bytes of auxiliary for %p: %p.\n", bytes, intendedOwner, result);
+#else
+    UNUSED_PARAM(intendedOwner);
+#endif
+    return result;
+}
+
 inline void* Heap::tryReallocateAuxiliary(JSCell* intendedOwner, void* oldBase, size_t oldSize, size_t newSize)
 {
     void* newBase = tryAllocateAuxiliary(intendedOwner, newSize);
@@ -313,12 +358,15 @@ inline void Heap::decrementDeferralDepth()
     m_deferralDepth--;
 }
 
-inline bool Heap::collectIfNecessaryOrDefer()
+inline bool Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
 {
     if (!shouldCollect())
         return false;
 
-    collect();
+    if (deferralContext)
+        deferralContext->m_shouldGC = true;
+    else
+        collect();
     return true;
 }
 
@@ -382,5 +430,3 @@ inline void Heap::didFreeBlock(size_t capacity)
 }
 
 } // namespace JSC
-
-#endif // HeapInlines_h

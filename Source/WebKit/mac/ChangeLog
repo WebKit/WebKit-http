@@ -1,3 +1,372 @@
+2016-10-13  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the HistoryItemVector typedef
+        https://bugs.webkit.org/show_bug.cgi?id=163398
+
+        Reviewed by Beth Dakin.
+
+        Expand the HistoryitemVector typedef instead to make it more clear what types we are dealing with.
+
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList dictionaryRepresentation]):
+        (vectorToNSArray):
+        (-[WebBackForwardList backListWithLimit:]):
+        (-[WebBackForwardList forwardListWithLimit:]):
+        (-[WebBackForwardList description]):
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem description]):
+
+2016-10-12  Chris Dumez  <cdumez@apple.com>
+
+        [Web IDL] Drop support for legacy [ConstructorConditional=*]
+        https://bugs.webkit.org/show_bug.cgi?id=163368
+
+        Reviewed by Ryosuke Niwa.
+
+        Drop ENABLE_DOM4_EVENTS_CONSTRUCTOR compiler flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-12  Beth Dakin  <bdakin@apple.com>
+
+        Adobe Contribute CS 6.5 Trial crashes on launch
+        https://bugs.webkit.org/show_bug.cgi?id=163365
+        -and corresponding-
+        <rdar://problem/28732731>
+
+        Reviewed by Tim Horton.
+
+        * Carbon/CarbonWindowFrame.m:
+        (-[CarbonWindowFrame contentFill]):
+
+2016-10-11  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the Apple Internal Mac build following r207159
+        (https://bugs.webkit.org/show_bug.cgi?id=163244)
+
+        * WebView/WebView.mm:
+        (shouldRequireUserGestureToLoadVideo):
+
+2016-10-11  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r198251): -[UIWebView mediaPlaybackRequiresUserAction] defaults to NO
+        https://bugs.webkit.org/show_bug.cgi?id=163259
+        <rdar://problem/28680515>
+
+        Reviewed by Jer Noble.
+
+        In WebKit1 on iOS we want to require user action to load and play videos by default and
+        allow an embedding app to change this behavior via -[UIWebView setMediaPlaybackRequiresUserAction:].
+        Following r198251, -[UIWebView mediaPlaybackRequiresUserAction] defaults to NO and videos
+        can load and play without being initiated by a user action.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Initialize the default value of the deprecated preference
+        WebKitRequiresUserGestureForMediaPlaybackPreferenceKey to YES on iOS. The value of this
+        preference takes precedence over the values of its replacement preferences
+        WebKitRequiresUserGestureForVideoPlaybackPreferenceKey and WebKitRequiresUserGestureForAudioPlaybackPreferenceKey.
+
+2016-10-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] REGRESSION (r197953): User gesture required to load video in iOS 9-built apps
+        https://bugs.webkit.org/show_bug.cgi?id=163244
+        <rdar://problem/27250015>
+
+        Reviewed by Jer Noble.
+
+        Enable or disable the Setting::requiresUserGestureToLoadVideo() in legacy WebKit depending
+        on the version of iOS SDK that the app was linked against. We require a user gesture to
+        begin loading a video as of iOS 10.
+
+        * WebView/WebView.mm:
+        (shouldRequireUserGestureToLoadVideo):
+        (-[WebView _preferencesChanged:]): Modified to pass the WebKit requiresUserGestureToLoadVideo
+        preference to WebCore.
+
+2016-10-11  Alex Christensen  <achristensen@webkit.org>
+
+        Remove dead networking code
+        https://bugs.webkit.org/show_bug.cgi?id=163263
+
+        Reviewed by Daniel Bates.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownload _initWithLoadingCFURLConnection:request:response:delegate:proxy:]): Deleted.
+        * Misc/WebDownloadInternal.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]):
+        * WebView/WebView.mm:
+        (-[WebView scheduleInRunLoop:forMode:]):
+        (-[WebView unscheduleFromRunLoop:forMode:]):
+
+2016-10-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add ENABLE_ENCRYPTED_MEDIA configuration option
+        https://bugs.webkit.org/show_bug.cgi?id=163219
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add the ENABLE_ENCRYPTED_MEDIA configuration option. It will be used
+        to enable or disable the new EME implementation at build-time.
+
+2016-10-10  Darin Adler  <darin@apple.com>
+
+        Move NotificationCenter from legacy to new DOM exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=163217
+
+        Reviewed by Chris Dumez.
+
+        * WebView/WebView.mm:
+        (-[WebView _notificationIDForTesting:]): Pass reference to page rather than pointer.
+
+2016-10-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support InputEvent.inputType for the new InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163025
+        <rdar://problem/28658092>
+
+        Reviewed by Darin Adler.
+
+        Accounts for some changes to the EditAction enum in nameForEditAction. See WebCore ChangeLog
+        entry for more details.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2016-10-06  Darin Adler  <darin@apple.com>
+
+        Next step on moving to modern way to return DOM exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=163016
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/DOMDOMImplementation.mm:
+        (-[DOMImplementation createDocumentType:publicId:systemId:]): Updated for
+        name change from takeReturnValue to releaseReturnValue.
+        (-[DOMImplementation createDocument:qualifiedName:doctype:]): Ditto.
+
+2016-10-07  Simon Fraser  <simon.fraser@apple.com>
+
+        [WK1 Mac] Fix repaints of fixed-background elements in layer-backed WebViews
+        https://bugs.webkit.org/show_bug.cgi?id=163154
+        rdar://problem/28674216
+
+        Reviewed by Tim Horton.
+        
+        r55159 added code to counteract AppKit's adjustment of dirty regions during scrolling,
+        by offsetting the dirty rect in -setNeedsDisplayInRect: if the call happens during
+        the NSViewBoundsDidChangeNotification handling.
+        
+        However, AppKit only does dirty region adjustment in the code path that blits ("copy
+        on scroll"), so r55159 produces incorrect behavior in, for example, layer-backed views.
+        
+        Fix by overriding -[NSClipView _canCopyOnScrollForDeltaX:deltaY:] to know if a single
+        scroll is going to blit, and only do adjustments in -setNeedsDisplayInRect: if it is.
+
+        * WebView/WebClipView.h:
+        * WebView/WebClipView.mm:
+        (-[WebClipView _immediateScrollToPoint:]):
+        (-[WebClipView _canCopyOnScrollForDeltaX:deltaY:]):
+        (-[WebClipView currentScrollIsBlit]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView setNeedsDisplayInRect:]):
+        (-[WebHTMLView drawRect:]):
+
+2016-10-06  Youenn Fablet  <youenn@apple.com>
+
+        CachedResource client handling methods should take reference
+        https://bugs.webkit.org/show_bug.cgi?id=163014
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebHTMLView.mm:
+        (promisedDataClient):
+
+2016-10-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Put variation fonts work behind a compile-time flag
+        https://bugs.webkit.org/show_bug.cgi?id=162949
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Rename ENABLE_ENCRYPTED_MEDIA_V2 to ENABLE_LEGACY_ENCRYPTED_MEDIA
+        https://bugs.webkit.org/show_bug.cgi?id=162903
+
+        Reviewed by Alex Christensen.
+
+        Rename build guards for the remaining implementation of the legacy EME API
+        to ENABLE_LEGACY_ENCRYPTED_MEDIA. This will allow for the future implementation
+        of the near-finished API to be guarded with the simple ENABLE_ENCRYPTED_MEDIA guards.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-10-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The dragged image should be the current frame only of the animated image
+        https://bugs.webkit.org/show_bug.cgi?id=162109
+
+        Reviewed by Tim Horton.
+
+        * DOM/DOM.mm:
+        (-[DOMElement image]): Call the Image function with its new name.
+        (-[DOMElement _imageTIFFRepresentation]): Ditto.
+        * Misc/WebElementDictionary.mm:
+        (-[WebElementDictionary _image]): Call the Image function with its new name.
+        * Misc/WebIconDatabase.mm:
+        (-[WebIconDatabase defaultIconWithSize:]): Call snapshotNSImage() to create the icon image.
+        (webGetNSImage): Call the Image function with its new name.
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem): Call snapshotNSImage() instead of nsImage()..
+        (WebContextMenuClient::contextMenuForEvent): Ditto.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView pasteboard:provideDataForType:]): Call the Image function with its new name.
+
+2016-10-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206683.
+
+        This change caused API test WebKit2.FindMatches to fail on
+        Mac.
+
+        Reverted changeset:
+
+        "The dragged image should be the current frame only of the
+        animated image"
+        https://bugs.webkit.org/show_bug.cgi?id=162109
+        http://trac.webkit.org/changeset/206683
+
+2016-09-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The dragged image should be the current frame only of the animated image
+        https://bugs.webkit.org/show_bug.cgi?id=162109
+
+        Reviewed by Tim Horton.
+
+        * DOM/DOM.mm:
+        (-[DOMElement image]): Call the Image function with its new name.
+        (-[DOMElement _imageTIFFRepresentation]): Ditto.
+        * Misc/WebElementDictionary.mm:
+        (-[WebElementDictionary _image]): Call the Image function with its new name.
+        * Misc/WebIconDatabase.mm:
+        (-[WebIconDatabase defaultIconWithSize:]): Call currentFrameNSImage() to create the icon image.
+        (webGetNSImage): Call the Image function with its new name.
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem): Call currentFrameNSImage() instead of nsImage()..
+        (WebContextMenuClient::contextMenuForEvent): Ditto.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView pasteboard:provideDataForType:]): Call the Image function with its new name.
+
+2016-09-27  Jer Noble  <jer.noble@apple.com>
+
+        Remove deprecated ENCRYPTED_MEDIA implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=161010
+
+        Remove ENABLE_ENCRYPTED_MEDIA.
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-09-26  Daniel Bates  <dabates@apple.com>
+
+        Rename IOS_TEXT_AUTOSIZING to TEXT_AUTOSIZING
+        https://bugs.webkit.org/show_bug.cgi?id=162365
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebFrame.mm:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-09-25  Antti Koivisto  <antti@apple.com>
+
+        AuthorStyleSheets shouldn't trigger synchronous style resolutions
+        https://bugs.webkit.org/show_bug.cgi?id=162532
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView reapplyStyles]):
+        (-[WebHTMLView _setPrinting:minimumPageLogicalWidth:logicalHeight:originalPageWidth:originalPageHeight:maximumShrinkRatio:adjustViewSize:paginateScreenContent:]):
+
+2016-09-24  Antti Koivisto  <antti@apple.com>
+
+        Move stylesheet change logic from Document to AuthorStyleSheets
+        https://bugs.webkit.org/show_bug.cgi?id=162488
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView reapplyStyles]):
+        (-[WebHTMLView _setPrinting:minimumPageLogicalWidth:logicalHeight:originalPageWidth:originalPageHeight:maximumShrinkRatio:adjustViewSize:paginateScreenContent:]):
+
+2016-09-23  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Implement parsing of Async Functions
+        https://bugs.webkit.org/show_bug.cgi?id=161409
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-09-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r206311.
+        https://bugs.webkit.org/show_bug.cgi?id=162495
+
+        Broke internal iOS build (Requested by anttik on #webkit).
+
+        Reverted changeset:
+
+        "Move stylesheet change logic from Document to
+        AuthorStyleSheets"
+        https://bugs.webkit.org/show_bug.cgi?id=162488
+        http://trac.webkit.org/changeset/206311
+
+2016-09-23  Antoine Quint  <graouts@apple.com>
+
+        Add a new runtime flag for work on modern media controls (off by default)
+        https://bugs.webkit.org/show_bug.cgi?id=162420
+        <rdar://problem/27989489>
+
+        Reviewed by Eric Carlson.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences modernMediaControlsEnabled]):
+        (-[WebPreferences setModernMediaControlsEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-09-21  Anders Carlsson  <andersca@apple.com>
+
+        Support openPaymentSetup API on ApplePaySession object
+        https://bugs.webkit.org/show_bug.cgi?id=162357
+        rdar://problem/26776939
+
+        Reviewed by Tim Horton.
+
+        Add openPaymentSetup stub.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::openPaymentSetup):
+
 2016-09-19  Daniel Bates  <dabates@apple.com>
 
         Remove ENABLE(TEXT_AUTOSIZING) automatic text size adjustment code

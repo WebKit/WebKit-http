@@ -36,16 +36,15 @@
 #include "JITInlines.h"
 #include "JITOperations.h"
 #include "JSArray.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
-#include "JSCInlines.h"
 #include "PCToCodeOriginMap.h"
 #include "ProfilerDatabase.h"
 #include "ResultType.h"
 #include "SlowPathCall.h"
 #include "StackAlignment.h"
-#include "SuperSampler.h"
 #include "TypeProfilerLog.h"
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/SimpleStats.h>
@@ -323,6 +322,8 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_put_getter_setter_by_id)
         DEFINE_OP(op_put_getter_by_val)
         DEFINE_OP(op_put_setter_by_val)
+        DEFINE_OP(op_define_data_property)
+        DEFINE_OP(op_define_accessor_property)
 
         DEFINE_OP(op_ret)
         DEFINE_OP(op_rshift)

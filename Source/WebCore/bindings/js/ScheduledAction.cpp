@@ -57,8 +57,7 @@ std::unique_ptr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWra
         if (policy && !policy->allowEval(exec))
             return nullptr;
         String string = v.toString(exec)->value(exec);
-        if (UNLIKELY(scope.exception()))
-            return nullptr;
+        RETURN_IF_EXCEPTION(scope, nullptr);
         return std::unique_ptr<ScheduledAction>(new ScheduledAction(string, isolatedWorld));
     }
 
@@ -102,7 +101,7 @@ void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSV
 
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(&context, callType, callData);
 
-    NakedPtr<Exception> exception;
+    NakedPtr<JSC::Exception> exception;
     if (is<Document>(context))
         JSMainThreadExecState::profiledCall(exec, JSC::ProfilingReason::Other, m_function.get(), callType, callData, thisValue, args, exception);
     else

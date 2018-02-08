@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef PropertySlot_h
-#define PropertySlot_h
+#pragma once
 
 #include "JSCJSValue.h"
 #include "PropertyName.h"
@@ -27,7 +26,9 @@
 #include <wtf/Assertions.h>
 
 namespace JSC {
-
+namespace DOMJIT {
+class GetterSetter;
+}
 class ExecState;
 class GetterSetter;
 class JSObject;
@@ -49,6 +50,7 @@ enum Attribute {
     CellProperty      = 1 << 11, // property is a lazy property - only used by static hashtables
     ClassStructure    = 1 << 12, // property is a lazy class structure - only used by static hashtables
     PropertyCallback  = 1 << 13, // property that is a lazy property callback - only used by static hashtables
+    DOMJITAttribute   = 1 << 14, // property is a DOM JIT attribute - only used by static hashtables
     BuiltinOrFunction = Builtin | Function, // helper only used by static hashtables
     BuiltinOrFunctionOrLazyProperty = Builtin | Function | CellProperty | ClassStructure | PropertyCallback, // helper only used by static hashtables
     BuiltinOrFunctionOrAccessorOrLazyProperty = Builtin | Function | Accessor | CellProperty | ClassStructure | PropertyCallback, // helper only used by static hashtables
@@ -112,7 +114,6 @@ public:
     bool isCacheableValue() const { return isCacheable() && isValue(); }
     bool isCacheableGetter() const { return isCacheable() && isAccessor(); }
     bool isCacheableCustom() const { return isCacheable() && isCustom(); }
-    bool isCacheableCustomAccessor() const { return isCacheable() && isCustomAccessor(); }
     void setIsTaintedByOpaqueObject() { m_isTaintedByOpaqueObject = true; }
     bool isTaintedByOpaqueObject() const { return m_isTaintedByOpaqueObject; }
 
@@ -157,6 +158,11 @@ public:
     WatchpointSet* watchpointSet() const
     {
         return m_watchpointSet;
+    }
+
+    DOMJIT::GetterSetter* domJIT() const
+    {
+        return m_domJIT;
     }
 
     void setValue(JSObject* slotBase, unsigned attributes, JSValue value)
@@ -213,7 +219,7 @@ public:
         m_offset = invalidOffset;
     }
     
-    void setCacheableCustom(JSObject* slotBase, unsigned attributes, GetValueFunc getValue)
+    void setCacheableCustom(JSObject* slotBase, unsigned attributes, GetValueFunc getValue, DOMJIT::GetterSetter* domJIT = nullptr)
     {
         ASSERT(attributes == attributesForStructure(attributes));
         
@@ -225,6 +231,7 @@ public:
         m_slotBase = slotBase;
         m_propertyType = TypeCustom;
         m_offset = !invalidOffset;
+        m_domJIT = domJIT;
     }
 
     void setCustomGetterSetter(JSObject* slotBase, unsigned attributes, CustomGetterSetter* getterSetter)
@@ -239,20 +246,6 @@ public:
         m_slotBase = slotBase;
         m_propertyType = TypeCustomAccessor;
         m_offset = invalidOffset;
-    }
-
-    void setCacheableCustomGetterSetter(JSObject* slotBase, unsigned attributes, CustomGetterSetter* getterSetter)
-    {
-        ASSERT(attributes == attributesForStructure(attributes));
-
-        ASSERT(getterSetter);
-        m_data.customAccessor.getterSetter = getterSetter;
-        m_attributes = attributes;
-
-        ASSERT(slotBase);
-        m_slotBase = slotBase;
-        m_propertyType = TypeCustomAccessor;
-        m_offset = !invalidOffset;
     }
 
     void setGetterSlot(JSObject* slotBase, unsigned attributes, GetterSetter* getterSetter)
@@ -334,6 +327,7 @@ private:
     CacheabilityType m_cacheability;
     PropertyType m_propertyType;
     InternalMethodType m_internalMethodType;
+    DOMJIT::GetterSetter* m_domJIT { nullptr };
     bool m_isTaintedByOpaqueObject;
 };
 
@@ -358,5 +352,3 @@ ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, unsigned propertyN
 }
 
 } // namespace JSC
-
-#endif // PropertySlot_h

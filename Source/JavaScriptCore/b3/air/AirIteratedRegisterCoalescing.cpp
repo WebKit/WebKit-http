@@ -33,7 +33,6 @@
 #include "AirInstInlines.h"
 #include "AirLiveness.h"
 #include "AirPhaseScope.h"
-#include "AirRegisterPriority.h"
 #include "AirTmpInlines.h"
 #include "AirTmpWidth.h"
 #include "AirUseCounts.h"
@@ -57,8 +56,11 @@ public:
         , m_lastPrecoloredRegisterIndex(lastPrecoloredRegisterIndex)
         , m_unspillableTmps(unspillableTmp)
     {
+        for (Reg reg : m_regsInPriorityOrder)
+            m_mutableRegs.set(reg);
+        
         initializeDegrees(tmpArraySize);
-
+        
         m_adjacencyList.resize(tmpArraySize);
         m_moveList.resize(tmpArraySize);
         m_coalescedTmps.fill(0, tmpArraySize);
@@ -161,7 +163,7 @@ protected:
             std::swap(u, v);
 
         if (traceDebug)
-            dataLog("Coalescing move at index", moveIndex, " u = ", u, " v = ", v, "\n");
+            dataLog("Coalescing move at index ", moveIndex, " u = ", u, " v = ", v, "\n");
 
         if (u == v) {
             addWorkList(u);
@@ -461,8 +463,15 @@ private:
 
     bool precoloredCoalescingHeuristic(IndexType u, IndexType v)
     {
+        if (traceDebug)
+            dataLog("    Checking precoloredCoalescingHeuristic\n");
         ASSERT(isPrecolored(u));
         ASSERT(!isPrecolored(v));
+        
+        // If u is a pinned register then it's always safe to coalesce. Note that when we call this,
+        // we have already proved that there is no interference between u and v.
+        if (!m_mutableRegs.get(m_coloredTmp[u]))
+            return true;
 
         // If any adjacent of the non-colored node is not an adjacent of the colored node AND has a degree >= K
         // there is a risk that this node needs to have the same color as our precolored node. If we coalesce such
@@ -549,6 +558,7 @@ protected:
     typedef SimpleClassHashTraits<InterferenceEdge> InterferenceEdgeHashTraits;
 
     const Vector<Reg>& m_regsInPriorityOrder;
+    RegisterSet m_mutableRegs;
     IndexType m_lastPrecoloredRegisterIndex { 0 };
 
     // The interference graph.
@@ -727,7 +737,7 @@ template<Arg::Type type>
 class ColoringAllocator : public AbstractColoringAllocator<unsigned> {
 public:
     ColoringAllocator(Code& code, TmpWidth& tmpWidth, const UseCounts<Tmp>& useCounts, const HashSet<unsigned>& unspillableTmp)
-        : AbstractColoringAllocator<unsigned>(regsInPriorityOrder(type), AbsoluteTmpMapper<type>::lastMachineRegisterIndex(), tmpArraySize(code), unspillableTmp)
+        : AbstractColoringAllocator<unsigned>(code.regsInPriorityOrder(type), AbsoluteTmpMapper<type>::lastMachineRegisterIndex(), tmpArraySize(code), unspillableTmp)
         , m_code(code)
         , m_tmpWidth(tmpWidth)
         , m_useCounts(useCounts)
@@ -839,7 +849,7 @@ public:
         if (!reg) {
             // We only care about Tmps that interfere. A Tmp that never interfere with anything
             // can take any register.
-            reg = regsInPriorityOrder(type).first();
+            reg = m_code.regsInPriorityOrder(type).first();
         }
         return reg;
     }
@@ -1040,7 +1050,7 @@ private:
     {
         switch (type) {
         case Arg::GP:
-            switch (inst.opcode) {
+            switch (inst.kind.opcode) {
             case Move:
             case Move32:
                 break;
@@ -1049,7 +1059,7 @@ private:
             }
             break;
         case Arg::FP:
-            switch (inst.opcode) {
+            switch (inst.kind.opcode) {
             case MoveFloat:
             case MoveDouble:
                 break;
@@ -1074,7 +1084,7 @@ private:
         // Note that the input property requires an analysis over ZDef's, so it's only valid so long
         // as the input gets a register. We don't know if the input gets a register, but we do know
         // that if it doesn't get a register then we will still emit this Move32.
-        if (inst.opcode == Move32) {
+        if (inst.kind.opcode == Move32) {
             if (!tmpWidth)
                 return false;
 
@@ -1382,11 +1392,11 @@ private:
                 // equivalent if the destination's high bits are not observable or if the source's high
                 // bits are all zero. Note that we don't have the opposite optimization for other
                 // architectures, which may prefer Move over Move32, because Move is canonical already.
-                if (type == Arg::GP && inst.opcode == Move
+                if (type == Arg::GP && inst.kind.opcode == Move
                     && inst.args[0].isTmp() && inst.args[1].isTmp()) {
                     if (m_tmpWidth.useWidth(inst.args[1].tmp()) <= Arg::Width32
                         || m_tmpWidth.defWidth(inst.args[0].tmp()) <= Arg::Width32)
-                        inst.opcode = Move32;
+                        inst.kind.opcode = Move32;
                 }
 
                 inst.forEachTmpFast([&] (Tmp& tmp) {
@@ -1453,7 +1463,7 @@ private:
                 // Move is the canonical way to move data between GPRs.
                 bool canUseMove32IfDidSpill = false;
                 bool didSpill = false;
-                if (type == Arg::GP && inst.opcode == Move) {
+                if (type == Arg::GP && inst.kind.opcode == Move) {
                     if ((inst.args[0].isTmp() && m_tmpWidth.width(inst.args[0].tmp()) <= Arg::Width32)
                         || (inst.args[1].isTmp() && m_tmpWidth.width(inst.args[1].tmp()) <= Arg::Width32))
                         canUseMove32IfDidSpill = true;
@@ -1488,7 +1498,7 @@ private:
                         Arg::Width spillWidth = m_tmpWidth.requiredWidth(arg.tmp());
                         if (Arg::isAnyDef(role) && width < spillWidth)
                             return;
-                        ASSERT(inst.opcode == Move || !(Arg::isAnyUse(role) && width > spillWidth));
+                        ASSERT(inst.kind.opcode == Move || !(Arg::isAnyUse(role) && width > spillWidth));
                         
                         if (spillWidth != Arg::Width32)
                             canUseMove32IfDidSpill = false;
@@ -1500,7 +1510,7 @@ private:
                     });
 
                 if (didSpill && canUseMove32IfDidSpill)
-                    inst.opcode = Move32;
+                    inst.kind.opcode = Move32;
 
                 // For every other case, add Load/Store as needed.
                 inst.forEachTmp([&] (Tmp& tmp, Arg::Role role, Arg::Type argType, Arg::Width) {

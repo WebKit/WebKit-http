@@ -64,7 +64,7 @@ public:
         ScriptFontFamilyMap m_fantasyFontFamilies;
         ScriptFontFamilyMap m_pictographFontFamilies;
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
         bool m_originalTextAutosizingEnabled;
         IntSize m_originalTextAutosizingWindowSizeOverride;
 #endif
@@ -107,9 +107,15 @@ public:
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
         bool m_indexedDBWorkersEnabled;
 #endif
+#if ENABLE(VARIATION_FONTS)
+        bool m_variationFontsEnabled;
+#endif
+        bool m_inputEventsEnabled;
+
         UserInterfaceDirectionPolicy m_userInterfaceDirectionPolicy;
         TextDirection m_systemLayoutDirection;
         PDFImageCachingPolicy m_pdfImageCachingPolicy;
+        Settings::ForcedPrefersReducedMotionValue m_forcedPrefersReducedMotionValue;
     };
 
     static Ref<InternalSettings> create(Page* page)
@@ -166,6 +172,12 @@ public:
     void setUserInterfaceDirectionPolicy(const String& policy, ExceptionCode&);
     String systemLayoutDirection(ExceptionCode&);
     void setSystemLayoutDirection(const String& direction, ExceptionCode&);
+    bool variationFontsEnabled(ExceptionCode&);
+    void setVariationFontsEnabled(bool, ExceptionCode&);
+
+    enum class ForcedPrefersReducedMotionValue { System, On, Off };
+    ForcedPrefersReducedMotionValue forcedPrefersReducedMotionValue() const;
+    void setForcedPrefersReducedMotionValue(ForcedPrefersReducedMotionValue);
 
     static void setAllowsAnySSLCertificate(bool);
 

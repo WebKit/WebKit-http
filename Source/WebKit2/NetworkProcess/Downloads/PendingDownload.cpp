@@ -38,11 +38,14 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID downloadID, NetworkSession& networkSession)
+PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID downloadID, NetworkSession& networkSession, const String& suggestedName)
     : m_networkLoad(std::make_unique<NetworkLoad>(*this, WTFMove(parameters), networkSession))
 {
     m_networkLoad->setPendingDownloadID(downloadID);
     m_networkLoad->setPendingDownload(*this);
+    m_networkLoad->setSuggestedFilename(suggestedName);
+
+    send(Messages::DownloadProxy::DidStart(m_networkLoad->currentRequest(), suggestedName));
 }
 
 void PendingDownload::willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse)
@@ -55,6 +58,7 @@ void PendingDownload::continueWillSendRequest(WebCore::ResourceRequest&& newRequ
     m_networkLoad->continueWillSendRequest(WTFMove(newRequest));
 }
 
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 void PendingDownload::canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace& protectionSpace)
 {
     send(Messages::DownloadProxy::CanAuthenticateAgainstProtectionSpace(protectionSpace));
@@ -64,6 +68,7 @@ void PendingDownload::continueCanAuthenticateAgainstProtectionSpace(bool canAuth
 {
     m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(canAuthenticate);
 }
+#endif
 
 void PendingDownload::didBecomeDownload()
 {

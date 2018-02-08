@@ -46,6 +46,7 @@
 #import <ImageIO/CGImageSourcePrivate.h>
 #else
 const CFStringRef kCGImageSourceSubsampleFactor = CFSTR("kCGImageSourceSubsampleFactor");
+const CFStringRef kCGImageSourceShouldCacheImmediately = CFSTR("kCGImageSourceShouldCacheImmediately");
 #endif
 
 namespace WebCore {
@@ -57,32 +58,39 @@ const CFStringRef WebCoreCGImagePropertyAPNGLoopCount = CFSTR("LoopCount");
 const CFStringRef kCGImageSourceShouldPreferRGB32 = CFSTR("kCGImageSourceShouldPreferRGB32");
 const CFStringRef kCGImageSourceSkipMetadata = CFSTR("kCGImageSourceSkipMetadata");
 
-static RetainPtr<CFDictionaryRef> createImageSourceOptions(SubsamplingLevel subsamplingLevel)
+static RetainPtr<CFDictionaryRef> createImageSourceOptions(SubsamplingLevel subsamplingLevel, DecodingMode decodingMode)
 {
-    if (subsamplingLevel == SubsamplingLevel::First) {
-        const unsigned numOptions = 3;
-        const void* keys[numOptions] = { kCGImageSourceShouldCache, kCGImageSourceShouldPreferRGB32, kCGImageSourceSkipMetadata };
-        const void* values[numOptions] = { kCFBooleanTrue, kCFBooleanTrue, kCFBooleanTrue };
-        return CFDictionaryCreate(nullptr, keys, values, numOptions, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    RetainPtr<CFMutableDictionaryRef> options = adoptCF(CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+
+    CFDictionarySetValue(options.get(), kCGImageSourceShouldCache, kCFBooleanTrue);
+    CFDictionarySetValue(options.get(), kCGImageSourceShouldPreferRGB32, kCFBooleanTrue);
+    CFDictionarySetValue(options.get(), kCGImageSourceSkipMetadata, kCFBooleanTrue);
+
+    if (subsamplingLevel > SubsamplingLevel::First) {
+        RetainPtr<CFNumberRef> subsampleNumber;
+        subsamplingLevel = std::min(SubsamplingLevel::Last, std::max(SubsamplingLevel::First, subsamplingLevel));
+        int subsampleInt = 1 << static_cast<int>(subsamplingLevel); // [0..3] => [1, 2, 4, 8]
+        subsampleNumber = adoptCF(CFNumberCreate(nullptr,  kCFNumberIntType,  &subsampleInt));
+        CFDictionarySetValue(options.get(), kCGImageSourceSubsampleFactor, subsampleNumber.get());
     }
-    
-    subsamplingLevel = std::min(SubsamplingLevel::Last, std::max(SubsamplingLevel::First, subsamplingLevel));
-    int subsampleInt = 1 << static_cast<int>(subsamplingLevel); // [0..3] => [1, 2, 4, 8]
-    
-    RetainPtr<CFNumberRef> subsampleNumber = adoptCF(CFNumberCreate(nullptr,  kCFNumberIntType,  &subsampleInt));
-    const CFIndex numOptions = 4;
-    const void* keys[numOptions] = { kCGImageSourceShouldCache, kCGImageSourceShouldPreferRGB32, kCGImageSourceSkipMetadata, kCGImageSourceSubsampleFactor };
-    const void* values[numOptions] = { kCFBooleanTrue, kCFBooleanTrue, kCFBooleanTrue, subsampleNumber.get() };
-    return adoptCF(CFDictionaryCreate(nullptr, keys, values, numOptions, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+
+    if (decodingMode == DecodingMode::Immediate) {
+        CFDictionarySetValue(options.get(), kCGImageSourceShouldCacheImmediately, kCFBooleanTrue);
+        CFDictionarySetValue(options.get(), kCGImageSourceCreateThumbnailFromImageAlways, kCFBooleanTrue);
+    }
+
+    return options;
 }
 
-static RetainPtr<CFDictionaryRef> imageSourceOptions(SubsamplingLevel subsamplingLevel = SubsamplingLevel::Default)
+static RetainPtr<CFDictionaryRef> imageSourceOptions(SubsamplingLevel subsamplingLevel = SubsamplingLevel::Default, DecodingMode decodingMode = DecodingMode::OnDemand)
 {
     if (subsamplingLevel > SubsamplingLevel::First)
-        return createImageSourceOptions(subsamplingLevel);
-    
-    static NeverDestroyed<RetainPtr<CFDictionaryRef>> options = createImageSourceOptions(SubsamplingLevel::First);
-    return options;
+        return createImageSourceOptions(subsamplingLevel, decodingMode);
+
+    static NeverDestroyed<RetainPtr<CFDictionaryRef>> optionsOnDemand = createImageSourceOptions(SubsamplingLevel::First, DecodingMode::OnDemand);
+    static NeverDestroyed<RetainPtr<CFDictionaryRef>> optionsImmediate = createImageSourceOptions(SubsamplingLevel::First, DecodingMode::Immediate);
+
+    return decodingMode == DecodingMode::OnDemand ? optionsOnDemand : optionsImmediate;
 }
 
 static ImageOrientation orientationFromProperties(CFDictionaryRef imageProperties)
@@ -118,7 +126,7 @@ void sharedBufferRelease(void* info)
 }
 #endif
 
-ImageDecoder::ImageDecoder()
+ImageDecoder::ImageDecoder(AlphaOption, GammaAndColorProfileOption)
 {
     m_nativeDecoder = adoptCF(CGImageSourceCreateIncremental(nullptr));
 }
@@ -152,13 +160,6 @@ bool ImageDecoder::isSizeAvailable() const
     
     return CFDictionaryContainsKey(image0Properties.get(), kCGImagePropertyPixelWidth)
     && CFDictionaryContainsKey(image0Properties.get(), kCGImagePropertyPixelHeight);
-}
-
-IntSize ImageDecoder::size() const
-{
-    if (m_size.isEmpty())
-        m_size = frameSizeAtIndex(0);
-    return m_size;
 }
 
 size_t ImageDecoder::frameCount() const
@@ -338,11 +339,17 @@ unsigned ImageDecoder::frameBytesAtIndex(size_t index, SubsamplingLevel subsampl
     return frameSize.area() * 4;
 }
 
-NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) const
+NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel, DecodingMode decodingMode) const
 {
     LOG(Images, "ImageDecoder %p createFrameImageAtIndex %lu", this, index);
 
-    RetainPtr<CGImageRef> image = adoptCF(CGImageSourceCreateImageAtIndex(m_nativeDecoder.get(), index, imageSourceOptions(subsamplingLevel).get()));
+    const auto* options = imageSourceOptions(subsamplingLevel, decodingMode).get();
+    RetainPtr<CGImageRef> image;
+
+    if (decodingMode == DecodingMode::OnDemand)
+        image = adoptCF(CGImageSourceCreateImageAtIndex(m_nativeDecoder.get(), index, options));
+    else
+        image = adoptCF(CGImageSourceCreateThumbnailAtIndex(m_nativeDecoder.get(), index, options));
     
 #if PLATFORM(IOS)
     // <rdar://problem/7371198> - CoreGraphics changed the default caching behaviour in iOS 4.0 to kCGImageCachingTransient
@@ -374,18 +381,15 @@ NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLe
     return maskedImage ? maskedImage : image;
 }
 
-void ImageDecoder::setData(CFDataRef data, bool allDataReceived)
-{
-    CGImageSourceUpdateData(m_nativeDecoder.get(), data, allDataReceived);
-}
-
 void ImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
 {
+    m_isAllDataReceived = allDataReceived;
+
 #if PLATFORM(COCOA)
     // On Mac the NSData inside the SharedBuffer can be secretly appended to without the SharedBuffer's knowledge.
     // We use SharedBuffer's ability to wrap itself inside CFData to get around this, ensuring that ImageIO is
     // really looking at the SharedBuffer.
-    setData(data.createCFData().get(), allDataReceived);
+    CGImageSourceUpdateData(m_nativeDecoder.get(), data.createCFData().get(), allDataReceived);
 #else
     // Create a CGDataProvider to wrap the SharedBuffer.
     data.ref();

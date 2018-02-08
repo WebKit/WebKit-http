@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef RegExpObject_h
-#define RegExpObject_h
+#pragma once
 
 #include "JSObject.h"
 #include "RegExp.h"
@@ -51,7 +50,7 @@ public:
             m_lastIndex.setWithoutWriteBarrier(jsNumber(lastIndex));
             return true;
         }
-        throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+        throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
     bool setLastIndex(ExecState* exec, JSValue lastIndex, bool shouldThrow)
@@ -65,7 +64,7 @@ public:
         }
 
         if (shouldThrow)
-            throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+            throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
     JSValue getLastIndex() const
@@ -131,5 +130,3 @@ inline RegExpObject* asRegExpObject(JSValue value)
 }
 
 } // namespace JSC
-
-#endif // RegExpObject_h

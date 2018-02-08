@@ -28,6 +28,7 @@
 #include "CSSParser.h"
 #include "CSSStyleSheet.h"
 #include "CSSValuePool.h"
+#include "CachedResource.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMTokenList.h"
 #include "HTMLElement.h"
@@ -173,7 +174,12 @@ PropertySetCSSStyleDeclaration* StyledElement::inlineStyleCSSOMWrapper()
     return cssomWrapper;
 }
 
-inline void StyledElement::setInlineStyleFromString(const AtomicString& newStyleString)
+static bool usesStyleBasedEditability(const StyleProperties& properties)
+{
+    return properties.getPropertyCSSValue(CSSPropertyWebkitUserModify);
+}
+
+void StyledElement::setInlineStyleFromString(const AtomicString& newStyleString)
 {
     RefPtr<StyleProperties>& inlineStyle = elementData()->m_inlineStyle;
 
@@ -189,7 +195,10 @@ inline void StyledElement::setInlineStyleFromString(const AtomicString& newStyle
     if (!inlineStyle)
         inlineStyle = CSSParser::parseInlineStyleDeclaration(newStyleString, this);
     else
-        downcast<MutableStyleProperties>(*inlineStyle).parseDeclaration(newStyleString, &document().elementSheet().contents());
+        downcast<MutableStyleProperties>(*inlineStyle).parseDeclaration(newStyleString, document());
+
+    if (usesStyleBasedEditability(*inlineStyle))
+        document().setHasElementUsingStyleBasedEditability();
 }
 
 void StyledElement::styleAttributeChanged(const AtomicString& newStyleString, AttributeModificationReason reason)
@@ -209,6 +218,15 @@ void StyledElement::styleAttributeChanged(const AtomicString& newStyleString, At
 
     setNeedsStyleRecalc(InlineStyleChange);
     InspectorInstrumentation::didInvalidateStyleAttr(document(), *this);
+}
+
+void StyledElement::invalidateStyleAttribute()
+{
+    if (usesStyleBasedEditability(*inlineStyle()))
+        document().setHasElementUsingStyleBasedEditability();
+
+    elementData()->setStyleAttributeIsDirty(true);
+    setNeedsStyleRecalc(InlineStyleChange);
 }
 
 void StyledElement::inlineStyleChanged()
@@ -240,7 +258,7 @@ bool StyledElement::setInlineStyleProperty(CSSPropertyID propertyID, double valu
 
 bool StyledElement::setInlineStyleProperty(CSSPropertyID propertyID, const String& value, bool important)
 {
-    bool changes = ensureMutableInlineStyle().setProperty(propertyID, value, important, &document().elementSheet().contents());
+    bool changes = ensureMutableInlineStyle().setProperty(propertyID, value, important, CSSParserContext(document()));
     if (changes)
         inlineStyleChanged();
     return changes;
@@ -266,8 +284,13 @@ void StyledElement::removeAllInlineStyleProperties()
 
 void StyledElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
-    if (const StyleProperties* inlineStyle = elementData() ? elementData()->inlineStyle() : nullptr)
-        inlineStyle->addSubresourceStyleURLs(urls, &document().elementSheet().contents());
+    auto* inlineStyle = this->inlineStyle();
+    if (!inlineStyle)
+        return;
+    inlineStyle->traverseSubresources([&] (auto& resource) {
+        urls.add(resource.url());
+        return false;
+    });
 }
 
 static inline bool attributeNameSort(const std::pair<AtomicStringImpl*, AtomicString>& p1, const std::pair<AtomicStringImpl*, AtomicString>& p2)
@@ -370,7 +393,7 @@ void StyledElement::addPropertyToPresentationAttributeStyle(MutableStyleProperti
     
 void StyledElement::addPropertyToPresentationAttributeStyle(MutableStyleProperties& style, CSSPropertyID propertyID, const String& value)
 {
-    style.setProperty(propertyID, value, false, &document().elementSheet().contents());
+    style.setProperty(propertyID, value, false, CSSParserContext(document()));
 }
 
 }

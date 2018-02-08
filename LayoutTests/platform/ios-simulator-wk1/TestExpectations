@@ -2,6 +2,20 @@
 #
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
+# FIXME: uiController.singleTapAtPoint() is not implemented in DumpRenderTree. And
+# we cannot write these tests in terms of EventSender without identifying which
+# test tool is being used to run the test, which is not straightforward at the time
+# of writing (10/07/2016).
+http/tests/quicklook/at-import-stylesheet-blocked.html
+http/tests/quicklook/base-url-blocked.html
+http/tests/quicklook/cross-origin-iframe-blocked.html
+http/tests/quicklook/document-domain-is-empty-string.html
+http/tests/quicklook/external-stylesheet-blocked.html
+http/tests/quicklook/hide-referer-on-navigation.html
+http/tests/quicklook/resources/fail.html
+http/tests/quicklook/submit-form-blocked.html
+http/tests/quicklook/top-navigation-blocked.html
+
 # Selectively re-enable viewport tests that work
 fast/viewport/ios/ipad/width-is-device-width.html [ Pass ]
 
@@ -247,8 +261,6 @@ editing/inserting/insert-3800346-fix.html [ Failure ]
 editing/inserting/insert-br-007.html [ Failure ]
 editing/inserting/insert-character-in-first-letter-crash.html [ Failure ]
 editing/inserting/insert-tab-001.html [ Failure ]
-editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
-editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 editing/secure-input/password-input-changed-type.html [ Failure ]
 editing/secure-input/password-input-focusing-to-different-frame.html [ Failure ]
 editing/secure-input/password-input-focusing.html [ Failure ]
@@ -408,7 +420,6 @@ editing/inserting/insert-div-021.html [ Failure ]
 editing/inserting/insert-space-in-empty-doc.html [ Failure ]
 editing/inserting/insert-tab-002.html [ Failure ]
 editing/inserting/insert-tab-004.html [ Failure ]
-editing/inserting/insert-text-with-newlines.html [ Failure ]
 editing/inserting/insert-thai-characters-001.html [ Failure ]
 editing/inserting/typing-001.html [ Failure ]
 editing/inserting/typing-around-br-001.html [ Failure ]
@@ -719,7 +730,6 @@ imported/mozilla/svg/suspend-06.svg [ ImageOnlyFailure ]
 imported/mozilla/svg/suspend-07.svg [ ImageOnlyFailure ]
 imported/mozilla/svg/suspend-08.svg [ ImageOnlyFailure ]
 imported/mozilla/svg/smil/motion/animateMotion-values-linear-1.svg [ ImageOnlyFailure ]
-imported/mozilla/svg/text/clipPath-content.svg [ ImageOnlyFailure ]
 imported/mozilla/svg/text/dynamic-font-size-3.svg [ ImageOnlyFailure ]
 imported/mozilla/svg/text/dynamic-font-size-4.svg [ ImageOnlyFailure ]
 imported/mozilla/svg/text/multiple-x-percentages.svg [ ImageOnlyFailure ]
@@ -784,7 +794,6 @@ fast/css/viewport-percentage-compute-box-width.html [ ImageOnlyFailure ]
 fast/css/viewport-units-dynamic.html [ Failure ]
 fast/css/zoom-body-scroll.html [ Failure ]
 fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-altered.html [ ImageOnlyFailure ]
-fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-removed.html [ ImageOnlyFailure ]
 fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect.html [ ImageOnlyFailure ]
 fast/dom/Document/CaretRangeFromPoint/caretRangeFromPoint-in-zoom-and-scroll.html [ Failure ]
 fast/dom/Element/getBoundingClientRect-getClientRects-relative-to-viewport.html [ Failure ]
@@ -1001,10 +1010,10 @@ animations/trigger-container-scroll-empty.html [ Failure ]
 storage/indexeddb
 imported/w3c/IndexedDB-private-browsing
 imported/w3c/web-platform-tests/IndexedDB
-crypto/subtle/rsa-indexeddb-non-exportable-private.html
-crypto/subtle/rsa-indexeddb-non-exportable.html
-crypto/subtle/rsa-indexeddb-private.html
-crypto/subtle/rsa-indexeddb.html
+crypto/webkitSubtle/rsa-indexeddb-non-exportable-private.html
+crypto/webkitSubtle/rsa-indexeddb-non-exportable.html
+crypto/webkitSubtle/rsa-indexeddb-private.html
+crypto/webkitSubtle/rsa-indexeddb.html
 fast/history/page-cache-indexed-closed-db.html
 fast/history/page-cache-indexed-opened-db.html
 
@@ -1317,7 +1326,10 @@ imported/blink/storage/indexeddb/empty-blob-file.html [ Failure ]
 
 webkit.org/b/155495 compositing/visible-rect/animated-from-none.html [ Failure Pass ]
 
-# <a download> is not support in WK1 yet.
+# <a download> is not supported in WK1 yet.
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
@@ -1350,7 +1362,6 @@ media
 fast/text/emoji-gender.html [ Pass ]
 fast/css/ancestor-of-hovered-element-removed.html [ Pass ]
 fast/images/animated-gif-no-layout.html [ Pass ]
-fast/images/gif-loop-count.html [ Pass ]
 fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement-2.html [ Pass ]
 
 # w3c tests that fail
@@ -1632,7 +1643,6 @@ transitions/svg-text-shadow-transition.html [ Failure Pass ]
 [ Release ] editing/deleting/delete-block-merge-contents-024.html [ Failure ]
 [ Release ] editing/deleting/delete-br-003.html [ Failure ]
 [ Release ] editing/deleting/delete-br-010.html [ Failure ]
-[ Release ] editing/deleting/delete-character-001.html [ Failure ]
 [ Release ] editing/deleting/delete-hr.html [ Failure ]
 [ Release ] editing/deleting/delete-image-002.html [ Failure ]
 [ Release ] editing/deleting/delete-line-002.html [ Failure ]
@@ -1648,7 +1658,6 @@ transitions/svg-text-shadow-transition.html [ Failure Pass ]
 [ Release ] editing/deleting/delete-ws-fixup-002.html [ Failure ]
 [ Release ] editing/deleting/list-item-1.html [ Failure ]
 [ Release ] editing/deleting/merge-unrendered-space.html [ Failure ]
-[ Release ] editing/deleting/non-smart-delete.html [ Failure ]
 [ Release ] editing/inserting/insert-3778059-fix.html [ Failure ]
 [ Release ] editing/inserting/insert-br-at-tabspan-001.html [ Failure ]
 [ Release ] editing/inserting/insert-br-at-tabspan-003.html [ Failure ]
@@ -1835,3 +1844,31 @@ fast/text/khmer-lao-font.html [ Failure ]
 [ Debug ] css3/flexbox/position-absolute-child.html [ Timeout ]
 fast/events/scoped/editing-commands.html [ Timeout ]
 fast/forms/selection-direction.html [ Timeout ]
+
+# Failure as of 09/21/2016
+css2.1/t1008-c44-ln-box-02-d-ag.html [ Failure ]
+fast/text-autosizing/ios/ipad/text-size-adjust-inline-style.html [ ImageOnlyFailure ]
+fast/text-autosizing/ios/text-size-adjust-inline-style.html [ ImageOnlyFailure ]
+
+# Flaky as of 09/21/2016
+css3/blending/blend-mode-body-composited-child-background-color.html [ Pass ImageOnlyFailure ]
+css3/blending/blend-mode-body-composited-child.html [ Pass ImageOnlyFailure ]
+editing/deleting/delete-character-001.html [ Pass Failure ]
+editing/deleting/non-smart-delete.html [ Pass Failure ]
+editing/inserting/insert-text-with-newlines.html [ Pass Failure ]
+fast/css3-text/css3-text-decoration/repaint/underline-outside-of-layout-rect-removed.html [ Pass ImageOnlyFailure ]
+fast/dynamic/remove-node-inside-selection.html [ Pass ImageOnlyFailure ]
+imported/blink/fast/css/user-select-none.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-isolate-008.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-isolate-010.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-isolate-011.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-isolate-override-001.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-normal-002.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-normal-004.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-normal-005.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-override-001.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-plaintext-004.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/bidi-unset-007.html [ Pass ImageOnlyFailure ]
+imported/blink/imported/csswg-test/css-writing-modes-3/block-embed-001.html [ Pass ImageOnlyFailure ]
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Crash Pass ]
+imported/mozilla/svg/text/clipPath-content.svg [ Pass ImageOnlyFailure ]

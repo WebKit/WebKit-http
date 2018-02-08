@@ -114,7 +114,7 @@ JSFunction* JSFunction::createBuiltinFunction(VM& vm, FunctionExecutable* execut
 {
     JSFunction* function = create(vm, executable, globalObject);
     function->putDirect(vm, vm.propertyNames->name, jsString(&vm, executable->name().string()), ReadOnly | DontEnum);
-    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->parameterCount()), ReadOnly | DontEnum);
+    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->functionLength()), ReadOnly | DontEnum);
     return function;
 }
 
@@ -122,7 +122,7 @@ JSFunction* JSFunction::createBuiltinFunction(VM& vm, FunctionExecutable* execut
 {
     JSFunction* function = create(vm, executable, globalObject);
     function->putDirect(vm, vm.propertyNames->name, jsString(&vm, name), ReadOnly | DontEnum);
-    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->parameterCount()), ReadOnly | DontEnum);
+    function->putDirect(vm, vm.propertyNames->length, jsNumber(executable->functionLength()), ReadOnly | DontEnum);
     return function;
 }
 
@@ -357,12 +357,16 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
         PropertyOffset offset = thisObject->getDirectOffset(vm, propertyName, attributes);
         if (!isValidOffset(offset)) {
             JSObject* prototype = nullptr;
-            if (thisObject->jsExecutable()->parseMode() == SourceParseMode::GeneratorWrapperFunctionMode)
+            if (thisObject->jsExecutable()->parseMode() == SourceParseMode::GeneratorWrapperFunctionMode) {
+                // Unlike function instances, the object that is the value of the a GeneratorFunction's prototype
+                // property does not have a constructor property whose value is the GeneratorFunction instance.
+                // https://tc39.github.io/ecma262/#sec-generatorfunction-instances-prototype
                 prototype = constructEmptyObject(exec, thisObject->globalObject(vm)->generatorPrototype());
-            else
+            } else {
                 prototype = constructEmptyObject(exec);
+                prototype->putDirect(vm, vm.propertyNames->constructor, thisObject, DontEnum);
+            }
 
-            prototype->putDirect(vm, vm.propertyNames->constructor, thisObject, DontEnum);
             thisObject->putDirect(vm, vm.propertyNames->prototype, prototype, DontDelete | DontEnum);
             offset = thisObject->getDirectOffset(vm, vm.propertyNames->prototype, attributes);
             ASSERT(isValidOffset(offset));
@@ -451,7 +455,7 @@ bool JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
     }
     if (propertyName == vm.propertyNames->arguments || propertyName == vm.propertyNames->caller) {
         if (slot.isStrictMode())
-            throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+            throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
     thisObject->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
@@ -612,11 +616,9 @@ void JSFunction::setFunctionName(ExecState* exec, JSValue value)
             name = makeString('[', String(&uid), ']');
     } else {
         JSString* jsStr = value.toString(exec);
-        if (UNLIKELY(scope.exception()))
-            return;
+        RETURN_IF_EXCEPTION(scope, void());
         name = jsStr->value(exec);
-        if (UNLIKELY(scope.exception()))
-            return;
+        RETURN_IF_EXCEPTION(scope, void());
     }
     reifyName(vm, exec, name);
 }
@@ -627,7 +629,7 @@ void JSFunction::reifyLength(VM& vm)
 
     ASSERT(!hasReifiedLength());
     ASSERT(!isHostFunction());
-    JSValue initialValue = jsNumber(jsExecutable()->parameterCount());
+    JSValue initialValue = jsNumber(jsExecutable()->functionLength());
     unsigned initialAttributes = DontEnum | ReadOnly;
     const Identifier& identifier = vm.propertyNames->length;
     putDirect(vm, identifier, initialValue, initialAttributes);

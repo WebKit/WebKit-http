@@ -26,52 +26,66 @@
 #ifndef CachedResourceRequest_h
 #define CachedResourceRequest_h
 
+#include "CachedResource.h"
 #include "DocumentLoader.h"
 #include "Element.h"
 #include "ResourceLoadPriority.h"
 #include "ResourceLoaderOptions.h"
 #include "ResourceRequest.h"
+#include "SecurityOrigin.h"
 #include <wtf/RefPtr.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
+
+namespace ContentExtensions {
+struct BlockedStatus;
+}
 class Document;
 
 class CachedResourceRequest {
 public:
-    enum DeferOption { NoDefer, DeferredByClient };
+    CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&, Optional<ResourceLoadPriority> = Nullopt, String&& charset = String());
 
-    explicit CachedResourceRequest(const ResourceRequest&, const String& charset = String(), Optional<ResourceLoadPriority> = Nullopt);
-    CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&, Optional<ResourceLoadPriority> = Nullopt);
-
-    ResourceRequest& mutableResourceRequest() { return m_resourceRequest; }
+    ResourceRequest&& releaseResourceRequest() { return WTFMove(m_resourceRequest); }
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
     const String& charset() const { return m_charset; }
     void setCharset(const String& charset) { m_charset = charset; }
     const ResourceLoaderOptions& options() const { return m_options; }
     void setOptions(const ResourceLoaderOptions& options) { m_options = options; }
     const Optional<ResourceLoadPriority>& priority() const { return m_priority; }
-    bool forPreload() const { return m_forPreload; }
-    void setForPreload(bool forPreload) { m_forPreload = forPreload; }
-    DeferOption defer() const { return m_defer; }
-    void setDefer(DeferOption defer) { m_defer = defer; }
     void setInitiator(PassRefPtr<Element>);
     void setInitiator(const AtomicString& name);
     const AtomicString& initiatorName() const;
     bool allowsCaching() const { return m_options.cachingPolicy == CachingPolicy::AllowCaching; }
-    void setCachingPolicy(CachingPolicy policy) { m_options.cachingPolicy = policy; }
+    void setCachingPolicy(CachingPolicy policy) { m_options.cachingPolicy = policy;  }
 
     void setAsPotentiallyCrossOrigin(const String&, Document&);
+    void updateForAccessControl(Document&);
+
+    void upgradeInsecureRequestIfNeeded(Document&);
+    void setAcceptHeaderIfNone(CachedResource::Type);
+    void updateAccordingCacheMode();
+    void removeFragmentIdentifierIfNeeded();
+#if ENABLE(CONTENT_EXTENSIONS)
+    void applyBlockedStatus(const ContentExtensions::BlockedStatus&);
+#endif
+#if ENABLE(CACHE_PARTITIONING)
+    void setDomainForCachePartition(Document&);
+#endif
+
+    void setOrigin(RefPtr<SecurityOrigin>&& origin) { ASSERT(!m_origin); m_origin = WTFMove(origin); }
+    RefPtr<SecurityOrigin> releaseOrigin() { return WTFMove(m_origin); }
+    SecurityOrigin* origin() const { return m_origin.get(); }
 
 private:
     ResourceRequest m_resourceRequest;
     String m_charset;
     ResourceLoaderOptions m_options;
     Optional<ResourceLoadPriority> m_priority;
-    bool m_forPreload;
-    DeferOption m_defer;
     RefPtr<Element> m_initiatorElement;
     AtomicString m_initiatorName;
+    RefPtr<SecurityOrigin> m_origin;
 };
 
 } // namespace WebCore

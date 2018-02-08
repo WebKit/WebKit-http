@@ -86,7 +86,6 @@ public:
     bool loadCompleted() const { return m_loadCompleted; }
 
     URL completeURL(const String& url) const;
-    void addSubresourceStyleURLs(ListHashSet<URL>&);
     bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
 
     void setIsUserStyleSheet(bool b) { m_isUserStyleSheet = b; }
@@ -97,7 +96,6 @@ public:
     void parserAddNamespace(const AtomicString& prefix, const AtomicString& uri);
     void parserAppendRule(Ref<StyleRuleBase>&&);
     void parserSetEncodingFromCharsetRule(const String& encoding); 
-    void parserSetUsesRemUnits() { m_usesRemUnits = true; }
     void parserSetUsesStyleBasedEditability() { m_usesStyleBasedEditability = true; }
 
     void clearRules();
@@ -123,7 +121,6 @@ public:
     unsigned ruleCount() const;
     StyleRuleBase* ruleAt(unsigned index) const;
 
-    bool usesRemUnits() const { return m_usesRemUnits; }
     bool usesStyleBasedEditability() const { return m_usesStyleBasedEditability; }
 
     unsigned estimatedSizeInBytes() const;
@@ -167,7 +164,6 @@ private:
     bool m_isUserStyleSheet : 1;
     bool m_hasSyntacticallyValidCSSHeader : 1;
     bool m_didLoadErrorOccur : 1;
-    bool m_usesRemUnits : 1;
     bool m_usesStyleBasedEditability : 1;
     bool m_isMutable : 1;
     bool m_isInMemoryCache : 1;

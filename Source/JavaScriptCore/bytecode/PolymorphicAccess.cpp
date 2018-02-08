@@ -220,7 +220,7 @@ std::unique_ptr<AccessCase> AccessCase::tryGet(
 std::unique_ptr<AccessCase> AccessCase::get(
     VM& vm, JSCell* owner, AccessType type, PropertyOffset offset, Structure* structure,
     const ObjectPropertyConditionSet& conditionSet, bool viaProxy, WatchpointSet* additionalSet,
-    PropertySlot::GetValueFunc customGetter, JSObject* customSlotBase)
+    PropertySlot::GetValueFunc customGetter, JSObject* customSlotBase, DOMJIT::GetterSetter* domJIT)
 {
     std::unique_ptr<AccessCase> result(new AccessCase());
 
@@ -229,12 +229,13 @@ std::unique_ptr<AccessCase> AccessCase::get(
     result->m_structure.set(vm, owner, structure);
     result->m_conditionSet = conditionSet;
 
-    if (viaProxy || additionalSet || result->doesCalls() || customGetter || customSlotBase) {
+    if (viaProxy || additionalSet || result->doesCalls() || customGetter || customSlotBase || domJIT) {
         result->m_rareData = std::make_unique<RareData>();
         result->m_rareData->viaProxy = viaProxy;
         result->m_rareData->additionalSet = additionalSet;
         result->m_rareData->customAccessor.getter = customGetter;
         result->m_rareData->customSlotBase.setMayBeNull(vm, owner, customSlotBase);
+        result->m_rareData->domJIT = domJIT;
     }
 
     return result;
@@ -385,6 +386,7 @@ std::unique_ptr<AccessCase> AccessCase::clone() const
         result->m_rareData->customAccessor.opaque = rareData->customAccessor.opaque;
         result->m_rareData->customSlotBase = rareData->customSlotBase;
         result->m_rareData->intrinsicFunction = rareData->intrinsicFunction;
+        result->m_rareData->domJIT = rareData->domJIT;
     }
     return result;
 }
@@ -1309,29 +1311,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 CCallHelpers::Address(scratchGPR, offsetInButterfly(m_offset) * sizeof(JSValue)));
         }
         
-        // If we had allocated using an operation then we would have already executed the store
-        // barrier and we would have already stored the butterfly into the object.
         if (allocatingInline) {
-            CCallHelpers::Jump ownerIsRememberedOrInEden = jit.jumpIfIsRememberedOrInEden(baseGPR);
-            WriteBarrierBuffer& writeBarrierBuffer = jit.vm()->heap.writeBarrierBuffer();
-            jit.load32(writeBarrierBuffer.currentIndexAddress(), scratchGPR2);
-            slowPath.append(
-                jit.branch32(
-                    CCallHelpers::AboveOrEqual, scratchGPR2,
-                    CCallHelpers::TrustedImm32(writeBarrierBuffer.capacity())));
-            
-            jit.add32(CCallHelpers::TrustedImm32(1), scratchGPR2);
-            jit.store32(scratchGPR2, writeBarrierBuffer.currentIndexAddress());
-            
-            jit.move(CCallHelpers::TrustedImmPtr(writeBarrierBuffer.buffer()), scratchGPR3);
-            // We use an offset of -sizeof(void*) because we already added 1 to scratchGPR2.
-            jit.storePtr(
-                baseGPR,
-                CCallHelpers::BaseIndex(
-                    scratchGPR3, scratchGPR2, CCallHelpers::ScalePtr,
-                    static_cast<int32_t>(-sizeof(void*))));
-            ownerIsRememberedOrInEden.link(&jit);
-            
             // We set the new butterfly and the structure last. Doing it this way ensures that
             // whatever we had done up to this point is forgotten if we choose to branch to slow
             // path.

@@ -41,6 +41,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         this._invalidLineNumbers = {0: true};
         this._ignoreContentDidChange = 0;
         this._requestingScriptContent = false;
+        this._activeCallFrameSourceCodeLocation = null;
 
         this._typeTokenScrollHandler = null;
         this._typeTokenAnnotator = null;
@@ -143,7 +144,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
             if (this._activeCallFrameSourceCodeLocation) {
                 this._activeCallFrameSourceCodeLocation.removeEventListener(WebInspector.SourceCodeLocation.Event.LocationChanged, this._activeCallFrameSourceCodeLocationChanged, this);
-                delete this._activeCallFrameSourceCodeLocation;
+                this._activeCallFrameSourceCodeLocation = null;
             }
         }
 
@@ -634,13 +635,12 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
 
         if (this._activeCallFrameSourceCodeLocation) {
             this._activeCallFrameSourceCodeLocation.removeEventListener(WebInspector.SourceCodeLocation.Event.LocationChanged, this._activeCallFrameSourceCodeLocationChanged, this);
-            delete this._activeCallFrameSourceCodeLocation;
+            this._activeCallFrameSourceCodeLocation = null;
         }
 
         var activeCallFrame = WebInspector.debuggerManager.activeCallFrame;
         if (!activeCallFrame || !this._matchesSourceCodeLocation(activeCallFrame.sourceCodeLocation)) {
-            this.executionLineNumber = NaN;
-            this.executionColumnNumber = NaN;
+            this.setExecutionLineAndColumn(NaN, NaN);
             return;
         }
 
@@ -653,8 +653,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         // could have changed (e.g. continuing in a loop with a breakpoint inside).
 
         var lineInfo = this._editorLineInfoForSourceCodeLocation(activeCallFrame.sourceCodeLocation);
-        this.executionLineNumber = lineInfo.lineNumber;
-        this.executionColumnNumber = lineInfo.columnNumber;
+        this.setExecutionLineAndColumn(lineInfo.lineNumber, lineInfo.columnNumber);
 
         // If we have full content or this source code isn't a Resource we can return early.
         // Script source code populates from the request started in the constructor.
@@ -681,8 +680,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         console.assert(this._activeCallFrameSourceCodeLocation === WebInspector.debuggerManager.activeCallFrame.sourceCodeLocation);
 
         var lineInfo = this._editorLineInfoForSourceCodeLocation(this._activeCallFrameSourceCodeLocation);
-        this.executionLineNumber = lineInfo.lineNumber;
-        this.executionColumnNumber = lineInfo.columnNumber;
+        this.setExecutionLineAndColumn(lineInfo.lineNumber, lineInfo.columnNumber);
     }
 
     _populateWithInlineScriptContent()
@@ -1212,6 +1210,102 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         this._reinsertAllIssues();
     }
 
+    textEditorExecutionHighlightRange(offset, position, callback)
+    {
+        let script = this._getAssociatedScript(position);
+        if (!script) {
+            callback(null);
+            return;
+        }
+
+        // If this is an inline script, then convert to offset within the inline script.
+        let adjustment = script.range.startOffset || 0;
+        offset = offset - adjustment;
+
+        // When returning offsets, convert to offsets within the SourceCode being viewed.
+        function convertRangeOffsetsToSourceCodeOffsets(range) {
+            return range.map((offset) => offset + adjustment);
+        }
+
+        script.requestScriptSyntaxTree((syntaxTree) => {
+            let nodes = syntaxTree.containersOfOffset(offset);
+            if (!nodes.length) {
+                callback(null);
+                return;
+            }
+
+            // Find a node starting at this offset.
+            // Avoid highlighting the entire program if this is the start of the first statement.
+            // Special case the assignment expression inside of a for..of and for..in to highlight a larger range.
+            for (let node of nodes) {
+                let startOffset = node.range[0];
+                if (startOffset === offset && node.type !== WebInspector.ScriptSyntaxTree.NodeType.Program) {
+                    callback(convertRangeOffsetsToSourceCodeOffsets(node.range));
+                    return;
+                }
+                if (node.type === WebInspector.ScriptSyntaxTree.NodeType.ForInStatement || node.type === WebInspector.ScriptSyntaxTree.NodeType.ForOfStatement) {
+                    if (node.left.range[0] === offset) {
+                        callback(convertRangeOffsetsToSourceCodeOffsets([node.left.range[0], node.right.range[1]]));
+                        return;
+                    }
+                }
+                if (startOffset > offset)
+                    break;
+            }
+
+            // Find a node ending at this offset. (Leaving a block).
+            // We check this after ensuring nothing starts with this offset,
+            // as that would be more important.
+            for (let node of nodes) {
+                let startOffset = node.range[0];
+                let endOffset = node.range[1];
+                if (endOffset === offset) {
+                    if (node.type === WebInspector.ScriptSyntaxTree.NodeType.BlockStatement) {
+                        // Closing brace of a block, only highlight the closing brace character.
+                        callback(convertRangeOffsetsToSourceCodeOffsets([offset - 1, offset]));
+                        return;
+                    }
+                }
+                if (startOffset > offset)
+                    break;
+            }
+
+            // Find the best container node for this expression.
+            // Sort by the tightest bounds so we can walk from specific to general nodes.
+            nodes.sort((a, b) => {
+                let aLength = a.range[1] - a.range[0];
+                let bLength = b.range[1] - b.range[0];
+                return aLength - bLength;
+            });
+
+            for (let i = 0; i < nodes.length; ++i) {
+                let node = nodes[i];
+
+                // In a function call.
+                if (node.type === WebInspector.ScriptSyntaxTree.NodeType.CallExpression
+                    || node.type === WebInspector.ScriptSyntaxTree.NodeType.NewExpression) {
+                    callback(convertRangeOffsetsToSourceCodeOffsets(node.range));
+                    return;
+                }
+
+                // In the middle of a member expression.
+                if (node.type === WebInspector.ScriptSyntaxTree.NodeType.ThisExpression
+                    || node.type === WebInspector.ScriptSyntaxTree.NodeType.IdentifierExpression) {
+                    let nextNode = nodes[i + 1];
+                    if (nextNode && nextNode.type === WebInspector.ScriptSyntaxTree.NodeType.MemberExpression) {
+                        callback(convertRangeOffsetsToSourceCodeOffsets(nextNode.range));
+                        return;
+                    }
+                    callback(convertRangeOffsetsToSourceCodeOffsets(node.range));
+                    return;
+                }
+            }
+
+            // No matches, just highlight the line.
+            callback(null);
+        });
+    }
+
     _clearWidgets()
     {
         for (var widget of this._widgetMap.values())
@@ -1422,7 +1516,7 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         var sourceCode = this._sourceCode;
         var sourceID = sourceCode instanceof WebInspector.Script ? sourceCode.id : sourceCode.scripts[0].id;
         var range = candidate.hoveredTokenRange;
-        var offset = this.currentPositionToOriginalOffset({line: range.start.line, ch: range.start.ch});
+        var offset = this.positionToOffset({line: range.start.line, ch: range.start.ch});
 
         var allRequests = [{
             typeInformationDescriptor: WebInspector.ScriptSyntaxTree.TypeProfilerSearchDescriptor.NormalExpression,
@@ -1775,14 +1869,27 @@ WebInspector.SourceCodeTextEditor = class SourceCodeTextEditor extends WebInspec
         WebInspector.enableControlFlowProfilerSetting.value = shouldActivate;
     }
 
-    _getAssociatedScript()
+    _getAssociatedScript(position)
     {
-        var script = null;
-        // FIXME: This needs to me modified to work with HTML files with inline script tags.
+        let script = null;
+
         if (this._sourceCode instanceof WebInspector.Script)
             script = this._sourceCode;
-        else if (this._sourceCode instanceof WebInspector.Resource && this._sourceCode.type === WebInspector.Resource.Type.Script && this._sourceCode.scripts.length)
-            script = this._sourceCode.scripts[0];
+        else if (this._sourceCode instanceof WebInspector.Resource && this._sourceCode.scripts.length) {
+            if (this._sourceCode.type === WebInspector.Resource.Type.Script)
+                script = this._sourceCode.scripts[0];
+            else if (this._sourceCode.type === WebInspector.Resource.Type.Document && position) {
+                for (let inlineScript of this._sourceCode.scripts) {
+                    if (inlineScript.range.contains(position.lineNumber, position.columnNumber)) {
+                        if (isNaN(inlineScript.range.startOffset))
+                            inlineScript.range.resolveOffsets(this._sourceCode.content);
+                        script = inlineScript;
+                        break;
+                    }
+                }
+            }
+        }
+
         return script;
     }
 

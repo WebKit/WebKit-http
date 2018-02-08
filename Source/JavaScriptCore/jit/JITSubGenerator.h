@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JITSubGenerator_h
-#define JITSubGenerator_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -42,8 +41,7 @@ public:
 
     JITSubGenerator(SnippetOperand leftOperand, SnippetOperand rightOperand,
         JSValueRegs result, JSValueRegs left, JSValueRegs right,
-        FPRReg leftFPR, FPRReg rightFPR, GPRReg scratchGPR, FPRReg scratchFPR,
-        ArithProfile* arithProfile = nullptr)
+        FPRReg leftFPR, FPRReg rightFPR, GPRReg scratchGPR, FPRReg scratchFPR)
         : m_leftOperand(leftOperand)
         , m_rightOperand(rightOperand)
         , m_result(result)
@@ -53,16 +51,13 @@ public:
         , m_rightFPR(rightFPR)
         , m_scratchGPR(scratchGPR)
         , m_scratchFPR(scratchFPR)
-        , m_arithProfile(arithProfile)
     { }
 
-    JITMathICInlineResult generateInline(CCallHelpers&, MathICGenerationState&);
-    bool generateFastPath(CCallHelpers&, CCallHelpers::JumpList& endJumpList, CCallHelpers::JumpList& slowPathJumpList, bool shouldEmitProfiling);
+    JITMathICInlineResult generateInline(CCallHelpers&, MathICGenerationState&, const ArithProfile*);
+    bool generateFastPath(CCallHelpers&, CCallHelpers::JumpList& endJumpList, CCallHelpers::JumpList& slowPathJumpList, const ArithProfile*, bool shouldEmitProfiling);
 
     static bool isLeftOperandValidConstant(SnippetOperand) { return false; }
     static bool isRightOperandValidConstant(SnippetOperand) { return false; }
-
-    ArithProfile* arithProfile() const { return m_arithProfile; }
 
 private:
     SnippetOperand m_leftOperand;
@@ -74,11 +69,8 @@ private:
     FPRReg m_rightFPR;
     GPRReg m_scratchGPR;
     FPRReg m_scratchFPR;
-    ArithProfile* m_arithProfile;
 };
 
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITSubGenerator_h

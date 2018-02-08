@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITOperations_h
-#define JITOperations_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -59,6 +58,7 @@ class RegExpObject;
 class Register;
 class Structure;
 class StructureStubInfo;
+class Symbol;
 class SymbolTable;
 class WatchpointSet;
 
@@ -111,6 +111,7 @@ typedef char* UnusedPtr;
     Ssi: StructureStubInfo*
     St: Structure*
     Symtab: SymbolTable*
+    Sym: Symbol*
     T: StringImpl*
     V: void
     Vm: VM*
@@ -140,6 +141,7 @@ typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJ)(ExecState*, EncodedJSV
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJZ)(ExecState*, EncodedJSValue, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJC)(ExecState*, EncodedJSValue, JSCell*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJA)(ExecState*, EncodedJSValue, JSArray*);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJArp)(ExecState*, EncodedJSValue, ArithProfile*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJI)(ExecState*, EncodedJSValue, UniquedStringImpl*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJ)(ExecState*, EncodedJSValue, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue);
@@ -147,12 +149,13 @@ typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJAp)(ExecState*, Encoded
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJBy)(ExecState*, EncodedJSValue, EncodedJSValue, ByValInfo*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJArp)(ExecState*, EncodedJSValue, EncodedJSValue, ArithProfile*);
-typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJArpMic)(ExecState*, EncodedJSValue, EncodedJSValue, ArithProfile*, void*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJJMic)(ExecState*, EncodedJSValue, EncodedJSValue, void*);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJMic)(ExecState*, EncodedJSValue, void*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJssZ)(ExecState*, JSString*, int32_t);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJssReo)(ExecState*, JSString*, RegExpObject*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJssReoJss)(ExecState*, JSString*, RegExpObject*, JSString*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJP)(ExecState*, EncodedJSValue, void*);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EGP)(ExecState*, JSGlobalObject*, void*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EP)(ExecState*, void*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EPP)(ExecState*, void*, void*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EPS)(ExecState*, void*, size_t);
@@ -268,6 +271,14 @@ typedef void (JIT_OPERATION *V_JITOperation_EPZJ)(ExecState*, void*, int32_t, En
 typedef void (JIT_OPERATION *V_JITOperation_ESsiJJI)(ExecState*, StructureStubInfo*, EncodedJSValue, EncodedJSValue, UniquedStringImpl*);
 typedef void (JIT_OPERATION *V_JITOperation_EJJJI)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue, UniquedStringImpl*);
 typedef void (JIT_OPERATION *V_JITOperation_EJJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue, EncodedJSValue);
+typedef void (JIT_OPERATION *V_JITOperation_EOJJZ)(ExecState*, JSObject*, EncodedJSValue, EncodedJSValue, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_EOJssJZ)(ExecState*, JSObject*, JSString*, EncodedJSValue, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_EOIJZ)(ExecState*, JSObject*, UniquedStringImpl*, EncodedJSValue, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_EOSymJZ)(ExecState*, JSObject*, Symbol*, EncodedJSValue, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_EOJOOZ)(ExecState*, JSObject*, EncodedJSValue, JSObject*, JSObject*, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_EOJssOOZ)(ExecState*, JSObject*, JSString*, JSObject*, JSObject*, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_EOIOOZ)(ExecState*, JSObject*, UniquedStringImpl*, JSObject*, JSObject*, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_EOSymOOZ)(ExecState*, JSObject*, Symbol*, JSObject*, JSObject*, int32_t);
 typedef void (JIT_OPERATION *V_JITOperation_EWs)(ExecState*, WatchpointSet*);
 typedef void (JIT_OPERATION *V_JITOperation_EZ)(ExecState*, int32_t);
 typedef void (JIT_OPERATION *V_JITOperation_EZJ)(ExecState*, int32_t, EncodedJSValue);
@@ -299,6 +310,7 @@ typedef SlowPathReturnType (JIT_OPERATION *Sprt_JITOperation_ECli)(ExecState*, C
 typedef StringImpl* (JIT_OPERATION *T_JITOperation_EJss)(ExecState*, JSString*);
 typedef JSString* (JIT_OPERATION *Jss_JITOperation_EZ)(ExecState*, int32_t);
 typedef JSString* (JIT_OPERATION *Jss_JITOperation_EJJJ)(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue);
+typedef JSString* (JIT_OPERATION *Jss_JITOperation_EJssUi)(ExecState*, JSString*, uint32_t);
 
 // This method is used to lookup an exception hander, keyed by faultLocation, which is
 // the return location from one of the calls out to one of the helper operations above.
@@ -365,7 +377,6 @@ void JIT_OPERATION operationSetFunctionName(ExecState*, JSCell*, EncodedJSValue)
 JSCell* JIT_OPERATION operationNewObject(ExecState*, Structure*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewRegexp(ExecState*, void*) WTF_INTERNAL;
 UnusedPtr JIT_OPERATION operationHandleWatchdogTimer(ExecState*) WTF_INTERNAL;
-void JIT_OPERATION operationThrowStaticError(ExecState*, EncodedJSValue, int32_t) WTF_INTERNAL;
 void JIT_OPERATION operationThrow(ExecState*, EncodedJSValue) WTF_INTERNAL;
 void JIT_OPERATION operationDebug(ExecState*, int32_t) WTF_INTERNAL;
 #if ENABLE(DFG_JIT)
@@ -410,8 +421,7 @@ char* JIT_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitial
 char* JIT_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*, JSObject*, size_t newSize) WTF_INTERNAL;
 
 void JIT_OPERATION operationFlushWriteBarrierBuffer(ExecState*, JSCell*);
-void JIT_OPERATION operationWriteBarrier(ExecState*, JSCell*, JSCell*);
-void JIT_OPERATION operationUnconditionalWriteBarrier(ExecState*, JSCell*);
+void JIT_OPERATION operationWriteBarrierSlowPath(ExecState*, JSCell*);
 void JIT_OPERATION operationOSRWriteBarrier(ExecState*, JSCell*);
 
 void JIT_OPERATION operationExceptionFuzz(ExecState*);
@@ -427,22 +437,26 @@ JSCell* JIT_OPERATION operationToIndexString(ExecState*, int32_t);
 
 EncodedJSValue JIT_OPERATION operationValueAdd(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueAddProfiled(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationValueAddProfiledOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*, JITAddIC*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationValueAddProfiledNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*, JITAddIC*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueAddProfiledOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITAddIC*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueAddProfiledNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITAddIC*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueAddOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITAddIC*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueAddNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITAddIC*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueMul(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueMulOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITMulIC*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueMulNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITMulIC*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationValueMulProfiledOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*, JITMulIC*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationValueMulProfiledNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*, JITMulIC*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueMulProfiledOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITMulIC*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueMulProfiledNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITMulIC*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueMulProfiled(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationArithNegate(ExecState*, EncodedJSValue operand);
+EncodedJSValue JIT_OPERATION operationArithNegateProfiled(ExecState*, EncodedJSValue operand, ArithProfile*);
+EncodedJSValue JIT_OPERATION operationArithNegateProfiledOptimize(ExecState*, EncodedJSValue encodedOperand, JITNegIC*);
+EncodedJSValue JIT_OPERATION operationArithNegateOptimize(ExecState*, EncodedJSValue encodedOperand, JITNegIC*);
 EncodedJSValue JIT_OPERATION operationValueSub(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueSubProfiled(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueSubOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITSubIC*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueSubNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITSubIC*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationValueSubProfiledOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*, JITSubIC*) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationValueSubProfiledNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, ArithProfile*, JITSubIC*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueSubProfiledOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITSubIC*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueSubProfiledNoOptimize(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2, JITSubIC*) WTF_INTERNAL;
 
 void JIT_OPERATION operationProcessTypeProfilerLog(ExecState*) WTF_INTERNAL;
 void JIT_OPERATION operationProcessShadowChickenLog(ExecState*) WTF_INTERNAL;
@@ -452,6 +466,3 @@ void JIT_OPERATION operationProcessShadowChickenLog(ExecState*) WTF_INTERNAL;
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITOperations_h
-

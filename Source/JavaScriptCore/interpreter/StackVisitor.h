@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StackVisitor_h
-#define StackVisitor_h
+#pragma once
 
 #include "VMEntryRecord.h"
 #include <functional>
@@ -40,7 +39,6 @@ class CodeBlock;
 class ExecState;
 class JSFunction;
 class JSObject;
-class JSScope;
 class ClonedArguments;
 class Register;
 
@@ -181,6 +179,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // StackVisitor_h
-

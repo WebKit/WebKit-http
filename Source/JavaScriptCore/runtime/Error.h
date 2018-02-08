@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef Error_h
-#define Error_h
+#pragma once
 
 #include "ErrorInstance.h"
 #include "InternalFunction.h"
@@ -38,6 +37,16 @@ class JSGlobalObject;
 class JSObject;
 class SourceCode;
 class Structure;
+
+enum class ErrorType : uint8_t {
+    Error,
+    EvalError,
+    RangeError,
+    ReferenceError,
+    SyntaxError,
+    TypeError,
+    URIError,
+};
 
 // ExecState wrappers.
 JSObject* createError(ExecState*, const String&, ErrorInstance::SourceAppender);
@@ -61,10 +70,11 @@ JS_EXPORT_PRIVATE JSObject* createNotEnoughArgumentsError(ExecState*);
 JS_EXPORT_PRIVATE JSObject* createURIError(ExecState*, const String&);
 JS_EXPORT_PRIVATE JSObject* createOutOfMemoryError(ExecState*);
 
+JS_EXPORT_PRIVATE JSObject* createError(ExecState*, ErrorType, const String&);
+
 
 bool addErrorInfoAndGetBytecodeOffset(ExecState*, VM&, JSObject*, bool, CallFrame*&, unsigned* = nullptr);
 
-bool hasErrorInfo(ExecState*, JSObject* error);
 JS_EXPORT_PRIVATE void addErrorInfo(ExecState*, JSObject*, bool); 
 JSObject* addErrorInfo(ExecState*, JSObject* error, int line, const SourceCode&);
 
@@ -149,4 +159,10 @@ private:
 
 } // namespace JSC
 
-#endif // Error_h
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream&, JSC::ErrorType);
+
+} // namespace WTF

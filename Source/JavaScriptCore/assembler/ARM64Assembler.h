@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ARM64Assembler_h
-#define ARM64Assembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(ARM64)
 
@@ -1497,9 +1496,14 @@ public:
         }
     }
     
-    ALWAYS_INLINE void dmbSY()
+    ALWAYS_INLINE void dmbISH()
     {
-        insn(0xd5033fbf);
+        insn(0xd5033bbf);
+    }
+
+    ALWAYS_INLINE void dmbISHST()
+    {
+        insn(0xd5033abf);
     }
 
     template<int datasize>
@@ -3609,5 +3613,3 @@ private:
 #undef CHECK_FP_MEMOP_DATASIZE
 
 #endif // ENABLE(ASSEMBLER) && CPU(ARM64)
-
-#endif // ARM64Assembler_h

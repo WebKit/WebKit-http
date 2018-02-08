@@ -40,7 +40,7 @@ bool setJSattributeConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::Encode
 
 class JSattributePrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
+    using Base = JSC::JSNonFinalObject;
     static JSattributePrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSattributePrototype* ptr = new (NotNull, JSC::allocateCell<JSattributePrototype>(vm.heap)) JSattributePrototype(vm, globalObject, structure);
@@ -63,7 +63,7 @@ private:
     void finishCreation(JSC::VM&);
 };
 
-typedef JSDOMConstructorNotConstructable<JSattribute> JSattributeConstructor;
+using JSattributeConstructor = JSDOMConstructorNotConstructable<JSattribute>;
 
 /* Hash table */
 
@@ -132,22 +132,26 @@ void JSattribute::destroy(JSC::JSCell* cell)
     thisObject->JSattribute::~JSattribute();
 }
 
-EncodedJSValue jsattributeReadonly(ExecState* state, EncodedJSValue thisValue, PropertyName)
+template<> inline JSattribute* BindingCaller<JSattribute>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    UNUSED_PARAM(throwScope);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSattribute*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, throwScope, "attribute", "readonly");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.readonly());
-    return JSValue::encode(result);
+    return jsDynamicCast<JSattribute*>(JSValue::decode(thisValue));
 }
 
+static inline JSValue jsattributeReadonlyGetter(ExecState&, JSattribute&, ThrowScope& throwScope);
+
+EncodedJSValue jsattributeReadonly(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return BindingCaller<JSattribute>::attribute<jsattributeReadonlyGetter>(state, thisValue, "readonly");
+}
+
+static inline JSValue jsattributeReadonlyGetter(ExecState& state, JSattribute& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsStringWithCache(&state, impl.readonly());
+    return result;
+}
 
 EncodedJSValue jsattributeConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {

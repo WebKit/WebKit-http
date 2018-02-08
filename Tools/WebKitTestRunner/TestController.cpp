@@ -57,6 +57,7 @@
 #include <WebKit/WKProtectionSpace.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKSecurityOriginRef.h>
+#include <WebKit/WKTextChecker.h>
 #include <WebKit/WKUserMediaPermissionCheck.h>
 #include <algorithm>
 #include <cstdio>
@@ -80,10 +81,6 @@
 #include <WebKit/WKPagePrivateMac.h>
 #endif
 
-#if !PLATFORM(COCOA)
-#include <WebKit/WKTextChecker.h>
-#endif
-
 namespace WTR {
 
 const unsigned TestController::viewWidth = 800;
@@ -92,11 +89,7 @@ const unsigned TestController::viewHeight = 600;
 const unsigned TestController::w3cSVGViewWidth = 480;
 const unsigned TestController::w3cSVGViewHeight = 360;
 
-#if ASAN_ENABLED
-const double TestController::shortTimeout = 10.0;
-#else
-const double TestController::shortTimeout = 5.0;
-#endif
+const double TestController::defaultShortTimeout = 5.0;
 
 const double TestController::noTimeout = -1;
 
@@ -122,6 +115,7 @@ TestController& TestController::singleton()
 
 TestController::TestController(int argc, const char* argv[])
 {
+    WebCoreTestSupport::setURLParserEnabled(true);
     initialize(argc, argv);
     controller = this;
     run();
@@ -800,7 +794,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     setIgnoresViewportScaleLimits(options.ignoresViewportScaleLimits);
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
-    runUntil(m_doneResetting, shortTimeout);
+    runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
     return m_doneResetting;
 }
 
@@ -814,7 +808,7 @@ void TestController::reattachPageToWebProcess()
     // Loading a web page is the only way to reattach an existing page to a process.
     m_doneResetting = false;
     WKPageLoadURL(m_mainWebView->page(), blankURL());
-    runUntil(m_doneResetting, shortTimeout);
+    runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
 }
 
 const char* TestController::webProcessName()
@@ -953,6 +947,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.needsSiteSpecificQuirks = parseBooleanTestHeaderValue(value);
         if (key == "ignoresViewportScaleLimits")
             testOptions.ignoresViewportScaleLimits = parseBooleanTestHeaderValue(value);
+        if (key == "useCharacterSelectionGranularity")
+            testOptions.useCharacterSelectionGranularity = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1083,6 +1079,7 @@ TestCommand parseInputLine(const std::string& inputLine)
 
 bool TestController::runTest(const char* inputLine)
 {
+    WKTextCheckerSetTestingMode(true);
     TestCommand command = parseInputLine(std::string(inputLine));
 
     m_state = RunningTest;
@@ -1675,14 +1672,25 @@ void TestController::downloadDidStart(WKContextRef context, WKDownloadRef downlo
 
 WKStringRef TestController::decideDestinationWithSuggestedFilename(WKContextRef, WKDownloadRef, WKStringRef filename, bool*& allowOverwrite)
 {
+    String suggestedFilename = toWTFString(filename);
+
     StringBuilder builder;
     builder.append("Downloading URL with suggested filename \"");
-    builder.append(toWTFString(filename));
+    builder.append(suggestedFilename);
     builder.append("\"\n");
 
     m_currentInvocation->outputText(builder.toString());
 
-    return nullptr;
+    const char* dumpRenderTreeTemp = libraryPathForTesting();
+    if (!dumpRenderTreeTemp)
+        return nullptr;
+
+    *allowOverwrite = true;
+    String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
+    if (suggestedFilename.isEmpty())
+        suggestedFilename = "Unknown";
+
+    return toWK(temporaryFolder + "/" + suggestedFilename).leakRef();
 }
 
 void TestController::downloadDidFinish(WKContextRef, WKDownloadRef)

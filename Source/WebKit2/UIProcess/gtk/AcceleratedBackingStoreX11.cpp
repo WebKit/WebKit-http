@@ -37,6 +37,7 @@
 #include <X11/extensions/Xdamage.h>
 #include <cairo-xlib.h>
 #include <gdk/gdkx.h>
+#include <gtk/gtk.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -118,6 +119,7 @@ AcceleratedBackingStoreX11::~AcceleratedBackingStoreX11()
     if (m_damage) {
         XDamageNotifier::singleton().remove(m_damage.get());
         m_damage.reset();
+        XSync(downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native(), False);
     }
 }
 
@@ -127,10 +129,13 @@ void AcceleratedBackingStoreX11::update(const LayerTreeContext& layerTreeContext
     if (m_surface && cairo_xlib_surface_get_drawable(m_surface.get()) == pixmap)
         return;
 
+    Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
+
     if (m_surface) {
         if (m_damage) {
             XDamageNotifier::singleton().remove(m_damage.get());
             m_damage.reset();
+            XSync(display, False);
         }
         m_surface = nullptr;
     }
@@ -146,7 +151,6 @@ void AcceleratedBackingStoreX11::update(const LayerTreeContext& layerTreeContext
     float deviceScaleFactor = m_webPage.deviceScaleFactor();
     size.scale(deviceScaleFactor);
 
-    Display* display = downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native();
     ASSERT(downcast<PlatformDisplayX11>(PlatformDisplay::sharedDisplay()).native() == GDK_DISPLAY_XDISPLAY(gdk_display_get_default()));
     GdkVisual* visual = gdk_screen_get_rgba_visual(gdk_screen_get_default());
     if (!visual)
@@ -155,8 +159,10 @@ void AcceleratedBackingStoreX11::update(const LayerTreeContext& layerTreeContext
     cairoSurfaceSetDeviceScale(m_surface.get(), deviceScaleFactor, deviceScaleFactor);
     m_damage = XDamageCreate(display, pixmap, XDamageReportNonEmpty);
     XDamageNotifier::singleton().add(m_damage.get(), [this] {
-        gtk_widget_queue_draw(m_webPage.viewWidget());
+        if (m_webPage.isViewVisible())
+            gtk_widget_queue_draw(m_webPage.viewWidget());
     });
+    XSync(display, False);
 }
 
 bool AcceleratedBackingStoreX11::paint(cairo_t* cr, const IntRect& clipRect)

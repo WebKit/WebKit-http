@@ -38,6 +38,7 @@
 #include "ImageObserver.h"
 #include "IntRect.h"
 #include "Length.h"
+#include "NotImplemented.h"
 #include "SharedBuffer.h"
 #include "TextStream.h"
 #include <CoreGraphics/CGContext.h>
@@ -182,7 +183,7 @@ void PDFDocumentImage::decodedSizeChanged(size_t newCachedBytes)
         return;
 
     if (imageObserver())
-        imageObserver()->decodedSizeChanged(this, -safeCast<int>(m_cachedBytes) + newCachedBytes);
+        imageObserver()->decodedSizeChanged(this, -static_cast<long long>(m_cachedBytes) + newCachedBytes);
 
     ASSERT(s_allDecodedDataSize >= m_cachedBytes);
     // Update with the difference in two steps to avoid unsigned underflow subtraction.
@@ -344,8 +345,12 @@ void PDFDocumentImage::drawPDFPage(GraphicsContext& context)
 
     context.translate(-m_cropBox.x(), -m_cropBox.y());
 
+#if USE(DIRECT2D)
+    notImplemented();
+#else
     // CGPDF pages are indexed from 1.
     CGContextDrawPDFPage(context.platformContext(), CGPDFDocumentGetPage(m_document.get(), 1));
+#endif
 }
 
 #endif // !USE(PDFKIT_FOR_PDFDOCUMENTIMAGE)

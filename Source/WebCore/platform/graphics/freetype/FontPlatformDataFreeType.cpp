@@ -25,6 +25,7 @@
 #include "config.h"
 #include "FontPlatformData.h"
 
+#include "CairoUniquePtr.h"
 #include "CairoUtilities.h"
 #include "FontCache.h"
 #include "FontDescription.h"
@@ -42,7 +43,7 @@
 
 namespace WebCore {
 
-cairo_subpixel_order_t convertFontConfigSubpixelOrder(int fontConfigOrder)
+static cairo_subpixel_order_t convertFontConfigSubpixelOrder(int fontConfigOrder)
 {
     switch (fontConfigOrder) {
     case FC_RGBA_RGB:
@@ -60,7 +61,7 @@ cairo_subpixel_order_t convertFontConfigSubpixelOrder(int fontConfigOrder)
     return CAIRO_SUBPIXEL_ORDER_DEFAULT;
 }
 
-cairo_hint_style_t convertFontConfigHintStyle(int fontConfigStyle)
+static cairo_hint_style_t convertFontConfigHintStyle(int fontConfigStyle)
 {
     switch (fontConfigStyle) {
     case FC_HINT_NONE:
@@ -75,7 +76,7 @@ cairo_hint_style_t convertFontConfigHintStyle(int fontConfigStyle)
     return CAIRO_HINT_STYLE_NONE;
 }
 
-void setCairoFontOptionsFromFontConfigPattern(cairo_font_options_t* options, FcPattern* pattern)
+static void setCairoFontOptionsFromFontConfigPattern(cairo_font_options_t* options, FcPattern* pattern)
 {
     FcBool booleanResult;
     int integerResult;
@@ -105,16 +106,16 @@ void setCairoFontOptionsFromFontConfigPattern(cairo_font_options_t* options, FcP
         cairo_font_options_set_hint_style(options, CAIRO_HINT_STYLE_NONE);
 }
 
-static cairo_font_options_t* getDefaultCairoFontOptions()
+static CairoUniquePtr<cairo_font_options_t> getDefaultCairoFontOptions()
 {
 #if PLATFORM(GTK)
     if (GdkScreen* screen = gdk_screen_get_default()) {
         const cairo_font_options_t* screenOptions = gdk_screen_get_font_options(screen);
         if (screenOptions)
-            return cairo_font_options_copy(screenOptions);
+            return CairoUniquePtr<cairo_font_options_t>(cairo_font_options_copy(screenOptions));
     }
 #endif
-    return cairo_font_options_create();
+    return CairoUniquePtr<cairo_font_options_t>(cairo_font_options_create());
 }
 
 static FcPattern* getDefaultFontconfigOptions()
@@ -299,9 +300,9 @@ String FontPlatformData::description() const
 
 void FontPlatformData::buildScaledFont(cairo_font_face_t* fontFace)
 {
-    cairo_font_options_t* options = getDefaultCairoFontOptions();
+    CairoUniquePtr<cairo_font_options_t> options = getDefaultCairoFontOptions();
     FcPattern* optionsPattern = m_pattern ? m_pattern.get() : getDefaultFontconfigOptions();
-    setCairoFontOptionsFromFontConfigPattern(options, optionsPattern);
+    setCairoFontOptionsFromFontConfigPattern(options.get(), optionsPattern);
 
     cairo_matrix_t ctm;
     cairo_matrix_init_identity(&ctm);
@@ -340,8 +341,7 @@ void FontPlatformData::buildScaledFont(cairo_font_face_t* fontFace)
         cairo_matrix_translate(&fontMatrix, 0.0, 1.0);
     }
 
-    m_scaledFont = adoptRef(cairo_scaled_font_create(fontFace, &fontMatrix, &ctm, options));
-    cairo_font_options_destroy(options);
+    m_scaledFont = adoptRef(cairo_scaled_font_create(fontFace, &fontMatrix, &ctm, options.get()));
 }
 
 bool FontPlatformData::hasCompatibleCharmap() const

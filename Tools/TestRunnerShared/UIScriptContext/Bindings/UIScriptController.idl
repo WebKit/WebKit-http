@@ -38,6 +38,8 @@ interface UIScriptController {
     void doubleTapAtPoint(long x, long y, object callback);
     void dragFromPointToPoint(long startX, long startY, long endX, long endY, double durationSeconds, object callback);
 
+    void longPressAtPoint(long x, long y, object callback);
+
     void stylusDownAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object callback);
     void stylusMoveToPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object callback);
     void stylusUpAtPoint(long x, long y, object callback);
@@ -46,6 +48,72 @@ interface UIScriptController {
     void typeCharacterUsingHardwareKeyboard(DOMString character, object callback);
     void keyDownUsingHardwareKeyboard(DOMString character, object callback);
     void keyUpUsingHardwareKeyboard(DOMString character, object callback);
+
+    // eventsJSON describes a series of user events in JSON form. For the keys, see HIDEventGenerator.mm.
+    // For example, this JSON describes a touch down followed by a touch up (i.e. a single tap).
+    //  {
+    //      "events" : [
+    //          {
+    //              "inputType" : "hand",
+    //              "timeOffset" : 0,
+    //              "touches" : [
+    //                  {
+    //                      "inputType" : "finger",
+    //                      "phase" : "began",
+    //                      "id" : 1,
+    //                      "x" : 100,
+    //                      "y" : 120
+    //                  }
+    //              ]
+    //          },
+    //          {
+    //              "interpolate" : "linear",
+    //              "timestep" : 0.025,
+    //              "startEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 0.025,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "began",
+    //                          "id" : 1,
+    //                          "x" : 100,
+    //                          "y" : 120,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              },
+    //              "endEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 3.0,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "stationary",
+    //                          "id" : 1,
+    //                          "x" : 20,
+    //                          "y" : 40,
+    //                          "pressure" : 500
+    //                      }
+    //                  ]
+    //              }
+    //          },
+    //          {
+    //              "inputType" : "hand",
+    //              "timeOffset" : 0.002, // seconds relative to the first event
+    //              "touches" : [
+    //                  {
+    //                      "inputType" : "finger",
+    //                      "phase" : "ended",
+    //                      "id" : 1,
+    //                      "x" : 100,
+    //                      "y" : 120
+    //                  }
+    //              ]
+    //          },
+    //      ]
+    //  }
+    void sendEventStream(DOMString eventsJSON, object callback);
 
     // Equivalent of pressing the Done button in the form accessory bar.
     void dismissFormAccessoryView();
@@ -59,6 +127,9 @@ interface UIScriptController {
 
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
+
+    // Returned object is a dictionary with the passed in string as a key for returned object
+    object contentsOfUserInterfaceItem(DOMString interfaceItem);
 
     // These callbacks also work for the form accessory views.
     attribute object didShowKeyboardCallback;
@@ -76,6 +147,8 @@ interface UIScriptController {
     readonly attribute double maximumZoomScale;
 
     readonly attribute object contentVisibleRect; // Returned object has 'left', 'top', 'width', 'height' properties.
+
+    readonly attribute object selectionRangeViewRects; // An array of objects with 'left', 'top', 'width', and 'height' properties.
 
     void uiScriptComplete(DOMString result);
 };

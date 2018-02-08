@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITInlines_h
-#define JITInlines_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -416,9 +415,25 @@ ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(V_JITOperation_ECIZC opera
     return appendCallWithExceptionCheck(operation);
 }
 
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJ operation, JSValueRegs result, JSValueRegs arg)
+{
+    setupArgumentsWithExecState(arg);
+    Call call = appendCallWithExceptionCheck(operation);
+    setupResults(result);
+    return call;
+}
+
 ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJ operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2)
 {
     setupArgumentsWithExecState(arg1, arg2);
+    Call call = appendCallWithExceptionCheck(operation);
+    setupResults(result);
+    return call;
+}
+
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJArp operation, JSValueRegs result, JSValueRegs operand, ArithProfile* arithProfile)
+{
+    setupArgumentsWithExecState(operand, TrustedImmPtr(arithProfile));
     Call call = appendCallWithExceptionCheck(operation);
     setupResults(result);
     return call;
@@ -432,9 +447,9 @@ ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJArp oper
     return call;
 }
 
-ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJJArpMic operation, JSValueRegs result, JSValueRegs arg1, JSValueRegs arg2, ArithProfile* arithProfile, TrustedImmPtr mathIC)
+ALWAYS_INLINE MacroAssembler::Call JIT::callOperation(J_JITOperation_EJMic operation, JSValueRegs result, JSValueRegs arg, TrustedImmPtr mathIC)
 {
-    setupArgumentsWithExecState(arg1, arg2, TrustedImmPtr(arithProfile), mathIC);
+    setupArgumentsWithExecState(arg, mathIC);
     Call call = appendCallWithExceptionCheck(operation);
     setupResults(result);
     return call;
@@ -1369,6 +1384,3 @@ inline Instruction* JIT::copiedInstruction(Instruction* inst)
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITInlines_h
-

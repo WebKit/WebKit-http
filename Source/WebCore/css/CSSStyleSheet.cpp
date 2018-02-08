@@ -21,7 +21,6 @@
 #include "config.h"
 #include "CSSStyleSheet.h"
 
-#include "AuthorStyleSheets.h"
 #include "CSSCharsetRule.h"
 #include "CSSFontFaceRule.h"
 #include "CSSImportRule.h"
@@ -41,9 +40,12 @@
 #include "SVGNames.h"
 #include "SVGStyleElement.h"
 #include "SecurityOrigin.h"
+#include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
+#include "StyleScope.h"
 #include "StyleSheetContents.h"
+
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -169,40 +171,36 @@ void CSSStyleSheet::didMutateRules(RuleMutationType mutationType, WhetherContent
     ASSERT(m_contents->isMutable());
     ASSERT(m_contents->hasOneClient());
 
-    Document* owner = ownerDocument();
-    if (!owner)
+    auto* scope = styleScope();
+    if (!scope)
         return;
 
-    if (mutationType == RuleInsertion && !contentsWereClonedForMutation && !owner->authorStyleSheets().activeStyleSheetsContains(this)) {
+    if (mutationType == RuleInsertion && !contentsWereClonedForMutation && !scope->activeStyleSheetsContains(this)) {
         if (insertedKeyframesRule) {
-            if (StyleResolver* resolver = owner->styleResolverIfExists())
+            if (auto* resolver = scope->resolverIfExists())
                 resolver->addKeyframeStyle(*insertedKeyframesRule);
             return;
         }
-        owner->scheduleOptimizedStyleSheetUpdate();
+        scope->scheduleActiveSetUpdate();
         return;
     }
 
-    owner->styleResolverChanged(DeferRecalcStyle);
+    scope->didChangeContentsOrInterpretation();
 
     m_mutatedRules = true;
 }
 
 void CSSStyleSheet::didMutate()
 {
-    Document* owner = ownerDocument();
-    if (!owner)
+    auto* scope = styleScope();
+    if (!scope)
         return;
-    owner->styleResolverChanged(DeferRecalcStyle);
+    scope->didChangeContentsOrInterpretation();
 }
 
 void CSSStyleSheet::clearOwnerNode()
 {
-    Document* owner = ownerDocument();
-    m_ownerNode = 0;
-    if (!owner)
-        return;
-    owner->styleResolverChanged(DeferRecalcStyleIfNeeded);
+    m_ownerNode = nullptr;
 }
 
 void CSSStyleSheet::reattachChildRuleCSSOMWrappers()
@@ -399,12 +397,31 @@ CSSStyleSheet* CSSStyleSheet::parentStyleSheet() const
     return m_ownerRule ? m_ownerRule->parentStyleSheet() : nullptr;
 }
 
-Document* CSSStyleSheet::ownerDocument() const
+CSSStyleSheet& CSSStyleSheet::rootStyleSheet()
 {
-    const CSSStyleSheet* root = this;
+    auto* root = this;
     while (root->parentStyleSheet())
         root = root->parentStyleSheet();
-    return root->ownerNode() ? &root->ownerNode()->document() : nullptr;
+    return *root;
+}
+
+const CSSStyleSheet& CSSStyleSheet::rootStyleSheet() const
+{
+    return const_cast<CSSStyleSheet&>(*this).rootStyleSheet();
+}
+
+Document* CSSStyleSheet::ownerDocument() const
+{
+    auto& root = rootStyleSheet();
+    return root.ownerNode() ? &root.ownerNode()->document() : nullptr;
+}
+
+Style::Scope* CSSStyleSheet::styleScope()
+{
+    auto* ownerNode = rootStyleSheet().ownerNode();
+    if (!ownerNode)
+        return nullptr;
+    return &Style::Scope::forNode(*ownerNode);
 }
 
 void CSSStyleSheet::clearChildRuleCSSOMWrappers()

@@ -457,11 +457,9 @@ int AccessibilityObject::blockquoteLevel() const
 
 AccessibilityObject* AccessibilityObject::parentObjectUnignored() const
 {
-    AccessibilityObject* parent;
-    for (parent = parentObject(); parent && parent->accessibilityIsIgnored(); parent = parent->parentObject()) {
-    }
-    
-    return parent;
+    return const_cast<AccessibilityObject*>(AccessibilityObject::matchedParent(*this, false, [] (const AccessibilityObject& object) {
+        return !object.accessibilityIsIgnored();
+    }));
 }
 
 AccessibilityObject* AccessibilityObject::previousSiblingUnignored(int limit) const
@@ -1696,10 +1694,10 @@ void AccessibilityObject::updateBackingStore()
     
 ScrollView* AccessibilityObject::scrollViewAncestor() const
 {
-    for (const AccessibilityObject* scrollParent = this; scrollParent; scrollParent = scrollParent->parentObject()) {
-        if (is<AccessibilityScrollView>(*scrollParent))
-            return downcast<AccessibilityScrollView>(*scrollParent).scrollView();
-    }
+    if (const AccessibilityObject* scrollParent = AccessibilityObject::matchedParent(*this, true, [] (const AccessibilityObject& object) {
+        return is<AccessibilityScrollView>(object);
+    }))
+        return downcast<AccessibilityScrollView>(*scrollParent).scrollView();
     
     return nullptr;
 }
@@ -1790,9 +1788,20 @@ AccessibilityObject* AccessibilityObject::headingElementForNode(Node* node)
         return nullptr;
     
     AccessibilityObject* axObject = renderObject->document().axObjectCache()->getOrCreate(renderObject);
-    for (; axObject && axObject->roleValue() != HeadingRole; axObject = axObject->parentObject()) { }
     
-    return axObject;
+    return const_cast<AccessibilityObject*>(AccessibilityObject::matchedParent(*axObject, true, [] (const AccessibilityObject& object) {
+        return object.roleValue() == HeadingRole;
+    }));
+}
+
+const AccessibilityObject* AccessibilityObject::matchedParent(const AccessibilityObject& object, bool includeSelf, const std::function<bool(const AccessibilityObject&)>& matches)
+{
+    const AccessibilityObject* parent = includeSelf ? &object : object.parentObject();
+    for (; parent; parent = parent->parentObject()) {
+        if (matches(*parent))
+            return parent;
+    }
+    return nullptr;
 }
 
 void AccessibilityObject::ariaTreeRows(AccessibilityChildrenVector& result)
@@ -1909,8 +1918,19 @@ String AccessibilityObject::invalidStatus() const
     // aria-invalid can return false (default), grammar, spelling, or true.
     String ariaInvalid = stripLeadingAndTrailingHTMLSpaces(getAttribute(aria_invalidAttr));
     
+    if (ariaInvalid.isEmpty()) {
+        // We should expose invalid status for input types.
+        Node* node = this->node();
+        if (node && is<HTMLInputElement>(*node)) {
+            HTMLInputElement& input = downcast<HTMLInputElement>(*node);
+            if (input.hasBadInput() || input.typeMismatch())
+                return trueValue;
+        }
+        return falseValue;
+    }
+    
     // If "false", "undefined" [sic, string value], empty, or missing, return "false".
-    if (ariaInvalid.isEmpty() || ariaInvalid == falseValue || ariaInvalid == undefinedValue)
+    if (ariaInvalid == falseValue || ariaInvalid == undefinedValue)
         return falseValue;
     // Besides true/false/undefined, the only tokens defined by WAI-ARIA 1.0...
     // ...for @aria-invalid are "grammar" and "spelling".
@@ -2023,12 +2043,10 @@ bool AccessibilityObject::isDescendantOfObject(const AccessibilityObject* axObje
 {
     if (!axObject || !axObject->hasChildren())
         return false;
-
-    for (const AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) {
-        if (parent == axObject)
-            return true;
-    }
-    return false;
+    
+    return AccessibilityObject::matchedParent(*this, false, [axObject] (const AccessibilityObject& object) {
+        return &object == axObject;
+    }) != nullptr;
 }
 
 bool AccessibilityObject::isAncestorOfObject(const AccessibilityObject* axObject) const
@@ -2280,13 +2298,13 @@ bool AccessibilityObject::isValueAutofilled() const
 
 const AtomicString& AccessibilityObject::placeholderValue() const
 {
-    const AtomicString& ariaPlaceholder = getAttribute(aria_placeholderAttr);
-    if (!ariaPlaceholder.isEmpty())
-        return ariaPlaceholder;
-    
     const AtomicString& placeholder = getAttribute(placeholderAttr);
     if (!placeholder.isEmpty())
         return placeholder;
+    
+    const AtomicString& ariaPlaceholder = getAttribute(aria_placeholderAttr);
+    if (!ariaPlaceholder.isEmpty())
+        return ariaPlaceholder;
     
     return nullAtom;
 }
@@ -2296,12 +2314,9 @@ bool AccessibilityObject::isInsideARIALiveRegion() const
     if (supportsARIALiveRegion())
         return true;
     
-    for (AccessibilityObject* axParent = parentObject(); axParent; axParent = axParent->parentObject()) {
-        if (axParent->supportsARIALiveRegion())
-            return true;
-    }
-    
-    return false;
+    return AccessibilityObject::matchedParent(*this, false, [] (const AccessibilityObject& object) {
+        return object.supportsARIALiveRegion();
+    }) != nullptr;
 }
 
 bool AccessibilityObject::supportsARIAAttributes() const
@@ -2353,7 +2368,7 @@ AccessibilityObject* AccessibilityObject::elementAccessibilityHitTest(const IntP
             return child->elementAccessibilityHitTest(point);
     }
 
-    return const_cast<AccessibilityObject*>(this); 
+    return const_cast<AccessibilityObject*>(this);
 }
     
 AXObjectCache* AccessibilityObject::axObjectCache() const
@@ -2466,6 +2481,14 @@ bool AccessibilityObject::isExpanded() const
     
     if (is<HTMLDetailsElement>(node()))
         return downcast<HTMLDetailsElement>(node())->isOpen();
+    
+    // Summary element should use its details parent's expanded status.
+    if (isSummary()) {
+        if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*this, false, [] (const AccessibilityObject& object) {
+            return object.roleValue() == DetailsRole;
+        }))
+            return parent->isExpanded();
+    }
     
     return false;  
 }
@@ -2923,11 +2946,9 @@ bool AccessibilityObject::accessibilityIsIgnoredByDefault() const
 // http://www.w3.org/TR/wai-aria/terms#def_hidden
 bool AccessibilityObject::isARIAHidden() const
 {
-    for (const AccessibilityObject* object = this; object; object = object->parentObject()) {
-        if (equalLettersIgnoringASCIICase(object->getAttribute(aria_hiddenAttr), "true"))
-            return true;
-    }
-    return false;
+    return AccessibilityObject::matchedParent(*this, true, [] (const AccessibilityObject& object) {
+        return equalLettersIgnoringASCIICase(object.getAttribute(aria_hiddenAttr), "true");
+    }) != nullptr;
 }
 
 // DOM component of hidden definition.
@@ -3024,26 +3045,16 @@ void AccessibilityObject::setPreventKeyboardDOMEventDispatch(bool on)
 
 AccessibilityObject* AccessibilityObject::focusableAncestor()
 {
-    AccessibilityObject* potentialFocusableAncestor = this;
-    while (potentialFocusableAncestor) {
-        if (potentialFocusableAncestor->canSetFocusAttribute())
-            return potentialFocusableAncestor;
-        potentialFocusableAncestor = potentialFocusableAncestor->parentObject();
-    }
-
-    return nullptr;
+    return const_cast<AccessibilityObject*>(AccessibilityObject::matchedParent(*this, true, [] (const AccessibilityObject& object) {
+        return object.canSetFocusAttribute();
+    }));
 }
 
 AccessibilityObject* AccessibilityObject::editableAncestor()
 {
-    AccessibilityObject* potentialEditableAncestor = this;
-    while (potentialEditableAncestor) {
-        if (potentialEditableAncestor->isTextControl())
-            return potentialEditableAncestor;
-        potentialEditableAncestor = potentialEditableAncestor->parentObject();
-    }
-
-    return nullptr;
+    return const_cast<AccessibilityObject*>(AccessibilityObject::matchedParent(*this, true, [] (const AccessibilityObject& object) {
+        return object.isTextControl();
+    }));
 }
 
 AccessibilityObject* AccessibilityObject::highestEditableAncestor()
@@ -3087,6 +3098,12 @@ bool AccessibilityObject::isSuperscriptStyleGroup() const
 {
     Node* node = this->node();
     return node && node->hasTagName(supTag);
+}
+
+bool AccessibilityObject::isFigure() const
+{
+    Node* node = this->node();
+    return node && node->hasTagName(figureTag);
 }
     
 bool AccessibilityObject::isContainedByPasswordField() const

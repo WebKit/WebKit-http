@@ -26,18 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSEnvironmentRecord_h
-#define JSEnvironmentRecord_h
+#pragma once
 
 #include "JSObject.h"
 #include "JSSymbolTableObject.h"
-#include "Register.h"
 #include "SymbolTable.h"
 
 namespace JSC {
 
 class LLIntOffsetsExtractor;
-class Register;
 
 class JSEnvironmentRecord : public JSSymbolTableObject {
     friend class JIT;
@@ -115,5 +112,3 @@ protected:
 };
 
 } // namespace JSC
-
-#endif // JSEnvironmentRecord_h

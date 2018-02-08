@@ -39,11 +39,14 @@ typedef FourCharCode CTFontTableTag;
 CT_EXPORT const CFStringRef kCTFontAttributeName;
 CT_EXPORT const CFStringRef kCTForegroundColorFromContextAttributeName;
 
+// This enum is defined in CTFont.h. To avoid redefinition, only define it here if CTFont.h has not been included. 
+#ifndef __CTFONT__
 typedef CF_OPTIONS(uint32_t, CTFontTableOptions)
 {
     kCTFontTableOptionNoOptions = 0,
     kCTFontTableOptionExcludeSynthetic = (1 << 0)
 };
+#endif
 
 CTFontRef CTFontCreateWithName(CFStringRef, CGFloat size, const CGAffineTransform*);
 CTFontRef CTFontCreateWithGraphicsFont(CGFontRef, CGFloat size, const CGAffineTransform*, CTFontDescriptorRef attributes);

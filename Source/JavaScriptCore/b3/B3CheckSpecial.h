@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3CheckSpecial_h
-#define B3CheckSpecial_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "AirArg.h"
-#include "AirOpcode.h"
+#include "AirKind.h"
 #include "B3StackmapSpecial.h"
 #include <wtf/HashMap.h>
 
@@ -56,14 +55,13 @@ public:
     class Key {
     public:
         Key()
-            : m_opcode(Air::Nop)
-            , m_stackmapRole(SameAsRep)
+            : m_stackmapRole(SameAsRep)
             , m_numArgs(0)
         {
         }
         
-        Key(Air::Opcode opcode, unsigned numArgs, RoleMode stackmapRole = SameAsRep)
-            : m_opcode(opcode)
+        Key(Air::Kind kind, unsigned numArgs, RoleMode stackmapRole = SameAsRep)
+            : m_kind(kind)
             , m_stackmapRole(stackmapRole)
             , m_numArgs(numArgs)
         {
@@ -73,7 +71,7 @@ public:
 
         bool operator==(const Key& other) const
         {
-            return m_opcode == other.m_opcode
+            return m_kind == other.m_kind
                 && m_numArgs == other.m_numArgs
                 && m_stackmapRole == other.m_stackmapRole;
         }
@@ -85,15 +83,14 @@ public:
 
         explicit operator bool() const { return *this != Key(); }
 
-        Air::Opcode opcode() const { return m_opcode; }
+        Air::Kind kind() const { return m_kind; }
         unsigned numArgs() const { return m_numArgs; }
         RoleMode stackmapRole() const { return m_stackmapRole; }
 
         void dump(PrintStream& out) const;
 
         Key(WTF::HashTableDeletedValueType)
-            : m_opcode(Air::Nop)
-            , m_stackmapRole(SameAsRep)
+            : m_stackmapRole(SameAsRep)
             , m_numArgs(1)
         {
         }
@@ -106,16 +103,16 @@ public:
         unsigned hash() const
         {
             // Seriously, we don't need to be smart here. It just doesn't matter.
-            return m_opcode + m_numArgs + m_stackmapRole;
+            return m_kind.hash() + m_numArgs + m_stackmapRole;
         }
         
     private:
-        Air::Opcode m_opcode;
+        Air::Kind m_kind;
         RoleMode m_stackmapRole;
         unsigned m_numArgs;
     };
     
-    CheckSpecial(Air::Opcode, unsigned numArgs, RoleMode stackmapRole = SameAsRep);
+    CheckSpecial(Air::Kind, unsigned numArgs, RoleMode stackmapRole = SameAsRep);
     CheckSpecial(const Key&);
     ~CheckSpecial();
 
@@ -137,7 +134,7 @@ protected:
     void deepDumpImpl(PrintStream&) const override;
 
 private:
-    Air::Opcode m_checkOpcode;
+    Air::Kind m_checkKind;
     RoleMode m_stackmapRole;
     unsigned m_numCheckArgs;
 };
@@ -166,6 +163,3 @@ template<> struct HashTraits<JSC::B3::CheckSpecial::Key> : SimpleClassHashTraits
 } // namespace WTF
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3CheckSpecial_h
-

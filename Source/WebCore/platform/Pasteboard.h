@@ -50,12 +50,12 @@ typedef struct HWND__* HWND;
 
 namespace WebCore {
 
-class DataObjectGtk;
 class DocumentFragment;
 class DragData;
 class Element;
 class Frame;
 class Range;
+class SelectionData;
 class SharedBuffer;
 
 enum ShouldSerializeSelectedTextForDataTransfer { DefaultSelectedTextType, IncludeImageAltTextForDataTransfer };
@@ -96,6 +96,9 @@ struct PasteboardImage {
     WEBCORE_EXPORT PasteboardImage();
     WEBCORE_EXPORT ~PasteboardImage();
     RefPtr<Image> image;
+#if PLATFORM(MAC)
+    RefPtr<SharedBuffer> dataInWebArchiveFormat;
+#endif
 #if !(PLATFORM(EFL) || PLATFORM(WIN))
     PasteboardURL url;
 #endif
@@ -138,7 +141,7 @@ public:
 
 #if PLATFORM(GTK)
     explicit Pasteboard(const String& name);
-    explicit Pasteboard(DataObjectGtk&);
+    explicit Pasteboard(SelectionData&);
 #endif
 
 #if PLATFORM(WIN)
@@ -187,7 +190,7 @@ public:
 #endif
 
 #if PLATFORM(GTK)
-    const DataObjectGtk& dataObject() const;
+    const SelectionData& selectionData() const;
     static std::unique_ptr<Pasteboard> createForGlobalSelection();
 #endif
 
@@ -222,7 +225,7 @@ private:
 #if PLATFORM(GTK)
     void writeToClipboard();
     void readFromClipboard();
-    Ref<DataObjectGtk> m_dataObject;
+    Ref<SelectionData> m_selectionData;
     String m_name;
 #endif
 

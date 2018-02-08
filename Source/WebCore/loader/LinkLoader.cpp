@@ -60,26 +60,26 @@ LinkLoader::LinkLoader(LinkLoaderClient& client)
 LinkLoader::~LinkLoader()
 {
     if (m_cachedLinkResource)
-        m_cachedLinkResource->removeClient(this);
+        m_cachedLinkResource->removeClient(*this);
     if (m_preloadResourceClient)
         m_preloadResourceClient->clear();
 }
 
-void LinkLoader::triggerEvents(const CachedResource* resource)
+void LinkLoader::triggerEvents(const CachedResource& resource)
 {
-    if (resource->errorOccurred())
+    if (resource.errorOccurred())
         m_client.linkLoadingErrored();
     else
         m_client.linkLoaded();
 }
 
-void LinkLoader::notifyFinished(CachedResource* resource)
+void LinkLoader::notifyFinished(CachedResource& resource)
 {
-    ASSERT_UNUSED(resource, m_cachedLinkResource.get() == resource);
+    ASSERT_UNUSED(resource, m_cachedLinkResource.get() == &resource);
 
-    triggerEvents(m_cachedLinkResource.get());
+    triggerEvents(*m_cachedLinkResource);
 
-    m_cachedLinkResource->removeClient(this);
+    m_cachedLinkResource->removeClient(*this);
     m_cachedLinkResource = nullptr;
 }
 
@@ -162,7 +162,6 @@ void LinkLoader::preloadIfNeeded(const LinkRelAttribute& relAttribute, const URL
     linkRequest.setInitiator("link");
 
     linkRequest.setAsPotentiallyCrossOrigin(crossOriginMode, document);
-    linkRequest.setForPreload(true);
     CachedResourceHandle<CachedResource> cachedLinkResource = document.cachedResourceLoader().preload(type.value(), WTFMove(linkRequest), CachedResourceLoader::ExplicitPreload);
 
     if (cachedLinkResource)
@@ -197,14 +196,14 @@ bool LinkLoader::loadLink(const LinkRelAttribute& relAttribute, const URL& href,
         }
 
         if (m_cachedLinkResource) {
-            m_cachedLinkResource->removeClient(this);
+            m_cachedLinkResource->removeClient(*this);
             m_cachedLinkResource = nullptr;
         }
         ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
         options.contentSecurityPolicyImposition = ContentSecurityPolicyImposition::SkipPolicyCheck;
         m_cachedLinkResource = document.cachedResourceLoader().requestLinkResource(type, CachedResourceRequest(ResourceRequest(document.completeURL(href)), options, priority));
         if (m_cachedLinkResource)
-            m_cachedLinkResource->addClient(this);
+            m_cachedLinkResource->addClient(*this);
     }
 #endif
 

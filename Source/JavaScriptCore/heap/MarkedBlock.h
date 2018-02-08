@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef MarkedBlock_h
-#define MarkedBlock_h
+#pragma once
 
 #include "AllocatorAttributes.h"
 #include "DestructionMode.h"
@@ -29,6 +28,7 @@
 #include "HeapOperation.h"
 #include "IterationStatus.h"
 #include "WeakSet.h"
+#include <wtf/Atomics.h>
 #include <wtf/Bitmap.h>
 #include <wtf/DataLog.h>
 #include <wtf/DoublyLinkedList.h>
@@ -40,6 +40,7 @@ namespace JSC {
 class Heap;
 class JSCell;
 class MarkedAllocator;
+class MarkedSpace;
 
 typedef uintptr_t Bits;
 typedef uint32_t HeapVersion;
@@ -110,6 +111,7 @@ public:
 
         MarkedAllocator* allocator() const;
         Heap* heap() const;
+        inline MarkedSpace* space() const;
         VM* vm() const;
         WeakSet& weakSet();
             
@@ -141,11 +143,9 @@ public:
         void stopAllocating(const FreeList&);
         FreeList resumeAllocating(); // Call this if you canonicalized a block for some non-collection related purpose.
             
-        // Returns true if the "newly allocated" bitmap was non-null 
-        // and was successfully cleared and false otherwise.
-        bool clearNewlyAllocated();
-            
         size_t cellSize();
+        inline unsigned cellsPerBlock();
+        
         const AllocatorAttributes& attributes() const;
         DestructionMode destruction() const;
         bool needsDestruction() const;
@@ -153,22 +153,24 @@ public:
             
         size_t markCount();
         size_t size();
-            
-        inline bool isLive(HeapVersion markingVersion, const HeapCell*);
-        inline bool isLiveCell(HeapVersion markingVersion, const void*);
+        
+        inline bool isLive(HeapVersion markingVersion, bool isMarking, const HeapCell*);
+        inline bool isLiveCell(HeapVersion markingVersion, bool isMarking, const void*);
 
         bool isLive(const HeapCell*);
         bool isLiveCell(const void*);
 
-        bool isMarkedOrNewlyAllocated(const HeapCell*);
-        bool isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell*);
-            
         bool isNewlyAllocated(const void*);
         void setNewlyAllocated(const void*);
         void clearNewlyAllocated(const void*);
         
-        bool hasAnyNewlyAllocated() const { return !!m_newlyAllocated; }
-            
+        HeapVersion newlyAllocatedVersion() const { return m_newlyAllocatedVersion; }
+        
+        inline bool isNewlyAllocatedStale() const;
+        
+        inline bool hasAnyNewlyAllocated();
+        void resetAllocated();
+        
         template <typename Functor> IterationStatus forEachCell(const Functor&);
         template <typename Functor> inline IterationStatus forEachLiveCell(const Functor&);
         template <typename Functor> inline IterationStatus forEachDeadCell(const Functor&);
@@ -188,7 +190,7 @@ public:
         
     private:
         Handle(Heap&, void*);
-            
+        
         template<DestructionMode>
         FreeList sweepHelperSelectScribbleMode(SweepMode = SweepOnly);
             
@@ -226,7 +228,7 @@ public:
         size_t m_atomsPerCell { std::numeric_limits<size_t>::max() };
         size_t m_endAtom { std::numeric_limits<size_t>::max() }; // This is a fuzzy end. Always test for < m_endAtom.
             
-        std::unique_ptr<WTF::Bitmap<atomsPerBlock>> m_newlyAllocated;
+        WTF::Bitmap<atomsPerBlock> m_newlyAllocated;
             
         AllocatorAttributes m_attributes;
         bool m_isFreeListed { false };
@@ -234,6 +236,8 @@ public:
         MarkedAllocator* m_allocator { nullptr };
         size_t m_index { std::numeric_limits<size_t>::max() };
         WeakSet m_weakSet;
+        
+        HeapVersion m_newlyAllocatedVersion;
             
         MarkedBlock* m_block { nullptr };
     };
@@ -243,6 +247,8 @@ public:
     Handle& handle();
         
     VM* vm() const;
+    inline Heap* heap() const;
+    inline MarkedSpace* space() const;
 
     static bool isAtomAligned(const void*);
     static MarkedBlock* blockFor(const void*);
@@ -256,9 +262,6 @@ public:
     bool isMarkedConcurrently(HeapVersion markingVersion, const void*);
     bool testAndSetMarked(const void*);
         
-    bool isMarkedOrNewlyAllocated(const HeapCell*);
-    bool isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell*);
-    
     bool isAtom(const void*);
     void clearMarked(const void*);
     
@@ -269,9 +272,14 @@ public:
     void noteMarked();
         
     WeakSet& weakSet();
-    
-    bool areMarksStale(HeapVersion markingVersion);
+
     bool areMarksStale();
+    bool areMarksStale(HeapVersion markingVersion);
+    struct MarksWithDependency {
+        bool areStale;
+        ConsumeDependency dependency;
+    };
+    MarksWithDependency areMarksStaleWithDependency(HeapVersion markingVersion);
     
     void aboutToMark(HeapVersion markingVersion);
         
@@ -279,7 +287,10 @@ public:
         
     bool needsDestruction() const { return m_needsDestruction; }
     
-    inline void resetMarkingVersion();
+    // This is usually a no-op, and we use it as a no-op that touches the page in isPagedOut().
+    void updateNeedsDestruction();
+    
+    void resetMarks();
     
 private:
     static const size_t atomAlignmentMask = atomSize - 1;
@@ -290,13 +301,13 @@ private:
     Atom* atoms();
         
     void aboutToMarkSlow(HeapVersion markingVersion);
-    void clearMarks();
-    void clearMarks(HeapVersion markingVersion);
     void clearHasAnyMarked();
     
     void noteMarkedSlow();
+    
+    inline bool marksConveyLivenessDuringMarking(HeapVersion markingVersion);
         
-    WTF::Bitmap<atomsPerBlock, WTF::BitmapAtomic, uint8_t> m_marks;
+    WTF::Bitmap<atomsPerBlock> m_marks;
 
     bool m_needsDestruction;
     Lock m_lock;
@@ -474,6 +485,15 @@ inline bool MarkedBlock::areMarksStale(HeapVersion markingVersion)
     return markingVersion != m_markingVersion;
 }
 
+ALWAYS_INLINE MarkedBlock::MarksWithDependency MarkedBlock::areMarksStaleWithDependency(HeapVersion markingVersion)
+{
+    auto consumed = consumeLoad(&m_markingVersion);
+    MarksWithDependency ret;
+    ret.areStale = consumed.value != markingVersion;
+    ret.dependency = consumed.dependency;
+    return ret;
+}
+
 inline void MarkedBlock::aboutToMark(HeapVersion markingVersion)
 {
     if (UNLIKELY(areMarksStale(markingVersion)))
@@ -499,10 +519,10 @@ inline bool MarkedBlock::isMarked(HeapVersion markingVersion, const void* p)
 
 inline bool MarkedBlock::isMarkedConcurrently(HeapVersion markingVersion, const void* p)
 {
-    if (areMarksStale(markingVersion))
+    auto marksWithDependency = areMarksStaleWithDependency(markingVersion);
+    if (marksWithDependency.areStale)
         return false;
-    WTF::loadLoadFence();
-    return m_marks.get(atomNumber(p));
+    return m_marks.get(atomNumber(p) + marksWithDependency.dependency);
 }
 
 inline bool MarkedBlock::testAndSetMarked(const void* p)
@@ -513,36 +533,17 @@ inline bool MarkedBlock::testAndSetMarked(const void* p)
 
 inline bool MarkedBlock::Handle::isNewlyAllocated(const void* p)
 {
-    return m_newlyAllocated->get(m_block->atomNumber(p));
+    return m_newlyAllocated.get(m_block->atomNumber(p));
 }
 
 inline void MarkedBlock::Handle::setNewlyAllocated(const void* p)
 {
-    m_newlyAllocated->set(m_block->atomNumber(p));
+    m_newlyAllocated.set(m_block->atomNumber(p));
 }
 
 inline void MarkedBlock::Handle::clearNewlyAllocated(const void* p)
 {
-    m_newlyAllocated->clear(m_block->atomNumber(p));
-}
-
-inline bool MarkedBlock::Handle::clearNewlyAllocated()
-{
-    if (m_newlyAllocated) {
-        m_newlyAllocated = nullptr;
-        return true;
-    }
-    return false;
-}
-
-inline bool MarkedBlock::Handle::isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell* cell)
-{
-    return m_block->isMarked(markingVersion, cell) || (m_newlyAllocated && isNewlyAllocated(cell));
-}
-
-inline bool MarkedBlock::isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell* cell)
-{
-    return isMarked(markingVersion, cell) || (m_handle.m_newlyAllocated && m_handle.isNewlyAllocated(cell));
+    m_newlyAllocated.clear(m_block->atomNumber(p));
 }
 
 inline bool MarkedBlock::isAtom(const void* p)
@@ -607,5 +608,3 @@ template<> struct DefaultHash<JSC::MarkedBlock*> {
 void printInternal(PrintStream& out, JSC::MarkedBlock::Handle::SweepMode);
 
 } // namespace WTF
-
-#endif // MarkedBlock_h

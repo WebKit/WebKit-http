@@ -28,7 +28,7 @@
 #include "ResourceResponseBase.h"
 #include <wtf/RetainPtr.h>
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include "CFNetworkSPI.h"
 #endif
 
@@ -43,16 +43,13 @@ public:
     {
     }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     ResourceResponse(CFURLResponseRef cfResponse)
         : m_initLevel(Uninitialized)
         , m_cfResponse(cfResponse)
     {
         m_isNull = !cfResponse;
     }
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT ResourceResponse(NSURLResponse *);
-#endif
 #else
     ResourceResponse(NSURLResponse *nsResponse)
         : m_initLevel(Uninitialized)
@@ -84,11 +81,16 @@ public:
          */
     }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     WEBCORE_EXPORT CFURLResponseRef cfURLResponse() const;
 #endif
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT NSURLResponse *nsURLResponse() const;
+#endif
+
+#if USE(QUICK_LOOK)
+    bool isQuickLook() const { return m_isQuickLook; }
+    void setIsQuickLook(bool isQuickLook) { m_isQuickLook = isQuickLook; }
 #endif
 
 private:
@@ -108,10 +110,13 @@ private:
 
     unsigned m_initLevel : 3;
 
-#if USE(CFNETWORK)
-    mutable RetainPtr<CFURLResponseRef> m_cfResponse;
+#if USE(QUICK_LOOK)
+    bool m_isQuickLook { false };
 #endif
-#if PLATFORM(COCOA)
+
+#if USE(CFURLCONNECTION)
+    mutable RetainPtr<CFURLResponseRef> m_cfResponse;
+#elif PLATFORM(COCOA)
     mutable RetainPtr<NSURLResponse> m_nsResponse;
 #endif
 };

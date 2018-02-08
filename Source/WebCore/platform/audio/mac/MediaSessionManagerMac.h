@@ -27,6 +27,7 @@
 
 #if PLATFORM(MAC)
 
+#include "GenericTaskQueue.h"
 #include "PlatformMediaSessionManager.h"
 
 namespace WebCore {
@@ -35,26 +36,37 @@ class MediaSessionManagerMac : public PlatformMediaSessionManager {
 public:
     virtual ~MediaSessionManagerMac();
 
+    bool hasActiveNowPlayingSession() const override { return m_nowPlayingActive; }
+    String lastUpdatedNowPlayingTitle() const override { return m_lastUpdatedNowPlayingTitle; }
+    double lastUpdatedNowPlayingDuration() const override { return m_lastUpdatedNowPlayingDuration; }
+    double lastUpdatedNowPlayingElapsedTime() const override { return m_lastUpdatedNowPlayingElapsedTime; }
+
 private:
     friend class PlatformMediaSessionManager;
 
     MediaSessionManagerMac();
 
+    void scheduleUpdateNowPlayingInfo() override;
     void removeSession(PlatformMediaSession&) override;
 
     bool sessionWillBeginPlayback(PlatformMediaSession&) override;
     void sessionWillEndPlayback(PlatformMediaSession&) override;
+    void sessionDidEndRemoteScrubbing(const PlatformMediaSession&) override;
     void clientCharacteristicsChanged(PlatformMediaSession&) override;
 
     void updateNowPlayingInfo();
 
     PlatformMediaSession* nowPlayingEligibleSession();
 
-    double m_reportedRate { 0 };
-    double m_reportedDuration { 0 };
-    String m_reportedTitle;
     bool m_nowPlayingActive { false };
     bool m_isInBackground { false };
+
+    // For testing purposes only.
+    String m_lastUpdatedNowPlayingTitle;
+    double m_lastUpdatedNowPlayingDuration { NAN };
+    double m_lastUpdatedNowPlayingElapsedTime { NAN };
+
+    GenericTaskQueue<Timer> m_nowPlayingUpdateTaskQueue;
 };
 
 } // namespace WebCore

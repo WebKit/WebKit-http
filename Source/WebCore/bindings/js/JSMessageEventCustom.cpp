@@ -112,19 +112,17 @@ static JSC::JSValue handleInitMessageEvent(JSMessageEvent* jsEvent, JSC::ExecSta
     bool cancelableArg = state.argument(2).toBoolean(&state);
     const String originArg = valueToUSVString(&state, state.argument(4));
     const String lastEventIdArg = state.argument(5).toString(&state)->value(&state);
-    DOMWindow* sourceArg = JSDOMWindow::toWrapped(state, state.argument(6));
+    DOMWindow* sourceArg = JSDOMWindow::toWrapped(state.argument(6));
     std::unique_ptr<MessagePortArray> messagePorts;
     std::unique_ptr<ArrayBufferArray> arrayBuffers;
     if (!state.argument(7).isUndefinedOrNull()) {
         messagePorts = std::make_unique<MessagePortArray>();
         arrayBuffers = std::make_unique<ArrayBufferArray>();
         fillMessagePortArray(state, state.argument(7), *messagePorts, *arrayBuffers);
-        if (UNLIKELY(scope.exception()))
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
     }
     Deprecated::ScriptValue dataArg(vm, state.argument(3));
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     MessageEvent& event = jsEvent->wrapped();
     event.initMessageEvent(typeArg, canBubbleArg, cancelableArg, dataArg, originArg, lastEventIdArg, sourceArg, WTFMove(messagePorts));

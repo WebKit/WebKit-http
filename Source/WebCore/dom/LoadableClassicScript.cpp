@@ -37,13 +37,13 @@ Ref<LoadableClassicScript> LoadableClassicScript::create(CachedResourceHandle<Ca
 {
     ASSERT(cachedScript);
     auto script = adoptRef(*new LoadableClassicScript(WTFMove(cachedScript)));
-    cachedScript->addClient(script.ptr());
+    cachedScript->addClient(script.get());
     return script;
 }
 
 LoadableClassicScript::~LoadableClassicScript()
 {
-    m_cachedScript->removeClient(this);
+    m_cachedScript->removeClient(*this);
 }
 
 bool LoadableClassicScript::isLoaded() const
@@ -67,10 +67,9 @@ bool LoadableClassicScript::wasCanceled() const
     return m_cachedScript->wasCanceled();
 }
 
-void LoadableClassicScript::notifyFinished(CachedResource* resource)
+void LoadableClassicScript::notifyFinished(CachedResource& resource)
 {
-    ASSERT(resource);
-    if (resource->resourceError().isAccessControl()) {
+    if (resource.resourceError().isAccessControl()) {
         static NeverDestroyed<String> consoleMessage(ASCIILiteral("Cross-origin script load denied by Cross-Origin Resource Sharing policy."));
         m_error = Error {
             ErrorType::CrossOriginLoad,

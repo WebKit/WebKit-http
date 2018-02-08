@@ -8,6 +8,7 @@
 
 fast/scrolling/ios [ Pass ]
 fast/viewport/ios [ Pass ]
+editing/selection/character-granularity-rect.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -397,7 +398,6 @@ http/tests/loading/cross-origin-XHR-willLoadRequest.html
 http/tests/loading/unfinished-load-back-to-cached-page-callbacks.html
 http/tests/loading/unfinished-main-resource-back-to-cached-page-callbacks.html
 http/tests/misc/acid3.html
-http/tests/misc/isindex-with-no-form.html
 http/tests/navigation/document-location-click-timeout.html
 http/tests/navigation/document-location-click.html
 http/tests/navigation/document-location-mouseover.html
@@ -740,10 +740,6 @@ fast/dom/Geolocation/permission-denied-already-clear-watch.html
 fast/dom/Geolocation/permission-denied-already-error.html
 fast/dom/Geolocation/permission-denied-stops-watches.html
 fast/dom/Geolocation/requestQueuingForHiddenPage.html
-fast/dom/HTMLAnchorElement/anchor-download-unset.html
-fast/dom/HTMLAnchorElement/anchor-download.html
-fast/dom/HTMLAnchorElement/anchor-nodownload-set.html
-fast/dom/HTMLAnchorElement/anchor-nodownload.html
 fast/dom/HTMLLinkElement/prefetch.html
 fast/dom/MutationObserver/end-of-task-delivery.html
 fast/dom/Node/mutation-blur.html
@@ -982,13 +978,10 @@ editing/inserting/insert-tab-001.html [ Failure ]
 editing/inserting/insert-tab-002.html [ Failure ]
 editing/inserting/insert-tab-004.html [ Failure ]
 editing/inserting/paragraph-outside-nested-divs.html [ Failure ]
-editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Failure ]
-editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
 editing/inserting/typing-001.html [ Failure ]
 editing/inserting/typing-003.html [ Failure ]
 editing/inserting/typing-around-br-001.html [ Failure ]
 editing/inserting/typing-around-image-001.html [ Failure ]
-editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 editing/inserting/typing-tab-designmode-forms.html [ Failure ]
 editing/inserting/typing-tab-designmode.html [ Failure ]
 editing/secure-input/password-input-changed-type.html [ Failure ]
@@ -1767,6 +1760,7 @@ webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-she
 fast/loader/location-hash-user-gesture.html [ Skip ]
 imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
 fast/dom/Window/post-message-user-action.html [ Skip ]
+fast/shadow-dom/click-text-inside-linked-slot.html [ Skip ]
 
 # No touch events
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
@@ -1807,7 +1801,14 @@ webkit.org/b/155947 [ Debug ] fast/loader/scroll-position-restored-on-back.html 
 
 webkit.org/b/155948 transitions/cancel-transition.html [ Pass Failure ]
 
-# <a download> is not supported with NETWORK_SESSION yet.
+# <a download> does not work on iOS.
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156067 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
@@ -1877,3 +1878,9 @@ webkit.org/b/161631 imported/w3c/web-platform-tests/html/browsers/browsing-the-w
 http/tests/xmlhttprequest/logout.html [ Failure ]
 
 webkit.org/b/162032 js/date-constructor.html [ Pass Timeout ]
+
+webkit.org/b/162645 imported/w3c/web-platform-tests/shadow-dom/scroll-to-the-fragment-in-shadow-tree.html [ Failure ]
+
+webkit.org/b/162524 [ Release ] http/tests/cache/disk-cache/disk-cache-redirect.html [ Pass Timeout ]
+
+webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pass Failure ]

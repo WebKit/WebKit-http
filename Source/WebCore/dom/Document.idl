@@ -20,7 +20,7 @@
 
 [
     Constructor,
-    ConstructorCallWith=ScriptExecutionContext,
+    ConstructorCallWith=Document,
     CustomToJSObject,
     ExportMacro=WEBCORE_EXPORT,
     JSCustomHeader,
@@ -28,47 +28,43 @@
     JSGenerateToNativeObject,
 ] interface Document : Node {
     readonly attribute DocumentType? doctype;
-    readonly attribute DOMImplementation implementation;
+    [SameObject] readonly attribute DOMImplementation implementation;
     readonly attribute Element? documentElement;
 
-    [NewObject, RaisesException, ImplementedAs=createElementForBindings] Element createElement(DOMString tagName);
-    [NewObject] DocumentFragment   createDocumentFragment();
+    [NewObject, MayThrowLegacyException, ImplementedAs=createElementForBindings] Element createElement(DOMString tagName);
+    [NewObject] DocumentFragment createDocumentFragment();
 
     [NewObject] Text createTextNode(DOMString data);
     [NewObject] Comment createComment(DOMString data);
-    [NewObject, RaisesException] CDATASection createCDATASection(DOMString data);
-    [NewObject, RaisesException] ProcessingInstruction createProcessingInstruction(DOMString target, DOMString data);
-    [NewObject, RaisesException] Attr createAttribute(DOMString name);
+    [NewObject, MayThrowLegacyException] CDATASection createCDATASection(DOMString data);
+    [NewObject, MayThrowLegacyException] ProcessingInstruction createProcessingInstruction(DOMString target, DOMString data);
+    [NewObject, MayThrowLegacyException] Attr createAttribute(DOMString name);
 
     HTMLCollection getElementsByTagName(DOMString tagname);
 
-    [NewObject, RaisesException] Node importNode(Node importedNode, optional boolean deep = false);
+    [CEReactions, MayThrowLegacyException, NewObject] Node importNode(Node importedNode, optional boolean deep = false);
 
-    [NewObject, RaisesException] Element createElementNS(DOMString? namespaceURI, DOMString qualifiedName);
-    [NewObject, RaisesException] Attr createAttributeNS(DOMString? namespaceURI, DOMString qualifiedName);
+    [NewObject, MayThrowLegacyException] Element createElementNS(DOMString? namespaceURI, DOMString qualifiedName);
+    [NewObject, MayThrowLegacyException] Attr createAttributeNS(DOMString? namespaceURI, DOMString qualifiedName);
 
     HTMLCollection getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
 
     [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString inputEncoding;
 
     readonly attribute DOMString? xmlEncoding;
-    [SetterRaisesException] attribute DOMString? xmlVersion;
+    [SetterMayThrowLegacyException] attribute DOMString? xmlVersion;
     attribute boolean xmlStandalone;
 
-    [RaisesException] Node adoptNode(Node source);
+    [CEReactions, MayThrowLegacyException] Node adoptNode(Node source);
 
     [ImplementedAs=urlForBindings] readonly attribute USVString documentURI;
 
-    [RaisesException, NewObject] Event createEvent(DOMString eventType);
+    [MayThrowLegacyException, NewObject] Event createEvent(DOMString eventType);
 
     [NewObject] Range createRange();
 
-    [NewObject] NodeIterator createNodeIterator(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter = null);
-    [NewObject] TreeWalker createTreeWalker(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter = null);
+    [NewObject] NodeIterator createNodeIterator(Node root, optional unsigned long whatToShow = 0xFFFFFFFF, optional NodeFilter? filter = null);
+    [NewObject] TreeWalker createTreeWalker(Node root, optional unsigned long whatToShow = 0xFFFFFFFF, optional NodeFilter? filter = null);
 
     readonly attribute DOMWindow defaultView;
 
@@ -80,11 +76,11 @@
     readonly attribute DOMString contentType;
 
     // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] XPathExpression createExpression(optional DOMString expression = "undefined", optional XPathNSResolver? resolver);
+    [MayThrowLegacyException] XPathExpression createExpression(optional DOMString expression = "undefined", optional XPathNSResolver? resolver);
     XPathNSResolver createNSResolver(Node? nodeResolver);
 
     // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] XPathResult evaluate(optional DOMString expression = "undefined", optional Node? contextNode, optional XPathNSResolver? resolver,
+    [MayThrowLegacyException] XPathResult evaluate(optional DOMString expression = "undefined", optional Node? contextNode, optional XPathNSResolver? resolver,
         optional unsigned short type = 0, optional XPathResult? inResult);
 
     // FIXME: The default value for the last parameter should be the empty string.
@@ -101,22 +97,22 @@
     attribute DOMString designMode;
 
     readonly attribute USVString referrer;
-    [SetterRaisesException] attribute USVString domain;
+    [SetterMayThrowLegacyException] attribute USVString domain;
     [ImplementedAs=urlForBindings] readonly attribute USVString URL;
 
-    [GetterRaisesException, SetterRaisesException] attribute USVString cookie;
+    [GetterMayThrowLegacyException, SetterMayThrowLegacyException] attribute USVString cookie;
 
-    [SetterRaisesException, ImplementedAs=bodyOrFrameset] attribute HTMLElement? body;
+    [SetterMayThrowLegacyException, ImplementedAs=bodyOrFrameset] attribute HTMLElement? body;
 
     readonly attribute HTMLHeadElement? head;
-    readonly attribute HTMLCollection images;
-    readonly attribute HTMLCollection applets;
-    readonly attribute HTMLCollection links;
-    readonly attribute HTMLCollection forms;
-    readonly attribute HTMLCollection anchors;
-    readonly attribute HTMLCollection embeds;
-    readonly attribute HTMLCollection plugins;
-    readonly attribute HTMLCollection scripts;
+    [SameObject] readonly attribute HTMLCollection images;
+    [SameObject] readonly attribute HTMLCollection applets;
+    [SameObject] readonly attribute HTMLCollection links;
+    [SameObject] readonly attribute HTMLCollection forms;
+    [SameObject] readonly attribute HTMLCollection anchors;
+    [SameObject] readonly attribute HTMLCollection embeds;
+    [SameObject] readonly attribute HTMLCollection plugins;
+    [SameObject] readonly attribute HTMLCollection scripts;
     readonly attribute DOMString lastModified;
 
     NodeList getElementsByName([AtomicString] DOMString elementName);
@@ -126,7 +122,6 @@
     [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString charset;
     readonly attribute DOMString readyState;
 
-    Element elementFromPoint(optional long x = 0, optional long y = 0);
     Range caretRangeFromPoint(optional long x = 0, optional long y = 0);
 
     // Mozilla extensions
@@ -141,7 +136,6 @@
 
     HTMLCollection getElementsByClassName(DOMString classNames);
 
-    readonly attribute Element? activeElement;
     boolean hasFocus();
 
     readonly attribute DOMString compatMode;
@@ -169,7 +163,7 @@
 #if defined(ENABLE_IOS_TOUCH_EVENTS) && ENABLE_IOS_TOUCH_EVENTS
 #include <WebKitAdditions/DocumentIOS.idl>
 #elif defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
-    [NewObject, RaisesException] Touch createTouch(optional DOMWindow? window = null, optional EventTarget? target = null,
+    [NewObject, MayThrowLegacyException] Touch createTouch(optional DOMWindow? window = null, optional EventTarget? target = null,
         optional long identifier = 0,
         optional long pageX = 0, optional long pageY = 0, optional long screenX = 0, optional long screenY = 0,
         optional long webkitRadiusX = 0, optional long webkitRadiusY = 0,
@@ -194,6 +188,7 @@
     // FIXME: Should these be exposed on Window as well (and therefore moved to GlobalEventHandlers.idl)?
     [NotEnumerable] attribute EventHandler onbeforecopy;
     [NotEnumerable] attribute EventHandler onbeforecut;
+    [NotEnumerable] attribute EventHandler onbeforeinput;
     [NotEnumerable] attribute EventHandler onbeforepaste;
     [NotEnumerable] attribute EventHandler oncopy;
     [NotEnumerable] attribute EventHandler oncut;
@@ -214,4 +209,5 @@
 
 Document implements ParentNode;
 Document implements NonElementParentNode;
+Document implements DocumentOrShadowRoot;
 Document implements GlobalEventHandlers;

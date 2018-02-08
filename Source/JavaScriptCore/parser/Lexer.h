@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef Lexer_h
-#define Lexer_h
+#pragma once
 
 #include "Lookup.h"
 #include "ParserArena.h"
@@ -48,7 +47,7 @@ class Lexer {
     WTF_MAKE_FAST_ALLOCATED;
 
 public:
-    Lexer(VM*, JSParserBuiltinMode, JSParserCommentMode);
+    Lexer(VM*, JSParserBuiltinMode, JSParserScriptMode);
     ~Lexer();
 
     // Character manipulation functions.
@@ -216,7 +215,7 @@ private:
 
     VM* m_vm;
     bool m_parsingBuiltinFunction;
-    JSParserCommentMode m_commentMode;
+    JSParserScriptMode m_scriptMode;
 };
 
 template <>
@@ -393,5 +392,3 @@ slowCase:
 }
 
 } // namespace JSC
-
-#endif // Lexer_h

@@ -113,6 +113,7 @@ void DownloadProxy::didReceiveAuthenticationChallenge(const AuthenticationChalle
 }
 
 #if USE(NETWORK_SESSION)
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 void DownloadProxy::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace)
 {
     if (!m_processPool)
@@ -126,6 +127,7 @@ void DownloadProxy::canAuthenticateAgainstProtectionSpace(const ProtectionSpace&
     
     networkProcessProxy->connection()->send(Messages::NetworkProcess::ContinueCanAuthenticateAgainstProtectionSpaceDownload(m_downloadID, result), 0);
 }
+#endif
 
 void DownloadProxy::willSendRequest(const ResourceRequest& proposedRequest, const ResourceResponse& redirectResponse)
 {
@@ -172,7 +174,6 @@ void DownloadProxy::shouldDecodeSourceDataOfMIMEType(const String& mimeType, boo
     result = m_processPool->downloadClient().shouldDecodeSourceDataOfMIMEType(m_processPool.get(), this, mimeType);
 }
 
-#if USE(NETWORK_SESSION)
 void DownloadProxy::decideDestinationWithSuggestedFilenameAsync(DownloadID downloadID, const String& suggestedFilename)
 {
     bool allowOverwrite = false;
@@ -189,7 +190,9 @@ void DownloadProxy::decideDestinationWithSuggestedFilenameAsync(DownloadID downl
     if (NetworkProcessProxy* networkProcess = m_processPool->networkProcess())
         networkProcess->connection()->send(Messages::NetworkProcess::ContinueDecidePendingDownloadDestination(downloadID, destination, sandboxExtensionHandle, allowOverwrite), 0);
 }
-#else
+
+#if !USE(NETWORK_SESSION)
+
 void DownloadProxy::decideDestinationWithSuggestedFilename(const String& filename, String& destination, bool& allowOverwrite, SandboxExtension::Handle& sandboxExtensionHandle)
 {
     allowOverwrite = false;
@@ -206,6 +209,7 @@ void DownloadProxy::decideDestinationWithSuggestedFilename(const String& filenam
     if (!destination.isNull())
         SandboxExtension::createHandle(destination, SandboxExtension::ReadWrite, sandboxExtensionHandle);
 }
+
 #endif
 
 void DownloadProxy::didCreateDestination(const String& path)

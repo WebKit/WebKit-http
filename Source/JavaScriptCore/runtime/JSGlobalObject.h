@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef JSGlobalObject_h
-#define JSGlobalObject_h
+#pragma once
 
 #include "ArrayAllocationProfile.h"
 #include "InternalFunction.h"
@@ -64,8 +63,6 @@ class ErrorConstructor;
 class ErrorPrototype;
 class EvalCodeBlock;
 class EvalExecutable;
-class FunctionCodeBlock;
-class FunctionExecutable;
 class FunctionPrototype;
 class GeneratorPrototype;
 class GeneratorFunctionPrototype;
@@ -236,7 +233,7 @@ public:
     WriteBarrier<JSFunction> m_evalFunction;
     WriteBarrier<JSFunction> m_callFunction;
     WriteBarrier<JSFunction> m_applyFunction;
-    WriteBarrier<JSFunction> m_definePropertyFunction;
+    WriteBarrier<JSFunction> m_throwTypeErrorFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoToStringFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoValuesFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_initializePromiseFunction;
@@ -481,7 +478,7 @@ public:
     JSFunction* evalFunction() const { return m_evalFunction.get(); }
     JSFunction* callFunction() const { return m_callFunction.get(); }
     JSFunction* applyFunction() const { return m_applyFunction.get(); }
-    JSFunction* definePropertyFunction() const { return m_definePropertyFunction.get(); }
+    JSFunction* throwTypeErrorFunction() const { return m_throwTypeErrorFunction.get(); }
     JSFunction* arrayProtoToStringFunction() const { return m_arrayProtoToStringFunction.get(this); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(this); }
     JSFunction* initializePromiseFunction() const { return m_initializePromiseFunction.get(this); }
@@ -818,8 +815,7 @@ inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* pro
         structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(exec, ArrayWithArrayStorage, newTarget);
     else
         structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     return ArrayAllocationProfile::updateLastAllocationFor(profile, JSArray::create(exec->vm(), structure, initialLength));
 }
@@ -834,8 +830,7 @@ inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile,
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, structure, values));
 }
 
@@ -849,8 +844,7 @@ inline JSArray* constructArray(ExecState* exec, ArrayAllocationProfile* profile,
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArray(exec, structure, values, length));
 }
 
@@ -864,8 +858,7 @@ inline JSArray* constructArrayNegativeIndexed(ExecState* exec, ArrayAllocationPr
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     Structure* structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
-    if (UNLIKELY(scope.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     return ArrayAllocationProfile::updateLastAllocationFor(profile, constructArrayNegativeIndexed(exec, structure, values, length));
 }
 
@@ -890,5 +883,3 @@ inline JSObject* JSGlobalObject::globalThis() const
 }
 
 } // namespace JSC
-
-#endif // JSGlobalObject_h

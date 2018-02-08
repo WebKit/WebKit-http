@@ -446,6 +446,21 @@ String AXDescriptionListDetailText()
     return String::fromUTF8(_("description"));
 }
 
+String AXDetailsText()
+{
+    return String::fromUTF8(_("details"));
+}
+
+String AXSummaryText()
+{
+    return String::fromUTF8(_("summary"));
+}
+
+String AXFigureText()
+{
+    return String::fromUTF8(_("figure"));
+}
+
 String AXFooterRoleDescriptionText()
 {
     return String::fromUTF8(_("footer"));

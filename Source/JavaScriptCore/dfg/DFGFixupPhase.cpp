@@ -1402,6 +1402,7 @@ private:
         case KillStack:
         case GetStack:
         case StoreBarrier:
+        case FencedStoreBarrier:
         case GetRegExpObjectLastIndex:
         case SetRegExpObjectLastIndex:
         case RecordRegExpCachedResult:
@@ -1586,7 +1587,26 @@ private:
                 fixEdge<SetObjectUse>(node->child1());
             else
                 RELEASE_ASSERT_NOT_REACHED();
+
+#if USE(JSVALUE64)
+            if (node->child2()->shouldSpeculateBoolean())
+                fixEdge<BooleanUse>(node->child2());
+            else if (node->child2()->shouldSpeculateInt32())
+                fixEdge<Int32Use>(node->child2());
+            else if (node->child2()->shouldSpeculateSymbol())
+                fixEdge<SymbolUse>(node->child2());
+            else if (node->child2()->shouldSpeculateObject())
+                fixEdge<ObjectUse>(node->child2());
+            else if (node->child2()->shouldSpeculateString())
+                fixEdge<StringUse>(node->child2());
+            else if (node->child2()->shouldSpeculateCell())
+                fixEdge<CellUse>(node->child2());
+            else
+                fixEdge<UntypedUse>(node->child2());
+#else
             fixEdge<UntypedUse>(node->child2());
+#endif // USE(JSVALUE64)
+
             fixEdge<Int32Use>(node->child3());
             break;
 
@@ -1598,9 +1618,99 @@ private:
             fixEdge<KnownCellUse>(node->child1());
             break;
 
-        case MapHash:
+        case MapHash: {
+#if USE(JSVALUE64)
+            if (node->child1()->shouldSpeculateBoolean()) {
+                fixEdge<BooleanUse>(node->child1());
+                break;
+            }
+
+            if (node->child1()->shouldSpeculateInt32()) {
+                fixEdge<Int32Use>(node->child1());
+                break;
+            }
+
+            if (node->child1()->shouldSpeculateSymbol()) {
+                fixEdge<SymbolUse>(node->child1());
+                break;
+            }
+
+            if (node->child1()->shouldSpeculateObject()) {
+                fixEdge<ObjectUse>(node->child1());
+                break;
+            }
+
+            if (node->child1()->shouldSpeculateString()) {
+                fixEdge<StringUse>(node->child1());
+                break;
+            }
+
+            if (node->child1()->shouldSpeculateCell()) {
+                fixEdge<CellUse>(node->child1());
+                break;
+            }
+
             fixEdge<UntypedUse>(node->child1());
+#else
+            fixEdge<UntypedUse>(node->child1());
+#endif // USE(JSVALUE64)
             break;
+        }
+
+        case DefineDataProperty: {
+            fixEdge<CellUse>(m_graph.varArgChild(node, 0));
+            Edge& propertyEdge = m_graph.varArgChild(node, 1);
+            if (propertyEdge->shouldSpeculateSymbol())
+                fixEdge<SymbolUse>(propertyEdge);
+            else if (propertyEdge->shouldSpeculateStringIdent())
+                fixEdge<StringIdentUse>(propertyEdge);
+            else if (propertyEdge->shouldSpeculateString())
+                fixEdge<StringUse>(propertyEdge);
+            else
+                fixEdge<UntypedUse>(propertyEdge);
+            fixEdge<UntypedUse>(m_graph.varArgChild(node, 2));
+            fixEdge<KnownInt32Use>(m_graph.varArgChild(node, 3));
+            break;
+        }
+
+        case ToLowerCase: {
+            // We currently only support StringUse since that will ensure that
+            // ToLowerCase is a pure operation. If we decide to update this with
+            // more types in the future, we need to ensure that the clobberize rules
+            // are correct.
+            fixEdge<StringUse>(node->child1());
+            break;
+        }
+
+        case DefineAccessorProperty: {
+            fixEdge<CellUse>(m_graph.varArgChild(node, 0));
+            Edge& propertyEdge = m_graph.varArgChild(node, 1);
+            if (propertyEdge->shouldSpeculateSymbol())
+                fixEdge<SymbolUse>(propertyEdge);
+            else if (propertyEdge->shouldSpeculateStringIdent())
+                fixEdge<StringIdentUse>(propertyEdge);
+            else if (propertyEdge->shouldSpeculateString())
+                fixEdge<StringUse>(propertyEdge);
+            else
+                fixEdge<UntypedUse>(propertyEdge);
+            fixEdge<CellUse>(m_graph.varArgChild(node, 2));
+            fixEdge<CellUse>(m_graph.varArgChild(node, 3));
+            fixEdge<KnownInt32Use>(m_graph.varArgChild(node, 4));
+            break;
+        }
+
+        case CheckDOM:
+            fixEdge<CellUse>(node->child1());
+            break;
+
+        case CallDOM: {
+            int childIndex = 0;
+            DOMJIT::CallDOMPatchpoint* patchpoint = node->callDOMPatchpoint();
+            if (patchpoint->requireGlobalObject)
+                fixEdge<KnownCellUse>(m_graph.varArgChild(node, childIndex++)); // GlobalObject.
+            fixEdge<CellUse>(m_graph.varArgChild(node, childIndex++)); // DOM.
+            break;
+        }
 
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
@@ -1651,7 +1761,7 @@ private:
         case TailCall:
         case TailCallVarargs:
         case Throw:
-        case ThrowReferenceError:
+        case ThrowStaticError:
         case CountExecution:
         case ForceOSRExit:
         case CheckBadCell:
@@ -1670,8 +1780,6 @@ private:
         case PutByValWithThis:
         case GetByValWithThis:
         case CompareEqPtr:
-            break;
-            
             break;
 #else
         default:

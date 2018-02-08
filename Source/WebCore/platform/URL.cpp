@@ -441,8 +441,8 @@ void URL::invalidate()
 URL::URL(ParsedURLStringTag, const String& url)
 {
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parseSerializedURL(url);
+        URLParser parser(url);
+        *this = parser.result();
     } else
         parse(url);
 #if OS(WINDOWS)
@@ -456,22 +456,22 @@ URL::URL(ParsedURLStringTag, const String& url)
 URL::URL(const URL& base, const String& relative)
 {
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(relative, base);
+        URLParser parser(relative, base);
+        *this = parser.result();
     } else
         init(base, relative, UTF8Encoding());
 }
 
 URL::URL(const URL& base, const String& relative, const TextEncoding& encoding)
 {
+    // For UTF-{7,16,32}, we want to use UTF-8 for the query part as
+    // we do when submitting a form. A form with GET method
+    // has its contents added to a URL as query params and it makes sense
+    // to be consistent.
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(relative, base, encoding);
+        URLParser parser(relative, base, encoding.encodingForFormSubmission());
+        *this = parser.result();
     } else {
-        // For UTF-{7,16,32}, we want to use UTF-8 for the query part as
-        // we do when submitting a form. A form with GET method
-        // has its contents added to a URL as query params and it makes sense
-        // to be consistent.
         init(base, relative, encoding.encodingForFormSubmission());
     }
 }
@@ -788,15 +788,15 @@ String URL::fileSystemPath() const
 
 #ifdef NDEBUG
 
-static inline void assertProtocolIsGood(const char*, size_t)
+static inline void assertProtocolIsGood(StringView)
 {
 }
 
 #else
 
-static void assertProtocolIsGood(const char* protocol, size_t length)
+static void assertProtocolIsGood(StringView protocol)
 {
-    for (size_t i = 0; i < length; ++i) {
+    for (size_t i = 0; i < protocol.length(); ++i) {
         const char c = protocol[i];
         ASSERT(c > ' ' && c < 0x7F && !(c >= 'A' && c <= 'Z'));
     }
@@ -806,7 +806,7 @@ static void assertProtocolIsGood(const char* protocol, size_t length)
 
 bool URL::protocolIs(const char* protocol) const
 {
-    assertProtocolIsGood(protocol, strlen(protocol));
+    assertProtocolIsGood(StringView(reinterpret_cast<const LChar*>(protocol), strlen(protocol)));
 
     // JavaScript URLs are "valid" and should be executed even if URL decides they are invalid.
     // The free function protocolIsJavaScript() should be used instead. 
@@ -823,14 +823,14 @@ bool URL::protocolIs(const char* protocol) const
     return !protocol[m_schemeEnd]; // We should have consumed all characters in the argument.
 }
 
-bool URL::protocolIs(const LChar* protocol, size_t length) const
+bool URL::protocolIs(StringView protocol) const
 {
-    assertProtocolIsGood(reinterpret_cast<const char*>(protocol), length);
+    assertProtocolIsGood(protocol);
 
     if (!m_isValid)
         return false;
     
-    if (m_schemeEnd != length)
+    if (m_schemeEnd != protocol.length())
         return false;
 
     // Do the comparison without making a new string object.
@@ -865,16 +865,16 @@ bool URL::setProtocol(const String& s)
 
     if (!m_isValid) {
         if (URLParser::enabled()) {
-            URLParser parser;
-            *this = parser.parse(makeString(newProtocol, ":", m_string));
+            URLParser parser(makeString(newProtocol, ":", m_string));
+            *this = parser.result();
         } else
             parse(newProtocol + ':' + m_string);
         return true;
     }
 
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(makeString(newProtocol, m_string.substring(m_schemeEnd)));
+        URLParser parser(makeString(newProtocol, m_string.substring(m_schemeEnd)));
+        *this = parser.result();
     } else
         parse(newProtocol + m_string.substring(m_schemeEnd));
 
@@ -945,8 +945,8 @@ void URL::setHost(const String& s)
     builder.append(m_string.substring(m_hostEnd));
     
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(builder.toString());
+        URLParser parser(builder.toString());
+        *this = parser.result();
     } else
         parse(builder.toString());
 }
@@ -956,8 +956,8 @@ void URL::removePort()
     if (m_hostEnd == m_portEnd)
         return;
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(m_string.left(m_hostEnd) + m_string.substring(m_portEnd));
+        URLParser parser(m_string.left(m_hostEnd) + m_string.substring(m_portEnd));
+        *this = parser.result();
     } else
         parse(m_string.left(m_hostEnd) + m_string.substring(m_portEnd));
 }
@@ -971,8 +971,8 @@ void URL::setPort(unsigned short i)
     unsigned portStart = (colonNeeded ? m_hostEnd : m_hostEnd + 1);
 
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(makeString(m_string.left(portStart), (colonNeeded ? ":" : ""), String::number(i), m_string.substring(m_portEnd)));
+        URLParser parser(makeString(m_string.left(portStart), (colonNeeded ? ":" : ""), String::number(i), m_string.substring(m_portEnd)));
+        *this = parser.result();
     } else
         parse(m_string.left(portStart) + (colonNeeded ? ":" : "") + String::number(i) + m_string.substring(m_portEnd));
 }
@@ -1016,8 +1016,8 @@ void URL::setHostAndPort(const String& hostAndPort)
     builder.append(m_string.substring(m_portEnd));
 
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(builder.toString());
+        URLParser parser(builder.toString());
+        *this = parser.result();
     } else
         parse(builder.toString());
 }
@@ -1039,8 +1039,8 @@ void URL::setUser(const String& user)
         if (end == m_hostEnd || (end == m_passwordEnd && m_string[end] != '@'))
             u.append('@');
         if (URLParser::enabled()) {
-            URLParser parser;
-            *this = parser.parse(makeString(m_string.left(m_userStart), u, m_string.substring(end)));
+            URLParser parser(makeString(m_string.left(m_userStart), u, m_string.substring(end)));
+            *this = parser.result();
         } else
             parse(m_string.left(m_userStart) + u + m_string.substring(end));
     } else {
@@ -1050,8 +1050,8 @@ void URL::setUser(const String& user)
         // We don't want to parse in the extremely common case where we are not going to make a change.
         if (m_userStart != end) {
             if (URLParser::enabled()) {
-                URLParser parser;
-                *this = parser.parse(makeString(m_string.left(m_userStart), m_string.substring(end)));
+                URLParser parser(makeString(m_string.left(m_userStart), m_string.substring(end)));
+                *this = parser.result();
             } else
                 parse(m_string.left(m_userStart) + m_string.substring(end));
         }
@@ -1072,8 +1072,8 @@ void URL::setPass(const String& password)
         if (end != m_hostEnd && m_string[end] == '@')
             end += 1;
         if (URLParser::enabled()) {
-            URLParser parser;
-            *this = parser.parse(makeString(m_string.left(m_userEnd), p, m_string.substring(end)));
+            URLParser parser(makeString(m_string.left(m_userEnd), p, m_string.substring(end)));
+            *this = parser.result();
         } else
             parse(m_string.left(m_userEnd) + p + m_string.substring(end));
     } else {
@@ -1083,8 +1083,8 @@ void URL::setPass(const String& password)
         // We don't want to parse in the extremely common case where we are not going to make a change.
         if (m_userEnd != end) {
             if (URLParser::enabled()) {
-                URLParser parser;
-                *this = parser.parse(makeString(m_string.left(m_userEnd), m_string.substring(end)));
+                URLParser parser(makeString(m_string.left(m_userEnd), m_string.substring(end)));
+                *this = parser.result();
             } else
                 parse(m_string.left(m_userEnd) + m_string.substring(end));
         }
@@ -1098,22 +1098,22 @@ void URL::setFragmentIdentifier(const String& s)
 
     // FIXME: Non-ASCII characters must be encoded and escaped to match parse() expectations.
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(makeString(m_string.left(m_queryEnd), "#", s));
+        URLParser parser(makeString(m_string.left(m_queryEnd), "#", s));
+        *this = parser.result();
     } else
         parse(m_string.left(m_queryEnd) + "#" + s);
 }
 
 void URL::removeFragmentIdentifier()
 {
-    if (!m_isValid)
+    if (!m_isValid) {
+        ASSERT(!m_fragmentEnd);
+        ASSERT(!m_queryEnd);
         return;
-    if (URLParser::enabled()) {
-        // FIXME: We shouldn't need to parse here.
-        URLParser parser;
-        *this = parser.parse(m_string.left(m_queryEnd));
-    } else
-        parse(m_string.left(m_queryEnd));
+    }
+    if (m_fragmentEnd > m_queryEnd)
+        m_string = m_string.left(m_queryEnd);
+    m_fragmentEnd = m_queryEnd;
 }
     
 void URL::setQuery(const String& query)
@@ -1127,14 +1127,14 @@ void URL::setQuery(const String& query)
     // https://webkit.org/b/161176
     if ((query.isEmpty() || query[0] != '?') && !query.isNull()) {
         if (URLParser::enabled()) {
-            URLParser parser;
-            *this = parser.parse(makeString(m_string.left(m_pathEnd), "?", query, m_string.substring(m_queryEnd)));
+            URLParser parser(makeString(m_string.left(m_pathEnd), "?", query, m_string.substring(m_queryEnd)));
+            *this = parser.result();
         } else
             parse(m_string.left(m_pathEnd) + "?" + query + m_string.substring(m_queryEnd));
     } else {
         if (URLParser::enabled()) {
-            URLParser parser;
-            *this = parser.parse(makeString(m_string.left(m_pathEnd), query, m_string.substring(m_queryEnd)));
+            URLParser parser(makeString(m_string.left(m_pathEnd), query, m_string.substring(m_queryEnd)));
+            *this = parser.result();
         } else
             parse(m_string.left(m_pathEnd) + query + m_string.substring(m_queryEnd));
     }
@@ -1153,8 +1153,8 @@ void URL::setPath(const String& s)
         path = "/" + path;
 
     if (URLParser::enabled()) {
-        URLParser parser;
-        *this = parser.parse(makeString(m_string.left(m_portEnd), encodeWithURLEscapeSequences(path), m_string.substring(m_pathEnd)));
+        URLParser parser(makeString(m_string.left(m_portEnd), encodeWithURLEscapeSequences(path), m_string.substring(m_pathEnd)));
+        *this = parser.result();
     } else
         parse(m_string.left(m_portEnd) + encodeWithURLEscapeSequences(path) + m_string.substring(m_pathEnd));
 }
@@ -1310,6 +1310,12 @@ static inline bool cannotBeABaseURL(const URL& url)
 // Implementation of https://url.spec.whatwg.org/#url-serializing
 String URL::serialize(bool omitFragment) const
 {
+    if (URLParser::enabled()) {
+        if (omitFragment)
+            return m_string.left(m_queryEnd);
+        return m_string;
+    }
+
     if (isNull())
         return String();
 
@@ -1914,7 +1920,7 @@ String encodeWithURLEscapeSequences(const String& notEncodedString)
 
 static bool protocolIs(StringView stringURL, const char* protocol)
 {
-    assertProtocolIsGood(protocol, strlen(protocol));
+    assertProtocolIsGood(StringView(reinterpret_cast<const LChar*>(protocol), strlen(protocol)));
     unsigned length = stringURL.length();
     for (unsigned i = 0; i < length; ++i) {
         if (!protocol[i])
@@ -2141,7 +2147,7 @@ void URL::copyToBuffer(Vector<char, 512>& buffer) const
 bool protocolIs(const String& url, const char* protocol)
 {
     // Do the comparison without making a new string object.
-    assertProtocolIsGood(protocol, strlen(protocol));
+    assertProtocolIsGood(StringView(reinterpret_cast<const LChar*>(protocol), strlen(protocol)));
     bool isLeading = true;
     for (unsigned i = 0, j = 0; url[i]; ++i) {
         // skip leading whitespace and control characters.

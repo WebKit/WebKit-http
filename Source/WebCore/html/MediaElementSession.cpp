@@ -138,8 +138,11 @@ void MediaElementSession::addBehaviorRestriction(BehaviorRestrictions restrictio
 
 void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restriction)
 {
-    if (restriction & RequireUserGestureToControlControlsManager)
+    if (restriction & RequireUserGestureToControlControlsManager) {
         m_mostRecentUserInteractionTime = monotonicallyIncreasingTime();
+        if (auto page = m_element.document().page())
+            page->setAllowsPlaybackControlsForAutoplayingAudio(true);
+    }
 
     LOG(Media, "MediaElementSession::removeBehaviorRestriction - removing %s", restrictionName(restriction).utf8().data());
     m_restrictions &= ~restriction;
@@ -216,14 +219,39 @@ bool MediaElementSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement
     return true;
 }
 
-bool MediaElementSession::canShowControlsManager() const
+bool MediaElementSession::canShowControlsManager(PlaybackControlsPurpose purpose) const
 {
     if (m_element.isFullscreen()) {
         LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Is fullscreen");
         return true;
     }
 
-    if (!isElementRectMostlyInMainFrame(m_element)) {
+    if (m_element.muted()) {
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Muted");
+        return false;
+    }
+
+    if (m_element.document().isMediaDocument()) {
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Is media document");
+        return true;
+    }
+
+    if (client().presentationType() == Audio) {
+        if (!hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || ScriptController::processingUserGestureForMedia()) {
+            LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Audio element with user gesture");
+            return true;
+        }
+
+        if (m_element.isPlaying() && allowsPlaybackControlsForAutoplayingAudio()) {
+            LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: User has played media before");
+            return true;
+        }
+
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Audio element is not suitable");
+        return false;
+    }
+
+    if (purpose == PlaybackControlsPurpose::ControlsManager && !isElementRectMostlyInMainFrame(m_element)) {
         LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Not in main frame");
         return false;
     }
@@ -231,11 +259,6 @@ bool MediaElementSession::canShowControlsManager() const
     if (!m_element.hasAudio() && !m_element.hasEverHadAudio()) {
         LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: No audio");
         return false;
-    }
-
-    if (m_element.document().isMediaDocument()) {
-        LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Is media document");
-        return true;
     }
 
     if (m_element.document().activeDOMObjectsAreSuspended()) {
@@ -253,13 +276,8 @@ bool MediaElementSession::canShowControlsManager() const
         return true;
     }
 
-    if (hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !m_element.isPlaying()) {
+    if (purpose == PlaybackControlsPurpose::ControlsManager && hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !m_element.isPlaying()) {
         LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Needs to be playing");
-        return false;
-    }
-
-    if (m_element.muted()) {
-        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Muted");
         return false;
     }
 
@@ -268,7 +286,8 @@ bool MediaElementSession::canShowControlsManager() const
         return false;
     }
 
-    if (m_element.isVideo()) {
+    // Only allow the main content heuristic to forbid videos from showing up if our purpose is the controls manager.
+    if (purpose == PlaybackControlsPurpose::ControlsManager && m_element.isVideo()) {
         if (!m_element.renderer()) {
             LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: No renderer");
             return false;
@@ -283,6 +302,11 @@ bool MediaElementSession::canShowControlsManager() const
             LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Is main content");
             return true;
         }
+    }
+
+    if (purpose == PlaybackControlsPurpose::NowPlaying) {
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Potentially plays audio");
+        return true;
     }
 
     LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: No user gesture");
@@ -720,6 +744,18 @@ bool MediaElementSession::updateIsMainContent() const
         m_element.updateShouldPlay();
 
     return m_isMainContent;
+}
+
+bool MediaElementSession::allowsNowPlayingControlsVisibility() const
+{
+    auto page = m_element.document().page();
+    return page && !page->isVisibleAndActive();
+}
+
+bool MediaElementSession::allowsPlaybackControlsForAutoplayingAudio() const
+{
+    auto page = m_element.document().page();
+    return page && page->allowsPlaybackControlsForAutoplayingAudio();
 }
 
 }

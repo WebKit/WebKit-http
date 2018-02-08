@@ -163,7 +163,7 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
             prototype = obj->getPrototypeDirect();
             if (prototype.isNull()) {
                 if (slot.isStrictMode())
-                    throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+                    throwTypeError(exec, scope, ReadonlyPropertyWriteError);
                 return false;
             }
         }
@@ -175,7 +175,7 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
         if (offset != invalidOffset) {
             if (attributes & ReadOnly) {
                 if (slot.isStrictMode())
-                    throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+                    throwTypeError(exec, scope, ReadonlyPropertyWriteError);
                 return false;
             }
 
@@ -192,14 +192,13 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
         }
 
         prototype = obj->getPrototype(vm, exec);
-        if (UNLIKELY(scope.exception()))
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         if (prototype.isNull())
             break;
     }
     
     if (slot.isStrictMode())
-        throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+        throwTypeError(exec, scope, ReadonlyPropertyWriteError);
     return false;
 }
 
@@ -223,7 +222,7 @@ bool JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSVa
         return putResult;
     
     if (shouldThrow)
-        throwTypeError(exec, scope, StrictModeReadonlyPropertyWriteError);
+        throwTypeError(exec, scope, ReadonlyPropertyWriteError);
     return false;
 }
 
@@ -381,12 +380,10 @@ JSString* JSValue::toStringSlowCase(ExecState* exec, bool returnEmptyStringOnErr
 
     ASSERT(isCell());
     JSValue value = asCell()->toPrimitive(exec, PreferString);
-    if (UNLIKELY(scope.exception()))
-        return errorValue();
+    RETURN_IF_EXCEPTION(scope, errorValue());
     ASSERT(!value.isObject());
     JSString* result = value.toString(exec);
-    if (UNLIKELY(scope.exception()))
-        return errorValue();
+    RETURN_IF_EXCEPTION(scope, errorValue());
     return result;
 }
 

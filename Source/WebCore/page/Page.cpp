@@ -67,6 +67,7 @@
 #include "PageGroup.h"
 #include "PageOverlayController.h"
 #include "PageThrottler.h"
+#include "PlatformMediaSessionManager.h"
 #include "PlugInClient.h"
 #include "PluginData.h"
 #include "PluginInfoProvider.h"
@@ -88,6 +89,7 @@
 #include "StorageNamespace.h"
 #include "StorageNamespaceProvider.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 #include "SubframeLoader.h"
 #include "TextResourceDecoder.h"
 #include "UserContentProvider.h"
@@ -195,7 +197,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_pageScaleFactor(1)
     , m_zoomedOutPageScaleFactor(0)
     , m_topContentInset(0)
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     , m_textAutosizingWidth(0)
 #endif
     , m_suppressScrollbarAnimations(false)
@@ -422,7 +424,7 @@ void Page::setViewMode(ViewMode viewMode)
         m_mainFrame->view()->forceLayout();
 
     if (m_mainFrame->document())
-        m_mainFrame->document()->styleResolverChanged(RecalcStyleImmediately);
+        m_mainFrame->document()->styleScope().didChangeContentsOrInterpretation();
 }
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
@@ -489,7 +491,7 @@ void Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment()
             // the properties cache.
             if (!frame->document())
                 continue;
-            if (StyleResolver* styleResolver = frame->document()->styleResolverIfExists())
+            if (StyleResolver* styleResolver = frame->document()->styleScope().resolverIfExists())
                 styleResolver->invalidateMatchedPropertiesCache();
             frame->document()->scheduleForcedStyleRecalc();
         }
@@ -500,7 +502,7 @@ void Page::setNeedsRecalcStyleInAllFrames()
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (Document* document = frame->document())
-            document->styleResolverChanged(DeferRecalcStyle);
+            document->styleScope().didChangeContentsOrInterpretation();
     }
 }
 
@@ -1161,7 +1163,7 @@ void Page::invalidateInjectedStyleSheetCacheInAllFrames()
         if (!document)
             continue;
         document->extensionStyleSheets().invalidateInjectedStyleSheetCache();
-        document->styleResolverChanged(DeferRecalcStyle);
+        document->styleScope().didChangeContentsOrInterpretation();
     }
 }
 
@@ -1449,7 +1451,9 @@ void Page::setViewState(ViewState::Flags viewState)
 
     ViewState::Flags oldViewState = m_viewState;
 
+    bool wasVisibleAndActive = isVisibleAndActive();
     m_viewState = viewState;
+
     m_focusController->setViewState(viewState);
 
     if (changed & ViewState::IsVisible)
@@ -1464,6 +1468,14 @@ void Page::setViewState(ViewState::Flags viewState)
 
     for (auto* observer : m_viewStateChangeObservers)
         observer->viewStateDidChange(oldViewState, m_viewState);
+
+    if (wasVisibleAndActive != isVisibleAndActive())
+        PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary();
+}
+
+bool Page::isVisibleAndActive() const
+{
+    return (m_viewState & ViewState::IsVisible) && (m_viewState & ViewState::WindowIsActive);
 }
 
 void Page::setPageActivityState(PageActivityState::Flags activityState)

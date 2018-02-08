@@ -26,6 +26,8 @@
 #include "config.h"
 #include "Image.h"
 
+#if USE(CG)
+
 #include "BitmapImage.h"
 #include "BitmapInfo.h"
 #include "GraphicsContextCG.h"
@@ -106,3 +108,5 @@ void BitmapImage::drawFrameMatchingSourceSize(GraphicsContext& ctxt, const Float
 }
 
 } // namespace WebCore
+
+#endif

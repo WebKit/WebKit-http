@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3PatchpointValue_h
-#define B3PatchpointValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -38,7 +37,7 @@ class PatchpointValue : public StackmapValue {
 public:
     typedef StackmapValue Base;
     
-    static bool accepts(Opcode opcode) { return opcode == Patchpoint; }
+    static bool accepts(Kind kind) { return kind == Patchpoint; }
 
     ~PatchpointValue();
 
@@ -76,6 +75,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3PatchpointValue_h
-

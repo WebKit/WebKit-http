@@ -23,13 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GeneratorFunctionPrototype_h
-#define GeneratorFunctionPrototype_h
+#pragma once
 
 #include "JSObject.h"
 
 namespace JSC {
 
+// %Generator% intrinsic.
+// https://tc39.github.io/ecma262/#sec-generatorfunction.prototype
 class GeneratorFunctionPrototype : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
@@ -56,5 +57,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // GeneratorFunctionPrototype_h

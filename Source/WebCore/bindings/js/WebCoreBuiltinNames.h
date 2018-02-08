@@ -35,6 +35,7 @@ namespace WebCore {
     macro(addTrack) \
     macro(appendFromJS) \
     macro(body) \
+    macro(cancel) \
     macro(cloneForJS) \
     macro(closeRequested) \
     macro(closedPromiseCapability) \
@@ -47,7 +48,6 @@ namespace WebCore {
     macro(fetchRequest) \
     macro(fillFromJS) \
     macro(finishConsumingStream) \
-    macro(firstReadCallback) \
     macro(getUserMedia) \
     macro(getRemoteStreams) \
     macro(getSenders) \

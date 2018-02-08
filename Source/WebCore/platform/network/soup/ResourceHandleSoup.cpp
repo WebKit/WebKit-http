@@ -58,180 +58,12 @@
 #include <unistd.h>
 #endif
 #include <wtf/CurrentTime.h>
-#include <wtf/SHA1.h>
 #include <wtf/glib/GRefPtr.h>
-#include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
-
-#include "BlobData.h"
-#include "BlobRegistryImpl.h"
-
-#if PLATFORM(GTK)
-#include "CredentialBackingStore.h"
-#endif
 
 namespace WebCore {
 
-static bool loadingSynchronousRequest = false;
 static const size_t gDefaultReadBufferSize = 8192;
-
-class WebCoreSynchronousLoader final : public ResourceHandleClient {
-    WTF_MAKE_NONCOPYABLE(WebCoreSynchronousLoader);
-public:
-
-    WebCoreSynchronousLoader(ResourceError& error, ResourceResponse& response, SoupSession* session, Vector<char>& data, StoredCredentials storedCredentials)
-        : m_error(error)
-        , m_response(response)
-#if !SOUP_CHECK_VERSION(2, 49, 91)
-        , m_session(session)
-#endif
-        , m_data(data)
-        , m_finished(false)
-        , m_storedCredentials(storedCredentials)
-    {
-        // We don't want any timers to fire while we are doing our synchronous load
-        // so we replace the thread default main context. The main loop iterations
-        // will only process GSources associated with this inner context.
-        loadingSynchronousRequest = true;
-        GRefPtr<GMainContext> innerMainContext = adoptGRef(g_main_context_new());
-        g_main_context_push_thread_default(innerMainContext.get());
-        m_mainLoop = adoptGRef(g_main_loop_new(innerMainContext.get(), false));
-
-#if !SOUP_CHECK_VERSION(2, 49, 91)
-        adjustMaxConnections(1);
-#else
-        UNUSED_PARAM(session);
-#endif
-    }
-
-    ~WebCoreSynchronousLoader()
-    {
-#if !SOUP_CHECK_VERSION(2, 49, 91)
-        adjustMaxConnections(-1);
-#endif
-
-        GMainContext* context = g_main_context_get_thread_default();
-        while (g_main_context_pending(context))
-            g_main_context_iteration(context, FALSE);
-
-        g_main_context_pop_thread_default(context);
-        loadingSynchronousRequest = false;
-    }
-
-#if !SOUP_CHECK_VERSION(2, 49, 91)
-    void adjustMaxConnections(int adjustment)
-    {
-        int maxConnections, maxConnectionsPerHost;
-        g_object_get(m_session,
-                     SOUP_SESSION_MAX_CONNS, &maxConnections,
-                     SOUP_SESSION_MAX_CONNS_PER_HOST, &maxConnectionsPerHost,
-                     NULL);
-        maxConnections += adjustment;
-        maxConnectionsPerHost += adjustment;
-        g_object_set(m_session,
-                     SOUP_SESSION_MAX_CONNS, maxConnections,
-                     SOUP_SESSION_MAX_CONNS_PER_HOST, maxConnectionsPerHost,
-                     NULL);
-
-    }
-#endif // SOUP_CHECK_VERSION(2, 49, 91)
-
-    void didReceiveResponse(ResourceHandle*, ResourceResponse&& response) override
-    {
-        m_response = response;
-    }
-
-    void didReceiveData(ResourceHandle*, const char* /* data */, unsigned /* length */, int) override
-    {
-        ASSERT_NOT_REACHED();
-    }
-
-    void didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&& buffer, int /* encodedLength */) override
-    {
-        // This pattern is suggested by SharedBuffer.h.
-        const char* segment;
-        unsigned position = 0;
-        while (unsigned length = buffer->getSomeData(segment, position)) {
-            m_data.append(segment, length);
-            position += length;
-        }
-    }
-
-    void didFinishLoading(ResourceHandle*, double) override
-    {
-        if (g_main_loop_is_running(m_mainLoop.get()))
-            g_main_loop_quit(m_mainLoop.get());
-        m_finished = true;
-    }
-
-    void didFail(ResourceHandle* handle, const ResourceError& error) override
-    {
-        m_error = error;
-        didFinishLoading(handle, 0);
-    }
-
-    void didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge& challenge) override
-    {
-        // We do not handle authentication for synchronous XMLHttpRequests.
-        challenge.authenticationClient()->receivedRequestToContinueWithoutCredential(challenge);
-    }
-
-    bool shouldUseCredentialStorage(ResourceHandle*) override
-    {
-        return m_storedCredentials == AllowStoredCredentials;
-    }
-
-    void run()
-    {
-        if (!m_finished)
-            g_main_loop_run(m_mainLoop.get());
-    }
-
-private:
-    ResourceError& m_error;
-    ResourceResponse& m_response;
-#if !SOUP_CHECK_VERSION(2, 49, 91)
-    SoupSession* m_session;
-#endif
-    Vector<char>& m_data;
-    bool m_finished;
-    GRefPtr<GMainLoop> m_mainLoop;
-    StoredCredentials m_storedCredentials;
-};
-
-class HostTLSCertificateSet {
-public:
-    void add(GTlsCertificate* certificate)
-    {
-        String certificateHash = computeCertificateHash(certificate);
-        if (!certificateHash.isEmpty())
-            m_certificates.add(certificateHash);
-    }
-
-    bool contains(GTlsCertificate* certificate)
-    {
-        return m_certificates.contains(computeCertificateHash(certificate));
-    }
-
-private:
-    static String computeCertificateHash(GTlsCertificate* certificate)
-    {
-        GRefPtr<GByteArray> certificateData;
-        g_object_get(G_OBJECT(certificate), "certificate", &certificateData.outPtr(), NULL);
-        if (!certificateData)
-            return String();
-
-        SHA1 sha1;
-        sha1.addBytes(certificateData->data, certificateData->len);
-
-        SHA1::Digest digest;
-        sha1.computeHash(digest);
-
-        return base64Encode(reinterpret_cast<const char*>(digest.data()), SHA1::hashSize);
-    }
-
-    HashSet<String> m_certificates;
-};
 
 static bool createSoupRequestAndMessageForHandle(ResourceHandle*, const ResourceRequest&);
 static void cleanupSoupRequestOperation(ResourceHandle*, bool isDestroying = false);
@@ -241,22 +73,6 @@ static void readCallback(GObject*, GAsyncResult*, gpointer);
 static double milisecondsSinceRequest(double requestTime);
 #endif
 static void continueAfterDidReceiveResponse(ResourceHandle*);
-
-static bool gIgnoreSSLErrors = false;
-
-typedef HashSet<String, ASCIICaseInsensitiveHash> HostsSet;
-static HostsSet& allowsAnyHTTPSCertificateHosts()
-{
-    DEPRECATED_DEFINE_STATIC_LOCAL(HostsSet, hosts, ());
-    return hosts;
-}
-
-typedef HashMap<String, HostTLSCertificateSet, ASCIICaseInsensitiveHash> CertificatesMap;
-static CertificatesMap& clientCertificates()
-{
-    DEPRECATED_DEFINE_STATIC_LOCAL(CertificatesMap, certificates, ());
-    return certificates;
-}
 
 ResourceHandleInternal::~ResourceHandleInternal()
 {
@@ -312,39 +128,19 @@ static bool isAuthenticationFailureStatusCode(int httpStatusCode)
     return httpStatusCode == SOUP_STATUS_PROXY_AUTHENTICATION_REQUIRED || httpStatusCode == SOUP_STATUS_UNAUTHORIZED;
 }
 
-static bool handleUnignoredTLSErrors(ResourceHandle* handle, SoupMessage* message)
-{
-    if (gIgnoreSSLErrors)
-        return false;
-
-    GTlsCertificate* certificate = nullptr;
-    GTlsCertificateFlags tlsErrors = static_cast<GTlsCertificateFlags>(0);
-    soup_message_get_https_status(message, &certificate, &tlsErrors);
-    if (!tlsErrors)
-        return false;
-
-    String host = handle->firstRequest().url().host();
-    if (allowsAnyHTTPSCertificateHosts().contains(host))
-        return false;
-
-    // We aren't ignoring errors globally, but the user may have already decided to accept this certificate.
-    auto it = clientCertificates().find(host);
-    if (it != clientCertificates().end() && it->value.contains(certificate))
-        return false;
-
-    ResourceHandleInternal* d = handle->getInternal();
-    handle->client()->didFail(handle, ResourceError::tlsError(d->m_soupRequest.get(), tlsErrors, certificate));
-    return true;
-}
-
 static void tlsErrorsChangedCallback(SoupMessage* message, GParamSpec*, gpointer data)
 {
     RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(data);
     if (!handle || handle->cancelledOrClientless())
         return;
 
-    if (handleUnignoredTLSErrors(handle.get(), message))
+    SoupNetworkSession::checkTLSErrors(handle->getInternal()->m_soupRequest.get(), message, [handle] (const ResourceError& error) {
+        if (error.isNull())
+            return;
+
+        handle->client()->didFail(handle.get(), error);
         handle->cancel();
+    });
 }
 
 static void gotHeadersCallback(SoupMessage* message, gpointer data)
@@ -355,17 +151,17 @@ static void gotHeadersCallback(SoupMessage* message, gpointer data)
 
     ResourceHandleInternal* d = handle->getInternal();
 
-#if PLATFORM(GTK)
-    // We are a bit more conservative with the persistent credential storage than the session store,
-    // since we are waiting until we know that this authentication succeeded before actually storing.
-    // This is because we want to avoid hitting the disk twice (once to add and once to remove) for
-    // incorrect credentials or polluting the keychain with invalid credentials.
-    if (!isAuthenticationFailureStatusCode(message->status_code) && message->status_code < 500 && !d->m_credentialDataToSaveInPersistentStore.credential.isEmpty()) {
-        credentialBackingStore().storeCredentialsForChallenge(
-            d->m_credentialDataToSaveInPersistentStore.challenge,
-            d->m_credentialDataToSaveInPersistentStore.credential);
+    if (d->m_context && d->m_context->isValid()) {
+        // We are a bit more conservative with the persistent credential storage than the session store,
+        // since we are waiting until we know that this authentication succeeded before actually storing.
+        // This is because we want to avoid hitting the disk twice (once to add and once to remove) for
+        // incorrect credentials or polluting the keychain with invalid credentials.
+        if (!isAuthenticationFailureStatusCode(message->status_code) && message->status_code < 500) {
+            d->m_context->storageSession().saveCredentialToPersistentStorage(
+                d->m_credentialDataToSaveInPersistentStore.protectionSpace,
+                d->m_credentialDataToSaveInPersistentStore.credential);
+        }
     }
-#endif
 
     // The original response will be needed later to feed to willSendRequest in
     // doRedirect() in case we are redirected. For this reason, we store it here.
@@ -745,96 +541,6 @@ static void continueAfterDidReceiveResponse(ResourceHandle* handle)
         G_PRIORITY_DEFAULT, d->m_cancellable.get(), readCallback, handle);
 }
 
-static bool addFileToSoupMessageBody(SoupMessage* message, const String& fileNameString, size_t offset, size_t lengthToSend, unsigned long& totalBodySize)
-{
-    GUniqueOutPtr<GError> error;
-    CString fileName = fileSystemRepresentation(fileNameString);
-    GMappedFile* fileMapping = g_mapped_file_new(fileName.data(), false, &error.outPtr());
-    if (error)
-        return false;
-
-    gsize bufferLength = lengthToSend;
-    if (!lengthToSend)
-        bufferLength = g_mapped_file_get_length(fileMapping);
-    totalBodySize += bufferLength;
-
-    SoupBuffer* soupBuffer = soup_buffer_new_with_owner(g_mapped_file_get_contents(fileMapping) + offset,
-                                                        bufferLength,
-                                                        fileMapping,
-                                                        reinterpret_cast<GDestroyNotify>(g_mapped_file_unref));
-    soup_message_body_append_buffer(message->request_body, soupBuffer);
-    soup_buffer_free(soupBuffer);
-    return true;
-}
-
-static bool blobIsOutOfDate(const BlobDataItem& blobItem)
-{
-    ASSERT(blobItem.type() == BlobDataItem::Type::File);
-    if (!isValidFileTime(blobItem.file()->expectedModificationTime()))
-        return false;
-
-    time_t fileModificationTime;
-    if (!getFileModificationTime(blobItem.file()->path(), fileModificationTime))
-        return true;
-
-    return fileModificationTime != static_cast<time_t>(blobItem.file()->expectedModificationTime());
-}
-
-static void addEncodedBlobItemToSoupMessageBody(SoupMessage* message, const BlobDataItem& blobItem, unsigned long& totalBodySize)
-{
-    if (blobItem.type() == BlobDataItem::Type::Data) {
-        totalBodySize += blobItem.length();
-        soup_message_body_append(message->request_body, SOUP_MEMORY_TEMPORARY, blobItem.data().data()->data() + blobItem.offset(), blobItem.length());
-        return;
-    }
-
-    ASSERT(blobItem.type() == BlobDataItem::Type::File);
-    if (blobIsOutOfDate(blobItem))
-        return;
-
-    addFileToSoupMessageBody(message, blobItem.file()->path(), blobItem.offset(), blobItem.length() == BlobDataItem::toEndOfFile ? 0 : blobItem.length(),  totalBodySize);
-}
-
-static void addEncodedBlobToSoupMessageBody(SoupMessage* message, const FormDataElement& element, unsigned long& totalBodySize)
-{
-    RefPtr<BlobData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(URL(ParsedURLString, element.m_url));
-    if (!blobData)
-        return;
-
-    for (size_t i = 0; i < blobData->items().size(); ++i)
-        addEncodedBlobItemToSoupMessageBody(message, blobData->items()[i], totalBodySize);
-}
-
-static bool addFormElementsToSoupMessage(SoupMessage* message, const char*, FormData* httpBody, unsigned long& totalBodySize)
-{
-    soup_message_body_set_accumulate(message->request_body, FALSE);
-    size_t numElements = httpBody->elements().size();
-    for (size_t i = 0; i < numElements; i++) {
-        const FormDataElement& element = httpBody->elements()[i];
-
-        if (element.m_type == FormDataElement::Type::Data) {
-            totalBodySize += element.m_data.size();
-            soup_message_body_append(message->request_body, SOUP_MEMORY_TEMPORARY,
-                                     element.m_data.data(), element.m_data.size());
-            continue;
-        }
-
-        if (element.m_type == FormDataElement::Type::EncodedFile) {
-            if (!addFileToSoupMessageBody(message ,
-                                         element.m_filename,
-                                         0 /* offset */,
-                                         0 /* lengthToSend */,
-                                         totalBodySize))
-                return false;
-            continue;
-        }
-
-        ASSERT(element.m_type == FormDataElement::Type::EncodedBlob);
-        addEncodedBlobToSoupMessageBody(message, element, totalBodySize);
-    }
-    return true;
-}
-
 #if ENABLE(WEB_TIMING)
 static double milisecondsSinceRequest(double requestTime)
 {
@@ -919,20 +625,13 @@ static bool createSoupMessageForHandleAndRequest(ResourceHandle* handle, const R
 
     SoupMessage* soupMessage = d->m_soupMessage.get();
     request.updateSoupMessage(soupMessage);
+    d->m_bodySize = soupMessage->request_body->length;
 
     g_object_set_data(G_OBJECT(soupMessage), "handle", handle);
     if (!handle->shouldContentSniff())
         soup_message_disable_feature(soupMessage, SOUP_TYPE_CONTENT_SNIFFER);
     if (!d->m_useAuthenticationManager)
         soup_message_disable_feature(soupMessage, SOUP_TYPE_AUTH_MANAGER);
-
-    FormData* httpBody = request.httpBody();
-    CString contentType = request.httpContentType().utf8().data();
-    if (httpBody && !httpBody->isEmpty() && !addFormElementsToSoupMessage(soupMessage, contentType.data(), httpBody, d->m_bodySize)) {
-        // We failed to prepare the body data, so just fail this load.
-        d->m_soupMessage.clear();
-        return false;
-    }
 
     // Make sure we have an Accept header for subresources; some sites
     // want this to serve some of their subresources
@@ -943,8 +642,7 @@ static bool createSoupMessageForHandleAndRequest(ResourceHandle* handle, const R
     // for consistency with other backends (e.g. Chromium's) and other UA implementations like FF. It's done
     // in the backend here instead of in XHR code since in XHR CORS checking prevents us from this kind of
     // late header manipulation.
-    if ((request.httpMethod() == "POST" || request.httpMethod() == "PUT")
-        && (!request.httpBody() || request.httpBody()->isEmpty()))
+    if ((request.httpMethod() == "POST" || request.httpMethod() == "PUT") && !d->m_bodySize)
         soup_message_headers_set_content_length(soupMessage->request_headers, 0);
 
     g_signal_connect(d->m_soupMessage.get(), "notify::tls-errors", G_CALLBACK(tlsErrorsChangedCallback), handle);
@@ -952,12 +650,6 @@ static bool createSoupMessageForHandleAndRequest(ResourceHandle* handle, const R
     g_signal_connect(d->m_soupMessage.get(), "wrote-body-data", G_CALLBACK(wroteBodyDataCallback), handle);
 
     unsigned flags = SOUP_MESSAGE_NO_REDIRECT;
-#if SOUP_CHECK_VERSION(2, 49, 91)
-    // Ignore the connection limits in synchronous loads to avoid freezing the networking process.
-    // See https://bugs.webkit.org/show_bug.cgi?id=141508.
-    if (loadingSynchronousRequest)
-        flags |= SOUP_MESSAGE_IGNORE_CONNECTION_LIMITS;
-#endif
     soup_message_set_flags(d->m_soupMessage.get(), static_cast<SoupMessageFlags>(soup_message_get_flags(d->m_soupMessage.get()) | flags));
 
 #if ENABLE(WEB_TIMING)
@@ -1086,46 +778,21 @@ bool ResourceHandle::shouldUseCredentialStorage()
     return (!client() || client()->shouldUseCredentialStorage(this)) && firstRequest().url().protocolIsInHTTPFamily();
 }
 
-void ResourceHandle::setHostAllowsAnyHTTPSCertificate(const String& host)
-{
-    allowsAnyHTTPSCertificateHosts().add(host);
-}
-
-void ResourceHandle::setClientCertificate(const String& host, GTlsCertificate* certificate)
-{
-    clientCertificates().add(host, HostTLSCertificateSet()).iterator->value.add(certificate);
-}
-
-void ResourceHandle::setIgnoreSSLErrors(bool ignoreSSLErrors)
-{
-    gIgnoreSSLErrors = ignoreSSLErrors;
-}
-
-#if PLATFORM(GTK)
-void getCredentialFromPersistentStoreCallback(const Credential& credential, void* data)
-{
-    static_cast<ResourceHandle*>(data)->continueDidReceiveAuthenticationChallenge(credential);
-}
-#endif
-
 void ResourceHandle::continueDidReceiveAuthenticationChallenge(const Credential& credentialFromPersistentStorage)
 {
     ASSERT(!d->m_currentWebChallenge.isNull());
     AuthenticationChallenge& challenge = d->m_currentWebChallenge;
 
-    ASSERT(challenge.soupSession());
-    ASSERT(challenge.soupMessage());
+    ASSERT(d->m_soupMessage);
     if (!credentialFromPersistentStorage.isEmpty())
         challenge.setProposedCredential(credentialFromPersistentStorage);
 
     if (!client()) {
-        soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+        soup_session_unpause_message(d->soupSession(), d->m_soupMessage.get());
         clearAuthentication();
         return;
     }
 
-    ASSERT(challenge.soupSession());
-    ASSERT(challenge.soupMessage());
     client()->didReceiveAuthenticationChallenge(this, challenge);
 }
 
@@ -1159,18 +826,18 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
     }
 
     d->m_currentWebChallenge = challenge;
-    soup_session_pause_message(challenge.soupSession(), challenge.soupMessage());
+    soup_session_pause_message(d->soupSession(), d->m_soupMessage.get());
 
-#if PLATFORM(GTK)
     // We could also do this before we even start the request, but that would be at the expense
     // of all request latency, versus a one-time latency for the small subset of requests that
     // use HTTP authentication. In the end, this doesn't matter much, because persistent credentials
     // will become session credentials after the first use.
-    if (useCredentialStorage) {
-        credentialBackingStore().credentialForChallenge(challenge, getCredentialFromPersistentStoreCallback, this);
+    if (useCredentialStorage && d->m_context && d->m_context->isValid()) {
+        d->m_context->storageSession().getCredentialFromPersistentStorage(challenge.protectionSpace(), [this, protectedThis = makeRef(*this)] (Credential&& credential) {
+            continueDidReceiveAuthenticationChallenge(WTFMove(credential));
+        });
         return;
     }
-#endif
 
     continueDidReceiveAuthenticationChallenge(Credential());
 }
@@ -1180,7 +847,7 @@ void ResourceHandle::receivedRequestToContinueWithoutCredential(const Authentica
     ASSERT(!challenge.isNull());
     if (challenge != d->m_currentWebChallenge)
         return;
-    soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+    soup_session_unpause_message(d->soupSession(), d->m_soupMessage.get());
 
     clearAuthentication();
 }
@@ -1205,18 +872,15 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
         if (credential.persistence() == CredentialPersistenceForSession || credential.persistence() == CredentialPersistencePermanent)
             CredentialStorage::defaultCredentialStorage().set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
 
-#if PLATFORM(GTK)
         if (credential.persistence() == CredentialPersistencePermanent) {
             d->m_credentialDataToSaveInPersistentStore.credential = credential;
-            d->m_credentialDataToSaveInPersistentStore.challenge = challenge;
+            d->m_credentialDataToSaveInPersistentStore.protectionSpace = challenge.protectionSpace();
         }
-#endif
     }
 
-    ASSERT(challenge.soupSession());
-    ASSERT(challenge.soupMessage());
+    ASSERT(d->m_soupMessage);
     soup_auth_authenticate(challenge.soupAuth(), credential.user().utf8().data(), credential.password().utf8().data());
-    soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+    soup_session_unpause_message(d->soupSession(), d->m_soupMessage.get());
 
     clearAuthentication();
 }
@@ -1232,9 +896,8 @@ void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challen
         return;
     }
 
-    ASSERT(challenge.soupSession());
-    ASSERT(challenge.soupMessage());
-    soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+    ASSERT(d->m_soupMessage);
+    soup_session_unpause_message(d->soupSession(), d->m_soupMessage.get());
 
     if (client())
         client()->receivedCancellation(this, challenge);
@@ -1288,22 +951,9 @@ void ResourceHandle::platformSetDefersLoading(bool defersLoading)
     }
 }
 
-void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext*, const ResourceRequest&, StoredCredentials, ResourceError&, ResourceResponse&, Vector<char>&)
 {
-    ASSERT(!loadingSynchronousRequest);
-    if (loadingSynchronousRequest) // In practice this cannot happen, but if for some reason it does,
-        return;                    // we want to avoid accidentally going into an infinite loop of requests.
-
-    WebCoreSynchronousLoader syncLoader(error, response, sessionFromContext(context), data, storedCredentials);
-    RefPtr<ResourceHandle> handle = create(context, request, &syncLoader, false /*defersLoading*/, false /*shouldContentSniff*/);
-    if (!handle)
-        return;
-
-    // If the request has already failed, do not run the main loop, or else we'll block indefinitely.
-    if (handle->d->m_scheduledFailureType != NoFailure)
-        return;
-
-    syncLoader.run();
+    ASSERT_NOT_REACHED();
 }
 
 static void readCallback(GObject*, GAsyncResult* asyncResult, gpointer data)

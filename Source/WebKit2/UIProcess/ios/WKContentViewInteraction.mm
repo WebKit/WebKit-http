@@ -1102,8 +1102,8 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
              selectionRect: _didAccessoryTabInitiateFocus ? IntRect() : _assistedNodeInformation.selectionRect
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
-              maximumScale:_assistedNodeInformation.maximumScaleFactor
-              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringForceAlwaysScaling && !UICurrentUserInterfaceIdiomIsPad())
+              maximumScale:_assistedNodeInformation.maximumScaleFactorIgnoringAlwaysScalable
+              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && !UICurrentUserInterfaceIdiomIsPad())
                forceScroll:[self requiresAccessoryView]];
 
     _didAccessoryTabInitiateFocus = NO;
@@ -1127,7 +1127,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 - (CGRect)_selectionClipRect
 {
     if (_assistedNodeInformation.elementType == InputType::None)
-        return CGRectZero;
+        return CGRectNull;
     return _page->editorState().postLayoutData().selectionClipRect;
 }
 
@@ -1862,12 +1862,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         if (_page->editorState().isInPasswordField || !(hasWebSelection || _page->editorState().selectionIsRange))
             return NO;
 
-        NSUInteger textLength = _page->editorState().postLayoutData().selectedTextLength;
-        // See FIXME above for _define.
-        if (!textLength || textLength > 200)
-            return NO;
-        
-        return YES;
+        return _page->editorState().postLayoutData().selectedTextLength > 0;
     }
 
     if (action == @selector(_addShortcut:)) {
@@ -3847,6 +3842,14 @@ static bool isAssistableInputType(InputType type)
 {
     if ([_inputPeripheral isKindOfClass:[WKFormSelectControl self]])
         [(WKFormSelectControl *)_inputPeripheral selectRow:rowIndex inComponent:0 extendingSelection:NO];
+}
+
+- (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem
+{
+    if ([userInterfaceItem isEqualToString:@"actionSheet"])
+        return @{ userInterfaceItem: [_actionSheetAssistant currentAvailableActionTitles] };
+    
+    return nil;
 }
 
 @end

@@ -47,7 +47,6 @@ class InjectedScript;
 class InjectedScriptManager;
 class InspectorArray;
 class InspectorObject;
-class InspectorValue;
 class ScriptDebugServer;
 typedef String ErrorString;
 
@@ -98,7 +97,6 @@ public:
         virtual ~Listener() { }
         virtual void debuggerWasEnabled() = 0;
         virtual void debuggerWasDisabled() = 0;
-        virtual void stepInto() = 0;
         virtual void didPause() = 0;
     };
     void setListener(Listener* listener) { m_listener = listener; }
@@ -132,7 +130,10 @@ private:
     void breakpointActionSound(int breakpointActionIdentifier) final;
     void breakpointActionProbe(JSC::ExecState&, const ScriptBreakpointAction&, unsigned batchId, unsigned sampleId, JSC::JSValue sample) final;
 
-    RefPtr<Inspector::Protocol::Debugger::Location> resolveBreakpoint(const String& breakpointIdentifier, JSC::SourceID, const ScriptBreakpoint&);
+    void resolveBreakpoint(const Script&, JSC::Breakpoint&);
+    void setBreakpoint(JSC::Breakpoint&, bool& existing);    
+    void didSetBreakpoint(const JSC::Breakpoint&, const String&, const ScriptBreakpoint&);
+
     bool assertPaused(ErrorString&);
     void clearDebuggerBreakpointState();
     void clearInspectorBreakpointState();

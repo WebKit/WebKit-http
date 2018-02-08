@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PropertyDescriptor_h
-#define PropertyDescriptor_h
+#pragma once
 
+#include "DefinePropertyAttributes.h"
 #include "JSCJSValue.h"
 
 namespace JSC {
@@ -93,6 +93,30 @@ private:
     unsigned m_seenAttributes;
 };
 
+inline PropertyDescriptor toPropertyDescriptor(JSValue value, JSValue getter, JSValue setter, DefinePropertyAttributes attributes)
+{
+    // We assume that validation is already done.
+    PropertyDescriptor desc;
+
+    if (Optional<bool> enumerable = attributes.enumerable())
+        desc.setEnumerable(enumerable.value());
+
+    if (Optional<bool> configurable = attributes.configurable())
+        desc.setConfigurable(configurable.value());
+
+    if (attributes.hasValue())
+        desc.setValue(value);
+
+    if (Optional<bool> writable = attributes.writable())
+        desc.setWritable(writable.value());
+
+    if (attributes.hasGet())
+        desc.setGetter(getter);
+
+    if (attributes.hasSet())
+        desc.setSetter(setter);
+
+    return desc;
 }
 
-#endif
+}

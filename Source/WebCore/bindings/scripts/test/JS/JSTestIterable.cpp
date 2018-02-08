@@ -46,7 +46,7 @@ bool setJSTestIterableConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::Enc
 
 class JSTestIterablePrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
+    using Base = JSC::JSNonFinalObject;
     static JSTestIterablePrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSTestIterablePrototype* ptr = new (NotNull, JSC::allocateCell<JSTestIterablePrototype>(vm.heap)) JSTestIterablePrototype(vm, globalObject, structure);
@@ -69,7 +69,7 @@ private:
     void finishCreation(JSC::VM&);
 };
 
-typedef JSDOMConstructorNotConstructable<JSTestIterable> JSTestIterableConstructor;
+using JSTestIterableConstructor = JSDOMConstructorNotConstructable<JSTestIterable>;
 
 template<> JSValue JSTestIterableConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
@@ -127,6 +127,11 @@ void JSTestIterable::destroy(JSC::JSCell* cell)
 {
     JSTestIterable* thisObject = static_cast<JSTestIterable*>(cell);
     thisObject->JSTestIterable::~JSTestIterable();
+}
+
+template<> inline JSTestIterable* BindingCaller<JSTestIterable>::castForOperation(ExecState& state)
+{
+    return jsDynamicCast<JSTestIterable*>(state.thisValue());
 }
 
 EncodedJSValue jsTestIterableConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)

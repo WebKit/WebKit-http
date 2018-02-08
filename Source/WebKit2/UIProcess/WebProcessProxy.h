@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "APISession.h"
 #include "APIUserInitiatedAction.h"
 #include "ChildProcessProxy.h"
 #include "CustomProtocolManagerProxy.h"
@@ -186,6 +185,8 @@ private:
     void releaseIconForPageURL(const String& pageURL);
     void releaseRemainingIconsForPageURLs();
 
+    bool platformIsBeingDebugged() const;
+
     static const HashSet<String>& platformPathsWithAssumedReadAccess();
 
     // IPC::Connection::Client
@@ -200,6 +201,7 @@ private:
     void didBecomeResponsive() override;
     void willChangeIsResponsive() override;
     void didChangeIsResponsive() override;
+    bool mayBecomeUnresponsive() override;
 
     // ProcessThrottlerClient
     void sendProcessWillSuspendImminently() override;

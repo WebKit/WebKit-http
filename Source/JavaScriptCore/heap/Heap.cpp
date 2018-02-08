@@ -22,12 +22,14 @@
 #include "Heap.h"
 
 #include "CodeBlock.h"
+#include "CodeBlockSet.h"
 #include "ConservativeRoots.h"
 #include "DFGWorklist.h"
 #include "EdenGCActivityCallback.h"
 #include "FullGCActivityCallback.h"
 #include "GCActivityCallback.h"
 #include "GCIncomingRefCountedSetInlines.h"
+#include "GCSegmentedArrayInlines.h"
 #include "GCTypeMap.h"
 #include "HasOwnPropertyCache.h"
 #include "HeapHelperPool.h"
@@ -387,18 +389,8 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
 
     HeapRootVisitor heapRootVisitor(m_slotVisitor);
     
-    ConservativeRoots conservativeRoots(*this);
     {
         TimingScope preConvergenceTimingScope(*this, "Heap::markRoots before convergence");
-        // We gather conservative roots before clearing mark bits because conservative
-        // gathering uses the mark bits to determine whether a reference is valid.
-        {
-            TimingScope preConvergenceTimingScope(*this, "Heap::markRoots conservative scan");
-            SuperSamplerScope superSamplerScope(false);
-            gatherStackRoots(conservativeRoots, stackOrigin, stackTop, calleeSavedRegisters);
-            gatherJSStackRoots(conservativeRoots);
-            gatherScratchBufferRoots(conservativeRoots);
-        }
 
 #if ENABLE(DFG_JIT)
         DFG::rememberCodeBlocks(*m_vm);
@@ -462,9 +454,24 @@ void Heap::markRoots(double gcStartTime, void* stackOrigin, void* stackTop, Mach
         ParallelModeEnabler enabler(m_slotVisitor);
         
         m_slotVisitor.donateAndDrain();
+
+        {
+            TimingScope preConvergenceTimingScope(*this, "Heap::markRoots conservative scan");
+            ConservativeRoots conservativeRoots(*this);
+            SuperSamplerScope superSamplerScope(false);
+            gatherStackRoots(conservativeRoots, stackOrigin, stackTop, calleeSavedRegisters);
+            gatherJSStackRoots(conservativeRoots);
+            gatherScratchBufferRoots(conservativeRoots);
+            visitConservativeRoots(conservativeRoots);
+            
+            // We want to do this to conservatively ensure that we rescan any code blocks that are
+            // running right now. However, we need to be sure to do it *after* we mark the code block
+            // so that we know for sure if it really needs a barrier.
+            m_codeBlocks->writeBarrierCurrentlyExecuting(this);
+        }
+
         visitExternalRememberedSet();
         visitSmallStrings();
-        visitConservativeRoots(conservativeRoots);
         visitProtectedObjects(heapRootVisitor);
         visitArgumentBuffers(heapRootVisitor);
         visitException(heapRootVisitor);
@@ -521,11 +528,6 @@ void Heap::beginMarking()
     TimingScope timingScope(*this, "Heap::beginMarking");
     if (m_operationInProgress == FullCollection)
         m_codeBlocks->clearMarksForFullCollection();
-    
-    {
-        TimingScope clearNewlyAllocatedTimingScope(*this, "m_objectSpace.clearNewlyAllocated");
-        m_objectSpace.clearNewlyAllocated();
-    }
     
     {
         TimingScope clearMarksTimingScope(*this, "m_objectSpace.beginMarking");
@@ -914,7 +916,7 @@ void Heap::addToRememberedSet(const JSCell* cell)
 {
     ASSERT(cell);
     ASSERT(!Options::useConcurrentJIT() || !isCompilationThread());
-    ASSERT(cell->cellState() == CellState::OldBlack);
+    ASSERT(cell->cellState() == CellState::AnthraciteOrBlack);
     // Indicate that this object is grey and that it's one of the following:
     // - A re-greyed object during a concurrent collection.
     // - An old remembered object.
@@ -1058,7 +1060,8 @@ NEVER_INLINE void Heap::collectImpl(HeapOperation collectionType, void* stackOri
     deleteSourceProviderCaches();
 
     notifyIncrementalSweeper();
-    writeBarrierCurrentlyExecutingCodeBlocks();
+    m_codeBlocks->writeBarrierCurrentlyExecuting(this);
+    m_codeBlocks->clearCurrentlyExecuting();
 
     prepareForAllocation();
     updateAllocationLimits();
@@ -1198,11 +1201,6 @@ void Heap::notifyIncrementalSweeper()
     }
 
     m_sweeper->startSweeping();
-}
-
-void Heap::writeBarrierCurrentlyExecutingCodeBlocks()
-{
-    m_codeBlocks->writeBarrierCurrentlyExecutingCodeBlocks(this);
 }
 
 void Heap::prepareForAllocation()
@@ -1546,6 +1544,19 @@ void Heap::forEachCodeBlockImpl(const ScopedLambda<bool(CodeBlock*)>& func)
     completeAllJITPlans();
 
     return m_codeBlocks->iterate(func);
+}
+
+void Heap::writeBarrierSlowPath(const JSCell* from)
+{
+    if (UNLIKELY(barrierShouldBeFenced())) {
+        // In this case, the barrierThreshold is the tautological threshold, so from could still be
+        // not black. But we can't know for sure until we fire off a fence.
+        WTF::storeLoadFence();
+        if (from->cellState() != CellState::AnthraciteOrBlack)
+            return;
+    }
+    
+    addToRememberedSet(from);
 }
 
 } // namespace JSC

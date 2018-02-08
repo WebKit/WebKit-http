@@ -44,6 +44,13 @@ struct( idlDocument => {
     fileName => '$',
 });
 
+struct( domType => {
+    name =>         '$', # Type identifier
+    isNullable =>   '$', # Is the type Nullable (T?)
+    isUnion =>      '$', # Is the type a union (T or U)
+    subtypes =>     '@', # Array of subtypes, only valid if isUnion or sequence
+});
+
 # Used to represent 'interface' blocks
 struct( domInterface => {
     name => '$',      # Class identifier
@@ -60,6 +67,7 @@ struct( domInterface => {
     isCallback => '$', # Used for callback interfaces
     isPartial => '$', # Used for partial interfaces
     iterable => '$', # Used for iterable interfaces
+    serializable => '$', # Used for serializable interfaces
 });
 
 # Used to represent domInterface contents (name of method, signature)
@@ -78,18 +86,12 @@ struct( domAttribute => {
     signature => '$',         # Attribute signature
 });
 
-struct( domType => {
-    name =>         '$', # Type identifier
-    isNullable =>   '$', # Is the type Nullable (T?)
-    isUnion =>      '$', # Is the type a union (T or U)
-    subtypes =>     '@', # Array of subtypes, only valid if isUnion or sequence
-});
-
 # Used to represent a map of 'variable name' <-> 'variable type'
 struct( domSignature => {
     direction => '$',   # Variable direction (in or out)
     name => '$',        # Variable name
-    type => '$'      ,  # Variable type
+    type => '$',        # Variable type name (DEPRECATED - please use idlType)
+    idlType => '$',     # Variable type
     specials => '@',    # Specials
     extendedAttributes => '$', # Extended attributes
     isNullable => '$',  # Is variable type Nullable (T?)
@@ -105,6 +107,12 @@ struct( domIterable => {
     valueType => '$', # Value type for map or set iterables
     functions => '@', # Iterable functions (entries, keys, values, [Symbol.Iterator], forEach)
     extendedAttributes => '$', # Extended attributes
+});
+
+# Used to represent serializable interface
+struct( domSerializable => {
+    attributes => '@', # List of attributes to serialize
+    functions => '@', # toJSON function
 });
 
 # Used to represent string constants
@@ -123,6 +131,7 @@ struct( domEnum => {
 });
 
 struct( domDictionary => {
+    parent => '$',  # Parent class identifier
     name => '$',
     members => '@', # List of 'domSignature'
     extendedAttributes => '$',
@@ -135,7 +144,7 @@ struct( Token => {
 
 struct( Typedef => {
     extendedAttributes => '$', # Extended attributes
-    type => '$', # Type of data
+    idlType => '$', # Type of data
 });
 
 # Maps 'typedef name' -> Typedef
@@ -412,7 +421,7 @@ sub applyTypedefs
                 if (exists $typedefs{$constant->type}) {
                     my $typedef = $typedefs{$constant->type};
                     $self->assertNoExtendedAttributesInTypedef($constant->type, __LINE__);
-                    $constant->type($typedef->type);
+                    $constant->type($typedef->idlType->name);
                 }
             }
             foreach my $attribute (@{$definition->attributes}) {
@@ -432,36 +441,88 @@ sub applyTypedefs
     }
 }
 
+sub cloneType
+{
+    my $self = shift;
+    my $type = shift;
+
+    my $clonedType = domType->new();
+    $clonedType->name($type->name);
+    $clonedType->isNullable($type->isNullable);
+    $clonedType->isUnion($type->isUnion);
+    foreach my $subtype (@{$type->subtypes}) {
+        push(@{$clonedType->subtypes}, $self->cloneType($subtype));
+    }
+
+    return $clonedType;
+}
+
 sub applyTypedefsForSignature
 {
     my $self = shift;
     my $signature = shift;
 
-    if (!defined ($signature->type)) {
+    if (!defined ($signature->idlType)) {
         return;
     }
 
-    my $type = $signature->type;
-    $type =~ s/[\?\[\]]+$//g;
-    my $typeSuffix = $signature->type;
-    $typeSuffix =~ s/^[^\?\[\]]+//g;
-    if (exists $typedefs{$type}) {
-        my $typedef = $typedefs{$type};
-        $signature->type($typedef->type . $typeSuffix);
-        copyExtendedAttributes($signature->extendedAttributes, $typedef->extendedAttributes);
-    }
+    my $typeName = $signature->idlType->name;
 
     # Handle union types, sequences and etc.
-    foreach my $name (%typedefs) {
-        if (!exists $typedefs{$name}) {
-            next;
+    # FIXME: This should be recursive.
+    my $numberOfSubtypes = scalar @{$signature->idlType->subtypes};
+    if ($numberOfSubtypes) {
+        my $typeUpdated = 0;
+    
+        for my $i (0..$numberOfSubtypes - 1) {
+            my $subtype = @{$signature->idlType->subtypes}[$i];
+            my $subtypeName = $subtype->name;
+
+            if (exists $typedefs{$subtypeName}) {
+                my $typedef = $typedefs{$subtypeName};
+
+                my $clonedType = $self->cloneType($typedef->idlType);
+                
+                # Retain nullability from the original type.
+                $clonedType->isNullable($subtype->isNullable);
+                
+                @{$signature->idlType->subtypes}[$i] = $clonedType;
+                
+                $typeUpdated = 1;
+            }
         }
-        my $typedef = $typedefs{$name};
-        my $regex = '\\b' . $name . '\\b';
-        my $replacement = $typedef->type;
-        my $type = $signature->type;
-        $type =~ s/($regex)/$replacement/g;
-        $signature->type($type);
+
+        # FIXME: This can be removed when we use domTypes in the CodeGenerators everywhere.
+        if ($typeUpdated) {
+            my $subtype = @{$signature->idlType->subtypes}[0];
+            my $subtypeName = $subtype->name;
+
+            if ($signature->idlType->name =~ /^sequence</) {
+                $signature->idlType->name("sequence<${subtypeName}>");
+                $signature->type($signature->idlType->name);
+            }
+            if ($signature->idlType->name =~ /^FrozenArray</) {
+                $signature->idlType->name("FrozenArray<${subtypeName}>");
+                $signature->type($signature->idlType->name);
+            }
+        }
+    
+        return;
+    }
+
+    if (exists $typedefs{$typeName}) {
+        my $typedef = $typedefs{$typeName};
+
+        my $clonedType = $self->cloneType($typedef->idlType);
+        
+        # Retain nullability from the original type.
+        $clonedType->isNullable($signature->idlType->isNullable);
+
+        $signature->idlType($clonedType);
+        $signature->type($clonedType->name);
+        $signature->isNullable($clonedType->isNullable);
+
+        copyExtendedAttributes($signature->extendedAttributes, $typedef->extendedAttributes);
     }
 }
 
@@ -652,7 +713,8 @@ sub parseDictionary
         my $nameToken = $self->getToken();
         $self->assertTokenType($nameToken, IdentifierToken);
         $dictionary->name($nameToken->value());
-        $self->parseInheritance();
+        my $parents = $self->parseInheritance();
+        $dictionary->parent($parents->[0]);
         $self->assertTokenValue($self->getToken(), "{", __LINE__);
         $dictionary->members($self->parseDictionaryMembers());
         $self->assertTokenValue($self->getToken(), "}", __LINE__);
@@ -698,6 +760,7 @@ sub parseDictionaryMember
         $member->extendedAttributes($extendedAttributeList);
 
         my $type = $self->parseType();
+        $member->idlType($type);
         $member->type($type->name);
         $member->isNullable($type->isNullable);
 
@@ -909,13 +972,13 @@ sub parseTypedef
         $typedef->extendedAttributes($self->parseExtendedAttributeListAllowEmpty());
 
         my $type = $self->parseType();
-        $typedef->type($type->name);
+        $typedef->idlType($type);
 
         my $nameToken = $self->getToken();
         $self->assertTokenType($nameToken, IdentifierToken);
         $self->assertTokenValue($self->getToken(), ";", __LINE__);
         my $name = $nameToken->value();
-        die "typedef redefinition for " . $name . " at " . $self->{Line} if (exists $typedefs{$name} && $typedef->type ne $typedefs{$name}->type);
+        die "typedef redefinition for " . $name . " at " . $self->{Line} if (exists $typedefs{$name} && $typedef->idlType->name ne $typedefs{$name}->idlType->name);
         $typedefs{$name} = $typedef;
         return;
     }
@@ -1056,7 +1119,23 @@ sub parseSerializer
     my $next = $self->nextToken();
     if ($next->value() eq "serializer") {
         $self->assertTokenValue($self->getToken(), "serializer", __LINE__);
-        return $self->parseSerializerRest($extendedAttributeList);
+        my $next = $self->nextToken();
+        my $newDataNode;
+        if ($next->value() ne ";") {
+            $newDataNode = $self->parseSerializerRest($extendedAttributeList);
+            my $next = $self->nextToken();
+        } else {
+            $newDataNode = domSerializable->new();
+        }
+
+        my $toJSONFunction = domFunction->new();
+        $toJSONFunction->signature(domSignature->new());
+        $toJSONFunction->signature->extendedAttributes($extendedAttributeList);
+        $toJSONFunction->signature->name("toJSON");
+        push(@{$newDataNode->functions}, $toJSONFunction);
+
+        $self->assertTokenValue($self->getToken(), ";", __LINE__);
+        return $newDataNode;
     }
     $self->assertUnexpectedToken($next->value(), __LINE__);
 }
@@ -1069,7 +1148,12 @@ sub parseSerializerRest
     my $next = $self->nextToken();
     if ($next->value() eq "=") {
         $self->assertTokenValue($self->getToken(), "=", __LINE__);
-        return $self->parseSerializationPattern($extendedAttributeList);
+        my $attributes = $self->parseSerializationPattern();
+
+        my $newDataNode = domSerializable->new();
+        $newDataNode->attributes($attributes);
+
+        return $newDataNode;
     }
     if ($next->type() == IdentifierToken || $next->value() eq "(") {
         return $self->parseOperationRest($extendedAttributeList);
@@ -1079,59 +1163,45 @@ sub parseSerializerRest
 sub parseSerializationPattern
 {
     my $self = shift;
-    my $extendedAttributeList = shift;
 
     my $next = $self->nextToken();
     if ($next->value() eq "{") {
         $self->assertTokenValue($self->getToken(), "{", __LINE__);
-        $self->parseSerializationPatternMap();
+        my $attributes = $self->parseSerializationAttributes();
         $self->assertTokenValue($self->getToken(), "}", __LINE__);
-        return;
+        return \@{$attributes};
     }
     if ($next->value() eq "[") {
-        $self->assertTokenValue($self->getToken(), "[", __LINE__);
-        $self->parseSerializationPatternList();
-        $self->assertTokenValue($self->getToken(), "]", __LINE__);
-        return;
+        die "Serialization of lists pattern is not currently supported.";
     }
     if ($next->type() == IdentifierToken) {
-        $self->assertTokenType($self->getToken(), IdentifierToken);
-        return;
+        my @attributes = ();
+        my $token = $self->getToken();
+        $self->assertTokenType($token, IdentifierToken);
+        push(@attributes, $token->value());
+        return \@attributes;
     }
     $self->assertUnexpectedToken($next->value(), __LINE__);
 }
 
-sub parseSerializationPatternMap
+sub parseSerializationAttributes
 {
     my $self = shift;
-    my $next = $self->nextToken();
-    if ($next->value() eq "getter") {
-        $self->assertTokenValue($self->getToken(), "getter", __LINE__);
-        return;
-    }
-    if ($next->value() eq "inherit") {
-        $self->assertTokenValue($self->getToken(), "inherit", __LINE__);
-        $self->parseIdentifiers();
-        return;
-    }
-    if ($next->type() == IdentifierToken) {
-        $self->assertTokenType($self->getToken(), IdentifierToken);
-        $self->parseIdentifiers();
-    }
-}
+    my $token = $self->getToken();
 
-sub parseSerializationPatternList
-{
-    my $self = shift;
-    my $next = $self->nextToken();
-    if ($next->value() eq "getter") {
-        $self->assertTokenValue($self->getToken(), "getter", __LINE__);
-        return;
+    if ($token->value() eq "getter") {
+        die "Serializer getter keyword is not currently supported.";
+
     }
-    if ($next->type() == IdentifierToken) {
-        $self->assertTokenType($self->getToken(), IdentifierToken);
-        $self->parseIdentifiers();
+    if ($token->value() eq "inherit") {
+        die "Serializer inherit keyword is not currently supported.";
     }
+
+    my @attributes = ();
+    $self->assertTokenType($token, IdentifierToken);
+    push(@attributes, $token->value());
+    push(@attributes, @{$self->parseIdentifiers()});
+    return \@attributes;
 }
 
 sub parseIdentifierList
@@ -1238,6 +1308,7 @@ sub parseAttributeRest
         $newDataNode->signature(domSignature->new());
         
         my $type = $self->parseType();
+        $newDataNode->signature->idlType($type);
         $newDataNode->signature->type($type->name);
         $newDataNode->signature->isNullable($type->isNullable);
 
@@ -1295,6 +1366,7 @@ sub parseOperationOrIterator
         my $next = $self->nextToken();
         if ($next->type() == IdentifierToken || $next->value() eq "(") {
             my $operation = $self->parseOperationRest($extendedAttributeList);
+            $operation->signature->idlType($returnType);
             $operation->signature->type($returnType->name);
             $operation->signature->isNullable($returnType->isNullable);
 
@@ -1316,6 +1388,7 @@ sub parseSpecialOperation
         my $returnType = $self->parseReturnType();
         my $interface = $self->parseOperationRest($extendedAttributeList);
         if (defined ($interface)) {
+            $interface->signature->idlType($returnType);
             $interface->signature->type($returnType->name);
             $interface->signature->isNullable($returnType->isNullable);
             $interface->signature->specials(\@specials);
@@ -1530,6 +1603,7 @@ sub parseOptionalOrRequiredArgument
         $self->assertTokenValue($self->getToken(), "optional", __LINE__);
 
         my $type = $self->parseType();
+        $paramDataNode->idlType($type);
         $paramDataNode->type(identifierRemoveNullablePrefix($type->name));
         $paramDataNode->isNullable($type->isNullable);
         $paramDataNode->isOptional(1);
@@ -1539,6 +1613,7 @@ sub parseOptionalOrRequiredArgument
     }
     if ($next->type() == IdentifierToken || $next->value() =~ /$nextExceptionField_1/) {
         my $type = $self->parseType();
+        $paramDataNode->idlType($type);
         $paramDataNode->type($type->name);
         $paramDataNode->isNullable($type->isNullable);
         $paramDataNode->isOptional(0);
@@ -1601,6 +1676,7 @@ sub parseExceptionField
         $newDataNode->signature(domSignature->new());
 
         my $type = $self->parseType();
+        $newDataNode->signature->idlType($type);
         $newDataNode->signature->type($type->name);
         $newDataNode->signature->isNullable($type->isNullable);
         
@@ -2266,6 +2342,19 @@ sub applyMemberList
                 push(@{$interface->functions}, $item);
             }
             next;
+        }
+        if (ref($item) eq "domSerializable") {
+            $interface->serializable($item);
+            next;
+        }
+    }
+
+    if ($interface->serializable) {
+        my $numSerializerAttributes = @{$interface->serializable->attributes};
+        if ($numSerializerAttributes == 0) {
+            foreach my $attribute (@{$interface->attributes}) {
+                push(@{$interface->serializable->attributes}, $attribute->signature->name);
+            }
         }
     }
 }

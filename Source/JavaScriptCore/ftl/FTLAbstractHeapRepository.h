@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLAbstractHeapRepository_h
-#define FTLAbstractHeapRepository_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -102,6 +101,7 @@ namespace JSC { namespace FTL {
     macro(ScopedArgumentsTable_length, ScopedArgumentsTable::offsetOfLength()) \
     macro(StringImpl_data, StringImpl::dataOffset()) \
     macro(StringImpl_hashAndFlags, StringImpl::flagsOffset()) \
+    macro(StringImpl_length, StringImpl::lengthMemoryOffset()) \
     macro(Structure_classInfo, Structure::classInfoOffset()) \
     macro(Structure_globalObject, Structure::globalObjectOffset()) \
     macro(Structure_prototype, Structure::prototypeOffset()) \
@@ -216,6 +216,8 @@ public:
     void decorateCCallWrite(const AbstractHeap*, B3::Value*);
     void decoratePatchpointRead(const AbstractHeap*, B3::Value*);
     void decoratePatchpointWrite(const AbstractHeap*, B3::Value*);
+    void decorateFenceRead(const AbstractHeap*, B3::Value*);
+    void decorateFenceWrite(const AbstractHeap*, B3::Value*);
 
     void computeRangesAndDecorateInstructions();
 
@@ -241,11 +243,10 @@ private:
     Vector<HeapForValue> m_heapForCCallWrite;
     Vector<HeapForValue> m_heapForPatchpointRead;
     Vector<HeapForValue> m_heapForPatchpointWrite;
+    Vector<HeapForValue> m_heapForFenceRead;
+    Vector<HeapForValue> m_heapForFenceWrite;
 };
 
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLAbstractHeapRepository_h
-

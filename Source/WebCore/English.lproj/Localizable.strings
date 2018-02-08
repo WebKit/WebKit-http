@@ -259,6 +259,9 @@
 /* menu item */
 "Exit Picture in Picture" = "Exit Picture in Picture";
 
+/* accessibility role description for a figure element */
+"figure" = "figure";
+
 /* Default application name for Open With context menu */
 "Finder" = "Finder";
 
@@ -811,6 +814,9 @@
 /* accessibility role description of a description list */
 "description list" = "description list";
 
+/* accessibility role description for a details element */
+"details" = "details";
+
 /* An ARIA accessibility group that acts as a document. */
 "document" = "document";
 
@@ -1065,6 +1071,9 @@
 
 /* HTTP result code string */
 "success" = "success";
+
+/* accessibility role description for a summary element */
+"summary" = "summary";
 
 /* HTTP result code string */
 "switching protocols" = "switching protocols";

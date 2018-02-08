@@ -35,11 +35,13 @@ namespace WebCore {
 
 class CachedResourceLoader;
 class FontDescription;
-class FontFeatureSettings;
 class FontPlatformData;
 class SVGDocument;
 class SVGFontElement;
 struct FontCustomPlatformData;
+
+template <typename T> class FontTaggedSettings;
+typedef FontTaggedSettings<int> FontFeatureSettings;
 
 class CachedFont : public CachedResource {
 public:
@@ -67,7 +69,7 @@ private:
     void load(CachedResourceLoader&) override;
     NO_RETURN_DUE_TO_ASSERT void setBodyDataFrom(const CachedResource&) final { ASSERT_NOT_REACHED(); }
 
-    void didAddClient(CachedResourceClient*) override;
+    void didAddClient(CachedResourceClient&) override;
     void finishLoading(SharedBuffer*) override;
 
     void allClientsRemoved() override;

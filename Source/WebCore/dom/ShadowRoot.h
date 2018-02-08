@@ -36,7 +36,6 @@
 
 namespace WebCore {
 
-class AuthorStyleSheets;
 class HTMLSlotElement;
 class SlotAssignment;
 
@@ -62,11 +61,7 @@ public:
 
     using TreeScope::rootNode;
 
-    StyleResolver& styleResolver();
-    AuthorStyleSheets& authorStyleSheets();
-    
-    void updateStyle();
-    void resetStyleResolver();
+    Style::Scope& styleScope();
 
     bool resetStyleInheritance() const { return m_resetStyleInheritance; }
     void setResetStyleInheritance(bool);
@@ -114,8 +109,7 @@ private:
 
     Element* m_host { nullptr };
 
-    std::unique_ptr<StyleResolver> m_styleResolver;
-    std::unique_ptr<AuthorStyleSheets> m_authorStyleSheets;
+    std::unique_ptr<Style::Scope> m_styleScope;
 
     std::unique_ptr<SlotAssignment> m_slotAssignment;
 };

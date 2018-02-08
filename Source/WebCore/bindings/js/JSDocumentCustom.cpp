@@ -29,7 +29,6 @@
 #include "JSDOMWindowCustom.h"
 #include "JSHTMLDocument.h"
 #include "JSLocation.h"
-#include "JSNodeOrString.h"
 #include "JSXMLDocument.h"
 #include "Location.h"
 #include "NodeTraversal.h"
@@ -108,24 +107,6 @@ JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, Document& docume
     return toJSNewlyCreated(state, globalObject, Ref<Document>(document));
 }
 
-JSValue JSDocument::prepend(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().prepend(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSDocument::append(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().append(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
 #if ENABLE(TOUCH_EVENTS)
 JSValue JSDocument::createTouchList(ExecState& state)
 {
@@ -153,17 +134,13 @@ JSValue JSDocument::getCSSCanvasContext(JSC::ExecState& state)
     if (UNLIKELY(state.argumentCount() < 4))
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
     auto contextId = state.uncheckedArgument(0).toWTFString(&state);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     auto name = state.uncheckedArgument(1).toWTFString(&state);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
-    auto width = convert<int32_t>(state, state.uncheckedArgument(2), NormalConversion);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
-    auto height = convert<int32_t>(state, state.uncheckedArgument(3), NormalConversion);
-    if (UNLIKELY(scope.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
+    auto width = convert<IDLLong>(state, state.uncheckedArgument(2), NormalConversion);
+    RETURN_IF_EXCEPTION(scope, JSValue());
+    auto height = convert<IDLLong>(state, state.uncheckedArgument(3), NormalConversion);
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     auto* context = wrapped().getCSSCanvasContext(WTFMove(contextId), WTFMove(name), WTFMove(width), WTFMove(height));
     if (!context)
@@ -179,7 +156,7 @@ JSValue JSDocument::getCSSCanvasContext(JSC::ExecState& state)
 
 void JSDocument::visitAdditionalChildren(SlotVisitor& visitor)
 {
-    visitor.addOpaqueRoot(wrapped().scriptExecutionContext());
+    visitor.addOpaqueRoot(static_cast<ScriptExecutionContext*>(&wrapped()));
 }
 
 } // namespace WebCore

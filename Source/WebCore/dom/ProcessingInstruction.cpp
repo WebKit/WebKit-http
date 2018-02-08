@@ -22,7 +22,6 @@
 #include "config.h"
 #include "ProcessingInstruction.h"
 
-#include "AuthorStyleSheets.h"
 #include "CSSStyleSheet.h"
 #include "CachedCSSStyleSheet.h"
 #include "CachedResourceLoader.h"
@@ -35,6 +34,7 @@
 #include "XSLStyleSheet.h"
 #include "XMLDocumentParser.h" // for parseAttributes()
 #include "MediaList.h"
+#include "StyleScope.h"
 #include "StyleSheetContents.h"
 
 namespace WebCore {
@@ -56,10 +56,10 @@ ProcessingInstruction::~ProcessingInstruction()
         m_sheet->clearOwnerNode();
 
     if (m_cachedSheet)
-        m_cachedSheet->removeClient(this);
+        m_cachedSheet->removeClient(*this);
 
     if (inDocument())
-        document().authorStyleSheets().removeStyleSheetCandidateNode(*this);
+        document().styleScope().removeStyleSheetCandidateNode(*this);
 }
 
 String ProcessingInstruction::nodeName() const
@@ -126,7 +126,7 @@ void ProcessingInstruction::checkStyleSheet()
 #endif
         } else {
             if (m_cachedSheet) {
-                m_cachedSheet->removeClient(this);
+                m_cachedSheet->removeClient(*this);
                 m_cachedSheet = nullptr;
             }
 
@@ -135,7 +135,7 @@ void ProcessingInstruction::checkStyleSheet()
                 return;
 
             m_loading = true;
-            document().authorStyleSheets().addPendingSheet();
+            document().styleScope().addPendingSheet();
 
 #if ENABLE(XSLT)
             if (m_isXSL) {
@@ -145,20 +145,17 @@ void ProcessingInstruction::checkStyleSheet()
             } else
 #endif
             {
-                CachedResourceRequest request(ResourceRequest(document().completeURL(href)));
                 String charset = attrs.get("charset");
-                if (charset.isEmpty())
-                    charset = document().charset();
-                request.setCharset(charset);
+                CachedResourceRequest request(document().completeURL(href), CachedResourceLoader::defaultCachedResourceOptions(), Nullopt, charset.isEmpty() ? document().charset() : WTFMove(charset));
 
                 m_cachedSheet = document().cachedResourceLoader().requestCSSStyleSheet(WTFMove(request));
             }
             if (m_cachedSheet)
-                m_cachedSheet->addClient(this);
+                m_cachedSheet->addClient(*this);
             else {
                 // The request may have been denied if (for example) the stylesheet is local and the document is remote.
                 m_loading = false;
-                document().authorStyleSheets().removePendingSheet();
+                document().styleScope().removePendingSheet();
             }
         }
     }
@@ -176,7 +173,7 @@ bool ProcessingInstruction::isLoading() const
 bool ProcessingInstruction::sheetLoaded()
 {
     if (!isLoading()) {
-        document().authorStyleSheets().removePendingSheet();
+        document().styleScope().removePendingSheet();
         return true;
     }
     return false;
@@ -225,7 +222,7 @@ void ProcessingInstruction::parseStyleSheet(const String& sheet)
 #endif
 
     if (m_cachedSheet)
-        m_cachedSheet->removeClient(this);
+        m_cachedSheet->removeClient(*this);
     m_cachedSheet = nullptr;
 
     m_loading = false;
@@ -251,7 +248,7 @@ Node::InsertionNotificationRequest ProcessingInstruction::insertedInto(Container
     CharacterData::insertedInto(insertionPoint);
     if (!insertionPoint.inDocument())
         return InsertionDone;
-    document().authorStyleSheets().addStyleSheetCandidateNode(*this, m_createdByParser);
+    document().styleScope().addStyleSheetCandidateNode(*this, m_createdByParser);
     checkStyleSheet();
     return InsertionDone;
 }
@@ -262,7 +259,7 @@ void ProcessingInstruction::removedFrom(ContainerNode& insertionPoint)
     if (!insertionPoint.inDocument())
         return;
     
-    document().authorStyleSheets().removeStyleSheetCandidateNode(*this);
+    document().styleScope().removeStyleSheetCandidateNode(*this);
 
     if (m_sheet) {
         ASSERT(m_sheet->ownerNode() == this);
@@ -270,9 +267,14 @@ void ProcessingInstruction::removedFrom(ContainerNode& insertionPoint)
         m_sheet = nullptr;
     }
 
+    if (m_loading) {
+        m_loading = false;
+        document().styleScope().removePendingSheet();
+    }
+
     // If we're in document teardown, then we don't need to do any notification of our sheet's removal.
     if (document().hasLivingRenderTree())
-        document().styleResolverChanged(DeferRecalcStyle);
+        document().styleScope().didChangeContentsOrInterpretation();
 }
 
 void ProcessingInstruction::finishParsingChildren()

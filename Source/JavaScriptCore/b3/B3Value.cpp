@@ -175,7 +175,7 @@ void Value::dump(PrintStream& out) const
 {
     bool isConstant = false;
 
-    switch (m_opcode) {
+    switch (opcode()) {
     case Const32:
         out.print("$", asInt32(), "(");
         isConstant = true;
@@ -215,7 +215,7 @@ void Value::dumpChildren(CommaPrinter& comma, PrintStream& out) const
 
 void Value::deepDump(const Procedure* proc, PrintStream& out) const
 {
-    out.print(m_type, " ", dumpPrefix, m_index, " = ", m_opcode);
+    out.print(m_type, " ", dumpPrefix, m_index, " = ", m_kind);
 
     out.print("(");
     CommaPrinter comma;
@@ -437,8 +437,10 @@ Value* Value::invertedCompare(Procedure& proc) const
 {
     if (!numChildren())
         return nullptr;
-    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type()))
+    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
+        ASSERT(!kind().hasExtraBits());
         return proc.add<Value>(*invertedOpcode, type(), origin(), children());
+    }
     return nullptr;
 }
 
@@ -532,8 +534,6 @@ Effects Value::effects() const
     case Sub:
     case Mul:
     case Neg:
-    case ChillDiv:
-    case ChillMod:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -614,9 +614,11 @@ Effects Value::effects() const
     case CheckSub:
     case CheckMul:
     case Check:
+        result = Effects::forCheck();
+        break;
+    case WasmBoundsCheck:
+        result.readsPinned = true;
         result.exitsSideways = true;
-        // The program could read anything after exiting, and it's on us to declare this.
-        result.reads = HeapRange::top();
         break;
     case Upsilon:
     case Set:
@@ -635,6 +637,10 @@ Effects Value::effects() const
         result.terminal = true;
         break;
     }
+    if (traps()) {
+        result.exitsSideways = true;
+        result.reads = HeapRange::top();
+    }
     return result;
 }
 
@@ -642,7 +648,7 @@ ValueKey Value::key() const
 {
     switch (opcode()) {
     case FramePointer:
-        return ValueKey(opcode(), type());
+        return ValueKey(kind(), type());
     case Identity:
     case Abs:
     case Ceil:
@@ -661,14 +667,12 @@ ValueKey Value::key() const
     case Check:
     case BitwiseCast:
     case Neg:
-        return ValueKey(opcode(), type(), child(0));
+        return ValueKey(kind(), type(), child(0));
     case Add:
     case Sub:
     case Mul:
     case Div:
     case Mod:
-    case ChillDiv:
-    case ChillMod:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -687,9 +691,9 @@ ValueKey Value::key() const
     case CheckAdd:
     case CheckSub:
     case CheckMul:
-        return ValueKey(opcode(), type(), child(0), child(1));
+        return ValueKey(kind(), type(), child(0), child(1));
     case Select:
-        return ValueKey(opcode(), type(), child(0), child(1), child(2));
+        return ValueKey(kind(), type(), child(0), child(1), child(2));
     case Const32:
         return ValueKey(Const32, type(), static_cast<int64_t>(asInt32()));
     case Const64:
@@ -738,9 +742,9 @@ void Value::dumpMeta(CommaPrinter&, PrintStream&) const
 {
 }
 
-Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
+Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
 {
-    switch (opcode) {
+    switch (kind.opcode()) {
     case Identity:
     case Add:
     case Sub:
@@ -748,8 +752,6 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     case Div:
     case Mod:
     case Neg:
-    case ChillDiv:
-    case ChillMod:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -811,6 +813,7 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     case Return:
     case Oops:
     case EntrySwitch:
+    case WasmBoundsCheck:
         return Void;
     case Select:
         ASSERT(secondChild);
@@ -820,9 +823,9 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     }
 }
 
-void Value::badOpcode(Opcode opcode, unsigned numArgs)
+void Value::badKind(Kind kind, unsigned numArgs)
 {
-    dataLog("Bad opcode ", opcode, " with ", numArgs, " args.\n");
+    dataLog("Bad kind ", kind, " with ", numArgs, " args.\n");
     RELEASE_ASSERT_NOT_REACHED();
 }
 

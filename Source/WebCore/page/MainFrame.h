@@ -89,11 +89,6 @@ private:
 #endif
 };
 
-ALWAYS_INLINE bool Frame::isMainFrame() const
-{
-    return this == &m_mainFrame;
-}
-
 }
 
 #endif

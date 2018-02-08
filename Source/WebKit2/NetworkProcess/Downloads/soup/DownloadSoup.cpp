@@ -207,7 +207,7 @@ public:
     bool m_allowOverwrite;
 };
 
-void Download::start()
+void Download::startNetworkLoad()
 {
     ASSERT(!m_downloadClient);
     ASSERT(!m_resourceHandle);
@@ -216,7 +216,7 @@ void Download::start()
     didStart();
 }
 
-void Download::startWithHandle(ResourceHandle* resourceHandle, const ResourceResponse& response)
+void Download::startNetworkLoadWithHandle(ResourceHandle* resourceHandle, const ResourceResponse& response)
 {
     ASSERT(!m_downloadClient);
     ASSERT(!m_resourceHandle);
@@ -231,7 +231,7 @@ void Download::resume(const IPC::DataReference&, const String&, const SandboxExt
     notImplemented();
 }
 
-void Download::cancel()
+void Download::cancelNetworkLoad()
 {
     if (!m_resourceHandle)
         return;
@@ -245,13 +245,6 @@ void Download::cancel()
 
 void Download::platformInvalidate()
 {
-    if (m_resourceHandle) {
-        m_resourceHandle->clearClient();
-        m_resourceHandle->cancel();
-        m_resourceHandle = nullptr;
-    }
-
-    m_downloadClient = nullptr;
 }
 
 void Download::platformDidFinish()

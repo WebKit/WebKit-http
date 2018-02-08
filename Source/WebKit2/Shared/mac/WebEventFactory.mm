@@ -338,8 +338,19 @@ static inline bool isKeyUpEvent(NSEvent *event)
 static inline WebEvent::Modifiers modifiersForEvent(NSEvent *event)
 {
     unsigned modifiers = 0;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    if ([event modifierFlags] & NSEventModifierFlagCapsLock)
+        modifiers |= WebEvent::CapsLockKey;
+    if ([event modifierFlags] & NSEventModifierFlagShift)
+        modifiers |= WebEvent::ShiftKey;
+    if ([event modifierFlags] & NSEventModifierFlagControl)
+        modifiers |= WebEvent::ControlKey;
+    if ([event modifierFlags] & NSEventModifierFlagOption)
+        modifiers |= WebEvent::AltKey;
+    if ([event modifierFlags] & NSEventModifierFlagCommand)
+        modifiers |= WebEvent::MetaKey;
+#else
     if ([event modifierFlags] & NSAlphaShiftKeyMask)
         modifiers |= WebEvent::CapsLockKey;
     if ([event modifierFlags] & NSShiftKeyMask)
@@ -350,7 +361,8 @@ static inline WebEvent::Modifiers modifiersForEvent(NSEvent *event)
         modifiers |= WebEvent::AltKey;
     if ([event modifierFlags] & NSCommandKeyMask)
         modifiers |= WebEvent::MetaKey;
-#pragma clang diagnostic pop
+#endif
+
     return (WebEvent::Modifiers)modifiers;
 }
 
@@ -466,6 +478,8 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool ha
     WebEvent::Type type             = isKeyUpEvent(event) ? WebEvent::KeyUp : WebEvent::KeyDown;
     String text                     = textFromEvent(event, replacesSoftSpace);
     String unmodifiedText           = unmodifiedTextFromEvent(event, replacesSoftSpace);
+    String key                      = keyForKeyEvent(event);
+    String code                     = codeForKeyEvent(event);
     String keyIdentifier            = keyIdentifierForKeyEvent(event);
     int windowsVirtualKeyCode       = windowsKeyCodeForKeyEvent(event);
     int nativeVirtualKeyCode        = [event keyCode];
@@ -497,7 +511,7 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool ha
         unmodifiedText = "\x9";
     }
 
-    return WebKeyboardEvent(type, text, unmodifiedText, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, handledByInputMethod, commands, autoRepeat, isKeypad, isSystemKey, modifiers, timestamp);
+    return WebKeyboardEvent(type, text, unmodifiedText, key, code, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, handledByInputMethod, commands, autoRepeat, isKeypad, isSystemKey, modifiers, timestamp);
 }
 
 } // namespace WebKit

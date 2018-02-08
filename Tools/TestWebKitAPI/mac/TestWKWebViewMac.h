@@ -31,7 +31,7 @@
 #if WK_API_ENABLED && PLATFORM(MAC)
 
 @interface TestMessageHandler : NSObject <WKScriptMessageHandler>
-- (instancetype)initWithMessage:(NSString *)message handler:(dispatch_block_t)handler;
+- (void)addMessage:(NSString *)message withHandler:(dispatch_block_t)handler;
 @end
 
 @interface TestWKWebView : WKWebView
@@ -39,6 +39,7 @@
 - (void)mouseDownAtPoint:(NSPoint)point simulatePressure:(BOOL)simulatePressure;
 - (void)performAfterReceivingMessage:(NSString *)message action:(dispatch_block_t)action;
 - (void)loadTestPageNamed:(NSString *)pageName;
+- (void)synchronouslyLoadTestPageNamed:(NSString *)pageName;
 - (void)typeCharacter:(char)character;
 - (NSString *)stringByEvaluatingJavaScript:(NSString *)script;
 - (void)waitForMessage:(NSString *)message;

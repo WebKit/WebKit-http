@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3SwitchValue_h
-#define B3SwitchValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -36,7 +35,7 @@ namespace JSC { namespace B3 {
 
 class SwitchValue : public Value {
 public:
-    static bool accepts(Opcode opcode) { return opcode == Switch; }
+    static bool accepts(Kind kind) { return kind == Switch; }
 
     ~SwitchValue();
 
@@ -84,6 +83,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3SwitchValue_h
-

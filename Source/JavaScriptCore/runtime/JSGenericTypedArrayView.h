@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSGenericTypedArrayView_h
-#define JSGenericTypedArrayView_h
+#pragma once
 
 #include "JSArrayBufferView.h"
 #include "ThrowScope.h"
@@ -174,8 +173,7 @@ public:
         auto scope = DECLARE_THROW_SCOPE(vm);
 
         typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
-        if (UNLIKELY(scope.exception()))
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
 
         if (isNeutered()) {
             throwTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
@@ -370,6 +368,3 @@ inline RefPtr<typename Adaptor::ViewType> toNativeTypedView(JSValue value)
 }
 
 } // namespace JSC
-
-#endif // JSGenericTypedArrayView_h
-

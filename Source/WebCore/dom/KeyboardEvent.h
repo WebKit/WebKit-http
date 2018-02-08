@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "EventModifierInit.h"
 #include "KeypressCommand.h"
 #include "UIEventWithKeyState.h"
 #include <memory>
@@ -33,11 +34,6 @@ namespace WebCore {
 class Node;
 class PlatformKeyboardEvent;
 
-struct KeyboardEventInit : public UIEventWithKeyStateInit {
-    String keyIdentifier;
-    unsigned location { 0 };
-};
-
 class KeyboardEvent final : public UIEventWithKeyState {
 public:
     enum KeyLocationCode {
@@ -45,9 +41,6 @@ public:
         DOM_KEY_LOCATION_LEFT       = 0x01,
         DOM_KEY_LOCATION_RIGHT      = 0x02,
         DOM_KEY_LOCATION_NUMPAD     = 0x03
-        // FIXME: The following values are not supported yet (crbug.com/265446)
-        // DOM_KEY_LOCATION_MOBILE     = 0x04,
-        // DOM_KEY_LOCATION_JOYSTICK   = 0x05
     };
 
     static Ref<KeyboardEvent> create(const PlatformKeyboardEvent& platformEvent, DOMWindow* view)
@@ -60,9 +53,21 @@ public:
         return adoptRef(*new KeyboardEvent);
     }
 
-    static Ref<KeyboardEvent> createForBindings(const AtomicString& type, const KeyboardEventInit& initializer)
+    struct Init : public EventModifierInit {
+        String key;
+        String code;
+        unsigned location;
+        bool repeat;
+        bool isComposing;
+
+        // Legacy.
+        String keyIdentifier;
+        Optional<unsigned> keyLocation;
+    };
+
+    static Ref<KeyboardEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new KeyboardEvent(type, initializer));
+        return adoptRef(*new KeyboardEvent(type, initializer, isTrusted));
     }
 
     // FIXME: This method should be get ride of in the future.
@@ -78,12 +83,18 @@ public:
         const String& keyIdentifier, unsigned location,
         bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, bool altGraphKey = false);
     
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    const String& key() const { return m_key; }
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    const String& code() const { return m_code; }
+#endif
+
     const String& keyIdentifier() const { return m_keyIdentifier; }
     unsigned location() const { return m_location; }
+    bool repeat() const { return m_repeat; }
 
     WEBCORE_EXPORT bool getModifierState(const String& keyIdentifier) const;
-
-    bool altGraphKey() const { return m_altGraphKey; }
     
     const PlatformKeyboardEvent* keyEvent() const { return m_keyEvent.get(); }
 
@@ -93,6 +104,8 @@ public:
     EventInterface eventInterface() const final;
     bool isKeyboardEvent() const final;
     int which() const final;
+
+    bool isComposing() const { return m_isComposing; }
 
 #if PLATFORM(COCOA)
     bool handledByInputMethod() const { return m_handledByInputMethod; }
@@ -105,19 +118,26 @@ public:
 private:
     WEBCORE_EXPORT KeyboardEvent();
     WEBCORE_EXPORT KeyboardEvent(const PlatformKeyboardEvent&, DOMWindow*);
-    KeyboardEvent(const AtomicString&, const KeyboardEventInit&);
-    // FIXME: This method should be get ride of in the future.
+    KeyboardEvent(const AtomicString&, const Init&, IsTrusted);
+    // FIXME: This method should be get rid of in the future.
     // DO NOT USE IT!
     KeyboardEvent(WTF::HashTableDeletedValueType);
 
     std::unique_ptr<PlatformKeyboardEvent> m_keyEvent;
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    String m_key;
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    String m_code;
+#endif
     String m_keyIdentifier;
-    unsigned m_location;
-    bool m_altGraphKey : 1;
+    unsigned m_location { DOM_KEY_LOCATION_STANDARD };
+    bool m_repeat { false };
+    bool m_isComposing { false };
 
 #if PLATFORM(COCOA)
     // Commands that were sent by AppKit when interpreting the event. Doesn't include input method commands.
-    bool m_handledByInputMethod;
+    bool m_handledByInputMethod { false };
     Vector<KeypressCommand> m_keypressCommands;
 #endif
 };

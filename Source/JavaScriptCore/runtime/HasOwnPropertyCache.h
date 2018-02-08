@@ -42,15 +42,33 @@ public:
         static ptrdiff_t offsetOfImpl() { return OBJECT_OFFSETOF(Entry, impl); }
         static ptrdiff_t offsetOfResult() { return OBJECT_OFFSETOF(Entry, result); }
 
-        UniquedStringImpl* impl;
-        StructureID structureID;
-        bool result;
+        Entry() = default;
+
+        Entry(RefPtr<UniquedStringImpl> impl, StructureID structureID, bool result)
+            : impl(impl)
+            , structureID(structureID)
+            , result(result)
+        {
+        }
+
+        Entry& operator=(Entry&& other)
+        {
+            impl = WTFMove(other.impl);
+            structureID = other.structureID;
+            result = other.result;
+            return *this;
+        }
+
+        RefPtr<UniquedStringImpl> impl { };
+        StructureID structureID { 0 };
+        bool result { false };
     };
 
     HasOwnPropertyCache() = delete;
 
     void operator delete(void* cache)
     {
+        static_cast<HasOwnPropertyCache*>(cache)->clear();
         fastFree(cache);
     }
 
@@ -58,7 +76,7 @@ public:
     {
         size_t allocationSize = sizeof(Entry) * size;
         HasOwnPropertyCache* result = static_cast<HasOwnPropertyCache*>(fastMalloc(allocationSize));
-        result->clear();
+        result->clearBuffer();
         return result;
     }
 
@@ -73,7 +91,7 @@ public:
         StructureID id = structure->id();
         uint32_t index = HasOwnPropertyCache::hash(id, impl) & mask;
         Entry& entry = bitwise_cast<Entry*>(this)[index];
-        if (entry.structureID == id && entry.impl == impl)
+        if (entry.structureID == id && entry.impl.get() == impl)
             return entry.result;
         return Nullopt;
     }
@@ -94,9 +112,9 @@ public:
             && structure->propertyAccessesAreCacheable()
             && (!slot.isUnset() || structure->propertyAccessesAreCacheableForAbsence())) {
             if (structure->isDictionary()) {
-                if (structure->hasBeenFlattenedBefore())
-                    return;
-                object->flattenDictionaryObject(vm);
+                // FIXME: We should be able to flatten a dictionary object again.
+                // https://bugs.webkit.org/show_bug.cgi?id=163092
+                return;
             }
 
             ASSERT(!result == slot.isUnset());
@@ -104,13 +122,25 @@ public:
             UniquedStringImpl* impl = propName.uid();
             StructureID id = structure->id();
             uint32_t index = HasOwnPropertyCache::hash(id, impl) & mask;
-            bitwise_cast<Entry*>(this)[index] = Entry{ impl, id, result };
+            bitwise_cast<Entry*>(this)[index] = Entry{ RefPtr<UniquedStringImpl>(impl), id, result };
         }
     }
 
     void clear()
     {
-        memset(this, 0, sizeof(Entry) * size);
+        Entry* buffer = bitwise_cast<Entry*>(this);
+        for (uint32_t i = 0; i < size; ++i)
+            buffer[i].Entry::~Entry();
+
+        clearBuffer();
+    }
+
+private:
+    void clearBuffer()
+    {
+        Entry* buffer = bitwise_cast<Entry*>(this);
+        for (uint32_t i = 0; i < size; ++i)
+            new (&buffer[i]) Entry();
     }
 };
 

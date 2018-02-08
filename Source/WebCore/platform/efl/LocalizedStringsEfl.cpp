@@ -398,6 +398,21 @@ String AXDescriptionListDetailText()
     return String::fromUTF8("description");
 }
 
+String AXDetailsText()
+{
+    return String::fromUTF8("details");
+}
+
+String AXSummaryText()
+{
+    return String::fromUTF8("summary");
+}
+
+String AXFigureText()
+{
+    return String::fromUTF8("figure");
+}
+
 String AXFooterRoleDescriptionText()
 {
     return String::fromUTF8("footer");

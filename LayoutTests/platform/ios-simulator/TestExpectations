@@ -134,12 +134,23 @@ http/tests/media
 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
 
 # No touch events
+fast/events/touch [ Skip ]
 fast/shadow-dom/touch-event-ios.html [ Skip ]
+http/tests/quicklook/at-import-stylesheet-blocked.html [ Skip ]
+http/tests/quicklook/base-url-blocked.html [ Skip ]
+http/tests/quicklook/cross-origin-iframe-blocked.html [ Skip ]
+http/tests/quicklook/document-domain-is-empty-string.html [ Skip ]
+http/tests/quicklook/external-stylesheet-blocked.html [ Skip ]
+http/tests/quicklook/submit-form-blocked.html [ Skip ]
+http/tests/quicklook/top-navigation-blocked.html [ Skip ]
+http/tests/quicklook/hide-referer-on-navigation.html [ Skip ]
+imported/w3c/web-platform-tests/touch-events [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-container-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/text/data-detectors/phone.html [ Skip ]
+platform/ios-simulator/ios/touch [ Skip ]
 
 # WebKitDataCue is supported, not DataCue
 media/track/track-datacue.html
@@ -204,6 +215,8 @@ webkit.org/b/112755 fast/css3-text/css3-text-indent
 
 # Unsupported on certain OS versions
 webkit.org/b/152491 fast/text/woff2.html [ Skip ]
+
+webkit.org/b/162668 fast/text/woff2-totalsfntsize.html [ Skip ]
 
 # Needs testRunner.enableAutoResizeMode()
 fast/autoresize
@@ -283,8 +296,6 @@ fast/events/mouse-force-up.html [ Skip ]
 # AutoFill button is not supported
 fast/forms/auto-fill-button/mouse-down-input-mouse-release-auto-fill-button.html
 
-fast/events/touch [ Skip ]
-
 # Mouse events are not supported on iOS
 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Skip ]
 fast/scrolling/overflow-scroll-past-max.html [ Skip ]
@@ -308,6 +319,11 @@ fast/css/pseudo-active-with-programmatic-focus.html [ Skip ]
 http/tests/security/history-username-password.html [ Skip ]
 fast/selectors/hover-invalidation-descendant-dynamic.html [ Skip ]
 
+# IOS does not implement setAutomaticLinkDetectionEnabled
+editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
+editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Skip ]
+editing/inserting/smart-quote-with-all-configurations.html [ Skip ]
+
 webkit.org/b/148695 fast/shadow-dom [ Pass ]
 
 # No tab navigation support on iOS
@@ -327,6 +343,9 @@ fast/text/all-small-caps-whitespace.html [ Skip ]
 # This test relies on EventSender.keydown(), which is not supported on iOS
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
 fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
+fast/shadow-dom/input-element-in-shadow.html [ Skip ]
+fast/events/keyboardevent-key.html [ Skip ]
+fast/events/keyboardevent-code.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
@@ -1186,6 +1205,18 @@ fast/events/frame-scroll-fake-mouse-move.html [ Failure ]
 fast/events/frame-tab-focus.html [ Failure ]
 fast/events/ime-composition-events-001.html [ Failure ]
 fast/events/inputText-never-fired-on-keydown-cancel.html [ Failure ]
+fast/events/input-events-fired-when-typing.html [ Failure ]
+fast/events/input-events-paste-data.html [ Failure ]
+fast/events/input-events-typing-data.html [ Failure ]
+fast/events/input-events-forecolor-data.html [ Failure ]
+fast/events/before-input-events-prevent-default.html [ Failure ]
+fast/events/before-input-events-prevent-default-in-textfield.html [ Failure ]
+fast/events/before-input-events-different-start-end-elements.html [ Failure ]
+fast/events/before-input-prevent-biu.html [ Failure ]
+fast/events/before-input-prevent-cut.html [ Failure ]
+fast/events/before-input-prevent-paste.html [ Failure ]
+fast/events/before-input-prevent-undo.html [ Failure ]
+fast/events/before-input-prevent-typing.html [ Failure ]
 fast/events/key-events-in-input-button.html [ Failure ]
 fast/events/keydown-1.html [ Failure ]
 fast/events/keydown-leftright-keys.html [ Failure ]
@@ -1855,7 +1886,6 @@ fast/dom/rtl-scroll-to-leftmost-and-resize.html
 fast/dynamic/paused-event-dispatch.html
 fast/events/anchor-image-scrolled-x-y.html
 fast/events/autoscroll-should-not-stop-on-keypress.html [ Skip ]
-fast/events/constructors/media-key-event-constructor.html
 fast/events/input-image-scrolled-x-y.html
 fast/events/mouse-cursor-image-set.html
 fast/events/recorded-keydown-event.html
@@ -2045,7 +2075,6 @@ platform/ios-simulator/ios/fixed/absolute-inside-fixed.html [ Failure ]
 platform/ios-simulator/ios/fixed/four-bars.html [ Failure ]
 platform/ios-simulator/ios/fixed/nested-fixed.html [ Failure ]
 platform/ios-simulator/ios/fixed/percentage-inside-fixed.html [ Failure ]
-platform/ios-simulator/ios/touch [ Skip ]
 
 # image inputs get rounded corners on iOS
 fast/css/object-position/object-position-input-image.html [ ImageOnlyFailure ]
@@ -2195,6 +2224,9 @@ platform/ios-simulator/ios/accessibility/set-value.html [ Failure ]
 platform/ios-simulator/ios/fast/css/webkit-overflow-scrolling-parsing.html [ Failure ]
 svg/custom/bug78807.svg [ Failure ]
 
+webkit.org/b/163127 http/tests/quicklook/secure-document-with-subresources.html [ Skip ]
+webkit.org/b/163127 accessibility/text-marker/character-offset-visible-position-conversion-hang.html [ Skip ]
+
 fast/filter-image/background-filter-image.html [ ImageOnlyFailure ]
 fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
 fast/text/han-generic-font-families.html [ ImageOnlyFailure ]
@@ -2324,7 +2356,6 @@ imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Skip ]
 imported/blink/http/tests/security/referrer-policy-attribute-img-origin-when-crossorigin.html [ ImageOnlyFailure Pass ]
 imported/blink/http/tests/security/referrer-policy-attribute-img-origin.html [ ImageOnlyFailure Pass ]
 imported/blink/http/tests/security/referrer-policy-attribute-img-picture.html [ ImageOnlyFailure Pass ]
-imported/blink/http/tests/security/script-crossorigin-loads-correctly-credentials.html [ Failure Pass ]
 imported/blink/plugins/empty-per-context-data.html [ Skip ]
 imported/blink/svg/as-background-image/overflow-auto.html [ ImageOnlyFailure Pass ]
 imported/blink/svg/as-image/overflow-auto.html [ ImageOnlyFailure Pass ]
@@ -2382,10 +2413,7 @@ webkit.org/b/153656 displaylists/extent-includes-shadow.html [ Pass Failure ]
 webkit.org/b/153656 displaylists/layer-dispay-list.html [ Pass Failure ]
 webkit.org/b/153656 displaylists/replay-skip-clipped-rect.html [ Pass Failure ]
 
-webkit.org/b/153370 imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-newelements-xhtml.xhtml [ Failure ]
 webkit.org/b/153370 imported/w3c/web-platform-tests/html/dom/documents/dom-tree-accessors/document.getElementsByName/document.getElementsByName-newelements.html [ Failure ]
-
-webkit.org/b/152438 fast/text/fallback-language-han-2.html [ ImageOnlyFailure ]
 
 webkit.org/b/153311 fast/replaced/preferred-widths.html [ Pass Failure ]
 
@@ -2529,7 +2557,6 @@ media/video-controls-fullscreen-volume.html
 media/video-controls-no-display-with-text-track.html
 media/video-controls-show-on-kb-or-ax-event.html
 media/video-fullscreen-restriction-removed.html
-media/video-play-require-user-gesture.html
 media/video-playsinline.html
 media/video-remote-control-playpause.html
 media/video-volume-slider-drag.html
@@ -2610,15 +2637,11 @@ media/video-controls-drop-and-restore-timeline.html [ Failure ]
 media/video-controls-in-media-document.html [ Failure ]
 media/video-controls-no-scripting.html [ Failure ]
 media/video-controls-toggling.html [ Failure ]
-media/video-controls-transformed.html [ Failure ]
-media/video-controls-visible-audio-only.html [ Failure ]
 media/video-controls-visible-exiting-fullscreen.html [ Failure ]
 media/video-controls-zoomed.html [ Failure ]
 media/video-frame-accurate-seek.html [ Failure ]
 media/video-fullscreeen-only-controls.html [ Failure ]
-media/video-fullscreeen-only-playback.html [ Failure ]
 media/video-initially-hidden-volume-slider-up.html [ Failure ]
-media/video-play-audio-require-user-gesture.html [ Failure ]
 media/video-trackmenu-selection.html [ Failure ]
 media/video-volume.html [ Failure ]
 
@@ -2632,6 +2655,9 @@ media/video-seek-to-current-time.html [ Failure ]
 fast/attachment/attachment-wrapping-action.html [ Pass ]
 
 fast/events/page-visibility-iframe-move-test.html [ Skip ]
+
+# LEGACY_ENCRYPTED_MEDIA is disabled on iOS.
+fast/events/webkit-media-key-events-constructor.html [ Failure ]
 
 webkit.org/b/161143 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-samedoc.html [ Pass Failure ]
 
@@ -2657,3 +2683,29 @@ css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
 webkit.org/b/161949 imported/w3c/web-platform-tests/XMLHttpRequest/response-method.htm [ Failure ]
 
 webkit.org/b/130972 transitions/3d/interrupted-transition.html [ Pass Timeout ]
+
+# Only iOS has implemented lettepress.
+fast/text/letterpress-different.html [ Pass ]
+
+webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/163009 media/modern-media-controls/icon-button/icon-button-active-state.html [ Failure ]
+webkit.org/b/163357 media/modern-media-controls/volume-slider/volume-slider-value.html [ Skip ]
+
+# This variation font test requires Skia which isn't available on iOS.
+webkit.org/b/163093 fast/text/variations/advances.html [ Failure ]
+
+webkit.org/b/162647 http/tests/xmlhttprequest/onabort-response-getters.html [ Pass Failure ]
+
+# Media tests cannot tap play button on iOS.
+webkit.org/b/163291 media/require-user-gesture-to-load-video.html
+webkit.org/b/163291 media/video-controls-transformed.html [ Failure ]
+webkit.org/b/163291 media/video-controls-visible-audio-only.html [ Failure ]
+webkit.org/b/163291 media/video-fullscreeen-only-playback.html [ Failure ]
+webkit.org/b/163291 media/video-play-audio-require-user-gesture.html [ Failure ]
+webkit.org/b/163291 media/video-play-require-user-gesture.html
+
+webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size-iframe.html [ Skip ]
+webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size.html [ Skip ]
+webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size-iframe.html [ Skip ]
+webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size.html [ Skip ]

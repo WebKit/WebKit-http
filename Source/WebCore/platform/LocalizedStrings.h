@@ -168,6 +168,9 @@ namespace WebCore {
     String AXFileUploadButtonText();
     String AXSearchFieldCancelButtonText();
     String AXAttachmentRoleText();
+    String AXDetailsText();
+    String AXSummaryText();
+    String AXFigureText();
     
     String AXButtonActionVerb();
     String AXRadioButtonActionVerb();

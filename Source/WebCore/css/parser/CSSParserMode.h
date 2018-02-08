@@ -96,7 +96,7 @@ public:
 #if ENABLE(CSS_GRID_LAYOUT)
     bool cssGridLayoutEnabled { false };
 #endif
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     bool textAutosizingEnabled { false };
 #endif
     bool needsSiteSpecificQuirks { false };
@@ -104,6 +104,9 @@ public:
     bool useLegacyBackgroundSizeShorthandBehavior { false };
     bool springTimingFunctionEnabled { false };
     bool useNewParser { false };
+#if ENABLE(VARIATION_FONTS)
+    bool variationFontsEnabled { false };
+#endif
 };
 
 bool operator==(const CSSParserContext&, const CSSParserContext&);

@@ -111,11 +111,15 @@ bool doesGC(Graph& graph, Node* node)
     case PutGetterSetterById:
     case PutGetterByVal:
     case PutSetterByVal:
+    case DefineDataProperty:
+    case DefineAccessorProperty:
     case DeleteById:
     case DeleteByVal:
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
+    case CallDOM:
+    case CheckDOM:
     case CheckArray:
     case GetScope:
     case SkipScope:
@@ -196,6 +200,7 @@ bool doesGC(Graph& graph, Node* node)
     case CheckTierUpAndOSREnter:
     case LoopHint:
     case StoreBarrier:
+    case FencedStoreBarrier:
     case InvalidationPoint:
     case NotifyWrite:
     case CheckInBounds:
@@ -277,7 +282,7 @@ bool doesGC(Graph& graph, Node* node)
     case NewFunction:
     case NewGeneratorFunction:
     case NewTypedArray:
-    case ThrowReferenceError:
+    case ThrowStaticError:
     case GetPropertyEnumerator:
     case GetEnumeratorStructurePname:
     case GetEnumeratorGenericPname:
@@ -289,6 +294,7 @@ bool doesGC(Graph& graph, Node* node)
     case StringReplace:
     case StringReplaceRegExp:
     case CreateRest:
+    case ToLowerCase:
         return true;
         
     case MultiPutByOffset:

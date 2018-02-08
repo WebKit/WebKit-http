@@ -127,6 +127,7 @@ shouldInjectUserScriptsInInitialEmptyDocument initial=false
 fixedElementsLayoutRelativeToFrame initial=false
 allowDisplayOfInsecureContent initial=false
 allowRunningOfInsecureContent initial=false
+requiresUserGestureToLoadVideo initial=defaultRequiresUserGestureToLoadVideo
 videoPlaybackRequiresUserGesture initial=defaultVideoPlaybackRequiresUserGesture
 audioPlaybackRequiresUserGesture initial=defaultAudioPlaybackRequiresUserGesture
 mainContentUserGestureOverrideEnabled initial=false
@@ -199,13 +200,9 @@ selectionIncludesAltImageText initial=true
 useLegacyBackgroundSizeShorthandBehavior initial=false
 fixedBackgroundsPaintRelativeToDocument initial=defaultFixedBackgroundsPaintRelativeToDocument
 
-textAutosizingEnabled initial=false, setNeedsStyleRecalcInAllFrames=1, conditional=TEXT_AUTOSIZING
-textAutosizingEnabled initial=defaultTextAutosizingEnabled(), setNeedsStyleRecalcInAllFrames=1, conditional=IOS_TEXT_AUTOSIZING
-
+textAutosizingEnabled initial=defaultTextAutosizingEnabled(), setNeedsStyleRecalcInAllFrames=1, conditional=TEXT_AUTOSIZING
 textAutosizingWindowSizeOverride type=IntSize, setNeedsStyleRecalcInAllFrames=1, conditional=TEXT_AUTOSIZING
-textAutosizingWindowSizeOverride type=IntSize, setNeedsStyleRecalcInAllFrames=1, conditional=IOS_TEXT_AUTOSIZING
-
-minimumZoomFontSize type=float, initial=defaultMinimumZoomFontSize(), conditional=IOS_TEXT_AUTOSIZING
+minimumZoomFontSize type=float, initial=defaultMinimumZoomFontSize(), conditional=TEXT_AUTOSIZING
 
 simpleLineLayoutEnabled initial=true, setNeedsStyleRecalcInAllFrames=1
 simpleLineLayoutDebugBordersEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
@@ -277,8 +274,14 @@ springTimingFunctionEnabled initial=false
 
 treatIPAddressAsDomain initial=false
 
+variationFontsEnabled initial=true, setNeedsStyleRecalcInAllFrames=1, conditional=VARIATION_FONTS
+
 # Runtime-enabled features
 visualViewportEnabled initial=false
 
+inputEventsEnabled initial=false
+
 quickTimePluginReplacementEnabled initial=defaultQuickTimePluginReplacementEnabled
 youTubeFlashPluginReplacementEnabled initial=defaultYouTubeFlashPluginReplacementEnabled
+
+forcedPrefersReducedMotionValue type=ForcedPrefersReducedMotionValue, initial=defaultForcedPrefersReducedMotionValue
