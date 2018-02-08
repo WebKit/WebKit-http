@@ -12,6 +12,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${JAVASCRIPTCORE_DIR}/bytecompiler"
   "${JAVASCRIPTCORE_DIR}/dfg"
   "${JAVASCRIPTCORE_DIR}/disassembler"
+  "${JAVASCRIPTCORE_DIR}/domjit"
   "${JAVASCRIPTCORE_DIR}/interpreter"
   "${JAVASCRIPTCORE_DIR}/jit"
   "${JAVASCRIPTCORE_DIR}/llint"

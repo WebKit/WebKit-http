@@ -89,9 +89,9 @@ void drawNativeImage(WTF::RefPtr<WebCore::BitmapRef> const& image,
 }
 
 
-void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect,
-    const AffineTransform& patternTransform, const FloatPoint& phase,
-    const FloatSize& size, CompositeOperator op, const FloatRect& dstRect,
+void Image::drawPattern(GraphicsContext& context, const FloatRect& dstRect,
+    const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase,
+    const FloatSize& size, CompositeOperator op,
     BlendMode)
 {
     NativeImagePtr image = nativeImageForCurrentFrame();
@@ -143,9 +143,6 @@ void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect,
 
 NativeImagePtr BitmapImage::getBBitmap()
 {
-    if (!haveFrameImageAtIndex(0))
-		return NULL;
-
     return frameImageAtIndex(0);
 }
 

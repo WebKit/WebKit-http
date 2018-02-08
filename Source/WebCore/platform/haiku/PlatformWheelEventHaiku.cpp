@@ -53,13 +53,13 @@ PlatformWheelEvent::PlatformWheelEvent(BMessage* message)
 
     int32 modifiers = message->FindInt32("modifiers");
     if (modifiers & B_SHIFT_KEY)
-        m_modifiers |= ShiftKey;
+        m_modifiers |= PlatformEvent::Modifier::ShiftKey;
     if (modifiers & B_COMMAND_KEY)
-        m_modifiers |= CtrlKey;
+        m_modifiers |= PlatformEvent::Modifier::CtrlKey;
     if (modifiers & B_CONTROL_KEY)
-        m_modifiers |= AltKey;
+        m_modifiers |= PlatformEvent::Modifier::AltKey;
     if (modifiers & B_OPTION_KEY)
-        m_modifiers |= MetaKey;
+        m_modifiers |= PlatformEvent::Modifier::MetaKey;
 }
 
 } // namespace WebCore

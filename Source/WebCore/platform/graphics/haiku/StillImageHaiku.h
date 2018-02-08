@@ -45,8 +45,7 @@ public:
         return adoptRef(new StillImage(bitmap));
     }
 
-    virtual bool currentFrameKnownToBeOpaque() override;
-
+    virtual bool currentFrameKnownToBeOpaque() const override;
     virtual void destroyDecodedData(bool = true) override;
 
     virtual FloatSize size() const override;

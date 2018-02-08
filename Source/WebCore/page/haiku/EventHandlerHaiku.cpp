@@ -127,12 +127,12 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
     return true;
 }
 
-unsigned EventHandler::accessKeyModifiers()
+WTF::OptionSet<WebCore::PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
     // NOTE: On Haiku, the user can choose Alt or Ctrl as access key, but
     // the PlatformKeyboardEvent already takes care of this, internally,
     // we always use Alt.
-    return PlatformKeyboardEvent::AltKey;
+    return PlatformEvent::Modifier::AltKey;
 }
 
 } // namespace WebCore

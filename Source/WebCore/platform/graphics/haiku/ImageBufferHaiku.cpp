@@ -153,8 +153,10 @@ void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, 
         destContext.drawImage(*m_data.m_image.get(), destRect, srcRect, options);
 }
 
-void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-    const FloatPoint& phase, const FloatSize& size, CompositeOperator op, const FloatRect& destRect, BlendMode)
+void ImageBuffer::drawPattern(GraphicsContext& destContext,
+    const FloatRect& destRect, const FloatRect& srcRect,
+    const AffineTransform& patternTransform, const FloatPoint& phase,
+    const FloatSize& size, CompositeOperator op, BlendMode)
 {
     if (!m_data.m_view)
         return;
@@ -163,9 +165,9 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& src
     if (&destContext == &context() && srcRect.intersects(destRect)) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
-        copy->drawPattern(destContext, srcRect, patternTransform, phase, size, op, destRect);
+        copy->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, op);
     } else
-        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, size, op, destRect);
+        m_data.m_image->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, op);
 }
 
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)

@@ -34,9 +34,8 @@
 namespace WebCore {
 
 Color::Color(const rgb_color& color)
-    : m_color(makeRGBA(color.red, color.green, color.blue, color.alpha))
-    , m_valid(true)
 {
+    setRGB(makeRGBA(color.red, color.green, color.blue, color.alpha));
 }
 
 Color::operator rgb_color() const

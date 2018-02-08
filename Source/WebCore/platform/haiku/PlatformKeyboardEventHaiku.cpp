@@ -330,13 +330,13 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BMessage* message)
 {
     BString bytes = message->FindString("bytes");
 
-    m_nativeVirtualKeyCode = message->FindInt32("key");
+    int32 nativeVirtualKeyCode = message->FindInt32("key");
 
     m_text = String::fromUTF8(bytes.String(), bytes.Length());
     m_unmodifiedText = String(bytes.String(), bytes.Length());
-    m_keyIdentifier = keyIdentifierForHaikuKeyCode(bytes.ByteAt(0), m_nativeVirtualKeyCode);
+    m_keyIdentifier = keyIdentifierForHaikuKeyCode(bytes.ByteAt(0), nativeVirtualKeyCode);
 
-    m_windowsVirtualKeyCode = windowsKeyCodeForKeyEvent(bytes.ByteAt(0), m_nativeVirtualKeyCode);
+    m_windowsVirtualKeyCode = windowsKeyCodeForKeyEvent(bytes.ByteAt(0), nativeVirtualKeyCode);
 
     if (message->what == B_KEY_UP)
         m_type = KeyUp;
@@ -345,13 +345,13 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BMessage* message)
 
     int32 modifiers = message->FindInt32("modifiers");
     if (modifiers & B_SHIFT_KEY)
-        m_modifiers |= ShiftKey;
+        m_modifiers |= PlatformEvent::Modifier::ShiftKey;
     if (modifiers & B_COMMAND_KEY)
-        m_modifiers |= CtrlKey;
+        m_modifiers |= PlatformEvent::Modifier::CtrlKey;
     if (modifiers & B_CONTROL_KEY)
-        m_modifiers |= AltKey;
+        m_modifiers |= PlatformEvent::Modifier::AltKey;
     if (modifiers & B_OPTION_KEY)
-        m_modifiers |= MetaKey;
+        m_modifiers |= PlatformEvent::Modifier::MetaKey;
 }
 
 void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool backwardCompatibilityMode)

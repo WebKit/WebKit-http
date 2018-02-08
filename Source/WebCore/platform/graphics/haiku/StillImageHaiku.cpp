@@ -43,7 +43,7 @@ StillImage::~StillImage()
 }
 
 
-bool StillImage::currentFrameKnownToBeOpaque()
+bool StillImage::currentFrameKnownToBeOpaque() const
 {
     color_space space = m_bitmap->ColorSpace();
     return space != B_RGB32 && space != B_RGBA15;
