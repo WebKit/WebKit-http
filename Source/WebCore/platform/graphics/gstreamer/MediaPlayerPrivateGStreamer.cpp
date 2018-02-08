@@ -525,7 +525,7 @@ MediaTime MediaPlayerPrivateGStreamer::durationMediaTime() const
         return MediaTime::positiveInfiniteTime();
     }
 
-    GST_DEBUG("Duration: %" GST_TIME_FORMAT, GST_TIME_ARGS(timeLength));
+    GST_TRACE("Duration: %" GST_TIME_FORMAT, GST_TIME_ARGS(timeLength));
 
     return MediaTime(timeLength, GST_SECOND);
     // FIXME: handle 3.14.9.5 properly
@@ -1157,7 +1157,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 GUniqueOutPtr<gchar> uri;
                 GstClockTime time;
                 gst_structure_get(structure, "uri", G_TYPE_STRING, &uri.outPtr(), "fragment-download-time", GST_TYPE_CLOCK_TIME, &time, nullptr);
-                GST_DEBUG("Fragment %s download time %" GST_TIME_FORMAT, uri.get(), GST_TIME_ARGS(time));
+                GST_TRACE("Fragment %s download time %" GST_TIME_FORMAT, uri.get(), GST_TIME_ARGS(time));
             } else if (gst_structure_has_name(structure, "GstCacheDownloadComplete")) {
                 m_downloadFinished = true;
                 m_buffering = false;
@@ -1194,8 +1194,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         break;
     }
     default:
-        GST_DEBUG("Unhandled GStreamer message type: %s",
-                    GST_MESSAGE_TYPE_NAME(message));
+        GST_TRACE("Unhandled GStreamer message type: %s", GST_MESSAGE_TYPE_NAME(message));
         break;
     }
     return;
@@ -1425,7 +1424,7 @@ MediaTime MediaPlayerPrivateGStreamer::maxTimeLoaded() const
         GST_DEBUG("maxTimeLoaded at EOS: %s", toString(loaded).utf8().data());
         loaded = m_durationAtEOS;
     }
-    GST_DEBUG("maxTimeLoaded: %s", toString(loaded).utf8().data());
+    GST_TRACE("maxTimeLoaded: %s", toString(loaded).utf8().data());
     return loaded;
 }
 
@@ -1436,7 +1435,7 @@ bool MediaPlayerPrivateGStreamer::didLoadingProgress() const
     MediaTime currentMaxTimeLoaded = maxTimeLoaded();
     bool didLoadingProgress = currentMaxTimeLoaded != m_maxTimeLoadedAtLastDidLoadingProgress;
     m_maxTimeLoadedAtLastDidLoadingProgress = currentMaxTimeLoaded;
-    GST_DEBUG("didLoadingProgress: %d", didLoadingProgress);
+    GST_TRACE("didLoadingProgress: %s", boolForPrinting(didLoadingProgress));
     return didLoadingProgress;
 }
 

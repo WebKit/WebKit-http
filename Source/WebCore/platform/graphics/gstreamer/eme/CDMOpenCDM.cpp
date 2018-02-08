@@ -168,6 +168,7 @@ bool CDMPrivateOpenCDM::distinctiveIdentifiersAreUniquePerOriginAndClearable(con
 
 RefPtr<CDMInstance> CDMPrivateOpenCDM::createInstance()
 {
+    GST_TRACE("creating an instance for %s", m_openCdmKeySystem.utf8().data());
     m_openCdmBackend->SelectKeySystem(m_openCdmKeySystem.utf8().data());
     return adoptRef(new CDMInstanceOpenCDM(std::move(m_openCdmBackend), m_openCdmKeySystem));
 }

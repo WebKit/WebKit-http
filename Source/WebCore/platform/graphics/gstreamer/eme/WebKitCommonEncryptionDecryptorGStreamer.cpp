@@ -102,7 +102,7 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
     if (direction == GST_PAD_UNKNOWN)
         return nullptr;
 
-    GST_DEBUG_OBJECT(base, "direction: %s, caps: %" GST_PTR_FORMAT " filter: %" GST_PTR_FORMAT, (direction == GST_PAD_SRC) ? "src" : "sink", caps, filter);
+    GST_LOG_OBJECT(base, "direction: %s, caps: %" GST_PTR_FORMAT " filter: %" GST_PTR_FORMAT, (direction == GST_PAD_SRC) ? "src" : "sink", caps, filter);
 
     GstCaps* transformedCaps = gst_caps_new_empty();
     WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(base);
@@ -173,13 +173,13 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
     if (filter) {
         GstCaps* intersection;
 
-        GST_DEBUG_OBJECT(base, "Using filter caps %" GST_PTR_FORMAT, filter);
+        GST_LOG_OBJECT(base, "Using filter caps %" GST_PTR_FORMAT, filter);
         intersection = gst_caps_intersect_full(transformedCaps, filter, GST_CAPS_INTERSECT_FIRST);
         gst_caps_unref(transformedCaps);
         transformedCaps = intersection;
     }
 
-    GST_DEBUG_OBJECT(base, "returning %" GST_PTR_FORMAT, transformedCaps);
+    GST_LOG_OBJECT(base, "returning %" GST_PTR_FORMAT, transformedCaps);
     return transformedCaps;
 }
 
@@ -231,7 +231,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         return GST_FLOW_OK;
     }
 
-    GST_DEBUG_OBJECT(base, "protection meta: %" GST_PTR_FORMAT, protectionMeta->info);
+    GST_TRACE_OBJECT(base, "protection meta: %" GST_PTR_FORMAT, protectionMeta->info);
 
     unsigned subSampleCount;
     if (!gst_structure_get_uint(protectionMeta->info, "subsample_count", &subSampleCount)) {
