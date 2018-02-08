@@ -321,10 +321,11 @@ struct YarrPattern {
         InvalidIdentityEscape,
         TooManyDisjunctions,
         OffsetTooLarge,
+        InvalidRegularExpressionFlags,
         NumberOfErrorCodes
     };
     
-    WTF_EXPORT_PRIVATE static const char* errorMessage(ErrorCode);
+    JS_EXPORT_PRIVATE static const char* errorMessage(ErrorCode);
 
     void reset()
     {

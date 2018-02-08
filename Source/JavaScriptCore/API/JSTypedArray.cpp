@@ -32,7 +32,7 @@
 #include "ClassInfo.h"
 #include "Error.h"
 #include "JSArrayBufferViewInlines.h"
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 #include "JSDataView.h"
 #include "JSGenericTypedArrayViewInlines.h"
 #include "JSTypedArrays.h"
@@ -100,9 +100,11 @@ inline TypedArrayType toTypedArrayType(JSTypedArrayType type)
 
 static JSObject* createTypedArray(ExecState* exec, JSTypedArrayType type, RefPtr<ArrayBuffer>&& buffer, size_t offset, size_t length)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     if (!buffer) {
-        throwOutOfMemoryError(exec);
+        throwOutOfMemoryError(exec, scope);
         return nullptr;
     }
     switch (type) {

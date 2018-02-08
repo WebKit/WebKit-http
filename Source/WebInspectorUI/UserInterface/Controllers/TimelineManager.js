@@ -594,7 +594,7 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
             console.assert(isNaN(endTime));
 
             // Pass the startTime as the endTime since this record type has no duration.
-            let timerDetails = {timerId: recordPayload.data.timerId, timeout: recordPayload.data.timeout, repeating: !recordPayload.data.singleShot};
+            var timerDetails = {timerId: recordPayload.data.timerId, timeout: recordPayload.data.timeout, repeating: !recordPayload.data.singleShot};
             return new WebInspector.ScriptTimelineRecord(WebInspector.ScriptTimelineRecord.EventType.TimerInstalled, startTime, startTime, callFrames, sourceCodeLocation, timerDetails);
 
         case TimelineAgent.EventType.TimerRemove:
@@ -989,12 +989,12 @@ WebInspector.TimelineManager = class TimelineManager extends WebInspector.Object
 
     _mergeScriptProfileRecords()
     {
-        let nextRecord = function(list) { return list.shift() || null; }
+        let nextRecord = function(list) { return list.shift() || null; };
         let nextWebTimelineRecord = nextRecord.bind(null, this._webTimelineScriptRecordsExpectingScriptProfilerEvents);
         let nextScriptProfilerRecord = nextRecord.bind(null, this._scriptProfilerRecords);
         let recordEnclosesRecord = function(record1, record2) {
             return record1.startTime <= record2.startTime && record1.endTime >= record2.endTime;
-        }
+        };
 
         let webRecord = nextWebTimelineRecord();
         let profilerRecord = nextScriptProfilerRecord();

@@ -58,10 +58,7 @@ public:
     CodeLocationLabel doneLocation() { return m_inlineStart.labelAtOffset(m_inlineSize); }
     CodeLocationLabel slowPathStartLocation() { return m_inlineStart.labelAtOffset(m_deltaFromStartToSlowPathStart); }
     CodeLocationCall slowPathCallLocation() { return m_inlineStart.callAtOffset(m_deltaFromStartToSlowPathCallLocation); }
-
-    bool isLeftOperandValidConstant() const { return m_generator.isLeftOperandValidConstant(); }
-    bool isRightOperandValidConstant() const { return m_generator.isRightOperandValidConstant(); }
-
+    
     bool generateInline(CCallHelpers& jit, MathICGenerationState& state, bool shouldEmitProfiling = true)
     {
 #if CPU(ARM_TRADITIONAL)
@@ -81,12 +78,12 @@ public:
                 // code, it's a win. Second, if the operation does execute, we can emit better code
                 // once we have an idea about the types of lhs and rhs.
                 state.slowPathJumps.append(jit.patchableJump());
+                size_t inlineSize = jit.m_assembler.buffer().codeSize() - startSize;
+                ASSERT_UNUSED(inlineSize, static_cast<ptrdiff_t>(inlineSize) <= MacroAssembler::patchableJumpSize());
                 state.shouldSlowPathRepatch = true;
                 state.fastPathEnd = jit.label();
                 ASSERT(!m_generateFastPathOnRepatch); // We should have gathered some observed type info for lhs and rhs before trying to regenerate again.
                 m_generateFastPathOnRepatch = true;
-                size_t inlineSize = jit.m_assembler.buffer().codeSize() - startSize;
-                ASSERT_UNUSED(inlineSize, static_cast<ptrdiff_t>(inlineSize) <= MacroAssembler::maxJumpReplacementSize());
                 return true;
             }
         }
@@ -96,8 +93,8 @@ public:
         switch (result) {
         case JITMathICInlineResult::GeneratedFastPath: {
             size_t inlineSize = jit.m_assembler.buffer().codeSize() - startSize;
-            if (static_cast<ptrdiff_t>(inlineSize) < MacroAssembler::maxJumpReplacementSize()) {
-                size_t nopsToEmitInBytes = MacroAssembler::maxJumpReplacementSize() - inlineSize;
+            if (static_cast<ptrdiff_t>(inlineSize) < MacroAssembler::patchableJumpSize()) {
+                size_t nopsToEmitInBytes = MacroAssembler::patchableJumpSize() - inlineSize;
                 jit.emitNops(nopsToEmitInBytes);
             }
             state.shouldSlowPathRepatch = true;

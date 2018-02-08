@@ -31,7 +31,11 @@
 #include "B3Value.h"
 #include "DFGArrayMode.h"
 #include "FTLAbstractHeap.h"
+#include "HasOwnPropertyCache.h"
 #include "IndexingType.h"
+#include "JSMap.h"
+#include "JSSet.h"
+#include "Symbol.h"
 
 namespace JSC { namespace FTL {
 
@@ -76,7 +80,6 @@ namespace JSC { namespace FTL {
     macro(JSString_value, JSString::offsetOfValue()) \
     macro(JSSymbolTableObject_symbolTable, JSSymbolTableObject::offsetOfSymbolTable()) \
     macro(JSWrapperObject_internalValue, JSWrapperObject::internalValueOffset()) \
-    macro(MarkedAllocator_freeListHead, MarkedAllocator::offsetOfFreeListHead()) \
     macro(RegExpConstructor_cachedResult_lastRegExp, RegExpConstructor::offsetOfCachedResult() + RegExpCachedResult::offsetOfLastRegExp()) \
     macro(RegExpConstructor_cachedResult_lastInput, RegExpConstructor::offsetOfCachedResult() + RegExpCachedResult::offsetOfLastInput()) \
     macro(RegExpConstructor_cachedResult_result_start, RegExpConstructor::offsetOfCachedResult() + RegExpCachedResult::offsetOfResult() + OBJECT_OFFSETOF(MatchResult, start)) \
@@ -102,15 +105,21 @@ namespace JSC { namespace FTL {
     macro(Structure_classInfo, Structure::classInfoOffset()) \
     macro(Structure_globalObject, Structure::globalObjectOffset()) \
     macro(Structure_prototype, Structure::prototypeOffset()) \
-    macro(Structure_structureID, Structure::structureIDOffset())
+    macro(Structure_structureID, Structure::structureIDOffset()) \
+    macro(JSMap_hashMapImpl, JSMap::offsetOfHashMapImpl()) \
+    macro(JSSet_hashMapImpl, JSSet::offsetOfHashMapImpl()) \
+    macro(HashMapImpl_capacity, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfCapacity()) \
+    macro(HashMapImpl_buffer,  HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfBuffer()) \
+    macro(HashMapBucket_value, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()) \
+    macro(HashMapBucket_key, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey()) \
+    macro(Symbol_symbolImpl, Symbol::offsetOfSymbolImpl()) \
 
 #define FOR_EACH_INDEXED_ABSTRACT_HEAP(macro) \
     macro(DirectArguments_storage, DirectArguments::storageOffset(), sizeof(EncodedJSValue)) \
     macro(JSEnvironmentRecord_variables, JSEnvironmentRecord::offsetOfVariables(), sizeof(EncodedJSValue)) \
     macro(JSPropertyNameEnumerator_cachedPropertyNamesVectorContents, 0, sizeof(WriteBarrier<JSString>)) \
     macro(JSRopeString_fibers, JSRopeString::offsetOfFibers(), sizeof(WriteBarrier<JSString>)) \
-    macro(MarkedSpace_Subspace_impreciseAllocators, OBJECT_OFFSETOF(MarkedSpace::Subspace, impreciseAllocators), sizeof(MarkedAllocator)) \
-    macro(MarkedSpace_Subspace_preciseAllocators, OBJECT_OFFSETOF(MarkedSpace::Subspace, preciseAllocators), sizeof(MarkedAllocator)) \
+    macro(MarkedSpace_Subspace_allocatorForSizeStep, OBJECT_OFFSETOF(MarkedSpace::Subspace, allocatorForSizeStep), sizeof(MarkedAllocator*)) \
     macro(ScopedArguments_overflowStorage, ScopedArguments::overflowStorageOffset(), sizeof(EncodedJSValue)) \
     macro(WriteBarrierBuffer_bufferContents, 0, sizeof(JSCell*)) \
     macro(characters8, 0, sizeof(LChar)) \
@@ -122,7 +131,8 @@ namespace JSC { namespace FTL {
     macro(scopedArgumentsTableArguments, 0, sizeof(int32_t)) \
     macro(singleCharacterStrings, 0, sizeof(JSString*)) \
     macro(structureTable, 0, sizeof(Structure*)) \
-    macro(variables, 0, sizeof(Register))
+    macro(variables, 0, sizeof(Register)) \
+    macro(HasOwnPropertyCache, 0, sizeof(HasOwnPropertyCache::Entry)) \
     
 #define FOR_EACH_NUMBERED_ABSTRACT_HEAP(macro) \
     macro(properties)

@@ -29,7 +29,7 @@
 #include "config.h"
 #include "JSReadableStreamSource.h"
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
 using namespace JSC;
 
@@ -44,7 +44,7 @@ JSValue JSReadableStreamSource::start(ExecState& state)
     m_controller.set(state.vm(), jsSource, state.argument(0));
 
     JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::create(&state, globalObject());
-    wrapped().start(ReadableStreamDefaultController(controller), DeferredWrapper(&state, globalObject(), promiseDeferred));
+    wrapped().start(ReadableStreamDefaultController(controller), DeferredWrapper::create(&state, globalObject(), promiseDeferred));
     return promiseDeferred->promise();
 }
 
@@ -56,4 +56,4 @@ JSValue JSReadableStreamSource::controller(ExecState&) const
 
 }
 
-#endif // ENABLE(STREAMS_API)
+#endif // ENABLE(READABLE_STREAM_API)

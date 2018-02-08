@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,6 @@
 
 #include "CanvasContextAttributes.h"
 #include "HTMLCanvasElement.h"
-#include "JSCanvasRenderingContext.h"
 #include "JSCanvasRenderingContext2D.h"
 #include <bindings/ScriptObject.h>
 #include <wtf/GetPtr.h>
@@ -47,12 +46,15 @@ namespace WebCore {
 #if ENABLE(WEBGL)
 static void get3DContextAttributes(ExecState& state, RefPtr<CanvasContextAttributes>& attrs)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue initializerValue = state.argument(1);
     if (initializerValue.isUndefinedOrNull())
         return;
     
     JSObject* initializerObject = initializerValue.toObject(&state);
-    ASSERT(!state.hadException());
+    ASSERT_UNUSED(scope, !scope.exception());
     JSDictionary dictionary(&state, initializerObject);
     
     GraphicsContext3D::Attributes graphicsAttrs;
@@ -71,8 +73,11 @@ static void get3DContextAttributes(ExecState& state, RefPtr<CanvasContextAttribu
 
 JSValue JSHTMLCanvasElement::getContext(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (UNLIKELY(state.argumentCount() < 1))
-        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     HTMLCanvasElement& canvas = wrapped();
     const String& contextId = state.uncheckedArgument(0).toWTFString(&state);
@@ -81,7 +86,7 @@ JSValue JSHTMLCanvasElement::getContext(ExecState& state)
 #if ENABLE(WEBGL)
     if (HTMLCanvasElement::is3dType(contextId)) {
         get3DContextAttributes(state, attrs);
-        if (state.hadException())
+        if (UNLIKELY(scope.exception()))
             return jsUndefined();
     }
 #endif
@@ -89,29 +94,13 @@ JSValue JSHTMLCanvasElement::getContext(ExecState& state)
     CanvasRenderingContext* context = canvas.getContext(contextId, attrs.get());
     if (!context)
         return jsNull();
-    return toJS(&state, globalObject(), *context);
-}
 
-JSValue JSHTMLCanvasElement::probablySupportsContext(ExecState& state)
-{
-    if (UNLIKELY(state.argumentCount() < 1))
-        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
-
-    HTMLCanvasElement& canvas = wrapped();
-    const String& contextId = state.uncheckedArgument(0).toWTFString(&state);
-    if (state.hadException())
-        return jsUndefined();
-    
-    RefPtr<CanvasContextAttributes> attrs;
 #if ENABLE(WEBGL)
-    if (HTMLCanvasElement::is3dType(contextId)) {
-        get3DContextAttributes(state, attrs);
-        if (state.hadException())
-            return jsUndefined();
-    }
+    if (is<WebGLRenderingContextBase>(*context))
+        return toJS(&state, globalObject(), downcast<WebGLRenderingContextBase>(*context));
 #endif
-    
-    return jsBoolean(canvas.probablySupportsContext(contextId, attrs.get()));
+
+    return toJS(&state, globalObject(), downcast<CanvasRenderingContext2D>(*context));
 }
 
 JSValue JSHTMLCanvasElement::toDataURL(ExecState& state)

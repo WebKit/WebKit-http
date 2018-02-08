@@ -28,7 +28,7 @@
 
 #include "CallFrame.h"
 #include "ConstructData.h"
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 #include "RegExpObject.h"
 
 namespace JSC {
@@ -37,14 +37,6 @@ EncodedJSValue JSC_HOST_CALL esSpecIsConstructor(ExecState* exec)
 {
     bool isConstructor = exec->uncheckedArgument(0).isConstructor();
     return JSValue::encode(jsBoolean(isConstructor));
-}
-
-EncodedJSValue JSC_HOST_CALL esSpecIsRegExpObject(ExecState* exec)
-{
-    JSValue value = exec->uncheckedArgument(0);
-    if (value.isObject())
-        return JSValue::encode(jsBoolean(value.getObject()->type() == RegExpObjectType));
-    return JSValue::encode(jsBoolean(false));
 }
 
 } // namespace JSC

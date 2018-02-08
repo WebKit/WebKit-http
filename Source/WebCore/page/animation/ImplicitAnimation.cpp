@@ -36,6 +36,7 @@
 #include "ImplicitAnimation.h"
 #include "KeyframeAnimation.h"
 #include "RenderBox.h"
+#include "StylePendingResources.h"
 
 namespace WebCore {
 
@@ -187,7 +188,7 @@ bool ImplicitAnimation::sendTransitionEvent(const AtomicString& eventType, doubl
             // Dispatch the event
             RefPtr<Element> element = m_object->element();
 
-            ASSERT(!element || !element->document().inPageCache());
+            ASSERT(!element || element->document().pageCacheState() == Document::NotInPageCache);
             if (!element)
                 return false;
 
@@ -211,6 +212,9 @@ void ImplicitAnimation::reset(const RenderStyle* to)
     ASSERT(m_fromStyle);
 
     m_toStyle = RenderStyle::clonePtr(*to);
+
+    if (m_object && m_object->element())
+        Style::loadPendingResources(*m_toStyle, m_object->element()->document(), m_object->element());
 
     // Restart the transition
     if (m_fromStyle && m_toStyle)

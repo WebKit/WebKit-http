@@ -165,7 +165,7 @@ void RenderView::unscheduleLazyRepaint(RenderBox& renderer)
 
 void RenderView::lazyRepaintTimerFired()
 {
-    bool shouldRepaint = !document().inPageCache();
+    bool shouldRepaint = document().pageCacheState() == Document::NotInPageCache;
 
     for (auto& renderer : m_renderersNeedingLazyRepaint) {
         if (shouldRepaint)
@@ -1137,7 +1137,7 @@ bool RenderView::rootBackgroundIsEntirelyFixed() const
     if (!rootObject)
         return false;
 
-    return rootObject->rendererForRootBackground().hasEntirelyFixedBackground();
+    return rootObject->rendererForRootBackground().style().hasEntirelyFixedBackground();
 }
     
 LayoutRect RenderView::unextendedBackgroundRect() const

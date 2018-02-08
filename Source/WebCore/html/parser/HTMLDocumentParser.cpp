@@ -27,6 +27,7 @@
 #include "config.h"
 #include "HTMLDocumentParser.h"
 
+#include "CachedScript.h"
 #include "DocumentFragment.h"
 #include "Frame.h"
 #include "HTMLDocument.h"
@@ -194,10 +195,14 @@ void HTMLDocumentParser::runScriptsForPausedTreeBuilder()
     if (std::unique_ptr<CustomElementConstructionData> constructionData = m_treeBuilder->takeCustomElementConstructionData()) {
         ASSERT(!m_treeBuilder->hasParserBlockingScriptWork());
 
-        RefPtr<Element> newElement = constructionData->elementInterface->constructElement(constructionData->name, JSCustomElementInterface::ShouldClearException::Clear);
+        // https://html.spec.whatwg.org/#create-an-element-for-the-token
+        auto& elementInterface = constructionData->elementInterface.get();
+        RefPtr<Element> newElement = elementInterface.constructElement(constructionData->name, JSCustomElementInterface::ShouldClearException::Clear);
         if (!newElement) {
             ASSERT(!m_treeBuilder->isParsingTemplateContents());
             newElement = HTMLUnknownElement::create(QualifiedName(nullAtom, constructionData->name, xhtmlNamespaceURI), *document());
+            newElement->setIsCustomElementUpgradeCandidate();
+            newElement->setIsFailedCustomElement(elementInterface);
         }
 
         m_treeBuilder->didCreateCustomOrCallbackElement(newElement.releaseNonNull(), *constructionData);
@@ -500,18 +505,18 @@ void HTMLDocumentParser::resumeParsingAfterScriptExecution()
     endIfDelayed();
 }
 
-void HTMLDocumentParser::watchForLoad(CachedResource* cachedScript)
+void HTMLDocumentParser::watchForLoad(PendingScript& pendingScript)
 {
-    ASSERT(!cachedScript->isLoaded());
-    // addClient would call notifyFinished if the load were complete.
+    ASSERT(!pendingScript.isLoaded());
+    // setClient would call notifyFinished if the load were complete.
     // Callers do not expect to be re-entered from this call, so they should
-    // not an already-loaded CachedResource.
-    cachedScript->addClient(this);
+    // not an already-loaded PendingScript.
+    pendingScript.setClient(this);
 }
 
-void HTMLDocumentParser::stopWatchingForLoad(CachedResource* cachedScript)
+void HTMLDocumentParser::stopWatchingForLoad(PendingScript& pendingScript)
 {
-    cachedScript->removeClient(this);
+    pendingScript.clearClient();
 }
 
 void HTMLDocumentParser::appendCurrentInputStreamToPreloadScannerAndScan()
@@ -521,7 +526,7 @@ void HTMLDocumentParser::appendCurrentInputStreamToPreloadScannerAndScan()
     m_preloadScanner->scan(*m_preloader, *document());
 }
 
-void HTMLDocumentParser::notifyFinished(CachedResource* cachedResource)
+void HTMLDocumentParser::notifyFinished(PendingScript& pendingScript)
 {
     // pumpTokenizer can cause this parser to be detached from the Document,
     // but we need to ensure it isn't deleted yet.
@@ -534,7 +539,7 @@ void HTMLDocumentParser::notifyFinished(CachedResource* cachedResource)
         return;
     }
 
-    m_scriptRunner->executeScriptsWaitingForLoad(cachedResource);
+    m_scriptRunner->executeScriptsWaitingForLoad(pendingScript);
     if (!isWaitingForScripts())
         resumeParsingAfterScriptExecution();
 }

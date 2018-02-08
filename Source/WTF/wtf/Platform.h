@@ -812,8 +812,8 @@
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 
-/* This controls whether B3 is built. It will not be used unless FTL_USES_B3 is enabled. */
-#if ENABLE(FTL_JIT)
+/* This controls whether B3 is built. B3 is needed for FTL JIT and WebAssembly */
+#if ENABLE(FTL_JIT) || ENABLE(WEBASSEMBLY)
 #define ENABLE_B3_JIT 1
 #endif
 
@@ -954,6 +954,10 @@
 #define ENABLE_MASM_PROBE 1
 #else
 #define ENABLE_MASM_PROBE 0
+#endif
+
+#ifndef ENABLE_EXCEPTION_SCOPE_VERIFICATION
+#define ENABLE_EXCEPTION_SCOPE_VERIFICATION (!defined(NDEBUG))
 #endif
 
 /* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
@@ -1256,6 +1260,11 @@
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
 #define USE_MEDIAREMOTE 1
+#endif
+
+#if COMPILER(MSVC)
+/* Enable strict runtime stack buffer checks. */
+#pragma strict_gs_check(on)
 #endif
 
 #endif /* WTF_Platform_h */

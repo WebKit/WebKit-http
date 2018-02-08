@@ -34,6 +34,7 @@
 #include "ExceptionCode.h"
 #include "FetchLoader.h"
 #include "FetchResponseSource.h"
+#include "HTTPParsers.h"
 #include "JSBlob.h"
 #include "ResourceResponse.h"
 
@@ -57,12 +58,12 @@ void FetchBodyOwner::stop()
     ASSERT(!m_blobLoader);
 }
 
-bool FetchBodyOwner::isDisturbed() const
+bool FetchBodyOwner::isDisturbedOrLocked() const
 {
     if (m_isDisturbed)
         return true;
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource && m_readableStreamSource->isReadableStreamLocked())
         return true;
 #endif
@@ -70,70 +71,70 @@ bool FetchBodyOwner::isDisturbed() const
     return false;
 }
 
-void FetchBodyOwner::arrayBuffer(DeferredWrapper&& promise)
+void FetchBodyOwner::arrayBuffer(Ref<DeferredWrapper>&& promise)
 {
     if (m_body.isEmpty()) {
-        fulfillPromiseWithArrayBuffer(promise, nullptr, 0);
+        fulfillPromiseWithArrayBuffer(WTFMove(promise), nullptr, 0);
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
     m_body.arrayBuffer(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::blob(DeferredWrapper&& promise)
+void FetchBodyOwner::blob(Ref<DeferredWrapper>&& promise)
 {
     if (m_body.isEmpty()) {
-        promise.resolve(Blob::create());
+        promise->resolve(Blob::create(Vector<uint8_t>(), Blob::normalizedContentType(extractMIMETypeFromMediaType(m_body.contentType()))));
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
     m_body.blob(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::formData(DeferredWrapper&& promise)
+void FetchBodyOwner::formData(Ref<DeferredWrapper>&& promise)
 {
     if (m_body.isEmpty()) {
-        promise.reject(0);
+        promise->reject(0);
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
     m_body.formData(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::json(DeferredWrapper&& promise)
+void FetchBodyOwner::json(Ref<DeferredWrapper>&& promise)
 {
     if (m_body.isEmpty()) {
-        promise.reject(SYNTAX_ERR);
+        promise->reject(SYNTAX_ERR);
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
     m_body.json(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::text(DeferredWrapper&& promise)
+void FetchBodyOwner::text(Ref<DeferredWrapper>&& promise)
 {
     if (m_body.isEmpty()) {
-        promise.resolve(String());
+        promise->resolve(String());
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
@@ -175,7 +176,7 @@ void FetchBodyOwner::blobLoadingSucceeded()
 {
     ASSERT(m_body.type() == FetchBody::Type::Blob);
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource) {
         m_readableStreamSource->close();
         m_readableStreamSource = nullptr;
@@ -187,7 +188,7 @@ void FetchBodyOwner::blobLoadingSucceeded()
 
 void FetchBodyOwner::blobLoadingFailed()
 {
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource) {
         if (!m_readableStreamSource->isCancelling())
             m_readableStreamSource->error(ASCIILiteral("Blob loading failed"));
@@ -202,7 +203,7 @@ void FetchBodyOwner::blobLoadingFailed()
 void FetchBodyOwner::blobChunk(const char* data, size_t size)
 {
     ASSERT(data);
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     ASSERT(m_readableStreamSource);
     if (!m_readableStreamSource->enqueue(ArrayBuffer::tryCreate(data, size)))
         stop();

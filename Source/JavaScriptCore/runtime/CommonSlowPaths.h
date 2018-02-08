@@ -73,8 +73,10 @@ ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind 
 
 inline bool opIn(ExecState* exec, JSValue propName, JSValue baseVal)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     if (!baseVal.isObject()) {
-        exec->vm().throwException(exec, createInvalidInParameterError(exec, baseVal));
+        throwException(exec, scope, createInvalidInParameterError(exec, baseVal));
         return false;
     }
 
@@ -85,7 +87,7 @@ inline bool opIn(ExecState* exec, JSValue propName, JSValue baseVal)
         return baseObj->hasProperty(exec, i);
 
     auto property = propName.toPropertyKey(exec);
-    if (exec->vm().exception())
+    if (scope.exception())
         return false;
     return baseObj->hasProperty(exec, property);
 }
@@ -248,8 +250,6 @@ SLOW_PATH_HIDDEN_DECL(slow_path_next_generic_enumerator_pname);
 SLOW_PATH_HIDDEN_DECL(slow_path_to_index_string);
 SLOW_PATH_HIDDEN_DECL(slow_path_profile_type_clear_log);
 SLOW_PATH_HIDDEN_DECL(slow_path_assert);
-SLOW_PATH_HIDDEN_DECL(slow_path_save);
-SLOW_PATH_HIDDEN_DECL(slow_path_resume);
 SLOW_PATH_HIDDEN_DECL(slow_path_create_lexical_environment);
 SLOW_PATH_HIDDEN_DECL(slow_path_push_with_scope);
 SLOW_PATH_HIDDEN_DECL(slow_path_resolve_scope);

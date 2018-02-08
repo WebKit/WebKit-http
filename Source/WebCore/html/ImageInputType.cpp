@@ -80,7 +80,7 @@ bool ImageInputType::supportsValidation() const
     return false;
 }
 
-void ImageInputType::handleDOMActivateEvent(Event* event)
+void ImageInputType::handleDOMActivateEvent(Event& event)
 {
     Ref<HTMLInputElement> element(this->element());
     if (element->isDisabledFormControl() || !element->form())
@@ -88,8 +88,8 @@ void ImageInputType::handleDOMActivateEvent(Event* event)
     element->setActivatedSubmit(true);
 
     m_clickLocation = IntPoint();
-    if (event->underlyingEvent()) {
-        Event& underlyingEvent = *event->underlyingEvent();
+    if (event.underlyingEvent()) {
+        Event& underlyingEvent = *event.underlyingEvent();
         if (is<MouseEvent>(underlyingEvent)) {
             MouseEvent& mouseEvent = downcast<MouseEvent>(underlyingEvent);
             if (!mouseEvent.isSimulated())
@@ -99,7 +99,7 @@ void ImageInputType::handleDOMActivateEvent(Event* event)
 
     element->form()->prepareForSubmission(event); // Event handlers can run.
     element->setActivatedSubmit(false);
-    event->setDefaultHandled();
+    event.setDefaultHandled();
 }
 
 RenderPtr<RenderElement> ImageInputType::createInputRenderer(RenderStyle&& style)
@@ -109,6 +109,9 @@ RenderPtr<RenderElement> ImageInputType::createInputRenderer(RenderStyle&& style
 
 void ImageInputType::altAttributeChanged()
 {
+    if (!is<RenderImage>(element().renderer()))
+        return;
+
     auto* renderer = downcast<RenderImage>(element().renderer());
     if (!renderer)
         return;
@@ -176,7 +179,7 @@ unsigned ImageInputType::height() const
 
     if (!element->renderer()) {
         // Check the attribute first for an explicit pixel value.
-        if (Optional<int> height = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(heightAttr)))
+        if (Optional<unsigned> height = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(heightAttr)))
             return height.value();
 
         // If the image is available, use its height.
@@ -197,7 +200,7 @@ unsigned ImageInputType::width() const
 
     if (!element->renderer()) {
         // Check the attribute first for an explicit pixel value.
-        if (Optional<int> width = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(widthAttr)))
+        if (Optional<unsigned> width = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(widthAttr)))
             return width.value();
 
         // If the image is available, use its width.

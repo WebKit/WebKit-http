@@ -70,13 +70,11 @@ ImageFrame* BMPImageDecoder::frameBufferAtIndex(size_t index)
     if (index)
         return 0;
 
-    if (m_frameBufferCache.isEmpty()) {
+    if (m_frameBufferCache.isEmpty())
         m_frameBufferCache.resize(1);
-        m_frameBufferCache.first().setPremultiplyAlpha(m_premultiplyAlpha);
-    }
 
     ImageFrame* buffer = &m_frameBufferCache.first();
-    if (buffer->status() != ImageFrame::FrameComplete)
+    if (!buffer->isComplete())
         decode(false);
     return buffer;
 }
@@ -98,7 +96,7 @@ void BMPImageDecoder::decode(bool onlySize)
         setFailed();
     // If we're done decoding the image, we don't need the BMPImageReader
     // anymore.  (If we failed, |m_reader| has already been cleared.)
-    else if (!m_frameBufferCache.isEmpty() && (m_frameBufferCache.first().status() == ImageFrame::FrameComplete))
+    else if (!m_frameBufferCache.isEmpty() && m_frameBufferCache.first().isComplete())
         m_reader = nullptr;
 }
 

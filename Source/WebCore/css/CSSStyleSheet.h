@@ -49,18 +49,18 @@ typedef int ExceptionCode;
 class CSSStyleSheet final : public StyleSheet {
 public:
     static Ref<CSSStyleSheet> create(Ref<StyleSheetContents>&&, CSSImportRule* ownerRule = 0);
-    static Ref<CSSStyleSheet> create(Ref<StyleSheetContents>&&, Node* ownerNode);
+    static Ref<CSSStyleSheet> create(Ref<StyleSheetContents>&&, Node& ownerNode, const Optional<bool>& isOriginClean = Nullopt);
     static Ref<CSSStyleSheet> createInline(Node&, const URL&, const TextPosition& startPosition = TextPosition::minimumPosition(), const String& encoding = String());
 
     virtual ~CSSStyleSheet();
 
-    CSSStyleSheet* parentStyleSheet() const override;
-    Node* ownerNode() const override { return m_ownerNode; }
-    MediaList* media() const override;
-    String href() const override;
-    String title() const override { return m_title; }
-    bool disabled() const override { return m_isDisabled; }
-    void setDisabled(bool) override;
+    CSSStyleSheet* parentStyleSheet() const final;
+    Node* ownerNode() const final { return m_ownerNode; }
+    MediaList* media() const final;
+    String href() const final;
+    String title() const final { return m_title; }
+    bool disabled() const final { return m_isDisabled; }
+    void setDisabled(bool) final;
     
     WEBCORE_EXPORT RefPtr<CSSRuleList> cssRules();
     WEBCORE_EXPORT unsigned insertRule(const String& rule, unsigned index, ExceptionCode&);
@@ -76,10 +76,10 @@ public:
     unsigned length() const;
     CSSRule* item(unsigned index);
 
-    void clearOwnerNode() override;
-    CSSImportRule* ownerRule() const override { return m_ownerRule; }
-    URL baseURL() const override;
-    bool isLoading() const override;
+    void clearOwnerNode() final;
+    CSSImportRule* ownerRule() const final { return m_ownerRule; }
+    URL baseURL() const final;
+    bool isLoading() const final;
     
     void clearOwnerRule() { m_ownerRule = 0; }
     Document* ownerDocument() const;
@@ -125,16 +125,18 @@ public:
 private:
     CSSStyleSheet(Ref<StyleSheetContents>&&, CSSImportRule* ownerRule);
     CSSStyleSheet(Ref<StyleSheetContents>&&, Node* ownerNode, const TextPosition& startPosition, bool isInlineStylesheet);
+    CSSStyleSheet(Ref<StyleSheetContents>&&, Node& ownerNode, const TextPosition& startPosition, bool isInlineStylesheet, const Optional<bool>&);
 
-    bool isCSSStyleSheet() const override { return true; }
-    String type() const override { return ASCIILiteral("text/css"); }
+    bool isCSSStyleSheet() const final { return true; }
+    String type() const final { return ASCIILiteral("text/css"); }
 
     bool canAccessRules() const;
-    
+
     Ref<StyleSheetContents> m_contents;
     bool m_isInlineStylesheet;
     bool m_isDisabled;
     bool m_mutatedRules;
+    Optional<bool> m_isOriginClean;
     String m_title;
     RefPtr<MediaQuerySet> m_mediaQueries;
 

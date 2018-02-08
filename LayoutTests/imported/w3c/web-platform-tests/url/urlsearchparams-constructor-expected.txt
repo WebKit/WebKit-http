@@ -1,0 +1,15 @@
+
+PASS Basic URLSearchParams construction 
+PASS URLSearchParams constructor, empty. 
+PASS URLSearchParams constructor, string. 
+PASS URLSearchParams constructor, object. 
+PASS Parse + 
+PASS Parse space 
+PASS Parse %20 
+PASS Parse \0 
+PASS Parse %00 
+PASS Parse ⎄ 
+PASS Parse %e2%8e%84 
+PASS Parse 💩 
+PASS Parse %f0%9f%92%a9 
+

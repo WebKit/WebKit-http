@@ -56,8 +56,8 @@
 
 namespace WebCore {
 
-CachedImage::CachedImage(const ResourceRequest& resourceRequest, SessionID sessionID)
-    : CachedResource(resourceRequest, ImageResource, sessionID)
+CachedImage::CachedImage(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), ImageResource, sessionID)
     , m_image(nullptr)
     , m_isManuallyCached(false)
     , m_shouldPaintBrokenImage(true)
@@ -66,7 +66,7 @@ CachedImage::CachedImage(const ResourceRequest& resourceRequest, SessionID sessi
 }
 
 CachedImage::CachedImage(Image* image, SessionID sessionID)
-    : CachedResource(ResourceRequest(), ImageResource, sessionID)
+    : CachedResource(CachedResourceRequest(ResourceRequest()), ImageResource, sessionID)
     , m_image(image)
     , m_isManuallyCached(false)
     , m_shouldPaintBrokenImage(true)
@@ -76,7 +76,7 @@ CachedImage::CachedImage(Image* image, SessionID sessionID)
 }
 
 CachedImage::CachedImage(const URL& url, Image* image, SessionID sessionID)
-    : CachedResource(ResourceRequest(url), ImageResource, sessionID)
+    : CachedResource(CachedResourceRequest(ResourceRequest(url)), ImageResource, sessionID)
     , m_image(image)
     , m_isManuallyCached(false)
     , m_shouldPaintBrokenImage(true)
@@ -86,7 +86,7 @@ CachedImage::CachedImage(const URL& url, Image* image, SessionID sessionID)
 }
 
 CachedImage::CachedImage(const URL& url, Image* image, CachedImage::CacheBehaviorType type, SessionID sessionID)
-    : CachedResource(ResourceRequest(url), ImageResource, sessionID)
+    : CachedResource(CachedResourceRequest(ResourceRequest(url)), ImageResource, sessionID)
     , m_image(image)
     , m_isManuallyCached(type == CachedImage::ManuallyCached)
     , m_shouldPaintBrokenImage(true)
@@ -106,12 +106,23 @@ CachedImage::~CachedImage()
     clearImage();
 }
 
-void CachedImage::load(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
+void CachedImage::load(CachedResourceLoader& loader)
 {
-    if (cachedResourceLoader.shouldPerformImageLoad(url()))
-        CachedResource::load(cachedResourceLoader, options);
+    if (loader.shouldPerformImageLoad(url()))
+        CachedResource::load(loader);
     else
         setLoading(false);
+}
+
+void CachedImage::setBodyDataFrom(const CachedResource& resource)
+{
+    ASSERT(resource.type() == type());
+    const CachedImage& image = static_cast<const CachedImage&>(resource);
+
+    m_image = image.m_image;
+
+    if (m_image && is<SVGImage>(*m_image))
+        m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
 }
 
 void CachedImage::didAddClient(CachedResourceClient* client)
@@ -120,7 +131,7 @@ void CachedImage::didAddClient(CachedResourceClient* client)
         createImage();
         m_image->setData(m_data.copyRef(), true);
     }
-    
+
     ASSERT(client->resourceClientType() == CachedImageClient::expectedType());
     if (m_image && !m_image->isNull())
         static_cast<CachedImageClient*>(client)->imageChanged(this);
@@ -266,7 +277,7 @@ bool CachedImage::imageHasRelativeHeight() const
     return false;
 }
 
-LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float multiplier, SizeType sizeType)
+LayoutSize CachedImage::imageSizeForRenderer(const RenderElement* renderer, float multiplier, SizeType sizeType)
 {
     if (!m_image)
         return LayoutSize();

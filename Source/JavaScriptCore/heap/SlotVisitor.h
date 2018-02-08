@@ -27,7 +27,6 @@
 #define SlotVisitor_h
 
 #include "CellState.h"
-#include "CopyToken.h"
 #include "HandleTypes.h"
 #include "MarkStack.h"
 #include "OpaqueRootSet.h"
@@ -37,12 +36,16 @@ namespace JSC {
 class ConservativeRoots;
 class GCThreadSharedData;
 class Heap;
+class HeapCell;
 class HeapSnapshotBuilder;
 template<typename T> class JITWriteBarrier;
+class MarkedBlock;
 class UnconditionalFinalizer;
 template<typename T> class Weak;
 class WeakReferenceHarvester;
 template<typename T> class WriteBarrierBase;
+
+typedef uint32_t HeapVersion;
 
 class SlotVisitor {
     WTF_MAKE_NONCOPYABLE(SlotVisitor);
@@ -104,9 +107,11 @@ public:
 
     void harvestWeakReferences();
     void finalizeUnconditionalFinalizers();
-
-    void copyLater(JSCell*, CopyToken, void*, size_t);
     
+    // This informs the GC about auxiliary of some size that we are keeping alive. If you don't do
+    // this then the space will be freed at end of GC.
+    void markAuxiliary(const void* base);
+
     void reportExtraMemoryVisited(size_t);
 #if ENABLE(RESOURCE_USAGE)
     void reportExternalMemoryVisited(size_t);
@@ -118,15 +123,27 @@ public:
     void dump(PrintStream&) const;
 
     bool isBuildingHeapSnapshot() const { return !!m_heapSnapshotBuilder; }
+    
+    HeapVersion markingVersion() const { return m_markingVersion; }
 
 private:
     friend class ParallelModeEnabler;
     
     JS_EXPORT_PRIVATE void append(JSValue); // This is private to encourage clients to use WriteBarrier<T>.
+    void appendJSCellOrAuxiliary(HeapCell*);
     void appendHidden(JSValue);
 
     JS_EXPORT_PRIVATE void setMarkedAndAppendToMarkStack(JSCell*);
+    
+    template<typename ContainerType>
+    void setMarkedAndAppendToMarkStack(ContainerType&, JSCell*);
+    
     void appendToMarkStack(JSCell*);
+    
+    template<typename ContainerType>
+    void appendToMarkStack(ContainerType&, JSCell*);
+    
+    void noteLiveAuxiliaryCell(HeapCell*);
     
     JS_EXPORT_PRIVATE void mergeOpaqueRoots();
     void mergeOpaqueRootsIfNecessary();
@@ -143,6 +160,8 @@ private:
     size_t m_bytesCopied;
     size_t m_visitCount;
     bool m_isInParallelMode;
+    
+    HeapVersion m_markingVersion;
     
     Heap& m_heap;
 

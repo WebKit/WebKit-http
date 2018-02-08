@@ -71,25 +71,30 @@
     readonly attribute double clientWidth;
     readonly attribute double clientHeight;
 
-    attribute long scrollLeft;
-    attribute long scrollTop;
+    attribute long scrollLeft; // FIXME: should be unrestricted double
+    attribute long scrollTop; // FIXME: should be unrestricted double
     readonly attribute long scrollWidth;
     readonly attribute long scrollHeight;
 
     [ImplementedAs=bindingsOffsetParent] readonly attribute Element offsetParent;
 
-#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    void focus();
-    void blur();
-#endif
-
     void scrollIntoView(optional boolean alignWithTop = true);
 
-    sequence<DOMString> getAttributeNames();
-
     void scrollIntoViewIfNeeded(optional boolean centerIfNeeded = true);
+
+    [ImplementedAs=scrollTo] void scroll(optional ScrollToOptions options);
+    [ImplementedAs=scrollTo] void scroll(unrestricted double x, unrestricted double y);
+
+    void scrollTo(optional ScrollToOptions options);
+    void scrollTo(unrestricted double x, unrestricted double y);
+
+    void scrollBy(optional ScrollToOptions option);
+    void scrollBy(unrestricted double x, unrestricted double y);
+
     void scrollByLines(optional long lines = 0);
     void scrollByPages(optional long pages = 0);
+
+    sequence<DOMString> getAttributeNames();
 
     HTMLCollection getElementsByClassName(DOMString name);
     [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString innerHTML;
@@ -102,11 +107,9 @@
     [RaisesException] Element closest(DOMString selectors);    
     [ImplementedAs=matches, RaisesException] boolean webkitMatchesSelector(DOMString selectors);
 
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     // CSSOM View Module API
     ClientRectList getClientRects();
     ClientRect getBoundingClientRect();
-#endif
 
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
     // Mozilla version
@@ -131,12 +134,10 @@
     [Conditional=CSS_REGIONS] readonly attribute DOMString webkitRegionOverset;
     [Conditional=CSS_REGIONS] sequence<Range> webkitGetRegionFlowRanges();
 
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     // Shadow DOM API
     [EnabledAtRuntime=ShadowDOM, RaisesException] ShadowRoot attachShadow(ShadowRootInit init);
     [EnabledAtRuntime=ShadowDOM, ImplementedAs=shadowRootForBindings, CallWith=ScriptState] readonly attribute ShadowRoot shadowRoot;
     [EnabledAtRuntime=ShadowDOM, Reflect] attribute DOMString slot;
-#endif
 
     // Event Handlers
 
@@ -185,6 +186,12 @@ enum ShadowRootMode { "open", "closed" };
 
 dictionary ShadowRootInit {
     required ShadowRootMode mode;
+};
+
+// FIXME: Support ScrollBehavior.
+dictionary ScrollToOptions {
+    unrestricted double left;
+    unrestricted double top;
 };
 
 Element implements Animatable;

@@ -331,12 +331,9 @@ void PageSerializer::retrieveResourcesForProperties(const StyleProperties* style
         if (!is<CSSImageValue>(*cssValue))
             continue;
 
-        auto& styleImage = downcast<CSSImageValue>(*cssValue).cachedOrPendingImage();
-        // Non cached-images are just place-holders and do not contain data.
-        if (!is<StyleCachedImage>(styleImage))
+        auto* image = downcast<CSSImageValue>(*cssValue).cachedImage();
+        if (!image)
             continue;
-
-        CachedImage* image = downcast<StyleCachedImage>(styleImage).cachedImage();
 
         URL url = document->completeURL(image->url());
         addImageToResources(image, nullptr, url);

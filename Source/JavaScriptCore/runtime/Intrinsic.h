@@ -38,6 +38,7 @@ enum JS_EXPORT_PRIVATE Intrinsic {
     SinIntrinsic,
     Clz32Intrinsic,
     CosIntrinsic,
+    TanIntrinsic,
     ArrayPushIntrinsic,
     ArrayPopIntrinsic,
     CharCodeAtIntrinsic,
@@ -59,9 +60,12 @@ enum JS_EXPORT_PRIVATE Intrinsic {
     RandomIntrinsic,
     FRoundIntrinsic,
     TruncIntrinsic,
-    IsRegExpObjectIntrinsic,
     IsTypedArrayViewIntrinsic,
     BoundThisNoArgsFunctionCallIntrinsic,
+    JSMapGetIntrinsic,
+    JSMapHasIntrinsic,
+    JSSetHasIntrinsic,
+    HasOwnPropertyIntrinsic,
 
     // Getter intrinsics.
     TypedArrayLengthIntrinsic,

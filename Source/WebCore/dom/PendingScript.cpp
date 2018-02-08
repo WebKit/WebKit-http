@@ -26,43 +26,80 @@
 #include "config.h"
 #include "PendingScript.h"
 
-#include "CachedScript.h"
 #include "Element.h"
+#include "PendingScriptClient.h"
 
 namespace WebCore {
 
+Ref<PendingScript> PendingScript::create(Element& element, LoadableScript& loadableScript)
+{
+    Ref<PendingScript> pendingScript = adoptRef(*new PendingScript(element, loadableScript));
+    loadableScript.addClient(pendingScript.get());
+    return pendingScript;
+}
+
+Ref<PendingScript> PendingScript::create(Element& element, TextPosition scriptStartPosition)
+{
+    return adoptRef(*new PendingScript(element, scriptStartPosition));
+}
+
+PendingScript::PendingScript(Element& element, TextPosition startingPosition)
+    : m_element(element)
+    , m_startingPosition(startingPosition)
+{
+}
+
+PendingScript::PendingScript(Element& element, LoadableScript& loadableScript)
+    : m_element(element)
+    , m_loadableScript(&loadableScript)
+{
+}
+
 PendingScript::~PendingScript()
 {
-    if (m_cachedScript)
-        m_cachedScript->removeClient(this);
+    if (m_loadableScript)
+        m_loadableScript->removeClient(*this);
 }
 
-RefPtr<Element> PendingScript::releaseElementAndClear()
+LoadableScript* PendingScript::loadableScript() const
 {
-    setCachedScript(nullptr);
-    m_watchingForLoad = false;
-    m_startingPosition = TextPosition::belowRangePosition();
-    return WTFMove(m_element);
+    return m_loadableScript.get();
 }
 
-void PendingScript::setCachedScript(CachedScript* cachedScript)
+void PendingScript::notifyClientFinished()
 {
-    if (m_cachedScript == cachedScript)
-        return;
-    if (m_cachedScript)
-        m_cachedScript->removeClient(this);
-    m_cachedScript = cachedScript;
-    if (m_cachedScript)
-        m_cachedScript->addClient(this);
+    Ref<PendingScript> protectedThis(*this);
+    if (m_client)
+        m_client->notifyFinished(*this);
 }
 
-CachedScript* PendingScript::cachedScript() const
+void PendingScript::notifyFinished(LoadableScript&)
 {
-    return m_cachedScript.get();
+    notifyClientFinished();
 }
 
-void PendingScript::notifyFinished(CachedResource*)
+bool PendingScript::isLoaded() const
 {
+    return m_loadableScript && m_loadableScript->isLoaded();
+}
+
+bool PendingScript::wasErrored() const
+{
+    return m_loadableScript && m_loadableScript->wasErrored();
+}
+
+void PendingScript::setClient(PendingScriptClient* client)
+{
+    ASSERT(!m_client);
+    m_client = client;
+    if (isLoaded())
+        notifyClientFinished();
+}
+
+void PendingScript::clearClient()
+{
+    ASSERT(m_client);
+    m_client = nullptr;
 }
 
 }

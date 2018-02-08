@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebInspector_h
-#define WebInspector_h
+#pragma once
 
 #include "APIObject.h"
 #include "Connection.h"
@@ -54,8 +53,6 @@ public:
     // IPC::Connection::Client
     void didClose(IPC::Connection&) override { close(); }
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { close(); }
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
 
     // Called by WebInspector messages
     void connectionEstablished();
@@ -119,5 +116,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebInspector_h

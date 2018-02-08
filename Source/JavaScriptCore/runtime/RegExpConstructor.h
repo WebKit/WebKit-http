@@ -80,7 +80,7 @@ private:
 
     RegExpCachedResult m_cachedResult;
     bool m_multiline;
-    Vector<int, 32> m_ovector;
+    Vector<int> m_ovector;
 };
 
 RegExpConstructor* asRegExpConstructor(JSValue);
@@ -133,12 +133,13 @@ ALWAYS_INLINE void RegExpConstructor::recordMatch(VM& vm, RegExp* regExp, JSStri
 
 ALWAYS_INLINE bool isRegExp(VM& vm, ExecState* exec, JSValue value)
 {
+    auto scope = DECLARE_THROW_SCOPE(vm);
     if (!value.isObject())
         return false;
 
     JSObject* object = asObject(value);
     JSValue matchValue = object->get(exec, vm.propertyNames->matchSymbol);
-    if (vm.exception())
+    if (UNLIKELY(scope.exception()))
         return false;
     if (!matchValue.isUndefined())
         return matchValue.toBoolean(exec);

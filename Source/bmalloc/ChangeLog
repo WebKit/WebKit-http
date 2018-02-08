@@ -1,3 +1,126 @@
+2016-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Butterflies should be allocated in Auxiliary MarkedSpace instead of CopiedSpace and we should rewrite as much of the GC as needed to make this not a regression
+        https://bugs.webkit.org/show_bug.cgi?id=160125
+
+        Reviewed by Geoffrey Garen and Keith Miller.
+        
+        I needed to tryMemalign, so I added such a thing.
+
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::allocate):
+        (bmalloc::Allocator::tryAllocate):
+        (bmalloc::Allocator::allocateImpl):
+        * bmalloc/Allocator.h:
+        * bmalloc/Cache.h:
+        (bmalloc::Cache::tryAllocate):
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::tryMemalign):
+
+2016-08-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for GCC ports
+
+        std::forward is declared in <utility> header.
+
+        * bmalloc/ScopeExit.h:
+
+2016-08-30  Geoffrey Garen  <ggaren@apple.com>
+
+        bmalloc: speed up the lock slow path
+        https://bugs.webkit.org/show_bug.cgi?id=161058
+
+        Unreviewed roll-in - with regression fixed.
+
+        Revert to using yield() instead of swtch() because very low priority
+        background tasks can cause priority inversion and deadlock. In the
+        network process, that happened with com.apple.WebKit.Cache.Storage.serialBackground.
+
+        Still a big speedup on MallocBench.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/ScopeExit.h: Added.
+        (bmalloc::ScopeExit::ScopeExit):
+        (bmalloc::ScopeExit::~ScopeExit):
+        (bmalloc::makeScopeExit):
+        * bmalloc/StaticMutex.cpp:
+        (bmalloc::StaticMutex::lockSlowCase):
+        * bmalloc/StaticMutex.h:
+        (bmalloc::StaticMutex::init):
+
+2016-08-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Unreviewed build fix.
+
+        Fix the CMake build.
+
+        * CMakeLists.txt:
+
+2016-08-26  Geoffrey Garen  <ggaren@apple.com>
+
+        Renamed XLarge* => Large*
+        https://bugs.webkit.org/show_bug.cgi?id=161261
+
+        Reviewed by Andreas Kling.
+
+        XLarge is not a thing anymore: We just have Small and Large.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::tryAllocateLarge):
+        (bmalloc::Heap::shrinkLarge):
+        (bmalloc::Heap::deallocateLarge):
+        * bmalloc/Heap.h:
+        * bmalloc/LargeMap.cpp: Copied from Source/bmalloc/bmalloc/XLargeMap.cpp.
+        (bmalloc::LargeMap::remove):
+        (bmalloc::LargeMap::add):
+        (bmalloc::XLargeMap::remove): Deleted.
+        (bmalloc::XLargeMap::add): Deleted.
+        * bmalloc/LargeMap.h: Copied from Source/bmalloc/bmalloc/XLargeMap.h.
+        (bmalloc::LargeMap::ranges):
+        (bmalloc::XLargeMap::ranges): Deleted.
+        * bmalloc/LargeRange.h: Copied from Source/bmalloc/bmalloc/XLargeRange.h.
+        (bmalloc::LargeRange::LargeRange):
+        (bmalloc::LargeRange::operator<):
+        (bmalloc::canMerge):
+        (bmalloc::merge):
+        (bmalloc::LargeRange::split):
+        (bmalloc::XLargeRange::XLargeRange): Deleted.
+        (bmalloc::XLargeRange::operator<): Deleted.
+        (bmalloc::XLargeRange::split): Deleted.
+        * bmalloc/VMHeap.cpp:
+        (bmalloc::VMHeap::tryAllocateLargeChunk):
+        * bmalloc/VMHeap.h:
+        * bmalloc/XLargeMap.cpp: Removed.
+        * bmalloc/XLargeMap.h: Removed.
+        * bmalloc/XLargeRange.h: Removed.
+
+2016-08-26  Gavin Barraclough  <barraclough@apple.com>
+
+        bmalloc: speed up the lock slow path
+        https://bugs.webkit.org/show_bug.cgi?id=161058
+
+        Unreviewed rollout - this caused regressions <rdar://problem/28026089>.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/ScopeExit.h: Removed.
+        * bmalloc/StaticMutex.cpp:
+        (bmalloc::StaticMutex::lockSlowCase):
+        * bmalloc/StaticMutex.h:
+        (bmalloc::StaticMutex::init):
+        * bmalloc/ThreadSwitch.h: Removed.
+
+2016-08-24  Andreas Kling  <akling@apple.com>
+
+        Add bmalloc::api::isEnabled().
+        <https://webkit.org/b/160534>
+
+        Reviewed by Joseph Pecoraro.
+
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::isEnabled):
+
 2016-08-24  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, roll out r204901, r204897, r204866, r204856, r204854.

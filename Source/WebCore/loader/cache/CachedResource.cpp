@@ -62,6 +62,8 @@
 
 using namespace WTF;
 
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(cachedResourceLoader.isAlwaysOnLoggingAllowed(), Network, "%p - CachedResource::" fmt, this, ##__VA_ARGS__)
+
 namespace WebCore {
 
 ResourceLoadPriority CachedResource::defaultPriorityForResourceType(Type type)
@@ -86,8 +88,6 @@ ResourceLoadPriority CachedResource::defaultPriorityForResourceType(Type type)
         return ResourceLoadPriority::High;
 #endif
     case CachedResource::SVGDocumentResource:
-        return ResourceLoadPriority::Low;
-    case CachedResource::LinkPreload:
         return ResourceLoadPriority::Low;
 #if ENABLE(LINK_PREFETCH)
     case CachedResource::LinkPrefetch:
@@ -114,8 +114,9 @@ static std::chrono::milliseconds deadDecodedDataDeletionIntervalForResourceType(
 
 DEFINE_DEBUG_ONLY_GLOBAL(RefCountedLeakCounter, cachedResourceLeakCounter, ("CachedResource"));
 
-CachedResource::CachedResource(const ResourceRequest& request, Type type, SessionID sessionID)
-    : m_resourceRequest(request)
+CachedResource::CachedResource(CachedResourceRequest&& request, Type type, SessionID sessionID)
+    : m_resourceRequest(WTFMove(request.mutableResourceRequest()))
+    , m_options(request.options())
     , m_decodedDataDeletionTimer(*this, &CachedResource::destroyDecodedData, deadDecodedDataDeletionIntervalForResourceType(type))
     , m_sessionID(sessionID)
     , m_loadPriority(defaultPriorityForResourceType(type))
@@ -238,32 +239,62 @@ static void addAdditionalRequestHeadersToRequest(ResourceRequest& request, const
     frameLoader.addExtraFieldsToSubresourceRequest(request);
 }
 
-void CachedResource::addAdditionalRequestHeaders(CachedResourceLoader& cachedResourceLoader)
+void CachedResource::addAdditionalRequestHeaders(CachedResourceLoader& loader)
 {
-    addAdditionalRequestHeadersToRequest(m_resourceRequest, cachedResourceLoader, *this);
+    addAdditionalRequestHeadersToRequest(m_resourceRequest, loader, *this);
 }
 
-void CachedResource::load(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
+void CachedResource::computeOrigin(CachedResourceLoader& loader)
+{
+    if (type() == MainResource)
+        return;
+
+    ASSERT(loader.document());
+    if (m_resourceRequest.hasHTTPOrigin())
+        m_origin = SecurityOrigin::createFromString(m_resourceRequest.httpOrigin());
+    else
+        m_origin = loader.document()->securityOrigin();
+    ASSERT(m_origin);
+
+    if (!(m_resourceRequest.url().protocolIsData() && m_options.sameOriginDataURLFlag == SameOriginDataURLFlag::Set) && !m_origin->canRequest(m_resourceRequest.url()))
+        setCrossOrigin();
+
+    addAdditionalRequestHeaders(loader);
+}
+
+void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
 {
     if (!cachedResourceLoader.frame()) {
+        RELEASE_LOG_IF_ALLOWED("load: No associated frame");
         failBeforeStarting();
         return;
     }
     Frame& frame = *cachedResourceLoader.frame();
 
     // Prevent new loads if we are in the PageCache or being added to the PageCache.
-    if (frame.page() && frame.page()->inPageCache()) {
-        failBeforeStarting();
-        return;
+    // We query the top document because new frames may be created in pagehide event handlers
+    // and their pageCacheState will not reflect the fact that they are about to enter page
+    // cache.
+    if (auto* topDocument = frame.mainFrame().document()) {
+        if (topDocument->pageCacheState() != Document::NotInPageCache) {
+            RELEASE_LOG_IF_ALLOWED("load: Already in page cache or being added to it (frame = %p)", &frame);
+            failBeforeStarting();
+            return;
+        }
     }
 
     FrameLoader& frameLoader = frame.loader();
-    if (options.securityCheck == DoSecurityCheck && (frameLoader.state() == FrameStateProvisional || !frameLoader.activeDocumentLoader() || frameLoader.activeDocumentLoader()->isStopping())) {
+    if (m_options.securityCheck == DoSecurityCheck && (frameLoader.state() == FrameStateProvisional || !frameLoader.activeDocumentLoader() || frameLoader.activeDocumentLoader()->isStopping())) {
+        if (frameLoader.state() == FrameStateProvisional)
+            RELEASE_LOG_IF_ALLOWED("load: Failed security check -- state is provisional (frame = %p)", &frame);
+        else if (!frameLoader.activeDocumentLoader())
+            RELEASE_LOG_IF_ALLOWED("load: Failed security check -- not active document (frame = %p)", &frame);
+        else if (frameLoader.activeDocumentLoader()->isStopping())
+            RELEASE_LOG_IF_ALLOWED("load: Failed security check -- active loader is stopping (frame = %p)", &frame);
         failBeforeStarting();
         return;
     }
 
-    m_options = options;
     m_loading = true;
 
 #if USE(QUICK_LOOK)
@@ -275,9 +306,6 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader, const Reso
         m_resourceRequest.setURL(safeQLURLForDocumentURLAndResourceURL(documentURL, url()));
     }
 #endif
-
-    if (!accept().isEmpty())
-        m_resourceRequest.setHTTPAccept(accept());
 
     if (isCacheValidator()) {
         CachedResource* resourceToRevalidate = m_resourceToRevalidate;
@@ -302,18 +330,7 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader, const Reso
 #endif
     m_resourceRequest.setPriority(loadPriority());
 
-    if (type() != MainResource) {
-        if (m_resourceRequest.hasHTTPOrigin())
-            m_origin = SecurityOrigin::createFromString(m_resourceRequest.httpOrigin());
-        else
-            m_origin = cachedResourceLoader.document()->securityOrigin();
-        ASSERT(m_origin);
-
-        if (!m_resourceRequest.url().protocolIsData() && m_origin && !m_origin->canRequest(m_resourceRequest.url()))
-            setCrossOrigin();
-
-        addAdditionalRequestHeaders(cachedResourceLoader);
-    }
+    computeOrigin(cachedResourceLoader);
 
     // FIXME: It's unfortunate that the cache layer and below get to know anything about fragment identifiers.
     // We should look into removing the expectation of that knowledge from the platform network stacks.
@@ -325,13 +342,41 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader, const Reso
         m_fragmentIdentifierForRequest = String();
     }
 
-    m_loader = platformStrategies()->loaderStrategy()->loadResource(frame, *this, request, options);
+    m_loader = platformStrategies()->loaderStrategy()->loadResource(frame, *this, request, m_options);
     if (!m_loader) {
+        RELEASE_LOG_IF_ALLOWED("load: Unable to create SubresourceLoader (frame = %p)", &frame);
         failBeforeStarting();
         return;
     }
 
     m_status = Pending;
+}
+
+void CachedResource::loadFrom(const CachedResource& resource, CachedResourceLoader& cachedResourceLoader)
+{
+    ASSERT(url() == resource.url());
+    ASSERT(type() == resource.type());
+    ASSERT(resource.status() == Status::Cached);
+
+    computeOrigin(cachedResourceLoader);
+
+    if (isCrossOrigin() && m_options.mode == FetchOptions::Mode::Cors) {
+        ASSERT(m_origin);
+        String errorMessage;
+        if (!WebCore::passesAccessControlCheck(resource.response(), m_options.allowCredentials, *m_origin, errorMessage)) {
+            setResourceError(ResourceError(String(), 0, url(), errorMessage, ResourceError::Type::AccessControl));
+            return;
+        }
+    }
+
+    setBodyDataFrom(resource);
+    setStatus(Status::Cached);
+    setLoading(false);
+}
+
+void CachedResource::setBodyDataFrom(const CachedResource& resource)
+{
+    m_data = resource.m_data;
 }
 
 void CachedResource::checkNotify()

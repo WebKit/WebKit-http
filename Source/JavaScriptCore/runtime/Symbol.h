@@ -49,7 +49,7 @@ public:
 
     static Symbol* create(VM&);
     static Symbol* create(ExecState*, JSString* description);
-    static Symbol* create(VM&, SymbolImpl& uid);
+    JS_EXPORT_PRIVATE static Symbol* create(VM&, SymbolImpl& uid);
 
     const PrivateName& privateName() const { return m_privateName; }
     String descriptiveString() const;
@@ -58,6 +58,12 @@ public:
     bool getPrimitiveNumber(ExecState*, double& number, JSValue&) const;
     JSObject* toObject(ExecState*, JSGlobalObject*) const;
     double toNumber(ExecState*) const;
+
+    static ptrdiff_t offsetOfSymbolImpl()
+    {
+        // PrivateName is just a Ref<SymbolImpl> which can just be used as a SymbolImpl*.
+        return OBJECT_OFFSETOF(Symbol, m_privateName);
+    }
 
 protected:
     static void destroy(JSCell*);

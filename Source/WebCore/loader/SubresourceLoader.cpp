@@ -42,6 +42,7 @@
 #include "MemoryCache.h"
 #include "Page.h"
 #include "ResourceLoadObserver.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
@@ -181,6 +182,7 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
             }
 
             ResourceResponse opaqueRedirectedResponse;
+            opaqueRedirectedResponse.setURL(redirectResponse.url());
             opaqueRedirectedResponse.setType(ResourceResponse::Type::Opaqueredirect);
             m_resource->responseReceived(opaqueRedirectedResponse);
             didFinishLoading(currentTime());
@@ -216,6 +218,7 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
             cancel();
             return;
         }
+        m_loadTiming.addRedirect(redirectResponse.url(), newRequest.url());
         m_resource->redirectReceived(newRequest, redirectResponse);
     }
 
@@ -240,6 +243,9 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 {
     ASSERT(!response.isNull());
     ASSERT(m_state == Initialized);
+
+    // We want redirect responses to be processed through willSendRequestInternal. The only exception is redirection with no Location headers.
+    ASSERT(response.httpStatusCode() < 300 || response.httpStatusCode() >= 400 || response.httpStatusCode() == 304 || !response.httpHeaderField(HTTPHeaderName::Location));
 
     // Reference the object in this method since the additional processing can do
     // anything including removing the last reference to this object; one example of this is 3266216.
@@ -272,6 +278,14 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
         MemoryCache::singleton().revalidationFailed(*m_resource);
         if (m_frame && m_frame->page())
             m_frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), emptyString(), DiagnosticLoggingResultFail, ShouldSample::Yes);
+    }
+
+    String errorDescription;
+    if (!checkResponseCrossOriginAccessControl(response, errorDescription)) {
+        if (m_frame && m_frame->document())
+            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, errorDescription);
+        cancel(ResourceError(String(), 0, request().url(), errorDescription, ResourceError::Type::AccessControl));
+        return;
     }
 
     m_resource->responseReceived(response);
@@ -387,7 +401,6 @@ static void logResourceLoaded(Frame* frame, CachedResource::Type type)
     case CachedResource::SVGDocumentResource:
         resourceType = DiagnosticLoggingKeys::svgDocumentKey();
         break;
-    case CachedResource::LinkPreload:
 #if ENABLE(LINK_PREFETCH)
     case CachedResource::LinkPrefetch:
     case CachedResource::LinkSubresource:
@@ -399,6 +412,15 @@ static void logResourceLoaded(Frame* frame, CachedResource::Type type)
         break;
     }
     frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceKey(), DiagnosticLoggingKeys::loadedKey(), resourceType, ShouldSample::Yes);
+}
+
+bool SubresourceLoader::checkResponseCrossOriginAccessControl(const ResourceResponse& response, String& errorDescription)
+{
+    if (!m_resource->isCrossOrigin() || options().mode != FetchOptions::Mode::Cors)
+        return true;
+
+    ASSERT(m_origin);
+    return passesAccessControlCheck(response, options().allowCredentials, *m_origin, errorDescription);
 }
 
 bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceRequest& previousRequest, const ResourceResponse& redirectResponse, ResourceRequest& newRequest, String& errorMessage)
@@ -458,15 +480,28 @@ void SubresourceLoader::didFinishLoading(double finishTime)
     Ref<SubresourceLoader> protectedThis(*this);
     CachedResourceHandle<CachedResource> protectResource(m_resource);
 
+    // FIXME: The finishTime that is passed in is from the NetworkProcess and is more accurate.
+    // However, all other load times are generated from the web process or offsets.
+    // Mixing times from different processes can cause the finish time to be earlier than
+    // the response received time due to inter-process communication lag.
+    UNUSED_PARAM(finishTime);
+    double responseEndTime = monotonicallyIncreasingTime();
+    m_loadTiming.setResponseEnd(responseEndTime);
+
+#if ENABLE(WEB_TIMING)
+    if (m_documentLoader->cachedResourceLoader().document() && RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
+        m_documentLoader->cachedResourceLoader().resourceTimingInformation().addResourceTiming(m_resource, *m_documentLoader->cachedResourceLoader().document(), m_resource->loader()->loadTiming());
+#endif
+
     m_state = Finishing;
-    m_resource->setLoadFinishTime(finishTime);
+    m_resource->setLoadFinishTime(responseEndTime); // FIXME: Users of the loadFinishTime should use the LoadTiming struct instead.
     m_resource->finishLoading(resourceData());
 
     if (wasCancelled())
         return;
     m_resource->finish();
     ASSERT(!reachedTerminalState());
-    didFinishLoadingOnePart(finishTime);
+    didFinishLoadingOnePart(responseEndTime);
     notifyDone();
     if (reachedTerminalState())
         return;

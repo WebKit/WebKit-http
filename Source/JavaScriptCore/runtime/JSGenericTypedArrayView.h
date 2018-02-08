@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #define JSGenericTypedArrayView_h
 
 #include "JSArrayBufferView.h"
+#include "ThrowScope.h"
 #include "ToNativeFromValue.h"
 
 namespace JSC {
@@ -105,6 +106,7 @@ protected:
     
 public:
     static JSGenericTypedArrayView* create(ExecState*, Structure*, unsigned length);
+    static JSGenericTypedArrayView* createWithFastVector(ExecState*, Structure*, unsigned length, void* vector);
     static JSGenericTypedArrayView* createUninitialized(ExecState*, Structure*, unsigned length);
     static JSGenericTypedArrayView* create(ExecState*, Structure*, PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned length);
     static JSGenericTypedArrayView* create(VM&, Structure*, PassRefPtr<typename Adaptor::ViewType> impl);
@@ -157,7 +159,7 @@ public:
     
     void setIndexQuicklyToDouble(unsigned i, double value)
     {
-        setIndexQuicklyToNativeValue(i, toNativeFromValue<Adaptor>(value));
+        setIndexQuicklyToNativeValue(i, toNativeFromValue<Adaptor>(jsNumber(value)));
     }
     
     void setIndexQuickly(unsigned i, JSValue value)
@@ -168,12 +170,15 @@ public:
     
     bool setIndex(ExecState* exec, unsigned i, JSValue jsValue)
     {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
         typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
-        if (exec->hadException())
+        if (UNLIKELY(scope.exception()))
             return false;
 
         if (isNeutered()) {
-            throwTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
+            throwTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
             return false;
         }
 
@@ -283,7 +288,6 @@ protected:
 
     static size_t estimatedSize(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
-    static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 
     // Allocates the full-on native buffer and moves data into the C heap if
     // necessary. Note that this never allocates in the GC heap.

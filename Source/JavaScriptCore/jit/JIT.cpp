@@ -48,6 +48,7 @@
 #include "SuperSampler.h"
 #include "TypeProfilerLog.h"
 #include <wtf/CryptographicallyRandomNumber.h>
+#include <wtf/SimpleStats.h>
 
 using namespace std;
 
@@ -64,6 +65,14 @@ void ctiPatchCallByReturnAddress(ReturnAddressPtr returnAddress, FunctionPtr new
     MacroAssembler::repatchCall(
         CodeLocationCall(MacroAssemblerCodePtr(returnAddress)),
         newCalleeFunction);
+}
+
+JIT::CodeRef JIT::compileCTINativeCall(VM* vm, NativeFunction func)
+{
+    if (!vm->canUseJIT())
+        return CodeRef::createLLIntCodeRef(llint_native_call_trampoline);
+    JIT jit(vm, 0);
+    return jit.privateCompileCTINativeCall(vm, func);
 }
 
 JIT::JIT(VM* vm, CodeBlock* codeBlock)
@@ -235,8 +244,6 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_get_rest_length)
         DEFINE_OP(op_check_tdz)
         DEFINE_OP(op_assert)
-        DEFINE_OP(op_save)
-        DEFINE_OP(op_resume)
         DEFINE_OP(op_debug)
         DEFINE_OP(op_del_by_id)
         DEFINE_OP(op_del_by_val)
@@ -261,9 +268,8 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_is_undefined)
         DEFINE_OP(op_is_boolean)
         DEFINE_OP(op_is_number)
-        DEFINE_OP(op_is_string)
-        DEFINE_OP(op_is_jsarray)
         DEFINE_OP(op_is_object)
+        DEFINE_OP(op_is_cell_with_type)
         DEFINE_OP(op_jeq_null)
         DEFINE_OP(op_jfalse)
         DEFINE_OP(op_jmp)
@@ -440,7 +446,6 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_get_by_val)
         DEFINE_SLOWCASE_OP(op_instanceof)
         DEFINE_SLOWCASE_OP(op_instanceof_custom)
-        DEFINE_SLOWCASE_OP(op_jfalse)
         DEFINE_SLOWCASE_OP(op_jless)
         DEFINE_SLOWCASE_OP(op_jlesseq)
         DEFINE_SLOWCASE_OP(op_jgreater)
@@ -449,7 +454,6 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_jnlesseq)
         DEFINE_SLOWCASE_OP(op_jngreater)
         DEFINE_SLOWCASE_OP(op_jngreatereq)
-        DEFINE_SLOWCASE_OP(op_jtrue)
         DEFINE_SLOWCASE_OP(op_loop_hint)
         DEFINE_SLOWCASE_OP(op_watchdog)
         DEFINE_SLOWCASE_OP(op_lshift)
@@ -788,7 +792,7 @@ CompilationResult JIT::link()
         patchBuffer,
         ("Baseline JIT code for %s", toCString(CodeBlockWithJITType(m_codeBlock, JITCode::BaselineJIT)).data()));
     
-    m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT.add(
+    m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT->add(
         static_cast<double>(result.size()) /
         static_cast<double>(m_instructions.size()));
 

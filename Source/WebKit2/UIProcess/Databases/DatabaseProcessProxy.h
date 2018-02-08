@@ -43,6 +43,7 @@ namespace WebKit {
 
 class WebProcessPool;
 enum class WebsiteDataType;
+struct WebsiteData;
 
 class DatabaseProcessProxy : public ChildProcessProxy {
 public:
@@ -66,8 +67,6 @@ private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::UI; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Database; }
 
     void didReceiveDatabaseProcessProxyMessage(IPC::Connection&, IPC::Decoder&);
 

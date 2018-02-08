@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2003-2016 Apple Inc.  All rights reserved.
  * Copyright (C) 2005 Nokia.  All rights reserved.
  *               2008 Eric Seidel <eric@webkit.org>
  *
@@ -51,6 +51,11 @@ typedef struct _NSSize NSSize;
 #endif
 #endif // PLATFORM(MAC)
 
+#if PLATFORM(WIN)
+struct D2D_SIZE_F;
+typedef D2D_SIZE_F D2D1_SIZE_F;
+#endif
+
 namespace WebCore {
 
 class IntSize;
@@ -58,7 +63,7 @@ class TextStream;
 
 class FloatSize {
 public:
-    FloatSize() : m_width(0), m_height(0) { }
+    FloatSize() { }
     FloatSize(float width, float height) : m_width(width), m_height(height) { }
     WEBCORE_EXPORT FloatSize(const IntSize&);
 
@@ -129,13 +134,18 @@ public:
 #endif
 
 #if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
-    WEBCORE_EXPORT explicit FloatSize(const NSSize &); // don't do this implicitly since it's lossy
+    WEBCORE_EXPORT explicit FloatSize(const NSSize&); // don't do this implicitly since it's lossy
     operator NSSize() const;
 #endif
 
+#if PLATFORM(WIN)
+    WEBCORE_EXPORT explicit FloatSize(const D2D1_SIZE_F&); // don't do this implicitly since it's lossy
+    operator D2D1_SIZE_F() const;
+#endif
+
 private:
-    float m_width;
-    float m_height;
+    float m_width { 0 };
+    float m_height { 0 };
 };
 
 inline FloatSize& operator+=(FloatSize& a, const FloatSize& b)

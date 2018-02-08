@@ -277,7 +277,7 @@ end
 _handleUncaughtException:
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+    loadp MarkedBlock::m_vm[t3], t3
     restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
     storep 0, VM::callFrameForCatch[t3]
@@ -559,7 +559,7 @@ end
 macro branchIfException(label)
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+    loadp MarkedBlock::m_vm[t3], t3
     btqz VM::m_exception[t3], .noException
     jmp label
 .noException:
@@ -607,30 +607,6 @@ _llint_op_get_scope:
     dispatch(2)
 
 
-_llint_op_create_this:
-    traceExecution()
-    loadisFromInstruction(2, t0)
-    loadp [cfr, t0, 8], t0
-    bbneq JSCell::m_type[t0], JSFunctionType, .opCreateThisSlow
-    loadp JSFunction::m_rareData[t0], t3
-    btpz t3, .opCreateThisSlow
-    loadp FunctionRareData::m_objectAllocationProfile + ObjectAllocationProfile::m_allocator[t3], t1
-    loadp FunctionRareData::m_objectAllocationProfile + ObjectAllocationProfile::m_structure[t3], t2
-    btpz t1, .opCreateThisSlow
-    loadpFromInstruction(4, t3)
-    bpeq t3, 1, .hasSeenMultipleCallee
-    bpneq t3, t0, .opCreateThisSlow
-.hasSeenMultipleCallee:
-    allocateJSObject(t1, t2, t0, t3, .opCreateThisSlow)
-    loadisFromInstruction(1, t1)
-    storeq t0, [cfr, t1, 8]
-    dispatch(5)
-
-.opCreateThisSlow:
-    callOpcodeSlowPath(_slow_path_create_this)
-    dispatch(5)
-
-
 _llint_op_to_this:
     traceExecution()
     loadisFromInstruction(1, t0)
@@ -644,21 +620,6 @@ _llint_op_to_this:
 
 .opToThisSlow:
     callOpcodeSlowPath(_slow_path_to_this)
-    dispatch(4)
-
-
-_llint_op_new_object:
-    traceExecution()
-    loadpFromInstruction(3, t0)
-    loadp ObjectAllocationProfile::m_allocator[t0], t1
-    loadp ObjectAllocationProfile::m_structure[t0], t2
-    allocateJSObject(t1, t2, t0, t3, .opNewObjectSlow)
-    loadisFromInstruction(1, t1)
-    storeq t0, [cfr, t1, 8]
-    dispatch(4)
-
-.opNewObjectSlow:
-    callOpcodeSlowPath(_llint_slow_path_new_object)
     dispatch(4)
 
 
@@ -1185,34 +1146,20 @@ _llint_op_is_number:
     dispatch(3)
 
 
-_llint_op_is_string:
+_llint_op_is_cell_with_type:
     traceExecution()
+    loadisFromInstruction(3, t0)
     loadisFromInstruction(2, t1)
     loadisFromInstruction(1, t2)
-    loadConstantOrVariable(t1, t0)
-    btqnz t0, tagMask, .opIsStringNotCell
-    cbeq JSCell::m_type[t0], StringType, t1
+    loadConstantOrVariable(t1, t3)
+    btqnz t3, tagMask, .notCellCase
+    cbeq JSCell::m_type[t3], t0, t1
     orq ValueFalse, t1
     storeq t1, [cfr, t2, 8]
-    dispatch(3)
-.opIsStringNotCell:
+    dispatch(4)
+.notCellCase:
     storeq ValueFalse, [cfr, t2, 8]
-    dispatch(3)
-
-
-_llint_op_is_jsarray:
-    traceExecution()
-    loadisFromInstruction(2, t1)
-    loadisFromInstruction(1, t2)
-    loadConstantOrVariable(t1, t0)
-    btqnz t0, tagMask, .opIsJSArrayNotCell
-    cbeq JSCell::m_type[t0], ArrayType, t1
-    orq ValueFalse, t1
-    storeq t1, [cfr, t2, 8]
-    dispatch(3)
-.opIsJSArrayNotCell:
-    storeq ValueFalse, [cfr, t2, 8]
-    dispatch(3)
+    dispatch(4)
 
 
 _llint_op_is_object:
@@ -1958,7 +1905,7 @@ _llint_op_catch:
     # and have set VM::targetInterpreterPCForThrow.
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+    loadp MarkedBlock::m_vm[t3], t3
     restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
     storep 0, VM::callFrameForCatch[t3]
@@ -1977,7 +1924,7 @@ _llint_op_catch:
 .isCatchableException:
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+    loadp MarkedBlock::m_vm[t3], t3
 
     loadq VM::m_exception[t3], t0
     storeq 0, VM::m_exception[t3]
@@ -2004,7 +1951,7 @@ _llint_op_end:
 _llint_throw_from_slow_path_trampoline:
     loadp Callee[cfr], t1
     andp MarkedBlockMask, t1
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t1
+    loadp MarkedBlock::m_vm[t1], t1
     copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(t1, t2)
 
     callSlowPath(_llint_slow_path_handle_exception)
@@ -2014,7 +1961,7 @@ _llint_throw_from_slow_path_trampoline:
     # This essentially emulates the JIT's throwing protocol.
     loadp Callee[cfr], t1
     andp MarkedBlockMask, t1
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t1
+    loadp MarkedBlock::m_vm[t1], t1
     jmp VM::targetMachinePCForThrow[t1]
 
 
@@ -2029,7 +1976,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     storep 0, CodeBlock[cfr]
     loadp Callee[cfr], t0
     andp MarkedBlockMask, t0, t1
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t1], t1
+    loadp MarkedBlock::m_vm[t1], t1
     storep cfr, VM::topCallFrame[t1]
     if ARM64 or C_LOOP
         storep lr, ReturnPC[cfr]
@@ -2051,7 +1998,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     end
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_weakSet + WeakSet::m_vm[t3], t3
+    loadp MarkedBlock::m_vm[t3], t3
 
     functionEpilogue()
 

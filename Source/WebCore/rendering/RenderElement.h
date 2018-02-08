@@ -161,6 +161,11 @@ public:
     bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
     bool hasClipPath() const { return style().clipPath(); }
     bool hasHiddenBackface() const { return style().backfaceVisibility() == BackfaceVisibilityHidden; }
+    bool hasOutlineAnnotation() const;
+    bool hasOutline() const { return style().hasOutline() || hasOutlineAnnotation(); }
+    bool hasSelfPaintingLayer() const;
+
+    bool checkForRepaintDuringLayout() const;
 
     // anchorRect() is conceptually similar to absoluteBoundingBoxRect(), but is intended for scrolling to an anchor.
     // For inline renderers, this gets the logical top left of the first leaf child and the logical bottom right of the
@@ -176,6 +181,7 @@ public:
         return false;
 #endif
     }
+
 
 #if ENABLE(CSS_COMPOSITING)
     bool hasBlendMode() const { return style().hasBlendMode(); }
@@ -220,6 +226,11 @@ public:
 #endif
     RenderBlock* containingBlockForFixedPosition() const;
     RenderBlock* containingBlockForAbsolutePosition() const;
+
+    RespectImageOrientationEnum shouldRespectImageOrientation() const;
+
+    void removeFromRenderFlowThread();
+    void invalidateFlowThreadContainingBlockIncludingDescendants(RenderFlowThread* = nullptr);
 
 protected:
     enum BaseTypeFlag {
@@ -276,6 +287,8 @@ protected:
     void paintOutline(PaintInfo&, const LayoutRect&);
     void updateOutlineAutoAncestor(bool hasOutlineAuto);
 
+    void removeFromRenderFlowThreadIncludingDescendants(bool shouldUpdateState);
+
 private:
     RenderElement(ContainerNode&, RenderStyle&&, BaseTypeFlags);
     void node() const = delete;
@@ -331,8 +344,6 @@ private:
     unsigned m_renderBlockShouldForceRelayoutChildren : 1;
     unsigned m_renderBlockFlowHasMarkupTruncation : 1;
     unsigned m_renderBlockFlowLineLayoutPath : 2;
-
-    VisibleInViewportState m_visibleInViewportState { VisibilityUnknown };
 
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;

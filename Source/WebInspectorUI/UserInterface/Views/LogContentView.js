@@ -287,7 +287,9 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             return;
         }
 
-        this._logViewController.startNewSession();
+        const isFirstSession = false;
+        const newSessionReason = event.data.wasReloaded ? WebInspector.ConsoleSession.NewSessionReason.PageReloaded : WebInspector.ConsoleSession.NewSessionReason.PageNavigated;
+        this._logViewController.startNewSession(isFirstSession, {newSessionReason, timestamp: event.data.timestamp});
 
         this._clearProvisionalState();
     }
@@ -296,7 +298,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
     {
         var messageLevel;
 
-        switch(level) {
+        switch (level) {
         case WebInspector.ConsoleMessage.MessageLevel.Warning:
             messageLevel = WebInspector.LogContentView.Scopes.Warnings;
             break;
@@ -680,7 +682,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
     _scopeBarSelectionDidChange(event)
     {
         var item = this._scopeBar.selectedItems[0];
-        
+
         if (item.id === WebInspector.LogContentView.Scopes.All) {
             for (var item of this._scopeBar.items)
                 item.element.classList.remove("unread");
@@ -850,6 +852,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             if (this._isMessageVisible(messages[i]))
                 return messages[i];
         }
+        return null;
     }
 
     _nextMessage(message)
@@ -859,6 +862,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             if (this._isMessageVisible(messages[i]))
                 return messages[i];
         }
+        return null;
     }
 
     _clearFocusableChildren()
@@ -914,7 +918,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             var match = searchRegex.exec(text);
             while (match) {
                 numberOfResults++;
-                matchRanges.push({ offset: match.index, length: match[0].length });
+                matchRanges.push({offset: match.index, length: match[0].length});
                 match = searchRegex.exec(text);
             }
 

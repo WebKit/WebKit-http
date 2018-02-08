@@ -48,8 +48,7 @@ enum EndOfStreamError {
 
     [SetterRaisesException] attribute unrestricted double duration;
 
-    // FIXME: type should not be nullable.
-    [RaisesException] SourceBuffer addSourceBuffer(DOMString? type);
+    [RaisesException] SourceBuffer addSourceBuffer(DOMString type);
     [RaisesException] void removeSourceBuffer(SourceBuffer buffer);
 
     readonly attribute DOMString readyState;
@@ -57,4 +56,11 @@ enum EndOfStreamError {
     [RaisesException] void endOfStream(optional EndOfStreamError error);
 
     static boolean isTypeSupported (DOMString type);
+
+    [RaisesException] void setLiveSeekableRange(double start, double end);
+    [RaisesException] void clearLiveSeekableRange();
+
+    attribute EventHandler onsourceopen;
+    attribute EventHandler onsourceended;
+    attribute EventHandler onsourceclose;
 };

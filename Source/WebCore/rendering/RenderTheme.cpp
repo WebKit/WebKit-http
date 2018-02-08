@@ -253,6 +253,10 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
 #endif
     case CapsLockIndicatorPart:
         return adjustCapsLockIndicatorStyle(styleResolver, style, element);
+#if ENABLE(APPLE_PAY)
+    case ApplePayButtonPart:
+        return adjustApplePayButtonStyle(styleResolver, style, element);
+#endif
 #if ENABLE(ATTACHMENT_ELEMENT)
     case AttachmentPart:
         return adjustAttachmentStyle(styleResolver, style, element);
@@ -401,6 +405,10 @@ bool RenderTheme::paint(const RenderBox& box, ControlStates& controlStates, cons
 #endif
     case CapsLockIndicatorPart:
         return paintCapsLockIndicator(box, paintInfo, integralSnappedRect);
+#if ENABLE(APPLE_PAY)
+    case ApplePayButtonPart:
+        return paintApplePayButton(box, paintInfo, integralSnappedRect);
+#endif
 #if ENABLE(ATTACHMENT_ELEMENT)
     case AttachmentPart:
         return paintAttachment(box, paintInfo, integralSnappedRect);
@@ -1335,5 +1343,15 @@ String RenderTheme::fileListNameForWidth(const FileList* fileList, const FontCas
 
     return StringTruncator::centerTruncate(string, width, font);
 }
+
+#if ENABLE(TOUCH_EVENTS)
+Color RenderTheme::platformTapHighlightColor() const
+{
+    // This color is expected to be drawn on a semi-transparent overlay,
+    // making it more transparent than its alpha value indicates.
+    static NeverDestroyed<const Color> defaultTapHighlightColor = Color(0, 0, 0, 102);
+    return defaultTapHighlightColor;
+}
+#endif
 
 } // namespace WebCore

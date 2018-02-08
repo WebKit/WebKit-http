@@ -69,6 +69,10 @@
 #include "StringUtilities.h"
 #endif
 
+#if PLATFORM(GTK)
+#include "PasteboardContent.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -338,5 +342,23 @@ long WebPlatformStrategies::changeCount()
 #endif // PLATFORM(IOS)
 
 #endif // PLATFORM(COCOA)
+
+#if PLATFORM(GTK)
+// PasteboardStrategy
+
+void WebPlatformStrategies::writeToClipboard(const String& pasteboardName, const DataObjectGtk& dataObject)
+{
+    PasteboardContent pasteboardContent(dataObject);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteToClipboard(pasteboardName, pasteboardContent), 0);
+}
+
+Ref<DataObjectGtk> WebPlatformStrategies::readFromClipboard(const String& pasteboardName)
+{
+    PasteboardContent pasteboardContent;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadFromClipboard(pasteboardName), Messages::WebPasteboardProxy::ReadFromClipboard::Reply(pasteboardContent), 0);
+    return WTFMove(pasteboardContent.dataObject);
+}
+
+#endif // PLATFORM(GTK)
 
 } // namespace WebKit

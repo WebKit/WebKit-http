@@ -123,7 +123,6 @@
 #include "StyleCachedImage.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
-#include "StylePendingImage.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
 #include "StyleRule.h"
@@ -190,7 +189,6 @@ inline void StyleResolver::State::clear()
     m_parentStyle = nullptr;
     m_ownedParentStyle = nullptr;
     m_regionForStyling = nullptr;
-    m_pendingResources = nullptr;
     m_cssToLengthConversionData = CSSToLengthConversionData();
 }
 
@@ -311,7 +309,8 @@ void StyleResolver::addKeyframeStyle(Ref<StyleRuleKeyframes>&& rule)
 
 StyleResolver::~StyleResolver()
 {
-    RELEASE_ASSERT(!m_inLoadPendingImages);
+    RELEASE_ASSERT(!m_isDeleted);
+    m_isDeleted = true;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     m_viewportStyleResolver->clearDocument();
@@ -379,13 +378,6 @@ void StyleResolver::State::setParentStyle(std::unique_ptr<RenderStyle> parentSty
     m_parentStyle = m_ownedParentStyle.get();
 }
 
-Style::PendingResources& StyleResolver::State::ensurePendingResources()
-{
-    if (!m_pendingResources)
-        m_pendingResources = std::make_unique<Style::PendingResources>();
-    return *m_pendingResources;
-}
-
 static inline bool isAtShadowBoundary(const Element& element)
 {
     auto* parentNode = element.parentNode();
@@ -394,7 +386,7 @@ static inline bool isAtShadowBoundary(const Element& element)
 
 ElementStyle StyleResolver::styleForElement(const Element& element, const RenderStyle* parentStyle, RuleMatchingBehavior matchingBehavior, const RenderRegion* regionForStyling, const SelectorFilter* selectorFilter)
 {
-    RELEASE_ASSERT(!m_inLoadPendingImages);
+    RELEASE_ASSERT(!m_isDeleted);
 
     m_state = State(element, parentStyle, m_overrideDocumentElementStyle, regionForStyling, selectorFilter);
     State& state = m_state;
@@ -455,7 +447,7 @@ ElementStyle StyleResolver::styleForElement(const Element& element, const Render
 
 std::unique_ptr<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* elementStyle, const StyleKeyframe* keyframe, KeyframeValue& keyframeValue)
 {
-    RELEASE_ASSERT(!m_inLoadPendingImages);
+    RELEASE_ASSERT(!m_isDeleted);
 
     MatchResult result;
     result.addMatchedProperties(keyframe->properties());
@@ -495,16 +487,13 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* 
 
     adjustRenderStyle(*state.style(), *state.parentStyle(), nullptr);
 
-    // Start loading resources referenced by this style.
-    loadPendingResources();
-    
     // Add all the animating properties to the keyframe.
     unsigned propertyCount = keyframe->properties().propertyCount();
     for (unsigned i = 0; i < propertyCount; ++i) {
         CSSPropertyID property = keyframe->properties().propertyAt(i).id();
         // Timing-function within keyframes is special, because it is not animated; it just
         // describes the timing function between this keyframe and the next.
-        if (property != CSSPropertyWebkitAnimationTimingFunction && property != CSSPropertyAnimationTimingFunction)
+        if (property != CSSPropertyAnimationTimingFunction)
             keyframeValue.addProperty(property);
     }
 
@@ -651,16 +640,13 @@ std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element&
     if (state.style()->hasViewportUnits())
         document().setHasStyleWithViewportUnits();
 
-    // Start loading resources referenced by this style.
-    loadPendingResources();
-
     // Now return the style.
     return state.takeStyle();
 }
 
 std::unique_ptr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
 {
-    RELEASE_ASSERT(!m_inLoadPendingImages);
+    RELEASE_ASSERT(!m_isDeleted);
 
     auto* documentElement = m_document.documentElement();
     if (!documentElement)
@@ -694,9 +680,6 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     applyCascadedProperties(cascade, firstLowPriorityProperty, lastCSSProperty, &result);
 
     cascade.applyDeferredProperties(*this, &result);
-
-    // Start loading resources referenced by this style.
-    loadPendingResources();
 
     // Now return the style.
     return m_state.takeStyle();
@@ -1186,8 +1169,7 @@ static bool elementTypeHasAppearanceFromUAStyle(const Element& element)
         || localName == HTMLNames::buttonTag
         || localName == HTMLNames::progressTag
         || localName == HTMLNames::selectTag
-        || localName == HTMLNames::meterTag
-        || localName == HTMLNames::isindexTag;
+        || localName == HTMLNames::meterTag;
 }
 
 unsigned StyleResolver::computeMatchedPropertiesHash(const MatchedProperties* properties, unsigned size)
@@ -1422,9 +1404,6 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
     // so to preserve behavior, we queue them up during cascade and flush here.
     cascade.applyDeferredProperties(*this, &matchResult);
 
-    // Start loading resources referenced by this style.
-    loadPendingResources();
-    
     ASSERT(!state.fontDirty());
     
     if (cacheItem || !cacheHash)
@@ -1701,62 +1680,23 @@ RefPtr<CSSValue> StyleResolver::resolvedVariableValue(CSSPropertyID propID, cons
     return parser.parseVariableDependentValue(propID, value, m_state.style()->customProperties(), m_state.style()->direction(), m_state.style()->writingMode());
 }
 
-RefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValue& value)
+RefPtr<StyleImage> StyleResolver::styleImage(CSSValue& value)
 {
-    if (is<CSSImageValue>(value))
-        return cachedOrPendingFromValue(property, downcast<CSSImageValue>(value));
-
     if (is<CSSImageGeneratorValue>(value)) {
         if (is<CSSGradientValue>(value))
-            return generatedOrPendingFromValue(property, *downcast<CSSGradientValue>(value).gradientWithStylesResolved(this));
-        return generatedOrPendingFromValue(property, downcast<CSSImageGeneratorValue>(value));
+            return StyleGeneratedImage::create(*downcast<CSSGradientValue>(value).gradientWithStylesResolved(this));
+
+        if (is<CSSFilterImageValue>(value)) {
+            // FilterImage needs to calculate FilterOperations.
+            downcast<CSSFilterImageValue>(value).createFilterOperations(this);
+        }
+        return StyleGeneratedImage::create(downcast<CSSImageGeneratorValue>(value));
     }
 
-    if (is<CSSImageSetValue>(value))
-        return setOrPendingFromValue(property, downcast<CSSImageSetValue>(value));
-
-    if (is<CSSCursorImageValue>(value))
-        return cursorOrPendingFromValue(property, downcast<CSSCursorImageValue>(value));
+    if (is<CSSImageValue>(value) || is<CSSImageSetValue>(value) || is<CSSCursorImageValue>(value))
+        return StyleCachedImage::create(value);
 
     return nullptr;
-}
-
-Ref<StyleImage> StyleResolver::cachedOrPendingFromValue(CSSPropertyID property, CSSImageValue& value)
-{
-    Ref<StyleImage> image = value.cachedOrPendingImage();
-    if (image->isPendingImage())
-        m_state.ensurePendingResources().pendingImages.set(property, &value);
-    return image;
-}
-
-Ref<StyleImage> StyleResolver::generatedOrPendingFromValue(CSSPropertyID property, CSSImageGeneratorValue& value)
-{
-    if (is<CSSFilterImageValue>(value)) {
-        // FilterImage needs to calculate FilterOperations.
-        downcast<CSSFilterImageValue>(value).createFilterOperations(this);
-    }
-
-    if (value.isPending()) {
-        m_state.ensurePendingResources().pendingImages.set(property, &value);
-        return StylePendingImage::create(&value);
-    }
-    return StyleGeneratedImage::create(value);
-}
-
-RefPtr<StyleImage> StyleResolver::setOrPendingFromValue(CSSPropertyID property, CSSImageSetValue& value)
-{
-    RefPtr<StyleImage> image = value.cachedOrPendingImageSet(document());
-    if (image && image->isPendingImage())
-        m_state.ensurePendingResources().pendingImages.set(property, &value);
-    return image;
-}
-
-RefPtr<StyleImage> StyleResolver::cursorOrPendingFromValue(CSSPropertyID property, CSSCursorImageValue& value)
-{
-    RefPtr<StyleImage> image = value.cachedOrPendingImage(document());
-    if (image && image->isPendingImage())
-        m_state.ensurePendingResources().pendingImages.set(property, &value);
-    return image;
 }
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)
@@ -1993,9 +1933,6 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             URL url = m_state.document().completeURL(cssUrl);
 
             RefPtr<ReferenceFilterOperation> operation = ReferenceFilterOperation::create(cssUrl, url.fragmentIdentifier());
-            if (SVGURIReference::isExternalURIReference(cssUrl, m_state.document()))
-                state.ensurePendingResources().pendingSVGFilters.append(operation);
-
             operations.operations().append(operation);
             continue;
         }
@@ -2092,19 +2029,6 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
 
     outOperations = operations;
     return true;
-}
-
-void StyleResolver::loadPendingResources()
-{
-    ASSERT(style());
-    if (!style())
-        return;
-
-    RELEASE_ASSERT(!m_inLoadPendingImages);
-    TemporaryChange<bool> changeInLoadPendingImages(m_inLoadPendingImages, true);
-
-    if (auto pendingResources = state().takePendingResources())
-        Style::loadPendingResources(*pendingResources, document(), *style(), m_state.element());
 }
 
 inline StyleResolver::MatchedProperties::MatchedProperties()

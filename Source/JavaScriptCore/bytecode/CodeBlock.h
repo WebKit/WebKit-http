@@ -33,7 +33,6 @@
 #include "ArrayProfile.h"
 #include "ByValInfo.h"
 #include "BytecodeConventions.h"
-#include "BytecodeLivenessAnalysis.h"
 #include "CallLinkInfo.h"
 #include "CallReturnOffsetToBytecodeOffset.h"
 #include "CodeBlockHash.h"
@@ -79,8 +78,8 @@
 
 namespace JSC {
 
+class BytecodeLivenessAnalysis;
 class ExecState;
-class JITAddGenerator;
 class JSModuleEnvironment;
 class LLIntOffsetsExtractor;
 class PCToCodeOriginMap;
@@ -226,10 +225,6 @@ public:
         return index >= m_numVars;
     }
 
-    enum class RequiredHandler {
-        CatchHandler,
-        AnyHandler
-    };
     HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler = RequiredHandler::AnyHandler);
     HandlerInfo* handlerForIndex(unsigned, RequiredHandler = RequiredHandler::AnyHandler);
     void removeExceptionHandlerForCallSite(CallSiteIndex);
@@ -297,12 +292,17 @@ public:
     {
         return m_jitCodeMap.get();
     }
+    
+    static void clearLLIntGetByIdCache(Instruction*);
 
     unsigned bytecodeOffset(Instruction* returnAddress)
     {
         RELEASE_ASSERT(returnAddress >= instructions().begin() && returnAddress < instructions().end());
         return static_cast<Instruction*>(returnAddress) - instructions().begin();
     }
+
+    typedef JSC::Instruction Instruction;
+    typedef RefCountedArray<Instruction>& UnpackedInstructions;
 
     unsigned numberOfInstructions() const { return m_instructions.size(); }
     RefCountedArray<Instruction>& instructions() { return m_instructions; }
@@ -546,7 +546,7 @@ public:
     }
 
     WriteBarrier<Unknown>& constantRegister(int index) { return m_constantRegisters[index - FirstConstantRegisterIndex]; }
-    ALWAYS_INLINE bool isConstantRegisterIndex(int index) const { return index >= FirstConstantRegisterIndex; }
+    static ALWAYS_INLINE bool isConstantRegisterIndex(int index) { return index >= FirstConstantRegisterIndex; }
     ALWAYS_INLINE JSValue getConstant(int index) const { return m_constantRegisters[index - FirstConstantRegisterIndex].get(); }
     ALWAYS_INLINE SourceCodeRepresentation constantSourceCodeRepresentation(int index) const { return m_constantsSourceCodeRepresentation[index - FirstConstantRegisterIndex]; }
 
@@ -592,14 +592,7 @@ public:
             if (!!m_livenessAnalysis)
                 return *m_livenessAnalysis;
         }
-        std::unique_ptr<BytecodeLivenessAnalysis> analysis =
-            std::make_unique<BytecodeLivenessAnalysis>(this);
-        {
-            ConcurrentJITLocker locker(m_lock);
-            if (!m_livenessAnalysis)
-                m_livenessAnalysis = WTFMove(analysis);
-            return *m_livenessAnalysis;
-        }
+        return livenessAnalysisSlow();
     }
     
     void validate();
@@ -619,18 +612,6 @@ public:
     size_t numberOfStringSwitchJumpTables() const { return m_rareData ? m_rareData->m_stringSwitchJumpTables.size() : 0; }
     StringJumpTable& addStringSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_stringSwitchJumpTables.append(StringJumpTable()); return m_rareData->m_stringSwitchJumpTables.last(); }
     StringJumpTable& stringSwitchJumpTable(int tableIndex) { RELEASE_ASSERT(m_rareData); return m_rareData->m_stringSwitchJumpTables[tableIndex]; }
-
-    // Live callee registers at yield points.
-    const FastBitVector& liveCalleeLocalsAtYield(unsigned index) const
-    {
-        RELEASE_ASSERT(m_rareData);
-        return m_rareData->m_liveCalleeLocalsAtYield[index];
-    }
-    FastBitVector& liveCalleeLocalsAtYield(unsigned index)
-    {
-        RELEASE_ASSERT(m_rareData);
-        return m_rareData->m_liveCalleeLocalsAtYield[index];
-    }
 
     EvalCodeCache& evalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_evalCodeCache; }
 
@@ -886,8 +867,6 @@ public:
         Vector<SimpleJumpTable> m_switchJumpTables;
         Vector<StringJumpTable> m_stringSwitchJumpTables;
 
-        Vector<FastBitVector> m_liveCalleeLocalsAtYield;
-
         EvalCodeCache m_evalCodeCache;
     };
 
@@ -922,6 +901,8 @@ protected:
 
 private:
     friend class CodeBlockSet;
+
+    BytecodeLivenessAnalysis& livenessAnalysisSlow();
     
     CodeBlock* specialOSREntryBlockOrNull();
     
@@ -1302,14 +1283,6 @@ private:
     static void destroy(JSCell*);
 };
 #endif
-
-inline void clearLLIntGetByIdCache(Instruction* instruction)
-{
-    instruction[0].u.opcode = LLInt::getOpcode(op_get_by_id);
-    instruction[4].u.pointer = nullptr;
-    instruction[5].u.pointer = nullptr;
-    instruction[6].u.pointer = nullptr;
-}
 
 inline Register& ExecState::r(int index)
 {

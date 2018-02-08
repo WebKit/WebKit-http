@@ -31,12 +31,15 @@
 #define Interpreter_h
 
 #include "ArgList.h"
+#include "CatchScope.h"
 #include "JSCJSValue.h"
 #include "JSCell.h"
 #include "JSObject.h"
 #include "Opcode.h"
 #include "SourceProvider.h"
 #include "StackAlignment.h"
+#include "StackFrame.h"
+#include "ThrowScope.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -65,8 +68,9 @@ namespace JSC {
     struct HandlerInfo;
     struct Instruction;
     struct ProtoCallFrame;
+    struct UnlinkedInstruction;
 
-    enum UnwindStart { UnwindFromCurrentFrame, UnwindFromCallerFrame };
+    enum UnwindStart : uint8_t { UnwindFromCurrentFrame, UnwindFromCallerFrame };
 
     enum DebugHookID {
         WillExecuteProgram,
@@ -85,27 +89,14 @@ namespace JSC {
         StackFrameNativeCode
     };
 
-    struct StackFrame {
-        Strong<JSObject> callee;
-        Strong<CodeBlock> codeBlock;
-        unsigned bytecodeOffset;
-
-        bool isNative() const { return !codeBlock; }
-
-        void computeLineAndColumn(unsigned& line, unsigned& column) const;
-        String functionName(VM&) const;
-        intptr_t sourceID() const;
-        String sourceURL() const;
-        String toString(VM&) const;
-    };
-
     class SuspendExceptionScope {
     public:
         SuspendExceptionScope(VM* vm)
             : m_vm(vm)
         {
-            oldException = vm->exception();
-            vm->clearException();
+            auto scope = DECLARE_CATCH_SCOPE(*vm);
+            oldException = scope.exception();
+            scope.clearException();
         }
         ~SuspendExceptionScope()
         {
@@ -207,7 +198,10 @@ namespace JSC {
             return opcode;
 #endif
         }
-        
+
+        OpcodeID getOpcodeID(const Instruction&);
+        OpcodeID getOpcodeID(const UnlinkedInstruction&);
+
         bool isOpcode(Opcode);
 
         JSValue execute(ProgramExecutable*, CallFrame*, JSObject* thisObj);

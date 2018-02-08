@@ -196,6 +196,16 @@
         }
     },
     {
+        "name": "Intersection Observer",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "https://wicg.github.io/IntersectionObserver/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=159475",
+        "keywords": ["intersection", "intersection observer"],
+        "description": "An API that can be used to understand the visibility and position of DOM elements relative to a containing element or to the top-level viewport."
+    },
+    {
         "name": "Preload",
         "status": {
             "status": "In Development",
@@ -247,6 +257,21 @@
         "url": "https://streams.spec.whatwg.org",
         "keywords": ["streams api"],
         "category": "webapps"
+    },
+    {
+        "name": "User Timing",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "http://www.w3.org/TR/user-timing/",
+        "keywords": ["usertiming","user timing"],
+        "description": "Provides high precision timestamp marking APIs.",
+        "contact": {
+            "name": "Jonathan Davis",
+            "email": "web-evangelist@apple.com",
+            "twitter": "@jonathandavis"
+        }
     },
     {
         "name": "WOFF File Format 2.0",

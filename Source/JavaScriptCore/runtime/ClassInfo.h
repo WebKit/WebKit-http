@@ -25,7 +25,6 @@
 
 #include "CallFrame.h"
 #include "ConstructData.h"
-#include "CopyToken.h"
 #include "JSCell.h"
 
 namespace JSC {
@@ -40,9 +39,6 @@ struct MethodTable {
 
     typedef void (*VisitChildrenFunctionPtr)(JSCell*, SlotVisitor&);
     VisitChildrenFunctionPtr visitChildren;
-
-    typedef void (*CopyBackingStoreFunctionPtr)(JSCell*, CopyVisitor&, CopyToken);
-    CopyBackingStoreFunctionPtr copyBackingStore;
 
     typedef CallType (*GetCallDataFunctionPtr)(JSCell*, CallData&);
     GetCallDataFunctionPtr getCallData;
@@ -91,6 +87,9 @@ struct MethodTable {
 
     typedef String (*ClassNameFunctionPtr)(const JSObject*);
     ClassNameFunctionPtr className;
+
+    typedef String (*ToStringNameFunctionPtr)(const JSObject*, ExecState*);
+    ToStringNameFunctionPtr toStringName;
 
     typedef bool (*CustomHasInstanceFunctionPtr)(JSObject*, ExecState*, JSValue);
     CustomHasInstanceFunctionPtr customHasInstance;
@@ -148,7 +147,6 @@ struct MethodTable {
 #define CREATE_METHOD_TABLE(ClassName) { \
         &ClassName::destroy, \
         &ClassName::visitChildren, \
-        &ClassName::copyBackingStore, \
         &ClassName::getCallData, \
         &ClassName::getConstructData, \
         &ClassName::put, \
@@ -166,6 +164,7 @@ struct MethodTable {
         &ClassName::getStructurePropertyNames, \
         &ClassName::getGenericPropertyNames, \
         &ClassName::className, \
+        &ClassName::toStringName, \
         &ClassName::customHasInstance, \
         &ClassName::defineOwnProperty, \
         &ClassName::slowDownAndWasteMemory, \

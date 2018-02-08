@@ -1,3 +1,237 @@
+2016-09-20  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WinCairo] Use find_package cairo in build
+        https://bugs.webkit.org/show_bug.cgi?id=162239
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/FindCairo.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2016-09-19  Daniel Bates  <dabates@apple.com>
+
+        Remove ENABLE(TEXT_AUTOSIZING) automatic text size adjustment code
+        https://bugs.webkit.org/show_bug.cgi?id=162167
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-09-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Make ENABLE_THREADED_COMPOSITOR a public option
+        https://bugs.webkit.org/show_bug.cgi?id=162148
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-09-18  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        [EFL] Bump efl library to 1.18.1
+        https://bugs.webkit.org/show_bug.cgi?id=162120
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsEfl.cmake: Use efl-1.18.1 instead of 1.18.
+
+2016-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [CMake] Build broken with current debian testing
+        https://bugs.webkit.org/show_bug.cgi?id=162054
+
+        Reviewed by Žan Doberšek.
+
+        Building WTR bindings is broken now in Debian testing. The reason is that '.' is no longer included in @INC for
+        perl, see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=588017 and
+        https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2016-1238.
+
+        * Source/cmake/WebKitMacros.cmake(GENERATE_BINDINGS): Pass also the given BASE_DIR to perl executable so that it
+        can find modules in the current directory even if '.' is not in @INC. Also include generators in BASE_DIR to the
+        list of dependencies.
+
+2016-09-15  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] Refactor GENERATE_BINDINGS
+        https://bugs.webkit.org/show_bug.cgi?id=161854
+
+        Reviewed by Gyuyoung Kim.
+
+        * Source/cmake/WebKitMacros.cmake(GENERATE_BINDINGS): Use
+        CMakeParseArguments for argument parsing.  Defined as a function
+        instread of a macro because function has its own variable scope.
+        Wrapped both preprocess-idls.pl and generate-bindings.pl scripts.
+        Downcased local variables COMMON_GENERATOR_DEPENDENCIES and
+        BINDING_GENERATOR. Generate idl_files.tmp. Removed arguments
+        _prefix and _extension because they are always JS and cpp now.
+
+2016-09-08  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Build failure with GCC 6 (fatal error: stdlib.h: No such file or directory)
+        https://bugs.webkit.org/show_bug.cgi?id=161697
+
+        Reviewed by Michael Catanzaro.
+
+        Get the list of system includes from GCC and add it to the CMake
+        list of implicit includes. This way, CMake will filter any of this
+        directories from the list of includes when calling the compiler.
+
+        This avoids an issue with GCC 6 that causes build failures when
+        including the default include path as a system include (-isystem).
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2016-09-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [EFL] Switch to ENABLE_NETWORK_CACHE
+        https://bugs.webkit.org/show_bug.cgi?id=152676
+
+        Reviewed by Alex Christensen.
+
+        Build with -Wno-error=missing-field-initializers to avoid spurious build failures.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2016-09-07  Youenn Fablet  <youenn@apple.com>
+
+        [Streams API] Separate compile flag for ReadableStream and WritableStream
+        https://bugs.webkit.org/show_bug.cgi?id=161044
+
+        Reviewed by Alex Christensen.
+
+        Moving from STREAMS_API to READABLESTREAM_API and WRITABLESTREAM_API compilation flags.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+
+2016-09-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] Decouple generating bindings of WebCore and WebCoreTestSupport
+        https://bugs.webkit.org/show_bug.cgi?id=161474
+
+        Generating bindings of WebCore and WebCoreTestSupport shares a
+        single supplementalDependencyFile.  But, nothing supplements any
+        IDL of WebCoreTestSupport.  This introduces unnecessary
+        dependencies.
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+        (GENERATE_BINDINGS): Clear uninitialized variables before
+        use. This causes a problem in the second time of calling
+        GENERATE_BINDINGS.
+
+2016-09-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r205415.
+        https://bugs.webkit.org/show_bug.cgi?id=161573
+
+        Many bots see inspector test failures, rolling out now and
+        investigating later. (Requested by brrian on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: unify Main.html and Test.html sources and
+        generate different copies with the preprocessor"
+        https://bugs.webkit.org/show_bug.cgi?id=161212
+        http://trac.webkit.org/changeset/205415
+
+2016-09-01  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: unify Main.html and Test.html sources and generate different copies with the preprocessor
+        https://bugs.webkit.org/show_bug.cgi?id=161212
+        <rdar://problem/28017961>
+
+        Reviewed by Joseph Pecoraro.
+
+        Rearrange some CMake rules so most Inspector UI work is done in WebInspectorUI.
+
+        * Source/CMakeLists.txt: Add 'WebInspectorUI' subdirectory.
+        * Source/PlatformEfl.cmake:
+        - Move the rule to copy InspectorBackendCommands.js into WebInspectorUI/CMakeLists.txt.
+        - Add a FIXME to use the cross-port list of Inspector resources instead of copying everything.
+        - Add new dependency so generated WebInspectorUI files are made by web-inspector-resources.
+        - Copy over generated files Main.html and Test.html.
+
+        * Source/PlatformWin.cmake:
+        - Add a FIXME to use the cross-port list of Inspector resources instead of copying everything.
+        - Add new dependency so generated WebInspectorUI files are made by web-inspector-resources.
+        - Copy over generated files Main.html and Test.html.
+
+        * Source/cmake/WebKitFS.cmake:
+        - Set up WEBINSPECTORUI_DIR and use it.
+        - Move directory creation commands here from JavaScriptCore.
+
+        * Source/cmake/WebKitMacros.cmake:
+        Add a helper to turn a CMake list into a space-delimited string of elements.
+
+2016-09-01  Brian Burg  <bburg@apple.com>
+
+        Update root .gitignore for latest WebKitLibraries
+        https://bugs.webkit.org/show_bug.cgi?id=161501
+
+        Reviewed by Alex Christensen.
+
+        * .gitignore:
+
+2016-08-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move GObject DOM bindings to WebKit2 layer and stop auto generating them
+        https://bugs.webkit.org/show_bug.cgi?id=161438
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/PlatformGTK.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-08-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Bump GTK+ versions numbers.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-08-30  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] bump required version to 1.2.3
+        https://bugs.webkit.org/show_bug.cgi?id=159667
+
+        Reviewed by Xabier Rodriguez Calvar.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2016-08-29  Per Arne Vollan  <pvollan@apple.com>
+
+        Attempt to fix WinCairo build after r205090.
+
+        Unreviewed build fix.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2016-08-27  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Enable 'warning as error' compiler setting.
+        https://bugs.webkit.org/show_bug.cgi?id=161243
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2016-08-26  Jer Noble  <jer.noble@apple.com>
+
+        Add a test harness for running UI tests on the iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=161265
+
+        Add the new MobileMiniBrowser project to the WebKit workspace.
+
+        Reviewed by Simon Fraser.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+
 2016-08-24  Alexey Proskuryakov  <ap@apple.com>
 
         Add svn:global-ignores to the root to ignore *.pyc files everythere in the repository.

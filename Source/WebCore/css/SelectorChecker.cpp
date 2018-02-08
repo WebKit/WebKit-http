@@ -452,7 +452,15 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
 
             return MatchResult::updateWithMatchType(result, matchType);
         }
+    
+    case CSSSelector::ShadowPseudo:
+    case CSSSelector::ShadowDeep:
+    case CSSSelector::ShadowSlot:
+        // FIXME-NEWPARSER: Have to implement these.
+        ASSERT_NOT_REACHED();
+        return MatchResult::fails(Match::SelectorFailsCompletely);
     }
+
 
     ASSERT_NOT_REACHED();
     return MatchResult::fails(Match::SelectorFailsCompletely);
@@ -982,13 +990,13 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
             }
             break;
         case CSSSelector::PseudoClassEnabled:
-            return isEnabled(element);
+            return matchesEnabledPseudoClass(element);
         case CSSSelector::PseudoClassFullPageMedia:
             return isMediaDocument(element);
         case CSSSelector::PseudoClassDefault:
             return matchesDefaultPseudoClass(element);
         case CSSSelector::PseudoClassDisabled:
-            return isDisabled(element);
+            return matchesDisabledPseudoClass(element);
         case CSSSelector::PseudoClassReadOnly:
             return matchesReadOnlyPseudoClass(element);
         case CSSSelector::PseudoClassReadWrite:

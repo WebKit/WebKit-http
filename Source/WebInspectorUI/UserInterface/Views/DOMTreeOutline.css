@@ -26,9 +26,9 @@
 .tree-outline.dom {
     position: relative;
 
-    padding: 0 6px;
-    margin: 0;
     min-width: 100%;
+    margin: 0;
+    padding: 0;
 
     outline: none;
 
@@ -48,7 +48,7 @@
     left: 0;
     right: 0;
     height: 15px;
-    z-index: 10;
+    z-index: -1;
 }
 
 .tree-outline.dom li.selected .selection-area {
@@ -62,11 +62,6 @@
 
 .tree-outline.dom:focus li.selected .selection-area {
     background-color: hsl(209, 100%, 49%);
-}
-
-.tree-outline.dom li > span {
-    position: relative;
-    z-index: 20;
 }
 
 .tree-outline.dom li.selected > span::after {
@@ -105,7 +100,7 @@
 }
 
 .tree-outline.dom li {
-    padding: 0 0 0 17px;
+    padding: 0 6px 0 17px;
     word-wrap: break-word;
 }
 
@@ -186,8 +181,24 @@
     color: hsl(0, 59%, 41%);
 }
 
-.tree-outline.dom .html-fragment.shadow {
+.tree-outline.dom .shadow {
     color: gray;
+}
+
+/* Cannot apply styling directly to the parent element since it has a disclosure triangle. */
+.tree-outline.dom li.parent.shadow::after {
+    display: block;
+    /* Adds padding to the right edge. */
+    width: calc(100% + 8px);
+    height: 1.2em;
+    margin-top: -13px;
+    margin-left: -2px;
+    content: "";
+    background-color: hsla(0, 0%, 90%, 0.5);
+}
+
+.tree-outline.dom li.parent.shadow + ol.children.expanded {
+    background-color: hsla(0, 0%, 90%, 0.5);
 }
 
 .showing-find-banner .tree-outline.dom .search-highlight {

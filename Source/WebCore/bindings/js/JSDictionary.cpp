@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,6 +55,7 @@
 #if ENABLE(MEDIA_STREAM)
 #include "JSMediaStream.h"
 #include "JSMediaStreamTrack.h"
+#include "JSOverconstrainedError.h"
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -77,6 +78,8 @@ namespace WebCore {
 
 JSDictionary::GetPropertyResult JSDictionary::tryGetProperty(const char* propertyName, JSValue& finalResult) const
 {
+    VM& vm = m_exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ASSERT(isValid());
     Identifier identifier = Identifier::fromString(m_exec, propertyName);
     bool propertyFound = m_initializerObject.get()->getPropertySlot(m_exec, identifier, [&] (bool propertyFound, PropertySlot& slot) -> bool {
@@ -85,7 +88,7 @@ JSDictionary::GetPropertyResult JSDictionary::tryGetProperty(const char* propert
         finalResult = slot.getValue(m_exec, identifier);
         return true;
     });
-    if (m_exec->hadException())
+    if (UNLIKELY(scope.exception()))
         return ExceptionThrown;
     return propertyFound ? PropertyFound : NoPropertyFound;
 }
@@ -150,17 +153,20 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, String& result)
 void JSDictionary::convertValue(ExecState* exec, JSValue value, Vector<String>& result)
 {
     ASSERT(exec);
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (value.isUndefinedOrNull())
         return;
 
     unsigned length = 0;
     JSObject* object = toJSSequence(*exec, value, length);
-    if (exec->hadException())
+    if (UNLIKELY(scope.exception()))
         return;
 
     for (unsigned i = 0 ; i < length; ++i) {
         JSValue itemValue = object->get(exec, i);
-        if (exec->hadException())
+        if (UNLIKELY(scope.exception()))
             return;
         result.append(itemValue.toString(exec)->value(exec));
     }
@@ -178,9 +184,12 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, RefPtr<Serialize
 
 void JSDictionary::convertValue(ExecState* state, JSValue value, RefPtr<DOMWindow>& result)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     auto* window = JSDOMWindow::toWrapped(*state, value);
     if (UNLIKELY(!window) && !value.isUndefinedOrNull()) {
-        throwVMTypeError(state, "Dictionary member is not of type Window");
+        throwVMTypeError(state, scope, "Dictionary member is not of type Window");
         return;
     }
     result = window;
@@ -217,6 +226,9 @@ void JSDictionary::convertValue(ExecState*, JSValue value, RefPtr<TrackBase>& re
 void JSDictionary::convertValue(ExecState* exec, JSValue value, HashSet<AtomicString>& result)
 {
     ASSERT(exec);
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     result.clear();
 
     if (value.isUndefinedOrNull())
@@ -224,12 +236,12 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, HashSet<AtomicSt
 
     unsigned length = 0;
     JSObject* object = toJSSequence(*exec, value, length);
-    if (exec->hadException())
+    if (UNLIKELY(scope.exception()))
         return;
 
     for (unsigned i = 0 ; i < length; ++i) {
         JSValue itemValue = object->get(exec, i);
-        if (exec->hadException())
+        if (UNLIKELY(scope.exception()))
             return;
         result.add(itemValue.toString(exec)->value(exec));
     }
@@ -272,6 +284,11 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Medi
 {
     result = JSMediaStreamTrack::toWrapped(value);
 }
+
+void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<OverconstrainedError>& result)
+{
+    result = JSOverconstrainedError::toWrapped(value);
+}
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -288,17 +305,20 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<RTCR
 void JSDictionary::convertValue(ExecState* exec, JSValue value, Vector<RefPtr<MediaStream>>& result)
 {
     ASSERT(exec);
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (value.isUndefinedOrNull())
         return;
 
     unsigned length = 0;
     JSObject* object = toJSSequence(*exec, value, length);
-    if (exec->hadException())
+    if (UNLIKELY(scope.exception()))
         return;
 
     for (unsigned i = 0 ; i < length; ++i) {
         JSValue itemValue = object->get(exec, i);
-        if (exec->hadException())
+        if (UNLIKELY(scope.exception()))
             return;
 
         auto stream = JSMediaStream::toWrapped(itemValue);

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APIFrameInfo_h
-#define APIFrameInfo_h
+#pragma once
 
 #include "APIObject.h"
 #include <WebCore/ResourceRequest.h>
@@ -35,6 +34,7 @@ class SecurityOrigin;
 
 namespace WebKit {
 class WebFrameProxy;
+struct FrameInfoData;
 }
 
 namespace API {
@@ -44,13 +44,9 @@ class SecurityOrigin;
 
 class FrameInfo final : public ObjectImpl<Object::Type::FrameInfo> {
 public:
-    static Ref<FrameInfo> create(const WebKit::WebFrameProxy& frame, const WebCore::SecurityOrigin& securityOrigin)
-    {
-        return adoptRef(*new FrameInfo(frame, securityOrigin));
-    }
+    static Ref<FrameInfo> create(const WebKit::FrameInfoData&);
+    static Ref<FrameInfo> create(const WebKit::WebFrameProxy&, const WebCore::SecurityOrigin&);
     virtual ~FrameInfo();
-
-    FrameInfo(const WebKit::WebFrameProxy&, const WebCore::SecurityOrigin&);
 
     bool isMainFrame() const { return m_isMainFrame; }
     const WebCore::ResourceRequest& request() const { return m_request; }
@@ -58,6 +54,8 @@ public:
     API::FrameHandle& handle() { return m_handle.get(); }
 
 private:
+    FrameInfo(const WebKit::FrameInfoData&);
+
     bool m_isMainFrame;
     WebCore::ResourceRequest m_request;
     Ref<SecurityOrigin> m_securityOrigin;
@@ -65,5 +63,3 @@ private:
 };
 
 } // namespace API
-
-#endif // APIFrameInfo_h

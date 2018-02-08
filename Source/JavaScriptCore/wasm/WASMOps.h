@@ -27,15 +27,20 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-namespace JSC {
-
-namespace WASM {
+namespace JSC { namespace WASM {
 
 #define FOR_EACH_WASM_SPECIAL_OP(macro) \
-    macro(I32Const, 0x10, NA)
+    macro(I32Const, 0x10, NA) \
+    macro(GetLocal, 0x14, NA) \
+    macro(SetLocal, 0x15, NA)
 
 #define FOR_EACH_WASM_CONTROL_FLOW_OP(macro) \
     macro(Block, 0x01, NA) \
+    macro(Loop, 0x02, NA) \
+    macro(If, 0x03, NA) \
+    macro(Else, 0x04, NA) \
+    macro(Branch, 0x06, NA) \
+    macro(BranchIf, 0x07, NA) \
     macro(Return, 0x09, NA) \
     macro(End, 0x0f, NA)
 
@@ -106,22 +111,33 @@ namespace WASM {
 
 #define CREATE_ENUM_VALUE(name, id, b3op) name = id,
 
-enum WASMOpType : uint8_t {
+enum OpType : uint8_t {
     FOR_EACH_WASM_OP(CREATE_ENUM_VALUE)
 };
 
-enum class WASMBinaryOpType : uint8_t {
+enum class BinaryOpType : uint8_t {
     FOR_EACH_WASM_BINARY_OP(CREATE_ENUM_VALUE)
 };
 
-enum class WASMUnaryOpType : uint8_t {
+enum class UnaryOpType : uint8_t {
     FOR_EACH_WASM_UNARY_OP(CREATE_ENUM_VALUE)
 };
 
 #undef CREATE_ENUM_VALUE
 
-} // namespace WASM
+inline bool isControlOp(OpType op)
+{
+    switch (op) {
+#define CREATE_CASE(name, id, b3op) case OpType::name:
+    FOR_EACH_WASM_CONTROL_FLOW_OP(CREATE_CASE)
+        return true;
+#undef CREATE_CASE
+    default:
+        break;
+    }
+    return false;
+}
 
-} // namespace JSC
+} } // namespace JSC::WASM
 
 #endif // ENABLE(WEBASSEMBLY)

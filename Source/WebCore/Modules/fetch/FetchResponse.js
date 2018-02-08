@@ -49,8 +49,8 @@ function initializeFetchResponse(body, init)
         if (status == 101 || status == 204 || status == 205 || status == 304)
             throw new @TypeError("Response cannot have a body with the given status");
 
-        // FIXME: Use @isReadableStream once it is no longer guarded by STREAMS_API guard.
-        let isBodyReadableStream = (@isObject(body) && !!body.@underlyingSource);
+        // FIXME: Use @isReadableStream once it is no longer guarded by READABLE_STREAM_API guard.
+        let isBodyReadableStream = (@isObject(body) && !!body.@readableStreamController);
         if (isBodyReadableStream)
           this.@body = body;
 
@@ -58,6 +58,17 @@ function initializeFetchResponse(body, init)
     }
 
     return this;
+}
+
+function bodyUsed()
+{
+   if (!(this instanceof @Response))
+        throw @makeGetterTypeError("Response", "bodyUsed");
+
+    if (this.@body)
+        return @isReadableStreamDisturbed(this.@body);
+
+    return @Response.prototype.@isDisturbed.@call(this);
 }
 
 function body()
@@ -83,12 +94,20 @@ function clone()
     if (!(this instanceof @Response))
         throw @makeThisTypeError("Response", "clone");
 
-    if (@Response.prototype.@isDisturbed.@call(this))
+    if (@Response.prototype.@isDisturbed.@call(this) || (this.@body && @isReadableStreamLocked(this.@body)))
         throw new @TypeError("Cannot clone a disturbed Response");
 
     var cloned = @Response.prototype.@cloneForJS.@call(this);
+
+    // Let's create @body if response body is loading to provide data to both clones.
+    if (@Response.prototype.@isLoading.@call(this) && !this.@body) {
+        var source = @Response.prototype.@createReadableStreamSource.@call(this);
+        @assert(!!source);
+        this.@body = new @ReadableStream(source);
+    }
+
     if (this.@body) {
-        var teedReadableStreams = @teeReadableStream(this.@body, false);
+        var teedReadableStreams = @teeReadableStream(this.@body, true);
         this.@body = teedReadableStreams[0];
         cloned.@body = teedReadableStreams[1];
     }

@@ -218,7 +218,7 @@ public:
     void setAutomaticTextReplacementEnabled(bool enabled, ExceptionCode&);
     void setAutomaticSpellingCorrectionEnabled(bool enabled, ExceptionCode&);
 
-    void handleAcceptedCandidate(const String& candidate, ExceptionCode&);
+    void handleAcceptedCandidate(const String& candidate, unsigned location, unsigned length, ExceptionCode&);
 
     bool isOverwriteModeEnabled(ExceptionCode&);
     void toggleOverwriteModeEnabled(ExceptionCode&);
@@ -467,7 +467,7 @@ public:
     String resourceLoadStatisticsForOrigin(String origin);
     void setResourceLoadStatisticsEnabled(bool);
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     bool isReadableStreamDisturbed(JSC::ExecState&, JSC::JSValue);
 #endif
 

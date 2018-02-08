@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2004, 2005, 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2003-2016 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,6 +53,12 @@ typedef struct _NSSize NSSize;
 
 #if PLATFORM(WIN)
 typedef struct tagSIZE SIZE;
+
+struct D2D_SIZE_U;
+typedef D2D_SIZE_U D2D1_SIZE_U;
+
+struct D2D_SIZE_F;
+typedef D2D_SIZE_F D2D1_SIZE_F;
 #elif PLATFORM(HAIKU)
 class BSize;
 #endif
@@ -125,7 +131,7 @@ public:
             m_height = minimumSize.height();
     }
 
-    IntSize constrainedBetween(const IntSize& min, const IntSize& max) const;
+    WEBCORE_EXPORT IntSize constrainedBetween(const IntSize& min, const IntSize& max) const;
 
     unsigned area() const
     {
@@ -155,6 +161,10 @@ public:
 #if PLATFORM(WIN)
     IntSize(const SIZE&);
     operator SIZE() const;
+    IntSize(const D2D1_SIZE_U&);
+    explicit IntSize(const D2D1_SIZE_F&); // don't do this implicitly since it's lossy;
+    operator D2D1_SIZE_U() const;
+    operator D2D1_SIZE_F() const;
 #endif
 
 #if PLATFORM(HAIKU)

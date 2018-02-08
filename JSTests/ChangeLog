@@ -1,3 +1,881 @@
+2016-09-20  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Do not use EagerRun on tests counting recompilation
+        https://bugs.webkit.org/show_bug.cgi?id=162248
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds defaultNoEagerRun to all the tests
+        for which recompilation is the symptom of a bug.
+        The reason is that an OSR Exit can be unrelated to the tested
+        nodes when we are running in Eager mode.
+
+        * stress/arith-abs-on-various-types.js:
+        * stress/arith-ceil-on-various-types.js:
+        * stress/arith-clz32-on-various-types.js:
+        * stress/arith-cos-on-various-types.js:
+        * stress/arith-floor-on-various-types.js:
+        * stress/arith-fround-on-various-types.js:
+        * stress/arith-log-on-various-types.js:
+        * stress/arith-round-on-various-types.js:
+        * stress/arith-sin-on-various-types.js:
+        * stress/arith-sqrt-on-various-types.js:
+        * stress/arith-tan-on-various-types.js:
+        * stress/arith-trunc-on-various-types.js:
+
+        * stress/compare-strict-eq-on-various-types.js:
+        (testAllTypesCall):
+        The value 2 came from the other tests.
+        CompareStrictEq supports many more cases, the worst case
+        is bool->int->int52->number->polymorphic.
+
+2016-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Make MarkedBlock state tracking support overlapped allocation and marking state
+        https://bugs.webkit.org/show_bug.cgi?id=161581
+
+        Reviewed by Geoffrey Garen.
+        
+        Add a microbenchmark for why we want to reclaim empty blocks from other allocators.
+
+        * microbenchmarks/switching-size-classes.js: Added.
+
+2016-09-20  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed, added test for x86 32-bit failure for HasOwnProperty node in DFG.
+
+        * stress/has-own-property-called-on-non-object.js: Added.
+        (let.objs):
+        (new.String):
+        (foo):
+
+2016-09-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add `typeof value === "symbol"` handling to bytecode compiler
+        https://bugs.webkit.org/show_bug.cgi?id=162253
+
+        Reviewed by Sam Weinig.
+
+        * microbenchmarks/is-symbol-mixed.js: Added.
+        (isSymbol):
+        (i.let.pair.of.list.String):
+        * microbenchmarks/is-symbol.js: Added.
+        (isSymbol):
+
+2016-09-19  Saam Barati  <sbarati@apple.com>
+
+        Make HasOwnProperty faster
+        https://bugs.webkit.org/show_bug.cgi?id=161708
+
+        Reviewed by Geoffrey Garen.
+
+        * microbenchmarks/has-own-property-name-cache.js: Added.
+        (foo):
+        * stress/has-own-property-cache-basics.js: Added.
+        (assert):
+        (foo):
+        * stress/has-own-property-name-cache-string-keys.js: Added.
+        (assert):
+        (foo):
+        * stress/has-own-property-name-cache-symbol-keys.js: Added.
+        (assert):
+        (foo):
+        * stress/has-own-property-name-cache-symbols-and-strings.js: Added.
+        (assert):
+        (foo):
+
+2016-09-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make the rounding-related nodes support any type
+        https://bugs.webkit.org/show_bug.cgi?id=161895
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-ceil-on-various-types.js: Added.
+        * stress/arith-floor-on-various-types.js: Added.
+        * stress/arith-round-on-various-types.js: Added.
+        * stress/arith-trunc-on-various-types.js: Added.
+
+2016-09-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not need to use defineProperty to define methods for object literals
+        https://bugs.webkit.org/show_bug.cgi?id=162111
+
+        Reviewed by Saam Barati.
+
+        * stress/object-literal-methods.js: Added.
+        (shouldBe):
+        (throw.new.Error.let.object.get name):
+        (throw.new.Error):
+        (shouldBe.let.object.get name):
+        (shouldBe.let.object.get prototype):
+        (shouldBe.let.object.get 42):
+
+2016-09-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Introduce IsCellWithType node and unify IsJSArray, IsRegExpObject and newly added IsProxyObject
+        https://bugs.webkit.org/show_bug.cgi?id=162000
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/is-array-for-array.js: Added.
+        (isArray):
+        * microbenchmarks/is-array-for-mixed-case.js: Added.
+        (isArray):
+        * microbenchmarks/is-array-for-non-array-object.js: Added.
+        (isArray):
+        * microbenchmarks/is-array-for-proxy.js: Added.
+        (isArray):
+        (isArray.proxy.throw.new.Error.isArray):
+        (isArray.proxy.throw.new.Error):
+
+2016-09-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, gardening test262 results
+
+        Some tests are now passed with JSC, but marked as failed.
+
+        * test262.yaml:
+
+2016-09-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Various Constructors length properties should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=161998
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2016-09-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r205931.
+        https://bugs.webkit.org/show_bug.cgi?id=162021
+
+        Tests for this change fail on 32-bit JSC bots (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Make the rounding-related nodes support any type"
+        https://bugs.webkit.org/show_bug.cgi?id=161895
+        http://trac.webkit.org/changeset/205931
+
+2016-09-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Should be a SyntaxError for duplicate parameter names in function with default parameters
+        https://bugs.webkit.org/show_bug.cgi?id=162013
+
+        Reviewed by Saam Barati.
+
+        * stress/es6-default-parameters.js:
+        * test262.yaml:
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ASSERT_NOT_REACHED when using spread inside an array literal with Function.prototype.apply
+        https://bugs.webkit.org/show_bug.cgi?id=162003
+
+        Reviewed by Saam Barati.
+
+        * stress/spread-calling.js:
+        * test262.yaml:
+
+2016-09-14  Michael Saboff  <msaboff@apple.com>
+
+        YARR doesn't check for invalid flags for literal regular expressions
+        https://bugs.webkit.org/show_bug.cgi?id=161995
+
+        Reviewed by Mark Lam.
+
+        New test.
+
+        * stress/regress-161995.js: Added.
+        (testStatic):
+        (catch):
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: TypedArray constructors length should be 3 and configurable
+        https://bugs.webkit.org/show_bug.cgi?id=161955
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+
+2016-09-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make the rounding-related nodes support any type
+        https://bugs.webkit.org/show_bug.cgi?id=161895
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-ceil-on-various-types.js: Added.
+        * stress/arith-floor-on-various-types.js: Added.
+        * stress/arith-round-on-various-types.js: Added.
+        * stress/arith-trunc-on-various-types.js: Added.
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        TaggedTemplateString function calls should emit tail position calls
+        https://bugs.webkit.org/show_bug.cgi?id=161948
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/tail-call-recognize.js:
+        (runTests):
+        Ensure a tagged template string function call is tail call.
+
+        * test262.yaml:
+        These now pass.
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Array.prototype.slice should always set length
+        https://bugs.webkit.org/show_bug.cgi?id=161953
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+
+2016-09-13  JF Bastien  <jfbastien@apple.com>
+
+        Support jsc shell builtin `read`
+        https://bugs.webkit.org/show_bug.cgi?id=161662
+
+        Reviewed by Keith Miller.
+
+        * stress/jsc-read.js: Added.
+        (test): test `read` and `readFile` shell builtins, in string and binary mode.
+
+2016-09-12  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        ES6: Classes: Should be allowed to create a static method with name "arguments"
+        https://bugs.webkit.org/show_bug.cgi?id=152985
+
+        Reviewed by Keith Miller.
+
+        * test262.yaml:
+
+2016-09-12  Saam Barati  <sbarati@apple.com>
+
+        Speed up Function.prototype.bind a bit by making it a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=161879
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/function-bind-inlining.js: Added.
+        (assert):
+        (test):
+        (test2):
+        (foo):
+        * microbenchmarks/function-bind-no-inlining.js: Added.
+        (assert):
+        (test):
+        (test2):
+        (foo):
+
+2016-09-12  Saam Barati  <sbarati@apple.com>
+
+        HashMapImpl should take into account m_deleteCount in its load factor and it should be able to rehash the table to be smaller
+        https://bugs.webkit.org/show_bug.cgi?id=161640
+
+        Reviewed by Geoffrey Garen.
+
+        * microbenchmarks/map-rehash.js: Added.
+        * stress/map-delete.js: Added.
+        (assert):
+        * stress/map-rehash-2.js: Added.
+        (assert):
+        * stress/map-rehash.js: Added.
+        (assert):
+
+2016-09-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix tests for different libm environments
+        https://bugs.webkit.org/show_bug.cgi?id=161857
+
+        * stress/ftl-arithtan.js:
+
+2016-09-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Use GetArrayLength for JSArray.length even when the array type is undecided
+        https://bugs.webkit.org/show_bug.cgi?id=161671
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/get-array-length-on-undecided.js: Added.
+
+2016-09-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Add ArithTan
+        https://bugs.webkit.org/show_bug.cgi?id=161857
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/tan.js: Added.
+        * stress/arith-tan-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueTanNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesTan):
+        (testAllTypesCall):
+        (testTangleTypeCall):
+        (testConstant):
+        (opaqueTanForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueTanForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueTanForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueTanWithException):
+        (testException):
+        * stress/ftl-arithtan.js: Added.
+        (foo):
+
+2016-09-12  Saam Barati  <sbarati@apple.com>
+
+        MapHash should do constant folding when it has a constant argument and its legal to hash that value
+        https://bugs.webkit.org/show_bug.cgi?id=161639
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/map-constant-key.js: Added.
+        (assert):
+        (test):
+        (foo):
+
+2016-09-12  Michael Saboff  <msaboff@apple.com>
+
+        JSC test timeout: ChakraCore.yaml/ChakraCore/test/Bugs/bug56026_trycatch.js.default
+        https://bugs.webkit.org/show_bug.cgi?id=161863
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore.yaml:
+        Disabled Bugs/bug56026_trycatch.js.
+
+2016-09-09  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed, rolling r205759 back in with a fix.
+
+        The expectation file, JSTests/ChakraCore/test/Lib/tostring.baseline-jsc,
+        should be named "toString.baseline-jsc".
+
+        * ChakraCore/test/Lib/toString.baseline-jsc: Copied from JSTests/ChakraCore/test/Lib/tostring.baseline-jsc.
+        * ChakraCore/test/Lib/tostring.baseline-jsc: Removed.
+
+2016-09-09  Michael Saboff  <msaboff@apple.com>
+
+        Disable three flakey Chakra Tests
+        https://bugs.webkit.org/show_bug.cgi?id=161807
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore.yaml: Disabled the flakey tests
+        ChakraCore/test/Array/protoLookup_native.js
+        ChakraCore/test/LetConst/delete.js
+        ChakraCore/test/fieldopts/fieldhoist_sideeffect.js
+
+2016-09-08  Saam Barati  <sbarati@apple.com>
+
+        We should inline operationConvertJSValueToBoolean into JIT code
+        https://bugs.webkit.org/show_bug.cgi?id=161729
+
+        Reviewed by Filip Pizlo.
+
+        * stress/value-to-boolean.js: Added.
+        (assert):
+        (test1):
+        (test2):
+        (test3):
+
+2016-09-08  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION (r205569?): 32-bit JSC test timeout: stress/rest-parameter-many-arguments.js.dfg-maximal-flush-validate-no-cjit
+        https://bugs.webkit.org/show_bug.cgi?id=161756
+
+        Reviewed by Saam Barati.
+
+        It looks like the 32-bit JSC bot is just too slow at running this test with the
+        dfg-maximal-flush-validate-no-cjit configuration.  We'll try excluding that
+        configuration.
+
+        * stress/rest-parameter-many-arguments.js:
+
+2016-09-08  JF Bastien  <jfbastien@apple.com>
+
+        Delete older WebAssembly tests
+        https://bugs.webkit.org/show_bug.cgi?id=161758
+
+        Reviewed by Filip Pizlo.
+
+        They're not running, rely on the older polyfill prototype, and the older code was deleted in: https://trac.webkit.org/changeset/204180
+
+        * stress/wasm-arithmetic-float32.js: Removed.
+        * stress/wasm-arithmetic-float64.js: Removed.
+        * stress/wasm-arithmetic-int32.js: Removed.
+        * stress/wasm-calls.js: Removed.
+        * stress/wasm-comma.js: Removed.
+        * stress/wasm-control-flow.js: Removed.
+        * stress/wasm-globals.js: Removed.
+        * stress/wasm-linear-memory.js: Removed.
+        * stress/wasm-locals.js: Removed.
+        * stress/wasm-relational.js: Removed.
+        * stress/wasm-type-conversion.js: Removed.
+        * stress/wasm/arithmetic-float32.wasm: Removed.
+        * stress/wasm/arithmetic-float64.wasm: Removed.
+        * stress/wasm/arithmetic-int32.wasm: Removed.
+        * stress/wasm/calls.wasm: Removed.
+        * stress/wasm/comma.wasm: Removed.
+        * stress/wasm/control-flow.wasm: Removed.
+        * stress/wasm/globals.wasm: Removed.
+        * stress/wasm/linear-memory.wasm: Removed.
+        * stress/wasm/locals.wasm: Removed.
+        * stress/wasm/relational.wasm: Removed.
+        * stress/wasm/type-conversion.wasm: Removed.
+
+2016-09-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Exception fuzz tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=140928
+
+        Reviewed by Mark Lam.
+
+        Unskip tests.
+
+        * exceptionFuzz.yaml:
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        ProxyObject's structure should not have ObjectPrototype as its prototype and it should not have special behavior for intercepting "__proto__"
+        https://bugs.webkit.org/show_bug.cgi?id=161558
+
+        Reviewed by Benjamin Poulain.
+
+        * stress/proxy-get-prototype-of.js:
+        * stress/proxy-set-prototype-of.js:
+        (let.handler.setPrototypeOf): Deleted.
+        * stress/proxy-underscore-proto.js: Added.
+        (assert):
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        Make JSMap and JSSet faster
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/dense-set.js: Added.
+        (bench):
+        * microbenchmarks/large-map-iteration-with-additions.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration-with-mutation.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-get-get-cse.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-has-get-cse-opportunity.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/sparse-set.js: Added.
+        (bench):
+        * stress/map-cse-correctness.js: Added.
+        (assert):
+        (testHas):
+        (testGet):
+        (foo):
+        * stress/map-iteration.js: Added.
+        (assert):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+        (test7):
+        (test8):
+        (test9):
+        (test10):
+        (test11):
+        (test12):
+        (test13):
+        (test14):
+        (test15):
+        (test16):
+        (test17):
+        (test18):
+
+2016-09-06  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make ArithClz32 work with Cell arguments
+        https://bugs.webkit.org/show_bug.cgi?id=161369
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-clz32-on-various-types.js: Added.
+
+2016-09-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r205504.
+        https://bugs.webkit.org/show_bug.cgi?id=161645
+
+        Broke the iOS device build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Make JSMap and JSSet faster"
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+        http://trac.webkit.org/changeset/205504
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        Make JSMap and JSSet faster
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/dense-set.js: Added.
+        (bench):
+        * microbenchmarks/large-map-iteration-with-additions.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration-with-mutation.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-get-get-cse.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-has-get-cse-opportunity.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/sparse-set.js: Added.
+        (bench):
+        * stress/map-cse-correctness.js: Added.
+        (assert):
+        (testHas):
+        (testGet):
+        (foo):
+        * stress/map-iteration.js: Added.
+        (assert):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+        (test7):
+        (test8):
+        (test9):
+        (test10):
+        (test11):
+        (test12):
+        (test13):
+        (test14):
+        (test15):
+        (test16):
+        (test17):
+        (test18):
+
+2016-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Butterflies should be allocated in Auxiliary MarkedSpace instead of CopiedSpace and we should rewrite as much of the GC as needed to make this not a regression
+        https://bugs.webkit.org/show_bug.cgi?id=160125
+
+        Reviewed by Geoffrey Garen and Keith Miller.
+        
+        Most of the things I did properly covered by existing tests, but I found some simple cases of
+        unshifting that had sketchy coverage.
+
+        * stress/array-storage-array-unshift.js: Added.
+        * stress/contiguous-array-unshift.js: Added.
+        * stress/double-array-unshift.js: Added.
+        * stress/int32-array-unshift.js: Added.
+
+2016-09-02  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed fix after importing Chakra test
+
+        * ChakraCore.yaml: Skipped ChakraCore/test/UnifiedRegex/crazy.js because the original
+        test contained tab characters.  I removed the tabs before landing.  This test depended
+        on the tab characters and now fails after they were removed.
+        test.
+
+2016-09-01  Michael Saboff  <msaboff@apple.com>
+
+        Import Chakra tests to JSC
+        https://bugs.webkit.org/show_bug.cgi?id=154697
+
+        Reviewed by Saam Barati.
+
+        Added Chakra tests.  All these tests are under Chakra/test.  This is the same layout
+        for tests in the Chakra tree.
+
+        Created a ChakraCore.yaml file to be used with run-jsc-stress-tests.  This file contains
+        the tests that are run when the original Chakra runtests.py script is run.  That script
+        is the test driver for *nix platforms and does not attempt to run all tests or all
+        variations of tests.  The runtest.py driver consults rlexe.xml files in each test
+        subdirectory to determine the test to run, the options to pass to the test and how to
+        determine pass/fail of the test.  With runtests.py as the start, tests that didn't
+        pass directly where either skipped, with a message describing why or through 
+        adjustments to the test infrastructure, as described below, where made to pass.
+        
+        The only modification to the test infrastrucutre are:
+
+         1) Added simple mapping of Chakra expected exception text to JSC expected text in
+            test/UnitTestFramework/UnitTestFramework.js.  It would make sense to also
+            map some JSC specific exception text to more generic text for the cases where
+            that text contains indetifier names or other source specific strings and the
+            Chakra equivolent exception texts are generic.  
+ 
+         2) Created JSC specific expected text files where it is clear that the text work
+            as expected on JSC but the test output is different.  Typically the differences
+            fall into three categories, different exception output, different output from
+            toString() of a function, slight numeric differences, and test that rely on
+            iteration order.
+
+         3) Stripped the CR's from the CR-LF line terminations of the files.  
+
+        No actual test .js files were modified.
+
+        * ChakraCore: Added.
+        * ChakraCore.yaml: Added.
+        * ChakraCore/CONTRIBUTING.md: Added.
+        * ChakraCore/LICENSE.txt: Added.
+        * ChakraCore/README.md: Added.
+        * ChakraCore/THIRD-PARTY-NOTICES.txt: Added.
+        * ChakraCore/test: Added this directory and the tests included therein.
+
+2016-09-01  JF Bastien  <jfbastien@apple.com>
+
+        GetByIdWithThis/GetByValWithThis should have ValueProfiles so that they can predict their result types
+        https://bugs.webkit.org/show_bug.cgi?id=160922
+
+        Reviewed by Keith Miller.
+
+        Benchmark GetBy{Id,Val}WithThis in monomorphic and polymorphic uses.
+        The value profile is used by the calc functions, which do some mild math with the result.
+        These benchmarks get ~4% faster with value profiling.
+
+        * microbenchmarks/super-get-by-id-with-this-monomorphic.js: Added.
+        (A):
+        (A.prototype.set value):
+        (A.prototype.get value):
+        (B.prototype.set value):
+        (B.prototype.get value):
+        (B):
+        (const.bench):
+        * microbenchmarks/super-get-by-id-with-this-polymorphic.js: Added.
+        (A):
+        (A.prototype.set value):
+        (A.prototype.get value):
+        (B.prototype.set value):
+        (B.prototype.get value):
+        (B):
+        (const.bench):
+        * microbenchmarks/super-get-by-val-with-this-monomorphic.js: Added.
+        (value):
+        (A):
+        (A.prototype.set v):
+        (A.prototype.get v):
+        (B.prototype.set v):
+        (B.prototype.get v):
+        (B):
+        (const.bench):
+        * microbenchmarks/super-get-by-val-with-this-polymorphic.js: Added.
+        (value):
+        (A):
+        (A.prototype.set v):
+        (A.prototype.get v):
+        (B.prototype.set v):
+        (B.prototype.get v):
+        (B):
+        (const.bench):
+
+2016-09-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        arith-abs-on-various-types.js is flaky
+
+        Unreviewed.
+
+        * stress/arith-abs-on-various-types.js:
+        Two compilation is too small for the worst case.
+        Math.abs() can be typed integer->number->untyped if we are very unlucky.
+
+2016-09-01  Filip Pizlo  <fpizlo@apple.com>
+
+        ObjectAllocationSinkingPhase::insertOSRHintsForUpdate() fails to emit updated hints in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=161492
+
+        Reviewed by Mark Lam.
+        
+        This bug affected function->activation references but not object->object field references,
+        because object->object field references are !neededForMaterialization(). So, the object
+        test always passed but the activation/function test used to always fail. It passes now.
+
+        * stress/materialize-activation-referenced-from-phantom-function.js: Added.
+        (bar):
+        (inc):
+        (dec):
+        (foo):
+        (test):
+        * stress/materialize-object-referenced-from-phantom-object.js: Added.
+        (bar):
+        (foo):
+        (test):
+
+2016-08-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        stress/random-53bit.js.ftl-no-cjit-no-inline-validate sometimes fails
+        https://bugs.webkit.org/show_bug.cgi?id=161436
+
+        Reviewed by Filip Pizlo.
+
+        The test checks Math.random() correctly produces 53bit random values.
+        The test can fail by design, but this should be fairly rare.
+
+        However, when introducing, we wrap the `test()` with 1e4 to ensure the FTL compilation, and this
+        increases the failure rate. By increasing the MAX in the test, we make the failures much more rare case.
+
+        And we also add getRandomSeed() and setRandomSeed(seed) JSC shell helpers to dump more useful information
+        and reproduce the situation easily.
+
+        * stress/random-53bit.js:
+        (test):
+
+2016-08-29  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Improve ArithAbs with polymorphic input
+        https://bugs.webkit.org/show_bug.cgi?id=161286
+
+        Reviewed by Saam Barati.
+
+        * stress/arith-abs-on-various-types.js: Added.
+        New tests.
+
+        * stress/arith-cos-on-various-types.js:
+        * stress/arith-fround-on-various-types.js:
+        * stress/arith-log-on-various-types.js:
+        * stress/arith-sin-on-various-types.js:
+        * stress/arith-sqrt-on-various-types.js:
+        Extend the existing tests to cover the DCE case.
+
+2016-08-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Implement CompareStrictEq(String, Untyped) in FTL
+        https://bugs.webkit.org/show_bug.cgi?id=161229
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/compare-strict-eq-on-various-types.js: Added.
+
+2016-08-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] newPromiseCapabilities should check the given argument is constructor
+        https://bugs.webkit.org/show_bug.cgi?id=161226
+
+        Reviewed by Mark Lam.
+
+        The arrow function should not be a constructor. So the error should be raised.
+
+        * stress/new-promise-capabilities-requires-constructor.js: Added.
+        (shouldThrow):
+
+2016-08-25  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Clean up the abstract interpreter for cos/sin/sqrt/fround/log
+        https://bugs.webkit.org/show_bug.cgi?id=161181
+
+        Reviewed by Geoffrey Garen.
+
+        Extend the tests to constants.
+        Add no-argument cases where needed.
+
+        * stress/arith-cos-on-various-types.js:
+        * stress/arith-fround-on-various-types.js:
+        * stress/arith-log-on-various-types.js:
+        * stress/arith-sin-on-various-types.js:
+        * stress/arith-sqrt-on-various-types.js:
+
+2016-08-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Implement ES6 Generators in DFG / FTL
+        https://bugs.webkit.org/show_bug.cgi?id=152723
+
+        Reviewed by Filip Pizlo.
+
+        * stress/generator-fib-ftl-and-array.js: Added.
+        (fib):
+        * stress/generator-fib-ftl-and-object.js: Added.
+        (fib):
+        * stress/generator-fib-ftl-and-string.js: Added.
+        (fib):
+        * stress/generator-fib-ftl.js: Added.
+        (fib):
+        * stress/generator-frame-empty.js: Added.
+        (shouldThrow):
+        (shouldThrow.fib):
+        * stress/generator-reduced-save-point-put-to-scope.js: Added.
+        (shouldBe):
+        (gen):
+        * stress/generator-transfer-register-beyond-mutiple-yields.js: Added.
+        (shouldBe):
+        (gen):
+
+2016-08-25  JF Bastien  <jfbastien@apple.com>
+
+        TryGetById should have a ValueProfile so that it can predict its output type
+        https://bugs.webkit.org/show_bug.cgi?id=160921
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/try-get-by-id-basic.js: Added.
+        (const.check):
+        (const.bench.f.const.fooPlusBar.createBuiltin):
+        * microbenchmarks/try-get-by-id-polymorphic.js: Added.
+        (const.check):
+        (fooPlusBar.createBuiltin):
+        (bench):
+
+2016-08-25  Caio Lima  <ticaiolima@gmail.com>
+
+        NewRegexp should not prevent inlining
+        https://bugs.webkit.org/show_bug.cgi?id=154808
+
+        Reviewed by Geoffrey Garen.
+
+        Added test where functions with NewRegExp can be inlined right now.
+
+        * stress/new-regex-inline.js: Added.
+        (assert):
+        (testRegexpInline):
+        (toInlineGlobal):
+        (withRegexp):
+        (inlineRegexpNotGlobal):
+        (toInlineRecursive):
+        (regexpContainsRecursive):
+
+2016-08-24  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Make FRound work with any type
+        https://bugs.webkit.org/show_bug.cgi?id=161129
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-fround-on-various-types.js: Added.
+
 2016-08-24  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, roll out r204901, r204897, r204866, r204856, r204854.

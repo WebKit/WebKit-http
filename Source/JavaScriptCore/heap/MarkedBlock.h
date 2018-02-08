@@ -24,6 +24,7 @@
 
 #include "AllocatorAttributes.h"
 #include "DestructionMode.h"
+#include "FreeList.h"
 #include "HeapCell.h"
 #include "HeapOperation.h"
 #include "IterationStatus.h"
@@ -34,484 +35,576 @@
 #include <wtf/HashFunctions.h>
 #include <wtf/StdLibExtras.h>
 
-// Set to log state transitions of blocks.
-#define HEAP_LOG_BLOCK_STATE_TRANSITIONS 0
-
-#if HEAP_LOG_BLOCK_STATE_TRANSITIONS
-#define HEAP_LOG_BLOCK_STATE_TRANSITION(block) do {                     \
-        dataLogF(                                                    \
-            "%s:%d %s: block %s = %p, %d\n",                            \
-            __FILE__, __LINE__, __FUNCTION__,                           \
-            #block, (block), (block)->m_state);                         \
-    } while (false)
-#else
-#define HEAP_LOG_BLOCK_STATE_TRANSITION(block) ((void)0)
-#endif
-
 namespace JSC {
     
-    class Heap;
-    class JSCell;
-    class MarkedAllocator;
+class Heap;
+class JSCell;
+class MarkedAllocator;
 
-    typedef uintptr_t Bits;
+typedef uintptr_t Bits;
+typedef uint32_t HeapVersion;
 
-    // A marked block is a page-aligned container for heap-allocated objects.
-    // Objects are allocated within cells of the marked block. For a given
-    // marked block, all cells have the same size. Objects smaller than the
-    // cell size may be allocated in the marked block, in which case the
-    // allocation suffers from internal fragmentation: wasted space whose
-    // size is equal to the difference between the cell size and the object
-    // size.
+// A marked block is a page-aligned container for heap-allocated objects.
+// Objects are allocated within cells of the marked block. For a given
+// marked block, all cells have the same size. Objects smaller than the
+// cell size may be allocated in the marked block, in which case the
+// allocation suffers from internal fragmentation: wasted space whose
+// size is equal to the difference between the cell size and the object
+// size.
 
-    class MarkedBlock : public DoublyLinkedListNode<MarkedBlock> {
-        friend class WTF::DoublyLinkedListNode<MarkedBlock>;
-        friend class LLIntOffsetsExtractor;
-        friend struct VerifyMarkedOrRetired;
+class MarkedBlock {
+    WTF_MAKE_NONCOPYABLE(MarkedBlock);
+    friend class LLIntOffsetsExtractor;
+    friend struct VerifyMarked;
+
+public:
+    class Handle;
+private:
+    friend class Handle;
+public:
+    static const size_t atomSize = 16; // bytes
+    static const size_t blockSize = 16 * KB;
+    static const size_t blockMask = ~(blockSize - 1); // blockSize must be a power of two.
+
+    static const size_t atomsPerBlock = blockSize / atomSize;
+
+    static_assert(!(MarkedBlock::atomSize & (MarkedBlock::atomSize - 1)), "MarkedBlock::atomSize must be a power of two.");
+    static_assert(!(MarkedBlock::blockSize & (MarkedBlock::blockSize - 1)), "MarkedBlock::blockSize must be a power of two.");
+    
+    struct VoidFunctor {
+        typedef void ReturnType;
+        void returnValue() { }
+    };
+    
+    class CountFunctor {
     public:
-        static const size_t atomSize = 16; // bytes
-        static const size_t blockSize = 16 * KB;
-        static const size_t blockMask = ~(blockSize - 1); // blockSize must be a power of two.
+        typedef size_t ReturnType;
 
-        static const size_t atomsPerBlock = blockSize / atomSize;
+        CountFunctor() : m_count(0) { }
+        void count(size_t count) const { m_count += count; }
+        ReturnType returnValue() const { return m_count; }
 
-        static_assert(!(MarkedBlock::atomSize & (MarkedBlock::atomSize - 1)), "MarkedBlock::atomSize must be a power of two.");
-        static_assert(!(MarkedBlock::blockSize & (MarkedBlock::blockSize - 1)), "MarkedBlock::blockSize must be a power of two.");
-
-        struct FreeCell {
-            FreeCell* next;
-        };
+    private:
+        // FIXME: This is mutable because we're using a functor rather than C++ lambdas.
+        // https://bugs.webkit.org/show_bug.cgi?id=159644
+        mutable ReturnType m_count;
+    };
         
-        struct FreeList {
-            FreeCell* head;
-            size_t bytes;
+    class Handle {
+        WTF_MAKE_NONCOPYABLE(Handle);
+        WTF_MAKE_FAST_ALLOCATED;
+        friend class LLIntOffsetsExtractor;
+        friend class MarkedBlock;
+        friend struct VerifyMarked;
+    public:
+            
+        ~Handle();
+            
+        MarkedBlock& block();
+            
+        void* cellAlign(void*);
+            
+        bool isEmpty();
 
-            FreeList();
-            FreeList(FreeCell*, size_t);
-        };
-
-        struct VoidFunctor {
-            typedef void ReturnType;
-            void returnValue() { }
-        };
-
-        class CountFunctor {
-        public:
-            typedef size_t ReturnType;
-
-            CountFunctor() : m_count(0) { }
-            void count(size_t count) const { m_count += count; }
-            ReturnType returnValue() const { return m_count; }
-
-        private:
-            // FIXME: This is mutable because we're using a functor rather than C++ lambdas.
-            // https://bugs.webkit.org/show_bug.cgi?id=159644
-            mutable ReturnType m_count;
-        };
-
-        static MarkedBlock* create(Heap&, MarkedAllocator*, size_t capacity, size_t cellSize, const AllocatorAttributes&);
-        static void destroy(Heap&, MarkedBlock*);
-
-        static bool isAtomAligned(const void*);
-        static MarkedBlock* blockFor(const void*);
-        static size_t firstAtom();
-        
         void lastChanceToFinalize();
 
         MarkedAllocator* allocator() const;
         Heap* heap() const;
         VM* vm() const;
         WeakSet& weakSet();
-        
+            
+        // Sweeping ensures that destructors get called and removes the block from the unswept
+        // set. Sweeping to free list also removes the block from the empty set, if it was in that
+        // set. Sweeping with SweepOnly may add this block to the empty set, if the block is found
+        // to be empty.
+        //
+        // Note that you need to make sure that the empty bit reflects reality. If it's not set
+        // and the block is freshly created, then we'll make the mistake of running destructors in
+        // the block. If it's not set and the block has nothing marked, then we'll make the
+        // mistake of making a pop freelist rather than a bump freelist.
         enum SweepMode { SweepOnly, SweepToFreeList };
         FreeList sweep(SweepMode = SweepOnly);
-
+        
+        void unsweepWithNoNewlyAllocated();
+        
+        void zap(const FreeList&);
+        
         void shrink();
-
-        void visitWeakSet(HeapRootVisitor&);
+            
+        unsigned visitWeakSet(HeapRootVisitor&);
         void reapWeakSet();
-
+            
         // While allocating from a free list, MarkedBlock temporarily has bogus
         // cell liveness data. To restore accurate cell liveness data, call one
         // of these functions:
         void didConsumeFreeList(); // Call this once you've allocated all the items in the free list.
         void stopAllocating(const FreeList&);
         FreeList resumeAllocating(); // Call this if you canonicalized a block for some non-collection related purpose.
-
+            
         // Returns true if the "newly allocated" bitmap was non-null 
         // and was successfully cleared and false otherwise.
         bool clearNewlyAllocated();
-        void clearMarks();
-        template <HeapOperation collectionType>
-        void clearMarksWithCollectionType();
-
-        size_t markCount();
-        bool isEmpty();
-
+            
         size_t cellSize();
         const AllocatorAttributes& attributes() const;
         DestructionMode destruction() const;
         bool needsDestruction() const;
         HeapCell::Kind cellKind() const;
-
+            
+        size_t markCount();
         size_t size();
-        size_t capacity();
+            
+        inline bool isLive(HeapVersion markingVersion, const HeapCell*);
+        inline bool isLiveCell(HeapVersion markingVersion, const void*);
 
-        bool isMarked(const void*);
-        bool testAndSetMarked(const void*);
         bool isLive(const HeapCell*);
         bool isLiveCell(const void*);
-        bool isAtom(const void*);
-        bool isMarkedOrNewlyAllocated(const HeapCell*);
-        void setMarked(const void*);
-        void clearMarked(const void*);
 
+        bool isMarkedOrNewlyAllocated(const HeapCell*);
+        bool isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell*);
+            
         bool isNewlyAllocated(const void*);
         void setNewlyAllocated(const void*);
         void clearNewlyAllocated(const void*);
-
-        bool isAllocated() const;
-        bool isMarkedOrRetired() const;
-        bool needsSweeping() const;
-        void didRetireBlock(const FreeList&);
-        void willRemoveBlock();
-
-        template <typename Functor> IterationStatus forEachCell(const Functor&);
-        template <typename Functor> IterationStatus forEachLiveCell(const Functor&);
-        template <typename Functor> IterationStatus forEachDeadCell(const Functor&);
-
-    private:
-        static const size_t atomAlignmentMask = atomSize - 1;
-
-        // During allocation, we look for available space in free lists in blocks.
-        // If a block's utilization is sufficiently high (i.e. it's almost full),
-        // we want to remove that block as a candidate for allocating to reduce
-        // the likelihood of allocation having to take a slow path. When the
-        // block is in this state, we say that it is "Retired".
-        //
-        // A full GC can take a Retired blocks out of retirement. An eden GC
-        // will simply ignore Retired blocks (i.e. they will not be swept even
-        // if they no longer have live objects).
-
-        enum BlockState { New, FreeListed, Allocated, Marked, Retired };
-        template<bool callDestructors> FreeList sweepHelper(SweepMode = SweepOnly);
-
-        typedef char Atom[atomSize];
-
-        MarkedBlock(MarkedAllocator*, size_t capacity, size_t cellSize, const AllocatorAttributes&);
-        Atom* atoms();
-        size_t atomNumber(const void*);
-        void callDestructor(HeapCell*);
-        template<BlockState, SweepMode, bool callDestructors> FreeList specializedSweep();
         
-        MarkedBlock* m_prev;
-        MarkedBlock* m_next;
-
-        size_t m_atomsPerCell;
-        size_t m_endAtom; // This is a fuzzy end. Always test for < m_endAtom.
-        WTF::Bitmap<atomsPerBlock, WTF::BitmapAtomic, uint8_t> m_marks;
+        bool hasAnyNewlyAllocated() const { return !!m_newlyAllocated; }
+            
+        template <typename Functor> IterationStatus forEachCell(const Functor&);
+        template <typename Functor> inline IterationStatus forEachLiveCell(const Functor&);
+        template <typename Functor> inline IterationStatus forEachDeadCell(const Functor&);
+            
+        bool areMarksStale();
+        
+        void assertMarksNotStale();
+            
+        bool isFreeListed() const { return m_isFreeListed; }
+        
+        size_t index() const { return m_index; }
+        
+        void removeFromAllocator();
+        
+        void didAddToAllocator(MarkedAllocator*, size_t index);
+        void didRemoveFromAllocator();
+        
+    private:
+        Handle(Heap&, void*);
+            
+        template<DestructionMode>
+        FreeList sweepHelperSelectScribbleMode(SweepMode = SweepOnly);
+            
+        enum ScribbleMode { DontScribble, Scribble };
+            
+        template<DestructionMode, ScribbleMode>
+        FreeList sweepHelperSelectEmptyMode(SweepMode = SweepOnly);
+            
+        enum EmptyMode { IsEmpty, NotEmpty };
+        
+        template<EmptyMode, DestructionMode, ScribbleMode>
+        FreeList sweepHelperSelectHasNewlyAllocated(SweepMode = SweepOnly);
+        
+        enum NewlyAllocatedMode { HasNewlyAllocated, DoesNotHaveNewlyAllocated };
+        
+        template<EmptyMode, DestructionMode, ScribbleMode, NewlyAllocatedMode>
+        FreeList sweepHelperSelectSweepMode(SweepMode = SweepOnly);
+        
+        template<EmptyMode, SweepMode, DestructionMode, ScribbleMode, NewlyAllocatedMode>
+        FreeList sweepHelperSelectMarksMode();
+        
+        enum MarksMode { MarksStale, MarksNotStale };
+        
+        template<EmptyMode, SweepMode, DestructionMode, ScribbleMode, NewlyAllocatedMode, MarksMode>
+        FreeList specializedSweep();
+            
+        template<typename Func>
+        void forEachFreeCell(const FreeList&, const Func&);
+        
+        void setIsFreeListed();
+        
+        MarkedBlock::Handle* m_prev;
+        MarkedBlock::Handle* m_next;
+            
+        size_t m_atomsPerCell { std::numeric_limits<size_t>::max() };
+        size_t m_endAtom { std::numeric_limits<size_t>::max() }; // This is a fuzzy end. Always test for < m_endAtom.
+            
         std::unique_ptr<WTF::Bitmap<atomsPerBlock>> m_newlyAllocated;
-
-        size_t m_capacity;
+            
         AllocatorAttributes m_attributes;
-        MarkedAllocator* m_allocator;
-        BlockState m_state;
+        bool m_isFreeListed { false };
+            
+        MarkedAllocator* m_allocator { nullptr };
+        size_t m_index { std::numeric_limits<size_t>::max() };
         WeakSet m_weakSet;
+            
+        MarkedBlock* m_block { nullptr };
     };
+        
+    static MarkedBlock::Handle* tryCreate(Heap&);
+        
+    Handle& handle();
+        
+    VM* vm() const;
 
-    inline MarkedBlock::FreeList::FreeList()
-        : head(0)
-        , bytes(0)
-    {
-    }
+    static bool isAtomAligned(const void*);
+    static MarkedBlock* blockFor(const void*);
+    static size_t firstAtom();
+    size_t atomNumber(const void*);
+        
+    size_t markCount();
 
-    inline MarkedBlock::FreeList::FreeList(FreeCell* head, size_t bytes)
-        : head(head)
-        , bytes(bytes)
-    {
-    }
+    bool isMarked(const void*);
+    bool isMarked(HeapVersion markingVersion, const void*);
+    bool isMarkedConcurrently(HeapVersion markingVersion, const void*);
+    bool testAndSetMarked(const void*);
+        
+    bool isMarkedOrNewlyAllocated(const HeapCell*);
+    bool isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell*);
+    
+    bool isAtom(const void*);
+    void clearMarked(const void*);
+    
+    size_t cellSize();
+    const AllocatorAttributes& attributes() const;
+    
+    bool hasAnyMarked() const;
+    void noteMarked();
+        
+    WeakSet& weakSet();
+    
+    bool areMarksStale(HeapVersion markingVersion);
+    bool areMarksStale();
+    
+    void aboutToMark(HeapVersion markingVersion);
+        
+    void assertMarksNotStale();
+        
+    bool needsDestruction() const { return m_needsDestruction; }
+    
+    inline void resetMarkingVersion();
+    
+private:
+    static const size_t atomAlignmentMask = atomSize - 1;
 
-    inline size_t MarkedBlock::firstAtom()
-    {
-        return WTF::roundUpToMultipleOf<atomSize>(sizeof(MarkedBlock)) / atomSize;
-    }
+    typedef char Atom[atomSize];
 
-    inline MarkedBlock::Atom* MarkedBlock::atoms()
-    {
-        return reinterpret_cast<Atom*>(this);
-    }
+    MarkedBlock(VM&, Handle&);
+    Atom* atoms();
+        
+    void aboutToMarkSlow(HeapVersion markingVersion);
+    void clearMarks();
+    void clearMarks(HeapVersion markingVersion);
+    void clearHasAnyMarked();
+    
+    void noteMarkedSlow();
+        
+    WTF::Bitmap<atomsPerBlock, WTF::BitmapAtomic, uint8_t> m_marks;
 
-    inline bool MarkedBlock::isAtomAligned(const void* p)
-    {
-        return !(reinterpret_cast<Bits>(p) & atomAlignmentMask);
-    }
+    bool m_needsDestruction;
+    Lock m_lock;
+    
+    // The actual mark count can be computed by doing: m_biasedMarkCount - m_markCountBias. Note
+    // that this count is racy. It will accurately detect whether or not exactly zero things were
+    // marked, but if N things got marked, then this may report anything in the range [1, N] (or
+    // before unbiased, it would be [1 + m_markCountBias, N + m_markCountBias].)
+    int16_t m_biasedMarkCount;
+    
+    // We bias the mark count so that if m_biasedMarkCount >= 0 then the block should be retired.
+    // We go to all this trouble to make marking a bit faster: this way, marking knows when to
+    // retire a block using a js/jns on m_biasedMarkCount.
+    //
+    // For example, if a block has room for 100 objects and retirement happens whenever 90% are
+    // live, then m_markCountBias will be -90. This way, when marking begins, this will cause us to
+    // set m_biasedMarkCount to -90 as well, since:
+    //
+    //     m_biasedMarkCount = actualMarkCount + m_markCountBias.
+    //
+    // Marking an object will increment m_biasedMarkCount. Once 90 objects get marked, we will have
+    // m_biasedMarkCount = 0, which will trigger retirement. In other words, we want to set
+    // m_markCountBias like so:
+    //
+    //     m_markCountBias = -(minMarkedBlockUtilization * cellsPerBlock)
+    //
+    // All of this also means that you can detect if any objects are marked by doing:
+    //
+    //     m_biasedMarkCount != m_markCountBias
+    int16_t m_markCountBias;
 
-    inline MarkedBlock* MarkedBlock::blockFor(const void* p)
-    {
-        return reinterpret_cast<MarkedBlock*>(reinterpret_cast<Bits>(p) & blockMask);
-    }
+    HeapVersion m_markingVersion;
+    
+    Handle& m_handle;
+    VM* m_vm;
+};
 
-    inline MarkedAllocator* MarkedBlock::allocator() const
-    {
-        return m_allocator;
-    }
+inline MarkedBlock::Handle& MarkedBlock::handle()
+{
+    return m_handle;
+}
 
-    inline Heap* MarkedBlock::heap() const
-    {
-        return m_weakSet.heap();
-    }
+inline MarkedBlock& MarkedBlock::Handle::block()
+{
+    return *m_block;
+}
 
-    inline VM* MarkedBlock::vm() const
-    {
-        return m_weakSet.vm();
-    }
+inline size_t MarkedBlock::firstAtom()
+{
+    return WTF::roundUpToMultipleOf<atomSize>(sizeof(MarkedBlock)) / atomSize;
+}
 
-    inline WeakSet& MarkedBlock::weakSet()
-    {
-        return m_weakSet;
-    }
+inline MarkedBlock::Atom* MarkedBlock::atoms()
+{
+    return reinterpret_cast<Atom*>(this);
+}
 
-    inline void MarkedBlock::shrink()
-    {
-        m_weakSet.shrink();
-    }
+inline bool MarkedBlock::isAtomAligned(const void* p)
+{
+    return !(reinterpret_cast<Bits>(p) & atomAlignmentMask);
+}
 
-    inline void MarkedBlock::visitWeakSet(HeapRootVisitor& heapRootVisitor)
-    {
-        m_weakSet.visit(heapRootVisitor);
-    }
+inline void* MarkedBlock::Handle::cellAlign(void* p)
+{
+    Bits base = reinterpret_cast<Bits>(block().atoms() + firstAtom());
+    Bits bits = reinterpret_cast<Bits>(p);
+    bits -= base;
+    bits -= bits % cellSize();
+    bits += base;
+    return reinterpret_cast<void*>(bits);
+}
 
-    inline void MarkedBlock::reapWeakSet()
-    {
-        m_weakSet.reap();
-    }
+inline MarkedBlock* MarkedBlock::blockFor(const void* p)
+{
+    return reinterpret_cast<MarkedBlock*>(reinterpret_cast<Bits>(p) & blockMask);
+}
 
-    inline void MarkedBlock::willRemoveBlock()
-    {
-        ASSERT(m_state != Retired);
-    }
+inline MarkedAllocator* MarkedBlock::Handle::allocator() const
+{
+    return m_allocator;
+}
 
-    inline void MarkedBlock::didConsumeFreeList()
-    {
-        HEAP_LOG_BLOCK_STATE_TRANSITION(this);
+inline Heap* MarkedBlock::Handle::heap() const
+{
+    return m_weakSet.heap();
+}
 
-        ASSERT(m_state == FreeListed);
-        m_state = Allocated;
-    }
+inline VM* MarkedBlock::Handle::vm() const
+{
+    return m_weakSet.vm();
+}
 
-    inline size_t MarkedBlock::markCount()
-    {
-        return m_marks.count();
-    }
+inline VM* MarkedBlock::vm() const
+{
+    return m_vm;
+}
 
-    inline bool MarkedBlock::isEmpty()
-    {
-        return m_marks.isEmpty() && m_weakSet.isEmpty() && (!m_newlyAllocated || m_newlyAllocated->isEmpty());
-    }
+inline WeakSet& MarkedBlock::Handle::weakSet()
+{
+    return m_weakSet;
+}
 
-    inline size_t MarkedBlock::cellSize()
-    {
-        return m_atomsPerCell * atomSize;
-    }
+inline WeakSet& MarkedBlock::weakSet()
+{
+    return m_handle.weakSet();
+}
 
-    inline const AllocatorAttributes& MarkedBlock::attributes() const
-    {
-        return m_attributes;
-    }
+inline void MarkedBlock::Handle::shrink()
+{
+    m_weakSet.shrink();
+}
 
-    inline bool MarkedBlock::needsDestruction() const
-    {
-        return m_attributes.destruction == NeedsDestruction;
-    }
+inline unsigned MarkedBlock::Handle::visitWeakSet(HeapRootVisitor& heapRootVisitor)
+{
+    return m_weakSet.visit(heapRootVisitor);
+}
 
-    inline DestructionMode MarkedBlock::destruction() const
-    {
-        return m_attributes.destruction;
-    }
+inline void MarkedBlock::Handle::reapWeakSet()
+{
+    m_weakSet.reap();
+}
 
-    inline HeapCell::Kind MarkedBlock::cellKind() const
-    {
-        return m_attributes.cellKind;
-    }
+inline size_t MarkedBlock::Handle::cellSize()
+{
+    return m_atomsPerCell * atomSize;
+}
 
-    inline size_t MarkedBlock::size()
-    {
-        return markCount() * cellSize();
-    }
+inline size_t MarkedBlock::cellSize()
+{
+    return m_handle.cellSize();
+}
 
-    inline size_t MarkedBlock::capacity()
-    {
-        return m_capacity;
-    }
+inline const AllocatorAttributes& MarkedBlock::Handle::attributes() const
+{
+    return m_attributes;
+}
 
-    inline size_t MarkedBlock::atomNumber(const void* p)
-    {
-        return (reinterpret_cast<Bits>(p) - reinterpret_cast<Bits>(this)) / atomSize;
-    }
+inline const AllocatorAttributes& MarkedBlock::attributes() const
+{
+    return m_handle.attributes();
+}
 
-    inline bool MarkedBlock::isMarked(const void* p)
-    {
-        return m_marks.get(atomNumber(p));
-    }
+inline bool MarkedBlock::Handle::needsDestruction() const
+{
+    return m_attributes.destruction == NeedsDestruction;
+}
 
-    inline bool MarkedBlock::testAndSetMarked(const void* p)
-    {
-        return m_marks.concurrentTestAndSet(atomNumber(p));
-    }
+inline DestructionMode MarkedBlock::Handle::destruction() const
+{
+    return m_attributes.destruction;
+}
 
-    inline void MarkedBlock::setMarked(const void* p)
-    {
-        m_marks.set(atomNumber(p));
-    }
+inline HeapCell::Kind MarkedBlock::Handle::cellKind() const
+{
+    return m_attributes.cellKind;
+}
 
-    inline void MarkedBlock::clearMarked(const void* p)
-    {
-        ASSERT(m_marks.get(atomNumber(p)));
-        m_marks.clear(atomNumber(p));
-    }
+inline size_t MarkedBlock::Handle::markCount()
+{
+    return m_block->markCount();
+}
 
-    inline bool MarkedBlock::isNewlyAllocated(const void* p)
-    {
-        return m_newlyAllocated->get(atomNumber(p));
-    }
+inline size_t MarkedBlock::Handle::size()
+{
+    return markCount() * cellSize();
+}
 
-    inline void MarkedBlock::setNewlyAllocated(const void* p)
-    {
-        m_newlyAllocated->set(atomNumber(p));
-    }
+inline size_t MarkedBlock::atomNumber(const void* p)
+{
+    return (reinterpret_cast<Bits>(p) - reinterpret_cast<Bits>(this)) / atomSize;
+}
 
-    inline void MarkedBlock::clearNewlyAllocated(const void* p)
-    {
-        m_newlyAllocated->clear(atomNumber(p));
-    }
+inline bool MarkedBlock::areMarksStale(HeapVersion markingVersion)
+{
+    return markingVersion != m_markingVersion;
+}
 
-    inline bool MarkedBlock::clearNewlyAllocated()
-    {
-        if (m_newlyAllocated) {
-            m_newlyAllocated = nullptr;
-            return true;
-        }
+inline void MarkedBlock::aboutToMark(HeapVersion markingVersion)
+{
+    if (UNLIKELY(areMarksStale(markingVersion)))
+        aboutToMarkSlow(markingVersion);
+    WTF::loadLoadFence();
+}
+
+#if ASSERT_DISABLED
+inline void MarkedBlock::assertMarksNotStale()
+{
+}
+#endif // ASSERT_DISABLED
+
+inline void MarkedBlock::Handle::assertMarksNotStale()
+{
+    block().assertMarksNotStale();
+}
+
+inline bool MarkedBlock::isMarked(HeapVersion markingVersion, const void* p)
+{
+    return areMarksStale(markingVersion) ? false : m_marks.get(atomNumber(p));
+}
+
+inline bool MarkedBlock::isMarkedConcurrently(HeapVersion markingVersion, const void* p)
+{
+    if (areMarksStale(markingVersion))
         return false;
-    }
+    WTF::loadLoadFence();
+    return m_marks.get(atomNumber(p));
+}
 
-    inline bool MarkedBlock::isMarkedOrNewlyAllocated(const HeapCell* cell)
-    {
-        ASSERT(m_state == Retired || m_state == Marked);
-        return m_marks.get(atomNumber(cell)) || (m_newlyAllocated && isNewlyAllocated(cell));
-    }
+inline bool MarkedBlock::testAndSetMarked(const void* p)
+{
+    assertMarksNotStale();
+    return m_marks.concurrentTestAndSet(atomNumber(p));
+}
 
-    inline bool MarkedBlock::isLive(const HeapCell* cell)
-    {
-        switch (m_state) {
-        case Allocated:
-            return true;
+inline bool MarkedBlock::Handle::isNewlyAllocated(const void* p)
+{
+    return m_newlyAllocated->get(m_block->atomNumber(p));
+}
 
-        case Retired:
-        case Marked:
-            return isMarkedOrNewlyAllocated(cell);
+inline void MarkedBlock::Handle::setNewlyAllocated(const void* p)
+{
+    m_newlyAllocated->set(m_block->atomNumber(p));
+}
 
-        case New:
-        case FreeListed:
-            RELEASE_ASSERT_NOT_REACHED();
-            return false;
-        }
+inline void MarkedBlock::Handle::clearNewlyAllocated(const void* p)
+{
+    m_newlyAllocated->clear(m_block->atomNumber(p));
+}
 
-        RELEASE_ASSERT_NOT_REACHED();
-        return false;
-    }
-
-    inline bool MarkedBlock::isAtom(const void* p)
-    {
-        ASSERT(MarkedBlock::isAtomAligned(p));
-        size_t atomNumber = this->atomNumber(p);
-        size_t firstAtom = this->firstAtom();
-        if (atomNumber < firstAtom) // Filters pointers into MarkedBlock metadata.
-            return false;
-        if ((atomNumber - firstAtom) % m_atomsPerCell) // Filters pointers into cell middles.
-            return false;
-        if (atomNumber >= m_endAtom) // Filters pointers into invalid cells out of the range.
-            return false;
+inline bool MarkedBlock::Handle::clearNewlyAllocated()
+{
+    if (m_newlyAllocated) {
+        m_newlyAllocated = nullptr;
         return true;
     }
+    return false;
+}
 
-    inline bool MarkedBlock::isLiveCell(const void* p)
-    {
-        if (!isAtom(p))
-            return false;
-        return isLive(static_cast<const HeapCell*>(p));
+inline bool MarkedBlock::Handle::isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell* cell)
+{
+    return m_block->isMarked(markingVersion, cell) || (m_newlyAllocated && isNewlyAllocated(cell));
+}
+
+inline bool MarkedBlock::isMarkedOrNewlyAllocated(HeapVersion markingVersion, const HeapCell* cell)
+{
+    return isMarked(markingVersion, cell) || (m_handle.m_newlyAllocated && m_handle.isNewlyAllocated(cell));
+}
+
+inline bool MarkedBlock::isAtom(const void* p)
+{
+    ASSERT(MarkedBlock::isAtomAligned(p));
+    size_t atomNumber = this->atomNumber(p);
+    size_t firstAtom = MarkedBlock::firstAtom();
+    if (atomNumber < firstAtom) // Filters pointers into MarkedBlock metadata.
+        return false;
+    if ((atomNumber - firstAtom) % m_handle.m_atomsPerCell) // Filters pointers into cell middles.
+        return false;
+    if (atomNumber >= m_handle.m_endAtom) // Filters pointers into invalid cells out of the range.
+        return false;
+    return true;
+}
+
+template <typename Functor>
+inline IterationStatus MarkedBlock::Handle::forEachCell(const Functor& functor)
+{
+    HeapCell::Kind kind = m_attributes.cellKind;
+    for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
+        HeapCell* cell = reinterpret_cast_ptr<HeapCell*>(&m_block->atoms()[i]);
+        if (functor(cell, kind) == IterationStatus::Done)
+            return IterationStatus::Done;
     }
+    return IterationStatus::Continue;
+}
 
-    template <typename Functor> inline IterationStatus MarkedBlock::forEachCell(const Functor& functor)
-    {
-        HeapCell::Kind kind = m_attributes.cellKind;
-        for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
-            HeapCell* cell = reinterpret_cast_ptr<HeapCell*>(&atoms()[i]);
-            if (functor(cell, kind) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        return IterationStatus::Continue;
-    }
+inline bool MarkedBlock::hasAnyMarked() const
+{
+    return m_biasedMarkCount != m_markCountBias;
+}
 
-    template <typename Functor> inline IterationStatus MarkedBlock::forEachLiveCell(const Functor& functor)
-    {
-        HeapCell::Kind kind = m_attributes.cellKind;
-        for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
-            HeapCell* cell = reinterpret_cast_ptr<HeapCell*>(&atoms()[i]);
-            if (!isLive(cell))
-                continue;
-
-            if (functor(cell, kind) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        return IterationStatus::Continue;
-    }
-
-    template <typename Functor> inline IterationStatus MarkedBlock::forEachDeadCell(const Functor& functor)
-    {
-        HeapCell::Kind kind = m_attributes.cellKind;
-        for (size_t i = firstAtom(); i < m_endAtom; i += m_atomsPerCell) {
-            HeapCell* cell = reinterpret_cast_ptr<HeapCell*>(&atoms()[i]);
-            if (isLive(cell))
-                continue;
-
-            if (functor(cell, kind) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        return IterationStatus::Continue;
-    }
-
-    inline bool MarkedBlock::needsSweeping() const
-    {
-        return m_state == Marked;
-    }
-
-    inline bool MarkedBlock::isAllocated() const
-    {
-        return m_state == Allocated;
-    }
-
-    inline bool MarkedBlock::isMarkedOrRetired() const
-    {
-        return m_state == Marked || m_state == Retired;
-    }
+inline void MarkedBlock::noteMarked()
+{
+    // This is racy by design. We don't want to pay the price of an atomic increment!
+    int16_t biasedMarkCount = m_biasedMarkCount;
+    ++biasedMarkCount;
+    m_biasedMarkCount = biasedMarkCount;
+    if (UNLIKELY(!biasedMarkCount))
+        noteMarkedSlow();
+}
 
 } // namespace JSC
 
 namespace WTF {
 
-    struct MarkedBlockHash : PtrHash<JSC::MarkedBlock*> {
-        static unsigned hash(JSC::MarkedBlock* const& key)
-        {
-            // Aligned VM regions tend to be monotonically increasing integers,
-            // which is a great hash function, but we have to remove the low bits,
-            // since they're always zero, which is a terrible hash function!
-            return reinterpret_cast<JSC::Bits>(key) / JSC::MarkedBlock::blockSize;
-        }
-    };
+struct MarkedBlockHash : PtrHash<JSC::MarkedBlock*> {
+    static unsigned hash(JSC::MarkedBlock* const& key)
+    {
+        // Aligned VM regions tend to be monotonically increasing integers,
+        // which is a great hash function, but we have to remove the low bits,
+        // since they're always zero, which is a terrible hash function!
+        return reinterpret_cast<JSC::Bits>(key) / JSC::MarkedBlock::blockSize;
+    }
+};
 
-    template<> struct DefaultHash<JSC::MarkedBlock*> {
-        typedef MarkedBlockHash Hash;
-    };
+template<> struct DefaultHash<JSC::MarkedBlock*> {
+    typedef MarkedBlockHash Hash;
+};
+
+void printInternal(PrintStream& out, JSC::MarkedBlock::Handle::SweepMode);
 
 } // namespace WTF
 

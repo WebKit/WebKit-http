@@ -26,11 +26,8 @@
 #include "config.h"
 #include "JSWeakSet.h"
 
-#include "JSCJSValueInlines.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
 #include "WeakMapData.h"
-#include "WriteBarrierInlines.h"
 
 namespace JSC {
 
@@ -47,6 +44,11 @@ void JSWeakSet::visitChildren(JSCell* cell, SlotVisitor& visitor)
     Base::visitChildren(cell, visitor);
     JSWeakSet* thisObj = jsCast<JSWeakSet*>(cell);
     visitor.append(&thisObj->m_weakMapData);
+}
+
+String JSWeakSet::toStringName(const JSC::JSObject*, ExecState*)
+{
+    return ASCIILiteral("Object");
 }
 
 }

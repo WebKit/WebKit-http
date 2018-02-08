@@ -44,7 +44,6 @@
 
     [RaisesException] void setTextAutosizingEnabled(boolean enabled);
     [RaisesException] void setTextAutosizingWindowSizeOverride(long width, long height);
-    [RaisesException] void setTextAutosizingFontScaleFactor(unrestricted float fontScaleFactor);
 
     // Media
     [RaisesException] void setCanStartMedia(boolean enabled);
@@ -57,7 +56,8 @@
 
     [RaisesException] void setForcePendingWebGLPolicy(boolean forced);
 
-    void setPluginReplacementEnabled(boolean enabled);
+    [RaisesException] void setQuickTimePluginReplacementEnabled(boolean enabled);
+    [RaisesException] void setYouTubeFlashPluginReplacementEnabled(boolean enabled);
 
     // Editing, forms
     [RaisesException] void setEditingBehavior(DOMString behavior);
@@ -68,7 +68,7 @@
     // Other switches
     [RaisesException] void setStorageBlockingPolicy(DOMString policy);
     [RaisesException] void setImagesEnabled(boolean enabled);
-    [RaisesException] void setCachedPDFImageEnabled(boolean enabled);
+    [RaisesException] void setPDFImageCachingPolicy(DOMString policy);
     [RaisesException] void setUseLegacyBackgroundSizeShorthandBehavior(boolean enabled);
     [RaisesException] void setAutoscrollForDragAndDropEnabled(boolean enabled);
     [RaisesException] void setBackgroundShouldExtendBeyondPage(boolean hasExtendedBackground);

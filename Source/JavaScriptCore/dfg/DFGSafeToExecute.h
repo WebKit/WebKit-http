@@ -55,9 +55,14 @@ public:
         case CellUse:
         case CellOrOtherUse:
         case ObjectUse:
+        case ArrayUse:
         case FunctionUse:
         case FinalObjectUse:
         case RegExpObjectUse:
+        case ProxyObjectUse:
+        case DerivedArrayUse:
+        case MapObjectUse:
+        case SetObjectUse:
         case ObjectOrOtherUse:
         case StringIdentUse:
         case StringUse:
@@ -189,6 +194,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ArithTrunc:
     case ArithSin:
     case ArithCos:
+    case ArithTan:
     case ArithLog:
     case ValueAdd:
     case TryGetById:
@@ -257,16 +263,14 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case OverridesHasInstance:
     case InstanceOf:
     case InstanceOfCustom:
-    case IsJSArray:
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
-    case IsString:
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
-    case IsRegExpObject:
+    case IsCellWithType:
     case IsTypedArrayView:
     case TypeOf:
     case LogicalNot:
@@ -280,6 +284,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case NewStringObject:
     case MakeRope:
     case In:
+    case HasOwnProperty:
     case CreateActivation:
     case CreateDirectArguments:
     case CreateScopedArguments:
@@ -355,6 +360,10 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetDynamicVar:
     case PutDynamicVar:
     case ResolveScope:
+    case MapHash:
+    case GetMapBucket:
+    case LoadFromJSMapBucket:
+    case IsNonEmptyMapBucket:
         return true;
 
     case BottomValue:

@@ -164,7 +164,7 @@ void ImageDocument::finishedParsing()
             String name = decodeURLEscapeSequences(url().lastPathComponent());
             if (name.isEmpty())
                 name = url().host();
-            setTitle(imageTitle(name, size), IGNORE_EXCEPTION);
+            setTitle(imageTitle(name, size));
         }
 
         imageUpdated();
@@ -313,8 +313,8 @@ void ImageDocument::restoreImageSize()
         return;
 
     LayoutSize imageSize = this->imageSize();
-    m_imageElement->setWidth(imageSize.width());
-    m_imageElement->setHeight(imageSize.height());
+    m_imageElement->setWidth(imageSize.width().toUnsigned());
+    m_imageElement->setHeight(imageSize.height().toUnsigned());
 
     if (imageFitsInWindow())
         m_imageElement->removeInlineStyleProperty(CSSPropertyCursor);

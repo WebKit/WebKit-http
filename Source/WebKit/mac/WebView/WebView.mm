@@ -140,6 +140,7 @@
 #import <WebCore/FrameTree.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/GCController.h>
+#import <WebCore/GameControllerGamepadProvider.h>
 #import <WebCore/GeolocationController.h>
 #import <WebCore/GeolocationError.h>
 #import <WebCore/HTMLNames.h>
@@ -260,7 +261,6 @@
 #import <WebCore/ResourceLoadStatisticsStore.h>
 #import <WebCore/SQLiteDatabaseTracker.h>
 #import <WebCore/SmartReplace.h>
-#import <WebCore/TextRun.h>
 #import <WebCore/TileControllerMemoryHandlerIOS.h>
 #import <WebCore/WAKWindow.h>
 #import <WebCore/WKView.h>
@@ -910,7 +910,12 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     if (initialized)
         return;
 
+#if PLATFORM(MAC)
     GamepadProvider::singleton().setSharedProvider(HIDGamepadProvider::singleton());
+#else
+    GamepadProvider::singleton().setSharedProvider(GameControllerGamepadProvider::singleton());
+#endif
+
     initialized = true;
 }
 #endif
@@ -961,7 +966,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     static bool didOneTimeInitialization = false;
 #endif
     if (!didOneTimeInitialization) {
-#if !LOG_DISABLED
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
         WebKitInitializeLogChannelsIfNecessary();
         WebCore::initializeLogChannelsIfNecessary();
 #endif
@@ -1419,7 +1424,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Calling JavaScript GC.");
-    GCController::singleton().garbageCollectNow();
+    WebCore::GCController::singleton().garbageCollectNow();
 }
 
 + (void)purgeInactiveFontData
@@ -1440,7 +1445,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Discarding JIT'ed code.");
-    GCController::singleton().deleteAllCode();
+    WebCore::GCController::singleton().deleteAllCode();
 }
 
 + (BOOL)isCharacterSmartReplaceExempt:(unichar)character isPreviousCharacter:(BOOL)b
@@ -1877,7 +1882,7 @@ static bool fastDocumentTeardownEnabled()
 #ifndef NDEBUG
     // Need this to make leak messages accurate.
     if (applicationIsTerminating) {
-        GCController::singleton().garbageCollectNow();
+        WebCore::GCController::singleton().garbageCollectNow();
         [WebCache setDisabled:YES];
     }
 #endif
@@ -6931,6 +6936,9 @@ static BOOL findString(NSView <WebDocumentSearching> *searchView, NSString *stri
 #if !PLATFORM(IOS)
 static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue jsValue)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     NSAppleEventDescriptor* aeDesc = 0;
     if (jsValue.isBoolean())
         return [NSAppleEventDescriptor descriptorWithBoolean:jsValue.asBoolean()];
@@ -6971,8 +6979,8 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
             }
         }
         JSC::JSValue primitive = object->toPrimitive(exec);
-        if (exec->hadException()) {
-            exec->clearException();
+        if (UNLIKELY(scope.exception())) {
+            scope.clearException();
             return [NSAppleEventDescriptor nullDescriptor];
         }
         return aeDescFromJSValue(exec, primitive);
@@ -8631,10 +8639,8 @@ bool LayerFlushController::flushLayers()
     _private->playbackSessionModel->setMediaElement(&mediaElement);
 
     if (!_private->playbackSessionInterface)
-        _private->playbackSessionInterface = WebPlaybackSessionInterfaceMac::create();
+        _private->playbackSessionInterface = WebPlaybackSessionInterfaceMac::create(*_private->playbackSessionModel);
 
-    _private->playbackSessionInterface->setWebPlaybackSessionModel(_private->playbackSessionModel.get());
-    _private->playbackSessionModel->setWebPlaybackSessionInterface(_private->playbackSessionInterface.get());
     [self updateWebViewAdditions];
 }
 
@@ -8644,8 +8650,7 @@ bool LayerFlushController::flushLayers()
         return;
 
     _private->playbackSessionModel->setMediaElement(nullptr);
-    _private->playbackSessionModel->setWebPlaybackSessionInterface(nullptr);
-    _private->playbackSessionInterface->setWebPlaybackSessionModel(nullptr);
+    _private->playbackSessionInterface->invalidate();
 
     _private->playbackSessionModel = nullptr;
     _private->playbackSessionInterface = nullptr;

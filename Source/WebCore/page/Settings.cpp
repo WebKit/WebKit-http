@@ -45,7 +45,6 @@
 #include "PageCache.h"
 #include "RuntimeApplicationChecks.h"
 #include "StorageMap.h"
-#include "TextAutosizer.h"
 #include <limits>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
@@ -132,6 +131,12 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
     ;
 }
 
+#if PLATFORM(COCOA)
+static const bool defaultYouTubeFlashPluginReplacementEnabled = true;
+#else
+static const bool defaultYouTubeFlashPluginReplacementEnabled = false;
+#endif
+
 #if PLATFORM(IOS)
 static const bool defaultFixedPositionCreatesStackingContext = true;
 static const bool defaultFixedBackgroundsPaintRelativeToDocument = true;
@@ -145,6 +150,7 @@ static const bool defaultShouldRespectImageOrientation = true;
 static const bool defaultImageSubsamplingEnabled = true;
 static const bool defaultScrollingTreeIncludesFrames = true;
 static const bool defaultMediaControlsScaleWithPageZoom = true;
+static const bool defaultQuickTimePluginReplacementEnabled = true;
 #else
 static const bool defaultFixedPositionCreatesStackingContext = false;
 static const bool defaultFixedBackgroundsPaintRelativeToDocument = false;
@@ -158,6 +164,7 @@ static const bool defaultShouldRespectImageOrientation = false;
 static const bool defaultImageSubsamplingEnabled = false;
 static const bool defaultScrollingTreeIncludesFrames = false;
 static const bool defaultMediaControlsScaleWithPageZoom = true;
+static const bool defaultQuickTimePluginReplacementEnabled = false;
 #endif
 
 static const bool defaultAllowsPictureInPictureMediaPlayback = true;
@@ -183,16 +190,12 @@ Settings::Settings(Page* page)
     , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)
     , m_layoutInterval(layoutScheduleThreshold)
     , m_minimumDOMTimerInterval(DOMTimer::defaultMinimumInterval())
-#if ENABLE(TEXT_AUTOSIZING)
-    , m_textAutosizingFontScaleFactor(1)
-#endif
     SETTINGS_INITIALIZER_LIST
     , m_isJavaEnabled(false)
     , m_isJavaEnabledForLocalFiles(true)
     , m_loadsImagesAutomatically(false)
     , m_areImagesEnabled(true)
     , m_preferMIMETypeForImages(false)
-    , m_isCachedPDFImageEnabled(true)
     , m_arePluginsEnabled(false)
     , m_isScriptEnabled(false)
     , m_needsAdobeFrameReloadingQuirk(false)
@@ -322,22 +325,6 @@ void Settings::setPictographFontFamily(const AtomicString& family, UScriptCode s
         invalidateAfterGenericFamilyChange(m_page);
 }
 
-#if ENABLE(TEXT_AUTOSIZING)
-void Settings::setTextAutosizingFontScaleFactor(float fontScaleFactor)
-{
-    m_textAutosizingFontScaleFactor = fontScaleFactor;
-
-    if (!m_page)
-        return;
-
-    // FIXME: I wonder if this needs to traverse frames like in WebViewImpl::resize, or whether there is only one document per Settings instance?
-    for (Frame* frame = m_page->mainFrame(); frame; frame = frame->tree().traverseNext())
-        frame->document()->textAutosizer()->recalculateMultipliers();
-
-    m_page->setNeedsRecalcStyleInAllFrames();
-}
-#endif
-
 float Settings::defaultMinimumZoomFontSize()
 {
     return 15;
@@ -423,11 +410,6 @@ void Settings::setImagesEnabled(bool areImagesEnabled)
 void Settings::setPreferMIMETypeForImages(bool preferMIMETypeForImages)
 {
     m_preferMIMETypeForImages = preferMIMETypeForImages;
-}
-
-void Settings::setCachedPDFImageEnabled(bool isCachedPDFImageEnabled)
-{
-    m_isCachedPDFImageEnabled = isCachedPDFImageEnabled;
 }
 
 void Settings::setForcePendingWebGLPolicy(bool forced)

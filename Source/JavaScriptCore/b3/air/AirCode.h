@@ -33,11 +33,11 @@
 #include "AirSpecial.h"
 #include "AirStackSlot.h"
 #include "AirTmp.h"
-#include "B3IndexMap.h"
 #include "B3SparseCollection.h"
 #include "CCallHelpers.h"
 #include "RegisterAtOffsetList.h"
 #include "StackAlignment.h"
+#include <wtf/IndexMap.h>
 
 namespace JSC { namespace B3 {
 
@@ -101,10 +101,10 @@ public:
         ASSERT_NOT_REACHED();
     }
 
-    unsigned callArgAreaSize() const { return m_callArgAreaSize; }
+    unsigned callArgAreaSizeInBytes() const { return m_callArgAreaSize; }
 
     // You can call this before code generation to force a minimum call arg area size.
-    void requestCallArgAreaSize(unsigned size)
+    void requestCallArgAreaSizeInBytes(unsigned size)
     {
         m_callArgAreaSize = std::max(
             m_callArgAreaSize,

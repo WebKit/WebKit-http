@@ -29,6 +29,7 @@
 #ifndef ResourceLoader_h
 #define ResourceLoader_h
 
+#include "LoadTiming.h"
 #include "ResourceHandleClient.h"
 #include "ResourceLoaderOptions.h"
 #include "ResourceLoaderTypes.h"
@@ -143,11 +144,14 @@ public:
 
     void willSwitchToSubstituteResource();
 
+    const LoadTiming& loadTiming() { return m_loadTiming; }
+
 #if PLATFORM(COCOA) && !USE(CFNETWORK)
     void schedule(WTF::SchedulePair&);
     void unschedule(WTF::SchedulePair&);
 #endif
 
+    const Frame* frame() const { return m_frame.get(); }
     WEBCORE_EXPORT bool isAlwaysOnLoggingAllowed() const;
 
 protected:
@@ -175,7 +179,8 @@ protected:
     RefPtr<Frame> m_frame;
     RefPtr<DocumentLoader> m_documentLoader;
     ResourceResponse m_response;
-    
+    LoadTiming m_loadTiming;
+
 private:
     virtual void willCancel(const ResourceError&) = 0;
     virtual void didCancel(const ResourceError&) = 0;

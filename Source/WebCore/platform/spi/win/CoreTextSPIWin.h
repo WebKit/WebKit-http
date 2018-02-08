@@ -29,15 +29,15 @@
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
 
-extern "C" {
+WTF_EXTERN_C_BEGIN
 
 typedef const struct __CTFont* CTFontRef;
 typedef const struct __CTLine* CTLineRef;
 typedef UInt32 FourCharCode;
 typedef FourCharCode CTFontTableTag;
 
-extern const CFStringRef kCTFontAttributeName;
-extern const CFStringRef kCTForegroundColorFromContextAttributeName;
+CT_EXPORT const CFStringRef kCTFontAttributeName;
+CT_EXPORT const CFStringRef kCTForegroundColorFromContextAttributeName;
 
 typedef CF_OPTIONS(uint32_t, CTFontTableOptions)
 {
@@ -52,5 +52,5 @@ void CTLineDraw(CTLineRef, CGContextRef);
 CFDataRef CTFontCopyTable(CTFontRef, CTFontTableTag, CTFontTableOptions);
 CFArrayRef CTFontCopyAvailableTables(CTFontRef, CTFontTableOptions);
 
-}
+WTF_EXTERN_C_END
 

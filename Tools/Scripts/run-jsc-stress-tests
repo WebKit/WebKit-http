@@ -47,6 +47,7 @@ THIS_SCRIPT_PATH = Pathname.new(__FILE__).realpath
 SCRIPTS_PATH = THIS_SCRIPT_PATH.dirname
 WEBKIT_PATH = SCRIPTS_PATH.dirname.dirname
 LAYOUTTESTS_PATH = WEBKIT_PATH + "LayoutTests"
+CHAKRATESTS_PATH = WEBKIT_PATH + "JSTests/ChakraCore/test"
 raise unless SCRIPTS_PATH.basename.to_s == "Scripts"
 raise unless SCRIPTS_PATH.dirname.basename.to_s == "Tools"
 
@@ -124,7 +125,7 @@ def usage
     puts "--no-copy                   Do not copy the JavaScriptCore build product before testing."
     puts "                            --jsc specifies an already present JavaScriptCore to test."
     puts "--memory-limited            Indicate that we are targeting the test for a memory limited device."
-    puts "                            Skip tests tagged with //@large-heap"
+    puts "                            Skip tests tagged with //@largeHeap"
     puts "--no-jit                    Do not run JIT specific tests."
     puts "--output-dir         (-o)   Path where to put results. Default is #{$outputDir}."
     puts "--verbose            (-v)   Print more things while running."
@@ -420,7 +421,7 @@ $numPasses = 0
 # We force all tests to use a smaller (1.5M) stack so that stack overflow tests can run faster.
 BASE_OPTIONS = ["--useFTLJIT=false", "--useFunctionDotArguments=true", "--maxPerThreadStackUsage=1572864"]
 EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", "--thresholdForOptimizeAfterWarmUp=20", "--thresholdForOptimizeAfterLongWarmUp=20", "--thresholdForOptimizeSoon=20", "--thresholdForFTLOptimizeAfterWarmUp=20", "--thresholdForFTLOptimizeSoon=20", "--maximumEvalCacheableSourceLength=150000", "--useEagerCodeBlockJettisonTiming=true"]
-NO_CJIT_OPTIONS = ["--useConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100"]
+NO_CJIT_OPTIONS = ["--useConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100", "--scribbleFreeCells=true"]
 FTL_OPTIONS = ["--useFTLJIT=true"]
 
 $runlist = []
@@ -622,6 +623,27 @@ def mozillaExit3ErrorHandler
         outp.puts "else"
         outp.puts "    (cat #{outputFilename} && echo ERROR: Test expected to fail, but returned successfully) | " + redirectAndPrefixCommand(plan.name)
         outp.puts "    " + plan.failCommand
+        outp.puts "fi"
+    }
+end
+
+# Error handler for tests that report success by saying "Passed" or error by saying "FAILED".
+# This is used by Chakra tests.
+def chakraPassFailErrorHandler
+    Proc.new {
+        | outp, plan |
+        outputFilename = Shellwords.shellescape((Pathname("..") + (plan.name + ".out")).to_s)
+
+        outp.puts "if test -e #{plan.failFile}"
+        outp.puts "then"
+        outp.puts "    (cat #{outputFilename} && echo ERROR: Unexpected exit code: `cat #{plan.failFile}`) | " + redirectAndPrefixCommand(plan.name)
+        outp.puts "    " + plan.failCommand
+        outp.puts "elif grep -i -q FAILED #{outputFilename}"
+        outp.puts "then"
+        outp.puts "    (echo Detected failures: && cat #{outputFilename}) | " + redirectAndPrefixCommand(plan.name)
+        outp.puts "    " + plan.failCommand
+        outp.puts "else"
+        outp.puts "    " + plan.successCommand
         outp.puts "fi"
     }
 end
@@ -847,10 +869,6 @@ def runFTLEagerNoCJITOSRValidation
     run("ftl-eager-no-cjit-osr-validation", "--validateFTLOSRExitLiveness=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS))
 end
 
-def runAlwaysTriggerCopyPhase
-    run("always-trigger-copy-phase", "--minHeapUtilization=2.0", "--minCopiedBlockUtilization=2.0")
-end
-
 def runNoCJITNoASO
     run("no-cjit-no-aso", "--useArchitectureSpecificOptimizations=false", *NO_CJIT_OPTIONS)
 end
@@ -888,7 +906,6 @@ def defaultRun
         defaultQuickRun
     else
         runDefault
-        runAlwaysTriggerCopyPhase
         if $jitTests
             runNoLLInt
             runNoCJITValidatePhases
@@ -914,7 +931,6 @@ def defaultNoNoLLIntRun
         defaultQuickRun
     else
         runDefault
-        runAlwaysTriggerCopyPhase
         if $jitTests
             runNoCJITValidatePhases
             runDFGEager
@@ -966,7 +982,6 @@ end
 # by counting recompilations.
 def defaultNoEagerRun
     runDefault
-    runAlwaysTriggerCopyPhase
     if $jitTests
         runNoLLInt
         runNoCJITValidatePhases
@@ -981,7 +996,6 @@ end
 
 def defaultNoSamplingProfilerRun
     runDefault
-    runAlwaysTriggerCopyPhase
     if $jitTests
         runNoLLInt
         runNoCJITValidatePhases
@@ -1119,7 +1133,6 @@ end
 
 def runModules
     run("default-modules", "-m")
-    run("always-trigger-copy-phase-modules", "-m", "--minHeapUtilization=2.0", "--minCopiedBlockUtilization=2.0")
 
     if !$jitTests
         return
@@ -1138,6 +1151,41 @@ def runModules
     run("ftl-eager-modules", "-m", *(FTL_OPTIONS + EAGER_OPTIONS))
     run("ftl-eager-no-cjit-modules", "-m", "--validateGraph=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + EAGER_OPTIONS))
     run("ftl-no-cjit-small-pool-modules", "-m", "--jitMemoryReservationSize=50000", *(FTL_OPTIONS + NO_CJIT_OPTIONS))
+end
+
+def runChakra(mode, exception, baselineFile, extraFiles)
+    raise unless $benchmark.to_s =~ /\.js$/
+    failsWithException = exception != "NoException"
+    testName = $~.pre_match
+
+    prepareExtraAbsoluteFiles(CHAKRATESTS_PATH, ["jsc-lib.js"])
+    prepareExtraRelativeFiles(extraFiles.map { |f| "../" + f }, $collection)
+
+    args = [pathToVM.to_s] + BASE_OPTIONS
+    args += FTL_OPTIONS if $isFTLPlatform
+    args += EAGER_OPTIONS
+    args << "--exception=" + exception if failsWithException
+    args << "--dumpException" if failsWithException
+    args += ["jsc-lib.js"]
+
+    case mode
+    when :baseline
+        prepareExtraRelativeFiles([(Pathname("..") + baselineFile).to_s], $collection)
+        errorHandler = diffErrorHandler(($benchmarkDirectory + baselineFile).to_s)
+        outputHandler = noisyOutputHandler
+    when :pass
+        errorHandler = chakraPassFailErrorHandler
+        outputHandler = noisyOutputHandler
+    when :skip
+        return
+    else
+        raise "Invalid mode: #{mode}"
+    end
+
+    kind = "default"
+    args << $benchmark.to_s
+
+    addRunCommand(kind, args, outputHandler, errorHandler)
 end
 
 def runLayoutTest(kind, *options)

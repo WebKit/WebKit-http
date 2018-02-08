@@ -114,9 +114,9 @@ public:
 
     CompositeEditCommand* lastEditCommand() { return m_lastEditCommand.get(); }
 
-    void handleKeyboardEvent(KeyboardEvent*);
-    void handleInputMethodKeydown(KeyboardEvent*);
-    bool handleTextEvent(TextEvent*);
+    void handleKeyboardEvent(KeyboardEvent&);
+    void handleInputMethodKeydown(KeyboardEvent&);
+    bool handleTextEvent(TextEvent&);
 
     WEBCORE_EXPORT bool canEdit() const;
     WEBCORE_EXPORT bool canEditRichly() const;
@@ -466,6 +466,8 @@ public:
 
     WEBCORE_EXPORT String stringForCandidateRequest() const;
     WEBCORE_EXPORT void handleAcceptedCandidate(TextCheckingResult);
+    WEBCORE_EXPORT RefPtr<Range> contextRangeForCandidateRequest() const;
+    RefPtr<Range> rangeForTextCheckingResult(const TextCheckingResult&) const;
     bool isHandlingAcceptedCandidate() const { return m_isHandlingAcceptedCandidate; }
 
 private:

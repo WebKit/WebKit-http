@@ -345,6 +345,7 @@ void WebEditorClient::respondToChangedSelection(Frame* frame)
     if ([documentView isKindOfClass:[WebHTMLView class]]) {
         [(WebHTMLView *)documentView _selectionChanged];
         [m_webView updateWebViewAdditions];
+        m_lastEditorStateWasContentEditable = [(WebHTMLView *)documentView _isEditable] ? EditorStateIsContentEditable::Yes : EditorStateIsContentEditable::No;
     }
 
 #if !PLATFORM(IOS)
@@ -425,7 +426,7 @@ static NSDictionary *attributesForAttributedStringConversion()
         // Omit tags that will get stripped when converted to a fragment anyway.
         @"doctype", @"html", @"head", @"body", 
         // Omit deprecated tags.
-        @"applet", @"basefont", @"center", @"dir", @"font", @"isindex", @"menu", @"s", @"strike", @"u", 
+        @"applet", @"basefont", @"center", @"dir", @"font", @"menu", @"s", @"strike", @"u",
         // Omit object so no file attachments are part of the fragment.
         @"object", nil];
 
@@ -626,6 +627,26 @@ void WebEditorClient::registerUndoOrRedoStep(PassRefPtr<UndoStep> step, bool isR
     if (actionName)
         [undoManager setActionName:actionName];
     m_haveUndoRedoOperations = YES;
+}
+
+void WebEditorClient::updateEditorStateAfterLayoutIfEditabilityChanged()
+{
+    // FIXME: We should update EditorStateIsContentEditable to track whether the state is richly
+    // editable or plainttext-only.
+    if (m_lastEditorStateWasContentEditable == EditorStateIsContentEditable::Unset)
+        return;
+
+    Frame* frame = core([m_webView _selectedOrMainFrame]);
+    if (!frame)
+        return;
+
+    NSView<WebDocumentView> *documentView = [[kit(frame) frameView] documentView];
+    if (![documentView isKindOfClass:[WebHTMLView class]])
+        return;
+
+    EditorStateIsContentEditable editorStateIsContentEditable = [(WebHTMLView *)documentView _isEditable] ? EditorStateIsContentEditable::Yes : EditorStateIsContentEditable::No;
+    if (m_lastEditorStateWasContentEditable != editorStateIsContentEditable)
+        [m_webView updateWebViewAdditions];
 }
 
 void WebEditorClient::registerUndoStep(PassRefPtr<UndoStep> cmd)
@@ -1142,6 +1163,10 @@ void WebEditorClient::requestCandidatesForSelection(const VisibleSelection& sele
     RefPtr<Range> selectedRange = selection.toNormalizedRange();
     if (!selectedRange)
         return;
+    
+    Frame* frame = core([m_webView _selectedOrMainFrame]);
+    if (!frame)
+        return;
 
     m_lastSelectionForRequestedCandidates = selection;
 
@@ -1154,7 +1179,7 @@ void WebEditorClient::requestCandidatesForSelection(const VisibleSelection& sele
     int lengthToSelectionStart = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
     int lengthToSelectionEnd = TextIterator::rangeLength(makeRange(paragraphStart, selectionEnd).get());
     m_rangeForCandidates = NSMakeRange(lengthToSelectionStart, lengthToSelectionEnd - lengthToSelectionStart);
-    m_paragraphContextForCandidateRequest = plainText(makeRange(paragraphStart, paragraphEnd).get());
+    m_paragraphContextForCandidateRequest = plainText(frame->editor().contextRangeForCandidateRequest().get());
 
     NSTextCheckingTypes checkingTypes = NSTextCheckingTypeSpelling | NSTextCheckingTypeReplacement | NSTextCheckingTypeCorrection;
     auto weakEditor = m_weakPtrFactory.createWeakPtr();

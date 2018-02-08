@@ -34,6 +34,7 @@
 
     --selected-foreground-color: white;
     --selected-background-color: hsl(212, 92%, 54%);
+    --selected-background-color-unfocused: hsl(0, 0%, 83%);
     --selected-background-color-active: hsl(218, 85%, 52%);
     --selected-background-color-hover: hsla(212, 92%, 54%, 0.5);
     --selected-background-color-highlight: hsla(0, 0%, 100%, 0.3);
@@ -45,6 +46,7 @@
     --glyph-color-active-pressed: hsl(218, 85%, 52%);
 
     --border-color: hsl(0, 0%, 70%);
+    --border-color-dark: hsl(0, 0%, 57%);
     --panel-background-color: hsl(0, 0%, 94%);
     --panel-background-color-light: hsl(0, 0%, 96%);
 
@@ -76,6 +78,8 @@
     --toolbar-height: 36px;
     --tab-bar-height: 24px;
     --navigation-bar-height: 29px;
+
+    --style-declaration-section-header-padding: 4px 5px 3px 25px;
 }
 
 body.window-inactive {

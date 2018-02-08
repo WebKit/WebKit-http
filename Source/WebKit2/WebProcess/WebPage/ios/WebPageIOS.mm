@@ -207,12 +207,6 @@ FloatSize WebPage::availableScreenSize() const
     return m_availableScreenSize;
 }
 
-void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
-{
-    if (m_viewportConfiguration.setViewportArguments(viewportArguments))
-        viewportConfigurationChanged();
-}
-
 void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
 {
     if (isMobileDoctype)
@@ -2343,7 +2337,8 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                         }
                     }
 #endif
-                } else if (element->renderer() && element->renderer()->isRenderImage()) {
+                }
+                if (element->renderer() && element->renderer()->isRenderImage()) {
                     info.isImage = true;
                     auto& renderImage = downcast<RenderImage>(*(element->renderer()));
                     if (renderImage.cachedImage() && !renderImage.cachedImage()->errorOccurred()) {

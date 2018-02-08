@@ -48,15 +48,31 @@ template<typename Adaptor>
 JSGenericTypedArrayView<Adaptor>* JSGenericTypedArrayView<Adaptor>::create(
     ExecState* exec, Structure* structure, unsigned length)
 {
-    ConstructionContext context(exec->vm(), structure, length, sizeof(typename Adaptor::Type));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    ConstructionContext context(vm, structure, length, sizeof(typename Adaptor::Type));
     if (!context) {
-        throwOutOfMemoryError(exec);
+        throwOutOfMemoryError(exec, scope);
         return nullptr;
     }
     JSGenericTypedArrayView* result =
-        new (NotNull, allocateCell<JSGenericTypedArrayView>(exec->vm().heap))
-        JSGenericTypedArrayView(exec->vm(), context);
-    result->finishCreation(exec->vm());
+        new (NotNull, allocateCell<JSGenericTypedArrayView>(vm.heap))
+        JSGenericTypedArrayView(vm, context);
+    result->finishCreation(vm);
+    return result;
+}
+
+template<typename Adaptor>
+JSGenericTypedArrayView<Adaptor>* JSGenericTypedArrayView<Adaptor>::createWithFastVector(
+    ExecState* exec, Structure* structure, unsigned length, void* vector)
+{
+    VM& vm = exec->vm();
+    ConstructionContext context(structure, length, vector);
+    RELEASE_ASSERT(context);
+    JSGenericTypedArrayView* result =
+        new (NotNull, allocateCell<JSGenericTypedArrayView>(vm.heap))
+        JSGenericTypedArrayView(vm, context);
+    result->finishCreation(vm);
     return result;
 }
 
@@ -64,17 +80,19 @@ template<typename Adaptor>
 JSGenericTypedArrayView<Adaptor>* JSGenericTypedArrayView<Adaptor>::createUninitialized(
     ExecState* exec, Structure* structure, unsigned length)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConstructionContext context(
-        exec->vm(), structure, length, sizeof(typename Adaptor::Type),
+        vm, structure, length, sizeof(typename Adaptor::Type),
         ConstructionContext::DontInitialize);
     if (!context) {
-        throwOutOfMemoryError(exec);
+        throwOutOfMemoryError(exec, scope);
         return nullptr;
     }
     JSGenericTypedArrayView* result =
-        new (NotNull, allocateCell<JSGenericTypedArrayView>(exec->vm().heap))
-        JSGenericTypedArrayView(exec->vm(), context);
-    result->finishCreation(exec->vm());
+        new (NotNull, allocateCell<JSGenericTypedArrayView>(vm.heap))
+        JSGenericTypedArrayView(vm, context);
+    result->finishCreation(vm);
     return result;
 }
 
@@ -83,22 +101,24 @@ JSGenericTypedArrayView<Adaptor>* JSGenericTypedArrayView<Adaptor>::create(
     ExecState* exec, Structure* structure, PassRefPtr<ArrayBuffer> passedBuffer,
     unsigned byteOffset, unsigned length)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     RefPtr<ArrayBuffer> buffer = passedBuffer;
     size_t size = sizeof(typename Adaptor::Type);
     if (!ArrayBufferView::verifySubRangeLength(buffer, byteOffset, length, size)) {
-        exec->vm().throwException(exec, createRangeError(exec, "Length out of range of buffer"));
+        throwException(exec, scope, createRangeError(exec, "Length out of range of buffer"));
         return nullptr;
     }
     if (!ArrayBufferView::verifyByteOffsetAlignment(byteOffset, size)) {
-        exec->vm().throwException(exec, createRangeError(exec, "Byte offset is not aligned"));
+        throwException(exec, scope, createRangeError(exec, "Byte offset is not aligned"));
         return nullptr;
     }
-    ConstructionContext context(exec->vm(), structure, buffer, byteOffset, length);
+    ConstructionContext context(vm, structure, buffer, byteOffset, length);
     ASSERT(context);
     JSGenericTypedArrayView* result =
-        new (NotNull, allocateCell<JSGenericTypedArrayView>(exec->vm().heap))
-        JSGenericTypedArrayView(exec->vm(), context);
-    result->finishCreation(exec->vm());
+        new (NotNull, allocateCell<JSGenericTypedArrayView>(vm.heap))
+        JSGenericTypedArrayView(vm, context);
+    result->finishCreation(vm);
     return result;
 }
 
@@ -128,10 +148,12 @@ template<typename Adaptor>
 bool JSGenericTypedArrayView<Adaptor>::validateRange(
     ExecState* exec, unsigned offset, unsigned length)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     if (canAccessRangeQuickly(offset, length))
         return true;
     
-    exec->vm().throwException(exec, createRangeError(exec, "Range consisting of offset and length are out of bounds"));
+    throwException(exec, scope, createRangeError(exec, "Range consisting of offset and length are out of bounds"));
     return false;
 }
 
@@ -290,8 +312,10 @@ ArrayBuffer* JSGenericTypedArrayView<Adaptor>::existingBuffer()
 template<typename Adaptor>
 EncodedJSValue JSGenericTypedArrayView<Adaptor>::throwNeuteredTypedArrayTypeError(ExecState* exec, EncodedJSValue object, PropertyName)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ASSERT_UNUSED(object, jsCast<JSGenericTypedArrayView*>(JSValue::decode(object))->isNeutered());
-    return throwVMTypeError(exec, typedArrayBufferHasBeenDetachedErrorMessage);
+    return throwVMTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
 }
 
 template<typename Adaptor>
@@ -453,7 +477,7 @@ void JSGenericTypedArrayView<Adaptor>::visitChildren(JSCell* cell, SlotVisitor& 
     switch (thisObject->m_mode) {
     case FastTypedArray: {
         if (thisObject->m_vector)
-            visitor.copyLater(thisObject, TypedArrayVectorCopyToken, thisObject->m_vector.get(), thisObject->byteSize());
+            visitor.markAuxiliary(thisObject->m_vector.get());
         break;
     }
         
@@ -474,25 +498,6 @@ void JSGenericTypedArrayView<Adaptor>::visitChildren(JSCell* cell, SlotVisitor& 
 }
 
 template<typename Adaptor>
-void JSGenericTypedArrayView<Adaptor>::copyBackingStore(
-    JSCell* cell, CopyVisitor& visitor, CopyToken token)
-{
-    JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(cell);
-    
-    if (token == TypedArrayVectorCopyToken
-        && visitor.checkIfShouldCopy(thisObject->m_vector.get())) {
-        ASSERT(thisObject->m_vector);
-        void* oldVector = thisObject->vector();
-        void* newVector = visitor.allocateNewSpace(thisObject->byteSize());
-        memcpy(newVector, oldVector, thisObject->byteSize());
-        thisObject->m_vector.setWithoutBarrier(static_cast<char*>(newVector));
-        visitor.didCopy(oldVector, thisObject->byteSize());
-    }
-    
-    Base::copyBackingStore(thisObject, visitor, token);
-}
-
-template<typename Adaptor>
 ArrayBuffer* JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory(JSArrayBufferView* object)
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(object);
@@ -510,25 +515,15 @@ ArrayBuffer* JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory(JSArrayBuf
     // up. But if you do *anything* to trigger a GC watermark check, it will know
     // that you *had* done those allocations and it will GC appropriately.
     Heap* heap = Heap::heap(thisObject);
+    VM& vm = *heap->vm();
     DeferGCForAWhile deferGC(*heap);
     
     ASSERT(!thisObject->hasIndexingHeader());
 
-    size_t size = thisObject->byteSize();
-    
-    if (thisObject->m_mode == FastTypedArray
-        && !thisObject->butterfly() && size >= sizeof(IndexingHeader)) {
-        ASSERT(thisObject->m_vector);
-        // Reuse already allocated memory if at all possible.
-        thisObject->m_butterfly.setWithoutBarrier(
-            bitwise_cast<IndexingHeader*>(thisObject->vector())->butterfly());
-    } else {
-        RELEASE_ASSERT(!thisObject->hasIndexingHeader());
-        VM& vm = *heap->vm();
-        thisObject->m_butterfly.set(vm, thisObject, Butterfly::createOrGrowArrayRight(
-            thisObject->butterfly(), vm, thisObject, thisObject->structure(),
-            thisObject->structure()->outOfLineCapacity(), false, 0, 0));
-    }
+    RELEASE_ASSERT(!thisObject->hasIndexingHeader());
+    thisObject->m_butterfly.set(vm, thisObject, Butterfly::createOrGrowArrayRight(
+        thisObject->butterfly(), vm, thisObject, thisObject->structure(),
+        thisObject->structure()->outOfLineCapacity(), false, 0, 0));
 
     RefPtr<ArrayBuffer> buffer;
     
@@ -550,7 +545,7 @@ ArrayBuffer* JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory(JSArrayBuf
     }
 
     thisObject->butterfly()->indexingHeader()->setArrayBuffer(buffer.get());
-    thisObject->m_vector.setWithoutBarrier(static_cast<char*>(buffer->data()));
+    thisObject->m_vector.setWithoutBarrier(buffer->data());
     thisObject->m_mode = WastefulTypedArray;
     heap->addReference(thisObject, buffer.get());
     

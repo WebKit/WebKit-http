@@ -25,7 +25,7 @@
 
 #include "ScopeExit.h"
 #include "StaticMutex.h"
-#include "ThreadSwitch.h"
+#include <thread>
 
 namespace bmalloc {
 
@@ -47,7 +47,7 @@ void StaticMutex::lockSlowCase()
 
     // Avoid spinning pathologically.
     while (!try_lock())
-        threadSwitch();
+        std::this_thread::yield();
 }
 
 } // namespace bmalloc

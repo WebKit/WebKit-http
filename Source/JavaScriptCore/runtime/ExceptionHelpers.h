@@ -29,8 +29,10 @@
 #ifndef ExceptionHelpers_h
 #define ExceptionHelpers_h
 
+#include "CatchScope.h"
 #include "ErrorInstance.h"
 #include "JSObject.h"
+#include "ThrowScope.h"
 
 namespace JSC {
 
@@ -52,9 +54,9 @@ JSObject* createNotAFunctionError(ExecState*, JSValue);
 JSObject* createErrorForInvalidGlobalAssignment(ExecState*, const String&);
 JSString* errorDescriptionForValue(ExecState*, JSValue);
 
-JS_EXPORT_PRIVATE JSObject* throwOutOfMemoryError(ExecState*);
-JS_EXPORT_PRIVATE JSObject* throwStackOverflowError(ExecState*);
-JS_EXPORT_PRIVATE JSObject* throwTerminatedExecutionException(ExecState*);
+JS_EXPORT_PRIVATE JSObject* throwOutOfMemoryError(ExecState*, ThrowScope&);
+JS_EXPORT_PRIVATE JSObject* throwStackOverflowError(ExecState*, ThrowScope&);
+JS_EXPORT_PRIVATE JSObject* throwTerminatedExecutionException(ExecState*, ThrowScope&);
 
 
 class TerminatedExecutionError final : public JSNonFinalObject {

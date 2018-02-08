@@ -76,6 +76,18 @@ enum class UserInterfaceDirectionPolicy {
     System
 };
 
+enum PDFImageCachingPolicy {
+    PDFImageCachingEnabled,
+    PDFImageCachingBelowMemoryLimit,
+    PDFImageCachingDisabled,
+    PDFImageCachingClipBoundsOnly,
+#if PLATFORM(IOS)
+    PDFImageCachingDefault = PDFImageCachingBelowMemoryLimit
+#else
+    PDFImageCachingDefault = PDFImageCachingEnabled
+#endif
+};
+
 typedef unsigned DebugOverlayRegions;
 
 class Settings : public RefCounted<Settings> {
@@ -106,11 +118,6 @@ public:
 
     WEBCORE_EXPORT void setPictographFontFamily(const AtomicString&, UScriptCode = USCRIPT_COMMON);
     WEBCORE_EXPORT const AtomicString& pictographFontFamily(UScriptCode = USCRIPT_COMMON) const;
-
-#if ENABLE(TEXT_AUTOSIZING)
-    void setTextAutosizingFontScaleFactor(float);
-    float textAutosizingFontScaleFactor() const { return m_textAutosizingFontScaleFactor; }
-#endif
 
     WEBCORE_EXPORT static bool defaultTextAutosizingEnabled();
     WEBCORE_EXPORT static float defaultMinimumZoomFontSize();
@@ -144,9 +151,6 @@ public:
 
     WEBCORE_EXPORT void setPreferMIMETypeForImages(bool);
     bool preferMIMETypeForImages() const { return m_preferMIMETypeForImages; }
-
-    WEBCORE_EXPORT void setCachedPDFImageEnabled(bool);
-    bool isCachedPDFImageEnabled() const { return m_isCachedPDFImageEnabled; }
 
     WEBCORE_EXPORT void setPluginsEnabled(bool);
     bool arePluginsEnabled() const { return m_arePluginsEnabled; }
@@ -316,10 +320,6 @@ private:
     std::chrono::milliseconds m_layoutInterval;
     std::chrono::milliseconds m_minimumDOMTimerInterval;
 
-#if ENABLE(TEXT_AUTOSIZING)
-    float m_textAutosizingFontScaleFactor;
-#endif
-
     SETTINGS_MEMBER_VARIABLES
 
     bool m_isJavaEnabled : 1;
@@ -327,7 +327,6 @@ private:
     bool m_loadsImagesAutomatically : 1;
     bool m_areImagesEnabled : 1;
     bool m_preferMIMETypeForImages : 1;
-    bool m_isCachedPDFImageEnabled : 1;
     bool m_arePluginsEnabled : 1;
     bool m_isScriptEnabled : 1;
     bool m_needsAdobeFrameReloadingQuirk : 1;

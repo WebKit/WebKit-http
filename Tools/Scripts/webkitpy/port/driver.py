@@ -154,6 +154,8 @@ class Driver(object):
         # instead scope these locally in run_test.
         self.error_from_test = str()
         self.err_seen_eof = False
+
+        self._server_name = self._port.driver_name()
         self._server_process = None
 
         self._measurements = {}
@@ -346,6 +348,11 @@ class Driver(object):
             environment = self._profiler.adjusted_environment(environment)
         return environment
 
+    def _setup_environ_for_test(self):
+        environment = self._port.setup_environ_for_server(self._server_name)
+        environment = self._setup_environ_for_driver(environment)
+        return environment
+
     def _start(self, pixel_tests, per_test_args):
         self.stop()
         # Each driver process should be using individual directories under _driver_tempdir (which is deleted when stopping),
@@ -357,12 +364,10 @@ class Driver(object):
         if user_cache_directory:
             self._port._filesystem.maybe_make_directory(user_cache_directory)
             self._driver_user_cache_directory = user_cache_directory
-        server_name = self._port.driver_name()
-        environment = self._port.setup_environ_for_server(server_name)
-        environment = self._setup_environ_for_driver(environment)
+        environment = self._setup_environ_for_test()
         self._crashed_process_name = None
         self._crashed_pid = None
-        self._server_process = self._port._server_process_constructor(self._port, server_name, self.cmd_line(pixel_tests, per_test_args), environment)
+        self._server_process = self._port._server_process_constructor(self._port, self._server_name, self.cmd_line(pixel_tests, per_test_args), environment)
         self._server_process.start()
 
     def _run_post_start_tasks(self):
@@ -417,6 +422,16 @@ class Driver(object):
         return cmd
 
     def _check_for_driver_timeout(self, out_line):
+        if out_line.startswith("#PID UNRESPONSIVE - "):
+            match = re.match('#PID UNRESPONSIVE - (\S+)', out_line)
+            child_process_name = match.group(1) if match else 'WebProcess'
+            match = re.search('pid (\d+)', out_line)
+            child_process_pid = int(match.group(1)) if match else None
+            err_line = 'Wait on notifyDone timed out, process ' + child_process_name + ' pid = ' + str(child_process_pid)
+            self.error_from_test += err_line
+            _log.debug(err_line)
+            if self._port.get_option("sample_on_timeout"):
+                self._port.sample_process(child_process_name, child_process_pid)
         if out_line == "FAIL: Timed out waiting for notifyDone to be called\n":
             self._driver_timed_out = True
 

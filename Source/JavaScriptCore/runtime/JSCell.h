@@ -80,7 +80,7 @@ public:
 
     enum CreatingEarlyCellTag { CreatingEarlyCell };
     JSCell(CreatingEarlyCellTag);
-
+    
 protected:
     JSCell(VM&, Structure*);
     JS_EXPORT_PRIVATE static void destroy(JSCell*);
@@ -107,8 +107,6 @@ public:
     TypeInfo::InlineTypeFlags inlineTypeFlags() const { return m_flags; }
 
     const char* className() const;
-
-    VM* vm() const;
 
     // Extracting the value.
     JS_EXPORT_PRIVATE bool getString(ExecState*, String&) const;
@@ -140,7 +138,6 @@ public:
     JS_EXPORT_PRIVATE static size_t estimatedSize(JSCell*);
 
     static void visitChildren(JSCell*, SlotVisitor&);
-    JS_EXPORT_PRIVATE static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 
     JS_EXPORT_PRIVATE static void heapSnapshot(JSCell*, HeapSnapshotBuilder&);
 
@@ -190,6 +187,8 @@ public:
     {
         return OBJECT_OFFSETOF(JSCell, m_cellState);
     }
+    
+    void callDestructor(VM&);
 
     static const TypedArrayType TypedArrayStorageType = NotTypedArray;
 protected:
@@ -212,6 +211,7 @@ protected:
     static NO_RETURN_DUE_TO_CRASH JSValue getPrototype(JSObject*, ExecState*);
 
     static String className(const JSObject*);
+    static String toStringName(const JSObject*, ExecState*);
     JS_EXPORT_PRIVATE static bool customHasInstance(JSObject*, ExecState*, JSValue);
     static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);

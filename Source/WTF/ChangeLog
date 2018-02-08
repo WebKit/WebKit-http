@@ -1,3 +1,1009 @@
+2016-09-21  Keith Miller  <keith_miller@apple.com>
+
+        Fix build for future versions of Clang.
+        https://bugs.webkit.org/show_bug.cgi?id=162346
+
+        Reviewed by Filip Pizlo.
+
+        This fixes issues with the WebCore build where inline
+        template-class function definitions are marked as exported. This
+        genereates a weak external symobl that our build does not like.
+
+        * wtf/text/StringImpl.h:
+
+2016-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Require WTFMove for String::adopt
+        https://bugs.webkit.org/show_bug.cgi?id=162313
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::removeCharacters):
+        (WTF::StringImpl::simplifyMatchedCharactersToSpace):
+        (WTF::StringImpl::adopt):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::adopt):
+        * wtf/text/WTFString.h:
+        (WTF::String::adopt):
+
+2016-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Make MarkedBlock state tracking support overlapped allocation and marking state
+        https://bugs.webkit.org/show_bug.cgi?id=161581
+
+        Reviewed by Geoffrey Garen.
+        
+        The main change here is to bring back FastBitVector.cpp, so that I could outline some
+        large slow path functions. This also adds some utilities, like atomicSetAndCheck() and
+        isEmpty(). The GC uses these.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FastBitVector.cpp: Added.
+        (WTF::FastBitVectorWordOwner::setEqualsSlow):
+        (WTF::FastBitVectorWordOwner::resizeSlow):
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVectorWordOwner::operator=):
+        (WTF::FastBitVectorWordOwner::resize):
+        (WTF::FastBitVectorImpl::isEmpty):
+        (WTF::FastBitVector::atomicSetAndCheck):
+        (WTF::FastBitVector::operator[]): Deleted.
+
+2016-09-20  Jonathan Bedard  <jbedard@apple.com>
+
+        Undefined behavior: Left shift negative number
+        https://bugs.webkit.org/show_bug.cgi?id=161866
+
+        Reviewed by Keith Miller.
+
+        Left shifting a negative number is undefined behavior in C/C++, although most implementations do define it. Explicitly clarifying the intended behavior due to shifting negative number in some cases.
+
+        * wtf/text/Base64.cpp:
+        (WTF::base64EncodeInternal): Changed signed character to unsigned when shifting.
+        (WTF::base64Encode): Ditto.
+        (WTF::base64URLEncode): Ditto.
+        (WTF::base64DecodeInternal): Ditto.
+        * wtf/text/Base64.h: Ditto.
+        (WTF::SignedOrUnsignedCharVectorAdapter): Rebuilt to stop using union as a bitwise_cast.
+        (WTF::ConstSignedOrUnsignedCharVectorAdapter): Ditto.
+
+2016-09-19  Daniel Bates  <dabates@apple.com>
+
+        Remove ENABLE(TEXT_AUTOSIZING) automatic text size adjustment code
+        https://bugs.webkit.org/show_bug.cgi?id=162167
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h:
+
+2016-09-14  Jer Noble  <jer.noble@apple.com>
+
+        [media-source] fix imported/w3c/web-platform-tests/media-source/mediasource-duration.html
+        https://bugs.webkit.org/show_bug.cgi?id=161999
+
+        Reviewed by Eric Carlson.
+
+        The mediasource-duration.html test tries to set the duration of a MediaSource to a double value
+        (5.0), then some work happens and the duration is set to a media time (12533/2500, or 5.0132).
+        The test then tries to set that value as the duration, converted from a media time to a double,
+        and asserts that no duration change event is fired.  But because the floating point value and the
+        media time value are ever so slightly different, this round-tripping fails.
+
+        Fix this bug in MediaTime by, when one side or the other of a comparison is a floating point
+        MediaTime, convert both sides to doubles and run the comparison against those values. This preserves
+        the transitive equality of doubles <-> MediaTimes.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::compare):
+
+2016-09-16  Anders Carlsson  <andersca@apple.com>
+
+        Fix isValidEnum to work with older versions of GCC
+        https://bugs.webkit.org/show_bug.cgi?id=162065
+
+        Reviewed by Michael Catanzaro.
+
+        Use the ternary operator instead of a more complex function body.
+
+        * wtf/EnumTraits.h:
+
+2016-09-15  JF Bastien  <jfbastien@apple.com>
+
+        TextBreakIterator: unconvolute character break cache
+        https://bugs.webkit.org/show_bug.cgi?id=162001
+
+        Reviewed by Michael Saboff.
+
+        Simplify the one-element cache.
+
+        Added here (fixed a bit after): https://bugs.webkit.org/attachment.cgi?id=144118&action=prettypatch
+        Updated to never use a lock, and always use weak cmpxchg here: https://bugs.webkit.org/attachment.cgi?id=261719&action=prettypatch
+
+        It's just trying to reduce the number of times it calls into ICU
+        to initialize a UBRK_CHARACTER. The implementation keeps a
+        one-element cache of the latest used one, which threads can
+        optimistically grab. Failure is fine (just create a new one), same
+        for failure to cache (just destroy it), but the logic is odd and
+        you technically need release / acquire semantics because the
+        UBRK_CHARACTER creation's store need to be visible on acquisition
+        (but realistically it was created and then used and *then* cached,
+        so it's probably been long ago enough that read reorders never
+        manifested).
+
+        Using exchange directly achieves this without the headache.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::getNonSharedCharacterBreakIterator):
+        (WTF::cacheNonSharedCharacterBreakIterator):
+        (WTF::NonSharedCharacterBreakIterator::NonSharedCharacterBreakIterator):
+        (WTF::NonSharedCharacterBreakIterator::~NonSharedCharacterBreakIterator):
+        (WTF::compareAndSwapNonSharedCharacterBreakIterator): Deleted.
+
+2016-09-15  Keith Miller  <keith_miller@apple.com>
+
+        Pragma out undefined-var-template warnings in JSC for JSObjects that are templatized
+        https://bugs.webkit.org/show_bug.cgi?id=161985
+
+        Reviewed by Alex Christensen.
+
+        Fix WTF_EXPORT_PRIVATE for an inline member function. This would
+        generate a weak export.
+
+        * wtf/MetaAllocator.h:
+        (WTF::MetaAllocator::getLock):
+
+2016-09-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r205933 and r205936.
+        https://bugs.webkit.org/show_bug.cgi?id=162002
+
+        broke the build (Requested by keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Pragma out undefined-var-template warnings in JSC for
+        JSObjects that are templatized"
+        https://bugs.webkit.org/show_bug.cgi?id=161985
+        http://trac.webkit.org/changeset/205933
+
+        "Unreviewed, fix the Windows build."
+        http://trac.webkit.org/changeset/205936
+
+2016-09-14  Keith Miller  <keith_miller@apple.com>
+
+        Pragma out undefined-var-template warnings in JSC for JSObjects that are templatized
+        https://bugs.webkit.org/show_bug.cgi?id=161985
+
+        Reviewed by Geoffrey Garen.
+
+        Fix WTF_EXPORT_PRIVATE for an inline member function. This would
+        generate a weak export.
+
+        * wtf/MetaAllocator.h:
+        (WTF::MetaAllocator::getLock):
+
+2016-09-14  JF Bastien  <jfbastien@apple.com>
+
+        Atomics on ARM don't require full-system fencing, and other minutiae
+        https://bugs.webkit.org/show_bug.cgi?id=161928
+
+        Reviewed by Geoffrey Garen.
+
+        Add cmpxchg versions with both success and failure memory
+        ordering. In some interesting cases we can craft code which needs
+        barriers which aren't as strong.
+
+        weakCompareAndSwap is super dubious, its 3 uses seem
+        questionable... but for now I'm just adding debug asserts.
+
+        Rename armv7_dmb* functions to arm_dmb* because they apply to v7
+        and v8 (or more precisely; to ARMv7's ARM and Thumb2, as well as
+        ARMv8's aarch32 A32/T32 and aarch64).
+
+        Use inner-shareability domain for ARM barriers instead of
+        full-system. This is what C++ uses.
+
+        The default case for barriers simply used a compiler barrier. This
+        is generally wrong, e.g. for MIPS.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::compareExchangeWeak): offer two-order version
+        (WTF::Atomic::compareExchangeStrong): offer two-order version
+        (WTF::weakCompareAndSwap): a few assertions
+        (WTF::arm_dmb): rename since it applies to ARMv7 and v8; make it innser-shareable
+        (WTF::arm_dmb_st): rename since it applies to ARMv7 and v8; make it innser-shareable
+        (WTF::loadLoadFence): incorrect generally
+        (WTF::loadStoreFence): incorrect generally
+        (WTF::storeLoadFence): incorrect generally
+        (WTF::storeStoreFence): incorrect generally
+        (WTF::memoryBarrierAfterLock): incorrect generally
+        (WTF::memoryBarrierBeforeUnlock): incorrect generally
+        (WTF::armV7_dmb): Deleted.
+        (WTF::armV7_dmb_st): Deleted.
+
+2016-09-14  JF Bastien  <jfbastien@apple.com>
+
+        Alwasys inline atomic operations
+        https://bugs.webkit.org/show_bug.cgi?id=155371
+
+        Reviewed by Geoffrey Garen.
+
+        Fixes "build fails with memory model cannot be stronger than
+        success memory model for ‘__atomic_compare_exchange’".
+
+        Pre-5 revisions of GCC at Os only generated an error message
+        related to invalid failure memory ordering. The reason is that
+        libstdc++ tries to be clever about enforcing the C++ standard's
+        clause [atomics.types.operations.req] ¶21 which states:
+
+            Requires: The failure argument shall not be
+            `memory_order_release` nor `memory_order_acq_rel`. The failure
+            argument shall be no stronger than the success argument.
+
+        It fails at doing this because its inlining heuristics are
+        modified by Os, and they're not quite as dumb as O0 but not smart
+        enough to get to the good code at O1. Adding ALWAYS_INLINE fixes
+        the silliness at Os, leaves O1 great, and makes O0 slightly less
+        bad but still pretty bad.
+
+        The other good news is that I'm going to get this particular
+        problem fixed in the version of C++ which will come after C++17:
+
+        https://github.com/jfbastien/papers/blob/master/source/P0418r1.bs
+
+        While we're at it we should always inline all of these wrapped
+        functions because the generated code is horrendous if the memory
+        order isn't known at compile time.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::load):
+        (WTF::Atomic::store):
+        (WTF::Atomic::compareExchangeWeak):
+        (WTF::Atomic::compareExchangeStrong):
+        (WTF::Atomic::exchangeAndAdd):
+        (WTF::Atomic::exchange):
+
+2016-09-13  Michael Saboff  <msaboff@apple.com>
+
+        Promises aren't resolved properly when making a ObjC API callback
+        https://bugs.webkit.org/show_bug.cgi?id=161929
+
+        Reviewed by Geoffrey Garen.
+
+        Removed resetCurrentAtomicStringTable() which is no longer referenced.
+
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::resetCurrentAtomicStringTable): Deleted.
+
+2016-09-13  Alex Christensen  <achristensen@webkit.org>
+
+        Implement URLSearchParams
+        https://bugs.webkit.org/show_bug.cgi?id=161920
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::split): Added.
+
+2016-09-12  Filip Pizlo  <fpizlo@apple.com>
+
+        ParkingLot is going to have a bad time with threads dying
+        https://bugs.webkit.org/show_bug.cgi?id=161893
+
+        Reviewed by Michael Saboff.
+        
+        If a thread dies right as it falls out of parkConditionally, then unparkOne() and friends
+        might die because they will dereference a deallocated ThreadData.
+
+        The solution is to ref-count ThreadData's. When unparkOne() and friends want to hold onto a
+        ThreadData past the queue lock, they can use RefPtr<>.
+
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkOneImpl):
+        (WTF::ParkingLot::unparkAll):
+
+2016-09-12  Chris Dumez  <cdumez@apple.com>
+
+        Fix post-landing review comments after r205787
+        https://bugs.webkit.org/show_bug.cgi?id=161885
+
+        Reviewed by Darin Adler.
+
+        Add new StringBuilder::append(CFStringRef) / append(NSString*)
+        overloads to avoid an extra string copy when possible.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::append):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append):
+
+2016-09-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] HashTable's rehash is not compatible to Ref<T> and ASan
+        https://bugs.webkit.org/show_bug.cgi?id=161763
+
+        Reviewed by Darin Adler.
+
+        Destructors of HashTable's empty values need to be called while ones of deleted values don't.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::deallocateTable):
+        * wtf/Ref.h:
+
+2016-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Reduce uses of CGFonts in favor of CTFonts
+        https://bugs.webkit.org/show_bug.cgi?id=161809
+
+        Reviewed by Daniel Bates.
+
+        * wtf/unicode/CharacterNames.h:
+
+2016-09-12  Saam Barati  <sbarati@apple.com>
+
+        MapHash should do constant folding when it has a constant argument and its legal to hash that value
+        https://bugs.webkit.org/show_bug.cgi?id=161639
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds a concurrentHash method to StringImpl. It's
+        probably safe to get the actual hash while being racy, however,
+        it's simpler and more future proof to not have to worry about
+        that and to just compute it on demand. Users of this API should
+        be aware that it's doing non-trivial work. Currently, the only
+        user is JSC's JIT compilers, and they only ask for hashes for small-ish
+        strings.
+
+        * wtf/text/StringImpl.h:
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::concurrentHash):
+
+2016-09-11  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG::forAllKilledOperands() could use a faster bitvector scan in the same-inline-stack fast path
+        https://bugs.webkit.org/show_bug.cgi?id=161849
+
+        Reviewed by Saam Barati.
+        
+        It turns out that templates make private fields weird. FastBitVectorImpl can't necessarily
+        touch privates in instances of different template specializations of itself. So, I added a
+        public method called wordView() that exposes the necessary private field.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVectorImpl::operator&):
+        (WTF::FastBitVectorImpl::operator|):
+        (WTF::FastBitVectorImpl::operator~):
+        (WTF::FastBitVectorImpl::forEachSetBit):
+        (WTF::FastBitVectorImpl::wordView):
+
+2016-09-11  Filip Pizlo  <fpizlo@apple.com>
+
+        FastBitVector should have efficient and easy-to-use vector-vector operations
+        https://bugs.webkit.org/show_bug.cgi?id=161847
+
+        Reviewed by Saam Barati.
+        
+        FastBitVector is a bitvector representation that supports manual dynamic resizing and is
+        optimized for speed, not space. (BitVector supports automatic dynamic resizing and is
+        optimized for space, while Bitmap is sized statically and is optimized for both speed and
+        space.) This change greatly increases the power of FastBitVector. We will use these new
+        powers for changing the JSC GC to use FastBitVectors to track sets of MarkedBlocks (bug
+        161581) instead of using a combination of Vectors and doubly-linked lists.
+        
+        This change splits FastBitVector into two parts:
+        
+        - A thing that manages the storage of a bitvector: a uint32_t array and a size_t numBits.
+          We call this the word view.
+        - A thing that takes some kind of abstract array of uint32_t's and does bitvector
+          operations to it. We call this the FastBitVectorImpl.
+        
+        FastBitVectorImpl and word views are immutable. The FastBitVector class is a subclass of
+        FastBitVectorImpl specialized on a word view that owns its words and has additional
+        support for mutable operations.
+        
+        Doing this allows us to efficiently support things like this without any unnecessary
+        memory allocation or copying:
+        
+        FastBitVector a, b, c; // Assume that there is code to initialize these.
+        a &= b | ~c;
+        
+        Previously, this kind of operation would not be efficient, because "~c" would have to
+        create a whole new FastBitVector. But now, it just returns a FastBitVectorImpl whose
+        underlying word view bitnots (~) its words on the fly. Using template magic, this can get
+        pretty complex. For example "b | ~c" returns a FastBitVectorImpl that wraps a word view
+        whose implementation of WordView::word(size_t index) is something like:
+        
+        uint32_t word(size_t index) { return b.m_words.word(index) | ~c.m_words.word(index); }
+        
+        FastBitVectorImpl supports all of the fast bulk bitvector operations, like
+        forEachSetBit(), bitCount(), etc. So, when you say "a &= b | ~c", the actual
+        implementation is going to run these bit operations on word granularity directly over the
+        storage inside a, b, c.
+        
+        The use of operator overloading is worth explaining a bit. Previously, FastBitVector
+        avoided operator overloading. For example, the &= operation was called filter(). I think
+        that this was a pretty good approach at the time. I tried using non-operator methods in
+        this FastBitVector rewrite, but I found it very odd to say things like:
+        
+        a.filter(b.bitOr(c.bitNot()));
+        
+        I think that it's harder to see what is going on here, then using operators, because infix
+        notation is always better.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BitVector.h:
+        (WTF::BitVector::findBitInWord): Deleted.
+        * wtf/CMakeLists.txt:
+        * wtf/Dominators.h:
+        (WTF::Dominators::NaiveDominators::NaiveDominators):
+        (WTF::Dominators::NaiveDominators::dominates):
+        (WTF::Dominators::NaiveDominators::pruneDominators):
+        * wtf/FastBitVector.cpp: Removed.
+        * wtf/FastBitVector.h:
+        (WTF::fastBitVectorArrayLength):
+        (WTF::FastBitVectorWordView::FastBitVectorWordView):
+        (WTF::FastBitVectorWordView::numBits):
+        (WTF::FastBitVectorWordView::word):
+        (WTF::FastBitVectorWordOwner::FastBitVectorWordOwner):
+        (WTF::FastBitVectorWordOwner::~FastBitVectorWordOwner):
+        (WTF::FastBitVectorWordOwner::view):
+        (WTF::FastBitVectorWordOwner::operator=):
+        (WTF::FastBitVectorWordOwner::setAll):
+        (WTF::FastBitVectorWordOwner::clearAll):
+        (WTF::FastBitVectorWordOwner::set):
+        (WTF::FastBitVectorWordOwner::numBits):
+        (WTF::FastBitVectorWordOwner::arrayLength):
+        (WTF::FastBitVectorWordOwner::resize):
+        (WTF::FastBitVectorWordOwner::word):
+        (WTF::FastBitVectorWordOwner::words):
+        (WTF::FastBitVectorAndWords::FastBitVectorAndWords):
+        (WTF::FastBitVectorAndWords::view):
+        (WTF::FastBitVectorAndWords::numBits):
+        (WTF::FastBitVectorAndWords::word):
+        (WTF::FastBitVectorOrWords::FastBitVectorOrWords):
+        (WTF::FastBitVectorOrWords::view):
+        (WTF::FastBitVectorOrWords::numBits):
+        (WTF::FastBitVectorOrWords::word):
+        (WTF::FastBitVectorNotWords::FastBitVectorNotWords):
+        (WTF::FastBitVectorNotWords::view):
+        (WTF::FastBitVectorNotWords::numBits):
+        (WTF::FastBitVectorNotWords::word):
+        (WTF::FastBitVectorImpl::FastBitVectorImpl):
+        (WTF::FastBitVectorImpl::numBits):
+        (WTF::FastBitVectorImpl::size):
+        (WTF::FastBitVectorImpl::arrayLength):
+        (WTF::FastBitVectorImpl::operator==):
+        (WTF::FastBitVectorImpl::operator!=):
+        (WTF::FastBitVectorImpl::at):
+        (WTF::FastBitVectorImpl::operator[]):
+        (WTF::FastBitVectorImpl::bitCount):
+        (WTF::FastBitVectorImpl::operator&):
+        (WTF::FastBitVectorImpl::operator|):
+        (WTF::FastBitVectorImpl::operator~):
+        (WTF::FastBitVectorImpl::forEachSetBit):
+        (WTF::FastBitVectorImpl::forEachClearBit):
+        (WTF::FastBitVectorImpl::forEachBit):
+        (WTF::FastBitVectorImpl::findBit):
+        (WTF::FastBitVectorImpl::findSetBit):
+        (WTF::FastBitVectorImpl::findClearBit):
+        (WTF::FastBitVectorImpl::dump):
+        (WTF::FastBitVectorImpl::atImpl):
+        (WTF::FastBitVector::FastBitVector):
+        (WTF::FastBitVector::operator=):
+        (WTF::FastBitVector::resize):
+        (WTF::FastBitVector::setAll):
+        (WTF::FastBitVector::clearAll):
+        (WTF::FastBitVector::setAndCheck):
+        (WTF::FastBitVector::operator|=):
+        (WTF::FastBitVector::operator&=):
+        (WTF::FastBitVector::at):
+        (WTF::FastBitVector::operator[]):
+        (WTF::FastBitVector::BitReference::BitReference):
+        (WTF::FastBitVector::BitReference::operator bool):
+        (WTF::FastBitVector::BitReference::operator=):
+        (WTF::FastBitVector::~FastBitVector): Deleted.
+        (WTF::FastBitVector::numBits): Deleted.
+        (WTF::FastBitVector::set): Deleted.
+        (WTF::FastBitVector::equals): Deleted.
+        (WTF::FastBitVector::merge): Deleted.
+        (WTF::FastBitVector::filter): Deleted.
+        (WTF::FastBitVector::exclude): Deleted.
+        (WTF::FastBitVector::clear): Deleted.
+        (WTF::FastBitVector::get): Deleted.
+        (WTF::FastBitVector::bitCount): Deleted.
+        (WTF::FastBitVector::forEachSetBit): Deleted.
+        (WTF::FastBitVector::arrayLength): Deleted.
+        * wtf/StdLibExtras.h:
+        (WTF::findBitInWord):
+
+2016-09-10  Chris Dumez  <cdumez@apple.com>
+
+        parseHTMLInteger() should take a StringView in parameter
+        https://bugs.webkit.org/show_bug.cgi?id=161669
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append):
+        Add StringBuilder::append() overload taking an AtomicString in parameter.
+        It used to call StringBuilder::append(const String&) implicitly when
+        passing an AtomicString. However, it is now ambiguous because there
+        is an overload taking a StringView, and it is now possible to construct
+        a StringView from an AtomicString.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::StringView):
+        - Add StringView constructor taking an AtomicString in parameter for
+          convenience. This avoids having to call AtomicString::string()
+          explicitly at call sites.
+        - Add StringView constructor taking a 'const char*' in parameter for
+          performance. There are several call sites that were passing a const
+          char* and implicitly constructing an unnecessary String to construct
+          a StringView. This became more obvious because the constructor taking
+          an AtomicString in parameter made such calls ambiguous.
+
+
+2016-09-09  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fixing a few JSC test failures.
+        https://bugs.webkit.org/show_bug.cgi?id=161760
+
+        Not reviewed.
+
+        Without this fix, the following tests will crash on a null dereference of isGCThread.
+            stress/slow-path-generator-updating-current-node-dfg.js.misc-ftl-no-cjit
+            stress/unshift-array-storage.js.misc-ftl-no-cjit
+
+        * wtf/MainThread.cpp:
+        (WTF::mayBeGCThread):
+
+2016-09-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] HashTable's rehash is not compatible to Ref<T> and ASan
+        https://bugs.webkit.org/show_bug.cgi?id=161763
+
+        Reviewed by Mark Lam.
+
+        If we move an object, the location which the moved object used should not be touched anymore.
+        HashTable::rehash performs WTFMove for the object that resides in the old table.
+        However, after moving it, we accidentally touch this location by using `!isEmptyOrDeletedBucket(table[i])`
+        in HashTable::deallocateTable. And it causes ASan crashing if we use Ref<> for HashTable's key or value.
+
+        In this patch, we call the destructor right after moving the object. And HashTable::rehash just calls
+        fastFree since all the objects in the old table are already moved and destructed.
+        And we also change HashTable::deallocate to destruct only live objects. Calling destructors for empty objects
+        is meaningless. And according to the Ref<>'s comment, empty object is not designed to be destructed.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::deallocateTable):
+
+2016-09-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Heap::isMarked() shouldn't pay the price of concurrent lazy flipping
+        https://bugs.webkit.org/show_bug.cgi?id=161760
+
+        Reviewed by Mark Lam.
+
+        * wtf/MainThread.cpp:
+        (WTF::isMainThreadOrGCThread):
+        (WTF::mayBeGCThread):
+        * wtf/MainThread.h:
+
+2016-09-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Support new emoji group candidates
+        https://bugs.webkit.org/show_bug.cgi?id=161664
+        <rdar://problem/24802695>
+        <rdar://problem/27666433>
+
+        Reviewed by Simon Fraser.
+
+        Update breaking rules.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::cursorMovementIterator):
+
+2016-09-07  JF Bastien  <jfbastien@apple.com>
+
+        bitwise_cast: allow const destination type
+        https://bugs.webkit.org/show_bug.cgi?id=161719
+
+        Reviewed by Saam Barati.
+
+        * wtf/StdLibExtras.h:
+        (WTF::bitwise_cast): allow `const To to = bitwise_cast<const To>(from);`
+
+2016-09-07  Mark Lam  <mark.lam@apple.com>
+
+        Add CatchScope and force all exception checks to be via ThrowScope or CatchScope.
+        https://bugs.webkit.org/show_bug.cgi?id=161498
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Platform.h:
+
+2016-09-07  Youenn Fablet  <youenn@apple.com>
+
+        [Streams API] Separate compile flag for ReadableStream and WritableStream
+        https://bugs.webkit.org/show_bug.cgi?id=161044
+
+        Reviewed by Alex Christensen.
+
+        * wtf/FeatureDefines.h:
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        Make JSMap and JSSet faster
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+
+        Reviewed by Filip Pizlo.
+
+        I made s_flagCount public in StringImpl since JSC's JITs now use this field.
+
+        * wtf/text/StringImpl.h:
+
+2016-09-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r205504.
+        https://bugs.webkit.org/show_bug.cgi?id=161645
+
+        Broke the iOS device build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Make JSMap and JSSet faster"
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+        http://trac.webkit.org/changeset/205504
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        Make JSMap and JSSet faster
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+
+        Reviewed by Filip Pizlo.
+
+        I made s_flagCount public since JSC's JITs now use this field.
+
+        * wtf/text/StringImpl.h:
+
+2016-09-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Enable strict runtime stack buffer checks.
+        https://bugs.webkit.org/show_bug.cgi?id=161629
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+
+2016-09-06  Daniel Bates  <dabates@apple.com>
+
+        Remove EXTERN_C from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=161090
+
+        Reviewed by Brent Fulgham.
+
+        Guard external C declarations in WTF_EXTERN_C_BEGIN, WTF_EXTERN_C_END.
+
+        * wtf/Compiler.h: Remove macro definition EXTERN_C.
+        * wtf/spi/cf/CFBundleSPI.h:
+        * wtf/spi/cocoa/NSMapTableSPI.h:
+        * wtf/spi/cocoa/SecuritySPI.h:
+        * wtf/spi/darwin/CommonCryptoSPI.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+        * wtf/spi/darwin/XPCSPI.h:
+        * wtf/spi/darwin/dyldSPI.h:
+
+2016-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Butterflies should be allocated in Auxiliary MarkedSpace instead of CopiedSpace and we should rewrite as much of the GC as needed to make this not a regression
+        https://bugs.webkit.org/show_bug.cgi?id=160125
+
+        Reviewed by Geoffrey Garen and Keith Miller.
+        
+        I needed tryFastAlignedMalloc() so I added it.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::tryFastAlignedMalloc):
+        * wtf/FastMalloc.h:
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::forEachImpl):
+        (WTF::ParkingLot::forEach): Deleted.
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::forEach):
+        * wtf/ScopedLambda.h:
+        (WTF::scopedLambdaRef):
+        * wtf/SentinelLinkedList.h:
+        (WTF::SentinelLinkedList::forEach):
+        (WTF::RawNode>::takeFrom):
+        * wtf/SimpleStats.h:
+        (WTF::SimpleStats::operator bool):
+        (WTF::SimpleStats::operator!): Deleted.
+
+2016-09-02  JF Bastien  <jfbastien@apple.com>
+
+        bitwise_cast infinite loops if called from the default constructor in ToType
+        https://bugs.webkit.org/show_bug.cgi?id=161365
+
+        Reviewed by Saam Barati.
+
+        * wtf/StdLibExtras.h:
+        (WTF::bitwise_cast): use aggregate initialization to avoid ctor
+
+2016-09-01  Anders Carlsson  <andersca@apple.com>
+
+        Use BlockPtr::fromCallable in WorkQueue::dispatch and WorkQueue::dispatchAfter
+        https://bugs.webkit.org/show_bug.cgi?id=161512
+
+        Reviewed by Chris Dumez.
+
+        This lets us get rid of leakCallable and adoptCallable.
+
+        * wtf/BlockPtr.h:
+        * wtf/Function.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2016-09-01  Anders Carlsson  <andersca@apple.com>
+
+        add BlockPtr::fromCallable
+        https://bugs.webkit.org/show_bug.cgi?id=161504
+
+        Reviewed by Tim Horton.
+
+        BlockPtr::fromCallable lets you create an Objective-C block from any callable object - including lambdas that contain move-only types.
+        The block will be allocated on the heap so it doesn't ever need to be copied (which is how it can work with move-only types).
+
+        * wtf/BlockPtr.h:
+
+2016-08-31  Keith Rollin  <krollin@apple.com>
+
+        WebKit should set a subsystem for os_log so it's easier to filter for WebKit log messages
+        https://bugs.webkit.org/show_bug.cgi?id=160969
+        <rdar://problem/26068734>
+
+        Reviewed by Simon Fraser.
+
+        Add support for attaching a subsystem and category when logging via
+        the RELEASE_LOG macros. This support is provided by adding subsystem
+        and category information to WTFLogChannel. An os_log_t object is then
+        created to enacpsulate that information. When using RELEASE_LOG to log
+        through that channel, the associated log object is used when calling
+        os_log.
+
+        To help support the inclusion of the subsystem and category
+        information in WTFLogChannel, the DECLARE_LOG_CHANNEL,
+        DEFINE_LOG_CHANNEL, and LOG_CHANNEL_ADDRESS macros that were defined
+        in various modules are consolidated and moved to Assertions.h.
+        DEFINE_LOG_CHANNEL is now defined to initialize the subsystem and
+        category.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/RefCountedLeakCounter.cpp:
+
+2016-08-31  Alex Christensen  <achristensen@webkit.org>
+
+        Implement IPv6 parsing in URLParser
+        https://bugs.webkit.org/show_bug.cgi?id=161390
+
+        Reviewed by Darin Adler.
+
+        * wtf/ASCIICType.h:
+        (WTF::lowerNibbleToLowercaseASCIIHexDigit):
+        (WTF::upperNibbleToLowercaseASCIIHexDigit):
+
+2016-08-30  Brady Eidson  <beidson@apple.com>
+
+        GameController.framework backend for gamepad API.
+        https://bugs.webkit.org/show_bug.cgi?id=161086
+
+        Reviewed by Alex Christensen.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::TimerBase::startOneShot):
+
+2016-08-30  Mark Lam  <mark.lam@apple.com>
+
+        Introduce the ThrowScope and force every throw site to instantiate a ThrowScope.
+        https://bugs.webkit.org/show_bug.cgi?id=161171
+
+        Reviewed by Filip Pizlo and Geoffrey Garen.
+
+        * wtf/Platform.h:
+        - Introduced the ENABLE(THROW_SCOPE_VERIFICATION) flag.
+
+2016-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should parse relative URLs
+        https://bugs.webkit.org/show_bug.cgi?id=161282
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringView.h:
+        Use a std::reference_wrapper for the StringView& to make it reassignable so we can add an operator=.
+
+2016-08-26  JF Bastien  <jfbastien@apple.com>
+
+        bitwise_cast uses inactive member of union
+        https://bugs.webkit.org/show_bug.cgi?id=161244
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/Compiler.h:
+        Add COMPILER_HAS_CLANG_FEATURE
+        * wtf/StdLibExtras.h:
+        (WTF::bitwise_cast):
+        Fix C++ UB, add trivially-copyable check.
+
+        bitwise_cast stores into a union with one type and reads with
+        another, which is technically C++ undefined behavior because it's
+        accessing the wrong active member of the union. The better way to
+        do this is through memcpy, which compilers optimize as well
+        because it's known-size in known-not-to-escape storage (for small
+        types they'll inline and then convert stack memory access to SSA
+        values which may be in-register if that makes sense, which would
+        be a move between int/FP registers at worst).
+
+        The C++ Standard's section [basic.types] explicitly blesses memcpy:
+
+          For any trivially copyable type T, if two pointers to T point to
+          distinct T objects obj1 and obj2, where neither obj1 nor obj2 is a
+          base-class subobject, if the underlying bytes (1.7) making up obj1
+          are copied into obj2, 42 obj2 shall subsequently hold the same
+          value as obj1.
+
+          [Example:
+            T* t1p;
+            T* t2p;
+            // provided that t2p points to an initialized object ...
+            std::memcpy(t1p, t2p, sizeof(T));
+            // at this point, every subobject of trivially copyable type in *t1p contains
+            // the same value as the corresponding subobject in *t2p
+          — end example ]
+
+        Whereas section [class.union] says:
+
+          In a union, at most one of the non-static data members can be
+          active at any time, that is, the value of at most one of the
+          non-static data members can be stored in a union at any time.
+
+        While we're at it, checking that sizeof(To) == sizeof(From) is
+        good, but we should also check that both types are trivially
+        copyable (can have a ctor, no dtor, and copy is defaulted as if by
+        memcpy for type and all subtypes). Unfortunately that trait isn't
+        implemented consistently in all recent compiler+stdlib
+        implementations, but recent clang has an equivalent builtin
+        (other compilers simply won't do the check, and will break on bots
+        with the right compilers which is better than the current silent
+        breakage). This builtin hack also avoids #include <type_traits>
+        which really doesn't save much.
+
+2016-08-26  Johan K. Jensen  <johan_jensen@apple.com>
+
+        Web Inspector: Frontend should have access to Resource Timing information
+        https://bugs.webkit.org/show_bug.cgi?id=160095
+
+        Reviewed by Alex Christensen.
+
+        Add method to get elapsed time for any monotonic time.
+        Used by InspectorNetworkAgent.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::elapsedTimeSinceMonotonicTime):
+
+2016-08-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the ENABLE(WEBASSEMBLY) build on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=161197
+
+        Reviewed by Mark Lam.
+
+        * wtf/Platform.h:
+
+2016-08-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Implement ES6 Generators in DFG / FTL
+        https://bugs.webkit.org/show_bug.cgi?id=152723
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::FastBitVector):
+
+2016-08-25  JF Bastien  <jfbastien@apple.com>
+
+        TryGetById should have a ValueProfile so that it can predict its output type
+        https://bugs.webkit.org/show_bug.cgi?id=160921
+
+        Reviewed by Saam Barati.
+
+        Add WTF_CONCAT to StdLibExtras.h
+
+        * wtf/StdLibExtras.h:
+
+2016-08-25  Johan K. Jensen  <johan_jensen@apple.com>
+
+        Don't store networkLoadTiming in the disk cache
+        https://bugs.webkit.org/show_bug.cgi?id=161161
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Forward.h:
+        Remove Encode and Decode forward declarations.
+
+2016-08-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Move generic data structures out of B3
+        https://bugs.webkit.org/show_bug.cgi?id=161155
+
+        Reviewed by Saam Barati.
+
+        Add IndexSet, IndexMap, and IndexedContainerIterator.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/IndexMap.h: Copied from Source/JavaScriptCore/b3/B3IndexMap.h.
+        (WTF::IndexMap::IndexMap):
+        (WTF::IndexMap::resize):
+        (WTF::IndexMap::clear):
+        (WTF::IndexMap::size):
+        (WTF::IndexMap::operator[]):
+        * wtf/IndexSet.h: Renamed from Source/JavaScriptCore/b3/B3IndexSet.h.
+        (WTF::IndexSet::IndexSet):
+        (WTF::IndexSet::add):
+        (WTF::IndexSet::addAll):
+        (WTF::IndexSet::remove):
+        (WTF::IndexSet::contains):
+        (WTF::IndexSet::size):
+        (WTF::IndexSet::isEmpty):
+        (WTF::IndexSet::Iterable::Iterable):
+        (WTF::IndexSet::Iterable::iterator::iterator):
+        (WTF::IndexSet::Iterable::iterator::operator*):
+        (WTF::IndexSet::Iterable::iterator::operator++):
+        (WTF::IndexSet::Iterable::iterator::operator==):
+        (WTF::IndexSet::Iterable::iterator::operator!=):
+        (WTF::IndexSet::Iterable::begin):
+        (WTF::IndexSet::Iterable::end):
+        (WTF::IndexSet::values):
+        (WTF::IndexSet::indices):
+        (WTF::IndexSet::dump):
+        * wtf/IndexedContainerIterator.h: Renamed from Source/JavaScriptCore/b3/B3IndexMap.h.
+        (WTF::IndexedContainerIterator::IndexedContainerIterator):
+        (WTF::IndexedContainerIterator::operator++):
+        (WTF::IndexedContainerIterator::operator==):
+        (WTF::IndexedContainerIterator::operator!=):
+        (WTF::IndexedContainerIterator::findNext):
+
+2016-08-24  Andreas Kling  <akling@apple.com>
+
+        Add WTF::isFastMallocEnabled().
+        <https://webkit.org/b/160534>
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::isFastMallocEnabled):
+        * wtf/FastMalloc.h:
+
+2016-08-23  Anders Carlsson  <andersca@apple.com>
+
+        Add enum traits and use them in the IPC::Decoder
+        https://bugs.webkit.org/show_bug.cgi?id=161103
+
+        Reviewed by Sam Weinig.
+
+        Add EnumTraits.h which provides a forward declaration for WTF::EnumTraits as well as
+        the WTF::isValidEnum function.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/EnumTraits.h: Added.
+
 2016-08-24  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, roll out r204901, r204897, r204866, r204856, r204854.

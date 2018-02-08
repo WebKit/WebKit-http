@@ -47,6 +47,7 @@
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "SourceBuffer.h"
+#include <wtf/CurrentTime.h>
 
 #if PLATFORM(IOS)
 #include "AudioSession.h"
@@ -58,8 +59,8 @@ namespace WebCore {
 
 static const double elementMainContentCheckInterval = .250;
 
-static bool isMainContent(const HTMLMediaElement&);
-static bool isElementLargeEnoughForMainContent(const HTMLMediaElement&);
+static bool isElementRectMostlyInMainFrame(const HTMLMediaElement&);
+static bool isElementLargeEnoughForMainContent(const HTMLMediaElement&, MediaSessionMainContentPurpose);
 
 #if !LOG_DISABLED
 static String restrictionName(MediaElementSession::BehaviorRestrictions restriction)
@@ -137,6 +138,9 @@ void MediaElementSession::addBehaviorRestriction(BehaviorRestrictions restrictio
 
 void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restriction)
 {
+    if (restriction & RequireUserGestureToControlControlsManager)
+        m_mostRecentUserInteractionTime = monotonicallyIncreasingTime();
+
     LOG(Media, "MediaElementSession::removeBehaviorRestriction - removing %s", restrictionName(restriction).utf8().data());
     m_restrictions &= ~restriction;
 }
@@ -212,72 +216,97 @@ bool MediaElementSession::pageAllowsPlaybackAfterResuming(const HTMLMediaElement
     return true;
 }
 
-bool MediaElementSession::canControlControlsManager() const
+bool MediaElementSession::canShowControlsManager() const
 {
     if (m_element.isFullscreen()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is fullscreen");
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Is fullscreen");
         return true;
     }
 
-    if (!m_element.hasAudio()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No audio");
+    if (!isElementRectMostlyInMainFrame(m_element)) {
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Not in main frame");
         return false;
     }
 
-    if (m_element.ended()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Ended");
+    if (!m_element.hasAudio() && !m_element.hasEverHadAudio()) {
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: No audio");
         return false;
+    }
+
+    if (m_element.document().isMediaDocument()) {
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Is media document");
+        return true;
     }
 
     if (m_element.document().activeDOMObjectsAreSuspended()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: activeDOMObjectsAreSuspended()");
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: activeDOMObjectsAreSuspended()");
         return false;
     }
 
     if (!playbackPermitted(m_element)) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Playback not permitted");
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Playback not permitted");
         return false;
     }
 
     if (!hasBehaviorRestriction(RequireUserGestureToControlControlsManager) || ScriptController::processingUserGestureForMedia()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: No user gesture required");
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: No user gesture required");
         return true;
     }
 
     if (hasBehaviorRestriction(RequirePlaybackToControlControlsManager) && !m_element.isPlaying()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Needs to be playing");
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Needs to be playing");
         return false;
     }
 
     if (m_element.muted()) {
-        LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: Muted");
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Muted");
+        return false;
+    }
+
+    if (!m_element.hasEverNotifiedAboutPlaying()) {
+        LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: Hasn't fired playing notification");
         return false;
     }
 
     if (m_element.isVideo()) {
         if (!m_element.renderer()) {
-            LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No renderer");
+            LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: No renderer");
             return false;
         }
 
-        if (m_element.document().isMediaDocument()) {
-            LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is media document");
-            return true;
-        }
-
-        if (!m_element.hasVideo()) {
-            LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No video");
+        if (!m_element.hasVideo() && !m_element.hasEverHadVideo()) {
+            LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: No video");
             return false;
         }
 
-        if (isElementLargeEnoughForMainContent(m_element)) {
-            LOG(Media, "MediaElementSession::canControlControlsManager - returning TRUE: Is main content");
+        if (isLargeEnoughForMainContent(MediaSessionMainContentPurpose::MediaControls)) {
+            LOG(Media, "MediaElementSession::canShowControlsManager - returning TRUE: Is main content");
             return true;
         }
     }
 
-    LOG(Media, "MediaElementSession::canControlControlsManager - returning FALSE: No user gesture");
+    LOG(Media, "MediaElementSession::canShowControlsManager - returning FALSE: No user gesture");
     return false;
+}
+
+bool MediaElementSession::isLargeEnoughForMainContent(MediaSessionMainContentPurpose purpose) const
+{
+    return isElementLargeEnoughForMainContent(m_element, purpose);
+}
+
+double MediaElementSession::mostRecentUserInteractionTime() const
+{
+    return m_mostRecentUserInteractionTime;
+}
+
+bool MediaElementSession::wantsToObserveViewportVisibilityForMediaControls() const
+{
+    return isLargeEnoughForMainContent(MediaSessionMainContentPurpose::MediaControls);
+}
+
+bool MediaElementSession::wantsToObserveViewportVisibilityForAutoplay() const
+{
+    return hasBehaviorRestriction(InvisibleAutoplayNotPermitted) || hasBehaviorRestriction(OverrideUserGestureRequirementForMainContent);
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -507,6 +536,12 @@ void MediaElementSession::mediaEngineUpdated(const HTMLMediaElement& element)
     
 }
 
+void MediaElementSession::resetPlaybackSessionState()
+{
+    m_mostRecentUserInteractionTime = 0;
+    addBehaviorRestriction(RequireUserGestureToControlControlsManager | RequirePlaybackToControlControlsManager);
+}
+
 bool MediaElementSession::allowsPictureInPicture(const HTMLMediaElement& element) const
 {
     Settings* settings = element.document().settings();
@@ -552,7 +587,7 @@ size_t MediaElementSession::maximumMediaSourceBufferSize(const SourceBuffer& buf
 }
 #endif
 
-static bool isMainContent(const HTMLMediaElement& element)
+static bool isMainContentForPurposesOfAutoplay(const HTMLMediaElement& element)
 {
     if (!element.hasAudio() || !element.hasVideo())
         return false;
@@ -562,7 +597,7 @@ static bool isMainContent(const HTMLMediaElement& element)
     if (!renderer)
         return false;
 
-    if (!isElementLargeEnoughForMainContent(element))
+    if (!isElementLargeEnoughForMainContent(element, MediaSessionMainContentPurpose::Autoplay))
         return false;
 
     // Elements which are hidden by style, or have been scrolled out of view, cannot be main content.
@@ -601,6 +636,27 @@ static bool isMainContent(const HTMLMediaElement& element)
     return true;
 }
 
+static bool isElementRectMostlyInMainFrame(const HTMLMediaElement& element)
+{
+    if (!element.renderer())
+        return false;
+
+    auto* documentFrame = element.document().frame();
+    if (!documentFrame)
+        return false;
+
+    auto mainFrameView = documentFrame->mainFrame().view();
+    if (!mainFrameView)
+        return false;
+
+    IntRect mainFrameRectAdjustedForScrollPosition = IntRect(-mainFrameView->documentScrollPositionRelativeToViewOrigin(), mainFrameView->contentsSize());
+    IntRect elementRectInMainFrame = element.clientRect();
+    unsigned int totalElementArea = elementRectInMainFrame.area();
+    elementRectInMainFrame.intersect(mainFrameRectAdjustedForScrollPosition);
+
+    return elementRectInMainFrame.area() > totalElementArea / 2;
+}
+
 static bool isElementLargeRelativeToMainFrame(const HTMLMediaElement& element)
 {
     static const double minimumPercentageOfMainFrameAreaForMainContent = 0.9;
@@ -622,10 +678,10 @@ static bool isElementLargeRelativeToMainFrame(const HTMLMediaElement& element)
     return maxVisibleClientWidth * maxVisibleClientHeight > minimumPercentageOfMainFrameAreaForMainContent * mainFrameView.visibleWidth() * mainFrameView.visibleHeight();
 }
 
-static bool isElementLargeEnoughForMainContent(const HTMLMediaElement& element)
+static bool isElementLargeEnoughForMainContent(const HTMLMediaElement& element, MediaSessionMainContentPurpose purpose)
 {
     static const double elementMainContentAreaMinimum = 400 * 300;
-    static const double maximumAspectRatio = 1.8; // Slightly larger than 16:9.
+    static const double maximumAspectRatio = purpose == MediaSessionMainContentPurpose::MediaControls ? 3 : 1.8;
     static const double minimumAspectRatio = .5; // Slightly smaller than 9:16.
 
     // Elements which have not yet been laid out, or which are not yet in the DOM, cannot be main content.
@@ -658,7 +714,7 @@ void MediaElementSession::mainContentCheckTimerFired()
 bool MediaElementSession::updateIsMainContent() const
 {
     bool wasMainContent = m_isMainContent;
-    m_isMainContent = isMainContent(m_element);
+    m_isMainContent = isMainContentForPurposesOfAutoplay(m_element);
 
     if (m_isMainContent != wasMainContent)
         m_element.updateShouldPlay();

@@ -129,27 +129,29 @@ void ProcessingInstruction::checkStyleSheet()
                 m_cachedSheet->removeClient(this);
                 m_cachedSheet = nullptr;
             }
-            
+
             String url = document().completeURL(href).string();
             if (!dispatchBeforeLoadEvent(url))
                 return;
-            
+
             m_loading = true;
             document().authorStyleSheets().addPendingSheet();
-            
-            CachedResourceRequest request(ResourceRequest(document().completeURL(href)));
+
 #if ENABLE(XSLT)
-            if (m_isXSL)
-                m_cachedSheet = document().cachedResourceLoader().requestXSLStyleSheet(request);
-            else
+            if (m_isXSL) {
+                auto options = CachedResourceLoader::defaultCachedResourceOptions();
+                options.mode = FetchOptions::Mode::SameOrigin;
+                m_cachedSheet = document().cachedResourceLoader().requestXSLStyleSheet({ResourceRequest(document().completeURL(href)), options});
+            } else
 #endif
             {
+                CachedResourceRequest request(ResourceRequest(document().completeURL(href)));
                 String charset = attrs.get("charset");
                 if (charset.isEmpty())
                     charset = document().charset();
                 request.setCharset(charset);
 
-                m_cachedSheet = document().cachedResourceLoader().requestCSSStyleSheet(request);
+                m_cachedSheet = document().cachedResourceLoader().requestCSSStyleSheet(WTFMove(request));
             }
             if (m_cachedSheet)
                 m_cachedSheet->addClient(this);
@@ -190,7 +192,7 @@ void ProcessingInstruction::setCSSStyleSheet(const String& href, const URL& base
     ASSERT(m_isCSS);
     CSSParserContext parserContext(document(), baseURL, charset);
 
-    auto cssSheet = CSSStyleSheet::create(StyleSheetContents::create(href, parserContext), this);
+    auto cssSheet = CSSStyleSheet::create(StyleSheetContents::create(href, parserContext), *this);
     cssSheet.get().setDisabled(m_alternate);
     cssSheet.get().setTitle(m_title);
     cssSheet.get().setMediaQueries(MediaQuerySet::create(m_media));

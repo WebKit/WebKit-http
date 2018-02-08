@@ -88,21 +88,18 @@ IntSize ICOImageDecoder::frameSizeAtIndex(size_t index, SubsamplingLevel)
     return (index && (index < m_dirEntries.size())) ? m_dirEntries[index].m_size : size();
 }
 
-bool ICOImageDecoder::setSize(unsigned width, unsigned height)
+bool ICOImageDecoder::setSize(const IntSize& size)
 {
     // The size calculated inside the BMPImageReader had better match the one in
     // the icon directory.
-    return m_frameSize.isEmpty() ? ImageDecoder::setSize(width, height) : ((IntSize(width, height) == m_frameSize) || setFailed());
+    return m_frameSize.isEmpty() ? ImageDecoder::setSize(size) : ((size == m_frameSize) || setFailed());
 }
 
 size_t ICOImageDecoder::frameCount()
 {
     decode(0, true);
-    if (m_frameBufferCache.isEmpty()) {
+    if (m_frameBufferCache.isEmpty())
         m_frameBufferCache.resize(m_dirEntries.size());
-        for (size_t i = 0; i < m_dirEntries.size(); ++i)
-            m_frameBufferCache[i].setPremultiplyAlpha(m_premultiplyAlpha);
-    }
     // CAUTION: We must not resize m_frameBufferCache again after this, as
     // decodeAtIndex() may give a BMPImageReader a pointer to one of the
     // entries.
@@ -116,7 +113,7 @@ ImageFrame* ICOImageDecoder::frameBufferAtIndex(size_t index)
         return 0;
 
     ImageFrame* buffer = &m_frameBufferCache[index];
-    if (buffer->status() != ImageFrame::FrameComplete)
+    if (!buffer->isComplete())
         decode(index, false);
     return buffer;
 }
@@ -179,7 +176,7 @@ void ICOImageDecoder::decode(size_t index, bool onlySize)
     // If we're done decoding this frame, we don't need the BMPImageReader or
     // PNGImageDecoder anymore.  (If we failed, these have already been
     // cleared.)
-    else if ((m_frameBufferCache.size() > index) && (m_frameBufferCache[index].status() == ImageFrame::FrameComplete)) {
+    else if ((m_frameBufferCache.size() > index) && m_frameBufferCache[index].isComplete()) {
         m_bmpReaders[index] = nullptr;
         m_pngDecoders[index] = nullptr;
     }
@@ -279,7 +276,7 @@ bool ICOImageDecoder::processDirectoryEntries()
     const IconDirectoryEntry& dirEntry = m_dirEntries.first();
     // Technically, this next call shouldn't be able to fail, since the width
     // and height here are each <= 256, and |m_frameSize| is empty.
-    return setSize(dirEntry.m_size.width(), dirEntry.m_size.height());
+    return setSize(dirEntry.m_size);
 }
 
 ICOImageDecoder::IconDirectoryEntry ICOImageDecoder::readDirectoryEntry()

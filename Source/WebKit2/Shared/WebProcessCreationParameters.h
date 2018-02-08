@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessCreationParameters_h
-#define WebProcessCreationParameters_h
+#pragma once
 
 #include "CacheModel.h"
 #include "SandboxExtension.h"
@@ -108,6 +107,7 @@ struct WebProcessCreationParameters {
     bool shouldSuppressMemoryPressureHandler { false };
     bool shouldUseFontSmoothing;
     bool resourceLoadStatisticsEnabled { false };
+    bool urlParserEnabled { false };
 
     Vector<String> fontWhitelist;
 
@@ -170,8 +170,10 @@ struct WebProcessCreationParameters {
 #if OS(LINUX)
     IPC::Attachment memoryPressureMonitorHandle;
 #endif
+
+#if PLATFORM(WAYLAND)
+    String waylandCompositorDisplayName;
+#endif
 };
 
 } // namespace WebKit
-
-#endif // WebProcessCreationParameters_h

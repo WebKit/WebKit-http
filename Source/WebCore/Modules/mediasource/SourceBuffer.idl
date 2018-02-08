@@ -37,7 +37,6 @@
     ActiveDOMObject,
     Conditional=MEDIA_SOURCE,
     ExportMacro=WEBCORE_EXPORT,
-    NoInterfaceObject,
 ] interface SourceBuffer : EventTarget {
 
     [SetterRaisesException] attribute AppendMode mode;
@@ -48,14 +47,14 @@
     [GetterRaisesException] readonly attribute TimeRanges buffered;
 
     // Applies an offset to media segment timestamps.
-    [SetterRaisesException] attribute unrestricted double timestampOffset;
+    [SetterRaisesException] attribute double timestampOffset;
 
     // Track support
     [Conditional=VIDEO_TRACK] readonly attribute AudioTrackList audioTracks;
     [Conditional=VIDEO_TRACK] readonly attribute VideoTrackList videoTracks;
     [Conditional=VIDEO_TRACK] readonly attribute TextTrackList textTracks;
 
-    [SetterRaisesException] attribute unrestricted double appendWindowStart;
+    [SetterRaisesException] attribute double appendWindowStart;
     [SetterRaisesException] attribute unrestricted double appendWindowEnd;
 
     // Append segment data.
@@ -65,5 +64,11 @@
     // Abort the current segment append sequence.
     [RaisesException] void abort();
     [RaisesException] void remove(unrestricted double start, unrestricted double end);
+
+    attribute EventHandler onupdatestart;
+    attribute EventHandler onupdate;
+    attribute EventHandler onupdateend;
+    attribute EventHandler onerror;
+    attribute EventHandler onabort;
 };
 

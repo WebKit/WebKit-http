@@ -30,26 +30,27 @@
 
 namespace WebCore {
 
-class CSSImageSetValue;
+class CSSValue;
 class CachedImage;
+class Document;
 
-class StyleCachedImage final : public StyleImage, private CachedImageClient {
+class StyleCachedImage final : public StyleImage {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<StyleCachedImage> create(CachedImage* image) { return adoptRef(*new StyleCachedImage(image, 1, nullptr)); }
-    static Ref<StyleCachedImage> createForImageSet(CachedImage* image, float scaleFactor, CSSImageSetValue& cssValue) { return adoptRef(*new StyleCachedImage(image, scaleFactor, &cssValue)); }
+    static Ref<StyleCachedImage> create(CSSValue& cssValue) { return adoptRef(*new StyleCachedImage(cssValue)); }
     virtual ~StyleCachedImage();
 
-    CachedImage* cachedImage() const override { return m_image.get(); }
+    bool operator==(const StyleImage& other) const override;
 
-    void detachFromCSSValue() { m_cssImageSetValue = nullptr; }
+    CachedImage* cachedImage() const override;
 
-private:
-    WrappedImagePtr data() const override { return m_image.get(); }
+    WrappedImagePtr data() const override { return m_cachedImage.get(); }
 
     PassRefPtr<CSSValue> cssValue() const override;
     
-    bool canRender(const RenderObject*, float multiplier) const override;
+    bool canRender(const RenderElement*, float multiplier) const override;
+    bool isPending() const override;
+    void load(CachedResourceLoader&, const ResourceLoaderOptions&) override;
     bool isLoaded() const override;
     bool errorOccurred() const override;
     FloatSize imageSize(const RenderElement*, float multiplier) const override;
@@ -64,11 +65,13 @@ private:
     float imageScaleFactor() const override;
     bool knownToBeOpaque(const RenderElement*) const override;
 
-    StyleCachedImage(CachedImage*, float scaleFactor, CSSImageSetValue*);
+private:
+    StyleCachedImage(CSSValue&);
 
-    CachedResourceHandle<CachedImage> m_image;
-    float m_scaleFactor;
-    CSSImageSetValue* m_cssImageSetValue; // Not retained; it owns us.
+    Ref<CSSValue> m_cssValue;
+    bool m_isPending { true };
+    mutable float m_scaleFactor { 1 };
+    mutable CachedResourceHandle<CachedImage> m_cachedImage;
 };
 
 } // namespace WebCore

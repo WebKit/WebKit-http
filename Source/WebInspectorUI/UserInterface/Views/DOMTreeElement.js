@@ -398,7 +398,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         // Remove any tree elements that no longer have this node (or this node's contentDocument) as their parent.
         // Keep a list of existing tree elements for nodes that we can use later.
         var existingChildTreeElements = new Map;
-        for (var i = (this.children.length - 1); i >= 0; --i) {
+        for (var i = this.children.length - 1; i >= 0; --i) {
             var currentChildTreeElement = this.children[i];
             var currentNode = currentChildTreeElement.representedObject;
             var currentParentNode = currentNode.parentNode;
@@ -411,7 +411,6 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         }
 
         // Move / create TreeElements for our visible children.
-        var childIndex = 0;
         var elementToSelect = null;
         var visibleChildren = this._visibleChildren();
         for (var i = 0; i < visibleChildren.length && i < this.expandedChildrenLimit; ++i) {
@@ -459,7 +458,6 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (this.expandAllButtonElement && this.expandAllButtonElement.__treeElement.parent)
             this.removeChild(this.expandAllButtonElement.__treeElement);
 
-        var node = this.representedObject;
         if (!this._hasVisibleChildren())
             return;
 
@@ -497,13 +495,15 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     handleLoadAllChildren()
     {
         var visibleChildren = this._visibleChildren();
-        var totalChildrenCount = visibleChildren.length;
         this.expandedChildrenLimit = Math.max(visibleChildren.length, this.expandedChildrenLimit + WebInspector.DOMTreeElement.InitialChildrenLimit);
     }
 
     onexpand()
     {
         if (this._elementCloseTag)
+            return;
+
+        if (!this.listItemElement)
             return;
 
         this.updateTitle();
@@ -713,16 +713,33 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _populateNodeContextMenu(contextMenu)
     {
+        let node = this.representedObject;
+
         // Add free-form node-related actions.
         if (this.editable)
             contextMenu.appendItem(WebInspector.UIString("Edit as HTML"), this._editAsHTML.bind(this));
-        contextMenu.appendItem(WebInspector.UIString("Copy as HTML"), this._copyHTML.bind(this));
+        if (!node.isPseudoElement())
+            contextMenu.appendItem(WebInspector.UIString("Copy as HTML"), this._copyHTML.bind(this));
         if (this.editable)
             contextMenu.appendItem(WebInspector.UIString("Delete Node"), this.remove.bind(this));
-
-        let node = this.representedObject;
         if (node.nodeType() === Node.ELEMENT_NODE)
             contextMenu.appendItem(WebInspector.UIString("Scroll Into View"), this._scrollIntoView.bind(this));
+
+        contextMenu.appendSeparator();
+
+        if (node.nodeType() === Node.ELEMENT_NODE) {
+            contextMenu.appendItem(WebInspector.UIString("Copy Selector Path"), () => {
+                let cssPath = WebInspector.cssPath(this.representedObject);
+                InspectorFrontendHost.copyText(cssPath);
+            });
+        }
+
+        if (!node.isPseudoElement()) {
+            contextMenu.appendItem(WebInspector.UIString("Copy XPath"), () => {
+                let xpath = WebInspector.xpath(this.representedObject);
+                InspectorFrontendHost.copyText(xpath);
+            });
+        }
     }
 
     _startEditing()
@@ -733,7 +750,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (!this.editable)
             return false;
 
-        var listItem = this._listItemNode;
+        var listItem = this.listItemElement;
 
         if (this._canAddAttributes) {
             var attribute = listItem.getElementsByClassName("html-attribute")[0];
@@ -1101,7 +1118,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         // tag, or HTML elements without a closing tag (such as <br>). Return
         // null in the case where there isn't a closing tag.
         var tags = this.listItemElement.getElementsByClassName("html-tag");
-        return (tags.length === 1 ? null : tags[tags.length - 1]);
+        return tags.length === 1 ? null : tags[tags.length - 1];
     }
 
     updateTitle(onlySearchQueryChanged)
@@ -1129,7 +1146,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _buildAttributeDOM(parentElement, name, value, node)
     {
-        let hasText = (value.length > 0);
+        let hasText = value.length > 0;
         let attrSpanElement = parentElement.createChild("span", "html-attribute");
         let attrNameElement = attrSpanElement.createChild("span", "html-attribute-name");
         attrNameElement.textContent = name;
@@ -1177,7 +1194,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                     linkElement.href = rewrittenURL;
                     linkElement.textContent = linkText.insertWordBreakCharacters();
                     let descriptorElement = attrValueElement.appendChild(document.createElement("span"));
-                    descriptorElement.textContent = string.substring(spaceIndex);
+                    descriptorElement.textContent = descriptorText;
                 }
 
                 if (i < groups.length - 1) {
@@ -1203,11 +1220,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     _buildTagDOM(parentElement, tagName, isClosingTag, isDistinctTreeElement)
     {
         var node = this.representedObject;
-        var classes = [ "html-tag" ];
+        var classes = ["html-tag"];
         if (isClosingTag && isDistinctTreeElement)
             classes.push("close");
-        if (node.isInShadowTree())
-            classes.push("shadow");
         var tagElement = parentElement.createChild("span", classes.join(" "));
         tagElement.append("<");
         var tagNameElement = tagElement.createChild("span", isClosingTag ? "" : "html-tag-name");
@@ -1241,11 +1256,14 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 var fragmentElement = info.titleDOM.createChild("span", "html-fragment");
                 if (node.shadowRootType()) {
                     fragmentElement.textContent = WebInspector.UIString("Shadow Content (%s)").format(WebInspector.DOMTreeElement.shadowRootTypeDisplayName(node.shadowRootType()));
-                    fragmentElement.classList.add("shadow");
-                } else if (node.parentNode && node.parentNode.templateContent() === node)
+                    this.listItemElement.classList.add("shadow");
+                } else if (node.parentNode && node.parentNode.templateContent() === node) {
                     fragmentElement.textContent = WebInspector.UIString("Template Content");
-                else
+                    this.listItemElement.classList.add("template");
+                } else {
                     fragmentElement.textContent = WebInspector.UIString("Document Fragment");
+                    this.listItemElement.classList.add("fragment");
+                }
                 break;
 
             case Node.ATTRIBUTE_NODE:
@@ -1525,17 +1543,16 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         var text = this.title.textContent;
         var searchRegex = new RegExp(this._searchQuery.escapeForRegExp(), "gi");
 
-        var offset = 0;
         var match = searchRegex.exec(text);
         var matchRanges = [];
         while (match) {
-            matchRanges.push({ offset: match.index, length: match[0].length });
+            matchRanges.push({offset: match.index, length: match[0].length});
             match = searchRegex.exec(text);
         }
 
         // Fall back for XPath, etc. matches.
         if (!matchRanges.length)
-            matchRanges.push({ offset: 0, length: text.length });
+            matchRanges.push({offset: 0, length: text.length});
 
         this._highlightResult = [];
         WebInspector.highlightRangesWithStyleClass(this.title, matchRanges, WebInspector.DOMTreeElement.SearchHighlightStyleClassName, this._highlightResult);
@@ -1577,7 +1594,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             return;
 
         this.updateSelectionArea();
-        this._listItemNode.classList.toggle("pseudo-class-enabled", !!this.representedObject.enabledPseudoClasses.length);
+        this.listItemElement.classList.toggle("pseudo-class-enabled", !!this.representedObject.enabledPseudoClasses.length);
     }
 
     _fireDidChange()
@@ -1601,7 +1618,7 @@ WebInspector.DOMTreeElement.MaximumInlineTextChildLength = 80;
 // or implicitly (for HTML5) forbid the closing tag.
 WebInspector.DOMTreeElement.ForbiddenClosingTagElements = [
     "area", "base", "basefont", "br", "canvas", "col", "command", "embed", "frame",
-    "hr", "img", "input", "isindex", "keygen", "link", "meta", "param", "source",
+    "hr", "img", "input", "keygen", "link", "meta", "param", "source",
     "wbr", "track", "menuitem"
 ].keySet();
 

@@ -244,14 +244,6 @@ static const CSSPropertyID computedProperties[] = {
 #endif
     CSSPropertyZIndex,
     CSSPropertyZoom,
-    CSSPropertyWebkitAnimationDelay,
-    CSSPropertyWebkitAnimationDirection,
-    CSSPropertyWebkitAnimationDuration,
-    CSSPropertyWebkitAnimationFillMode,
-    CSSPropertyWebkitAnimationIterationCount,
-    CSSPropertyWebkitAnimationName,
-    CSSPropertyWebkitAnimationPlayState,
-    CSSPropertyWebkitAnimationTimingFunction,
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     CSSPropertyWebkitAnimationTrigger,
 #endif
@@ -312,8 +304,10 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFlexDirection,
     CSSPropertyFlexWrap,
     CSSPropertyJustifyContent,
+#if ENABLE(CSS_GRID_LAYOUT)
     CSSPropertyJustifySelf,
     CSSPropertyJustifyItems,
+#endif
 #if ENABLE(FILTERS_LEVEL_2)
     CSSPropertyWebkitBackdropFilter,
 #endif
@@ -405,10 +399,6 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitTextStrokeWidth,
     CSSPropertyWebkitTextZoom,
     CSSPropertyWebkitTransformStyle,
-    CSSPropertyWebkitTransitionDelay,
-    CSSPropertyWebkitTransitionDuration,
-    CSSPropertyWebkitTransitionProperty,
-    CSSPropertyWebkitTransitionTimingFunction,
     CSSPropertyWebkitUserDrag,
     CSSPropertyWebkitUserModify,
     CSSPropertyWebkitUserSelect,
@@ -1023,7 +1013,12 @@ static Ref<CSSValue> specifiedValueForGridTrackSize(const GridTrackSize& trackSi
 {
     switch (trackSize.type()) {
     case LengthTrackSizing:
-        return specifiedValueForGridTrackBreadth(trackSize.length(), style);
+        return specifiedValueForGridTrackBreadth(trackSize.minTrackBreadth(), style);
+    case FitContentTrackSizing: {
+        auto fitContentTrackSize = CSSValueList::createCommaSeparated();
+        fitContentTrackSize->append(zoomAdjustedPixelValueForLength(trackSize.fitContentTrackBreadth().length(), style));
+        return CSSFunctionValue::create("fit-content(", WTFMove(fitContentTrackSize));
+    }
     default:
         ASSERT(trackSize.type() == MinMaxTrackSizing);
         auto minMaxTrackBreadths = CSSValueList::createCommaSeparated();
@@ -2284,6 +2279,7 @@ Node* ComputedStyleExtractor::styledNode() const
     return &element;
 }
 
+#if ENABLE(CSS_GRID_LAYOUT)
 static StyleSelfAlignmentData resolveLegacyJustifyItems(const StyleSelfAlignmentData& data)
 {
     if (data.positionType() == LegacyPosition)
@@ -2315,6 +2311,7 @@ static StyleSelfAlignmentData resolveJustifySelfAuto(const StyleSelfAlignmentDat
         return { ItemPositionNormal, OverflowAlignmentDefault };
     return resolveLegacyJustifyItems(resolveJustifyItemsAuto(parent->computedStyle()->justifyItems(), parent->parentNode()));
 }
+#endif
 
 static StyleSelfAlignmentData resolveAlignSelfAuto(const StyleSelfAlignmentData& data, Node* parent)
 {
@@ -2830,10 +2827,12 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createValue(style->flexWrap());
         case CSSPropertyJustifyContent:
             return valueForContentPositionAndDistributionWithOverflowAlignment(style->justifyContent());
+#if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyJustifyItems:
             return valueForItemPositionWithOverflowAlignment(resolveJustifyItemsAuto(style->justifyItems(), styledNode->parentNode()));
         case CSSPropertyJustifySelf:
             return valueForItemPositionWithOverflowAlignment(resolveJustifySelfAuto(style->justifySelf(), styledNode->parentNode()));
+#endif
         case CSSPropertyOrder:
             return cssValuePool.createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyFloat:
@@ -3343,10 +3342,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         }
 #endif
         case CSSPropertyAnimationDelay:
-        case CSSPropertyWebkitAnimationDelay:
             return getDelayValue(style->animations());
-        case CSSPropertyAnimationDirection:
-        case CSSPropertyWebkitAnimationDirection: {
+        case CSSPropertyAnimationDirection: {
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
             const AnimationList* t = style->animations();
             if (t) {
@@ -3371,10 +3368,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return list;
         }
         case CSSPropertyAnimationDuration:
-        case CSSPropertyWebkitAnimationDuration:
             return getDurationValue(style->animations());
-        case CSSPropertyAnimationFillMode:
-        case CSSPropertyWebkitAnimationFillMode: {
+        case CSSPropertyAnimationFillMode: {
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
             const AnimationList* t = style->animations();
             if (t) {
@@ -3398,8 +3393,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 list->append(cssValuePool.createIdentifierValue(CSSValueNone));
             return list;
         }
-        case CSSPropertyAnimationIterationCount:
-        case CSSPropertyWebkitAnimationIterationCount: {
+        case CSSPropertyAnimationIterationCount: {
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
             const AnimationList* t = style->animations();
             if (t) {
@@ -3414,8 +3408,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 list->append(cssValuePool.createValue(Animation::initialIterationCount(), CSSPrimitiveValue::CSS_NUMBER));
             return list;
         }
-        case CSSPropertyAnimationName:
-        case CSSPropertyWebkitAnimationName: {
+        case CSSPropertyAnimationName: {
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
             const AnimationList* t = style->animations();
             if (t) {
@@ -3425,8 +3418,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
                 list->append(cssValuePool.createIdentifierValue(CSSValueNone));
             return list;
         }
-        case CSSPropertyAnimationPlayState:
-        case CSSPropertyWebkitAnimationPlayState: {
+        case CSSPropertyAnimationPlayState: {
             RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
             const AnimationList* t = style->animations();
             if (t) {
@@ -3442,7 +3434,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return list;
         }
         case CSSPropertyAnimationTimingFunction:
-        case CSSPropertyWebkitAnimationTimingFunction:
             return getTimingFunctionValue(style->animations());
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
         case CSSPropertyWebkitAnimationTrigger:
@@ -3586,19 +3577,14 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyWebkitTransformStyle:
             return cssValuePool.createIdentifierValue((style->transformStyle3D() == TransformStyle3DPreserve3D) ? CSSValuePreserve3d : CSSValueFlat);
         case CSSPropertyTransitionDelay:
-        case CSSPropertyWebkitTransitionDelay:
             return getDelayValue(style->transitions());
         case CSSPropertyTransitionDuration:
-        case CSSPropertyWebkitTransitionDuration:
             return getDurationValue(style->transitions());
         case CSSPropertyTransitionProperty:
-        case CSSPropertyWebkitTransitionProperty:
             return getTransitionPropertyValue(style->transitions());
         case CSSPropertyTransitionTimingFunction:
-        case CSSPropertyWebkitTransitionTimingFunction:
             return getTimingFunctionValue(style->transitions());
-        case CSSPropertyTransition:
-        case CSSPropertyWebkitTransition: {
+        case CSSPropertyTransition: {
             const AnimationList* animList = style->transitions();
             if (animList) {
                 RefPtr<CSSValueList> transitionsList = CSSValueList::createCommaSeparated();
@@ -3772,6 +3758,13 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createValue(style->trailingWord());
 #endif
 
+#if ENABLE(APPLE_PAY)
+        case CSSPropertyApplePayButtonStyle:
+            return cssValuePool.createValue(style->applePayButtonStyle());
+        case CSSPropertyApplePayButtonType:
+            return cssValuePool.createValue(style->applePayButtonType());
+#endif
+
         /* Individual properties not part of the spec */
         case CSSPropertyBackgroundRepeatX:
         case CSSPropertyBackgroundRepeatY:
@@ -3867,7 +3860,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             break;
 
         /* Unimplemented -webkit- properties */
-        case CSSPropertyWebkitAnimation:
         case CSSPropertyWebkitBorderRadius:
         case CSSPropertyWebkitMarginCollapse:
         case CSSPropertyWebkitMarquee:

@@ -54,7 +54,7 @@ interface FetchResponse {
     [JSBuiltin] readonly attribute ReadableStream? body;
 
     // Copy of FetchBody IDL as we want to implement some of these as built-ins.
-    [ImplementedAs=isDisturbed] readonly attribute boolean bodyUsed;
+    [JSBuiltin] readonly attribute boolean bodyUsed;
     [JSBuiltin] Promise arrayBuffer();
     [JSBuiltin] Promise blob();
     [JSBuiltin] Promise formData();
@@ -65,11 +65,12 @@ interface FetchResponse {
 
     [PrivateIdentifier, NewObject] FetchResponse cloneForJS();
 
-    [Conditional=STREAMS_API, PrivateIdentifier] void startConsumingStream(unsigned short type);
-    [Conditional=STREAMS_API, PrivateIdentifier] void consumeChunk(Uint8Array chunk);
-    [Conditional=STREAMS_API, PrivateIdentifier] Promise finishConsumingStream();
+    [Conditional=READABLE_STREAM_API, PrivateIdentifier] void startConsumingStream(unsigned short type);
+    [Conditional=READABLE_STREAM_API, PrivateIdentifier] void consumeChunk(Uint8Array chunk);
+    [Conditional=READABLE_STREAM_API, PrivateIdentifier] Promise finishConsumingStream();
 
     [PrivateIdentifier] Promise consume(unsigned short type);
+    [PrivateIdentifier] boolean isLoading();
     [PrivateIdentifier, RaisesException] void setStatus(unsigned short status, DOMString statusText);
     [CallWith=ScriptState, PrivateIdentifier] void initializeWith(any body);
     [PrivateIdentifier, NewObject] ReadableStreamSource createReadableStreamSource();

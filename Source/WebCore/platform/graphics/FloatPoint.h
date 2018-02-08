@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc.  All rights reserved.
  * Copyright (C) 2005 Nokia.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -51,6 +51,11 @@ typedef struct _NSPoint NSPoint;
 class BPoint;
 #endif
 
+#if PLATFORM(WIN)
+struct D2D_POINT_2F;
+typedef D2D_POINT_2F D2D1_POINT_2F;
+#endif
+
 namespace WebCore {
 
 class AffineTransform;
@@ -61,7 +66,7 @@ class TextStream;
 
 class FloatPoint {
 public:
-    FloatPoint() : m_x(0), m_y(0) { }
+    FloatPoint() { }
     FloatPoint(float x, float y) : m_x(x), m_y(y) { }
     WEBCORE_EXPORT FloatPoint(const IntPoint&);
     explicit FloatPoint(const FloatSize& size) : m_x(size.width()), m_y(size.height()) { }
@@ -111,7 +116,7 @@ public:
         m_y *= sy;
     }
 
-    void normalize();
+    WEBCORE_EXPORT void normalize();
 
     float dot(const FloatPoint& a) const
     {
@@ -157,11 +162,17 @@ public:
     operator BPoint() const;
 #endif
 
-    FloatPoint matrixTransform(const TransformationMatrix&) const;
-    FloatPoint matrixTransform(const AffineTransform&) const;
+#if PLATFORM(WIN)
+    WEBCORE_EXPORT FloatPoint(const D2D1_POINT_2F&);
+    WEBCORE_EXPORT operator D2D1_POINT_2F() const;
+#endif
+
+    WEBCORE_EXPORT FloatPoint matrixTransform(const TransformationMatrix&) const;
+    WEBCORE_EXPORT FloatPoint matrixTransform(const AffineTransform&) const;
 
 private:
-    float m_x, m_y;
+    float m_x { 0 };
+    float m_y { 0 };
 };
 
 

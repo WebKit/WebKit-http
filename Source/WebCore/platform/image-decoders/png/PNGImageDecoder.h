@@ -45,10 +45,10 @@ namespace WebCore {
         String filenameExtension() const override { return "png"; }
 #if ENABLE(APNG)
         size_t frameCount() override { return m_frameCount; }
-        int repetitionCount() const override { return m_playCount-1; }
+        RepetitionCount repetitionCount() const override { return m_playCount-1; }
 #endif
         bool isSizeAvailable() override;
-        bool setSize(unsigned width, unsigned height) override;
+        bool setSize(const IntSize&) override;
         ImageFrame* frameBufferAtIndex(size_t index) override;
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
@@ -73,7 +73,7 @@ namespace WebCore {
                 return false;
 
             for (auto& imageFrame : m_frameBufferCache) {
-                if (imageFrame.status() != ImageFrame::FrameComplete)
+                if (!imageFrame.isComplete())
                     return false;
             }
 
@@ -82,7 +82,7 @@ namespace WebCore {
 
         bool isCompleteAtIndex(size_t index)
         {
-            return (index < m_frameBufferCache.size() && m_frameBufferCache[index].status() == ImageFrame::FrameComplete);
+            return (index < m_frameBufferCache.size() && m_frameBufferCache[index].isComplete());
         }
 
     private:

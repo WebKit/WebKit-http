@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #if ENABLE(WEBGL) && ENABLE(WEBGL2)
 #include "JSWebGL2RenderingContext.h"
 
+#include <heap/HeapInlines.h>
 #include <runtime/Error.h>
 #include "NotImplemented.h"
 #include "WebGL2RenderingContext.h"
@@ -97,15 +98,18 @@ JSValue JSWebGL2RenderingContext::getSyncParameter(ExecState& exec)
 
 JSValue JSWebGL2RenderingContext::getIndexedParameter(ExecState& exec)
 {
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (exec.argumentCount() != 2)
-        return exec.vm().throwException(&exec, createNotEnoughArgumentsError(&exec));
+        return throwException(&exec, scope, createNotEnoughArgumentsError(&exec));
 
     WebGL2RenderingContext& context = wrapped();
     unsigned pname = exec.uncheckedArgument(0).toInt32(&exec);
-    if (exec.hadException())
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
     unsigned index = exec.uncheckedArgument(1).toInt32(&exec);
-    if (exec.hadException())
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
     WebGLGetInfo info = context.getIndexedParameter(pname, index);
     return toJS(&exec, globalObject(), info);

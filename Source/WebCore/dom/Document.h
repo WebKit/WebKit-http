@@ -124,7 +124,7 @@ class IntPoint;
 class LayoutPoint;
 class LayoutRect;
 class LiveNodeList;
-class JSModuleLoader;
+class ScriptModuleLoader;
 class JSNode;
 class Locale;
 class Location;
@@ -133,6 +133,7 @@ class MediaPlaybackTarget;
 class MediaPlaybackTargetClient;
 class MediaQueryList;
 class MediaQueryMatcher;
+class ScriptModuleLoader;
 class MouseEventWithHitTestResults;
 class NamedFlowCollection;
 class NodeFilter;
@@ -194,10 +195,6 @@ class TouchList;
 #if ENABLE(REQUEST_ANIMATION_FRAME)
 class RequestAnimationFrameCallback;
 class ScriptedAnimationController;
-#endif
-
-#if ENABLE(TEXT_AUTOSIZING)
-class TextAutosizer;
 #endif
 
 class FontFaceSet;
@@ -412,7 +409,7 @@ public:
 
     WEBCORE_EXPORT String readyState() const;
 
-    WEBCORE_EXPORT String defaultCharsetForBindings() const;
+    WEBCORE_EXPORT String defaultCharsetForLegacyBindings() const;
 
     String charset() const { return Document::encoding(); }
     WEBCORE_EXPORT String characterSetWithUTF8Fallback() const;
@@ -441,7 +438,7 @@ public:
 
     void setXMLEncoding(const String& encoding) { m_xmlEncoding = encoding; } // read-only property, only to be set from XMLDocumentParser
     WEBCORE_EXPORT void setXMLVersion(const String&, ExceptionCode&);
-    WEBCORE_EXPORT void setXMLStandalone(bool, ExceptionCode&);
+    WEBCORE_EXPORT void setXMLStandalone(bool);
     void setHasXMLDeclaration(bool hasXMLDeclaration) { m_hasXMLDeclaration = hasXMLDeclaration ? 1 : 0; }
 
     String documentURI() const { return m_documentURI; }
@@ -560,7 +557,7 @@ public:
 
     void recalcStyle(Style::Change = Style::NoChange);
     WEBCORE_EXPORT void updateStyleIfNeeded();
-    bool needsStyleRecalc() const { return !inPageCache() && (m_pendingStyleRecalcShouldForce || childNeedsStyleRecalc() || m_optimizedStyleSheetUpdateTimer.isActive()); }
+    bool needsStyleRecalc() const { return pageCacheState() == NotInPageCache && (m_pendingStyleRecalcShouldForce || childNeedsStyleRecalc() || m_optimizedStyleSheetUpdateTimer.isActive()); }
 
     WEBCORE_EXPORT void updateLayout();
     
@@ -857,7 +854,7 @@ public:
 
     // Used by DOM bindings; no direction known.
     String title() const { return m_title.string(); }
-    WEBCORE_EXPORT void setTitle(const String&, ExceptionCode&);
+    WEBCORE_EXPORT void setTitle(const String&);
 
     WEBCORE_EXPORT const AtomicString& dir() const;
     WEBCORE_EXPORT void setDir(const AtomicString&);
@@ -947,7 +944,7 @@ public:
     Document& topDocument() const;
     
     ScriptRunner* scriptRunner() { return m_scriptRunner.get(); }
-    JSModuleLoader* moduleLoader() { return m_moduleLoader.get(); }
+    ScriptModuleLoader* moduleLoader() { return m_moduleLoader.get(); }
 
     HTMLScriptElement* currentScript() const { return !m_currentScriptStack.isEmpty() ? m_currentScriptStack.last().get() : nullptr; }
     void pushCurrentScript(HTMLScriptElement*);
@@ -1000,8 +997,10 @@ public:
 
     void finishedParsing();
 
-    bool inPageCache() const { return m_inPageCache; }
-    void setInPageCache(bool flag);
+    enum PageCacheState { NotInPageCache, AboutToEnterPageCache, InPageCache };
+
+    PageCacheState pageCacheState() const { return m_pageCacheState; }
+    void setPageCacheState(PageCacheState);
 
     // Elements can register themselves for the "suspend()" and
     // "resume()" callbacks
@@ -1231,10 +1230,6 @@ public:
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     IntSize initialViewportSize() const;
-#endif
-
-#if ENABLE(TEXT_AUTOSIZING)
-    TextAutosizer* textAutosizer() { return m_textAutosizer.get(); }
 #endif
 
     void adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>&, const RenderStyle&);
@@ -1551,7 +1546,7 @@ private:
     bool m_overMinimumLayoutThreshold;
     
     std::unique_ptr<ScriptRunner> m_scriptRunner;
-    std::unique_ptr<JSModuleLoader> m_moduleLoader;
+    std::unique_ptr<ScriptModuleLoader> m_moduleLoader;
 
     Vector<RefPtr<HTMLScriptElement>> m_currentScriptStack;
 
@@ -1592,7 +1587,7 @@ private:
     HashMap<String, RefPtr<HTMLCanvasElement>> m_cssCanvasElements;
 
     bool m_createRenderers;
-    bool m_inPageCache;
+    PageCacheState m_pageCacheState { NotInPageCache };
 
     HashSet<Element*> m_documentSuspensionCallbackElements;
     HashSet<Element*> m_mediaVolumeCallbackElements;
@@ -1714,10 +1709,6 @@ public:
 private:
     using TextAutoSizingMap = HashMap<TextAutoSizingKey, std::unique_ptr<TextAutoSizingValue>, TextAutoSizingHash, TextAutoSizingTraits>;
     TextAutoSizingMap m_textAutoSizedNodes;
-#endif
-
-#if ENABLE(TEXT_AUTOSIZING)
-    std::unique_ptr<TextAutosizer> m_textAutosizer;
 #endif
 
     void platformSuspendOrStopActiveDOMObjects();

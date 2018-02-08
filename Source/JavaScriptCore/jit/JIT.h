@@ -40,16 +40,16 @@
 
 #include "CodeBlock.h"
 #include "CompactJITCodeMap.h"
-#include "Interpreter.h"
 #include "JITDisassembler.h"
 #include "JITInlineCacheGenerator.h"
 #include "JITMathIC.h"
 #include "JSInterfaceJIT.h"
-#include "Opcode.h"
 #include "PCToCodeOriginMap.h"
 #include "UnusedPointer.h"
 
 namespace JSC {
+
+    enum OpcodeID : unsigned;
 
     class ArrayAllocationProfile;
     class CallLinkInfo;
@@ -248,14 +248,7 @@ namespace JSC {
             jit.privateCompileHasIndexedProperty(byValInfo, returnAddress, arrayMode);
         }
 
-        static CodeRef compileCTINativeCall(VM* vm, NativeFunction func)
-        {
-            if (!vm->canUseJIT()) {
-                return CodeRef::createLLIntCodeRef(llint_native_call_trampoline);
-            }
-            JIT jit(vm, 0);
-            return jit.privateCompileCTINativeCall(vm, func);
-        }
+        static CodeRef compileCTINativeCall(VM*, NativeFunction);
 
         static unsigned frameRegisterCountFor(CodeBlock*);
         static int stackPointerOffsetFor(CodeBlock*);
@@ -497,8 +490,6 @@ namespace JSC {
         void emit_op_get_rest_length(Instruction*);
         void emit_op_check_tdz(Instruction*);
         void emit_op_assert(Instruction*);
-        void emit_op_save(Instruction*);
-        void emit_op_resume(Instruction*);
         void emit_op_debug(Instruction*);
         void emit_op_del_by_id(Instruction*);
         void emit_op_del_by_val(Instruction*);
@@ -523,9 +514,8 @@ namespace JSC {
         void emit_op_is_undefined(Instruction*);
         void emit_op_is_boolean(Instruction*);
         void emit_op_is_number(Instruction*);
-        void emit_op_is_string(Instruction*);
-        void emit_op_is_jsarray(Instruction*);
         void emit_op_is_object(Instruction*);
+        void emit_op_is_cell_with_type(Instruction*);
         void emit_op_jeq_null(Instruction*);
         void emit_op_jfalse(Instruction*);
         void emit_op_jmp(Instruction*);
@@ -633,7 +623,6 @@ namespace JSC {
         void emitSlow_op_get_argument_by_val(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof_custom(Instruction*, Vector<SlowCaseEntry>::iterator&);
-        void emitSlow_op_jfalse(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jless(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jlesseq(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jgreater(Instruction*, Vector<SlowCaseEntry>::iterator&);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple, Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +26,8 @@
 #include "config.h"
 #include "JSMapIterator.h"
 
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSMap.h"
-#include "MapDataInlines.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
 
 namespace JSC {
 
@@ -41,6 +37,7 @@ void JSMapIterator::finishCreation(VM& vm, JSMap* iteratedObject)
 {
     Base::finishCreation(vm);
     m_map.set(vm, this, iteratedObject);
+    setIterator(vm, m_map->impl()->head());
 }
 
 void JSMapIterator::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -49,6 +46,7 @@ void JSMapIterator::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_map);
+    visitor.append(&thisObject->m_iter);
 }
 
 JSValue JSMapIterator::createPair(CallFrame* callFrame, JSValue key, JSValue value)
@@ -62,8 +60,9 @@ JSValue JSMapIterator::createPair(CallFrame* callFrame, JSValue key, JSValue val
 
 JSMapIterator* JSMapIterator::clone(ExecState* exec)
 {
-    auto clone = JSMapIterator::create(exec->vm(), exec->callee()->globalObject()->mapIteratorStructure(), m_map.get(), m_kind);
-    clone->m_iterator = m_iterator;
+    VM& vm = exec->vm();
+    auto clone = JSMapIterator::create(vm, exec->callee()->globalObject()->mapIteratorStructure(), m_map.get(), m_kind);
+    clone->setIterator(vm, m_iter.get());
     return clone;
 }
 

@@ -116,6 +116,8 @@ bool ResourceLoader::init(const ResourceRequest& r)
     
     ResourceRequest clientRequest(r);
 
+    m_loadTiming.markStartTimeAndFetchStart();
+
 #if PLATFORM(IOS)
     // If the documentLoader was detached while this ResourceLoader was waiting its turn
     // in ResourceLoadScheduler queue, don't continue.
@@ -257,6 +259,9 @@ void ResourceLoader::loadDataURL()
         auto dataSize = result.data ? result.data->size() : 0;
 
         ResourceResponse dataResponse { url, result.mimeType, dataSize, result.charset };
+        dataResponse.setHTTPStatusCode(200);
+        dataResponse.setHTTPStatusText(ASCIILiteral("OK"));
+        dataResponse.setHTTPHeaderField(HTTPHeaderName::ContentType, result.contentType);
         protectedThis->didReceiveResponse(dataResponse);
 
         if (!protectedThis->reachedTerminalState() && dataSize)

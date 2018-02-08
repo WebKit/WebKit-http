@@ -318,24 +318,13 @@ private:
             break;
         }
 
-        case ArithRound:
-        case ArithFloor:
-        case ArithCeil:
-        case ArithTrunc: {
-            if (isInt32OrBooleanSpeculation(node->getHeapPrediction()) && m_graph.roundShouldSpeculateInt32(node, m_pass))
-                changed |= setPrediction(SpecInt32Only);
-            else
-                changed |= setPrediction(SpecBytecodeDouble);
-            break;
-        }
-
         case ArithAbs: {
-            SpeculatedType child = node->child1()->prediction();
-            if (isInt32OrBooleanSpeculationForArithmetic(child)
+            SpeculatedType childPrediction = node->child1()->prediction();
+            if (isInt32OrBooleanSpeculation(childPrediction)
                 && node->canSpeculateInt32(m_pass))
                 changed |= mergePrediction(SpecInt32Only);
             else
-                changed |= mergePrediction(speculatedDoubleTypeForPrediction(child));
+                changed |= mergePrediction(SpecBytecodeDouble);
             break;
         }
 
@@ -561,6 +550,7 @@ private:
         case ArithSqrt:
         case ArithCos:
         case ArithSin:
+        case ArithTan:
         case ArithLog:
             if (node->child1()->shouldSpeculateNumber())
                 m_graph.voteNode(node->child1(), VoteDouble, weight);
@@ -680,15 +670,6 @@ private:
             break;
         }
 
-        case GetByValWithThis:
-        case GetByIdWithThis: {
-            setPrediction(SpecBytecodeTop);
-            break;
-        }
-        case TryGetById: {
-            setPrediction(SpecBytecodeTop);
-            break;
-        }
         case ArrayPop:
         case ArrayPush:
         case RegExpExec:
@@ -697,6 +678,9 @@ private:
         case StringReplaceRegExp:
         case GetById:
         case GetByIdFlush:
+        case GetByIdWithThis:
+        case TryGetById:
+        case GetByValWithThis:
         case GetByOffset:
         case MultiGetByOffset:
         case GetDirectPname:
@@ -714,6 +698,7 @@ private:
         case GetGlobalLexicalVariable:
         case GetClosureVar:
         case GetFromArguments:
+        case LoadFromJSMapBucket:
         case ToNumber: {
             setPrediction(m_currentNode->getHeapPrediction());
             break;
@@ -744,6 +729,16 @@ private:
             break;
         }
 
+        case MapHash:
+            setPrediction(SpecInt32Only);
+            break;
+        case GetMapBucket:
+            setPrediction(SpecCellOther);
+            break;
+        case IsNonEmptyMapBucket:
+            setPrediction(SpecBoolean);
+            break;
+
         case GetRestLength: {
             setPrediction(SpecInt32Only);
             break;
@@ -764,8 +759,21 @@ private:
         case ArithFRound:
         case ArithSin:
         case ArithCos:
+        case ArithTan:
         case ArithLog: {
             setPrediction(SpecBytecodeDouble);
+            break;
+        }
+
+        case ArithRound:
+        case ArithFloor:
+        case ArithCeil:
+        case ArithTrunc: {
+            if (isInt32OrBooleanSpeculation(m_currentNode->getHeapPrediction())
+                && m_graph.roundShouldSpeculateInt32(m_currentNode, m_pass))
+                setPrediction(SpecInt32Only);
+            else
+                setPrediction(SpecBytecodeDouble);
             break;
         }
 
@@ -786,16 +794,14 @@ private:
         case OverridesHasInstance:
         case InstanceOf:
         case InstanceOfCustom:
-        case IsJSArray:
         case IsEmpty:
         case IsUndefined:
         case IsBoolean:
         case IsNumber:
-        case IsString:
         case IsObject:
         case IsObjectOrNull:
         case IsFunction:
-        case IsRegExpObject:
+        case IsCellWithType:
         case IsTypedArrayView: {
             setPrediction(SpecBoolean);
             break;
@@ -904,6 +910,10 @@ private:
             setPrediction(SpecBoolean);
             break;
 
+        case HasOwnProperty:
+            setPrediction(SpecBoolean);
+            break;
+
         case GetEnumerableLength: {
             setPrediction(SpecInt32Only);
             break;
@@ -943,10 +953,6 @@ private:
         case ArithMul:
         case ArithDiv:
         case ArithMod:
-        case ArithRound:
-        case ArithFloor:
-        case ArithCeil:
-        case ArithTrunc:
         case ArithAbs:
         case GetByVal:
         case ToThis:

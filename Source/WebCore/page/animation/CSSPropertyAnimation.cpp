@@ -225,8 +225,7 @@ static inline PassRefPtr<StyleImage> blendFilter(const AnimationBase* anim, Cach
     ASSERT(image);
     FilterOperations filterResult = blendFilterOperations(anim, from, to, progress);
 
-    RefPtr<StyleCachedImage> styledImage = StyleCachedImage::create(image);
-    auto imageValue = CSSImageValue::create(image->url(), styledImage.get());
+    auto imageValue = CSSImageValue::create(*image);
     auto filterValue = ComputedStyleExtractor::valueForFilter(anim->renderer()->style(), filterResult, DoNotAdjustPixelValues);
 
     auto result = CSSFilterImageValue::create(WTFMove(imageValue), WTFMove(filterValue));
@@ -290,8 +289,8 @@ static inline PassRefPtr<StyleImage> crossfadeBlend(const AnimationBase*, StyleC
     if (progress == 1)
         return toStyleImage;
 
-    auto fromImageValue = CSSImageValue::create(fromStyleImage->cachedImage()->url(), fromStyleImage);
-    auto toImageValue = CSSImageValue::create(toStyleImage->cachedImage()->url(), toStyleImage);
+    auto fromImageValue = CSSImageValue::create(*fromStyleImage->cachedImage());
+    auto toImageValue = CSSImageValue::create(*toStyleImage->cachedImage());
     auto percentageValue = CSSPrimitiveValue::create(progress, CSSPrimitiveValue::CSS_NUMBER);
 
     auto crossfadeValue = CSSCrossfadeValue::create(WTFMove(fromImageValue), WTFMove(toImageValue), WTFMove(percentageValue));
@@ -1353,16 +1352,7 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
         new FillLayersPropertyWrapper(CSSPropertyWebkitMaskPositionY, &RenderStyle::maskLayers, &RenderStyle::ensureMaskLayers),
         new FillLayersPropertyWrapper(CSSPropertyWebkitMaskSize, &RenderStyle::maskLayers, &RenderStyle::ensureMaskLayers),
 
-        new PropertyWrapper<float>(CSSPropertyFontSize,
-            // Must pass a specified size to setFontSize if Text Autosizing is enabled, but a computed size
-            // if text zoom is enabled (if neither is enabled it's irrelevant as they're probably the same).
-            // FIXME: Find some way to assert that text zoom isn't activated when Text Autosizing is compiled in.
-#if ENABLE(TEXT_AUTOSIZING)
-            &RenderStyle::specifiedFontSize,
-#else
-            &RenderStyle::computedFontSize,
-#endif
-            &RenderStyle::setFontSize),
+        new PropertyWrapper<float>(CSSPropertyFontSize, &RenderStyle::computedFontSize, &RenderStyle::setFontSize),
         new PropertyWrapper<unsigned short>(CSSPropertyColumnRuleWidth, &RenderStyle::columnRuleWidth, &RenderStyle::setColumnRuleWidth),
         new PropertyWrapper<float>(CSSPropertyColumnGap, &RenderStyle::columnGap, &RenderStyle::setColumnGap),
         new PropertyWrapper<unsigned short>(CSSPropertyColumnCount, &RenderStyle::columnCount, &RenderStyle::setColumnCount),
@@ -1548,10 +1538,10 @@ bool CSSPropertyAnimation::blendProperties(const AnimationBase* anim, CSSPropert
 
     AnimationPropertyWrapperBase* wrapper = CSSPropertyAnimationWrapperMap::singleton().wrapperForProperty(prop);
     if (wrapper) {
-        wrapper->blend(anim, dst, a, b, progress);
 #if !LOG_DISABLED
         wrapper->logBlend(a, b, dst, progress);
 #endif
+        wrapper->blend(anim, dst, a, b, progress);
         return !wrapper->animationIsAccelerated() || !anim->isAccelerated();
     }
     return false;

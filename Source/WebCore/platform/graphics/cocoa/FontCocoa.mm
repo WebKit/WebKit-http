@@ -132,15 +132,10 @@ void Font::platformInit()
 
     unsigned unitsPerEm = CTFontGetUnitsPerEm(m_platformData.font());
     float pointSize = m_platformData.size();
-    float capHeight = CTFontGetCapHeight(m_platformData.font());
-    float lineGap = CTFontGetLeading(m_platformData.font());
-#if PLATFORM(IOS)
-    CGFloat ascent = CTFontGetAscent(m_platformData.font());
-    CGFloat descent = CTFontGetDescent(m_platformData.font());
-#else
-    float ascent = scaleEmToUnits(CGFontGetAscent(m_platformData.cgFont()), unitsPerEm) * pointSize;
-    float descent = -scaleEmToUnits(-abs(CGFontGetDescent(m_platformData.cgFont())), unitsPerEm) * pointSize;
-#endif
+    CGFloat capHeight = CTFontGetCapHeight(m_platformData.font());
+    CGFloat lineGap = CTFontGetLeading(m_platformData.font());
+    CGFloat ascent = m_platformData.size() ? CTFontGetAscent(m_platformData.font()) : 0;
+    CGFloat descent = m_platformData.size() ? CTFontGetDescent(m_platformData.font()) : 0;
 
     // The Open Font Format describes the OS/2 USE_TYPO_METRICS flag as follows:
     // "If set, it is strongly recommended to use OS/2.sTypoAscender - OS/2.sTypoDescender+ OS/2.sTypoLineGap as a value for default line spacing for this font."
@@ -168,7 +163,7 @@ void Font::platformInit()
     // Compute line spacing before the line metrics hacks are applied.
     float lineSpacing = lroundf(ascent) + lroundf(descent) + lroundf(lineGap);
 
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC)
     // Hack Hiragino line metrics to allow room for marked text underlines.
     // <rdar://problem/5386183>
     if (descent < 3 && lineGap >= 3 && familyName && CFStringHasPrefix(familyName.get(), CFSTR("Hiragino"))) {
@@ -183,27 +178,27 @@ void Font::platformInit()
 #if PLATFORM(IOS)
     CGFloat adjustment = shouldUseAdjustment(m_platformData.font()) ? ceil((ascent + descent) * kLineHeightAdjustment) : 0;
 
-    CGFontDescriptor descriptor;
-    float xHeight = CGFontGetDescriptor(m_platformData.cgFont(), &descriptor) ? (descriptor.xHeight / 1000) * CTFontGetSize(m_platformData.font()) : 0;
     lineGap = ceilf(lineGap);
     lineSpacing = ceil(ascent) + adjustment + ceil(descent) + lineGap;
     ascent = ceilf(ascent + adjustment);
     descent = ceilf(descent);
 
     m_shouldNotBeUsedForArabic = fontFamilyShouldNotBeUsedForArabic(adoptCF(CTFontCopyFamilyName(m_platformData.font())).get());
-#else
-    float xHeight;
-    if (platformData().orientation() == Horizontal) {
-        // Measure the actual character "x", since it's possible for it to extend below the baseline, and we need the
-        // reported x-height to only include the portion of the glyph that is above the baseline.
-        NSGlyph xGlyph = glyphForCharacter('x');
-        if (xGlyph)
-            xHeight = -CGRectGetMinY(platformBoundsForGlyph(xGlyph));
-        else
-            xHeight = CTFontGetXHeight(m_platformData.font());
-    } else
-        xHeight = verticalRightOrientationFont().fontMetrics().xHeight();
 #endif
+
+    CGFloat xHeight = 0;
+    if (m_platformData.size()) {
+        if (platformData().orientation() == Horizontal) {
+            // Measure the actual character "x", since it's possible for it to extend below the baseline, and we need the
+            // reported x-height to only include the portion of the glyph that is above the baseline.
+            Glyph xGlyph = glyphForCharacter('x');
+            if (xGlyph)
+                xHeight = -CGRectGetMinY(platformBoundsForGlyph(xGlyph));
+            else
+                xHeight = CTFontGetXHeight(m_platformData.font());
+        } else
+            xHeight = verticalRightOrientationFont().fontMetrics().xHeight();
+    }
 
     m_fontMetrics.setUnitsPerEm(unitsPerEm);
     m_fontMetrics.setAscent(ascent);
@@ -596,6 +591,7 @@ FloatRect Font::platformBoundsForGlyph(Glyph glyph) const
     return boundingBox;
 }
 
+#if !((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000))
 static inline Optional<CGSize> advanceForColorBitmapFont(const FontPlatformData& platformData, Glyph glyph)
 {
     CTFontRef font = platformData.font();
@@ -617,16 +613,30 @@ static inline bool canUseFastGlyphAdvanceGetter(const FontPlatformData& platform
     }
     return true;
 }
+#endif
 
 float Font::platformWidthForGlyph(Glyph glyph) const
 {
     CGSize advance = CGSizeZero;
     bool horizontal = platformData().orientation() == Horizontal;
+    CGFontRenderingStyle style = kCGFontRenderingStyleAntialiasing | kCGFontRenderingStyleSubpixelPositioning | kCGFontRenderingStyleSubpixelQuantization | kCGFontAntialiasingStyleUnfiltered;
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000)
+    if (platformData().size()) {
+        CTFontOrientation orientation = horizontal || m_isBrokenIdeographFallback ? kCTFontOrientationHorizontal : kCTFontOrientationVertical;
+        // FIXME: Remove this special-casing when <rdar://problem/28197291> is fixed.
+        if (CTFontIsAppleColorEmoji(m_platformData.ctFont()))
+            CTFontGetAdvancesForGlyphs(m_platformData.ctFont(), orientation, &glyph, &advance, 1);
+        else
+            CTFontGetUnsummedAdvancesForGlyphsAndStyle(m_platformData.ctFont(), orientation, style, &glyph, &advance, 1);
+    }
+
+#else
+
     bool populatedAdvance = false;
     if ((horizontal || m_isBrokenIdeographFallback) && canUseFastGlyphAdvanceGetter(this->platformData(), glyph, advance, populatedAdvance)) {
         float pointSize = platformData().size();
         CGAffineTransform m = CGAffineTransformMakeScale(pointSize, pointSize);
-        CGFontRenderingStyle style = kCGFontRenderingStyleAntialiasing | kCGFontRenderingStyleSubpixelPositioning | kCGFontRenderingStyleSubpixelQuantization | kCGFontAntialiasingStyleUnfiltered;
         if (!CGFontGetGlyphAdvancesForStyle(platformData().cgFont(), &m, style, &glyph, 1, &advance)) {
             RetainPtr<CFStringRef> fullName = adoptCF(CGFontCopyFullName(platformData().cgFont()));
             LOG_ERROR("Unable to cache glyph widths for %@ %f", fullName.get(), pointSize);
@@ -634,6 +644,7 @@ float Font::platformWidthForGlyph(Glyph glyph) const
         }
     } else if (!populatedAdvance && platformData().size())
         CTFontGetAdvancesForGlyphs(m_platformData.ctFont(), horizontal ? kCTFontOrientationHorizontal : kCTFontOrientationVertical, &glyph, &advance, 1);
+#endif
 
     return advance.width + m_syntheticBoldOffset;
 }

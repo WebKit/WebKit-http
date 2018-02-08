@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WeakBlock.h"
 
+#include "CellContainerInlines.h"
 #include "Heap.h"
 #include "HeapRootVisitor.h"
 #include "JSCInlines.h"
@@ -34,10 +35,10 @@
 
 namespace JSC {
 
-WeakBlock* WeakBlock::create(Heap& heap, MarkedBlock& markedBlock)
+WeakBlock* WeakBlock::create(Heap& heap, CellContainer container)
 {
     heap.didAllocateBlock(WeakBlock::blockSize);
-    return new (NotNull, fastMalloc(blockSize)) WeakBlock(markedBlock);
+    return new (NotNull, fastMalloc(blockSize)) WeakBlock(container);
 }
 
 void WeakBlock::destroy(Heap& heap, WeakBlock* block)
@@ -47,9 +48,9 @@ void WeakBlock::destroy(Heap& heap, WeakBlock* block)
     heap.didFreeBlock(WeakBlock::blockSize);
 }
 
-WeakBlock::WeakBlock(MarkedBlock& markedBlock)
+WeakBlock::WeakBlock(CellContainer container)
     : DoublyLinkedListNode<WeakBlock>()
-    , m_markedBlock(&markedBlock)
+    , m_container(container)
 {
     for (size_t i = 0; i < weakImplCount(); ++i) {
         WeakImpl* weakImpl = &weakImpls()[i];
@@ -95,19 +96,12 @@ void WeakBlock::sweep()
     ASSERT(!m_sweepResult.isNull());
 }
 
-void WeakBlock::visit(HeapRootVisitor& heapRootVisitor)
+template<typename ContainerType>
+void WeakBlock::specializedVisit(ContainerType& container, HeapRootVisitor& heapRootVisitor)
 {
-    // If a block is completely empty, a visit won't have any effect.
-    if (isEmpty())
-        return;
-
-    // If this WeakBlock doesn't belong to a MarkedBlock, we won't even be here.
-    ASSERT(m_markedBlock);
-
-    // We only visit after marking.
-    ASSERT(m_markedBlock->isMarkedOrRetired());
-
     SlotVisitor& visitor = heapRootVisitor.visitor();
+    
+    HeapVersion markingVersion = visitor.markingVersion();
 
     for (size_t i = 0; i < weakImplCount(); ++i) {
         WeakImpl* weakImpl = &weakImpls()[i];
@@ -119,14 +113,29 @@ void WeakBlock::visit(HeapRootVisitor& heapRootVisitor)
             continue;
 
         const JSValue& jsValue = weakImpl->jsValue();
-        if (m_markedBlock->isMarkedOrNewlyAllocated(jsValue.asCell()))
+        if (container.isMarkedConcurrently(markingVersion, jsValue.asCell()))
             continue;
-
+        
         if (!weakHandleOwner->isReachableFromOpaqueRoots(Handle<Unknown>::wrapSlot(&const_cast<JSValue&>(jsValue)), weakImpl->context(), visitor))
             continue;
 
         heapRootVisitor.visit(&const_cast<JSValue&>(jsValue));
     }
+}
+
+void WeakBlock::visit(HeapRootVisitor& heapRootVisitor)
+{
+    // If a block is completely empty, a visit won't have any effect.
+    if (isEmpty())
+        return;
+
+    // If this WeakBlock doesn't belong to a CellContainer, we won't even be here.
+    ASSERT(m_container);
+    
+    if (m_container.isLargeAllocation())
+        specializedVisit(m_container.largeAllocation(), heapRootVisitor);
+    else
+        specializedVisit(m_container.markedBlock(), heapRootVisitor);
 }
 
 void WeakBlock::reap()
@@ -135,18 +144,17 @@ void WeakBlock::reap()
     if (isEmpty())
         return;
 
-    // If this WeakBlock doesn't belong to a MarkedBlock, we won't even be here.
-    ASSERT(m_markedBlock);
-
-    // We only reap after marking.
-    ASSERT(m_markedBlock->isMarkedOrRetired());
+    // If this WeakBlock doesn't belong to a CellContainer, we won't even be here.
+    ASSERT(m_container);
+    
+    HeapVersion markingVersion = m_container.heap()->objectSpace().markingVersion();
 
     for (size_t i = 0; i < weakImplCount(); ++i) {
         WeakImpl* weakImpl = &weakImpls()[i];
         if (weakImpl->state() > WeakImpl::Dead)
             continue;
 
-        if (m_markedBlock->isMarkedOrNewlyAllocated(weakImpl->jsValue().asCell())) {
+        if (m_container.isMarked(markingVersion, weakImpl->jsValue().asCell())) {
             ASSERT(weakImpl->state() == WeakImpl::Live);
             continue;
         }

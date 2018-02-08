@@ -97,7 +97,10 @@ public:
     WEBCORE_EXPORT void setHTTPContentType(const String&);
     void clearHTTPContentType();
 
+    bool hasHTTPHeader(HTTPHeaderName) const;
+
     WEBCORE_EXPORT String httpReferrer() const;
+    bool hasHTTPReferrer() const;
     WEBCORE_EXPORT void setHTTPReferrer(const String&);
     WEBCORE_EXPORT void clearHTTPReferrer();
 
@@ -147,6 +150,10 @@ public:
     // Whether this request should be hidden from the Inspector.
     bool hiddenFromInspector() const { return m_hiddenFromInspector; }
     void setHiddenFromInspector(bool hiddenFromInspector) { m_hiddenFromInspector = hiddenFromInspector; }
+
+    // Whether this request should impact request counting and delay window.onload.
+    bool ignoreForRequestCount() const { return m_ignoreForRequestCount; }
+    void setIgnoreForRequestCount(bool ignoreForRequestCount) { m_ignoreForRequestCount = ignoreForRequestCount; }
 
     enum class Requester { Unspecified, Main, XHR, Media };
     Requester requester() const { return m_requester; }
@@ -214,6 +221,7 @@ protected:
     bool m_reportLoadTiming { false };
     bool m_reportRawHeaders { false };
     bool m_hiddenFromInspector { false };
+    bool m_ignoreForRequestCount { false };
     ResourceLoadPriority m_priority { ResourceLoadPriority::Low };
     Requester m_requester { Requester::Unspecified };
 

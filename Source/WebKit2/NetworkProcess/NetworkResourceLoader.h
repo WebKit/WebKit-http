@@ -129,12 +129,10 @@ private:
 
     void startBufferingTimerIfNeeded();
     void bufferingTimerFired();
-    bool sendBufferMaybeAborting(WebCore::SharedBuffer&, size_t encodedDataLength);
+    void sendBuffer(WebCore::SharedBuffer&, size_t encodedDataLength);
 
     void consumeSandboxExtensions();
     void invalidateSandboxExtensions();
-
-    template<typename T> bool sendAbortingOnFailure(T&& message, unsigned messageSendFlags = 0);
 
     const NetworkResourceLoadParameters m_parameters;
 
@@ -155,6 +153,7 @@ private:
     bool m_didConvertToDownload { false };
     bool m_didConsumeSandboxExtensions { false };
     bool m_defersLoading { false };
+    bool m_hasReceivedData { false };
 
     WebCore::Timer m_bufferingTimer;
 #if ENABLE(NETWORK_CACHE)

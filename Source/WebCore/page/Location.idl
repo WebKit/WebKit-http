@@ -27,9 +27,13 @@
  */
 
 [
+    CheckSecurity,
     CustomDeleteProperty,
     CustomEnumerateProperty,
+    CustomGetPrototype,
     CustomNamedSetter,
+    CustomPreventExtensions,
+    CustomSetPrototype,
     GenerateIsReachable=ImplFrame,
     JSCustomDefineOwnProperty,
     JSCustomDefineOwnPropertyOnPrototype,
@@ -37,10 +41,10 @@
     JSCustomNamedGetterOnPrototype,
     Unforgeable,
 ] interface Location {
-    [SetterCallWith=ActiveWindow&FirstWindow] attribute USVString href;
+    [SetterCallWith=ActiveWindow&FirstWindow, DoNotCheckSecurityOnSetter] stringifier attribute USVString href;
 
     [CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void assign(USVString url);
-    [CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void replace(USVString url);
+    [DoNotCheckSecurity, CallWith=ActiveWindow&FirstWindow, ForwardDeclareInHeader] void replace(USVString url);
     [CallWith=ActiveWindow, ForwardDeclareInHeader] void reload();
 
     // URI decomposition attributes
@@ -56,8 +60,4 @@
 
     // FIXME: Add support for SameObject
     [Unforgeable, CachedAttribute] readonly attribute FrozenArray<USVString> ancestorOrigins;
-
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
-    [NotEnumerable, Custom, ImplementedAs=toStringFunction] DOMString toString();
-#endif
 };

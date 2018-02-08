@@ -25,21 +25,26 @@
 
 #pragma once
 
+#if ENABLE(WEBASSEMBLY)
+
 #include "WASMParser.h"
 #include <wtf/DataLog.h>
 
-#if ENABLE(WEBASSEMBLY)
+namespace JSC { namespace WASM {
 
-namespace JSC {
-
-namespace WASM {
+enum class BlockType {
+    If,
+    Block,
+    Loop
+};
 
 template<typename Context>
-class WASMFunctionParser : public WASMParser {
+class FunctionParser : public Parser {
 public:
     typedef typename Context::ExpressionType ExpressionType;
+    typedef typename Context::ControlType ControlType;
 
-    WASMFunctionParser(Context&, const Vector<uint8_t>& sourceBuffer, const WASMFunctionInformation&);
+    FunctionParser(Context&, const Vector<uint8_t>& sourceBuffer, const FunctionInformation&);
 
     bool WARN_UNUSED_RETURN parse();
 
@@ -47,75 +52,94 @@ private:
     static const bool verbose = false;
 
     bool WARN_UNUSED_RETURN parseBlock();
-    bool WARN_UNUSED_RETURN parseExpression(WASMOpType);
+    bool WARN_UNUSED_RETURN parseExpression(OpType);
+    bool WARN_UNUSED_RETURN parseUnreachableExpression(OpType);
     bool WARN_UNUSED_RETURN unifyControl(Vector<ExpressionType>&, unsigned level);
 
-    Optional<Vector<ExpressionType>>& stackForControlLevel(unsigned level);
-
     Context& m_context;
-    Vector<ExpressionType> m_expressionStack;
+    Vector<ExpressionType, 1> m_expressionStack;
+    Vector<ControlType> m_controlStack;
+    const Signature& m_signature;
+    unsigned m_unreachableBlocks { 0 };
 };
 
 template<typename Context>
-WASMFunctionParser<Context>::WASMFunctionParser(Context& context, const Vector<uint8_t>& sourceBuffer, const WASMFunctionInformation& info)
-    : WASMParser(sourceBuffer, info.start, info.end)
+FunctionParser<Context>::FunctionParser(Context& context, const Vector<uint8_t>& sourceBuffer, const FunctionInformation& info)
+    : Parser(sourceBuffer, info.start, info.end)
     , m_context(context)
+    , m_signature(*info.signature)
 {
+    if (verbose)
+        dataLogLn("Parsing function starting at: ", info.start, " ending at: ", info.end);
+    m_context.addArguments(m_signature.arguments);
 }
 
 template<typename Context>
-bool WASMFunctionParser<Context>::parse()
+bool FunctionParser<Context>::parse()
 {
     uint32_t localCount;
     if (!parseVarUInt32(localCount))
         return false;
 
     for (uint32_t i = 0; i < localCount; ++i) {
-        uint32_t numberOfLocalsWithType;
-        if (!parseUInt32(numberOfLocalsWithType))
+        uint32_t numberOfLocals;
+        if (!parseVarUInt32(numberOfLocals))
             return false;
 
-        WASMValueType typeOfLocal;
+        Type typeOfLocal;
         if (!parseValueType(typeOfLocal))
             return false;
 
-        m_context.addLocal(typeOfLocal, numberOfLocalsWithType);
+        m_context.addLocal(typeOfLocal, numberOfLocals);
     }
 
     return parseBlock();
 }
 
 template<typename Context>
-bool WASMFunctionParser<Context>::parseBlock()
+bool FunctionParser<Context>::parseBlock()
 {
     while (true) {
         uint8_t op;
         if (!parseUInt7(op))
             return false;
 
-        if (!parseExpression(static_cast<WASMOpType>(op))) {
+        if (verbose) {
+            dataLogLn("processing op (", m_unreachableBlocks, "): ",  RawPointer(reinterpret_cast<void*>(op)), " at offset: ", RawPointer(reinterpret_cast<void*>(m_offset)));
+            m_context.dump(m_controlStack, m_expressionStack);
+        }
+
+        if (op == OpType::End && !m_controlStack.size())
+            break;
+
+        if (m_unreachableBlocks) {
+            if (!parseUnreachableExpression(static_cast<OpType>(op))) {
+                if (verbose)
+                    dataLogLn("failed to process unreachable op:", op);
+                return false;
+            }
+        } else if (!parseExpression(static_cast<OpType>(op))) {
             if (verbose)
                 dataLogLn("failed to process op:", op);
             return false;
         }
 
-        if (op == WASMOpType::End)
-            break;
     }
 
+    // I'm not sure if we should check the expression stack here...
     return true;
 }
+#define CREATE_CASE(name, id, b3op) case name:
 
 template<typename Context>
-bool WASMFunctionParser<Context>::parseExpression(WASMOpType op)
+bool FunctionParser<Context>::parseExpression(OpType op)
 {
     switch (op) {
-#define CREATE_CASE(name, id, b3op) case name:
     FOR_EACH_WASM_BINARY_OP(CREATE_CASE) {
-        ExpressionType left = m_expressionStack.takeLast();
         ExpressionType right = m_expressionStack.takeLast();
+        ExpressionType left = m_expressionStack.takeLast();
         ExpressionType result;
-        if (!m_context.binaryOp(static_cast<WASMBinaryOpType>(op), left, right, result))
+        if (!m_context.binaryOp(static_cast<BinaryOpType>(op), left, right, result))
             return false;
         m_expressionStack.append(result);
         return true;
@@ -124,40 +148,102 @@ bool WASMFunctionParser<Context>::parseExpression(WASMOpType op)
     FOR_EACH_WASM_UNARY_OP(CREATE_CASE) {
         ExpressionType arg = m_expressionStack.takeLast();
         ExpressionType result;
-        if (!m_context.unaryOp(static_cast<WASMUnaryOpType>(op), arg, result))
+        if (!m_context.unaryOp(static_cast<UnaryOpType>(op), arg, result))
             return false;
         m_expressionStack.append(result);
         return true;
     }
-#undef CREATE_CASE
 
-    case WASMOpType::I32Const: {
+    case OpType::I32Const: {
         uint32_t constant;
         if (!parseVarUInt32(constant))
             return false;
-        m_expressionStack.append(m_context.addConstant(WASMValueType::I32, constant));
+        m_expressionStack.append(m_context.addConstant(I32, constant));
         return true;
     }
 
-    case WASMOpType::Block: {
-        if (!m_context.addBlock())
+    case OpType::GetLocal: {
+        uint32_t index;
+        if (!parseVarUInt32(index))
             return false;
-        return parseBlock();
+        ExpressionType result;
+        if (!m_context.getLocal(index, result))
+            return false;
+
+        m_expressionStack.append(result);
+        return true;
     }
 
-    case WASMOpType::Return: {
-        uint8_t returnCount;
-        if (!parseVarUInt1(returnCount))
+    case OpType::SetLocal: {
+        uint32_t index;
+        if (!parseVarUInt32(index))
             return false;
+        ExpressionType value = m_expressionStack.takeLast();
+        return m_context.setLocal(index, value);
+    }
+
+    case OpType::Block: {
+        Type inlineSignature;
+        if (!parseValueType(inlineSignature))
+            return false;
+
+        m_controlStack.append(m_context.addBlock(inlineSignature));
+        return true;
+    }
+
+    case OpType::Loop: {
+        Type inlineSignature;
+        if (!parseValueType(inlineSignature))
+            return false;
+
+        m_controlStack.append(m_context.addLoop(inlineSignature));
+        return true;
+    }
+
+    case OpType::If: {
+        Type inlineSignature;
+        if (!parseValueType(inlineSignature))
+            return false;
+
+        ExpressionType condition = m_expressionStack.takeLast();
+        m_controlStack.append(m_context.addIf(condition, inlineSignature));
+        return true;
+    }
+
+    case OpType::Else: {
+        return m_context.addElse(m_controlStack.last());
+    }
+
+    case OpType::Branch:
+    case OpType::BranchIf: {
+        uint32_t target;
+        if (!parseVarUInt32(target) || target >= m_controlStack.size())
+            return false;
+
+        ExpressionType condition = Context::emptyExpression;
+        if (op == OpType::BranchIf)
+            condition = m_expressionStack.takeLast();
+        else
+            m_unreachableBlocks = 1;
+
+        ControlType& data = m_controlStack[m_controlStack.size() - 1 - target];
+
+        return m_context.addBranch(data, condition, m_expressionStack);
+    }
+
+    case OpType::Return: {
         Vector<ExpressionType, 1> returnValues;
-        if (returnCount)
+        if (m_signature.returnType != Void)
             returnValues.append(m_expressionStack.takeLast());
 
+        m_unreachableBlocks = 1;
         return m_context.addReturn(returnValues);
     }
 
-    case WASMOpType::End:
-        return m_context.endBlock(m_expressionStack);
+    case OpType::End: {
+        ControlType data = m_controlStack.takeLast();
+        return m_context.endBlock(data, m_expressionStack);
+    }
 
     }
 
@@ -165,8 +251,64 @@ bool WASMFunctionParser<Context>::parseExpression(WASMOpType op)
     return false;
 }
 
-} // namespace WASM
+template<typename Context>
+bool FunctionParser<Context>::parseUnreachableExpression(OpType op)
+{
+    ASSERT(m_unreachableBlocks);
+    switch (op) {
+    case OpType::Else: {
+        if (m_unreachableBlocks > 1)
+            return true;
 
-} // namespace JSC
+        ControlType& data = m_controlStack.last();
+        ASSERT(data.type() == BlockType::If);
+        m_unreachableBlocks = 0;
+        return m_context.addElse(data);
+    }
+
+    case OpType::End: {
+        if (m_unreachableBlocks == 1) {
+            ControlType data = m_controlStack.takeLast();
+            if (!m_context.isContinuationReachable(data))
+                return true;
+        }
+        m_unreachableBlocks--;
+        return true;
+    }
+
+    case OpType::Loop:
+    case OpType::If:
+    case OpType::Block: {
+        m_unreachableBlocks++;
+        return true;
+    }
+
+    // two immediate cases
+    case OpType::Branch:
+    case OpType::BranchIf: {
+        uint32_t unused;
+        if (!parseVarUInt32(unused))
+            return false;
+        return parseVarUInt32(unused);
+    }
+
+    // one immediate cases
+    case OpType::Return:
+    case OpType::I32Const:
+    case OpType::SetLocal:
+    case OpType::GetLocal: {
+        uint32_t unused;
+        return parseVarUInt32(unused);
+    }
+
+    default:
+        break;
+    }
+    return true;
+}
+
+#undef CREATE_CASE
+
+} } // namespace JSC::WASM
 
 #endif // ENABLE(WEBASSEMBLY)

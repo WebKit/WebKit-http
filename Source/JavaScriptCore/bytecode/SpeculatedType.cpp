@@ -30,9 +30,12 @@
 #include "SpeculatedType.h"
 
 #include "DirectArguments.h"
+#include "JSCInlines.h"
 #include "JSArray.h"
 #include "JSFunction.h"
-#include "JSCInlines.h"
+#include "JSMap.h"
+#include "JSSet.h"
+#include "ProxyObject.h"
 #include "ScopedArguments.h"
 #include "StringObject.h"
 #include "ValueProfile.h"
@@ -144,6 +147,26 @@ void dumpSpeculation(PrintStream& out, SpeculatedType value)
     
             if (value & SpecRegExpObject)
                 myOut.print("Regexpobject");
+            else
+                isTop = false;
+
+            if (value & SpecMapObject)
+                myOut.print("Mapobject");
+            else
+                isTop = false;
+
+            if (value & SpecSetObject)
+                myOut.print("Setobject");
+            else
+                isTop = false;
+
+            if (value & SpecProxyObject)
+                myOut.print("Proxyobject");
+            else
+                isTop = false;
+
+            if (value & SpecDerivedArray)
+                myOut.print("Derivedarray");
             else
                 isTop = false;
         }
@@ -346,6 +369,15 @@ SpeculatedType speculationFromClassInfo(const ClassInfo* classInfo)
 
     if (classInfo == RegExpObject::info())
         return SpecRegExpObject;
+
+    if (classInfo == JSMap::info())
+        return SpecMapObject;
+
+    if (classInfo == JSSet::info())
+        return SpecSetObject;
+
+    if (classInfo == ProxyObject::info())
+        return SpecProxyObject;
     
     if (classInfo->isSubClassOf(JSFunction::info()))
         return SpecFunction;
@@ -365,6 +397,8 @@ SpeculatedType speculationFromStructure(Structure* structure)
         return SpecString;
     if (structure->typeInfo().type() == SymbolType)
         return SpecSymbol;
+    if (structure->typeInfo().type() == DerivedArrayType)
+        return SpecDerivedArray;
     return speculationFromClassInfo(structure->classInfo());
 }
 
@@ -435,6 +469,31 @@ TypedArrayType typedArrayTypeFromSpeculation(SpeculatedType type)
         return TypeFloat64;
     
     return NotTypedArray;
+}
+
+SpeculatedType speculationFromJSType(JSType type)
+{
+    switch (type) {
+    case StringType:
+        return SpecString;
+    case SymbolType:
+        return SpecSymbol;
+    case ArrayType:
+        return SpecArray;
+    case DerivedArrayType:
+        return SpecDerivedArray;
+    case RegExpObjectType:
+        return SpecRegExpObject;
+    case ProxyObjectType:
+        return SpecProxyObject;
+    case JSMapType:
+        return SpecMapObject;
+    case JSSetType:
+        return SpecSetObject;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+    return SpecNone;
 }
 
 SpeculatedType leastUpperBoundOfStrictlyEquivalentSpeculations(SpeculatedType type)

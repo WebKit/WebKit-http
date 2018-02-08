@@ -50,11 +50,18 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.Event.CapturingStopped, this._timelineCapturingStopped, this);
 
         this._timelineRecordingWarningElement = document.createElement("div");
-        this._timelineRecordingWarningElement.classList.add("timeline-recording-warning");
+        this._timelineRecordingWarningElement.classList.add("warning-banner");
         this._timelineRecordingWarningElement.append(WebInspector.UIString("Debugger is disabled during a Timeline recording."), " ");
         let stopRecordingLink = this._timelineRecordingWarningElement.appendChild(document.createElement("a"));
         stopRecordingLink.textContent = WebInspector.UIString("Stop recording.");
         stopRecordingLink.addEventListener("click", () => { WebInspector.timelineManager.stopCapturing(); });
+
+        this._breakpointsDisabledWarningElement = document.createElement("div");
+        this._breakpointsDisabledWarningElement.classList.add("warning-banner");
+        this._breakpointsDisabledWarningElement.append(WebInspector.UIString("Breakpoints are disabled."), document.createElement("br"));
+        let enableBreakpointsLink = this._breakpointsDisabledWarningElement.appendChild(document.createElement("a"));
+        enableBreakpointsLink.textContent = WebInspector.UIString("Enable breakpoints.");
+        enableBreakpointsLink.addEventListener("click", () => { WebInspector.debuggerToggleBreakpoints(); });
 
         this._navigationBar = new WebInspector.NavigationBar;
         this.addSubview(this._navigationBar);
@@ -123,7 +130,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
                 }
             }
             return false;
-        };
+        }
 
         this.filterBar.addFilterBarButton("debugger-show-resources-with-issues-only", showResourcesWithIssuesOnlyFilterFunction.bind(this), true, WebInspector.UIString("Only show resources with issues"), WebInspector.UIString("Show all resources"), "Images/Errors.svg", 15, 15);
 
@@ -155,6 +162,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
 
         this._callStackContentTreeOutline = this.createContentTreeOutline(true, true);
         this._callStackContentTreeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
+        this._activeCallFrameTreeElement = null;
 
         this._callStackRow = new WebInspector.DetailsSectionRow(WebInspector.UIString("No Call Frames"));
         this._callStackRow.showEmptyMessage();
@@ -185,6 +193,8 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
 
         if (WebInspector.timelineManager.isCapturing() && WebInspector.debuggerManager.breakpointsDisabledTemporarily)
             this._timelineCapturingWillStart(null);
+
+        this._updateBreakpointsDisabledBanner();
     }
 
     // Public
@@ -325,6 +335,8 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
     _breakpointsEnabledDidChange(event)
     {
         this._debuggerBreakpointsButtonItem.activated = WebInspector.debuggerManager.breakpointsEnabled;
+
+        this._updateBreakpointsDisabledBanner();
     }
 
     _addBreakpoint(breakpoint)
@@ -377,7 +389,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
 
         if (!treeElement) {
             console.error("Unknown sourceCode instance", sourceCode);
-            return;
+            return null;
         }
 
         if (!treeElement.parent) {
@@ -443,6 +455,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         this._debuggerPauseResumeButtonItem.enabled = false;
 
         this.contentView.element.insertBefore(this._timelineRecordingWarningElement, this.contentView.element.firstChild);
+        this._updateBreakpointsDisabledBanner();
     }
 
     _timelineCapturingStopped(event)
@@ -451,6 +464,18 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         this._debuggerPauseResumeButtonItem.enabled = true;
 
         this._timelineRecordingWarningElement.remove();
+        this._updateBreakpointsDisabledBanner();
+    }
+
+    _updateBreakpointsDisabledBanner()
+    {
+        let breakpointsEnabled = WebInspector.debuggerManager.breakpointsEnabled;
+        let timelineWarningShowing = !!this._timelineRecordingWarningElement.parentElement;
+
+        if (!breakpointsEnabled && !timelineWarningShowing)
+            this.contentView.element.insertBefore(this._breakpointsDisabledWarningElement, this.contentView.element.firstChild);
+        else
+            this._breakpointsDisabledWarningElement.remove();
     }
 
     _scriptAdded(event)
@@ -574,6 +599,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
     _debuggerCallFramesDidChange()
     {
         this._callStackContentTreeOutline.removeChildren();
+        this._activeCallFrameTreeElement = null;
 
         var callFrames = WebInspector.debuggerManager.callFrames;
         if (!callFrames || !callFrames.length) {
@@ -584,18 +610,18 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         this._callStackRow.hideEmptyMessage();
         this._callStackRow.element.appendChild(this._callStackContentTreeOutline.element);
 
-        var treeElementToSelect = null;
-
         var activeCallFrame = WebInspector.debuggerManager.activeCallFrame;
         for (var i = 0; i < callFrames.length; ++i) {
             var callFrameTreeElement = new WebInspector.CallFrameTreeElement(callFrames[i]);
             if (callFrames[i] === activeCallFrame)
-                treeElementToSelect = callFrameTreeElement;
+                this._activeCallFrameTreeElement = callFrameTreeElement;
             this._callStackContentTreeOutline.appendChild(callFrameTreeElement);
         }
 
-        if (treeElementToSelect)
-            treeElementToSelect.select(true, true);
+        if (this._activeCallFrameTreeElement) {
+            this._activeCallFrameTreeElement.select(true, true);
+            this._activeCallFrameTreeElement.isActiveCallFrame = true;
+        }
     }
 
     _debuggerActiveCallFrameDidChange()
@@ -603,6 +629,13 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
         var callFrames = WebInspector.debuggerManager.callFrames;
         if (!callFrames)
             return;
+
+        if (this._activeCallFrameTreeElement)
+            this._activeCallFrameTreeElement.isActiveCallFrame = false;
+
+        this._activeCallFrameTreeElement = this._callStackContentTreeOutline.findTreeElement(WebInspector.debuggerManager.activeCallFrame);
+        if (this._activeCallFrameTreeElement)
+            this._activeCallFrameTreeElement.isActiveCallFrame = true;
 
         var indexOfActiveCallFrame = callFrames.indexOf(WebInspector.debuggerManager.activeCallFrame);
         // It is useful to turn off the step out button when there is no call frame to go through
@@ -750,7 +783,7 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
     {
         if (!a.debuggerObject || !b.debuggerObject)
             return 0;
-        
+
         var aLocation = a.debuggerObject.sourceCodeLocation;
         var bLocation = b.debuggerObject.sourceCodeLocation;
 
@@ -865,6 +898,8 @@ WebInspector.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WebInspec
 
         if (debuggerObject instanceof WebInspector.IssueMessage)
             return this._addIssue(debuggerObject);
+
+        return null;
     }
 
     _addIssue(issueMessage)

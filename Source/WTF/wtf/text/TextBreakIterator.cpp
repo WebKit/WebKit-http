@@ -25,8 +25,8 @@
 #include "LineBreakIteratorPoolICU.h"
 #include "UTextProviderLatin1.h"
 #include "UTextProviderUTF16.h"
+#include <atomic>
 #include <mutex>
-#include <wtf/Atomics.h>
 #include <wtf/text/StringView.h>
 
 // FIXME: This needs a better name
@@ -213,8 +213,8 @@ TextBreakIterator* cursorMovementIterator(StringView string)
         "$ZWJ     = \\u200D;" // Zero width joiner
         "$EmojiVar = [\\uFE0F];" // Emoji-style variation selector
 #if ADDITIONAL_EMOJI_SUPPORT
-        "$EmojiForSeqs = [\\u2640 \\u2642 \\u26F9 \\u2764 \\U0001F308 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA-\\U0001F3CC \\U0001F3F3 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F46F \\U0001F471 \\U0001F473 \\U0001F477 \\U0001F481-\\U0001F482 \\U0001F486-\\U0001F487 \\U0001F48B \\U0001F575 \\U0001F5E8 \\U0001F645-\\U0001F647 \\U0001F64B \\U0001F64D-\\U0001F64E \\U0001F6A3 \\U0001F6B4-\\U0001F6B6];" // Emoji that participate in ZWJ sequences
-        "$EmojiForMods = [\\u261D \\u26F9 \\u270A-\\u270D \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA \\U0001F3CB \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F575 \\U0001F590 \\U0001F595 \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0 \\U0001F918] ;" // Emoji that take Fitzpatrick modifiers
+        "$EmojiForSeqs = [\\u2640 \\u2642 \\u26F9 \\u2764 \\U0001F308 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA-\\U0001F3CC \\U0001F3F3 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F46F \\U0001F471 \\U0001F473 \\U0001F477 \\U0001F481-\\U0001F482 \\U0001F486-\\U0001F487 \\U0001F48B \\U0001F575 \\U0001F5E8 \\U0001F645-\\U0001F647 \\U0001F64B \\U0001F64D-\\U0001F64E \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\u2695-\\u2696 \\u2708 \\U0001F33E \\U0001F373 \\U0001F393 \\U0001F3A4 \\U0001F3A8 \\U0001F3EB \\U0001F3ED \\U0001F4BB-\\U0001F4BC \\U0001F527 \\U0001F52C \\U0001F680 \\U0001F692 \\U0001F926 \\U0001F937-\\U0001F939 \\U0001F93C-\\U0001F93E];" // Emoji that participate in ZWJ sequences
+        "$EmojiForMods = [\\u261D \\u26F9 \\u270A-\\u270D \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA \\U0001F3CB \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F575 \\U0001F590 \\U0001F595 \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0 \\U0001F918 \\U0001F3C2 \\U0001F3C7 \\U0001F3CC \\U0001F574 \\U0001F57A \\U0001F6CC \\U0001F919-\\U0001F91E \\U0001F926 \\U0001F930 \\U0001F933-\\U0001F939 \\U0001F93C-\\U0001F93E] ;" // Emoji that take Fitzpatrick modifiers
 #else
         "$EmojiForSeqs = [\\u2764 \\U0001F466-\\U0001F469 \\U0001F48B];" // Emoji that participate in ZWJ sequences
         "$EmojiForMods = [\\u261D \\u270A-\\u270C \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3C7 \\U0001F3CA \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0] ;" // Emoji that take Fitzpatrick modifiers
@@ -446,8 +446,8 @@ static const char* uax14AssignmentsAfter =
     "$ZWJ = \\u200D;"
     "$EmojiVar = \\uFE0F;"
 #if ADDITIONAL_EMOJI_SUPPORT
-    "$EmojiForSeqs = [\\u2640 \\u2642 \\u26F9 \\u2764 \\U0001F308 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA-\\U0001F3CC \\U0001F3F3 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F46F \\U0001F471 \\U0001F473 \\U0001F477 \\U0001F481-\\U0001F482 \\U0001F486-\\U0001F487 \\U0001F48B \\U0001F575 \\U0001F5E8 \\U0001F645-\\U0001F647 \\U0001F64B \\U0001F64D-\\U0001F64E \\U0001F6A3 \\U0001F6B4-\\U0001F6B6];" // Emoji that participate in ZWJ sequences
-    "$EmojiForMods = [\\u261D \\u26F9 \\u270A-\\u270D \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA \\U0001F3CB \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F575 \\U0001F590 \\U0001F595 \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0 \\U0001F918] ;" // Emoji that take Fitzpatrick modifiers
+    "$EmojiForSeqs = [\\u2640 \\u2642 \\u26F9 \\u2764 \\U0001F308 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA-\\U0001F3CC \\U0001F3F3 \\U0001F441 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F46F \\U0001F471 \\U0001F473 \\U0001F477 \\U0001F481-\\U0001F482 \\U0001F486-\\U0001F487 \\U0001F48B \\U0001F575 \\U0001F5E8 \\U0001F645-\\U0001F647 \\U0001F64B \\U0001F64D-\\U0001F64E \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\u2695-\\u2696 \\u2708 \\U0001F33E \\U0001F373 \\U0001F393 \\U0001F3A4 \\U0001F3A8 \\U0001F3EB \\U0001F3ED \\U0001F4BB-\\U0001F4BC \\U0001F527 \\U0001F52C \\U0001F680 \\U0001F692 \\U0001F926 \\U0001F937-\\U0001F939 \\U0001F93C-\\U0001F93E];" // Emoji that participate in ZWJ sequences
+    "$EmojiForMods = [\\u261D \\u26F9 \\u270A-\\u270D \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3CA \\U0001F3CB \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F575 \\U0001F590 \\U0001F595 \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0 \\U0001F918 \\U0001F3C2 \\U0001F3C7 \\U0001F3CC \\U0001F574 \\U0001F57A \\U0001F6CC \\U0001F919-\\U0001F91E \\U0001F926 \\U0001F930 \\U0001F933-\\U0001F939 \\U0001F93C-\\U0001F93E] ;" // Emoji that take Fitzpatrick modifiers
 #else
     "$EmojiForSeqs = [\\u2764 \\U0001F466-\\U0001F469 \\U0001F48B];"
     "$EmojiForMods = [\\u261D \\u270A-\\u270C \\U0001F385 \\U0001F3C3-\\U0001F3C4 \\U0001F3C7 \\U0001F3CA \\U0001F442-\\U0001F443 \\U0001F446-\\U0001F450 \\U0001F466-\\U0001F469 \\U0001F46E-\\U0001F478 \\U0001F47C \\U0001F481-\\U0001F483 \\U0001F485-\\U0001F487 \\U0001F4AA \\U0001F596 \\U0001F645-\\U0001F647 \\U0001F64B-\\U0001F64F \\U0001F6A3 \\U0001F6B4-\\U0001F6B6 \\U0001F6C0] ;" // Emoji that take Fitzpatrick modifiers
@@ -813,30 +813,31 @@ void closeLineBreakIterator(TextBreakIterator*& iterator)
     iterator = nullptr;
 }
 
-static TextBreakIterator* nonSharedCharacterBreakIterator;
+static std::atomic<TextBreakIterator*> nonSharedCharacterBreakIterator = ATOMIC_VAR_INIT(nullptr);
 
-static inline bool compareAndSwapNonSharedCharacterBreakIterator(TextBreakIterator* expected, TextBreakIterator* newValue)
+static inline TextBreakIterator* getNonSharedCharacterBreakIterator()
 {
-    return WTF::weakCompareAndSwap(&nonSharedCharacterBreakIterator, expected, newValue);
+    if (auto *res = nonSharedCharacterBreakIterator.exchange(nullptr, std::memory_order_acquire))
+        return res;
+    return initializeIterator(UBRK_CHARACTER);
+}
+
+static inline void cacheNonSharedCharacterBreakIterator(TextBreakIterator* cacheMe)
+{
+    if (auto *old = nonSharedCharacterBreakIterator.exchange(cacheMe, std::memory_order_release))
+        ubrk_close(reinterpret_cast<UBreakIterator*>(old));
 }
 
 NonSharedCharacterBreakIterator::NonSharedCharacterBreakIterator(StringView string)
 {
-    m_iterator = nonSharedCharacterBreakIterator;
-
-    bool createdIterator = m_iterator && compareAndSwapNonSharedCharacterBreakIterator(m_iterator, nullptr);
-    if (!createdIterator)
-        m_iterator = initializeIterator(UBRK_CHARACTER);
-    if (!m_iterator)
-        return;
-
-    m_iterator = setTextForIterator(*m_iterator, string);
+    if ((m_iterator = getNonSharedCharacterBreakIterator()))
+        m_iterator = setTextForIterator(*m_iterator, string);
 }
 
 NonSharedCharacterBreakIterator::~NonSharedCharacterBreakIterator()
 {
-    if (!compareAndSwapNonSharedCharacterBreakIterator(0, m_iterator))
-        ubrk_close(reinterpret_cast<UBreakIterator*>(m_iterator));
+    if (m_iterator)
+        cacheNonSharedCharacterBreakIterator(m_iterator);
 }
 
 NonSharedCharacterBreakIterator::NonSharedCharacterBreakIterator(NonSharedCharacterBreakIterator&& other)
@@ -894,18 +895,18 @@ bool isWordTextBreak(TextBreakIterator* iterator)
     return ruleStatus != UBRK_WORD_NONE;
 }
 
-unsigned numGraphemeClusters(const String& s)
+unsigned numGraphemeClusters(StringView string)
 {
-    unsigned stringLength = s.length();
+    unsigned stringLength = string.length();
     
     if (!stringLength)
         return 0;
 
     // The only Latin-1 Extended Grapheme Cluster is CR LF
-    if (s.is8Bit() && !s.contains('\r'))
+    if (string.is8Bit() && !string.contains('\r'))
         return stringLength;
 
-    NonSharedCharacterBreakIterator it(s);
+    NonSharedCharacterBreakIterator it(string);
     if (!it)
         return stringLength;
 

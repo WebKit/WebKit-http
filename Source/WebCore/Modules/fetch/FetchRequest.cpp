@@ -193,10 +193,8 @@ static bool buildOptions(FetchRequest::InternalRequest& request, ScriptExecution
     return true;
 }
 
-static bool validateBodyAndMethod(const FetchBody& body, const FetchRequest::InternalRequest& internalRequest)
+static bool methodCanHaveBody(const FetchRequest::InternalRequest& internalRequest)
 {
-    if (body.isEmpty())
-        return true;
     return internalRequest.request.httpMethod() != "GET" && internalRequest.request.httpMethod() != "HEAD";
 }
 
@@ -243,7 +241,7 @@ FetchHeaders* FetchRequest::initializeWith(const String& url, const Dictionary& 
 
 FetchHeaders* FetchRequest::initializeWith(FetchRequest& input, const Dictionary& init, ExceptionCode& ec)
 {
-    if (input.isDisturbed()) {
+    if (input.isDisturbedOrLocked()) {
         ec = TypeError;
         return nullptr;
     }
@@ -257,25 +255,29 @@ FetchHeaders* FetchRequest::initializeWith(FetchRequest& input, const Dictionary
 void FetchRequest::setBody(JSC::ExecState& execState, JSC::JSValue body, FetchRequest* request, ExceptionCode& ec)
 {
     if (!body.isNull()) {
-        m_body = FetchBody::extract(execState, body);
+        if (!methodCanHaveBody(m_internalRequest)) {
+            ec = TypeError;
+            return;
+        }
+
+        ASSERT(scriptExecutionContext());
+        m_body = FetchBody::extract(*scriptExecutionContext(), execState, body);
         if (m_body.type() == FetchBody::Type::None) {
             ec = TypeError;
             return;
         }
     }
     else if (request && !request->m_body.isEmpty()) {
+        if (!methodCanHaveBody(m_internalRequest)) {
+            ec = TypeError;
+            return;
+        }
+
         m_body = FetchBody::extractFromBody(&request->m_body);
         request->setDisturbed();
     }
 
-    String type = m_headers->fastGet(HTTPHeaderName::ContentType);
-    if (!body.isUndefined() && type.isEmpty() && !m_body.mimeType().isEmpty()) {
-        type = m_body.mimeType();
-        m_headers->fastSet(HTTPHeaderName::ContentType, type);
-    }
-    m_body.setMimeType(type);
-    if (!validateBodyAndMethod(m_body, m_internalRequest))
-        ec = TypeError;
+    m_body.updateContentType(m_headers);
 }
 
 String FetchRequest::referrer() const
@@ -296,25 +298,22 @@ const String& FetchRequest::url() const
 
 ResourceRequest FetchRequest::internalRequest() const
 {
+    ASSERT(scriptExecutionContext());
+
     ResourceRequest request = m_internalRequest.request;
     request.setHTTPHeaderFields(m_headers->internalHeaders());
-    request.setHTTPBody(body().bodyForInternalRequest());
-
-    // FIXME: Support no-referrer and client. Ensure this case-sensitive comparison is ok.
-    if (m_internalRequest.referrer != "no-referrer" && m_internalRequest.referrer != "client")
-        request.setHTTPReferrer(URL(URL(), m_internalRequest.referrer).strippedForUseAsReferrer());
+    request.setHTTPBody(body().bodyForInternalRequest(*scriptExecutionContext()));
 
     return request;
 }
 
 RefPtr<FetchRequest> FetchRequest::clone(ScriptExecutionContext& context, ExceptionCode& ec)
 {
-    if (isDisturbed()) {
+    if (isDisturbedOrLocked()) {
         ec = TypeError;
         return nullptr;
     }
 
-    // FIXME: Validate body teeing.
     return adoptRef(*new FetchRequest(context, FetchBody(m_body), FetchHeaders::create(m_headers.get()), FetchRequest::InternalRequest(m_internalRequest)));
 }
 

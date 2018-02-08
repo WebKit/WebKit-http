@@ -31,7 +31,6 @@
 #define GlyphPage_h
 
 #include "Glyph.h"
-#include <string.h>
 #include <unicode/utypes.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Ref.h>
@@ -43,9 +42,9 @@ class Font;
 // Holds the glyph index and the corresponding Font information for a given
 // character.
 struct GlyphData {
-    GlyphData(Glyph g = 0, const Font* f = 0)
-        : glyph(g)
-        , font(f)
+    GlyphData(Glyph glyph = 0, const Font* font = nullptr)
+        : glyph(glyph)
+        , font(font)
     {
     }
 
@@ -57,7 +56,7 @@ struct GlyphData {
 
 // A GlyphPage contains a fixed-size set of GlyphData mappings for a contiguous
 // range of characters in the Unicode code space. GlyphPages are indexed
-// starting from 0 and incrementing for each 256 glyphs.
+// starting from 0 and incrementing for each "size" number of glyphs.
 class GlyphPage : public RefCounted<GlyphPage> {
 public:
     static Ref<GlyphPage> create(const Font& font)
@@ -72,17 +71,22 @@ public:
 
     static unsigned count() { return s_count; }
 
-    static const size_t size = 256; // Covers Latin-1 in a single page.
-    static unsigned indexForCharacter(UChar32 c) { return c % GlyphPage::size; }
+    static const unsigned size = 16;
+
+    static unsigned sizeForPageNumber(unsigned) { return 16; }
+    static unsigned indexForCodePoint(UChar32 c) { return c % size; }
+    static unsigned pageNumberForCodePoint(UChar32 c) { return c / size; }
+    static UChar32 startingCodePointInPageNumber(unsigned pageNumber) { return pageNumber * size; }
+    static bool pageNumberIsUsedForArabic(unsigned pageNumber) { return startingCodePointInPageNumber(pageNumber) >= 0x600 && startingCodePointInPageNumber(pageNumber) + sizeForPageNumber(pageNumber) < 0x700; }
 
     GlyphData glyphDataForCharacter(UChar32 c) const
     {
-        return glyphDataForIndex(indexForCharacter(c));
+        return glyphDataForIndex(indexForCodePoint(c));
     }
 
     Glyph glyphForCharacter(UChar32 c) const
     {
-        return glyphForIndex(indexForCharacter(c));
+        return glyphForIndex(indexForCodePoint(c));
     }
 
     GlyphData glyphDataForIndex(unsigned index) const

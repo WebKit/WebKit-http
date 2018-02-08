@@ -210,27 +210,32 @@ inline Structure* getRegExpStructure(ExecState* exec, JSGlobalObject* globalObje
 
 inline RegExpFlags toFlags(ExecState* exec, JSValue flags)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (flags.isUndefined())
         return NoFlags;
     JSString* flagsString = flags.toString(exec);
+    ASSERT(scope.exception() || flagsString);
     if (!flagsString) {
-        ASSERT(exec->hadException());
         return InvalidFlags;
     }
 
     RegExpFlags result = regExpFlags(flagsString->value(exec));
-    if (exec->hadException())
+    if (UNLIKELY(scope.exception()))
         return InvalidFlags;
     if (result == InvalidFlags)
-        throwSyntaxError(exec, ASCIILiteral("Invalid flags supplied to RegExp constructor."));
+        throwSyntaxError(exec, scope, ASCIILiteral("Invalid flags supplied to RegExp constructor."));
     return result;
 }
 
 static JSObject* regExpCreate(ExecState* exec, JSGlobalObject* globalObject, JSValue newTarget, JSValue patternArg, JSValue flagsArg)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     String pattern = patternArg.isUndefined() ? emptyString() : patternArg.toString(exec)->value(exec);
-    if (exec->hadException())
+    if (UNLIKELY(scope.exception()))
         return nullptr;
 
     RegExpFlags flags = toFlags(exec, flagsArg);
@@ -239,10 +244,10 @@ static JSObject* regExpCreate(ExecState* exec, JSGlobalObject* globalObject, JSV
 
     RegExp* regExp = RegExp::create(vm, pattern, flags);
     if (!regExp->isValid())
-        return vm.throwException(exec, createSyntaxError(exec, regExp->errorMessage()));
+        return throwException(exec, scope, createSyntaxError(exec, regExp->errorMessage()));
 
     Structure* structure = getRegExpStructure(exec, globalObject, newTarget);
-    if (vm.exception())
+    if (UNLIKELY(scope.exception()))
         return nullptr;
     return RegExpObject::create(vm, structure, regExp);
 }
@@ -250,6 +255,7 @@ static JSObject* regExpCreate(ExecState* exec, JSGlobalObject* globalObject, JSV
 JSObject* constructRegExp(ExecState* exec, JSGlobalObject* globalObject, const ArgList& args,  JSObject* callee, JSValue newTarget)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue patternArg = args.at(0);
     JSValue flagsArg = args.at(1);
 
@@ -258,7 +264,7 @@ JSObject* constructRegExp(ExecState* exec, JSGlobalObject* globalObject, const A
 
     if (newTarget.isUndefined() && constructAsRegexp && flagsArg.isUndefined()) {
         JSValue constructor = patternArg.get(exec, vm.propertyNames->constructor);
-        if (vm.exception())
+        if (UNLIKELY(scope.exception()))
             return nullptr;
         if (callee == constructor) {
             // We know that patternArg is a object otherwise constructAsRegexp would be false.
@@ -269,7 +275,7 @@ JSObject* constructRegExp(ExecState* exec, JSGlobalObject* globalObject, const A
     if (isPatternRegExp) {
         RegExp* regExp = jsCast<RegExpObject*>(patternArg)->regExp();
         Structure* structure = getRegExpStructure(exec, globalObject, newTarget);
-        if (exec->hadException())
+        if (UNLIKELY(scope.exception()))
             return nullptr;
 
         if (!flagsArg.isUndefined()) {

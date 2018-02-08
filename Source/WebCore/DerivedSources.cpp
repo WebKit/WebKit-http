@@ -49,7 +49,7 @@
 #include "JSCanvasPattern.cpp"
 #include "JSCanvasProxy.cpp"
 #include "JSCanvasRenderingContext2D.cpp"
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 #include "JSByteLengthQueuingStrategy.cpp"
 #include "JSCountQueuingStrategy.cpp"
 #endif
@@ -342,7 +342,6 @@
 #include "JSMediaStreamAudioSourceNode.cpp"
 #include "JSMediaStreamEvent.cpp"
 #include "JSMediaStreamTrack.cpp"
-#include "JSMediaStreamTrackSourcesCallback.cpp"
 #include "JSMediaTrackConstraint.cpp"
 #include "JSMediaTrackConstraintSet.cpp"
 #include "JSMediaTrackConstraints.cpp"
@@ -394,11 +393,10 @@
 #include "JSProgressEvent.cpp"
 #include "JSRadioNodeList.cpp"
 #include "JSRange.cpp"
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 #include "JSReadableStream.cpp"
 #include "JSReadableStreamDefaultController.cpp"
 #include "JSReadableStreamDefaultReader.cpp"
-#include "JSWritableStream.cpp"
 #endif
 #include "JSRect.cpp"
 #include "JSRequestAnimationFrameCallback.cpp"
@@ -423,7 +421,6 @@
 #include "JSSecurityPolicyViolationEvent.cpp"
 #include "JSSourceBuffer.cpp"
 #include "JSSourceBufferList.cpp"
-#include "JSSourceInfo.cpp"
 #include "JSSpeechSynthesis.cpp"
 #include "JSSpeechSynthesisEvent.cpp"
 #include "JSSpeechSynthesisUtterance.cpp"
@@ -630,8 +627,11 @@
 #include "JSUIEvent.cpp"
 #include "JSUIRequestEvent.cpp"
 #include "JSURLUtils.cpp"
+#if ENABLE(USER_MESSAGE_HANDLERS)
 #include "JSUserMessageHandler.cpp"
 #include "JSUserMessageHandlersNamespace.cpp"
+#include "JSWebKitNamespace.cpp"
+#endif
 #include "JSValidityState.cpp"
 #include "JSVideoPlaybackQuality.cpp"
 #include "JSVoidCallback.cpp"
@@ -643,7 +643,6 @@
 #include "JSWebKitCSSRegionRule.cpp"
 #include "JSWebKitCSSViewportRule.cpp"
 #include "JSWebKitNamedFlow.cpp"
-#include "JSWebKitNamespace.cpp"
 #include "JSWebKitPlaybackTargetAvailabilityEvent.cpp"
 #include "JSWebKitPoint.cpp"
 #include "JSWebKitSubtleCrypto.cpp"
@@ -659,6 +658,9 @@
 #include "JSWorkerGlobalScopeNotifications.cpp"
 #include "JSWorkerLocation.cpp"
 #include "JSWorkerNavigator.cpp"
+#if ENABLE(WRITABLE_STREAM_API)
+#include "JSWritableStream.cpp"
+#endif
 #include "JSXMLDocument.cpp"
 #include "JSXMLHttpRequest.cpp"
 #include "JSXMLHttpRequestEventTarget.cpp"

@@ -169,7 +169,7 @@ String FileInputType::valueMissingText() const
     return element().multiple() ? validationMessageValueMissingForMultipleFileText() : validationMessageValueMissingForFileText();
 }
 
-void FileInputType::handleDOMActivateEvent(Event* event)
+void FileInputType::handleDOMActivateEvent(Event& event)
 {
     if (element().isDisabledFormControl())
         return;
@@ -192,7 +192,7 @@ void FileInputType::handleDOMActivateEvent(Event* event)
         chrome->runOpenPanel(input.document().frame(), m_fileChooser);
     }
 
-    event->setDefaultHandled();
+    event.setDefaultHandled();
 }
 
 RenderPtr<RenderElement> FileInputType::createInputRenderer(RenderStyle&& style)
@@ -202,16 +202,6 @@ RenderPtr<RenderElement> FileInputType::createInputRenderer(RenderStyle&& style)
 
 bool FileInputType::canSetStringValue() const
 {
-    return false;
-}
-
-bool FileInputType::canChangeFromAnotherType() const
-{
-    // Don't allow the type to be changed to file after the first type change.
-    // In other engines this might mean a JavaScript programmer could set a text
-    // field's value to something like /etc/passwd and then change it to a file input.
-    // I don't think this would actually occur in WebKit, but this rule still may be
-    // important for compatibility.
     return false;
 }
 

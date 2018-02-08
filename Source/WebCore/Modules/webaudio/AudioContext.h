@@ -77,7 +77,7 @@ class WaveShaperNode;
 class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public MediaProducer, private PlatformMediaSessionClient {
 public:
     // Create an AudioContext for rendering to the audio hardware.
-    static RefPtr<AudioContext> create(Document&, ExceptionCode&);
+    static RefPtr<AudioContext> create(Document&);
 
     virtual ~AudioContext();
 
@@ -317,6 +317,7 @@ private:
     void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) override { }
     bool supportsSeeking() const override { return false; }
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override { return false; }
+    String sourceApplicationIdentifier() const override;
 
     // EventTarget
     void refEventTarget() override { ref(); }

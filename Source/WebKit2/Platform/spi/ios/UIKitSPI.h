@@ -541,7 +541,12 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 @property (nonatomic, assign) NSRange rangeInMarkedText;
 @end
 
-@interface UIWKTextInteractionAssistant : UITextInteractionAssistant
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 100000
+@protocol UIResponderStandardEditActions
+@end
+#endif
+
+@interface UIWKTextInteractionAssistant : UITextInteractionAssistant <UIResponderStandardEditActions>
 @end
 
 @interface UIWKTextInteractionAssistant (UIWKTextInteractionAssistantDetails)
@@ -638,12 +643,22 @@ typedef enum {
     UIWebTouchEventTouchCancel = 3,
 } UIWebTouchEventType;
 
+typedef enum {
+    UIWebTouchPointTypeDirect = 0,
+    UIWebTouchPointTypeStylus
+} UIWebTouchPointType;
+
 struct _UIWebTouchPoint {
     CGPoint locationInScreenCoordinates;
     CGPoint locationInDocumentCoordinates;
     unsigned identifier;
     UITouchPhase phase;
-    CGFloat majorRadiusInScreenCoordinates;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED > 100000
+    CGFloat force;
+    CGFloat altitudeAngle;
+    CGFloat azimuthAngle;
+    UIWebTouchPointType touchType;
+#endif
 };
 
 struct _UIWebTouchEvent {
@@ -823,6 +838,10 @@ typedef enum {
 - (UIScrollView *)_scroller;
 - (CGPoint)accessibilityConvertPointFromSceneReferenceCoordinates:(CGPoint)point;
 - (CGRect)accessibilityConvertRectToSceneReferenceCoordinates:(CGRect)rect;
+@end
+
+@interface UIResponder ()
+- (UIResponder *)firstResponder;
 @end
 
 WTF_EXTERN_C_BEGIN

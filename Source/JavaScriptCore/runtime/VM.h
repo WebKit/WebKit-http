@@ -29,9 +29,11 @@
 #ifndef VM_h
 #define VM_h
 
+#include "CallData.h"
 #include "ConcurrentJITLock.h"
 #include "ControlFlowProfiler.h"
 #include "DateInstanceCache.h"
+#include "ExceptionEventLocation.h"
 #include "ExecutableAllocator.h"
 #include "FunctionHasExecutedCache.h"
 #include "Heap.h"
@@ -39,7 +41,6 @@
 #include "JITThunks.h"
 #include "JSCJSValue.h"
 #include "JSLock.h"
-#include "LLIntData.h"
 #include "MacroAssemblerCodeRef.h"
 #include "Microtask.h"
 #include "NumericStrings.h"
@@ -59,7 +60,6 @@
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/SimpleStats.h>
 #include <wtf/StackBounds.h>
 #include <wtf/Stopwatch.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -71,6 +71,11 @@
 #include <wtf/ListHashSet.h>
 #endif
 
+namespace WTF {
+class SimpleStats;
+} // namespace WTF
+using WTF::SimpleStats;
+
 namespace JSC {
 
 class BuiltinExecutables;
@@ -81,9 +86,11 @@ class CommonIdentifiers;
 class CustomGetterSetter;
 class ExecState;
 class Exception;
+class ExceptionScope;
 class HandleStack;
 class TypeProfiler;
 class TypeProfilerLog;
+class HasOwnPropertyCache;
 class HeapProfiler;
 class Identifier;
 class Interpreter;
@@ -247,13 +254,13 @@ public:
     JS_EXPORT_PRIVATE ~VM();
 
     JS_EXPORT_PRIVATE Watchdog& ensureWatchdog();
-    JS_EXPORT_PRIVATE Watchdog* watchdog() { return m_watchdog.get(); }
+    Watchdog* watchdog() { return m_watchdog.get(); }
 
-    JS_EXPORT_PRIVATE HeapProfiler* heapProfiler() const { return m_heapProfiler.get(); }
+    HeapProfiler* heapProfiler() const { return m_heapProfiler.get(); }
     JS_EXPORT_PRIVATE HeapProfiler& ensureHeapProfiler();
 
 #if ENABLE(SAMPLING_PROFILER)
-    JS_EXPORT_PRIVATE SamplingProfiler* samplingProfiler() { return m_samplingProfiler.get(); }
+    SamplingProfiler* samplingProfiler() { return m_samplingProfiler.get(); }
     JS_EXPORT_PRIVATE SamplingProfiler& ensureSamplingProfiler(RefPtr<Stopwatch>&&);
 #endif
 
@@ -320,7 +327,6 @@ public:
     Strong<Structure> inferredTypeStructure;
     Strong<Structure> inferredTypeTableStructure;
     Strong<Structure> functionRareDataStructure;
-    Strong<Structure> generatorFrameStructure;
     Strong<Structure> exceptionStructure;
     Strong<Structure> promiseDeferredStructure;
     Strong<Structure> internalPromiseDeferredStructure;
@@ -330,6 +336,10 @@ public:
     Strong<Structure> evalCodeBlockStructure;
     Strong<Structure> functionCodeBlockStructure;
     Strong<Structure> webAssemblyCodeBlockStructure;
+    Strong<Structure> hashMapBucketSetStructure;
+    Strong<Structure> hashMapBucketMapStructure;
+    Strong<Structure> hashMapImplSetStructure;
+    Strong<Structure> hashMapImplMapStructure;
 
     Strong<JSCell> iterationTerminator;
     Strong<JSCell> emptyPropertyNameEnumerator;
@@ -341,7 +351,7 @@ public:
     SmallStrings smallStrings;
     NumericStrings numericStrings;
     DateInstanceCache dateInstanceCache;
-    WTF::SimpleStats machineCodeBytesPerBytecodeWordForBaselineJIT;
+    std::unique_ptr<SimpleStats> machineCodeBytesPerBytecodeWordForBaselineJIT;
     WeakGCMap<std::pair<CustomGetterSetter*, int>, JSCustomGetterSetterFunction> customGetterSetterFunctionMap;
     WeakGCMap<StringImpl*, JSString, PtrHash<StringImpl*>> stringCache;
     Strong<JSString> lastCachedString;
@@ -439,20 +449,14 @@ public:
 
     void restorePreviousException(Exception* exception) { setException(exception); }
 
-    void clearException() { m_exception = nullptr; }
     void clearLastException() { m_lastException = nullptr; }
 
     ExecState** addressOfCallFrameForCatch() { return &callFrameForCatch; }
 
-    Exception* exception() const { return m_exception; }
     JSCell** addressOfException() { return reinterpret_cast<JSCell**>(&m_exception); }
 
     Exception* lastException() const { return m_lastException; }
     JSCell** addressOfLastException() { return reinterpret_cast<JSCell**>(&m_lastException); }
-
-    JS_EXPORT_PRIVATE void throwException(ExecState*, Exception*);
-    JS_EXPORT_PRIVATE JSValue throwException(ExecState*, JSValue);
-    JS_EXPORT_PRIVATE JSObject* throwException(ExecState*, JSObject*);
 
     void setFailNextNewCodeBlock() { m_failNextNewCodeBlock = true; }
     bool getAndClearFailNextNewCodeBlock()
@@ -552,6 +556,10 @@ public:
     BumpPointerAllocator m_regExpAllocator;
     ConcurrentJITLock m_regExpAllocatorLock;
 
+    std::unique_ptr<HasOwnPropertyCache> m_hasOwnPropertyCache;
+    ALWAYS_INLINE HasOwnPropertyCache* hasOwnPropertyCache() { return m_hasOwnPropertyCache.get(); }
+    HasOwnPropertyCache* ensureHasOwnPropertyCache();
+
 #if ENABLE(REGEXP_TRACING)
     typedef ListHashSet<RegExp*> RTTraceList;
     RTTraceList* m_rtTraceList;
@@ -608,7 +616,7 @@ public:
 
     JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, PassRefPtr<Microtask>);
     JS_EXPORT_PRIVATE void drainMicrotasks();
-    JS_EXPORT_PRIVATE void setGlobalConstRedeclarationShouldThrow(bool globalConstRedeclarationThrow) { m_globalConstRedeclarationShouldThrow = globalConstRedeclarationThrow; }
+    void setGlobalConstRedeclarationShouldThrow(bool globalConstRedeclarationThrow) { m_globalConstRedeclarationShouldThrow = globalConstRedeclarationThrow; }
     ALWAYS_INLINE bool globalConstRedeclarationShouldThrow() const { return m_globalConstRedeclarationShouldThrow; }
 
     inline bool shouldTriggerTermination(ExecState*);
@@ -644,6 +652,33 @@ private:
         m_exception = exception;
         m_lastException = exception;
     }
+    Exception* exception() const
+    {
+#if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
+        m_needExceptionCheck = false;
+#endif
+        return m_exception;
+    }
+    void clearException()
+    {
+#if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
+        m_needExceptionCheck = false;
+#endif
+        m_exception = nullptr;
+    }
+
+#if !ENABLE(JIT)    
+    bool ensureStackCapacityForCLoop(Register* newTopOfStack);
+    bool isSafeToRecurseSoftCLoop() const;
+#endif // !ENABLE(JIT)
+
+    JS_EXPORT_PRIVATE void throwException(ExecState*, Exception*);
+    JS_EXPORT_PRIVATE JSValue throwException(ExecState*, JSValue);
+    JS_EXPORT_PRIVATE JSObject* throwException(ExecState*, JSObject*);
+
+#if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
+    void verifyExceptionCheckNeedIsSatisfied(unsigned depth, ExceptionEventLocation&);
+#endif
 
 #if ENABLE(ASSEMBLER)
     bool m_canUseAssembler;
@@ -669,6 +704,13 @@ private:
 
     Exception* m_exception { nullptr };
     Exception* m_lastException { nullptr };
+#if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
+    ExceptionScope* m_topExceptionScope { nullptr };
+    ExceptionEventLocation m_simulatedThrowPointLocation;
+    unsigned m_simulatedThrowPointRecursionDepth { 0 };
+    mutable bool m_needExceptionCheck { false };
+#endif
+
     bool m_failNextNewCodeBlock { false };
     DeletePropertyMode m_deletePropertyMode { DeletePropertyMode::Default };
     bool m_globalConstRedeclarationShouldThrow { true };
@@ -691,6 +733,12 @@ private:
 #endif
     std::unique_ptr<ShadowChicken> m_shadowChicken;
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
+
+    // Friends for exception checking purpose only.
+    friend class Heap;
+    friend class CatchScope;
+    friend class ExceptionScope;
+    friend class ThrowScope;
 };
 
 #if ENABLE(GC_VALIDATION)

@@ -72,9 +72,10 @@ class RuleData;
 class RuleSet;
 class SelectorFilter;
 class Settings;
+class StyleCachedImage;
+class StyleGeneratedImage;
 class StyleImage;
 class StyleKeyframe;
-class StylePendingImage;
 class StyleProperties;
 class StyleRule;
 class StyleRuleKeyframes;
@@ -219,9 +220,6 @@ public:
     void clearCachedPropertiesAffectedByViewportUnits();
 
     bool createFilterOperations(const CSSValue& inValue, FilterOperations& outOperations);
-    void loadPendingSVGDocuments();
-
-    void loadPendingResources();
 
     struct RuleRange {
         RuleRange(int& firstRuleIndex, int& lastRuleIndex): firstRuleIndex(firstRuleIndex), lastRuleIndex(lastRuleIndex) { }
@@ -405,9 +403,6 @@ public:
 
         bool useSVGZoomRules() const { return m_element && m_element->isSVGElement(); }
 
-        Style::PendingResources& ensurePendingResources();
-        std::unique_ptr<Style::PendingResources> takePendingResources() { return WTFMove(m_pendingResources); }
-
         const CSSToLengthConversionData& cssToLengthConversionData() const { return m_cssToLengthConversionData; }
 
         CascadeLevel cascadeLevel() const { return m_cascadeLevel; }
@@ -444,7 +439,6 @@ public:
         FillLayer m_backgroundData { BackgroundFillLayer };
         Color m_backgroundColor;
 
-        std::unique_ptr<Style::PendingResources> m_pendingResources;
         CSSToLengthConversionData m_cssToLengthConversionData;
         
         CascadeLevel m_cascadeLevel { UserAgentLevel };
@@ -457,11 +451,7 @@ public:
     State& state() { return m_state; }
     const State& state() const { return m_state; }
 
-    RefPtr<StyleImage> styleImage(CSSPropertyID, CSSValue&);
-    Ref<StyleImage> cachedOrPendingFromValue(CSSPropertyID, CSSImageValue&);
-    Ref<StyleImage> generatedOrPendingFromValue(CSSPropertyID, CSSImageGeneratorValue&);
-    RefPtr<StyleImage> setOrPendingFromValue(CSSPropertyID, CSSImageSetValue&);
-    RefPtr<StyleImage> cursorOrPendingFromValue(CSSPropertyID, CSSCursorImageValue&);
+    RefPtr<StyleImage> styleImage(CSSValue&);
 
     bool applyPropertyToRegularStyle() const { return m_state.applyPropertyToRegularStyle(); }
     bool applyPropertyToVisitedLinkStyle() const { return m_state.applyPropertyToVisitedLinkStyle(); }
@@ -488,8 +478,6 @@ private:
     RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSVariableDependentValue&);
 
     void applySVGProperty(CSSPropertyID, CSSValue*);
-
-    void loadPendingImages();
 
     static unsigned computeMatchedPropertiesHash(const MatchedProperties*, unsigned size);
     struct MatchedPropertiesCacheItem {
@@ -532,8 +520,8 @@ private:
 
     State m_state;
 
-    // Try to catch a crash. https://bugs.webkit.org/show_bug.cgi?id=141561.
-    bool m_inLoadPendingImages { false };
+    // See if we still have crashes where StyleResolver gets deleted early.
+    bool m_isDeleted { false };
 
     friend bool operator==(const MatchedProperties&, const MatchedProperties&);
     friend bool operator!=(const MatchedProperties&, const MatchedProperties&);

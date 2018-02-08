@@ -70,8 +70,6 @@
 #include <runtime/JSSet.h>
 #include <runtime/JSSetIterator.h>
 #include <runtime/JSTypedArrays.h>
-#include <runtime/MapData.h>
-#include <runtime/MapDataInlines.h>
 #include <runtime/ObjectConstructor.h>
 #include <runtime/PropertyNameArray.h>
 #include <runtime/RegExp.h>
@@ -389,12 +387,16 @@ protected:
 
     bool shouldTerminate()
     {
-        return m_exec->hadException();
+        VM& vm = m_exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        return scope.exception();
     }
 
     void throwStackOverflow()
     {
-        m_exec->vm().throwException(m_exec, createStackOverflowError(m_exec));
+        VM& vm = m_exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        throwException(m_exec, scope, createStackOverflowError(m_exec));
     }
 
     void fail()
@@ -1366,7 +1368,7 @@ SerializationReturnCode CloneSerializer::serialize(JSValue in)
             case MapDataStartVisitEntry: {
                 JSMapIterator* iterator = mapIteratorStack.last();
                 JSValue key, value;
-                if (!iterator->nextKeyValue(key, value)) {
+                if (!iterator->nextKeyValue(m_exec, key, value)) {
                     mapIteratorStack.removeLast();
                     JSObject* object = inputObjectStack.last();
                     ASSERT(jsDynamicCast<JSMap*>(object));
@@ -1570,7 +1572,9 @@ private:
 
     void throwValidationError()
     {
-        throwTypeError(m_exec, ASCIILiteral("Unable to deserialize data."));
+        VM& vm = m_exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+        throwTypeError(m_exec, scope, ASCIILiteral("Unable to deserialize data."));
     }
 
     bool isValid() const { return m_version <= CurrentVersion; }
@@ -1703,7 +1707,7 @@ private:
             readLittleEndian(ptr, end, ch);
             buffer.append(ch);
         }
-        str = String::adopt(buffer);
+        str = String::adopt(WTFMove(buffer));
 #endif
         return true;
     }
@@ -2444,6 +2448,9 @@ private:
 
 DeserializationResult CloneDeserializer::deserialize()
 {
+    VM& vm = m_exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     Vector<uint32_t, 16> indexStack;
     Vector<Identifier, 16> propertyNameStack;
     Vector<JSObject*, 32> outputObjectStack;
@@ -2464,7 +2471,7 @@ DeserializationResult CloneDeserializer::deserialize()
                 goto error;
             }
             JSArray* outArray = constructEmptyArray(m_exec, 0, m_globalObject, length);
-            if (UNLIKELY(m_exec->hadException()))
+            if (UNLIKELY(scope.exception()))
                 goto error;
             m_gcBuffer.append(outArray);
             outputObjectStack.append(outArray);
@@ -2541,7 +2548,9 @@ DeserializationResult CloneDeserializer::deserialize()
         mapObjectStartState: {
             if (outputObjectStack.size() > maximumFilterRecursion)
                 return std::make_pair(JSValue(), StackOverflowError);
-            JSMap* map = JSMap::create(m_exec->vm(), m_globalObject->mapStructure());
+            JSMap* map = JSMap::create(m_exec, m_exec->vm(), m_globalObject->mapStructure());
+            if (UNLIKELY(scope.exception()))
+                goto error;
             m_gcBuffer.append(map);
             outputObjectStack.append(map);
             mapStack.append(map);
@@ -2570,7 +2579,9 @@ DeserializationResult CloneDeserializer::deserialize()
         setObjectStartState: {
             if (outputObjectStack.size() > maximumFilterRecursion)
                 return std::make_pair(JSValue(), StackOverflowError);
-            JSSet* set = JSSet::create(m_exec->vm(), m_globalObject->setStructure());
+            JSSet* set = JSSet::create(m_exec, m_exec->vm(), m_globalObject->setStructure());
+            if (UNLIKELY(scope.exception()))
+                goto error;
             m_gcBuffer.append(set);
             outputObjectStack.append(set);
             setStack.append(set);
@@ -2702,13 +2713,16 @@ RefPtr<SerializedScriptValue> SerializedScriptValue::create(StringView string)
 RefPtr<SerializedScriptValue> SerializedScriptValue::create(JSContextRef originContext, JSValueRef apiValue, JSValueRef* exception)
 {
     ExecState* exec = toJS(originContext);
-    JSLockHolder locker(exec);
+    VM& vm = exec->vm();
+    JSLockHolder locker(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     JSValue value = toJS(exec, apiValue);
     RefPtr<SerializedScriptValue> serializedValue = SerializedScriptValue::create(exec, value, nullptr, nullptr);
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         if (exception)
-            *exception = toRef(exec, exec->exception()->value());
-        exec->clearException();
+            *exception = toRef(exec, scope.exception()->value());
+        scope.clearException();
         return nullptr;
     }
     ASSERT(serializedValue);
@@ -2737,12 +2751,15 @@ JSValue SerializedScriptValue::deserialize(ExecState* exec, JSGlobalObject* glob
 JSValueRef SerializedScriptValue::deserialize(JSContextRef destinationContext, JSValueRef* exception)
 {
     ExecState* exec = toJS(destinationContext);
-    JSLockHolder locker(exec);
+    VM& vm = exec->vm();
+    JSLockHolder locker(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     JSValue value = deserialize(exec, exec->lexicalGlobalObject(), nullptr);
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         if (exception)
-            *exception = toRef(exec, exec->exception()->value());
-        exec->clearException();
+            *exception = toRef(exec, scope.exception()->value());
+        scope.clearException();
         return nullptr;
     }
     ASSERT(value);
@@ -2756,15 +2773,18 @@ Ref<SerializedScriptValue> SerializedScriptValue::nullValue()
 
 void SerializedScriptValue::maybeThrowExceptionIfSerializationFailed(ExecState* exec, SerializationReturnCode code)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (code == SuccessfullyCompleted)
         return;
     
     switch (code) {
     case StackOverflowError:
-        exec->vm().throwException(exec, createStackOverflowError(exec));
+        throwException(exec, scope, createStackOverflowError(exec));
         break;
     case ValidationError:
-        throwTypeError(exec, ASCIILiteral("Unable to deserialize data."));
+        throwTypeError(exec, scope, ASCIILiteral("Unable to deserialize data."));
         break;
     case DataCloneError:
         setDOMException(exec, DATA_CLONE_ERR);

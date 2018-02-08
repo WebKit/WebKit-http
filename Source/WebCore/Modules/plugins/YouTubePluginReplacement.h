@@ -38,12 +38,15 @@ public:
 
     typedef HashMap<String, String> KeyValueMap;
 
+    WEBCORE_EXPORT static String youTubeURLFromAbsoluteURL(const URL& srcURL, const String& srcString);
+
 private:
     YouTubePluginReplacement(HTMLPlugInElement&, const Vector<String>& paramNames, const Vector<String>& paramValues);
     static Ref<PluginReplacement> create(HTMLPlugInElement&, const Vector<String>& paramNames, const Vector<String>& paramValues);
     static bool supportsMimeType(const String&);
     static bool supportsFileExtension(const String&);
     static bool supportsURL(const URL&);
+    static bool isEnabledBySettings(const Settings*);
 
     bool installReplacement(ShadowRoot&) final;
 

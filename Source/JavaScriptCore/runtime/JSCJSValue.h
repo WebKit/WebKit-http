@@ -118,17 +118,6 @@ enum WhichValueWord {
     PayloadWord
 };
 
-// This implements ToInt32, defined in ECMA-262 9.5.
-JS_EXPORT_PRIVATE int32_t toInt32(double);
-
-// This implements ToUInt32, defined in ECMA-262 9.6.
-inline uint32_t toUInt32(double number)
-{
-    // As commented in the spec, the operation of ToInt32 and ToUint32 only differ
-    // in how the result is interpreted; see NOTEs in sections 9.5 and 9.6.
-    return toInt32(number);
-}
-
 int64_t tryConvertToInt52(double);
 bool isInt52(double);
 
@@ -261,6 +250,10 @@ public:
     // toNumber conversion is expected to be side effect free if an exception has
     // been set in the ExecState already.
     double toNumber(ExecState*) const;
+
+    // toNumber conversion if it can be done without side effects.
+    Optional<double> toNumberFromPrimitive() const;
+
     JSString* toString(ExecState*) const; // On exception, this returns the empty string.
     JSString* toStringOrNull(ExecState*) const; // On exception, this returns null, to make exception checks faster.
     Identifier toPropertyKey(ExecState*) const;
@@ -601,6 +594,9 @@ inline bool operator!=(const JSCell* a, const JSValue b) { return JSValue(a) != 
 
 
 bool isThisValueAltered(const PutPropertySlot&, JSObject* baseObject);
+
+// See section 7.2.9: https://tc39.github.io/ecma262/#sec-samevalue
+bool sameValue(ExecState*, JSValue a, JSValue b);
 
 } // namespace JSC
 

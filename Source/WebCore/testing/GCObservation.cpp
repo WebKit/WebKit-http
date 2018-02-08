@@ -26,6 +26,9 @@
 #include "config.h"
 #include "GCObservation.h"
 
+#include <heap/HeapInlines.h>
+#include <heap/WeakInlines.h>
+
 namespace WebCore {
 
 GCObservation::GCObservation(JSC::JSObject* object)

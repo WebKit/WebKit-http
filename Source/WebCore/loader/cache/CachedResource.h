@@ -46,6 +46,7 @@ class MemoryCache;
 class CachedResourceClient;
 class CachedResourceHandleBase;
 class CachedResourceLoader;
+class CachedResourceRequest;
 class InspectorResource;
 class SecurityOrigin;
 class SharedBuffer;
@@ -76,7 +77,6 @@ public:
 #if ENABLE(XSLT)
         , XSLStyleSheet
 #endif
-        , LinkPreload
 #if ENABLE(LINK_PREFETCH)
         , LinkPrefetch
         , LinkSubresource
@@ -94,10 +94,10 @@ public:
         DecodeError
     };
 
-    CachedResource(const ResourceRequest&, Type, SessionID);
+    CachedResource(CachedResourceRequest&&, Type, SessionID);
     virtual ~CachedResource();
 
-    virtual void load(CachedResourceLoader&, const ResourceLoaderOptions&);
+    virtual void load(CachedResourceLoader&);
 
     virtual void setEncoding(const String&) { }
     virtual String encoding() const { return String(); }
@@ -112,6 +112,7 @@ public:
 
     virtual bool shouldIgnoreHTTPStatusCodeErrors() const { return false; }
 
+    const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
     ResourceRequest& resourceRequest() { return m_resourceRequest; }
     const URL& url() const { return m_resourceRequest.url();}
 #if ENABLE(CACHE_PARTITIONING)
@@ -167,7 +168,8 @@ public:
     bool isMainOrMediaOrRawResource() const { return type() == MainResource || type() == MediaResource || type() == RawResource; }
     bool ignoreForRequestCount() const
     {
-        return type() == MainResource
+        return m_resourceRequest.ignoreForRequestCount()
+            || type() == MainResource
 #if ENABLE(LINK_PREFETCH)
             || type() == LinkPrefetch
             || type() == LinkSubresource
@@ -209,17 +211,14 @@ public:
     bool isClean() const;
     ResourceResponse::Tainting responseTainting() const { return m_responseTainting; }
 
+    void loadFrom(const CachedResource&, CachedResourceLoader&);
+
     SecurityOrigin* origin() const { return m_origin.get(); }
 
     bool canDelete() const { return !hasClients() && !m_loader && !m_preloadCount && !m_handleCount && !m_resourceToRevalidate && !m_proxyResource; }
     bool hasOneHandle() const { return m_handleCount == 1; }
 
     bool isExpired() const;
-
-    // List of acceptable MIME types separated by ",".
-    // A MIME type may contain a wildcard, e.g. "text/*".
-    String accept() const { return m_accept; }
-    void setAccept(const String& accept) { m_accept = accept; }
 
     void cancelLoad();
     bool wasCanceled() const { return m_error.isCancellation(); }
@@ -305,15 +304,16 @@ private:
 
     virtual void checkNotify();
     virtual bool mayTryReplaceEncodedData() const { return false; }
+    virtual void setBodyDataFrom(const CachedResource&);
 
     std::chrono::microseconds freshnessLifetime(const ResourceResponse&) const;
 
     void addAdditionalRequestHeaders(CachedResourceLoader&);
+    void computeOrigin(CachedResourceLoader&);
     void failBeforeStarting();
 
     HashMap<CachedResourceClient*, std::unique_ptr<Callback>> m_clientsAwaitingCallback;
     SessionID m_sessionID;
-    String m_accept;
     ResourceLoadPriority m_loadPriority;
     std::chrono::system_clock::time_point m_responseTimestamp;
 

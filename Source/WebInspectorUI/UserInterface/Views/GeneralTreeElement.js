@@ -81,7 +81,7 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
         if (typeof x === "string")
             x = [x];
 
-        if (Object.shallowEqual(this._classNames, x))
+        if (Array.shallowEqual(this._classNames, x))
             return;
 
         if (this._listItemNode && this._classNames)
@@ -330,7 +330,7 @@ WebInspector.GeneralTreeElement = class GeneralTreeElement extends WebInspector.
         // and the tool tip only cares about the text.
         let mainTitleText = this._mainTitleElement.textContent;
         let subtitleText = this._subtitleElement ? this._subtitleElement.textContent : "";
-        let large = this.treeOutline  && this.treeOutline.large;
+        let large = this.treeOutline && this.treeOutline.large;
         if (mainTitleText && subtitleText)
             this._listItemNode.title = mainTitleText + (large ? "\n" : " \u2014 ") + subtitleText;
         else if (mainTitleText)

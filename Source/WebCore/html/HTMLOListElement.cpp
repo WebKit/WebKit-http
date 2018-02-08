@@ -94,7 +94,7 @@ void HTMLOListElement::parseAttribute(const QualifiedName& name, const AtomicStr
         HTMLElement::parseAttribute(name, value);
 }
 
-void HTMLOListElement::setStart(int start)
+void HTMLOListElement::setStartForBindings(int start)
 {
     setIntegralAttribute(startAttr, start);
 }
@@ -102,6 +102,20 @@ void HTMLOListElement::setStart(int start)
 void HTMLOListElement::updateItemValues()
 {
     RenderListItem::updateItemValuesForOrderedList(*this);
+}
+
+unsigned HTMLOListElement::itemCount() const
+{
+    if (m_shouldRecalculateItemCount)
+        const_cast<HTMLOListElement*>(this)->recalculateItemCount();
+    return m_itemCount;
+}
+
+unsigned HTMLOListElement::itemCountAfterLayout() const
+{
+    document().updateLayoutIgnorePendingStylesheets();
+
+    return itemCount();
 }
 
 void HTMLOListElement::recalculateItemCount()

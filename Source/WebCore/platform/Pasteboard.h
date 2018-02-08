@@ -32,11 +32,6 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(GTK)
-typedef struct _GtkClipboard GtkClipboard;
-#include <wtf/glib/GRefPtr.h>
-#endif
-
 #if PLATFORM(IOS)
 OBJC_CLASS NSArray;
 OBJC_CLASS NSString;
@@ -83,7 +78,6 @@ struct PasteboardWebContent {
     bool canSmartCopyOrDelete;
     String text;
     String markup;
-    GRefPtr<GClosure> callback;
 #endif
 };
 
@@ -143,8 +137,8 @@ public:
     ~Pasteboard();
 
 #if PLATFORM(GTK)
-    explicit Pasteboard(RefPtr<DataObjectGtk>&&);
-    explicit Pasteboard(GtkClipboard*);
+    explicit Pasteboard(const String& name);
+    explicit Pasteboard(DataObjectGtk&);
 #endif
 
 #if PLATFORM(WIN)
@@ -193,7 +187,7 @@ public:
 #endif
 
 #if PLATFORM(GTK)
-    DataObjectGtk* dataObject() const;
+    const DataObjectGtk& dataObject() const;
     static std::unique_ptr<Pasteboard> createForGlobalSelection();
 #endif
 
@@ -226,8 +220,10 @@ private:
 #endif
 
 #if PLATFORM(GTK)
-    RefPtr<DataObjectGtk> m_dataObject;
-    GtkClipboard* m_gtkClipboard;
+    void writeToClipboard();
+    void readFromClipboard();
+    Ref<DataObjectGtk> m_dataObject;
+    String m_name;
 #endif
 
 #if PLATFORM(IOS)

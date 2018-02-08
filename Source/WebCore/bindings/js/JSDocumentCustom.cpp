@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2009, 2011, 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -24,7 +24,6 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "HTMLDocument.h"
-#include "JSCanvasRenderingContext.h"
 #include "JSCanvasRenderingContext2D.h"
 #include "JSDOMConvert.h"
 #include "JSDOMWindowCustom.h"
@@ -58,11 +57,11 @@ static inline JSValue createNewDocumentWrapper(ExecState& state, JSDOMGlobalObje
     auto& document = passedDocument.get();
     JSObject* wrapper;
     if (document.isHTMLDocument())
-        wrapper = CREATE_DOM_WRAPPER(&globalObject, HTMLDocument, WTFMove(passedDocument));
+        wrapper = createWrapper<HTMLDocument>(&globalObject, WTFMove(passedDocument));
     else if (document.isXMLDocument())
-        wrapper = CREATE_DOM_WRAPPER(&globalObject, XMLDocument, WTFMove(passedDocument));
+        wrapper = createWrapper<XMLDocument>(&globalObject, WTFMove(passedDocument));
     else
-        wrapper = CREATE_DOM_WRAPPER(&globalObject, Document, WTFMove(passedDocument));
+        wrapper = createWrapper<Document>(&globalObject, WTFMove(passedDocument));
 
     reportMemoryForDocumentIfFrameless(state, document);
 
@@ -130,12 +129,15 @@ JSValue JSDocument::append(ExecState& state)
 #if ENABLE(TOUCH_EVENTS)
 JSValue JSDocument::createTouchList(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     auto touchList = TouchList::create();
 
     for (size_t i = 0; i < state.argumentCount(); ++i) {
         auto* item = JSTouch::toWrapped(state.uncheckedArgument(i));
         if (!item)
-            return JSValue::decode(throwArgumentTypeError(state, i, "touches", "Document", "createTouchList", "Touch"));
+            return JSValue::decode(throwArgumentTypeError(state, scope, i, "touches", "Document", "createTouchList", "Touch"));
 
         touchList->append(*item);
     }
@@ -145,21 +147,34 @@ JSValue JSDocument::createTouchList(ExecState& state)
 
 JSValue JSDocument::getCSSCanvasContext(JSC::ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (UNLIKELY(state.argumentCount() < 4))
-        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
     auto contextId = state.uncheckedArgument(0).toWTFString(&state);
-    if (UNLIKELY(state.hadException()))
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
     auto name = state.uncheckedArgument(1).toWTFString(&state);
-    if (UNLIKELY(state.hadException()))
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
     auto width = convert<int32_t>(state, state.uncheckedArgument(2), NormalConversion);
-    if (UNLIKELY(state.hadException()))
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
     auto height = convert<int32_t>(state, state.uncheckedArgument(3), NormalConversion);
-    if (UNLIKELY(state.hadException()))
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
-    return toJS(&state, globalObject(), wrapped().getCSSCanvasContext(WTFMove(contextId), WTFMove(name), WTFMove(width), WTFMove(height)));
+
+    auto* context = wrapped().getCSSCanvasContext(WTFMove(contextId), WTFMove(name), WTFMove(width), WTFMove(height));
+    if (!context)
+        return jsNull();
+
+#if ENABLE(WEBGL)
+    if (is<WebGLRenderingContextBase>(*context))
+        return toJS(&state, globalObject(), downcast<WebGLRenderingContextBase>(*context));
+#endif
+
+    return toJS(&state, globalObject(), downcast<CanvasRenderingContext2D>(*context));
 }
 
 void JSDocument::visitAdditionalChildren(SlotVisitor& visitor)

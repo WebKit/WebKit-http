@@ -53,9 +53,12 @@ enum UseKind {
     KnownCellUse,
     CellOrOtherUse,
     ObjectUse,
+    ArrayUse,
     FunctionUse,
     FinalObjectUse,
     RegExpObjectUse,
+    ProxyObjectUse,
+    DerivedArrayUse,
     ObjectOrOtherUse,
     StringIdentUse,
     StringUse,
@@ -63,6 +66,8 @@ enum UseKind {
     KnownStringUse,
     KnownPrimitiveUse, // This bizarre type arises for op_strcat, which has a bytecode guarantee that it will only see primitives (i.e. not objects).
     SymbolUse,
+    MapObjectUse,
+    SetObjectUse,
     StringObjectUse,
     StringOrStringObjectUse,
     NotStringVarUse,
@@ -115,12 +120,18 @@ inline SpeculatedType typeFilterFor(UseKind useKind)
         return SpecCell | SpecOther;
     case ObjectUse:
         return SpecObject;
+    case ArrayUse:
+        return SpecArray;
     case FunctionUse:
         return SpecFunction;
     case FinalObjectUse:
         return SpecFinalObject;
     case RegExpObjectUse:
         return SpecRegExpObject;
+    case ProxyObjectUse:
+        return SpecProxyObject;
+    case DerivedArrayUse:
+        return SpecDerivedArray;
     case ObjectOrOtherUse:
         return SpecObject | SpecOther;
     case StringIdentUse:
@@ -134,6 +145,10 @@ inline SpeculatedType typeFilterFor(UseKind useKind)
         return SpecHeapTop & ~SpecObject;
     case SymbolUse:
         return SpecSymbol;
+    case MapObjectUse:
+        return SpecMapObject;
+    case SetObjectUse:
+        return SpecSetObject;
     case StringObjectUse:
         return SpecStringObject;
     case StringOrStringObjectUse:
@@ -212,15 +227,20 @@ inline bool isCell(UseKind kind)
     case CellUse:
     case KnownCellUse:
     case ObjectUse:
+    case ArrayUse:
     case FunctionUse:
     case FinalObjectUse:
     case RegExpObjectUse:
+    case ProxyObjectUse:
+    case DerivedArrayUse:
     case StringIdentUse:
     case StringUse:
     case KnownStringUse:
     case SymbolUse:
     case StringObjectUse:
     case StringOrStringObjectUse:
+    case MapObjectUse:
+    case SetObjectUse:
         return true;
     default:
         return false;

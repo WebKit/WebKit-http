@@ -82,9 +82,9 @@ void FetchResponse::setStatus(int status, const String& statusText, ExceptionCod
 
 void FetchResponse::initializeWith(JSC::ExecState& execState, JSC::JSValue body)
 {
-    m_body = FetchBody::extract(execState, body);
-    if (m_headers->fastGet(HTTPHeaderName::ContentType).isEmpty() && !m_body.mimeType().isEmpty())
-        m_headers->fastSet(HTTPHeaderName::ContentType, m_body.mimeType());
+    ASSERT(scriptExecutionContext());
+    m_body = FetchBody::extract(*scriptExecutionContext(), execState, body);
+    m_body.updateContentType(m_headers);
 }
 
 FetchResponse::FetchResponse(ScriptExecutionContext& context, FetchBody&& body, Ref<FetchHeaders>&& headers, ResourceResponse&& response)
@@ -97,7 +97,7 @@ FetchResponse::FetchResponse(ScriptExecutionContext& context, FetchBody&& body, 
 Ref<FetchResponse> FetchResponse::cloneForJS()
 {
     ASSERT(scriptExecutionContext());
-    ASSERT(!isDisturbed());
+    ASSERT(!isDisturbedOrLocked());
     return adoptRef(*new FetchResponse(*scriptExecutionContext(), FetchBody(m_body), FetchHeaders::create(headers()), ResourceResponse(m_response)));
 }
 
@@ -105,11 +105,6 @@ void FetchResponse::fetch(ScriptExecutionContext& context, FetchRequest& request
 {
     auto response = adoptRef(*new FetchResponse(context, FetchBody::loadingBody(), FetchHeaders::create(FetchHeaders::Guard::Immutable), { }));
 
-    // FIXME: Implement form data upload.
-    if (request.bodyType() == FetchBody::Type::FormData) {
-        promise.reject(TypeError, "Uploading FormData is not yet implemented");
-        return;
-    }
     // Setting pending activity until BodyLoader didFail or didSucceed callback is called.
     response->setPendingActivity(response.ptr());
 
@@ -128,13 +123,16 @@ const String& FetchResponse::url() const
 void FetchResponse::BodyLoader::didSucceed()
 {
     ASSERT(m_response.hasPendingActivity());
-#if ENABLE(STREAMS_API)
-    if (m_response.m_readableStreamSource) {
+    m_response.m_body.loadingSucceeded();
+
+#if ENABLE(READABLE_STREAM_API)
+    if (m_response.m_readableStreamSource && m_response.m_body.type() != FetchBody::Type::Loaded) {
+        // We only close the stream if FetchBody already enqueued data.
+        // Otherwise, FetchBody will close the stream when enqueuing data.
         m_response.m_readableStreamSource->close();
         m_response.m_readableStreamSource = nullptr;
     }
 #endif
-    m_response.m_body.loadingSucceeded();
 
     if (m_loader->isStarted())
         m_response.m_bodyLoader = Nullopt;
@@ -147,7 +145,7 @@ void FetchResponse::BodyLoader::didFail()
     if (m_promise)
         std::exchange(m_promise, Nullopt)->reject(TypeError);
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     if (m_response.m_readableStreamSource) {
         if (!m_response.m_readableStreamSource->isCancelling())
             m_response.m_readableStreamSource->error(ASCIILiteral("Loading failed"));
@@ -176,13 +174,14 @@ void FetchResponse::BodyLoader::didReceiveResponse(const ResourceResponse& resou
 
     m_response.m_response = resourceResponse;
     m_response.m_headers->filterAndFill(resourceResponse.httpHeaderFields(), FetchHeaders::Guard::Response);
+    m_response.m_body.setContentType(m_response.m_headers->fastGet(HTTPHeaderName::ContentType));
 
     std::exchange(m_promise, Nullopt)->resolve(m_response);
 }
 
 void FetchResponse::BodyLoader::didReceiveData(const char* data, size_t size)
 {
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     ASSERT(m_response.m_readableStreamSource);
 
     if (!m_response.m_readableStreamSource->enqueue(ArrayBuffer::tryCreate(data, size)))
@@ -207,7 +206,7 @@ void FetchResponse::BodyLoader::stop()
         m_loader->stop();
 }
 
-void FetchResponse::consume(unsigned type, DeferredWrapper&& wrapper)
+void FetchResponse::consume(unsigned type, Ref<DeferredWrapper>&& wrapper)
 {
     ASSERT(type <= static_cast<unsigned>(FetchBodyConsumer::Type::Text));
 
@@ -230,7 +229,7 @@ void FetchResponse::consume(unsigned type, DeferredWrapper&& wrapper)
     }
 }
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 void FetchResponse::startConsumingStream(unsigned type)
 {
     m_isDisturbed = true;
@@ -242,9 +241,9 @@ void FetchResponse::consumeChunk(Ref<JSC::Uint8Array>&& chunk)
     m_consumer.append(chunk->data(), chunk->byteLength());
 }
 
-void FetchResponse::finishConsumingStream(DeferredWrapper&& promise)
+void FetchResponse::finishConsumingStream(Ref<DeferredWrapper>&& promise)
 {
-    m_consumer.resolve(promise);
+    m_consumer.resolve(WTFMove(promise));
 }
 
 void FetchResponse::consumeBodyAsStream()
@@ -271,7 +270,7 @@ void FetchResponse::consumeBodyAsStream()
 ReadableStreamSource* FetchResponse::createReadableStreamSource()
 {
     ASSERT(!m_readableStreamSource);
-    ASSERT(!isDisturbed());
+    ASSERT(!m_isDisturbed);
 
     if (body().isEmpty())
         return nullptr;

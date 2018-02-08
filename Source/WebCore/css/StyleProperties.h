@@ -134,9 +134,9 @@ protected:
     int findPropertyIndex(CSSPropertyID) const;
     int findCustomPropertyIndex(const String& propertyName) const;
     
-    unsigned m_cssParserMode : 2;
+    unsigned m_cssParserMode : 3;
     mutable unsigned m_isMutable : 1;
-    unsigned m_arraySize : 29;
+    unsigned m_arraySize : 28;
     
 private:
     String getShorthandValue(const StylePropertyShorthand&) const;
@@ -154,7 +154,7 @@ private:
     friend class PropertySetCSSStyleDeclaration;
 };
 
-class ImmutableStyleProperties : public StyleProperties {
+class ImmutableStyleProperties final : public StyleProperties {
 public:
     WEBCORE_EXPORT ~ImmutableStyleProperties();
     static Ref<ImmutableStyleProperties> create(const CSSProperty* properties, unsigned count, CSSParserMode);
@@ -184,9 +184,9 @@ inline const StylePropertyMetadata* ImmutableStyleProperties::metadataArray() co
     return reinterpret_cast_ptr<const StylePropertyMetadata*>(&reinterpret_cast_ptr<const char*>(&(this->m_storage))[m_arraySize * sizeof(CSSValue*)]);
 }
 
-class MutableStyleProperties : public StyleProperties {
+class MutableStyleProperties final : public StyleProperties {
 public:
-    WEBCORE_EXPORT static Ref<MutableStyleProperties> create(CSSParserMode = CSSQuirksMode);
+    WEBCORE_EXPORT static Ref<MutableStyleProperties> create(CSSParserMode = HTMLQuirksMode);
     static Ref<MutableStyleProperties> create(const CSSProperty* properties, unsigned count);
 
     WEBCORE_EXPORT ~MutableStyleProperties();

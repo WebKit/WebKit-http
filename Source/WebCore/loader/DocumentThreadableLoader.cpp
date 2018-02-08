@@ -76,9 +76,9 @@ RefPtr<DocumentThreadableLoader> DocumentThreadableLoader::create(Document& docu
     return loader;
 }
 
-RefPtr<DocumentThreadableLoader> DocumentThreadableLoader::create(Document& document, ThreadableLoaderClient& client, ResourceRequest&& request, const ThreadableLoaderOptions& options)
+RefPtr<DocumentThreadableLoader> DocumentThreadableLoader::create(Document& document, ThreadableLoaderClient& client, ResourceRequest&& request, const ThreadableLoaderOptions& options, String&& referrer)
 {
-    return create(document, client, WTFMove(request), options, nullptr, nullptr, String());
+    return create(document, client, WTFMove(request), options, nullptr, nullptr, WTFMove(referrer));
 }
 
 DocumentThreadableLoader::DocumentThreadableLoader(Document& document, ThreadableLoaderClient& client, BlockingBehavior blockingBehavior, ResourceRequest&& request, const ThreadableLoaderOptions& options, RefPtr<SecurityOrigin>&& origin, std::unique_ptr<ContentSecurityPolicy>&& contentSecurityPolicy, String&& referrer)
@@ -92,8 +92,11 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
     , m_async(blockingBehavior == LoadAsynchronously)
     , m_contentSecurityPolicy(WTFMove(contentSecurityPolicy))
 {
-    // Setting an outgoing referer is only supported in the async code path.
-    ASSERT(m_async || request.httpReferrer().isEmpty());
+    // Setting a referrer header is only supported in the async code path.
+    ASSERT(m_async || m_referrer.isEmpty());
+
+    // Referrer and Origin headers should be set after the preflight if any.
+    ASSERT(!request.hasHTTPReferrer() && !request.hasHTTPOrigin());
 
     ASSERT_WITH_SECURITY_IMPLICATION(isAllowedByContentSecurityPolicy(request.url()));
 
@@ -104,6 +107,10 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
     // Copy headers if we need to replay the request after a redirection.
     if (m_async && m_options.mode == FetchOptions::Mode::Cors)
         m_originalHeaders = request.httpHeaderFields();
+
+    // As per step 11 of https://fetch.spec.whatwg.org/#main-fetch, data scheme (if same-origin data-URL flag is set) and about scheme are considered same-origin.
+    if (request.url().protocolIsData())
+        m_sameOriginRequest = options.sameOriginDataURLFlag == SameOriginDataURLFlag::Set;
 
     if (m_sameOriginRequest || m_options.mode == FetchOptions::Mode::NoCors) {
         loadRequest(WTFMove(request), DoSecurityCheck);
@@ -218,7 +225,7 @@ void DocumentThreadableLoader::redirectReceived(CachedResource* resource, Resour
     Ref<DocumentThreadableLoader> protectedThis(*this);
     if (!isAllowedByContentSecurityPolicy(request.url(), !redirectResponse.isNull())) {
         reportContentSecurityPolicyError(*m_client, redirectResponse.url());
-        request = ResourceRequest();
+        clearResource();
         return;
     }
 
@@ -272,19 +279,16 @@ void DocumentThreadableLoader::didReceiveResponse(unsigned long identifier, cons
 {
     ASSERT(m_client);
 
-    String accessControlErrorDescription;
-    if (!m_sameOriginRequest && m_options.mode == FetchOptions::Mode::Cors) {
-        if (!passesAccessControlCheck(response, m_options.allowCredentials, securityOrigin(), accessControlErrorDescription)) {
-            m_client->didFail(ResourceError(errorDomainWebKitInternal, 0, response.url(), accessControlErrorDescription, ResourceError::Type::AccessControl));
-            return;
-        }
-    }
-
     ASSERT(response.type() != ResourceResponse::Type::Error);
-    if (response.type() == ResourceResponse::Type::Default)
+    if (response.type() == ResourceResponse::Type::Default) {
         m_client->didReceiveResponse(identifier, ResourceResponse::filterResponse(response, tainting));
-    else {
-        ASSERT(response.isNull() && response.type() == ResourceResponse::Type::Opaqueredirect);
+        if (tainting == ResourceResponse::Tainting::Opaque && options().opaqueResponse == OpaqueResponseBodyPolicy::DoNotReceive) {
+            clearResource();
+            if (m_client)
+                m_client->didFinishLoading(identifier, 0.0);
+        }
+    } else {
+        ASSERT(response.type() == ResourceResponse::Type::Opaqueredirect);
         m_client->didReceiveResponse(identifier, response);
     }
 }
@@ -359,8 +363,9 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         request.setHTTPReferrer(m_referrer);
 
     if (m_async) {
-        ThreadableLoaderOptions options = m_options;
+        ResourceLoaderOptions options = m_options;
         options.clientCredentialPolicy = m_sameOriginRequest ? ClientCredentialPolicy::MayAskClientForCredentials : ClientCredentialPolicy::CannotAskClientForCredentials;
+        options.contentSecurityPolicyImposition = ContentSecurityPolicyImposition::SkipPolicyCheck;
 
         CachedResourceRequest newRequest(WTFMove(request), options);
         if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
@@ -368,12 +373,14 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         newRequest.mutableResourceRequest().setAllowCookies(m_options.allowCredentials == AllowStoredCredentials);
 
         ASSERT(!m_resource);
-        m_resource = m_document.cachedResourceLoader().requestRawResource(newRequest);
+        // We create an URL here as the request will be moved in requestRawResource
+        URL requestUrl = newRequest.resourceRequest().url();
+        m_resource = m_document.cachedResourceLoader().requestRawResource(WTFMove(newRequest));
         if (m_resource)
             m_resource->addClient(this);
         else {
             // FIXME: Since we receive a synchronous error, this is probably due to some AccessControl checks. We should try to retrieve the actual error.
-            m_client->didFail(ResourceError(String(), 0, newRequest.resourceRequest().url(), String(), ResourceError::Type::AccessControl));
+            m_client->didFail(ResourceError(String(), 0, requestUrl, String(), ResourceError::Type::AccessControl));
         }
         return;
     }
@@ -421,8 +428,19 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
     }
 
     ResourceResponse::Tainting tainting = ResourceResponse::Tainting::Basic;
-    if (!m_sameOriginRequest)
-        tainting = m_options.mode == FetchOptions::Mode::Cors ? ResourceResponse::Tainting::Cors : ResourceResponse::Tainting::Opaque;
+    if (!m_sameOriginRequest) {
+        if (m_options.mode == FetchOptions::Mode::NoCors)
+            tainting = ResourceResponse::Tainting::Opaque;
+        else {
+            ASSERT(m_options.mode == FetchOptions::Mode::Cors);
+            tainting = ResourceResponse::Tainting::Cors;
+            String accessControlErrorDescription;
+            if (!passesAccessControlCheck(response, m_options.allowCredentials, securityOrigin(), accessControlErrorDescription)) {
+                m_client->didFail(ResourceError(errorDomainWebKitInternal, 0, response.url(), accessControlErrorDescription, ResourceError::Type::AccessControl));
+                return;
+            }
+        }
+    }
     didReceiveResponse(identifier, response, tainting);
 
     if (data)

@@ -52,6 +52,7 @@ class FetchHeaders;
 class MediaKeyError;
 class MediaStream;
 class MediaStreamTrack;
+class OverconstrainedError;
 class RTCRtpReceiver;
 class RTCRtpTransceiver;
 class Node;
@@ -151,6 +152,7 @@ private:
 #if ENABLE(MEDIA_STREAM)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<MediaStream>& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<MediaStreamTrack>& result);
+    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<OverconstrainedError>& result);
 #endif
 #if ENABLE(WEB_RTC)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<RTCRtpReceiver>& result);
@@ -201,6 +203,9 @@ inline bool JSDictionary::get(const char* propertyName, JSC::JSValue& finalResul
 template <typename T, typename Result>
 JSDictionary::GetPropertyResult JSDictionary::tryGetPropertyAndResult(const char* propertyName, T* context, void (*setter)(T* context, const Result&)) const
 {
+    JSC::VM& vm = m_exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSC::JSValue value;
     GetPropertyResult getPropertyResult = tryGetProperty(propertyName, value);
     switch (getPropertyResult) {
@@ -210,7 +215,7 @@ JSDictionary::GetPropertyResult JSDictionary::tryGetPropertyAndResult(const char
         Result result;
         convertValue(m_exec, value, result);
 
-        if (m_exec->hadException())
+        if (UNLIKELY(scope.exception()))
             return ExceptionThrown;
 
         setter(context, result);

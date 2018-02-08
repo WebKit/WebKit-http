@@ -77,14 +77,18 @@ public:
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
     void seekToTime(const MediaTime&) override;
 
-    bool attachToElement(HTMLMediaElement*);
-    void close();
+    bool attachToElement(HTMLMediaElement&);
+    void detachFromElement(HTMLMediaElement&);
     void monitorSourceBuffers();
     bool isSeeking() const { return m_pendingSeekTime.isValid(); }
     void completeSeek();
+    Ref<TimeRanges> seekable();
+    void setLiveSeekableRange(double start, double end, ExceptionCode&);
+    void clearLiveSeekableRange(ExceptionCode&);
+
 
     void setDuration(double, ExceptionCode&);
-    void setDurationInternal(const MediaTime&);
+    Optional<ExceptionCode> setDurationInternal(const MediaTime&);
     MediaTime currentTime() const;
     const AtomicString& readyState() const { return m_readyState; }
     void setReadyState(const AtomicString&);
@@ -114,6 +118,8 @@ public:
     // ActiveDOMObject API.
     bool hasPendingActivity() const override;
 
+    static const MediaTime& currentTimeFudgeFactor();
+
 protected:
     explicit MediaSource(ScriptExecutionContext&);
 
@@ -129,6 +135,10 @@ protected:
     void scheduleEvent(const AtomicString& eventName);
     GenericEventQueue& asyncEventQueue() { return m_asyncEventQueue; }
 
+    bool hasBufferedTime(const MediaTime&);
+    bool hasCurrentTime();
+    bool hasFutureTime();
+
     void regenerateActiveSourceBuffers();
 
     static URLRegistry* s_registry;
@@ -137,6 +147,7 @@ protected:
     RefPtr<SourceBufferList> m_sourceBuffers;
     RefPtr<SourceBufferList> m_activeSourceBuffers;
     mutable std::unique_ptr<PlatformTimeRanges> m_buffered;
+    std::unique_ptr<PlatformTimeRanges> m_liveSeekable;
     HTMLMediaElement* m_mediaElement;
     MediaTime m_duration;
     MediaTime m_pendingSeekTime;

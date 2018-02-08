@@ -1197,12 +1197,19 @@ namespace WTF {
 
         Value* newEntry = nullptr;
         for (unsigned i = 0; i != oldTableSize; ++i) {
-            if (isEmptyOrDeletedBucket(oldTable[i])) {
+            if (isDeletedBucket(oldTable[i])) {
                 ASSERT(std::addressof(oldTable[i]) != entry);
                 continue;
             }
 
+            if (isEmptyBucket(oldTable[i])) {
+                ASSERT(std::addressof(oldTable[i]) != entry);
+                oldTable[i].~ValueType();
+                continue;
+            }
+
             Value* reinsertedEntry = reinsert(WTFMove(oldTable[i]));
+            oldTable[i].~ValueType();
             if (std::addressof(oldTable[i]) == entry) {
                 ASSERT(!newEntry);
                 newEntry = reinsertedEntry;
@@ -1211,7 +1218,7 @@ namespace WTF {
 
         m_deletedCount = 0;
 
-        deallocateTable(oldTable, oldTableSize);
+        fastFree(oldTable);
 
         internalCheckTableConsistency();
         return newEntry;

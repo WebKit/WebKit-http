@@ -48,11 +48,13 @@
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FFTFrame.h"
+#include "Frame.h"
 #include "GainNode.h"
 #include "GenericEventQueue.h"
 #include "HRTFDatabaseLoader.h"
 #include "HRTFPanner.h"
 #include "JSDOMPromise.h"
+#include "NetworkingContext.h"
 #include "OfflineAudioCompletionEvent.h"
 #include "OfflineAudioDestinationNode.h"
 #include "OscillatorNode.h"
@@ -114,10 +116,8 @@ bool AudioContext::isSampleRateRangeGood(float sampleRate)
 const unsigned MaxHardwareContexts = 4;
 unsigned AudioContext::s_hardwareContextCount = 0;
     
-RefPtr<AudioContext> AudioContext::create(Document& document, ExceptionCode& ec)
+RefPtr<AudioContext> AudioContext::create(Document& document)
 {
-    UNUSED_PARAM(ec);
-
     ASSERT(isMainThread());
     if (s_hardwareContextCount >= MaxHardwareContexts)
         return nullptr;
@@ -353,6 +353,16 @@ Document* AudioContext::document() const
 const Document* AudioContext::hostingDocument() const
 {
     return downcast<Document>(m_scriptExecutionContext);
+}
+
+String AudioContext::sourceApplicationIdentifier() const
+{
+    Document* document = this->document();
+    if (Frame* frame = document ? document->frame() : nullptr) {
+        if (NetworkingContext* networkingContext = frame->loader().networkingContext())
+            return networkingContext->sourceApplicationIdentifier();
+    }
+    return emptyString();
 }
 
 RefPtr<AudioBuffer> AudioContext::createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate, ExceptionCode& ec)

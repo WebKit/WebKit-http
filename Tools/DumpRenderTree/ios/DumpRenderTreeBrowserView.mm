@@ -23,14 +23,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#import "config.h"
 #import "DumpRenderTreeBrowserView.h"
 
 #if PLATFORM(IOS)
 
+#import <WebCore/WebCoreThreadRun.h>
+#import <WebKit/WebCoreThread.h>
 #import <WebKit/WebView.h>
 
 @interface UIWebBrowserView (WebUIKitDelegate)
 - (BOOL)webView:(WebView *)webView shouldScrollToPoint:(CGPoint)point forFrame:(WebFrame *)frame;
+@end
+
+@interface UIWebBrowserView (UIKitInternals)
+- (CGRect)_documentViewVisibleRect;
 @end
 
 @implementation DumpRenderTreeBrowserView
@@ -69,6 +76,90 @@
     // Forward this to DRT UIDelegate since iOS WebKit by default sends this message to UIKitDelegate.
     id uiDelegate = [[self webView] UIDelegate];
     [uiDelegate webView:sender addMessageToConsole:dictionary withSource:source];
+}
+
+@end
+
+@implementation DumpRenderTreeBrowserView (DRTTesting)
+
+- (CGRect)documentVisibleRect
+{
+    return [self _documentViewVisibleRect];
+}
+
+@end
+
+@interface DumpRenderTreeWebScrollViewDelegate : NSObject <UIScrollViewDelegate> {
+    DumpRenderTreeWebScrollView *_scrollView;
+}
+- (instancetype)initWithScrollView:(DumpRenderTreeWebScrollView *)scrollView;
+@end
+
+
+@implementation DumpRenderTreeWebScrollView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self)
+        return nil;
+    
+    self.scrollViewDelegate = [[[DumpRenderTreeWebScrollViewDelegate alloc] initWithScrollView:self] autorelease];
+    self.delegate = self.scrollViewDelegate;
+
+    return self;
+}
+
+- (void)dealloc
+{
+    self.scrollViewDelegate = nil;
+    [super dealloc];
+}
+
+- (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler
+{
+    ASSERT(!self.zoomToScaleCompletionHandler);
+    self.zoomToScaleCompletionHandler = completionHandler;
+
+    [self setZoomScale:scale animated:animated];
+}
+
+- (void)completedZoomToScale
+{
+    if (self.zoomToScaleCompletionHandler) {
+        auto completionHandlerCopy = Block_copy(self.zoomToScaleCompletionHandler);
+
+        WebThreadRun(^{
+            completionHandlerCopy();
+            Block_release(completionHandlerCopy);
+        });
+        self.zoomToScaleCompletionHandler = nullptr;
+    }
+}
+
+@end
+
+@implementation DumpRenderTreeWebScrollViewDelegate
+
+- (instancetype)initWithScrollView:(DumpRenderTreeWebScrollView *)scrollView
+{
+    self = [super init];
+    if (!self)
+        return nil;
+    
+    _scrollView = scrollView;
+    return self;
+}
+
+- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView
+{
+    return [scrollView.subviews firstObject];
+}
+
+// UIScrollView delegate methods.
+- (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
+{
+    [_scrollView completedZoomToScale];
 }
 
 @end

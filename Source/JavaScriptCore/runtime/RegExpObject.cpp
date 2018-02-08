@@ -22,7 +22,6 @@
 #include "RegExpObject.h"
 
 #include "ButterflyInlines.h"
-#include "CopiedSpaceInlines.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
 #include "JSArray.h"
@@ -171,6 +170,8 @@ MatchResult RegExpObject::match(ExecState* exec, JSGlobalObject* globalObject, J
 template<typename FixEndFunc>
 JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& s, RegExpConstructor* constructor, RegExp* regExp, const FixEndFunc& fixEnd)
 {
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     MatchResult result = constructor->performMatch(vm, regExp, string, s, 0);
     if (!result)
         return jsNull();
@@ -178,7 +179,7 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
     static unsigned maxSizeForDirectPath = 100000;
     
     JSArray* array = constructEmptyArray(exec, nullptr);
-    if (UNLIKELY(vm.exception()))
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
 
     auto iterate = [&] () {
@@ -197,7 +198,7 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
             MatchResult savedResult = result;
             do {
                 if (array->length() + matchCount >= MAX_STORAGE_VECTOR_LENGTH) {
-                    throwOutOfMemoryError(exec);
+                    throwOutOfMemoryError(exec, scope);
                     return jsUndefined();
                 }
                 
@@ -231,14 +232,14 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
 
 JSValue RegExpObject::matchGlobal(ExecState* exec, JSGlobalObject* globalObject, JSString* string)
 {
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     RegExp* regExp = this->regExp();
 
     ASSERT(regExp->global());
 
-    VM* vm = &globalObject->vm();
-
     setLastIndex(exec, 0);
-    if (exec->hadException())
+    if (UNLIKELY(scope.exception()))
         return jsUndefined();
 
     String s = string->value(exec);
@@ -247,14 +248,14 @@ JSValue RegExpObject::matchGlobal(ExecState* exec, JSGlobalObject* globalObject,
     if (regExp->unicode()) {
         unsigned stringLength = s.length();
         return collectMatches(
-            *vm, exec, string, s, regExpConstructor, regExp,
+            vm, exec, string, s, regExpConstructor, regExp,
             [&] (size_t end) -> size_t {
                 return advanceStringUnicode(s, stringLength, end);
             });
     }
     
     return collectMatches(
-        *vm, exec, string, s, regExpConstructor, regExp,
+        vm, exec, string, s, regExpConstructor, regExp,
         [&] (size_t end) -> size_t {
             return end + 1;
         });

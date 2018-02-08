@@ -121,9 +121,6 @@ public:
         DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC = 0x20,
     };
 
-    // Only used by ObjC / GObject bindings.
-    WEBCORE_EXPORT static bool isSupportedForBindings(const String& feature, const String& version);
-
     WEBCORE_EXPORT static void startIgnoringLeaks();
     WEBCORE_EXPORT static void stopIgnoringLeaks();
 
@@ -262,12 +259,10 @@ public:
     HTMLSlotElement* assignedSlotForBindings() const;
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    bool isCustomElement() const { return getFlag(IsCustomElement); }
-    void setIsCustomElement() { setFlag(IsCustomElement); }
-
-    bool isUnresolvedCustomElement() const { return isElementNode() && getFlag(IsEditingTextOrUnresolvedCustomElementFlag); }
-    void setIsUnresolvedCustomElement() { setFlag(IsEditingTextOrUnresolvedCustomElementFlag); }
-    void setCustomElementIsResolved();
+    bool isUndefinedCustomElement() const { return isElementNode() && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
+    bool isCustomElementUpgradeCandidate() const { return getFlag(IsCustomElement) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
+    bool isDefinedCustomElement() const { return getFlag(IsCustomElement) && !getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
+    bool isFailedCustomElement() const { return isElementNode() && !getFlag(IsCustomElement) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
 #endif
 
     // Returns null, a child of ShadowRoot, or a legacy shadow root.
@@ -322,7 +317,7 @@ public:
     StyleChangeType styleChangeType() const { return static_cast<StyleChangeType>(m_nodeFlags & StyleChangeMask); }
     bool childNeedsStyleRecalc() const { return getFlag(ChildNeedsStyleRecalcFlag); }
     bool styleIsAffectedByPreviousSibling() const { return getFlag(StyleIsAffectedByPreviousSibling); }
-    bool isEditingText() const { return getFlag(IsTextFlag) && getFlag(IsEditingTextOrUnresolvedCustomElementFlag); }
+    bool isEditingText() const { return getFlag(IsTextFlag) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
 
     void setChildNeedsStyleRecalc() { setFlag(ChildNeedsStyleRecalcFlag); }
     void clearChildNeedsStyleRecalc() { m_nodeFlags &= ~(ChildNeedsStyleRecalcFlag | DirectChildNeedsStyleRecalcFlag); }
@@ -509,7 +504,7 @@ public:
     virtual void handleLocalEvents(Event&);
 
     void dispatchSubtreeModifiedEvent();
-    bool dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent);
+    bool dispatchDOMActivateEvent(int detail, Event& underlyingEvent);
 
 #if ENABLE(TOUCH_EVENTS)
     virtual bool allowsDoubleTapGesture() const { return true; }
@@ -527,7 +522,7 @@ public:
     virtual void dispatchInputEvent();
 
     // Perform the default action for an event.
-    virtual void defaultEventHandler(Event*);
+    virtual void defaultEventHandler(Event&);
 
     void ref();
     void deref();
@@ -595,7 +590,7 @@ protected:
         IsParsingChildrenFinishedFlag = 1 << 13, // Element
 
         StyleChangeMask = 1 << nodeStyleChangeShift | 1 << (nodeStyleChangeShift + 1) | 1 << (nodeStyleChangeShift + 2),
-        IsEditingTextOrUnresolvedCustomElementFlag = 1 << 17,
+        IsEditingTextOrUndefinedCustomElementFlag = 1 << 17,
         HasFocusWithin = 1 << 18,
         HasSyntheticAttrChildNodesFlag = 1 << 19,
         HasCustomStyleResolveCallbacksFlag = 1 << 20,
@@ -634,7 +629,7 @@ protected:
         CreateHTMLElement = CreateStyledElement | IsHTMLFlag,
         CreateSVGElement = CreateStyledElement | IsSVGFlag | HasCustomStyleResolveCallbacksFlag,
         CreateDocument = CreateContainer | InDocumentFlag,
-        CreateEditingText = CreateText | IsEditingTextOrUnresolvedCustomElementFlag,
+        CreateEditingText = CreateText | IsEditingTextOrUndefinedCustomElementFlag,
         CreateMathMLElement = CreateStyledElement | IsMathMLFlag
     };
     Node(Document&, ConstructionType);
@@ -768,16 +763,6 @@ inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
     ASSERT(!isShadowRoot());
     return parentNode();
 }
-
-#if ENABLE(CUSTOM_ELEMENTS)
-
-inline void Node::setCustomElementIsResolved()
-{
-    clearFlag(IsEditingTextOrUnresolvedCustomElementFlag);
-    setFlag(IsCustomElement);
-}
-
-#endif
 
 } // namespace WebCore
 

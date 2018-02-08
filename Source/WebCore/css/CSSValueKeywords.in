@@ -806,6 +806,9 @@ rating-level-indicator
 #if defined(ENABLE_SERVICE_CONTROLS) && ENABLE_SERVICE_CONTROLS
 image-controls-button
 #endif
+#if defined(ENABLE_APPLE_PAY) && ENABLE_APPLE_PAY
+-apple-pay-button
+#endif
 textarea
 #if defined(ENABLE_ATTACHMENT_ELEMENT) && ENABLE_ATTACHMENT_ELEMENT
 attachment
@@ -831,6 +834,12 @@ content
 content-box
 padding
 padding-box
+
+//
+// Variables Implementation
+//
+var
+-internal-variable-value
 
 //
 // CSS_PROP_BREAK_BEFORE/AFTER/INSIDE
@@ -1140,6 +1149,88 @@ isolate
 // none
 scale-down
 
+// background-image, etc.
+linear-gradient
+radial-gradient
+repeating-linear-gradient
+repeating-radial-gradient
+paint
+-webkit-cross-fade
+-webkit-gradient
+-webkit-linear-gradient
+-webkit-radial-gradient
+-webkit-repeating-linear-gradient
+-webkit-repeating-radial-gradient
+-webkit-image-set
+
+// deprecated gradients
+from
+to
+color-stop
+radial
+
+// content
+attr
+counter
+counters
+
+// clip
+rect
+
+// shapes
+polygon
+
+// @font-face src
+format
+
+// (-webkit-)filter
+// invert
+grayscale
+sepia
+saturate
+hue-rotate
+opacity
+brightness
+contrast
+blur
+drop-shadow
+url
+
+// colors
+rgb
+rgba
+hsl
+hsla
+
+// transform
+matrix
+matrix3d
+perspective
+rotate
+rotateX
+rotateY
+rotateZ
+rotate3d
+scale
+scaleX
+scaleY
+scaleZ
+scale3d
+skew
+skewX
+skewY
+translate
+translateX
+translateY
+translateZ
+translate3d
+
+// motion path
+path
+
+calc
+-webkit-calc
+
 #if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
 from-image
 snap
@@ -1159,6 +1250,7 @@ markers
 span
 
 // grid-auto-flow
+auto-flow
 dense
 
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
@@ -1177,6 +1269,16 @@ from-intrinsic
 #if defined(ENABLE_CSS_TRAILING_WORD) && ENABLE_CSS_TRAILING_WORD
 // -apple-trailing-word
 -webkit-partially-balanced
+#endif
+
+#if defined(ENABLE_APPLE_PAY) && ENABLE_APPLE_PAY
+// -apple-pay-button-style
+white-outline
+
+// -apple-pay-button-type
+plain
+buy
+set-up
 #endif
 
 // font-synthesis

@@ -38,8 +38,7 @@
 #include "ActiveDOMObject.h"
 #include "Dictionary.h"
 #include "EventTarget.h"
-// FIXME: Workaround for bindings bug http://webkit.org/b/150121
-#include "JSMediaStream.h"
+#include "MediaStream.h"
 #include "PeerConnectionBackend.h"
 #include "RTCRtpTransceiver.h"
 #include "ScriptWrappable.h"
@@ -48,7 +47,6 @@
 
 namespace WebCore {
 
-class MediaStream;
 class MediaStreamTrack;
 class PeerConnectionBackend;
 class RTCConfiguration;
@@ -72,7 +70,7 @@ public:
     // Part of legacy MediaStream-based API (mostly implemented as JS built-ins)
     Vector<RefPtr<MediaStream>> getRemoteStreams() const { return m_backend->getRemoteStreams(); }
 
-    RefPtr<RTCRtpSender> addTrack(Ref<MediaStreamTrack>&&, const Vector<MediaStream*>&, ExceptionCode&);
+    RefPtr<RTCRtpSender> addTrack(Ref<MediaStreamTrack>&&, const Vector<std::reference_wrapper<MediaStream>>&, ExceptionCode&);
     void removeTrack(RTCRtpSender&, ExceptionCode&);
 
     // This enum is mirrored in RTCRtpTransceiver.h

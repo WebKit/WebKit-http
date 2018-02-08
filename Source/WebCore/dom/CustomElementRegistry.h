@@ -29,42 +29,58 @@
 
 #include "QualifiedName.h"
 #include <wtf/HashMap.h>
+#include <wtf/TemporaryChange.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
 namespace JSC {
 
 class JSObject;
+class JSValue;
     
 }
 
 namespace WebCore {
 
+class CustomElementRegistry;
+class DOMWindow;
+class DeferredWrapper;
 class Element;
 class JSCustomElementInterface;
 class QualifiedName;
 
 class CustomElementRegistry : public RefCounted<CustomElementRegistry> {
 public:
-    static Ref<CustomElementRegistry> create();
+    static Ref<CustomElementRegistry> create(DOMWindow&);
     ~CustomElementRegistry();
 
     void addElementDefinition(Ref<JSCustomElementInterface>&&);
-    void addUpgradeCandidate(Element&);
 
+    bool& elementDefinitionIsRunning() { return m_elementDefinitionIsRunning; }
+
+    JSCustomElementInterface* findInterface(const Element&) const;
     JSCustomElementInterface* findInterface(const QualifiedName&) const;
     JSCustomElementInterface* findInterface(const AtomicString&) const;
     JSCustomElementInterface* findInterface(const JSC::JSObject*) const;
     bool containsConstructor(const JSC::JSObject*) const;
 
-private:
-    CustomElementRegistry();
+    JSC::JSValue get(const AtomicString&);
 
-    HashMap<AtomicString, Vector<RefPtr<Element>>> m_upgradeCandidatesMap;
+    HashMap<AtomicString, Ref<DeferredWrapper>>& promiseMap() { return m_promiseMap; }
+
+private:
+    CustomElementRegistry(DOMWindow&);
+
+    DOMWindow& m_window;
     HashMap<AtomicString, Ref<JSCustomElementInterface>> m_nameMap;
     HashMap<const JSC::JSObject*, JSCustomElementInterface*> m_constructorMap;
+    HashMap<AtomicString, Ref<DeferredWrapper>> m_promiseMap;
+
+    bool m_elementDefinitionIsRunning { false };
+
+    friend class ElementDefinitionIsRunningTemporaryChange;
 };
-    
+
 }
 
 #endif

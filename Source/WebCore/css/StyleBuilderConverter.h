@@ -46,6 +46,7 @@
 #include "LengthRepeat.h"
 #include "Pair.h"
 #include "QuotesData.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGURIReference.h"
 #include "Settings.h"
 #include "StyleResolver.h"
@@ -317,7 +318,7 @@ inline Length StyleBuilderConverter::convertTo100PercentMinusLength(const Length
     auto lhs = std::make_unique<CalcExpressionLength>(Length(100, Percent));
     auto rhs = std::make_unique<CalcExpressionLength>(length);
     auto op = std::make_unique<CalcExpressionBinaryOperation>(WTFMove(lhs), WTFMove(rhs), CalcSubtract);
-    return Length(CalculationValue::create(WTFMove(op), CalculationRangeAll));
+    return Length(CalculationValue::create(WTFMove(op), ValueRangeAll));
 }
 
 inline Length StyleBuilderConverter::convertPositionComponent(StyleResolver& styleResolver, const CSSPrimitiveValue& value)
@@ -408,7 +409,7 @@ inline NinePieceImage StyleBuilderConverter::convertBorderMask(StyleResolver& st
 template <CSSPropertyID property>
 inline PassRefPtr<StyleImage> StyleBuilderConverter::convertStyleImage(StyleResolver& styleResolver, CSSValue& value)
 {
-    return styleResolver.styleImage(property, value);
+    return styleResolver.styleImage(value);
 }
 
 inline TransformOperations StyleBuilderConverter::convertTransform(StyleResolver& styleResolver, CSSValue& value)
@@ -741,7 +742,7 @@ inline PassRefPtr<ShapeValue> StyleBuilderConverter::convertShapeValue(StyleReso
     }
 
     if (isImageShape(value))
-        return ShapeValue::createImageValue(styleResolver.styleImage(CSSPropertyWebkitShapeOutside, value));
+        return ShapeValue::createImageValue(styleResolver.styleImage(value));
 
     RefPtr<BasicShape> shape;
     CSSBoxType referenceBox = BoxMissing;
@@ -842,9 +843,13 @@ inline GridTrackSize StyleBuilderConverter::createGridTrackSize(CSSValue& value,
     if (is<CSSPrimitiveValue>(value))
         return GridTrackSize(createGridTrackBreadth(downcast<CSSPrimitiveValue>(value), styleResolver));
 
+    ASSERT(is<CSSFunctionValue>(value));
     CSSValueList& arguments = *downcast<CSSFunctionValue>(value).arguments();
-    ASSERT_WITH_SECURITY_IMPLICATION(arguments.length() == 2);
 
+    if (arguments.length() == 1)
+        return GridTrackSize(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(0)), styleResolver), FitContentTrackSizing);
+
+    ASSERT_WITH_SECURITY_IMPLICATION(arguments.length() == 2);
     GridLength minTrackBreadth(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(0)), styleResolver));
     GridLength maxTrackBreadth(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(1)), styleResolver));
     return GridTrackSize(minTrackBreadth, maxTrackBreadth);
@@ -1253,13 +1258,33 @@ inline StyleSelfAlignmentData StyleBuilderConverter::convertSelfOrDefaultAlignme
 inline StyleContentAlignmentData StyleBuilderConverter::convertContentAlignmentData(StyleResolver&, CSSValue& value)
 {
     StyleContentAlignmentData alignmentData = RenderStyle::initialContentAlignment();
-    auto& contentValue = downcast<CSSContentDistributionValue>(value);
-    if (contentValue.distribution()->getValueID() != CSSValueInvalid)
-        alignmentData.setDistribution(contentValue.distribution().get());
-    if (contentValue.position()->getValueID() != CSSValueInvalid)
-        alignmentData.setPosition(contentValue.position().get());
-    if (contentValue.overflow()->getValueID() != CSSValueInvalid)
-        alignmentData.setOverflow(contentValue.overflow().get());
+#if ENABLE(CSS_GRID_LAYOUT)
+    if (RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled()) {
+        auto& contentValue = downcast<CSSContentDistributionValue>(value);
+        if (contentValue.distribution()->getValueID() != CSSValueInvalid)
+            alignmentData.setDistribution(contentValue.distribution().get());
+        if (contentValue.position()->getValueID() != CSSValueInvalid)
+            alignmentData.setPosition(contentValue.position().get());
+        if (contentValue.overflow()->getValueID() != CSSValueInvalid)
+            alignmentData.setOverflow(contentValue.overflow().get());
+        return alignmentData;
+    }
+#endif
+    auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    switch (primitiveValue.getValueID()) {
+    case CSSValueStretch:
+    case CSSValueSpaceBetween:
+    case CSSValueSpaceAround:
+        alignmentData.setDistribution(primitiveValue);
+        break;
+    case CSSValueFlexStart:
+    case CSSValueFlexEnd:
+    case CSSValueCenter:
+        alignmentData.setPosition(primitiveValue);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
     return alignmentData;
 }
 

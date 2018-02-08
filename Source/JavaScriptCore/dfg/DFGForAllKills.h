@@ -76,11 +76,10 @@ void forAllKilledOperands(Graph& graph, Node* nodeBefore, Node* nodeAfter, const
         const FastBitVector& liveBefore = fullLiveness.getLiveness(before.bytecodeIndex);
         const FastBitVector& liveAfter = fullLiveness.getLiveness(after.bytecodeIndex);
         
-        for (unsigned relativeLocal = codeBlock->m_numCalleeLocals; relativeLocal--;) {
-            if (liveBefore.get(relativeLocal) && !liveAfter.get(relativeLocal))
+        (liveBefore & ~liveAfter).forEachSetBit(
+            [&] (size_t relativeLocal) {
                 functor(virtualRegisterForLocal(relativeLocal) + stackOffset);
-        }
-        
+            });
         return;
     }
     

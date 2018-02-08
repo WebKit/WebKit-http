@@ -32,11 +32,14 @@ namespace JSC {
 
 class VM;
 struct ProtoCallFrame;
+typedef int64_t EncodedJSValue;
 
 extern "C" {
     EncodedJSValue vmEntryToJavaScript(void*, VM*, ProtoCallFrame*);
     EncodedJSValue vmEntryToNative(void*, VM*, ProtoCallFrame*);
 }
+
+EncodedJSValue JS_EXPORT_PRIVATE vmEntryToWASM(void*, VM*, ProtoCallFrame*);
 
 namespace LLInt {
 

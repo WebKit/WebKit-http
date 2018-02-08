@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(STREAMS_API)
+// @conditional=ENABLE(READABLE_STREAM_API)
 
 function initializeReadableStream(underlyingSource, strategy)
 {
@@ -41,27 +41,25 @@ function initializeReadableStream(underlyingSource, strategy)
     if (strategy !== @undefined && !@isObject(strategy))
         throw new @TypeError("ReadableStream constructor takes an object as second argument, if any");
 
-    this.@underlyingSource = underlyingSource;
-
-    this.@queue = @newQueue();
     this.@state = @streamReadable;
-    this.@started = false;
-    this.@closeRequested = false;
-    this.@pullAgain = false;
-    this.@pulling = false;
     this.@reader = @undefined;
     this.@storedError = @undefined;
     this.@disturbed = false;
-    this.@controller = new @ReadableStreamDefaultController(this);
-    this.@strategy = @validateAndNormalizeQueuingStrategy(strategy.size, strategy.highWaterMark);
+    // Initialized with null value to enable distinction with undefined case.
+    this.@readableStreamController = null;
 
-    @promiseInvokeOrNoopNoCatch(underlyingSource, "start", [this.@controller]).@then(() => {
-        this.@started = true;
-        @requestReadableStreamPull(this);
-    }, (error) => {
-        if (this.@state === @streamReadable)
-            @errorReadableStream(this, error);
-    });
+    const type = underlyingSource.type;
+    const typeString = @String(type);
+
+    if (typeString === "bytes") {
+         // FIXME: Implement support of ReadableByteStreamController.
+        throw new @TypeError("ReadableByteStreamController is not implemented");
+    } else if (type === @undefined) {
+        if (strategy.highWaterMark === @undefined)
+            strategy.highWaterMark = 1;
+        this.@readableStreamController = new @ReadableStreamDefaultController(this, underlyingSource, strategy.size, strategy.highWaterMark);
+    } else
+        throw new @RangeError("Invalid type for underlying source");
 
     return this;
 }
@@ -79,14 +77,25 @@ function cancel(reason)
     return @cancelReadableStream(this, reason);
 }
 
-function getReader()
+function getReader(options)
 {
     "use strict";
 
     if (!@isReadableStream(this))
         throw @makeThisTypeError("ReadableStream", "getReader");
 
-    return new @ReadableStreamDefaultReader(this);
+    if (options === @undefined)
+         options = { };
+
+    if (options.mode === 'byob') {
+        // FIXME: Update once ReadableByteStreamContoller and ReadableStreamBYOBReader are implemented.
+        throw new @TypeError("ReadableStreamBYOBReader is not implemented");
+    }
+
+    if (options.mode === @undefined)
+        return new @ReadableStreamDefaultReader(this);
+
+    throw new @RangeError("Invalid mode is specified");
 }
 
 function pipeThrough(streams, options)

@@ -1684,14 +1684,15 @@ void Internals::setAutomaticSpellingCorrectionEnabled(bool enabled, ExceptionCod
 #endif
 }
 
-void Internals::handleAcceptedCandidate(const String& candidate, ExceptionCode&)
+void Internals::handleAcceptedCandidate(const String& candidate, unsigned location, unsigned length, ExceptionCode&)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
 
     TextCheckingResult result;
     result.type = TextCheckingTypeNone;
-    result.length = candidate.length();
+    result.location = location;
+    result.length = length;
     result.replacement = candidate;
     contextDocument()->frame()->editor().handleAcceptedCandidate(result);
 }
@@ -3255,7 +3256,7 @@ void Internals::setShowAllPlugins(bool show)
     page->setShowAllPlugins(show);
 }
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
 bool Internals::isReadableStreamDisturbed(JSC::ExecState& state, JSValue stream)
 {

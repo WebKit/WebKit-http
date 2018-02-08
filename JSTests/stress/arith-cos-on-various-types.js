@@ -1,3 +1,4 @@
+//@ defaultNoEagerRun
 "use strict";
 
 let cosOfFour = Math.cos(4);
@@ -32,6 +33,26 @@ function isIdentical(result, expected)
     }
     return result !== result;
 }
+
+
+// Test Math.cos() without arguments.
+function opaqueCosNoArgument() {
+    return Math.cos();
+}
+noInline(opaqueCosNoArgument);
+noOSRExitFuzzing(opaqueCosNoArgument);
+
+function testNoArgument() {
+    for (let i = 0; i < 1e4; ++i) {
+        let output = opaqueCosNoArgument();
+        if (output === output) {
+            throw "Failed opaqueCosNoArgument";
+        }
+    }
+    if (numberOfDFGCompiles(opaqueCosNoArgument) > 1)
+        throw "The call without arguments should never exit.";
+}
+testNoArgument();
 
 
 // Test Math.cos() with a very polymorphic input. All test cases are seen at each iteration.
@@ -78,6 +99,29 @@ function testSingleTypeCall() {
 testSingleTypeCall();
 
 
+// Test Math.cos() on constants
+function testConstant() {
+    for (let testCaseInput of validInputTestCases) {
+        eval(`
+            function opaqueCosOnConstant() {
+                return Math.cos(${testCaseInput[0]});
+            }
+            noInline(opaqueCosOnConstant);
+            noOSRExitFuzzing(opaqueCosOnConstant);
+
+            for (let i = 0; i < 1e4; ++i) {
+                if (!isIdentical(opaqueCosOnConstant(), ${testCaseInput[1]})) {
+                    throw "Failed testConstant()";
+                }
+            }
+            if (numberOfDFGCompiles(opaqueCosOnConstant) > 1)
+                throw "We should have compiled a single cos for the expected type.";
+        `);
+    }
+}
+testConstant();
+
+
 // Verify we call valueOf() exactly once per call.
 function opaqueCosForSideEffects(argument) {
     return Math.cos(argument);
@@ -103,7 +147,7 @@ function testSideEffect() {
 testSideEffect();
 
 
-// Verify SQRT is not subject to CSE if the argument has side effects.
+// Verify cos() is not subject to CSE if the argument has side effects.
 function opaqueCosForCSE(argument) {
     return Math.cos(argument) + Math.cos(argument) + Math.cos(argument);
 }
@@ -127,6 +171,29 @@ function testCSE() {
         throw "opaqueCosForCSE() is predictable, it should only be compiled once.";
 }
 testCSE();
+
+
+// Verify cos() is not subject to DCE if the argument has side effects.
+function opaqueCosForDCE(argument) {
+    Math.cos(argument);
+}
+noInline(opaqueCosForDCE);
+noOSRExitFuzzing(opaqueCosForDCE);
+
+function testDCE() {
+    let testObject = {
+        counter: 0,
+        valueOf: function() { ++this.counter; return 16; }
+    };
+    for (let i = 0; i < 1e4; ++i) {
+        opaqueCosForDCE(testObject);
+    }
+    if (testObject.counter !== 1e4)
+        throw "Failed testDCE()";
+    if (numberOfDFGCompiles(opaqueCosForDCE) > 1)
+        throw "opaqueCosForDCE() is predictable, it should only be compiled once.";
+}
+testDCE();
 
 
 // Test exceptions in the argument.

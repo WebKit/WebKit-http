@@ -193,8 +193,6 @@ namespace WebCore {
         int screenTop() const { return screenY(); }
         int scrollX() const;
         int scrollY() const;
-        int pageXOffset() const { return scrollX(); }
-        int pageYOffset() const { return scrollY(); }
 
         bool closed() const;
 
@@ -229,6 +227,7 @@ namespace WebCore {
         // DOM Level 2 Style Interface
 
         WEBCORE_EXPORT RefPtr<CSSStyleDeclaration> getComputedStyle(Element&, const String& pseudoElt) const;
+        RefPtr<CSSStyleDeclaration> getComputedStyle(Document&, const String& pseudoElt, ExceptionCode&);
 
         // WebKit extensions
 

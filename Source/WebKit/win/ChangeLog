@@ -1,3 +1,86 @@
+2016-09-15  Brady Eidson  <beidson@apple.com>
+
+        WKWebView.hasOnlySecureContent always returns "YES" after going back to a CachedPage (even if it has http resources).
+        <rdar://problem/27681261> and https://bugs.webkit.org/show_bug.cgi?id=162043
+
+        Reviewed by Brent Fulgham. 
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidCommitLoad):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2016-09-07  Mark Lam  <mark.lam@apple.com>
+
+        Add CatchScope and force all exception checks to be via ThrowScope or CatchScope.
+        https://bugs.webkit.org/show_bug.cgi?id=161498
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/PluginPackage.cpp:
+        (WebCore::NPN_Evaluate):
+        (WebCore::NPN_Invoke):
+
+2016-09-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Null pointer crash under WebView::scrollOffset.
+        https://bugs.webkit.org/show_bug.cgi?id=161620
+
+        Reviewed by Darin Adler.
+
+        Added null pointer checks.
+
+        * WebView.cpp:
+        (WebView::scrollOffset):
+        (WebView::scrollBy):
+        (WebView::visibleContentRect):
+
+2016-09-03  Darin Adler  <darin@apple.com>
+
+        Streamline DOMImplementation, and move it to our new DOM exception system
+        https://bugs.webkit.org/show_bug.cgi?id=161295
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebFrame.cpp:
+        (WebFrame::canProvideDocumentSource): Updated to use isXMLMIMEType in its new
+        location in MIMETypeRegistry instead of in DOMImplementation.
+
+2016-09-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix attempt after r205381.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2016-08-31  Keith Rollin  <krollin@apple.com>
+
+        WebKit should set a subsystem for os_log so it's easier to filter for WebKit log messages
+        https://bugs.webkit.org/show_bug.cgi?id=160969
+        <rdar://problem/26068734>
+
+        Reviewed by Simon Fraser.
+
+        Enable subsystem- and channel-related data and functions when using
+        RELEASE_LOG macros. Use the DECLARE_LOG_CHANNEL, DEFINE_LOG_CHANNEL,
+        and LOG_CHANNEL_ADDRESS macros that are now defined in WTF.
+
+        * WebKitLogging.cpp:
+        * WebKitLogging.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-08-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Accelerated compositing does not work in Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=115803
+
+        Reviewed by Michael Catanzaro.
+
+        Update to the new GLContext API.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::initialize):
+        (AcceleratedCompositingContext::acceleratedCompositingAvailable):
+
 2016-08-21  Alex Christensen  <achristensen@webkit.org>
 
         Use Document& instead of Document* when getting cookies

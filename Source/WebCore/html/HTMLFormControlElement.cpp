@@ -146,10 +146,12 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
     if (name == formAttr)
         formAttributeChanged();
     else if (name == disabledAttr) {
-        bool oldDisabled = m_disabled;
-        m_disabled = !value.isNull();
-        if (oldDisabled != m_disabled)
-            disabledAttributeChanged();
+        if (canBeActuallyDisabled()) {
+            bool oldDisabled = m_disabled;
+            m_disabled = !value.isNull();
+            if (oldDisabled != m_disabled)
+                disabledAttributeChanged();
+        }
     } else if (name == readonlyAttr) {
         bool wasReadOnly = m_isReadOnly;
         m_isReadOnly = !value.isNull();
@@ -366,11 +368,11 @@ bool HTMLFormControlElement::isFocusable() const
     return HTMLElement::isFocusable();
 }
 
-bool HTMLFormControlElement::isKeyboardFocusable(KeyboardEvent* event) const
+bool HTMLFormControlElement::isKeyboardFocusable(KeyboardEvent& event) const
 {
     if (isFocusable())
         if (document().frame())
-            return document().frame()->eventHandler().tabsToAllFormControls(event);
+            return document().frame()->eventHandler().tabsToAllFormControls(&event);
     return false;
 }
 

@@ -32,7 +32,6 @@
 #include "CSSValueKeywords.h"
 #include "Color.h"
 #include "MediaQuery.h"
-#include "SourceSizeList.h"
 #include "StyleRuleImport.h"
 #include "WebKitCSSFilterValue.h"
 #include <memory>
@@ -145,7 +144,6 @@ public:
     static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     std::unique_ptr<MediaQuery> parseMediaQuery(const String&);
 
-    void addPropertyWithPrefixingVariant(CSSPropertyID, RefPtr<CSSValue>&&, bool important, bool implicit = false);
     void addProperty(CSSPropertyID, RefPtr<CSSValue>&&, bool important, bool implicit = false);
     void rollbackLastProperties(int num);
     bool hasProperties() const { return !m_parsedProperties.isEmpty(); }
@@ -277,7 +275,7 @@ public:
     bool parseCounter(CSSPropertyID, int defaultValue, bool important);
     RefPtr<CSSPrimitiveValue> parseCounterContent(CSSParserValueList& args, bool counters);
 
-    bool parseColorParameters(CSSParserValue&, int* colorValues, bool parseAlpha);
+    bool parseRGBParameters(CSSParserValue&, int* colorValues, bool parseAlpha);
     bool parseHSLParameters(CSSParserValue&, double* colorValues, bool parseAlpha);
     RefPtr<CSSPrimitiveValue> parseColor(CSSParserValue* = nullptr);
     bool parseColorFromValue(CSSParserValue&, RGBA32&);
@@ -361,7 +359,7 @@ public:
     bool parseHangingPunctuation(bool important);
 
     bool parseLineBoxContain(bool important);
-    RefPtr<CSSCalcValue> parseCalculation(CSSParserValue&, CalculationPermittedValueRange);
+    RefPtr<CSSCalcValue> parseCalculation(CSSParserValue&, ValueRange);
 
     bool parseFontFeatureTag(CSSValueList&);
     bool parseFontFeatureSettings(bool important);
@@ -428,7 +426,6 @@ public:
     RefPtr<StyleRuleBase> m_rule;
     RefPtr<StyleKeyframe> m_keyframe;
     std::unique_ptr<MediaQuery> m_mediaQuery;
-    std::unique_ptr<Vector<SourceSize>> m_sourceSizeList;
     std::unique_ptr<CSSParserValueList> m_valueList;
     bool m_supportsCondition { false };
 
@@ -571,8 +568,8 @@ private:
 
     void setStyleSheet(StyleSheetContents* styleSheet) { m_styleSheet = styleSheet; }
 
-    inline bool inStrictMode() const { return m_context.mode == CSSStrictMode || m_context.mode == SVGAttributeMode; }
-    inline bool inQuirksMode() const { return m_context.mode == CSSQuirksMode; }
+    inline bool inStrictMode() const { return m_context.mode == UASheetMode || m_context.mode == HTMLStandardMode || m_context.mode == SVGAttributeMode; }
+    inline bool inQuirksMode() const { return m_context.mode == HTMLQuirksMode; }
     
     URL completeURL(const String& url) const;
 

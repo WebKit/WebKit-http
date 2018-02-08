@@ -22,26 +22,26 @@
 #define CSSImageValue_h
 
 #include "CSSValue.h"
+#include "CachedResourceHandle.h"
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
+class CachedImage;
 class CachedResourceLoader;
 class Element;
-class StyleCachedImage;
-class StyleImage;
 class RenderElement;
 struct ResourceLoaderOptions;
 
-class CSSImageValue : public CSSValue {
+class CSSImageValue final : public CSSValue {
 public:
     static Ref<CSSImageValue> create(const String& url) { return adoptRef(*new CSSImageValue(url)); }
-    static Ref<CSSImageValue> create(const String& url, StyleImage* image) { return adoptRef(*new CSSImageValue(url, image)); }
+    static Ref<CSSImageValue> create(CachedImage& image) { return adoptRef(*new CSSImageValue(image)); }
     ~CSSImageValue();
 
-    StyleCachedImage* cachedImage(CachedResourceLoader&, const ResourceLoaderOptions&);
-    // Returns a StyleCachedImage if the image is cached already, otherwise a StylePendingImage.
-    StyleImage& cachedOrPendingImage();
+    bool isPending() const;
+    CachedImage* loadImage(CachedResourceLoader&, const ResourceLoaderOptions&);
+    CachedImage* cachedImage() const { return m_cachedImage.get(); }
 
     const String& url() const { return m_url; }
 
@@ -59,11 +59,10 @@ public:
 
 private:
     explicit CSSImageValue(const String& url);
-    CSSImageValue(const String& url, StyleImage*);
-    void detachPendingImage();
+    explicit CSSImageValue(CachedImage&);
 
     String m_url;
-    RefPtr<StyleImage> m_image;
+    CachedResourceHandle<CachedImage> m_cachedImage;
     bool m_accessedImage;
     AtomicString m_initiatorName;
 };

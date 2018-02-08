@@ -30,32 +30,23 @@
 
 #import "PlatformUtilities.h"
 #import "Test.h"
+#import "TestNavigationDelegate.h"
 #import <wtf/RetainPtr.h>
 
 static bool isDone;
 
-@interface ProvisionalURLNotChangeController : NSObject <WKNavigationDelegate>
-@end
-
-@implementation ProvisionalURLNotChangeController
-
-- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
-{
-    isDone = true;
-}
-
-- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error
-{
-    isDone = true;
-}
-
-@end
-
 TEST(WKWebView, ProvisionalURLNotChange)
 {
     auto webView = adoptNS([[WKWebView alloc] init]);
-    auto controller = adoptNS([[ProvisionalURLNotChangeController alloc] init]);
-    [webView setNavigationDelegate:controller.get()];
+
+    auto navigationDelegate = adoptNS([[TestNavigationDelegate alloc] init]);
+    [navigationDelegate setDidFinishNavigation:^(WKWebView *, WKNavigation *) {
+        isDone = true;
+    }];
+    [navigationDelegate setDidFailProvisionalNavigation:^(WKWebView *, WKNavigation *, NSError *) {
+        isDone = true;
+    }];
+    [webView setNavigationDelegate:navigationDelegate.get()];
 
     [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"data:text/html,start"]]];
     TestWebKitAPI::Util::run(&isDone);

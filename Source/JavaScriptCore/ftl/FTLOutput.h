@@ -163,6 +163,7 @@ public:
 
     LValue doubleSin(LValue);
     LValue doubleCos(LValue);
+    LValue doubleTan(LValue);
 
     LValue doublePow(LValue base, LValue exponent);
     LValue doublePowi(LValue base, LValue exponent);
@@ -398,6 +399,8 @@ public:
     void ret(LValue);
 
     void unreachable();
+    
+    void appendSuccessor(WeightedTarget);
 
     B3::CheckValue* speculate(LValue);
     B3::CheckValue* speculateAdd(LValue, LValue);

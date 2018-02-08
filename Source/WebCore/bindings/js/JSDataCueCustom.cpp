@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -49,27 +49,31 @@ void JSDataCue::setValue(ExecState& state, JSValue value)
 
 EncodedJSValue JSC_HOST_CALL constructJSDataCue(ExecState& exec)
 {
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     DOMConstructorObject* castedThis = jsCast<DOMConstructorObject*>(exec.callee());
+    ASSERT(castedThis);
     if (exec.argumentCount() < 3)
-        return throwVMError(&exec, createNotEnoughArgumentsError(&exec));
+        return throwVMError(&exec, scope, createNotEnoughArgumentsError(&exec));
 
     double startTime(exec.uncheckedArgument(0).toNumber(&exec));
-    if (UNLIKELY(exec.hadException()))
+    if (UNLIKELY(scope.exception()))
         return JSValue::encode(jsUndefined());
 
     double endTime(exec.uncheckedArgument(1).toNumber(&exec));
-    if (UNLIKELY(exec.hadException()))
+    if (UNLIKELY(scope.exception()))
         return JSValue::encode(jsUndefined());
 
     ScriptExecutionContext* context = castedThis->scriptExecutionContext();
     if (!context)
-        return throwConstructorDocumentUnavailableError(exec, "DataCue");
+        return throwConstructorScriptExecutionContextUnavailableError(exec, scope, "DataCue");
 
     String type;
 #if ENABLE(DATACUE_VALUE)
     if (exec.argumentCount() > 3) {
         if (!exec.uncheckedArgument(3).isString())
-            return throwVMTypeError(&exec, ASCIILiteral("Second argument of the constructor is not of type String"));
+            return throwArgumentTypeError(exec, scope, 3, "type", "DataCue", nullptr, "DOMString");
         type = exec.uncheckedArgument(3).getString(&exec);
     }
 #endif
@@ -83,20 +87,20 @@ EncodedJSValue JSC_HOST_CALL constructJSDataCue(ExecState& exec)
     if (valueArgument.isCell() && valueArgument.asCell()->inherits(std::remove_pointer<JSArrayBuffer*>::type::info())) {
 
         ArrayBuffer* data = toArrayBuffer(valueArgument);
-        if (UNLIKELY(exec.hadException()))
+        if (UNLIKELY(scope.exception()))
             return JSValue::encode(jsUndefined());
 
         if (UNLIKELY(!data)) {
             setDOMException(&exec, TypeError);
             return JSValue::encode(jsUndefined());
         }
-        return JSValue::encode(CREATE_DOM_WRAPPER(castedThis->globalObject(), DataCue, DataCue::create(*context, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), *data, type)));
+        return JSValue::encode(createWrapper<DataCue>(castedThis->globalObject(), DataCue::create(*context, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), *data, type)));
     }
 
 #if !ENABLE(DATACUE_VALUE)
     return JSValue::encode(jsUndefined());
 #else
-    return JSValue::encode(CREATE_DOM_WRAPPER(castedThis->globalObject(), DataCue,DataCue::create(*context, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), valueArgument, type)));
+    return JSValue::encode(createWrapper<DataCue>(castedThis->globalObject(), DataCue::create(*context, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), valueArgument, type)));
 #endif
 }
 

@@ -36,7 +36,6 @@
 #include "FrameView.h"
 #include "GeometryUtilities.h"
 #include "GraphicsContext.h"
-#include "HTMLAnchorElement.h"
 #include "HTMLElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
@@ -62,7 +61,6 @@
 #include "RenderSVGResourceContainer.h"
 #include "RenderScrollbarPart.h"
 #include "RenderTableRow.h"
-#include "RenderTableSection.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
@@ -907,22 +905,7 @@ IntRect RenderObject::pixelSnappedAbsoluteClippedOverflowRect() const
 {
     return snappedIntRect(absoluteClippedOverflowRect());
 }
-
-bool RenderObject::hasSelfPaintingLayer() const
-{
-    if (!hasLayer())
-        return false;
-    auto* layer = downcast<RenderLayerModelObject>(*this).layer();
-    if (!layer)
-        return false;
-    return layer->isSelfPaintingLayer();
-}
     
-bool RenderObject::checkForRepaintDuringLayout() const
-{
-    return !document().view()->needsFullRepaint() && everHadLayout() && !hasSelfPaintingLayer();
-}
-
 LayoutRect RenderObject::rectWithOutlineForRepaint(const RenderLayerModelObject* repaintContainer, LayoutUnit outlineWidth) const
 {
     LayoutRect r(clippedOverflowRectForRepaint(repaintContainer));
@@ -1116,7 +1099,10 @@ void RenderObject::showRenderObject(bool mark, int depth) const
         fprintf(stderr, "%s", name.utf8().data());
 
     if (is<RenderBox>(*this)) {
-        FloatRect boxRect = downcast<RenderBox>(*this).frameRect();
+        auto& renderBox = downcast<RenderBox>(*this);
+        FloatRect boxRect = renderBox.frameRect();
+        if (renderBox.isInFlowPositioned())
+            boxRect.move(renderBox.offsetForInFlowPosition());
         fprintf(stderr, "  (%.2f, %.2f) (%.2f, %.2f)", boxRect.x(), boxRect.y(), boxRect.width(), boxRect.height());
     } else if (is<RenderInline>(*this) && isInFlowPositioned()) {
         FloatSize inlineOffset = downcast<RenderInline>(*this).offsetForInFlowPosition();
@@ -1359,28 +1345,6 @@ bool RenderObject::isRooted() const
     return isDescendantOf(&view());
 }
 
-RespectImageOrientationEnum RenderObject::shouldRespectImageOrientation() const
-{
-#if USE(CG) || USE(CAIRO)
-    // This can only be enabled for ports which honor the orientation flag in their drawing code.
-    if (document().isImageDocument())
-        return RespectImageOrientation;
-#endif
-    // Respect the image's orientation if it's being used as a full-page image or it's
-    // an <img> and the setting to respect it everywhere is set.
-    return (frame().settings().shouldRespectImageOrientation() && is<HTMLImageElement>(node())) ? RespectImageOrientation : DoNotRespectImageOrientation;
-}
-
-bool RenderObject::hasOutlineAnnotation() const
-{
-    return node() && node()->isLink() && document().printing();
-}
-
-bool RenderObject::hasEntirelyFixedBackground() const
-{
-    return style().hasEntirelyFixedBackground();
-}
-
 static inline RenderElement* containerForElement(const RenderObject& renderer, const RenderLayerModelObject* repaintContainer, bool* repaintContainerSkipped)
 {
     // This method is extremely similar to containingBlock(), but with a few notable
@@ -1462,116 +1426,10 @@ void RenderObject::willBeRemovedFromTree()
 {
     // FIXME: We should ASSERT(isRooted()) but we have some out-of-order removals which would need to be fixed first.
 
-    removeFromRenderFlowThread();
+    setFlowThreadState(NotInsideFlowThread);
 
     // Update cached boundaries in SVG renderers, if a child is removed.
     parent()->setNeedsBoundariesUpdate();
-}
-
-void RenderObject::removeFromRenderFlowThread()
-{
-    if (flowThreadState() == NotInsideFlowThread)
-        return;
-
-    // Sometimes we remove the element from the flow, but it's not destroyed at that time.
-    // It's only until later when we actually destroy it and remove all the children from it.
-    // Currently, that happens for firstLetter elements and list markers.
-    // Pass in the flow thread so that we don't have to look it up for all the children.
-    removeFromRenderFlowThreadIncludingDescendants(true);
-}
-
-void RenderObject::removeFromRenderFlowThreadIncludingDescendants(bool shouldUpdateState)
-{
-    // Once we reach another flow thread we don't need to update the flow thread state
-    // but we have to continue cleanup the flow thread info.
-    if (isRenderFlowThread())
-        shouldUpdateState = false;
-
-    if (is<RenderElement>(*this)) {
-        for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
-            child.removeFromRenderFlowThreadIncludingDescendants(shouldUpdateState);
-    }
-
-    // We have to ask for our containing flow thread as it may be above the removed sub-tree.
-    RenderFlowThread* flowThreadContainingBlock = this->flowThreadContainingBlock();
-    while (flowThreadContainingBlock) {
-        flowThreadContainingBlock->removeFlowChildInfo(this);
-        if (flowThreadContainingBlock->flowThreadState() == NotInsideFlowThread)
-            break;
-        RenderObject* parent = flowThreadContainingBlock->parent();
-        if (!parent)
-            break;
-        flowThreadContainingBlock = parent->flowThreadContainingBlock();
-    }
-    if (is<RenderBlock>(*this))
-        downcast<RenderBlock>(*this).setCachedFlowThreadContainingBlockNeedsUpdate();
-
-    if (shouldUpdateState)
-        setFlowThreadState(NotInsideFlowThread);
-}
-
-void RenderObject::invalidateFlowThreadContainingBlockIncludingDescendants(RenderFlowThread* flowThread)
-{
-    if (flowThreadState() == NotInsideFlowThread)
-        return;
-
-    if (is<RenderBlock>(*this)) {
-        RenderBlock& block = downcast<RenderBlock>(*this);
-
-        if (block.cachedFlowThreadContainingBlockNeedsUpdate())
-            return;
-
-        flowThread = block.cachedFlowThreadContainingBlock();
-        block.setCachedFlowThreadContainingBlockNeedsUpdate();
-    }
-
-    if (flowThread)
-        flowThread->removeFlowChildInfo(this);
-
-    if (!is<RenderElement>(*this))
-        return;
-
-    for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
-        child.invalidateFlowThreadContainingBlockIncludingDescendants(flowThread);
-}
-
-static void collapseAnonymousTableRowsIfNeeded(const RenderObject& rendererToBeDestroyed)
-{
-    if (!is<RenderTableRow>(rendererToBeDestroyed))
-        return;
-
-    auto& rowToBeDestroyed = downcast<RenderTableRow>(rendererToBeDestroyed);
-    auto* section = downcast<RenderTableSection>(rowToBeDestroyed.parent());
-    if (!section)
-        return;
-
-    // All siblings generated?
-    for (auto* current = section->firstRow(); current; current = current->nextRow()) {
-        if (current == &rendererToBeDestroyed)
-            continue;
-        if (!current->isAnonymous())
-            return;
-    }
-
-    RenderTableRow* rowToInsertInto = nullptr;
-    auto* currentRow = section->firstRow();
-    while (currentRow) {
-        if (currentRow == &rendererToBeDestroyed) {
-            currentRow = currentRow->nextRow();
-            continue;
-        }
-        if (!rowToInsertInto) {
-            rowToInsertInto = currentRow;
-            currentRow = currentRow->nextRow();
-            continue;
-        }
-        currentRow->moveAllChildrenTo(rowToInsertInto);
-        auto* destroyThis = currentRow;
-        currentRow = currentRow->nextRow();
-        destroyThis->destroy();
-    }
-    if (rowToInsertInto)
-        rowToInsertInto->setNeedsLayout();
 }
 
 void RenderObject::destroyAndCleanupAnonymousWrappers()
@@ -1594,7 +1452,12 @@ void RenderObject::destroyAndCleanupAnonymousWrappers()
         destroyRoot = destroyRootParent;
         destroyRootParent = destroyRootParent->parent();
     }
-    collapseAnonymousTableRowsIfNeeded(*destroyRoot);
+
+    if (is<RenderTableRow>(*destroyRoot)) {
+        downcast<RenderTableRow>(*destroyRoot).destroyAndCollapseAnonymousSiblingRows();
+        return;
+    }
+
     destroyRoot->destroy();
     // WARNING: |this| is deleted here.
 }
@@ -1698,79 +1561,6 @@ bool RenderObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitT
 int RenderObject::innerLineHeight() const
 {
     return style().computedLineHeight();
-}
-
-static Color decorationColor(const RenderStyle* style)
-{
-    Color result;
-    // Check for text decoration color first.
-    result = style->visitedDependentColor(CSSPropertyWebkitTextDecorationColor);
-    if (result.isValid())
-        return result;
-    if (style->textStrokeWidth() > 0) {
-        // Prefer stroke color if possible but not if it's fully transparent.
-        result = style->visitedDependentColor(CSSPropertyWebkitTextStrokeColor);
-        if (result.alpha())
-            return result;
-    }
-    
-    result = style->visitedDependentColor(CSSPropertyWebkitTextFillColor);
-    return result;
-}
-
-void RenderObject::getTextDecorationColorsAndStyles(int decorations, Color& underlineColor, Color& overlineColor, Color& linethroughColor,
-    TextDecorationStyle& underlineStyle, TextDecorationStyle& overlineStyle, TextDecorationStyle& linethroughStyle, bool firstlineStyle) const
-{
-    const RenderObject* current = this;
-    const RenderStyle* styleToUse = nullptr;
-    TextDecoration currDecs = TextDecorationNone;
-    Color resultColor;
-    do {
-        styleToUse = firstlineStyle ? &current->firstLineStyle() : &current->style();
-        currDecs = styleToUse->textDecoration();
-        resultColor = decorationColor(styleToUse);
-        // Parameter 'decorations' is cast as an int to enable the bitwise operations below.
-        if (currDecs) {
-            if (currDecs & TextDecorationUnderline) {
-                decorations &= ~TextDecorationUnderline;
-                underlineColor = resultColor;
-                underlineStyle = styleToUse->textDecorationStyle();
-            }
-            if (currDecs & TextDecorationOverline) {
-                decorations &= ~TextDecorationOverline;
-                overlineColor = resultColor;
-                overlineStyle = styleToUse->textDecorationStyle();
-            }
-            if (currDecs & TextDecorationLineThrough) {
-                decorations &= ~TextDecorationLineThrough;
-                linethroughColor = resultColor;
-                linethroughStyle = styleToUse->textDecorationStyle();
-            }
-        }
-        if (current->isRubyText())
-            return;
-        current = current->parent();
-        if (current && current->isAnonymousBlock() && downcast<RenderBlock>(*current).continuation())
-            current = downcast<RenderBlock>(*current).continuation();
-    } while (current && decorations && (!current->node() || (!is<HTMLAnchorElement>(*current->node()) && !current->node()->hasTagName(fontTag))));
-
-    // If we bailed out, use the element we bailed out at (typically a <font> or <a> element).
-    if (decorations && current) {
-        styleToUse = firstlineStyle ? &current->firstLineStyle() : &current->style();
-        resultColor = decorationColor(styleToUse);
-        if (decorations & TextDecorationUnderline) {
-            underlineColor = resultColor;
-            underlineStyle = styleToUse->textDecorationStyle();
-        }
-        if (decorations & TextDecorationOverline) {
-            overlineColor = resultColor;
-            overlineStyle = styleToUse->textDecorationStyle();
-        }
-        if (decorations & TextDecorationLineThrough) {
-            linethroughColor = resultColor;
-            linethroughStyle = styleToUse->textDecorationStyle();
-        }
-    }
 }
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -2153,7 +1943,7 @@ void RenderObject::removeRareData()
 void printRenderTreeForLiveDocuments()
 {
     for (const auto* document : Document::allDocuments()) {
-        if (!document->renderView() || document->inPageCache())
+        if (!document->renderView() || document->pageCacheState() != Document::NotInPageCache)
             continue;
         if (document->frame() && document->frame()->isMainFrame())
             fprintf(stderr, "----------------------main frame--------------------------\n");
@@ -2165,7 +1955,7 @@ void printRenderTreeForLiveDocuments()
 void printLayerTreeForLiveDocuments()
 {
     for (const auto* document : Document::allDocuments()) {
-        if (!document->renderView() || document->inPageCache())
+        if (!document->renderView() || document->pageCacheState() != Document::NotInPageCache)
             continue;
         if (document->frame() && document->frame()->isMainFrame())
             fprintf(stderr, "----------------------main frame--------------------------\n");

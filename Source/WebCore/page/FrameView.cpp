@@ -105,10 +105,6 @@
 #include "TiledBackingStore.h"
 #endif
 
-#if ENABLE(TEXT_AUTOSIZING)
-#include "TextAutosizer.h"
-#endif
-
 #if ENABLE(CSS_SCROLL_SNAP)
 #include "AxisScrollSnapOffsets.h"
 #endif
@@ -496,16 +492,6 @@ void FrameView::setFrameRect(const IntRect& newRect)
     IntRect oldRect = frameRect();
     if (newRect == oldRect)
         return;
-
-#if ENABLE(TEXT_AUTOSIZING)
-    // Autosized font sizes depend on the width of the viewing area.
-    if (newRect.width() != oldRect.width()) {
-        if (frame().isMainFrame() && page->settings().textAutosizingEnabled()) {
-            for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext())
-                frame().document()->textAutosizer()->recalculateMultipliers();
-        }
-    }
-#endif
 
     ScrollView::setFrameRect(newRect);
 
@@ -1296,7 +1282,7 @@ void FrameView::layout(bool allowSubtree)
     ASSERT(frame().document());
 
     Document& document = *frame().document();
-    ASSERT(!document.inPageCache());
+    ASSERT(document.pageCacheState() == Document::NotInPageCache);
 
     {
         TemporaryChange<bool> changeSchedulingEnabled(m_layoutSchedulingEnabled, false);
@@ -1453,10 +1439,6 @@ void FrameView::layout(bool allowSubtree)
             }
         }
 #endif
-#if ENABLE(TEXT_AUTOSIZING)
-        if (document.textAutosizer()->processSubtree(root) && root->needsLayout())
-            root->layout();
-#endif
 
         ASSERT(m_layoutPhase == InRenderTreeLayout);
         m_layoutRoot = nullptr;
@@ -1605,7 +1587,7 @@ void FrameView::adjustMediaTypeForPrinting(bool printing)
     if (printing) {
         if (m_mediaTypeWhenNotPrinting.isNull())
             m_mediaTypeWhenNotPrinting = mediaType();
-            setMediaType("print");
+        setMediaType("print");
     } else {
         if (!m_mediaTypeWhenNotPrinting.isNull())
             setMediaType(m_mediaTypeWhenNotPrinting);
@@ -2048,19 +2030,6 @@ void FrameView::setIsOverlapped(bool isOverlapped)
 
     m_isOverlapped = isOverlapped;
     updateCanBlitOnScrollRecursively();
-}
-
-bool FrameView::isOverlappedIncludingAncestors() const
-{
-    if (isOverlapped())
-        return true;
-
-    if (FrameView* parentView = parentFrameView()) {
-        if (parentView->isOverlapped())
-            return true;
-    }
-
-    return false;
 }
 
 void FrameView::setContentIsOpaque(bool contentIsOpaque)

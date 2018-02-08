@@ -29,9 +29,9 @@
 #if ENABLE(B3_JIT)
 
 #include "AirBasicBlock.h"
-#include "B3IndexMap.h"
 #include "CCallHelpers.h"
 #include <wtf/Box.h>
+#include <wtf/IndexMap.h>
 #include <wtf/SharedTask.h>
 #include <wtf/Vector.h>
 

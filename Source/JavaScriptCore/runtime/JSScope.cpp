@@ -200,16 +200,18 @@ JSObject* JSScope::objectAtScope(JSScope* scope)
 // When an exception occurs, the result of isUnscopable becomes false.
 static inline bool isUnscopable(ExecState* exec, JSScope* scope, JSObject* object, const Identifier& ident)
 {
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     if (scope->type() != WithScopeType)
         return false;
 
     JSValue unscopables = object->get(exec, exec->propertyNames().unscopablesSymbol);
-    if (exec->hadException())
+    if (UNLIKELY(throwScope.exception()))
         return false;
     if (!unscopables.isObject())
         return false;
     JSValue blocked = jsCast<JSObject*>(unscopables)->get(exec, ident);
-    if (exec->hadException())
+    if (UNLIKELY(throwScope.exception()))
         return false;
 
     return blocked.toBoolean(exec);
@@ -217,6 +219,8 @@ static inline bool isUnscopable(ExecState* exec, JSScope* scope, JSObject* objec
 
 JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& ident)
 {
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     ScopeChainIterator end = scope->end();
     ScopeChainIterator it = scope->begin();
     while (1) {
@@ -225,7 +229,7 @@ JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& id
 
         // Global scope.
         if (++it == end) {
-            JSScope* globalScopeExtension = scope->globalObject()->globalScopeExtension();
+            JSScope* globalScopeExtension = scope->globalObject(vm)->globalScopeExtension();
             if (UNLIKELY(globalScopeExtension)) {
                 if (object->hasProperty(exec, ident))
                     return object;
@@ -239,7 +243,7 @@ JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& id
         if (object->hasProperty(exec, ident)) {
             if (!isUnscopable(exec, scope, object, ident))
                 return object;
-            ASSERT_WITH_MESSAGE(!exec->hadException(), "When an exception occurs, the result of isUnscopable becomes false");
+            ASSERT_WITH_MESSAGE_UNUSED(throwScope, !throwScope.exception(), "When an exception occurs, the result of isUnscopable becomes false");
         }
     }
 }

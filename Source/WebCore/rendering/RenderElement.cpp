@@ -37,6 +37,7 @@
 #include "HTMLAnchorElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLHtmlElement.h"
+#include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "Logging.h"
 #include "Page.h"
@@ -66,6 +67,7 @@
 #include "SVGRenderSupport.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "StylePendingResources.h"
 #include "StyleResolver.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StackStats.h>
@@ -75,6 +77,17 @@
 #endif
 
 namespace WebCore {
+
+struct SameSizeAsRenderElement : public RenderObject {
+    uint8_t bitfields0;
+    uint8_t bitfields1;
+    uint8_t bitfields2;
+    void* firstChild;
+    void* lastChild;
+    RenderStyle style;
+};
+
+static_assert(sizeof(RenderElement) == sizeof(SameSizeAsRenderElement), "RenderElement should stay small");
 
 bool RenderElement::s_affectsParentBlock = false;
 bool RenderElement::s_noLongerAffectsParentBlock = false;
@@ -150,6 +163,7 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&
     // Otherwise acts as if we didn't support this feature.
     const ContentData* contentData = style.contentData();
     if (contentData && !contentData->next() && is<ImageContentData>(*contentData) && !element.isPseudoElement()) {
+        Style::loadPendingResources(style, element.document(), &element);
         auto& styleImage = downcast<ImageContentData>(*contentData).image();
         auto image = createRenderer<RenderImage>(element, WTFMove(style), const_cast<StyleImage*>(&styleImage));
         image->setIsGeneratedContent();
@@ -363,6 +377,8 @@ void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const Shap
 
 void RenderElement::initializeStyle()
 {
+    Style::loadPendingResources(m_style, document(), element());
+
     styleWillChange(StyleDifferenceNewStyle, style());
 
     m_hasInitializedStyle = true;
@@ -401,6 +417,8 @@ void RenderElement::setStyle(RenderStyle&& style, StyleDifference minimalStyleDi
     diff = std::max(diff, minimalStyleDifference);
 
     diff = adjustStyleDifference(diff, contextSensitiveProperties);
+
+    Style::loadPendingResources(style, document(), element());
 
     styleWillChange(diff, style);
 
@@ -1080,6 +1098,8 @@ void RenderElement::willBeRemovedFromTree()
     if (auto* containerFlowThread = parent()->renderNamedFlowThreadWrapper())
         containerFlowThread->removeFlowChild(*this);
 
+    removeFromRenderFlowThread();
+
     RenderObject::willBeRemovedFromTree();
 }
 
@@ -1429,7 +1449,7 @@ bool RenderElement::mayCauseRepaintInsideViewport(const IntRect* optionalViewpor
 static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const IntRect& visibleRect)
 {
     const Document& document = renderer.document();
-    if (document.inPageCache())
+    if (document.pageCacheState() != Document::NotInPageCache)
         return false;
     if (document.activeDOMObjectsAreSuspended())
         return false;
@@ -1474,7 +1494,6 @@ void RenderElement::unregisterForVisibleInViewportCallback()
     setIsRegisteredForVisibleInViewportCallback(false);
 
     view().unregisterForVisibleInViewportCallback(*this);
-    m_visibleInViewportState = VisibilityUnknown;
 }
 
 void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
@@ -1489,7 +1508,7 @@ void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
 
 void RenderElement::newImageAnimationFrameAvailable(CachedImage& image)
 {
-    if (document().inPageCache())
+    if (document().pageCacheState() != Document::NotInPageCache)
         return;
     auto& frameView = view().frameView();
     auto visibleRect = frameView.windowToContents(frameView.windowClipRect());
@@ -1571,13 +1590,17 @@ std::unique_ptr<RenderStyle> RenderElement::getUncachedPseudoStyle(const PseudoS
 
     auto& styleResolver = element()->styleResolver();
 
+    std::unique_ptr<RenderStyle> style;
     if (pseudoStyleRequest.pseudoId == FIRST_LINE_INHERITED) {
-        auto result = styleResolver.styleForElement(*element(), parentStyle).renderStyle;
-        result->setStyleType(FIRST_LINE_INHERITED);
-        return result;
-    }
+        style = styleResolver.styleForElement(*element(), parentStyle).renderStyle;
+        style->setStyleType(FIRST_LINE_INHERITED);
+    } else
+        style = styleResolver.pseudoStyleForElement(*element(), pseudoStyleRequest, *parentStyle);
 
-    return styleResolver.pseudoStyleForElement(*element(), pseudoStyleRequest, *parentStyle);
+    if (style)
+        Style::loadPendingResources(*style, document(), element());
+
+    return style;
 }
 
 Color RenderElement::selectionColor(int colorProperty) const
@@ -2161,6 +2184,108 @@ void RenderElement::updateOutlineAutoAncestor(bool hasOutlineAuto)
     }
     if (hasContinuation())
         downcast<RenderBoxModelObject>(*this).continuation()->updateOutlineAutoAncestor(hasOutlineAuto);
+}
+
+bool RenderElement::hasOutlineAnnotation() const
+{
+    return element() && element()->isLink() && document().printing();
+}
+
+bool RenderElement::hasSelfPaintingLayer() const
+{
+    if (!hasLayer())
+        return false;
+    auto& layerModelObject = downcast<RenderLayerModelObject>(*this);
+    return layerModelObject.hasSelfPaintingLayer();
+}
+
+bool RenderElement::checkForRepaintDuringLayout() const
+{
+    return !document().view()->needsFullRepaint() && everHadLayout() && !hasSelfPaintingLayer();
+}
+
+RespectImageOrientationEnum RenderElement::shouldRespectImageOrientation() const
+{
+#if USE(CG) || USE(CAIRO)
+    // This can only be enabled for ports which honor the orientation flag in their drawing code.
+    if (document().isImageDocument())
+        return RespectImageOrientation;
+#endif
+    // Respect the image's orientation if it's being used as a full-page image or it's
+    // an <img> and the setting to respect it everywhere is set.
+    return (frame().settings().shouldRespectImageOrientation() && is<HTMLImageElement>(element())) ? RespectImageOrientation : DoNotRespectImageOrientation;
+}
+
+void RenderElement::removeFromRenderFlowThread()
+{
+    if (flowThreadState() == NotInsideFlowThread)
+        return;
+
+    // Sometimes we remove the element from the flow, but it's not destroyed at that time.
+    // It's only until later when we actually destroy it and remove all the children from it.
+    // Currently, that happens for firstLetter elements and list markers.
+    // Pass in the flow thread so that we don't have to look it up for all the children.
+    removeFromRenderFlowThreadIncludingDescendants(true);
+}
+
+void RenderElement::removeFromRenderFlowThreadIncludingDescendants(bool shouldUpdateState)
+{
+    // Once we reach another flow thread we don't need to update the flow thread state
+    // but we have to continue cleanup the flow thread info.
+    if (isRenderFlowThread())
+        shouldUpdateState = false;
+
+    for (auto& child : childrenOfType<RenderObject>(*this)) {
+        if (is<RenderElement>(child)) {
+            downcast<RenderElement>(child).removeFromRenderFlowThreadIncludingDescendants(shouldUpdateState);
+            continue;
+        }
+        if (shouldUpdateState)
+            child.setFlowThreadState(NotInsideFlowThread);
+    }
+
+    // We have to ask for our containing flow thread as it may be above the removed sub-tree.
+    RenderFlowThread* flowThreadContainingBlock = this->flowThreadContainingBlock();
+    while (flowThreadContainingBlock) {
+        flowThreadContainingBlock->removeFlowChildInfo(this);
+
+        if (flowThreadContainingBlock->flowThreadState() == NotInsideFlowThread)
+            break;
+        auto* parent = flowThreadContainingBlock->parent();
+        if (!parent)
+            break;
+        flowThreadContainingBlock = parent->flowThreadContainingBlock();
+    }
+    if (is<RenderBlock>(*this))
+        downcast<RenderBlock>(*this).setCachedFlowThreadContainingBlockNeedsUpdate();
+
+    if (shouldUpdateState)
+        setFlowThreadState(NotInsideFlowThread);
+}
+
+void RenderElement::invalidateFlowThreadContainingBlockIncludingDescendants(RenderFlowThread* flowThread)
+{
+    if (flowThreadState() == NotInsideFlowThread)
+        return;
+
+    if (is<RenderBlock>(*this)) {
+        RenderBlock& block = downcast<RenderBlock>(*this);
+
+        if (block.cachedFlowThreadContainingBlockNeedsUpdate())
+            return;
+
+        flowThread = block.cachedFlowThreadContainingBlock();
+        block.setCachedFlowThreadContainingBlockNeedsUpdate();
+    }
+
+    if (flowThread)
+        flowThread->removeFlowChildInfo(this);
+
+    if (!is<RenderElement>(*this))
+        return;
+
+    for (auto& child : childrenOfType<RenderElement>(*this))
+        child.invalidateFlowThreadContainingBlockIncludingDescendants(flowThread);
 }
 
 #if ENABLE(IOS_TEXT_AUTOSIZING)

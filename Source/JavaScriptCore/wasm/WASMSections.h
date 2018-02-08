@@ -27,37 +27,23 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-namespace JSC {
+namespace JSC { namespace WASM {
 
-namespace WASM {
-
-// These should be in the order that we expect them to be in the binary.
-#define FOR_EACH_WASM_SECTION_TYPE(macro) \
-    macro(FunctionTypes, "type") \
-    macro(Signatures, "function") \
-    macro(Definitions, "code") \
-    macro(End, "end")
-
-struct WASMSections {
-    enum class Section {
-#define CREATE_SECTION_ENUM(name, str) name,
-        FOR_EACH_WASM_SECTION_TYPE(CREATE_SECTION_ENUM)
-#undef CREATE_SECTION_ENUM
+struct Sections {
+    enum Section : uint8_t {
+        FunctionTypes = 1,
+        Signatures = 3,
+        Definitions = 10,
         Unknown
     };
-    static Section lookup(const uint8_t*, unsigned);
     static bool validateOrder(Section previous, Section next)
     {
-        // This allows unknown sections after End, which I doubt will ever be supported but
-        // there is no reason to potentially break backwards compatability.
-        if (previous == Section::Unknown)
+        if (previous == Unknown)
             return true;
         return previous < next;
     }
 };
 
-} // namespace WASM
-
-} // namespace JSC
+} } // namespace JSC::WASM
 
 #endif // ENABLE(WEBASSEMBLY)

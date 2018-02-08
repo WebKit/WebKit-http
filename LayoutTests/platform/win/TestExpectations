@@ -105,7 +105,7 @@ http/tests/misc/willCacheResponse-delegate-callback.html [ Skip ]
 # testRunner.setAlwaysAcceptCookies() is not implemented on Windows.
 http/tests/xmlhttprequest/cross-origin-cookie-storage.html [ Skip ]
 
-# TODO No Dashboard compatibility mode on Windows
+# No Dashboard compatibility mode on Windows.
 http/tests/xmlhttprequest/default-content-type-dashboard.html [ Skip ]
 http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html [ Skip ]
 svg/custom/embedded-svg-allowed-in-dashboard.xml [ Skip ]
@@ -383,9 +383,6 @@ fullscreen/ [ Skip ]
 
 # viewport meta tag support
 fast/viewport/ [ Skip ]
-
-# TODO Text Autosizing is not enabled
-webkit.org/b/84186 fast/text-autosizing [ Skip ]
 
 # Pre-HMTL5 parser quirks only apply to the mac port for now.
 fast/parser/pre-html5-parser-quirks.html [ Skip ]
@@ -867,6 +864,7 @@ webkit.org/b/64731 fast/history/page-cache-media-source-opened.html [ Skip ]
 webkit.org/b/64731 fast/history/page-cache-media-source-closed.html [ Skip ]
 webkit.org/b/64731 fast/history/page-cache-media-source-closed-2.html  [ Skip ]
 webkit.org/b/64731 fast/history/page-cache-removed-source-buffer.html [ Skip ]
+webkit.org/b/161906 imported/w3c/web-platform-tests/media-source [ Skip ]
 
 # These tests are for an obsolete version of the EME spec.
 fast/events/constructors/media-key-event-constructor.html [ Skip ] # [ WontFix ]
@@ -2484,7 +2482,6 @@ fast/images/animated-gif-zooming.html [ Skip ] # Timeout
 webkit.org/b/140211 fast/xsl/sort-locale.xml [ Failure ]
 
 # Image Only Failures
-fast/text-autosizing/narrow-iframe-flattened.html [ ImageOnlyFailure ]
 fast/text/international/synthesized-italic-vertical.html [ ImageOnlyFailure ]
 fast/box-shadow/box-shadow-with-zero-radius.html [ ImageOnlyFailure ]
 webkit.org/b/97026 scrollbars/corner-resizer-window-inactive.html [ ImageOnlyFailure ]
@@ -2530,9 +2527,6 @@ printing/return-from-printing-mode.html
 
 webkit.org/b/140866 fast/repaint/obscured-background-no-repaint.html [ Failure ]
 [ Debug ] fast/repaint/animation-after-layer-scroll.html [ Failure ]
-
-# Main frame document does not match cached page document:
-webkit.org/b/140871 [ Debug ] fast/loader/non-deferred-substitute-load.html [ Skip ]
 
 [ Release ] platform/win/fast/text/uniscribe-missing-glyph.html [ Failure ]
 [ Debug ] platform/win/fast/text/uniscribe-missing-glyph.html [ Skip ] # Debug assertion
@@ -3390,6 +3384,7 @@ accessibility/w3c-svg-roles.html [ Failure ]
 accessibility/win/select-element-valuechange-event.html [ Failure ]
 css1/box_properties/float_on_text_elements.html [ Failure ]
 css1/units/length_units.html [ Failure ]
+css3/escape-dom-api.html [ Failure ]
 editing/execCommand/indent-pre.html [ Failure ]
 fast/block/float/016.html [ Failure ]
 fast/block/float/026.html [ Failure ]
@@ -3400,6 +3395,8 @@ fast/css/image-rendering-parsing.html [ Failure ]
 fast/css/shadow-multiple.html [ Failure ]
 fast/css/word-space-extra.html [ Failure ]
 fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element.html [ Failure ]
+fast/dom/Window/get-set-properties.html [ Failure ]
+fast/dom/Window/window-lookup-precedence.html [ Failure ]
 fast/events/media-focus-in-standalone-media-document.html [ Failure ]
 fast/events/updateLayoutForHitTest.html [ Failure ]
 fast/events/wheelevent-basic.html [ Failure ]
@@ -3472,6 +3469,7 @@ http/tests/ssl/mixedContent/insecure-websocket.html [ Failure ]
 http/tests/ssl/upgrade-origin-usage.html [ Failure ]
 http/tests/xmlhttprequest/auth-reject-protection-space.html [ Failure ]
 http/tests/xmlhttprequest/if-modified-since-0.html [ Failure ]
+http/tests/xmlhttprequest/redirections-and-user-headers.html [ Failure ]
 imported/blink/storage/indexeddb/blob-basics-metadata.html [ Failure ]
 imported/blink/storage/indexeddb/empty-blob-file.html [ Failure ]
 imported/w3c/web-platform-tests/XMLHttpRequest/headers-normalize-response.htm [ Failure ]
@@ -3491,6 +3489,13 @@ imported/w3c/web-platform-tests/fetch/api/credentials/cookies-worker.html [ Fail
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.html [ Failure ]
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method-worker.html [ Failure ]
 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/browsing-the-web/unloading-documents/unload/007.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_forward_1.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_no_argument.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_undefined.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_zero.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/traverse_the_history_4.html [ Failure ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/traverse_the_history_5.html [ Failure ]
 imported/w3c/web-platform-tests/html/dom/documents/resource-metadata-management/document-lastModified-01.html [ Failure ]
 imported/w3c/web-platform-tests/html/dom/reflection-embedded.html [ Failure ]
 imported/w3c/web-platform-tests/html/dom/reflection-forms.html [ Failure ]

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,6 @@
 #include "GCIncomingRefCountedInlines.h"
 #include "HeapInlines.h"
 #include "IdentifierInlines.h"
-#include "Interpreter.h"
 #include "JSArrayBufferViewInlines.h"
 #include "JSCJSValueInlines.h"
 #include "JSFunctionInlines.h"
@@ -51,6 +50,7 @@
 #include "Operations.h"
 #include "SlotVisitorInlines.h"
 #include "StructureInlines.h"
+#include "ThrowScope.h"
 #include "WeakGCMapInlines.h"
 
 #endif // JSCInlines_h

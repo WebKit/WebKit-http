@@ -38,6 +38,7 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "Logging.h"
 #include "NodeTraversal.h"
 #include "Page.h"
 #include "RenderBlockFlow.h"
@@ -109,13 +110,15 @@ void HTMLTextFormControlElement::didEditInnerTextValue()
     if (!isTextFormControl())
         return;
 
+    LOG(Editing, "HTMLTextFormControlElement %p didEditInnerTextValue", this);
+
     m_lastChangeWasUserEdit = true;
     subtreeHasChanged();
 }
 
-void HTMLTextFormControlElement::forwardEvent(Event* event)
+void HTMLTextFormControlElement::forwardEvent(Event& event)
 {
-    if (event->type() == eventNames().blurEvent || event->type() == eventNames().focusEvent)
+    if (event.type() == eventNames().blurEvent || event.type() == eventNames().focusEvent)
         return;
     innerTextElement()->defaultEventHandler(event);
 }
@@ -757,12 +760,20 @@ String HTMLTextFormControlElement::directionForFormData() const
     return "ltr";
 }
 
-void HTMLTextFormControlElement::setMaxLengthForBindings(int maxLength, ExceptionCode& ec)
+void HTMLTextFormControlElement::setMaxLength(int maxLength, ExceptionCode& ec)
 {
-    if (maxLength < 0)
+    if (maxLength < 0 || (m_minLength >= 0 && maxLength < m_minLength))
         ec = INDEX_SIZE_ERR;
     else
         setIntegralAttribute(maxlengthAttr, maxLength);
+}
+
+void HTMLTextFormControlElement::setMinLength(int minLength, ExceptionCode& ec)
+{
+    if (minLength < 0 || (m_maxLength >= 0 && minLength > m_maxLength))
+        ec = INDEX_SIZE_ERR;
+    else
+        setIntegralAttribute(minlengthAttr, minLength);
 }
 
 void HTMLTextFormControlElement::adjustInnerTextStyle(const RenderStyle& parentStyle, RenderStyle& textBlockStyle) const

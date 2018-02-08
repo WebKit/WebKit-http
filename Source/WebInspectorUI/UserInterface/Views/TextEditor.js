@@ -137,6 +137,17 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         return this._formatted;
     }
 
+    get hasModified()
+    {
+        let historySize = this._codeMirror.historySize().undo;
+
+        // Formatting code creates a history item.
+        if (this._formatted)
+            historySize--;
+
+        return historySize > 0;
+    }
+
     updateFormattedState(formatted)
     {
         return this._format(formatted).catch(handlePromiseException);
@@ -155,6 +166,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     }
 
     canShowTypeAnnotations()
+    {
+        return false;
+    }
+
+    canShowCoverageHints()
     {
         return false;
     }
@@ -182,7 +198,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         newMIMEType = parseMIMEType(newMIMEType).type;
 
         this._mimeType = newMIMEType;
-        this._codeMirror.setOption("mode", newMIMEType);
+        this._codeMirror.setOption("mode", {name: newMIMEType, globalVars: true});
     }
 
     get executionLineNumber()
@@ -776,8 +792,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         let sourceText = this._codeMirror.getValue();
         let includeSourceMapData = true;
 
+        // FIXME: Properly pass if this is a module or script.
+        const isModule = false;
+
         let workerProxy = WebInspector.FormatterWorkerProxy.singleton();
-        workerProxy.formatJavaScript(sourceText, indentString, includeSourceMapData, ({formattedText, sourceMapData}) => {
+        workerProxy.formatJavaScript(sourceText, isModule, indentString, includeSourceMapData, ({formattedText, sourceMapData}) => {
             // Handle if formatting failed, which is possible for invalid programs.
             if (formattedText === null) {
                 callback();
@@ -826,7 +845,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     _updateAfterFormatting(pretty, beforePrettyPrintState)
     {
         let oldSelectionAnchor = beforePrettyPrintState.selectionAnchor;
-        let oldSelectionHead = beforePrettyPrintState.selectionHead;        
+        let oldSelectionHead = beforePrettyPrintState.selectionHead;
         let newSelectionAnchor, newSelectionHead;
         let newExecutionLocation = null;
 
@@ -891,7 +910,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             this.searchCleared();
             // Set timeout so that this happens after the current CodeMirror operation.
             // The editor has to update for the value and selection changes.
-            setTimeout(() => { this.performSearch(searchQuery) }, 0);
+            setTimeout(() => { this.performSearch(searchQuery); }, 0);
         }
 
         if (this._delegate && typeof this._delegate.textEditorUpdatedFormatting === "function")

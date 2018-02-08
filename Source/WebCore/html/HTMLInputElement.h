@@ -74,6 +74,7 @@ public:
     bool rangeUnderflow() const final;
     bool rangeOverflow() const final;
     bool stepMismatch() const final;
+    bool tooShort() const final;
     bool tooLong() const final;
     bool typeMismatch() const final;
     bool valueMissing() const final;
@@ -236,7 +237,6 @@ public:
 
     URL src() const;
 
-    int maxLengthForBindings() const { return m_maxLength; }
     unsigned effectiveMaxLength() const;
 
     bool multiple() const;
@@ -284,7 +284,7 @@ public:
     // Functions for InputType classes.
     void setValueInternal(const String&, TextFieldEventBehavior);
     bool isTextFormControlFocusable() const;
-    bool isTextFormControlKeyboardFocusable(KeyboardEvent*) const;
+    bool isTextFormControlKeyboardFocusable(KeyboardEvent&) const;
     bool isTextFormControlMouseFocusable() const;
     bool valueAttributeWasUpdatedAfterParsing() const { return m_valueAttributeWasUpdatedAfterParsing; }
 
@@ -335,7 +335,7 @@ public:
 protected:
     HTMLInputElement(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
 private:
     enum AutoCompleteSetting { Uninitialized, On, Off };
@@ -350,7 +350,7 @@ private:
     void didMoveToNewDocument(Document* oldDocument) final;
 
     bool hasCustomFocusLogic() const final;
-    bool isKeyboardFocusable(KeyboardEvent*) const final;
+    bool isKeyboardFocusable(KeyboardEvent&) const final;
     bool isMouseFocusable() const final;
     bool isEnumeratable() const final;
     bool supportLabels() const final;
@@ -402,9 +402,11 @@ private:
     void registerForSuspensionCallbackIfNeeded();
     void unregisterForSuspensionCallbackIfNeeded();
 
+    bool supportsMinLength() const { return isTextType(); }
     bool supportsMaxLength() const { return isTextType(); }
     bool isTextType() const;
-    bool tooLong(const String&, NeedsToCheckDirtyFlag) const;
+    bool tooShort(StringView, NeedsToCheckDirtyFlag) const;
+    bool tooLong(StringView, NeedsToCheckDirtyFlag) const;
 
     bool supportsPlaceholder() const final;
     void updatePlaceholderText() final;
@@ -427,6 +429,7 @@ private:
     void resetListAttributeTargetObserver();
 #endif
     void maxLengthAttributeChanged(const AtomicString& newValue);
+    void minLengthAttributeChanged(const AtomicString& newValue);
     void updateValueIfNeeded();
 
     void addToRadioButtonGroup();
@@ -435,7 +438,6 @@ private:
     AtomicString m_name;
     String m_valueIfDirty;
     unsigned m_size;
-    int m_maxLength;
     short m_maxResults;
     bool m_isChecked : 1;
     bool m_reflectsCheckedAttribute : 1;

@@ -126,7 +126,7 @@ messages -> WebPageProxy {
     DidReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String url, WebKit::UserData userData)
     DidChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, String url)
     DidFailProvisionalLoadForFrame(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, WebKit::UserData userData)
-    DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, WebKit::UserData userData)
+    DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, WebKit::UserData userData)
     DidFailLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceError error, WebKit::UserData userData)
     DidFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
     DidFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
@@ -139,6 +139,8 @@ messages -> WebPageProxy {
     DidDetectXSSForFrame(uint64_t frameID, WebKit::UserData userData)
     DidSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t type, String url, WebKit::UserData userData)
     DidDestroyNavigation(uint64_t navigationID)
+
+    HasInsecureContent() -> (enum WebCore::HasInsecureContent hasInsecureContent)
 
     MainFramePluginHandlesPageScaleGestureDidChange(bool mainFramePluginHandlesPageScaleGesture)
 
@@ -161,6 +163,7 @@ messages -> WebPageProxy {
     DataCallback(IPC::DataReference resultData, uint64_t callbackID)
     ImageCallback(WebKit::ShareableBitmap::Handle bitmapHandle, uint64_t callbackID)
     StringCallback(String resultString, uint64_t callbackID)
+    InvalidateStringCallback(uint64_t callbackID)
     ScriptValueCallback(IPC::DataReference resultData, bool hadException, struct WebCore::ExceptionDetails details, uint64_t callbackID)
     ComputedPagesCallback(Vector<WebCore::IntRect> pageRects, double totalScaleFactorForPrinting, uint64_t callbackID)
     ValidateCommandCallback(String command, bool isEnabled, int32_t state, uint64_t callbackID)
@@ -234,6 +237,8 @@ messages -> WebPageProxy {
     EditorStateChanged(struct WebKit::EditorState editorState)
     CompositionWasCanceled(struct WebKit::EditorState editorState)
     SetHasHadSelectionChangesFromUserInteraction(bool hasHadUserSelectionChanges)
+    SetNeedsHiddenContentEditableQuirk(bool needsHiddenContentEditableQuirk)
+    SetNeedsPlainTextQuirk(bool needsPlainTextQuirk)
 
     # Find messages
     DidCountStringMatches(String string, uint32_t matchCount)
@@ -303,7 +308,7 @@ messages -> WebPageProxy {
 #endif
 #endif
 #if PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
-    StartDrag(WebCore::DragData dragData, WebKit::ShareableBitmap::Handle dragImage)
+    StartDrag(struct WebKit::PasteboardContent selection, uint64_t dragOperation, WebKit::ShareableBitmap::Handle dragImage)
 #endif
 
 #if PLATFORM(COCOA)

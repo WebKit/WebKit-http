@@ -41,14 +41,17 @@ CustomConstructor
 CustomDeleteProperty
 CustomEnumerateProperty
 CustomGetOwnPropertySlot
+CustomGetPrototype
 CustomGetter
 CustomIndexedSetter
 CustomIsReachable
 CustomNamedGetter
 CustomNamedSetter
+CustomPreventExtensions
 CustomProxyToJSObject
 CustomPutFunction
 CustomReturn
+CustomSetPrototype
 CustomSetter
 CustomToJSObject
 Deletable
@@ -116,7 +119,6 @@ SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|Acti
 SkipVTableValidation
 SuppressToJSObject
 TreatNullAs=EmptyString
-TreatReturnedNaNDateAs=Null|NaN
 TypedArray=*
 URL
 Unforgeable

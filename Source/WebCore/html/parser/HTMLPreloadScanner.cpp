@@ -36,7 +36,8 @@
 #include "LinkRelAttribute.h"
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
-#include "SourceSizeList.h"
+#include "RenderView.h"
+#include "SizesAttributeParser.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -74,13 +75,13 @@ String TokenPreloadScanner::initiatorFor(TagId tagId)
     switch (tagId) {
     case TagId::Source:
     case TagId::Img:
-        return "img";
+        return ASCIILiteral("img");
     case TagId::Input:
-        return "input";
+        return ASCIILiteral("input");
     case TagId::Link:
-        return "link";
+        return ASCIILiteral("link");
     case TagId::Script:
-        return "script";
+        return ASCIILiteral("script");
     case TagId::Unknown:
     case TagId::Style:
     case TagId::Base:
@@ -88,10 +89,10 @@ String TokenPreloadScanner::initiatorFor(TagId tagId)
     case TagId::Meta:
     case TagId::Picture:
         ASSERT_NOT_REACHED();
-        return "unknown";
+        return ASCIILiteral("unknown");
     }
     ASSERT_NOT_REACHED();
-    return "unknown";
+    return ASCIILiteral("unknown");
 }
 
 class TokenPreloadScanner::StartTagScanner {
@@ -118,7 +119,8 @@ public:
         }
         
         if (m_tagId == TagId::Source && !pictureState.isEmpty() && !pictureState.last() && m_mediaMatched && !m_srcSetAttribute.isEmpty()) {
-            float sourceSize = parseSizesAttribute(document, m_sizesAttribute);
+            
+            auto sourceSize = SizesAttributeParser(m_sizesAttribute, document).length();
             ImageCandidate imageCandidate = bestFitSourceForImageAttributes(m_deviceScaleFactor, m_urlToLoad, m_srcSetAttribute, sourceSize);
             if (!imageCandidate.isEmpty()) {
                 pictureState.last() = true;
@@ -128,7 +130,7 @@ public:
         
         // Resolve between src and srcSet if we have them and the tag is img.
         if (m_tagId == TagId::Img && !m_srcSetAttribute.isEmpty()) {
-            float sourceSize = parseSizesAttribute(document, m_sizesAttribute);
+            auto sourceSize = SizesAttributeParser(m_sizesAttribute, document).length();
             ImageCandidate imageCandidate = bestFitSourceForImageAttributes(m_deviceScaleFactor, m_urlToLoad, m_srcSetAttribute, sourceSize);
             setUrlToLoad(imageCandidate.string.toString(), true);
         }

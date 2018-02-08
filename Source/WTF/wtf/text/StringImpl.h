@@ -148,7 +148,9 @@ private:
     };
 
     // The bottom 6 bits in the hash are flags.
+public:
     static const unsigned s_flagCount = 6;
+private:
     static const unsigned s_flagMask = (1u << s_flagCount) - 1;
     COMPILE_ASSERT(s_flagCount <= StringHasher::flagCount, StringHasher_reserves_enough_bits_for_StringImpl_flags);
     static const unsigned s_flagStringKindCount = 4;
@@ -424,7 +426,7 @@ public:
     static unsigned dataOffset() { return OBJECT_OFFSETOF(StringImpl, m_data8); }
 
     template<typename CharType, size_t inlineCapacity, typename OverflowHandler>
-    static Ref<StringImpl> adopt(Vector<CharType, inlineCapacity, OverflowHandler>& vector)
+    static Ref<StringImpl> adopt(Vector<CharType, inlineCapacity, OverflowHandler>&& vector)
     {
         if (size_t size = vector.size()) {
             ASSERT(vector.data());
@@ -435,8 +437,8 @@ public:
         return *empty();
     }
 
-    WTF_EXPORT_STRING_API static Ref<StringImpl> adopt(StringBuffer<UChar>&);
-    WTF_EXPORT_STRING_API static Ref<StringImpl> adopt(StringBuffer<LChar>&);
+    WTF_EXPORT_STRING_API static Ref<StringImpl> adopt(StringBuffer<UChar>&&);
+    WTF_EXPORT_STRING_API static Ref<StringImpl> adopt(StringBuffer<LChar>&&);
 
     unsigned length() const { return m_length; }
     static ptrdiff_t lengthMemoryOffset() { return OBJECT_OFFSETOF(StringImpl, m_length); }
@@ -550,6 +552,8 @@ public:
             return existingHash();
         return hashSlowCase();
     }
+
+    WTF_EXPORT_PRIVATE unsigned concurrentHash() const;
 
     unsigned symbolAwareHash() const
     {
@@ -944,8 +948,8 @@ WTF_EXPORT_STRING_API bool equalIgnoringNullity(const UChar*, size_t length, Str
 
 bool equalIgnoringASCIICase(const StringImpl&, const StringImpl&);
 WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(const StringImpl*, const StringImpl*);
-WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(const StringImpl&, const char*);
-WTF_EXPORT_STRING_API bool equalIgnoringASCIICase(const StringImpl*, const char*);
+bool equalIgnoringASCIICase(const StringImpl&, const char*);
+bool equalIgnoringASCIICase(const StringImpl*, const char*);
 
 WTF_EXPORT_STRING_API bool equalIgnoringASCIICaseNonNull(const StringImpl*, const StringImpl*);
 

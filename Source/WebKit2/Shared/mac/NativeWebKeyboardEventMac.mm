@@ -35,8 +35,8 @@ using namespace WebCore;
 
 namespace WebKit {
 
-NativeWebKeyboardEvent::NativeWebKeyboardEvent(NSEvent *event, bool handledByInputMethod, const Vector<KeypressCommand>& commands)
-    : WebKeyboardEvent(WebEventFactory::createWebKeyboardEvent(event, handledByInputMethod, commands))
+NativeWebKeyboardEvent::NativeWebKeyboardEvent(NSEvent *event, bool handledByInputMethod, bool replacesSoftSpace, const Vector<KeypressCommand>& commands)
+    : WebKeyboardEvent(WebEventFactory::createWebKeyboardEvent(event, handledByInputMethod, replacesSoftSpace, commands))
     , m_nativeEvent(event)
 {
 }

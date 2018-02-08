@@ -4553,6 +4553,44 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     return _page && _page->hasActiveVideoForControlsManager();
 }
+
+- (void)_requestControlledElementID
+{
+    if (_page)
+        _page->requestControlledElementID();
+}
+
+- (void)_handleControlledElementIDResponse:(NSString *)identifier
+{
+    // Overridden by subclasses.
+}
+
+- (void)_handleAcceptedCandidate:(NSTextCheckingResult *)candidate
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    _impl->handleAcceptedCandidate(candidate);
+#endif
+}
+
+- (void)_didHandleAcceptedCandidate
+{
+    // Overridden by subclasses.
+}
+
+- (void)_didUpdateCandidateListVisibility:(BOOL)visible
+{
+    // Overridden by subclasses.
+}
+
+- (void)_forceRequestCandidates
+{
+    _impl->forceRequestCandidatesForTesting();
+}
+
+- (BOOL)_shouldRequestCandidates
+{
+    return _impl->shouldRequestCandidates();
+}
 #endif // PLATFORM(MAC)
 
 // Execute the supplied block after the next transaction from the WebProcess.

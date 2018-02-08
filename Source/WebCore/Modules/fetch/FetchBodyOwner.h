@@ -44,13 +44,15 @@ public:
     FetchBodyOwner(ScriptExecutionContext&, FetchBody&&);
 
     // Exposed Body API
-    bool isDisturbed() const;
+    bool isDisturbed() const { return m_isDisturbed; };
 
-    void arrayBuffer(DeferredWrapper&&);
-    void blob(DeferredWrapper&&);
-    void formData(DeferredWrapper&&);
-    void json(DeferredWrapper&&);
-    void text(DeferredWrapper&&);
+    void arrayBuffer(Ref<DeferredWrapper>&&);
+    void blob(Ref<DeferredWrapper>&&);
+    void formData(Ref<DeferredWrapper>&&);
+    void json(Ref<DeferredWrapper>&&);
+    void text(Ref<DeferredWrapper>&&);
+
+    bool isDisturbedOrLocked() const;
 
     void loadBlob(Blob&, FetchBodyConsumer*);
 
@@ -90,7 +92,7 @@ private:
 protected:
     FetchBody m_body;
     bool m_isDisturbed { false };
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     RefPtr<FetchResponseSource> m_readableStreamSource;
 #endif
 

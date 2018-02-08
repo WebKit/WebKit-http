@@ -41,11 +41,12 @@
 
 namespace WebKit {
 
-void InitializeWebKit2()
+void InitializeWebKit2(ProcessType processType)
 {
 #if PLATFORM(COCOA)
     InitWebCoreSystemInterface();
 #endif
+    platformInitializeWebKit2(processType);
 #if PLATFORM(IOS)
     InitWebCoreThreadSystemInterface();
 #endif
@@ -54,10 +55,10 @@ void InitializeWebKit2()
     WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
     WebCore::initializeLogChannelsIfNecessary();
     WebKit::initializeLogChannelsIfNecessary();
-#endif // !LOG_DISABLED
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 }
 
 } // namespace WebKit

@@ -36,7 +36,7 @@
 #include "URL.h"
 #include "LayoutRect.h"
 #include "MediaPlayerEnums.h"
-#include "NativeImagePtr.h"
+#include "NativeImage.h"
 #include "PlatformLayer.h"
 #include "PlatformMediaResourceLoader.h"
 #include "PlatformMediaSession.h"
@@ -195,6 +195,8 @@ public:
     // called when the media player's rendering mode changed, which indicates a change in the
     // availability of the platformLayer().
     virtual void mediaPlayerRenderingModeChanged(MediaPlayer*) { }
+
+    virtual void mediaPlayerActiveSourceBuffersChanged(const MediaPlayer*) { }
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const { return 0; }

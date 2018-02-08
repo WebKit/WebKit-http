@@ -49,6 +49,12 @@ typedef struct _NSRect NSRect;
 
 #if PLATFORM(WIN)
 typedef struct tagRECT RECT;
+
+struct D2D_RECT_U;
+typedef D2D_RECT_U D2D1_RECT_U;
+
+struct D2D_RECT_F;
+typedef D2D_RECT_F D2D1_RECT_F;
 #elif PLATFORM(HAIKU)
 class BRect;
 #endif
@@ -172,6 +178,10 @@ public:
 #if PLATFORM(WIN)
     IntRect(const RECT&);
     operator RECT() const;
+    explicit IntRect(const D2D1_RECT_F&);
+    IntRect(const D2D1_RECT_U&);
+    operator D2D1_RECT_F() const;
+    operator D2D1_RECT_U() const;
 #elif PLATFORM(HAIKU)
     explicit IntRect(const BRect&);
     operator BRect() const;

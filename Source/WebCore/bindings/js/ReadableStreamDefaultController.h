@@ -29,7 +29,7 @@
 #ifndef ReadableStreamDefaultController_h
 #define ReadableStreamDefaultController_h
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
 #include "JSDOMBinding.h"
 #include "JSReadableStreamDefaultController.h"
@@ -74,8 +74,11 @@ inline JSDOMGlobalObject* ReadableStreamDefaultController::globalObject() const
 
 inline bool ReadableStreamDefaultController::enqueue(RefPtr<JSC::ArrayBuffer>&& buffer)
 {
-    JSC::ExecState& state = *globalObject()->globalExec();
-    JSC::JSLockHolder locker(&state);
+    auto globalObject = this->globalObject();
+    JSC::VM& vm = globalObject->vm();
+    JSC::JSLockHolder locker(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSC::ExecState& state = *globalObject->globalExec();
 
     if (!buffer) {
         error(state, createOutOfMemoryError(&state));
@@ -84,8 +87,8 @@ inline bool ReadableStreamDefaultController::enqueue(RefPtr<JSC::ArrayBuffer>&& 
     auto length = buffer->byteLength();
     auto chunk = JSC::Uint8Array::create(WTFMove(buffer), 0, length);
     ASSERT(chunk);
-    enqueue(state, toJS(&state, globalObject(), chunk.get()));
-    ASSERT(!state.hadException());
+    enqueue(state, toJS(&state, globalObject, chunk.get()));
+    ASSERT_UNUSED(scope, !scope.exception());
     return true;
 }
 
@@ -99,6 +102,6 @@ inline void ReadableStreamDefaultController::error<String>(const String& result)
 
 } // namespace WebCore
 
-#endif // ENABLE(STREAMS_API)
+#endif // ENABLE(READABLE_STREAM_API)
 
 #endif // ReadableStreamDefaultController_h

@@ -35,13 +35,21 @@
 
 #include "RealtimeMediaSource.h"
 
+#if USE(OPENWEBRTC)
+#include "RealtimeMediaSourceOwr.h"
+#endif
+
 namespace WebCore {
 
-class FloatRect;
-class GraphicsContext;
-class TrackSourceInfo;
+class CaptureDevice;
 
-class MockRealtimeMediaSource : public RealtimeMediaSource {
+#if USE(OPENWEBRTC)
+using BaseRealtimeMediaSourceClass = RealtimeMediaSourceOwr;
+#else
+using BaseRealtimeMediaSourceClass = RealtimeMediaSource;
+#endif
+
+class MockRealtimeMediaSource : public BaseRealtimeMediaSourceClass {
 public:
     virtual ~MockRealtimeMediaSource() { }
 
@@ -51,7 +59,8 @@ public:
     static const AtomicString& mockVideoSourcePersistentID();
     static const AtomicString& mockVideoSourceName();
 
-    static RefPtr<TrackSourceInfo> trackSourceWithUID(const String&, MediaConstraints*);
+    static CaptureDevice audioDeviceInfo();
+    static CaptureDevice videoDeviceInfo();
 
 protected:
     MockRealtimeMediaSource(const String& id, Type, const String& name);

@@ -30,6 +30,7 @@
 #include "EventListener.h"
 #include "HTMLMediaElementEnums.h"
 #include "WebPlaybackSessionModel.h"
+#include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -46,14 +47,15 @@ public:
         return adoptRef(*new WebPlaybackSessionModelMediaElement());
     }
     WEBCORE_EXPORT virtual ~WebPlaybackSessionModelMediaElement();
-    WEBCORE_EXPORT void setWebPlaybackSessionInterface(WebPlaybackSessionInterface*);
     WEBCORE_EXPORT void setMediaElement(HTMLMediaElement*);
-    WEBCORE_EXPORT HTMLMediaElement* mediaElement() const { return m_mediaElement.get(); }
+    HTMLMediaElement* mediaElement() const { return m_mediaElement.get(); }
 
     WEBCORE_EXPORT void handleEvent(WebCore::ScriptExecutionContext*, WebCore::Event*) final;
     void updateForEventName(const WTF::AtomicString&);
     bool operator==(const EventListener& rhs) const final { return static_cast<const WebCore::EventListener*>(this) == &rhs; }
 
+    WEBCORE_EXPORT void addClient(WebPlaybackSessionModelClient&);
+    WEBCORE_EXPORT void removeClient(WebPlaybackSessionModelClient&);
     WEBCORE_EXPORT void play() final;
     WEBCORE_EXPORT void pause() final;
     WEBCORE_EXPORT void togglePlayState() final;
@@ -79,6 +81,8 @@ public:
     Vector<WTF::String> legibleMediaSelectionOptions() const final;
     uint64_t legibleMediaSelectedIndex() const final;
     bool externalPlaybackEnabled() const final;
+    ExternalPlaybackTargetType externalPlaybackTargetType() const final;
+    String externalPlaybackLocalizedDeviceName() const final;
     bool wirelessVideoPlaybackDisabled() const final;
 
 protected:
@@ -90,7 +94,7 @@ private:
 
     RefPtr<HTMLMediaElement> m_mediaElement;
     bool m_isListening { false };
-    WebPlaybackSessionInterface* m_playbackSessionInterface { nullptr };
+    HashSet<WebPlaybackSessionModelClient*> m_clients;
     Vector<RefPtr<TextTrack>> m_legibleTracksForMenu;
     Vector<RefPtr<AudioTrack>> m_audioTracksForMenu;
     

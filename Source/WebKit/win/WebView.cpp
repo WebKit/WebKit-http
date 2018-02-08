@@ -2906,9 +2906,9 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
 
     static bool didOneTimeInitialization;
     if (!didOneTimeInitialization) {
-#if !LOG_DISABLED
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
         initializeLogChannelsIfNecessary();
-#endif // !LOG_DISABLED
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
         // Initialize our platform strategies first before invoking the rest
         // of the initialization code which may depend on the strategies.
@@ -5493,6 +5493,9 @@ HRESULT WebView::scrollOffset(_Out_ LPPOINT offset)
     if (!offset)
         return E_POINTER;
 
+    if (!m_page || !m_page->mainFrame().view())
+        return E_FAIL;
+
     IntPoint scrollPosition = m_page->mainFrame().view()->scrollPosition();
     float scaleFactor = deviceScaleFactor();
     scrollPosition.scale(scaleFactor, scaleFactor);
@@ -5507,6 +5510,9 @@ HRESULT WebView::scrollBy(_In_ LPPOINT offset)
     if (!offset)
         return E_POINTER;
 
+    if (!m_page || !m_page->mainFrame().view())
+        return E_FAIL;
+
     IntSize scrollDelta(offset->x, offset->y);
     scrollDelta.scale(1.0f / deviceScaleFactor());
     m_page->mainFrame().view()->scrollBy(scrollDelta);
@@ -5517,6 +5523,9 @@ HRESULT WebView::visibleContentRect(_Out_ LPRECT rect)
 {
     if (!rect)
         return E_POINTER;
+
+    if (!m_page || !m_page->mainFrame().view())
+        return E_FAIL;
 
     FloatRect visibleContent = m_page->mainFrame().view()->visibleContentRect();
     visibleContent.scale(deviceScaleFactor());

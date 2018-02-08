@@ -64,13 +64,9 @@ public:
         ScriptFontFamilyMap m_fantasyFontFamilies;
         ScriptFontFamilyMap m_pictographFontFamilies;
 
-#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(IOS_TEXT_AUTOSIZING)
         bool m_originalTextAutosizingEnabled;
         IntSize m_originalTextAutosizingWindowSizeOverride;
-#endif
-
-#if ENABLE(TEXT_AUTOSIZING)
-        float m_originalTextAutosizingFontScaleFactor;
 #endif
 
         String m_originalMediaTypeOverride;
@@ -80,7 +76,6 @@ public:
         bool m_langAttributeAwareFormControlUIEnabled;
         bool m_imagesEnabled;
         bool m_preferMIMETypeForImages;
-        bool m_cachedPDFImageEnabled;
         std::chrono::milliseconds m_minimumTimerInterval;
 #if ENABLE(VIDEO_TRACK)
         bool m_shouldDisplaySubtitles;
@@ -92,7 +87,8 @@ public:
         bool m_originalTimeWithoutMouseMovementBeforeHidingControls;
         bool m_useLegacyBackgroundSizeShorthandBehavior;
         bool m_autoscrollForDragAndDropEnabled;
-        bool m_pluginReplacementEnabled;
+        bool m_quickTimePluginReplacementEnabled;
+        bool m_youTubeFlashPluginReplacementEnabled;
         bool m_shouldConvertPositionStyleOnCopy;
         bool m_fontFallbackPrefersPictographs;
         bool m_webFontsAlwaysFallBack;
@@ -113,6 +109,7 @@ public:
 #endif
         UserInterfaceDirectionPolicy m_userInterfaceDirectionPolicy;
         TextDirection m_systemLayoutDirection;
+        PDFImageCachingPolicy m_pdfImageCachingPolicy;
     };
 
     static Ref<InternalSettings> create(Page* page)
@@ -142,7 +139,7 @@ public:
     void setAllowsAirPlayForMediaPlayback(bool);
     void setEditingBehavior(const String&, ExceptionCode&);
     void setPreferMIMETypeForImages(bool, ExceptionCode&);
-    void setCachedPDFImageEnabled(bool, ExceptionCode&);
+    void setPDFImageCachingPolicy(const String&, ExceptionCode&);
     void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
     bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);
     void setStorageBlockingPolicy(const String&, ExceptionCode&);
@@ -156,7 +153,8 @@ public:
     void setAutoscrollForDragAndDropEnabled(bool, ExceptionCode&);
     void setFontFallbackPrefersPictographs(bool, ExceptionCode&);
     void setWebFontsAlwaysFallBack(bool, ExceptionCode&);
-    void setPluginReplacementEnabled(bool);
+    void setQuickTimePluginReplacementEnabled(bool, ExceptionCode&);
+    void setYouTubeFlashPluginReplacementEnabled(bool, ExceptionCode&);
     void setBackgroundShouldExtendBeyondPage(bool, ExceptionCode&);
     void setShouldConvertPositionStyleOnCopy(bool, ExceptionCode&);
     void setScrollingTreeIncludesFrames(bool, ExceptionCode&);

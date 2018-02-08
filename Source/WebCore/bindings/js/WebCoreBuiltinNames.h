@@ -48,18 +48,21 @@ namespace WebCore {
     macro(fillFromJS) \
     macro(finishConsumingStream) \
     macro(firstReadCallback) \
-    macro(getUserMediaFromJS) \
+    macro(getUserMedia) \
     macro(getRemoteStreams) \
     macro(getSenders) \
     macro(getTracks) \
     macro(initializeWith) \
     macro(isDisturbed) \
+    macro(isLoading) \
     macro(localStreams) \
     macro(makeThisTypeError) \
     macro(makeGetterTypeError) \
+    macro(mediaStreamTrackConstraints) \
     macro(operations) \
     macro(ownerReadableStream) \
     macro(privateGetStats) \
+    macro(pull) \
     macro(pulling) \
     macro(pullAgain) \
     macro(queue) \
@@ -70,6 +73,7 @@ namespace WebCore {
     macro(queuedSetRemoteDescription) \
     macro(reader) \
     macro(readRequests) \
+    macro(readableStreamController) \
     macro(readyPromiseCapability) \
     macro(removeTrack) \
     macro(responseCacheIsValid) \
@@ -89,6 +93,8 @@ namespace WebCore {
     macro(streamReadable) \
     macro(streamWaiting) \
     macro(streamWritable) \
+    macro(structuredCloneArrayBuffer) \
+    macro(structuredCloneArrayBufferView) \
     macro(underlyingSink) \
     macro(underlyingSource) \
     macro(writing) \

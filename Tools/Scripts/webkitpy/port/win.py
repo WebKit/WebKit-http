@@ -122,9 +122,6 @@ class WinPort(ApplePort):
     def operating_system(self):
         return 'win'
 
-    def default_child_processes(self):
-        return 1
-
     def _port_flag_for_scripts(self):
         if self.get_option('architecture') == 'x86_64':
             return '--64-bit'
@@ -299,6 +296,10 @@ class WinPort(ApplePort):
         if '_NT_SYMBOL_PATH' not in os.environ:
             _log.warning("The _NT_SYMBOL_PATH environment variable is not set. Using Microsoft Symbol Server.")
             os.environ['_NT_SYMBOL_PATH'] = 'SRV*http://msdl.microsoft.com/download/symbols'
+
+        # Add build path to symbol path
+        os.environ['_NT_SYMBOL_PATH'] += ";" + self._build_path()
+
         ntsd_path = self._ntsd_location()
         if not ntsd_path:
             _log.warning("Can't find ntsd.exe. Crash logs will not be saved.")

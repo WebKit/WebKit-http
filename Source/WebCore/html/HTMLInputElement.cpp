@@ -96,7 +96,6 @@ const int maxSavedResults = 256;
 HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& document, HTMLFormElement* form, bool createdByParser)
     : HTMLTextFormControlElement(tagName, document, form)
     , m_size(defaultSize)
-    , m_maxLength(-1)
     , m_maxResults(-1)
     , m_isChecked(false)
     , m_reflectsCheckedAttribute(true)
@@ -122,7 +121,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
     // its shadow subtree, just to destroy them when the |type| attribute gets set by the parser to something else than 'text'.
     , m_inputType(createdByParser ? nullptr : InputType::createText(*this))
 {
-    ASSERT(hasTagName(inputTag) || hasTagName(isindexTag));
+    ASSERT(hasTagName(inputTag));
     setHasCustomStyleResolveCallbacks();
 }
 
@@ -248,9 +247,15 @@ bool HTMLInputElement::isValidValue(const String& value) const
         && !m_inputType->stepMismatch(value)
         && !m_inputType->rangeUnderflow(value)
         && !m_inputType->rangeOverflow(value)
+        && !tooShort(value, IgnoreDirtyFlag)
         && !tooLong(value, IgnoreDirtyFlag)
         && !m_inputType->patternMismatch(value)
         && !m_inputType->valueMissing(value);
+}
+
+bool HTMLInputElement::tooShort() const
+{
+    return willValidate() && tooShort(value(), CheckDirtyFlag);
 }
 
 bool HTMLInputElement::tooLong() const
@@ -278,11 +283,33 @@ bool HTMLInputElement::patternMismatch() const
     return willValidate() && m_inputType->patternMismatch(value());
 }
 
-bool HTMLInputElement::tooLong(const String& value, NeedsToCheckDirtyFlag check) const
+bool HTMLInputElement::tooShort(StringView value, NeedsToCheckDirtyFlag check) const
 {
-    // We use isTextType() instead of supportsMaxLength() because of the
-    // 'virtual' overhead.
-    if (!isTextType())
+    if (!supportsMinLength())
+        return false;
+
+    int min = minLength();
+    if (min <= 0)
+        return false;
+
+    if (check == CheckDirtyFlag) {
+        // Return false for the default value or a value set by a script even if
+        // it is shorter than minLength.
+        if (!hasDirtyValue() || !m_wasModifiedByUser)
+            return false;
+    }
+
+    // The empty string is excluded from tooShort validation.
+    if (value.isEmpty())
+        return false;
+
+    // FIXME: The HTML specification says that the "number of characters" is measured using code-unit length.
+    return numGraphemeClusters(value) < static_cast<unsigned>(min);
+}
+
+bool HTMLInputElement::tooLong(StringView value, NeedsToCheckDirtyFlag check) const
+{
+    if (!supportsMaxLength())
         return false;
     unsigned max = effectiveMaxLength();
     if (check == CheckDirtyFlag) {
@@ -291,6 +318,7 @@ bool HTMLInputElement::tooLong(const String& value, NeedsToCheckDirtyFlag check)
         if (!hasDirtyValue() || !m_wasModifiedByUser)
             return false;
     }
+    // FIXME: The HTML specification says that the "number of characters" is measured using code-unit length.
     return numGraphemeClusters(value) > max;
 }
 
@@ -372,7 +400,7 @@ bool HTMLInputElement::hasCustomFocusLogic() const
     return m_inputType->hasCustomFocusLogic();
 }
 
-bool HTMLInputElement::isKeyboardFocusable(KeyboardEvent* event) const
+bool HTMLInputElement::isKeyboardFocusable(KeyboardEvent& event) const
 {
     return m_inputType->isKeyboardFocusable(event);
 }
@@ -387,7 +415,7 @@ bool HTMLInputElement::isTextFormControlFocusable() const
     return HTMLTextFormControlElement::isFocusable();
 }
 
-bool HTMLInputElement::isTextFormControlKeyboardFocusable(KeyboardEvent* event) const
+bool HTMLInputElement::isTextFormControlKeyboardFocusable(KeyboardEvent& event) const
 {
     return HTMLTextFormControlElement::isKeyboardFocusable(event);
 }
@@ -448,17 +476,9 @@ void HTMLInputElement::updateType()
 {
     ASSERT(m_inputType);
     auto newType = InputType::create(*this, attributeWithoutSynchronization(typeAttr));
-    bool hadType = m_hasType;
     m_hasType = true;
     if (m_inputType->formControlType() == newType->formControlType())
         return;
-
-    if (hadType && !newType->canChangeFromAnotherType()) {
-        // Set the attribute back to the old value.
-        // Useful in case we were called from inside parseAttribute.
-        setAttributeWithoutSynchronization(typeAttr, type());
-        return;
-    }
 
     removeFromRadioButtonGroup();
 
@@ -694,6 +714,8 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
         }
     } else if (name == maxlengthAttr)
         maxLengthAttributeChanged(value);
+    else if (name == minAttr)
+        minLengthAttributeChanged(value);
     else if (name == sizeAttr) {
         unsigned oldSize = m_size;
         m_size = limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(value, defaultSize);
@@ -932,7 +954,7 @@ float HTMLInputElement::decorationWidth() const
 
 void HTMLInputElement::copyNonAttributePropertiesFromElement(const Element& source)
 {
-    const HTMLInputElement& sourceElement = static_cast<const HTMLInputElement&>(source);
+    auto& sourceElement = downcast<HTMLInputElement>(source);
 
     m_valueIfDirty = sourceElement.m_valueIfDirty;
     m_wasModifiedByUser = false;
@@ -1083,7 +1105,7 @@ void HTMLInputElement::setValueFromRenderer(const String& value)
 
 void HTMLInputElement::willDispatchEvent(Event& event, InputElementClickState& state)
 {
-    if (event.type() == eventNames().textInputEvent && m_inputType->shouldSubmitImplicitly(&event))
+    if (event.type() == eventNames().textInputEvent && m_inputType->shouldSubmitImplicitly(event))
         event.stopPropagation();
     if (event.type() == eventNames().clickEvent && is<MouseEvent>(event) && downcast<MouseEvent>(event).button() == LeftButton) {
         m_inputType->willDispatchClick(state);
@@ -1096,35 +1118,34 @@ void HTMLInputElement::didDispatchClickEvent(Event& event, const InputElementCli
     m_inputType->didDispatchClick(&event, state);
 }
 
-void HTMLInputElement::defaultEventHandler(Event* evt)
+void HTMLInputElement::defaultEventHandler(Event& event)
 {
-    ASSERT(evt);
-    if (is<MouseEvent>(*evt) && evt->type() == eventNames().clickEvent && downcast<MouseEvent>(*evt).button() == LeftButton) {
-        m_inputType->handleClickEvent(downcast<MouseEvent>(evt));
-        if (evt->defaultHandled())
+    if (is<MouseEvent>(event) && event.type() == eventNames().clickEvent && downcast<MouseEvent>(event).button() == LeftButton) {
+        m_inputType->handleClickEvent(downcast<MouseEvent>(event));
+        if (event.defaultHandled())
             return;
     }
 
 #if ENABLE(TOUCH_EVENTS)
-    if (is<TouchEvent>(*evt)) {
-        m_inputType->handleTouchEvent(downcast<TouchEvent>(evt));
-        if (evt->defaultHandled())
+    if (is<TouchEvent>(event)) {
+        m_inputType->handleTouchEvent(downcast<TouchEvent>(event));
+        if (event.defaultHandled())
             return;
     }
 #endif
 
-    if (is<KeyboardEvent>(*evt) && evt->type() == eventNames().keydownEvent) {
-        m_inputType->handleKeydownEvent(downcast<KeyboardEvent>(evt));
-        if (evt->defaultHandled())
+    if (is<KeyboardEvent>(event) && event.type() == eventNames().keydownEvent) {
+        m_inputType->handleKeydownEvent(downcast<KeyboardEvent>(event));
+        if (event.defaultHandled())
             return;
     }
 
     // Call the base event handler before any of our own event handling for almost all events in text fields.
     // Makes editing keyboard handling take precedence over the keydown and keypress handling in this function.
-    bool callBaseClassEarly = isTextField() && (evt->type() == eventNames().keydownEvent || evt->type() == eventNames().keypressEvent);
+    bool callBaseClassEarly = isTextField() && (event.type() == eventNames().keydownEvent || event.type() == eventNames().keypressEvent);
     if (callBaseClassEarly) {
-        HTMLTextFormControlElement::defaultEventHandler(evt);
-        if (evt->defaultHandled())
+        HTMLTextFormControlElement::defaultEventHandler(event);
+        if (event.defaultHandled())
             return;
     }
 
@@ -1132,28 +1153,28 @@ void HTMLInputElement::defaultEventHandler(Event* evt)
     // actually submitting the form. For reset inputs, the form is reset. These events are sent when the user clicks
     // on the element, or presses enter while it is the active element. JavaScript code wishing to activate the element
     // must dispatch a DOMActivate event - a click event will not do the job.
-    if (evt->type() == eventNames().DOMActivateEvent) {
-        m_inputType->handleDOMActivateEvent(evt);
-        if (evt->defaultHandled())
+    if (event.type() == eventNames().DOMActivateEvent) {
+        m_inputType->handleDOMActivateEvent(event);
+        if (event.defaultHandled())
             return;
     }
 
     // Use key press event here since sending simulated mouse events
     // on key down blocks the proper sending of the key press event.
-    if (is<KeyboardEvent>(*evt)) {
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*evt);
+    if (is<KeyboardEvent>(event)) {
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         if (keyboardEvent.type() == eventNames().keypressEvent) {
-            m_inputType->handleKeypressEvent(&keyboardEvent);
+            m_inputType->handleKeypressEvent(keyboardEvent);
             if (keyboardEvent.defaultHandled())
                 return;
         } else if (keyboardEvent.type() == eventNames().keyupEvent) {
-            m_inputType->handleKeyupEvent(&keyboardEvent);
+            m_inputType->handleKeyupEvent(keyboardEvent);
             if (keyboardEvent.defaultHandled())
                 return;
         }
     }
 
-    if (m_inputType->shouldSubmitImplicitly(evt)) {
+    if (m_inputType->shouldSubmitImplicitly(event)) {
         if (isSearchField()) {
             addSearchResult();
             onSearch();
@@ -1166,25 +1187,25 @@ void HTMLInputElement::defaultEventHandler(Event* evt)
         RefPtr<HTMLFormElement> formForSubmission = m_inputType->formForSubmission();
         // Form may never have been present, or may have been destroyed by code responding to the change event.
         if (formForSubmission)
-            formForSubmission->submitImplicitly(evt, canTriggerImplicitSubmission());
+            formForSubmission->submitImplicitly(event, canTriggerImplicitSubmission());
 
-        evt->setDefaultHandled();
+        event.setDefaultHandled();
         return;
     }
 
-    if (is<BeforeTextInsertedEvent>(*evt))
-        m_inputType->handleBeforeTextInsertedEvent(downcast<BeforeTextInsertedEvent>(evt));
+    if (is<BeforeTextInsertedEvent>(event))
+        m_inputType->handleBeforeTextInsertedEvent(downcast<BeforeTextInsertedEvent>(event));
 
-    if (is<MouseEvent>(*evt) && evt->type() == eventNames().mousedownEvent) {
-        m_inputType->handleMouseDownEvent(downcast<MouseEvent>(evt));
-        if (evt->defaultHandled())
+    if (is<MouseEvent>(event) && event.type() == eventNames().mousedownEvent) {
+        m_inputType->handleMouseDownEvent(downcast<MouseEvent>(event));
+        if (event.defaultHandled())
             return;
     }
 
-    m_inputType->forwardEvent(evt);
+    m_inputType->forwardEvent(event);
 
-    if (!callBaseClassEarly && !evt->defaultHandled())
-        HTMLTextFormControlElement::defaultEventHandler(evt);
+    if (!callBaseClassEarly && !event.defaultHandled())
+        HTMLTextFormControlElement::defaultEventHandler(event);
 }
 
 bool HTMLInputElement::willRespondToMouseClickEvents()
@@ -1277,7 +1298,7 @@ String HTMLInputElement::alt() const
 unsigned HTMLInputElement::effectiveMaxLength() const
 {
     // The number -1 represents no maximum at all; conveniently it becomes a super-large value when converted to unsigned.
-    return std::min<unsigned>(m_maxLength, maxEffectiveLength);
+    return std::min<unsigned>(maxLength(), maxEffectiveLength);
 }
 
 bool HTMLInputElement::multiple() const
@@ -1756,11 +1777,31 @@ bool HTMLInputElement::isEmptyValue() const
 void HTMLInputElement::maxLengthAttributeChanged(const AtomicString& newValue)
 {
     unsigned oldEffectiveMaxLength = effectiveMaxLength();
-    m_maxLength = parseHTMLNonNegativeInteger(newValue).valueOr(-1);
+    if (Optional<unsigned> maxLength = parseHTMLNonNegativeInteger(newValue))
+        setMaxLength(maxLength.value());
+    else
+        setMaxLength(-1);
+
     if (oldEffectiveMaxLength != effectiveMaxLength())
         updateValueIfNeeded();
 
     // FIXME: Do we really need to do this if the effective maxLength has not changed?
+    setNeedsStyleRecalc();
+    updateValidity();
+}
+
+void HTMLInputElement::minLengthAttributeChanged(const AtomicString& newValue)
+{
+    int oldMinLength = minLength();
+    if (Optional<unsigned> minLength = parseHTMLNonNegativeInteger(newValue))
+        setMinLength(minLength.value());
+    else
+        setMinLength(-1);
+
+    if (oldMinLength != minLength())
+        updateValueIfNeeded();
+
+    // FIXME: Do we really need to do this if the effective minLength has not changed?
     setNeedsStyleRecalc();
     updateValidity();
 }

@@ -249,7 +249,7 @@ void Element::setTabIndex(int value)
     setIntegralAttribute(tabindexAttr, value);
 }
 
-bool Element::isKeyboardFocusable(KeyboardEvent*) const
+bool Element::isKeyboardFocusable(KeyboardEvent&) const
 {
     return isFocusable() && tabIndex() >= 0;
 }
@@ -334,11 +334,6 @@ bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& platformEvent)
 void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
 {
     simulateClick(*this, underlyingEvent, eventOptions, visualOptions, SimulatedClickCreationOptions::FromUserAgent);
-}
-
-void Element::dispatchSimulatedClickForBindings(Event* underlyingEvent)
-{
-    simulateClick(*this, underlyingEvent, SendNoEvents, DoNotShowPressedLook, SimulatedClickCreationOptions::FromBindings);
 }
 
 Ref<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation type)
@@ -689,7 +684,50 @@ void Element::scrollIntoViewIfNotVisible(bool centerIfNotVisible)
     else
         renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, bounds, ScrollAlignment::alignToEdgeIfNotVisible, ScrollAlignment::alignToEdgeIfNotVisible);
 }
-    
+
+void Element::scrollBy(const ScrollToOptions& options)
+{
+    return scrollBy(options.left.valueOr(0), options.top.valueOr(0));
+}
+
+static inline double normalizeNonFiniteValue(double f)
+{
+    return std::isfinite(f) ? f : 0;
+}
+
+void Element::scrollBy(double x, double y)
+{
+    scrollTo(scrollLeft() + normalizeNonFiniteValue(x), scrollTop() + normalizeNonFiniteValue(y));
+}
+
+void Element::scrollTo(const ScrollToOptions& options)
+{
+    // If the element is the root element and document is in quirks mode, terminate these steps.
+    // Note that WebKit always uses quirks mode document scrolling behavior. See Document::scrollingElement().
+    if (this == document().documentElement())
+        return;
+
+    document().updateLayoutIgnorePendingStylesheets();
+
+    // If the element does not have any associated CSS layout box, the element has no associated scrolling box,
+    // or the element has no overflow, terminate these steps.
+    RenderBox* renderer = renderBox();
+    if (!renderer || !renderer->hasOverflowClip())
+        return;
+
+    // Normalize non-finite values for left and top dictionary members of options, if present.
+    double x = options.left ? normalizeNonFiniteValue(options.left.value()) : adjustForAbsoluteZoom(renderer->scrollLeft(), *renderer);
+    double y = options.top ? normalizeNonFiniteValue(options.top.value()) : adjustForAbsoluteZoom(renderer->scrollTop(), *renderer);
+
+    renderer->setScrollLeft(clampToInteger(x * renderer->style().effectiveZoom()));
+    renderer->setScrollTop(clampToInteger(y * renderer->style().effectiveZoom()));
+}
+
+void Element::scrollTo(double x, double y)
+{
+    scrollTo({ x, y });
+}
+
 void Element::scrollByUnits(int units, ScrollGranularity granularity)
 {
     document().updateLayoutIgnorePendingStylesheets();
@@ -831,7 +869,7 @@ double Element::clientLeft()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* renderer = renderBox()) {
+    if (auto* renderer = renderBox()) {
         LayoutUnit clientLeft = subpixelMetricsEnabled(renderer->document()) ? renderer->clientLeft() : LayoutUnit(roundToInt(renderer->clientLeft()));
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(clientLeft, *renderer).toDouble(), renderer->document());
     }
@@ -842,7 +880,7 @@ double Element::clientTop()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* renderer = renderBox()) {
+    if (auto* renderer = renderBox()) {
         LayoutUnit clientTop = subpixelMetricsEnabled(renderer->document()) ? renderer->clientTop() : LayoutUnit(roundToInt(renderer->clientTop()));
         return convertToNonSubpixelValueIfNeeded(adjustLayoutUnitForAbsoluteZoom(clientTop, *renderer).toDouble(), renderer->document());
     }
@@ -855,6 +893,7 @@ double Element::clientWidth()
 
     if (!document().hasLivingRenderTree())
         return 0;
+
     RenderView& renderView = *document().renderView();
 
     // When in strict mode, clientWidth for the document element should return the width of the containing frame.
@@ -875,6 +914,7 @@ double Element::clientHeight()
     document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
     if (!document().hasLivingRenderTree())
         return 0;
+
     RenderView& renderView = *document().renderView();
 
     // When in strict mode, clientHeight for the document element should return the height of the containing frame.
@@ -894,8 +934,8 @@ int Element::scrollLeft()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* rend = renderBox())
-        return adjustForAbsoluteZoom(rend->scrollLeft(), *rend);
+    if (auto* renderer = renderBox())
+        return adjustForAbsoluteZoom(renderer->scrollLeft(), *renderer);
     return 0;
 }
 
@@ -903,8 +943,8 @@ int Element::scrollTop()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* rend = renderBox())
-        return adjustForAbsoluteZoom(rend->scrollTop(), *rend);
+    if (RenderBox* renderer = renderBox())
+        return adjustForAbsoluteZoom(renderer->scrollTop(), *renderer);
     return 0;
 }
 
@@ -912,7 +952,7 @@ void Element::setScrollLeft(int newLeft)
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* renderer = renderBox()) {
+    if (auto* renderer = renderBox()) {
         renderer->setScrollLeft(static_cast<int>(newLeft * renderer->style().effectiveZoom()));
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrolledProgrammatically(true);
@@ -923,7 +963,7 @@ void Element::setScrollTop(int newTop)
 {
     document().updateLayoutIgnorePendingStylesheets();
 
-    if (RenderBox* renderer = renderBox()) {
+    if (auto* renderer = renderBox()) {
         renderer->setScrollTop(static_cast<int>(newTop * renderer->style().effectiveZoom()));
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrolledProgrammatically(true);
@@ -933,16 +973,16 @@ void Element::setScrollTop(int newTop)
 int Element::scrollWidth()
 {
     document().updateLayoutIfDimensionsOutOfDate(*this, WidthDimensionsCheck);
-    if (RenderBox* rend = renderBox())
-        return adjustForAbsoluteZoom(rend->scrollWidth(), *rend);
+    if (auto* renderer = renderBox())
+        return adjustForAbsoluteZoom(renderer->scrollWidth(), *renderer);
     return 0;
 }
 
 int Element::scrollHeight()
 {
     document().updateLayoutIfDimensionsOutOfDate(*this, HeightDimensionsCheck);
-    if (RenderBox* rend = renderBox())
-        return adjustForAbsoluteZoom(rend->scrollHeight(), *rend);
+    if (auto* renderer = renderBox())
+        return adjustForAbsoluteZoom(renderer->scrollHeight(), *renderer);
     return 0;
 }
 
@@ -1295,7 +1335,7 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
     document().incDOMTreeVersion();
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    if (UNLIKELY(isCustomElement()))
+    if (UNLIKELY(isDefinedCustomElement()))
         CustomElementReactionQueue::enqueueAttributeChangedCallbackIfNeeded(*this, name, oldValue, newValue);
 #endif
 
@@ -1493,6 +1533,11 @@ void Element::didMoveToNewDocument(Document* oldDocument)
         if (hasClass())
             attributeChanged(classAttr, nullAtom, getAttribute(classAttr));
     }
+
+#if ENABLE(CUSTOM_ELEMENTS)
+    if (UNLIKELY(isDefinedCustomElement()))
+        CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, *oldDocument, document());
+#endif
 }
 
 bool Element::hasAttributes() const
@@ -1574,7 +1619,8 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
     // This element is new to the shadow tree (and its tree scope) only if the parent into which this element
     // or its ancestor is inserted belongs to the same tree scope as this element's.
     TreeScope* newScope = &insertionPoint.treeScope();
-    HTMLDocument* newDocument = !wasInDocument && inDocument() && is<HTMLDocument>(newScope->documentScope()) ? &downcast<HTMLDocument>(newScope->documentScope()) : nullptr;
+    bool becomeConnected = !wasInDocument && inDocument();
+    HTMLDocument* newDocument = becomeConnected && is<HTMLDocument>(newScope->documentScope()) ? &downcast<HTMLDocument>(newScope->documentScope()) : nullptr;
     if (newScope != &treeScope())
         newScope = nullptr;
 
@@ -1600,8 +1646,13 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
     }
 
 #if ENABLE(CUSTOM_ELEMENTS)
-    if (newDocument && UNLIKELY(isCustomElement()))
-        CustomElementReactionQueue::enqueueConnectedCallbackIfNeeded(*this);
+    if (becomeConnected) {
+        if (UNLIKELY(isCustomElementUpgradeCandidate()))
+            CustomElementReactionQueue::enqueueElementUpgradeIfDefined(*this);
+        if (UNLIKELY(isDefinedCustomElement()))
+            CustomElementReactionQueue::enqueueConnectedCallbackIfNeeded(*this);
+    }
+
 #endif
 
     return InsertionDone;
@@ -1622,7 +1673,8 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 
     if (insertionPoint.isInTreeScope()) {
         TreeScope* oldScope = &insertionPoint.treeScope();
-        HTMLDocument* oldDocument = inDocument() && is<HTMLDocument>(oldScope->documentScope()) ? &downcast<HTMLDocument>(oldScope->documentScope()) : nullptr;
+        bool becomeDisconnected = inDocument();
+        HTMLDocument* oldDocument = becomeDisconnected && is<HTMLDocument>(oldScope->documentScope()) ? &downcast<HTMLDocument>(oldScope->documentScope()) : nullptr;
 
         // ContainerNode::removeBetween always sets the removed chid's tree scope to Document's but InTreeScope flag is unset in Node::removedFrom.
         // So this element has been removed from the old tree scope only if InTreeScope flag is set and this element's tree scope is Document's.
@@ -1651,7 +1703,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
         }
 
 #if ENABLE(CUSTOM_ELEMENTS)
-        if (oldDocument && UNLIKELY(isCustomElement()))
+        if (becomeDisconnected && UNLIKELY(isDefinedCustomElement()))
             CustomElementReactionQueue::enqueueDisconnectedCallbackIfNeeded(*this);
 #endif
     }
@@ -1820,6 +1872,42 @@ ShadowRoot& Element::ensureUserAgentShadowRoot()
     }
     return *shadowRoot;
 }
+
+    
+#if ENABLE(CUSTOM_ELEMENTS)
+
+void Element::setIsDefinedCustomElement(JSCustomElementInterface& elementInterface)
+{
+    clearFlag(IsEditingTextOrUndefinedCustomElementFlag);
+    setFlag(IsCustomElement);
+    ensureElementRareData().setCustomElementInterface(elementInterface);
+}
+
+void Element::setIsFailedCustomElement(JSCustomElementInterface& elementInterface)
+{
+    ASSERT(isUndefinedCustomElement());
+    ASSERT(getFlag(IsEditingTextOrUndefinedCustomElementFlag));
+    clearFlag(IsCustomElement);
+    ensureElementRareData().setCustomElementInterface(elementInterface);
+}
+
+void Element::setIsCustomElementUpgradeCandidate()
+{
+    ASSERT(!getFlag(IsCustomElement));
+    setFlag(IsCustomElement);
+    setFlag(IsEditingTextOrUndefinedCustomElementFlag);
+}
+
+JSCustomElementInterface* Element::customElementInterface() const
+{
+    ASSERT(isDefinedCustomElement());
+    if (!hasRareData())
+        return nullptr;
+    return elementRareData()->customElementInterface();
+}
+
+#endif
+
 
 const AtomicString& Element::shadowPseudoId() const
 {
@@ -3526,7 +3614,6 @@ bool Element::ieForbidsInsertHTML() const
         || hasTagName(imageTag)
         || hasTagName(imgTag)
         || hasTagName(inputTag)
-        || hasTagName(isindexTag)
         || hasTagName(linkTag)
         || hasTagName(metaTag)
         || hasTagName(paramTag)

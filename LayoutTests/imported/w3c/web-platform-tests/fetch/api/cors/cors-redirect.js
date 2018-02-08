@@ -2,7 +2,7 @@ if (this.document === undefined) {
   importScripts("/resources/testharness.js");
   importScripts("/common/utils.js");
   importScripts("../resources/utils.js");
-  importScripts("../resources/get-host-info.sub.js");
+  importScripts("/common/get-host-info.sub.js");
 }
 
 function corsRedirect(desc, redirectUrl, redirectLocation, redirectStatus, expectedOrigin) {
@@ -14,7 +14,7 @@ function corsRedirect(desc, redirectUrl, redirectLocation, redirectStatus, expec
 
   var requestInit = {"mode": "cors", "redirect": "follow"};
 
-  promise_test(function(test) {
+  return promise_test(function(test) {
     fetch(RESOURCES_DIR + "clean-stash.py?token=" + uuid_token).then(function(resp) {
       return fetch(url + urlParameters, requestInit).then(function(resp) {
         assert_equals(resp.status, 200, "Response's status is 200");

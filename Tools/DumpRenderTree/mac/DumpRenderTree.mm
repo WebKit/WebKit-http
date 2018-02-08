@@ -56,9 +56,7 @@
 #import "WorkQueue.h"
 #import "WorkQueueItem.h"
 #import <CoreFoundation/CoreFoundation.h>
-#import <JavaScriptCore/HeapStatistics.h>
-#import <JavaScriptCore/LLIntData.h>
-#import <JavaScriptCore/Options.h>
+#import <JavaScriptCore/TestRunnerUtils.h>
 #import <WebCore/LogInitialization.h>
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMExtensions.h>
@@ -177,19 +175,19 @@ static void runTest(const string& testURL);
 
 volatile bool done;
 
-NavigationController* gNavigationController = 0;
+NavigationController* gNavigationController = nullptr;
 RefPtr<TestRunner> gTestRunner;
 
-WebFrame *mainFrame = 0;
+WebFrame *mainFrame = nullptr;
 // This is the topmost frame that is loading, during a given load, or nil when no load is 
 // in progress.  Usually this is the same as the main frame, but not always.  In the case
 // where a frameset is loaded, and then new content is loaded into one of the child frames,
 // that child frame is the "topmost frame that is loading".
-WebFrame *topLoadingFrame = nil;     // !nil iff a load is in progress
+WebFrame *topLoadingFrame = nullptr; // !nil iff a load is in progress
 
 
-CFMutableSetRef disallowedURLs = 0;
-static CFRunLoopTimerRef waitToDumpWatchdog = 0;
+CFMutableSetRef disallowedURLs= nullptr;
+static CFRunLoopTimerRef waitToDumpWatchdog;
 
 // Delegates
 static FrameLoadDelegate *frameLoadDelegate;
@@ -197,36 +195,32 @@ static UIDelegate *uiDelegate;
 static EditingDelegate *editingDelegate;
 static ResourceLoadDelegate *resourceLoadDelegate;
 static HistoryDelegate *historyDelegate;
-PolicyDelegate *policyDelegate;
-DefaultPolicyDelegate *defaultPolicyDelegate;
+PolicyDelegate *policyDelegate = nullptr;
+DefaultPolicyDelegate *defaultPolicyDelegate = nullptr;
 #if PLATFORM(IOS)
 static ScrollViewResizerDelegate *scrollViewResizerDelegate;
 #endif
 
-static int dumpPixelsForAllTests = NO;
-static bool dumpPixelsForCurrentTest = false;
+static int dumpPixelsForAllTests;
+static bool dumpPixelsForCurrentTest;
 static int threaded;
 static int dumpTree = YES;
 static int useTimeoutWatchdog = YES;
 static int forceComplexText;
 static int useAcceleratedDrawing;
 static int gcBetweenTests;
-static int showWebView = NO;
-static int printTestCount = NO;
+static int showWebView;
+static int printTestCount;
 static BOOL printSeparators;
 static RetainPtr<CFStringRef> persistentUserStyleSheetLocation;
 static std::set<std::string> allowedHosts;
 
-static WebHistoryItem *prevTestBFItem = nil;  // current b/f item at the end of the previous test
+static WebHistoryItem *prevTestBFItem; // current b/f item at the end of the previous test
 
 #if PLATFORM(IOS)
-const unsigned phoneViewHeight = 480;
-const unsigned phoneViewWidth = 320;
-const unsigned phoneBrowserScrollViewHeight = 416;
-const unsigned phoneBrowserAddressBarOffset = 60;
 const CGRect layoutTestViewportRect = { {0, 0}, {static_cast<CGFloat>(TestRunner::viewWidth), static_cast<CGFloat>(TestRunner::viewHeight)} };
-UIWebBrowserView *gWebBrowserView = nil;
-UIWebScrollView *gWebScrollView = nil;
+DumpRenderTreeBrowserView *gWebBrowserView = nil;
+DumpRenderTreeWebScrollView *gWebScrollView = nil;
 DumpRenderTreeWindow *gDrtWindow = nil;
 #endif
 
@@ -646,7 +640,7 @@ static void activateFontsIOS()
 
 
 #if PLATFORM(IOS)
-void adjustWebDocumentForFlexibleViewport(UIWebBrowserView *webBrowserView, UIWebScrollView *scrollView)
+static void adjustWebDocumentForFlexibleViewport(UIWebBrowserView *webBrowserView, UIWebScrollView *scrollView)
 {
     // These values match MobileSafari's, see -[TabDocument _createDocumentView].
     [webBrowserView setMinimumScale:0.25f forDocumentTypes:UIEveryDocumentMask];
@@ -659,18 +653,21 @@ void adjustWebDocumentForFlexibleViewport(UIWebBrowserView *webBrowserView, UIWe
     [(DumpRenderTreeBrowserView *)webBrowserView setScrollingUsesUIWebScrollView:YES];
     [webBrowserView setDelegate:scrollViewResizerDelegate];
 
-    CGRect viewportRect = CGRectMake(0, 0, phoneViewWidth, phoneBrowserScrollViewHeight);
+    CGRect screenBounds = [UIScreen mainScreen].bounds;
+    CGRect viewportRect = CGRectMake(0, 0, screenBounds.size.width, screenBounds.size.height);
+
     [scrollView setBounds:viewportRect];
     [scrollView setFrame:viewportRect];
 
     [webBrowserView setMinimumSize:viewportRect.size];
     [webBrowserView setAutoresizes:YES];
-    CGRect browserViewFrame = [webBrowserView frame];
-    browserViewFrame.origin = CGPointMake(0, phoneBrowserAddressBarOffset);
-    [webBrowserView setFrame:browserViewFrame];
+    [webBrowserView setFrame:screenBounds];
+
+    // This just affects text autosizing.
+    [mainFrame _setVisibleSize:CGSizeMake(screenBounds.size.width, screenBounds.size.height)];
 }
 
-void adjustWebDocumentForStandardViewport(UIWebBrowserView *webBrowserView, UIWebScrollView *scrollView)
+static void adjustWebDocumentForStandardViewport(UIWebBrowserView *webBrowserView, UIWebScrollView *scrollView)
 {
     [webBrowserView setMinimumScale:1.0f forDocumentTypes:UIEveryDocumentMask];
     [webBrowserView setMaximumScale:5.0f forDocumentTypes:UIEveryDocumentMask];
@@ -684,9 +681,11 @@ void adjustWebDocumentForStandardViewport(UIWebBrowserView *webBrowserView, UIWe
 
     [webBrowserView setMinimumSize:layoutTestViewportRect.size];
     [webBrowserView setAutoresizes:NO];
-    CGRect browserViewFrame = [webBrowserView frame];
-    browserViewFrame.origin = CGPointZero;
-    [webBrowserView setFrame:browserViewFrame];
+    [webBrowserView setFrame:layoutTestViewportRect];
+
+    // This just affects text autosizing.
+    [mainFrame _setVisibleSize:CGSizeMake(layoutTestViewportRect.size.width, layoutTestViewportRect.size.height)];
+
 }
 #endif
 
@@ -757,7 +756,7 @@ WebView *createWebViewAndOffscreenWindow()
     NSRect rect = NSMakeRect(0, 0, TestRunner::viewWidth, TestRunner::viewHeight);
     WebView *webView = [[WebView alloc] initWithFrame:rect frameName:nil groupName:@"org.webkit.DumpRenderTree"];
 #else
-    UIWebBrowserView *webBrowserView = [[[DumpRenderTreeBrowserView alloc] initWithFrame:layoutTestViewportRect] autorelease];
+    DumpRenderTreeBrowserView *webBrowserView = [[[DumpRenderTreeBrowserView alloc] initWithFrame:layoutTestViewportRect] autorelease];
     [webBrowserView setInputViewObeysDOMFocus:YES];
     WebView *webView = [[webBrowserView webView] retain];
     [webView setGroupName:@"org.webkit.DumpRenderTree"];
@@ -828,7 +827,7 @@ WebView *createWebViewAndOffscreenWindow()
     drtWindow.uiWindow = uiWindow;
     drtWindow.browserView = webBrowserView;
 
-    UIWebScrollView *scrollView = [[UIWebScrollView alloc] initWithFrame:layoutTestViewportRect];
+    DumpRenderTreeWebScrollView *scrollView = [[DumpRenderTreeWebScrollView alloc] initWithFrame:layoutTestViewportRect];
     [scrollView addSubview:webBrowserView];
 
     [viewController.view addSubview:scrollView];
@@ -843,7 +842,6 @@ WebView *createWebViewAndOffscreenWindow()
     NSBitmapImageRep *imageRep = [webView bitmapImageRepForCachingDisplayInRect:[webView bounds]];
     [webView cacheDisplayInRect:[webView bounds] toBitmapImageRep:imageRep];
 #else
-    [[webView mainFrame] _setVisibleSize:CGSizeMake(phoneViewWidth, phoneViewHeight)];
     [[webView preferences] _setTelephoneNumberParsingEnabled:NO];
 
     // Initialize the global UIViews, and set the key UIWindow to be painted.
@@ -1429,10 +1427,7 @@ int DumpRenderTreeMain(int argc, const char *argv[])
 #endif
     [WebCoreStatistics garbageCollectJavaScriptObjects];
     [WebCoreStatistics emptyCache]; // Otherwise SVGImages trigger false positives for Frame/Node counts
-    if (JSC::Options::logHeapStatisticsAtExit())
-        JSC::HeapStatistics::reportSuccess();
-    if (JSC::Options::reportLLIntStats())
-        JSC::LLInt::Data::finalizeStats();
+    JSC::finalizeStatsAtEndOfTesting();
     [pool release];
     returningFromMain = true;
     return 0;

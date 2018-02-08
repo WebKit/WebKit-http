@@ -27,32 +27,27 @@
 #define CSSImageSetValue_h
 
 #include "CSSValueList.h"
+#include "CachedImageClient.h"
+#include "CachedResourceHandle.h"
 
 namespace WebCore {
 
 class CachedResourceLoader;
 class Document;
-class StyleCachedImage;
-class StyleImage;
 struct ResourceLoaderOptions;
 
-class CSSImageSetValue : public CSSValueList {
+class CSSImageSetValue final : public CSSValueList {
 public:
-
     static Ref<CSSImageSetValue> create()
     {
         return adoptRef(*new CSSImageSetValue());
     }
     ~CSSImageSetValue();
 
-    StyleCachedImage* bestFitImage(CachedResourceLoader&, const ResourceLoaderOptions&);
-
-    // Returns a StyleCachedImage if the best fit image has been cached already, otherwise a StylePendingImage.
-    StyleImage* cachedOrPendingImageSet(const Document&);
+    std::pair<CachedImage*, float>  loadBestFitImage(CachedResourceLoader&, const ResourceLoaderOptions&);
+    CachedImage* cachedImage() const { return m_cachedImage.get(); }
 
     String customCSSText() const;
-
-    bool isPending() const { return !m_accessedBestFitImage; }
 
     struct ImageWithScale {
         String imageURL;
@@ -63,6 +58,8 @@ public:
 
     Ref<CSSImageSetValue> cloneForCSSOM() const;
 
+    void updateDeviceScaleFactor(const Document&);
+
 protected:
     ImageWithScale bestImageForScaleFactor();
 
@@ -70,16 +67,13 @@ private:
     CSSImageSetValue();
     CSSImageSetValue(const CSSImageSetValue& cloneFrom);
 
-    void detachPendingImage();
     void fillImageSet();
     static inline bool compareByScaleFactor(ImageWithScale first, ImageWithScale second) { return first.scaleFactor < second.scaleFactor; }
 
-    RefPtr<StyleImage> m_image;
-    bool m_accessedBestFitImage;
-
-    // This represents the scale factor that we used to find the best fit image. It does not necessarily
-    // correspond to the scale factor of the best fit image.
-    float m_scaleFactor;
+    CachedResourceHandle<CachedImage> m_cachedImage;
+    bool m_accessedBestFitImage { false };
+    float m_bestFitImageScaleFactor { 1 };
+    float m_deviceScaleFactor { 1 };
 
     Vector<ImageWithScale> m_imagesInSet;
 };

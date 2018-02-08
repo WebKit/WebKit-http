@@ -81,6 +81,7 @@
 #include "PageTransitionEvent.h"
 #include "Performance.h"
 #include "ResourceLoadInfo.h"
+#include "RuntimeApplicationChecks.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "Screen.h"
@@ -624,7 +625,7 @@ bool DOMWindow::isCurrentlyDisplayedInFrame() const
 CustomElementRegistry& DOMWindow::ensureCustomElementRegistry()
 {
     if (!m_customElementRegistry)
-        m_customElementRegistry = CustomElementRegistry::create();
+        m_customElementRegistry = CustomElementRegistry::create(*this);
     return *m_customElementRegistry;
 }
 #endif
@@ -1405,6 +1406,19 @@ RefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Element& element, const 
     return CSSComputedStyleDeclaration::create(element, false, pseudoElt);
 }
 
+// FIXME: Drop this overload once <rdar://problem/28016778> has been fixed.
+RefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Document&, const String&, ExceptionCode& ec)
+{
+#if PLATFORM(MAC)
+    if (MacApplication::isAppStore()) {
+        printErrorMessage(ASCIILiteral("Passing a non-Element as first parameter to window.getComputedStyle() is invalid and always returns null"));
+        return nullptr;
+    }
+#endif
+    ec = TypeError;
+    return nullptr;
+}
+
 RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String& pseudoElement, bool authorOnly) const
 {
     if (!isCurrentlyDisplayedInFrame())
@@ -1789,7 +1803,7 @@ void DOMWindow::decrementScrollEventListenersCount()
     Document* document = this->document();
     if (!--m_scrollEventListenerCount && document == &document->topDocument()) {
         Frame* frame = this->frame();
-        if (frame && frame->page() && !document->inPageCache())
+        if (frame && frame->page() && document->pageCacheState() == Document::NotInPageCache)
             frame->page()->chrome().client().setNeedsScrollNotifications(frame, false);
     }
 }

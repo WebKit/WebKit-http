@@ -221,8 +221,12 @@ WebInspector.HeapSnapshotInstanceDataGridNode = class HeapSnapshotInstanceDataGr
 
             // FIXME: This should gracefully handle a node that references many objects.
 
-            for (let instance of instances)
+            for (let instance of instances) {
+                if (instance.__edge && instance.__edge.isPrivateSymbol())
+                    continue;
+
                 this.appendChild(new WebInspector.HeapSnapshotInstanceDataGridNode(instance, this._tree, instance.__edge, this._base || this));
+            }
         });
     }
 
@@ -247,7 +251,7 @@ WebInspector.HeapSnapshotInstanceDataGridNode = class HeapSnapshotInstanceDataGr
     {
         HeapAgent.getRemoteObject(this._node.id, (error, remoteObjectPayload) => {
             if (error) {
-                this._populateError(containerElement)
+                this._populateError(containerElement);
                 return;
             }
 
@@ -427,7 +431,7 @@ WebInspector.HeapSnapshotInstanceDataGridNode = class HeapSnapshotInstanceDataGr
         }
 
         function stringifyEdge(edge) {
-            switch(edge.type) {
+            switch (edge.type) {
             case WebInspector.HeapSnapshotEdgeProxy.EdgeType.Property:
             case WebInspector.HeapSnapshotEdgeProxy.EdgeType.Variable:
                 if (/^(?![0-9])\w+$/.test(edge.data))

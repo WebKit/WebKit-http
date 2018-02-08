@@ -28,7 +28,13 @@
 
 #if PLATFORM(IOS)
 
+#import "DumpRenderTreeBrowserView.h"
 #import "UIScriptContext.h"
+#import <WebCore/FloatRect.h>
+#import <wtf/MainThread.h>
+
+extern DumpRenderTreeBrowserView *gWebBrowserView;
+extern DumpRenderTreeWebScrollView *gWebScrollView;
 
 namespace WTR {
 
@@ -45,11 +51,21 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
 
 void UIScriptController::zoomToScale(double scale, JSValueRef callback)
 {
+    RefPtr<UIScriptController> protectedThis(this);
+    unsigned callbackID = protectedThis->context()->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [gWebScrollView zoomToScale:scale animated:YES completionHandler:^{
+            if (!protectedThis->context())
+                return;
+            protectedThis->context()->asyncTaskComplete(callbackID);
+        }];
+    });
 }
 
 double UIScriptController::zoomScale() const
 {
-    return 1;
+    return gWebScrollView.zoomScale;
 }
 
 void UIScriptController::touchDownAtPoint(long x, long y, long touchCount, JSValueRef callback)
@@ -69,6 +85,22 @@ void UIScriptController::doubleTapAtPoint(long x, long y, JSValueRef callback)
 }
 
 void UIScriptController::dragFromPointToPoint(long startX, long startY, long endX, long endY, double durationSeconds, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusDownAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusMoveToPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusUpAtPoint(long x, long y, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
 {
 }
 
@@ -106,17 +138,19 @@ void UIScriptController::keyboardAccessoryBarPrevious()
 
 double UIScriptController::minimumZoomScale() const
 {
-    return 1;
+    return gWebScrollView.minimumZoomScale;
 }
 
 double UIScriptController::maximumZoomScale() const
 {
-    return 1;
+    return gWebScrollView.maximumZoomScale;
 }
 
 JSObjectRef UIScriptController::contentVisibleRect() const
 {
-    return nullptr;
+    CGRect contentVisibleRect = [gWebBrowserView documentVisibleRect];
+    WebCore::FloatRect rect(contentVisibleRect.origin.x, contentVisibleRect.origin.y, contentVisibleRect.size.width, contentVisibleRect.size.height);
+    return m_context->objectFromRect(rect);
 }
 
 void UIScriptController::platformSetDidStartFormControlInteractionCallback()

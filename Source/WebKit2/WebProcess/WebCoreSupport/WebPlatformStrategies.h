@@ -86,7 +86,10 @@ private:
     long setPathnamesForType(const Vector<String>&, const String& pasteboardType, const String& pasteboardName) override;
     long setStringForType(const String&, const String& pasteboardType, const String& pasteboardName) override;
 #endif
-
+#if PLATFORM(GTK)
+    void writeToClipboard(const String& pasteboardName, const WebCore::DataObjectGtk&) override;
+    Ref<WebCore::DataObjectGtk> readFromClipboard(const String& pasteboardName) override;
+#endif
 };
 
 } // namespace WebKit
