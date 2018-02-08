@@ -29,59 +29,134 @@
 #include "CDMInstance.h"
 #include "MediaKeyStatus.h"
 #include <wtf/HashMap.h>
-
-namespace media {
-class OpenCdm;
-};
+#include <open_cdm.h>
+#include <map>
 
 namespace WebCore {
 
 class CDMFactoryOpenCDM : public CDMFactory {
+private:
+    CDMFactoryOpenCDM();
+    CDMFactoryOpenCDM(const CDMFactoryOpenCDM&) = delete;
+    CDMFactoryOpenCDM& operator= (const CDMFactoryOpenCDM&) = delete;
+
 public:
     static CDMFactoryOpenCDM& singleton();
 
     virtual ~CDMFactoryOpenCDM();
 
-    std::unique_ptr<CDMPrivate> createCDM(const String&) override;
-    bool supportsKeySystem(const String&) override;
-
-private:
-    CDMFactoryOpenCDM();
+    virtual std::unique_ptr<CDMPrivate> createCDM(const String&) override;
+    virtual bool supportsKeySystem(const String&) override;
 };
 
 class CDMInstanceOpenCDM final : public CDMInstance {
+private:
+    CDMInstanceOpenCDM() = delete;
+    CDMInstanceOpenCDM(const CDMInstanceOpenCDM&) = delete;
+    CDMInstanceOpenCDM& operator= (const CDMInstanceOpenCDM&) = delete;
+
+    class Session {
+    private:
+        Session() = delete;
+        Session(const Session&) = delete;
+        Session& operator= (const Session&) = delete;
+
+    public:
+        Session(media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
+        ~Session();
+
+    public:
+        inline bool IsValid() const {
+            return (_url.empty() == false);
+        }
+        inline const std::string& URL() const {
+            return (_url);
+        }
+        inline const std::string& Message() const {
+            return (_message);
+        }
+        inline bool NeedIndividualization() const {
+            return (_needIndividualisation);
+        }
+        inline Ref<WebCore::SharedBuffer>& SharedBuffer() {
+            return (_buffer);
+        }
+        inline media::OpenCdm::KeyStatus Update(const uint8_t* data, const uint16_t length, std::string& response) {
+            return (_session.Update(data, length, response));
+        }
+        inline int Load(std::string& response) {
+            return (_session.Load(response));
+        }
+        inline int Remove(std::string& response) {
+            return (_session.Remove(response));
+        }
+        inline int Close() {
+            return (_session.Close());
+        }
+        inline bool operator== (const String& data) const {
+            return ( (_buffer->size() == data.sizeInBytes()) &&
+                     (memcmp(_buffer->data(), data.latin1().data(), _buffer->size()) == 0) );
+        }
+        inline bool operator!= (const String& data) const {
+            return (!operator== (data));
+        }
+
+    private:
+        media::OpenCdm _session;
+        std::string _message;
+        std::string _url;
+        bool _needIndividualisation;
+        Ref<WebCore::SharedBuffer> _buffer;
+    };
+
 public:
-    CDMInstanceOpenCDM(std::unique_ptr<media::OpenCdm> openCdmBackend, const String&);
-    ~CDMInstanceOpenCDM() override = default;
+    CDMInstanceOpenCDM(media::OpenCdm&, const String&);
+    virtual ~CDMInstanceOpenCDM();
 
-    ImplementationType implementationType() const { return  ImplementationType::OpenCDM; }
-    SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override;
-    SuccessValue setDistinctiveIdentifiersAllowed(bool) override;
-    SuccessValue setPersistentStateAllowed(bool) override;
-    SuccessValue setServerCertificate(Ref<SharedBuffer>&&) override;
+    // -----------------------------------------------------------------------------------------
+    // Metadata getters. Just for some DRM characteristics
+    // -----------------------------------------------------------------------------------------
+    virtual const String& keySystem() const override { 
+        return _keySystem; 
+    }
+    virtual ImplementationType implementationType() const override { 
+        return  ImplementationType::OpenCDM; 
+    }
+    virtual SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) override {
+        return Succeeded;
+    }
+    virtual SuccessValue setDistinctiveIdentifiersAllowed(bool) override {
+        return Succeeded;
+    }
+    virtual SuccessValue setPersistentStateAllowed(bool) override {
+        return Succeeded;
+    }
 
-    void requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&&, LicenseCallback) override;
+    // -----------------------------------------------------------------------------------------
+    // Operations on the DRM system
+    // -----------------------------------------------------------------------------------------
+    virtual SuccessValue setServerCertificate(Ref<SharedBuffer>&&) override; 
+    
+    // Request Licnese will automagically create a Session. The session is later on referred to with
+    // its SessionId
+    virtual void requestLicense(LicenseType, const AtomicString&, Ref<SharedBuffer>&&, LicenseCallback) override;
+
+    // -----------------------------------------------------------------------------------------
+    // Operations on the DRM system -> Session
+    // -----------------------------------------------------------------------------------------
     void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) override;
     void loadSession(LicenseType, const String&, const String&, LoadSessionCallback) override;
     void closeSession(const String&, CloseSessionCallback) override;
     void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) override;
     void storeRecordOfKeyUsage(const String&) override;
 
-    const String& keySystem() const override { return m_keySystem; }
-
-    // FIXME: Session handling needs a lot of love here.
-    using InitData = String;
-    String currentSessionId() const;
-    String sessionIdByInitData(const InitData&) const;
+    // The initial Data, is the only way to find a proper SessionId.
+    String sessionIdByInitData(const String&, const bool firstInLine) const;
 
 private:
-    MediaKeyStatus getKeyStatus(std::string &);
-    SessionLoadFailure getSessionLoadStatus(std::string &);
-    size_t checkMessageLength(std::string &, std::string &);
-
-    std::unique_ptr<media::OpenCdm> m_openCdmBackend;
-    HashMap<String, Ref<SharedBuffer>> sessionIdMap;
-    String m_keySystem;
+    media::OpenCdm _openCdm;
+    const String _keySystem;
+    std::map<std::string, Session> _sessionIdMap;
 };
 
 } // namespace WebCore

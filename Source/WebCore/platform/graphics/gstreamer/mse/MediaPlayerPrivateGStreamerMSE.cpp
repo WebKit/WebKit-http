@@ -1063,12 +1063,7 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
 
         for (const auto& it : m_appendPipelinesMap) {
             unsigned protectionEvent = it.value->keySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem()));
-            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData());
-            if (sessionId.isEmpty() && m_initDataToProtectionEventsMap.size() == 1) {
-                // FIXME: In some cases, the JS app will send us new init data rather than the one reported by the media stream.
-                sessionId = cdmInstanceOpenCDM.currentSessionId();
-                GST_TRACE("session id not found, got %s as backup", sessionId.utf8().data());
-            }
+            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData(), (m_initDataToProtectionEventsMap.size() == 1));
             if (!sessionId.isEmpty()) {
                 GST_TRACE("using %s", sessionId.utf8().data());
                 if (m_reportedProtectionEvents.contains(protectionEvent)) {

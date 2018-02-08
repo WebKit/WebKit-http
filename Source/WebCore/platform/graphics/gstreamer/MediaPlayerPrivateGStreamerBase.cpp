@@ -1362,12 +1362,7 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(*m_cdmInstance);
         for (const auto& initDataEventsMatch : m_initDataToProtectionEventsMap) {
             // Retrieve SessionId using initData.
-            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initDataEventsMatch.key);
-            if (sessionId.isEmpty() && m_initDataToProtectionEventsMap.size() == 1) {
-                // FIXME: In some cases, the JS app will send us new init data rather than the one reported by the media stream.
-                sessionId = cdmInstanceOpenCDM.currentSessionId();
-                GST_TRACE("session id not found, got %s as backup", sessionId.utf8().data());
-            }
+            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initDataEventsMatch.key, (m_initDataToProtectionEventsMap.size() == 1));
             if (!sessionId.isEmpty()) {
                 GST_TRACE("using %s", sessionId.utf8().data());
                 dispatchOrStoreDecryptionSession(sessionId, initDataEventsMatch.value);
