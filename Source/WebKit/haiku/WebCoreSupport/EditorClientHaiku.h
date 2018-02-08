@@ -105,6 +105,7 @@ public:
     void textWillBeDeletedInTextField(Element*) override;
     void textDidChangeInTextArea(Element*) override;
     void overflowScrollPositionChanged() override;
+    void updateEditorStateAfterLayoutIfEditabilityChanged() override {};
 
     TextCheckerClient* textChecker() override { return this; }
 

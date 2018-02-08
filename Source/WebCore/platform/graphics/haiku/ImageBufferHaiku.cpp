@@ -27,6 +27,7 @@
 #include "ImageBuffer.h"
 
 #include "GraphicsContext.h"
+#include "HeapInlines.h"
 #include "ImageData.h"
 #include "IntRect.h"
 #include "JSCellInlines.h"

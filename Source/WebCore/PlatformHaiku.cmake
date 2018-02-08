@@ -117,23 +117,7 @@ list(APPEND WebCore_SOURCES
   platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
   platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
 
-  platform/image-decoders/ImageDecoder.cpp
-
-  platform/image-decoders/bmp/BMPImageDecoder.cpp
-  platform/image-decoders/bmp/BMPImageReader.cpp
-
-  platform/image-decoders/gif/GIFImageDecoder.cpp
-  platform/image-decoders/gif/GIFImageReader.cpp
-
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
-
-  platform/image-decoders/ico/ICOImageDecoder.cpp
-
-  platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-
-  platform/image-decoders/png/PNGImageDecoder.cpp
-
-  platform/image-decoders/webp/WEBPImageDecoder.cpp
 
   platform/mock/GeolocationClientMock.cpp
 

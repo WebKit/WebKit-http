@@ -31,19 +31,19 @@
 
 namespace WebCore {
 
-NativeImagePtr ImageFrame::asNewNativeImage() const
+NativeImagePtr ImageBackingStore::image() const
 {
-    int bytesPerRow = width() * sizeof(PixelData);
-    BitmapRef* bitmap = new BitmapRef(BRect(0, 0, width() - 1, height() - 1), 0, B_RGBA32, bytesPerRow);
-    if (!bitmap || !bitmap->IsValid() || !m_bytes) {
+    int bytesPerRow = size().width() * sizeof(RGBA32);
+    BitmapRef* bitmap = new BitmapRef(BRect(0, 0, size().width() - 1, size().height() - 1), 0, B_RGBA32, bytesPerRow);
+    if (!bitmap || !bitmap->IsValid() || !m_pixelsPtr) {
         delete bitmap;
         return NULL;
      }
 
-    const uint8* source = reinterpret_cast<const uint8*>(m_bytes);
+    const uint8* source = reinterpret_cast<const uint8*>(m_pixelsPtr);
     uint8* destination = reinterpret_cast<uint8*>(bitmap->Bits());
-    int h = height();
-    int w = width();
+    int h = size().height();
+    int w = size().width();
     for (int y = 0; y < h; y++) {
 #if 0
 // FIXME: Enable this conversion once Haiku has B_RGBA32P[remultiplied]...

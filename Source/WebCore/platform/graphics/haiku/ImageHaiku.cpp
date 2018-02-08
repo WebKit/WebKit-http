@@ -51,19 +51,6 @@ Vector<char> loadResourceIntoArray(const char*);
 
 namespace WebCore {
 
-bool FrameData::clear(bool clearMetadata)
-{
-    if (clearMetadata)
-        m_haveMetadata = false;
-
-    if (m_image) {
-        m_image = nullptr;
-        return true;
-    }
-
-    return false;
-}
-
 WTF::PassRefPtr<Image> Image::loadPlatformResource(const char* name)
 {
     Vector<char> array = loadResourceIntoArray(name);
@@ -77,22 +64,12 @@ void BitmapImage::invalidatePlatformData()
 {
 }
 
-// Drawing Routines
-void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatRect& src,
-    CompositeOperator op, BlendMode, ImageOrientationDescription)
+void drawNativeImage(WTF::RefPtr<WebCore::BitmapRef> const& image,
+    WebCore::GraphicsContext& ctxt, WebCore::FloatRect const& dst,
+    WebCore::FloatRect const& src, WebCore::IntSize const&,
+    WebCore::CompositeOperator op, WebCore::BlendMode,
+    WebCore::ImageOrientation const&)
 {
-    if (!m_source.initialized())
-        return;
-
-    // Spin the animation to the correct frame before we try to draw it, so we
-    // don't draw an old frame and then immediately need to draw a newer one,
-    // causing flicker and wasting CPU.
-    startAnimation();
-
-    NativeImagePtr image = nativeImageForCurrentFrame();
-    if (!image || !image->IsValid()) // If the image hasn't fully loaded.
-        return;
-
     ctxt.save();
     ctxt.setCompositeOperation(op);
 
@@ -109,10 +86,8 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst, const FloatR
     }
     ctxt.platformContext()->DrawBitmapAsync(image.get(), srcRect, dstRect, options);
     ctxt.restore();
-
-    if (imageObserver())
-        imageObserver()->didDraw(this);
 }
+
 
 void Image::drawPattern(GraphicsContext& context, const FloatRect& tileRect,
     const AffineTransform& patternTransform, const FloatPoint& phase,

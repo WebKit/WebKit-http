@@ -519,72 +519,6 @@ String AXAutoFillContactsLabel()
     return String::fromUTF8("contact info auto fill");
 }
 
-String validationMessageValueMissingText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageValueMissingForCheckboxText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageValueMissingForFileText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageValueMissingForMultipleFileText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageValueMissingForRadioText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageValueMissingForSelectText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageBadInputForNumberText()
-{
-    notImplemented();
-    return validationMessageTypeMismatchText();
-}
-
-String validationMessageTypeMismatchText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageTypeMismatchForEmailText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageTypeMismatchForMultipleEmailText()
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageTypeMismatchForURLText()
-{
-    notImplemented();
-    return String();
-}
-
 String mediaElementLoadingStateText()
 {
     return String::fromUTF8("Loading...");
@@ -597,32 +531,87 @@ String mediaElementLiveBroadcastStateText()
 
 String validationMessagePatternMismatchText()
 {
-    notImplemented();
-    return String();
-}
-
-String validationMessageTooLongText(int valueLength, int maxLength)
-{
-    notImplemented();
-    return String();
-}
-
-String validationMessageRangeUnderflowText(const String& minimum)
-{
-    notImplemented();
-    return String();
+    return ASCIILiteral("Please match the requested format:");
 }
 
 String validationMessageRangeOverflowText(const String& maximum)
 {
-    notImplemented();
-    return String();
+    return ASCIILiteral("Value must be less than or equal to ") + maximum;
 }
 
-String validationMessageStepMismatchText(const String& base, const String& step)
+String validationMessageRangeUnderflowText(const String& minimum)
 {
-    notImplemented();
-    return String();
+    return ASCIILiteral("Value must be greater than or equal to ") + minimum;
+}
+
+String validationMessageStepMismatchText(const String&, const String&)
+{
+    return String::fromUTF8("step mismatch");
+}
+
+String validationMessageTooShortText(int, int)
+{
+    return String::fromUTF8("too short");
+}
+
+String validationMessageTooLongText(int, int)
+{
+    return String::fromUTF8("too long");
+}
+
+String validationMessageTypeMismatchText()
+{
+    return String::fromUTF8("type mismatch");
+}
+
+String validationMessageTypeMismatchForEmailText()
+{
+    return ASCIILiteral("Please enter an email address");
+}
+
+String validationMessageTypeMismatchForMultipleEmailText()
+{
+    return ASCIILiteral("Please enter an email address");
+}
+
+String validationMessageTypeMismatchForURLText()
+{
+    return ASCIILiteral("Please enter a URL");
+}
+
+String validationMessageValueMissingText()
+{
+    return ASCIILiteral("Please fill out this field.");
+}
+
+String validationMessageValueMissingForCheckboxText()
+{
+    return ASCIILiteral("Please check this box if you want to proceed.");
+}
+
+String validationMessageValueMissingForFileText()
+{
+    return ASCIILiteral("Please select a file.");
+}
+
+String validationMessageValueMissingForMultipleFileText()
+{
+    return ASCIILiteral("Please select one or more files.");
+}
+
+String validationMessageValueMissingForRadioText()
+{
+    return ASCIILiteral("Please select one of these options.");
+}
+
+String validationMessageValueMissingForSelectText()
+{
+    return ASCIILiteral("Please select an item in the list.");
+}
+
+String validationMessageBadInputForNumberText()
+{
+    return ASCIILiteral("Please enter a number.");
 }
 
 String snapshottedPlugInLabelTitle()

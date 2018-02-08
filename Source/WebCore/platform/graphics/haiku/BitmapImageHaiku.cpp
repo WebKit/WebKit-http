@@ -31,24 +31,23 @@
 
 namespace WebCore {
 
-namespace NativeImage {
-
-IntSize size(const RefPtr<WebCore::BitmapRef>& image)
+IntSize nativeImageSize(const RefPtr<WebCore::BitmapRef>& image)
 {
     BRect r = image->Bounds();
-	return IntSize(r.Width(), r.Height());
+    return IntSize(r.Width(), r.Height());
 }
 
-bool hasAlpha(const RefPtr<WebCore::BitmapRef>& image)
+
+bool nativeImageHasAlpha(const RefPtr<WebCore::BitmapRef>& image)
 {
-	return image->ColorSpace() == B_RGBA32;
+    return image->ColorSpace() == B_RGBA32;
 }
 
 
-Color singlePixelSolidColor(const RefPtr<WebCore::BitmapRef>& image)
+Color nativeImageSinglePixelSolidColor(const RefPtr<WebCore::BitmapRef>& image)
 {
     ASSERT(image);
-    
+
     if (image->Bounds().Width() > 1 || image->Bounds().Height() > 1)
         return Color();
 
@@ -56,6 +55,13 @@ Color singlePixelSolidColor(const RefPtr<WebCore::BitmapRef>& image)
     return colorFromPremultipliedARGB(*pixel);
 }
 
+float subsamplingScale(GraphicsContext&, const FloatRect&, const FloatRect&)
+{
+    return 1;
+}
+
+void clearNativeImageSubimages(const NativeImagePtr&)
+{
 }
 
 }
