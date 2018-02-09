@@ -239,6 +239,7 @@ CDMInstanceOpenCDM::Session::Session(media::OpenCdm& source, Ref<WebCore::Shared
     , _needIndividualisation(false)
     , _buffer(WTFMove(initData)) {
 
+    fprintf (stderr, "WPEWEBKIT ----- 3 ----- \n"); fflush (stderr);
     uint8_t  temporaryUrl[1024];
     uint16_t temporaryUrlLength = sizeof(temporaryUrl);
 
@@ -266,7 +267,15 @@ CDMInstanceOpenCDM::Session::~Session() {
 
 CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm& system, const String& keySystem)
     : _openCdm(system)
+    , _mimeType("video/x-h264")
     , _keySystem(keySystem) {
+
+    _openCdm.SelectKeySystem(keySystem.utf8().data());
+
+    if (GStreamerEMEUtilities::isPlayReadyKeySystem(keySystem))
+        _mimeType = "video/x-h264";
+    else if (GStreamerEMEUtilities::isWidevineKeySystem(keySystem))
+        _mimeType = "video/mp4";
 }
 
 CDMInstanceOpenCDM::~CDMInstanceOpenCDM() = default;
@@ -282,17 +291,11 @@ CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuf
 void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicString&, Ref<SharedBuffer>&& initData, LicenseCallback callback)
 {  
     std::string sessionId;
-    std::string mimeType("video/x-h264");
 
     GST_TRACE("Going to request a new session ID, init data size %u", initData->size());
     GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
 
-    if (GStreamerEMEUtilities::isPlayReadyKeySystem(_keySystem))
-        mimeType = "video/x-h264";
-    else if (GStreamerEMEUtilities::isWidevineKeySystem(_keySystem))
-        mimeType = "video/mp4";
-    
-    sessionId = _openCdm.CreateSession(mimeType, reinterpret_cast<const uint8_t*>(initData->data()), initData->size(), Convert(licenseType));
+    sessionId = _openCdm.CreateSession(_mimeType, reinterpret_cast<const uint8_t*>(initData->data()), initData->size(), Convert(licenseType));
 
     if (sessionId.empty() == true) {
         String sessionIdValue;

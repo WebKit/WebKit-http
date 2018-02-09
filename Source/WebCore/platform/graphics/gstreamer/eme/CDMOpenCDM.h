@@ -117,7 +117,7 @@ public:
     // Metadata getters. Just for some DRM characteristics
     // -----------------------------------------------------------------------------------------
     virtual const String& keySystem() const override { 
-        return _keySystem; 
+        return _keySystem;
     }
     virtual ImplementationType implementationType() const override { 
         return  ImplementationType::OpenCDM; 
@@ -155,8 +155,9 @@ public:
 
 private:
     media::OpenCdm _openCdm;
-    const String _keySystem;
+    std::string _mimeType;
     std::map<std::string, Session> _sessionIdMap;
+    String _keySystem;
 };
 
 } // namespace WebCore
