@@ -61,12 +61,15 @@ public:
     bool hasRelativeWidth() const final;
     bool hasRelativeHeight() const final;
 
-    void startAnimation(CatchUpAnimation = CatchUp) final;
+    void startAnimation() final;
     void stopAnimation() final;
     void resetAnimation() final;
 
 #if USE(CAIRO)
-    NativeImagePtr nativeImageForCurrentFrame() final;
+    NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) final;
+#endif
+#if USE(DIRECT2D)
+    NativeImagePtr nativeImage(const GraphicsContext* = nullptr) final;
 #endif
 
 private:

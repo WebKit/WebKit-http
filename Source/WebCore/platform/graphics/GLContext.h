@@ -27,10 +27,6 @@
 #if USE(EGL) && !PLATFORM(GTK)
 #include "eglplatform.h"
 typedef EGLNativeWindowType GLNativeWindowType;
-#elif PLATFORM(GTK) && PLATFORM(WAYLAND) && !defined(GTK_API_VERSION_2)
-#include <wayland-egl.h>
-#include <EGL/eglplatform.h>
-typedef EGLNativeWindowType GLNativeWindowType;
 #else
 typedef uint64_t GLNativeWindowType;
 #endif
@@ -48,6 +44,7 @@ public:
     static std::unique_ptr<GLContext> createOffscreenContext(PlatformDisplay* = nullptr);
     static std::unique_ptr<GLContext> createSharingContext(PlatformDisplay&);
     static GLContext* current();
+    static bool isExtensionSupported(const char* extensionList, const char* extension);
 
     PlatformDisplay& display() const { return m_display; }
 

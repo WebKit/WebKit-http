@@ -35,7 +35,7 @@
     [Reflect] attribute boolean noValidate;
     [Reflect] attribute DOMString target;
 
-    [SameObject] readonly attribute HTMLFormControlsCollection elements;
+    readonly attribute HTMLFormControlsCollection elements;
     readonly attribute long length;
 
     getter Element (unsigned long index);
@@ -47,6 +47,7 @@
     [ImplementedAs=submitFromJavaScript] void submit();
     void reset();
     boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
 
     [Conditional=REQUEST_AUTOCOMPLETE] void requestAutocomplete();
 };

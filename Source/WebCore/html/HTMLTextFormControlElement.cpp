@@ -101,6 +101,7 @@ void HTMLTextFormControlElement::dispatchBlurEvent(RefPtr<Element>&& newFocusedE
 {
     if (supportsPlaceholder())
         updatePlaceholderVisibility();
+    // Match the order in Document::setFocusedElement.
     handleBlurEvent();
     HTMLFormControlElementWithState::dispatchBlurEvent(WTFMove(newFocusedElement));
 }
@@ -166,7 +167,7 @@ void HTMLTextFormControlElement::updatePlaceholderVisibility()
     if (placeHolderWasVisible == m_isPlaceholderVisible)
         return;
 
-    setNeedsStyleRecalc();
+    invalidateStyleForSubtree();
 }
 
 void HTMLTextFormControlElement::setSelectionStart(int start)

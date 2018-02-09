@@ -435,17 +435,15 @@ bool Node::appendChild(Node& newChild, ExceptionCode& ec)
     return downcast<ContainerNode>(*this).appendChild(newChild, ec);
 }
 
-static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>& vector)
+static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<NodeOrString>& vector)
 {
     HashSet<RefPtr<Node>> nodeSet;
-
-    auto visitor = WTF::makeVisitor(
-        [&](const std::reference_wrapper<Node>& node) { nodeSet.add(const_cast<Node*>(&node.get())); },
-        [](const String&) { }
-    );
-
-    for (const auto& variant : vector)
-        std::experimental::visit(visitor, variant);
+    for (const auto& variant : vector) {
+        WTF::switchOn(variant,
+            [&](const RefPtr<Node>& node) { nodeSet.add(const_cast<Node*>(node.get())); },
+            [](const String&) { }
+        );
+    }
 
     return nodeSet;
 }
@@ -468,21 +466,19 @@ static RefPtr<Node> firstFollowingSiblingNotInNodeSet(Node& context, const HashS
     return nullptr;
 }
 
-RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
 {
     if (nodeOrStringVector.isEmpty())
         return nullptr;
 
     Vector<Ref<Node>> nodes;
     nodes.reserveInitialCapacity(nodeOrStringVector.size());
-
-    auto visitor = WTF::makeVisitor(
-        [&](std::reference_wrapper<Node>& node) { nodes.uncheckedAppend(node); },
-        [&](String& string) { nodes.uncheckedAppend(Text::create(document(), string)); }
-    );
-
-    for (auto& variant : nodeOrStringVector)
-        std::experimental::visit(visitor, variant);
+    for (auto& variant : nodeOrStringVector) {
+        WTF::switchOn(variant,
+            [&](RefPtr<Node>& node) { nodes.uncheckedAppend(*node.get()); },
+            [&](String& string) { nodes.uncheckedAppend(Text::create(document(), string)); }
+        );
+    }
 
     if (nodes.size() == 1)
         return WTFMove(nodes.first());
@@ -495,7 +491,7 @@ RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::varia
     return WTFMove(nodeToReturn);
 }
 
-void Node::before(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::before(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -516,7 +512,7 @@ void Node::before(Vector<std::experimental::variant<std::reference_wrapper<Node>
     parent->insertBefore(*node, viablePreviousSibling.get(), ec);
 }
 
-void Node::after(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::after(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -532,7 +528,7 @@ void Node::after(Vector<std::experimental::variant<std::reference_wrapper<Node>,
     parent->insertBefore(*node, viableNextSibling.get(), ec);
 }
 
-void Node::replaceWith(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::replaceWith(Vector<NodeOrString>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -666,7 +662,7 @@ void Node::inspect()
 static Node::Editability computeEditabilityFromComputedStyle(const Node& startNode, Node::UserSelectAllTreatment treatment)
 {
     // Ideally we'd call ASSERT(!needsStyleRecalc()) here, but
-    // ContainerNode::setFocus() calls setNeedsStyleRecalc(), so the assertion
+    // ContainerNode::setFocus() calls invalidateStyleForSubtree(), so the assertion
     // would fire in the middle of Document::setFocusedElement().
 
     for (const Node* node = &startNode; node; node = node->parentNode()) {
@@ -750,6 +746,16 @@ void Node::derefEventTarget()
     deref();
 }
 
+void Node::adjustStyleValidity(Style::Validity validity, Style::InvalidationMode mode)
+{
+    if (validity > styleValidity()) {
+        m_nodeFlags &= ~StyleValidityMask;
+        m_nodeFlags |= static_cast<unsigned>(validity) << StyleValidityShift;
+    }
+    if (mode == Style::InvalidationMode::RecompositeLayer)
+        setFlag(StyleResolutionShouldRecompositeLayerFlag);
+}
+
 inline void Node::updateAncestorsForStyleRecalc()
 {
     auto composedAncestors = composedTreeAncestors(*this);
@@ -758,10 +764,8 @@ inline void Node::updateAncestorsForStyleRecalc()
     if (it != end) {
         it->setDirectChildNeedsStyleRecalc();
 
-        if (it->childrenAffectedByPropertyBasedBackwardPositionalRules()) {
-            if (it->styleChangeType() < FullStyleChange)
-                it->setStyleChange(FullStyleChange);
-        }
+        if (it->childrenAffectedByPropertyBasedBackwardPositionalRules())
+            it->adjustStyleValidity(Style::Validity::SubtreeInvalid, Style::InvalidationMode::Normal);
 
         for (; it != end; ++it) {
             // Iterator skips over shadow roots.
@@ -782,9 +786,9 @@ inline void Node::updateAncestorsForStyleRecalc()
     document().scheduleStyleRecalc();
 }
 
-void Node::setNeedsStyleRecalc(StyleChangeType changeType)
+void Node::invalidateStyle(Style::Validity validity, Style::InvalidationMode mode)
 {
-    ASSERT(changeType != NoStyleChange);
+    ASSERT(validity != Style::Validity::Valid);
     if (!inRenderedDocument())
         return;
 
@@ -792,11 +796,12 @@ void Node::setNeedsStyleRecalc(StyleChangeType changeType)
     if (document().inRenderTreeUpdate())
         return;
 
-    StyleChangeType existingChangeType = styleChangeType();
-    if (changeType > existingChangeType)
-        setStyleChange(changeType);
+    // FIXME: Why the second condition?
+    bool markAncestors = styleValidity() == Style::Validity::Valid || validity == Style::Validity::SubtreeAndRenderersInvalid;
 
-    if (existingChangeType == NoStyleChange || changeType == ReconstructRenderTree)
+    adjustStyleValidity(validity, mode);
+
+    if (markAncestors)
         updateAncestorsForStyleRecalc();
 }
 
@@ -1196,7 +1201,7 @@ Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPo
     if (parentOrShadowHostNode()->isInShadowTree())
         setFlag(IsInShadowTreeFlag);
 
-    setNeedsStyleRecalc(ReconstructRenderTree);
+    invalidateStyle(Style::Validity::SubtreeAndRenderersInvalid);
 
     return InsertionDone;
 }

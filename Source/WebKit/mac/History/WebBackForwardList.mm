@@ -29,6 +29,7 @@
 #import "WebBackForwardList.h"
 #import "WebBackForwardListInternal.h"
 
+#import "BackForwardList.h"
 #import "WebFrameInternal.h"
 #import "WebHistoryItemInternal.h"
 #import "WebHistoryItemPrivate.h"
@@ -38,7 +39,6 @@
 #import "WebPreferencesPrivate.h"
 #import "WebTypesInternal.h"
 #import "WebViewPrivate.h"
-#import <WebCore/BackForwardList.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/Page.h>
 #import <WebCore/PageCache.h>
@@ -82,17 +82,17 @@ WebBackForwardList *kit(BackForwardList* backForwardList)
     if (WebBackForwardList *webBackForwardList = backForwardLists().get(backForwardList))
         return webBackForwardList;
 
-    return [[[WebBackForwardList alloc] initWithBackForwardList:backForwardList] autorelease];
+    return [[[WebBackForwardList alloc] initWithBackForwardList:*backForwardList] autorelease];
 }
 
-- (id)initWithBackForwardList:(PassRefPtr<BackForwardList>)backForwardList
+- (id)initWithBackForwardList:(Ref<BackForwardList>&&)backForwardList
 {   
     WebCoreThreadViolationCheckRoundOne();
     self = [super init];
     if (!self)
         return nil;
 
-    _private = reinterpret_cast<WebBackForwardListPrivate*>(backForwardList.leakRef());
+    _private = reinterpret_cast<WebBackForwardListPrivate*>(&backForwardList.leakRef());
     backForwardLists().set(core(self), self);
     return self;
 }
@@ -145,7 +145,10 @@ WebBackForwardList *kit(BackForwardList* backForwardList)
 
 - (void)removeItem:(WebHistoryItem *)item
 {
-    core(self)->removeItem(core(item));
+    if (!item)
+        return;
+
+    core(self)->removeItem(*core(item));
 }
 
 #if PLATFORM(IOS)
@@ -164,7 +167,7 @@ WebBackForwardList *kit(BackForwardList* backForwardList)
     unsigned size = historyItems.size();
     NSMutableArray *entriesArray = [[NSMutableArray alloc] initWithCapacity:size];
     for (unsigned i = 0; i < size; ++i)
-        [entriesArray addObject:[kit(historyItems[i].ptr()) dictionaryRepresentationIncludingChildren:NO]];
+        [entriesArray addObject:[kit(const_cast<HistoryItem*>(historyItems[i].ptr())) dictionaryRepresentationIncludingChildren:NO]];
     
     NSDictionary *dictionary = [NSDictionary dictionaryWithObjectsAndKeys:
         entriesArray, WebBackForwardListDictionaryEntriesKey,
@@ -199,7 +202,10 @@ WebBackForwardList *kit(BackForwardList* backForwardList)
 
 - (BOOL)containsItem:(WebHistoryItem *)item
 {
-    return core(self)->containsItem(core(item));
+    if (!item)
+        return NO;
+
+    return core(self)->containsItem(*core(item));
 }
 
 - (void)goBack
@@ -306,9 +312,8 @@ static bool bumperCarBackForwardHackNeeded()
     
     BackForwardList* backForwardList = core(self);
     auto& entries = backForwardList->entries();
-    
-    unsigned size = entries.size();
-    for (unsigned i = 0; i < size; ++i) {
+
+    for (unsigned i = 0; i < entries.size(); ++i) {
         if (entries[i].ptr() == backForwardList->currentItem()) {
             [result appendString:@" >>>"]; 
         } else {
@@ -316,7 +321,7 @@ static bool bumperCarBackForwardHackNeeded()
         }   
         [result appendFormat:@"%2d) ", i];
         int currPos = [result length];
-        [result appendString:[kit(entries[i].ptr()) description]];
+        [result appendString:[kit(const_cast<HistoryItem*>(entries[i].ptr())) description]];
 
         // shift all the contents over.  a bit slow, but this is for debugging
         NSRange replRange = { static_cast<NSUInteger>(currPos), [result length] - currPos };
@@ -332,12 +337,12 @@ static bool bumperCarBackForwardHackNeeded()
 
 - (void)setPageCacheSize:(NSUInteger)size
 {
-    [kit(core(self)->page()) setUsesPageCache:size != 0];
+    [core(self)->webView() setUsesPageCache:size != 0];
 }
 
 - (NSUInteger)pageCacheSize
 {
-    return [kit(core(self)->page()) usesPageCache] ? PageCache::singleton().maxSize() : 0;
+    return [core(self)->webView() usesPageCache] ? PageCache::singleton().maxSize() : 0;
 }
 
 - (int)backListCount

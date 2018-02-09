@@ -49,12 +49,10 @@ CustomNamedSetter
 CustomPreventExtensions
 CustomProxyToJSObject
 CustomPutFunction
-CustomReturn
 CustomSetPrototype
 CustomSetter
 CustomToJSObject
 DOMJIT
-Deletable
 DoNotCheckConstants
 DoNotCheckSecurity
 DoNotCheckSecurityOnGetter
@@ -73,7 +71,6 @@ GetterMayThrowLegacyException
 Immutable
 ImplementedAs=*
 ImplementationLacksVTable
-ImplementationNamespace=*
 ImplementationReturnType=*
 ImplicitThis
 InterfaceName=*
@@ -92,8 +89,6 @@ JSCustomToNativeObject
 JSGenerateToJSObject
 JSGenerateToNativeObject
 JSLegacyParent=*
-LegacyConstructorTemplate=Event
-LegacyInitializedByEventConstructor
 LenientThis
 MasqueradesAsUndefined
 MayThrowException
@@ -114,14 +109,12 @@ Replaceable
 ReportExtraMemoryCost
 ReportExternalMemoryCost
 RequiresExistingAtomicString
-SameObject
 SetterCallWith=ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow
 SetterMayThrowException
 SetterMayThrowLegacyException
 SkipVTableValidation
 SuppressToJSObject
 TreatNullAs=EmptyString
-TypedArray=*
 URL
 Unforgeable
 Unscopable

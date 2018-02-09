@@ -36,6 +36,7 @@
 #import "AccessibilityLabel.h"
 #import "AccessibilityList.h"
 #import "AccessibilityListBox.h"
+#import "AccessibilityProgressIndicator.h"
 #import "AccessibilityRenderObject.h"
 #import "AccessibilityScrollView.h"
 #import "AccessibilitySpinButton.h"
@@ -76,7 +77,7 @@
 #import "WebCoreSystemInterface.h"
 #import "htmlediting.h"
 #import <wtf/ObjcRuntimeExtras.h>
-#if ENABLE(TREE_DEBUGGING)
+#if ENABLE(TREE_DEBUGGING) || ENABLE(METER_ELEMENT)
 #import <wtf/text/StringBuilder.h>
 #endif
 
@@ -2212,6 +2213,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { SVGTextRole, NSAccessibilityGroupRole },
         { SVGTSpanRole, NSAccessibilityGroupRole },
         { InlineRole, NSAccessibilityGroupRole },
+        { MarkRole, NSAccessibilityGroupRole },
     };
     AccessibilityRoleMap& roleMap = *new AccessibilityRoleMap;
     
@@ -2474,6 +2476,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if ([axRole isEqualToString:NSAccessibilityGroupRole]) {
         
+        if (m_object->isOutput())
+            return AXOutputText();
+        
         NSString *ariaLandmarkRoleDescription = [self ariaLandmarkRoleDescription];
         if (ariaLandmarkRoleDescription)
             return ariaLandmarkRoleDescription;
@@ -2494,6 +2499,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return AXDetailsText();
         case FooterRole:
             return AXFooterRoleDescriptionText();
+        case MarkRole:
+            return AXMarkText();
         case VideoRole:
             return localizedMediaControlElementString("VideoElement");
         default:
@@ -2515,6 +2522,26 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if ([axRole isEqualToString:@"AXHeading"])
         return AXHeadingText();
+    
+    if ([axRole isEqualToString:NSAccessibilityTextFieldRole]) {
+        auto* node = m_object->node();
+        if (is<HTMLInputElement>(node)) {
+            auto& input = downcast<HTMLInputElement>(*node);
+            if (input.isEmailField())
+                return AXEmailFieldText();
+            if (input.isTelephoneField())
+                return AXTelephoneFieldText();
+            if (input.isURLField())
+                return AXURLFieldText();
+            
+            // These input types are not enabled on mac yet, we check the type attribute for now.
+            auto& type = input.attributeWithoutSynchronization(typeAttr);
+            if (equalLettersIgnoringASCIICase(type, "date"))
+                return AXDateFieldText();
+            if (equalLettersIgnoringASCIICase(type, "time"))
+                return AXTimeFieldText();
+        }
+    }
     
     if (m_object->isFileUploadButton())
         return AXFileUploadButtonText();
@@ -2577,6 +2604,29 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         return NSAccessibilityUnignoredAncestor(scroll->platformWidget());
     
     return [self remoteAccessibilityParentObject];
+}
+
+- (NSString *)valueDescriptionForMeter
+{
+    if (!m_object)
+        return nil;
+    
+    String valueDescription = m_object->valueDescription();
+#if ENABLE(METER_ELEMENT)
+    if (!is<AccessibilityProgressIndicator>(m_object))
+        return valueDescription;
+    auto &meter = downcast<AccessibilityProgressIndicator>(*m_object);
+    String gaugeRegionValue = meter.gaugeRegionValueDescription();
+    if (!gaugeRegionValue.isEmpty()) {
+        StringBuilder builder;
+        builder.append(valueDescription);
+        if (builder.length())
+            builder.appendLiteral(", ");
+        builder.append(gaugeRegionValue);
+        return builder.toString();
+    }
+#endif
+    return valueDescription;
 }
 
 // FIXME: split up this function in a better way.
@@ -3176,8 +3226,11 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         return nil;
     }
     
-    if ([attributeName isEqualToString:NSAccessibilityValueDescriptionAttribute])
+    if ([attributeName isEqualToString:NSAccessibilityValueDescriptionAttribute]) {
+        if (m_object->isMeter())
+            return [self valueDescriptionForMeter];
         return m_object->valueDescription();
+    }
     
     if ([attributeName isEqualToString:NSAccessibilityOrientationAttribute]) {
         AccessibilityOrientation elementOrientation = m_object->orientation();

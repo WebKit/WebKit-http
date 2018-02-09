@@ -31,6 +31,7 @@
 #import "WebViewInternal.h"
 #import "WebViewData.h"
 
+#import "BackForwardList.h"
 #import "DOMCSSStyleDeclarationInternal.h"
 #import "DOMDocumentInternal.h"
 #import "DOMInternal.h"
@@ -121,7 +122,6 @@
 #import <WebCore/AnimationController.h>
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/BackForwardController.h>
-#import <WebCore/BackForwardList.h>
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
@@ -1032,6 +1032,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
 #endif
 
+    pageConfiguration.backForwardClient = BackForwardList::create(self);
+
 #if ENABLE(APPLE_PAY)
     pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinatorClient();
 #endif
@@ -1281,6 +1283,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinatorClient();
 #endif
 
+    pageConfiguration.backForwardClient = BackForwardList::create(self);
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(self);
@@ -2407,6 +2410,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAllowDisplayOfInsecureContent(shouldAllowDisplayAndRunningOfInsecureContent());
     settings.setAllowRunningOfInsecureContent(shouldAllowDisplayAndRunningOfInsecureContent());
 
+    settings.setVisualViewportEnabled([preferences visualViewportEnabled]);
+
     switch ([preferences storageBlockingPolicy]) {
     case WebAllowAllStorage:
         settings.setStorageBlockingPolicy(SecurityOrigin::AllowAllStorage);
@@ -2533,6 +2538,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled([preferences shadowDOMEnabled]);
+
+    RuntimeEnabledFeatures::sharedFeatures().setInteractiveFormValidationEnabled([self interactiveFormValidationEnabled]);
 
     RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled([preferences DOMIteratorEnabled]);
 
@@ -3549,20 +3556,6 @@ static inline IMP getMethod(id o, SEL s)
 {
     WebThreadLock();
     [self _locked_recursivelyPerformPlugInSelector:@selector(destroyAllPlugins) inFrame:[self mainFrame]];
-}
-
-- (void)_clearBackForwardCache
-{
-    WebThreadRun(^{
-        WebKit::MemoryMeasure measurer("[WebView _clearBackForwardCache]");
-        BackForwardList* bfList = core([self backForwardList]);
-        if (!bfList)
-            return;
-
-        BOOL didClearBFCache = bfList->clearAllPageCaches();
-        if (WebKit::MemoryMeasure::isLoggingEnabled())
-            NSLog(@"[WebView _clearBackForwardCache] %@ empty cache\n", (didClearBFCache ? @"DID" : @"did NOT"));
-    });
 }
 
 - (void)_startAllPlugIns
@@ -6761,6 +6754,14 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 {
 }
 
+- (void)prepareForMouseDown
+{
+}
+
+- (void)prepareForMouseUp
+{
+}
+
 - (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString forSelectedRange:(NSRange)range view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock
 {
 }
@@ -6790,14 +6791,24 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 
 - (void)scheduleInRunLoop:(NSRunLoop *)runLoop forMode:(NSString *)mode
 {
+#if USE(CFURLCONNECTION)
+    CFRunLoopRef schedulePairRunLoop = [runLoop getCFRunLoop];
+#else
+    NSRunLoop *schedulePairRunLoop = runLoop;
+#endif
     if (runLoop && mode)
-        core(self)->addSchedulePair(SchedulePair::create(runLoop, (CFStringRef)mode));
+        core(self)->addSchedulePair(SchedulePair::create(schedulePairRunLoop, (CFStringRef)mode));
 }
 
 - (void)unscheduleFromRunLoop:(NSRunLoop *)runLoop forMode:(NSString *)mode
 {
+#if USE(CFURLCONNECTION)
+    CFRunLoopRef schedulePairRunLoop = [runLoop getCFRunLoop];
+#else
+    NSRunLoop *schedulePairRunLoop = runLoop;
+#endif
     if (runLoop && mode)
-        core(self)->removeSchedulePair(SchedulePair::create(runLoop, (CFStringRef)mode));
+        core(self)->removeSchedulePair(SchedulePair::create(schedulePairRunLoop, (CFStringRef)mode));
 }
 
 static BOOL findString(NSView <WebDocumentSearching> *searchView, NSString *string, WebFindOptions options)
@@ -8668,7 +8679,7 @@ bool LayerFlushController::flushLayers()
     if (![[self preferences] fullScreenEnabled])
         return NO;
 
-    return !withKeyboard;
+    return true;
 }
 
 - (void)_enterFullScreenForElement:(WebCore::Element*)element

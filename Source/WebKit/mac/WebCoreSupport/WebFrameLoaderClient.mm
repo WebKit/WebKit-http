@@ -28,6 +28,7 @@
 
 #import "WebFrameLoaderClient.h"
 
+#import "BackForwardList.h"
 #import "DOMElementInternal.h"
 #import "DOMHTMLFormElementInternal.h"
 #import "WebBackForwardList.h"
@@ -75,7 +76,6 @@
 #import <WebCore/AuthenticationCF.h>
 #import <WebCore/AuthenticationMac.h>
 #import <WebCore/BackForwardController.h>
-#import <WebCore/BackForwardList.h>
 #import <WebCore/CachedFrame.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/DNS.h>
@@ -304,7 +304,13 @@ void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader* doc
 
     ResourceHandle* handle = mainResourceLoader->handle();
 
+#if USE(CFURLCONNECTION)
+    ASSERT([WebDownload respondsToSelector:@selector(_downloadWithLoadingCFURLConnection:request:response:delegate:proxy:)]);
+    auto connection = handle->releaseConnectionForDownload();
+    [WebDownload _downloadWithLoadingCFURLConnection:connection.get() request:request.cfURLRequest(UpdateHTTPBody) response:response.cfURLResponse() delegate:[webView downloadDelegate] proxy:nil];
+#else
     [WebDownload _downloadWithLoadingConnection:handle->connection() request:request.nsURLRequest(UpdateHTTPBody) response:response.nsURLResponse() delegate:[webView downloadDelegate] proxy:nil];
+#endif
 }
 
 bool WebFrameLoaderClient::dispatchDidLoadResourceFromMemoryCache(DocumentLoader* loader, const ResourceRequest& request, const ResourceResponse& response, int length)
@@ -1040,6 +1046,17 @@ void WebFrameLoaderClient::updateGlobalHistory()
     [[WebHistory optionalSharedHistory] _visitedURL:loader->urlForHistory() withTitle:loader->title().string() method:loader->originalRequestCopy().httpMethod() wasFailure:loader->urlForHistoryReflectsFailure()];
 }
 
+static void addRedirectURL(WebHistoryItem *item, const String& url)
+{
+    if (!item->_private->_redirectURLs)
+        item->_private->_redirectURLs = std::make_unique<Vector<String>>();
+
+    // Our API allows us to store all the URLs in the redirect chain, but for
+    // now we only have a use for the final URL.
+    item->_private->_redirectURLs->resize(1);
+    item->_private->_redirectURLs->at(0) = url;
+}
+
 void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
 {
     WebView* view = getWebView(m_webFrame.get());
@@ -1055,7 +1072,7 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
                     m_webFrame->_private->url.get(), loader->clientRedirectDestinationForHistory(), m_webFrame.get());
             }
         } else if (WebHistoryItem *item = [[WebHistory optionalSharedHistory] _itemForURLString:loader->clientRedirectSourceForHistory()])
-            core(item)->addRedirectURL(loader->clientRedirectDestinationForHistory());
+            addRedirectURL(item, loader->clientRedirectDestinationForHistory());
     }
 
     if (!loader->serverRedirectSourceForHistory().isNull()) {
@@ -1065,7 +1082,7 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
                     loader->serverRedirectSourceForHistory(), loader->serverRedirectDestinationForHistory(), m_webFrame.get());
             }
         } else if (WebHistoryItem *item = [[WebHistory optionalSharedHistory] _itemForURLString:loader->serverRedirectSourceForHistory()])
-            core(item)->addRedirectURL(loader->serverRedirectDestinationForHistory());
+            addRedirectURL(item, loader->serverRedirectDestinationForHistory());
     }
 }
 

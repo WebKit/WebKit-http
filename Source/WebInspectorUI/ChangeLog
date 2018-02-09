@@ -1,3 +1,256 @@
+2016-10-19  Dean Jackson  <dino@apple.com>
+
+        Support CSS Shapes Level 1 without a prefix
+        https://bugs.webkit.org/show_bug.cgi?id=163709
+        <rdar://problem/28859369>
+
+        Reviewed by Myles Maxfield.
+
+        Replace -webkit-shape-outside with shape-outside.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2016-10-19  Aaron Chu  <aaron_chu@apple.com>
+
+        Web Inspector: AXI: expose computed tree node and heading level
+        https://bugs.webkit.org/show_bug.cgi?id=130825
+        <rdar://problem/16442349>
+
+        Reviewed by Joseph Pecoraro.
+
+        Updating the Web Accessibility Inspector to display Heading Level and Hierarchical Level.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.accessibilityProperties.accessibilityPropertiesCallback):
+        (WebInspector.DOMNode.prototype.accessibilityProperties):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility.accessibilityPropertiesCallback):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility):
+
+2016-10-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Styles Sidebar highlights "translate" but not "translateX"
+        https://bugs.webkit.org/show_bug.cgi?id=163613
+        <rdar://problem/28829610>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WebInspector.CSSCompletions.requestCSSCompletions):
+        The hash table objects we pass to CodeMirror expects keys to be lowercased.
+
+2016-10-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CSS Autocompletion sometimes adds extra unexpected characters
+        https://bugs.webkit.org/show_bug.cgi?id=163612
+        <rdar://problem/28829557>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController.prototype._generateCSSCompletions):
+        Better handle completions in cases where we are in the middle of a property
+        to avoid orphaned characters, or at the end of a function name to avoid creating
+        duplicate parenthesis.
+
+2016-10-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r201171): Web Inspector: Timeline Recording playhead should always start immediately, not wait until first event
+        https://bugs.webkit.org/show_bug.cgi?id=163583
+        <rdar://problem/28815882>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._startUpdatingCurrentTime):
+        Revert logic change introduced by r201171 with no explanation.
+        Whenever we get a start time we should use it, regardless of
+        of what the current time is, precisely because the backend is
+        informing us of the start time to use.
+
+2016-10-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add toggles for debugger pauses at console.assert failures
+        https://bugs.webkit.org/show_bug.cgi?id=139542
+        <rdar://problem/19281600>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.get assertionsBreakpoint):
+        (WebInspector.DebuggerManager.prototype.isBreakpointRemovable):
+        (WebInspector.DebuggerManager.prototype._breakpointDisabledStateDidChange):
+        New breakpoint and toggling behavior.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointTreeOutlineDeleteTreeElement):
+        (WebInspector.DebuggerSidebarPanel.prototype._compareTopLevelTreeElements.isSpecialBreakpoint):
+        (WebInspector.DebuggerSidebarPanel.prototype._compareTopLevelTreeElements):
+        New breakpoint tree element behavior.
+
+        (WebInspector.DebuggerSidebarPanel.prototype.saveStateToCookie):
+        (WebInspector.DebuggerSidebarPanel.prototype.restoreStateFromCookie):
+        Sidebar restoration if it was selected.
+
+        * UserInterface/Images/Assertion.svg: Added.
+        * UserInterface/Images/gtk/Assertion.svg: Added.
+        * UserInterface/Views/BreakpointTreeElement.css:
+        (.breakpoint-assertion-icon .icon):
+        New sidebar icon for the global breakpoint.
+
+2016-10-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup parts of DebuggerManager
+        https://bugs.webkit.org/show_bug.cgi?id=163400
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.restoreBreakpointsSoon):
+
+        (WebInspector.DebuggerManager.prototype.get paused):
+        (WebInspector.DebuggerManager.prototype.get pauseReason):
+        (WebInspector.DebuggerManager.prototype.get pauseData):
+        (WebInspector.DebuggerManager.prototype.get callFrames):
+        (WebInspector.DebuggerManager.prototype.get activeCallFrame):
+        (WebInspector.DebuggerManager.prototype.set activeCallFrame):
+        Put simple accessors at the top.
+
+        (WebInspector.DebuggerManager.prototype.get allExceptionsBreakpoint):
+        (WebInspector.DebuggerManager.prototype.get allUncaughtExceptionsBreakpoint):
+        (WebInspector.DebuggerManager.prototype.get breakpoints):
+        (WebInspector.DebuggerManager.prototype.breakpointForIdentifier):
+        (WebInspector.DebuggerManager.prototype.breakpointsForSourceCode):
+        (WebInspector.DebuggerManager.prototype.isBreakpointRemovable):
+        (WebInspector.DebuggerManager.prototype.isBreakpointEditable):
+        (WebInspector.DebuggerManager.prototype.get breakpointsDisabledTemporarily):
+        Group public breakpoint state and access methods.
+
+        (WebInspector.DebuggerManager.prototype.scriptForIdentifier):
+        (WebInspector.DebuggerManager.prototype.scriptsForURL):
+        (WebInspector.DebuggerManager.prototype.get searchableScripts):
+        (WebInspector.DebuggerManager.prototype.get knownNonResourceScripts):
+        Group public script access methods.
+
+        (WebInspector.DebuggerManager.prototype.pause):
+        (WebInspector.DebuggerManager.prototype.resume):
+        (WebInspector.DebuggerManager.prototype.stepOver):
+        (WebInspector.DebuggerManager.prototype.stepInto):
+        (WebInspector.DebuggerManager.prototype.stepOut):
+        (WebInspector.DebuggerManager.prototype.continueToLocation):
+        (WebInspector.DebuggerManager.prototype.addBreakpoint):
+        (WebInspector.DebuggerManager.prototype.removeBreakpoint):
+        Group and modernize public methods that perform actions.
+
+        (WebInspector.DebuggerManager.prototype.nextBreakpointActionIdentifier):
+        Misc. methods.
+
+        (WebInspector.DebuggerManager.prototype.breakpointResolved):
+        (WebInspector.DebuggerManager.prototype.reset):
+        (WebInspector.DebuggerManager.prototype.playBreakpointActionSound):
+        (WebInspector.DebuggerManager.prototype.scriptDidParse):
+        (WebInspector.DebuggerManager.prototype._setBreakpoint.didSetBreakpoint):
+        (WebInspector.DebuggerManager.prototype._setBreakpoint):
+        (WebInspector.DebuggerManager.prototype._breakpointEditablePropertyDidChange):
+        (WebInspector.DebuggerManager.prototype._updateBreakOnExceptionsState):
+        (WebInspector.DebuggerManager.prototype._associateBreakpointsWithSourceCode):
+        Minor cleanup in protected and private methods.
+
+        * UserInterface/Models/BreakpointAction.js:
+        (WebInspector.BreakpointAction):
+        Getting the next identifier is an action so it should be a function call.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorBreakpointAdded):
+        Remove unused parameter.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Dragging to delete a Breakpoint should never trigger a ContentView change
+        https://bugs.webkit.org/show_bug.cgi?id=163403
+        <rdar://problem/28762930>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.ondelete):
+        Signal when a breakpoint tree element will be going away because it was
+        deleted via the keyboard operation within the TreeOutline. This is a dirty
+        way to do the signal but we remove BreakpointTreeElements asynchronously
+        when the Breakpoint actually gets removed from the backend.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._removeDebuggerTreeElement):
+        Deselect a BreakpointTreeElement if it was deleted in a way other then
+        the delete keyboard shortcut. This ensures another TreeElement selection
+        doesn't force ContentView changes.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve debugger highlight when inside of getter/setter calls
+        https://bugs.webkit.org/show_bug.cgi?id=163428
+        <rdar://problem/28769061>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        When in the middle of a member expression at a '.' or '[' get the best member
+        expression range.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype._updateExecutionRangeHighlight):
+        Include the character at the current position. This is useful since AST Nodes
+        don't give us token info but we would like to know if we are at particular tokens.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unused Breakpoint getter/setter for "id" - should be "identifier"
+        https://bugs.webkit.org/show_bug.cgi?id=163395
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Breakpoint.js:
+        (WebInspector.Breakpoint.prototype.get identifier): Renamed.
+        (WebInspector.Breakpoint.prototype.set identifier): Renamed.
+        The only user is DebuggerManager which sets and gets. Previously
+        it was unexpectedly setting a direct property on the Breakpoint
+        instead of using these methods to set the member variable.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove uses of delete in SourceCodeTextEditor
+        https://bugs.webkit.org/show_bug.cgi?id=163379
+
+        Reviewed by Timothy Hatcher.
+
+        Remove uses of delete and better group member variables.
+        One of the deletes was deleting an incorrect property.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorBreakpointAdded):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorBreakpointRemoved):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorBreakpointMoved):
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedMarkedExpression):
+        (WebInspector.SourceCodeTextEditor.prototype._dismissEditingController):
+        (WebInspector.SourceCodeTextEditor.prototype.editingControllerDidFinishEditing):
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: TypeError: this.positionToOffset is not a function - seen hovering expressions with Type Profiler enabled
+        https://bugs.webkit.org/show_bug.cgi?id=163405
+        <rdar://problem/28763953>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        Use correct method name, the old one must have gone away.
+
 2016-10-12  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Improve support for logging Proxy objects in console

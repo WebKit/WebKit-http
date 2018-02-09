@@ -122,7 +122,7 @@ RefPtr<CSSPrimitiveValue> consumeInteger(CSSParserTokenRange& range, double mini
     if (token.type() == NumberToken) {
         if (token.numericValueType() == NumberValueType || token.numericValue() < minimumValue)
             return nullptr;
-        return CSSPrimitiveValue::create(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitTypes::CSS_PARSER_INTEGER);
+        return CSSPrimitiveValue::create(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitTypes::CSS_NUMBER);
     }
     CalcParser calcParser(range);
     if (const CSSCalcValue* calculation = calcParser.value()) {
@@ -323,7 +323,7 @@ RefPtr<CSSPrimitiveValue> consumeIdent(CSSParserTokenRange& range)
 {
     if (range.peek().type() != IdentToken)
         return nullptr;
-    return CSSPrimitiveValue::createIdentifier(range.consumeIncludingWhitespace().id());
+    return CSSValuePool::singleton().createIdentifierValue(range.consumeIncludingWhitespace().id());
 }
 
 RefPtr<CSSPrimitiveValue> consumeIdentRange(CSSParserTokenRange& range, CSSValueID lower, CSSValueID upper)
@@ -333,18 +333,21 @@ RefPtr<CSSPrimitiveValue> consumeIdentRange(CSSParserTokenRange& range, CSSValue
     return consumeIdent(range);
 }
 
-RefPtr<CSSCustomIdentValue> consumeCustomIdent(CSSParserTokenRange& range)
+// FIXME-NEWPARSER: Eventually we'd like this to use CSSCustomIdentValue, but we need
+// to do other plumbing work first (like changing Pair to CSSValuePair and make it not
+// use only primitive values).
+RefPtr<CSSPrimitiveValue> consumeCustomIdent(CSSParserTokenRange& range)
 {
     if (range.peek().type() != IdentToken || isCSSWideKeyword(range.peek().id()))
         return nullptr;
-    return CSSCustomIdentValue::create(range.consumeIncludingWhitespace().value().toString());
+    return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().value().toString(), CSSPrimitiveValue::UnitTypes::CSS_STRING);
 }
 
 RefPtr<CSSPrimitiveValue> consumeString(CSSParserTokenRange& range)
 {
     if (range.peek().type() != StringToken)
         return nullptr;
-    return CSSPrimitiveValue::create(range.consumeIncludingWhitespace().value().toString(), CSSPrimitiveValue::UnitTypes::CSS_STRING);
+    return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().value().toString(), CSSPrimitiveValue::UnitTypes::CSS_STRING);
 }
 
 StringView consumeUrlAsStringView(CSSParserTokenRange& range)
@@ -379,7 +382,7 @@ RefPtr<CSSPrimitiveValue> consumeUrl(CSSParserTokenRange& range)
 
 static int clampRGBComponent(const CSSPrimitiveValue& value)
 {
-    double result = value.getDoubleValue();
+    double result = value.doubleValue();
     // FIXME: Multiply by 2.55 and round instead of floor.
     if (value.isPercentage())
         result *= 2.56;
@@ -430,14 +433,14 @@ static bool parseHSLParameters(CSSParserTokenRange& range, RGBA32& result, bool 
     if (!hslValue)
         return false;
     double colorArray[3];
-    colorArray[0] = (((hslValue->getIntValue() % 360) + 360) % 360) / 360.0;
+    colorArray[0] = (((hslValue->intValue() % 360) + 360) % 360) / 360.0;
     for (int i = 1; i < 3; i++) {
         if (!consumeCommaIncludingWhitespace(args))
             return false;
         hslValue = consumePercent(args, ValueRangeAll);
         if (!hslValue)
             return false;
-        double doubleValue = hslValue->getDoubleValue();
+        double doubleValue = hslValue->doubleValue();
         colorArray[i] = clampTo<double>(doubleValue, 0.0, 100.0) / 100.0; // Needs to be value between 0 and 1.0.
     }
     double alpha = 1.0;
@@ -521,12 +524,12 @@ static RefPtr<CSSPrimitiveValue> consumePositionComponent(CSSParserTokenRange& r
 
 static bool isHorizontalPositionKeywordOnly(const CSSPrimitiveValue& value)
 {
-    return value.isValueID() && (value.getValueID() == CSSValueLeft || value.getValueID() == CSSValueRight);
+    return value.isValueID() && (value.valueID() == CSSValueLeft || value.valueID() == CSSValueRight);
 }
 
 static bool isVerticalPositionKeywordOnly(const CSSPrimitiveValue& value)
 {
-    return value.isValueID() && (value.getValueID() == CSSValueTop || value.getValueID() == CSSValueBottom);
+    return value.isValueID() && (value.valueID() == CSSValueTop || value.valueID() == CSSValueBottom);
 }
 
 static void positionFromOneValue(CSSPrimitiveValue& value, RefPtr<CSSPrimitiveValue>& resultX, RefPtr<CSSPrimitiveValue>& resultY)
@@ -567,7 +570,7 @@ static bool positionFromThreeOrFourValues(CSSPrimitiveValue** values, RefPtr<CSS
         CSSPrimitiveValue* currentValue = values[i];
         if (!currentValue->isValueID())
             return false;
-        CSSValueID id = currentValue->getValueID();
+        CSSValueID id = currentValue->valueID();
 
         if (id == CSSValueCenter) {
             if (center)
@@ -889,10 +892,10 @@ static RefPtr<CSSValue> consumeRadialGradient(CSSParserTokenRange& args, CSSPars
     if (sizeKeyword && horizontalSize)
         return nullptr;
     // Circles must have 0 or 1 lengths.
-    if (shape && shape->getValueID() == CSSValueCircle && verticalSize)
+    if (shape && shape->valueID() == CSSValueCircle && verticalSize)
         return nullptr;
     // Ellipses must have 0 or 2 length/percentages.
-    if (shape && shape->getValueID() == CSSValueEllipse && horizontalSize && !verticalSize)
+    if (shape && shape->valueID() == CSSValueEllipse && horizontalSize && !verticalSize)
         return nullptr;
     // If there's only one size, it must be a length.
     if (!verticalSize && horizontalSize && horizontalSize->isPercentage())
@@ -1034,7 +1037,7 @@ static RefPtr<CSSValue> consumeImageSet(CSSParserTokenRange& range, const CSSPar
             return nullptr;
 
         RefPtr<CSSValue> image = CSSImageValue::create(completeURL(context, urlValue));
-        imageSet->append(*image);
+        imageSet->append(image.releaseNonNull());
 
         const CSSParserToken& token = args.consumeIncludingWhitespace();
         if (token.type() != DimensionToken)

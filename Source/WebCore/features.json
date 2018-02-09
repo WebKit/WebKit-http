@@ -203,6 +203,16 @@
         "category": "css"
     },
     {
+        "name": "Geometry Interfaces",
+        "url": "https://drafts.fxtf.org/geometry/",
+        "keywords": ["geometry", "dompointreadonly", "dompoint", "domrectreadonly", "domrect", "domquad", "dommatrixreadonly", "dommatrix"],
+        "category": "html",
+        "status": {
+            "status": "In Development"
+        },
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=163505"
+    },
+    {
         "name": "HTML5",
         "url": "https://html.spec.whatwg.org",
         "keywords": ["html", "html5", "html5.1"],
@@ -338,7 +348,6 @@
         "description": "A collection of technologies to improve modularization of DOM subtrees.",
         "contact": {
             "name": "Ryosuke Niwa",
-            "twitter": "@RyosukeNiwa",
             "email": "rniwa@webkit.org"
         }
     },
@@ -554,7 +563,6 @@
         "description": "Define a custom HTML tag and associate it with an ES6 class.",
         "contact": {
             "name": "Ryosuke Niwa",
-            "twitter": "@RyosukeNiwa",
             "email": "rniwa@webkit.org"
         }
     },
@@ -617,11 +625,10 @@
         "url": "http://w3c.github.io/webcomponents/spec/imports/",
         "specification": "Web Components",
         "description": "Includes resusable HTML documents in other HTML documents.",
-        "comment": "There are concerns about the disconnect between this specification and ES6 Modules. WebKit has no intent to support the current specification.",
+        "comment": "Multile browser vendors have raised concerns about how the HTML imports currently works. For example, its dependency model is not fully compatible with ES6 Modules. We are exploring other ways to package web components by integrating into ES6 Modules with other browser vendors.",
         "contact": {
-            "name": "Jon Davis",
-            "twitter": "@jonathandavis",
-            "email": "web-evangelist@apple.com"
+            "name": "Ryosuke Niwa",
+            "email": "rniwa@webkit.org"
         }
     },
     {
@@ -736,15 +743,16 @@
     {
         "name": "Shadow DOM",
         "status": {
-            "status": "In Development"
+            "status": "Done",
+            "enabled-by-default": true
         },
         "url": "http://w3c.github.io/webcomponents/spec/shadow/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=148695",
         "specification": "Web Components",
         "description": "Functional encapsulation of HTML and CSS for Web Components.",
+        "comment": "We are fixing the remainig bugs in our implementation.",
         "contact": {
             "name": "Ryosuke Niwa",
-            "twitter": "@RyosukeNiwa",
             "email": "rniwa@webkit.org"
         }
     },

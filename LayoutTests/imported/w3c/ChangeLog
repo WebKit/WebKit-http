@@ -1,3 +1,683 @@
+2016-10-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        Import W3C EME tests
+        https://bugs.webkit.org/show_bug.cgi?id=163214
+
+        Reviewed by Youenn Fablet.
+
+        Import the W3C EME tests from the web-platform-tests repository on GitHub.
+        The import was done via the import-w3c-tests script.
+
+        All the tests are still missing baselines, and they're skipped on all platforms.
+        The baselines will be added incrementally as the implementation grows. The idlharness.html
+        test will be unskipped first when the navigator.requestMediaKeySystemAccess() is added.
+
+        * resources/ImportExpectations: Skip Google EME tests.
+        * web-platform-tests/encrypted-media/: Added. The file list is omitted for clarity.
+
+2016-10-20  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support IDBObjectStore name assignment.
+        <rdar://problem/28806931> and https://bugs.webkit.org/show_bug.cgi?id=163749
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-errors-expected.txt:
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-store-expected.txt:
+
+2016-10-20  Chris Dumez  <cdumez@apple.com>
+
+        Make table.deleteRow(-1) a no-op when there are no rows
+        https://bugs.webkit.org/show_bug.cgi?id=163746
+
+        Reviewed by Alex Christensen.
+
+        Import test coverage from:
+        - https://github.com/w3c/web-platform-tests/pull/4001
+
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/remove-row-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-table-element/remove-row.html:
+        * web-platform-tests/html/semantics/tabular-data/the-tbody-element/deleteRow-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-tbody-element/deleteRow.html:
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/deleteCell-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/the-tr-element/deleteCell.html:
+
+2016-10-19  Dean Jackson  <dino@apple.com>
+
+        Import W3C CSS Shapes tests
+        https://bugs.webkit.org/show_bug.cgi?id=163697
+
+        Rubberstamped by Anders Carlsson.
+
+        They are marked as skipped for the moment, since we don't yet
+        support the unprefixed form.
+
+        * csswg-test/css-shapes-1/shape-outside-invalid-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-circle-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-circle-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-circle-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-circle-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-ellipse-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-ellipse-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-ellipse-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-ellipse-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-ellipse-005.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-ellipse-006.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-inset-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-inset-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-inset-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside-invalid-inset-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-002-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-003-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-004-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-006-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-006.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-007-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-007.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-008-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/shape-outside-box-008.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-box/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-001-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-002-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-003-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-004-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-linear-gradient-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-radial-gradient-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-radial-gradient-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-radial-gradient-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/shape-outside-radial-gradient-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/gradients/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-000-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-001-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-002-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-003-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-004-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-005-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-005.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-006-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-006.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-007-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-007.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-008-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-008.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-009-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-009.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-010-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-010.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-011-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-011.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-012-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-012.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-013-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-013.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-014-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-014.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-015-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-015.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-016-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-016.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-017-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-017.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-018-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-018.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-019-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-019.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-020-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-020.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-021-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-021.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-022-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-022.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-023-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-023.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-024-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-024.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-025-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-025.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/animated.gif: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle-20.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle-20.svg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle-50.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle-50.svg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle-70.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle-70.svg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle.jpg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/left-half-rectangle.svg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle-20.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle-50.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle-70.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle-70.svg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle.gif: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle.jpg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle.png: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/right-half-rectangle.svg: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/support/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/shape-image/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-013-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-013.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-014-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-014.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-015-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-015.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-016-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-016.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-017-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-017.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-018-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-018.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-019-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-019.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-020-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-020.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-021-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-021.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-022-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-022.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-024-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-024.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-025-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-025.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-026-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-026.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-027-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-027.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-028-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-028.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-029-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-029.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-030-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-030.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-031-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-031.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-013-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-013.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-014-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-014.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-015-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-015.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-016-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-016.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-017-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-017.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-018-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-018.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-019-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-019.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-020-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-020.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-021-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-021.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-022-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-022.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-023-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-023.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-024-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-024.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-025-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-025.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-030-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-030.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-031-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/shape-outside-ellipse-031.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/ellipse/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-010-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-010.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-011-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-011.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-012-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-012.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-013-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-013.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-014-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-014.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-015-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/shape-outside-inset-015.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/inset/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-007-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-007.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-008-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-008.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-009-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-009.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-010-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-010.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-011-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-011.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-012-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-012.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-013-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-013.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-014-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-014.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-015-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-015.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-016-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-016.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-017-expected.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/shape-outside-polygon-017.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/polygon/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/support/rounded-rectangle.js: Added.
+        (ellipseXIntercept):
+        (scanConvertRoundedRectangleOutside):
+        (genLeftRoundedRectFloatShapeOutsideRefTest):
+        (getRoundedRectLeftEdge):
+        (genRightRoundedRectFloatShapeOutsideRefTest):
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/support/subpixel-utils.js: Added.
+        (isEnabled):
+        (return.snapToLayoutUnit):
+        (return.ceilSnapToLayoutUnit):
+        (SubPixelLayout):
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/support/test-utils.js: Added.
+        (verifyTextPoints):
+        * csswg-test/css-shapes-1/shape-outside/supported-shapes/support/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-image-threshold-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-image-threshold-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-image-threshold-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-image-threshold-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-margin-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-margin-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-margin-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-margin-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-margin-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-margin-005.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-box-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-005.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-006.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-007.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-008.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-009.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-010.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-011.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-computed-shape-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-computed-shape-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-005.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-006.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-007.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-008.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-009.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-010.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-011.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-005.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-006.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-007.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-008.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-009.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-002.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-003.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-004.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-005.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-006.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-arguments-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-arguments-001.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-box-pair-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-inherit-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-initial-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-none-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-notation-000.html: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/support/parsing-utils.js: Added.
+        (testComputedStyle):
+        (testShapeMarginComputedStyle):
+        (testShapeThresholdComputedStyle):
+        (buildPositionTests):
+        (buildRadiiTests):
+        (buildInsetTests):
+        (buildCalcTests):
+        (unique):
+        (setUnit):
+        (convertToPx):
+        (roundResultStr):
+        (insetRound):
+        (serializedInsetRound):
+        (generateInsetRoundCases):
+        * csswg-test/css-shapes-1/shape-outside/values/support/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/shape-outside/values/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-001-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-001.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-002-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-002.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-003-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-003.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-004-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-004.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-005-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-005.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-006-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-006.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-007-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-007.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-008-expected.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-008.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-010.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-011.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-012.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-013.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-014.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-015.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-016.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-017.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-018.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/shape-outside-019.html: Added.
+        * csswg-test/css-shapes-1/spec-examples/support/circle-no-shadow.png: Added.
+        * csswg-test/css-shapes-1/spec-examples/support/circle-shadow.png: Added.
+        * csswg-test/css-shapes-1/spec-examples/support/rounded-triangle.svg: Added.
+        * csswg-test/css-shapes-1/spec-examples/support/spec-example-utils.js: Added.
+        (runTest):
+        (approxShapeTest):
+        * csswg-test/css-shapes-1/spec-examples/support/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/spec-examples/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/support/1x1-green.png: Added.
+        * csswg-test/css-shapes-1/support/1x1-lime.png: Added.
+        * csswg-test/css-shapes-1/support/1x1-maroon.png: Added.
+        * csswg-test/css-shapes-1/support/1x1-navy.png: Added.
+        * csswg-test/css-shapes-1/support/1x1-red.png: Added.
+        * csswg-test/css-shapes-1/support/1x1-white.png: Added.
+        * csswg-test/css-shapes-1/support/60x60-gg-rr.png: Added.
+        * csswg-test/css-shapes-1/support/60x60-green.png: Added.
+        * csswg-test/css-shapes-1/support/60x60-red.png: Added.
+        * csswg-test/css-shapes-1/support/README: Added.
+        * csswg-test/css-shapes-1/support/a-green.css: Added.
+        (.a):
+        * csswg-test/css-shapes-1/support/b-green.css: Added.
+        (.b):
+        * csswg-test/css-shapes-1/support/c-red.css: Added.
+        (.c):
+        * csswg-test/css-shapes-1/support/cat.png: Added.
+        * csswg-test/css-shapes-1/support/pattern-grg-rgr-grg.png: Added.
+        * csswg-test/css-shapes-1/support/pattern-grg-rrg-rgg.png: Added.
+        * csswg-test/css-shapes-1/support/pattern-rgr-grg-rgr.png: Added.
+        * csswg-test/css-shapes-1/support/pattern-tr.png: Added.
+        * csswg-test/css-shapes-1/support/square-purple.png: Added.
+        * csswg-test/css-shapes-1/support/square-teal.png: Added.
+        * csswg-test/css-shapes-1/support/square-white.png: Added.
+        * csswg-test/css-shapes-1/support/swatch-blue.png: Added.
+        * csswg-test/css-shapes-1/support/swatch-green.png: Added.
+        * csswg-test/css-shapes-1/support/swatch-lime.png: Added.
+        * csswg-test/css-shapes-1/support/swatch-orange.png: Added.
+        * csswg-test/css-shapes-1/support/swatch-red.png: Added.
+        * csswg-test/css-shapes-1/support/swatch-white.png: Added.
+        * csswg-test/css-shapes-1/support/swatch-yellow.png: Added.
+        * csswg-test/css-shapes-1/support/test-bl.png: Added.
+        * csswg-test/css-shapes-1/support/test-br.png: Added.
+        * csswg-test/css-shapes-1/support/test-outer.png: Added.
+        * csswg-test/css-shapes-1/support/test-tl.png: Added.
+        * csswg-test/css-shapes-1/support/test-tr.png: Added.
+        * csswg-test/css-shapes-1/support/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/test-plan/index.html: Added.
+        * csswg-test/css-shapes-1/test-plan/w3c-import.log: Added.
+        * csswg-test/css-shapes-1/w3c-import.log: Added.
+
+2016-10-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Annotate more DOM and HTML IDLs with CEReactions
+        https://bugs.webkit.org/show_bug.cgi?id=163653
+
+        Reviewed by Darin Adler.
+
+        Rebaselined the tests now that more test cases are passing.
+
+        * web-platform-tests/custom-elements/attribute-changed-callback-expected.txt:
+        * web-platform-tests/custom-elements/reactions/DOMStringMap-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Document-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Element-expected.txt:
+        * web-platform-tests/custom-elements/reactions/ElementContentEditable-expected.txt:
+        * web-platform-tests/custom-elements/reactions/HTMLElement-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Selection-expected.txt:
+
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Import encoding web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=163684
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/encoding: Added.
+        * web-platform-tests/encoding/OWNERS: Added.
+        * web-platform-tests/encoding/api-basics-expected.txt: Added.
+        * web-platform-tests/encoding/api-basics.html: Added.
+        * web-platform-tests/encoding/api-invalid-label-expected.txt: Added.
+        * web-platform-tests/encoding/api-invalid-label.html: Added.
+        * web-platform-tests/encoding/api-replacement-encodings-expected.txt: Added.
+        * web-platform-tests/encoding/api-replacement-encodings.html: Added.
+        * web-platform-tests/encoding/api-surrogates-utf8-expected.txt: Added.
+        * web-platform-tests/encoding/api-surrogates-utf8.html: Added.
+        * web-platform-tests/encoding/big5-encoder-expected.txt: Added.
+        * web-platform-tests/encoding/big5-encoder.html: Added.
+        * web-platform-tests/encoding/gb18030-encoder-expected.txt: Added.
+        * web-platform-tests/encoding/gb18030-encoder.html: Added.
+        * web-platform-tests/encoding/gbk-encoder-expected.txt: Added.
+        * web-platform-tests/encoding/gbk-encoder.html: Added.
+        * web-platform-tests/encoding/idlharness-expected.txt: Added.
+        * web-platform-tests/encoding/idlharness.html: Added.
+        * web-platform-tests/encoding/iso-2022-jp-decoder-expected.txt: Added.
+        * web-platform-tests/encoding/iso-2022-jp-decoder.html: Added.
+        * web-platform-tests/encoding/iso-2022-jp-encoder-expected.txt: Added.
+        * web-platform-tests/encoding/iso-2022-jp-encoder.html: Added.
+        * web-platform-tests/encoding/resources: Added.
+        * web-platform-tests/encoding/resources/encodings.js: Added.
+        * web-platform-tests/encoding/resources/single-byte-raw.py: Added.
+        (main):
+        * web-platform-tests/encoding/resources/text-plain-charset.py: Added.
+        (main):
+        * web-platform-tests/encoding/single-byte-decoder-expected.txt: Added.
+        * web-platform-tests/encoding/single-byte-decoder.html: Added.
+        * web-platform-tests/encoding/textdecoder-byte-order-marks-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-byte-order-marks.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-streaming-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-streaming.html: Added.
+        * web-platform-tests/encoding/textdecoder-fatal.html: Added.
+        * web-platform-tests/encoding/textdecoder-ignorebom-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-ignorebom.html: Added.
+        * web-platform-tests/encoding/textdecoder-labels-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-labels.html: Added.
+        * web-platform-tests/encoding/textdecoder-streaming-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-streaming.html: Added.
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates.html: Added.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf-expected.txt: Added.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf.html: Added.
+        * web-platform-tests/encoding/textencoder-utf16-surrogates-expected.txt: Added.
+        * web-platform-tests/encoding/textencoder-utf16-surrogates.html: Added.
+
+2016-10-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import the latest custom elements tests from W3C
+        https://bugs.webkit.org/show_bug.cgi?id=163640
+
+        Reviewed by Chris Dumez.
+
+        Import more custom elements tests from web-platform-tests as of fbe5ac0fd8eecac67d1562032eeba5bd7ec2b735.
+        Most of these tests are written and fixed by me.
+
+        * web-platform-tests/custom-elements/htmlconstructor/newtarget-expected.txt:
+        * web-platform-tests/custom-elements/htmlconstructor/newtarget.html:
+        * web-platform-tests/custom-elements/reactions/DOMStringMap-expected.txt: Added.
+        * web-platform-tests/custom-elements/reactions/DOMStringMap.html: Added.
+        * web-platform-tests/custom-elements/reactions/Document-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Document.html:
+        * web-platform-tests/custom-elements/reactions/Element-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Element.html:
+        * web-platform-tests/custom-elements/reactions/ElementContentEditable-expected.txt: Added.
+        * web-platform-tests/custom-elements/reactions/ElementContentEditable.html: Added.
+        * web-platform-tests/custom-elements/reactions/HTMLElement-expected.txt: Added.
+        * web-platform-tests/custom-elements/reactions/HTMLElement.html: Added.
+        * web-platform-tests/custom-elements/reactions/NamedNodeMap-expected.txt:
+        * web-platform-tests/custom-elements/reactions/NamedNodeMap.html:
+        * web-platform-tests/custom-elements/reactions/Range-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Range.html:
+        * web-platform-tests/custom-elements/reactions/Selection-expected.txt: Added.
+        * web-platform-tests/custom-elements/reactions/Selection.html: Added.
+        * web-platform-tests/custom-elements/reactions/resources/reactions.js:
+        * web-platform-tests/custom-elements/reactions/w3c-import.log:
+        * web-platform-tests/custom-elements/resources/custom-elements-helpers.js:
+
+2016-10-18  Chris Dumez  <cdumez@apple.com>
+
+        Changing details.open should cause a toggle event to be fired asynchronously
+        https://bugs.webkit.org/show_bug.cgi?id=163568
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/semantics/interactive-elements/the-details-element/toggleEvent-expected.txt: Added.
+        * web-platform-tests/html/semantics/interactive-elements/the-details-element/toggleEvent.html: Added.
+        * web-platform-tests/html/semantics/interactive-elements/the-details-element/w3c-import.log:
+        Import test coverage for the toggle event.
+
+2016-10-18  Chris Dumez  <cdumez@apple.com>
+
+        Leverage new union type support for HTMLSelectElement.add() / HTMLOptionsCollection.add()
+        https://bugs.webkit.org/show_bug.cgi?id=163608
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that one more check is passing. This is because we are now
+        correctly throwing a TypeError when calling add() with an unexpected HTMLElement type.
+
+        * web-platform-tests/html/infrastructure/common-dom-interfaces/collections/htmloptionscollection-expected.txt:
+
+2016-10-18  Chris Dumez  <cdumez@apple.com>
+
+        Update TrackEvent to stop using legacy [ConstructorTemplate=Event]
+        https://bugs.webkit.org/show_bug.cgi?id=163580
+
+        Reviewed by Sam Weinig.
+
+        Incorporate https://github.com/w3c/web-platform-tests/pull/3999 as the
+        test was incorrect. Rebaseline now that we are passing the test.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TrackEvent/constructor-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TrackEvent/constructor.html:
+
+2016-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Add support for reportValidity() on form and form control elements
+        https://bugs.webkit.org/show_bug.cgi?id=163479
+
+        Reviewed by Darin Adler.
+
+        Rebaseline several W3C tests now that more checks are passing.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-reportValidity-expected.txt:
+        * web-platform-tests/html/semantics/forms/constraints/form-validation-validate-expected.txt:
+
+2016-10-15  Chris Dumez  <cdumez@apple.com>
+
+        Setting HTMLMediaElement.volume to NaN or Inf should throw a TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=163472
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline w3c test now that more checks are passing.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/volume_nonfinite-expected.txt:
+
+2016-10-14  Chris Dumez  <cdumez@apple.com>
+
+        Setting HTMLMediaElement.muted to the same value should not fire a volume change event
+        https://bugs.webkit.org/show_bug.cgi?id=163474
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/event_volumechange-expected.txt:
+
+2016-10-14  Youenn Fablet  <youenn@apple.com>
+
+        Make NetworkCache aware of fetch cache mode
+        https://bugs.webkit.org/show_bug.cgi?id=163332
+
+        Reviewed by Antti Koivisto.
+
+        Splitting web-platform-tests/fetch/api/request/request-cache.html in several files so that running the individual test files
+        is more manageable.
+
+        * web-platform-tests/fetch/api/request/request-cache-default-conditional-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-cache-default-conditional.html: Added.
+        * web-platform-tests/fetch/api/request/request-cache-default-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-cache-default.html: Added.
+        * web-platform-tests/fetch/api/request/request-cache-expected.txt: Removed.
+        * web-platform-tests/fetch/api/request/request-cache-force-cache-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-cache-force-cache.html: Added.
+        * web-platform-tests/fetch/api/request/request-cache-no-cache-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-cache-no-cache.html: Added.
+        * web-platform-tests/fetch/api/request/request-cache-no-store-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-cache-no-store.html: Added.
+        * web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-cache-only-if-cached.html: Added.
+        * web-platform-tests/fetch/api/request/request-cache-reload-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/request-cache-reload.html: Added.
+        * web-platform-tests/fetch/api/request/request-cache.html: Removed.
+        * web-platform-tests/fetch/api/request/request-cache.js: Added.
+        (base_path):
+        (make_url):
+        (expected_status):
+        (expected_response_text):
+        (server_state):
+        (run_next_step):
+        (make_test):
+
+2016-10-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Exception message for expressions with multiple bracket accesses is inconsistent / incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=163426
+
+        Reviewed by Geoffrey Garen.
+
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/endTime-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/id-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/pauseOnExit-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/startTime-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/track-expected.txt:
+        Better expection messages.
+
+2016-10-13  Alex Christensen  <achristensen@webkit.org>
+
+        Hosts of URLs with non-special schemes should be case-sensitive, and non-ASCII characters in such hosts should be punycode-encoded
+        https://bugs.webkit.org/show_bug.cgi?id=163413
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/url-setters-expected.txt:
+        Update results.  Some more tests are failing, but if my proposal in https://github.com/whatwg/url/issues/148 is accepted,
+        then these web platform tests will need to be changed.  These web platform tests were also failing with the old URL::parse.
+
 2016-10-11  Chris Dumez  <cdumez@apple.com>
 
         select.options may return too many option elements

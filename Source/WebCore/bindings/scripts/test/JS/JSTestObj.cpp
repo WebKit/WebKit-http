@@ -48,12 +48,12 @@
 #include "JSSVGPoint.h"
 #include "JSTestCallback.h"
 #include "JSTestCallbackFunction.h"
+#include "JSTestInterface.h"
 #include "JSTestNode.h"
 #include "JSTestObj.h"
 #include "JSTestStandaloneDictionary.h"
 #include "JSTestSubObj.h"
 #include "JSXPathNSResolver.h"
-#include "ObjectConstructor.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocument.h"
 #include "SVGPoint.h"
@@ -460,7 +460,7 @@ template<> const char* expectedEnumerationValues<TestObj::Confidence>()
     return "\"high\", \"kinda-low\"";
 }
 
-template<> Optional<TestObj::Dictionary> convertDictionary<TestObj::Dictionary>(ExecState& state, JSValue value)
+template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -468,212 +468,227 @@ template<> Optional<TestObj::Dictionary> convertDictionary<TestObj::Dictionary>(
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     TestObj::Dictionary result;
     JSValue anyTypedefValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyTypedefValue"));
     if (!anyTypedefValueValue.isUndefined()) {
         result.anyTypedefValue = convert<IDLAny>(state, anyTypedefValueValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.anyTypedefValue = jsUndefined();
     JSValue anyValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyValue"));
     if (!anyValueValue.isUndefined()) {
         result.anyValue = convert<IDLAny>(state, anyValueValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.anyValue = jsUndefined();
     JSValue anyValueWithNullDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "anyValueWithNullDefault"));
     if (!anyValueWithNullDefaultValue.isUndefined()) {
         result.anyValueWithNullDefault = convert<IDLAny>(state, anyValueWithNullDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.anyValueWithNullDefault = jsNull();
     JSValue booleanWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithDefault"));
     if (!booleanWithDefaultValue.isUndefined()) {
         result.booleanWithDefault = convert<IDLBoolean>(state, booleanWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.booleanWithDefault = false;
     JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
     if (!booleanWithoutDefaultValue.isUndefined()) {
         result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue bufferSourceValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "bufferSourceValue"));
+    if (!bufferSourceValueValue.isUndefined()) {
+        result.bufferSourceValue = convert<IDLBufferSource>(state, bufferSourceValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue dictionaryMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "dictionaryMember"));
     if (!dictionaryMemberValue.isUndefined()) {
-        auto dictionaryMemberOptional = convert<IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>>(state, dictionaryMemberValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
-        result.dictionaryMember = dictionaryMemberOptional.value();
+        result.dictionaryMember = convert<IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>>(state, dictionaryMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue enumerationValueWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithDefault"));
     if (!enumerationValueWithDefaultValue.isUndefined()) {
         result.enumerationValueWithDefault = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.enumerationValueWithDefault = TestObj::EnumType::EnumValue1;
     JSValue enumerationValueWithEmptyStringDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithEmptyStringDefault"));
     if (!enumerationValueWithEmptyStringDefaultValue.isUndefined()) {
         result.enumerationValueWithEmptyStringDefault = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueWithEmptyStringDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.enumerationValueWithEmptyStringDefault = TestObj::EnumType::EmptyString;
     JSValue enumerationValueWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValueWithoutDefault"));
     if (!enumerationValueWithoutDefaultValue.isUndefined()) {
         result.enumerationValueWithoutDefault = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueWithoutDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue integerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "integer"));
     if (!integerValue.isUndefined()) {
         result.integer = convert<IDLLong>(state, integerValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue integerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "integerWithDefault"));
     if (!integerWithDefaultValue.isUndefined()) {
         result.integerWithDefault = convert<IDLLong>(state, integerWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.integerWithDefault = 0;
     JSValue largeIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "largeInteger"));
     if (!largeIntegerValue.isUndefined()) {
         result.largeInteger = convert<IDLLongLong>(state, largeIntegerValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue largeIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "largeIntegerWithDefault"));
     if (!largeIntegerWithDefaultValue.isUndefined()) {
         result.largeIntegerWithDefault = convert<IDLLongLong>(state, largeIntegerWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.largeIntegerWithDefault = 0;
     JSValue nullableIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableIntegerWithDefault"));
     if (!nullableIntegerWithDefaultValue.isUndefined()) {
         result.nullableIntegerWithDefault = convert<IDLNullable<IDLLong>>(state, nullableIntegerWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.nullableIntegerWithDefault = Nullopt;
     JSValue nullableNodeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableNode"));
     if (!nullableNodeValue.isUndefined()) {
         result.nullableNode = convert<IDLNullable<IDLInterface<Node>>>(state, nullableNodeValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.nullableNode = nullptr;
     JSValue nullableStringWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableStringWithDefault"));
     if (!nullableStringWithDefaultValue.isUndefined()) {
         result.nullableStringWithDefault = convert<IDLNullable<IDLDOMString>>(state, nullableStringWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.nullableStringWithDefault = String();
+    JSValue nullableUnionMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nullableUnionMember"));
+    if (!nullableUnionMemberValue.isUndefined()) {
+        result.nullableUnionMember = convert<IDLNullable<IDLUnion<IDLLong, IDLInterface<Node>>>>(state, nullableUnionMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.nullableUnionMember = Nullopt;
     JSValue restrictedDoubleValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedDouble"));
     if (!restrictedDoubleValue.isUndefined()) {
         result.restrictedDouble = convert<IDLDouble>(state, restrictedDoubleValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue restrictedDoubleWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedDoubleWithDefault"));
     if (!restrictedDoubleWithDefaultValue.isUndefined()) {
         result.restrictedDoubleWithDefault = convert<IDLDouble>(state, restrictedDoubleWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.restrictedDoubleWithDefault = 0;
     JSValue restrictedFloatValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedFloat"));
     if (!restrictedFloatValue.isUndefined()) {
         result.restrictedFloat = convert<IDLFloat>(state, restrictedFloatValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue restrictedFloatWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedFloatWithDefault"));
     if (!restrictedFloatWithDefaultValue.isUndefined()) {
         result.restrictedFloatWithDefault = convert<IDLFloat>(state, restrictedFloatWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.restrictedFloatWithDefault = 0;
     JSValue sequenceOfStringsValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "sequenceOfStrings"));
     if (!sequenceOfStringsValue.isUndefined()) {
         result.sequenceOfStrings = convert<IDLSequence<IDLDOMString>>(state, sequenceOfStringsValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue smallIntegerClampedValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallIntegerClamped"));
     if (!smallIntegerClampedValue.isUndefined()) {
         result.smallIntegerClamped = convert<IDLByte>(state, smallIntegerClampedValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue smallIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallIntegerWithDefault"));
     if (!smallIntegerWithDefaultValue.isUndefined()) {
         result.smallIntegerWithDefault = convert<IDLByte>(state, smallIntegerWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue smallUnsignedIntegerEnforcedRangeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerEnforcedRange"));
     if (!smallUnsignedIntegerEnforcedRangeValue.isUndefined()) {
         result.smallUnsignedIntegerEnforcedRange = convert<IDLOctet>(state, smallUnsignedIntegerEnforcedRangeValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue smallUnsignedIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "smallUnsignedIntegerWithDefault"));
     if (!smallUnsignedIntegerWithDefaultValue.isUndefined()) {
         result.smallUnsignedIntegerWithDefault = convert<IDLOctet>(state, smallUnsignedIntegerWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.smallUnsignedIntegerWithDefault = 0;
     JSValue stringWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithDefault"));
     if (!stringWithDefaultValue.isUndefined()) {
         result.stringWithDefault = convert<IDLDOMString>(state, stringWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.stringWithDefault = "defaultString";
     JSValue stringWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "stringWithoutDefault"));
     if (!stringWithoutDefaultValue.isUndefined()) {
         result.stringWithoutDefault = convert<IDLDOMString>(state, stringWithoutDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue unionMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unionMember"));
+    if (!unionMemberValue.isUndefined()) {
+        result.unionMember = convert<IDLUnion<IDLLong, IDLInterface<Node>>>(state, unionMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue unrestrictedDoubleValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedDouble"));
     if (!unrestrictedDoubleValue.isUndefined()) {
         result.unrestrictedDouble = convert<IDLUnrestrictedDouble>(state, unrestrictedDoubleValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue unrestrictedDoubleWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedDoubleWithDefault"));
     if (!unrestrictedDoubleWithDefaultValue.isUndefined()) {
         result.unrestrictedDoubleWithDefault = convert<IDLUnrestrictedDouble>(state, unrestrictedDoubleWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.unrestrictedDoubleWithDefault = 0;
     JSValue unrestrictedFloatValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedFloat"));
     if (!unrestrictedFloatValue.isUndefined()) {
         result.unrestrictedFloat = convert<IDLUnrestrictedFloat>(state, unrestrictedFloatValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue unrestrictedFloatWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unrestrictedFloatWithDefault"));
     if (!unrestrictedFloatWithDefaultValue.isUndefined()) {
         result.unrestrictedFloatWithDefault = convert<IDLUnrestrictedFloat>(state, unrestrictedFloatWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.unrestrictedFloatWithDefault = 0;
     JSValue unsignedIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedInteger"));
     if (!unsignedIntegerValue.isUndefined()) {
         result.unsignedInteger = convert<IDLUnsignedLong>(state, unsignedIntegerValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue unsignedIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedIntegerWithDefault"));
     if (!unsignedIntegerWithDefaultValue.isUndefined()) {
         result.unsignedIntegerWithDefault = convert<IDLUnsignedLong>(state, unsignedIntegerWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.unsignedIntegerWithDefault = 0;
     JSValue unsignedLargeIntegerValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedLargeInteger"));
     if (!unsignedLargeIntegerValue.isUndefined()) {
         result.unsignedLargeInteger = convert<IDLUnsignedLongLong>(state, unsignedLargeIntegerValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue unsignedLargeIntegerWithDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "unsignedLargeIntegerWithDefault"));
     if (!unsignedLargeIntegerWithDefaultValue.isUndefined()) {
         result.unsignedLargeIntegerWithDefault = convert<IDLUnsignedLongLong>(state, unsignedLargeIntegerWithDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.unsignedLargeIntegerWithDefault = 0;
-    return WTFMove(result);
+    return result;
 }
 
-template<> Optional<TestObj::DictionaryThatShouldNotTolerateNull> convertDictionary<TestObj::DictionaryThatShouldNotTolerateNull>(ExecState& state, JSValue value)
+template<> TestObj::DictionaryThatShouldNotTolerateNull convertDictionary<TestObj::DictionaryThatShouldNotTolerateNull>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -681,47 +696,46 @@ template<> Optional<TestObj::DictionaryThatShouldNotTolerateNull> convertDiction
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     TestObj::DictionaryThatShouldNotTolerateNull result;
     JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
     if (!booleanWithoutDefaultValue.isUndefined()) {
         result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue nonNullableNodeValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "nonNullableNode"));
     if (!nonNullableNodeValue.isUndefined()) {
         result.nonNullableNode = convert<IDLInterface<Node>>(state, nonNullableNodeValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     JSValue requiredDictionaryMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredDictionaryMember"));
     if (!requiredDictionaryMemberValue.isUndefined()) {
-        auto requiredDictionaryMemberOptional = convert<IDLDictionary<TestObj::Dictionary>>(state, requiredDictionaryMemberValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
-        result.requiredDictionaryMember = requiredDictionaryMemberOptional.value();
+        result.requiredDictionaryMember = convert<IDLDictionary<TestObj::Dictionary>>(state, requiredDictionaryMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     JSValue requiredEnumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredEnumerationValue"));
     if (!requiredEnumerationValueValue.isUndefined()) {
         result.requiredEnumerationValue = convert<IDLEnumeration<TestObj::EnumType>>(state, requiredEnumerationValueValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
-    return WTFMove(result);
+    return result;
 }
 
-template<> Optional<TestObj::DictionaryThatShouldTolerateNull> convertDictionary<TestObj::DictionaryThatShouldTolerateNull>(ExecState& state, JSValue value)
+template<> TestObj::DictionaryThatShouldTolerateNull convertDictionary<TestObj::DictionaryThatShouldTolerateNull>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -729,27 +743,27 @@ template<> Optional<TestObj::DictionaryThatShouldTolerateNull> convertDictionary
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     TestObj::DictionaryThatShouldTolerateNull result;
     JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
     if (!booleanWithoutDefaultValue.isUndefined()) {
         result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue enumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValue"));
     if (!enumerationValueValue.isUndefined()) {
         result.enumerationValue = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
-    return WTFMove(result);
+    return result;
 }
 
-template<> Optional<AlternateDictionaryName> convertDictionary<AlternateDictionaryName>(ExecState& state, JSValue value)
+template<> AlternateDictionaryName convertDictionary<AlternateDictionaryName>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -757,27 +771,27 @@ template<> Optional<AlternateDictionaryName> convertDictionary<AlternateDictiona
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     AlternateDictionaryName result;
     JSValue booleanWithoutDefaultValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "booleanWithoutDefault"));
     if (!booleanWithoutDefaultValue.isUndefined()) {
         result.booleanWithoutDefault = convert<IDLBoolean>(state, booleanWithoutDefaultValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue enumerationValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "enumerationValue"));
     if (!enumerationValueValue.isUndefined()) {
         result.enumerationValue = convert<IDLEnumeration<TestObj::EnumType>>(state, enumerationValueValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
-    return WTFMove(result);
+    return result;
 }
 
-template<> Optional<TestObj::ParentDictionary> convertDictionary<TestObj::ParentDictionary>(ExecState& state, JSValue value)
+template<> TestObj::ParentDictionary convertDictionary<TestObj::ParentDictionary>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -785,27 +799,27 @@ template<> Optional<TestObj::ParentDictionary> convertDictionary<TestObj::Parent
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     TestObj::ParentDictionary result;
     JSValue parentMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember1"));
     if (!parentMember1Value.isUndefined()) {
         result.parentMember1 = convert<IDLBoolean>(state, parentMember1Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue parentMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember2"));
     if (!parentMember2Value.isUndefined()) {
         result.parentMember2 = convert<IDLBoolean>(state, parentMember2Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
-    return WTFMove(result);
+    return result;
 }
 
-template<> Optional<TestObj::ChildDictionary> convertDictionary<TestObj::ChildDictionary>(ExecState& state, JSValue value)
+template<> TestObj::ChildDictionary convertDictionary<TestObj::ChildDictionary>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -813,34 +827,34 @@ template<> Optional<TestObj::ChildDictionary> convertDictionary<TestObj::ChildDi
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     TestObj::ChildDictionary result;
     JSValue parentMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember1"));
     if (!parentMember1Value.isUndefined()) {
         result.parentMember1 = convert<IDLBoolean>(state, parentMember1Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue parentMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "parentMember2"));
     if (!parentMember2Value.isUndefined()) {
         result.parentMember2 = convert<IDLBoolean>(state, parentMember2Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue childMember1Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "childMember1"));
     if (!childMember1Value.isUndefined()) {
         result.childMember1 = convert<IDLBoolean>(state, childMember1Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue childMember2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "childMember2"));
     if (!childMember2Value.isUndefined()) {
         result.childMember2 = convert<IDLBoolean>(state, childMember2Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     }
-    return WTFMove(result);
+    return result;
 }
 
 // Functions
@@ -943,6 +957,9 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalMethod3(J
 #endif
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethodWithOptional(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod2(JSC::ExecState*);
@@ -983,6 +1000,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionConditionalOverload(
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSingleConditionalOverload(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionAttachShadowRoot(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameter(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionBufferSourceParameter(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToString(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(JSC::ExecState*);
 
@@ -1262,9 +1280,9 @@ static const HashTableValue JSTestObjConstructorTableValues[] =
     { "CONST_VALUE_14", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(0x1abc) } },
     { "CONST_JAVASCRIPT", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(15) } },
     { "readonly", DontDelete | ReadOnly | ConstantInteger, NoIntrinsic, { (long long)(0) } },
-    { "staticReadOnlyLongAttr", DontDelete | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticReadOnlyLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "staticStringAttr", DontDelete, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConstructorStaticStringAttr) } },
-    { "TestSubObj", DontDelete | ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorTestSubObj), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "staticReadOnlyLongAttr", ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticReadOnlyLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "staticStringAttr", 0, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorStaticStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConstructorStaticStringAttr) } },
+    { "TestSubObj", ReadOnly, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructorTestSubObj), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "nullableStringStaticMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionNullableStringStaticMethod), (intptr_t) (0) } },
     { "staticMethodWithCallbackAndOptionalArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionStaticMethodWithCallbackAndOptionalArg), (intptr_t) (0) } },
     { "staticMethodWithCallbackArg", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjConstructorFunctionStaticMethodWithCallbackArg), (intptr_t) (1) } },
@@ -1560,6 +1578,9 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #endif
     { "overloadedMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethod), (intptr_t) (0) } },
     { "overloadedMethodWithOptionalParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWithOptionalParameter), (intptr_t) (1) } },
+    { "overloadedMethodWithDistinguishingUnion", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion), (intptr_t) (1) } },
+    { "overloadedMethodWith2DistinguishingUnions", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions), (intptr_t) (1) } },
+    { "overloadedMethodWithNonDistinguishingUnion", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion), (intptr_t) (2) } },
     { "classMethodWithClamp", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionClassMethodWithClamp), (intptr_t) (2) } },
     { "classMethodWithEnforceRange", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionClassMethodWithEnforceRange), (intptr_t) (2) } },
     { "methodWithUnsignedLongSequence", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithUnsignedLongSequence), (intptr_t) (1) } },
@@ -1594,6 +1615,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "singleConditionalOverload", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionSingleConditionalOverload), (intptr_t) (1) } },
     { "attachShadowRoot", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionAttachShadowRoot), (intptr_t) (1) } },
     { "operationWithExternalDictionaryParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionOperationWithExternalDictionaryParameter), (intptr_t) (1) } },
+    { "bufferSourceParameter", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionBufferSourceParameter), (intptr_t) (1) } },
     { "toString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToString), (intptr_t) (0) } },
     { "toJSON", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionToJSON), (intptr_t) (0) } },
 #if ENABLE(Condition1)
@@ -5228,7 +5250,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionSerializedValueCalle
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto serializedArg = SerializedScriptValue::create(state, state->uncheckedArgument(0), 0, 0);
+    auto serializedArg = SerializedScriptValue::create(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.serializedValue(WTFMove(serializedArg));
     return JSValue::encode(jsUndefined());
@@ -5352,7 +5374,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionPrivateMethodCaller(
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionPrivateMethod(ExecState* state)
 {
-    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionPrivateMethodCaller>(state, "privateMethod");
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionPrivateMethodCaller, CastedThisErrorBehavior::Assert>(state, "privateMethod");
 }
 
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionPrivateMethodCaller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
@@ -6826,6 +6848,188 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithOptio
     return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
 }
 
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1Caller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1Caller>(state, "overloadedMethodWithDistinguishingUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1Caller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithDistinguishingUnion(WTFMove(objectOrNode));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2Caller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2Caller>(state, "overloadedMethodWithDistinguishingUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2Caller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto value = convert<IDLLong>(*state, state->uncheckedArgument(0), NormalConversion);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWithDistinguishingUnion(WTFMove(value));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1(state);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion1(state);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2(state);
+        return jsTestObjPrototypeFunctionOverloadedMethodWithDistinguishingUnion2(state);
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1Caller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1Caller>(state, "overloadedMethodWith2DistinguishingUnions");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1Caller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWith2DistinguishingUnions(WTFMove(objectOrNode));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2Caller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2Caller>(state, "overloadedMethodWith2DistinguishingUnions");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2Caller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto value = convert<IDLUnion<IDLInterface<TestInterface>, IDLDOMString, IDLLong>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.overloadedMethodWith2DistinguishingUnions(WTFMove(value));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    size_t argsCount = std::min<size_t>(1, state->argumentCount());
+    if (argsCount == 1) {
+        JSValue distinguishingArg = state->uncheckedArgument(0);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1(state);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions1(state);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestInterface::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2(state);
+        if (distinguishingArg.isNumber())
+            return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2(state);
+        return jsTestObjPrototypeFunctionOverloadedMethodWith2DistinguishingUnions2(state);
+    }
+    return argsCount < 1 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion1Caller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion1(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion1Caller>(state, "overloadedMethodWithNonDistinguishingUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion1Caller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto object = JSTestObj::toWrapped(state->uncheckedArgument(1));
+    if (UNLIKELY(!object))
+        return throwArgumentTypeError(*state, throwScope, 1, "object", "TestObject", "overloadedMethodWithNonDistinguishingUnion", "TestObj");
+    impl.overloadedMethodWithNonDistinguishingUnion(WTFMove(objectOrNode), *object);
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion2Caller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion2(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion2Caller>(state, "overloadedMethodWithNonDistinguishingUnion");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion2Caller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 2))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto objectOrNode = convert<IDLUnion<IDLInterface<TestObj>, IDLInterface<TestNode>>>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    auto node = JSTestNode::toWrapped(state->uncheckedArgument(1));
+    if (UNLIKELY(!node))
+        return throwArgumentTypeError(*state, throwScope, 1, "node", "TestObject", "overloadedMethodWithNonDistinguishingUnion", "TestNode");
+    impl.overloadedMethodWithNonDistinguishingUnion(WTFMove(objectOrNode), *node);
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion(ExecState* state)
+{
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    UNUSED_PARAM(throwScope);
+    size_t argsCount = std::min<size_t>(2, state->argumentCount());
+    if (argsCount == 2) {
+        JSValue distinguishingArg = state->uncheckedArgument(1);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestObj::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion1(state);
+        if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSTestNode::info()))
+            return jsTestObjPrototypeFunctionOverloadedMethodWithNonDistinguishingUnion2(state);
+    }
+    return argsCount < 2 ? throwVMError(state, throwScope, createNotEnoughArgumentsError(state)) : throwVMTypeError(state, throwScope);
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjConstructorFunctionClassMethod(ExecState* state)
 {
     VM& vm = state->vm();
@@ -7695,7 +7899,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionAttachShadowRootCall
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto init = convert<IDLDictionary<TestObj::Dictionary>>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.attachShadowRoot(init.value());
+    impl.attachShadowRoot(init);
     return JSValue::encode(jsUndefined());
 }
 
@@ -7715,7 +7919,27 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOperationWithExterna
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto dict = convert<IDLDictionary<DictionaryImplName>>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.operationWithExternalDictionaryParameter(dict.value());
+    impl.operationWithExternalDictionaryParameter(dict);
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionBufferSourceParameterCaller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionBufferSourceParameter(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionBufferSourceParameterCaller>(state, "bufferSourceParameter");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionBufferSourceParameterCaller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    if (UNLIKELY(state->argumentCount() < 1))
+        return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
+    auto data = convert<IDLBufferSource>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.bufferSourceParameter(WTFMove(data));
     return JSValue::encode(jsUndefined());
 }
 
@@ -7735,31 +7959,33 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionToStringCaller(JSC::
     return JSValue::encode(result);
 }
 
+static inline EncodedJSValue jsTestObjPrototypeFunctionToJSONCaller(ExecState* state, JSTestObj* thisObject, JSC::ThrowScope& throwScope)
+{
+    auto& vm = state->vm();
+    auto* result = constructEmptyObject(state);
+
+    auto createValue = jsTestObjCreateGetter(*state, *thisObject, throwScope);
+    ASSERT(!throwScope.exception());
+    result->putDirect(vm, Identifier::fromString(&vm, "create"), createValue);
+
+    auto readOnlyStringAttrValue = jsTestObjReadOnlyStringAttrGetter(*state, *thisObject, throwScope);
+    ASSERT(!throwScope.exception());
+    result->putDirect(vm, Identifier::fromString(&vm, "readOnlyStringAttr"), readOnlyStringAttrValue);
+
+    auto enumAttrValue = jsTestObjEnumAttrGetter(*state, *thisObject, throwScope);
+    ASSERT(!throwScope.exception());
+    result->putDirect(vm, Identifier::fromString(&vm, "enumAttr"), enumAttrValue);
+
+    auto longAttrValue = jsTestObjLongAttrGetter(*state, *thisObject, throwScope);
+    ASSERT(!throwScope.exception());
+    result->putDirect(vm, Identifier::fromString(&vm, "longAttr"), longAttrValue);
+
+    return JSValue::encode(result);
+}
+
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(ExecState* state)
 {
-    ASSERT(state);
-    auto thisValue = state->thisValue();
-    auto castedThis = jsDynamicCast<JSTestObj*>(thisValue);
-    VM& vm = state->vm();
-    auto throwScope = DECLARE_THROW_SCOPE(vm);
-    if (UNLIKELY(!castedThis))
-        return throwThisTypeError(*state, throwScope, "TestObj", "toJSON");
-    ASSERT_GC_OBJECT_INHERITS(castedThis, JSTestObj::info());
-
-    auto* result = constructEmptyObject(state);
-    auto readOnlyStringAttrValue = jsTestObjReadOnlyStringAttr(state, JSValue::encode(thisValue), Identifier());
-    ASSERT(!throwScope.exception());
-    result->putDirect(vm, Identifier::fromString(&vm, "readOnlyStringAttr"), JSValue::decode(readOnlyStringAttrValue));
-    auto enumAttrValue = jsTestObjEnumAttr(state, JSValue::encode(thisValue), Identifier());
-    ASSERT(!throwScope.exception());
-    result->putDirect(vm, Identifier::fromString(&vm, "enumAttr"), JSValue::decode(enumAttrValue));
-    auto longAttrValue = jsTestObjLongAttr(state, JSValue::encode(thisValue), Identifier());
-    ASSERT(!throwScope.exception());
-    result->putDirect(vm, Identifier::fromString(&vm, "longAttr"), JSValue::decode(longAttrValue));
-    auto createValue = jsTestObjCreate(state, JSValue::encode(thisValue), Identifier());
-    ASSERT(!throwScope.exception());
-    result->putDirect(vm, Identifier::fromString(&vm, "create"), JSValue::decode(createValue));
-    return JSValue::encode(result);
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionToJSONCaller>(state, "toJSON");
 }
 
 void JSTestObj::visitChildren(JSCell* cell, SlotVisitor& visitor)

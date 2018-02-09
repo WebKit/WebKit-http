@@ -88,6 +88,34 @@ void WebGL2RenderingContext::initializeShaderExtensions()
     m_context->getExtensions()->ensureEnabled("GL_EXT_frag_depth");
 }
 
+void WebGL2RenderingContext::bufferData(GC3Denum target, ArrayBufferView& data, GC3Denum usage, GC3Duint srcOffset, GC3Duint length)
+{
+    if (srcOffset > data.byteLength() || length > data.byteLength() - srcOffset) {
+        synthesizeGLError(GraphicsContext3D::INVALID_VALUE, "bufferData", "srcOffset or length is out of bounds");
+        return;
+    }
+    auto slice = Uint8Array::create(data.buffer(), data.byteOffset() + srcOffset, length);
+    if (!slice) {
+        synthesizeGLError(GraphicsContext3D::OUT_OF_MEMORY, "bufferData", "Could not create intermediate ArrayBufferView");
+        return;
+    }
+    WebGLRenderingContextBase::bufferData(target, slice.get(), usage);
+}
+
+void WebGL2RenderingContext::bufferSubData(GC3Denum target, long long offset, ArrayBufferView& data, GC3Duint srcOffset, GC3Duint length)
+{
+    if (srcOffset > data.byteLength() || length > data.byteLength() - srcOffset) {
+        synthesizeGLError(GraphicsContext3D::INVALID_VALUE, "bufferData", "srcOffset or length is out of bounds");
+        return;
+    }
+    auto slice = Uint8Array::create(data.buffer(), data.byteOffset() + srcOffset, length);
+    if (!slice) {
+        synthesizeGLError(GraphicsContext3D::OUT_OF_MEMORY, "bufferData", "Could not create intermediate ArrayBufferView");
+        return;
+    }
+    WebGLRenderingContextBase::bufferSubData(target, offset, slice);
+}
+
 void WebGL2RenderingContext::copyBufferSubData(GC3Denum, GC3Denum, GC3Dint64, GC3Dint64, GC3Dint64)
 {
 }
@@ -1175,7 +1203,7 @@ void WebGL2RenderingContext::texSubImage2D(GC3Denum target, GC3Dint level, GC3Di
         || !validateTexFunc("texSubImage2D", TexSubImage, SourceHTMLVideoElement, target, level, GraphicsContext3D::NONE, video->videoWidth(), video->videoHeight(), 0, format, type, xoffset, yoffset))
         return;
     
-    RefPtr<Image> image = videoFrameToImage(video, ImageBuffer::fastCopyImageMode(), ec);
+    RefPtr<Image> image = videoFrameToImage(video, ImageBuffer::fastCopyImageMode());
     if (!image)
         return;
     texSubImage2DImpl(target, level, xoffset, yoffset, format, type, image.get(), GraphicsContext3D::HtmlDomVideo, m_unpackFlipY, m_unpackPremultiplyAlpha, ec);

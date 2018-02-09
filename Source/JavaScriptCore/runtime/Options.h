@@ -108,6 +108,7 @@ typedef const char* optionString;
     v(bool, useJIT,    true, Normal, "allows the baseline JIT to be used if true") \
     v(bool, useDFGJIT, true, Normal, "allows the DFG JIT to be used if true") \
     v(bool, useRegExpJIT, true, Normal, "allows the RegExp JIT to be used if true") \
+    v(bool, useDOMJIT, true, Normal, "allows the DOMJIT to be used if true") \
     \
     v(bool, reportMustSucceedExecutableAllocations, false, Normal, nullptr) \
     \
@@ -172,6 +173,7 @@ typedef const char* optionString;
     v(bool, reportBaselineCompileTimes, false, Normal, "dumps JS function signature and the time it took to BaselineJIT compile") \
     v(bool, reportDFGCompileTimes, false, Normal, "dumps JS function signature and the time it took to DFG and FTL compile") \
     v(bool, reportFTLCompileTimes, false, Normal, "dumps JS function signature and the time it took to FTL compile") \
+    v(bool, reportDFGPhaseTimes, false, Normal, "dumps JS function name and the time is took for each DFG phase") \
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
     v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
@@ -300,6 +302,8 @@ typedef const char* optionString;
     v(double, structureCheckVoteRatioForHoisting, 1, Normal, nullptr) \
     v(double, checkArrayVoteRatioForHoisting, 1, Normal, nullptr) \
     \
+    v(unsigned, maximumDirectCallStackSize, 200, Normal, nullptr) \
+    \
     v(unsigned, minimumNumberOfScansBetweenRebalance, 100, Normal, nullptr) \
     v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7), Normal, nullptr) \
     v(unsigned, opaqueRootMergeThreshold, 1000, Normal, nullptr) \
@@ -390,6 +394,8 @@ typedef const char* optionString;
     \
     v(bool, useSourceProviderCache, true, Normal, "If false, the parser will not use the source provider cache. It's good to verify everything works when this is false. Because the cache is so successful, it can mask bugs.") \
     v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
+    \
+    v(bool, useWebAssembly, false, Normal, "Expose the WebAssembly global object.") \
 
 enum OptionEquivalence {
     SameOption,
@@ -427,6 +433,7 @@ enum OptionEquivalence {
     v(enableExecutableAllocationFuzz, useExecutableAllocationFuzz, SameOption) \
     v(enableOSRExitFuzz, useOSRExitFuzz, SameOption) \
     v(enableDollarVM, useDollarVM, SameOption) \
+    v(enableWebAssembly, useWebAssembly, SameOption) \
 
 class Options {
 public:

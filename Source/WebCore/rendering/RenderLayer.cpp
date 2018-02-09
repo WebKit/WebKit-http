@@ -4168,7 +4168,7 @@ bool RenderLayer::hasFilterThatIsPainting(GraphicsContext& context, PaintLayerFl
     if (!hasPaintedFilter)
         return false;
 
-    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter);
+    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter, context);
     if (!filterPainter->haveFilterEffect())
         return false;
 
@@ -4182,7 +4182,7 @@ std::unique_ptr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsCo
 
     FilterInfo* filterInfo = FilterInfo::getIfExists(*this);
     bool hasPaintedFilter = filterInfo && filterInfo->renderer() && paintsWithFilters();
-    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter);
+    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter, context);
 
     LayoutRect filterRepaintRect = filterInfo->dirtySourceRect();
     filterRepaintRect.move(offsetFromRoot);
@@ -6985,7 +6985,7 @@ void RenderLayer::filterNeedsRepaint()
 {
     // We use the enclosing element so that we recalculate style for the ancestor of an anonymous object.
     if (Element* element = enclosingElement())
-        element->setNeedsStyleRecalc(SyntheticStyleChange);
+        element->invalidateStyleAndLayerComposition();
     renderer().repaint();
 }
 

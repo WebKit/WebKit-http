@@ -196,7 +196,7 @@ void propagateException(JSC::ExecState&, Exception&&);
 WEBCORE_EXPORT void setDOMException(JSC::ExecState*, ExceptionCode);
 
 // Implementation details of the above.
-void propagateExceptionSlowPath(JSC::ExecState&, JSC::ThrowScope&, Exception&&);
+WEBCORE_EXPORT void propagateExceptionSlowPath(JSC::ExecState&, JSC::ThrowScope&, Exception&&);
 WEBCORE_EXPORT void setDOMExceptionSlow(JSC::ExecState*, JSC::ThrowScope&, ExceptionCode);
 
 JSC::JSValue jsString(JSC::ExecState*, const URL&); // empty if the URL is null
@@ -301,7 +301,7 @@ RefPtr<JSC::Float32Array> toFloat32Array(JSC::JSValue);
 RefPtr<JSC::Float64Array> toFloat64Array(JSC::JSValue);
 
 template<typename T, typename JSType> Vector<Ref<T>> toRefNativeArray(JSC::ExecState&, JSC::JSValue);
-bool hasIteratorMethod(JSC::ExecState&, JSC::JSValue);
+WEBCORE_EXPORT bool hasIteratorMethod(JSC::ExecState&, JSC::JSValue);
 
 bool shouldAllowAccessToNode(JSC::ExecState*, Node*);
 bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*);
@@ -331,7 +331,7 @@ template<JSC::NativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFu
 template<typename T> struct NativeValueTraits;
 
 
-enum class CastedThisErrorBehavior { Throw, ReturnEarly, RejectPromise };
+enum class CastedThisErrorBehavior { Throw, ReturnEarly, RejectPromise, Assert };
 
 template<typename JSClass>
 struct BindingCaller {
@@ -343,16 +343,17 @@ struct BindingCaller {
     static JSClass* castForAttribute(JSC::ExecState&, JSC::EncodedJSValue);
     static JSClass* castForOperation(JSC::ExecState&);
 
-    template<PromiseOperationCallerFunction operationCaller>
+    template<PromiseOperationCallerFunction operationCaller, CastedThisErrorBehavior shouldThrow = CastedThisErrorBehavior::RejectPromise>
     static JSC::EncodedJSValue callPromiseOperation(JSC::ExecState* state, Ref<DeferredPromise>&& promise, const char* operationName)
     {
         ASSERT(state);
         auto throwScope = DECLARE_THROW_SCOPE(state->vm());
         auto* thisObject = castForOperation(*state);
-        if (UNLIKELY(!thisObject)) {
+        if (shouldThrow != CastedThisErrorBehavior::Assert && UNLIKELY(!thisObject)) {
             ASSERT(JSClass::info());
             return rejectPromiseWithThisTypeError(promise.get(), JSClass::info()->className, operationName);
         }
+        ASSERT(thisObject);
         ASSERT_GC_OBJECT_INHERITS(thisObject, JSClass::info());
         // FIXME: We should refactor the binding generated code to use references for state and thisObject.
         return operationCaller(state, thisObject, WTFMove(promise), throwScope);
@@ -364,13 +365,14 @@ struct BindingCaller {
         ASSERT(state);
         auto throwScope = DECLARE_THROW_SCOPE(state->vm());
         auto* thisObject = castForOperation(*state);
-        if (UNLIKELY(!thisObject)) {
+        if (shouldThrow != CastedThisErrorBehavior::Assert && UNLIKELY(!thisObject)) {
             ASSERT(JSClass::info());
             if (shouldThrow == CastedThisErrorBehavior::Throw)
                 return throwThisTypeError(*state, throwScope, JSClass::info()->className, operationName);
             // For custom promise-returning operations
             return rejectPromiseWithThisTypeError(*state, JSClass::info()->className, operationName);
         }
+        ASSERT(thisObject);
         ASSERT_GC_OBJECT_INHERITS(thisObject, JSClass::info());
         // FIXME: We should refactor the binding generated code to use references for state and thisObject.
         return operationCaller(state, thisObject, throwScope);
@@ -410,6 +412,7 @@ struct BindingCaller {
 // ExceptionOr handling.
 void propagateException(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<void>&&);
 template<typename T> JSC::JSValue toJS(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, ExceptionOr<T>&&);
+template<typename T> JSC::JSValue toJSArray(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, ExceptionOr<T>&&);
 JSC::JSValue toJSBoolean(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<bool>&&);
 JSC::JSValue toJSDate(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<double>&&);
 JSC::JSValue toJSNullableDate(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<Optional<double>>&&);
@@ -927,6 +930,15 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState& state, JSDOMGlobal
     return toJS(&state, &globalObject, value.releaseReturnValue());
 }
 
+template<typename T> inline JSC::JSValue toJSArray(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope& throwScope, ExceptionOr<T>&& value)
+{
+    if (UNLIKELY(value.hasException())) {
+        propagateException(state, throwScope, value.releaseException());
+        return { };
+    }
+    return jsArray(&state, &globalObject, value.releaseReturnValue());
+}
+
 inline JSC::JSValue toJSBoolean(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<bool>&& value)
 {
     if (UNLIKELY(value.hasException())) {
@@ -961,6 +973,15 @@ template<typename T> inline JSC::JSValue toJSNumber(JSC::ExecState& state, JSC::
         return { };
     }
     return JSC::jsNumber(value.releaseReturnValue());
+}
+
+inline JSC::JSValue toJSString(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<String>&& value)
+{
+    if (UNLIKELY(value.hasException())) {
+        propagateException(state, throwScope, value.releaseException());
+        return { };
+    }
+    return JSC::jsStringWithCache(&state, value.releaseReturnValue());
 }
 
 } // namespace WebCore

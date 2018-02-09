@@ -2353,6 +2353,11 @@ template <class TreeBuilder> bool Parser<LexerType>::parseFunctionInfo(TreeBuild
         generatorBodyScope->setConstructorKind(ConstructorKind::None);
         generatorBodyScope->setExpectedSuperBinding(expectedSuperBinding);
 
+        // Disallow 'use strict' directives in the implicit inner function if
+        // needed.
+        if (functionScope->hasNonSimpleParameterList())
+            generatorBodyScope->setHasNonSimpleParameterList();
+
         functionInfo.body = performParsingFunctionBody();
 
         // When a generator has a "use strict" directive, a generator function wrapping it should be strict mode.
@@ -4242,6 +4247,11 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePrimaryExpre
         return context.createThisExpr(location);
     }
     case AWAIT:
+#if ENABLE(ES2017_ASYNCFUNCTION_SYNTAX)
+        if (m_parserState.functionParsePhase == FunctionParsePhase::Parameters)
+            failIfFalse(m_parserState.allowAwait, "Cannot use await expression within parameters");
+        FALLTHROUGH;
+#endif
     case IDENT: {
     identifierExpression:
         JSTextPosition start = tokenStartPosition();

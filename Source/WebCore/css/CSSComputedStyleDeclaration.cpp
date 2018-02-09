@@ -62,6 +62,7 @@
 #include "RenderBlock.h"
 #include "RenderBox.h"
 #include "RenderStyle.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGElement.h"
 #include "Settings.h"
 #include "ShapeValue.h"
@@ -381,9 +382,7 @@ static const CSSPropertyID computedProperties[] = {
 #if PLATFORM(IOS)
     CSSPropertyWebkitTouchCallout,
 #endif
-#if ENABLE(CSS_SHAPES)
-    CSSPropertyWebkitShapeOutside,
-#endif
+    CSSPropertyShapeOutside,
 #if ENABLE(TOUCH_EVENTS)
     CSSPropertyWebkitTapHighlightColor,
 #endif
@@ -414,10 +413,8 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitRegionBreakInside,
     CSSPropertyWebkitRegionFragment,
 #endif
-#if ENABLE(CSS_SHAPES)
-    CSSPropertyWebkitShapeMargin,
-    CSSPropertyWebkitShapeImageThreshold,
-#endif
+    CSSPropertyShapeMargin,
+    CSSPropertyShapeImageThreshold,
     CSSPropertyBufferedRendering,
     CSSPropertyClipPath,
     CSSPropertyClipRule,
@@ -1636,9 +1633,9 @@ String CSSComputedStyleDeclaration::cssText() const
     return result.toString();
 }
 
-void CSSComputedStyleDeclaration::setCssText(const String&, ExceptionCode& ec)
+ExceptionOr<void> CSSComputedStyleDeclaration::setCssText(const String&)
 {
-    ec = NO_MODIFICATION_ALLOWED_ERR;
+    return Exception { NO_MODIFICATION_ALLOWED_ERR };
 }
 
 RefPtr<CSSPrimitiveValue> ComputedStyleExtractor::getFontSizeCSSValuePreferringKeyword() const
@@ -2357,9 +2354,12 @@ static inline bool nodeOrItsAncestorNeedsStyleRecalc(const Node& node)
     return false;
 }
 
-static inline bool updateStyleIfNeededForNode(const Node& node)
+static bool updateStyleIfNeededForNode(const Node& node)
 {
     Document& document = node.document();
+
+    document.styleScope().flushPendingUpdate();
+
     if (!document.hasPendingForcedStyleRecalc() && !(document.childNeedsStyleRecalc() && nodeOrItsAncestorNeedsStyleRecalc(node)))
         return false;
     document.updateStyleIfNeeded();
@@ -2382,7 +2382,6 @@ static inline const RenderStyle* computeRenderStyleForProperty(Node* styledNode,
     return styledNode->computedStyle(styledNode->isPseudoElement() ? NOPSEUDO : pseudoElementSpecifier);
 }
 
-#if ENABLE(CSS_SHAPES)
 static Ref<CSSValue> shapePropertyValue(const RenderStyle& style, const ShapeValue* shapeValue)
 {
     if (!shapeValue)
@@ -2405,7 +2404,6 @@ static Ref<CSSValue> shapePropertyValue(const RenderStyle& style, const ShapeVal
         list->append(CSSValuePool::singleton().createValue(shapeValue->cssBox()));
     return list.releaseNonNull();
 }
-#endif
 
 static Ref<CSSValueList> valueForItemPositionWithOverflowAlignment(const StyleSelfAlignmentData& data)
 {
@@ -2420,14 +2418,22 @@ static Ref<CSSValueList> valueForItemPositionWithOverflowAlignment(const StyleSe
     return result;
 }
 
-static Ref<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlignment(const StyleContentAlignmentData& data)
+static Ref<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlignment(const StyleContentAlignmentData& data, CSSValueID normalBehaviorValueID)
 {
     auto& cssValuePool = CSSValuePool::singleton();
     auto result = CSSValueList::createSpaceSeparated();
     if (data.distribution() != ContentDistributionDefault)
         result.get().append(cssValuePool.createValue(data.distribution()));
-    if (data.distribution() == ContentDistributionDefault || data.position() != ContentPositionNormal)
-        result.get().append(cssValuePool.createValue(data.position()));
+    if (data.distribution() == ContentDistributionDefault || data.position() != ContentPositionNormal) {
+        bool gridEnabled = false;
+#if ENABLE(CSS_GRID_LAYOUT)
+        gridEnabled = RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
+#endif
+        if (data.position() != ContentPositionNormal || gridEnabled)
+            result.get().append(cssValuePool.createValue(data.position()));
+        else
+            result.get().append(cssValuePool.createIdentifierValue(normalBehaviorValueID));
+    }
     if ((data.position() >= ContentPositionCenter || data.distribution() != ContentDistributionDefault) && data.overflow() != OverflowAlignmentDefault)
         result.get().append(cssValuePool.createValue(data.overflow()));
     ASSERT(result.get().length() > 0);
@@ -2809,7 +2815,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyEmptyCells:
             return cssValuePool.createValue(style->emptyCells());
         case CSSPropertyAlignContent:
-            return valueForContentPositionAndDistributionWithOverflowAlignment(style->alignContent());
+            return valueForContentPositionAndDistributionWithOverflowAlignment(style->alignContent(), CSSValueStretch);
         case CSSPropertyAlignItems:
             return valueForItemPositionWithOverflowAlignment(style->alignItems());
         case CSSPropertyAlignSelf:
@@ -2829,7 +2835,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyFlexWrap:
             return cssValuePool.createValue(style->flexWrap());
         case CSSPropertyJustifyContent:
-            return valueForContentPositionAndDistributionWithOverflowAlignment(style->justifyContent());
+            return valueForContentPositionAndDistributionWithOverflowAlignment(style->justifyContent(), CSSValueFlexStart);
 #if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyJustifyItems:
             return valueForItemPositionWithOverflowAlignment(resolveJustifyItemsAuto(style->justifyItems(), styledNode->parentNode()));
@@ -3684,14 +3690,12 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyWebkitRegionFragment:
             return cssValuePool.createValue(style->regionFragment());
 #endif
-#if ENABLE(CSS_SHAPES)
-        case CSSPropertyWebkitShapeMargin:
+        case CSSPropertyShapeMargin:
             return cssValuePool.createValue(style->shapeMargin(), *style);
-        case CSSPropertyWebkitShapeImageThreshold:
+        case CSSPropertyShapeImageThreshold:
             return cssValuePool.createValue(style->shapeImageThreshold(), CSSPrimitiveValue::CSS_NUMBER);
-        case CSSPropertyWebkitShapeOutside:
+        case CSSPropertyShapeOutside:
             return shapePropertyValue(*style, style->shapeOutside());
-#endif
         case CSSPropertyFilter:
             return valueForFilter(*style, style->filter());
 #if ENABLE(FILTERS_LEVEL_2)
@@ -4001,7 +4005,7 @@ bool ComputedStyleExtractor::propertyMatches(CSSPropertyID propertyID, const CSS
         if (auto* style = m_node->computedStyle(m_pseudoElementSpecifier)) {
             if (CSSValueID sizeIdentifier = style->fontDescription().keywordSizeAsIdentifier()) {
                 auto& primitiveValue = downcast<CSSPrimitiveValue>(*value);
-                if (primitiveValue.isValueID() && primitiveValue.getValueID() == sizeIdentifier)
+                if (primitiveValue.isValueID() && primitiveValue.valueID() == sizeIdentifier)
                     return true;
             }
         }
@@ -4119,15 +4123,14 @@ bool CSSComputedStyleDeclaration::isPropertyImplicit(const String&)
     return false;
 }
 
-void CSSComputedStyleDeclaration::setProperty(const String&, const String&, const String&, ExceptionCode& ec)
+ExceptionOr<void> CSSComputedStyleDeclaration::setProperty(const String&, const String&, const String&)
 {
-    ec = NO_MODIFICATION_ALLOWED_ERR;
+    return Exception { NO_MODIFICATION_ALLOWED_ERR };
 }
 
-String CSSComputedStyleDeclaration::removeProperty(const String&, ExceptionCode& ec)
+ExceptionOr<String> CSSComputedStyleDeclaration::removeProperty(const String&)
 {
-    ec = NO_MODIFICATION_ALLOWED_ERR;
-    return String();
+    return Exception { NO_MODIFICATION_ALLOWED_ERR };
 }
     
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValueInternal(CSSPropertyID propertyID)
@@ -4140,21 +4143,17 @@ String CSSComputedStyleDeclaration::getPropertyValueInternal(CSSPropertyID prope
     return getPropertyValue(propertyID);
 }
 
-bool CSSComputedStyleDeclaration::setPropertyInternal(CSSPropertyID, const String&, bool, ExceptionCode& ec)
+ExceptionOr<bool> CSSComputedStyleDeclaration::setPropertyInternal(CSSPropertyID, const String&, bool)
 {
-    ec = NO_MODIFICATION_ALLOWED_ERR;
-    return false;
+    return Exception { NO_MODIFICATION_ALLOWED_ERR };
 }
 
-RefPtr<CSSValueList> ComputedStyleExtractor::getBackgroundShorthandValue() const
+Ref<CSSValueList> ComputedStyleExtractor::getBackgroundShorthandValue() const
 {
-    static const CSSPropertyID propertiesBeforeSlashSeperator[5] = { CSSPropertyBackgroundColor, CSSPropertyBackgroundImage,
-                                                                     CSSPropertyBackgroundRepeat, CSSPropertyBackgroundAttachment,  
-                                                                     CSSPropertyBackgroundPosition };
-    static const CSSPropertyID propertiesAfterSlashSeperator[3] = { CSSPropertyBackgroundSize, CSSPropertyBackgroundOrigin, 
-                                                                    CSSPropertyBackgroundClip };
+    static const CSSPropertyID propertiesBeforeSlashSeperator[5] = { CSSPropertyBackgroundColor, CSSPropertyBackgroundImage, CSSPropertyBackgroundRepeat, CSSPropertyBackgroundAttachment, CSSPropertyBackgroundPosition };
+    static const CSSPropertyID propertiesAfterSlashSeperator[3] = { CSSPropertyBackgroundSize, CSSPropertyBackgroundOrigin, CSSPropertyBackgroundClip };
 
-    RefPtr<CSSValueList> list = CSSValueList::createSlashSeparated();
+    auto list = CSSValueList::createSlashSeparated();
     list->append(*getCSSPropertyValuesForShorthandProperties(StylePropertyShorthand(CSSPropertyBackground, propertiesBeforeSlashSeperator)));
     list->append(*getCSSPropertyValuesForShorthandProperties(StylePropertyShorthand(CSSPropertyBackground, propertiesAfterSlashSeperator)));
     return list;

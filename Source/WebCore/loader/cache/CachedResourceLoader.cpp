@@ -148,17 +148,16 @@ CachedResourceLoader::~CachedResourceLoader()
     ASSERT(m_requestCount == 0);
 }
 
-CachedResource* CachedResourceLoader::cachedResource(const String& resourceURL) const 
+CachedResource* CachedResourceLoader::cachedResource(const String& resourceURL) const
 {
     ASSERT(!resourceURL.isNull());
-    URL url = m_document->completeURL(resourceURL);
-    return cachedResource(url); 
+    return cachedResource(MemoryCache::removeFragmentIdentifierIfNeeded(m_document->completeURL(resourceURL)));
 }
 
-CachedResource* CachedResourceLoader::cachedResource(const URL& resourceURL) const
+CachedResource* CachedResourceLoader::cachedResource(const URL& url) const
 {
-    URL url = MemoryCache::removeFragmentIdentifierIfNeeded(resourceURL);
-    return m_documentResources.get(url).get(); 
+    ASSERT(!MemoryCache::shouldRemoveFragmentIdentifier(url));
+    return m_documentResources.get(url).get();
 }
 
 Frame* CachedResourceLoader::frame() const
@@ -561,8 +560,6 @@ bool CachedResourceLoader::shouldUpdateCachedResourceWithCurrentRequest(const Ca
     switch (resource.type()) {
     case CachedResource::SVGDocumentResource:
         return false;
-    case CachedResource::MediaResource:
-        return false;
     case CachedResource::MainResource:
         return false;
 #if ENABLE(LINK_PREFETCH)
@@ -602,7 +599,7 @@ static inline bool isResourceSuitableForDirectReuse(const CachedResource& resour
         return false;
 
     // FIXME: Implement reuse of cached raw resources.
-    if (resource.type() == CachedResource::Type::RawResource)
+    if (resource.type() == CachedResource::Type::RawResource || resource.type() == CachedResource::Type::MediaResource)
         return false;
 
     return true;
@@ -658,9 +655,6 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
     URL url = request.resourceRequest().url();
 
     LOG(ResourceLoading, "CachedResourceLoader::requestResource '%s', charset '%s', priority=%d, forPreload=%u", url.stringCenterEllipsizedToLength().latin1().data(), request.charset().latin1().data(), request.priority() ? static_cast<int>(request.priority().value()) : -1, forPreload == ForPreload::Yes);
-
-    // If only the fragment identifiers differ, it is the same resource.
-    url = MemoryCache::removeFragmentIdentifierIfNeeded(url);
 
     if (!url.isValid()) {
         RELEASE_LOG_IF_ALLOWED("requestResource: URL is invalid (frame = %p)", frame());
@@ -835,7 +829,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::loadResource(CachedRe
 {
     auto& memoryCache = MemoryCache::singleton();
     ASSERT(!request.allowsCaching() || !memoryCache.resourceForRequest(request.resourceRequest(), sessionID())
-        || request.options().cache == FetchOptions::Cache::NoCache || request.options().cache == FetchOptions::Cache::NoStore || request.options().cache == FetchOptions::Cache::Reload);
+        || request.resourceRequest().cachePolicy() == DoNotUseAnyCache || request.resourceRequest().cachePolicy() == ReloadIgnoringCacheData || request.resourceRequest().cachePolicy() == RefreshAnyCacheData);
 
     LOG(ResourceLoading, "Loading CachedResource for '%s'.", request.resourceRequest().url().stringCenterEllipsizedToLength().latin1().data());
 
@@ -888,10 +882,10 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
     if (!existingResource)
         return Load;
 
-    if (cachedResourceRequest.options().cache == FetchOptions::Cache::NoStore)
+    if (request.cachePolicy() == DoNotUseAnyCache || request.cachePolicy() == ReloadIgnoringCacheData)
         return Load;
 
-    if (cachedResourceRequest.options().cache == FetchOptions::Cache::Reload)
+    if (request.cachePolicy() == RefreshAnyCacheData)
         return Reload;
 
     // We already have a preload going for this URL.

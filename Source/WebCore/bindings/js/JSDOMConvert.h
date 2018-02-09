@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "BufferSource.h"
 #include "IDLTypes.h"
 #include "JSDOMBinding.h"
 
@@ -41,7 +42,7 @@ template<typename T> EnableIfNotIntegralType<T> convert(JSC::ExecState&, JSC::JS
 template<typename T> EnableIfIntegralType<T> convert(JSC::ExecState&, JSC::JSValue, IntegerConversionConfiguration = NormalConversion);
 
 // Specialized by generated code for IDL dictionary conversion.
-template<typename T> Optional<T> convertDictionary(JSC::ExecState&, JSC::JSValue);
+template<typename T> T convertDictionary(JSC::ExecState&, JSC::JSValue);
 
 // Specialized by generated code for IDL enumeration conversion.
 template<typename T> Optional<T> parseEnumeration(JSC::ExecState&, JSC::JSValue);
@@ -407,7 +408,7 @@ template<typename T> struct Converter<IDLFrozenArray<T>> : DefaultConverter<IDLF
 // MARK: Dictionary type
 
 template<typename T> struct Converter<IDLDictionary<T>> : DefaultConverter<IDLDictionary<T>> {
-    using ReturnType = Optional<T>;
+    using ReturnType = T;
 
     static ReturnType convert(JSC::ExecState& state, JSC::JSValue value)
     {
@@ -475,17 +476,33 @@ struct Converter<IDLUnion<T...>> : DefaultConverter<IDLUnion<T...>>
     using TypeList = typename Type::TypeList;
     using ReturnType = typename Type::ImplementationType;
 
-    using DictionaryTypeList = brigand::find<TypeList, IsIDLDictionary<brigand::_1>>;
-    using DictionaryType = ConditionalFront<DictionaryTypeList, brigand::size<DictionaryTypeList>::value != 0>;
-    static_assert(brigand::size<DictionaryTypeList>::value == 0 || brigand::size<DictionaryTypeList>::value == 1, "There can be 0 or 1 dictionary types in an IDLUnion.");
+    using NumericTypeList = brigand::filter<TypeList, IsIDLNumber<brigand::_1>>;
+    static constexpr size_t numberOfNumericTypes = brigand::size<NumericTypeList>::value;
+    static_assert(numberOfNumericTypes == 0 || numberOfNumericTypes == 1, "There can be 0 or 1 numeric types in an IDLUnion.");
+    using NumericType = ConditionalFront<NumericTypeList, numberOfNumericTypes != 0>;
 
-    using NumericTypeList = brigand::find<TypeList, IsIDLNumber<brigand::_1>>;
-    using NumericType = ConditionalFront<NumericTypeList, brigand::size<NumericTypeList>::value != 0>;
-    static_assert(brigand::size<NumericTypeList>::value == 0 || brigand::size<NumericTypeList>::value == 1, "There can be 0 or 1 numeric types in an IDLUnion.");
+    // FIXME: This should also check for IDLEnumeration<T>.
+    using StringTypeList = brigand::filter<TypeList, std::is_base_of<IDLString, brigand::_1>>;
+    static constexpr size_t numberOfStringTypes = brigand::size<StringTypeList>::value;
+    static_assert(numberOfStringTypes == 0 || numberOfStringTypes == 1, "There can be 0 or 1 string types in an IDLUnion.");
+    using StringType = ConditionalFront<StringTypeList, numberOfStringTypes != 0>;
 
-    using StringTypeList = brigand::find<TypeList, std::is_base_of<IDLString, brigand::_1>>;
-    using StringType = ConditionalFront<StringTypeList, brigand::size<StringTypeList>::value != 0>;
-    static_assert(brigand::size<StringTypeList>::value == 0 || brigand::size<StringTypeList>::value == 1, "There can be 0 or 1 string types in an IDLUnion.");
+    using SequenceTypeList = brigand::filter<TypeList, IsIDLSequence<brigand::_1>>;
+    static constexpr size_t numberOfSequenceTypes = brigand::size<SequenceTypeList>::value;
+    static_assert(numberOfSequenceTypes == 0 || numberOfSequenceTypes == 1, "There can be 0 or 1 sequence types in an IDLUnion.");
+    using SequenceType = ConditionalFront<SequenceTypeList, numberOfSequenceTypes != 0>;
+
+    using FrozenArrayTypeList = brigand::filter<TypeList, IsIDLFrozenArray<brigand::_1>>;
+    static constexpr size_t numberOfFrozenArrayTypes = brigand::size<FrozenArrayTypeList>::value;
+    static_assert(numberOfFrozenArrayTypes == 0 || numberOfFrozenArrayTypes == 1, "There can be 0 or 1 FrozenArray types in an IDLUnion.");
+    using FrozenArrayType = ConditionalFront<FrozenArrayTypeList, numberOfFrozenArrayTypes != 0>;
+
+    using DictionaryTypeList = brigand::filter<TypeList, IsIDLDictionary<brigand::_1>>;
+    static constexpr size_t numberOfDictionaryTypes = brigand::size<DictionaryTypeList>::value;
+    static_assert(numberOfDictionaryTypes == 0 || numberOfDictionaryTypes == 1, "There can be 0 or 1 dictionary types in an IDLUnion.");
+    using DictionaryType = ConditionalFront<DictionaryTypeList, numberOfDictionaryTypes != 0>;
+
+    static constexpr bool hasObjectType = (numberOfSequenceTypes + numberOfFrozenArrayTypes + numberOfDictionaryTypes) > 0;
 
     using InterfaceTypeList = brigand::filter<TypeList, IsIDLInterface<brigand::_1>>;
 
@@ -504,7 +521,7 @@ struct Converter<IDLUnion<T...>> : DefaultConverter<IDLUnion<T...>>
         // NOTE: Union is expected to be pre-flattented.
         
         // 3. If V is null or undefined, and types includes a dictionary type, then return the result of converting V to that dictionary type.
-        constexpr bool hasDictionaryType = brigand::size<DictionaryTypeList>::value != 0;
+        constexpr bool hasDictionaryType = numberOfDictionaryTypes != 0;
         if (hasDictionaryType) {
             if (value.isUndefinedOrNull())
                 return std::move<WTF::CheckMoveParameter>(ConditionalConverter<ReturnType, DictionaryType, hasDictionaryType>::convert(state, value).value());
@@ -515,29 +532,76 @@ struct Converter<IDLUnion<T...>> : DefaultConverter<IDLUnion<T...>>
         //     2. If types includes object, then return the IDL value that is a reference to the object V.
         //         (FIXME: Add support for object and step 4.2)
         if (brigand::any<TypeList, IsIDLInterface<brigand::_1>>::value) {
-            if (isJSDOMWrapperType(value)) {
-                Optional<ReturnType> returnValue;
-                brigand::for_each<InterfaceTypeList>([&](auto&& type) {
-                    if (returnValue)
-                        return;
-                    
-                    using ImplementationType = typename WTF::RemoveCVAndReference<decltype(type)>::type::type::RawType;
-                    using WrapperType = typename JSDOMWrapperConverterTraits<ImplementationType>::WrapperClass;
+            Optional<ReturnType> returnValue;
+            brigand::for_each<InterfaceTypeList>([&](auto&& type) {
+                if (returnValue)
+                    return;
+                
+                using ImplementationType = typename WTF::RemoveCVAndReference<decltype(type)>::type::type::RawType;
+                using WrapperType = typename JSDOMWrapperConverterTraits<ImplementationType>::WrapperClass;
 
-                    auto* castedValue = JSC::jsDynamicCast<WrapperType*>(value);
-                    if (!castedValue)
-                        return;
-                    
-                    returnValue = ReturnType(castedValue->wrapped());
-                });
-                ASSERT(returnValue);
+                auto* castedValue = WrapperType::toWrapped(value);
+                if (!castedValue)
+                    return;
+                
+                returnValue = ReturnType(castedValue);
+            });
 
+            if (returnValue)
                 return WTFMove(returnValue.value());
-            }
         }
         
-        // FIXME: Add support for steps 5 - 12.
-        
+        // FIXME: Add support for steps 5 - 11.
+
+        // 12. If V is any kind of object except for a native RegExp object, then:
+        if (hasObjectType) {
+            if (value.isCell()) {
+                JSC::JSCell* cell = value.asCell();
+                if (cell->isObject() && cell->type() != JSC::RegExpObjectType) {
+                    // FIXME: We should be able to optimize the following code by making use
+                    // of the fact that we have proved that the value is an object. 
+                
+                    //     1. If types includes a sequence type, then:
+                    //         1. Let method be the result of GetMethod(V, @@iterator).
+                    //         2. ReturnIfAbrupt(method).
+                    //         3. If method is not undefined, return the result of creating a
+                    //            sequence of that type from V and method.        
+                    constexpr bool hasSequenceType = numberOfSequenceTypes != 0;
+                    if (hasSequenceType) {
+                        bool hasIterator = hasIteratorMethod(state, value);
+                        RETURN_IF_EXCEPTION(scope, ReturnType());
+                        if (hasIterator)
+                            return std::move<WTF::CheckMoveParameter>(ConditionalConverter<ReturnType, SequenceType, hasSequenceType>::convert(state, value).value());
+                    }
+
+                    //     2. If types includes a frozen array type, then:
+                    //         1. Let method be the result of GetMethod(V, @@iterator).
+                    //         2. ReturnIfAbrupt(method).
+                    //         3. If method is not undefined, return the result of creating a
+                    //            frozen array of that type from V and method.
+                    constexpr bool hasFrozenArrayType = numberOfFrozenArrayTypes != 0;
+                    if (hasFrozenArrayType) {
+                        bool hasIterator = hasIteratorMethod(state, value);
+                        RETURN_IF_EXCEPTION(scope, ReturnType());
+                        if (hasIterator)
+                            return std::move<WTF::CheckMoveParameter>(ConditionalConverter<ReturnType, FrozenArrayType, hasFrozenArrayType>::convert(state, value).value());
+                    }
+
+                    //     3. If types includes a dictionary type, then return the result of
+                    //        converting V to that dictionary type.
+                    if (hasDictionaryType)
+                        return std::move<WTF::CheckMoveParameter>(ConditionalConverter<ReturnType, DictionaryType, hasDictionaryType>::convert(state, value).value());
+
+                    //     4. If types includes a record type, then return the result of converting V to that record type.
+                    //         (FIXME: Add support for record types and step 12.4)
+                    //     5. If types includes a callback interface type, then return the result of converting V to that interface type.
+                    //         (FIXME: Add support for callback interface type and step 12.5)
+                    //     6. If types includes object, then return the IDL value that is a reference to the object V.
+                    //         (FIXME: Add support for object and step 12.6)
+                }
+            }
+        }
+
         // 13. If V is a Boolean value, then:
         //     1. If types includes a boolean, then return the result of converting V to boolean.
         constexpr bool hasBooleanType = brigand::any<TypeList, std::is_same<IDLBoolean, brigand::_1>>::value;
@@ -592,13 +656,13 @@ namespace Detail {
             auto result = Converter<IDLType>::convert(state, value);
             RETURN_IF_EXCEPTION(scope, Nullopt);
 
-            return result;
+            return WTFMove(result);
         }
     };
 
     template<typename T>
     struct VariadicConverterBase<IDLInterface<T>> {
-        using Item = typename IDLInterface<T>::ImplementationType;
+        using Item = std::reference_wrapper<T>;
 
         static Optional<Item> convert(JSC::ExecState& state, JSC::JSValue value)
         {
@@ -639,5 +703,26 @@ template<typename IDLType> typename Detail::VariadicConverter<IDLType>::Result c
 
     return { length, WTFMove(result) };
 }
+
+// MARK: -
+// MARK: BufferSource type
+
+template<> struct Converter<IDLBufferSource> : DefaultConverter<IDLBufferSource> {
+    using ReturnType = BufferSource;
+
+    static ReturnType convert(JSC::ExecState& state, JSC::JSValue value)
+    {
+        JSC::VM& vm = state.vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
+        if (JSC::ArrayBuffer* buffer = JSC::toArrayBuffer(value))
+            return { static_cast<uint8_t*>(buffer->data()), buffer->byteLength() };
+        if (RefPtr<JSC::ArrayBufferView> bufferView = toArrayBufferView(value))
+            return { static_cast<uint8_t*>(bufferView->baseAddress()), bufferView->byteLength() };
+
+        throwTypeError(&state, scope, ASCIILiteral("Only ArrayBuffer and ArrayBufferView objects can be passed as BufferSource arguments"));
+        return { nullptr, 0 };
+    }
+};
 
 } // namespace WebCore

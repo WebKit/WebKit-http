@@ -852,6 +852,12 @@ private:
         case Construct:
             compileCallOrConstruct();
             break;
+        case DirectCall:
+        case DirectTailCallInlinedCaller:
+        case DirectConstruct:
+        case DirectTailCall:
+            compileDirectCallOrConstruct();
+            break;
         case TailCall:
             compileTailCall();
             break;
@@ -1577,6 +1583,90 @@ private:
         auto repatchingFunction = operationValueAddOptimize;
         auto nonRepatchingFunction = operationValueAdd;
         compileMathIC(addIC, repatchingFunction, nonRepatchingFunction);
+    }
+
+    template <typename Generator>
+    void compileMathIC(JITUnaryMathIC<Generator>* mathIC, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
+    {
+        Node* node = m_node;
+
+        LValue operand = lowJSValue(node->child1());
+
+        PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        patchpoint->appendSomeRegister(operand);
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
+        RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
+        patchpoint->numGPScratchRegisters = 1;
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        State* state = &m_ftlState;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
+#if ENABLE(MATH_IC_STATS)
+                auto inlineStart = jit.label();
+#endif
+
+                Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
+                mathIC->m_generator = Generator(JSValueRegs(params[0].gpr()), JSValueRegs(params[1].gpr()), params.gpScratch(0));
+
+                bool shouldEmitProfiling = false;
+                bool generatedInline = mathIC->generateInline(jit, *mathICGenerationState, shouldEmitProfiling);
+
+                if (generatedInline) {
+                    ASSERT(!mathICGenerationState->slowPathJumps.empty());
+                    auto done = jit.label();
+                    params.addLatePath([=] (CCallHelpers& jit) {
+                        AllowMacroScratchRegisterUsage allowScratch(jit);
+                        mathICGenerationState->slowPathJumps.link(&jit);
+                        mathICGenerationState->slowPathStart = jit.label();
+#if ENABLE(MATH_IC_STATS)
+                        auto slowPathStart = jit.label();
+#endif
+
+                        if (mathICGenerationState->shouldSlowPathRepatch) {
+                            SlowPathCall call = callOperation(*state, params.unavailableRegisters(), jit, node->origin.semantic, exceptions.get(),
+                                repatchingFunction, params[0].gpr(), params[1].gpr(), CCallHelpers::TrustedImmPtr(mathIC));
+                            mathICGenerationState->slowPathCall = call.call();
+                        } else {
+                            SlowPathCall call = callOperation(*state, params.unavailableRegisters(), jit, node->origin.semantic,
+                                exceptions.get(), nonRepatchingFunction, params[0].gpr(), params[1].gpr());
+                            mathICGenerationState->slowPathCall = call.call();
+                        }
+                        jit.jump().linkTo(done, &jit);
+
+                        jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                            mathIC->finalizeInlineCode(*mathICGenerationState, linkBuffer);
+                        });
+
+#if ENABLE(MATH_IC_STATS)
+                        auto slowPathEnd = jit.label();
+                        jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                            size_t size = static_cast<char*>(linkBuffer.locationOf(slowPathEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(slowPathStart).executableAddress());
+                            mathIC->m_generatedCodeSize += size;
+                        });
+#endif
+                    });
+                } else {
+                    callOperation(
+                        *state, params.unavailableRegisters(), jit, node->origin.semantic, exceptions.get(),
+                        nonRepatchingFunction, params[0].gpr(), params[1].gpr());
+                }
+
+#if ENABLE(MATH_IC_STATS)
+                auto inlineEnd = jit.label();
+                jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                    size_t size = static_cast<char*>(linkBuffer.locationOf(inlineEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(inlineStart).executableAddress());
+                    mathIC->m_generatedCodeSize += size;
+                });
+#endif
+            });
+
+        setJSValue(patchpoint);
     }
 
     template <typename Generator>
@@ -2451,7 +2541,12 @@ private:
         }
             
         default:
-            DFG_CRASH(m_graph, m_node, "Bad use kind");
+            DFG_ASSERT(m_graph, m_node, m_node->child1().useKind() == UntypedUse);
+            ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
+            JITNegIC* negIC = codeBlock()->addJITNegIC(arithProfile);
+            auto repatchingFunction = operationArithNegateOptimize;
+            auto nonRepatchingFunction = operationArithNegate;
+            compileMathIC(negIC, repatchingFunction, nonRepatchingFunction);
             break;
         }
     }
@@ -5466,13 +5561,213 @@ private:
                         linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
 
                         callLinkInfo->setCallLocations(
-                            linkBuffer.locationOfNearCall(slowCall),
-                            linkBuffer.locationOf(targetToCheck),
+                            CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
+                            CodeLocationLabel(linkBuffer.locationOf(targetToCheck)),
                             linkBuffer.locationOfNearCall(fastCall));
                     });
             });
 
         setJSValue(patchpoint);
+    }
+    
+    void compileDirectCallOrConstruct()
+    {
+        Node* node = m_node;
+        bool isTail = node->op() == DirectTailCall;
+        bool isConstruct = node->op() == DirectConstruct;
+        
+        ExecutableBase* executable = node->castOperand<ExecutableBase*>();
+        FunctionExecutable* functionExecutable = jsDynamicCast<FunctionExecutable*>(executable);
+        
+        unsigned numPassedArgs = node->numChildren() - 1;
+        unsigned numAllocatedArgs = numPassedArgs;
+        
+        if (functionExecutable) {
+            numAllocatedArgs = std::max(
+                numAllocatedArgs,
+                std::min(
+                    static_cast<unsigned>(functionExecutable->parameterCount()) + 1,
+                    Options::maximumDirectCallStackSize()));
+        }
+        
+        LValue jsCallee = lowJSValue(m_graph.varArgChild(node, 0));
+        
+        if (!isTail) {
+            unsigned frameSize = (CallFrame::headerSizeInRegisters + numAllocatedArgs) * sizeof(EncodedJSValue);
+            unsigned alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentBytes(), frameSize);
+            
+            m_proc.requestCallArgAreaSizeInBytes(alignedFrameSize);
+        }
+        
+        Vector<ConstrainedValue> arguments;
+        
+        arguments.append(ConstrainedValue(jsCallee, ValueRep::SomeRegister));
+        if (!isTail) {
+            auto addArgument = [&] (LValue value, VirtualRegister reg, int offset) {
+                intptr_t offsetFromSP =
+                    (reg.offset() - CallerFrameAndPC::sizeInRegisters) * sizeof(EncodedJSValue) + offset;
+                arguments.append(ConstrainedValue(value, ValueRep::stackArgument(offsetFromSP)));
+            };
+            
+            addArgument(jsCallee, VirtualRegister(CallFrameSlot::callee), 0);
+            addArgument(m_out.constInt32(numPassedArgs), VirtualRegister(CallFrameSlot::argumentCount), PayloadOffset);
+            for (unsigned i = 0; i < numPassedArgs; ++i)
+                addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgument(i), 0);
+            for (unsigned i = numPassedArgs; i < numAllocatedArgs; ++i)
+                addArgument(m_out.constInt64(JSValue::encode(jsUndefined())), virtualRegisterForArgument(i), 0);
+        } else {
+            for (unsigned i = 0; i < numPassedArgs; ++i)
+                arguments.append(ConstrainedValue(lowJSValue(m_graph.varArgChild(node, 1 + i)), ValueRep::WarmAny));
+        }
+        
+        PatchpointValue* patchpoint = m_out.patchpoint(isTail ? Void : Int64);
+        patchpoint->appendVector(arguments);
+        
+        RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
+        
+        if (isTail) {
+            // The shuffler needs tags.
+            patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+            patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        }
+        
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        if (!isTail) {
+            patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
+            patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
+        }
+        
+        CodeOrigin codeOrigin = codeOriginDescriptionOfCallSite();
+        State* state = &m_ftlState;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+                CallSiteIndex callSiteIndex = state->jitCode->common.addUniqueCallSiteIndex(codeOrigin);
+                
+                GPRReg calleeGPR = params[!isTail].gpr();
+
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
+                
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+                
+                if (isTail) {
+                    CallFrameShuffleData shuffleData;
+                    shuffleData.numLocals = state->jitCode->common.frameRegisterCount;
+                    
+                    RegisterSet toSave = params.unavailableRegisters();
+                    shuffleData.callee = ValueRecovery::inGPR(calleeGPR, DataFormatCell);
+                    toSave.set(calleeGPR);
+                    for (unsigned i = 0; i < numPassedArgs; ++i) {
+                        ValueRecovery recovery = params[1 + i].recoveryForJSValue();
+                        shuffleData.args.append(recovery);
+                        recovery.forEachReg(
+                            [&] (Reg reg) {
+                                toSave.set(reg);
+                            });
+                    }
+                    for (unsigned i = numPassedArgs; i < numAllocatedArgs; ++i)
+                        shuffleData.args.append(ValueRecovery::constant(jsUndefined()));
+                    shuffleData.setupCalleeSaveRegisters(jit.codeBlock());
+                    
+                    CallLinkInfo* callLinkInfo = jit.codeBlock()->addCallLinkInfo();
+                    
+                    CCallHelpers::PatchableJump patchableJump = jit.patchableJump();
+                    CCallHelpers::Label mainPath = jit.label();
+                    
+                    jit.store32(
+                        CCallHelpers::TrustedImm32(callSiteIndex.bits()),
+                        CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
+                
+                    callLinkInfo->setFrameShuffleData(shuffleData);
+                    CallFrameShuffler(jit, shuffleData).prepareForTailCall();
+                    
+                    CCallHelpers::Call call = jit.nearTailCall();
+                    
+                    jit.abortWithReason(JITDidReturnFromTailCall);
+                    
+                    CCallHelpers::Label slowPath = jit.label();
+                    patchableJump.m_jump.linkTo(slowPath, &jit);
+                    callOperation(
+                        *state, toSave, jit,
+                        node->origin.semantic, exceptions.get(), operationLinkDirectCall,
+                        InvalidGPRReg, CCallHelpers::TrustedImmPtr(callLinkInfo), calleeGPR).call();
+                    jit.jump().linkTo(mainPath, &jit);
+                    
+                    callLinkInfo->setUpCall(
+                        CallLinkInfo::DirectTailCall, node->origin.semantic, InvalidGPRReg);
+                    callLinkInfo->setExecutableDuringCompilation(executable);
+                    if (numAllocatedArgs > numPassedArgs)
+                        callLinkInfo->setMaxNumArguments(numAllocatedArgs);
+                    
+                    jit.addLinkTask(
+                        [=] (LinkBuffer& linkBuffer) {
+                            CodeLocationLabel patchableJumpLocation = linkBuffer.locationOf(patchableJump);
+                            CodeLocationNearCall callLocation = linkBuffer.locationOfNearCall(call);
+                            CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath);
+                            
+                            callLinkInfo->setCallLocations(
+                                patchableJumpLocation,
+                                slowPathLocation,
+                                callLocation);
+                        });
+                    return;
+                }
+                
+                CallLinkInfo* callLinkInfo = jit.codeBlock()->addCallLinkInfo();
+                
+                CCallHelpers::Label mainPath = jit.label();
+
+                jit.store32(
+                    CCallHelpers::TrustedImm32(callSiteIndex.bits()),
+                    CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
+                
+                CCallHelpers::Call call = jit.nearCall();
+                jit.addPtr(
+                    CCallHelpers::TrustedImm32(-params.proc().frameSize()),
+                    GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
+                
+                callLinkInfo->setUpCall(
+                    isConstruct ? CallLinkInfo::DirectConstruct : CallLinkInfo::DirectCall,
+                    node->origin.semantic, InvalidGPRReg);
+                callLinkInfo->setExecutableDuringCompilation(executable);
+                if (numAllocatedArgs > numPassedArgs)
+                    callLinkInfo->setMaxNumArguments(numAllocatedArgs);
+                
+                params.addLatePath(
+                    [=] (CCallHelpers& jit) {
+                        AllowMacroScratchRegisterUsage allowScratch(jit);
+                        
+                        CCallHelpers::Label slowPath = jit.label();
+                        if (isX86())
+                            jit.pop(CCallHelpers::selectScratchGPR(calleeGPR));
+                        
+                        callOperation(
+                            *state, params.unavailableRegisters(), jit,
+                            node->origin.semantic, exceptions.get(), operationLinkDirectCall,
+                            InvalidGPRReg, CCallHelpers::TrustedImmPtr(callLinkInfo),
+                            calleeGPR).call();
+                        jit.jump().linkTo(mainPath, &jit);
+                        
+                        jit.addLinkTask(
+                            [=] (LinkBuffer& linkBuffer) {
+                                CodeLocationNearCall callLocation = linkBuffer.locationOfNearCall(call);
+                                CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath);
+                                
+                                linkBuffer.link(call, slowPathLocation);
+                                
+                                callLinkInfo->setCallLocations(
+                                    CodeLocationLabel(),
+                                    slowPathLocation,
+                                    callLocation);
+                            });
+                    });
+            });
+        
+        if (isTail)
+            patchpoint->effects.terminal = true;
+        else
+            setJSValue(patchpoint);
     }
 
     void compileTailCall()
@@ -5512,6 +5807,8 @@ private:
 
         // Prevent any of the arguments from using the scratch register.
         patchpoint->clobberEarly(RegisterSet::macroScratchRegisters());
+        
+        patchpoint->effects.terminal = true;
 
         // We don't have to tell the patchpoint that we will clobber registers, since we won't return
         // anyway.
@@ -5571,13 +5868,11 @@ private:
                         linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
 
                         callLinkInfo->setCallLocations(
-                            linkBuffer.locationOfNearCall(slowCall),
-                            linkBuffer.locationOf(targetToCheck),
+                            CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
+                            CodeLocationLabel(linkBuffer.locationOf(targetToCheck)),
                             linkBuffer.locationOfNearCall(fastCall));
                     });
             });
-        
-        m_out.unreachable();
     }
     
     void compileCallOrConstructVarargs()
@@ -5840,8 +6135,8 @@ private:
                         linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
                         
                         callLinkInfo->setCallLocations(
-                            linkBuffer.locationOfNearCall(slowCall),
-                            linkBuffer.locationOf(targetToCheck),
+                            CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
+                            CodeLocationLabel(linkBuffer.locationOf(targetToCheck)),
                             linkBuffer.locationOfNearCall(fastCall));
                     });
             });
@@ -11921,7 +12216,8 @@ private:
         CodeOrigin codeOrigin = m_node->origin.semantic;
         if (m_node->op() == TailCallInlinedCaller
             || m_node->op() == TailCallVarargsInlinedCaller
-            || m_node->op() == TailCallForwardVarargsInlinedCaller) {
+            || m_node->op() == TailCallForwardVarargsInlinedCaller
+            || m_node->op() == DirectTailCallInlinedCaller) {
             // This case arises when you have a situation like this:
             // foo makes a call to bar, bar is inlined in foo. bar makes a call
             // to baz and baz is inlined in bar. And then baz makes a tail-call to jaz,

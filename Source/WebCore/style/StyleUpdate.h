@@ -48,7 +48,7 @@ namespace Style {
 struct ElementUpdate {
     std::unique_ptr<RenderStyle> style;
     Change change { NoChange };
-    bool isSynthetic { false };
+    bool recompositeLayer { false };
 };
 
 class Update {
@@ -67,6 +67,8 @@ public:
     RenderStyle* elementStyle(const Element&);
 
     const Document& document() const { return m_document; }
+
+    unsigned size() const { return m_elements.size() + m_texts.size(); }
 
     void addElement(Element&, Element* parent, ElementUpdate&&);
     void addText(Text&, Element* parent);

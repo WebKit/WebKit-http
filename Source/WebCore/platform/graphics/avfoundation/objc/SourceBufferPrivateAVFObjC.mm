@@ -490,7 +490,12 @@ void SourceBufferPrivateAVFObjC::didParseStreamDataAsAsset(AVAsset* asset)
     m_audioTracks.clear();
 
     SourceBufferPrivateClient::InitializationSegment segment;
-    segment.duration = toMediaTime([m_asset duration]);
+
+    if ([m_asset respondsToSelector:@selector(overallDurationHint)])
+        segment.duration = toMediaTime([m_asset overallDurationHint]);
+
+    if (segment.duration.isInvalid() || segment.duration == MediaTime::zeroTime())
+        segment.duration = toMediaTime([m_asset duration]);
 
     for (AVAssetTrack* track in [m_asset tracks]) {
         if ([track hasMediaCharacteristic:AVMediaCharacteristicLegible]) {
@@ -957,6 +962,8 @@ void SourceBufferPrivateAVFObjC::flushAndEnqueueNonDisplayingSamples(Vector<RefP
         [layer enqueueSampleBuffer:sampleBuffer.get()];
     }
 
+    m_cachedSize = Nullopt;
+
     if (m_mediaSource) {
         m_mediaSource->player()->setHasAvailableVideoFrame(false);
         m_mediaSource->player()->flushPendingSizeChanges();
@@ -980,11 +987,16 @@ void SourceBufferPrivateAVFObjC::enqueueSample(PassRefPtr<MediaSample> prpMediaS
     if (trackID == m_enabledVideoTrackID) {
         CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(platformSample.sample.cmSampleBuffer);
         FloatSize formatSize = FloatSize(CMVideoFormatDescriptionGetPresentationDimensions(formatDescription, true, true));
-        if (formatSize != m_cachedSize) {
+        if (!m_cachedSize || formatSize != m_cachedSize.value()) {
             LOG(MediaSource, "SourceBufferPrivateAVFObjC::enqueueSample(%p) - size change detected: {width=%lf, height=%lf}", formatSize.width(), formatSize.height());
+            bool sizeWasNull = !m_cachedSize;
             m_cachedSize = formatSize;
-            if (m_mediaSource)
-                m_mediaSource->player()->sizeWillChangeAtTime(mediaSample->presentationTime(), formatSize);
+            if (m_mediaSource) {
+                if (sizeWasNull)
+                    m_mediaSource->player()->setNaturalSize(formatSize);
+                else
+                    m_mediaSource->player()->sizeWillChangeAtTime(mediaSample->presentationTime(), formatSize);
+            }
         }
 
         [m_displayLayer enqueueSampleBuffer:platformSample.sample.cmSampleBuffer];
@@ -1028,7 +1040,7 @@ void SourceBufferPrivateAVFObjC::seekToTime(MediaTime time)
 
 FloatSize SourceBufferPrivateAVFObjC::naturalSize()
 {
-    return m_cachedSize;
+    return m_cachedSize.valueOr(FloatSize());
 }
 
 void SourceBufferPrivateAVFObjC::didBecomeReadyForMoreSamples(int trackID)

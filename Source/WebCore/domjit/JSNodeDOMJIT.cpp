@@ -33,6 +33,7 @@
 #include "Node.h"
 #include <domjit/DOMJITPatchpoint.h>
 #include <domjit/DOMJITPatchpointParams.h>
+#include <interpreter/FrameTracers.h>
 
 using namespace JSC;
 
@@ -41,11 +42,12 @@ namespace WebCore {
 enum class IsContainerGuardRequirement { Required, NotRequired };
 
 template<typename WrappedNode>
-EncodedJSValue toWrapperSlow(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, void* result)
+EncodedJSValue JIT_OPERATION toWrapperSlow(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, void* result)
 {
     ASSERT(exec);
     ASSERT(result);
     ASSERT(globalObject);
+    JSC::NativeCallFrameTracer tracer(&exec->vm(), exec);
     return JSValue::encode(toJS(exec, static_cast<JSDOMGlobalObject*>(globalObject), *static_cast<WrappedNode*>(result)));
 }
 
@@ -54,7 +56,7 @@ static Ref<DOMJIT::CallDOMPatchpoint> createCallDOMForOffsetAccess(ptrdiff_t off
 {
     Ref<DOMJIT::CallDOMPatchpoint> patchpoint = DOMJIT::CallDOMPatchpoint::create();
     patchpoint->numGPScratchRegisters = 1;
-    patchpoint->setGenerator([=](CCallHelpers& jit, const DOMJIT::PatchpointParams& params) {
+    patchpoint->setGenerator([=](CCallHelpers& jit, DOMJIT::PatchpointParams& params) {
         JSValueRegs result = params[0].jsValueRegs();
         GPRReg globalObject = params[1].gpr();
         GPRReg node = params[2].gpr();
@@ -84,7 +86,7 @@ static Ref<DOMJIT::CallDOMPatchpoint> createCallDOMForOffsetAccess(ptrdiff_t off
 static Ref<DOMJIT::Patchpoint> checkNode()
 {
     Ref<DOMJIT::Patchpoint> patchpoint = DOMJIT::Patchpoint::create();
-    patchpoint->setGenerator([=](CCallHelpers& jit, const DOMJIT::PatchpointParams& params) {
+    patchpoint->setGenerator([=](CCallHelpers& jit, DOMJIT::PatchpointParams& params) {
         CCallHelpers::JumpList failureCases;
         failureCases.append(DOMJITHelpers::branchIfNotNode(jit, params[0].gpr()));
         return failureCases;
@@ -157,7 +159,7 @@ Ref<DOMJIT::CallDOMPatchpoint> NodeNodeTypeDOMJIT::callDOM()
 {
     Ref<DOMJIT::CallDOMPatchpoint> patchpoint = DOMJIT::CallDOMPatchpoint::create();
     patchpoint->requireGlobalObject = false;
-    patchpoint->setGenerator([=](CCallHelpers& jit, const DOMJIT::PatchpointParams& params) {
+    patchpoint->setGenerator([=](CCallHelpers& jit, DOMJIT::PatchpointParams& params) {
         JSValueRegs result = params[0].jsValueRegs();
         GPRReg node = params[1].gpr();
         jit.load8(CCallHelpers::Address(node, JSC::JSCell::typeInfoTypeOffset()), result.payloadGPR());

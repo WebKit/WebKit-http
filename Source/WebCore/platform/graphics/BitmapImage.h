@@ -126,21 +126,18 @@ public:
     Evas_Object* getEvasObject(Evas*) override;
 #endif
 
-    WEBCORE_EXPORT NativeImagePtr nativeImage() override;
-    NativeImagePtr nativeImageForCurrentFrame() override;
+    WEBCORE_EXPORT NativeImagePtr nativeImage(const GraphicsContext* = nullptr) override;
+    NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) override;
 #if USE(CG)
-    NativeImagePtr nativeImageOfSize(const IntSize&) override;
+    NativeImagePtr nativeImageOfSize(const IntSize&, const GraphicsContext* = nullptr) override;
     Vector<NativeImagePtr> framesNativeImages() override;
-#endif
-#if USE(DIRECT2D)
-    void setRenderTarget(GraphicsContext&);
 #endif
 
 protected:
     WEBCORE_EXPORT BitmapImage(NativeImagePtr&&, ImageObserver* = nullptr);
     WEBCORE_EXPORT BitmapImage(ImageObserver* = nullptr);
 
-    NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default);
+    NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
 
     // Called to invalidate cached data. When |destroyAll| is true, we wipe out
     // the entire frame buffer cache and tell the image source to destroy
@@ -164,16 +161,8 @@ protected:
     bool isAnimated() const override { return m_source.frameCount() > 1; }
     bool shouldAnimate();
     bool canAnimate();
-    void startAnimation(CatchUpAnimation = CatchUp) override;
+    void startAnimation() override;
     void advanceAnimation();
-
-    // Function that does the real work of advancing the animation. When
-    // skippingFrames is true, we're in the middle of a loop trying to skip over
-    // a bunch of animation frames, so we should not do things like decode each
-    // one or notify our observers.
-    // Returns whether the animation was advanced.
-    enum AnimationAdvancement { Normal, SkippingFramesToCatchUp };
-    bool internalAdvanceAnimation(AnimationAdvancement = Normal);
 
     // It may look unusual that there is no start animation call as public API. This is because
     // we start and stop animating lazily. Animation begins whenever someone draws the image. It will
@@ -205,7 +194,6 @@ private:
     RepetitionCount m_repetitionsComplete { RepetitionCountNone }; // How many repetitions we've finished.
     double m_desiredFrameStartTime { 0 }; // The system time at which we hope to see the next call to startAnimation().
     bool m_animationFinished { false };
-    bool m_animationFinishedWhenCatchingUp { false };
 
 #if USE(APPKIT)
     mutable RetainPtr<NSImage> m_nsImage; // A cached NSImage of all the frames. Only built lazily if someone actually queries for one.

@@ -42,8 +42,9 @@ interface HTMLKeygenElement : HTMLElement {
     readonly attribute ValidityState validity;
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
     void setCustomValidity(DOMString? error);
 
-    [SameObject] readonly attribute NodeList labels;
+    readonly attribute NodeList labels;
 };
 

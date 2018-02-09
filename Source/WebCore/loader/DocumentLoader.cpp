@@ -234,8 +234,11 @@ void DocumentLoader::setRequest(const ResourceRequest& req)
 
     handlingUnreachableURL = m_substituteData.isValid() && !m_substituteData.failingURL().isEmpty();
 
+    bool shouldNotifyAboutProvisionalURLChange = false;
     if (handlingUnreachableURL)
         m_committed = false;
+    else if (isLoadingMainResource() && req.url() != m_request.url())
+        shouldNotifyAboutProvisionalURLChange = true;
 
     // We should never be getting a redirect callback after the data
     // source is committed, except in the unreachable URL case. It 
@@ -243,6 +246,8 @@ void DocumentLoader::setRequest(const ResourceRequest& req)
     ASSERT(!m_committed);
 
     m_request = req;
+    if (shouldNotifyAboutProvisionalURLChange)
+        frameLoader()->client().dispatchDidChangeProvisionalURL();
 }
 
 void DocumentLoader::setMainDocumentError(const ResourceError& error)
@@ -763,7 +768,8 @@ static bool isRemoteWebArchive(const DocumentLoader& documentLoader)
     };
 
     const ResourceResponse& response = documentLoader.response();
-    if (!webArchiveMIMETypes.get().contains(response.mimeType()))
+    String mimeType = response.mimeType();
+    if (mimeType.isNull() || !webArchiveMIMETypes.get().contains(mimeType))
         return false;
 
 #if USE(QUICK_LOOK)
@@ -1621,6 +1627,11 @@ void DocumentLoader::cancelMainResourceLoad(const ResourceError& resourceError)
     clearMainResource();
 
     mainReceivedError(error);
+}
+
+void DocumentLoader::willContinueMainResourceLoadAfterRedirect(const ResourceRequest& newRequest)
+{
+    setRequest(newRequest);
 }
 
 void DocumentLoader::clearMainResource()

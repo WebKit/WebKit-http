@@ -29,6 +29,7 @@
 #include "LayoutRect.h"
 #include "MutationObserver.h"
 #include "RenderStyleConstants.h"
+#include "StyleValidity.h"
 #include "TreeScope.h"
 #include <wtf/Forward.h>
 #include <wtf/ListHashSet.h>
@@ -61,18 +62,7 @@ class ShadowRoot;
 class TouchEvent;
 class UIRequestEvent;
 
-const int nodeStyleChangeShift = 14;
-
-// SyntheticStyleChange means that we need to go through the entire style change logic even though
-// no style property has actually changed. It is used to restructure the tree when, for instance,
-// RenderLayers are created or destroyed due to animation changes.
-enum StyleChangeType { 
-    NoStyleChange = 0, 
-    InlineStyleChange = 1 << nodeStyleChangeShift, 
-    FullStyleChange = 2 << nodeStyleChangeShift, 
-    SyntheticStyleChange = 3 << nodeStyleChangeShift,
-    ReconstructRenderTree = 4 << nodeStyleChangeShift,
-};
+using NodeOrString = Variant<RefPtr<Node>, String>;
 
 class NodeRareDataBase {
 public:
@@ -202,9 +192,9 @@ public:
     WEBCORE_EXPORT Element* nextElementSibling() const;
 
     // From the ChildNode - https://dom.spec.whatwg.org/#childnode
-    void before(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
-    void after(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
-    void replaceWith(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
+    void before(Vector<NodeOrString>&&, ExceptionCode&);
+    void after(Vector<NodeOrString>&&, ExceptionCode&);
+    void replaceWith(Vector<NodeOrString>&&, ExceptionCode&);
     WEBCORE_EXPORT void remove(ExceptionCode&);
 
     // Other methods (not part of DOM)
@@ -319,8 +309,9 @@ public:
     void setUserActionElement(bool flag) { setFlag(flag, IsUserActionElement); }
 
     bool inRenderedDocument() const;
-    bool needsStyleRecalc() const { return styleChangeType() != NoStyleChange; }
-    StyleChangeType styleChangeType() const { return static_cast<StyleChangeType>(m_nodeFlags & StyleChangeMask); }
+    bool needsStyleRecalc() const { return styleValidity() != Style::Validity::Valid; }
+    Style::Validity styleValidity() const;
+    bool styleResolutionShouldRecompositeLayer() const;
     bool childNeedsStyleRecalc() const { return getFlag(ChildNeedsStyleRecalcFlag); }
     bool styleIsAffectedByPreviousSibling() const { return getFlag(StyleIsAffectedByPreviousSibling); }
     bool isEditingText() const { return getFlag(IsTextFlag) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
@@ -328,8 +319,7 @@ public:
     void setChildNeedsStyleRecalc() { setFlag(ChildNeedsStyleRecalcFlag); }
     void clearChildNeedsStyleRecalc() { m_nodeFlags &= ~(ChildNeedsStyleRecalcFlag | DirectChildNeedsStyleRecalcFlag); }
 
-    WEBCORE_EXPORT void setNeedsStyleRecalc(StyleChangeType = FullStyleChange);
-    void clearNeedsStyleRecalc() { m_nodeFlags &= ~StyleChangeMask; }
+    void setHasValidStyle();
 
     bool isLink() const { return getFlag(IsLinkFlag); }
     void setIsLink(bool flag) { setFlag(flag, IsLinkFlag); }
@@ -595,8 +585,9 @@ protected:
         // These bits are used by derived classes, pulled up here so they can
         // be stored in the same memory word as the Node bits above.
         IsParsingChildrenFinishedFlag = 1 << 13, // Element
-
-        StyleChangeMask = 1 << nodeStyleChangeShift | 1 << (nodeStyleChangeShift + 1) | 1 << (nodeStyleChangeShift + 2),
+        StyleValidityShift = 14,
+        StyleValidityMask = 3 << StyleValidityShift,
+        StyleResolutionShouldRecompositeLayerFlag = 1 << 16,
         IsEditingTextOrUndefinedCustomElementFlag = 1 << 17,
         HasFocusWithin = 1 << 18,
         HasSyntheticAttrChildNodesFlag = 1 << 19,
@@ -657,10 +648,10 @@ protected:
 
     void setTreeScope(TreeScope& scope) { m_treeScope = &scope; }
 
-    void setStyleChange(StyleChangeType changeType) { m_nodeFlags = (m_nodeFlags & ~StyleChangeMask) | changeType; }
+    void invalidateStyle(Style::Validity, Style::InvalidationMode = Style::InvalidationMode::Normal);
     void updateAncestorsForStyleRecalc();
 
-    RefPtr<Node> convertNodesOrStringsIntoNode(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
+    RefPtr<Node> convertNodesOrStringsIntoNode(Vector<NodeOrString>&&, ExceptionCode&);
 
 private:
     virtual PseudoId customPseudoId() const
@@ -679,6 +670,8 @@ private:
 
     Vector<std::unique_ptr<MutationObserverRegistration>>* mutationObserverRegistry();
     HashSet<MutationObserverRegistration*>* transientMutationObserverRegistry();
+
+    void adjustStyleValidity(Style::Validity, Style::InvalidationMode);
 
     int m_refCount;
     mutable uint32_t m_nodeFlags;
@@ -769,6 +762,22 @@ inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
 {
     ASSERT(!isShadowRoot());
     return parentNode();
+}
+
+inline Style::Validity Node::styleValidity() const
+{
+    return static_cast<Style::Validity>((m_nodeFlags & StyleValidityMask) >> StyleValidityShift);
+}
+
+inline bool Node::styleResolutionShouldRecompositeLayer() const
+{
+    return getFlag(StyleResolutionShouldRecompositeLayerFlag);
+}
+
+inline void Node::setHasValidStyle()
+{
+    m_nodeFlags &= ~StyleValidityMask;
+    clearFlag(StyleResolutionShouldRecompositeLayerFlag);
 }
 
 } // namespace WebCore

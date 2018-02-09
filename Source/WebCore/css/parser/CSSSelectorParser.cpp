@@ -30,6 +30,7 @@
 #include "config.h"
 #include "CSSSelectorParser.h"
 
+#include "CSSParserIdioms.h"
 #include "CSSParserMode.h"
 #include "CSSSelectorList.h"
 #include "StyleSheetContents.h"
@@ -132,13 +133,12 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumeComplexSelector(CSS
     if (!selector)
         return nullptr;
 
-
     unsigned previousCompoundFlags = 0;
 
     for (CSSParserSelector* simple = selector.get(); simple && !previousCompoundFlags; simple = simple->tagHistory())
         previousCompoundFlags |= extractCompoundFlags(*simple, m_context.mode);
 
-    while (CSSSelector::Relation combinator = consumeCombinator(range)) {
+    while (auto combinator = consumeCombinator(range)) {
         std::unique_ptr<CSSParserSelector> nextSelector = consumeCompoundSelector(range);
         if (!nextSelector)
             return combinator == CSSSelector::Descendant ? WTFMove(selector) : nullptr;
@@ -357,8 +357,14 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumeId(CSSParserTokenRa
         return nullptr;
     std::unique_ptr<CSSParserSelector> selector = std::unique_ptr<CSSParserSelector>(new CSSParserSelector());
     selector->setMatch(CSSSelector::Id);
-    AtomicString value = range.consume().value().toAtomicString();
-    selector->setValue(value);
+    
+    // FIXME-NEWPARSER: Avoid having to do this, but the old parser does and we need
+    // to be compatible for now.
+    StringView stringView = range.consume().value();
+    if (m_context.mode == HTMLQuirksMode)
+        convertToASCIILowercaseInPlace(stringView);
+    selector->setValue(stringView.toAtomicString());
+
     return selector;
 }
 
@@ -371,8 +377,14 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumeClass(CSSParserToke
         return nullptr;
     std::unique_ptr<CSSParserSelector> selector = std::unique_ptr<CSSParserSelector>(new CSSParserSelector());
     selector->setMatch(CSSSelector::Class);
-    AtomicString value = range.consume().value().toAtomicString();
-    selector->setValue(value);
+    
+    // FIXME-NEWPARSER: Avoid having to do this, but the old parser does and we need
+    // to be compatible for now.
+    StringView stringView = range.consume().value();
+    if (m_context.mode == HTMLQuirksMode)
+        convertToASCIILowercaseInPlace(stringView);
+    selector->setValue(stringView.toAtomicString());
+
     return selector;
 }
 
@@ -437,7 +449,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
 
     std::unique_ptr<CSSParserSelector> selector;
     StringView value = token.value();
-    if (selector->match() == CSSSelector::PseudoClass)
+    if (colons == 1)
         selector = std::unique_ptr<CSSParserSelector>(CSSParserSelector::parsePseudoClassSelectorFromStringView(value));
     else
         selector = std::unique_ptr<CSSParserSelector>(CSSParserSelector::parsePseudoElementSelectorFromStringView(value));
@@ -447,7 +459,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
 
     if (token.type() == IdentToken) {
         range.consume();
-        if (selector->pseudoElementType() == CSSSelector::PseudoElementUnknown)
+        if ((selector->match() == CSSSelector::PseudoElement && selector->pseudoElementType() == CSSSelector::PseudoElementUnknown) || (selector->match() == CSSSelector::PseudoClass && selector->pseudoClassType() == CSSSelector::PseudoClassUnknown))
             return nullptr;
         return selector;
     }
@@ -533,9 +545,9 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
     return nullptr;
 }
 
-CSSSelector::Relation CSSSelectorParser::consumeCombinator(CSSParserTokenRange& range)
+CSSSelector::RelationType CSSSelectorParser::consumeCombinator(CSSParserTokenRange& range)
 {
-    CSSSelector::Relation fallbackResult = CSSSelector::SubSelector;
+    auto fallbackResult = CSSSelector::Subselector;
     while (range.peek().type() == WhitespaceToken) {
         range.consume();
         fallbackResult = CSSSelector::Descendant;
@@ -732,7 +744,7 @@ void CSSSelectorParser::prependTypeSelectorIfNeeded(const AtomicString& namespac
 
 std::unique_ptr<CSSParserSelector> CSSSelectorParser::addSimpleSelectorToCompound(std::unique_ptr<CSSParserSelector> compoundSelector, std::unique_ptr<CSSParserSelector> simpleSelector)
 {
-    compoundSelector->appendTagHistory(CSSSelector::SubSelector, WTFMove(simpleSelector));
+    compoundSelector->appendTagHistory(CSSSelector::Subselector, WTFMove(simpleSelector));
     return compoundSelector;
 }
 
@@ -743,7 +755,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::splitCompoundAtImplicitSha
     // from left-to-right.
     //
     // ".a.b > div#id" is stored in a tagHistory as [div, #id, .a, .b], each element in the
-    // list stored with an associated relation (combinator or SubSelector).
+    // list stored with an associated relation (combinator or Subselector).
     //
     // ::cue, ::shadow, and custom pseudo elements have an implicit ShadowPseudo combinator
     // to their left, which really makes for a new compound selector, yet it's consumed by

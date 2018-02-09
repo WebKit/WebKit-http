@@ -120,6 +120,7 @@
 #include "ShadowData.h"
 #include "ShadowRoot.h"
 #include "StyleBuilder.h"
+#include "StyleColor.h"
 #include "StyleCachedImage.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
@@ -227,7 +228,7 @@ void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& pro
 
                 // The value currentColor has implicitely the same side effect. It depends on the value of color,
                 // which is an inherited value, making the non-inherited property implicitly inherited.
-                if (is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueCurrentcolor) {
+                if (is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).valueID() == CSSValueCurrentcolor) {
                     isCacheable = false;
                     break;
                 }
@@ -267,8 +268,14 @@ StyleResolver::StyleResolver(Document& document)
     else
         m_mediaQueryEvaluator = MediaQueryEvaluator { "all" };
 
-    if (root)
+    if (root) {
         m_rootDefaultStyle = styleForElement(*root, m_document.renderStyle(), MatchOnlyUserAgentRules).renderStyle;
+        // Turn off assertion against font lookups during style resolver initialization. We may need root style font for media queries.
+        m_document.fontSelector().setIsComputingRootStyleFont(true);
+        m_rootDefaultStyle->fontCascade().update(&m_document.fontSelector());
+        m_rootDefaultStyle->fontCascade().primaryFont();
+        m_document.fontSelector().setIsComputingRootStyleFont(false);
+    }
 
     if (m_rootDefaultStyle && view)
         m_mediaQueryEvaluator = MediaQueryEvaluator { view->mediaType(), m_document, m_rootDefaultStyle.get() };
@@ -1777,46 +1784,9 @@ void StyleResolver::setFontSize(FontCascadeDescription& fontDescription, float s
     fontDescription.setComputedSize(Style::computedFontSizeFromSpecifiedSize(size, fontDescription.isAbsoluteSize(), useSVGZoomRules(), m_state.style(), document()));
 }
 
-static Color colorForCSSValue(CSSValueID cssValueId)
-{
-    struct ColorValue {
-        CSSValueID cssValueId;
-        RGBA32 color;
-    };
-
-    static const ColorValue colorValues[] = {
-        { CSSValueAqua, 0xFF00FFFF },
-        { CSSValueBlack, 0xFF000000 },
-        { CSSValueBlue, 0xFF0000FF },
-        { CSSValueFuchsia, 0xFFFF00FF },
-        { CSSValueGray, 0xFF808080 },
-        { CSSValueGreen, 0xFF008000  },
-        { CSSValueGrey, 0xFF808080 },
-        { CSSValueLime, 0xFF00FF00 },
-        { CSSValueMaroon, 0xFF800000 },
-        { CSSValueNavy, 0xFF000080 },
-        { CSSValueOlive, 0xFF808000  },
-        { CSSValueOrange, 0xFFFFA500 },
-        { CSSValuePurple, 0xFF800080 },
-        { CSSValueRed, 0xFFFF0000 },
-        { CSSValueSilver, 0xFFC0C0C0 },
-        { CSSValueTeal, 0xFF008080  },
-        { CSSValueTransparent, 0x00000000 },
-        { CSSValueWhite, 0xFFFFFFFF },
-        { CSSValueYellow, 0xFFFFFF00 },
-        { CSSValueInvalid, CSSValueInvalid }
-    };
-
-    for (const ColorValue* col = colorValues; col->cssValueId; ++col) {
-        if (col->cssValueId == cssValueId)
-            return col->color;
-    }
-    return RenderTheme::defaultTheme()->systemColor(cssValueId);
-}
-
 bool StyleResolver::colorFromPrimitiveValueIsDerivedFromElement(const CSSPrimitiveValue& value)
 {
-    int ident = value.getValueID();
+    int ident = value.valueID();
     switch (ident) {
     case CSSValueWebkitText:
     case CSSValueWebkitLink:
@@ -1834,7 +1804,7 @@ Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, boo
         return value.color();
 
     const State& state = m_state;
-    CSSValueID ident = value.getValueID();
+    CSSValueID ident = value.valueID();
     switch (ident) {
     case 0:
         return Color();
@@ -1848,8 +1818,9 @@ Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, boo
         return RenderTheme::focusRingColor();
     case CSSValueCurrentcolor:
         return state.style()->color();
-    default:
-        return colorForCSSValue(ident);
+    default: {
+        return StyleColor::colorFromKeyword(ident);
+    }
     }
 }
 
@@ -1905,7 +1876,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
     
     if (is<CSSPrimitiveValue>(inValue)) {
         auto& primitiveValue = downcast<CSSPrimitiveValue>(inValue);
-        if (primitiveValue.getValueID() == CSSValueNone)
+        if (primitiveValue.valueID() == CSSValueNone)
             return true;
     }
     
@@ -1929,7 +1900,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
                 continue;
 
             auto& primitiveValue = downcast<CSSPrimitiveValue>(argument);
-            String cssUrl = primitiveValue.getStringValue();
+            String cssUrl = primitiveValue.stringValue();
             URL url = m_state.document().completeURL(cssUrl);
 
             RefPtr<ReferenceFilterOperation> operation = ReferenceFilterOperation::create(cssUrl, url.fragmentIdentifier());
@@ -1960,7 +1931,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
         case WebKitCSSFilterValue::SaturateFilterOperation: {
             double amount = 1;
             if (filterValue.length() == 1) {
-                amount = firstValue->getDoubleValue();
+                amount = firstValue->doubleValue();
                 if (firstValue->isPercentage())
                     amount /= 100;
             }
@@ -1982,7 +1953,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
         case WebKitCSSFilterValue::OpacityFilterOperation: {
             double amount = (filterValue.operationType() == WebKitCSSFilterValue::BrightnessFilterOperation) ? 0 : 1;
             if (filterValue.length() == 1) {
-                amount = firstValue->getDoubleValue();
+                amount = firstValue->doubleValue();
                 if (firstValue->isPercentage())
                     amount /= 100;
             }

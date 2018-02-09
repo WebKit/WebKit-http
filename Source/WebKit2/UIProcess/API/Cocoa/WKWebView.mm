@@ -4547,6 +4547,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     // For subclasses to override.
 }
 
+- (void)_didShowForcePressPreview
+{
+    // For subclasses to override.
+}
+
+- (void)_didDismissForcePressPreview
+{
+    // For subclasses to override.
+}
+
 - (NSArray<UIView *> *)_uiTextSelectionRectViews
 {
     return [_contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView.m_rectViews"];
@@ -4609,6 +4619,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     // Overridden by subclasses.
 }
 #endif // PLATFORM(MAC)
+
+- (void)_setPageScale:(CGFloat)scale withOrigin:(CGPoint)origin
+{
+    _page->scalePage(scale, WebCore::roundedIntPoint(origin));
+}
+
+- (CGFloat)_pageScale
+{
+    return _page->pageScaleFactor();
+}
 
 // Execute the supplied block after the next transaction from the WebProcess.
 - (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock

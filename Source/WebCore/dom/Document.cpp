@@ -820,7 +820,7 @@ void Document::resetVisitedLinkColor()
 
 void Document::resetActiveLinkColor()
 {
-    m_activeLinkColor.setNamedColor("red");
+    m_activeLinkColor = Color(255, 0, 0);
 }
 
 DOMImplementation& Document::implementation()
@@ -1356,7 +1356,7 @@ void Document::setContentLanguage(const String& language)
     m_contentLanguage = language;
 
     // Recalculate style so language is used when selecting the initial font.
-    m_styleScope->didChangeContentsOrInterpretation();
+    m_styleScope->didChangeStyleSheetEnvironment();
 }
 
 void Document::setXMLVersion(const String& version, ExceptionCode& ec)
@@ -1851,7 +1851,9 @@ void Document::recalcStyle(Style::Change change)
         Style::TreeResolver resolver(*this);
         auto styleUpdate = resolver.resolve(change);
 
-        clearNeedsStyleRecalc();
+        m_lastStyleUpdateSizeForTesting = styleUpdate ? styleUpdate->size() : 0;
+
+        setHasValidStyle();
         clearChildNeedsStyleRecalc();
         unscheduleStyleRecalc();
 
@@ -1963,7 +1965,7 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
         HTMLElement* bodyElement = bodyOrFrameset();
         if (bodyElement && !bodyElement->renderer() && m_pendingSheetLayout == NoLayoutWithPendingSheets) {
             m_pendingSheetLayout = DidLayoutWithPendingSheets;
-            styleScope().didChangeContentsOrInterpretation();
+            styleScope().didChangeActiveStyleSheetCandidates();
             recalcStyle(Style::Force);
         } else if (m_hasNodesWithPlaceholderStyle)
             // If new nodes have been added or style recalc has been done with style sheets still pending, some nodes 
@@ -2100,12 +2102,14 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
 
 bool Document::isPageBoxVisible(int pageIndex)
 {
+    updateStyleIfNeeded();
     std::unique_ptr<RenderStyle> pageStyle(styleScope().resolver().styleForPage(pageIndex));
     return pageStyle->visibility() != HIDDEN; // display property doesn't apply to @page.
 }
 
 void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int& marginTop, int& marginRight, int& marginBottom, int& marginLeft)
 {
+    updateStyleIfNeeded();
     std::unique_ptr<RenderStyle> style = styleScope().resolver().styleForPage(pageIndex);
 
     int width = pageSize.width();
@@ -2349,6 +2353,11 @@ void Document::removeAllEventListeners()
 #endif
     for (Node* node = firstChild(); node; node = NodeTraversal::next(*node))
         node->removeAllEventListeners();
+
+#if ENABLE(TOUCH_EVENTS)
+    m_touchEventTargets = nullptr;
+#endif
+    m_wheelEventTargets = nullptr;
 }
 
 void Document::suspendDeviceMotionAndOrientationUpdates()
@@ -3154,7 +3163,6 @@ void Document::processHttpEquiv(const String& equiv, const String& content, bool
         // -dwh
         styleScope().setSelectedStylesheetSetName(content);
         styleScope().setPreferredStylesheetSetName(content);
-        styleScope().didChangeContentsOrInterpretation();
         break;
 
     case HTTPHeaderName::Refresh: {
@@ -3464,7 +3472,6 @@ String Document::selectedStylesheetSet() const
 void Document::setSelectedStylesheetSet(const String& aString)
 {
     styleScope().setSelectedStylesheetSetName(aString);
-    styleScope().didChangeContentsOrInterpretation();
 }
 
 void Document::evaluateMediaQueryList()
@@ -3498,7 +3505,7 @@ void Document::updateViewportUnitsOnResize()
     for (Element* element = ElementTraversal::firstWithin(rootNode()); element; element = ElementTraversal::nextIncludingPseudo(*element)) {
         auto* renderer = element->renderer();
         if (renderer && renderer->style().hasViewportUnits())
-            element->setNeedsStyleRecalc(InlineStyleChange);
+            element->invalidateStyle();
     }
 }
 
@@ -3667,8 +3674,11 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
                 newFocusedElement = nullptr;
             }
         } else {
+            // Match the order in HTMLTextFormControlElement::dispatchBlurEvent.
             if (is<HTMLInputElement>(*oldFocusedElement))
                 downcast<HTMLInputElement>(*oldFocusedElement).endEditing();
+            if (page())
+                page()->chrome().client().elementDidBlur(oldFocusedElement.get());
             ASSERT(!m_focusedElement);
         }
 
@@ -3816,10 +3826,10 @@ Element* Document::focusNavigationStartingNode(FocusDirection direction) const
 void Document::setCSSTarget(Element* n)
 {
     if (m_cssTarget)
-        m_cssTarget->setNeedsStyleRecalc();
+        m_cssTarget->invalidateStyleForSubtree();
     m_cssTarget = n;
     if (n)
-        n->setNeedsStyleRecalc();
+        n->invalidateStyleForSubtree();
 }
 
 void Document::registerNodeListForInvalidation(LiveNodeList& list)
@@ -4589,6 +4599,9 @@ void Document::setPageCacheState(PageCacheState state)
             } else
                 v->resetScrollbars();
         }
+
+        styleScope().clearResolver();
+        clearSelectorQueryCache();
         m_styleRecalcTimer.stop();
 
         clearSharedObjectPool();
@@ -5107,25 +5120,25 @@ bool Document::isTelephoneNumberParsingAllowed() const
 
 #endif
 
-RefPtr<XPathExpression> Document::createExpression(const String& expression, RefPtr<XPathNSResolver>&& resolver, ExceptionCode& ec)
+ExceptionOr<Ref<XPathExpression>> Document::createExpression(const String& expression, RefPtr<XPathNSResolver>&& resolver)
 {
     if (!m_xpathEvaluator)
         m_xpathEvaluator = XPathEvaluator::create();
-    return m_xpathEvaluator->createExpression(expression, WTFMove(resolver), ec);
+    return m_xpathEvaluator->createExpression(expression, WTFMove(resolver));
 }
 
-RefPtr<XPathNSResolver> Document::createNSResolver(Node* nodeResolver)
+Ref<XPathNSResolver> Document::createNSResolver(Node* nodeResolver)
 {
     if (!m_xpathEvaluator)
         m_xpathEvaluator = XPathEvaluator::create();
     return m_xpathEvaluator->createNSResolver(nodeResolver);
 }
 
-RefPtr<XPathResult> Document::evaluate(const String& expression, Node* contextNode, RefPtr<XPathNSResolver>&& resolver, unsigned short type, XPathResult* result, ExceptionCode& ec)
+ExceptionOr<Ref<XPathResult>> Document::evaluate(const String& expression, Node* contextNode, RefPtr<XPathNSResolver>&& resolver, unsigned short type, XPathResult* result)
 {
     if (!m_xpathEvaluator)
         m_xpathEvaluator = XPathEvaluator::create();
-    return m_xpathEvaluator->evaluate(expression, contextNode, WTFMove(resolver), type, result, ec);
+    return m_xpathEvaluator->evaluate(expression, contextNode, WTFMove(resolver), type, result);
 }
 
 static bool shouldInheritSecurityOriginFromOwner(const URL& url)
@@ -5833,8 +5846,8 @@ static void unwrapFullScreenRenderer(RenderFullScreen* fullScreenRenderer, Eleme
     bool requiresRenderTreeRebuild;
     fullScreenRenderer->unwrapRenderer(requiresRenderTreeRebuild);
 
-    if (requiresRenderTreeRebuild && fullScreenElement && fullScreenElement->parentNode())
-        fullScreenElement->parentNode()->setNeedsStyleRecalc(ReconstructRenderTree);
+    if (requiresRenderTreeRebuild && fullScreenElement && fullScreenElement->parentElement())
+        fullScreenElement->parentElement()->invalidateStyleAndRenderersForSubtree();
 }
 
 void Document::webkitWillEnterFullScreenForElement(Element* element)
@@ -6025,7 +6038,7 @@ void Document::setAnimatingFullScreen(bool flag)
     m_isAnimatingFullScreen = flag;
 
     if (m_fullScreenElement && m_fullScreenElement->isDescendantOf(this)) {
-        m_fullScreenElement->setNeedsStyleRecalc();
+        m_fullScreenElement->invalidateStyleForSubtree();
         scheduleForcedStyleRecalc();
     }
 }
@@ -7028,6 +7041,18 @@ void Document::setDir(const AtomicString& value)
 DOMSelection* Document::getSelection()
 {
     return m_domWindow ? m_domWindow->getSelection() : nullptr;
+}
+
+void Document::didInsertInDocumentShadowRoot(ShadowRoot& shadowRoot)
+{
+    ASSERT(shadowRoot.inDocument());
+    m_inDocumentShadowRoots.add(&shadowRoot);
+}
+
+void Document::didRemoveInDocumentShadowRoot(ShadowRoot& shadowRoot)
+{
+    ASSERT(m_inDocumentShadowRoots.contains(&shadowRoot));
+    m_inDocumentShadowRoots.remove(&shadowRoot);
 }
 
 } // namespace WebCore

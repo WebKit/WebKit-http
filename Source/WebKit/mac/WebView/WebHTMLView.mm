@@ -3612,7 +3612,7 @@ WEBCORE_COMMAND(toggleUnderline)
 #endif
 
     if (Frame* coreFrame = core([self _frame])) {
-        coreFrame->document()->styleScope().didChangeContentsOrInterpretation();
+        coreFrame->document()->styleScope().didChangeStyleSheetEnvironment();
         coreFrame->document()->updateStyleIfNeeded();
     }
 
@@ -3956,6 +3956,9 @@ static RetainPtr<NSMenuItem> createMenuItem(const HitTestResult& hitTestResult, 
             [menu addItem:menuItem];
 
         auto menuItem = adoptNS([[NSMenuItem alloc] initWithTitle:item.title() action:nullptr keyEquivalent:@""]);
+
+        if (auto tag = toTag(item.action()))
+            [menuItem setTag:*tag];
         [menuItem setEnabled:item.enabled()];
         [menuItem setSubmenu:menu.get()];
 
@@ -4499,6 +4502,8 @@ static BOOL currentScrollIsBlit(NSView *clipView)
 - (void)mouseDown:(WebEvent *)event
 #endif
 {
+    [[self _webView] prepareForMouseDown];
+
 #if !PLATFORM(IOS)
     // There's a chance that responding to this event will run a nested event loop, and
     // fetching a new event might release the old one. Retaining and then autoreleasing
@@ -4718,6 +4723,8 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
 - (void)mouseUp:(WebEvent *)event
 #endif
 {
+    [[self _webView] prepareForMouseUp];
+
 #if !PLATFORM(IOS)
     // There's a chance that responding to this event will run a nested event loop, and
     // fetching a new event might release the old one. Retaining and then autoreleasing
@@ -5017,7 +5024,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
             document->setPaginatedForScreen(_private->paginateScreenContent);
             document->setPrinting(_private->printing);
-            document->styleScope().didChangeContentsOrInterpretation();
+            document->styleScope().didChangeStyleSheetEnvironment();
         }
     }
 

@@ -84,12 +84,7 @@ std::unique_ptr<GLContext> GLContext::createContextForWindow(GLNativeWindowType 
 #endif
 
 #if USE(GLX)
-#if PLATFORM(WAYLAND) // Building both X11 and Wayland targets
-    XID GLXWindowHandle = reinterpret_cast<XID>(windowHandle);
-#else
-    XID GLXWindowHandle = static_cast<XID>(windowHandle);
-#endif
-    if (auto glxContext = GLContextGLX::createContext(GLXWindowHandle, display))
+    if (auto glxContext = GLContextGLX::createContext(windowHandle, display))
         return WTFMove(glxContext);
 #endif
 #if USE(EGL)
@@ -147,6 +142,22 @@ bool GLContext::makeContextCurrent()
 GLContext* GLContext::current()
 {
     return currentContext()->context();
+}
+
+bool GLContext::isExtensionSupported(const char* extensionList, const char* extension)
+{
+    if (!extensionList)
+        return false;
+
+    ASSERT(extension);
+    int extensionLen = strlen(extension);
+    const char* extensionListPtr = extensionList;
+    while ((extensionListPtr = strstr(extensionListPtr, extension))) {
+        if (extensionListPtr[extensionLen] == ' ' || extensionListPtr[extensionLen] == '\0')
+            return true;
+        extensionListPtr += extensionLen;
+    }
+    return false;
 }
 
 } // namespace WebCore

@@ -82,6 +82,9 @@ public:
 
     String generateUUID() const;
 
+    String shadowRootCSSText() const;
+    String base64StringForIconAndPlatform(const String& iconName, const String& platform) const;
+
 private:
     MediaControlsHost(HTMLMediaElement*);
 

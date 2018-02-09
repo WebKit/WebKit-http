@@ -221,16 +221,25 @@ int HTMLSelectElement::activeSelectionEndListIndex() const
     return lastSelectedListIndex();
 }
 
-void HTMLSelectElement::add(HTMLElement& element, HTMLElement* beforeElement, ExceptionCode& ec)
+ExceptionOr<void> HTMLSelectElement::add(const OptionOrOptGroupElement& element, Optional<HTMLElementOrInt> before)
 {
-    if (!(is<HTMLOptionElement>(element) || is<HTMLHRElement>(element) || is<HTMLOptGroupElement>(element)))
-        return;
-    insertBefore(element, beforeElement, ec);
-}
+    HTMLElement* beforeElement = nullptr;
+    if (before) {
+        beforeElement = WTF::switchOn(before.value(),
+            [](const RefPtr<HTMLElement>& element) -> HTMLElement* { return element.get(); },
+            [this](int index) -> HTMLElement* { return item(index); }
+        );
+    }
+    HTMLElement& toInsert = WTF::switchOn(element,
+        [](const auto& htmlElement) -> HTMLElement& { return *htmlElement; }
+    );
 
-void HTMLSelectElement::add(HTMLElement& element, int beforeIndex, ExceptionCode& ec)
-{
-    add(element, item(beforeIndex), ec);
+
+    ExceptionCode ec = 0;
+    insertBefore(toInsert, beforeElement, ec);
+    if (ec)
+        return Exception { ec };
+    return { };
 }
 
 void HTMLSelectElement::removeByIndex(int optionIndex)
@@ -303,7 +312,7 @@ void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         m_size = size;
         updateValidity();
         if (m_size != oldSize) {
-            setNeedsStyleRecalc(ReconstructRenderTree);
+            invalidateStyleAndRenderersForSubtree();
             setRecalcListItems();
             updateValidity();
         }
@@ -440,7 +449,9 @@ void HTMLSelectElement::setOption(unsigned index, HTMLOptionElement& option, Exc
     }
     // Finally add the new element.
     if (!ec) {
-        add(option, before.get(), ec);
+        auto exception = add(&option, HTMLElementOrInt(before.get()));
+        if (exception.hasException())
+            ec = exception.releaseException().code();
         if (diff >= 0 && option.selected())
             optionSelectionStateChanged(option, true);
     }
@@ -456,9 +467,11 @@ void HTMLSelectElement::setLength(unsigned newLength, ExceptionCode& ec)
     if (diff < 0) { // Add dummy elements.
         do {
             auto option = document().createElement(optionTag, false);
-            add(downcast<HTMLElement>(option.get()), nullptr, ec);
-            if (ec)
+            auto exception = add(downcast<HTMLOptionElement>(option.ptr()), Nullopt);
+            if (exception.hasException()) {
+                ec = exception.releaseException().code();
                 break;
+        }
         } while (++diff);
     } else {
         auto& items = listItems();
@@ -744,7 +757,7 @@ void HTMLSelectElement::setRecalcListItems()
     // Manual selection anchor is reset when manipulating the select programmatically.
     m_activeSelectionAnchorIndex = -1;
     setOptionsChangedOnRenderer();
-    setNeedsStyleRecalc();
+    invalidateStyleForSubtree();
     if (!inDocument()) {
         if (HTMLCollection* collection = cachedHTMLCollection(SelectOptions))
             collection->invalidateCache(document());
@@ -1022,7 +1035,7 @@ void HTMLSelectElement::parseMultipleAttribute(const AtomicString& value)
     m_multiple = !value.isNull();
     updateValidity();
     if (oldUsesMenuList != usesMenuList())
-        setNeedsStyleRecalc(ReconstructRenderTree);
+        invalidateStyleAndRenderersForSubtree();
 }
 
 bool HTMLSelectElement::appendFormData(FormDataList& list, bool)
@@ -1071,7 +1084,7 @@ void HTMLSelectElement::reset()
         firstOption->setSelectedState(true);
 
     setOptionsChangedOnRenderer();
-    setNeedsStyleRecalc();
+    invalidateStyleForSubtree();
     updateValidity();
 }
 

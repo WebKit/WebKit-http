@@ -22,6 +22,8 @@
 #if USE(EGL)
 
 #include "GraphicsContext3D.h"
+#include "PlatformDisplay.h"
+#include <EGL/egl.h>
 
 #if USE(CAIRO)
 #include <cairo.h>
@@ -32,16 +34,6 @@
 #include <GLES2/gl2ext.h>
 #else
 #include "OpenGLShims.h"
-#endif
-
-#if PLATFORM(X11)
-#include "PlatformDisplayX11.h"
-#include <X11/Xlib.h>
-#endif
-
-#if PLATFORM(WAYLAND)
-#include "PlatformDisplayWayland.h"
-#include <wayland-egl.h>
 #endif
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
@@ -101,7 +93,7 @@ bool GLContextEGL::getEGLConfig(EGLDisplay display, EGLConfig* config, EGLSurfac
     return eglChooseConfig(display, attributeList, config, 1, &numberConfigsReturned) && numberConfigsReturned;
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(EGLNativeWindowType window, PlatformDisplay& platformDisplay, EGLContext sharingContext)
+std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(GLNativeWindowType window, PlatformDisplay& platformDisplay, EGLContext sharingContext)
 {
     EGLDisplay display = platformDisplay.eglDisplay();
     EGLConfig config;
@@ -112,7 +104,19 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(EGLNativeWindowT
     if (context == EGL_NO_CONTEXT)
         return nullptr;
 
-    EGLSurface surface = eglCreateWindowSurface(display, config, window, 0);
+    EGLSurface surface = EGL_NO_SURFACE;
+#if PLATFORM(GTK)
+#if PLATFORM(X11)
+    if (platformDisplay.type() == PlatformDisplay::Type::X11)
+        surface = createWindowSurfaceX11(display, config, window);
+#endif
+#if PLATFORM(WAYLAND)
+    if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
+        surface = createWindowSurfaceWayland(display, config, window);
+#endif
+#else
+    surface = eglCreateWindowSurface(display, config, static_cast<EGLNativeWindowType>(window), nullptr);
+#endif
     if (surface == EGL_NO_SURFACE) {
         eglDestroyContext(display, context);
         return nullptr;
@@ -149,7 +153,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSurfacelessContext(PlatformDis
         return nullptr;
 
     const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
-    if (!strstr(extensions, "EGL_KHR_surfaceless_context") && !strstr(extensions, "EGL_KHR_surfaceless_opengl"))
+    if (!GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_context") && !GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_opengl"))
         return nullptr;
 
     EGLConfig config;
@@ -163,72 +167,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSurfacelessContext(PlatformDis
     return std::unique_ptr<GLContextEGL>(new GLContextEGL(platformDisplay, context, EGL_NO_SURFACE, Surfaceless));
 }
 
-#if PLATFORM(X11)
-std::unique_ptr<GLContextEGL> GLContextEGL::createPixmapContext(PlatformDisplay& platformDisplay, EGLContext sharingContext)
-{
-    EGLDisplay display = platformDisplay.eglDisplay();
-    EGLConfig config;
-    if (!getEGLConfig(display, &config, PixmapSurface))
-        return nullptr;
-
-    EGLContext context = eglCreateContext(display, config, sharingContext, gContextAttributes);
-    if (context == EGL_NO_CONTEXT)
-        return nullptr;
-
-    EGLint depth;
-    if (!eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE, &depth)) {
-        eglDestroyContext(display, context);
-        return nullptr;
-    }
-
-    Display* x11Display = downcast<PlatformDisplayX11>(platformDisplay).native();
-    XUniquePixmap pixmap = XCreatePixmap(x11Display, DefaultRootWindow(x11Display), 1, 1, depth);
-    if (!pixmap) {
-        eglDestroyContext(display, context);
-        return nullptr;
-    }
-
-    EGLSurface surface = eglCreatePixmapSurface(display, config, reinterpret_cast<EGLNativePixmapType>(pixmap.get()), 0);
-    if (surface == EGL_NO_SURFACE) {
-        eglDestroyContext(display, context);
-        return nullptr;
-    }
-
-    return std::unique_ptr<GLContextEGL>(new GLContextEGL(platformDisplay, context, surface, WTFMove(pixmap)));
-}
-#endif // PLATFORM(X11)
-
-#if PLATFORM(WAYLAND)
-std::unique_ptr<GLContextEGL> GLContextEGL::createWaylandContext(PlatformDisplay& platformDisplay, EGLContext sharingContext)
-{
-    EGLDisplay display = platformDisplay.eglDisplay();
-    EGLConfig config;
-    if (!getEGLConfig(display, &config, WindowSurface))
-        return nullptr;
-
-    EGLContext context = eglCreateContext(display, config, sharingContext, gContextAttributes);
-    if (context == EGL_NO_CONTEXT)
-        return nullptr;
-
-    WlUniquePtr<struct wl_surface> wlSurface(downcast<PlatformDisplayWayland>(platformDisplay).createSurface());
-    if (!wlSurface) {
-        eglDestroyContext(display, context);
-        return nullptr;
-    }
-
-    EGLNativeWindowType window = wl_egl_window_create(wlSurface.get(), 1, 1);
-    EGLSurface surface = eglCreateWindowSurface(display, config, window, 0);
-    if (surface == EGL_NO_SURFACE) {
-        eglDestroyContext(display, context);
-        wl_egl_window_destroy(window);
-        return nullptr;
-    }
-
-    return std::unique_ptr<GLContextEGL>(new GLContextEGL(platformDisplay, context, surface, WTFMove(wlSurface), window));
-}
-#endif
-
-std::unique_ptr<GLContextEGL> GLContextEGL::createContext(EGLNativeWindowType window, PlatformDisplay& platformDisplay)
+std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;
@@ -291,29 +230,6 @@ GLContextEGL::GLContextEGL(PlatformDisplay& display, EGLContext context, EGLSurf
     ASSERT(type == Surfaceless || surface != EGL_NO_SURFACE);
 }
 
-#if PLATFORM(X11)
-GLContextEGL::GLContextEGL(PlatformDisplay& display, EGLContext context, EGLSurface surface, XUniquePixmap&& pixmap)
-    : GLContext(display)
-    , m_context(context)
-    , m_surface(surface)
-    , m_type(PixmapSurface)
-    , m_pixmap(WTFMove(pixmap))
-{
-}
-#endif
-
-#if PLATFORM(WAYLAND)
-GLContextEGL::GLContextEGL(PlatformDisplay& display, EGLContext context, EGLSurface surface, WlUniquePtr<struct wl_surface>&& wlSurface, EGLNativeWindowType wlWindow)
-    : GLContext(display)
-    , m_context(context)
-    , m_surface(surface)
-    , m_type(WindowSurface)
-    , m_wlSurface(WTFMove(wlSurface))
-    , m_wlWindow(wlWindow)
-{
-}
-#endif
-
 GLContextEGL::~GLContextEGL()
 {
 #if USE(CAIRO)
@@ -332,8 +248,7 @@ GLContextEGL::~GLContextEGL()
         eglDestroySurface(display, m_surface);
 
 #if PLATFORM(WAYLAND)
-    if (m_wlWindow)
-        wl_egl_window_destroy(m_wlWindow);
+    destroyWaylandWindow();
 #endif
 }
 

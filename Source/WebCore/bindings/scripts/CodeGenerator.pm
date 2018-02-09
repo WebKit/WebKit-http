@@ -371,21 +371,13 @@ sub SkipIncludeHeader
     return 1 if $object->IsPrimitiveType($type);
     return 1 if $object->IsTypedArrayType($type);
     return 1 if $type eq "Array";
+    return 1 if $type eq "BufferSource";
     return 1 if $type eq "DOMString" or $type eq "USVString";
     return 1 if $type eq "DOMTimeStamp";
     return 1 if $type eq "SVGNumber";
     return 1 if $type eq "any";
 
     return 0;
-}
-
-sub IsConstructorTemplate
-{
-    my $object = shift;
-    my $interface = shift;
-    my $template = shift;
-
-    return $interface->extendedAttributes->{"LegacyConstructorTemplate"} && $interface->extendedAttributes->{"LegacyConstructorTemplate"} eq $template;
 }
 
 sub IsNumericType
@@ -866,6 +858,7 @@ sub IsWrapperType
 
     return 0 if !$object->IsRefPtrType($type);
     return 0 if $object->IsTypedArrayType($type);
+    return 0 if $type eq "BufferSource";
     return 0 if $type eq "UNION";
     return 0 if $webCoreTypeHash{$type};
 

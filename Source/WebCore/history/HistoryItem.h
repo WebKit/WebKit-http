@@ -144,14 +144,9 @@ public:
     WEBCORE_EXPORT const Vector<Ref<HistoryItem>>& children() const;
     WEBCORE_EXPORT bool hasChildren() const;
     void clearChildren();
-    bool isAncestorOf(const HistoryItem&) const;
     
     bool shouldDoSameDocumentNavigationTo(HistoryItem& otherItem) const;
     bool hasSameFrames(HistoryItem& otherItem) const;
-
-    WEBCORE_EXPORT void addRedirectURL(const String&);
-    WEBCORE_EXPORT Vector<String>* redirectURLs() const;
-    WEBCORE_EXPORT void setRedirectURLs(std::unique_ptr<Vector<String>>);
 
     bool isCurrentDocument(Document&) const;
     
@@ -197,11 +192,6 @@ public:
 
     const ViewportArguments& viewportArguments() const { return m_viewportArguments; }
     void setViewportArguments(const ViewportArguments& viewportArguments) { m_viewportArguments = viewportArguments; }
-
-    uint32_t bookmarkID() const { return m_bookmarkID; }
-    void setBookmarkID(uint32_t bookmarkID) { m_bookmarkID = bookmarkID; }
-    String sharedLinkUniqueIdentifier() const { return m_sharedLinkUniqueIdentifier; }
-    void setSharedLinkUniqueIdentifier(const String& sharedLinkUniqueidentifier) { m_sharedLinkUniqueIdentifier = sharedLinkUniqueidentifier; }
 #endif
 
     void notifyChanged();
@@ -237,8 +227,6 @@ private:
     bool m_isTargetItem;
     bool m_wasRestoredFromSession { false };
 
-    std::unique_ptr<Vector<String>> m_redirectURLs;
-
     // If two HistoryItems have the same item sequence number, then they are
     // clones of one another.  Traversing history from one such HistoryItem to
     // another is a no-op.  HistoryItem clones are created for parent and
@@ -270,9 +258,6 @@ private:
     float m_scale { 0 }; // Note that UIWebView looks for a non-zero value, so this has to start as 0.
     bool m_scaleIsInitial { false };
     ViewportArguments m_viewportArguments;
-
-    uint32_t m_bookmarkID { 0 };
-    String m_sharedLinkUniqueIdentifier;
 #endif
 
 #if PLATFORM(COCOA)

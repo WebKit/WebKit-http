@@ -1,3 +1,82 @@
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r207151
+        https://bugs.webkit.org/show_bug.cgi?id=163675
+
+        Reviewed by Brent Fulgham.
+
+        * DefaultDownloadDelegate.h:
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::savePlatformDataToCachedFrame):
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        * WebDownload.h:
+        * WebError.cpp:
+        (WebError::localizedDescription):
+        (WebError::sslPeerCertificate):
+        * WebError.h:
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::mutableCopy):
+        * WebURLAuthenticationChallenge.cpp:
+        (WebURLAuthenticationChallenge::initWithProtectionSpace):
+        (WebURLAuthenticationChallenge::initWithAuthenticationChallenge):
+        * WebURLResponse.cpp:
+        (WebURLResponse::sslPeerCertificate):
+        * WebURLResponse.h:
+        * WebView.cpp:
+        (WebView::setCacheModel):
+        (WebView::canHandleRequest):
+        (WebView::notifyPreferencesChanged):
+        (updateSharedSettingsFromPreferencesIfNeeded):
+
+2016-10-18  Darin Adler  <darin@apple.com>
+
+        Move many miscellaneous classes from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163645
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOMCoreClasses.cpp:
+        (DOMDocument::getComputedStyle): Use ptr instead of get since the return
+        value is now Ref instead of RefPtr.
+
+2016-10-18  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the Windows build.
+
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::redirectURLs):
+
+2016-10-18  Anders Carlsson  <andersca@apple.com>
+
+        Move some history specific HistoryItem code to WebHistoryItem
+        https://bugs.webkit.org/show_bug.cgi?id=163567
+
+        Reviewed by Tim Horton.
+
+        Remove these, they aren't used.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::updateGlobalHistoryRedirectLinks):
+        * WebHistory.cpp:
+        (WebHistory::visitedURL):
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        (WebHistoryItem::dictionaryRepresentation):
+
+2016-10-16  Darin Adler  <darin@apple.com>
+
+        Move CSS classes from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163494
+
+        Reviewed by Sam Weinig.
+
+        * DOMCSSClasses.cpp:
+        (DOMCSSStyleDeclaration::setCssText): Remove ExceptionCode handling.
+        (DOMCSSStyleDeclaration::setProperty): Ditto.
+
 2016-10-12  Anders Carlsson  <andersca@apple.com>
 
         Copy BackForwardList from WebCore to WebKit/win

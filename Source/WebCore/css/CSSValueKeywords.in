@@ -852,7 +852,7 @@ recto
 region
 verso
 
-// CSS_SHAPES
+// CSS Shapes
 margin-box
 
 // clip-path
@@ -1077,7 +1077,7 @@ pixelated
 -webkit-crisp-edges
 -webkit-optimize-contrast
 
-// -webkit-shape-outside
+// shape-outside
 nonzero
 evenodd
 at
@@ -1195,6 +1195,8 @@ contrast
 blur
 drop-shadow
 url
+cubic-bezier
+steps
 
 // colors
 rgb
@@ -1248,6 +1250,9 @@ markers
 
 // grid-{column-start|column-end|row-start|row-end}
 span
+
+// grid-template-{columns|rows}
+minmax
 
 // grid-auto-flow
 auto-flow

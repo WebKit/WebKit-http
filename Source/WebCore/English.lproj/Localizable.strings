@@ -133,9 +133,6 @@
 /* Option in segmented control for inserting a bulleted list in text editing */
 "Bulleted list" = "Bulleted list";
 
-/* Exit fullscreen button in fullscreen media controls */
-"Exit Fullscreen" = "Exit Fullscreen";
-
 /* menu item title for phone number */
 "Call Using iPhone:" = "Call Using iPhone:";
 
@@ -256,11 +253,11 @@
 /* Video Exit Fullscreen context menu item */
 "Exit Full Screen" = "Exit Full Screen";
 
+/* Button for exiting fullscreen when in fullscreen media playback */
+"Exit Fullscreen" = "Exit Fullscreen";
+
 /* menu item */
 "Exit Picture in Picture" = "Exit Picture in Picture";
-
-/* accessibility role description for a figure element */
-"figure" = "figure";
 
 /* Default application name for Open With context menu */
 "Finder" = "Finder";
@@ -306,6 +303,9 @@
 
 /* Inspect Element context menu item */
 "Inspect Element" = "Inspect Element";
+
+/* Validation message for input form controls with a value not matching type */
+"Invalid value." = "Invalid value.";
 
 /* Italic context menu item */
 "Italic" = "Italic";
@@ -462,6 +462,42 @@
 
 /* accessibility help text for enter fullscreen button */
 "Play movie in fullscreen mode" = "Play movie in fullscreen mode";
+
+/* Validation message for required checkboxes that have not be checked */
+"Please check this box if you want to proceed." = "Please check this box if you want to proceed.";
+
+/* Validation message for input form controls of type 'url' that have an invalid value */
+"Please enter a URL." = "Please enter a URL.";
+
+/* Validation message for number fields where the user entered a non-number string */
+"Please enter a number." = "Please enter a number.";
+
+/* Validation message for input form controls with value not respecting the step attribute */
+"Please enter a valid value." = "Please enter a valid value.";
+
+/* Validation message for input form controls of type 'email' that have an invalid value */
+"Please enter an email address." = "Please enter an email address.";
+
+/* Validation message for required form control elements that have no value */
+"Please fill out this field." = "Please fill out this field.";
+
+/* Validation message for input form controls requiring a constrained value according to pattern */
+"Please match the requested format." = "Please match the requested format.";
+
+/* Validation message for required file inputs that have no value */
+"Please select a file." = "Please select a file.";
+
+/* Validation message for required menu list controls that have no selection */
+"Please select an item in the list." = "Please select an item in the list.";
+
+/* Validation message for required radio boxes that have no selection */
+"Please select one of these options." = "Please select one of these options.";
+
+/* Validation message for form control elements with a value shorter than minimum allowed length */
+"Please use at least %d characters." = "Please use at least %d characters.";
+
+/* Validation message for form control elements with a value shorter than maximum allowed length */
+"Please use no more than %d characters." = "Please use no more than %d characters.";
 
 /* Label text to be used if plugin host process has crashed */
 "Plug-in Failure" = "Plug-in Failure";
@@ -682,6 +718,9 @@
 /* Undo action name */
 "Typing (Undo action name)" = "Typing";
 
+/* accessibility role description for a URL field. */
+"URL field" = "URL field";
+
 /* Underline context menu item */
 "Underline" = "Underline";
 
@@ -714,6 +753,12 @@
 
 /* Description of WebCrypto master keys in Keychain */
 "Used to encrypt WebCrypto keys in persistent storage, such as IndexedDB" = "Used to encrypt WebCrypto keys in persistent storage, such as IndexedDB";
+
+/* Validation message for input form controls with value lower than allowed minimum */
+"Value must be greater than or equal to %@." = "Value must be greater than or equal to %@.";
+
+/* Validation message for input form controls with value higher than allowed maximum */
+"Value must be less than or equal to %@." = "Value must be less than or equal to %@.";
 
 /* Web Inspector window title when inspecting Web Inspector */
 "Web Inspector [%d] — %@" = "Web Inspector [%d] — %@";
@@ -805,6 +850,9 @@
 /* accessibility help text for elapsed time display */
 "current movie time in seconds" = "current movie time in seconds";
 
+/* accessibility role description for a date field. */
+"date field" = "date field";
+
 /* role description of ARIA definition role */
 "definition" = "definition";
 
@@ -823,6 +871,9 @@
 /* accessibility label for elapsed time display */
 "elapsed time" = "elapsed time";
 
+/* accessibility role description for an email field. */
+"email field" = "email field";
+
 /* accessibility label for enter fullscreen button */
 "enter fullscreen" = "enter fullscreen";
 
@@ -837,6 +888,9 @@
 
 /* accessibility label for fast reverse button */
 "fast reverse" = "fast reverse";
+
+/* accessibility role description for a figure element. */
+"figure" = "figure";
 
 /* accessibility role description for a file upload button */
 "file upload button" = "file upload button";
@@ -859,6 +913,9 @@
 /* accessibility label for hide closed captions button */
 "hide closed captions" = "hide closed captions";
 
+/* accessibility role description for a mark element */
+"highlighted" = "highlighted";
+
 /* accessibility role description for image map */
 "image map" = "image map";
 
@@ -876,6 +933,9 @@
 
 /* HTTP result code string */
 "length required" = "length required";
+
+/* The less good value description for a meter element */
+"less good" = "critical value";
 
 /* accessibility role description for link */
 "link" = "link";
@@ -961,14 +1021,17 @@
 /* accessibility help text for remaining time display */
 "number of seconds of movie remaining" = "number of seconds of movie remaining";
 
+/* accessibility role description for an output element */
+"output" = "output";
+
+/* The optimum value description for a meter element */
+"optimum" = "optimal value";
+
 /* HTTP result code string */
 "partial content" = "partial content";
 
 /* Label for the auto fill credentials button inside a text field. */
 "password auto fill" = "password auto fill";
-
-/* Validation message for input form controls requiring a constrained value according to pattern */
-"pattern mismatch" = "pattern mismatch";
 
 /* accessibility label for pause button */
 "pause" = "pause";
@@ -1063,11 +1126,11 @@
 /* accessibility label for movie status */
 "status" = "status";
 
-/* Validation message for input form controls with value not respecting the step attribute */
-"step mismatch" = "step mismatch";
-
 /* accessibility help text for hide closed captions button */
 "stop displaying closed captions" = "stop displaying closed captions";
+
+/* The suboptimal value description for a meter element */
+"suboptimal" = "suboptimal value";
 
 /* HTTP result code string */
 "success" = "success";
@@ -1081,11 +1144,17 @@
 /* An ARIA accessibility group that contains the content of a tab. */
 "tab panel" = "tab panel";
 
+/* accessibility role description for a telephone number field. */
+"telephone number field" = "telephone number field";
+
 /* HTTP result code string */
 "temporarily redirected" = "temporarily redirected";
 
 /* term word of a description list */
 "term" = "term";
+
+/* accessibility role description for a time field. */
+"time field" = "time field";
 
 /* accessibility label for timeline thumb */
 "timeline slider thumb" = "timeline slider thumb";
@@ -1093,14 +1162,8 @@
 /* An ARIA accessibility group that acts as an updating timer. */
 "timer" = "timer";
 
-/* Validation message for form control elements with a value longer than maximum allowed length */
-"too long" = "too long";
-
 /* An ARIA accessibility group that acts as a tooltip. */
 "tooltip" = "tooltip";
-
-/* Validation message for input form controls with a value not matching type */
-"type mismatch" = "type mismatch";
 
 /* HTTP result code string */
 "unacceptable" = "unacceptable";
@@ -1128,9 +1191,6 @@
 
 /* HTTP result code string */
 "unsupported version" = "unsupported version";
-
-/* Validation message for required form control elements that have no value */
-"value missing" = "value missing";
 
 /* accessibility help text for video element controller */
 "video element playback controls and status display" = "video element playback controls and status display";

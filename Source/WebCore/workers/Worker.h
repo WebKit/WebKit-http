@@ -21,16 +21,13 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
-#ifndef Worker_h
-#define Worker_h
+#pragma once
 
 #include "AbstractWorker.h"
 #include "ActiveDOMObject.h"
 #include "ContentSecurityPolicyResponseHeaders.h"
-#include "EventListener.h"
 #include "EventTarget.h"
 #include "MessagePort.h"
 #include "WorkerScriptLoaderClient.h"
@@ -54,7 +51,7 @@ namespace WebCore {
 
         EventTargetInterface eventTargetInterface() const override { return WorkerEventTargetInterfaceType; }
 
-        void postMessage(RefPtr<SerializedScriptValue>&& message, const MessagePortArray*, ExceptionCode&);
+        void postMessage(RefPtr<SerializedScriptValue>&& message, Vector<RefPtr<MessagePort>>&&, ExceptionCode&);
 
         void terminate();
 
@@ -87,5 +84,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // Worker_h

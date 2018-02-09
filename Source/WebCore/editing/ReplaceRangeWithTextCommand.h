@@ -41,6 +41,7 @@ private:
     ReplaceRangeWithTextCommand(RefPtr<Range> rangeToBeReplaced, const String& text);
     void doApply() override;
     String inputEventData() const final;
+    Vector<RefPtr<StaticRange>> targetRanges() const final;
 
     RefPtr<Range> m_rangeToBeReplaced;
     String m_text;

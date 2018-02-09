@@ -39,32 +39,44 @@
 
 namespace WebCore {
 
-class ArrayValue;
-class Dictionary;
-
-class MediaConstraintsImpl final : public MediaConstraints {
-public:
-    static Ref<MediaConstraintsImpl> create();
-    static Ref<MediaConstraintsImpl> create(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid);
-
-    virtual ~MediaConstraintsImpl();
-
-    const MediaTrackConstraintSetMap& mandatoryConstraints() const final { return m_mandatoryConstraints; }
-    const Vector<MediaTrackConstraintSetMap>& advancedConstraints() const final { return m_advancedConstraints; }
-    bool isValid() const final { return m_isValid; }
-
-private:
-    MediaConstraintsImpl() { }
-    MediaConstraintsImpl(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid)
-        : m_mandatoryConstraints(WTFMove(mandatoryConstraints))
-        , m_advancedConstraints(WTFMove(advancedConstraints))
-        , m_isValid(isValid)
+struct MediaConstraintsData {
+    MediaConstraintsData() = default;
+    MediaConstraintsData(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid)
+        : mandatoryConstraints(WTFMove(mandatoryConstraints))
+        , advancedConstraints(WTFMove(advancedConstraints))
+        , isValid(isValid)
     {
     }
 
-    MediaTrackConstraintSetMap m_mandatoryConstraints;
-    Vector<MediaTrackConstraintSetMap> m_advancedConstraints;
-    bool m_isValid;
+    MediaTrackConstraintSetMap mandatoryConstraints;
+    Vector<MediaTrackConstraintSetMap> advancedConstraints;
+    bool isValid { false };
+};
+
+class MediaConstraintsImpl final : public MediaConstraints {
+public:
+    static Ref<MediaConstraintsImpl> create(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid);
+    WEBCORE_EXPORT static Ref<MediaConstraintsImpl> create(const MediaConstraintsData&);
+
+    MediaConstraintsImpl() = default;
+    virtual ~MediaConstraintsImpl() = default;
+
+    const MediaTrackConstraintSetMap& mandatoryConstraints() const final { return m_data.mandatoryConstraints; }
+    const Vector<MediaTrackConstraintSetMap>& advancedConstraints() const final { return m_data.advancedConstraints; }
+    bool isValid() const final { return m_data.isValid; }
+    const MediaConstraintsData& data() const { return m_data; }
+
+private:
+    MediaConstraintsImpl(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid)
+        : m_data({ WTFMove(mandatoryConstraints), WTFMove(advancedConstraints), isValid })
+    {
+    }
+    explicit MediaConstraintsImpl(const MediaConstraintsData& data)
+        : m_data(data)
+    {
+    }
+
+    MediaConstraintsData m_data;
 };
 
 } // namespace WebCore

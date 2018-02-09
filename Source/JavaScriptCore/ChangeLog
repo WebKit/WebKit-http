@@ -1,3 +1,1897 @@
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM calls
+        https://bugs.webkit.org/show_bug.cgi?id=161727
+
+        Reviewed by Filip Pizlo and Michael Saboff.
+
+        Add support for WASM calls. Since most of the work for this was already done when we added
+        WASM Memory, this is mostly just cleanup work.  The main interesting part of this patch is
+        how we link calls to other WASM functions in the same module. Since a WASM callee may not
+        have been compiled by the time the current function has started compilation we don't know
+        what address we need to call to.  For each callsite in the compiling function, WASM
+        remembers the CodeLocationCall and the target function index. Once all WASM functions are
+        compiled, each callsite is linked to the appropriate entrypoint.
+
+        * testWASM.cpp:
+        (runWASMTests):
+        * wasm/WASMB3IRGenerator.cpp:
+        (JSC::WASM::createJSWrapper):
+        (JSC::WASM::parseAndCompile):
+        * wasm/WASMB3IRGenerator.h:
+        * wasm/WASMCallingConvention.cpp:
+        (JSC::WASM::jscCallingConvention):
+        (JSC::WASM::wasmCallingConvention):
+        * wasm/WASMCallingConvention.h:
+        (JSC::WASM::CallingConvention::CallingConvention):
+        (JSC::WASM::CallingConvention::marshallArgumentImpl):
+        (JSC::WASM::CallingConvention::marshallArgument):
+        (JSC::WASM::CallingConvention::loadArguments):
+        (JSC::WASM::CallingConvention::setupCall):
+        (JSC::WASM::CallingConvention::iterate): Deleted.
+        * wasm/WASMFormat.h:
+        * wasm/WASMFunctionParser.h:
+        (JSC::WASM::FunctionParser<Context>::FunctionParser):
+        (JSC::WASM::FunctionParser<Context>::parseBlock):
+        (JSC::WASM::FunctionParser<Context>::parseExpression):
+        * wasm/WASMModuleParser.cpp:
+        (JSC::WASM::ModuleParser::parse):
+        * wasm/WASMOps.h:
+        * wasm/WASMParser.h:
+        (JSC::WASM::Parser::parseVarUInt32):
+        (JSC::WASM::Parser::parseVarUInt64):
+        * wasm/WASMPlan.cpp:
+        (JSC::WASM::Plan::Plan):
+
+2016-10-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement InputEvent.getTargetRanges() for the input events spec
+        https://bugs.webkit.org/show_bug.cgi?id=162947
+        <rdar://problem/28853079>
+
+        Reviewed by Darin Adler.
+
+        Boilerplate change to add a runtime guard for InputEvents-related IDL interfaces. See WebCore ChangeLog entry
+        for more details.
+
+        * runtime/CommonIdentifiers.h:
+
+2016-10-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        Fix JSC cast-align compiler warnings on ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=163744
+
+        Reviewed by Mark Lam.
+
+        Use the reinterpret_cast_ptr workaround in a few places where
+        the cast alignment warning is being thrown by the GCC compiler
+        when compiling for the ARMv7 architecture.
+
+        * heap/Heap.cpp:
+        (JSC::Zombify::visit):
+        * heap/HeapCell.h:
+        (JSC::HeapCell::zap):
+        (JSC::HeapCell::isZapped):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::specializedSweep):
+
+2016-10-20  Filip Pizlo  <fpizlo@apple.com>
+
+        The tracking of the coarse-grain Heap state (allocating or not, collector or not, eden vs full) should respect the orthogonality between allocating and collecting
+        https://bugs.webkit.org/show_bug.cgi?id=163738
+
+        Reviewed by Geoffrey Garen.
+        
+        We need to know if we're currently in an allocation slow path, so that code can assert that
+        it's not being used from inside a destructor that runs during a sweep. We need to know if
+        we're currently collecting, because some code behaves differently during collection, and
+        other code wants to assert that it's not being used from inside a visitChildren method that
+        runs during marking. If we are collecting, we need to know if it's an eden collection or a
+        full collection. If we are requesting a collection, we need to know if we're requesting an
+        eden collection, a full collection, or any kind of collection.
+        
+        Prior to this change, you would reason about all of these things using the HeapOperation. It
+        had the following states: NoOperation, Allocation, FullCollection, EdenCollection, and
+        AnyCollection. NoOperation versus Allocation was primarily for asserting that sweep didn't
+        call arbitrary JS. FullCollection versus EdenCollection was about describing generations. We
+        would even use HeapOperation in places where we knew that it could only be either Full or
+        Eden, because we just needed a variable to tell us which generation we were talking about.
+        It was all very confusing.
+        
+        Where it completely breaks down is the fact that a concurrent GC has two logical threads, the
+        mutator and the collector, which can change state independently. The mutator can be
+        allocating. It can also be doing some work to help the GC. That's three states: running,
+        allocating, or helping GC. At the same time, the GC thread could either be running or not,
+        and if it's running, it could be a full collection or an eden collection. Because the mutator
+        and collector can run at the same time, it means that if we used one enum, we would need nine
+        states: every combination of mutator running, allocating, or helping GC, crossed with
+        collector not running, running eden, or running full. So, this change decouples mutator state
+        from collector state and uses two separate fields with two different types.
+        
+        Mutator state is described using MutatorState, which can be either MutatorState::Running,
+        MutatorState::Allocating, or MutatorState::HelpingGC.
+        
+        Collector state is described using Optional<CollectionScope>. CollectionScope describes how
+        big the scope of the collection is, and it can be either CollectionScope::Eden or
+        CollectionScope::Full. If the Optional is Nullopt, it means that we are not collecting. This
+        way, you can treat collectionScope as a boolean (an Optional is true iff it's engaged). You
+        can pass around just a CollectionScope if you know that you must be collecting and you just
+        want to know about the generation. Also, we can use Nullopt in methods that request
+        collection, which those methods take to mean that they can run any kind of collection (the
+        old AnyCollection).
+        
+        Another use of HeapOperation was to answer questions about whether the caller is running as
+        part of the GC or as part of the mutator. Optional<CollectionScope> does not answer this,
+        since code that runs in the mutator while the mutator is not HelpingGC at the same time as
+        the collector is running should run as if it was part of the mutator not as if it was part of
+        the GC. MutatorState is needed to answer this question, but it doesn't tell the whole story
+        since code that runs in the collector thread at the same time as the mutator is running
+        should run as if it was part of the GC not as if it was part of the mutator. So, we need to
+        know if we're on the collector thread or the mutator thread. We already have a WTF facility
+        for this, which answers if a thread is a GC thread. But we already use this to answer a
+        stronger question: are we part of the parallel GC helpers? Some functions in the GC, like
+        mark bit queries, will work fine in a concurrent collector thread so long as there is no
+        parallel marking. So, this change also changes WTF's mayBeGCThread to tell what kind of GC
+        thread we may be: either GCThreadType::Main or GCThreadType::Helper. The parallel GC safety
+        checks look for GCThreadType::Helper. The "should I run as mutator" query can now be answered
+        by checking with mayBeGCThread, which returns Optional<GCThreadType>; if engaged, then run as
+        GC, else run as GC if MutatorState is HelpingGC, else run as mutator.
+        
+        This doesn't change the way that the GC behaves, but it does change how the GC represents a
+        fundamental piece of state. So, it's a big change. It should be perf-neutral (still testing).
+
+        * API/JSBase.cpp:
+        (JSSynchronousEdenCollectForDebugging):
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::jettison):
+        * dfg/DFGWorklist.cpp:
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * heap/AllocatingScope.h: Added.
+        (JSC::AllocatingScope::AllocatingScope):
+        (JSC::AllocatingScope::~AllocatingScope):
+        * heap/AllocationScope.h: Removed.
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::deleteUnmarkedAndUnreferenced):
+        * heap/CodeBlockSet.h:
+        * heap/CollectionScope.cpp: Added.
+        (JSC::collectionScopeName):
+        (WTF::printInternal):
+        * heap/CollectionScope.h: Added.
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::doCollection):
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        * heap/GCTypeMap.h:
+        (JSC::GCTypeMap::operator[]):
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::markRoots):
+        (JSC::Heap::beginMarking):
+        (JSC::Heap::visitSmallStrings):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::deleteAllCodeBlocks):
+        (JSC::Heap::deleteUnmarkedCompiledCode):
+        (JSC::Heap::collectAllGarbage):
+        (JSC::Heap::collect):
+        (JSC::Heap::collectWithoutAnySweep):
+        (JSC::Heap::collectImpl):
+        (JSC::Heap::willStartCollection):
+        (JSC::Heap::flushWriteBarrierBuffer):
+        (JSC::Heap::pruneStaleEntriesFromWeakGCMaps):
+        (JSC::Heap::notifyIncrementalSweeper):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didFinishCollection):
+        (JSC::Heap::isValidAllocation):
+        (JSC::Heap::shouldDoFullCollection):
+        * heap/Heap.h:
+        (JSC::Heap::mutatorState):
+        (JSC::Heap::collectionScope):
+        (JSC::Heap::operationInProgress): Deleted.
+        * heap/HeapInlines.h:
+        (JSC::Heap::shouldCollect):
+        (JSC::Heap::isCurrentThreadBusy):
+        (JSC::Heap::isMarked):
+        (JSC::Heap::reportExtraMemoryVisited):
+        (JSC::Heap::reportExternalMemoryVisited):
+        (JSC::Heap::collectAccordingToDeferGCProbability):
+        (JSC::Heap::isBusy): Deleted.
+        (JSC::Heap::isCollecting): Deleted.
+        * heap/HeapObserver.h:
+        * heap/HeapOperation.cpp: Removed.
+        * heap/HeapOperation.h: Removed.
+        * heap/HeapVerifier.cpp:
+        (JSC::HeapVerifier::initializeGCCycle):
+        (JSC::HeapVerifier::reportObject):
+        (JSC::HeapVerifier::collectionTypeName): Deleted.
+        * heap/HeapVerifier.h:
+        (JSC::HeapVerifier::GCCycle::collectionTypeName): Deleted.
+        * heap/HelpingGCScope.h: Added.
+        (JSC::HelpingGCScope::HelpingGCScope):
+        (JSC::HelpingGCScope::~HelpingGCScope):
+        * heap/LargeAllocation.cpp:
+        (JSC::LargeAllocation::flip):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::doTestCollectionsIfNeeded):
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        * heap/MarkedBlock.h:
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::prepareForAllocation):
+        (JSC::MarkedSpace::visitWeakSets):
+        (JSC::MarkedSpace::reapWeakSets):
+        (JSC::MarkedSpace::prepareForMarking):
+        (JSC::MarkedSpace::beginMarking):
+        (JSC::MarkedSpace::snapshotUnswept):
+        * heap/MutatorState.cpp: Added.
+        (WTF::printInternal):
+        * heap/MutatorState.h: Added.
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::didStartMarking):
+        * inspector/agents/InspectorHeapAgent.cpp:
+        (Inspector::protocolTypeForHeapOperation):
+        (Inspector::InspectorHeapAgent::didGarbageCollect):
+        * inspector/agents/InspectorHeapAgent.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall):
+        * jsc.cpp:
+        (functionFullGC):
+        (functionEdenGC):
+        * runtime/Completion.cpp:
+        (JSC::evaluate):
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::linkAndEvaluateModule):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::DropAllLocks::DropAllLocks):
+        * runtime/SmallStrings.h:
+        (JSC::SmallStrings::needsToBeVisited):
+        * runtime/VM.h:
+        (JSC::VM::isCollectorBusyOnCurrentThread):
+        (JSC::VM::isCollectorBusy): Deleted.
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::edenGC):
+
+2016-10-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop isEnvironmentRecord type info flag and use JSType information instead
+        https://bugs.webkit.org/show_bug.cgi?id=163761
+
+        Reviewed by Keith Miller.
+
+        When we call a function in the following form,
+
+            var charAt = String.prototype.charAt;
+            charAt();  // |this| becomes the global object.
+
+        we should see |this| as undefined/null. In StringPrototype.cpp,
+        we use IsEnvironmentRecord type info flag to check whther the
+        given |this| is an environment record.
+        However, type info flag is precious thing and only StringPrototype.cpp
+        uses IsEnvironmentRecord. In addition to that, JSType should
+        already knows whether the given object is an environment record.
+        So IsEnvironmentRecord type info flag should be dropped.
+
+        This patch adds a new JSType, StrictEvalActivation. And we add a new
+        method JSObject::isEnvironmentRecord(). This method uses JSType to
+        return the result. And we drop IsEnvironmentRecord type info flag.
+        This patch makes a room for putting one bit flag to the out of line
+        type info flag. Previously, it is already exhausted.
+
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/JSObject.h:
+        (JSC::JSObject::isStrictEvalActivation):
+        (JSC::JSObject::isEnvironmentRecord):
+        * runtime/JSSymbolTableObject.h:
+        * runtime/JSType.h:
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::newImpurePropertyFiresWatchpoints):
+        (JSC::TypeInfo::isEnvironmentRecord): Deleted.
+        * runtime/StrictEvalActivation.h:
+        (JSC::StrictEvalActivation::createStructure):
+        * runtime/StringPrototype.cpp:
+        (JSC::checkObjectCoercible):
+
+2016-10-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: implement exception constructors properly
+
+         - Rename WebAssemblyObject to JSWebAssembly for consistency.
+         - WebAssembly object now has its own prototype: add WebAssemblyPrototype, and
+           use it to register JSWebAssembly's function properties through auto-generated
+           .lut.h, instead of manually.
+         - The error constructors used to throw (e.g. `new WebAssembly.CompileError()`).
+         - Register WebAssembly's constructors from the global object, and hold a
+           reference to their structure and prototype so that invoking the constructor
+           can use the structure directly from the global object.
+         - Add a prototype base field to global object creation. Previous ones all had
+           Object's prototype as their base, but WebAssembly's error constructors have
+           Error as their base.
+         - Test for the error object's correctness.
+         - Add missing #if ENABLE(WEBASSEMBLY)
+
+        WebAssembly API: implement exception constructors properly
+        https://bugs.webkit.org/show_bug.cgi?id=163699
+
+        Reviewed by Keith Miller.
+
+        * CMakeLists.txt: rename WebAssemblyObject -> JSWebAssembly; add a .lut.h file
+        * DerivedSources.make: new .lut.h file
+        * JavaScriptCore.xcodeproj/project.pbxproj: ditto
+        * runtime/JSGlobalObject.cpp: new prototypeBase macro
+        (JSC::JSGlobalObject::init): register WebAssembly constructors here
+        (JSC::JSGlobalObject::visitChildren): use the macro to visit
+        * runtime/JSGlobalObject.h: declare the WebAssembly constructor macro
+        * wasm/JSWebAssembly.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::JSWebAssembly::create):
+        (JSC::JSWebAssembly::createStructure):
+        (JSC::JSWebAssembly::finishCreation):
+        (JSC::JSWebAssembly::JSWebAssembly):
+        * wasm/JSWebAssembly.h: Renamed from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/WebAssemblyObject.cpp: Removed.
+        * wasm/js/JSWebAssemblyCompileError.cpp:
+        * wasm/js/JSWebAssemblyCompileError.h:
+        (JSC::JSWebAssemblyCompileError::create): string convenience
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        * wasm/js/JSWebAssemblyInstance.h:
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        * wasm/js/JSWebAssemblyMemory.h:
+        * wasm/js/JSWebAssemblyModule.cpp:
+        * wasm/js/JSWebAssemblyModule.h:
+        * wasm/js/JSWebAssemblyRuntimeError.cpp:
+        * wasm/js/JSWebAssemblyRuntimeError.h:
+        (JSC::JSWebAssemblyRuntimeError::create): string convenience
+        * wasm/js/JSWebAssemblyTable.cpp:
+        * wasm/js/JSWebAssemblyTable.h:
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyCompileError):don't throw, create the object
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):no need for the structure, it's on the global object
+        * wasm/js/WebAssemblyCompileErrorConstructor.h:
+        * wasm/js/WebAssemblyCompileErrorPrototype.cpp:
+        * wasm/js/WebAssemblyCompileErrorPrototype.h:
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        * wasm/js/WebAssemblyInstanceConstructor.h:
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        * wasm/js/WebAssemblyInstancePrototype.h:
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        * wasm/js/WebAssemblyMemoryConstructor.h:
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyMemoryPrototype.h:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        * wasm/js/WebAssemblyModuleConstructor.h:
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+        * wasm/js/WebAssemblyModulePrototype.h:
+        * wasm/js/WebAssemblyPrototype.cpp: Copied from Source/JavaScriptCore/wasm/js/WebAssemblyCompileErrorPrototype.cpp.
+        (JSC::webAssemblyFunctionValidate):
+        (JSC::webAssemblyFunctionCompile):
+        (JSC::WebAssemblyPrototype::create):
+        (JSC::WebAssemblyPrototype::createStructure):
+        (JSC::WebAssemblyPrototype::finishCreation):
+        (JSC::WebAssemblyPrototype::WebAssemblyPrototype):
+        * wasm/js/WebAssemblyPrototype.h: Copied from Source/JavaScriptCore/wasm/js/WebAssemblyMemoryPrototype.h.
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyRuntimeError):don't throw, create the object
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):no need for the structure, it's on the global object
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.h:
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.cpp:
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.h:
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        * wasm/js/WebAssemblyTableConstructor.h:
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        * wasm/js/WebAssemblyTablePrototype.h:
+
+2016-10-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] [iOS] Disable variation fonts on macOS El Capitan and iOS 9
+        https://bugs.webkit.org/show_bug.cgi?id=163374
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] disallow references to `await` in AsyncFunction formal parameters
+        https://bugs.webkit.org/show_bug.cgi?id=163694
+
+        Reviewed by Saam Barati.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+
+2016-10-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Move InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero to out of line type info flags
+        https://bugs.webkit.org/show_bug.cgi?id=163716
+
+        Reviewed by Saam Barati.
+
+        We found that all the accesses to the InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero flag is
+        done through the Structure. There is no user that accesses this flag in the cell inlined member. And JIT
+        code does not access it directly. That means that we can move this flag from inlined flags to out of line
+        flags. This patch moves it to the out of line flags. And make one bit empty in inlined flags. Later this
+        new empty flag will be used by megamorphic DOMJIT implementation.
+
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::hasStaticPropertyTable):
+        (JSC::TypeInfo::interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero):
+
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Invalid assertion in arguments elimination
+        https://bugs.webkit.org/show_bug.cgi?id=163740
+        <rdar://problem/27911462>
+
+        Reviewed by Michael Saboff.
+
+        The DFGFTL's arguments elimination phase incorrectly asserted that a GetFromArguments' first
+        child would always be a CreateDirectArguments.  While we only create the
+        op_get_from_arguments bytecode pointing to a create_direct_arguments, its possible for a
+        number of reasons that a DFG GetFromArguments may not point to a CreateDirectArguments. For
+        example, if we are OSR entering in some function with direct arguments the
+        CreateDirectArguments node might become ExtractOSREntryLocals.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+
+2016-10-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] throw TypeError when constructing dynamically created JSGeneratorFunction
+        https://bugs.webkit.org/show_bug.cgi?id=163714
+
+        Reviewed by Mark Lam.
+
+        According to CreateDynamicFunction() (https://tc39.github.io/ecma262/#sec-createdynamicfunction),
+        non-normal functions are not constructors. Previously, dynamically created functions would always
+        be constructible, and so it was possible to evaluate `new  (function*() {}.constructor())`,
+        and have it return an Iterator object.
+
+        This change selects a dynamically created function's ConstructAbility based on its parse mode instead.
+
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getFunctionExecutableFromGlobalCode):
+
+2016-10-19  JF Bastien  <jfbastien@apple.com>
+
+        create_hash_table: allow empty tables
+
+        The Windows build was broken by because I added empty tables and Windows insists that empty tables are horrible. Put in dummy entries in that case.
+
+        create_hash_table: allow empty tables
+        https://bugs.webkit.org/show_bug.cgi?id=163701
+
+        Reviewed by Keith Miller.
+
+        * create_hash_table:
+
+2016-10-19  JF Bastien  <jfbastien@apple.com>
+
+        JavaScript WebAssembly API: baby steps
+
+         - Expand WebAssembly constructors into their own files. This requires a lot of
+           boilerplate, as well as adding the .lut.h files. All of the
+           JSWebAssembly*.{h,cpp}, as well as Constructor and Prototype files, are
+           currently the same between the 4 specified WebAssembly constructors. It'll be
+           easy to implement individual functions on constructed objects as per the
+           spec, and have each of these files diverge. The error constructors are also
+           similar, except that their instance derives from ErrorInstance.
+         - Use constructor macro when initializing the global object.
+         - Dramatically improve testing of the WebAssembly API by checking for
+           properties specified in the spec [*].
+         - Clean up assert.js' exception testing.
+         - Fix a copy-paste bug in wasm.json: floating-point const return values were
+           swapped.
+
+        [*] https://github.com/WebAssembly/design/blob/master/JS.md
+
+        Implement more of the JavaScript WebAssembly API
+        https://bugs.webkit.org/show_bug.cgi?id=163571
+
+        Reviewed by Keith Miller.
+
+        * CMakeLists.txt: add .lut.h generation
+        * DerivedSources.make: ditto
+        * JavaScriptCore.xcodeproj/project.pbxproj: add .lut.h generation and all the new files
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): use macro to list all constructors
+        * wasm/WebAssemblyObject.cpp: unboilerplate, all constructors into their own files
+        * wasm/WebAssemblyObject.h: ditto
+        * wasm/js/JSWebAssemblyCompileError.cpp: Added.
+        (JSC::JSWebAssemblyCompileError::create):
+        (JSC::JSWebAssemblyCompileError::createStructure):
+        (JSC::JSWebAssemblyCompileError::JSWebAssemblyCompileError):
+        (JSC::JSWebAssemblyCompileError::finishCreation):
+        (JSC::JSWebAssemblyCompileError::destroy):
+        (JSC::JSWebAssemblyCompileError::visitChildren):
+        * wasm/js/JSWebAssemblyCompileError.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/JSWebAssemblyInstance.cpp: Added.
+        (JSC::JSWebAssemblyInstance::create):
+        (JSC::JSWebAssemblyInstance::createStructure):
+        (JSC::JSWebAssemblyInstance::JSWebAssemblyInstance):
+        (JSC::JSWebAssemblyInstance::finishCreation):
+        (JSC::JSWebAssemblyInstance::destroy):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/JSWebAssemblyMemory.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::JSWebAssemblyMemory::create):
+        (JSC::JSWebAssemblyMemory::createStructure):
+        (JSC::JSWebAssemblyMemory::JSWebAssemblyMemory):
+        (JSC::JSWebAssemblyMemory::finishCreation):
+        (JSC::JSWebAssemblyMemory::destroy):
+        (JSC::JSWebAssemblyMemory::visitChildren):
+        * wasm/js/JSWebAssemblyMemory.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/JSWebAssemblyModule.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::JSWebAssemblyModule::create):
+        (JSC::JSWebAssemblyModule::createStructure):
+        (JSC::JSWebAssemblyModule::JSWebAssemblyModule):
+        (JSC::JSWebAssemblyModule::finishCreation):
+        (JSC::JSWebAssemblyModule::destroy):
+        (JSC::JSWebAssemblyModule::visitChildren):
+        * wasm/js/JSWebAssemblyModule.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/JSWebAssemblyRuntimeError.cpp: Added.
+        (JSC::JSWebAssemblyRuntimeError::create):
+        (JSC::JSWebAssemblyRuntimeError::createStructure):
+        (JSC::JSWebAssemblyRuntimeError::JSWebAssemblyRuntimeError):
+        (JSC::JSWebAssemblyRuntimeError::finishCreation):
+        (JSC::JSWebAssemblyRuntimeError::destroy):
+        (JSC::JSWebAssemblyRuntimeError::visitChildren):
+        * wasm/js/JSWebAssemblyRuntimeError.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/JSWebAssemblyTable.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::JSWebAssemblyTable::create):
+        (JSC::JSWebAssemblyTable::createStructure):
+        (JSC::JSWebAssemblyTable::JSWebAssemblyTable):
+        (JSC::JSWebAssemblyTable::finishCreation):
+        (JSC::JSWebAssemblyTable::destroy):
+        (JSC::JSWebAssemblyTable::visitChildren):
+        * wasm/js/JSWebAssemblyTable.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp: Added.
+        (JSC::constructJSWebAssemblyCompileError):
+        (JSC::callJSWebAssemblyCompileError):
+        (JSC::WebAssemblyCompileErrorConstructor::create):
+        (JSC::WebAssemblyCompileErrorConstructor::createStructure):
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):
+        (JSC::WebAssemblyCompileErrorConstructor::WebAssemblyCompileErrorConstructor):
+        (JSC::WebAssemblyCompileErrorConstructor::getConstructData):
+        (JSC::WebAssemblyCompileErrorConstructor::getCallData):
+        (JSC::WebAssemblyCompileErrorConstructor::visitChildren):
+        * wasm/js/WebAssemblyCompileErrorConstructor.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyCompileErrorConstructor::CompileErrorStructure):
+        * wasm/js/WebAssemblyCompileErrorPrototype.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyCompileErrorPrototype::create):
+        (JSC::WebAssemblyCompileErrorPrototype::createStructure):
+        (JSC::WebAssemblyCompileErrorPrototype::finishCreation):
+        (JSC::WebAssemblyCompileErrorPrototype::WebAssemblyCompileErrorPrototype):
+        * wasm/js/WebAssemblyCompileErrorPrototype.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/WebAssemblyInstanceConstructor.cpp: Added.
+        (JSC::constructJSWebAssemblyInstance):
+        (JSC::callJSWebAssemblyInstance):
+        (JSC::WebAssemblyInstanceConstructor::create):
+        (JSC::WebAssemblyInstanceConstructor::createStructure):
+        (JSC::WebAssemblyInstanceConstructor::finishCreation):
+        (JSC::WebAssemblyInstanceConstructor::WebAssemblyInstanceConstructor):
+        (JSC::WebAssemblyInstanceConstructor::getConstructData):
+        (JSC::WebAssemblyInstanceConstructor::getCallData):
+        (JSC::WebAssemblyInstanceConstructor::visitChildren):
+        * wasm/js/WebAssemblyInstanceConstructor.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyInstanceConstructor::InstanceStructure):
+        * wasm/js/WebAssemblyInstancePrototype.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyInstancePrototype::create):
+        (JSC::WebAssemblyInstancePrototype::createStructure):
+        (JSC::WebAssemblyInstancePrototype::finishCreation):
+        (JSC::WebAssemblyInstancePrototype::WebAssemblyInstancePrototype):
+        * wasm/js/WebAssemblyInstancePrototype.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/WebAssemblyMemoryConstructor.cpp: Added.
+        (JSC::constructJSWebAssemblyMemory):
+        (JSC::callJSWebAssemblyMemory):
+        (JSC::WebAssemblyMemoryConstructor::create):
+        (JSC::WebAssemblyMemoryConstructor::createStructure):
+        (JSC::WebAssemblyMemoryConstructor::finishCreation):
+        (JSC::WebAssemblyMemoryConstructor::WebAssemblyMemoryConstructor):
+        (JSC::WebAssemblyMemoryConstructor::getConstructData):
+        (JSC::WebAssemblyMemoryConstructor::getCallData):
+        (JSC::WebAssemblyMemoryConstructor::visitChildren):
+        * wasm/js/WebAssemblyMemoryConstructor.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyMemoryConstructor::MemoryStructure):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyMemoryPrototype::create):
+        (JSC::WebAssemblyMemoryPrototype::createStructure):
+        (JSC::WebAssemblyMemoryPrototype::finishCreation):
+        (JSC::WebAssemblyMemoryPrototype::WebAssemblyMemoryPrototype):
+        * wasm/js/WebAssemblyMemoryPrototype.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/WebAssemblyModuleConstructor.cpp: Added.
+        (JSC::constructJSWebAssemblyModule):
+        (JSC::callJSWebAssemblyModule):
+        (JSC::WebAssemblyModuleConstructor::create):
+        (JSC::WebAssemblyModuleConstructor::createStructure):
+        (JSC::WebAssemblyModuleConstructor::finishCreation):
+        (JSC::WebAssemblyModuleConstructor::WebAssemblyModuleConstructor):
+        (JSC::WebAssemblyModuleConstructor::getConstructData):
+        (JSC::WebAssemblyModuleConstructor::getCallData):
+        (JSC::WebAssemblyModuleConstructor::visitChildren):
+        * wasm/js/WebAssemblyModuleConstructor.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyModuleConstructor::ModuleStructure):
+        * wasm/js/WebAssemblyModulePrototype.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyModulePrototype::create):
+        (JSC::WebAssemblyModulePrototype::createStructure):
+        (JSC::WebAssemblyModulePrototype::finishCreation):
+        (JSC::WebAssemblyModulePrototype::WebAssemblyModulePrototype):
+        * wasm/js/WebAssemblyModulePrototype.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp: Added.
+        (JSC::constructJSWebAssemblyRuntimeError):
+        (JSC::callJSWebAssemblyRuntimeError):
+        (JSC::WebAssemblyRuntimeErrorConstructor::create):
+        (JSC::WebAssemblyRuntimeErrorConstructor::createStructure):
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):
+        (JSC::WebAssemblyRuntimeErrorConstructor::WebAssemblyRuntimeErrorConstructor):
+        (JSC::WebAssemblyRuntimeErrorConstructor::getConstructData):
+        (JSC::WebAssemblyRuntimeErrorConstructor::getCallData):
+        (JSC::WebAssemblyRuntimeErrorConstructor::visitChildren):
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyRuntimeErrorConstructor::RuntimeErrorStructure):
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyRuntimeErrorPrototype::create):
+        (JSC::WebAssemblyRuntimeErrorPrototype::createStructure):
+        (JSC::WebAssemblyRuntimeErrorPrototype::finishCreation):
+        (JSC::WebAssemblyRuntimeErrorPrototype::WebAssemblyRuntimeErrorPrototype):
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        * wasm/js/WebAssemblyTableConstructor.cpp: Added.
+        (JSC::constructJSWebAssemblyTable):
+        (JSC::callJSWebAssemblyTable):
+        (JSC::WebAssemblyTableConstructor::create):
+        (JSC::WebAssemblyTableConstructor::createStructure):
+        (JSC::WebAssemblyTableConstructor::finishCreation):
+        (JSC::WebAssemblyTableConstructor::WebAssemblyTableConstructor):
+        (JSC::WebAssemblyTableConstructor::getConstructData):
+        (JSC::WebAssemblyTableConstructor::getCallData):
+        (JSC::WebAssemblyTableConstructor::visitChildren):
+        * wasm/js/WebAssemblyTableConstructor.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyTableConstructor::TableStructure):
+        * wasm/js/WebAssemblyTablePrototype.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+        (JSC::WebAssemblyTablePrototype::create):
+        (JSC::WebAssemblyTablePrototype::createStructure):
+        (JSC::WebAssemblyTablePrototype::finishCreation):
+        (JSC::WebAssemblyTablePrototype::WebAssemblyTablePrototype):
+        * wasm/js/WebAssemblyTablePrototype.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyObject.h.
+
+2016-10-19  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] forbid "use strict" directive in generator functions with non-simple parameters
+        https://bugs.webkit.org/show_bug.cgi?id=163683
+
+        Reviewed by Geoffrey Garen.
+
+        Because generator functions and async functions both have an implicit
+        inner function whose arguments are inherited from its parent, "use strict"
+        directives within these functions did not yield a SyntaxError.
+
+        Now, the correct syntax error is reported, fixing several test262 failures
+        for generators and async functions.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+
+2016-10-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r207557.
+
+        This change caused animations/font-variations tests to time
+        out on pre-Sierra Macs.
+
+        Reverted changeset:
+
+        "[macOS] [iOS] Disable variation fonts on macOS El Capitan and
+        iOS 9"
+        https://bugs.webkit.org/show_bug.cgi?id=163374
+        http://trac.webkit.org/changeset/207557
+
+2016-10-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should use AutomaticThread
+        https://bugs.webkit.org/show_bug.cgi?id=163686
+
+        Reviewed by Geoffrey Garen.
+        
+        Change the JITWorklist to use AutomaticThread, so that the Baseline JIT's concurrent
+        compiler thread shuts down automatically after inactivity.
+        
+        With this change, all of JSC's threads shut down automatically. If you run splay for a few
+        seconds (which fires up all threads - compiler and GC) and then go to sleep for a second,
+        you'll see that the only threads left are the main thread and the bmalloc thread.
+
+        * jit/JITWorklist.cpp:
+        (JSC::JITWorklist::Thread::Thread):
+        (JSC::JITWorklist::JITWorklist):
+        (JSC::JITWorklist::completeAllForVM):
+        (JSC::JITWorklist::poll):
+        (JSC::JITWorklist::compileLater):
+        (JSC::JITWorklist::compileNow):
+        (JSC::JITWorklist::finalizePlans):
+        (JSC::JITWorklist::runThread): Deleted.
+        * jit/JITWorklist.h:
+
+2016-10-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] [iOS] Disable variation fonts on macOS El Capitan and iOS 9
+        https://bugs.webkit.org/show_bug.cgi?id=163374
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-19  Aaron Chu  <aaron_chu@apple.com>
+
+        Web Inspector: AXI: expose computed tree node and heading level
+        https://bugs.webkit.org/show_bug.cgi?id=130825
+        <rdar://problem/16442349>
+
+        Reviewed by Joseph Pecoraro.
+
+        Exposing two new accessibility properties: Heading Level and Hierarchical Level.
+
+        * inspector/protocol/DOM.json:
+
+2016-10-18  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG worklist should use AutomaticThread
+        https://bugs.webkit.org/show_bug.cgi?id=163615
+
+        Reviewed by Mark Lam.
+        
+        AutomaticThread is a new feature in WTF that allows you to easily create worker threads that
+        shut down automatically. This changes DFG::Worklist to use AutomaticThread, so that its
+        threads shut down automatically, too. This has the potential to save a lot of memory.
+        
+        This required some improvements to AutomaticThread: Worklist likes to be able to keep state
+        around for the whole lifetime of a thread, and so it likes knowing when threads are born and
+        when they die. I added virtual methods for that. Also, Worklist uses notifyOne() so I added
+        that, too.
+        
+        This looks to be perf-neutral.
+
+        * dfg/DFGThreadData.cpp:
+        (JSC::DFG::ThreadData::ThreadData):
+        * dfg/DFGThreadData.h:
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::ThreadBody::ThreadBody):
+        (JSC::DFG::Worklist::Worklist):
+        (JSC::DFG::Worklist::~Worklist):
+        (JSC::DFG::Worklist::finishCreation):
+        (JSC::DFG::Worklist::isActiveForVM):
+        (JSC::DFG::Worklist::enqueue):
+        (JSC::DFG::Worklist::compilationState):
+        (JSC::DFG::Worklist::waitUntilAllPlansForVMAreReady):
+        (JSC::DFG::Worklist::removeAllReadyPlansForVM):
+        (JSC::DFG::Worklist::completeAllReadyPlansForVM):
+        (JSC::DFG::Worklist::rememberCodeBlocks):
+        (JSC::DFG::Worklist::visitWeakReferences):
+        (JSC::DFG::Worklist::removeDeadPlans):
+        (JSC::DFG::Worklist::removeNonCompilingPlansForVM):
+        (JSC::DFG::Worklist::queueLength):
+        (JSC::DFG::Worklist::dump):
+        (JSC::DFG::Worklist::runThread): Deleted.
+        (JSC::DFG::Worklist::threadFunction): Deleted.
+        * dfg/DFGWorklist.h:
+
+2016-10-19  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] JavaScriptCore fails to build when CLANG_WARN_DOCUMENTATION_COMMENTS is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=163642
+
+        Reviewed by Darin Adler.
+
+        * API/JSClassRef.cpp: Removed a bad headerdoc comment inside an implementation file.
+        * API/JSContext.h: Changed @methodgroup to @functiongroup, because the compiler requires the
+          former to be followed by a method (and we have a property), but not the latter. Changed
+          a couple of instances of “method” to “@method”. Removed empty @param entries.
+        * API/JSContextRefInternal.h: Named a parameter referenced in a @param entry.
+        * API/JSContextRefPrivate.h: Ditto.
+        * API/JSManagedValue.h: Removed empty @param entries.
+        * API/JSObjectRef.h: Corrected parameter name in @param entry.
+        * API/JSTypedArray.h: Ditto.
+        * API/JSValue.h: Removed empty @param entries, changed @methodgroup to @functiongroup, and
+          changed @method to @property where appropriate. Removed empty @param entries.
+        * API/JSValueRef.h: Named a parameter referenced in a @param entry.
+        * API/JSWeakObjectMapRefPrivate.h: Ditto.
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_DOCUMENTATION_COMMENTS. Made the compiler
+          treat the icu headers as system headers, to stop it from emitting warnings about headers
+          we don’t want to change.
+        * Configurations/ToolExecutable.xcconfig: Made the compiler treat the icu headers as system
+          headers.
+
+2016-10-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed ARM buildfix after r207475.
+
+        * assembler/ARMAssembler.h:
+        (JSC::ARMAssembler::relinkJumpToNop):
+
+2016-10-18  Mark Lam  <mark.lam@apple.com>
+
+        Invoking Object.prototype.__proto__ accessors directly should throw a TypeError.
+        https://bugs.webkit.org/show_bug.cgi?id=154377
+        <rdar://problem/27330808>
+
+        Reviewed by Filip Pizlo and Saam Barati.
+
+        In a scenario where we cache the __proto__ accessors in global variables, and
+        later explicitly invoke those accessors as functions, the spec for Function Calls
+        (see https://tc39.github.io/ecma262/#sec-function-calls) states that the function
+        ref value is of type Reference, and base of ref is an Environment Record.  Then,
+        it follows that the thisValue should be set to refEnv.WithBaseObject()
+        (see section 4.b.ii of 12.3.4.1 at
+        https://tc39.github.io/ecma262/#sec-function-calls-runtime-semantics-evaluation).
+
+        refEnv in this case is the environment record that the cached accessors were
+        found in i.e. the global object.  The WithBaseObject() of the global object is
+        undefined (see details about WithBaseObject at
+        https://tc39.github.io/ecma262/#sec-environment-records).
+
+        Hence, the __proto__ accessors should see a thisValue of undefined, and throw
+        TypeErrors.  See https://tc39.github.io/ecma262/#sec-get-object.prototype.__proto__,
+        https://tc39.github.io/ecma262/#sec-set-object.prototype.__proto__,
+        https://tc39.github.io/ecma262/#sec-toobject, and
+        https://tc39.github.io/ecma262/#sec-requireobjectcoercible.
+
+        In JSC's implementation, the callee needs to do a ToThis operation on the
+        incoming "this" argument in order to get the specified thisValue.  The
+        implementations of the __proto__ accessors were not doing this correctly.  This
+        has now been fixed.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncProtoGetter):
+        (JSC::globalFuncProtoSetter):
+
+2016-10-18  Sam Weinig  <sam@webkit.org>
+
+        Replace std::experimental::variant with WTF::Variant (or similar)
+        https://bugs.webkit.org/show_bug.cgi?id=163626
+
+        Reviewed by Chris Dumez.
+
+        Rename std::experimental::variant, Variant. Move helpers get/holds_alternative/etc.
+        into the WTF namespace.
+
+        * domjit/DOMJITReg.h:
+        (JSC::DOMJIT::Reg::gpr):
+        (JSC::DOMJIT::Reg::fpr):
+        (JSC::DOMJIT::Reg::jsValueRegs):
+
+2016-10-18  Keith Miller  <keith_miller@apple.com>
+
+        GetByVal to GetById conversion in the DFG is incorrect for getters with control flow
+        https://bugs.webkit.org/show_bug.cgi?id=163629
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch fixes a bug in the DFG when attempt to convert a
+        GetByVal into a GetById. While converting the GetByVal, during
+        handleGetById in the Bytecode parser, we would mistakenly use the
+        opcode length of op_get_by_id rather than op_get_by_val. This causes
+        the new basic block we create to point to the wrong offset. In the
+        added test this will cause us to infinite loop.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+
+2016-10-18  Dean Jackson  <dino@apple.com>
+
+        Remove CSS_SHAPES feature definition. This should always be on.
+        https://bugs.webkit.org/show_bug.cgi?id=163628
+        <rdar://problem/28834613>
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-18  Michael Saboff  <msaboff@apple.com>
+
+        Add JSC option to show time spent in each optimization phase
+        https://bugs.webkit.org/show_bug.cgi?id=163617
+
+        Reviewed by Saam Barati.
+
+        Added reportDFGPhaseTimes option.  This outputs one line per phase similar to
+            Phase CPS rethreading took 0.2661 ms
+
+        One line is output for each phase run.
+
+        * dfg/DFGPhase.h:
+        (JSC::DFG::runAndLog):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThread):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2016-10-18  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should make it easier to create threads that die automatically after inactivity
+        https://bugs.webkit.org/show_bug.cgi?id=163576
+
+        Reviewed by Andreas Kling.
+        
+        Added a sleepSeconds() function, which made it easier for me to test this change.
+        
+        The WTF changes in this patch change how the JSC GC manages threads: the GC threads will now
+        shut down automatically after 1 second of inactivity. Maybe this will save some memory.
+
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionSleepSeconds):
+
+2016-10-18  Keith Miller  <keith_miller@apple.com>
+
+        Cleanup Wasm memory.
+        https://bugs.webkit.org/show_bug.cgi?id=163601
+
+        Reviewed by Saam Barati.
+
+        There were a couple of issues with the original Wasm memory patch.
+        This is a follow-up patch to fix those issues.
+
+        * wasm/WASMMemory.cpp:
+        (JSC::WASM::Memory::Memory):
+        * wasm/WASMMemory.h:
+
+2016-10-15  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG and FTL should be able to use DirectCall ICs when they proved the callee or its executable
+        https://bugs.webkit.org/show_bug.cgi?id=163371
+
+        Reviewed by Geoffrey Garen and Saam Barati.
+        
+        This adds a new kind of call inline cache for when the DFG can prove what the callee
+        executable is. In those cases, we can skip some of the things that the traditional call IC
+        would do:
+        
+        - No need to check who the callee is.
+        - No need to do arity checks.
+        
+        This case isn't as simple as just emitting a call instruction since the callee may not be
+        compiled at the time that the caller is compiled. So, we need lazy resolution. Also, the
+        callee may be jettisoned independently of the caller, so we need to be able to revert the
+        call to an unlinked state. This means that we need almost all of the things that
+        CallLinkInfo has. CallLinkInfo already knows about different kinds of calls. This patch
+        teaches it about new "Direct" call types.
+        
+        The direct non-tail call IC looks like this:
+        
+                set up arguments
+            FastPath:
+                call _SlowPath
+                lea -FrameSize(%rbp), %rsp
+            
+            SlowPath:
+                pop
+                call operationLinkDirectCall
+                check exception
+                jmp FastPath
+        
+        The job of operationLinkDirectCall is to link the fast path's call entrypoint of the callee.
+        This means that in steady state, a call is just that: a call. There are no extra branches or
+        checks.
+        
+        The direct tail call IC is a bit more complicated because the act of setting up arguments
+        destroys our frame, which would prevent us from being able to throw an exception if we
+        failed to compile the callee. So, direct tail call ICs look like this:
+        
+                jmp _SlowPath
+            FastPath:
+                set up arguments
+                jmp 0 // patch to jump to callee
+            
+            SlowPath:
+                silent spill
+                call operationLinkDirectCall
+                silent fill
+                check exception
+                jmp FastPath
+        
+        The jmp to the slow path is patched to be a fall-through jmp when we link the call.
+        
+        Direct calls mean less code at call sites, fewer checks on the steady state call fast path,
+        and no need for arity fixup. This looks like a slight speed-up (~0.8%) on both Octane and
+        AsmBench.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::relinkJumpToNop):
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::relinkJumpToNop):
+        (JSC::ARMv7Assembler::relinkJump): Deleted.
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::AbstractMacroAssembler::repatchJumpToNop):
+        (JSC::AbstractMacroAssembler::repatchJump): Deleted.
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::relinkJumpToNop):
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::CallLinkInfo):
+        (JSC::CallLinkInfo::callReturnLocation):
+        (JSC::CallLinkInfo::patchableJump):
+        (JSC::CallLinkInfo::hotPathBegin):
+        (JSC::CallLinkInfo::slowPathStart):
+        (JSC::CallLinkInfo::setCallee):
+        (JSC::CallLinkInfo::clearCallee):
+        (JSC::CallLinkInfo::callee):
+        (JSC::CallLinkInfo::setCodeBlock):
+        (JSC::CallLinkInfo::clearCodeBlock):
+        (JSC::CallLinkInfo::codeBlock):
+        (JSC::CallLinkInfo::setLastSeenCallee):
+        (JSC::CallLinkInfo::clearLastSeenCallee):
+        (JSC::CallLinkInfo::lastSeenCallee):
+        (JSC::CallLinkInfo::haveLastSeenCallee):
+        (JSC::CallLinkInfo::setExecutableDuringCompilation):
+        (JSC::CallLinkInfo::executable):
+        (JSC::CallLinkInfo::setMaxNumArguments):
+        (JSC::CallLinkInfo::visitWeak):
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::specializationKindFor):
+        (JSC::CallLinkInfo::callModeFor):
+        (JSC::CallLinkInfo::isDirect):
+        (JSC::CallLinkInfo::nearCallMode):
+        (JSC::CallLinkInfo::isLinked):
+        (JSC::CallLinkInfo::setCallLocations):
+        (JSC::CallLinkInfo::addressOfMaxNumArguments):
+        (JSC::CallLinkInfo::maxNumArguments):
+        (JSC::CallLinkInfo::isTailCall): Deleted.
+        (JSC::CallLinkInfo::setUpCallFromFTL): Deleted.
+        (JSC::CallLinkInfo::callReturnLocation): Deleted.
+        (JSC::CallLinkInfo::hotPathBegin): Deleted.
+        (JSC::CallLinkInfo::callee): Deleted.
+        (JSC::CallLinkInfo::setLastSeenCallee): Deleted.
+        (JSC::CallLinkInfo::clearLastSeenCallee): Deleted.
+        (JSC::CallLinkInfo::lastSeenCallee): Deleted.
+        (JSC::CallLinkInfo::haveLastSeenCallee): Deleted.
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeDFGStatuses):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecode/ValueRecovery.h:
+        (JSC::ValueRecovery::forEachReg):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBasicBlock.h:
+        (JSC::DFG::BasicBlock::findTerminal):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addCallWithoutSettingResult):
+        (JSC::DFG::ByteCodeParser::handleCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::parameterSlotsForArgCount):
+        * dfg/DFGGraph.h:
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::mergeToSuccessors):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::addJSDirectCall):
+        (JSC::DFG::JITCompiler::addJSDirectTailCall):
+        (JSC::DFG::JITCompiler::JSCallRecord::JSCallRecord):
+        (JSC::DFG::JITCompiler::JSDirectCallRecord::JSDirectCallRecord):
+        (JSC::DFG::JITCompiler::JSDirectTailCallRecord::JSDirectTailCallRecord):
+        (JSC::DFG::JITCompiler::currentJSCallIndex): Deleted.
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::convertToDirectCall):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isTerminal):
+        (JSC::DFG::Node::hasHeapPrediction):
+        (JSC::DFG::Node::hasCellOperand):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDirectCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileTailCall):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargs):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall):
+        * jit/JIT.cpp:
+        (JSC::JIT::link):
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/Repatch.cpp:
+        (JSC::linkDirectFor):
+        (JSC::revertCall):
+        * jit/Repatch.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::setUpCall):
+        * runtime/Executable.cpp:
+        (JSC::ScriptExecutable::prepareForExecutionImpl):
+        * runtime/Executable.h:
+        (JSC::ScriptExecutable::prepareForExecution):
+        * runtime/Options.h:
+
+2016-10-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Not emit exception case if it is not necessary
+        https://bugs.webkit.org/show_bug.cgi?id=163589
+
+        Reviewed by Sam Weinig.
+
+        We should not emit exception case if we do not use the slow path calls.
+        For example, nodeType accessor does not use the slow path calls.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::emitDOMJITGetter):
+
+2016-10-18  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] ES6 Method functions should not have prototype
+        https://bugs.webkit.org/show_bug.cgi?id=162530
+
+        Reviewed by Saam Barati.
+
+        ECMA-262 only adds "prototype" properties to specific syntactic function forms.
+        Specific items which do not contain "prototype" include (most) built-in functions (such as Math.pow),
+        MethodDefinitions which are not either class "constructor" methods or GeneratorMethods, AsyncFunctions,
+        and ArrowFunctions.
+        
+        For details, see the following spec text, and the difference between GeneratorMethod evaluation and
+        the evaluation of other MethodDefinition forms.
+        
+        - https://tc39.github.io/ecma262/#sec-method-definitions-runtime-semantics-propertydefinitionevaluation
+        - https://tc39.github.io/ecma262/#sec-arrow-function-definitions-runtime-semantics-evaluation
+        - https://tc39.github.io/ecmascript-asyncawait/#async-function-instances
+        - https://tc39.github.io/ecma262/#sec-generator-function-definitions-runtime-semantics-propertydefinitionevaluation
+        
+
+        * runtime/Executable.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::callerGetter):
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::deleteProperty):
+
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::makeFunction):
+        * runtime/Executable.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::getOwnNonIndexPropertyNames):
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::deleteProperty):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncThrowTypeErrorArgumentsCalleeAndCaller):
+
+2016-10-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Use NativeCallFrameTracer for operations used for DOMJIT slow calls
+        https://bugs.webkit.org/show_bug.cgi?id=163586
+
+        Reviewed by Saam Barati.
+
+        C functions called from the DOMJIT slow path calls should use NativeCallFrameTracer.
+        This fixes the debug assertion caused in r207427.
+
+        * bytecode/DOMJITAccessCasePatchpointParams.cpp:
+        (JSC::SlowPathCallGeneratorWithArguments::generateImpl):
+        (JSC::DOMJITAccessCasePatchpointParams::emitSlowPathCalls):
+        * bytecode/DOMJITAccessCasePatchpointParams.h:
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::emitDOMJITGetter):
+        * jsc.cpp:
+        (WTF::DOMJITGetter::DOMJITNodeDOMJIT::slowCall):
+        (WTF::DOMJITGetterComplex::DOMJITNodeDOMJIT::slowCall):
+
+2016-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM Memory.
+        https://bugs.webkit.org/show_bug.cgi?id=161710
+
+        Reviewed by Geoffrey Garen.
+
+        This patch add initial support for WASM memory operations. First,
+        it adds the concept of a WASM Module memory management object.
+        This object currently mmaps a 32-bit address space for WASM use,
+        although it marks all the memory outside the current breakpoint as
+        PROT_NONE. For now, we do a range check on each store and load. In
+        the future, we should change this to be an signal handler that
+        checks what module the program trapped in.
+
+        Additionally, this patch changes the way that our temporary tests
+        call into WASM code. There is now a true "thunk" that relocates
+        arguments and calls into WASM. This thunk does not tail call
+        because we use pinned values to memory base-pointer and
+        size. We use the new B3 pinned register api to pin the values.
+
+        * CMakeLists.txt:
+        * Configurations/ToolExecutable.xcconfig:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * testWASM.cpp:
+        (runWASMTests):
+        (main):
+        * wasm/WASMB3IRGenerator.cpp:
+        (JSC::WASM::createJSWrapper):
+        (JSC::WASM::parseAndCompile):
+        * wasm/WASMB3IRGenerator.h:
+        * wasm/WASMCallingConvention.h:
+        (JSC::WASM::CallingConvention::iterate):
+        (JSC::WASM::CallingConvention::setupCall):
+        (JSC::WASM::nextJSCOffset):
+        * wasm/WASMFormat.h:
+        * wasm/WASMFunctionParser.h:
+        (JSC::WASM::FunctionParser<Context>::parseExpression):
+        * wasm/WASMMemory.cpp: Copied from Source/JavaScriptCore/wasm/WASMPlan.cpp.
+        (JSC::WASM::Memory::Memory):
+        * wasm/WASMMemory.h: Copied from Source/JavaScriptCore/wasm/WASMModuleParser.h.
+        (JSC::WASM::Memory::~Memory):
+        (JSC::WASM::Memory::memory):
+        (JSC::WASM::Memory::size):
+        (JSC::WASM::Memory::pinnedRegisters):
+        (JSC::WASM::Memory::mode):
+        (JSC::WASM::Memory::growMemory):
+        (JSC::WASM::Memory::offsetOfSize):
+        * wasm/WASMModuleParser.cpp:
+        (JSC::WASM::ModuleParser::parse):
+        (JSC::WASM::ModuleParser::parseMemory):
+        * wasm/WASMModuleParser.h:
+        (JSC::WASM::ModuleParser::functionInformation):
+        (JSC::WASM::ModuleParser::memory):
+        * wasm/WASMOps.h:
+        * wasm/WASMPlan.cpp:
+        (JSC::WASM::Plan::Plan):
+        * wasm/WASMPlan.h:
+        * wasm/WASMSections.h:
+
+2016-10-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add toggles for debugger pauses at console.assert failures
+        https://bugs.webkit.org/show_bug.cgi?id=139542
+        <rdar://problem/19281600>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::disable):
+        (Inspector::InspectorDebuggerAgent::setPauseOnAssertions):
+        Toggle pause on assertions state. Default is disabled,
+        and disable it when frontends disconnect.
+
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        Instead of using the PauseOnAllExceptions state, use this
+        new state specific to assertions.
+
+        * inspector/protocol/Debugger.json:
+        New protocol method to toggle pausing on assertions.
+
+2016-10-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT][JSC] Add Option::useDOMJIT
+        https://bugs.webkit.org/show_bug.cgi?id=163457
+
+        Reviewed by Saam Barati.
+
+        Add an option to switch the DOMJIT optimization.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generateImpl):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2016-10-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Air::IRC doesn't need to have a special-case for uncolored Tmps since they all get colored
+        https://bugs.webkit.org/show_bug.cgi?id=163548
+        <rdar://problem/28804381>
+
+        Reviewed by Geoffrey Garen.
+        
+        Before r207408, IRC had a mode where it would silently assign the first assignable register (so
+        %rax, %xmm0, etc) to any tmp that was not colorable due to a pathological interference fencepost.
+        We reason about interference at instruction boundaries. This means that if you have, for example,
+        an instruction that clobbers all registers late followed by an instruction that has an early def
+        in the same register file, then the early def will not be colorable because it interferes with
+        all registers. This already happens in our tests, but IRC silently returns the first assignable
+        register to such tmps. For some reason the resulting code works OK - probably because this tends
+        to only be hit by fuzzing, which may not then stress that code enough to shake out the register
+        corruption. Also, this can only happen for floating point registers, so it's hard to get an
+        exciting crash. The worst case is that your numbers get all messed up.
+        
+        This change fixes the issue:
+        
+        - IRC will now crash if it can't color a tmp.
+        
+        - IRC doesn't crash on our tests anymore because I added a padInterference() utility that works
+          around the interference problem by inserting Nops to pad between those instructions where
+          conflating their early and late actions into one interference fencepost could create an
+          uncolorable graph.
+        
+        See https://bugs.webkit.org/show_bug.cgi?id=163548#c2 for a detailed discussion of how the
+        problem can arise.
+        
+        This problem almost made me want to abandon our use of interference at instruction boundaries,
+        and introduce something more comprehensive, like interference at various stages of an
+        instruction's execution. The reason why I didn't do this is that this problem only arises in well
+        confined corner cases: you need an instruction that does a late use or def followed by an
+        instruction that does an early def. Register clobbers count as defs for this equation.
+        Fortunately, early defs are rare, and even when they do happen, you still need the previous
+        instruction to have a late something. Late uses are rare and many instructions don't have defs at
+        all, which means that it's actually pretty common for an instruction to not have anything late.
+        This means that the padInterference() strategy is ideal: our algorithms stay simple because they
+        only have to worry about interference at boundaries, and we rarely insert any Nops in
+        padInterference() so the IR stays nice and compact. Those Nops get removed by any phase that does
+        DCE, which includes eliminateDeadCode(), allocateStack(), and reportUsedRegisters(). In practice
+        allocateStack() kills them.
+        
+        This also finally refactors our passing of RegisterSet to pass it by value, since it's small
+        enough that we're not gaining anything by using references. On x86, RegisterSet ought to be
+        smaller than a pointer.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::extraClobberedRegs):
+        (JSC::B3::StackmapSpecial::extraEarlyClobberedRegs):
+        * b3/B3StackmapSpecial.h:
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::extraEarlyClobberedRegs):
+        (JSC::B3::Air::CCallSpecial::extraClobberedRegs):
+        * b3/air/AirCCallSpecial.h:
+        * b3/air/AirInst.h:
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::extraClobberedRegs):
+        (JSC::B3::Air::Inst::extraEarlyClobberedRegs):
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+        (JSC::B3::Air::iteratedRegisterCoalescing):
+        * b3/air/AirPadInterference.cpp: Added.
+        (JSC::B3::Air::padInterference):
+        * b3/air/AirPadInterference.h: Added.
+        * b3/air/AirSpecial.h:
+        * b3/air/AirSpillEverything.cpp:
+        (JSC::B3::Air::spillEverything):
+        * jit/RegisterSet.h:
+        (JSC::RegisterSet::isEmpty):
+
+2016-10-17  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement basic stub
+
+        Implement the global WebAssembly JavaScript object, and its constructor +
+        function properties as described in:
+          https://github.com/WebAssembly/design/blob/master/JS.md
+
+        These don't do anything at the moment, the parent bug will take care of adding
+        more functionality and associated tests.
+
+        WebAssembly JS API: implement basic stub
+        https://bugs.webkit.org/show_bug.cgi?id=163404
+
+        Reviewed by Keith Miller.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/BuiltinNames.h: register the new WebAssembly object's name and its constructor properties
+        * jsc.cpp: remove useless include
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init): add the WebAssembly global object and its constructor properties, but only if the JSC option enables it
+        * runtime/Options.h: add the useWebAssembly (alias: enableWebAssembly) option, defaulting to false
+        * wasm/WebAssemblyObject.cpp: Added.
+        (JSC::WebAssemblyObject::create): boilerplate
+        (JSC::WebAssemblyObject::createStructure): boilerplate
+        (JSC::WebAssemblyObject::finishCreation): boilerplate
+        (JSC::WebAssemblyObject::WebAssemblyObject): boilerplate
+        (JSC::wasmObjectFuncvalidate): auto-throws for now
+        (JSC::wasmObjectFunccompile): auto-throws for now
+        * wasm/WebAssemblyObject.h: Added.
+
+2016-10-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix after r207428
+        https://bugs.webkit.org/show_bug.cgi?id=163223
+
+        Previous build fix r207428 broke all the builds.
+
+        * bytecode/PolymorphicAccess.h:
+
+2016-10-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for GTK and Windows
+        https://bugs.webkit.org/show_bug.cgi?id=163223
+
+        Attempt to fix build failures in GTK port and Windows port.
+
+        * bytecode/PolymorphicAccess.cpp:
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessGenerationState::SpillState::SpillState):
+
+2016-10-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Use DOMJIT::Patchpoint in IC
+        https://bugs.webkit.org/show_bug.cgi?id=163223
+
+        Reviewed by Saam Barati.
+
+        This patch uses DOMJIT::Patchpoint to inline DOM accesses even in IC!
+        It is useful for Baseline JIT cases and GetById cases in DFG and FTL.
+        In AccessCase, we construct the environment that allows DOMJIT::Patchpoint
+        to emit code and make DOMJIT accessors inlined in IC.
+
+        To allow DOMJIT::Patchpoint to emit code, we create a mechanism to emit calls
+        required in DOMJIT::Patchpoint. This system is useful when we create the super-
+        polymorphic support[1] later. And inlining mechanism is useful even after
+        introducing super-polymorphic support since it can work even after we fire the
+        watchpoint for super-polymorphic handling.
+
+        This patch improves Dromaeo dom-traverse 8% (263.95 runs/s v.s. 244.07 runs/s).
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=163226
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/DOMJITAccessCasePatchpointParams.cpp: Added.
+        (JSC::SlowPathCallGeneratorWithArguments::SlowPathCallGeneratorWithArguments):
+        (JSC::SlowPathCallGeneratorWithArguments::generateImpl):
+        (JSC::DOMJITAccessCasePatchpointParams::emitSlowPathCalls):
+        * bytecode/DOMJITAccessCasePatchpointParams.h: Copied from Source/JavaScriptCore/ftl/FTLDOMJITPatchpointParams.h.
+        (JSC::DOMJITAccessCasePatchpointParams::DOMJITAccessCasePatchpointParams):
+        (JSC::DOMJITAccessCasePatchpointParams::SlowPathCallGenerator::~SlowPathCallGenerator):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessGenerationState::liveRegistersForCall):
+        (JSC::AccessGenerationState::liveRegistersToPreserveAtExceptionHandlingCallSite):
+        (JSC::calleeSaveRegisters):
+        (JSC::AccessGenerationState::calculateLiveRegistersForCallAndExceptionHandling):
+        (JSC::AccessGenerationState::restoreLiveRegistersFromStackForCallWithThrownException):
+        (JSC::AccessGenerationState::restoreLiveRegistersFromStackForCall):
+        (JSC::AccessGenerationState::callSiteIndexForExceptionHandlingOrOriginal):
+        (JSC::AccessGenerationState::originalExceptionHandler):
+        (JSC::AccessCase::generateImpl):
+        (JSC::AccessCase::emitDOMJITGetter):
+        (JSC::PolymorphicAccess::regenerate):
+        (JSC::AccessGenerationState::preserveLiveRegistersToStackForCall): Deleted.
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessGenerationState::SpillState::isEmpty):
+        (JSC::AccessGenerationState::setSpillStateForJSGetterSetter):
+        (JSC::AccessGenerationState::spillStateForJSGetterSetter):
+        (JSC::AccessGenerationState::liveRegistersForCall): Deleted.
+        (JSC::AccessGenerationState::numberOfStackBytesUsedForRegisterPreservation): Deleted.
+        (JSC::AccessGenerationState::liveRegistersToPreserveAtExceptionHandlingCallSite): Deleted.
+        * dfg/DFGDOMJITPatchpointParams.cpp:
+        * dfg/DFGDOMJITPatchpointParams.h:
+        * domjit/DOMJITPatchpoint.h:
+        * domjit/DOMJITPatchpointParams.h:
+        (JSC::DOMJIT::PatchpointParams::addSlowPathCall):
+        * ftl/FTLDOMJITPatchpointParams.cpp:
+        * ftl/FTLDOMJITPatchpointParams.h:
+        * jsc.cpp:
+        (WTF::DOMJITNode::checkDOMJITNode):
+        (WTF::DOMJITGetterComplex::DOMJITGetterComplex):
+        (WTF::DOMJITGetterComplex::createStructure):
+        (WTF::DOMJITGetterComplex::create):
+        (WTF::DOMJITGetterComplex::DOMJITNodeDOMJIT::DOMJITNodeDOMJIT):
+        (WTF::DOMJITGetterComplex::domJITNodeGetterSetter):
+        (WTF::DOMJITGetterComplex::finishCreation):
+        (WTF::DOMJITGetterComplex::functionEnableException):
+        (WTF::DOMJITGetterComplex::customGetter):
+        (GlobalObject::finishCreation):
+        (functionCreateDOMJITGetterComplexObject):
+
+2016-10-17  Saam Barati  <sbarati@apple.com>
+
+        Build fix for HasOwnPropertyCache::Entry caused slowdown by introducing a constructor that doesn't use move semantics for the RefPtr<UniquedStringImpl> parameter
+        https://bugs.webkit.org/show_bug.cgi?id=163490
+
+        Reviewed by Darin Adler.
+
+        * runtime/HasOwnPropertyCache.h:
+        (JSC::HasOwnPropertyCache::Entry::Entry):
+        (JSC::HasOwnPropertyCache::tryAdd):
+
+2016-10-17  Mark Lam  <mark.lam@apple.com>
+
+        Use the reject() helper function for conditionally throwing TypeErrors.
+        https://bugs.webkit.org/show_bug.cgi?id=163491
+
+        Reviewed by Filip Pizlo.
+
+        In some places where we may conditionally throw a TypeError (e.g. when in strict
+        mode), we already use the reject() helper function to conditionally throw the
+        TypeError.  Doing so makes the code mode compact.  This patch applies this idiom
+        consistently in all places that throws TypeError where appropriate.
+
+        This patch also does the following:
+        1. Make the reject() helper function take an ASCIILiteral instead of a const char*
+           because we always pass it a literal string anyway.
+        2. Change the reject helper() to take a ThrowScope&.  This allows the thrown
+           error to be attributed to its caller.
+        3. When an error message string is instantiated repeatedly in more than 1 place,
+           create a common copy of that literal string in JSObject.cpp (if one doesn't
+           already exist) and use that common string in all those places.
+        4. Since I was auditing call sites of throwTypeError() to check if they should be
+           using the reject() helper instead, I also fixed those up to pass the error
+           message as an ASCIILiteral where appropriate.
+        5. In functions that I touched, change the code to not recompute the VM& when it
+           is already available.
+
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::shift):
+        (JSC::unshift):
+        (JSC::arrayProtoFuncPop):
+        (JSC::arrayProtoFuncReverse):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/GetterSetter.cpp:
+        (JSC::callSetter):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::defineOwnProperty):
+        (JSC::JSArray::setLengthWithArrayStorage):
+        (JSC::JSArray::pop):
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::put):
+        (JSC::JSArrayBuffer::defineOwnProperty):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        (JSC::JSValue::putToPrimitiveByIndex):
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::put):
+        (JSC::JSDataView::defineOwnProperty):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::defineOwnProperty):
+        * runtime/JSGenericTypedArrayView.h:
+        (JSC::JSGenericTypedArrayView::setIndex):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        (JSC::JSGenericTypedArrayView<Adaptor>::deleteProperty):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::speciesConstruct):
+        (JSC::genericTypedArrayViewPrivateFuncSubarrayCreate):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::defineOwnProperty):
+        * runtime/JSObject.cpp:
+        (JSC::ordinarySetSlow):
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::setPrototypeWithCycleCheck):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::putDirectIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::validateAndApplyPropertyDescriptor):
+        * runtime/JSObject.h:
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putInline):
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::setPrototype):
+        * runtime/JSSymbolTableObject.h:
+        (JSC::symbolTablePut):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::defineOwnProperty):
+        * runtime/RegExpObject.h:
+        (JSC::RegExpObject::setLastIndex):
+        * runtime/Reject.h:
+        (JSC::reject):
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putEntry):
+        (JSC::SparseArrayValueMap::putDirect):
+        (JSC::SparseArrayEntry::put):
+        * runtime/StringObject.cpp:
+        (JSC::StringObject::put):
+        (JSC::StringObject::putByIndex):
+        * runtime/SymbolConstructor.cpp:
+        (JSC::symbolConstructorKeyFor):
+
+2016-10-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Air::IRC needs to place all Tmps on some worklist, even if they have no interference edges
+        https://bugs.webkit.org/show_bug.cgi?id=163509
+
+        Reviewed by Mark Lam.
+        
+        The worklist building function in IRC skips temporaries that have no degree. This doesn't appear
+        to be necessary. This has been there since the original IRC commit. It hasn't caused bugs because
+        ordinarily, the only way to have a tmp with no degree is to not have any mention of that tmp. But
+        while working on bug 163371, I hit a crazy corner case where a temporary would have no
+        interference edges (i.e. no degree). Here's how it happens:
+        
+        A spill tmp from a previous iteration of IRC may have no degree: imagine a tmp that is live
+        everywhere and interferes with everyone, but has one use like:
+
+        Move %ourTmp, %someOtherTmp
+
+        Where there are no other tmps live.  After spill conversion, this may look like:
+
+        Move (ourSpill), %newTmp
+        Move %newTmp, %someOtherTmp
+
+        Of course, we'd rather not get this kind of spill code but it's totally possible because we now
+        have a bunch of random conditions under which we won't slap the spill address directly into the
+        Move.
+
+        After this happens, assuming that the only thing live was %someOtherTmp, we will have zero degree
+        for %newTmp because the Move is coalescable and does not contribute to interference.
+
+        Then, we might coalesce %someOtherTmp with %newTmp.  Once this happens, if we make the %newTmp be
+        the master, we're in deep trouble because %newTmp is not on any worklist.
+        
+        I don't know how to reproduce this except through the patch in bug 163371. Removing the two lines
+        of code that skipped no-degree tmps causes no regressions, and resolves the problem I was having.
+
+        * b3/air/AirIteratedRegisterCoalescing.cpp:
+
+2016-10-15  Mark Lam  <mark.lam@apple.com>
+
+        Add a $vm.getpid() method.
+        https://bugs.webkit.org/show_bug.cgi?id=163493
+
+        Reviewed by Saam Barati.
+
+        This is especially useful when we need to know the pid of an instance of jsc in
+        the foreground that we're trying to attach a debugger to while the JSC tests are
+        running in the background with a gazillion other jsc processes live at the same
+        time.
+
+        Currently, $vm.getpid() is only supported on non-Windows platforms.
+        According to https://msdn.microsoft.com/en-us/library/ms235372.aspx, getpid() is
+        deprecated.  According to https://msdn.microsoft.com/en-us/library/t2y34y40.aspx,
+        _getpid() cannot be used in applications that execute in the Windows Runtime.
+
+        Since this is only a debugging tool and is not a required feature, I'll defer
+        the Windows implementation of this function till the time when someone actually
+        needs it.
+
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::functionGetPID):
+        (JSC::JSDollarVMPrototype::finishCreation):
+
+2016-10-15  Saam Barati  <sbarati@apple.com>
+
+        Assertion failed under operationToLowerCase with a rope with zero length
+        https://bugs.webkit.org/show_bug.cgi?id=163314
+
+        Reviewed by Mark Lam.
+
+        There are some ways to get JSC to create empty rope strings. ToLowerCase
+        inside the DFG/FTL goes to the slow path when the argument is a rope.
+        operationToLowerCase was calling into a WTF string function that
+        assumed we are passing it a this value that has non-zero length.
+        However, we were calling it with a string that did have zero length.
+        To fix this, we make operationToLowerCase return the empty JSString
+        if it is going to make a string with zero length.
+
+        * dfg/DFGOperations.cpp:
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionIsRope):
+
+2016-10-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] op_negate should with any type
+        https://bugs.webkit.org/show_bug.cgi?id=162587
+
+        Reviewed by Saam Barati.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        ArithNegate is quite simple. If the input is double, the output
+        is double. The other cases are set from the LLInt slow case.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::makeSafe):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        Tweak a bit the IntegerRangeOptimizationPhase when simplifying
+        ArithAbs to ArithNegate.
+        We should not do the conversion if the target nodes OSR Exits
+        on different input than the source node.
+
+        In particular, Checked ArithNegate exits on zero while
+        ArithAbs has not problem with it.
+        Unchecked ArithAbs() do not OSR Exit on INT_MIN, ArithNeg
+        should not either.
+
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithNegate):
+        (JSC::DFG::SpeculativeJIT::compileMathIC):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileMathIC):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithNegate):
+
+        * jit/JITNegGenerator.cpp:
+        (JSC::JITNegGenerator::generateFastPath):
+        * jit/JITOperations.cpp:
+        Add result profiling in baseline to have types we can use
+        in DFG and FTL.
+
+2016-10-14  Keith Miller  <keith_miller@apple.com>
+
+        B3 needs a special WasmAddress Opcode
+        https://bugs.webkit.org/show_bug.cgi?id=163394
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds support for WasmAddress. WasmAddress will be used by
+        Wasm to compute the address of a memory operation from the pinned
+        base pointer. WasmAddress takes an IntPtr so we can avoid emitting
+        unnecessary Move32s in Air. This could happen in the following case:
+
+        @ptr = Trunc(...)
+        WasmAddress(@ptr, pinnedGPR)
+        ...
+        PatchPoint(...) // Do Wasm call
+        WasmAddress(@ptr, pinnedGPR)
+        ...
+
+        In this case we will not be able to CSE the WasmAddresses since the
+        call writes to pinnedGPR. Thus if WasmAddress took an Int32 we would need
+        to emit an extra Move32 at the second WasmAddress to ensure it saw a proper
+        32-bit value. If Wasm ensures that there there is a leading ZExt32 then
+        the duplicated moves become unnecessary.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::effectiveAddr):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3Opcode.cpp:
+        (WTF::printInternal):
+        * b3/B3Opcode.h:
+        * b3/B3Validate.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::effects):
+        * b3/B3WasmAddressValue.cpp: Added.
+        (JSC::B3::WasmAddressValue::~WasmAddressValue):
+        (JSC::B3::WasmAddressValue::dumpMeta):
+        (JSC::B3::WasmAddressValue::cloneImpl):
+        (JSC::B3::WasmAddressValue::WasmAddressValue):
+        * b3/B3WasmAddressValue.h: Added.
+        * b3/testb3.cpp:
+        (JSC::B3::testWasmAddress):
+        (JSC::B3::run):
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: @isConstructor incorrectly thinks Math.cos is a constructor
+        https://bugs.webkit.org/show_bug.cgi?id=163437
+
+        Reviewed by Saam Barati.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::getConstructData):
+        By default, Host JSFunctions are not constructable. They get
+        the default callHostFunctionAsConstructor native constructor.
+        When getting construct data we can return ConstructType::None
+        in these cases instead of indicating it might be constructable
+        and later throwing an exception when construction is attempted.
+
+2016-10-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r207322.
+
+        This change caused JSC test failures
+
+        Reverted changeset:
+
+        "Fix Array.prototype.splice ES6 compliance."
+        https://bugs.webkit.org/show_bug.cgi?id=163372
+        http://trac.webkit.org/changeset/207322
+
+2016-10-14  Mark Lam  <mark.lam@apple.com>
+
+        JSON.parse should not modify frozen objects.
+        https://bugs.webkit.org/show_bug.cgi?id=163430
+
+        Reviewed by Saam Barati.
+
+        The ES6 spec for JSON.parse (https://tc39.github.io/ecma262/#sec-json.parse and
+        https://tc39.github.io/ecma262/#sec-internalizejsonproperty) states that it uses
+        CreateDataProperty() (https://tc39.github.io/ecma262/#sec-createdataproperty) to
+        set values returned by a reviver.  The spec for CreateDataPropertyOrThrow states:
+
+        "This abstract operation creates a property whose attributes are set to the same
+        defaults used for properties created by the ECMAScript language assignment
+        operator. Normally, the property will not already exist. If it does exist and is
+        not configurable or if O is not extensible, [[DefineOwnProperty]] will return
+        false."
+
+        Note: CreateDataProperty() will not throw a TypeError.
+
+        Since the properties of frozen objects are not extensible, not configurable, and
+        not writeable, JSON.parse should fail to write to any frozen objects.  Similarly,
+        JSON.parse should fail to delete properties in frozen objects.
+
+        In JSON.parse(), we previously write to array elements using the form of
+        putDirectIndex() that uses mode PutDirectIndexLikePutDirect.  This makes it so
+        that the write (i.e. put) is always successful.  We've now fixed this to use
+        PutDirectIndexShouldNotThrow mode instead, which will fail to put the element if
+        the array is not writeable.
+
+        Also changed Walker::walk() to use the version of methodTable() that takes a VM&
+        since the VM& is already available.
+
+        * runtime/JSONObject.cpp:
+        (JSC::Walker::walk):
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Failure with RegExp.prototype.compile when pattern is undefined
+        https://bugs.webkit.org/show_bug.cgi?id=163431
+
+        Reviewed by Yusuke Suzuki.
+
+        If pattern is undefined let P be the empty String.
+        https://tc39.github.io/ecma262/#sec-regexpinitialize
+
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncCompile):
+
+2016-10-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Exception message for expressions with multiple bracket accesses is inconsistent / incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=163426
+
+        Reviewed by Geoffrey Garen.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BracketAccessorNode::emitBytecode):
+        It matters where emitExpressionInfo is called since it gathers
+        info about where we are in the instruction stream. We need to
+        emit it before the bytecode that we want to associate the data
+        with. In this case, before the getById / getByVal.
+
+2016-10-13  Mark Lam  <mark.lam@apple.com>
+
+        Fix Array.prototype.splice ES6 compliance.
+        https://bugs.webkit.org/show_bug.cgi?id=163372
+
+        Reviewed by Geoffrey Garen and Yusuke Suzuki.
+
+        Our Array.prototype.splice implementation neglected to set length on the result
+        array (step 12 of https://tc39.github.io/ecma262/#sec-array.prototype.splice) in
+        a certain code path.  This is now fixed.
+
+        I'm deferring the implementation of step 8 till later because it requires more
+        careful consideration and the fix is of a lesser value (and therefore, of less
+        urgency).  See https://bugs.webkit.org/show_bug.cgi?id=163417
+
+        Also added some needed exception checks and assertions.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSplice):
+
 2016-10-13  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Stepping highlight for dot/bracket expressions in if statements highlights subset of the expression

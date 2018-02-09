@@ -755,9 +755,9 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
     ASSERT(!throwScope.exception());
-    ASSERT(!vm.isCollectorBusy());
+    ASSERT(!vm.isCollectorBusyOnCurrentThread());
     RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
-    if (vm.isCollectorBusy())
+    if (vm.isCollectorBusyOnCurrentThread())
         return jsNull();
 
     if (UNLIKELY(!vm.isSafeToRecurseSoft()))
@@ -870,7 +870,7 @@ failedJSONP:
     ProgramCodeBlock* codeBlock;
     {
         CodeBlock* tempCodeBlock;
-        JSObject* error = program->prepareForExecution<ProgramExecutable>(callFrame, nullptr, scope, CodeForCall, tempCodeBlock);
+        JSObject* error = program->prepareForExecution<ProgramExecutable>(vm, nullptr, scope, CodeForCall, tempCodeBlock);
         ASSERT(!throwScope.exception() || throwScope.exception() == jsDynamicCast<Exception*>(error));
         if (error)
             return checkedReturn(throwException(callFrame, throwScope, error));
@@ -900,8 +900,8 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
     ASSERT(!throwScope.exception());
-    ASSERT(!vm.isCollectorBusy());
-    if (vm.isCollectorBusy())
+    ASSERT(!vm.isCollectorBusyOnCurrentThread());
+    if (vm.isCollectorBusyOnCurrentThread())
         return jsNull();
 
     bool isJSCall = (callType == CallType::JS);
@@ -925,7 +925,7 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
 
     if (isJSCall) {
         // Compile the callee:
-        JSObject* compileError = callData.js.functionExecutable->prepareForExecution<FunctionExecutable>(callFrame, jsCast<JSFunction*>(function), scope, CodeForCall, newCodeBlock);
+        JSObject* compileError = callData.js.functionExecutable->prepareForExecution<FunctionExecutable>(vm, jsCast<JSFunction*>(function), scope, CodeForCall, newCodeBlock);
         ASSERT(throwScope.exception() == reinterpret_cast<Exception*>(compileError));
         if (UNLIKELY(!!compileError))
             return checkedReturn(throwException(callFrame, throwScope, compileError));
@@ -962,10 +962,10 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
     ASSERT(!throwScope.exception());
-    ASSERT(!vm.isCollectorBusy());
+    ASSERT(!vm.isCollectorBusyOnCurrentThread());
     // We throw in this case because we have to return something "valid" but we're
     // already in an invalid state.
-    if (vm.isCollectorBusy())
+    if (vm.isCollectorBusyOnCurrentThread())
         return checkedReturn(throwStackOverflowError(callFrame, throwScope));
 
     bool isJSConstruct = (constructType == ConstructType::JS);
@@ -989,7 +989,7 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
 
     if (isJSConstruct) {
         // Compile the callee:
-        JSObject* compileError = constructData.js.functionExecutable->prepareForExecution<FunctionExecutable>(callFrame, jsCast<JSFunction*>(constructor), scope, CodeForConstruct, newCodeBlock);
+        JSObject* compileError = constructData.js.functionExecutable->prepareForExecution<FunctionExecutable>(vm, jsCast<JSFunction*>(constructor), scope, CodeForConstruct, newCodeBlock);
         if (UNLIKELY(!!compileError))
             return checkedReturn(throwException(callFrame, throwScope, compileError));
 
@@ -1028,12 +1028,12 @@ CallFrameClosure Interpreter::prepareForRepeatCall(FunctionExecutable* functionE
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     ASSERT(!throwScope.exception());
     
-    if (vm.isCollectorBusy())
+    if (vm.isCollectorBusyOnCurrentThread())
         return CallFrameClosure();
 
     // Compile the callee:
     CodeBlock* newCodeBlock;
-    JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(callFrame, function, scope, CodeForCall, newCodeBlock);
+    JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(vm, function, scope, CodeForCall, newCodeBlock);
     if (error) {
         throwException(callFrame, throwScope, error);
         return CallFrameClosure();
@@ -1053,9 +1053,9 @@ JSValue Interpreter::execute(CallFrameClosure& closure)
     VM& vm = *closure.vm;
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
-    ASSERT(!vm.isCollectorBusy());
+    ASSERT(!vm.isCollectorBusyOnCurrentThread());
     RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
-    if (vm.isCollectorBusy())
+    if (vm.isCollectorBusyOnCurrentThread())
         return jsNull();
 
     StackStats::CheckPoint stackCheckPoint;
@@ -1076,9 +1076,9 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
 
     ASSERT(scope->vm() == &callFrame->vm());
     ASSERT(!throwScope.exception());
-    ASSERT(!vm.isCollectorBusy());
+    ASSERT(!vm.isCollectorBusyOnCurrentThread());
     RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
-    if (vm.isCollectorBusy())
+    if (vm.isCollectorBusyOnCurrentThread())
         return jsNull();
 
     VMEntryScope entryScope(vm, scope->globalObject());
@@ -1112,7 +1112,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
     EvalCodeBlock* codeBlock;
     {
         CodeBlock* tempCodeBlock;
-        JSObject* compileError = eval->prepareForExecution<EvalExecutable>(callFrame, nullptr, scope, CodeForCall, tempCodeBlock);
+        JSObject* compileError = eval->prepareForExecution<EvalExecutable>(vm, nullptr, scope, CodeForCall, tempCodeBlock);
         if (UNLIKELY(!!compileError))
             return checkedReturn(throwException(callFrame, throwScope, compileError));
         codeBlock = jsCast<EvalCodeBlock*>(tempCodeBlock);
@@ -1182,9 +1182,9 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
 
     ASSERT(scope->vm() == &callFrame->vm());
     ASSERT(!throwScope.exception());
-    ASSERT(!vm.isCollectorBusy());
+    ASSERT(!vm.isCollectorBusyOnCurrentThread());
     RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
-    if (vm.isCollectorBusy())
+    if (vm.isCollectorBusyOnCurrentThread())
         return jsNull();
 
     VMEntryScope entryScope(vm, scope->globalObject());
@@ -1194,7 +1194,7 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
     ModuleProgramCodeBlock* codeBlock;
     {
         CodeBlock* tempCodeBlock;
-        JSObject* compileError = executable->prepareForExecution<ModuleProgramExecutable>(callFrame, nullptr, scope, CodeForCall, tempCodeBlock);
+        JSObject* compileError = executable->prepareForExecution<ModuleProgramExecutable>(vm, nullptr, scope, CodeForCall, tempCodeBlock);
         if (UNLIKELY(!!compileError))
             return checkedReturn(throwException(callFrame, throwScope, compileError));
         codeBlock = jsCast<ModuleProgramCodeBlock*>(tempCodeBlock);

@@ -22,27 +22,19 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
 #include "config.h"
-
 #include "Worker.h"
 
-#include "DOMWindow.h"
-#include "CachedResourceLoader.h"
 #include "ContentSecurityPolicy.h"
-#include "Document.h"
-#include "EventListener.h"
+#include "Event.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
-#include "Frame.h"
-#include "FrameLoader.h"
 #include "InspectorInstrumentation.h"
-#include "MessageEvent.h"
 #include "NetworkStateNotifier.h"
+#include "ResourceResponse.h"
 #include "SecurityOrigin.h"
-#include "TextEncoding.h"
 #include "WorkerGlobalScopeProxy.h"
 #include "WorkerScriptLoader.h"
 #include "WorkerThread.h"
@@ -107,10 +99,10 @@ Worker::~Worker()
     m_contextProxy->workerObjectDestroyed();
 }
 
-void Worker::postMessage(RefPtr<SerializedScriptValue>&& message, const MessagePortArray* ports, ExceptionCode& ec)
+void Worker::postMessage(RefPtr<SerializedScriptValue>&& message, Vector<RefPtr<MessagePort>>&& ports, ExceptionCode& ec)
 {
     // Disentangle the port in preparation for sending it to the remote context.
-    auto channels = MessagePort::disentanglePorts(ports, ec);
+    auto channels = MessagePort::disentanglePorts(WTFMove(ports), ec);
     if (ec)
         return;
     m_contextProxy->postMessageToWorkerGlobalScope(WTFMove(message), WTFMove(channels));

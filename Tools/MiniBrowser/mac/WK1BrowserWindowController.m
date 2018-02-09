@@ -103,9 +103,14 @@
     }
 }
 
-- (IBAction)setScale:(id)sender
+- (IBAction)setPageScale:(id)sender
 {
-    
+    CGFloat scale = [self pageScaleForMenuItemTag:[sender tag]];
+    [_webView _scaleWebView:scale atOrigin:NSZeroPoint];
+}
+
+- (IBAction)setViewScale:(id)sender
+{
 }
 
 - (IBAction)reload:(id)sender
@@ -128,6 +133,12 @@
     [_webView goForward:sender];
 }
 
+static BOOL areEssentiallyEqual(double a, double b)
+{
+    double tolerance = 0.001;
+    return (fabs(a - b) <= tolerance);
+}
+
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem
 {
     SEL action = [menuItem action];
@@ -145,6 +156,9 @@
         [menuItem setTitle:[_webView window] ? @"Remove Web View" : @"Insert Web View"];
     else if (action == @selector(toggleZoomMode:))
         [menuItem setState:_zoomTextOnly ? NSOnState : NSOffState];
+
+    if (action == @selector(setPageScale:))
+        [menuItem setState:areEssentiallyEqual([_webView _viewScaleFactor], [self pageScaleForMenuItemTag:[menuItem tag]])];
 
     return YES;
 }
@@ -369,6 +383,23 @@
 
     [alert runModal];
     [alert release];
+}
+
+- (BOOL)webView:(WebView *)sender runBeforeUnloadConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WebFrame *)frame
+{
+    NSAlert *alert = [[NSAlert alloc] init];
+
+    alert.messageText = [NSString stringWithFormat:@"JavaScript before unload dialog from %@.", frame.dataSource.request.URL.absoluteString];
+    alert.informativeText = message;
+
+    [alert addButtonWithTitle:@"Leave Page"];
+    [alert addButtonWithTitle:@"Stay On Page"];
+
+    NSModalResponse response = [alert runModal];
+    
+    [alert release];
+
+    return response == NSAlertFirstButtonReturn;
 }
 
 @end

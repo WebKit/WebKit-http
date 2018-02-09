@@ -1,3 +1,505 @@
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM calls
+        https://bugs.webkit.org/show_bug.cgi?id=161727
+
+        Reviewed by Filip Pizlo and Michael Saboff.
+
+        Add members of the Call category to the WASMOps special group.
+
+        * wasm/generate-wasmops-header.js:
+
+2016-10-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop isEnvironmentRecord type info flag and use JSType information instead
+        https://bugs.webkit.org/show_bug.cgi?id=163761
+
+        Reviewed by Keith Miller.
+
+        * modules/string-prototype-module-scope.js: Added.
+        (shouldBe):
+        (catch):
+        (refer):
+        * stress/string-prototype-scopes-global-lexical-environment-strict.js: Added.
+        (shouldBe):
+        (catch):
+        * stress/string-prototype-scopes-global-lexical-environment.js: Added.
+        (shouldBe):
+        (catch):
+        * stress/string-prototype-scopes-strict.js: Added.
+        (shouldBe):
+        (catch):
+        (try.refer):
+        (refer):
+        * stress/string-prototype-scopes.js: Added.
+        (shouldBe):
+        (catch):
+        (try.refer):
+        (refer):
+        (object.toString):
+        (with):
+
+2016-10-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: implement exception constructors properly
+
+         - Rename WebAssemblyObject to JSWebAssembly for consistency.
+         - WebAssembly object now has its own prototype: add WebAssemblyPrototype, and
+           use it to register JSWebAssembly's function properties through auto-generated
+           .lut.h, instead of manually.
+         - The error constructors used to throw (e.g. `new WebAssembly.CompileError()`).
+         - Register WebAssembly's constructors from the global object, and hold a
+           reference to their structure and prototype so that invoking the constructor
+           can use the structure directly from the global object.
+         - Add a prototype base field to global object creation. Previous ones all had
+           Object's prototype as their base, but WebAssembly's error constructors have
+           Error as their base.
+         - Test for the error object's correctness.
+         - Add missing #if ENABLE(WEBASSEMBLY)
+
+        WebAssembly API: implement exception constructors properly
+        https://bugs.webkit.org/show_bug.cgi?id=163699
+
+        Reviewed by Keith Miller.
+
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties): more tests
+
+2016-10-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] disallow references to `await` in AsyncFunction formal parameters
+        https://bugs.webkit.org/show_bug.cgi?id=163694
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-syntax.js:
+
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Invalid assertion in arguments elimination
+        https://bugs.webkit.org/show_bug.cgi?id=163740
+        <rdar://problem/27911462>
+
+        Reviewed by Michael Saboff.
+
+        * stress/direct-arguments-osr-entry.js: Added.
+        (foo.):
+        (foo):
+
+2016-10-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] throw TypeError when constructing dynamically created JSGeneratorFunction
+        https://bugs.webkit.org/show_bug.cgi?id=163714
+
+        Reviewed by Mark Lam.
+
+        Add missing test coverage that dynamically created
+        JSGeneratorFunctions can not be constructed.
+
+        * stress/generator-function-constructor.js:
+        (shouldThrow):
+
+2016-10-19  JF Bastien  <jfbastien@apple.com>
+
+        JavaScript WebAssembly API: baby steps
+
+         - Expand WebAssembly constructors into their own files. This requires a lot of
+           boilerplate, as well as adding the .lut.h files. All of the
+           JSWebAssembly*.{h,cpp}, as well as Constructor and Prototype files, are
+           currently the same between the 4 specified WebAssembly constructors. It'll be
+           easy to implement individual functions on constructed objects as per the
+           spec, and have each of these files diverge. The error constructors are also
+           similar, except that their instance derives from ErrorInstance.
+         - Use constructor macro when initializing the global object.
+         - Dramatically improve testing of the WebAssembly API by checking for
+           properties specified in the spec [*].
+         - Clean up assert.js' exception testing.
+         - Fix a copy-paste bug in wasm.json: floating-point const return values were
+           swapped.
+
+        [*] https://github.com/WebAssembly/design/blob/master/JS.md
+
+        Implement more of the JavaScript WebAssembly API
+        https://bugs.webkit.org/show_bug.cgi?id=163571
+
+        Reviewed by Keith Miller.
+
+        * wasm/assert.js:
+        (export.const.isUndef): add this useful helper
+        (export.const.throws): fold other throw checks into this one, and check message as well
+        * wasm/js-api/test_basic_api.js:
+        (const.checkOwnPropertyDescriptor): check own property descriptor follows the spec
+        * wasm/self-test/test_BuilderJSON.js:
+        (const.assertOpThrows): use new assert API
+        (CheckedOpcodeArgumentsTooMany): ditto
+        (CheckedOpcodeArgumentsNotEnough): ditto
+        (CallInvalid): ditto
+        (I32ConstInvalid): ditto
+        (F32ConstInvalid): ditto (and this caugth the JSON copy-paste bug)
+        (F64ConstInvalid): ditto
+        * wasm/self-test/test_LowLevelBinary_varint.js: use new assert API
+        * wasm/self-test/test_LowLevelBinary_varuint.js: use new assert API
+        * wasm/utilities.js: add "global" object, used in basic API test (to access global.WebAssembly).
+        * wasm/wasm.json: fix copy-paste
+
+2016-10-19  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] forbid "use strict" directive in generator functions with non-simple parameters
+        https://bugs.webkit.org/show_bug.cgi?id=163683
+
+        Reviewed by Geoffrey Garen.
+
+        Update various generator*-non-simple-param.js tests to be passing.
+
+        * test262.yaml:
+
+2016-10-18  Mark Lam  <mark.lam@apple.com>
+
+        Invoking Object.prototype.__proto__ accessors directly should throw a TypeError.
+        https://bugs.webkit.org/show_bug.cgi?id=154377
+        <rdar://problem/27330808>
+
+        Reviewed by Filip Pizlo and Saam Barati.
+
+        * stress/object-prototype-proto-accessors-should-throw-on-undefined-this.js: Added.
+
+2016-10-18  Keith Miller  <keith_miller@apple.com>
+
+        GetByVal to GetById conversion in the DFG is incorrect for getters with control flow
+        https://bugs.webkit.org/show_bug.cgi?id=163629
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/get-by-val-to-id-with-getter.js: Added.
+        (foo):
+        (o.get hello):
+
+2016-10-15  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG and FTL should be able to use DirectCall ICs when they proved the callee or its executable
+        https://bugs.webkit.org/show_bug.cgi?id=163371
+
+        Reviewed by Geoffrey Garen and Saam Barati.
+        
+        Add microbenchmarks for all of the cases that this patch optimizes.
+
+        * microbenchmarks/direct-call-arity-mismatch.js: Added.
+        (foo):
+        (bar):
+        * microbenchmarks/direct-call.js: Added.
+        (foo):
+        (bar):
+        * microbenchmarks/direct-construct-arity-mismatch.js: Added.
+        (Foo):
+        (bar):
+        * microbenchmarks/direct-construct.js: Added.
+        (Foo):
+        (bar):
+        * microbenchmarks/direct-tail-call-arity-mismatch.js: Added.
+        (foo):
+        (bar):
+        * microbenchmarks/direct-tail-call-inlined-caller-arity-mismatch.js: Added.
+        (foo):
+        (bar):
+        (baz):
+        * microbenchmarks/direct-tail-call-inlined-caller.js: Added.
+        (foo):
+        (bar):
+        (baz):
+        * microbenchmarks/direct-tail-call.js: Added.
+        (foo):
+        (bar):
+
+2016-10-18  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] ES6 Method functions should not have prototype
+        https://bugs.webkit.org/show_bug.cgi?id=162530
+
+        Reviewed by Saam Barati.
+
+        Fix test262 expectations about MethodDefinitions
+
+        * ChakraCore/test/strict/05.arguments_sm.baseline-jsc:
+        * stress/reflect-set.js:
+        * test262.yaml:
+
+2016-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM Memory.
+        https://bugs.webkit.org/show_bug.cgi?id=161710
+
+        Reviewed by Geoffrey Garen.
+
+        Add store and load opcodes to wasm.json. Additionally, add new
+        enums for those opcodes in the generator.
+
+        * stress/wasm/generate-wasmops-header.js:
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.LoadOpType):
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.StoreOpType):
+
+2016-10-17  Saam Barati  <sbarati@apple.com>
+
+        Add more tests for the double->String conversion in ValueAdd constant folding
+        https://bugs.webkit.org/show_bug.cgi?id=163517
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/string-add-constant-folding.js:
+        (test):
+
+2016-10-17  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement basic stub
+
+        Implement the global WebAssembly JavaScript object, and its constructor +
+        function properties as described in:
+          https://github.com/WebAssembly/design/blob/master/JS.md
+
+        These don't do anything at the moment, the parent bug will take care of adding
+        more functionality and associated tests.
+
+        WebAssembly JS API: implement basic stub
+        https://bugs.webkit.org/show_bug.cgi?id=163404
+
+        Reviewed by Keith Miller.
+
+        * wasm.yaml:
+        * wasm/js-api/test_basic_api.js: Added.
+        (const.f.of.functionProperties.WebAssembly.f.undefined.throw.new.Error.Couldn.const.c.of.constructorProperties.WebAssembly.c.undefined.throw.new.Error.Couldn):
+        (const.c.of.constructorProperties.catch):
+
+2016-10-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Use DOMJIT::Patchpoint in IC
+        https://bugs.webkit.org/show_bug.cgi?id=163223
+
+        Reviewed by Saam Barati.
+
+        * stress/domjit-exception-ic.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-exception.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-complex-with-incorrect-object.js: Added.
+        (shouldThrow):
+        (access):
+        (i.shouldThrow):
+        * stress/domjit-getter-complex.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-try-catch-getter-as-get-by-id-register-restoration.js: Added.
+        (assert):
+        (bar):
+        (foo):
+
+2016-10-15  Saam Barati  <sbarati@apple.com>
+
+        Assertion failed under operationToLowerCase with a rope with zero length
+        https://bugs.webkit.org/show_bug.cgi?id=163314
+
+        Reviewed by Mark Lam.
+
+        * stress/to-lower-case-intrinsic-on-empty-rope.js: Added.
+        (assert):
+        (returnRope.helper):
+        (returnRope):
+        (lower):
+
+2016-10-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] op_negate should with any type
+        https://bugs.webkit.org/show_bug.cgi?id=162587
+
+        Reviewed by Saam Barati.
+
+        * stress/arith-abs-to-arith-negate-range-optimizaton.js: Added.
+        Cover OSR Exits when converting Math.abs() into ArithNegate.
+
+        * stress/arith-negate-on-various-types.js: Added.
+        Cover ArithNegate with all types.
+
+2016-10-14  JF Bastien  <jfbastien@apple.com>
+
+        Basic WebAssembly testing
+
+        Create a small DSL in JavaScript which can build WebAssembly binary modules based on the JSON description of the format as described in:
+        https://github.com/WebAssembly/design/blob/master/BinaryEncoding.md
+
+        This DSL can then be used to write small text description of valid and invalid WebAssembly binaries, making testing the JSC implementation much easier.
+
+        Details and example in README.md.
+
+        Basic WebAssembly testing
+        https://bugs.webkit.org/show_bug.cgi?id=163267
+
+        Reviewed by Keith Miller.
+
+        * stress/wasm/wasm.json: Removed.
+        * wasm.yaml: Added.
+        * wasm/Builder.js: Added.
+        (const._isValidValue):
+        (const._BuildWebAssemblyBinary):
+        (export.default.Builder):
+        (export.default.Builder.prototype.setChecked):
+        (export.default.Builder.prototype.setPreamble):
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        (export.default.Builder.prototype._registerSectionBuilders.this.Unknown):
+        (export.default.Builder.prototype._registerSectionBuilders):
+        (export.default.Builder.prototype._addSection):
+        (export.default.Builder.prototype.optimize):
+        (export.default.Builder.prototype.json):
+        (export.default.Builder.prototype.AsmJS):
+        (export.default.Builder.prototype.WebAssembly):
+        * wasm/LowLevelBinary.js: Added.
+        (const._getterRangeCheck):
+        (const._hexdump):
+        (export.default.LowLevelBinary):
+        (export.default.LowLevelBinary.prototype.newPatchable):
+        (export.default.LowLevelBinary.prototype.hexdump):
+        (export.default.LowLevelBinary.prototype._maybeGrow):
+        (export.default.LowLevelBinary.prototype._push8):
+        (export.default.LowLevelBinary.prototype.uint8):
+        (export.default.LowLevelBinary.prototype.uint16):
+        (export.default.LowLevelBinary.prototype.uint32):
+        (export.default.LowLevelBinary.prototype.varuint):
+        (export.default.LowLevelBinary.prototype.varint):
+        (export.default.LowLevelBinary.prototype.varuint7):
+        (export.default.LowLevelBinary.prototype.string):
+        (export.default.LowLevelBinary.prototype.getSize):
+        (export.default.LowLevelBinary.prototype.getUint8):
+        (export.default.LowLevelBinary.prototype.getUint16):
+        (export.default.LowLevelBinary.prototype.getUint32):
+        (export.default.LowLevelBinary.prototype.getVaruint):
+        (export.default.LowLevelBinary.prototype.getVarint):
+        (export.default.LowLevelBinary.prototype.getVaruint7):
+        (export.default.LowLevelBinary.prototype.getString):
+        (PatchableLowLevelBinary):
+        (PatchableLowLevelBinary.prototype._push8):
+        (PatchableLowLevelBinary.prototype.apply):
+        * wasm/README.md: Added.
+        * wasm/WASM.js: Added.
+        * wasm/assert.js: Added.
+        (export.const.notUndef):
+        (export.const.eq):
+        (export.const.ge):
+        (export.const.throwsError):
+        (export.const.throwsRangeError):
+        * wasm/generate-wasmops-header.js: Renamed from JSTests/stress/wasm/generate-wasmops-header.js.
+        * wasm/self-test/test_BuilderJSON.js: Added.
+        (const.assertOpThrows):
+        (EmptyModule):
+        (CustomMagicNumber):
+        (CustomVersion):
+        (CustomSection):
+        (CustomSectionAllBytes):
+        (CustomSectionInvalidByte):
+        (TwoCustomSections):
+        (EmptyCodeSection):
+        (CodeSectionWithEmptyFunction):
+        (CodeSectionWithEmptyFunctionWithParameters):
+        (InvalidFunctionParameters):
+        (SimpleFunction):
+        (TwoSimpleFunctions):
+        (TwoBuildersAtTheSameTime):
+        (CheckedOpcodeArgumentsTooMany):
+        (CheckedOpcodeArgumentsNotEnough):
+        (CallNoArguments):
+        (CallInvalid):
+        (I32ConstInvalid):
+        (F32ConstInvalid):
+        (F64ConstInvalid):
+        (CallManyFromStack):
+        (OpcodeAdd):
+        (OpcodeUnreachable):
+        (OpcodeUnreachableCombinations):
+        (OpcodeSelect):
+        * wasm/self-test/test_BuilderWebAssembly.js: Added.
+        (EmptyModule):
+        (CustomSection):
+        (Basic):
+        * wasm/self-test/test_LowLevelBinary_encode.js: Added.
+        * wasm/self-test/test_LowLevelBinary_string.js: Added.
+        * wasm/self-test/test_LowLevelBinary_uint16.js: Added.
+        * wasm/self-test/test_LowLevelBinary_uint32.js: Added.
+        * wasm/self-test/test_LowLevelBinary_uint8.js: Added.
+        * wasm/self-test/test_LowLevelBinary_varint.js: Added.
+        * wasm/self-test/test_LowLevelBinary_varuint.js: Added.
+        * wasm/self-test/test_LowLevelBinary_varuint7.js: Added.
+        * wasm/self-test/test_WASM.js: Added.
+        * wasm/test.sh: Added.
+        * wasm/utilities.js: Added.
+        (const._read.filename.switch):
+        (const._load.filename.switch):
+        (const._json.filename.switch):
+        * wasm/wasm.json: Added.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: @isConstructor incorrectly thinks Math.cos is a constructor
+        https://bugs.webkit.org/show_bug.cgi?id=163437
+
+        Reviewed by Saam Barati.
+
+        * stress/is-constructor.js: Added.
+        (assert):
+        (prototype.assert):
+        New test to cover the @isConstructor builtin.
+
+        * test262.yaml:
+        Test now passes.
+
+2016-10-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r207322.
+
+        This change caused JSC test failures
+
+        Reverted changeset:
+
+        "Fix Array.prototype.splice ES6 compliance."
+        https://bugs.webkit.org/show_bug.cgi?id=163372
+        http://trac.webkit.org/changeset/207322
+
+2016-10-14  Mark Lam  <mark.lam@apple.com>
+
+        JSON.parse should not modify frozen objects.
+        https://bugs.webkit.org/show_bug.cgi?id=163430
+
+        Reviewed by Saam Barati.
+
+        * stress/json-parse-on-frozen-object.js: Added.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Failure with RegExp.prototype.compile when pattern is undefined
+        https://bugs.webkit.org/show_bug.cgi?id=163431
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2016-10-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Exception message for expressions with multiple bracket accesses is inconsistent / incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=163426
+
+        Reviewed by Geoffrey Garen.
+
+        * ChakraCore/test/Error/CallNonFunction_3.baseline-jsc:
+        * ChakraCore/test/Object/null.baseline-jsc:
+        * stress/exception-in-to-property-key-should-be-handled-early.js:
+        Better exception messages.
+
+2016-10-13  Mark Lam  <mark.lam@apple.com>
+
+        Fix Array.prototype.splice ES6 compliance.
+        https://bugs.webkit.org/show_bug.cgi?id=163372
+
+        Reviewed by Geoffrey Garen and Yusuke Suzuki.
+
+        * stress/array-splice-on-frozen-object.js: Added.
+
 2016-10-12  Keith Miller  <keith_miller@apple.com>
 
         Handle non-function, non-undefined comparator in Array.prototype.sort

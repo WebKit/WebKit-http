@@ -64,6 +64,7 @@ bool ResourceRequest::s_httpPipeliningEnabled = false;
 typedef void (*CFURLRequestSetContentDispositionEncodingFallbackArrayFunction)(CFMutableURLRequestRef, CFArrayRef);
 typedef CFArrayRef (*CFURLRequestCopyContentDispositionEncodingFallbackArrayFunction)(CFURLRequestRef);
 
+#if PLATFORM(WIN)
 static HMODULE findCFNetworkModule()
 {
 #ifndef DEBUG_ALL
@@ -82,6 +83,17 @@ static CFURLRequestCopyContentDispositionEncodingFallbackArrayFunction findCFURL
 {
     return reinterpret_cast<CFURLRequestCopyContentDispositionEncodingFallbackArrayFunction>(GetProcAddress(findCFNetworkModule(), "_CFURLRequestCopyContentDispositionEncodingFallbackArray"));
 }
+#elif PLATFORM(COCOA)
+static CFURLRequestSetContentDispositionEncodingFallbackArrayFunction findCFURLRequestSetContentDispositionEncodingFallbackArrayFunction()
+{
+    return reinterpret_cast<CFURLRequestSetContentDispositionEncodingFallbackArrayFunction>(dlsym(RTLD_DEFAULT, "_CFURLRequestSetContentDispositionEncodingFallbackArray"));
+}
+
+static CFURLRequestCopyContentDispositionEncodingFallbackArrayFunction findCFURLRequestCopyContentDispositionEncodingFallbackArrayFunction()
+{
+    return reinterpret_cast<CFURLRequestCopyContentDispositionEncodingFallbackArrayFunction>(dlsym(RTLD_DEFAULT, "_CFURLRequestCopyContentDispositionEncodingFallbackArray"));
+}
+#endif
 
 static void setContentDispositionEncodingFallbackArray(CFMutableURLRequestRef request, CFArrayRef fallbackArray)
 {
@@ -144,6 +156,10 @@ void ResourceRequest::doUpdatePlatformRequest()
     if (resourcePrioritiesEnabled())
         CFURLRequestSetRequestPriority(cfRequest, toPlatformRequestPriority(priority()));
 
+#if !PLATFORM(WIN)
+    _CFURLRequestSetProtocolProperty(cfRequest, kCFURLRequestAllowAllPOSTCaching, kCFBooleanTrue);
+#endif
+
     setHeaderFields(cfRequest, httpHeaderFields());
 
     CFURLRequestSetShouldHandleHTTPCookies(cfRequest, allowCookies());
@@ -168,6 +184,15 @@ void ResourceRequest::doUpdatePlatformRequest()
 #endif
 
     m_cfRequest = adoptCF(cfRequest);
+#if PLATFORM(COCOA)
+    clearOrUpdateNSURLRequest();
+#endif
+}
+
+// FIXME: We should use a switch based on ResourceRequestCachePolicy parameter
+static inline CFURLRequestCachePolicy toPlatformRequestCachePolicy(ResourceRequestCachePolicy policy)
+{
+    return static_cast<CFURLRequestCachePolicy>((policy <= ReturnCacheDataDontLoad) ? policy : ReloadIgnoringCacheData);
 }
 
 void ResourceRequest::doUpdatePlatformHTTPBody()
@@ -180,7 +205,7 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
         cfRequest = CFURLRequestCreateMutableCopy(0, m_cfRequest.get());
         CFURLRequestSetURL(cfRequest, url.get());
         CFURLRequestSetMainDocumentURL(cfRequest, firstPartyForCookies.get());
-        CFURLRequestSetCachePolicy(cfRequest, (CFURLRequestCachePolicy)cachePolicy());
+        CFURLRequestSetCachePolicy(cfRequest, toPlatformRequestCachePolicy(cachePolicy()));
         CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval());
     } else
         cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval(), firstPartyForCookies.get());
@@ -200,18 +225,37 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
     }
 
     m_cfRequest = adoptCF(cfRequest);
+#if PLATFORM(COCOA)
+    clearOrUpdateNSURLRequest();
+#endif
 }
 
 void ResourceRequest::doUpdateResourceRequest()
 {
     if (!m_cfRequest) {
+#if PLATFORM(IOS)
+        // <rdar://problem/9913526>
+        // This is a hack to mimic the subtle behaviour of the Foundation based ResourceRequest
+        // code. That code does not reset m_httpMethod if the NSURLRequest is nil. I filed
+        // <https://bugs.webkit.org/show_bug.cgi?id=66336> to track that.
+        // Another related bug is <https://bugs.webkit.org/show_bug.cgi?id=66350>. Fixing that
+        // would, ideally, allow us to not have this hack. But unfortunately that caused layout test
+        // failures.
+        // Removal of this hack is tracked by <rdar://problem/9970499>.
+
+        String httpMethod = m_httpMethod;
         *this = ResourceRequest();
+        m_httpMethod = httpMethod;
+#else
+        *this = ResourceRequest();
+#endif
         return;
     }
 
     m_url = CFURLRequestGetURL(m_cfRequest.get());
 
-    m_cachePolicy = (ResourceRequestCachePolicy)CFURLRequestGetCachePolicy(m_cfRequest.get());
+    if (!m_cachePolicy)
+        m_cachePolicy = (ResourceRequestCachePolicy)CFURLRequestGetCachePolicy(m_cfRequest.get());
     m_timeoutInterval = CFURLRequestGetTimeoutInterval(m_cfRequest.get());
     m_firstPartyForCookies = CFURLRequestGetMainDocumentURL(m_cfRequest.get());
     if (CFStringRef method = CFURLRequestCopyHTTPRequestMethod(m_cfRequest.get())) {
@@ -280,6 +324,9 @@ void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
     if (storageSession)
         _CFURLRequestSetStorageSession(cfRequest, storageSession);
     m_cfRequest = adoptCF(cfRequest);
+#if PLATFORM(COCOA)
+    clearOrUpdateNSURLRequest();
+#endif
 }
 
 #endif // USE(CFURLCONNECTION)

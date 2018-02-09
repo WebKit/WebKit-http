@@ -882,6 +882,8 @@ webkit.org/b/91611 media/media-higher-prio-audio-stream.html [ Skip ]
 
 # WebKitDataCue is supported, not DataCue
 media/track/track-datacue.html [ Skip ]
+
+webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 ## --- End unimplemeted media tests ---
 
 # HTML sandboxing produces two or three messages flakily.
@@ -1084,6 +1086,9 @@ webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/m
 
 # This test times out.
 [ Yosemite+ ] media/media-source/media-source-seek-complete.html [ Timeout ]
+
+# <rdar://problem/18858636>
+media/media-source/media-source-init-segment-duration.html
 # --- End Media Source Tests ---
 
 # These tests used to only fail with WK2, but on Yosemite, they also fail with WK1.
@@ -1462,7 +1467,10 @@ webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pa
 
 # rdar://problem/28586837
 fast/text/variations/order.html [ Crash ]
-animations/font-variation-settings-order.html [ Crash ]
+animations/font-variations/font-variation-settings-order.html [ Crash ]
+# Variation fonts are not implemented earlier than Sierra.
+[ ElCapitan Yosemite ] fast/text/variations [ Pass Failure ImageOnlyFailure ]
+[ ElCapitan Yosemite ] animations/font-variations [ Pass Failure ImageOnlyFailure ]
 
 [ Debug ] fast/selectors/slow-style-sharing-with-long-cousin-list.html [ Skip ]
 

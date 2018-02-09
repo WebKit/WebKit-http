@@ -139,10 +139,7 @@ bool ImageDecoder::frameIsCompleteAtIndex(size_t index) const
 
     COMPtr<IWICBitmapFrameDecode> frame;
     HRESULT hr = m_nativeDecoder->GetFrame(index, &frame);
-    if (!SUCCEEDED(hr))
-        return false;
-
-    return true;
+    return SUCCEEDED(hr);
 }
 
 ImageOrientation ImageDecoder::frameOrientationAtIndex(size_t index) const
@@ -174,27 +171,18 @@ unsigned ImageDecoder::frameBytesAtIndex(size_t index, SubsamplingLevel subsampl
     if (!m_nativeDecoder)
         return 0;
 
-    COMPtr<IWICBitmapFrameDecode> frame;
-    HRESULT hr = m_nativeDecoder->GetFrame(index, &frame);
-    if (!SUCCEEDED(hr))
-        return 0;
-
-    UINT width, height;
-    hr = frame->GetSize(&width, &height);
-    if (!SUCCEEDED(hr))
-        return 0;
-
-    return width * height * 4;
+    auto frameSize = frameSizeAtIndex(index, subsamplingLevel);
+    return frameSize.area() * 4;
 }
 
-void ImageDecoder::setRenderTarget(ID2D1RenderTarget* renderTarget)
+void ImageDecoder::setTargetContext(ID2D1RenderTarget* renderTarget)
 {
     m_renderTarget = renderTarget;
 }
 
 NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel, DecodingMode) const
 {
-    if (!m_nativeDecoder)
+    if (!m_nativeDecoder || !m_renderTarget)
         return nullptr;
 
     COMPtr<IWICBitmapFrameDecode> frame;
@@ -209,10 +197,6 @@ NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLe
 
     hr = converter->Initialize(frame.get(), GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nullptr, 0.f, WICBitmapPaletteTypeCustom);
     if (!SUCCEEDED(hr))
-        return nullptr;
-
-    ASSERT(m_renderTarget);
-    if (!m_renderTarget)
         return nullptr;
 
     COMPtr<ID2D1Bitmap> bitmap;

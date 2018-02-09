@@ -1,3 +1,264 @@
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM calls
+        https://bugs.webkit.org/show_bug.cgi?id=161727
+
+        Reviewed by Filip Pizlo and Michael Saboff.
+
+        Added a new decodeUInt64. Also, added WTF::LEBDecoder namespace.
+
+        * wtf/LEBDecoder.h:
+        (WTF::LEBDecoder::decodeUInt):
+        (WTF::LEBDecoder::decodeUInt32):
+        (WTF::LEBDecoder::decodeUInt64):
+        (WTF::LEBDecoder::decodeInt32):
+        (decodeUInt32): Deleted.
+        (decodeInt32): Deleted.
+
+2016-10-20  Filip Pizlo  <fpizlo@apple.com>
+
+        The tracking of the coarse-grain Heap state (allocating or not, collector or not, eden vs full) should respect the orthogonality between allocating and collecting
+        https://bugs.webkit.org/show_bug.cgi?id=163738
+
+        Reviewed by Geoffrey Garen.
+        
+        There will soon be different kinds of GC threads, and WTF's "are you a GC thread" thing
+        should know about this.
+
+        * wtf/MainThread.cpp:
+        (WTF::initializeGCThreads):
+        (WTF::registerGCThread):
+        (WTF::mayBeGCThread):
+        * wtf/MainThread.h:
+
+2016-10-19  Sam Weinig  <sam@webkit.org>
+
+        Add convenience function that combines WTF::visit(...) with WTF::makeVisitor(...)
+        https://bugs.webkit.org/show_bug.cgi?id=163713
+
+        Reviewed by Dan Bernstein.
+
+        - Add WTF::switchOn which merges WTF::visit with WTF::makeVisitor in the following
+          way:
+                WTF::visit(WTF::makeVisitor(...), variant)
+
+        * wtf/Variant.h:
+        (WTF::switchOn):
+
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r207151
+        https://bugs.webkit.org/show_bug.cgi?id=163675
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+        * wtf/SchedulePair.h:
+        * wtf/SchedulePairMac.mm:
+
+2016-10-19  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r207480): 3 Dromaeo tests failing
+        https://bugs.webkit.org/show_bug.cgi?id=163633
+
+        Reviewed by Mark Lam.
+        
+        It's a ParkingLot bug: if we timeout and get unparked at the same time, then the unparking
+        thread will clear our address eventually - but not immediately. This causes a nasty
+        assertion failure. The tricky thing is that when we detect this, we need to wait until that
+        unparking thread does the deed. Otherwise, they will still do it at some later time.
+        
+        Alternatively, we could use some kind of versioning to detect this - increment the version
+        when you park, so that unparking threads will know if they are time travelers. That seems
+        more yucky.
+        
+        I don't think it matters too much what we do here, so long as it's simple and correct, since
+        this requires a race that is rare enough that it didn't happen once in my testing, and I was
+        pretty thorough. For example, it didn't happen once in 15 runs of JetStream. The race is
+        rare because it requires the timeout to happen right as someone else is unparking. Since
+        it's so rare, its probably OK that the unparked thread waits just a tiny moment until the
+        unparking thread is done.
+
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionallyImpl):
+        (WTF::ParkingLot::unparkOneImpl):
+
+2016-10-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should use AutomaticThread
+        https://bugs.webkit.org/show_bug.cgi?id=163686
+
+        Reviewed by Geoffrey Garen.
+        
+        Added a AutomaticThreadCondition::wait() method, so that if you really want to use one
+        common condition for your thread and something else, you can do it. This trivially works
+        if you only use notifyAll(), and behaves as you'd expect for notifyOne() (i.e. it's
+        dangerous, since you don't know who will wake up).
+        
+        The Baseline JIT used the one-true-Condition idiom because it used notifyAll() in an
+        optimal way: there are just two threads talking to each other, so it wakes up at most one
+        thread and that thread is exactly the one you want woken up. Adding wait() means that I did
+        not have to change that code.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::wait):
+        * wtf/AutomaticThread.h:
+
+2016-10-18  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG worklist should use AutomaticThread
+        https://bugs.webkit.org/show_bug.cgi?id=163615
+
+        Reviewed by Mark Lam.
+        
+        This adds new functionality to AutomaticThread to support DFG::Worklist:
+        
+        - AutomaticThread::threadDidStart/threadWillStop virtual methods called at the start and end
+          of a thread's lifetime. This allows Worklist to tie some resources to the life of the
+          thread, and also means that now those resources will naturally free up when the Worklist is
+          not in use.
+        
+        - AutomaticThreadCondition::notifyOne(). This required changes to Condition::notifyOne(). We
+          need to know if the Condition woke up anyone. If it didn't, then we need to launch one of
+          our threads.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::notifyOne):
+        (WTF::AutomaticThread::ThreadScope::ThreadScope):
+        (WTF::AutomaticThread::ThreadScope::~ThreadScope):
+        (WTF::AutomaticThread::start):
+        (WTF::AutomaticThread::threadDidStart):
+        (WTF::AutomaticThread::threadWillStop):
+        * wtf/AutomaticThread.h:
+        * wtf/Condition.h:
+        (WTF::ConditionBase::notifyOne):
+
+2016-10-18  Sam Weinig  <sam@webkit.org>
+
+        Replace std::experimental::variant with WTF::Variant (or similar)
+        https://bugs.webkit.org/show_bug.cgi?id=163626
+
+        Reviewed by Chris Dumez.
+
+        Rename std::experimental::variant, Variant. Move helpers get/holds_alternative/etc.
+        into the WTF namespace.
+
+        * wtf/Forward.h:
+        * wtf/Variant.h:
+
+2016-10-18  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should make it easier to create threads that die automatically after inactivity
+        https://bugs.webkit.org/show_bug.cgi?id=163576
+
+        Reviewed by Andreas Kling.
+        
+        For a long time now, I've been adding threads to WTF/JSC and each time I do this, I feel
+        guilty because those threads don't shut down when they are inactive. For example, in bug
+        163562, I need to add a new GC thread. There will be one of them per VM. This means that a
+        JSC API client that starts a lot of VMs will have a lot of threads. I don't think that's
+        good.
+        
+        A common pattern for all of these threads is that they have some well-defined trigger that
+        causes them to run. This trigger has a lock, a condition variable, some logic that determines
+        if there is work to do, and then of course the logic for the thread's actual work. The thread
+        bodies usually look like this:
+        
+        void Thingy::runThread()
+        {
+            for (;;) {
+                Work work;
+                {
+                    LockHolder locker(m_lock);
+                    while (!hasWork())
+                        m_cond.wait(m_lock);
+                    work = takeWork();
+                }
+                doWork(work);
+            }
+        }
+        
+        If you look at ParallelHelperPool (the GC's threads) and DFG::Worklist (some of the JIT's
+        threads), you will see this pattern.
+        
+        This change adds a new kind of thread, called AutomaticThread, that lets you write threads to
+        this pattern while getting automatic thread shutdown for free: instead of just waiting on a
+        condition variable, AutomaticThread will have a timeout that causes the thread to die. The
+        condition variable associated with AutomaticThread, called AutomaticThreadCondition, is smart
+        enough to restart any threads that have decided to stop due to inactivity. The inactivity
+        threshold is current just 1 second.
+        
+        In this patch I only adopt AutomaticThread for ParallelHelperPool. I plan to adopt it in more
+        places soon.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp: Added.
+        (WTF::AutomaticThreadCondition::create):
+        (WTF::AutomaticThreadCondition::AutomaticThreadCondition):
+        (WTF::AutomaticThreadCondition::~AutomaticThreadCondition):
+        (WTF::AutomaticThreadCondition::notifyAll):
+        (WTF::AutomaticThreadCondition::add):
+        (WTF::AutomaticThreadCondition::remove):
+        (WTF::AutomaticThreadCondition::contains):
+        (WTF::AutomaticThread::AutomaticThread):
+        (WTF::AutomaticThread::~AutomaticThread):
+        (WTF::AutomaticThread::join):
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h: Added.
+        * wtf/CMakeLists.txt:
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperClient::ParallelHelperClient):
+        (WTF::ParallelHelperClient::~ParallelHelperClient):
+        (WTF::ParallelHelperClient::setTask):
+        (WTF::ParallelHelperClient::finish):
+        (WTF::ParallelHelperClient::doSomeHelping):
+        (WTF::ParallelHelperClient::runTask):
+        (WTF::ParallelHelperPool::ParallelHelperPool):
+        (WTF::ParallelHelperPool::~ParallelHelperPool):
+        (WTF::ParallelHelperPool::ensureThreads):
+        (WTF::ParallelHelperPool::doSomeHelping):
+        (WTF::ParallelHelperPool::Thread::Thread):
+        (WTF::ParallelHelperPool::didMakeWorkAvailable):
+        (WTF::ParallelHelperPool::helperThreadBody): Deleted.
+        (WTF::ParallelHelperPool::waitForClientWithTask): Deleted.
+        * wtf/ParallelHelperPool.h:
+
+2016-10-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVGCSSParser: m_implicitShorthand value is not reset after adding the shorthand property
+        https://bugs.webkit.org/show_bug.cgi?id=116470
+
+        Reviewed by Simon Fraser.
+
+        * wtf/TemporaryChange.h:
+        (WTF::TemporaryChange::TemporaryChange):
+        Add a new constructor to make TemporaryChange work as a restorer. The
+        temporary change will happen after we construct the object.
+
+2016-10-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement DOMRect/DOMRectReadOnly
+        https://bugs.webkit.org/show_bug.cgi?id=163464
+
+        Reviewed by Darin Adler.
+        
+        Implement min()/max() in a way that follows Math.min/Math.max, which return
+        NaN if either argument is NaN.
+
+        * wtf/MathExtras.h:
+        (WTF::nanPropagatingMin):
+        (WTF::nanPropagatingMax):
+
+2016-10-15  Sam Weinig  <sam@webkit.org>
+
+        MessageEvent's source property should be a (DOMWindow or MessagePort)? rather than a EventTarget?
+        https://bugs.webkit.org/show_bug.cgi?id=163475
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Variant.h:
+        Add missing return statement that was tripping up some compilers.
+
 2016-10-12  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r207225.

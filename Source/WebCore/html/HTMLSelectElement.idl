@@ -34,23 +34,20 @@
 
     readonly attribute DOMString type;
 
-    [SameObject] readonly attribute HTMLOptionsCollection options;
+    readonly attribute HTMLOptionsCollection options;
     [SetterMayThrowLegacyException] attribute unsigned long length;
 
     getter HTMLOptionElement? item(unsigned long index);
     HTMLOptionElement? namedItem(DOMString name);
 
-    [MayThrowLegacyException] void add(HTMLElement element, optional HTMLElement? before = null);
-    // FIXME: Should be:
-    // void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
-    [MayThrowLegacyException] void add(HTMLElement element, long index);
+    [MayThrowException] void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
 
     [MayThrowLegacyException] void remove(); // ChildNode overload
     // FIXME: This overload is not in the specification and was dropped in Blink.
     void remove(HTMLOptionElement option);
     [ImplementedAs=removeByIndex] void remove(long index);
 
-    [SameObject] readonly attribute HTMLCollection selectedOptions;
+    readonly attribute HTMLCollection selectedOptions;
     attribute long selectedIndex;
 
     attribute DOMString value;
@@ -59,9 +56,10 @@
     readonly attribute ValidityState validity;
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
     void setCustomValidity(DOMString? error); // FIXME: Argument should not be nullable.
 
-    [SameObject] readonly attribute NodeList labels;
+    readonly attribute NodeList labels;
 
     attribute DOMString autocomplete;
 };

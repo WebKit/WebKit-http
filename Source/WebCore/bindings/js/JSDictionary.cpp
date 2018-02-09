@@ -30,10 +30,11 @@
 #include "DOMWindow.h"
 #include "Dictionary.h"
 #include "JSCSSFontFaceRule.h"
+#include "JSDOMConvert.h"
 #include "JSDOMError.h"
 #include "JSDOMWindow.h"
 #include "JSEventTarget.h"
-#include "JSMessagePortCustom.h"
+#include "JSMessagePort.h"
 #include "JSNode.h"
 #include "JSStorage.h"
 #include "JSTrackCustom.h"
@@ -177,7 +178,7 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, Deprecated::Scri
 
 void JSDictionary::convertValue(ExecState* exec, JSValue value, RefPtr<SerializedScriptValue>& result)
 {
-    result = SerializedScriptValue::create(exec, value, 0, 0);
+    result = SerializedScriptValue::create(*exec, value);
 }
 
 void JSDictionary::convertValue(ExecState* state, JSValue value, RefPtr<DOMWindow>& result)
@@ -208,10 +209,9 @@ void JSDictionary::convertValue(ExecState*, JSValue value, RefPtr<Storage>& resu
     result = JSStorage::toWrapped(value);
 }
 
-void JSDictionary::convertValue(ExecState* exec, JSValue value, MessagePortArray& result)
+void JSDictionary::convertValue(ExecState* exec, JSValue value, Vector<RefPtr<MessagePort>>& result)
 {
-    ArrayBufferArray arrayBuffers;
-    fillMessagePortArray(*exec, value, result, arrayBuffers);
+    result = convert<IDLSequence<IDLInterface<MessagePort>>>(*exec, value);
 }
 
 #if ENABLE(VIDEO_TRACK)
@@ -352,35 +352,10 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Game
 }
 #endif
 
-#if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
+#if ENABLE(TOUCH_EVENTS)
 void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<TouchList>& result)
 {
     result = JSTouchList::toWrapped(value);
-}
-#endif
-
-#if ENABLE(IOS_TOUCH_EVENTS)
-void JSDictionary::convertValue(JSC::ExecState* exec, JSC::JSValue value, RefPtr<TouchList>& result)
-{
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSObject* object = value.getObject();
-    if (!object) {
-        result = nullptr;
-        return;
-    }
-
-    // Allow both TouchList and sequence<Touch> as input.
-    const ClassInfo* classInfo = object->classInfo();
-    if (classInfo == JSTouchList::info()) {
-        result = JSTouchList::toWrapped(value);
-        return;
-    }
-
-    auto touches = toRefNativeArray<Touch, JSTouch>(*exec, value);
-    RETURN_IF_EXCEPTION(scope, void());
-    result = TouchList::create(WTFMove(touches));
 }
 #endif
 

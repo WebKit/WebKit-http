@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
+#include "ExceptionOr.h"
 #include "URLHash.h"
 #include <wtf/HashMap.h>
 #include <wtf/ListHashSet.h>
@@ -64,7 +64,7 @@ public:
 
     WEBCORE_EXPORT String cssText() const;
 
-    void setCssText(const String&, ExceptionCode&) { } // FIXME: Not implemented.
+    ExceptionOr<void> setCssText(const String&) { return { }; } // FIXME: Not implemented.
 
     bool isPrimitiveValue() const { return m_classType == PrimitiveClass; }
     bool isValueList() const { return m_classType >= ValueListClass; }
@@ -129,6 +129,7 @@ public:
     bool isCustomPropertyDeclaration() const { return m_classType == CustomPropertyDeclarationClass; }
     bool isCustomIdentValue() const { return m_classType == CustomIdentClass; }
     bool isVariableReferenceValue() const { return m_classType == VariableReferenceClass; }
+    bool isPendingSubstitutionValue() const { return m_classType == PendingSubstitutionValueClass; }
 
     bool isCSSOMSafe() const { return m_isCSSOMSafe; }
     bool isSubtypeExposedToCSSOM() const
@@ -210,6 +211,7 @@ protected:
         CustomPropertyDeclarationClass,
         CustomIdentClass,
         VariableReferenceClass,
+        PendingSubstitutionValueClass,
 
         // List class types must appear after ValueListClass.
         ValueListClass,

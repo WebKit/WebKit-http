@@ -1217,6 +1217,9 @@ fast/events/before-input-prevent-cut.html [ Failure ]
 fast/events/before-input-prevent-paste.html [ Failure ]
 fast/events/before-input-prevent-undo.html [ Failure ]
 fast/events/before-input-prevent-typing.html [ Failure ]
+fast/events/before-input-delete-text-target-ranges.html [ Failure ]
+fast/events/before-input-replace-text-target-ranges.html [ Failure ]
+fast/events/before-input-delete-empty-list-target-ranges.html [ Failure ]
 fast/events/key-events-in-input-button.html [ Failure ]
 fast/events/keydown-1.html [ Failure ]
 fast/events/keydown-leftright-keys.html [ Failure ]
@@ -2520,7 +2523,8 @@ webkit.org/b/157592 fast/images/composited-animated-gif-outside-viewport.html [ 
 
 webkit.org/b/156561 perf/rel-list-remove.html [ Pass Timeout Failure ]
 
-webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Pass Failure ]
+webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-reload.html [ Pass Failure ]
+webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Pass Failure ]
 
 webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
 
@@ -2691,6 +2695,7 @@ webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/163009 media/modern-media-controls/icon-button/icon-button-active-state.html [ Failure ]
 webkit.org/b/163357 media/modern-media-controls/volume-slider/volume-slider-value.html [ Skip ]
+webkit.org/b/163669 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
 
 # This variation font test requires Skia which isn't available on iOS.
 webkit.org/b/163093 fast/text/variations/advances.html [ Failure ]
@@ -2709,3 +2714,14 @@ webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size-iframe.html [ S
 webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size.html [ Skip ]
 webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size-iframe.html [ Skip ]
 webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size.html [ Skip ]
+
+webkit.org/b/163755 imported/w3c/csswg-test/css-shapes-1 [ Skip ]
+
+# These font variation tests require a variation font which supports more than 2 axes.
+animations/font-variations/font-variation-settings-order.html [ Pass ImageOnlyFailure Failure ]
+animations/font-variations/font-variation-settings-unlike.html [ Pass ImageOnlyFailure Failure ]
+
+webkit.org/b/163632 animations/font-variations/font-variation-settings.html [ Skip ]
+webkit.org/b/163632 fast/text/variations/getComputedStyle.html [ Skip ]
+
+webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]

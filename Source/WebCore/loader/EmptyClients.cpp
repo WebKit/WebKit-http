@@ -29,6 +29,7 @@
 #include "EmptyClients.h"
 
 #include "ApplicationCacheStorage.h"
+#include "BackForwardClient.h"
 #include "ColorChooser.h"
 #include "DOMWrapperWorld.h"
 #include "DatabaseProvider.h"
@@ -140,6 +141,15 @@ class EmptyVisitedLinkStore final : public VisitedLinkStore {
     void addVisitedLink(Page&, LinkHash) override { }
 };
 
+class EmptyBackForwardClient final : public BackForwardClient {
+    void addItem(Ref<HistoryItem>&&) override { }
+    void goToItem(HistoryItem*) override { }
+    HistoryItem* itemAtIndex(int) override { return nullptr; }
+    int backListCount() override { return 0; }
+    int forwardListCount() override { return 0; }
+    void close() override { }
+};
+
 void fillWithEmptyClients(PageConfiguration& pageConfiguration)
 {
     static NeverDestroyed<EmptyChromeClient> dummyChromeClient;
@@ -169,6 +179,7 @@ void fillWithEmptyClients(PageConfiguration& pageConfiguration)
     static NeverDestroyed<EmptyProgressTrackerClient> dummyProgressTrackerClient;
     pageConfiguration.progressTrackerClient = &dummyProgressTrackerClient.get();
 
+    pageConfiguration.backForwardClient = adoptRef(new EmptyBackForwardClient);
     pageConfiguration.diagnosticLoggingClient = std::make_unique<EmptyDiagnosticLoggingClient>();
 
     pageConfiguration.applicationCacheStorage = ApplicationCacheStorage::create(String(), String());

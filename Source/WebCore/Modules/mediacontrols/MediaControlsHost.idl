@@ -59,4 +59,7 @@ enum DeviceType {
     void exitedFullscreen();
 
     DOMString generateUUID();
+
+    [EnabledAtRuntime=ModernMediaControls] readonly attribute DOMString shadowRootCSSText;
+    [EnabledAtRuntime=ModernMediaControls] DOMString base64StringForIconAndPlatform(DOMString iconName, DOMString platform);
 };

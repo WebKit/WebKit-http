@@ -28,6 +28,7 @@
 
 #if USE(NETWORK_SESSION)
 
+#import "AuthenticationManager.h"
 #import "Download.h"
 #import "DownloadProxyMessages.h"
 #import "Logging.h"
@@ -383,11 +384,6 @@ String NetworkDataTask::suggestedFilename()
 void NetworkDataTask::setSuggestedFilename(const String& suggestedName)
 {
     m_suggestedFilename = suggestedName;
-}
-
-WebCore::ResourceRequest NetworkDataTask::currentRequest()
-{
-    return [m_task currentRequest];
 }
 
 void NetworkDataTask::cancel()

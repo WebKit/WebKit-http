@@ -35,6 +35,7 @@ class JSValue;
 
 namespace WebCore {
 
+class BufferSource;
 template <typename Value> class DOMPromise;
 
 template<typename T>
@@ -84,9 +85,9 @@ struct IDLUSVString : IDLString { };
 
 struct IDLObject : IDLUnsupportedType { };
 
-template<typename T> struct IDLInterface : IDLType<std::reference_wrapper<T>> {
+template<typename T> struct IDLInterface : IDLType<RefPtr<T>> {
     using RawType = T;
-    using NullableType = T*;
+    using NullableType = RefPtr<T>;
 };
 
 template<typename T> struct IDLDictionary : IDLType<T> { };
@@ -114,23 +115,33 @@ struct IDLError : IDLUnsupportedType { };
 struct IDLDOMException : IDLUnsupportedType { };
 
 template<typename... Ts>
-struct IDLUnion : IDLType<std::experimental::variant<typename Ts::ImplementationType...>> {
+struct IDLUnion : IDLType<Variant<typename Ts::ImplementationType...>> {
     using TypeList = brigand::list<Ts...>;
 };
 
+struct IDLBufferSource : IDLType<BufferSource> { };
 
 // Helper predicates
 
-template <typename T>
+template<typename T>
 struct IsIDLInterface : public std::integral_constant<bool, WTF::IsTemplate<T, IDLInterface>::value> { };
 
-template <typename T>
+template<typename T>
 struct IsIDLDictionary : public std::integral_constant<bool, WTF::IsTemplate<T, IDLDictionary>::value> { };
 
-template <typename T>
+template<typename T>
+struct IsIDLEnumeration : public std::integral_constant<bool, WTF::IsTemplate<T, IDLEnumeration>::value> { };
+
+template<typename T>
+struct IsIDLSequence : public std::integral_constant<bool, WTF::IsTemplate<T, IDLSequence>::value> { };
+
+template<typename T>
+struct IsIDLFrozenArray : public std::integral_constant<bool, WTF::IsTemplate<T, IDLFrozenArray>::value> { };
+
+template<typename T>
 struct IsIDLNumber : public std::integral_constant<bool, WTF::IsBaseOfTemplate<IDLNumber, T>::value> { };
 
-template <typename T>
+template<typename T>
 struct IsIDLInteger : public std::integral_constant<bool, WTF::IsBaseOfTemplate<IDLInteger, T>::value> { };
 
 } // namespace WebCore

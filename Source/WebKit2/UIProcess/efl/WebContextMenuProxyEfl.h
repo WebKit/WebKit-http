@@ -46,6 +46,7 @@ public:
 
 private:
     void show() override;
+    void showContextMenuWithItems(const Vector<WebContextMenuItemData>&) override;
 
     void showContextMenu();
     void hideContextMenu();

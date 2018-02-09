@@ -55,8 +55,18 @@ using namespace HTMLNames;
 
 ExtensionStyleSheets::ExtensionStyleSheets(Document& document)
     : m_document(document)
-    , m_styleResolverChangedTimer(*this, &ExtensionStyleSheets::styleResolverChangedTimerFired)
 {
+}
+
+static Ref<CSSStyleSheet> createExtensionsStyleSheet(Document& document, URL url, const String& text, UserStyleLevel level)
+{
+    auto contents = StyleSheetContents::create(url, CSSParserContext(document, url));
+    auto styleSheet = CSSStyleSheet::create(contents.get(), document, true);
+
+    contents->setIsUserStyleSheet(level == UserStyleUserLevel);
+    contents->parseString(text);
+
+    return styleSheet;
 }
 
 CSSStyleSheet* ExtensionStyleSheets::pageUserSheet()
@@ -72,10 +82,8 @@ CSSStyleSheet* ExtensionStyleSheets::pageUserSheet()
     if (userSheetText.isEmpty())
         return 0;
     
-    // Parse the sheet and cache it.
-    m_pageUserSheet = CSSStyleSheet::createInline(m_document, m_document.settings()->userStyleSheetLocation());
-    m_pageUserSheet->contents().setIsUserStyleSheet(true);
-    m_pageUserSheet->contents().parseString(userSheetText);
+    m_pageUserSheet = createExtensionsStyleSheet(m_document, m_document.settings()->userStyleSheetLocation(), userSheetText, UserStyleUserLevel);
+
     return m_pageUserSheet.get();
 }
 
@@ -83,7 +91,7 @@ void ExtensionStyleSheets::clearPageUserSheet()
 {
     if (m_pageUserSheet) {
         m_pageUserSheet = nullptr;
-        m_document.styleScope().didChangeContentsOrInterpretation();
+        m_document.styleScope().didChangeStyleSheetEnvironment();
     }
 }
 
@@ -91,7 +99,7 @@ void ExtensionStyleSheets::updatePageUserSheet()
 {
     clearPageUserSheet();
     if (pageUserSheet())
-        m_document.styleScope().didChangeContentsOrInterpretation();
+        m_document.styleScope().didChangeStyleSheetEnvironment();
 }
 
 const Vector<RefPtr<CSSStyleSheet>>& ExtensionStyleSheets::injectedUserStyleSheets() const
@@ -125,51 +133,42 @@ void ExtensionStyleSheets::updateInjectedStyleSheetCache() const
         if (!UserContentURLPattern::matchesPatterns(m_document.url(), userStyleSheet.whitelist(), userStyleSheet.blacklist()))
             return;
 
-        RefPtr<CSSStyleSheet> sheet = CSSStyleSheet::createInline(const_cast<Document&>(m_document), userStyleSheet.url());
-        bool isUserStyleSheet = userStyleSheet.level() == UserStyleUserLevel;
-        if (isUserStyleSheet)
-            m_injectedUserStyleSheets.append(sheet);
-        else
-            m_injectedAuthorStyleSheets.append(sheet);
+        auto sheet = createExtensionsStyleSheet(const_cast<Document&>(m_document), userStyleSheet.url(), userStyleSheet.source(), userStyleSheet.level());
 
-        sheet->contents().setIsUserStyleSheet(isUserStyleSheet);
-        sheet->contents().parseString(userStyleSheet.source());
+        if (userStyleSheet.level() == UserStyleUserLevel)
+            m_injectedUserStyleSheets.append(WTFMove(sheet));
+        else
+            m_injectedAuthorStyleSheets.append(WTFMove(sheet));
     });
     
     if (!owningPage->captionUserPreferencesStyleSheet().isEmpty()) {
         // Identify our override style sheet with a unique URL - a new scheme and a UUID.
         static NeverDestroyed<URL> captionsStyleSheetURL(ParsedURLString, "user-captions-override:01F6AF12-C3B0-4F70-AF5E-A3E00234DC23");
 
-        RefPtr<CSSStyleSheet> sheet = CSSStyleSheet::createInline(const_cast<Document&>(m_document), captionsStyleSheetURL.get());
-        m_injectedAuthorStyleSheets.append(sheet);
+        auto sheet = createExtensionsStyleSheet(const_cast<Document&>(m_document), captionsStyleSheetURL, owningPage->captionUserPreferencesStyleSheet(), UserStyleAuthorLevel);
 
-        sheet->contents().setIsUserStyleSheet(false);
-        sheet->contents().parseString(owningPage->captionUserPreferencesStyleSheet());
+        m_injectedAuthorStyleSheets.append(WTFMove(sheet));
     }
 }
 
 void ExtensionStyleSheets::invalidateInjectedStyleSheetCache()
 {
-    if (!m_injectedStyleSheetCacheValid)
-        return;
     m_injectedStyleSheetCacheValid = false;
-    if (m_injectedUserStyleSheets.isEmpty() && m_injectedAuthorStyleSheets.isEmpty())
-        return;
-    m_document.styleScope().didChangeContentsOrInterpretation();
+    m_document.styleScope().didChangeStyleSheetEnvironment();
 }
 
 void ExtensionStyleSheets::addUserStyleSheet(Ref<StyleSheetContents>&& userSheet)
 {
     ASSERT(userSheet.get().isUserStyleSheet());
     m_userStyleSheets.append(CSSStyleSheet::create(WTFMove(userSheet), m_document));
-    m_document.styleScope().didChangeContentsOrInterpretation();
+    m_document.styleScope().didChangeStyleSheetEnvironment();
 }
 
 void ExtensionStyleSheets::addAuthorStyleSheetForTesting(Ref<StyleSheetContents>&& authorSheet)
 {
     ASSERT(!authorSheet.get().isUserStyleSheet());
     m_authorStyleSheetsForTesting.append(CSSStyleSheet::create(WTFMove(authorSheet), m_document));
-    m_document.styleScope().didChangeContentsOrInterpretation();
+    m_document.styleScope().didChangeStyleSheetEnvironment();
 }
 
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -182,7 +181,7 @@ void ExtensionStyleSheets::addDisplayNoneSelector(const String& identifier, cons
     }
 
     if (result.iterator->value->addDisplayNoneSelector(selector, selectorID))
-        m_styleResolverChangedTimer.startOneShot(0);
+        m_document.styleScope().didChangeStyleSheetEnvironment();
 }
 
 void ExtensionStyleSheets::maybeAddContentExtensionSheet(const String& identifier, StyleSheetContents& sheet)
@@ -195,14 +194,10 @@ void ExtensionStyleSheets::maybeAddContentExtensionSheet(const String& identifie
     Ref<CSSStyleSheet> cssSheet = CSSStyleSheet::create(sheet, m_document);
     m_contentExtensionSheets.set(identifier, &cssSheet.get());
     m_userStyleSheets.append(adoptRef(cssSheet.leakRef()));
-    m_styleResolverChangedTimer.startOneShot(0);
+    m_document.styleScope().didChangeStyleSheetEnvironment();
+
 }
 #endif // ENABLE(CONTENT_EXTENSIONS)
-
-void ExtensionStyleSheets::styleResolverChangedTimerFired()
-{
-    m_document.styleScope().didChangeContentsOrInterpretation();
-}
 
 void ExtensionStyleSheets::detachFromDocument()
 {

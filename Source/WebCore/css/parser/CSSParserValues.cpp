@@ -94,11 +94,8 @@ RefPtr<CSSValue> CSSParserValue::createCSSValue()
     if (id)
         return CSSPrimitiveValue::createIdentifier(id);
     
-    if (unit == CSSParserValue::Operator) {
-        auto primitiveValue = CSSPrimitiveValue::createParserOperator(iValue);
-        primitiveValue->setPrimitiveType(CSSPrimitiveValue::CSS_PARSER_OPERATOR);
-        return WTFMove(primitiveValue);
-    }
+    if (unit == CSSParserValue::Operator)
+        return CSSPrimitiveValue::createParserOperator(iValue);
     if (unit == CSSParserValue::Function)
         return CSSFunctionValue::create(function);
     if (unit == CSSParserValue::Variable)
@@ -450,7 +447,7 @@ bool CSSParserSelector::matchesPseudoElement() const
     return m_selector->matchesPseudoElement() || selectorListMatchesPseudoElement(m_selector->selectorList());
 }
 
-void CSSParserSelector::insertTagHistory(CSSSelector::Relation before, std::unique_ptr<CSSParserSelector> selector, CSSSelector::Relation after)
+void CSSParserSelector::insertTagHistory(CSSSelector::RelationType before, std::unique_ptr<CSSParserSelector> selector, CSSSelector::RelationType after)
 {
     if (m_tagHistory)
         selector->setTagHistory(WTFMove(m_tagHistory));
@@ -459,7 +456,7 @@ void CSSParserSelector::insertTagHistory(CSSSelector::Relation before, std::uniq
     m_tagHistory = WTFMove(selector);
 }
 
-void CSSParserSelector::appendTagHistory(CSSSelector::Relation relation, std::unique_ptr<CSSParserSelector> selector)
+void CSSParserSelector::appendTagHistory(CSSSelector::RelationType relation, std::unique_ptr<CSSParserSelector> selector)
 {
     CSSParserSelector* end = this;
     while (end->tagHistory())
@@ -475,7 +472,7 @@ void CSSParserSelector::appendTagHistory(CSSParserSelectorCombinator relation, s
     while (end->tagHistory())
         end = end->tagHistory();
 
-    CSSSelector::Relation selectorRelation;
+    CSSSelector::RelationType selectorRelation;
     switch (relation) {
     case CSSParserSelectorCombinator::Child:
         selectorRelation = CSSSelector::Child;
@@ -522,19 +519,19 @@ void CSSParserSelector::prependTagSelector(const QualifiedName& tagQName, bool t
     m_tagHistory = WTFMove(second);
 
     m_selector = std::make_unique<CSSSelector>(tagQName, tagIsForNamespaceRule);
-    m_selector->setRelation(CSSSelector::SubSelector);
+    m_selector->setRelation(CSSSelector::Subselector);
 }
 
 std::unique_ptr<CSSParserSelector> CSSParserSelector::releaseTagHistory()
 {
-    setRelation(CSSSelector::SubSelector);
+    setRelation(CSSSelector::Subselector);
     return WTFMove(m_tagHistory);
 }
 
 // FIXME-NEWPARSER: Add support for :host-context
 bool CSSParserSelector::isHostPseudoSelector() const
 {
-    return pseudoClassType() == CSSSelector::PseudoClassHost;
+    return match() == CSSSelector::PseudoClass && pseudoClassType() == CSSSelector::PseudoClassHost;
 }
 
 }
