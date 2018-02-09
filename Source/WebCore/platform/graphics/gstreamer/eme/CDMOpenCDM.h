@@ -62,7 +62,7 @@ private:
         Session& operator= (const Session&) = delete;
 
     public:
-        Session(media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
+        Session(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
         ~Session();
 
     public:

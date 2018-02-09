@@ -232,14 +232,13 @@ static size_t checkMessageLength(std::string& message, std::string& request)
 // ---------------------------------------------------------------------------------------------------------------------------
 // Class CDMInstanceOpenCDM
 // ---------------------------------------------------------------------------------------------------------------------------
-CDMInstanceOpenCDM::Session::Session(media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData) 
+CDMInstanceOpenCDM::Session::Session(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData) 
     : _session(source)
     , _message()
     , _url()
     , _needIndividualisation(false)
     , _buffer(WTFMove(initData)) {
 
-    fprintf (stderr, "WPEWEBKIT ----- 3 ----- \n"); fflush (stderr);
     uint8_t  temporaryUrl[1024];
     uint16_t temporaryUrlLength = sizeof(temporaryUrl);
 
@@ -295,7 +294,9 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     GST_TRACE("Going to request a new session ID, init data size %u", initData->size());
     GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
 
-    sessionId = _openCdm.CreateSession(_mimeType, reinterpret_cast<const uint8_t*>(initData->data()), initData->size(), Convert(licenseType));
+    media::OpenCdm openCdm(_openCdm);
+
+    sessionId = openCdm.CreateSession(_mimeType, reinterpret_cast<const uint8_t*>(initData->data()), initData->size(), Convert(licenseType));
 
     if (sessionId.empty() == true) {
         String sessionIdValue;
@@ -307,7 +308,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
         std::pair<std::map<std::string, Session>::iterator, bool> newEntry = 
             _sessionIdMap.emplace (std::piecewise_construct,
                                std::forward_as_tuple(sessionId),
-                               std::forward_as_tuple(_openCdm, WTFMove(initData)));
+                               std::forward_as_tuple(openCdm, WTFMove(initData)));
 
         const Session& newSession (newEntry.first->second);
         
@@ -474,9 +475,14 @@ String CDMInstanceOpenCDM::sessionIdByInitData(const String& initData, const boo
 
             index++;
         }
-        if ((result.isEmpty() == true) && (firstInLine == true)) {
-            GST_WARNING("Unknown session, grabbing the first in line!!!");
-            result = String::fromUTF8(_sessionIdMap.begin()->first.c_str());
+        if (result.isEmpty() == true) {
+            if (firstInLine == true) {
+                GST_WARNING("Unknown session, grabbing the first in line!!!");
+                result = String::fromUTF8(_sessionIdMap.begin()->first.c_str());
+            }
+            else {
+                GST_WARNING("Unknown session, Nothing will be returned!!!");
+            }
         }
     }
 
