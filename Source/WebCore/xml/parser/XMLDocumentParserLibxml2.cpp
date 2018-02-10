@@ -739,11 +739,13 @@ static inline void handleNamespaceAttributes(Vector<Attribute>& prefixedAttribut
         if (namespaces[i].prefix)
             namespaceQName = "xmlns:" + toString(namespaces[i].prefix);
 
-        QualifiedName parsedName = anyName;
-        if (!Element::parseAttributeName(parsedName, XMLNSNames::xmlnsNamespaceURI, namespaceQName, ec))
+        auto result = Element::parseAttributeName(XMLNSNames::xmlnsNamespaceURI, namespaceQName);
+        if (result.hasException()) {
+            ec = result.releaseException().code();
             return;
-        
-        prefixedAttributes.append(Attribute(parsedName, namespaceURI));
+        }
+
+        prefixedAttributes.append(Attribute(result.releaseReturnValue(), namespaceURI));
     }
 }
 
@@ -766,11 +768,13 @@ static inline void handleElementAttributes(Vector<Attribute>& prefixedAttributes
         AtomicString attrURI = attrPrefix.isEmpty() ? nullAtom : toAtomicString(attributes[i].uri);
         AtomicString attrQName = attrPrefix.isEmpty() ? toAtomicString(attributes[i].localname) : attrPrefix + ":" + toString(attributes[i].localname);
 
-        QualifiedName parsedName = anyName;
-        if (!Element::parseAttributeName(parsedName, attrURI, attrQName, ec))
+        auto result = Element::parseAttributeName(attrURI, attrQName);
+        if (result.hasException()) {
+            ec = result.releaseException().code();
             return;
+        }
 
-        prefixedAttributes.append(Attribute(parsedName, attrValue));
+        prefixedAttributes.append(Attribute(result.releaseReturnValue(), attrValue));
     }
 }
 
@@ -888,7 +892,7 @@ void XMLDocumentParser::endElementNs()
 
     if (!scriptingContentIsAllowed(parserContentPolicy()) && is<Element>(*node) && toScriptElementIfPossible(downcast<Element>(node.get()))) {
         popCurrentNode();
-        node->remove(IGNORE_EXCEPTION);
+        node->remove();
         return;
     }
 
@@ -996,12 +1000,10 @@ void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlCh
     if (!updateLeafTextNode())
         return;
 
-    // ### handle exceptions
-    ExceptionCode ec = 0;
-    Ref<ProcessingInstruction> pi = *m_currentNode->document().createProcessingInstruction(
-        toString(target), toString(data), ec);
-    if (ec)
+    auto result = m_currentNode->document().createProcessingInstruction(toString(target), toString(data));
+    if (result.hasException())
         return;
+    auto pi = result.releaseReturnValue();
 
     pi->setCreatedByParser(true);
 
@@ -1011,6 +1013,7 @@ void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlCh
 
     if (pi->isCSS())
         m_sawCSS = true;
+
 #if ENABLE(XSLT)
     m_sawXSLTransform = !m_sawFirstElement && pi->isXSL();
     if (m_sawXSLTransform && !document()->transformSourceDocument())
@@ -1066,7 +1069,7 @@ void XMLDocumentParser::startDocument(const xmlChar* version, const xmlChar* enc
     }
 
     if (version)
-        document()->setXMLVersion(toString(version), ASSERT_NO_EXCEPTION);
+        document()->setXMLVersion(toString(version));
     if (standalone != StandaloneUnspecified)
         document()->setXMLStandalone(standaloneInfo == StandaloneYes);
     if (encoding)

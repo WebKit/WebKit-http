@@ -429,8 +429,13 @@ bool HTMLPlugInImageElement::partOfSnapshotOverlay(const Node* node) const
     ShadowRoot* shadow = userAgentShadowRoot();
     if (!shadow)
         return false;
-    RefPtr<Element> snapshotLabel = shadow->querySelector(selector.get(), ASSERT_NO_EXCEPTION);
-    return node && snapshotLabel && (node == snapshotLabel.get() || node->isDescendantOf(snapshotLabel.get()));
+    if (!node)
+        return false;
+    auto queryResult = shadow->querySelector(selector.get());
+    if (queryResult.hasException())
+        return false;
+    auto* snapshotLabel = queryResult.releaseReturnValue();
+    return snapshotLabel && snapshotLabel->contains(node);
 }
 
 void HTMLPlugInImageElement::removeSnapshotTimerFired()
@@ -482,7 +487,7 @@ void HTMLPlugInImageElement::userDidClickSnapshot(PassRefPtr<MouseEvent> event, 
         m_pendingClickEventFromSnapshot = event;
 
     String plugInOrigin = m_loadedUrl.host();
-    if (document().page() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(document().page()->mainFrame().document()->baseURL().protocol()) && document().page()->settings().autostartOriginPlugInSnapshottingEnabled())
+    if (document().page() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(document().page()->mainFrame().document()->baseURL().protocol().toStringWithoutCopying()) && document().page()->settings().autostartOriginPlugInSnapshottingEnabled())
         document().page()->plugInClient()->didStartFromOrigin(document().page()->mainFrame().document()->baseURL().host(), plugInOrigin, loadedMimeType(), document().page()->sessionID());
 
     LOG(Plugins, "%p User clicked on snapshotted plug-in. Restart.", this);
@@ -589,9 +594,9 @@ bool HTMLPlugInImageElement::isTopLevelFullPagePlugin(const RenderEmbeddedObject
     auto& style = renderer.style();
     IntSize visibleSize = frame.view()->visibleSize();
     LayoutRect contentRect = renderer.contentBoxRect();
-    int contentWidth = contentRect.width();
-    int contentHeight = contentRect.height();
-    return is100Percent(style.width()) && is100Percent(style.height()) && contentWidth * contentHeight > visibleSize.area() * sizingFullPageAreaRatioThreshold;
+    float contentWidth = contentRect.width();
+    float contentHeight = contentRect.height();
+    return is100Percent(style.width()) && is100Percent(style.height()) && contentWidth * contentHeight > visibleSize.area().unsafeGet() * sizingFullPageAreaRatioThreshold;
 }
     
 void HTMLPlugInImageElement::checkSnapshotStatus()
@@ -701,7 +706,7 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const URL& url)
         return;
     }
 
-    if (!SchemeRegistry::shouldTreatURLSchemeAsLocal(m_loadedUrl.protocol()) && !m_loadedUrl.host().isEmpty() && m_loadedUrl.host() == document().page()->mainFrame().document()->baseURL().host()) {
+    if (!SchemeRegistry::shouldTreatURLSchemeAsLocal(m_loadedUrl.protocol().toStringWithoutCopying()) && !m_loadedUrl.host().isEmpty() && m_loadedUrl.host() == document().page()->mainFrame().document()->baseURL().host()) {
         LOG(Plugins, "%p Plug-in is served from page's domain, set to play", this);
         m_snapshotDecision = NeverSnapshot;
         return;

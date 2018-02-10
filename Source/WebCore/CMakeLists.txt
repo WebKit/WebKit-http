@@ -206,6 +206,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/indexeddb/IDBOpenDBRequest.idl
     Modules/indexeddb/IDBRequest.idl
     Modules/indexeddb/IDBTransaction.idl
+    Modules/indexeddb/IDBTransactionMode.idl
     Modules/indexeddb/IDBVersionChangeEvent.idl
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
 
@@ -274,6 +275,7 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/streams/ByteLengthQueuingStrategy.idl
     Modules/streams/CountQueuingStrategy.idl
+    Modules/streams/ReadableByteStreamController.idl
     Modules/streams/ReadableStream.idl
     Modules/streams/ReadableStreamDefaultController.idl
     Modules/streams/ReadableStreamDefaultReader.idl
@@ -334,12 +336,17 @@ set(WebCore_NON_SVG_IDL_FILES
     animation/KeyframeEffect.idl
     animation/WebAnimation.idl
 
+    crypto/CryptoAlgorithmParameters.idl
     crypto/CryptoKey.idl
     crypto/CryptoKeyPair.idl
     crypto/SubtleCrypto.idl
     crypto/WebKitSubtleCrypto.idl
 
-    css/CSSCharsetRule.idl
+    crypto/parameters/AesKeyGenParams.idl
+    crypto/parameters/HmacKeyGenParams.idl
+    crypto/parameters/RsaHashedKeyGenParams.idl
+    crypto/parameters/RsaKeyGenParams.idl
+
     css/CSSFontFaceLoadEvent.idl
     css/CSSFontFaceRule.idl
     css/CSSImportRule.idl
@@ -369,7 +376,6 @@ set(WebCore_NON_SVG_IDL_FILES
     css/StyleMedia.idl
     css/StyleSheet.idl
     css/StyleSheetList.idl
-    css/WebKitCSSFilterValue.idl
     css/WebKitCSSMatrix.idl
     css/WebKitCSSRegionRule.idl
     css/WebKitCSSTransformValue.idl
@@ -446,6 +452,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/RequestAnimationFrameCallback.idl
     dom/SecurityPolicyViolationEvent.idl
     dom/ShadowRoot.idl
+    dom/ShadowRootMode.idl
     dom/Slotable.idl
     dom/StaticRange.idl
     dom/StringCallback.idl
@@ -584,6 +591,9 @@ set(WebCore_NON_SVG_IDL_FILES
     page/EventSource.idl
     page/GlobalCrypto.idl
     page/History.idl
+    page/IntersectionObserver.idl
+    page/IntersectionObserverCallback.idl
+    page/IntersectionObserverEntry.idl
     page/Location.idl
     page/Navigator.idl
     page/NavigatorConcurrentHardware.idl
@@ -821,6 +831,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBDatabaseIdentifier.cpp
     Modules/indexeddb/IDBEventDispatcher.cpp
     Modules/indexeddb/IDBFactory.cpp
+    Modules/indexeddb/IDBGetAllResult.cpp
     Modules/indexeddb/IDBGetResult.cpp
     Modules/indexeddb/IDBIndex.cpp
     Modules/indexeddb/IDBKey.cpp
@@ -864,6 +875,7 @@ set(WebCore_SOURCES
     Modules/indexeddb/shared/IDBCursorInfo.cpp
     Modules/indexeddb/shared/IDBDatabaseInfo.cpp
     Modules/indexeddb/shared/IDBError.cpp
+    Modules/indexeddb/shared/IDBGetAllRecordsData.cpp
     Modules/indexeddb/shared/IDBGetRecordData.cpp
     Modules/indexeddb/shared/IDBIndexInfo.cpp
     Modules/indexeddb/shared/IDBObjectStoreInfo.cpp
@@ -914,7 +926,6 @@ set(WebCore_SOURCES
     Modules/mediastream/RTCDataChannelEvent.cpp
     Modules/mediastream/RTCIceCandidate.cpp
     Modules/mediastream/RTCIceCandidateEvent.cpp
-    Modules/mediastream/RTCOfferAnswerOptions.cpp
     Modules/mediastream/RTCPeerConnection.cpp
     Modules/mediastream/RTCRtpReceiver.cpp
     Modules/mediastream/RTCRtpSender.cpp
@@ -1154,7 +1165,6 @@ set(WebCore_SOURCES
     bindings/js/JSHistoryCustom.cpp
     bindings/js/JSIDBCursorCustom.cpp
     bindings/js/JSIDBCursorWithValueCustom.cpp
-    bindings/js/JSIDBDatabaseCustom.cpp
     bindings/js/JSIDBIndexCustom.cpp
     bindings/js/JSIDBObjectStoreCustom.cpp
     bindings/js/JSIDBRequestCustom.cpp
@@ -1190,6 +1200,7 @@ set(WebCore_SOURCES
     bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
+    bindings/js/JSSubtleCryptoCustom.cpp
     bindings/js/JSTextCustom.cpp
     bindings/js/JSTextTrackCueCustom.cpp
     bindings/js/JSTextTrackCustom.cpp
@@ -1266,13 +1277,12 @@ set(WebCore_SOURCES
     css/CSSBorderImageSliceValue.cpp
     css/CSSCalculationValue.cpp
     css/CSSCanvasValue.cpp
-    css/CSSCharsetRule.cpp
     css/CSSComputedStyleDeclaration.cpp
     css/CSSContentDistributionValue.cpp
     css/CSSCrossfadeValue.cpp
     css/CSSCursorImageValue.cpp
     css/CSSCustomIdentValue.cpp
-    css/CSSCustomPropertyDeclaration.cpp
+    css/CSSCustomPropertyValue.cpp
     css/CSSDefaultStyleSheets.cpp
     css/CSSFilterImageValue.cpp
     css/FontFaceSet.cpp
@@ -1367,7 +1377,6 @@ set(WebCore_SOURCES
     css/StyleSheetList.cpp
     css/TransformFunctions.cpp
     css/ViewportStyleResolver.cpp
-    css/WebKitCSSFilterValue.cpp
     css/WebKitCSSMatrix.cpp
     css/WebKitCSSRegionRule.cpp
     css/WebKitCSSTransformValue.cpp
@@ -1545,6 +1554,9 @@ set(WebCore_SOURCES
 
     dom/default/PlatformMessagePortChannel.cpp
 
+    domjit/DOMJITAbstractHeapRepository.cpp
+    domjit/DOMJITHelpers.cpp
+    domjit/JSDocumentDOMJIT.cpp
     domjit/JSNodeDOMJIT.cpp
 
     editing/AlternativeTextController.cpp
@@ -1894,6 +1906,7 @@ set(WebCore_SOURCES
     inspector/InspectorPageAgent.cpp
     inspector/InspectorStyleSheet.cpp
     inspector/InspectorTimelineAgent.cpp
+    inspector/InspectorWorkerAgent.cpp
     inspector/InstrumentingAgents.cpp
     inspector/NetworkResourcesData.cpp
     inspector/PageConsoleAgent.cpp
@@ -1906,6 +1919,10 @@ set(WebCore_SOURCES
     inspector/WebDebuggerAgent.cpp
     inspector/WebInjectedScriptHost.cpp
     inspector/WebInjectedScriptManager.cpp
+    inspector/WorkerConsoleAgent.cpp
+    inspector/WorkerInspectorController.cpp
+    inspector/WorkerRuntimeAgent.cpp
+    inspector/WorkerScriptDebugServer.cpp
 
     loader/ContentFilter.cpp
     loader/CookieJar.cpp
@@ -2033,6 +2050,8 @@ set(WebCore_SOURCES
     page/FrameTree.cpp
     page/FrameView.cpp
     page/History.cpp
+    page/IntersectionObserver.cpp
+    page/IntersectionObserverEntry.cpp
     page/Location.cpp
     page/MainFrame.cpp
     page/MouseEventWithHitTestResults.cpp
@@ -2157,6 +2176,7 @@ set(WebCore_SOURCES
     platform/ScrollbarThemeComposite.cpp
     platform/SharedBuffer.cpp
     platform/SharedBufferChunkReader.cpp
+    platform/StaticPasteboard.cpp
     platform/SystemSleepListener.cpp
     platform/Theme.cpp
     platform/ThreadGlobalData.cpp
@@ -2848,6 +2868,7 @@ set(WebCore_SOURCES
     workers/WorkerConsoleClient.cpp
     workers/WorkerEventQueue.cpp
     workers/WorkerGlobalScope.cpp
+    workers/WorkerInspectorProxy.cpp
     workers/WorkerLocation.cpp
     workers/WorkerMessagingProxy.cpp
     workers/WorkerRunLoop.cpp
@@ -3253,6 +3274,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/common/utilities.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/common/tls.cpp
 
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/AddAndTrueToLoopCondition.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ArrayReturnValueToOutParameter.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ASTMetadataHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/blocklayout.cpp
@@ -3264,9 +3286,11 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/CallDAG.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/CodeGen.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Compiler.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ConstantUnion.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/DeferGlobalInitializers.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/Diagnostics.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/DirectiveHandler.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/EmulateGLFragColorBroadcast.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/EmulatePrecision.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ExtensionGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/glslang_lex.cpp
@@ -3291,6 +3315,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ParseContext.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/PoolAlloc.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/PruneEmptyDeclarations.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/QualifierTypes.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RecordConstantPrecision.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RegenerateStructNames.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RemoveDynamicIndexing.cpp
@@ -3298,6 +3323,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RemoveSwitchFallThrough.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RewriteDoWhile.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RewriteElseBlocks.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/RewriteTexelFetchOffset.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ScalarizeVecAndMatConstructorArgs.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SearchSymbol.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/SeparateArrayInitialization.cpp
@@ -3314,6 +3340,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuitAST.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UnfoldShortCircuitToIf.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UniformHLSL.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UseInterfaceBlockFields.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/util.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/UtilsHLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/ValidateGlobalInitializer.cpp
@@ -3324,11 +3351,6 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/VariableInfo.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/VariablePacker.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/VersionGLSL.cpp
-
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/depgraph/DependencyGraph.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/depgraph/DependencyGraphBuilder.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/depgraph/DependencyGraphOutput.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/depgraph/DependencyGraphTraverse.cpp
 
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/DiagnosticsBase.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/DirectiveHandlerBase.cpp
@@ -3341,9 +3363,6 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Preprocessor.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Token.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Tokenizer.cpp
-
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/timing/RestrictFragmentShaderTiming.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/translator/timing/RestrictVertexShaderTiming.cpp
 
         ${THIRDPARTY_DIR}/ANGLE/src/libANGLE/Platform.cpp
 
@@ -3624,7 +3643,7 @@ if (WebCore_SDP_PROCESSOR_SCRIPTS)
 
     MAKE_JS_FILE_ARRAYS(
         ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp
-        ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScripts.h
+        ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.h
         WebCore_SDP_PROCESSOR_SCRIPTS
         WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES
     )
@@ -3691,6 +3710,8 @@ set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnectionInternals.js
     ${WEBCORE_DIR}/Modules/streams/ByteLengthQueuingStrategy.js
     ${WEBCORE_DIR}/Modules/streams/CountQueuingStrategy.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableByteStreamController.js
+    ${WEBCORE_DIR}/Modules/streams/ReadableByteStreamInternals.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStream.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStreamDefaultController.js
     ${WEBCORE_DIR}/Modules/streams/ReadableStreamInternals.js
@@ -3893,6 +3914,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
     target_include_directories(ANGLESupport PRIVATE
         "${THIRDPARTY_DIR}/ANGLE/include"
         "${THIRDPARTY_DIR}/ANGLE/src"
+        "${THIRDPARTY_DIR}/ANGLE/src/common/third_party/numerics"
     )
     list(APPEND WebCore_LIBRARIES ANGLESupport)
     WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)

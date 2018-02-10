@@ -202,10 +202,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enabled);
 #endif
 
-#if ENABLE(CUSTOM_ELEMENTS)
     if (preference == "WebKitCustomElementsEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(enabled);
-#endif
 
     if (preference == "WebKitInteractiveFormValidationEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setInteractiveFormValidationEnabled(enabled);
@@ -572,7 +570,7 @@ uint64_t InjectedBundle::webNotificationID(JSContextRef jsContext, JSValueRef js
 PassRefPtr<API::Data> InjectedBundle::createWebDataFromUint8Array(JSContextRef context, JSValueRef data)
 {
     JSC::ExecState* execState = toJS(context);
-    RefPtr<Uint8Array> arrayData = WebCore::toUint8Array(toJS(execState, data));
+    RefPtr<Uint8Array> arrayData = WebCore::toUnsharedUint8Array(toJS(execState, data));
     return API::Data::create(static_cast<unsigned char*>(arrayData->baseAddress()), arrayData->byteLength());
 }
 

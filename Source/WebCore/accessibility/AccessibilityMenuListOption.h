@@ -23,14 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AccessibilityMenuListOption_h
-#define AccessibilityMenuListOption_h
+#pragma once
 
 #include "AccessibilityMockObject.h"
 
 namespace WebCore {
 
-class AccessibilityMenuListPopup;
 class HTMLElement;
 
 class AccessibilityMenuListOption final : public AccessibilityMockObject {
@@ -65,5 +63,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityMenuListOption, isMenuListOption())
-
-#endif // AccessibilityMenuListOption_h

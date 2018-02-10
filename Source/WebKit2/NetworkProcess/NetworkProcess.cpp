@@ -74,6 +74,10 @@
 #include "NetworkCacheCoders.h"
 #endif
 
+#if PLATFORM(COCOA)
+#include "NetworkSessionCocoa.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -102,7 +106,7 @@ NetworkProcess::NetworkProcess()
     addSupplement<WebCookieManager>();
     addSupplement<CustomProtocolManager>();
 #if USE(NETWORK_SESSION) && PLATFORM(COCOA)
-    NetworkSession::setCustomProtocolManager(supplement<CustomProtocolManager>());
+    NetworkSessionCocoa::setCustomProtocolManager(supplement<CustomProtocolManager>());
 #endif
 }
 
@@ -205,6 +209,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     WTF::setCurrentThreadIsUserInitiated();
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
+    m_loadThrottleLatency = parameters.loadThrottleLatency;
     if (!m_suppressMemoryPressureHandler) {
         auto& memoryPressureHandler = MemoryPressureHandler::singleton();
 #if OS(LINUX)

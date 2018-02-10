@@ -84,6 +84,7 @@ list(APPEND WebCore_SOURCES
     loader/soup/SubresourceLoaderSoup.cpp
 
     platform/KillRingNone.cpp
+    platform/StaticPasteboard.cpp
     platform/UserAgentQuirks.cpp
 
     platform/audio/glib/AudioBusGLib.cpp
@@ -165,7 +166,7 @@ list(APPEND WebCore_SOURCES
 
     platform/image-decoders/cairo/ImageBackingStoreCairo.cpp
 
-    platform/mediastream/openwebrtc/SDPProcessorScriptResource.cpp
+    platform/mediastream/SDPProcessorScriptResource.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp

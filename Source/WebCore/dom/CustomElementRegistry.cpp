@@ -26,8 +26,6 @@
 #include "config.h"
 #include "CustomElementRegistry.h"
 
-#if ENABLE(CUSTOM_ELEMENTS)
-
 #include "CustomElementReactionQueue.h"
 #include "DOMWindow.h"
 #include "Document.h"
@@ -60,9 +58,9 @@ static void enqueueUpgradeInShadowIncludingTreeOrder(ContainerNode& node, JSCust
 {
     for (Element* element = ElementTraversal::firstWithin(node); element; element = ElementTraversal::next(*element)) {
         if (element->isCustomElementUpgradeCandidate() && element->tagQName() == elementInterface.name())
-            CustomElementReactionQueue::enqueueElementUpgrade(*element, elementInterface);
+            element->enqueueToUpgrade(elementInterface);
         if (auto* shadowRoot = element->shadowRoot()) {
-            if (shadowRoot->mode() != ShadowRoot::Mode::UserAgent)
+            if (shadowRoot->mode() != ShadowRootMode::UserAgent)
                 enqueueUpgradeInShadowIncludingTreeOrder(*shadowRoot, elementInterface);
         }
     }
@@ -119,5 +117,3 @@ JSC::JSValue CustomElementRegistry::get(const AtomicString& name)
 }
 
 }
-
-#endif

@@ -35,17 +35,10 @@
 #include "ElementTraversal.h"
 #include "Frame.h"
 #include "FrameSelection.h"
-#include "HTMLAnchorElement.h"
 #include "HTMLDocument.h"
-#include "HTMLFrameElementBase.h"
-#include "HTMLInputElement.h"
 #include "HTMLNames.h"
-#include "HTMLOptGroupElement.h"
-#include "HTMLOptionElement.h"
 #include "HTMLParserIdioms.h"
-#include "HTMLProgressElement.h"
 #include "HTMLSlotElement.h"
-#include "HTMLStyleElement.h"
 #include "InspectorInstrumentation.h"
 #include "Page.h"
 #include "RenderElement.h"
@@ -292,7 +285,7 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
                 if (context.element->shadowPseudoId() != context.selector->value())
                     return MatchResult::fails(Match::SelectorFailsLocally);
 
-                if (context.selector->isWebKitCustomPseudoElement() && root->mode() != ShadowRoot::Mode::UserAgent)
+                if (context.selector->isWebKitCustomPseudoElement() && root->mode() != ShadowRootMode::UserAgent)
                     return MatchResult::fails(Match::SelectorFailsLocally);
             } else
                 return MatchResult::fails(Match::SelectorFailsLocally);
@@ -327,7 +320,7 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
             return MatchResult::fails(Match::SelectorFailsCompletely);
 
         // Disable :visited matching when we try to match anything else than an ancestors.
-        if (relation != CSSSelector::Descendant && relation != CSSSelector::Child)
+        if (!context.selector->hasDescendantOrChildRelation())
             nextContext.visitedMatchType = VisitedMatchType::Disabled;
 
         nextContext.pseudoId = NOPSEUDO;
@@ -337,7 +330,10 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
     }
 
     switch (relation) {
-    case CSSSelector::Descendant:
+    case CSSSelector::DescendantSpace:
+#if ENABLE_CSS_SELECTORS_LEVEL4
+    case CSSSelector::DescendantDoubleChild:
+#endif
         nextContext = localContextForParent(nextContext);
         nextContext.firstSelectorOfTheFragment = nextContext.selector;
         for (; nextContext.element; nextContext = localContextForParent(nextContext)) {
@@ -452,13 +448,6 @@ SelectorChecker::MatchResult SelectorChecker::matchRecursively(CheckingContext& 
 
             return MatchResult::updateWithMatchType(result, matchType);
         }
-    
-    case CSSSelector::ShadowPseudo:
-    case CSSSelector::ShadowDeep:
-    case CSSSelector::ShadowSlot:
-        // FIXME-NEWPARSER: Have to implement these.
-        // ASSERT_NOT_REACHED();
-        return MatchResult::fails(Match::SelectorFailsCompletely);
     }
 
 
@@ -1058,10 +1047,8 @@ bool SelectorChecker::checkOne(CheckingContext& checkingContext, const LocalCont
             specificity = CSSSelector::addSpecificities(specificity, hostSpecificity);
             return true;
         }
-#if ENABLE(CUSTOM_ELEMENTS)
         case CSSSelector::PseudoClassDefined:
             return isDefinedElement(element);
-#endif
         case CSSSelector::PseudoClassWindowInactive:
             return isWindowInactive(element);
 
@@ -1204,7 +1191,7 @@ unsigned SelectorChecker::determineLinkMatchType(const CSSSelector* selector)
         auto relation = selector->relation();
         if (relation == CSSSelector::Subselector)
             continue;
-        if (relation != CSSSelector::Descendant && relation != CSSSelector::Child)
+        if (!selector->hasDescendantOrChildRelation())
             return linkMatchType;
         if (linkMatchType != MatchAll)
             return linkMatchType;

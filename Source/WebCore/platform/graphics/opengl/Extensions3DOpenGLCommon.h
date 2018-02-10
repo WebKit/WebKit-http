@@ -24,8 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Extensions3DOpenGLCommon_h
-#define Extensions3DOpenGLCommon_h
+#pragma once
 
 #include "Extensions3D.h"
 
@@ -70,7 +69,7 @@ public:
 
 protected:
     friend class Extensions3DOpenGLES;
-    Extensions3DOpenGLCommon(GraphicsContext3D*);
+    Extensions3DOpenGLCommon(GraphicsContext3D*, bool useIndexedGetString);
 
     virtual bool supportsExtension(const String&) = 0;
     virtual String getExtensions() = 0;
@@ -89,10 +88,10 @@ protected:
     bool m_requiresBuiltInFunctionEmulation;
     bool m_requiresRestrictedMaximumTextureSize;
 
+    bool m_useIndexedGetString { false };
+
     String m_vendor;
     String m_renderer;
 };
 
 } // namespace WebCore
-
-#endif // Extensions3DOpenGLCommon_h

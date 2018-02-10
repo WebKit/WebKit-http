@@ -173,6 +173,10 @@ fast/events/drag-and-drop-subframe-dataTransfer.html
 fast/events/drag-selects-image.html
 fast/events/remove-target-with-shadow-in-drag.html
 
+fast/events/before-input-events-prevent-drag-and-drop.html [ Failure ]
+fast/events/input-events-drag-and-drop.html [ Failure ]
+fast/events/input-events-insert-by-drop.html [ Failure ]
+
 webkit.org/b/81833 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
 
 # Missing functionality of textInputController
@@ -522,6 +526,8 @@ webkit.org/b/162638 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-iframe-b
 # Hitting "The certificate for this server is invalid" loading error (not happening in WK1)
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure ]
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-main-frame.html [ Failure ]
+
+webkit.org/b/163932 inspector/css/pseudo-element-matches.html [ Pass Failure ]
 
 webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
 webkit.org/b/161774 inspector/debugger/breakpoint-columns.html [ Pass Failure ]

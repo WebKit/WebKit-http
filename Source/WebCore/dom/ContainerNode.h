@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef ContainerNode_h
-#define ContainerNode_h
+#pragma once
 
 #include "CollectionType.h"
 #include "ExceptionCodePlaceholder.h"
@@ -86,8 +85,8 @@ public:
     // This gives the area within which events may get handled by a hander registered on this node.
     virtual LayoutRect absoluteEventHandlerBounds(bool& /* includesFixedPositionElements */) { return LayoutRect(); }
 
-    WEBCORE_EXPORT Element* querySelector(const String& selectors, ExceptionCode&);
-    WEBCORE_EXPORT RefPtr<NodeList> querySelectorAll(const String& selectors, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<Element*> querySelector(const String& selectors);
+    WEBCORE_EXPORT ExceptionOr<Ref<NodeList>> querySelectorAll(const String& selectors);
 
     WEBCORE_EXPORT Ref<HTMLCollection> getElementsByTagName(const AtomicString&);
     WEBCORE_EXPORT Ref<HTMLCollection> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
@@ -100,8 +99,8 @@ public:
     WEBCORE_EXPORT Element* firstElementChild() const;
     WEBCORE_EXPORT Element* lastElementChild() const;
     WEBCORE_EXPORT unsigned childElementCount() const;
-    void append(Vector<NodeOrString>&&, ExceptionCode&);
-    void prepend(Vector<NodeOrString>&&, ExceptionCode&);
+    ExceptionOr<void> append(Vector<NodeOrString>&&);
+    ExceptionOr<void> prepend(Vector<NodeOrString>&&);
 
     bool ensurePreInsertionValidity(Node& newChild, Node* refChild, ExceptionCode&);
 
@@ -255,5 +254,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ContainerNode)
     static bool isType(const WebCore::Node& node) { return node.isContainerNode(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // ContainerNode_h

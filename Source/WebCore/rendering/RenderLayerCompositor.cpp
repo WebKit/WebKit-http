@@ -1196,12 +1196,6 @@ void RenderLayerCompositor::computeExtent(const OverlapMap& overlapMap, const Re
         // Because fixed elements get moved around without re-computing overlap, we have to compute an overlap
         // rect that covers all the locations that the fixed element could move to.
         // FIXME: need to handle sticky too.
-        LayoutRect viewportRect;
-        if (m_renderView.frameView().useFixedLayout())
-            viewportRect = m_renderView.unscaledDocumentRect();
-        else
-            viewportRect = m_renderView.frameView().viewportConstrainedVisibleContentRect();
-
         extent.bounds = m_renderView.frameView().fixedScrollableAreaBoundsInflatedForScrolling(extent.bounds);
     }
 
@@ -2544,7 +2538,7 @@ bool RenderLayerCompositor::requiresCompositingForCanvas(RenderLayerModelObject&
         bool isCanvasLargeEnoughToForceCompositing = true;
 #else
         HTMLCanvasElement* canvas = downcast<HTMLCanvasElement>(renderer.element());
-        bool isCanvasLargeEnoughToForceCompositing = canvas->size().area() >= canvasAreaThresholdRequiringCompositing;
+        bool isCanvasLargeEnoughToForceCompositing = canvas->size().area().unsafeGet() >= canvasAreaThresholdRequiringCompositing;
 #endif
         CanvasCompositingStrategy compositingStrategy = canvasCompositingStrategy(renderer);
         return compositingStrategy == CanvasAsLayerContents || (compositingStrategy == CanvasPaintedToLayer && isCanvasLargeEnoughToForceCompositing);
@@ -2781,7 +2775,8 @@ bool RenderLayerCompositor::requiresCompositingForPosition(RenderLayerModelObjec
     if (m_renderView.frameView().useFixedLayout())
         viewBounds = m_renderView.unscaledDocumentRect();
     else
-        viewBounds = m_renderView.frameView().viewportConstrainedVisibleContentRect();
+        viewBounds = m_renderView.frameView().rectForFixedPositionLayout();
+
     LayoutRect layerBounds = layer.calculateLayerBounds(&layer, LayoutSize(), RenderLayer::UseLocalClipRectIfPossible | RenderLayer::IncludeLayerFilterOutsets | RenderLayer::UseFragmentBoxesExcludingCompositing
         | RenderLayer::ExcludeHiddenDescendants | RenderLayer::DontConstrainForMask | RenderLayer::IncludeCompositedDescendants);
     // Map to m_renderView to ignore page scale.
@@ -3724,7 +3719,7 @@ FixedPositionViewportConstraints RenderLayerCompositor::computeFixedViewportCons
     ASSERT(layer.isComposited());
 
     GraphicsLayer* graphicsLayer = layer.backing()->graphicsLayer();
-    LayoutRect viewportRect = m_renderView.frameView().viewportConstrainedVisibleContentRect();
+    LayoutRect viewportRect = m_renderView.frameView().rectForFixedPositionLayout();
 
     FixedPositionViewportConstraints constraints;
     constraints.setLayerPositionAtLastLayout(graphicsLayer->position());

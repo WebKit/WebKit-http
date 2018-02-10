@@ -24,8 +24,7 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebCoreBuiltinNames_h
-#define WebCoreBuiltinNames_h
+#pragma once
 
 #include <builtins/BuiltinUtils.h>
 
@@ -34,6 +33,7 @@ namespace WebCore {
 #define WEBCORE_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro)\
     macro(addTrack) \
     macro(appendFromJS) \
+    macro(autoAllocateChunkSize) \
     macro(body) \
     macro(cancel) \
     macro(cloneForJS) \
@@ -61,6 +61,7 @@ namespace WebCore {
     macro(mediaStreamTrackConstraints) \
     macro(operations) \
     macro(ownerReadableStream) \
+    macro(pendingPullIntos) \
     macro(privateGetStats) \
     macro(pull) \
     macro(pulling) \
@@ -87,6 +88,7 @@ namespace WebCore {
     macro(startedPromise) \
     macro(storedError) \
     macro(strategy) \
+    macro(strategyHWM) \
     macro(streamClosed) \
     macro(streamClosing) \
     macro(streamErrored) \
@@ -95,12 +97,14 @@ namespace WebCore {
     macro(streamWritable) \
     macro(structuredCloneArrayBuffer) \
     macro(structuredCloneArrayBufferView) \
+    macro(underlyingByteSource) \
     macro(underlyingSink) \
     macro(underlyingSource) \
     macro(writing) \
     macro(Headers) \
     macro(MediaStream) \
     macro(MediaStreamTrack) \
+    macro(ReadableByteStreamController) \
     macro(ReadableStream) \
     macro(ReadableStreamDefaultController) \
     macro(ReadableStreamDefaultReader) \
@@ -129,5 +133,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // WebCoreBuiltinNames_h

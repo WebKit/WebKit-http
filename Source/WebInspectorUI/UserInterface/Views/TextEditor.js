@@ -31,16 +31,37 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         this.element.classList.add("text-editor", WebInspector.SyntaxHighlightedStyleClassName);
 
-        // FIXME: <https://webkit.org/b/149120> Web Inspector: Preferences for Text Editor behavior
         this._codeMirror = WebInspector.CodeMirrorEditor.create(this.element, {
             readOnly: true,
-            indentWithTabs: true,
-            indentUnit: 4,
+            indentWithTabs: WebInspector.settings.indentWithTabs.value,
+            indentUnit: WebInspector.settings.indentUnit.value,
+            tabSize: WebInspector.settings.tabSize.value,
             lineNumbers: true,
-            lineWrapping: false,
+            lineWrapping: WebInspector.settings.enableLineWrapping.value,
             matchBrackets: true,
             autoCloseBrackets: true,
+            showWhitespaceCharacters: WebInspector.settings.showWhitespaceCharacters.value,
             styleSelectedText: true,
+        });
+
+        WebInspector.settings.indentWithTabs.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("indentWithTabs", WebInspector.settings.indentWithTabs.value);
+        });
+
+        WebInspector.settings.indentUnit.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("indentUnit", WebInspector.settings.indentUnit.value);
+        });
+
+        WebInspector.settings.tabSize.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("tabSize", WebInspector.settings.tabSize.value);
+        });
+
+        WebInspector.settings.enableLineWrapping.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("lineWrapping", WebInspector.settings.enableLineWrapping.value);
+        });
+
+        WebInspector.settings.showWhitespaceCharacters.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("showWhitespaceCharacters", WebInspector.settings.showWhitespaceCharacters.value);
         });
 
         this._codeMirror.on("change", this._contentChanged.bind(this));
@@ -450,8 +471,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (!(position instanceof WebInspector.SourceCodePosition))
             return;
 
-        let lineHandle = this._codeMirror.getLineHandle(position.lineNumber);
-        if (!lineHandle || !this._visible || this._initialStringNotSet || this._deferReveal) {
+        if (!this._visible || this._initialStringNotSet || this._deferReveal) {
             // If we can't get a line handle or are not visible then we wait to do the reveal.
             this._positionToReveal = position;
             this._textRangeToSelect = textRangeToSelect;
@@ -474,8 +494,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         }
 
         let line = Number.constrain(position.lineNumber, 0, this._codeMirror.lineCount() - 1);
-        if (line !== position.lineNumber)
-            lineHandle = this._codeMirror.getLineHandle(line);
+        let lineHandle = this._codeMirror.getLineHandle(line);
 
         if (!textRangeToSelect) {
             let column = Number.constrain(position.columnNumber, 0, this._codeMirror.getLine(line).length - 1);
@@ -530,6 +549,15 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     hidden()
     {
         this._visible = false;
+    }
+
+    close()
+    {
+        WebInspector.settings.indentWithTabs.removeEventListener(null, null, this);
+        WebInspector.settings.indentUnit.removeEventListener(null, null, this);
+        WebInspector.settings.tabSize.removeEventListener(null, null, this);
+        WebInspector.settings.enableLineWrapping.removeEventListener(null, null, this);
+        WebInspector.settings.showWhitespaceCharacters.removeEventListener(null, null, this);
     }
 
     setBreakpointInfoForLineAndColumn(lineNumber, columnNumber, breakpointInfo)
@@ -807,10 +835,9 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     _startWorkerPrettyPrint(beforePrettyPrintState, callback)
     {
-        // <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
-        let indentString = "    ";
         let sourceText = this._codeMirror.getValue();
-        let includeSourceMapData = true;
+        let indentString = WebInspector.indentString();
+        const includeSourceMapData = true;
 
         // FIXME: Properly pass if this is a module or script.
         const isModule = false;
@@ -828,8 +855,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     _startCodeMirrorPrettyPrint(beforePrettyPrintState, callback)
     {
-        // <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
-        let indentString = "    ";
+        let indentString = WebInspector.indentString();
         let start = {line: 0, ch: 0};
         let end = {line: this._codeMirror.lineCount() - 1};
         let builder = new FormatterContentBuilder(indentString);

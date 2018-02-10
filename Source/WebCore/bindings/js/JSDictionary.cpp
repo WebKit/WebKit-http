@@ -253,7 +253,7 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, ArrayValue& resu
 
 void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Uint8Array>& result)
 {
-    result = toUint8Array(value);
+    result = toUnsharedUint8Array(value);
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -361,7 +361,7 @@ void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, RefPtr<Touc
 
 void JSDictionary::convertValue(JSC::ExecState*, JSC::JSValue value, JSC::JSFunction*& result)
 {
-    result = jsDynamicCast<JSC::JSFunction*>(value);
+    result = jsDynamicDowncast<JSC::JSFunction*>(value);
 }
 
 bool JSDictionary::getWithUndefinedOrNullCheck(const char* propertyName, String& result) const

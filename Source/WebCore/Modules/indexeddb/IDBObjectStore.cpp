@@ -120,7 +120,7 @@ ExceptionOr<void> IDBObjectStore::setName(const String& name)
     return { };
 }
 
-const IDBKeyPath& IDBObjectStore::keyPath() const
+const Optional<IDBKeyPath>& IDBObjectStore::keyPath() const
 {
     ASSERT(currentThread() == m_transaction->database().originThreadID());
     return m_info.keyPath();
@@ -150,7 +150,7 @@ bool IDBObjectStore::autoIncrement() const
     return m_info.autoIncrement();
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, IDBKeyRange* range, const String& directionString)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, RefPtr<IDBKeyRange> range, const String& directionString)
 {
     LOG(IndexedDB, "IDBObjectStore::openCursor");
     ASSERT(currentThread() == m_transaction->database().originThreadID());
@@ -165,7 +165,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, ID
     if (!direction)
         return Exception { TypeError };
 
-    auto info = IDBCursorInfo::objectStoreCursor(m_transaction.get(), m_info.identifier(), range, direction.value());
+    auto info = IDBCursorInfo::objectStoreCursor(m_transaction.get(), m_info.identifier(), range.get(), direction.value(), IndexedDB::CursorType::KeyAndValue);
     return m_transaction->requestOpenCursor(execState, *this, info);
 }
 
@@ -175,7 +175,35 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, JS
     if (onlyResult.hasException())
         return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to execute 'openCursor' on 'IDBObjectStore': The parameter is not a valid key.") };
 
-    return openCursor(execState, onlyResult.releaseReturnValue().ptr(), direction);
+    return openCursor(execState, onlyResult.releaseReturnValue(), direction);
+}
+
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openKeyCursor(ExecState& execState, RefPtr<IDBKeyRange> range, const String& directionString)
+{
+    LOG(IndexedDB, "IDBObjectStore::openCursor");
+    ASSERT(currentThread() == m_transaction->database().originThreadID());
+
+    if (m_deleted)
+        return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'openKeyCursor' on 'IDBObjectStore': The object store has been deleted.") };
+
+    if (!m_transaction->isActive())
+        return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed to execute 'openKeyCursor' on 'IDBObjectStore': The transaction is inactive or finished.") };
+
+    auto direction = IDBCursor::stringToDirection(directionString);
+    if (!direction)
+        return Exception { TypeError };
+
+    auto info = IDBCursorInfo::objectStoreCursor(m_transaction.get(), m_info.identifier(), range.get(), direction.value(), IndexedDB::CursorType::KeyOnly);
+    return m_transaction->requestOpenCursor(execState, *this, info);
+}
+
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openKeyCursor(ExecState& execState, JSValue key, const String& direction)
+{
+    auto onlyResult = IDBKeyRange::only(execState, key);
+    if (onlyResult.hasException())
+        return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to execute 'openKeyCursor' on 'IDBObjectStore': The parameter is not a valid key or key range.") };
+
+    return openKeyCursor(execState, onlyResult.releaseReturnValue(), direction);
 }
 
 ExceptionOr<Ref<IDBRequest>> IDBObjectStore::get(ExecState& execState, JSValue key)
@@ -283,20 +311,20 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::putOrAdd(ExecState& state, JSValue 
     if (key && !key->isValid())
         return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to store record in an IDBObjectStore: The parameter is not a valid key.") };
 
-    bool usesInlineKeys = !m_info.keyPath().isNull();
+    bool usesInlineKeys = !!m_info.keyPath();
     bool usesKeyGenerator = autoIncrement();
     if (usesInlineKeys && inlineKeyCheck == InlineKeyCheck::Perform) {
         if (key)
             return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to store record in an IDBObjectStore: The object store uses in-line keys and the key parameter was provided.") };
 
-        RefPtr<IDBKey> keyPathKey = maybeCreateIDBKeyFromScriptValueAndKeyPath(state, value, m_info.keyPath());
+        RefPtr<IDBKey> keyPathKey = maybeCreateIDBKeyFromScriptValueAndKeyPath(state, value, m_info.keyPath().value());
         if (keyPathKey && !keyPathKey->isValid())
             return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to store record in an IDBObjectStore: Evaluating the object store's key path yielded a value that is not a valid key.") };
 
         if (!keyPathKey) {
             if (!usesKeyGenerator)
                 return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to store record in an IDBObjectStore: Evaluating the object store's key path did not yield a value.") };
-            if (!canInjectIDBKeyIntoScriptValue(state, value, m_info.keyPath()))
+            if (!canInjectIDBKeyIntoScriptValue(state, value, m_info.keyPath().value()))
                 return Exception { IDBDatabaseException::DataError };
         }
 
@@ -371,7 +399,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::clear(ExecState& execState)
     return m_transaction->requestClearObjectStore(execState, *this);
 }
 
-ExceptionOr<Ref<IDBIndex>> IDBObjectStore::createIndex(ExecState&, const String& name, const IDBKeyPath& keyPath, const IndexParameters& parameters)
+ExceptionOr<Ref<IDBIndex>> IDBObjectStore::createIndex(ExecState&, const String& name, IDBKeyPath&& keyPath, const IndexParameters& parameters)
 {
     LOG(IndexedDB, "IDBObjectStore::createIndex %s", name.utf8().data());
     ASSERT(currentThread() == m_transaction->database().originThreadID());
@@ -385,7 +413,7 @@ ExceptionOr<Ref<IDBIndex>> IDBObjectStore::createIndex(ExecState&, const String&
     if (!m_transaction->isActive())
         return Exception { IDBDatabaseException::TransactionInactiveError };
 
-    if (!keyPath.isValid())
+    if (!isIDBKeyPathValid(keyPath))
         return Exception { IDBDatabaseException::SyntaxError, ASCIILiteral("Failed to execute 'createIndex' on 'IDBObjectStore': The keyPath argument contains an invalid key path.") };
 
     if (name.isNull())
@@ -394,11 +422,11 @@ ExceptionOr<Ref<IDBIndex>> IDBObjectStore::createIndex(ExecState&, const String&
     if (m_info.hasIndex(name))
         return Exception { IDBDatabaseException::ConstraintError, ASCIILiteral("Failed to execute 'createIndex' on 'IDBObjectStore': An index with the specified name already exists.") };
 
-    if (keyPath.type() == IDBKeyPath::Type::Array && parameters.multiEntry)
+    if (parameters.multiEntry && WTF::holds_alternative<Vector<String>>(keyPath))
         return Exception { IDBDatabaseException::InvalidAccessError, ASCIILiteral("Failed to execute 'createIndex' on 'IDBObjectStore': The keyPath argument was an array and the multiEntry option is true.") };
 
     // Install the new Index into the ObjectStore's info.
-    IDBIndexInfo info = m_info.createNewIndex(name, keyPath, parameters.unique, parameters.multiEntry);
+    IDBIndexInfo info = m_info.createNewIndex(name, WTFMove(keyPath), parameters.unique, parameters.multiEntry);
     m_transaction->database().didCreateIndexInfo(info);
 
     // Create the actual IDBObjectStore from the transaction, which also schedules the operation server side.
@@ -520,16 +548,66 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::doCount(ExecState& execState, const
     return m_transaction->requestCount(execState, *this, range);
 }
 
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, RefPtr<IDBKeyRange> range, Optional<uint32_t> count)
+{
+    LOG(IndexedDB, "IDBObjectStore::getAll");
+    ASSERT(currentThread() == m_transaction->database().originThreadID());
+
+    if (m_deleted)
+        return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'getAll' on 'IDBObjectStore': The object store has been deleted.") };
+
+    if (!m_transaction->isActive())
+        return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed to execute 'getAll' on 'IDBObjectStore': The transaction is inactive or finished.") };
+
+    return m_transaction->requestGetAllObjectStoreRecords(execState, *this, range.get(), IndexedDB::GetAllType::Values, count);
+}
+
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, JSValue key, Optional<uint32_t> count)
+{
+    auto onlyResult = IDBKeyRange::only(execState, key);
+    if (onlyResult.hasException())
+        return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to execute 'getAll' on 'IDBObjectStore': The parameter is not a valid key.") };
+
+    return getAll(execState, onlyResult.releaseReturnValue(), count);
+}
+
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAllKeys(ExecState& execState, RefPtr<IDBKeyRange> range, Optional<uint32_t> count)
+{
+    LOG(IndexedDB, "IDBObjectStore::getAllKeys");
+    ASSERT(currentThread() == m_transaction->database().originThreadID());
+
+    if (m_deleted)
+        return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'getAllKeys' on 'IDBObjectStore': The object store has been deleted.") };
+
+    if (!m_transaction->isActive())
+        return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed to execute 'getAllKeys' on 'IDBObjectStore': The transaction is inactive or finished.") };
+
+    return m_transaction->requestGetAllObjectStoreRecords(execState, *this, range.get(), IndexedDB::GetAllType::Keys, count);
+}
+
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAllKeys(ExecState& execState, JSValue key, Optional<uint32_t> count)
+{
+    auto onlyResult = IDBKeyRange::only(execState, key);
+    if (onlyResult.hasException())
+        return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to execute 'getAllKeys' on 'IDBObjectStore': The parameter is not a valid key.") };
+
+    return getAllKeys(execState, onlyResult.releaseReturnValue(), count);
+}
+
 void IDBObjectStore::markAsDeleted()
 {
     ASSERT(currentThread() == m_transaction->database().originThreadID());
     m_deleted = true;
 }
 
-void IDBObjectStore::rollbackInfoForVersionChangeAbort()
+void IDBObjectStore::rollbackForVersionChangeAbort()
 {
     ASSERT(currentThread() == m_transaction->database().originThreadID());
     m_info = m_originalInfo;
+
+    Locker<Lock> locker(m_referencedIndexLock);
+    for (auto& index : m_referencedIndexes.values())
+        index->rollbackInfoForVersionChangeAbort();
 }
 
 void IDBObjectStore::visitReferencedIndexes(SlotVisitor& visitor) const
@@ -537,6 +615,21 @@ void IDBObjectStore::visitReferencedIndexes(SlotVisitor& visitor) const
     Locker<Lock> locker(m_referencedIndexLock);
     for (auto& index : m_referencedIndexes.values())
         visitor.addOpaqueRoot(index.get());
+}
+
+void IDBObjectStore::renameReferencedIndex(IDBIndex& index, const String& newName)
+{
+    LOG(IndexedDB, "IDBObjectStore::renameReferencedIndex");
+
+    auto* indexInfo = m_info.infoForExistingIndex(index.info().identifier());
+    ASSERT(indexInfo);
+    indexInfo->rename(newName);
+
+    ASSERT(m_referencedIndexes.contains(index.info().name()));
+    ASSERT(!m_referencedIndexes.contains(newName));
+    ASSERT(m_referencedIndexes.get(index.info().name()) == &index);
+
+    m_referencedIndexes.set(newName, m_referencedIndexes.take(index.info().name()));
 }
 
 } // namespace WebCore

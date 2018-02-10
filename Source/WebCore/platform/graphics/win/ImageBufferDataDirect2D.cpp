@@ -45,11 +45,11 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const In
 {
     auto platformContext = context->platformContext();
 
-    Checked<unsigned, RecordOverflow> area = 4 * rect.area();
-    if (area.hasOverflowed())
+    auto numBytes = rect.area<RecordOverflow>() * 4;
+    if (numBytes.hasOverflowed())
         return nullptr;
 
-    auto result = Uint8ClampedArray::createUninitialized(area.unsafeGet());
+    auto result = Uint8ClampedArray::createUninitialized(numBytes.unsafeGet());
     unsigned char* resultData = result ? result->data() : nullptr;
     if (!resultData)
         return nullptr;
@@ -63,35 +63,100 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const In
     auto bitmapDC = adoptGDIObject(::CreateCompatibleDC(windowDC));
     HGDIOBJ oldBitmap = ::SelectObject(bitmapDC.get(), bitmap.get());
 
-    HRESULT hr;
-
     COMPtr<ID2D1GdiInteropRenderTarget> gdiRenderTarget;
-    hr = platformContext->QueryInterface(__uuidof(ID2D1GdiInteropRenderTarget), (void**)&gdiRenderTarget);
+    HRESULT hr = platformContext->QueryInterface(__uuidof(ID2D1GdiInteropRenderTarget), (void**)&gdiRenderTarget);
     if (FAILED(hr))
         return nullptr;
-
-    platformContext->BeginDraw();
 
     HDC hdc = nullptr;
     hr = gdiRenderTarget->GetDC(D2D1_DC_INITIALIZE_MODE_COPY, &hdc);
 
     BOOL ok = ::BitBlt(bitmapDC.get(), 0, 0, rect.width(), rect.height(), hdc, rect.x(), rect.y(), SRCCOPY);
 
-    hr = gdiRenderTarget->ReleaseDC(nullptr);
-
-    hr = platformContext->EndDraw();
+    RECT updateRect = { 0, 0, 0, 0 };
+    hr = gdiRenderTarget->ReleaseDC(&updateRect);
 
     if (!ok)
         return nullptr;
 
-    memcpy(result->data(), pixels, 4 * rect.area());
+    memcpy(result->data(), pixels, numBytes.unsafeGet());
 
     return result;
 }
 
-void ImageBufferData::putData(Uint8ClampedArray*& /* source */, const IntSize& /* sourceSize */, const IntRect& /* sourceRect */, const IntPoint& /* destPoint */, const IntSize& /* size */, bool /* accelerateRendering */, bool /* unmultiplied */, float /* resolutionScale */)
+void ImageBufferData::putData(Uint8ClampedArray*& source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, const IntSize& size, bool /* accelerateRendering */, bool unmultiplied, float resolutionScale)
 {
-    notImplemented();
+    auto platformContext = context->platformContext();
+    COMPtr<ID2D1BitmapRenderTarget> renderTarget(Query, platformContext);
+    if (!renderTarget)
+        return;
+
+    COMPtr<ID2D1Bitmap> bitmap;
+    HRESULT hr = renderTarget->GetBitmap(&bitmap);
+    ASSERT(SUCCEEDED(hr));
+
+    ASSERT(sourceRect.width() > 0);
+    ASSERT(sourceRect.height() > 0);
+
+    Checked<int> originx = sourceRect.x();
+    Checked<int> destx = (Checked<int>(destPoint.x()) + sourceRect.x());
+    destx *= resolutionScale;
+    ASSERT(destx.unsafeGet() >= 0);
+    ASSERT(destx.unsafeGet() < size.width());
+    ASSERT(originx.unsafeGet() >= 0);
+    ASSERT(originx.unsafeGet() <= sourceRect.maxX());
+
+    Checked<int> endx = (Checked<int>(destPoint.x()) + sourceRect.maxX());
+    endx *= resolutionScale;
+    ASSERT(endx.unsafeGet() <= size.width());
+
+    Checked<int> width = sourceRect.width();
+    Checked<int> destw = endx - destx;
+
+    Checked<int> originy = sourceRect.y();
+    Checked<int> desty = (Checked<int>(destPoint.y()) + sourceRect.y());
+    desty *= resolutionScale;
+    ASSERT(desty.unsafeGet() >= 0);
+    ASSERT(desty.unsafeGet() < size.height());
+    ASSERT(originy.unsafeGet() >= 0);
+    ASSERT(originy.unsafeGet() <= sourceRect.maxY());
+
+    Checked<int> endy = (Checked<int>(destPoint.y()) + sourceRect.maxY());
+    endy *= resolutionScale;
+    ASSERT(endy.unsafeGet() <= size.height());
+
+    Checked<int> height = sourceRect.height();
+    Checked<int> desth = endy - desty;
+
+    if (width <= 0 || height <= 0)
+        return;
+
+    unsigned srcBytesPerRow = 4 * sourceSize.width();
+    unsigned char* srcRows = source->data() + (originy * srcBytesPerRow + originx * 4).unsafeGet();
+
+    unsigned char* row = new unsigned char[srcBytesPerRow];
+
+    for (int y = 0; y < height.unsafeGet(); ++y) {
+        for (int x = 0; x < width.unsafeGet(); x++) {
+            int basex = x * 4;
+            unsigned char alpha = srcRows[basex + 3];
+            if (unmultiplied && alpha != 255) {
+                row[basex] = (srcRows[basex] * alpha + 254) / 255;
+                row[basex + 1] = (srcRows[basex + 1] * alpha + 254) / 255;
+                row[basex + 2] = (srcRows[basex + 2] * alpha + 254) / 255;
+                row[basex + 3] = alpha;
+            } else
+                reinterpret_cast<uint32_t*>(row + basex)[0] = reinterpret_cast<uint32_t*>(srcRows + basex)[0];
+        }
+
+        D2D1_RECT_U dstRect = D2D1::RectU(destPoint.x(), destPoint.y() + y, destPoint.x() + size.width(), destPoint.y() + y + 1);
+        hr = bitmap->CopyFromMemory(&dstRect, row, srcBytesPerRow);
+        ASSERT(SUCCEEDED(hr));
+
+        srcRows += srcBytesPerRow;
+    }
+
+    delete[] row;
 }
 
 } // namespace WebCore

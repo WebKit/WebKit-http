@@ -28,7 +28,7 @@
     <ProgramFilesAAS64>Program Files\Common Files\Apple\Apple Application Support</ProgramFilesAAS64>
     <ConfigurationBuildDir>$(OBJROOT)\$(CONFIG)</ConfigurationBuildDir>  
     <OutputDirectory>$(DSTROOT)</OutputDirectory>
-	<CMakeCommandCommon>cmake $(SRCROOT) -DPORT=AppleWin $(DebugSuffixDefinition) -DWEBKIT_LIBRARIES_DIR=$(WebKit_Libraries.Replace('\','/')) -DCMAKE_MODULE_PATH=$(SRCROOT.Replace('\','/'))/AppleInternal/tools/cmake -DCMAKE_BINARY_DIR=$(OBJROOT.Replace('\','/'))/$(CONFIG) -DWEBKIT_DIR=$(SRCROOT.Replace('\','/'))</CMakeCommandCommon>
+	<CMakeCommandCommon>cmake $(SRCROOT) -DPORT=AppleWin $(DebugSuffixDefinition) -DWEBKIT_LIBRARIES_DIR=$(WebKit_Libraries.Replace('\','/')) -DCMAKE_MODULE_PATH=$(SRCROOT.Replace('\','/'))/AppleInternal/tools/cmake -DCMAKE_BINARY_DIR=$(OBJROOT.Replace('\','/'))/$(CONFIG) -DCMAKE_BUILD_TYPE=$(CONFIGURATION) -DWEBKIT_DIR=$(SRCROOT.Replace('\','/'))</CMakeCommandCommon>
   </PropertyGroup>
  
   <!-- Prepare for build -->
@@ -114,15 +114,13 @@
     <Copy SourceFiles="@(IncFiles)" DestinationFiles="@(IncFiles->'$(DSTROOT)\AppleInternal\include\WebKit\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="@(Lib32Files)" DestinationFolder="$(AppleInternalLib32)" />
     <Copy SourceFiles="@(Lib64Files)" DestinationFolder="$(AppleInternalLib64)" />
-    <Copy SourceFiles="@(Bin32Files)" DestinationFolder="$(AppleInternalBin32)" />
     <Copy SourceFiles="@(Bin32DLLFiles)" DestinationFolder="$(DSTROOT)\$(ProgramFilesAAS32)" />
     <Copy SourceFiles="@(Bin32ResourceFolders)" DestinationFolder="$(DSTROOT)\$(ProgramFilesAAS32)" />
-    <Copy SourceFiles="@(Bin32SymbolFiles)" DestinationFolder="$(AppleInternal32Symbols)" />
+    <Copy SourceFiles="@(Bin32SymbolFiles)" DestinationFolder="$(DSTROOT)\$(ProgramFilesAAS32)" />
     <Copy SourceFiles="@(Bin32Resources)" DestinationFiles="@(Bin32Resources->'$(DSTROOT)\$(ProgramFilesAAS32)\WebKit.resources\%(RecursiveDir)%(Filename)%(Extension)')" />
-    <Copy SourceFiles="@(Bin64Files)" DestinationFolder="$(AppleInternalBin64)" />
     <Copy SourceFiles="@(Bin64DLLFiles)" DestinationFolder="$(DSTROOT)\$(ProgramFilesAAS64)" />
     <Copy SourceFiles="@(Bin64ResourceFolders)" DestinationFolder="$(DSTROOT)\$(ProgramFilesAAS64)" />
-    <Copy SourceFiles="@(Bin64SymbolFiles)" DestinationFolder="$(AppleInternal64Symbols)" />
+    <Copy SourceFiles="@(Bin64SymbolFiles)" DestinationFolder="$(DSTROOT)\$(ProgramFilesAAS64)" />
     <Copy SourceFiles="@(Bin64Resources)" DestinationFiles="@(Bin64Resources->'$(DSTROOT)\$(ProgramFilesAAS64)\WebKit.resources\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 

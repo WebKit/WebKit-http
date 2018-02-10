@@ -66,7 +66,6 @@
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "GCController.h"
-#include "HTMLAnchorElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
@@ -345,18 +344,10 @@ void FrameLoader::changeLocation(const FrameLoadRequest& request)
     urlSelected(request, nullptr);
 }
 
-void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute)
+void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, Optional<NewFrameOpenerPolicy> openerPolicy, const AtomicString& downloadAttribute)
 {
-    NewFrameOpenerPolicy newFrameOpenerPolicy = shouldSendReferrer == NeverSendReferrer ? NewFrameOpenerPolicy::Suppress : NewFrameOpenerPolicy::Allow;
-
+    NewFrameOpenerPolicy newFrameOpenerPolicy = openerPolicy.valueOr(shouldSendReferrer == NeverSendReferrer ? NewFrameOpenerPolicy::Suppress : NewFrameOpenerPolicy::Allow);
     urlSelected(FrameLoadRequest(m_frame.document()->securityOrigin(), ResourceRequest(url), passedTarget, lockHistory, lockBackForwardList, shouldSendReferrer, AllowNavigationToInvalidURL::Yes, newFrameOpenerPolicy, DoNotReplaceDocumentIfJavaScriptURL, shouldOpenExternalURLsPolicy, downloadAttribute), triggeringEvent);
-}
-
-void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
-{
-    NewFrameOpenerPolicy newFrameOpenerPolicy = shouldSendReferrer == NeverSendReferrer ? NewFrameOpenerPolicy::Suppress : NewFrameOpenerPolicy::Allow;
-
-    urlSelected(FrameLoadRequest(m_frame.document()->securityOrigin(), ResourceRequest(url), passedTarget, lockHistory, lockBackForwardList, shouldSendReferrer, AllowNavigationToInvalidURL::Yes, newFrameOpenerPolicy, DoNotReplaceDocumentIfJavaScriptURL, shouldOpenExternalURLsPolicy, nullAtom), triggeringEvent);
 }
 
 void FrameLoader::urlSelected(const FrameLoadRequest& passedRequest, Event* triggeringEvent)
@@ -602,7 +593,7 @@ void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool 
 
     // Do this after detaching the document so that the unload event works.
     if (clearWindowProperties) {
-        InspectorInstrumentation::frameWindowDiscarded(&m_frame, m_frame.document()->domWindow());
+        InspectorInstrumentation::frameWindowDiscarded(m_frame, m_frame.document()->domWindow());
         m_frame.document()->domWindow()->resetUnlessSuspendedForDocumentSuspension();
         m_frame.script().clearWindowShell(newDocument->domWindow(), m_frame.document()->pageCacheState() == Document::AboutToEnterPageCache);
     }

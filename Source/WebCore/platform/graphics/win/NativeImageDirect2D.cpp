@@ -85,18 +85,8 @@ void drawNativeImage(const NativeImagePtr& image, GraphicsContext& context, cons
 
     float opacity = 1.0f;
 
-    if (!context.didBeginDraw())
-        platformContext->BeginDraw();
-
     platformContext->DrawBitmap(image.get(), destRect, opacity, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, adjustedSrcRect);
-
-    HRESULT hr = S_OK;
-    if (!context.didBeginDraw())
-        hr = platformContext->EndDraw();
-    else
-        hr = platformContext->Flush();
-
-    ASSERT(SUCCEEDED(hr));
+    context.flush();
 }
 
 void clearNativeImageSubimages(const NativeImagePtr& image)

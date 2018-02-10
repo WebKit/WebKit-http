@@ -624,7 +624,7 @@ void URLParser::encodeQuery(const Vector<UChar>& source, const TextEncoding& enc
     }
 }
 
-ALWAYS_INLINE static bool isDefaultPort(StringView scheme, uint16_t port)
+Optional<uint16_t> defaultPortForProtocol(StringView scheme)
 {
     static const uint16_t ftpPort = 21;
     static const uint16_t gopherPort = 70;
@@ -635,53 +635,63 @@ ALWAYS_INLINE static bool isDefaultPort(StringView scheme, uint16_t port)
     
     auto length = scheme.length();
     if (!length)
-        return false;
+        return Nullopt;
     switch (scheme[0]) {
     case 'w':
         switch (length) {
         case 2:
-            return scheme[1] == 's'
-                && port == wsPort;
+            if (scheme[1] == 's')
+                return wsPort;
+            return Nullopt;
         case 3:
-            return scheme[1] == 's'
-                && scheme[2] == 's'
-                && port == wssPort;
+            if (scheme[1] == 's'
+                && scheme[2] == 's')
+                return wssPort;
+            return Nullopt;
         default:
             return false;
         }
     case 'h':
         switch (length) {
         case 4:
-            return scheme[1] == 't'
+            if (scheme[1] == 't'
                 && scheme[2] == 't'
-                && scheme[3] == 'p'
-                && port == httpPort;
+                && scheme[3] == 'p')
+                return httpPort;
+            return Nullopt;
         case 5:
-            return scheme[1] == 't'
+            if (scheme[1] == 't'
                 && scheme[2] == 't'
                 && scheme[3] == 'p'
-                && scheme[4] == 's'
-                && port == httpsPort;
+                && scheme[4] == 's')
+                return httpsPort;
+            return Nullopt;
         default:
-            return false;
+            return Nullopt;
         }
     case 'g':
-        return length == 6
+        if (length == 6
             && scheme[1] == 'o'
             && scheme[2] == 'p'
             && scheme[3] == 'h'
             && scheme[4] == 'e'
-            && scheme[5] == 'r'
-            && port == gopherPort;
+            && scheme[5] == 'r')
+            return gopherPort;
+        return Nullopt;
     case 'f':
-        return length == 3
+        if (length == 3
             && scheme[1] == 't'
-            && scheme[2] == 'p'
-            && port == ftpPort;
-        return false;
+            && scheme[2] == 'p')
+            return ftpPort;
+        return Nullopt;
     default:
-        return false;
+        return Nullopt;
     }
+}
+
+bool isDefaultPortForProtocol(uint16_t port, StringView protocol)
+{
+    return defaultPortForProtocol(protocol) == port;
 }
 
 enum class Scheme {
@@ -881,25 +891,7 @@ void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePoint
     ASSERT_NOT_REACHED();
 }
 
-static const char* dotASCIICode = "2e";
-
-template<typename CharacterType>
-ALWAYS_INLINE bool URLParser::isPercentEncodedDot(CodePointIterator<CharacterType> c)
-{
-    if (c.atEnd())
-        return false;
-    if (*c != '%')
-        return false;
-    advance<CharacterType, ReportSyntaxViolation::No>(c);
-    if (c.atEnd())
-        return false;
-    if (*c != dotASCIICode[0])
-        return false;
-    advance<CharacterType, ReportSyntaxViolation::No>(c);
-    if (c.atEnd())
-        return false;
-    return toASCIILower(*c) == dotASCIICode[1];
-}
+static const char dotASCIICode[2] = {'2', 'e'};
 
 template<typename CharacterType>
 ALWAYS_INLINE bool URLParser::isSingleDotPathSegment(CodePointIterator<CharacterType> c)
@@ -1713,17 +1705,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 state = State::Fragment;
                 break;
             }
-            if (UNLIKELY(isPercentEncodedDot(c))) {
-                syntaxViolation(c);
-                appendToASCIIBuffer('.');
-                ASSERT(*c == '%');
-                advance(c);
-                ASSERT(*c == dotASCIICode[0]);
-                advance(c);
-                ASSERT(toASCIILower(*c) == dotASCIICode[1]);
-                advance(c);
-                break;
-            }
             utf8PercentEncode<isInDefaultEncodeSet>(c);
             ++c;
             break;
@@ -2488,28 +2469,18 @@ Optional<Vector<LChar, URLParser::defaultInlineBufferSize>> URLParser::domainToA
         if (domain.is8Bit()) {
             const LChar* characters = domain.characters8();
             ascii.reserveInitialCapacity(length);
-            if (m_urlIsSpecial) {
-                for (size_t i = 0; i < length; ++i) {
-                    if (UNLIKELY(isASCIIUpper(characters[i])))
-                        syntaxViolation(iteratorForSyntaxViolationPosition);
-                    ascii.uncheckedAppend(toASCIILower(characters[i]));
-                }
-            } else {
-                for (size_t i = 0; i < length; ++i)
-                    ascii.uncheckedAppend(characters[i]);
+            for (size_t i = 0; i < length; ++i) {
+                if (UNLIKELY(isASCIIUpper(characters[i])))
+                    syntaxViolation(iteratorForSyntaxViolationPosition);
+                ascii.uncheckedAppend(toASCIILower(characters[i]));
             }
         } else {
             const UChar* characters = domain.characters16();
             ascii.reserveInitialCapacity(length);
-            if (m_urlIsSpecial) {
-                for (size_t i = 0; i < length; ++i) {
-                    if (UNLIKELY(isASCIIUpper(characters[i])))
-                        syntaxViolation(iteratorForSyntaxViolationPosition);
-                    ascii.uncheckedAppend(toASCIILower(characters[i]));
-                }
-            } else {
-                for (size_t i = 0; i < length; ++i)
-                    ascii.uncheckedAppend(characters[i]);
+            for (size_t i = 0; i < length; ++i) {
+                if (UNLIKELY(isASCIIUpper(characters[i])))
+                    syntaxViolation(iteratorForSyntaxViolationPosition);
+                ascii.uncheckedAppend(toASCIILower(characters[i]));
             }
         }
         return ascii;
@@ -2589,7 +2560,7 @@ bool URLParser::parsePort(CodePointIterator<CharacterType>& iterator)
     if (!port && digitCount > 1)
         syntaxViolation(colonIterator);
 
-    if (UNLIKELY(isDefaultPort(parsedDataView(0, m_url.m_schemeEnd), port)))
+    if (UNLIKELY(isDefaultPortForProtocol(port, parsedDataView(0, m_url.m_schemeEnd))))
         syntaxViolation(colonIterator);
     else {
         appendToASCIIBuffer(':');
@@ -2629,8 +2600,27 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
             m_url.m_hostEnd = currentPosition(ipv6End);
             return true;
         }
+        return false;
     }
 
+    if (!m_urlIsSpecial) {
+        for (; !iterator.atEnd(); ++iterator) {
+            if (UNLIKELY(isTabOrNewline(*iterator))) {
+                syntaxViolation(iterator);
+                continue;
+            }
+            if (*iterator == ':')
+                break;
+            utf8PercentEncode<isInSimpleEncodeSet>(iterator);
+        }
+        m_url.m_hostEnd = currentPosition(iterator);
+        if (iterator.atEnd()) {
+            m_url.m_portEnd = currentPosition(iterator);
+            return true;
+        }
+        return parsePort(iterator);
+    }
+    
     if (LIKELY(!m_hostHasPercentOrNonASCII)) {
         auto hostIterator = iterator;
         for (; !iterator.atEnd(); ++iterator) {
@@ -2651,15 +2641,13 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
             return parsePort(iterator);
         }
         for (; hostIterator != iterator; ++hostIterator) {
-            if (LIKELY(!isTabOrNewline(*hostIterator))) {
-                if (m_urlIsSpecial) {
-                    if (UNLIKELY(isASCIIUpper(*hostIterator)))
-                        syntaxViolation(hostIterator);
-                    appendToASCIIBuffer(toASCIILower(*hostIterator));
-                } else
-                    appendToASCIIBuffer(*hostIterator);
-            } else
+            if (UNLIKELY(isTabOrNewline(*hostIterator))) {
                 syntaxViolation(hostIterator);
+                continue;
+            }
+            if (UNLIKELY(isASCIIUpper(*hostIterator)))
+                syntaxViolation(hostIterator);
+            appendToASCIIBuffer(toASCIILower(*hostIterator));
         }
         m_url.m_hostEnd = currentPosition(iterator);
         if (!hostIterator.atEnd())

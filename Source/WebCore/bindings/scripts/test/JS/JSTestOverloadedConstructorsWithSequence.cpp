@@ -27,6 +27,7 @@
 #include "JSDOMConvert.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
+#include <runtime/JSArray.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -87,7 +88,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructorsWithSequence2(
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto string = state->uncheckedArgument(0).toWTFString(state);
+    auto string = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructorsWithSequence::create(WTFMove(string));
     return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
@@ -170,7 +171,7 @@ EncodedJSValue jsTestOverloadedConstructorsWithSequenceConstructor(ExecState* st
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestOverloadedConstructorsWithSequencePrototype* domObject = jsDynamicCast<JSTestOverloadedConstructorsWithSequencePrototype*>(JSValue::decode(thisValue));
+    JSTestOverloadedConstructorsWithSequencePrototype* domObject = jsDynamicDowncast<JSTestOverloadedConstructorsWithSequencePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestOverloadedConstructorsWithSequence::getConstructor(state->vm(), domObject->globalObject()));
@@ -181,7 +182,7 @@ bool setJSTestOverloadedConstructorsWithSequenceConstructor(ExecState* state, En
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestOverloadedConstructorsWithSequencePrototype* domObject = jsDynamicCast<JSTestOverloadedConstructorsWithSequencePrototype*>(JSValue::decode(thisValue));
+    JSTestOverloadedConstructorsWithSequencePrototype* domObject = jsDynamicDowncast<JSTestOverloadedConstructorsWithSequencePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -249,7 +250,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOv
 
 TestOverloadedConstructorsWithSequence* JSTestOverloadedConstructorsWithSequence::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestOverloadedConstructorsWithSequence*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestOverloadedConstructorsWithSequence*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

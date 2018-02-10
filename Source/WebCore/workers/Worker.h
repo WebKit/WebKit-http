@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2010 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2010, 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,56 +31,50 @@
 #include "EventTarget.h"
 #include "MessagePort.h"
 #include "WorkerScriptLoaderClient.h"
-#include <wtf/Forward.h>
+#include <runtime/RuntimeFlags.h>
 #include <wtf/Optional.h>
-#include <wtf/RefPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
 
-    class ScriptExecutionContext;
-    class WorkerGlobalScopeProxy;
-    class WorkerScriptLoader;
+class ScriptExecutionContext;
+class WorkerGlobalScopeProxy;
+class WorkerScriptLoader;
 
-    typedef int ExceptionCode;
+class Worker final : public AbstractWorker, public ActiveDOMObject, private WorkerScriptLoaderClient {
+public:
+    static ExceptionOr<Ref<Worker>> create(ScriptExecutionContext&, const String& url, JSC::RuntimeFlags);
+    virtual ~Worker();
 
-    class Worker final : public AbstractWorker, public ActiveDOMObject, private WorkerScriptLoaderClient {
-    public:
-        static RefPtr<Worker> create(ScriptExecutionContext&, const String& url, ExceptionCode&);
-        virtual ~Worker();
+    ExceptionOr<void> postMessage(RefPtr<SerializedScriptValue>&& message, Vector<RefPtr<MessagePort>>&&);
 
-        EventTargetInterface eventTargetInterface() const override { return WorkerEventTargetInterfaceType; }
+    void terminate();
 
-        void postMessage(RefPtr<SerializedScriptValue>&& message, Vector<RefPtr<MessagePort>>&&, ExceptionCode&);
+    bool hasPendingActivity() const final;
 
-        void terminate();
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
 
-        // EventTarget API.
-        ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
+private:
+    explicit Worker(ScriptExecutionContext&, JSC::RuntimeFlags);
 
-        // ActiveDOMObject API.
-        bool hasPendingActivity() const override;
+    EventTargetInterface eventTargetInterface() const final { return WorkerEventTargetInterfaceType; }
 
-    private:
-        explicit Worker(ScriptExecutionContext&);
+    void notifyNetworkStateChange(bool isOnline);
 
-        void notifyNetworkStateChange(bool isOnline);
+    void didReceiveResponse(unsigned long identifier, const ResourceResponse&) final;
+    void notifyFinished() final;
 
-        // WorkerScriptLoaderClient callbacks
-        void didReceiveResponse(unsigned long identifier, const ResourceResponse&) override;
-        void notifyFinished() override;
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
+    const char* activeDOMObjectName() const final;
 
-        // ActiveDOMObject API.
-        bool canSuspendForDocumentSuspension() const override;
-        void stop() override;
-        const char* activeDOMObjectName() const override;
+    friend void networkStateChanged(bool isOnLine);
 
-        friend void networkStateChanged(bool isOnLine);
-
-        RefPtr<WorkerScriptLoader> m_scriptLoader;
-        WorkerGlobalScopeProxy* m_contextProxy; // The proxy outlives the worker to perform thread shutdown.
-        Optional<ContentSecurityPolicyResponseHeaders> m_contentSecurityPolicyResponseHeaders;
-        bool m_shouldBypassMainWorldContentSecurityPolicy { false };
-    };
+    RefPtr<WorkerScriptLoader> m_scriptLoader;
+    WorkerGlobalScopeProxy* m_contextProxy; // The proxy outlives the worker to perform thread shutdown.
+    Optional<ContentSecurityPolicyResponseHeaders> m_contentSecurityPolicyResponseHeaders;
+    bool m_shouldBypassMainWorldContentSecurityPolicy { false };
+    JSC::RuntimeFlags m_runtimeFlags;
+};
 
 } // namespace WebCore

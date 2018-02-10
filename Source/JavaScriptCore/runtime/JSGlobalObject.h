@@ -22,6 +22,7 @@
 #pragma once
 
 #include "ArrayAllocationProfile.h"
+#include "ArrayBufferSharingMode.h"
 #include "InternalFunction.h"
 #include "JSArray.h"
 #include "JSArrayBufferPrototype.h"
@@ -56,6 +57,7 @@ namespace JSC {
 
 class ArrayConstructor;
 class ArrayPrototype;
+class AsyncFunctionPrototype;
 class BooleanPrototype;
 class ConsoleClient;
 class Debugger;
@@ -63,18 +65,25 @@ class ErrorConstructor;
 class ErrorPrototype;
 class EvalCodeBlock;
 class EvalExecutable;
+class FunctionConstructor;
 class FunctionPrototype;
 class GeneratorPrototype;
 class GeneratorFunctionPrototype;
 class GetterSetter;
 class GlobalCodeBlock;
 class InputCursor;
+class JSArrayBuffer;
+class JSArrayBufferConstructor;
+class JSArrayBufferPrototype;
 class JSGlobalObjectDebuggable;
 class JSInternalPromise;
 class JSModuleLoader;
 class JSPromise;
 class JSPromiseConstructor;
 class JSPromisePrototype;
+class JSSharedArrayBuffer;
+class JSSharedArrayBufferConstructor;
+class JSSharedArrayBufferPrototype;
 class JSTypedArrayViewConstructor;
 class JSTypedArrayViewPrototype;
 class LLIntOffsetsExtractor;
@@ -103,8 +112,7 @@ struct HashTable;
     macro(Number, number, numberObject, NumberObject, Number, object) \
     macro(Error, error, error, ErrorInstance, Error, object) \
     macro(Map, map, map, JSMap, Map, object) \
-    macro(JSPromise, promise, promise, JSPromise, Promise, object) \
-    macro(JSArrayBuffer, arrayBuffer, arrayBuffer, JSArrayBuffer, ArrayBuffer, object) \
+    macro(JSPromise, promise, promise, JSPromise, Promise, object)
 
 #define FOR_EACH_BUILTIN_DERIVED_ITERATOR_TYPE(macro) \
     DEFINE_STANDARD_BUILTIN(macro, MapIterator, mapIterator) \
@@ -233,6 +241,7 @@ public:
     LazyProperty<JSGlobalObject, NativeErrorConstructor> m_syntaxErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
     LazyProperty<JSGlobalObject, NativeErrorConstructor> m_URIErrorConstructor;
+    WriteBarrier<FunctionConstructor> m_functionConstructor;
     WriteBarrier<ObjectConstructor> m_objectConstructor;
     WriteBarrier<ArrayConstructor> m_arrayConstructor;
     WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
@@ -306,6 +315,7 @@ public:
     PropertyOffset m_functionNameOffset;
     WriteBarrier<Structure> m_privateNameStructure;
     WriteBarrier<Structure> m_regExpStructure;
+    LazyClassStructure m_asyncFunctionStructure;
     WriteBarrier<Structure> m_generatorFunctionStructure;
     WriteBarrier<Structure> m_dollarVMStructure;
     WriteBarrier<Structure> m_iteratorResultObjectStructure;
@@ -317,6 +327,10 @@ public:
     WriteBarrier<Structure> m_callableProxyObjectStructure;
     WriteBarrier<Structure> m_proxyRevokeStructure;
     WriteBarrier<Structure> m_moduleLoaderStructure;
+    WriteBarrier<JSArrayBufferPrototype> m_arrayBufferPrototype;
+    WriteBarrier<Structure> m_arrayBufferStructure;
+    WriteBarrier<JSArrayBufferPrototype> m_sharedArrayBufferPrototype;
+    WriteBarrier<Structure> m_sharedArrayBufferStructure;
 
 #define DEFINE_STORAGE_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName, prototypeBase) \
     WriteBarrier<capitalName ## Prototype> m_ ## lowerName ## Prototype; \
@@ -527,6 +541,19 @@ public:
     GeneratorFunctionPrototype* generatorFunctionPrototype() const { return m_generatorFunctionPrototype.get(); }
     GeneratorPrototype* generatorPrototype() const { return m_generatorPrototype.get(); }
 
+    LazyClassStructure& lazyAsyncFunctionStructure()
+    {
+        return m_asyncFunctionStructure;
+    }
+    const LazyClassStructure& lazyAsyncFunctionStructure() const
+    {
+        return m_asyncFunctionStructure;
+    }
+    AsyncFunctionPrototype* asyncFunctionPrototype() const { return reinterpret_cast<AsyncFunctionPrototype*>(lazyAsyncFunctionStructure().prototype(this)); }
+    AsyncFunctionPrototype* asyncFunctionPrototypeConcurrently() const { return reinterpret_cast<AsyncFunctionPrototype*>(lazyAsyncFunctionStructure().prototypeConcurrently()); }
+    Structure* asyncFunctionStructure() const { return lazyAsyncFunctionStructure().get(this); }
+    Structure* asyncFunctionStructureConcurrently() const { return lazyAsyncFunctionStructure().getConcurrently(); }
+
     Structure* debuggerScopeStructure() const { return m_debuggerScopeStructure.get(this); }
     Structure* withScopeStructure() const { return m_withScopeStructure.get(this); }
     Structure* strictEvalActivationStructure() const { return m_strictEvalActivationStructure.get(); }
@@ -596,6 +623,7 @@ public:
     Structure* callableProxyObjectStructure() const { return m_callableProxyObjectStructure.get(); }
     Structure* proxyRevokeStructure() const { return m_proxyRevokeStructure.get(); }
     Structure* moduleLoaderStructure() const { return m_moduleLoaderStructure.get(); }
+    Structure* restParameterStructure() const { return arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous); }
 
     JS_EXPORT_PRIVATE void setRemoteDebuggingEnabled(bool);
     JS_EXPORT_PRIVATE bool remoteDebuggingEnabled() const;
@@ -622,7 +650,26 @@ public:
     void setName(const String&);
     const String& name() const { return m_name; }
 
-    JSArrayBufferPrototype* arrayBufferPrototype() const { return m_arrayBufferPrototype.get(); }
+    JSArrayBufferPrototype* arrayBufferPrototype(ArrayBufferSharingMode sharingMode) const
+    {
+        switch (sharingMode) {
+        case ArrayBufferSharingMode::Default:
+            return m_arrayBufferPrototype.get();
+        case ArrayBufferSharingMode::Shared:
+            return m_sharedArrayBufferPrototype.get();
+        }
+    }
+    Structure* arrayBufferStructure(ArrayBufferSharingMode sharingMode) const
+    {
+        switch (sharingMode) {
+        case ArrayBufferSharingMode::Default:
+            return m_arrayBufferStructure.get();
+        case ArrayBufferSharingMode::Shared:
+            return m_sharedArrayBufferStructure.get();
+        }
+        RELEASE_ASSERT_NOT_REACHED();
+        return nullptr;
+    }
 
 #define DEFINE_ACCESSORS_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName, prototypeBase) \
     Structure* properName ## Structure() { return m_ ## properName ## Structure.get(); }

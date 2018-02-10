@@ -73,6 +73,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "PlatformWheelEvent.h"
 #include "PluginDocument.h"
+#include "PointerLockController.h"
 #include "RenderFrameSet.h"
 #include "RenderLayer.h"
 #include "RenderListBox.h"
@@ -1144,9 +1145,11 @@ HitTestResult EventHandler::hitTestResultAtPoint(const LayoutPoint& point, HitTe
 
     unsigned nonNegativePaddingWidth = std::max<LayoutUnit>(0, padding.width()).toUnsigned();
     unsigned nonNegativePaddingHeight = std::max<LayoutUnit>(0, padding.height()).toUnsigned();
+
     // We should always start hit testing a clean tree.
-    if (m_frame.document())
-        m_frame.document()->updateLayoutIgnorePendingStylesheets();
+    if (auto* frameView = m_frame.view())
+        frameView->updateLayoutAndStyleIfNeededRecursive();
+
     HitTestResult result(point, nonNegativePaddingHeight, nonNegativePaddingWidth, nonNegativePaddingHeight, nonNegativePaddingWidth);
     RenderView* renderView = m_frame.contentRenderer();
     if (!renderView)
@@ -3061,6 +3064,13 @@ bool EventHandler::keyEvent(const PlatformKeyboardEvent& initialKeyEvent)
     RefPtr<FrameView> protector(m_frame.view());
 
     LOG(Editing, "EventHandler %p keyEvent (text %s keyIdentifier %s)", this, initialKeyEvent.text().utf8().data(), initialKeyEvent.keyIdentifier().utf8().data());
+
+#if ENABLE(POINTER_LOCK)
+    if (initialKeyEvent.type() == PlatformEvent::KeyDown && initialKeyEvent.windowsVirtualKeyCode() == VK_ESCAPE && m_frame.page()->pointerLockController().element()) {
+        m_frame.page()->pointerLockController().requestPointerUnlock();
+        return true;
+    }
+#endif
 
 #if ENABLE(FULLSCREEN_API)
     if (m_frame.document()->webkitIsFullScreen() && !isKeyEventAllowedInFullScreen(initialKeyEvent))

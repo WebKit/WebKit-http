@@ -24,12 +24,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSMainThreadExecStateInstrumentation_h
-#define JSMainThreadExecStateInstrumentation_h
+#pragma once
 
 #include "InspectorInstrumentation.h"
 #include "JSMainThreadExecState.h"
-#include <runtime/Executable.h>
+#include <runtime/FunctionExecutable.h>
 
 namespace WebCore {
 
@@ -59,5 +58,3 @@ inline InspectorInstrumentationCookie JSMainThreadExecState::instrumentFunctionC
 }
 
 } // namespace WebCore
-
-#endif // JSMainThreadExecStateInstrumentation_h

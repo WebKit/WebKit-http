@@ -57,17 +57,15 @@
 #include "HTMLCanvasElement.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
-#include "HTMLEmbedElement.h"
 #include "HTMLHtmlElement.h"
-#include "HTMLIFrameElement.h"
 #include "HTMLLabelElement.h"
 #include "HTMLNameCollection.h"
 #include "HTMLObjectElement.h"
 #include "HTMLParserIdioms.h"
-#include "HTMLSelectElement.h"
 #include "HTMLTemplateElement.h"
 #include "IdChangeInvalidation.h"
 #include "IdTargetObserverRegistry.h"
+#include "InspectorInstrumentation.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
 #include "KeyframeEffect.h"
@@ -852,7 +850,7 @@ Element* Element::bindingsOffsetParent()
     Element* element = offsetParent();
     if (!element || !element->isInShadowTree())
         return element;
-    return element->containingShadowRoot()->mode() == ShadowRoot::Mode::UserAgent ? nullptr : element;
+    return element->containingShadowRoot()->mode() == ShadowRootMode::UserAgent ? nullptr : element;
 }
 
 Element* Element::offsetParent()
@@ -1219,19 +1217,18 @@ const AtomicString& Element::getAttributeNS(const AtomicString& namespaceURI, co
     return getAttribute(QualifiedName(nullAtom, localName, namespaceURI));
 }
 
-void Element::setAttribute(const AtomicString& localName, const AtomicString& value, ExceptionCode& ec)
+ExceptionOr<void> Element::setAttribute(const AtomicString& localName, const AtomicString& value)
 {
-    if (!Document::isValidName(localName)) {
-        ec = INVALID_CHARACTER_ERR;
-        return;
-    }
+    if (!Document::isValidName(localName))
+        return Exception { INVALID_CHARACTER_ERR };
 
     synchronizeAttribute(localName);
-    const AtomicString& caseAdjustedLocalName = shouldIgnoreAttributeCase(*this) ? localName.convertToASCIILowercase() : localName;
-
+    auto caseAdjustedLocalName = shouldIgnoreAttributeCase(*this) ? localName.convertToASCIILowercase() : localName;
     unsigned index = elementData() ? elementData()->findAttributeIndexByName(caseAdjustedLocalName, false) : ElementData::attributeNotFound;
-    const QualifiedName& qName = index != ElementData::attributeNotFound ? attributeAt(index).name() : QualifiedName(nullAtom, caseAdjustedLocalName, nullAtom);
-    setAttributeInternal(index, qName, value, NotInSynchronizationOfLazyAttribute);
+    auto name = index != ElementData::attributeNotFound ? attributeAt(index).name() : QualifiedName { nullAtom, caseAdjustedLocalName, nullAtom };
+    setAttributeInternal(index, name, value, NotInSynchronizationOfLazyAttribute);
+
+    return { };
 }
 
 void Element::setAttribute(const QualifiedName& name, const AtomicString& value)
@@ -1336,10 +1333,8 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
 
     document().incDOMTreeVersion();
 
-#if ENABLE(CUSTOM_ELEMENTS)
     if (UNLIKELY(isDefinedCustomElement()))
         CustomElementReactionQueue::enqueueAttributeChangedCallbackIfNeeded(*this, name, oldValue, newValue);
-#endif
 
     if (valueIsSameAsBefore)
         return;
@@ -1556,10 +1551,8 @@ void Element::didMoveToNewDocument(Document* oldDocument)
             attributeChanged(classAttr, nullAtom, getAttribute(classAttr));
     }
 
-#if ENABLE(CUSTOM_ELEMENTS)
     if (UNLIKELY(isDefinedCustomElement()))
         CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, *oldDocument, document());
-#endif
 }
 
 bool Element::hasAttributes() const
@@ -1667,15 +1660,12 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
             updateLabel(*newScope, nullAtom, attributeWithoutSynchronization(forAttr));
     }
 
-#if ENABLE(CUSTOM_ELEMENTS)
     if (becomeConnected) {
         if (UNLIKELY(isCustomElementUpgradeCandidate()))
             CustomElementReactionQueue::enqueueElementUpgradeIfDefined(*this);
         if (UNLIKELY(isDefinedCustomElement()))
             CustomElementReactionQueue::enqueueConnectedCallbackIfNeeded(*this);
     }
-
-#endif
 
     return InsertionDone;
 }
@@ -1724,10 +1714,8 @@ void Element::removedFrom(ContainerNode& insertionPoint)
                 updateLabel(*oldScope, attributeWithoutSynchronization(forAttr), nullAtom);
         }
 
-#if ENABLE(CUSTOM_ELEMENTS)
         if (becomeDisconnected && UNLIKELY(isDefinedCustomElement()))
             CustomElementReactionQueue::enqueueDisconnectedCallbackIfNeeded(*this);
-#endif
     }
 
     if (!parentNode()) {
@@ -1758,12 +1746,11 @@ ShadowRoot* Element::shadowRoot() const
     return hasRareData() ? elementRareData()->shadowRoot() : nullptr;
 }
 
-
 void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 {
     ASSERT(!shadowRoot());
 
-    ShadowRoot& shadowRoot = newShadowRoot.get();
+    ShadowRoot& shadowRoot = newShadowRoot;
     ensureElementRareData().setShadowRoot(WTFMove(newShadowRoot));
 
     shadowRoot.setHost(this);
@@ -1778,7 +1765,7 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 
     InspectorInstrumentation::didPushShadowRoot(*this, shadowRoot);
 
-    if (shadowRoot.mode() == ShadowRoot::Mode::UserAgent)
+    if (shadowRoot.mode() == ShadowRootMode::UserAgent)
         didAddUserAgentShadowRoot(&shadowRoot);
 }
 
@@ -1787,6 +1774,7 @@ void Element::removeShadowRoot()
     RefPtr<ShadowRoot> oldRoot = shadowRoot();
     if (!oldRoot)
         return;
+
     InspectorInstrumentation::willPopShadowRoot(*this, *oldRoot);
     document().removeFocusedNodeOfSubtree(oldRoot.get());
 
@@ -1799,16 +1787,6 @@ void Element::removeShadowRoot()
 
     notifyChildNodeRemoved(*this, *oldRoot);
 }
-
-ShadowRoot* Element::createShadowRoot(ExceptionCode& ec)
-{
-    if (alwaysCreateUserAgentShadowRoot())
-        return &ensureUserAgentShadowRoot();
-
-    ec = HIERARCHY_REQUEST_ERR;
-    return nullptr;
-}
-
 
 static bool canAttachAuthorShadowRoot(const Element& element)
 {
@@ -1845,72 +1823,70 @@ static bool canAttachAuthorShadowRoot(const Element& element)
     return tagNames.get().contains(localName) || Document::validateCustomElementName(localName) == CustomElementNameValidationStatus::Valid;
 }
 
-RefPtr<ShadowRoot> Element::attachShadow(const ShadowRootInit& init, ExceptionCode& ec)
+ExceptionOr<ShadowRoot&> Element::attachShadow(const ShadowRootInit& init)
 {
-    if (!canAttachAuthorShadowRoot(*this)) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
-
-    if (shadowRoot()) {
-        ec = INVALID_STATE_ERR;
-        return nullptr;
-    }
-
-    auto shadow = ShadowRoot::create(document(), init.mode == ShadowRootMode::Open ? ShadowRoot::Mode::Open : ShadowRoot::Mode::Closed);
-    addShadowRoot(shadow.copyRef());
-    return WTFMove(shadow);
+    if (!canAttachAuthorShadowRoot(*this))
+        return Exception { NOT_SUPPORTED_ERR };
+    if (shadowRoot())
+        return Exception { INVALID_STATE_ERR };
+    if (init.mode == ShadowRootMode::UserAgent)
+        return Exception { TypeError };
+    auto shadow = ShadowRoot::create(document(), init.mode);
+    auto& result = shadow.get();
+    addShadowRoot(WTFMove(shadow));
+    return result;
 }
 
 ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
 {
-    ShadowRoot* root = shadowRoot();
-    if (!root)
+    auto* shadow = shadowRoot();
+    if (!shadow)
         return nullptr;
-
-    if (root->mode() != ShadowRoot::Mode::Open) {
-        if (!JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->world().shadowRootIsAlwaysOpen())
-            return nullptr;
-    }
-    return root;
+    if (shadow->mode() == ShadowRootMode::Open)
+        return shadow;
+    if (JSC::jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->world().shadowRootIsAlwaysOpen())
+        return shadow;
+    return nullptr;
 }
-
 
 ShadowRoot* Element::userAgentShadowRoot() const
 {
-    if (ShadowRoot* shadowRoot = this->shadowRoot()) {
-        ASSERT(shadowRoot->mode() == ShadowRoot::Mode::UserAgent);
-        return shadowRoot;
-    }
-    return nullptr;
+    ASSERT(!shadowRoot() || shadowRoot()->mode() == ShadowRootMode::UserAgent);
+    return shadowRoot();
 }
 
 ShadowRoot& Element::ensureUserAgentShadowRoot()
 {
-    ShadowRoot* shadowRoot = userAgentShadowRoot();
-    if (!shadowRoot) {
-        addShadowRoot(ShadowRoot::create(document(), ShadowRoot::Mode::UserAgent));
-        shadowRoot = userAgentShadowRoot();
-    }
-    return *shadowRoot;
+    if (auto* shadow = userAgentShadowRoot())
+        return *shadow;
+    auto newShadow = ShadowRoot::create(document(), ShadowRootMode::UserAgent);
+    ShadowRoot& shadow = newShadow;
+    addShadowRoot(WTFMove(newShadow));
+    return shadow;
 }
-
-    
-#if ENABLE(CUSTOM_ELEMENTS)
 
 void Element::setIsDefinedCustomElement(JSCustomElementInterface& elementInterface)
 {
     clearFlag(IsEditingTextOrUndefinedCustomElementFlag);
     setFlag(IsCustomElement);
-    ensureElementRareData().setCustomElementInterface(elementInterface);
+    auto& data = ensureElementRareData();
+    if (!data.customElementReactionQueue())
+        data.setCustomElementReactionQueue(std::make_unique<CustomElementReactionQueue>(elementInterface));
+    InspectorInstrumentation::didChangeCustomElementState(*this);
 }
 
-void Element::setIsFailedCustomElement(JSCustomElementInterface& elementInterface)
+void Element::setIsFailedCustomElement(JSCustomElementInterface&)
 {
     ASSERT(isUndefinedCustomElement());
     ASSERT(getFlag(IsEditingTextOrUndefinedCustomElementFlag));
     clearFlag(IsCustomElement);
-    ensureElementRareData().setCustomElementInterface(elementInterface);
+
+    if (hasRareData()) {
+        // Clear the queue instead of deleting it since this function can be called inside CustomElementReactionQueue::invokeAll during upgrades.
+        if (auto* queue = elementRareData()->customElementReactionQueue())
+            queue->clear();
+    }
+    InspectorInstrumentation::didChangeCustomElementState(*this);
 }
 
 void Element::setIsCustomElementUpgradeCandidate()
@@ -1918,18 +1894,30 @@ void Element::setIsCustomElementUpgradeCandidate()
     ASSERT(!getFlag(IsCustomElement));
     setFlag(IsCustomElement);
     setFlag(IsEditingTextOrUndefinedCustomElementFlag);
+    InspectorInstrumentation::didChangeCustomElementState(*this);
 }
 
-JSCustomElementInterface* Element::customElementInterface() const
+void Element::enqueueToUpgrade(JSCustomElementInterface& elementInterface)
 {
-    ASSERT(isDefinedCustomElement());
+    ASSERT(!isDefinedCustomElement() && !isFailedCustomElement());
+    setFlag(IsCustomElement);
+    setFlag(IsEditingTextOrUndefinedCustomElementFlag);
+    InspectorInstrumentation::didChangeCustomElementState(*this);
+
+    auto& data = ensureElementRareData();
+    ASSERT(!data.customElementReactionQueue());
+
+    data.setCustomElementReactionQueue(std::make_unique<CustomElementReactionQueue>(elementInterface));
+    data.customElementReactionQueue()->enqueueElementUpgrade(*this);
+}
+
+CustomElementReactionQueue* Element::reactionQueue() const
+{
+    ASSERT(isDefinedCustomElement() || isCustomElementUpgradeCandidate());
     if (!hasRareData())
         return nullptr;
-    return elementRareData()->customElementInterface();
+    return elementRareData()->customElementReactionQueue();
 }
-
-#endif
-
 
 const AtomicString& Element::shadowPseudoId() const
 {
@@ -2136,24 +2124,24 @@ const Vector<RefPtr<Attr>>& Element::attrNodeList()
     return *attrNodeListForElement(*this);
 }
 
-RefPtr<Attr> Element::setAttributeNode(Attr& attrNode, ExceptionCode& ec)
+ExceptionOr<RefPtr<Attr>> Element::setAttributeNode(Attr& attrNode)
 {
     RefPtr<Attr> oldAttrNode = attrIfExists(attrNode.qualifiedName().localName(), shouldIgnoreAttributeCase(*this));
     if (oldAttrNode.get() == &attrNode)
-        return &attrNode; // This Attr is already attached to the element.
+        return WTFMove(oldAttrNode);
 
     // INUSE_ATTRIBUTE_ERR: Raised if node is an Attr that is already an attribute of another Element object.
     // The DOM user must explicitly clone Attr nodes to re-use them in other elements.
-    if (attrNode.ownerElement() && attrNode.ownerElement() != this) {
-        ec = INUSE_ATTRIBUTE_ERR;
-        return nullptr;
-    }
+    if (attrNode.ownerElement() && attrNode.ownerElement() != this)
+        return Exception { INUSE_ATTRIBUTE_ERR };
 
     synchronizeAllAttributes();
-    UniqueElementData& elementData = ensureUniqueElementData();
+    auto& elementData = ensureUniqueElementData();
 
-    unsigned existingAttributeIndex = elementData.findAttributeIndexByName(attrNode.qualifiedName().localName(), shouldIgnoreAttributeCase(*this));
-    if (existingAttributeIndex != ElementData::attributeNotFound) {
+    auto existingAttributeIndex = elementData.findAttributeIndexByName(attrNode.qualifiedName().localName(), shouldIgnoreAttributeCase(*this));
+    if (existingAttributeIndex == ElementData::attributeNotFound)
+        setAttributeInternal(elementData.findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
+    else {
         const Attribute& attribute = attributeAt(existingAttributeIndex);
         if (oldAttrNode)
             detachAttrNodeFromElementWithValue(oldAttrNode.get(), attribute.value());
@@ -2164,38 +2152,32 @@ RefPtr<Attr> Element::setAttributeNode(Attr& attrNode, ExceptionCode& ec)
             setAttributeInternal(existingAttributeIndex, attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
         else {
             removeAttributeInternal(existingAttributeIndex, NotInSynchronizationOfLazyAttribute);
-            unsigned existingAttributeIndexForFullQualifiedName = elementData.findAttributeIndexByName(attrNode.qualifiedName());
-            setAttributeInternal(existingAttributeIndexForFullQualifiedName, attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
+            setAttributeInternal(elementData.findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
         }
-    } else {
-        unsigned existingAttributeIndexForFullQualifiedName = elementData.findAttributeIndexByName(attrNode.qualifiedName());
-        setAttributeInternal(existingAttributeIndexForFullQualifiedName, attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
     }
     if (attrNode.ownerElement() != this) {
         attrNode.attachToElement(this);
         treeScope().adoptIfNeeded(&attrNode);
         ensureAttrNodeListForElement(*this).append(&attrNode);
     }
-    return oldAttrNode;
+    return WTFMove(oldAttrNode);
 }
 
-RefPtr<Attr> Element::setAttributeNodeNS(Attr& attrNode, ExceptionCode& ec)
+ExceptionOr<RefPtr<Attr>> Element::setAttributeNodeNS(Attr& attrNode)
 {
     RefPtr<Attr> oldAttrNode = attrIfExists(attrNode.qualifiedName());
     if (oldAttrNode.get() == &attrNode)
-        return &attrNode; // This Attr is already attached to the element.
+        return WTFMove(oldAttrNode);
 
     // INUSE_ATTRIBUTE_ERR: Raised if node is an Attr that is already an attribute of another Element object.
     // The DOM user must explicitly clone Attr nodes to re-use them in other elements.
-    if (attrNode.ownerElement() && attrNode.ownerElement() != this) {
-        ec = INUSE_ATTRIBUTE_ERR;
-        return nullptr;
-    }
+    if (attrNode.ownerElement() && attrNode.ownerElement() != this)
+        return Exception { INUSE_ATTRIBUTE_ERR };
 
     synchronizeAllAttributes();
-    UniqueElementData& elementData = ensureUniqueElementData();
+    auto& elementData = ensureUniqueElementData();
 
-    unsigned index = elementData.findAttributeIndexByName(attrNode.qualifiedName());
+    auto index = elementData.findAttributeIndexByName(attrNode.qualifiedName());
     if (index != ElementData::attributeNotFound) {
         if (oldAttrNode)
             detachAttrNodeFromElementWithValue(oldAttrNode.get(), elementData.attributeAt(index).value());
@@ -2209,62 +2191,51 @@ RefPtr<Attr> Element::setAttributeNodeNS(Attr& attrNode, ExceptionCode& ec)
     treeScope().adoptIfNeeded(&attrNode);
     ensureAttrNodeListForElement(*this).append(&attrNode);
 
-    return oldAttrNode;
+    return WTFMove(oldAttrNode);
 }
 
-RefPtr<Attr> Element::removeAttributeNode(Attr& attr, ExceptionCode& ec)
+ExceptionOr<Ref<Attr>> Element::removeAttributeNode(Attr& attr)
 {
-    if (attr.ownerElement() != this) {
-        ec = NOT_FOUND_ERR;
-        return nullptr;
-    }
+    if (attr.ownerElement() != this)
+        return Exception { NOT_FOUND_ERR };
 
     ASSERT(&document() == &attr.document());
 
     synchronizeAllAttributes();
 
-    if (!m_elementData) {
-        ec = NOT_FOUND_ERR;
-        return nullptr;
-    }
+    if (!m_elementData)
+        return Exception { NOT_FOUND_ERR };
 
-    unsigned existingAttributeIndex = m_elementData->findAttributeIndexByName(attr.qualifiedName());
+    auto existingAttributeIndex = m_elementData->findAttributeIndexByName(attr.qualifiedName());
+    if (existingAttributeIndex == ElementData::attributeNotFound)
+        return Exception { NOT_FOUND_ERR };
 
-    if (existingAttributeIndex == ElementData::attributeNotFound) {
-        ec = NOT_FOUND_ERR;
-        return nullptr;
-    }
+    Ref<Attr> oldAttrNode { attr };
 
-    RefPtr<Attr> attrNode = &attr;
     detachAttrNodeFromElementWithValue(&attr, m_elementData->attributeAt(existingAttributeIndex).value());
     removeAttributeInternal(existingAttributeIndex, NotInSynchronizationOfLazyAttribute);
-    return attrNode;
+
+    return WTFMove(oldAttrNode);
 }
 
-bool Element::parseAttributeName(QualifiedName& out, const AtomicString& namespaceURI, const AtomicString& qualifiedName, ExceptionCode& ec)
+ExceptionOr<QualifiedName> Element::parseAttributeName(const AtomicString& namespaceURI, const AtomicString& qualifiedName)
 {
-    String prefix, localName;
-    if (!Document::parseQualifiedName(qualifiedName, prefix, localName, ec))
-        return false;
-    ASSERT(!ec);
-
-    QualifiedName qName(prefix, localName, namespaceURI);
-
-    if (!Document::hasValidNamespaceForAttributes(qName)) {
-        ec = NAMESPACE_ERR;
-        return false;
-    }
-
-    out = qName;
-    return true;
+    auto parseResult = Document::parseQualifiedName(namespaceURI, qualifiedName);
+    if (parseResult.hasException())
+        return parseResult.releaseException();
+    QualifiedName parsedAttributeName { parseResult.releaseReturnValue() };
+    if (!Document::hasValidNamespaceForAttributes(parsedAttributeName))
+        return Exception { NAMESPACE_ERR };
+    return WTFMove(parsedAttributeName);
 }
 
-void Element::setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode& ec)
+ExceptionOr<void> Element::setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value)
 {
-    QualifiedName parsedName = anyName;
-    if (!parseAttributeName(parsedName, namespaceURI, qualifiedName, ec))
-        return;
-    setAttribute(parsedName, value);
+    auto result = parseAttributeName(namespaceURI, qualifiedName);
+    if (result.hasException())
+        return result.releaseException();
+    setAttribute(result.releaseReturnValue(), value);
+    return { };
 }
 
 void Element::removeAttributeInternal(unsigned index, SynchronizationOfLazyAttribute inSynchronizationOfLazyAttribute)
@@ -2510,9 +2481,9 @@ void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
     EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
 }
 
-#if ENABLE(MOUSE_FORCE_EVENTS)
 bool Element::dispatchMouseForceWillBegin()
 {
+#if ENABLE(MOUSE_FORCE_EVENTS)
     if (!document().hasListenerType(Document::FORCEWILLBEGIN_LISTENER))
         return false;
 
@@ -2520,32 +2491,26 @@ bool Element::dispatchMouseForceWillBegin()
     if (!frame)
         return false;
 
-    PlatformMouseEvent platformMouseEvent(frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick, NoTap);
-    Ref<MouseEvent> mouseForceWillBeginEvent =  MouseEvent::create(eventNames().webkitmouseforcewillbeginEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
+    PlatformMouseEvent platformMouseEvent { frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick, NoTap };
+    auto mouseForceWillBeginEvent = MouseEvent::create(eventNames().webkitmouseforcewillbeginEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
     mouseForceWillBeginEvent->setTarget(this);
     dispatchEvent(mouseForceWillBeginEvent);
 
     if (mouseForceWillBeginEvent->defaultHandled() || mouseForceWillBeginEvent->defaultPrevented())
         return true;
-    return false;
-}
-#else
-bool Element::dispatchMouseForceWillBegin()
-{
-    return false;
-}
-#endif // #if ENABLE(MOUSE_FORCE_EVENTS)
+#endif
 
-void Element::mergeWithNextTextNode(Text& node, ExceptionCode& ec)
+    return false;
+}
+
+ExceptionOr<void> Element::mergeWithNextTextNode(Text& node)
 {
-    Node* next = node.nextSibling();
+    auto* next = node.nextSibling();
     if (!is<Text>(next))
-        return;
-
-    Ref<Text> textNode(node);
-    Ref<Text> textNext(downcast<Text>(*next));
-    textNode->appendData(textNext->data());
-    textNext->remove(ec);
+        return { };
+    Ref<Text> textNext { downcast<Text>(*next) };
+    node.appendData(textNext->data());
+    return textNext->remove();
 }
 
 String Element::innerHTML() const
@@ -2558,40 +2523,53 @@ String Element::outerHTML() const
     return createMarkup(*this);
 }
 
-void Element::setOuterHTML(const String& html, ExceptionCode& ec)
+ExceptionOr<void> Element::setOuterHTML(const String& html)
 {
-    Element* p = parentElement();
-    if (!is<HTMLElement>(p)) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
-    }
-    RefPtr<HTMLElement> parent = downcast<HTMLElement>(p);
+    auto* parentElement = this->parentElement();
+    if (!is<HTMLElement>(parentElement))
+        return Exception { NO_MODIFICATION_ALLOWED_ERR };
+
+    Ref<HTMLElement> parent = downcast<HTMLElement>(*parentElement);
     RefPtr<Node> prev = previousSibling();
     RefPtr<Node> next = nextSibling();
 
-    RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(*parent, html, AllowScriptingContent, ec);
+    auto fragment = createFragmentForInnerOuterHTML(parent, html, AllowScriptingContent);
+    if (fragment.hasException())
+        return fragment.releaseException();
+
+    ExceptionCode ec = 0;
+    parent->replaceChild(fragment.releaseReturnValue().get(), *this, ec);
     if (ec)
-        return;
-    
-    parent->replaceChild(*fragment, *this, ec);
+        return Exception { ec };
+
     RefPtr<Node> node = next ? next->previousSibling() : nullptr;
-    if (!ec && is<Text>(node.get()))
-        mergeWithNextTextNode(downcast<Text>(*node), ec);
-    if (!ec && is<Text>(prev.get()))
-        mergeWithNextTextNode(downcast<Text>(*prev), ec);
+    if (is<Text>(node.get())) {
+        auto result = mergeWithNextTextNode(downcast<Text>(*node));
+        if (result.hasException())
+            return result.releaseException();
+    }
+    if (is<Text>(prev.get())) {
+        auto result = mergeWithNextTextNode(downcast<Text>(*prev));
+        if (result.hasException())
+            return result.releaseException();
+    }
+    return { };
 }
 
 
-void Element::setInnerHTML(const String& html, ExceptionCode& ec)
+ExceptionOr<void> Element::setInnerHTML(const String& html)
 {
-    if (RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(*this, html, AllowScriptingContent, ec)) {
-        ContainerNode* container = this;
+    auto fragment = createFragmentForInnerOuterHTML(*this, html, AllowScriptingContent);
+    if (fragment.hasException())
+        return fragment.releaseException();
 
-        if (is<HTMLTemplateElement>(*this))
-            container = &downcast<HTMLTemplateElement>(*this).content();
+    ContainerNode* container;
+    if (!is<HTMLTemplateElement>(*this))
+        container = this;
+    else
+        container = &downcast<HTMLTemplateElement>(*this).content();
 
-        replaceChildrenWithFragment(*container, fragment.releaseNonNull(), ec);
-    }
+    return replaceChildrenWithFragment(*container, fragment.releaseReturnValue());
 }
 
 String Element::innerText()
@@ -2964,18 +2942,20 @@ bool Element::matchesDefaultPseudoClass() const
     return false;
 }
 
-bool Element::matches(const String& selector, ExceptionCode& ec)
+ExceptionOr<bool> Element::matches(const String& selector)
 {
-    SelectorQuery* selectorQuery = document().selectorQueryForString(selector, ec);
-    return selectorQuery && selectorQuery->matches(*this);
+    auto query = document().selectorQueryForString(selector);
+    if (query.hasException())
+        return query.releaseException();
+    return query.releaseReturnValue().matches(*this);
 }
 
-Element* Element::closest(const String& selector, ExceptionCode& ec)
+ExceptionOr<Element*> Element::closest(const String& selector)
 {
-    SelectorQuery* selectorQuery = document().selectorQueryForString(selector, ec);
-    if (selectorQuery)
-        return selectorQuery->closest(*this);
-    return nullptr;
+    auto query = document().selectorQueryForString(selector);
+    if (query.hasException())
+        return query.releaseException();
+    return query.releaseReturnValue().closest(*this);
 }
 
 bool Element::shouldAppearIndeterminate() const
@@ -3050,6 +3030,7 @@ void Element::setUnsignedIntegralAttribute(const QualifiedName& attributeName, u
 }
 
 #if ENABLE(INDIE_UI)
+
 void Element::setUIActions(const AtomicString& actions)
 {
     setAttribute(uiactionsAttr, actions);
@@ -3059,6 +3040,7 @@ const AtomicString& Element::UIActions() const
 {
     return getAttribute(uiactionsAttr);
 }
+
 #endif
 
 bool Element::childShouldCreateRenderer(const Node& child) const
@@ -3654,7 +3636,7 @@ bool Element::ieForbidsInsertHTML() const
     return false;
 }
 
-Node* Element::insertAdjacent(const String& where, Ref<Node>&& newChild, ExceptionCode& ec)
+ExceptionOr<Node*> Element::insertAdjacent(const String& where, Ref<Node>&& newChild)
 {
     // In Internet Explorer if the element has no parent and where is "beforeBegin" or "afterEnd",
     // a document fragment is created and the elements appended in the correct order. This document
@@ -3664,74 +3646,104 @@ Node* Element::insertAdjacent(const String& where, Ref<Node>&& newChild, Excepti
     // Opera also appears to disallow such usage.
 
     if (equalLettersIgnoringASCIICase(where, "beforebegin")) {
-        ContainerNode* parent = this->parentNode();
-        return (parent && parent->insertBefore(newChild, this, ec)) ? newChild.ptr() : nullptr;
+        auto* parent = this->parentNode();
+        if (!parent)
+            return nullptr;
+        ExceptionCode ec = 0;
+        bool success = parent->insertBefore(newChild, this, ec);
+        if (ec)
+            return Exception { ec };
+        return success ? newChild.ptr() : nullptr;
     }
 
-    if (equalLettersIgnoringASCIICase(where, "afterbegin"))
-        return insertBefore(newChild, firstChild(), ec) ? newChild.ptr() : nullptr;
+    if (equalLettersIgnoringASCIICase(where, "afterbegin")) {
+        ExceptionCode ec = 0;
+        bool success = insertBefore(newChild, firstChild(), ec);
+        if (ec)
+            return Exception { ec };
+        return success ? newChild.ptr() : nullptr;
+    }
 
-    if (equalLettersIgnoringASCIICase(where, "beforeend"))
-        return appendChild(newChild, ec) ? newChild.ptr() : nullptr;
+    if (equalLettersIgnoringASCIICase(where, "beforeend")) {
+        ExceptionCode ec = 0;
+        bool success = appendChild(newChild, ec);
+        if (ec)
+            return Exception { ec };
+        return success ? newChild.ptr() : nullptr;
+    }
 
     if (equalLettersIgnoringASCIICase(where, "afterend")) {
-        ContainerNode* parent = this->parentNode();
-        return (parent && parent->insertBefore(newChild, nextSibling(), ec)) ? newChild.ptr() : nullptr;
+        auto* parent = this->parentNode();
+        if (!parent)
+            return nullptr;
+        ExceptionCode ec = 0;
+        bool success = parent->insertBefore(newChild, nextSibling(), ec);
+        if (ec)
+            return Exception { ec };
+        return success ? newChild.ptr() : nullptr;
     }
 
-    ec = SYNTAX_ERR;
-    return nullptr;
+    return Exception { SYNTAX_ERR };
 }
 
-Element* Element::insertAdjacentElement(const String& where, Element& newChild, ExceptionCode& ec)
+ExceptionOr<Element*> Element::insertAdjacentElement(const String& where, Element& newChild)
 {
-    Node* returnValue = insertAdjacent(where, newChild, ec);
-    ASSERT_WITH_SECURITY_IMPLICATION(!returnValue || is<Element>(*returnValue));
-    return downcast<Element>(returnValue);
+    auto result = insertAdjacent(where, newChild);
+    if (result.hasException())
+        return result.releaseException();
+    return downcast<Element>(result.releaseReturnValue());
 }
 
 // Step 1 of https://w3c.github.io/DOM-Parsing/#dom-element-insertadjacenthtml.
-static ContainerNode* contextNodeForInsertion(const String& where, Element* element, ExceptionCode& ec)
+static ExceptionOr<ContainerNode&> contextNodeForInsertion(const String& where, Element& element)
 {
     if (equalLettersIgnoringASCIICase(where, "beforebegin") || equalLettersIgnoringASCIICase(where, "afterend")) {
-        auto* parent = element->parentNode();
-        if (!parent || is<Document>(*parent)) {
-            ec = NO_MODIFICATION_ALLOWED_ERR;
-            return nullptr;
-        }
-        return parent;
+        auto* parent = element.parentNode();
+        if (!parent || is<Document>(*parent))
+            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+        return *parent;
     }
     if (equalLettersIgnoringASCIICase(where, "afterbegin") || equalLettersIgnoringASCIICase(where, "beforeend"))
         return element;
-    ec =  SYNTAX_ERR;
-    return nullptr;
+    return Exception { SYNTAX_ERR };
+}
+
+// Step 2 of https://w3c.github.io/DOM-Parsing/#dom-element-insertadjacenthtml.
+static ExceptionOr<Ref<Element>> contextElementForInsertion(const String& where, Element& element)
+{
+    auto contextNodeResult = contextNodeForInsertion(where, element);
+    if (contextNodeResult.hasException())
+        return contextNodeResult.releaseException();
+    auto& contextNode = contextNodeResult.releaseReturnValue();
+    if (!is<Element>(contextNode) || (contextNode.document().isHTMLDocument() && is<HTMLHtmlElement>(contextNode)))
+        return Ref<Element> { HTMLBodyElement::create(contextNode.document()) };
+    return Ref<Element> { downcast<Element>(contextNode) };
 }
 
 // https://w3c.github.io/DOM-Parsing/#dom-element-insertadjacenthtml
-void Element::insertAdjacentHTML(const String& where, const String& markup, ExceptionCode& ec)
+ExceptionOr<void> Element::insertAdjacentHTML(const String& where, const String& markup)
 {
-    // Step 1.
-    auto* contextNode = contextNodeForInsertion(where, this, ec);
-    if (!contextNode)
-        return;
-    RefPtr<Element> contextElement;
-    // Step 2.
-    if (!is<Element>(*contextNode)
-        || (contextNode->document().isHTMLDocument() && is<HTMLHtmlElement>(*contextNode))) {
-        contextElement = HTMLBodyElement::create(contextNode->document());
-    } else
-        contextElement = downcast<Element>(contextNode);
+    // Steps 1 and 2.
+    auto contextElement = contextElementForInsertion(where, *this);
+    if (contextElement.hasException())
+        return contextElement.releaseException();
     // Step 3.
-    RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(*contextElement, markup, AllowScriptingContent, ec);
-    if (!fragment)
-        return;
+    auto fragment = createFragmentForInnerOuterHTML(contextElement.releaseReturnValue(), markup, AllowScriptingContent);
+    if (fragment.hasException())
+        return fragment.releaseException();
     // Step 4.
-    insertAdjacent(where, fragment.releaseNonNull(), ec);
+    auto result = insertAdjacent(where, fragment.releaseReturnValue());
+    if (result.hasException())
+        return result.releaseException();
+    return { };
 }
 
-void Element::insertAdjacentText(const String& where, const String& text, ExceptionCode& ec)
+ExceptionOr<void> Element::insertAdjacentText(const String& where, const String& text)
 {
-    insertAdjacent(where, document().createTextNode(text), ec);
+    auto result = insertAdjacent(where, document().createTextNode(text));
+    if (result.hasException())
+        return result.releaseException();
+    return { };
 }
 
 } // namespace WebCore

@@ -37,7 +37,6 @@
 #include "GeometryUtilities.h"
 #include "GraphicsContext.h"
 #include "HTMLElement.h"
-#include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "HTMLTableCellElement.h"
 #include "HTMLTableElement.h"
@@ -65,7 +64,6 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "SVGRenderSupport.h"
-#include "Settings.h"
 #include "StyleResolver.h"
 #include "TransformState.h"
 #include "htmlediting.h"
@@ -885,8 +883,6 @@ void RenderObject::repaintSlowRepaintObject() const
         return;
 
     const RenderLayerModelObject* repaintContainer = containerForRepaint();
-    if (!repaintContainer)
-        repaintContainer = &view;
 
     bool shouldClipToLayer = true;
     IntRect repaintRect;
@@ -1133,6 +1129,19 @@ void RenderObject::showRenderObject(bool mark, int depth) const
             fprintf(stderr, " continuation->(%p)", renderer.continuation());
     }
     showRegionsInformation();
+    if (needsLayout()) {
+        fprintf(stderr, " layout->");
+        if (selfNeedsLayout())
+            fprintf(stderr, "[self]");
+        if (normalChildNeedsLayout())
+            fprintf(stderr, "[normal child]");
+        if (posChildNeedsLayout())
+            fprintf(stderr, "[positioned child]");
+        if (needsSimplifiedNormalFlowLayout())
+            fprintf(stderr, "[simplified]");
+        if (needsPositionedMovementLayout())
+            fprintf(stderr, "[positioned movement]");
+    }
     fprintf(stderr, "\n");
 }
 
@@ -1423,7 +1432,7 @@ void RenderObject::insertedIntoTree()
         parent()->dirtyLinesFromChangedChild(*this);
 
     if (RenderFlowThread* flowThread = flowThreadContainingBlock())
-        flowThread->flowThreadDescendantInserted(this);
+        flowThread->flowThreadDescendantInserted(*this);
 }
 
 void RenderObject::willBeRemovedFromTree()

@@ -30,7 +30,7 @@
 #include "DataView.h"
 #include "Error.h"
 #include "JSCInlines.h"
-#include "Reject.h"
+#include "TypeError.h"
 
 namespace JSC {
 
@@ -92,9 +92,14 @@ bool JSDataView::setIndex(ExecState*, unsigned, JSValue)
     return false;
 }
 
-PassRefPtr<DataView> JSDataView::typedImpl()
+PassRefPtr<DataView> JSDataView::possiblySharedTypedImpl()
 {
-    return DataView::create(buffer(), byteOffset(), length());
+    return DataView::create(possiblySharedBuffer(), byteOffset(), length());
+}
+
+PassRefPtr<DataView> JSDataView::unsharedTypedImpl()
+{
+    return DataView::create(unsharedBuffer(), byteOffset(), length());
 }
 
 bool JSDataView::getOwnPropertySlot(
@@ -126,7 +131,7 @@ bool JSDataView::put(
 
     if (propertyName == vm.propertyNames->byteLength
         || propertyName == vm.propertyNames->byteOffset)
-        return reject(exec, scope, slot.isStrictMode(), ASCIILiteral("Attempting to write to read-only typed array property."));
+        return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral("Attempting to write to read-only typed array property."));
 
     return Base::put(thisObject, exec, propertyName, value, slot);
 }
@@ -140,7 +145,7 @@ bool JSDataView::defineOwnProperty(
     JSDataView* thisObject = jsCast<JSDataView*>(object);
     if (propertyName == vm.propertyNames->byteLength
         || propertyName == vm.propertyNames->byteOffset)
-        return reject(exec, scope, shouldThrow, ASCIILiteral("Attempting to define read-only typed array property."));
+        return typeError(exec, scope, shouldThrow, ASCIILiteral("Attempting to define read-only typed array property."));
 
     return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
 }
@@ -178,7 +183,7 @@ ArrayBuffer* JSDataView::slowDownAndWasteMemory(JSArrayBufferView*)
 PassRefPtr<ArrayBufferView> JSDataView::getTypedArrayImpl(JSArrayBufferView* object)
 {
     JSDataView* thisObject = jsCast<JSDataView*>(object);
-    return thisObject->typedImpl();
+    return thisObject->possiblySharedTypedImpl();
 }
 
 Structure* JSDataView::createStructure(

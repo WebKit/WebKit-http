@@ -71,7 +71,13 @@ ID2D1Factory* GraphicsContext::systemFactory()
 {
     static ID2D1Factory* direct2DFactory = nullptr;
     if (!direct2DFactory) {
+#ifndef NDEBUG
+        D2D1_FACTORY_OPTIONS options = { };
+        options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+        HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, options, &direct2DFactory);
+#else
         HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, &direct2DFactory);
+#endif
         RELEASE_ASSERT(SUCCEEDED(hr));
     }
 
@@ -92,23 +98,28 @@ ID2D1RenderTarget* GraphicsContext::defaultRenderTarget()
     return defaultRenderTarget;
 }
 
-void GraphicsContext::setDidBeginDraw(bool didBeginDraw)
-{
-    RELEASE_ASSERT(m_data);
-    m_data->m_didBeginDraw = didBeginDraw;
-}
-
-bool GraphicsContext::didBeginDraw() const
-{
-    return m_data->m_didBeginDraw;
-}
-
 void GraphicsContext::platformInit(HDC hdc, bool hasAlpha)
 {
     if (!hdc)
         return;
 
-    COMPtr<ID2D1RenderTarget> renderTarget;
+    HBITMAP bitmap = static_cast<HBITMAP>(GetCurrentObject(hdc, OBJ_BITMAP));
+
+    DIBPixelData pixelData(bitmap);
+
+    auto targetProperties = D2D1::RenderTargetProperties();
+    targetProperties.pixelFormat = D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE);
+
+    COMPtr<ID2D1DCRenderTarget> renderTarget;
+    HRESULT hr = systemFactory()->CreateDCRenderTarget(&targetProperties, &renderTarget);
+    if (!SUCCEEDED(hr))
+        return;
+
+    RECT clientRect = IntRect(IntPoint(), pixelData.size());
+    hr = renderTarget->BindDC(hdc, &clientRect);
+    if (!SUCCEEDED(hr))
+        return;
+
     m_data = new GraphicsContextPlatformPrivate(renderTarget.get());
     m_data->m_hdc = hdc;
     // Make sure the context starts in sync with our state.
@@ -229,12 +240,37 @@ void GraphicsContext::drawNativeImage(const COMPtr<ID2D1Bitmap>& image, const Fl
         renderTarget->DrawBitmap(image.get(), adjustedDestRect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, static_cast<D2D1_RECT_F>(srcRect));
     });
 
+    flush();
+
     if (!stateSaver.didSave())
         context->SetTransform(ctm);
 }
 
 void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, bool supportAlphaBlend, bool mayCreateBitmap)
 {
+    bool createdBitmap = mayCreateBitmap && (!m_data->m_hdc || isInTransparencyLayer());
+    if (!createdBitmap) {
+        m_data->restore();
+        return;
+    }
+
+    if (!hdc || dstRect.isEmpty())
+        return;
+
+    auto sourceBitmap = adoptGDIObject(static_cast<HBITMAP>(::GetCurrentObject(hdc, OBJ_BITMAP)));
+
+    DIBPixelData pixelData(sourceBitmap.get());
+    ASSERT(pixelData.bitsPerPixel() == 32);
+
+    auto bitmapProperties = D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+
+    COMPtr<ID2D1Bitmap> bitmap;
+    HRESULT hr = platformContext()->CreateBitmap(pixelData.size(), pixelData.buffer(), pixelData.bytesPerRow(), &bitmapProperties, &bitmap);
+    ASSERT(SUCCEEDED(hr));
+
+    platformContext()->DrawBitmap(bitmap.get(), dstRect);
+
+    ::DeleteDC(hdc);
 }
 
 void GraphicsContext::drawWindowsBitmap(WindowsBitmap* image, const IntPoint& point)
@@ -257,6 +293,23 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float w
 {
 }
 
+GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(ID2D1RenderTarget* renderTarget)
+    : m_renderTarget(renderTarget)
+{
+    if (!m_renderTarget)
+        return;
+
+    beginDraw();
+}
+
+GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
+{
+    if (!m_renderTarget)
+        return;
+
+    endDraw();
+}
+
 COMPtr<ID2D1SolidColorBrush> GraphicsContextPlatformPrivate::brushWithColor(const D2D1_COLOR_F& color)
 {
     RGBA32 colorKey = makeRGBA32FromFloats(color.r, color.g, color.b, color.a);
@@ -274,12 +327,17 @@ COMPtr<ID2D1SolidColorBrush> GraphicsContextPlatformPrivate::brushWithColor(cons
     }
 
     auto existingBrush = m_solidColoredBrushCache.ensure(colorKey, [this, color] {
-        ID2D1SolidColorBrush* colorBrush = nullptr;
+        COMPtr<ID2D1SolidColorBrush> colorBrush;
         m_renderTarget->CreateSolidColorBrush(color, &colorBrush);
         return colorBrush;
     });
 
     return existingBrush.iterator->value;
+}
+
+ID2D1SolidColorBrush* GraphicsContext::brushWithColor(const Color& color)
+{
+    return m_data->brushWithColor(colorWithGlobalAlpha(color)).get();
 }
 
 void GraphicsContextPlatformPrivate::clip(const FloatRect& rect)
@@ -320,7 +378,8 @@ void GraphicsContextPlatformPrivate::concatCTM(const AffineTransform& affineTran
     D2D1_MATRIX_3X2_F currentTransform;
     m_renderTarget->GetTransform(&currentTransform);
 
-    m_renderTarget->SetTransform(affineTransform * AffineTransform(currentTransform));
+    D2D1_MATRIX_3X2_F transformToConcat = affineTransform;
+    m_renderTarget->SetTransform(transformToConcat * currentTransform);
 }
 
 void GraphicsContextPlatformPrivate::flush()
@@ -330,6 +389,12 @@ void GraphicsContextPlatformPrivate::flush()
     HRESULT hr = m_renderTarget->Flush(&first, &second);
 
     RELEASE_ASSERT(SUCCEEDED(hr));
+}
+
+void GraphicsContextPlatformPrivate::beginDraw()
+{
+    ASSERT(m_renderTarget.get());
+    m_renderTarget->BeginDraw();
 }
 
 void GraphicsContextPlatformPrivate::endDraw()
@@ -434,6 +499,21 @@ ID2D1Brush* GraphicsContext::patternStrokeBrush() const
 ID2D1Brush* GraphicsContext::patternFillBrush() const
 {
     return m_data->m_patternFillBrush.get();
+}
+
+void GraphicsContext::beginDraw()
+{
+    m_data->beginDraw();
+}
+
+void GraphicsContext::endDraw()
+{
+    m_data->endDraw();
+}
+
+void GraphicsContext::flush()
+{
+    m_data->flush();
 }
 
 void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
@@ -665,6 +745,11 @@ ID2D1StrokeStyle* GraphicsContextPlatformPrivate::strokeStyle()
     return m_d2dStrokeStyle.get();
 }
 
+ID2D1StrokeStyle* GraphicsContext::platformStrokeStyle() const
+{
+    return m_data->strokeStyle();
+}
+
 // This is only used to draw borders.
 void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point2)
 {
@@ -811,19 +896,13 @@ void GraphicsContext::drawPath(const Path& path)
         auto brush = m_state.strokePattern ? patternStrokeBrush() : solidStrokeBrush();
         renderTarget->DrawGeometry(path.platformPath(), brush, strokeThickness(), m_data->strokeStyle());
     });
+
+    flush();
 }
 
 void GraphicsContext::drawWithoutShadow(const FloatRect& /*boundingRect*/, const std::function<void(ID2D1RenderTarget*)>& drawCommands)
 {
-    auto context = platformContext();
-
-    if (!didBeginDraw())
-        context->BeginDraw();
-
-    drawCommands(context);
-
-    if (!didBeginDraw())
-        m_data->endDraw();
+    drawCommands(platformContext());
 }
 
 void GraphicsContext::drawWithShadow(const FloatRect& boundingRect, const std::function<void(ID2D1RenderTarget*)>& drawCommands)
@@ -880,9 +959,7 @@ void GraphicsContext::drawWithShadow(const FloatRect& boundingRect, const std::f
     auto flip = D2D1::Matrix3x2F::Scale(D2D1::SizeF(1.0f, -1.0f));
     deviceContext->SetTransform(ctm * flip * translate);
 
-    deviceContext->BeginDraw();
     deviceContext->DrawImage(compositor.get(), D2D1_INTERPOLATION_MODE_LINEAR);
-    deviceContext->EndDraw();
 }
 
 void GraphicsContext::fillPath(const Path& path)
@@ -935,6 +1012,8 @@ void GraphicsContext::fillPath(const Path& path)
         auto brush = m_state.fillPattern ? patternFillBrush() : solidFillBrush();
         renderTarget->FillGeometry(pathToFill.get(), brush);
     });
+
+    flush();
 }
 
 void GraphicsContext::strokePath(const Path& path)
@@ -978,6 +1057,8 @@ void GraphicsContext::strokePath(const Path& path)
         auto brush = m_state.strokePattern ? patternStrokeBrush() : solidStrokeBrush();
         renderTarget->DrawGeometry(path.platformPath(), brush, strokeThickness(), m_data->strokeStyle());
     });
+
+    flush();
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect)
@@ -1051,7 +1132,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
 
     drawWithoutShadow(rect, [this, rect, color](ID2D1RenderTarget* renderTarget) {
         const D2D1_RECT_F d2dRect = rect;
-        renderTarget->FillRectangle(&d2dRect, m_data->brushWithColor(colorWithGlobalAlpha(color)).get());
+        renderTarget->FillRectangle(&d2dRect, brushWithColor(color));
     });
 }
 
@@ -1073,9 +1154,6 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
         notImplemented();
     }
 
-    if (!didBeginDraw())
-        context->BeginDraw();
-    
     context->SetTags(1, __LINE__);
 
     const FloatRect& r = rect.rect();
@@ -1085,8 +1163,7 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
     bool hasCustomFill = m_state.fillGradient || m_state.fillPattern;
     if (!hasCustomFill && equalWidths && equalHeights && radii.topLeft().width() * 2 == r.width() && radii.topLeft().height() * 2 == r.height()) {
         auto roundedRect = D2D1::RoundedRect(r, radii.topLeft().width(), radii.topLeft().height());
-        COMPtr<ID2D1SolidColorBrush> fillBrush = m_data->brushWithColor(colorWithGlobalAlpha(color));
-        context->FillRoundedRectangle(roundedRect, fillBrush.get());
+        context->FillRoundedRectangle(roundedRect, brushWithColor(color));
     } else {
         D2DContextStateSaver stateSaver(*m_data);
         setFillColor(color);
@@ -1095,9 +1172,6 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
         path.addRoundedRect(rect);
         fillPath(path);
     }
-
-    if (!didBeginDraw())
-        m_data->endDraw();
 
     if (drawOwnShadow)
         stateSaver.restore();
@@ -1114,9 +1188,6 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     }
 
     auto context = platformContext();
-
-    if (!didBeginDraw())
-        context->BeginDraw();
 
     context->SetTags(1, __LINE__);
 
@@ -1145,9 +1216,6 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     }
 
     fillPath(path);
-
-    if (!didBeginDraw())
-        m_data->endDraw();
 
     if (drawOwnShadow)
         stateSaver.restore();
@@ -1242,14 +1310,13 @@ IntRect GraphicsContext::clipBounds() const
         return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
     }
 
-    D2D1_RECT_F d2dClipBounds = D2D1::InfiniteRect();
-    FloatRect clipBounds(d2dClipBounds.left, d2dClipBounds.top, d2dClipBounds.right - d2dClipBounds.left, d2dClipBounds.bottom - d2dClipBounds.top);
+    D2D1_SIZE_F clipSize;
+    if (auto clipLayer = m_data->clipLayer())
+        clipSize = clipLayer->GetSize();
+    else
+        clipSize = platformContext()->GetSize();
 
-    if (m_data->clipLayer()) {
-        auto clipSize = m_data->clipLayer()->GetSize();
-        clipBounds.setWidth(clipSize.width);
-        clipBounds.setHeight(clipSize.height);
-    }
+    FloatRect clipBounds(IntPoint(), clipSize);
 
     return enclosingIntRect(clipBounds);
 }
@@ -1345,7 +1412,7 @@ void GraphicsContext::clearRect(const FloatRect& rect)
 
         renderTarget->SetTags(1, __LINE__);
         rectToClear.intersect(renderTargetRect);
-        renderTarget->FillRectangle(rectToClear, m_data->brushWithColor(colorWithGlobalAlpha(fillColor())).get());
+        renderTarget->FillRectangle(rectToClear, solidFillBrush());
     });
 }
 
@@ -1668,7 +1735,7 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color)
 
     m_data->m_solidStrokeBrush = nullptr;
 
-    m_data->m_solidStrokeBrush = m_data->brushWithColor(colorWithGlobalAlpha(strokeColor()));
+    m_data->m_solidStrokeBrush = brushWithColor(strokeColor());
 }
 
 void GraphicsContext::setPlatformStrokeThickness(float thickness)
@@ -1683,7 +1750,7 @@ void GraphicsContext::setPlatformFillColor(const Color& color)
 
     m_data->m_solidFillBrush = nullptr;
 
-    m_data->m_solidFillBrush = m_data->brushWithColor(colorWithGlobalAlpha(fillColor()));
+    m_data->m_solidFillBrush = brushWithColor(fillColor());
 }
 
 void GraphicsContext::setPlatformShouldAntialias(bool enable)

@@ -27,7 +27,6 @@
 #include "ButterflyInlines.h"
 #include "CachedCall.h"
 #include "Error.h"
-#include "Executable.h"
 #include "IntlObject.h"
 #include "JSArray.h"
 #include "JSCBuiltins.h"
@@ -433,8 +432,15 @@ static ALWAYS_INLINE JSValue jsSpliceSubstringsWithSeparators(ExecState* exec, J
     return jsString(exec, WTFMove(impl));
 }
 
+#define OUT_OF_MEMORY(exec__, scope__) \
+    do { \
+        throwOutOfMemoryError(exec__, scope__); \
+        return encodedJSValue(); \
+    } while (false)
+
 static ALWAYS_INLINE EncodedJSValue removeUsingRegExpSearch(VM& vm, ExecState* exec, JSString* string, const String& source, RegExp* regExp)
 {
+    auto scope = DECLARE_THROW_SCOPE(vm);
     SuperSamplerScope superSamplerScope(false);
     
     size_t lastIndex = 0;
@@ -449,9 +455,10 @@ static ALWAYS_INLINE EncodedJSValue removeUsingRegExpSearch(VM& vm, ExecState* e
         if (!result)
             break;
 
-        if (lastIndex < result.start)
-            sourceRanges.constructAndAppend(lastIndex, result.start - lastIndex);
-
+        if (lastIndex < result.start) {
+            if (UNLIKELY(!sourceRanges.tryConstructAndAppend(lastIndex, result.start - lastIndex)))
+                OUT_OF_MEMORY(exec, scope);
+        }
         lastIndex = result.end;
         startPosition = lastIndex;
 
@@ -466,9 +473,11 @@ static ALWAYS_INLINE EncodedJSValue removeUsingRegExpSearch(VM& vm, ExecState* e
     if (!lastIndex)
         return JSValue::encode(string);
 
-    if (static_cast<unsigned>(lastIndex) < sourceLen)
-        sourceRanges.constructAndAppend(lastIndex, sourceLen - lastIndex);
-
+    if (static_cast<unsigned>(lastIndex) < sourceLen) {
+        if (UNLIKELY(!sourceRanges.tryConstructAndAppend(lastIndex, sourceLen - lastIndex)))
+            OUT_OF_MEMORY(exec, scope);
+    }
+    scope.release();
     return JSValue::encode(jsSpliceSubstrings(exec, string, source, sourceRanges.data(), sourceRanges.size()));
 }
 
@@ -490,8 +499,10 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
         regExpObject->setLastIndex(exec, 0);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-        if (callType == CallType::None && !replacementString.length())
+        if (callType == CallType::None && !replacementString.length()) {
+            scope.release();
             return removeUsingRegExpSearch(vm, exec, string, source, regExp);
+        }
     }
 
     // FIXME: This is wrong because we may be called directly from the FTL.
@@ -518,7 +529,8 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                 if (!result)
                     break;
 
-                sourceRanges.constructAndAppend(lastIndex, result.start - lastIndex);
+                if (UNLIKELY(!sourceRanges.tryConstructAndAppend(lastIndex, result.start - lastIndex)))
+                    OUT_OF_MEMORY(exec, scope);
 
                 unsigned i = 0;
                 for (; i < regExp->numSubpatterns() + 1; ++i) {
@@ -556,7 +568,8 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                 if (!result)
                     break;
 
-                sourceRanges.constructAndAppend(lastIndex, result.start - lastIndex);
+                if (UNLIKELY(!sourceRanges.tryConstructAndAppend(lastIndex, result.start - lastIndex)))
+                    OUT_OF_MEMORY(exec, scope);
 
                 unsigned i = 0;
                 for (; i < regExp->numSubpatterns() + 1; ++i) {
@@ -596,7 +609,8 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                 break;
 
             if (callType != CallType::None) {
-                sourceRanges.constructAndAppend(lastIndex, result.start - lastIndex);
+                if (UNLIKELY(!sourceRanges.tryConstructAndAppend(lastIndex, result.start - lastIndex)))
+                    OUT_OF_MEMORY(exec, scope);
 
                 MarkedArgumentBuffer args;
 
@@ -620,7 +634,8 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
             } else {
                 int replLen = replacementString.length();
                 if (lastIndex < result.start || replLen) {
-                    sourceRanges.constructAndAppend(lastIndex, result.start - lastIndex);
+                    if (UNLIKELY(!sourceRanges.tryConstructAndAppend(lastIndex, result.start - lastIndex)))
+                        OUT_OF_MEMORY(exec, scope);
 
                     if (replLen)
                         replacements.append(substituteBackreferences(replacementString, source, ovector, regExp));
@@ -644,9 +659,10 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
     if (!lastIndex && replacements.isEmpty())
         return JSValue::encode(string);
 
-    if (static_cast<unsigned>(lastIndex) < sourceLen)
-        sourceRanges.constructAndAppend(lastIndex, sourceLen - lastIndex);
-
+    if (static_cast<unsigned>(lastIndex) < sourceLen) {
+        if (UNLIKELY(!sourceRanges.tryConstructAndAppend(lastIndex, sourceLen - lastIndex)))
+            OUT_OF_MEMORY(exec, scope);
+    }
     return JSValue::encode(jsSpliceSubstringsWithSeparators(exec, string, source, sourceRanges.data(), sourceRanges.size(), replacements.data(), replacements.size()));
 }
 
@@ -662,11 +678,13 @@ EncodedJSValue JIT_OPERATION operationStringProtoFuncReplaceRegExpEmptyStr(
         // ES5.1 15.5.4.10 step 8.a.
         searchValue->setLastIndex(exec, 0);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        scope.release();
         return removeUsingRegExpSearch(vm, exec, thisValue, thisValue->value(exec), regExp);
     }
 
     CallData callData;
     String replacementString = emptyString();
+    scope.release();
     return replaceUsingRegExpSearch(
         vm, exec, thisValue, searchValue, callData, CallType::None, replacementString, JSValue());
 }
@@ -695,6 +713,7 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(VM& vm, ExecState* 
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
+    scope.release();
     return replaceUsingRegExpSearch(
         vm, exec, string, searchValue, callData, callType, replacementString, replaceValue);
 }
@@ -832,6 +851,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncReplaceUsingRegExp(ExecState* exec)
     if (!searchValue.inherits(RegExpObject::info()))
         return JSValue::encode(jsUndefined());
 
+    scope.release();
     return replaceUsingRegExpSearch(exec->vm(), exec, string, searchValue, exec->argument(1));
 }
 
@@ -1497,6 +1517,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncBig(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<big>", s, "</big>"));
 }
 
@@ -1510,6 +1531,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSmall(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<small>", s, "</small>"));
 }
 
@@ -1523,6 +1545,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncBlink(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<blink>", s, "</blink>"));
 }
 
@@ -1536,6 +1559,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncBold(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<b>", s, "</b>"));
 }
 
@@ -1549,6 +1573,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncFixed(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<tt>", s, "</tt>"));
 }
 
@@ -1562,6 +1587,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncItalics(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<i>", s, "</i>"));
 }
 
@@ -1575,6 +1601,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncStrike(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<strike>", s, "</strike>"));
 }
 
@@ -1588,6 +1615,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSub(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<sub>", s, "</sub>"));
 }
 
@@ -1601,6 +1629,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSup(ExecState* exec)
         return throwVMTypeError(exec, scope);
     String s = thisValue.toString(exec)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<sup>", s, "</sup>"));
 }
 
@@ -1619,6 +1648,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncFontcolor(ExecState* exec)
     String color = a0.toWTFString(exec);
     color.replaceWithLiteral('"', "&quot;");
 
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<font color=\"", color, "\">", s, "</font>"));
 }
 
@@ -1673,6 +1703,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncFontsize(ExecState* exec)
     String fontSize = a0.toWTFString(exec);
     fontSize.replaceWithLiteral('"', "&quot;");
 
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<font size=\"", fontSize, "\">", s, "</font>"));
 }
 
@@ -1691,6 +1722,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncAnchor(ExecState* exec)
     String anchor = a0.toWTFString(exec);
     anchor.replaceWithLiteral('"', "&quot;");
 
+    scope.release();
     return JSValue::encode(jsMakeNontrivialString(exec, "<a name=\"", anchor, "\">", s, "</a>"));
 }
 

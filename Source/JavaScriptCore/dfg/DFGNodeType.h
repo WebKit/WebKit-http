@@ -185,6 +185,7 @@ namespace JSC { namespace DFG {
     macro(PutByVal, NodeMustGenerate | NodeHasVarArgs) \
     macro(PutByValAlias, NodeMustGenerate | NodeHasVarArgs) \
     macro(TryGetById, NodeResultJS) \
+    macro(PureGetById, NodeResultJS | NodeMustGenerate) \
     macro(GetById, NodeResultJS | NodeMustGenerate) \
     macro(GetByIdFlush, NodeResultJS | NodeMustGenerate) \
     macro(GetByIdWithThis, NodeResultJS | NodeMustGenerate) \
@@ -341,6 +342,7 @@ namespace JSC { namespace DFG {
     \
     macro(CreateDirectArguments, NodeResultJS) \
     macro(PhantomDirectArguments, NodeResultJS | NodeMustGenerate) \
+    macro(PhantomCreateRest, NodeResultJS | NodeMustGenerate) \
     macro(CreateScopedArguments, NodeResultJS) \
     macro(CreateClonedArguments, NodeResultJS) \
     macro(PhantomClonedArguments, NodeResultJS | NodeMustGenerate) \
@@ -404,7 +406,7 @@ namespace JSC { namespace DFG {
     macro(ToLowerCase, NodeResultJS) \
     /* Nodes for DOM JIT */\
     macro(CheckDOM, NodeMustGenerate) \
-    macro(CallDOM, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(CallDOMGetter, NodeResultJS | NodeMustGenerate) \
 
 // This enum generates a monotonically increasing id for all Node types,
 // and is used by the subsequent enum to fill out the id (as accessed via the NodeIdMask).

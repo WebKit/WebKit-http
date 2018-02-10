@@ -26,14 +26,14 @@
 #include "config.h"
 #include "CustomElementReactionQueue.h"
 
-#if ENABLE(CUSTOM_ELEMENTS)
-
 #include "CustomElementRegistry.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "Element.h"
+#include "HTMLNames.h"
 #include "JSCustomElementInterface.h"
 #include "JSDOMBinding.h"
+#include "Microtasks.h"
 #include <heap/Heap.h>
 #include <wtf/Optional.h>
 #include <wtf/Ref.h>
@@ -50,55 +50,47 @@ public:
         AttributeChanged,
     };
 
-    CustomElementReactionQueueItem(Type type, Element& element, JSCustomElementInterface& elementInterface)
+    CustomElementReactionQueueItem(Type type)
         : m_type(type)
-        , m_element(element)
-        , m_interface(elementInterface)
     { }
 
-    CustomElementReactionQueueItem(Element& element, JSCustomElementInterface& elementInterface, Document& oldDocument, Document& newDocument)
+    CustomElementReactionQueueItem(Document& oldDocument, Document& newDocument)
         : m_type(Type::Adopted)
-        , m_element(element)
-        , m_interface(elementInterface)
         , m_oldDocument(&oldDocument)
         , m_newDocument(&newDocument)
     { }
 
-    CustomElementReactionQueueItem(Element& element, JSCustomElementInterface& elementInterface, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
+    CustomElementReactionQueueItem(const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
         : m_type(Type::AttributeChanged)
-        , m_element(element)
-        , m_interface(elementInterface)
         , m_attributeName(attributeName)
         , m_oldValue(oldValue)
         , m_newValue(newValue)
     { }
 
-    void invoke()
+    void invoke(Element& element, JSCustomElementInterface& elementInterface)
     {
         switch (m_type) {
         case Type::ElementUpgrade:
-            m_interface->upgradeElement(m_element.get());
+            elementInterface.upgradeElement(element);
             break;
         case Type::Connected:
-            m_interface->invokeConnectedCallback(m_element.get());
+            elementInterface.invokeConnectedCallback(element);
             break;
         case Type::Disconnected:
-            m_interface->invokeDisconnectedCallback(m_element.get());
+            elementInterface.invokeDisconnectedCallback(element);
             break;
         case Type::Adopted:
-            m_interface->invokeAdoptedCallback(m_element.get(), *m_oldDocument, *m_newDocument);
+            elementInterface.invokeAdoptedCallback(element, *m_oldDocument, *m_newDocument);
             break;
         case Type::AttributeChanged:
             ASSERT(m_attributeName);
-            m_interface->invokeAttributeChangedCallback(m_element.get(), m_attributeName.value(), m_oldValue, m_newValue);
+            elementInterface.invokeAttributeChangedCallback(element, m_attributeName.value(), m_oldValue, m_newValue);
             break;
         }
     }
 
 private:
     Type m_type;
-    Ref<Element> m_element;
-    Ref<JSCustomElementInterface> m_interface;
     RefPtr<Document> m_oldDocument;
     RefPtr<Document> m_newDocument;
     Optional<QualifiedName> m_attributeName;
@@ -106,7 +98,8 @@ private:
     AtomicString m_newValue;
 };
 
-CustomElementReactionQueue::CustomElementReactionQueue()
+CustomElementReactionQueue::CustomElementReactionQueue(JSCustomElementInterface& elementInterface)
+    : m_interface(elementInterface)
 { }
 
 CustomElementReactionQueue::~CustomElementReactionQueue()
@@ -114,11 +107,15 @@ CustomElementReactionQueue::~CustomElementReactionQueue()
     ASSERT(m_items.isEmpty());
 }
 
-void CustomElementReactionQueue::enqueueElementUpgrade(Element& element, JSCustomElementInterface& elementInterface)
+void CustomElementReactionQueue::clear()
 {
-    ASSERT(element.tagQName() == elementInterface.name());
-    if (auto* queue = CustomElementReactionStack::ensureCurrentQueue())
-        queue->m_items.append({CustomElementReactionQueueItem::Type::ElementUpgrade, element, elementInterface});
+    m_items.clear();
+}
+
+void CustomElementReactionQueue::enqueueElementUpgrade(Element& element)
+{
+    auto& queue = CustomElementReactionStack::ensureCurrentQueue(element);
+    queue.m_items.append({CustomElementReactionQueueItem::Type::ElementUpgrade});
 }
 
 void CustomElementReactionQueue::enqueueElementUpgradeIfDefined(Element& element)
@@ -137,75 +134,107 @@ void CustomElementReactionQueue::enqueueElementUpgradeIfDefined(Element& element
     if (!elementInterface)
         return;
 
-    enqueueElementUpgrade(element, *elementInterface);
+    element.enqueueToUpgrade(*elementInterface);
 }
 
 void CustomElementReactionQueue::enqueueConnectedCallbackIfNeeded(Element& element)
 {
     ASSERT(element.isDefinedCustomElement());
-    auto* elementInterface = element.customElementInterface();
-    ASSERT(elementInterface);
-    if (!elementInterface->hasConnectedCallback())
-        return;
-
-    if (auto* queue = CustomElementReactionStack::ensureCurrentQueue())
-        queue->m_items.append({CustomElementReactionQueueItem::Type::Connected, element, *elementInterface});
+    auto& queue = CustomElementReactionStack::ensureCurrentQueue(element);
+    if (queue.m_interface->hasConnectedCallback())
+        queue.m_items.append({CustomElementReactionQueueItem::Type::Connected});
 }
 
 void CustomElementReactionQueue::enqueueDisconnectedCallbackIfNeeded(Element& element)
 {
     ASSERT(element.isDefinedCustomElement());
-    auto* elementInterface = element.customElementInterface();
-    ASSERT(elementInterface);
-    if (!elementInterface->hasDisconnectedCallback())
-        return;
-
-    if (auto* queue = CustomElementReactionStack::ensureCurrentQueue())
-        queue->m_items.append({CustomElementReactionQueueItem::Type::Disconnected, element, *elementInterface});
+    auto& queue = CustomElementReactionStack::ensureCurrentQueue(element);
+    if (queue.m_interface->hasDisconnectedCallback())
+        queue.m_items.append({CustomElementReactionQueueItem::Type::Disconnected});
 }
 
 void CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(Element& element, Document& oldDocument, Document& newDocument)
 {
     ASSERT(element.isDefinedCustomElement());
-    auto* elementInterface = element.customElementInterface();
-    ASSERT(elementInterface);
-    if (!elementInterface->hasAdoptedCallback())
-        return;
-
-    if (auto* queue = CustomElementReactionStack::ensureCurrentQueue())
-        queue->m_items.append({element, *elementInterface, oldDocument, newDocument});
+    auto& queue = CustomElementReactionStack::ensureCurrentQueue(element);
+    if (queue.m_interface->hasAdoptedCallback())
+        queue.m_items.append({oldDocument, newDocument});
 }
 
 void CustomElementReactionQueue::enqueueAttributeChangedCallbackIfNeeded(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
 {
     ASSERT(element.isDefinedCustomElement());
-    auto* elementInterface = element.customElementInterface();
-    ASSERT(elementInterface);
-    if (!elementInterface->observesAttribute(attributeName.localName()))
+    auto& queue = CustomElementReactionStack::ensureCurrentQueue(element);
+    if (queue.m_interface->observesAttribute(attributeName.localName()))
+        queue.m_items.append({attributeName, oldValue, newValue});
+}
+
+void CustomElementReactionQueue::enqueuePostUpgradeReactions(Element& element)
+{
+    ASSERT(element.isCustomElementUpgradeCandidate());
+    if (!element.hasAttributes() && !element.inDocument())
         return;
 
-    if (auto* queue = CustomElementReactionStack::ensureCurrentQueue())
-        queue->m_items.append({element, *elementInterface, attributeName, oldValue, newValue});
+    auto* queue = element.reactionQueue();
+    ASSERT(queue);
+
+    if (element.hasAttributes()) {
+        for (auto& attribute : element.attributesIterator()) {
+            if (queue->m_interface->observesAttribute(attribute.localName()))
+                queue->m_items.append({attribute.name(), nullAtom, attribute.value()});
+        }
+    }
+
+    if (element.inDocument() && queue->m_interface->hasConnectedCallback())
+        queue->m_items.append({CustomElementReactionQueueItem::Type::Connected});
 }
 
-void CustomElementReactionQueue::invokeAll()
+bool CustomElementReactionQueue::observesStyleAttribute() const
 {
-    Vector<CustomElementReactionQueueItem> items;
-    items.swap(m_items);
-    for (auto& item : items)
-        item.invoke();
+    return m_interface->observesAttribute(HTMLNames::styleAttr.localName());
 }
 
-CustomElementReactionQueue* CustomElementReactionStack::ensureCurrentQueue()
+void CustomElementReactionQueue::invokeAll(Element& element)
 {
-    // FIXME: This early exit indicates a bug that some DOM API is missing CEReactions
-    if (!s_currentProcessingStack)
-        return nullptr;
+    while (!m_items.isEmpty()) {
+        Vector<CustomElementReactionQueueItem> items = WTFMove(m_items);
+        for (auto& item : items)
+            item.invoke(element, m_interface.get());
+    }
+}
+
+inline void CustomElementReactionStack::ElementQueue::add(Element& element)
+{
+    // FIXME: Avoid inserting the same element multiple times.
+    m_elements.append(element);
+}
+
+inline void CustomElementReactionStack::ElementQueue::invokeAll()
+{
+    Vector<Ref<Element>> elements;
+    elements.swap(m_elements);
+    for (auto& element : elements) {
+        auto* queue = element->reactionQueue();
+        ASSERT(queue);
+        queue->invokeAll(element.get());
+    }
+    ASSERT(m_elements.isEmpty());
+}
+
+CustomElementReactionQueue& CustomElementReactionStack::ensureCurrentQueue(Element& element)
+{
+    ASSERT(element.reactionQueue());
+    if (!s_currentProcessingStack) {
+        auto& queue = CustomElementReactionStack::ensureBackupQueue();
+        queue.add(element);
+        return *element.reactionQueue();
+    }
 
     auto*& queue = s_currentProcessingStack->m_queue;
     if (!queue) // We use a raw pointer to avoid genearing code to delete it in ~CustomElementReactionStack.
-        queue = new CustomElementReactionQueue;
-    return queue;
+        queue = new ElementQueue;
+    queue->add(element);
+    return *element.reactionQueue();
 }
 
 CustomElementReactionStack* CustomElementReactionStack::s_currentProcessingStack = nullptr;
@@ -218,6 +247,37 @@ void CustomElementReactionStack::processQueue()
     m_queue = nullptr;
 }
 
+class BackupElementQueueMicrotask final : public Microtask {
+    WTF_MAKE_FAST_ALLOCATED;
+private:
+    Result run() final
+    {
+        CustomElementReactionStack::processBackupQueue();
+        return Result::Done;
+    }
+};
+
+static bool s_processingBackupElementQueue = false;
+
+CustomElementReactionStack::ElementQueue& CustomElementReactionStack::ensureBackupQueue()
+{
+    if (!s_processingBackupElementQueue) {
+        s_processingBackupElementQueue = true;
+        MicrotaskQueue::mainThreadQueue().append(std::make_unique<BackupElementQueueMicrotask>());
+    }
+    return backupElementQueue();
 }
 
-#endif
+void CustomElementReactionStack::processBackupQueue()
+{
+    backupElementQueue().invokeAll();
+    s_processingBackupElementQueue = false;
+}
+
+CustomElementReactionStack::ElementQueue& CustomElementReactionStack::backupElementQueue()
+{
+    static NeverDestroyed<ElementQueue> queue;
+    return queue.get();
+}
+
+}

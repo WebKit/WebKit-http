@@ -244,16 +244,12 @@ bool TextFieldInputType::needsContainer() const
 
 bool TextFieldInputType::shouldHaveSpinButton() const
 {
-    Document& document = element().document();
-    RefPtr<RenderTheme> theme = document.page() ? &document.page()->theme() : RenderTheme::defaultTheme();
-    return theme->shouldHaveSpinButton(element());
+    return RenderTheme::themeForPage(element().document().page())->shouldHaveSpinButton(element());
 }
 
 bool TextFieldInputType::shouldHaveCapsLockIndicator() const
 {
-    Document& document = element().document();
-    RefPtr<RenderTheme> theme = document.page() ? &document.page()->theme() : RenderTheme::defaultTheme();
-    return theme->shouldHaveCapsLockIndicator(element());
+    return RenderTheme::themeForPage(element().document().page())->shouldHaveCapsLockIndicator(element());
 }
 
 void TextFieldInputType::createShadowSubtree()
@@ -513,7 +509,7 @@ void TextFieldInputType::updatePlaceholderText()
         m_placeholder = TextControlPlaceholderElement::create(element().document());
         element().userAgentShadowRoot()->insertBefore(*m_placeholder, m_container ? m_container.get() : innerTextElement(), ASSERT_NO_EXCEPTION);        
     }
-    m_placeholder->setInnerText(placeholderText, ASSERT_NO_EXCEPTION);
+    m_placeholder->setInnerText(placeholderText);
 }
 
 bool TextFieldInputType::appendFormData(FormDataList& list, bool multipart) const

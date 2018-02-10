@@ -36,13 +36,11 @@
 #include "HitTestResult.h"
 #include "LocalizedStrings.h"
 #include "Page.h"
-#include "PlatformKeyboardEvent.h"
 #include "PopupMenu.h"
 #include "RenderLayer.h"
 #include "RenderScrollbar.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
-#include "Settings.h"
 #include "StyleResolver.h"
 #include "TextControlInnerElements.h"
 
@@ -346,15 +344,12 @@ HostWindow* RenderSearchField::hostWindow() const
     return view().frameView().hostWindow();
 }
 
-PassRefPtr<Scrollbar> RenderSearchField::createScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize controlSize)
+Ref<Scrollbar> RenderSearchField::createScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize controlSize)
 {
-    RefPtr<Scrollbar> widget;
     bool hasCustomScrollbarStyle = style().hasPseudoStyle(SCROLLBAR);
     if (hasCustomScrollbarStyle)
-        widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &inputElement());
-    else
-        widget = Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
-    return WTFMove(widget);
+        return RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &inputElement());
+    return Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
 }
 
 LayoutUnit RenderSearchField::computeLogicalHeightLimit() const

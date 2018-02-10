@@ -44,8 +44,8 @@ public:
 
     enum TextCompositionType {
         TextCompositionNone,
-        TextCompositionUpdate,
-        TextCompositionConfirm
+        TextCompositionPending,
+        TextCompositionFinal,
     };
 
     enum Option {
@@ -53,11 +53,12 @@ public:
         AddsToKillRing = 1 << 1,
         RetainAutocorrectionIndicator = 1 << 2,
         PreventSpellChecking = 1 << 3,
-        SmartDelete = 1 << 4
+        SmartDelete = 1 << 4,
+        IsAutocompletion = 1 << 5,
     };
     typedef unsigned Options;
 
-    static void deleteSelection(Document&, Options = 0);
+    static void deleteSelection(Document&, Options = 0, TextCompositionType = TextCompositionNone);
     static void deleteKeyPressed(Document&, Options = 0, TextGranularity = CharacterGranularity);
     static void forwardDeleteKeyPressed(Document&, Options = 0, TextGranularity = CharacterGranularity);
     static void insertText(Document&, const String&, Options, TextCompositionType = TextCompositionNone);
@@ -79,15 +80,16 @@ public:
     void forwardDeleteKeyPressed(TextGranularity, bool shouldAddToKillRing);
     void deleteSelection(bool smartDelete);
     void setCompositionType(TextCompositionType type) { m_compositionType = type; }
+    void setIsAutocompletion(bool isAutocompletion) { m_isAutocompletion = isAutocompletion; }
 
 #if PLATFORM(IOS)
     void setEndingSelectionOnLastInsertCommand(const VisibleSelection& selection);
 #endif
 
 private:
-    static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text = emptyString(), Options options = 0, TextGranularity granularity = CharacterGranularity)
+    static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text = emptyString(), Options options = 0, TextGranularity granularity = CharacterGranularity, TextCompositionType compositionType = TextCompositionNone)
     {
-        return adoptRef(*new TypingCommand(document, command, text, options, granularity, TextCompositionNone));
+        return adoptRef(*new TypingCommand(document, command, text, options, granularity, compositionType));
     }
 
     static Ref<TypingCommand> create(Document& document, ETypingCommand command, const String& text, Options options, TextCompositionType compositionType)
@@ -118,6 +120,8 @@ private:
 
     String inputEventTypeName() const final;
     String inputEventData() const final;
+    RefPtr<DataTransfer> inputEventDataTransfer() const final;
+    bool isBeforeInputEventCancelable() const final;
 
     static void updateSelectionIfDifferentFromCurrentSelection(TypingCommand*, Frame*);
 
@@ -150,6 +154,7 @@ private:
     TextCompositionType m_compositionType;
     bool m_shouldAddToKillRing;
     bool m_preservesTypingStyle;
+    bool m_isAutocompletion;
     
     // Undoing a series of backward deletes will restore a selection around all of the
     // characters that were deleted, but only if the typing command being undone

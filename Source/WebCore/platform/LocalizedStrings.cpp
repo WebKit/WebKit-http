@@ -789,17 +789,17 @@ String AXMarkText()
 #if ENABLE(METER_ELEMENT)
 String AXMeterGaugeRegionOptimumText()
 {
-    return WEB_UI_STRING("optimum", "The optimum value description for a meter element.");
+    return WEB_UI_STRING("optimal value", "The optimum value description for a meter element.");
 }
 
 String AXMeterGaugeRegionSuboptimalText()
 {
-    return WEB_UI_STRING("suboptimal", "The suboptimal value description for a meter element.");
+    return WEB_UI_STRING("suboptimal value", "The suboptimal value description for a meter element.");
 }
 
 String AXMeterGaugeRegionLessGoodText()
 {
-    return WEB_UI_STRING("less good", "The less good value description for a meter element.");
+    return WEB_UI_STRING("critical value", "The less good value description for a meter element.");
 }
 #endif // ENABLE(METER_ELEMENT)
 #endif // PLATFORM(COCOA)
@@ -1279,7 +1279,7 @@ String insertListTypeBulletedAccessibilityTitle()
 
 String insertListTypeNumbered()
 {
-    return WEB_UI_STRING("1. 2. 3.…", "Option in segmented control for choosing list type in text editing");
+    return WEB_UI_STRING("1. 2. 3.", "Option in segmented control for choosing list type in text editing");
 }
 
 String insertListTypeNumberedAccessibilityTitle()

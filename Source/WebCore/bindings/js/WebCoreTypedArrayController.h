@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebCoreTypedArrayController_h
-#define WebCoreTypedArrayController_h
+#pragma once
 
 #include <runtime/JSGlobalObject.h>
 #include <runtime/TypedArrayController.h>
@@ -42,6 +41,7 @@ public:
     
     JSC::JSArrayBuffer* toJS(JSC::ExecState*, JSC::JSGlobalObject*, JSC::ArrayBuffer*) override;
     void registerWrapper(JSC::JSGlobalObject*, ArrayBuffer*, JSC::JSArrayBuffer*) override;
+    bool isAtomicsWaitAllowedOnCurrentThread() override;
 
     JSC::WeakHandleOwner* wrapperOwner() { return &m_owner; }
 
@@ -56,6 +56,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // WebCoreTypedArrayController_h
-

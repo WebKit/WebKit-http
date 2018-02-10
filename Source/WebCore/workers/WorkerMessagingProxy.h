@@ -41,6 +41,7 @@ namespace WebCore {
     class ContentSecurityPolicyResponseHeaders;
     class DedicatedWorkerThread;
     class Worker;
+    class WorkerInspectorProxy;
 
     class WorkerMessagingProxy : public WorkerGlobalScopeProxy, public WorkerObjectProxy, public WorkerLoaderProxy {
         WTF_MAKE_NONCOPYABLE(WorkerMessagingProxy); WTF_MAKE_FAST_ALLOCATED;
@@ -49,7 +50,7 @@ namespace WebCore {
 
         // Implementations of WorkerGlobalScopeProxy.
         // (Only use these methods in the worker object thread.)
-        void startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, WorkerThreadStartMode) override;
+        void startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, JSC::RuntimeFlags) override;
         void terminateWorkerGlobalScope() override;
         void postMessageToWorkerGlobalScope(RefPtr<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>) override;
         bool hasPendingActivity() const override;
@@ -60,7 +61,7 @@ namespace WebCore {
         // (Only use these methods in the worker context thread.)
         void postMessageToWorkerObject(RefPtr<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>) override;
         void postExceptionToWorkerObject(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL) override;
-        void postConsoleMessageToWorkerObject(MessageSource, MessageLevel, const String& message, int lineNumber, int columnNumber, const String& sourceURL) override;
+        void postMessageToPageInspector(const String&) override;
         void confirmMessageFromWorkerObject(bool hasPendingActivity) override;
         void reportPendingActivity(bool hasPendingActivity) override;
         void workerGlobalScopeClosed() override;
@@ -86,6 +87,7 @@ namespace WebCore {
         Worker* workerObject() const { return m_workerObject; }
 
         RefPtr<ScriptExecutionContext> m_scriptExecutionContext;
+        std::unique_ptr<WorkerInspectorProxy> m_inspectorProxy;
         Worker* m_workerObject;
         bool m_mayBeDestroyed;
         RefPtr<DedicatedWorkerThread> m_workerThread;

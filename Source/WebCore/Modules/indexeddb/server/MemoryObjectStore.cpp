@@ -31,6 +31,7 @@
 #include "IDBBindingUtilities.h"
 #include "IDBDatabaseException.h"
 #include "IDBError.h"
+#include "IDBGetAllResult.h"
 #include "IDBKeyRangeData.h"
 #include "IDBValue.h"
 #include "IndexKey.h"
@@ -407,6 +408,35 @@ ThreadSafeDataBuffer MemoryObjectStore::valueForKeyRange(const IDBKeyRangeData& 
     return m_keyValueStore->get(key);
 }
 
+void MemoryObjectStore::getAllRecords(const IDBKeyRangeData& keyRangeData, Optional<uint32_t> count, IndexedDB::GetAllType type, IDBGetAllResult& result) const
+{
+    result = { type };
+
+    uint32_t targetCount;
+    if (count && count.value())
+        targetCount = count.value();
+    else
+        targetCount = std::numeric_limits<uint32_t>::max();
+
+    IDBKeyRangeData range = keyRangeData;
+    uint32_t currentCount = 0;
+    while (currentCount < targetCount) {
+        IDBKeyData key = lowestKeyWithRecordInRange(range);
+        if (key.isNull())
+            return;
+
+        range.lowerKey = key;
+        range.lowerOpen = true;
+
+        if (type == IndexedDB::GetAllType::Keys)
+            result.addKey(WTFMove(key));
+        else
+            result.addValue(valueForKey(key));
+
+        ++currentCount;
+    }
+}
+
 IDBGetResult MemoryObjectStore::indexValueForKeyRange(uint64_t indexIdentifier, IndexedDB::IndexRecordType recordType, const IDBKeyRangeData& range) const
 {
     LOG(IndexedDB, "MemoryObjectStore::indexValueForKeyRange");
@@ -473,6 +503,17 @@ MemoryObjectStoreCursor* MemoryObjectStore::maybeOpenCursor(const IDBCursorInfo&
 
     result.iterator->value = std::make_unique<MemoryObjectStoreCursor>(*this, info);
     return result.iterator->value.get();
+}
+
+void MemoryObjectStore::renameIndex(MemoryIndex& index, const String& newName)
+{
+    ASSERT(m_indexesByName.get(index.info().name()) == &index);
+    ASSERT(!m_indexesByName.contains(newName));
+    ASSERT(m_info.infoForExistingIndex(index.info().name()));
+
+    m_info.infoForExistingIndex(index.info().name())->rename(newName);
+    m_indexesByName.set(newName, m_indexesByName.take(index.info().name()));
+    index.rename(newName);
 }
 
 } // namespace IDBServer

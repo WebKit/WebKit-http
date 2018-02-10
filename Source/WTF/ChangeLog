@@ -1,3 +1,139 @@
+2016-11-02  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Enable creation of ReadableByteStreamController
+        https://bugs.webkit.org/show_bug.cgi?id=164014
+
+        Reviewed by Youenn Fablet.
+
+        Added flag for the byte stream part of Readable Streams API.
+
+        * wtf/FeatureDefines.h:
+
+2016-11-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Copy build results to AAS 'Program Files' folder.
+        https://bugs.webkit.org/show_bug.cgi?id=164273
+
+        Reviewed by Brent Fulgham.
+
+        The preferred location for the binaries is the AAS 'Program Files' folder.
+
+        * WTF.vcxproj/WTF.proj:
+
+2016-10-29  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should support SharedArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=163986
+
+        Reviewed by Keith Miller.
+        
+        Adds some small things we need for SharedArrayBuffer.
+        
+        * wtf/Atomics.h:
+        (WTF::Atomic::compareExchangeWeakRelaxed):
+        (WTF::Atomic::exchangeAdd):
+        (WTF::Atomic::exchangeAnd):
+        (WTF::Atomic::exchangeOr):
+        (WTF::Atomic::exchangeSub):
+        (WTF::Atomic::exchangeXor):
+        (WTF::atomicLoad):
+        (WTF::atomicStore):
+        (WTF::atomicCompareExchangeWeak):
+        (WTF::atomicCompareExchangeWeakRelaxed):
+        (WTF::atomicCompareExchangeStrong):
+        (WTF::atomicExchangeAdd):
+        (WTF::atomicExchangeAnd):
+        (WTF::atomicExchangeOr):
+        (WTF::atomicExchangeSub):
+        (WTF::atomicExchangeXor):
+        (WTF::atomicExchange):
+        (WTF::Atomic::exchangeAndAdd): Deleted.
+        (WTF::weakCompareAndSwap): Deleted.
+        We need to be able to do atomics operations on naked pointers. We also need to be able to do
+        all of the things that std::atomic does. This adds those things and renames
+        weakCompareAndSwap to atomicCompareExchangeWeakRelaxed so that we're using consistent
+        terminology.
+        
+        * wtf/Bitmap.h:
+        (WTF::WordType>::concurrentTestAndSet): Renamed weakCompareAndSwap.
+        (WTF::WordType>::concurrentTestAndClear): Renamed weakCompareAndSwap.
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::atomicSetAndCheck): Renamed weakCompareAndSwap.
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkCount):
+        * wtf/ParkingLot.h:
+        Added unparkCount(), which lets you unpark some bounded number of threads and returns the
+        number of threads unparked. This is just a modest extension of unparkAll(). unparkAll() now
+        just calls unparkCount(ptr, UINT_MAX).
+
+2016-10-30  Frederic Wang  <fwang@igalia.com>
+
+        Use HarfBuzz ot-math API to parse the OpenType MATH table
+        https://bugs.webkit.org/show_bug.cgi?id=162671
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: By default, do not enable internal OpenType MATH parsing on GTK.
+
+2016-10-25  Mark Lam  <mark.lam@apple.com>
+
+        String.prototype.replace() should throw an OutOfMemoryError when using too much memory.
+        https://bugs.webkit.org/show_bug.cgi?id=163996
+        <rdar://problem/28263117>
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Vector.h:
+        (WTF::minCapacity>::tryConstructAndAppend):
+        (WTF::minCapacity>::tryConstructAndAppendSlowCase):
+        - Added try versions of constructAndAppend() so that we can handle the failure
+          to allocate more gracefully.
+
+2016-10-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Non-specialized version of deleteObject should not have template argument
+        https://bugs.webkit.org/show_bug.cgi?id=163943
+
+        Reviewed by Anders Carlsson.
+
+        Fixes compilation of GDIObject.h with MinGW
+
+        * wtf/win/GDIObject.h:
+        (WTF::deleteObject):
+
+2016-10-24  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] CMake build type is not set.
+        https://bugs.webkit.org/show_bug.cgi?id=163917
+
+        Reviewed by Alex Christensen.
+
+        The CMAKE_BUILD_TYPE variable should be set to Debug or Release.
+
+        * WTF.vcxproj/WTF.proj:
+
+2016-10-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Add a way for DOMJIT::Patchpoint to express effects
+        https://bugs.webkit.org/show_bug.cgi?id=163657
+
+        Reviewed by Saam Barati.
+
+        Simplify nonEmptyRangesOverlap.
+
+        * wtf/MathExtras.h:
+        (WTF::nonEmptyRangesOverlap):
+
+2016-10-23  Chris Dumez  <cdumez@apple.com>
+
+        Another unreviewed attempt to fix the WatchOS / TvOS build after r207585.
+        <rdar://problem/28902292>
+
+        Disable USE_CFURLCONNECTION on newer WatchOS / TvOS.
+
+        * wtf/Platform.h:
+
 2016-10-20  Keith Miller  <keith_miller@apple.com>
 
         Add support for WASM calls

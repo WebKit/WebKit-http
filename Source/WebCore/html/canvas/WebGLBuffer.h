@@ -23,11 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLBuffer_h
-#define WebGLBuffer_h
+#pragma once
 
 #include "WebGLSharedObject.h"
-
 #include <wtf/Forward.h>
 
 namespace JSC {
@@ -61,7 +59,7 @@ public:
     void setCachedMaxIndex(GC3Denum type, int value);
 
     GC3Denum getTarget() const { return m_target; }
-    void setTarget(GC3Denum);
+    void setTarget(GC3Denum, bool forWebGL2);
 
     bool hasEverBeenBound() const { return object() && m_target; }
 
@@ -105,5 +103,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // WebGLBuffer_h

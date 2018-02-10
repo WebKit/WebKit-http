@@ -70,6 +70,8 @@ public:
     void keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
     void keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
 
+    void selectTextCandidateAtIndex(long index, JSValueRef callback);
+
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
     
@@ -115,6 +117,8 @@ public:
     
     JSObjectRef selectionRangeViewRects() const;
 
+    void insertText(JSStringRef, int location, int length);
+
     void uiScriptComplete(JSStringRef result);
 
 private:
@@ -136,6 +140,7 @@ private:
     JSClassRef wrapperClass() final;
 
     JSObjectRef objectFromRect(const WebCore::FloatRect&) const;
+    void waitForTextPredictionsViewAndSelectCandidateAtIndex(long index, unsigned callbackID, float interval);
 
     UIScriptContext* m_context;
 };

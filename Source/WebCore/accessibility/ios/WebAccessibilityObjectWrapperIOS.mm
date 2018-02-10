@@ -997,6 +997,10 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     NSString *axTitle = [self baseAccessibilityTitle];
     NSString *axDescription = [self baseAccessibilityDescription];
     NSString *landmarkDescription = [self ariaLandmarkRoleDescription];
+    
+    // We should expose the value of the input type date or time through AXValue instead of AXTitle.
+    if (m_object->isInputTypePopupButton() && [axTitle isEqualToString:[self accessibilityValue]])
+        axTitle = nil;
 
     // Footer is not considered a landmark, but we want the role description.
     if (m_object->roleValue() == FooterRole)
@@ -2751,6 +2755,24 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     default:
     case ARIACurrentTrue:
         return @"true";
+    }
+}
+
+- (NSString *)accessibilitySortDirection
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    switch (m_object->sortDirection()) {
+    case SortDirectionAscending:
+        return @"ascending";
+    case SortDirectionDescending:
+        return @"descending";
+    case SortDirectionOther:
+        return @"other";
+    default:
+    case SortDirectionNone:
+        return nil;
     }
 }
 

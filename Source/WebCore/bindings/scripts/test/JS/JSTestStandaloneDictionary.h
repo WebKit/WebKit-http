@@ -20,6 +20,8 @@
 
 #pragma once
 
+#if ENABLE(Condition1)
+
 #include "DictionaryImplName.h"
 #include "JSDOMConvert.h"
 
@@ -27,4 +29,12 @@ namespace WebCore {
 
 template<> DictionaryImplName convertDictionary<DictionaryImplName>(JSC::ExecState&, JSC::JSValue);
 
+template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestStandaloneDictionary::EnumInStandaloneDictionaryFile);
+
+template<> Optional<TestStandaloneDictionary::EnumInStandaloneDictionaryFile> parseEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(JSC::ExecState&, JSC::JSValue);
+template<> TestStandaloneDictionary::EnumInStandaloneDictionaryFile convertEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(JSC::ExecState&, JSC::JSValue);
+template<> const char* expectedEnumerationValues<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>();
+
 } // namespace WebCore
+
+#endif // ENABLE(Condition1)

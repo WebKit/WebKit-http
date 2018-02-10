@@ -31,13 +31,13 @@
 
 #include "CSSSelector.h"
 #include "CSSSelectorList.h"
+#include "DOMJITHelpers.h"
 #include "Element.h"
 #include "ElementData.h"
 #include "ElementRareData.h"
 #include "FunctionCall.h"
 #include "HTMLDocument.h"
 #include "HTMLNames.h"
-#include "HTMLOptGroupElement.h"
 #include "HTMLParserIdioms.h"
 #include "InspectorInstrumentation.h"
 #include "NodeRenderStyle.h"
@@ -401,7 +401,10 @@ SelectorCompilationStatus compileSelector(const CSSSelector* lastSelector, JSC::
 static inline FragmentRelation fragmentRelationForSelectorRelation(CSSSelector::RelationType relation)
 {
     switch (relation) {
-    case CSSSelector::Descendant:
+    case CSSSelector::DescendantSpace:
+#if ENABLE_CSS_SELECTORS_LEVEL4
+    case CSSSelector::DescendantDoubleChild:
+#endif
         return FragmentRelation::Descendant;
     case CSSSelector::Child:
         return FragmentRelation::Child;
@@ -411,9 +414,6 @@ static inline FragmentRelation fragmentRelationForSelectorRelation(CSSSelector::
         return FragmentRelation::IndirectAdjacent;
     case CSSSelector::Subselector:
     case CSSSelector::ShadowDescendant:
-    case CSSSelector::ShadowPseudo:
-    case CSSSelector::ShadowDeep:
-    case CSSSelector::ShadowSlot:
         ASSERT_NOT_REACHED();
     }
     ASSERT_NOT_REACHED();
@@ -547,11 +547,9 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
     case CSSSelector::PseudoClassEnabled:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(matchesEnabledPseudoClass));
         return FunctionType::SimpleSelectorChecker;
-#if ENABLE(CUSTOM_ELEMENTS)
     case CSSSelector::PseudoClassDefined:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isDefinedElement));
         return FunctionType::SimpleSelectorChecker;
-#endif
     case CSSSelector::PseudoClassFocus:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(SelectorChecker::matchesFocusPseudoClass));
         return FunctionType::SimpleSelectorChecker;
@@ -2311,12 +2309,6 @@ Assembler::Jump SelectorCodeGenerator::jumpIfNotResolvingStyle(Assembler::Regist
     return branchOnResolvingMode(Assembler::NotEqual, SelectorChecker::Mode::ResolvingStyle, checkingContext);
 }
 
-static void getDocument(Assembler& assembler, Assembler::RegisterID element, Assembler::RegisterID output)
-{
-    assembler.loadPtr(Assembler::Address(element, Node::treeScopeMemoryOffset()), output);
-    assembler.loadPtr(Assembler::Address(output, TreeScope::documentScopeMemoryOffset()), output);
-}
-
 void SelectorCodeGenerator::generateSpecialFailureInQuirksModeForActiveAndHoverIfNeeded(Assembler::JumpList& failureCases, const SelectorFragment& fragment)
 {
     if (fragment.onlyMatchesLinksInQuirksMode) {
@@ -2326,7 +2318,7 @@ void SelectorCodeGenerator::generateSpecialFailureInQuirksModeForActiveAndHoverI
         // Only quirks mode restrict :hover and :active.
         static_assert(sizeof(DocumentCompatibilityMode) == 1, "We generate a byte load/test for the compatibility mode.");
         LocalRegister documentAddress(m_registerAllocator);
-        getDocument(m_assembler, elementAddressRegister, documentAddress);
+        DOMJIT::loadDocument(m_assembler, elementAddressRegister, documentAddress);
         failureCases.append(m_assembler.branchTest8(Assembler::NonZero, Assembler::Address(documentAddress, Document::compatibilityModeMemoryOffset()), Assembler::TrustedImm32(static_cast<std::underlying_type<DocumentCompatibilityMode>::type>(DocumentCompatibilityMode::QuirksMode))));
 
         isLink.link(&m_assembler);
@@ -2992,7 +2984,7 @@ void SelectorCodeGenerator::generateElementAttributeValueExactMatching(Assembler
 
         {
             LocalRegister document(m_registerAllocator);
-            getDocument(m_assembler, elementAddressRegister, document);
+            DOMJIT::loadDocument(m_assembler, elementAddressRegister, document);
             failureCases.append(testIsHTMLClassOnDocument(Assembler::Zero, m_assembler, document));
         }
 
@@ -3422,7 +3414,7 @@ inline void SelectorCodeGenerator::generateElementHasTagName(Assembler::JumpList
             caseSensitiveCases.append(testIsHTMLFlagOnNode(Assembler::Zero, m_assembler, elementAddressRegister));
             {
                 LocalRegister document(m_registerAllocator);
-                getDocument(m_assembler, elementAddressRegister, document);
+                DOMJIT::loadDocument(m_assembler, elementAddressRegister, document);
                 caseSensitiveCases.append(testIsHTMLClassOnDocument(Assembler::Zero, m_assembler, document));
             }
 
@@ -3780,7 +3772,7 @@ void SelectorCodeGenerator::generateRequestedPseudoElementEqualsToSelectorPseudo
 void SelectorCodeGenerator::generateElementIsRoot(Assembler::JumpList& failureCases)
 {
     LocalRegister document(m_registerAllocator);
-    getDocument(m_assembler, elementAddressRegister, document);
+    DOMJIT::loadDocument(m_assembler, elementAddressRegister, document);
     failureCases.append(m_assembler.branchPtr(Assembler::NotEqual, Assembler::Address(document, Document::documentElementMemoryOffset()), elementAddressRegister));
 }
 
@@ -3794,8 +3786,8 @@ void SelectorCodeGenerator::generateElementIsScopeRoot(Assembler::JumpList& fail
 
     Assembler::Jump scopeIsNotNull = m_assembler.branchTestPtr(Assembler::NonZero, scope);
 
-    getDocument(m_assembler, elementAddressRegister, scope);
-    m_assembler.loadPtr(Assembler::Address(scope, Document::documentElementMemoryOffset()), scope);
+    DOMJIT::loadDocument(m_assembler, elementAddressRegister, scope);
+    DOMJIT::loadDocumentElement(m_assembler, scope, scope);
 
     scopeIsNotNull.link(&m_assembler);
     failureCases.append(m_assembler.branchPtr(Assembler::NotEqual, scope, elementAddressRegister));
@@ -3804,7 +3796,7 @@ void SelectorCodeGenerator::generateElementIsScopeRoot(Assembler::JumpList& fail
 void SelectorCodeGenerator::generateElementIsTarget(Assembler::JumpList& failureCases)
 {
     LocalRegister document(m_registerAllocator);
-    getDocument(m_assembler, elementAddressRegister, document);
+    DOMJIT::loadDocument(m_assembler, elementAddressRegister, document);
     failureCases.append(m_assembler.branchPtr(Assembler::NotEqual, Assembler::Address(document, Document::cssTargetMemoryOffset()), elementAddressRegister));
 }
 

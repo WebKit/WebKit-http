@@ -46,7 +46,7 @@ UniqueIDBDatabaseTransaction::UniqueIDBDatabaseTransaction(UniqueIDBDatabaseConn
     : m_databaseConnection(connection)
     , m_transactionInfo(info)
 {
-    if (m_transactionInfo.mode() == IndexedDB::TransactionMode::VersionChange)
+    if (m_transactionInfo.mode() == IDBTransactionMode::Versionchange)
         m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(m_databaseConnection->database().info());
 
     m_databaseConnection->database().server().registerTransaction(*this);
@@ -60,7 +60,7 @@ UniqueIDBDatabaseTransaction::~UniqueIDBDatabaseTransaction()
 
 IDBDatabaseInfo* UniqueIDBDatabaseTransaction::originalDatabaseInfo() const
 {
-    ASSERT(m_transactionInfo.mode() == IndexedDB::TransactionMode::VersionChange);
+    ASSERT(m_transactionInfo.mode() == IDBTransactionMode::Versionchange);
     return m_originalDatabaseInfo.get();
 }
 
@@ -84,12 +84,12 @@ void UniqueIDBDatabaseTransaction::abortWithoutCallback()
 
 bool UniqueIDBDatabaseTransaction::isVersionChange() const
 {
-    return m_transactionInfo.mode() == IndexedDB::TransactionMode::VersionChange;
+    return m_transactionInfo.mode() == IDBTransactionMode::Versionchange;
 }
 
 bool UniqueIDBDatabaseTransaction::isReadOnly() const
 {
-    return m_transactionInfo.mode() == IndexedDB::TransactionMode::ReadOnly;
+    return m_transactionInfo.mode() == IDBTransactionMode::Readonly;
 }   
 
 void UniqueIDBDatabaseTransaction::commit()
@@ -204,6 +204,24 @@ void UniqueIDBDatabaseTransaction::deleteIndex(const IDBRequestData& requestData
     });
 }
 
+void UniqueIDBDatabaseTransaction::renameIndex(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::renameIndex");
+
+    ASSERT(isVersionChange());
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> protectedThis(this);
+    m_databaseConnection->database().renameIndex(*this, objectStoreIdentifier, indexIdentifier, newName, [this, protectedThis, requestData](const IDBError& error) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::renameIndex (callback)");
+        if (error.isNull())
+            m_databaseConnection->didRenameIndex(IDBResultData::renameIndexSuccess(requestData.requestIdentifier()));
+        else
+            m_databaseConnection->didRenameIndex(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
+
 void UniqueIDBDatabaseTransaction::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const IDBValue& value, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     LOG(IndexedDB, "UniqueIDBDatabaseTransaction::putOrAdd");
@@ -236,6 +254,23 @@ void UniqueIDBDatabaseTransaction::getRecord(const IDBRequestData& requestData, 
             m_databaseConnection->connectionToClient().didGetRecord(IDBResultData::getRecordSuccess(requestData.requestIdentifier(), result));
         else
             m_databaseConnection->connectionToClient().didGetRecord(IDBResultData::error(requestData.requestIdentifier(), error));
+    });
+}
+
+void UniqueIDBDatabaseTransaction::getAllRecords(const IDBRequestData& requestData, const IDBGetAllRecordsData& getAllRecordsData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getAllRecords");
+
+    ASSERT(m_transactionInfo.identifier() == requestData.transactionIdentifier());
+
+    RefPtr<UniqueIDBDatabaseTransaction> protectedThis(this);
+    m_databaseConnection->database().getAllRecords(requestData, getAllRecordsData, [this, protectedThis, requestData](const IDBError& error, const IDBGetAllResult& result) {
+        LOG(IndexedDB, "UniqueIDBDatabaseTransaction::getAllRecords (callback)");
+
+        if (error.isNull())
+            m_databaseConnection->connectionToClient().didGetAllRecords(IDBResultData::getAllRecordsSuccess(requestData.requestIdentifier(), result));
+        else
+            m_databaseConnection->connectionToClient().didGetAllRecords(IDBResultData::error(requestData.requestIdentifier(), error));
     });
 }
 

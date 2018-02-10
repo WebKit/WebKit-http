@@ -21,12 +21,12 @@
  *
  */
 
-#ifndef Event_h
-#define Event_h
+#pragma once
 
 #include "DOMTimeStamp.h"
 #include "EventInit.h"
 #include "EventInterfaces.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
@@ -38,6 +38,7 @@ class DataTransfer;
 class EventPath;
 class EventTarget;
 class HTMLIFrameElement;
+class ScriptExecutionContext;
 
 enum EventInterface {
 
@@ -95,6 +96,8 @@ public:
     virtual ~Event();
 
     WEBCORE_EXPORT void initEvent(const AtomicString& type, bool canBubble, bool cancelable);
+    ExceptionOr<void> initEventForBindings(ScriptExecutionContext&, const AtomicString& type, bool bubbles); // Quirk.
+
     bool isInitialized() const { return m_isInitialized; }
 
     const AtomicString& type() const { return m_type; }
@@ -235,5 +238,3 @@ inline void Event::resetPropagationFlags()
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::Event& event) { return event.is##ToValueTypeName(); } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // Event_h

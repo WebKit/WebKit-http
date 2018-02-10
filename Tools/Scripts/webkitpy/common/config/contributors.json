@@ -17,6 +17,14 @@
       ],
       "status" : "committer"
    },
+   "Aaron Chu" : {
+      "emails" : [
+         "aaron_chu@apple.com"
+      ],
+      "nicks" : [
+         "aaron_chu"
+      ]
+   },
    "Aaron Colwell" : {
       "emails" : [
          "acolwell@chromium.org"
@@ -1534,11 +1542,11 @@
    },
    "Devin Rousso" : {
       "emails" : [
-         "dcrousso+webkit@gmail.com",
-         "drousso@apple.com"
+         "dcrousso+webkit@gmail.com"
       ],
+      "expertise" : "Web Inspector",
       "nicks" : [
-         "drousso"
+         "dcrousso"
       ],
       "status" : "committer"
    },
@@ -4771,10 +4779,11 @@
          "sabouhallawa@apple.com",
          "said@apple.com"
       ],
+      "expertise" : "SVG/Graphics, Image Decoders",
       "nicks" : [
          "sabouhallawa"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Sam Weinig" : {
       "emails" : [
@@ -5485,7 +5494,7 @@
       "nicks" : [
          "whsieh"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "William Siegrist" : {
       "emails" : [

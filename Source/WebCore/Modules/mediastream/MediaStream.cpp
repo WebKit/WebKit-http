@@ -256,7 +256,7 @@ void MediaStream::pageMutedStateDidChange()
     if (!document)
         return;
 
-    bool pageMuted = document->page()->isMuted();
+    bool pageMuted = document->page()->isMediaCaptureMuted();
     if (m_externallyMuted == pageMuted)
         return;
 
@@ -274,7 +274,8 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
     if (!m_isActive)
         return state;
 
-    if (m_externallyMuted || m_private->isProducingData())
+    state |= HasMediaCaptureDevice;
+    if (m_private->isProducingData())
         state |= HasActiveMediaCaptureDevice;
 
     if (m_private->hasAudio() || m_private->hasVideo())

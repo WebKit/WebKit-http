@@ -27,7 +27,8 @@
 #include "JSArrayBuffer.h"
 
 #include "JSCInlines.h"
-#include "Reject.h"
+#include "TypeError.h"
+#include "TypedArrayController.h"
 
 namespace JSC {
 
@@ -43,6 +44,7 @@ JSArrayBuffer::JSArrayBuffer(VM& vm, Structure* structure, PassRefPtr<ArrayBuffe
 void JSArrayBuffer::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
+    // This probably causes GCs in the various VMs to overcount the impact of the array buffer.
     vm.heap.addReference(this, m_impl);
     vm.m_typedArrayController->registerWrapper(globalObject, m_impl, this);
 }
@@ -64,6 +66,16 @@ Structure* JSArrayBuffer::createStructure(
     return Structure::create(
         vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info(),
         NonArray);
+}
+
+bool JSArrayBuffer::isShared() const
+{
+    return m_impl->isShared();
+}
+
+ArrayBufferSharingMode JSArrayBuffer::sharingMode() const
+{
+    return m_impl->sharingMode();
 }
 
 size_t JSArrayBuffer::estimatedSize(JSCell* cell)
@@ -98,7 +110,7 @@ bool JSArrayBuffer::put(
         return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
     
     if (propertyName == vm.propertyNames->byteLength)
-        return reject(exec, scope, slot.isStrictMode(), ASCIILiteral("Attempting to write to a read-only array buffer property."));
+        return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral("Attempting to write to a read-only array buffer property."));
     
     return Base::put(thisObject, exec, propertyName, value, slot);
 }
@@ -112,7 +124,7 @@ bool JSArrayBuffer::defineOwnProperty(
     JSArrayBuffer* thisObject = jsCast<JSArrayBuffer*>(object);
     
     if (propertyName == vm.propertyNames->byteLength)
-        return reject(exec, scope, shouldThrow, ASCIILiteral("Attempting to define read-only array buffer property."));
+        return typeError(exec, scope, shouldThrow, ASCIILiteral("Attempting to define read-only array buffer property."));
     
     return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
 }

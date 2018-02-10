@@ -33,6 +33,7 @@
 #include "CSSStyleDeclaration.h"
 #include "CSSStyleSheet.h"
 #include "CSSValue.h"
+#include "CustomElementReactionQueue.h"
 #include "HashTools.h"
 #include "JSCSSStyleDeclaration.h"
 #include "JSCSSValue.h"
@@ -283,9 +284,9 @@ static CSSPropertyInfo parseJavaScriptCSSPropertyName(PropertyName propertyName)
 static inline JSValue stylePropertyGetter(ExecState& state, JSCSSStyleDeclaration& thisObject, CSSPropertyID propertyID, const RefPtr<CSSValue>& value)
 {
     if (value)
-        return jsStringOrNull(&state, value->cssText());
+        return toJS<IDLNullable<IDLDOMString>>(state, value->cssText());
     // If the property is a shorthand property (such as "padding"), it can only be accessed using getPropertyValue.
-    return jsStringWithCache(&state, thisObject.wrapped().getPropertyValueInternal(propertyID));
+    return toJS<IDLDOMString>(state, thisObject.wrapped().getPropertyValueInternal(propertyID));
 }
 
 static inline JSValue stylePropertyGetter(ExecState& state, JSCSSStyleDeclaration& thisObject, CSSPropertyID propertyID)
@@ -322,11 +323,12 @@ bool JSCSSStyleDeclaration::getOwnPropertySlotDelegate(ExecState* state, Propert
 
 bool JSCSSStyleDeclaration::putDelegate(ExecState* state, PropertyName propertyName, JSValue value, PutPropertySlot&, bool& putResult)
 {
+    CustomElementReactionStack customElementReactionStack;
     auto propertyInfo = parseJavaScriptCSSPropertyName(propertyName);
     if (!propertyInfo.propertyID)
         return false;
 
-    auto propertyValue = valueToStringTreatingNullAsEmptyString(state, value);
+    auto propertyValue = convert<IDLDOMString>(*state, value, StringConversionConfiguration::TreatNullAsEmptyString);
     if (propertyInfo.hadPixelOrPosPrefix)
         propertyValue.append("px");
 
@@ -342,7 +344,7 @@ bool JSCSSStyleDeclaration::putDelegate(ExecState* state, PropertyName propertyN
     auto setPropertyInternalResult = wrapped().setPropertyInternal(propertyInfo.propertyID, propertyValue, important);
     if (setPropertyInternalResult.hasException()) {
         propagateException(*state, setPropertyInternalResult.releaseException());
-        return false;
+        return true;
     }
     putResult = setPropertyInternalResult.releaseReturnValue();
     return true;

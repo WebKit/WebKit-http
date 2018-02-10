@@ -1326,10 +1326,8 @@ END
 
     if ($parameters{customElementInterfaceName}) {
         print F <<END
-#if ENABLE(CUSTOM_ELEMENTS)
     if (element->isCustomElementUpgradeCandidate())
         return createWrapper<$parameters{customElementInterfaceName}>(globalObject, WTFMove(element));
-#endif
 END
 ;
     }

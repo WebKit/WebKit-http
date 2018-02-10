@@ -42,7 +42,6 @@
 #include "RenderText.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
-#include "Settings.h"
 #include "StyleResolver.h"
 #include "TextRun.h"
 #include <math.h>
@@ -570,15 +569,12 @@ HostWindow* RenderMenuList::hostWindow() const
     return view().frameView().hostWindow();
 }
 
-PassRefPtr<Scrollbar> RenderMenuList::createScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize controlSize)
+Ref<Scrollbar> RenderMenuList::createScrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orientation, ScrollbarControlSize controlSize)
 {
-    RefPtr<Scrollbar> widget;
     bool hasCustomScrollbarStyle = style().hasPseudoStyle(SCROLLBAR);
     if (hasCustomScrollbarStyle)
-        widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &selectElement());
-    else
-        widget = Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
-    return WTFMove(widget);
+        return RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, &selectElement());
+    return Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
 }
 
 int RenderMenuList::clientInsetLeft() const

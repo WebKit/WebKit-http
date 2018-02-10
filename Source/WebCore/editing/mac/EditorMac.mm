@@ -114,7 +114,7 @@ const Font* Editor::fontForSelection(bool& hasMultipleFonts) const
         if (style) {
             result = &style->fontCascade().primaryFont();
             if (nodeToRemove)
-                nodeToRemove->remove(ASSERT_NO_EXCEPTION);
+                nodeToRemove->remove();
         }
         return result;
     }
@@ -195,7 +195,7 @@ NSDictionary* Editor::fontAttributesForSelectionStart() const
     getTextDecorationAttributesRespectingTypingStyle(*style, result);
 
     if (nodeToRemove)
-        nodeToRemove->remove(ASSERT_NO_EXCEPTION);
+        nodeToRemove->remove();
 
     return result;
 }
@@ -259,6 +259,7 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
     if (&node->document() != m_frame.document())
         return;
 
+    Ref<Frame> protector(m_frame);
     RefPtr<Range> range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
     m_frame.selection().setSelection(VisibleSelection(*range), FrameSelection::DoNotSetFocus);
 
@@ -308,6 +309,11 @@ RefPtr<SharedBuffer> Editor::selectionInWebArchiveFormat()
     if (!archive)
         return nullptr;
     return SharedBuffer::wrapCFData(archive->rawDataRepresentation().get());
+}
+
+String Editor::selectionInHTMLFormat()
+{
+    return createMarkup(*selectedRange(), nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
 }
 
 RefPtr<SharedBuffer> Editor::imageInWebArchiveFormat(Element& imageElement)
@@ -393,6 +399,7 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
     content.dataInWebArchiveFormat = selectionInWebArchiveFormat();
     content.dataInRTFDFormat = [attributedString containsAttachments] ? dataInRTFDFormat(attributedString) : 0;
     content.dataInRTFFormat = dataInRTFFormat(attributedString);
+    content.dataInHTMLFormat = selectionInHTMLFormat();
     content.dataInStringFormat = stringSelectionForPasteboardWithImageAltText();
     client()->getClientPasteboardDataForRange(selectedRange().get(), content.clientTypes, content.clientData);
 

@@ -1167,6 +1167,7 @@ private:
             break;
         }
 
+        case PureGetById:
         case GetById:
         case GetByIdFlush: {
             // FIXME: This should be done in the ByteCodeParser based on reading the
@@ -1398,6 +1399,7 @@ private:
         case PhantomNewGeneratorFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
+        case PhantomCreateRest:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:
@@ -1710,12 +1712,11 @@ private:
             fixEdge<CellUse>(node->child1());
             break;
 
-        case CallDOM: {
-            int childIndex = 0;
-            DOMJIT::CallDOMPatchpoint* patchpoint = node->callDOMPatchpoint();
+        case CallDOMGetter: {
+            DOMJIT::CallDOMGetterPatchpoint* patchpoint = node->callDOMGetterData()->patchpoint;
+            fixEdge<CellUse>(node->child1()); // DOM.
             if (patchpoint->requireGlobalObject)
-                fixEdge<KnownCellUse>(m_graph.varArgChild(node, childIndex++)); // GlobalObject.
-            fixEdge<CellUse>(m_graph.varArgChild(node, childIndex++)); // DOM.
+                fixEdge<KnownCellUse>(node->child2()); // GlobalObject.
             break;
         }
 

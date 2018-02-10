@@ -24,8 +24,8 @@
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvert.h"
 #include "JSNode.h"
-#include "Node.h"
 #include "wtf/text/AtomicString.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
@@ -158,14 +158,14 @@ bool JSTestOverrideBuiltins::getOwnPropertySlotByIndex(JSObject* object, ExecSta
 
 template<> inline JSTestOverrideBuiltins* BindingCaller<JSTestOverrideBuiltins>::castForOperation(ExecState& state)
 {
-    return jsDynamicCast<JSTestOverrideBuiltins*>(state.thisValue());
+    return jsDynamicDowncast<JSTestOverrideBuiltins*>(state.thisValue());
 }
 
 EncodedJSValue jsTestOverrideBuiltinsConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestOverrideBuiltinsPrototype* domObject = jsDynamicCast<JSTestOverrideBuiltinsPrototype*>(JSValue::decode(thisValue));
+    JSTestOverrideBuiltinsPrototype* domObject = jsDynamicDowncast<JSTestOverrideBuiltinsPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestOverrideBuiltins::getConstructor(state->vm(), domObject->globalObject()));
@@ -176,7 +176,7 @@ bool setJSTestOverrideBuiltinsConstructor(ExecState* state, EncodedJSValue thisV
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestOverrideBuiltinsPrototype* domObject = jsDynamicCast<JSTestOverrideBuiltinsPrototype*>(JSValue::decode(thisValue));
+    JSTestOverrideBuiltinsPrototype* domObject = jsDynamicDowncast<JSTestOverrideBuiltinsPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -215,7 +215,7 @@ static inline JSC::EncodedJSValue jsTestOverrideBuiltinsPrototypeFunctionNamedIt
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto name = state->uncheckedArgument(0).toWTFString(state);
+    auto name = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     JSValue result = toJS(state, castedThis->globalObject(), impl.namedItem(WTFMove(name)));
     return JSValue::encode(result);
@@ -275,7 +275,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOv
 
 TestOverrideBuiltins* JSTestOverrideBuiltins::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestOverrideBuiltins*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestOverrideBuiltins*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

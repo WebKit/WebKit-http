@@ -22,8 +22,8 @@
 
 #pragma once
 
+#include "ExecutableInfo.h"
 #include "ExceptionHelpers.h"
-#include "Executable.h"
 #include "Lexer.h"
 #include "ModuleScopeData.h"
 #include "Nodes.h"
@@ -245,7 +245,7 @@ public:
             break;
 
         case SourceParseMode::AsyncFunctionBodyMode:
-            setIsAsyncArrowFunctionBody();
+            setIsAsyncFunctionBody();
             break;
 
         case SourceParseMode::GeneratorBodyMode:
@@ -1098,7 +1098,7 @@ private:
     {
         unsigned i = m_scopeStack.size() - 1;
         ASSERT(i < m_scopeStack.size() && m_scopeStack.size());
-        while (i && (!m_scopeStack[i].isFunctionBoundary() || m_scopeStack[i].isGeneratorBoundary() || m_scopeStack[i].isArrowFunctionBoundary()))
+        while (i && (!m_scopeStack[i].isFunctionBoundary() || m_scopeStack[i].isGeneratorBoundary() || m_scopeStack[i].isAsyncFunctionBoundary() || m_scopeStack[i].isArrowFunctionBoundary()))
             i--;
         // When reaching the top level scope (it can be non ordinary function scope), we return it.
         return ScopeRef(&m_scopeStack, i);
@@ -1165,7 +1165,7 @@ private:
 
         ASSERT(type == DeclarationType::LetDeclaration || type == DeclarationType::ConstDeclaration);
         // Lexical variables declared at a top level scope that shadow arguments or vars are not allowed.
-        if (m_statementDepth == 1 && (hasDeclaredParameter(*ident) || hasDeclaredVariable(*ident)))
+        if (!m_lexer->isReparsingFunction() && m_statementDepth == 1 && (hasDeclaredParameter(*ident) || hasDeclaredVariable(*ident)))
             return DeclarationResult::InvalidDuplicateDeclaration;
 
         return currentLexicalDeclarationScope()->declareLexicalVariable(ident, type == DeclarationType::ConstDeclaration, importType);
@@ -1222,9 +1222,22 @@ private:
 
     NEVER_INLINE bool hasDeclaredParameter(const Identifier& ident)
     {
+        // FIXME: hasDeclaredParameter() is not valid during reparsing of generator or async function bodies, because their formal
+        // parameters are declared in a scope unavailable during reparsing. Note that it is redundant to call this function during
+        // reparsing anyways, as the function is already guaranteed to be valid by the original parsing.
+        // https://bugs.webkit.org/show_bug.cgi?id=164087
+        ASSERT(!m_lexer->isReparsingFunction());
+
         unsigned i = m_scopeStack.size() - 1;
         ASSERT(i < m_scopeStack.size());
         while (!m_scopeStack[i].allowsVarDeclarations()) {
+            i--;
+            ASSERT(i < m_scopeStack.size());
+        }
+
+        if (m_scopeStack[i].isGeneratorBoundary() || m_scopeStack[i].isAsyncFunctionBoundary()) {
+            // The formal parameters which need to be verified for Generators and Async Function bodies occur
+            // in the outer wrapper function, so pick the outer scope here.
             i--;
             ASSERT(i < m_scopeStack.size());
         }
@@ -1288,9 +1301,9 @@ private:
     }
 
     void printUnexpectedTokenText(WTF::PrintStream&);
-    ALWAYS_INLINE StringView getToken() {
-        SourceProvider* sourceProvider = m_source->provider();
-        return sourceProvider->getRange(tokenStart(), tokenEndPosition().offset);
+    ALWAYS_INLINE StringView getToken()
+    {
+        return m_lexer->getToken(m_token);
     }
     
     ALWAYS_INLINE bool match(JSTokenType expected)
@@ -1382,7 +1395,18 @@ private:
     void endSwitch() { currentScope()->endSwitch(); }
     void setStrictMode() { currentScope()->setStrictMode(); }
     bool strictMode() { return currentScope()->strictMode(); }
-    bool isValidStrictMode() { return currentScope()->isValidStrictMode(); }
+    bool isValidStrictMode()
+    {
+        int i = m_scopeStack.size() - 1;
+        if (!m_scopeStack[i].isValidStrictMode())
+            return false;
+
+        // In the case of Generator or Async function bodies, also check the wrapper function, whose name or
+        // arguments may be invalid.
+        if (UNLIKELY((m_scopeStack[i].isGeneratorBoundary() || m_scopeStack[i].isAsyncFunctionBoundary()) && i))
+            return m_scopeStack[i - 1].isValidStrictMode();
+        return true;
+    }
     DeclarationResultMask declareParameter(const Identifier* ident) { return currentScope()->declareParameter(ident); }
     bool declareRestOrNormalParameter(const Identifier&, const Identifier**);
 
@@ -1850,7 +1874,7 @@ std::unique_ptr<ParsedNode> parse(
         return result;
     }
     ASSERT_WITH_MESSAGE(defaultConstructorKind == ConstructorKind::None, "BuiltinExecutables::createDefaultConstructor should always use a 8-bit string");
-    Parser<Lexer<UChar>> parser(vm, source, builtinMode, strictMode, scriptMode, parseMode, superBinding, defaultConstructorKind, derivedContextType, isEvalNode<ParsedNode>(), evalContextType);
+    Parser<Lexer<UChar>> parser(vm, source, builtinMode, strictMode, scriptMode, parseMode, superBinding, defaultConstructorKind, derivedContextType, isEvalNode<ParsedNode>(), evalContextType, debuggerParseData);
     std::unique_ptr<ParsedNode> result = parser.parse<ParsedNode>(error, name, parseMode);
     if (positionBeforeLastNewline)
         *positionBeforeLastNewline = parser.positionBeforeLastNewline();

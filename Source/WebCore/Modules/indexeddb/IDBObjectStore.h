@@ -29,6 +29,7 @@
 
 #include "ActiveDOMObject.h"
 #include "ExceptionOr.h"
+#include "IDBKeyPath.h"
 #include "IDBObjectStoreInfo.h"
 #include <wtf/HashSet.h>
 
@@ -61,7 +62,7 @@ public:
 
     const String& name() const;
     ExceptionOr<void> setName(const String&);
-    const IDBKeyPath& keyPath() const;
+    const Optional<IDBKeyPath>& keyPath() const;
     RefPtr<DOMStringList> indexNames() const;
     IDBTransaction& transaction();
     bool autoIncrement() const;
@@ -71,8 +72,10 @@ public:
         bool multiEntry;
     };
 
-    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, IDBKeyRange*, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, RefPtr<IDBKeyRange>, const String& direction);
     ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, JSC::JSValue key, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, RefPtr<IDBKeyRange>, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, JSC::JSValue key, const String& direction);
     ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, JSC::JSValue key);
     ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, IDBKeyRange*);
     ExceptionOr<Ref<IDBRequest>> add(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
@@ -80,11 +83,15 @@ public:
     ExceptionOr<Ref<IDBRequest>> deleteFunction(JSC::ExecState&, IDBKeyRange*);
     ExceptionOr<Ref<IDBRequest>> deleteFunction(JSC::ExecState&, JSC::JSValue key);
     ExceptionOr<Ref<IDBRequest>> clear(JSC::ExecState&);
-    ExceptionOr<Ref<IDBIndex>> createIndex(JSC::ExecState&, const String& name, const IDBKeyPath&, const IndexParameters&);
+    ExceptionOr<Ref<IDBIndex>> createIndex(JSC::ExecState&, const String& name, IDBKeyPath&&, const IndexParameters&);
     ExceptionOr<Ref<IDBIndex>> index(const String& name);
     ExceptionOr<void> deleteIndex(const String& name);
     ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, IDBKeyRange*);
     ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
 
     ExceptionOr<Ref<IDBRequest>> putForCursorUpdate(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
 
@@ -93,9 +100,10 @@ public:
 
     const IDBObjectStoreInfo& info() const { return m_info; }
 
-    void rollbackInfoForVersionChangeAbort();
+    void rollbackForVersionChangeAbort();
 
     void visitReferencedIndexes(JSC::SlotVisitor&) const;
+    void renameReferencedIndex(IDBIndex&, const String& newName);
 
 private:
     IDBObjectStore(ScriptExecutionContext&, const IDBObjectStoreInfo&, IDBTransaction&);

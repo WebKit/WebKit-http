@@ -33,6 +33,7 @@
 #include "APIFindMatchesClient.h"
 #include "APIFormClient.h"
 #include "APIFrameInfo.h"
+#include "APIFullscreenClient.h"
 #include "APIGeometry.h"
 #include "APIHistoryClient.h"
 #include "APIHitTestResult.h"
@@ -340,6 +341,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
     , m_treatsSHA1CertificatesAsInsecure(m_configuration->treatsSHA1SignedCertificatesAsInsecure())
+#if ENABLE(FULLSCREEN_API)
+    , m_fullscreenClient(std::make_unique<API::FullscreenClient>())
+#endif
 #if PLATFORM(IOS)
     , m_hasReceivedLayerTreeTransactionAfterDidCommitLoad(true)
     , m_firstLayerTreeTransactionIdAfterDidCommitLoad(0)
@@ -353,7 +357,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
     , m_userMediaPermissionRequestManager(*this)
-    , m_viewState(ViewState::NoFlags)
+    , m_activityState(ActivityState::NoFlags)
     , m_viewWasEverInWindow(false)
 #if PLATFORM(IOS)
     , m_alwaysRunsAtForegroundPriority(m_configuration->alwaysRunsAtForegroundPriority())
@@ -444,28 +448,27 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_suppressVisibilityUpdates(false)
     , m_autoSizingShouldExpandToViewHeight(false)
     , m_mediaVolume(1)
-    , m_muted(false)
     , m_mayStartMediaWhenInWindow(true)
-    , m_waitingForDidUpdateViewState(false)
+    , m_waitingForDidUpdateActivityState(false)
 #if PLATFORM(COCOA)
     , m_scrollPerformanceDataCollectionEnabled(false)
 #endif
     , m_scrollPinningBehavior(DoNotPin)
     , m_navigationID(0)
     , m_configurationPreferenceValues(m_configuration->preferenceValues())
-    , m_potentiallyChangedViewStateFlags(ViewState::NoFlags)
-    , m_viewStateChangeWantsSynchronousReply(false)
+    , m_potentiallyChangedActivityStateFlags(ActivityState::NoFlags)
+    , m_activityStateChangeWantsSynchronousReply(false)
     , m_weakPtrFactory(this)
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
     m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
 
-    updateViewState();
+    updateActivityState();
     updateThrottleState();
     updateHiddenPageThrottlingAutoIncreases();
     
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
-    m_layerHostingMode = m_viewState & ViewState::IsInWindow ? m_pageClient.viewLayerHostingMode() : LayerHostingMode::OutOfProcess;
+    m_layerHostingMode = m_activityState & ActivityState::IsInWindow ? m_pageClient.viewLayerHostingMode() : LayerHostingMode::OutOfProcess;
 #endif
 
     platformInitialize();
@@ -503,9 +506,9 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     }
 
 #if PLATFORM(COCOA)
-    const CFIndex viewStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
-    m_viewStateChangeDispatcher = std::make_unique<RunLoopObserver>(viewStateChangeRunLoopOrder, [this] {
-        this->dispatchViewStateChange();
+    const CFIndex activityStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
+    m_activityStateChangeDispatcher = std::make_unique<RunLoopObserver>(activityStateChangeRunLoopOrder, [this] {
+        this->dispatchActivityStateChange();
     });
 #endif
 }
@@ -717,7 +720,7 @@ void WebPageProxy::reattachToWebProcess()
     m_process->addExistingWebPage(this, m_pageID);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-    updateViewState();
+    updateActivityState();
     updateThrottleState();
 
     m_inspector = WebInspectorProxy::create(this);
@@ -1439,48 +1442,52 @@ void WebPageProxy::setSuppressVisibilityUpdates(bool flag)
 
     if (!m_suppressVisibilityUpdates) {
 #if PLATFORM(COCOA)
-        m_viewStateChangeDispatcher->schedule();
+        m_activityStateChangeDispatcher->schedule();
 #else
-        dispatchViewStateChange();
+        dispatchActivityStateChange();
 #endif
     }
 }
 
-void WebPageProxy::updateViewState(ViewState::Flags flagsToUpdate)
+void WebPageProxy::updateActivityState(ActivityState::Flags flagsToUpdate)
 {
-    m_viewState &= ~flagsToUpdate;
-    if (flagsToUpdate & ViewState::IsFocused && m_pageClient.isViewFocused())
-        m_viewState |= ViewState::IsFocused;
-    if (flagsToUpdate & ViewState::WindowIsActive && m_pageClient.isViewWindowActive())
-        m_viewState |= ViewState::WindowIsActive;
-    if (flagsToUpdate & ViewState::IsVisible && m_pageClient.isViewVisible())
-        m_viewState |= ViewState::IsVisible;
-    if (flagsToUpdate & ViewState::IsVisibleOrOccluded && m_pageClient.isViewVisibleOrOccluded())
-        m_viewState |= ViewState::IsVisibleOrOccluded;
-    if (flagsToUpdate & ViewState::IsInWindow && m_pageClient.isViewInWindow())
-        m_viewState |= ViewState::IsInWindow;
-    if (flagsToUpdate & ViewState::IsVisuallyIdle && m_pageClient.isVisuallyIdle())
-        m_viewState |= ViewState::IsVisuallyIdle;
+    m_activityState &= ~flagsToUpdate;
+    if (flagsToUpdate & ActivityState::IsFocused && m_pageClient.isViewFocused())
+        m_activityState |= ActivityState::IsFocused;
+    if (flagsToUpdate & ActivityState::WindowIsActive && m_pageClient.isViewWindowActive())
+        m_activityState |= ActivityState::WindowIsActive;
+    if (flagsToUpdate & ActivityState::IsVisible && m_pageClient.isViewVisible())
+        m_activityState |= ActivityState::IsVisible;
+    if (flagsToUpdate & ActivityState::IsVisibleOrOccluded && m_pageClient.isViewVisibleOrOccluded())
+        m_activityState |= ActivityState::IsVisibleOrOccluded;
+    if (flagsToUpdate & ActivityState::IsInWindow && m_pageClient.isViewInWindow())
+        m_activityState |= ActivityState::IsInWindow;
+    if (flagsToUpdate & ActivityState::IsVisuallyIdle && m_pageClient.isVisuallyIdle())
+        m_activityState |= ActivityState::IsVisuallyIdle;
+    if (flagsToUpdate & ActivityState::IsAudible && m_mediaState & MediaProducer::IsPlayingAudio && !(m_mutedState & MediaProducer::AudioIsMuted))
+        m_activityState |= ActivityState::IsAudible;
+    if (flagsToUpdate & ActivityState::IsLoading && m_pageLoadState.isLoading())
+        m_activityState |= ActivityState::IsLoading;
 }
 
-void WebPageProxy::viewStateDidChange(ViewState::Flags mayHaveChanged, bool wantsSynchronousReply, ViewStateChangeDispatchMode dispatchMode)
+void WebPageProxy::activityStateDidChange(ActivityState::Flags mayHaveChanged, bool wantsSynchronousReply, ActivityStateChangeDispatchMode dispatchMode)
 {
-    m_potentiallyChangedViewStateFlags |= mayHaveChanged;
-    m_viewStateChangeWantsSynchronousReply = m_viewStateChangeWantsSynchronousReply || wantsSynchronousReply;
+    m_potentiallyChangedActivityStateFlags |= mayHaveChanged;
+    m_activityStateChangeWantsSynchronousReply = m_activityStateChangeWantsSynchronousReply || wantsSynchronousReply;
 
-    if (m_suppressVisibilityUpdates && dispatchMode != ViewStateChangeDispatchMode::Immediate)
+    if (m_suppressVisibilityUpdates && dispatchMode != ActivityStateChangeDispatchMode::Immediate)
         return;
 
 #if PLATFORM(COCOA)
-    bool isNewlyInWindow = !isInWindow() && (mayHaveChanged & ViewState::IsInWindow) && m_pageClient.isViewInWindow();
-    if (dispatchMode == ViewStateChangeDispatchMode::Immediate || isNewlyInWindow) {
-        dispatchViewStateChange();
+    bool isNewlyInWindow = !isInWindow() && (mayHaveChanged & ActivityState::IsInWindow) && m_pageClient.isViewInWindow();
+    if (dispatchMode == ActivityStateChangeDispatchMode::Immediate || isNewlyInWindow) {
+        dispatchActivityStateChange();
         return;
     }
-    m_viewStateChangeDispatcher->schedule();
+    m_activityStateChangeDispatcher->schedule();
 #else
     UNUSED_PARAM(dispatchMode);
-    dispatchViewStateChange();
+    dispatchActivityStateChange();
 #endif
 }
 
@@ -1507,49 +1514,54 @@ void WebPageProxy::viewDidEnterWindow()
     }
 }
 
-void WebPageProxy::dispatchViewStateChange()
+void WebPageProxy::dispatchActivityStateChange()
 {
 #if PLATFORM(COCOA)
-    m_viewStateChangeDispatcher->invalidate();
+    m_activityStateChangeDispatcher->invalidate();
 #endif
 
     if (!isValid())
         return;
 
     // If the visibility state may have changed, then so may the visually idle & occluded agnostic state.
-    if (m_potentiallyChangedViewStateFlags & ViewState::IsVisible)
-        m_potentiallyChangedViewStateFlags |= ViewState::IsVisibleOrOccluded | ViewState::IsVisuallyIdle;
+    if (m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible)
+        m_potentiallyChangedActivityStateFlags |= ActivityState::IsVisibleOrOccluded | ActivityState::IsVisuallyIdle;
 
     // Record the prior view state, update the flags that may have changed,
     // and check which flags have actually changed.
-    ViewState::Flags previousViewState = m_viewState;
-    updateViewState(m_potentiallyChangedViewStateFlags);
-    ViewState::Flags changed = m_viewState ^ previousViewState;
+    ActivityState::Flags previousActivityState = m_activityState;
+    updateActivityState(m_potentiallyChangedActivityStateFlags);
+    ActivityState::Flags changed = m_activityState ^ previousActivityState;
 
-    bool isNowInWindow = (changed & ViewState::IsInWindow) && isInWindow();
+    bool isNowInWindow = (changed & ActivityState::IsInWindow) && isInWindow();
     // We always want to wait for the Web process to reply if we've been in-window before and are coming back in-window.
     if (m_viewWasEverInWindow && isNowInWindow && m_drawingArea->hasVisibleContent() && m_waitsForPaintAfterViewDidMoveToWindow)
-        m_viewStateChangeWantsSynchronousReply = true;
+        m_activityStateChangeWantsSynchronousReply = true;
 
     // Don't wait synchronously if the view state is not visible. (This matters in particular on iOS, where a hidden page may be suspended.)
-    if (!(m_viewState & ViewState::IsVisible))
-        m_viewStateChangeWantsSynchronousReply = false;
+    if (!(m_activityState & ActivityState::IsVisible))
+        m_activityStateChangeWantsSynchronousReply = false;
 
-    if (changed || m_viewStateChangeWantsSynchronousReply || !m_nextViewStateChangeCallbacks.isEmpty())
-        m_process->send(Messages::WebPage::SetViewState(m_viewState, m_viewStateChangeWantsSynchronousReply, m_nextViewStateChangeCallbacks), m_pageID);
+    if (changed || m_activityStateChangeWantsSynchronousReply || !m_nextActivityStateChangeCallbacks.isEmpty())
+        m_process->send(Messages::WebPage::SetActivityState(m_activityState, m_activityStateChangeWantsSynchronousReply, m_nextActivityStateChangeCallbacks), m_pageID);
 
-    m_nextViewStateChangeCallbacks.clear();
+    m_nextActivityStateChangeCallbacks.clear();
 
-    // This must happen after the SetViewState message is sent, to ensure the page visibility event can fire.
+    // This must happen after the SetActivityState message is sent, to ensure the page visibility event can fire.
     updateThrottleState();
 
     // If we've started the responsiveness timer as part of telling the web process to update the backing store
     // state, it might not send back a reply (since it won't paint anything if the web page is hidden) so we
     // stop the unresponsiveness timer here.
-    if ((changed & ViewState::IsVisible) && !isViewVisible())
+    if ((changed & ActivityState::IsVisible) && !isViewVisible())
         m_process->responsivenessTimer().stop();
 
-    if (changed & ViewState::IsInWindow) {
+#if ENABLE(POINTER_LOCK)
+    if ((changed & ActivityState::IsVisible) && !isViewVisible())
+        requestPointerUnlock();
+#endif
+
+    if (changed & ActivityState::IsInWindow) {
         if (isInWindow())
             viewDidEnterWindow();
         else
@@ -1558,18 +1570,12 @@ void WebPageProxy::dispatchViewStateChange()
 
     updateBackingStoreDiscardableState();
 
-    if (m_viewStateChangeWantsSynchronousReply)
-        waitForDidUpdateViewState();
+    if (m_activityStateChangeWantsSynchronousReply)
+        waitForDidUpdateActivityState();
 
-    m_potentiallyChangedViewStateFlags = ViewState::NoFlags;
-    m_viewStateChangeWantsSynchronousReply = false;
+    m_potentiallyChangedActivityStateFlags = ActivityState::NoFlags;
+    m_activityStateChangeWantsSynchronousReply = false;
     m_viewWasEverInWindow |= isNowInWindow;
-}
-
-void WebPageProxy::setPageActivityState(WebCore::PageActivityState::Flags activityState)
-{
-    m_activityState = activityState;
-    updateThrottleState();
 }
 
 bool WebPageProxy::isAlwaysOnLoggingAllowed() const
@@ -1588,13 +1594,15 @@ void WebPageProxy::updateThrottleState()
         m_preventProcessSuppressionCount = nullptr;
 
     // We should suppress if the page is not active, is visually idle, and supression is enabled.
-    bool pageShouldBeSuppressed = !m_activityState && processSuppressionEnabled && (m_viewState & ViewState::IsVisuallyIdle);
+    bool isLoading = m_activityState & ActivityState::IsLoading;
+    bool isPlayingAudio = m_activityState & ActivityState::IsAudible;
+    bool pageShouldBeSuppressed = !isLoading && !isPlayingAudio && processSuppressionEnabled && (m_activityState & ActivityState::IsVisuallyIdle);
     if (m_pageSuppressed != pageShouldBeSuppressed) {
         m_pageSuppressed = pageShouldBeSuppressed;
         m_process->send(Messages::WebPage::SetPageSuppressed(m_pageSuppressed), m_pageID);
     }
 
-    if (m_viewState & ViewState::IsVisuallyIdle)
+    if (m_activityState & ActivityState::IsVisuallyIdle)
         m_pageIsUserObservableCount = nullptr;
     else if (!m_pageIsUserObservableCount)
         m_pageIsUserObservableCount = m_process->processPool().userObservablePageCount();
@@ -1636,7 +1644,7 @@ void WebPageProxy::layerHostingModeDidChange()
     m_process->send(Messages::WebPage::SetLayerHostingMode(layerHostingMode), m_pageID);
 }
 
-void WebPageProxy::waitForDidUpdateViewState()
+void WebPageProxy::waitForDidUpdateActivityState()
 {
     if (!isValid())
         return;
@@ -1645,11 +1653,11 @@ void WebPageProxy::waitForDidUpdateViewState()
         return;
 
     // If we have previously timed out with no response from the WebProcess, don't block the UIProcess again until it starts responding.
-    if (m_waitingForDidUpdateViewState)
+    if (m_waitingForDidUpdateActivityState)
         return;
 
 #if PLATFORM(IOS)
-    // Hail Mary check. Should not be possible (dispatchViewStateChange should force async if not visible,
+    // Hail Mary check. Should not be possible (dispatchActivityStateChange should force async if not visible,
     // and if visible we should be holding an assertion) - but we should never block on a suspended process.
     if (!m_activityToken) {
         ASSERT_NOT_REACHED();
@@ -1657,9 +1665,9 @@ void WebPageProxy::waitForDidUpdateViewState()
     }
 #endif
 
-    m_waitingForDidUpdateViewState = true;
+    m_waitingForDidUpdateActivityState = true;
 
-    m_drawingArea->waitForDidUpdateViewState();
+    m_drawingArea->waitForDidUpdateActivityState();
 }
 
 IntSize WebPageProxy::viewSize() const
@@ -4151,17 +4159,19 @@ void WebPageProxy::setMediaVolume(float volume)
     m_process->send(Messages::WebPage::SetMediaVolume(volume), m_pageID);    
 }
 
-void WebPageProxy::setMuted(bool muted)
+void WebPageProxy::setMuted(WebCore::MediaProducer::MutedStateFlags state)
 {
-    if (m_muted == muted)
+    if (m_mutedState == state)
         return;
 
-    m_muted = muted;
+    m_mutedState = state;
 
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::SetMuted(muted), m_pageID);
+    m_process->send(Messages::WebPage::SetMuted(state), m_pageID);
+
+    activityStateDidChange(ActivityState::IsAudible);
 }
 
 #if ENABLE(MEDIA_SESSION)
@@ -4268,6 +4278,11 @@ WebInspectorProxy* WebPageProxy::inspector() const
 WebFullScreenManagerProxy* WebPageProxy::fullScreenManager()
 {
     return m_fullScreenManager.get();
+}
+
+void WebPageProxy::setFullscreenClient(std::unique_ptr<API::FullscreenClient> client)
+{
+    m_fullscreenClient = WTFMove(client);
 }
 #endif
     
@@ -5452,7 +5467,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     WebPageCreationParameters parameters;
 
     parameters.viewSize = m_pageClient.viewSize();
-    parameters.viewState = m_viewState;
+    parameters.activityState = m_activityState;
     parameters.drawingAreaType = m_drawingArea->type();
     parameters.store = preferencesStore();
     parameters.pageGroupData = m_pageGroup->data();
@@ -5480,7 +5495,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.viewScaleFactor = m_viewScaleFactor;
     parameters.topContentInset = m_topContentInset;
     parameters.mediaVolume = m_mediaVolume;
-    parameters.muted = m_muted;
+    parameters.muted = m_mutedState;
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
     parameters.minimumLayoutSize = m_minimumLayoutSize;
     parameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
@@ -6348,6 +6363,8 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state,
     MediaProducer::MediaStateFlags oldState = m_mediaState;
     m_mediaState = state;
 
+    activityStateDidChange(ActivityState::IsAudible);
+
     playingMediaMask |= MediaProducer::HasActiveMediaCaptureDevice;
     if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
         m_uiClient->isPlayingAudioDidChange(*this);
@@ -6461,7 +6478,7 @@ void* WebPageProxy::immediateActionAnimationControllerForHitTestResult(RefPtr<AP
     return m_pageClient.immediateActionAnimationControllerForHitTestResult(hitTestResult, type, userData);
 }
 
-void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHandler)())
+void WebPageProxy::installActivityStateChangeCompletionHandler(void (^completionHandler)())
 {
     if (!isValid()) {
         completionHandler();
@@ -6474,7 +6491,7 @@ void WebPageProxy::installViewStateChangeCompletionHandler(void (^completionHand
         Block_release(copiedCompletionHandler);
     }, m_process->throttler().backgroundActivityToken());
     uint64_t callbackID = m_callbacks.put(WTFMove(voidCallback));
-    m_nextViewStateChangeCallbacks.append(callbackID);
+    m_nextActivityStateChangeCallbacks.append(callbackID);
 }
 
 void WebPageProxy::handleAcceptedCandidate(WebCore::TextCheckingResult acceptedCandidate)
@@ -6620,5 +6637,37 @@ void WebPageProxy::setUserInterfaceLayoutDirection(WebCore::UserInterfaceLayoutD
 
     m_process->send(Messages::WebPage::SetUserInterfaceLayoutDirection(static_cast<uint32_t>(userInterfaceLayoutDirection)), m_pageID);
 }
+    
+#if ENABLE(POINTER_LOCK)
+void WebPageProxy::requestPointerLock()
+{
+    if (!isViewVisible()) {
+        m_process->send(Messages::WebPage::DidNotAcquirePointerLock(), m_pageID);
+        return;
+    }
+
+    didAllowPointerLock();
+}
+    
+void WebPageProxy::didAllowPointerLock()
+{
+    CGDisplayHideCursor(CGMainDisplayID());
+    CGAssociateMouseAndMouseCursorPosition(false);
+    m_process->send(Messages::WebPage::DidAcquirePointerLock(), m_pageID);
+}
+    
+void WebPageProxy::didDenyPointerLock()
+{
+    m_process->send(Messages::WebPage::DidNotAcquirePointerLock(), m_pageID);
+}
+
+void WebPageProxy::requestPointerUnlock()
+{
+    CGDisplayShowCursor(CGMainDisplayID());
+    CGAssociateMouseAndMouseCursorPosition(true);
+    m_process->send(Messages::WebPage::DidLosePointerLock(), m_pageID);
+}
+#endif
+
 
 } // namespace WebKit

@@ -108,7 +108,6 @@
 #include "markup.h"
 #include "npruntime_impl.h"
 #include "runtime_root.h"
-#include <bindings/ScriptValue.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
@@ -281,7 +280,7 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
     if (newDocument)
         newDocument->didBecomeCurrentDocumentInFrame();
 
-    InspectorInstrumentation::frameDocumentUpdated(this);
+    InspectorInstrumentation::frameDocumentUpdated(*this);
 }
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -604,6 +603,8 @@ int Frame::checkOverflowScroll(OverflowScrollAction action)
             selectionPosition.setY(view->scrollY() + view->visibleHeight() + scrollBoundsAdjustment);
         }
     }
+
+    Ref<Frame> protectedThis(*this);
 
     if (action == PerformOverflowScroll && (deltaX || deltaY)) {
         layer->scrollToOffset(layer->scrollOffset() + IntSize(deltaX, deltaY));

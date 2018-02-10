@@ -37,10 +37,7 @@
 
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
-#include "DocumentFragment.h"
 #include "Event.h"
-#include "HTMLDivElement.h"
-#include "HTMLSpanElement.h"
 #include "Logging.h"
 #include "NodeTraversal.h"
 #include "Text.h"
@@ -54,6 +51,12 @@ namespace WebCore {
 
 static const int invalidCueIndex = -1;
 
+const AtomicString& TextTrackCue::cueShadowPseudoId()
+{
+    static NeverDestroyed<const AtomicString> cue("cue", AtomicString::ConstructFromLiteral);
+    return cue;
+}
+
 TextTrackCue::TextTrackCue(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end)
     : m_startTime(start)
     , m_endTime(end)
@@ -65,10 +68,6 @@ TextTrackCue::TextTrackCue(ScriptExecutionContext& context, const MediaTime& sta
     , m_pauseOnExit(false)
 {
     ASSERT(m_scriptExecutionContext.isDocument());
-}
-
-TextTrackCue::~TextTrackCue()
-{
 }
 
 void TextTrackCue::willChange()
@@ -110,14 +109,8 @@ void TextTrackCue::setId(const String& id)
     didChange();
 }
 
-void TextTrackCue::setStartTime(double value, ExceptionCode& ec)
+void TextTrackCue::setStartTime(double value)
 {
-    // NaN, Infinity and -Infinity values should trigger a TypeError.
-    if (std::isinf(value) || std::isnan(value)) {
-        ec = TypeError;
-        return;
-    }
-    
     // TODO(93143): Add spec-compliant behavior for negative time values.
     if (m_startTime.toDouble() == value || value < 0)
         return;
@@ -132,14 +125,8 @@ void TextTrackCue::setStartTime(const MediaTime& value)
     didChange();
 }
     
-void TextTrackCue::setEndTime(double value, ExceptionCode& ec)
+void TextTrackCue::setEndTime(double value)
 {
-    // NaN, Infinity and -Infinity values should trigger a TypeError.
-    if (std::isinf(value) || std::isnan(value)) {
-        ec = TypeError;
-        return;
-    }
-
     // TODO(93143): Add spec-compliant behavior for negative time values.
     if (m_endTime.toDouble() == value || value < 0)
         return;

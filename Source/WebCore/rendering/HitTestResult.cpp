@@ -30,9 +30,7 @@
 #include "FrameSelection.h"
 #include "FrameTree.h"
 #include "HTMLAnchorElement.h"
-#include "HTMLAreaElement.h"
 #include "HTMLAttachmentElement.h"
-#include "HTMLAudioElement.h"
 #include "HTMLEmbedElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
@@ -127,7 +125,7 @@ static Node* moveOutOfUserAgentShadowTree(Node& node)
 {
     if (node.isInShadowTree()) {
         if (ShadowRoot* root = node.containingShadowRoot()) {
-            if (root->mode() == ShadowRoot::Mode::UserAgent)
+            if (root->mode() == ShadowRootMode::UserAgent)
                 return root->host();
         }
     }

@@ -143,11 +143,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'CSS').hasOwnProperty('get') is fal
 PASS Object.getOwnPropertyDescriptor(global, 'CSS').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'CSS').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'CSS').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').value is CSSCharsetRule
-PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'CSSCharsetRule').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'CSSFontFaceRule').value is CSSFontFaceRule
 PASS Object.getOwnPropertyDescriptor(global, 'CSSFontFaceRule').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'CSSFontFaceRule').hasOwnProperty('set') is false
@@ -1208,6 +1203,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'RTCIceCandidate').hasOwnProperty('
 PASS Object.getOwnPropertyDescriptor(global, 'RTCIceCandidate').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'RTCIceCandidate').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'RTCIceCandidate').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'RTCPeerConnection').value is RTCPeerConnection
+PASS Object.getOwnPropertyDescriptor(global, 'RTCPeerConnection').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'RTCPeerConnection').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'RTCPeerConnection').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'RTCPeerConnection').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'RTCRtpReceiver').value is RTCRtpReceiver
 PASS Object.getOwnPropertyDescriptor(global, 'RTCRtpReceiver').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'RTCRtpReceiver').hasOwnProperty('set') is false
@@ -2303,11 +2303,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').hasOwnPrope
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitAnimationEvent').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSFilterValue').value is WebKitCSSFilterValue
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSFilterValue').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSFilterValue').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSFilterValue').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSFilterValue').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSMatrix').value is WebKitCSSMatrix
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSMatrix').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSMatrix').hasOwnProperty('set') is false
@@ -2443,11 +2438,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'webkitOfflineAudioContext').hasOwn
 PASS Object.getOwnPropertyDescriptor(global, 'webkitOfflineAudioContext').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'webkitOfflineAudioContext').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'webkitOfflineAudioContext').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'webkitRTCPeerConnection').value is webkitRTCPeerConnection
-PASS Object.getOwnPropertyDescriptor(global, 'webkitRTCPeerConnection').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'webkitRTCPeerConnection').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'webkitRTCPeerConnection').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'webkitRTCPeerConnection').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'webkitURL').value is webkitURL
 PASS Object.getOwnPropertyDescriptor(global, 'webkitURL').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'webkitURL').hasOwnProperty('set') is false

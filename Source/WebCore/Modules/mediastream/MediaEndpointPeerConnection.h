@@ -43,19 +43,20 @@ namespace WebCore {
 
 class MediaStream;
 class MediaStreamTrack;
-class PeerMediaDescription;
 class SDPProcessor;
 
-typedef Vector<RefPtr<PeerMediaDescription>> MediaDescriptionVector;
-typedef Vector<RefPtr<RTCRtpSender>> RtpSenderVector;
-typedef Vector<RefPtr<RTCRtpTransceiver>> RtpTransceiverVector;
+struct PeerMediaDescription;
+
+using MediaDescriptionVector = Vector<PeerMediaDescription>;
+using RtpSenderVector = Vector<RefPtr<RTCRtpSender>>;
+using RtpTransceiverVector = Vector<RefPtr<RTCRtpTransceiver>>;
 
 class MediaEndpointPeerConnection : public PeerConnectionBackend, public MediaEndpointClient {
 public:
     MediaEndpointPeerConnection(PeerConnectionBackendClient*);
 
-    void createOffer(RTCOfferOptions&, PeerConnection::SessionDescriptionPromise&&) override;
-    void createAnswer(RTCAnswerOptions&, PeerConnection::SessionDescriptionPromise&&) override;
+    void createOffer(RTCOfferOptions&&, PeerConnection::SessionDescriptionPromise&&) override;
+    void createAnswer(RTCAnswerOptions&&, PeerConnection::SessionDescriptionPromise&&) override;
 
     void setLocalDescription(RTCSessionDescription&, PeerConnection::VoidPromise&&) override;
     RefPtr<RTCSessionDescription> localDescription() const override;
@@ -80,7 +81,7 @@ public:
     void stop() override;
 
     bool isNegotiationNeeded() const override { return m_negotiationNeeded; };
-    void markAsNeedingNegotiation();
+    void markAsNeedingNegotiation() override;
     void clearNegotiationNeededState() override { m_negotiationNeeded = false; };
 
     void emulatePlatformEvent(const String& action) override;
@@ -89,8 +90,8 @@ private:
     void runTask(Function<void ()>&&);
     void startRunningTasks();
 
-    void createOfferTask(RTCOfferOptions&, PeerConnection::SessionDescriptionPromise&);
-    void createAnswerTask(RTCAnswerOptions&, PeerConnection::SessionDescriptionPromise&);
+    void createOfferTask(const RTCOfferOptions&, PeerConnection::SessionDescriptionPromise&);
+    void createAnswerTask(const RTCAnswerOptions&, PeerConnection::SessionDescriptionPromise&);
 
     void setLocalDescriptionTask(RefPtr<RTCSessionDescription>&&, PeerConnection::VoidPromise&);
     void setRemoteDescriptionTask(RefPtr<RTCSessionDescription>&&, PeerConnection::VoidPromise&);
@@ -108,7 +109,7 @@ private:
 
     // MediaEndpointClient
     void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) override;
-    void gotIceCandidate(const String& mid, RefPtr<IceCandidate>&&) override;
+    void gotIceCandidate(const String& mid, IceCandidate&&) override;
     void doneGatheringCandidates(const String& mid) override;
     void iceTransportStateChanged(const String& mid, MediaEndpoint::IceTransportState) override;
 
@@ -119,8 +120,8 @@ private:
 
     std::unique_ptr<SDPProcessor> m_sdpProcessor;
 
-    Vector<RefPtr<MediaPayload>> m_defaultAudioPayloads;
-    Vector<RefPtr<MediaPayload>> m_defaultVideoPayloads;
+    Vector<MediaPayload> m_defaultAudioPayloads;
+    Vector<MediaPayload> m_defaultVideoPayloads;
 
     String m_cname;
     String m_iceUfrag;

@@ -23,13 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageThrottler_h
-#define PageThrottler_h
+#pragma once
 
+#include "ActivityState.h"
 #include "Timer.h"
-
 #include "UserActivity.h"
-#include "ViewState.h"
 #include <wtf/RefCounter.h>
 
 namespace WebCore {
@@ -42,15 +40,14 @@ typedef PageActivityCounter::Token PageActivityAssertionToken;
 
 struct PageActivityState {
     enum {
-        UserInputActivity = 1 << 0,
-        MediaActivity = 1 << 1,
-        PageLoadActivity = 1 << 2,
+        MediaActivity = 1 << 0,
+        PageLoadActivity = 1 << 1,
     };
 
     typedef unsigned Flags;
 
     static const Flags NoFlags = 0;
-    static const Flags AllFlags = UserInputActivity | MediaActivity | PageLoadActivity;
+    static const Flags AllFlags = MediaActivity | PageLoadActivity;
 };
 
 class PageThrottler {
@@ -58,7 +55,6 @@ class PageThrottler {
 public:
     PageThrottler(Page&);
 
-    void didReceiveUserInput() { m_userInputHysteresis.impulse(); }
     PageActivityState::Flags activityState() { return m_activityState; }
     void pluginDidEvaluateWhileAudioIsPlaying() { m_mediaActivityHysteresis.impulse(); }
     PageActivityAssertionToken mediaActivityToken();
@@ -71,12 +67,10 @@ private:
 
     Page& m_page;
     PageActivityState::Flags m_activityState { PageActivityState::NoFlags };
-    HysteresisActivity m_userInputHysteresis;
     HysteresisActivity m_mediaActivityHysteresis;
     HysteresisActivity m_pageLoadActivityHysteresis;
     PageActivityCounter m_mediaActivityCounter;
     PageActivityCounter m_pageLoadActivityCounter;
 };
 
-}
-#endif
+} // namespace WebCore

@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLConstructionSite_h
-#define HTMLConstructionSite_h
+#pragma once
 
 #include "FragmentScriptingPermission.h"
 #include "HTMLElementStack.h"
@@ -103,10 +102,8 @@ public:
     void insertCommentOnDocument(AtomicHTMLToken&);
     void insertCommentOnHTMLHtmlElement(AtomicHTMLToken&);
     void insertHTMLElement(AtomicHTMLToken&);
-#if ENABLE(CUSTOM_ELEMENTS)
     JSCustomElementInterface* insertHTMLElementOrFindCustomElementInterface(AtomicHTMLToken&);
     void insertCustomElement(Ref<Element>&&, const AtomicString& localName, Vector<Attribute>&);
-#endif
     void insertSelfClosingHTMLElement(AtomicHTMLToken&);
     void insertFormattingElement(AtomicHTMLToken&);
     void insertHTMLHeadElement(AtomicHTMLToken&);
@@ -225,5 +222,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

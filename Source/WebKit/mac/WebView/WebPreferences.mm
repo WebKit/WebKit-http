@@ -606,11 +606,10 @@ public:
 #endif
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitMediaCaptureRequiresSecureConnectionPreferenceKey,
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
-#if ENABLE(CUSTOM_ELEMENTS)
-        [NSNumber numberWithBool:NO], WebKitCustomElementsEnabledPreferenceKey,
-#endif
+        [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
@@ -2705,6 +2704,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
+}
+
+- (BOOL)mediaCaptureRequiresSecureConnection
+{
+    return [self _boolValueForKey:WebKitMediaCaptureRequiresSecureConnectionPreferenceKey];
+}
+
+- (void)setMediaCaptureRequiresSecureConnection:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaCaptureRequiresSecureConnectionPreferenceKey];
 }
 
 - (BOOL)shadowDOMEnabled

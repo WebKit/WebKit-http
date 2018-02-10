@@ -42,8 +42,7 @@
 
 namespace WebCore {
 
-const int InvalidPort = 0;
-const int MaxAllowedPort = 65535;
+const int MaxAllowedPort = std::numeric_limits<uint16_t>::max();
 
 static bool schemeRequiresHost(const URL& url)
 {
@@ -95,7 +94,7 @@ static bool shouldTreatAsUniqueOrigin(const URL& url)
     if (schemeRequiresHost(innerURL) && innerURL.host().isEmpty())
         return true;
 
-    if (SchemeRegistry::shouldTreatURLSchemeAsNoAccess(innerURL.protocol()))
+    if (SchemeRegistry::shouldTreatURLSchemeAsNoAccess(innerURL.protocol().toStringWithoutCopying()))
         return true;
 
     // This is the common case.
@@ -103,7 +102,7 @@ static bool shouldTreatAsUniqueOrigin(const URL& url)
 }
 
 SecurityOrigin::SecurityOrigin(const URL& url)
-    : m_protocol(url.protocol().isNull() ? emptyString() : url.protocol().convertToASCIILowercase())
+    : m_protocol(url.protocol().isNull() ? emptyString() : url.protocol().toString().convertToASCIILowercase())
     , m_host(url.host().isNull() ? emptyString() : url.host().convertToASCIILowercase())
     , m_port(url.port())
     , m_isUnique(false)
@@ -116,8 +115,8 @@ SecurityOrigin::SecurityOrigin(const URL& url)
     // document.domain starts as m_host, but can be set by the DOM.
     m_domain = m_host;
 
-    if (isDefaultPortForProtocol(m_port, m_protocol))
-        m_port = InvalidPort;
+    if (m_port && isDefaultPortForProtocol(m_port.value(), m_protocol))
+        m_port = Nullopt;
 
     // By default, only local SecurityOrigins can load local resources.
     m_canLoadLocalResources = isLocal();
@@ -130,7 +129,6 @@ SecurityOrigin::SecurityOrigin()
     : m_protocol(emptyString())
     , m_host(emptyString())
     , m_domain(emptyString())
-    , m_port(InvalidPort)
     , m_isUnique(true)
     , m_universalAccess(false)
     , m_domainWasSetInDOM(false)
@@ -203,11 +201,11 @@ void SecurityOrigin::setDomainFromDOM(const String& newDomain)
 bool SecurityOrigin::isSecure(const URL& url)
 {
     // Invalid URLs are secure, as are URLs which have a secure protocol.
-    if (!url.isValid() || SchemeRegistry::shouldTreatURLSchemeAsSecure(url.protocol()))
+    if (!url.isValid() || SchemeRegistry::shouldTreatURLSchemeAsSecure(url.protocol().toStringWithoutCopying()))
         return true;
 
     // URLs that wrap inner URLs are secure if those inner URLs are secure.
-    if (shouldUseInnerURL(url) && SchemeRegistry::shouldTreatURLSchemeAsSecure(extractInnerURL(url).protocol()))
+    if (shouldUseInnerURL(url) && SchemeRegistry::shouldTreatURLSchemeAsSecure(extractInnerURL(url).protocol().toStringWithoutCopying()))
         return true;
 
     return false;
@@ -334,7 +332,7 @@ bool SecurityOrigin::canDisplay(const URL& url) const
     if (isFeedWithNestedProtocolInHTTPFamily(url))
         return true;
 
-    String protocol = url.protocol();
+    String protocol = url.protocol().toString();
 
     if (SchemeRegistry::canDisplayOnlyIfCanRequest(protocol))
         return canRequest(url);
@@ -458,10 +456,46 @@ String SecurityOrigin::toRawString() const
 
     if (m_port) {
         result.append(':');
-        result.appendNumber(m_port);
+        result.appendNumber(m_port.value());
     }
 
     return result.toString();
+}
+
+static inline bool areOriginsMatching(const SecurityOrigin& origin1, const SecurityOrigin& origin2)
+{
+    if (origin1.isUnique() || origin2.isUnique())
+        return origin1.isUnique() == origin2.isUnique();
+
+    if (origin1.protocol() != origin2.protocol())
+        return false;
+
+    if (origin1.protocol() == "file")
+        return true;
+
+    if (origin1.host() != origin2.host())
+        return false;
+
+    return origin1.port() == origin2.port();
+}
+
+// This function mimics the result of string comparison of serialized origins
+bool originsMatch(const SecurityOrigin& origin1, const SecurityOrigin& origin2)
+{
+    if (&origin1 == &origin2)
+        return true;
+
+    bool result = areOriginsMatching(origin1, origin2);
+    ASSERT(result == (origin1.toString() == origin2.toString()));
+    return result;
+}
+
+bool originsMatch(const SecurityOrigin* origin1, const SecurityOrigin* origin2)
+{
+    if (!origin1 || !origin2)
+        return origin1 == origin2;
+
+    return originsMatch(*origin1, *origin2);
 }
 
 Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)
@@ -472,12 +506,12 @@ Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)
 static const char separatorCharacter = '_';
 
 RefPtr<SecurityOrigin> SecurityOrigin::maybeCreateFromDatabaseIdentifier(const String& databaseIdentifier)
-{ 
+{
     // Make sure there's a first separator
     size_t separator1 = databaseIdentifier.find(separatorCharacter);
     if (separator1 == notFound)
         return nullptr;
-        
+
     // Make sure there's a second separator
     size_t separator2 = databaseIdentifier.reverseFind(separatorCharacter);
     if (separator2 == notFound)
@@ -515,10 +549,8 @@ Ref<SecurityOrigin> SecurityOrigin::createFromDatabaseIdentifier(const String& d
     return create(URL());
 }
 
-Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, int port)
+Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, Optional<uint16_t> port)
 {
-    if (port < 0 || port > MaxAllowedPort)
-        return createUnique();
     String decodedHost = decodeURLEscapeSequences(host);
     auto origin = create(URL(URL(), protocol + "://" + host + "/"));
     origin->m_port = port;
@@ -540,7 +572,7 @@ String SecurityOrigin::databaseIdentifier() const
     stringBuilder.append(separatorCharacter);
     stringBuilder.append(encodeForFileName(m_host));
     stringBuilder.append(separatorCharacter);
-    stringBuilder.appendNumber(m_port);
+    stringBuilder.appendNumber(m_port.valueOr(0));
 
     return stringBuilder.toString();
 }

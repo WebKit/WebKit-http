@@ -25,7 +25,6 @@
  */
 
 #include "config.h"
-
 #include "FilterEffectRenderer.h"
 
 #include "CachedSVGDocument.h"
@@ -43,8 +42,6 @@
 #include "RenderLayer.h"
 #include "SVGElement.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
-#include "Settings.h"
-
 #include <algorithm>
 #include <wtf/MathExtras.h>
 
@@ -85,7 +82,7 @@ GraphicsContext* FilterEffectRenderer::inputContext()
     return sourceImage() ? &sourceImage()->context() : nullptr;
 }
 
-PassRefPtr<FilterEffect> FilterEffectRenderer::buildReferenceFilter(RenderElement* renderer, PassRefPtr<FilterEffect> previousEffect, ReferenceFilterOperation* filterOperation)
+RefPtr<FilterEffect> FilterEffectRenderer::buildReferenceFilter(RenderElement* renderer, PassRefPtr<FilterEffect> previousEffect, ReferenceFilterOperation* filterOperation)
 {
     if (!renderer)
         return nullptr;

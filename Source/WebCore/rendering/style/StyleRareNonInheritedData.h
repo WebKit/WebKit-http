@@ -96,11 +96,11 @@ public:
 #if ENABLE(FILTERS_LEVEL_2)
     bool hasBackdropFilters() const;
 #endif
-    bool hasOpacity() const { return opacity < 1; }
+    bool hasOpacity() const { return m_opacity < 1; }
 
     bool hasAnimationsOrTransitions() const { return m_animations || m_transitions; }
 
-    float opacity;
+    float m_opacity;
 
     float m_aspectRatioDenominator;
     float m_aspectRatioNumerator;
@@ -206,8 +206,6 @@ public:
     unsigned m_textCombine : 1; // CSS3 text-combine properties
 
     unsigned m_textDecorationStyle : 3; // TextDecorationStyle
-
-    unsigned m_runningAcceleratedAnimation : 1;
 
     unsigned m_aspectRatioType : 2;
 

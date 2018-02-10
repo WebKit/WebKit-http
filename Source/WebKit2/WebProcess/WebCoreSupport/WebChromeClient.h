@@ -191,6 +191,11 @@ private:
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
     void scheduleAnimation() override;
 #endif
+    
+#if ENABLE(POINTER_LOCK)
+    bool requestPointerLock() override;
+    void requestPointerUnlock() override;
+#endif
 
     void didAssociateFormControls(const Vector<RefPtr<WebCore::Element>>&) override;
     bool shouldNotifyOnFormChanges() override;
@@ -294,7 +299,6 @@ private:
     bool shouldUseTiledBackingForFrameView(const WebCore::FrameView*) const override;
 
     void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t) override;
-    void setPageActivityState(WebCore::PageActivityState::Flags) override;
 
 #if ENABLE(MEDIA_SESSION)
     void hasMediaSessionWithActiveMediaElementsDidChange(bool) override;

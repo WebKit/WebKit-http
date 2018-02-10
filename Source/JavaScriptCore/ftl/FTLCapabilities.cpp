@@ -176,6 +176,7 @@ inline CapabilityLevel canCompile(Node* node)
     case NewArrayWithSize:
     case TryGetById:
     case GetById:
+    case PureGetById:
     case GetByIdFlush:
     case GetByIdWithThis:
     case ToThis:
@@ -229,6 +230,7 @@ inline CapabilityLevel canCompile(Node* node)
     case MaterializeNewObject:
     case MaterializeCreateActivation:
     case PhantomDirectArguments:
+    case PhantomCreateRest:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
@@ -271,7 +273,7 @@ inline CapabilityLevel canCompile(Node* node)
     case DefineAccessorProperty:
     case ToLowerCase:
     case CheckDOM:
-    case CallDOM:
+    case CallDOMGetter:
         // These are OK.
         break;
 

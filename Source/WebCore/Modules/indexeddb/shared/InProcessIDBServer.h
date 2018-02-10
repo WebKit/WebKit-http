@@ -68,8 +68,10 @@ public:
     void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier) final;
     void createIndex(const IDBRequestData&, const IDBIndexInfo&) final;
     void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName) final;
+    void renameIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName) final;
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode) final;
     void getRecord(const IDBRequestData&, const IDBGetRecordData&) final;
+    void getAllRecords(const IDBRequestData&, const IDBGetAllRecordsData&) final;
     void getCount(const IDBRequestData&, const IDBKeyRangeData&) final;
     void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&) final;
     void openCursor(const IDBRequestData&, const IDBCursorInfo&) final;
@@ -94,8 +96,10 @@ public:
     void didClearObjectStore(const IDBResultData&) final;
     void didCreateIndex(const IDBResultData&) final;
     void didDeleteIndex(const IDBResultData&) final;
+    void didRenameIndex(const IDBResultData&) final;
     void didPutOrAdd(const IDBResultData&) final;
     void didGetRecord(const IDBResultData&) final;
+    void didGetAllRecords(const IDBResultData&) final;
     void didGetCount(const IDBResultData&) final;
     void didDeleteRecord(const IDBResultData&) final;
     void didOpenCursor(const IDBResultData&) final;

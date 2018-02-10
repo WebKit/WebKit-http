@@ -50,7 +50,6 @@
 #include "DOMPatchSupport.h"
 #include "DOMWindow.h"
 #include "Document.h"
-#include "DocumentFragment.h"
 #include "DocumentType.h"
 #include "Element.h"
 #include "Event.h"
@@ -85,7 +84,6 @@
 #include "RenderStyle.h"
 #include "RenderStyleConstants.h"
 #include "ScriptState.h"
-#include "Settings.h"
 #include "ShadowRoot.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
@@ -200,13 +198,18 @@ void RevalidateStyleAttributeTask::timerFired()
     m_elements.clear();
 }
 
-String InspectorDOMAgent::toErrorString(const ExceptionCode& ec)
+String InspectorDOMAgent::toErrorString(ExceptionCode ec)
 {
     if (ec) {
         ExceptionCodeDescription description(ec);
         return description.name;
     }
     return emptyString();
+}
+
+String InspectorDOMAgent::toErrorString(Exception&& exception)
+{
+    return ExceptionCodeDescription { exception.code() }.name;
 }
 
 InspectorDOMAgent::InspectorDOMAgent(WebAgentContext& context, InspectorPageAgent* pageAgent, InspectorOverlay* overlay)
@@ -530,15 +533,14 @@ void InspectorDOMAgent::querySelector(ErrorString& errorString, int nodeId, cons
         return;
     }
 
-    ExceptionCode ec = 0;
-    RefPtr<Element> element = downcast<ContainerNode>(*node).querySelector(selectors, ec);
-    if (ec) {
+    auto queryResult = downcast<ContainerNode>(*node).querySelector(selectors);
+    if (queryResult.hasException()) {
         errorString = ASCIILiteral("DOM Error while querying");
         return;
     }
 
-    if (element)
-        *elementId = pushNodePathToFrontend(element.get());
+    if (auto* element = queryResult.releaseReturnValue())
+        *elementId = pushNodePathToFrontend(element);
 }
 
 void InspectorDOMAgent::querySelectorAll(ErrorString& errorString, int nodeId, const String& selectors, RefPtr<Inspector::Protocol::Array<int>>& result)
@@ -551,15 +553,14 @@ void InspectorDOMAgent::querySelectorAll(ErrorString& errorString, int nodeId, c
         return;
     }
 
-    ExceptionCode ec = 0;
-    RefPtr<NodeList> nodes = downcast<ContainerNode>(*node).querySelectorAll(selectors, ec);
-    if (ec) {
+    auto queryResult = downcast<ContainerNode>(*node).querySelectorAll(selectors);
+    if (queryResult.hasException()) {
         errorString = ASCIILiteral("DOM Error while querying");
         return;
     }
 
+    auto nodes = queryResult.releaseReturnValue();
     result = Inspector::Protocol::Array<int>::create();
-
     for (unsigned i = 0; i < nodes->length(); ++i)
         result->addItem(pushNodePathToFrontend(nodes->item(i)));
 }
@@ -662,11 +663,10 @@ void InspectorDOMAgent::setAttributesAsText(ErrorString& errorString, int elemen
     if (!element)
         return;
 
-    RefPtr<HTMLElement> parsedElement = createHTMLElement(element->document(), spanTag);
-    ExceptionCode ec = 0;
-    parsedElement.get()->setInnerHTML("<span " + text + "></span>", ec);
-    if (ec) {
-        errorString = toErrorString(ec);
+    auto parsedElement = createHTMLElement(element->document(), spanTag);
+    auto result = parsedElement.get().setInnerHTML("<span " + text + "></span>");
+    if (result.hasException()) {
+        errorString = toErrorString(result.releaseException());
         return;
     }
 
@@ -726,10 +726,10 @@ void InspectorDOMAgent::setNodeName(ErrorString& errorString, int nodeId, const 
     if (!is<Element>(oldNode.get()))
         return;
 
-    ExceptionCode ec = 0;
-    auto newElement = oldNode->document().createElementForBindings(tagName, ec);
-    if (ec)
+    auto createElementResult = oldNode->document().createElementForBindings(tagName);
+    if (createElementResult.hasException())
         return;
+    auto newElement = createElementResult.releaseReturnValue();
 
     // Copy over the original node's attributes.
     newElement->cloneAttributesFromElement(downcast<Element>(*oldNode));
@@ -737,18 +737,18 @@ void InspectorDOMAgent::setNodeName(ErrorString& errorString, int nodeId, const 
     // Copy over the original node's children.
     RefPtr<Node> child;
     while ((child = oldNode->firstChild())) {
-        if (!m_domEditor->insertBefore(*newElement, *child, 0, errorString))
+        if (!m_domEditor->insertBefore(newElement, *child, 0, errorString))
             return;
     }
 
     // Replace the old node with the new node
     RefPtr<ContainerNode> parent = oldNode->parentNode();
-    if (!m_domEditor->insertBefore(*parent, *newElement, oldNode->nextSibling(), errorString))
+    if (!m_domEditor->insertBefore(*parent, newElement.copyRef(), oldNode->nextSibling(), errorString))
         return;
     if (!m_domEditor->removeChild(*parent, *oldNode, errorString))
         return;
 
-    *newId = pushNodePathToFrontend(newElement.get());
+    *newId = pushNodePathToFrontend(newElement.ptr());
     if (m_childrenRequested.contains(nodeId))
         pushChildNodesToFrontend(*newId);
 }
@@ -903,7 +903,7 @@ void InspectorDOMAgent::performSearch(ErrorString& errorString, const String& wh
             }
             finder.performSearch(node);
         }
-    } else if (m_document) {
+    } else {
         // There's no need to iterate the frames tree because
         // the search helper will go inside the frame owner elements.
         finder.performSearch(m_document.get());
@@ -1113,19 +1113,18 @@ void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const Inspec
         return;
     }
 
-    ExceptionCode ec = 0;
-    RefPtr<NodeList> nodes = document->querySelectorAll(selectorString, ec);
+    auto queryResult = document->querySelectorAll(selectorString);
     // FIXME: <https://webkit.org/b/146161> Web Inspector: DOM.highlightSelector should work for "a:visited"
-    if (ec) {
+    if (queryResult.hasException()) {
         errorString = ASCIILiteral("DOM Error while querying");
         return;
     }
 
-    std::unique_ptr<HighlightConfig> highlightConfig = highlightConfigFromInspectorObject(errorString, &highlightInspectorObject);
+    auto highlightConfig = highlightConfigFromInspectorObject(errorString, &highlightInspectorObject);
     if (!highlightConfig)
         return;
 
-    m_overlay->highlightNodeList(WTFMove(nodes), *highlightConfig);
+    m_overlay->highlightNodeList(queryResult.releaseReturnValue(), *highlightConfig);
 }
 
 void InspectorDOMAgent::highlightNode(ErrorString& errorString, const InspectorObject& highlightInspectorObject, const int* nodeId, const String* objectId)
@@ -1289,19 +1288,30 @@ static bool pseudoElementType(PseudoId pseudoId, Inspector::Protocol::DOM::Pseud
     }
 }
 
-static Inspector::Protocol::DOM::ShadowRootType shadowRootType(ShadowRoot::Mode mode)
+static Inspector::Protocol::DOM::ShadowRootType shadowRootType(ShadowRootMode mode)
 {
     switch (mode) {
-    case ShadowRoot::Mode::UserAgent:
+    case ShadowRootMode::UserAgent:
         return Inspector::Protocol::DOM::ShadowRootType::UserAgent;
-    case ShadowRoot::Mode::Closed:
+    case ShadowRootMode::Closed:
         return Inspector::Protocol::DOM::ShadowRootType::Closed;
-    case ShadowRoot::Mode::Open:
+    case ShadowRootMode::Open:
         return Inspector::Protocol::DOM::ShadowRootType::Open;
     }
 
     ASSERT_NOT_REACHED();
     return Inspector::Protocol::DOM::ShadowRootType::UserAgent;
+}
+
+static Inspector::Protocol::DOM::CustomElementState customElementState(const Element& element)
+{
+    if (element.isDefinedCustomElement())
+        return Inspector::Protocol::DOM::CustomElementState::Custom;
+    if (element.isFailedCustomElement())
+        return Inspector::Protocol::DOM::CustomElementState::Failed;
+    if (element.isUndefinedCustomElement() || element.isCustomElementUpgradeCandidate())
+        return Inspector::Protocol::DOM::CustomElementState::Waiting;
+    return Inspector::Protocol::DOM::CustomElementState::Builtin;
 }
 
 static String computeContentSecurityPolicySHA256Hash(const Element& element)
@@ -1390,6 +1400,10 @@ Ref<Inspector::Protocol::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* 
 
         if (is<HTMLStyleElement>(element) || (is<HTMLScriptElement>(element) && !element.hasAttributeWithoutSynchronization(HTMLNames::srcAttr)))
             value->setContentSecurityPolicyHash(computeContentSecurityPolicySHA256Hash(element));
+
+        auto state = customElementState(element);
+        if (state != Inspector::Protocol::DOM::CustomElementState::Builtin)
+            value->setCustomElementState(state);
 
         if (element.pseudoId()) {
             Inspector::Protocol::DOM::PseudoType pseudoType;
@@ -1501,7 +1515,7 @@ Ref<Inspector::Protocol::DOM::EventListener> InspectorDOMAgent::buildObjectForEv
         handler = scriptListener->jsFunction(&node->document());
         if (handler && state) {
             body = handler->toString(state)->value(state);
-            if (auto function = JSC::jsDynamicCast<JSC::JSFunction*>(handler)) {
+            if (auto function = jsDynamicDowncast<JSC::JSFunction*>(handler)) {
                 if (!function->isHostOrBuiltinFunction()) {
                     if (auto executable = function->jsExecutable()) {
                         lineNumber = executable->firstLine() - 1;
@@ -2076,15 +2090,22 @@ void InspectorDOMAgent::willPopShadowRoot(Element& host, ShadowRoot& root)
         m_frontendDispatcher->shadowRootPopped(hostId, rootId);
 }
 
-void InspectorDOMAgent::frameDocumentUpdated(Frame* frame)
+void InspectorDOMAgent::didChangeCustomElementState(Element& element)
 {
-    Document* document = frame->document();
+    int elementId = m_documentNodeToIdMap.get(&element);
+    if (!elementId)
+        return;
+
+    m_frontendDispatcher->customElementStateChanged(elementId, customElementState(element));
+}
+
+void InspectorDOMAgent::frameDocumentUpdated(Frame& frame)
+{
+    Document* document = frame.document();
     if (!document)
         return;
 
-    Page* page = frame->page();
-    ASSERT(page);
-    if (frame != &page->mainFrame())
+    if (!frame.isMainFrame())
         return;
 
     // Only update the main frame document, nested frame document updates are not required
@@ -2172,33 +2193,37 @@ void InspectorDOMAgent::pushNodeByPathToFrontend(ErrorString& errorString, const
 
 void InspectorDOMAgent::pushNodeByBackendIdToFrontend(ErrorString& errorString, BackendNodeId backendNodeId, int* nodeId)
 {
-    if (!m_backendIdToNode.contains(backendNodeId)) {
+    auto iterator = m_backendIdToNode.find(backendNodeId);
+    if (iterator == m_backendIdToNode.end()) {
         errorString = ASCIILiteral("No node with given backend id found");
         return;
     }
 
-    Node* node = m_backendIdToNode.get(backendNodeId).first;
-    String nodeGroup = m_backendIdToNode.get(backendNodeId).second;
+    Node* node = iterator->value.first;
+    String nodeGroup = iterator->value.second;
+
     *nodeId = pushNodePathToFrontend(node);
 
-    if (nodeGroup == "") {
-        m_backendIdToNode.remove(backendNodeId);
+    if (nodeGroup.isEmpty()) {
+        m_backendIdToNode.remove(iterator);
+        // FIXME: We really do the following only when nodeGroup is the empty string? Seems wrong.
+        ASSERT(m_nodeGroupToBackendIdMap.contains(nodeGroup));
         m_nodeGroupToBackendIdMap.find(nodeGroup)->value.remove(node);
     }
 }
 
 RefPtr<Inspector::Protocol::Runtime::RemoteObject> InspectorDOMAgent::resolveNode(Node* node, const String& objectGroup)
 {
-    Frame* frame = node->document().frame();
+    auto* frame = node->document().frame();
     if (!frame)
-        return 0;
+        return nullptr;
 
-    JSC::ExecState* scriptState = mainWorldExecState(frame);
-    InjectedScript injectedScript = m_injectedScriptManager.injectedScriptFor(scriptState);
+    auto& state = *mainWorldExecState(frame);
+    auto injectedScript = m_injectedScriptManager.injectedScriptFor(&state);
     if (injectedScript.hasNoValue())
-        return 0;
+        return nullptr;
 
-    return injectedScript.wrapObject(nodeAsScriptValue(*scriptState, node), objectGroup);
+    return injectedScript.wrapObject(nodeAsScriptValue(state, node), objectGroup);
 }
 
 Node* InspectorDOMAgent::scriptValueAsNode(JSC::JSValue value)
@@ -2210,11 +2235,8 @@ Node* InspectorDOMAgent::scriptValueAsNode(JSC::JSValue value)
 
 JSC::JSValue InspectorDOMAgent::nodeAsScriptValue(JSC::ExecState& state, Node* node)
 {
-    if (!shouldAllowAccessToNode(&state, node))
-        return JSC::jsNull();
-
     JSC::JSLockHolder lock(&state);
-    return toJS(&state, deprecatedGlobalObjectForPrototype(&state), node);
+    return toJS(&state, deprecatedGlobalObjectForPrototype(&state), BindingSecurity::checkSecurityForNode(state, node));
 }
 
 } // namespace WebCore

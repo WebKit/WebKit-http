@@ -527,8 +527,8 @@ public:
 
     const PseudoStyleCache* cachedPseudoStyles() const { return m_cachedPseudoStyles.get(); }
 
-    void setCustomPropertyValue(const AtomicString& name, const RefPtr<CSSValue>& value) { rareInheritedData.access()->m_customProperties.access()->setCustomPropertyValue(name, value); }
-    RefPtr<CSSValue> getCustomPropertyValue(const AtomicString& name) const { return rareInheritedData->m_customProperties->getCustomPropertyValue(name); }
+    void setCustomPropertyValue(const AtomicString& name, const RefPtr<CSSCustomPropertyValue>& value) { rareInheritedData.access()->m_customProperties.access()->setCustomPropertyValue(name, value); }
+    RefPtr<CSSCustomPropertyValue> getCustomPropertyValue(const AtomicString& name) const { return rareInheritedData->m_customProperties->getCustomPropertyValue(name); }
     bool hasCustomProperty(const AtomicString& name) const { return rareInheritedData->m_customProperties->hasCustomProperty(name); }
     const CustomPropertyValueMap& customProperties() const { return rareInheritedData->m_customProperties->m_values; }
 
@@ -907,7 +907,7 @@ public:
     void getTextShadowBlockDirectionExtent(LayoutUnit& logicalTop, LayoutUnit& logicalBottom) const { getShadowBlockDirectionExtent(textShadow(), logicalTop, logicalBottom); }
 
     float textStrokeWidth() const { return rareInheritedData->textStrokeWidth; }
-    float opacity() const { return rareNonInheritedData->opacity; }
+    float opacity() const { return rareNonInheritedData->m_opacity; }
     ControlPart appearance() const { return static_cast<ControlPart>(rareNonInheritedData->m_appearance); }
     AspectRatioType aspectRatioType() const { return static_cast<AspectRatioType>(rareNonInheritedData->m_aspectRatioType); }
     float aspectRatio() const { return aspectRatioNumerator() / aspectRatioDenominator(); }
@@ -1120,9 +1120,6 @@ public:
     const LengthSize& pageSize() const { return rareNonInheritedData->m_pageSize; }
     PageSizeType pageSizeType() const { return static_cast<PageSizeType>(rareNonInheritedData->m_pageSizeType); }
     
-    // When set, this ensures that styles compare as different. Used during accelerated animations.
-    bool isRunningAcceleratedAnimation() const { return rareNonInheritedData->m_runningAcceleratedAnimation; }
-
     LineBoxContain lineBoxContain() const { return rareInheritedData->m_lineBoxContain; }
     const LineClampValue& lineClamp() const { return rareNonInheritedData->lineClamp; }
     const IntSize& initialLetter() const { return rareNonInheritedData->m_initialLetter; }
@@ -1161,6 +1158,7 @@ public:
 
     WritingMode writingMode() const { return static_cast<WritingMode>(inherited_flags.m_writingMode); }
     bool isHorizontalWritingMode() const { return WebCore::isHorizontalWritingMode(writingMode()); }
+    bool isVerticalWritingMode() const { return WebCore::isVerticalWritingMode(writingMode()); }
     bool isFlippedLinesWritingMode() const { return WebCore::isFlippedLinesWritingMode(writingMode()); }
     bool isFlippedBlocksWritingMode() const { return WebCore::isFlippedWritingMode(writingMode()); }
 
@@ -1302,7 +1300,7 @@ public:
     void setBackgroundSizeLength(LengthSize size) { SET_VAR(m_background, m_background.m_sizeLength, WTFMove(size)); }
     
     void setBorderImage(const NinePieceImage& b) { SET_VAR(surround, border.m_image, b); }
-    void setBorderImageSource(PassRefPtr<StyleImage>);
+    void setBorderImageSource(RefPtr<StyleImage>&&);
     void setBorderImageSlices(LengthBox);
     void setBorderImageWidth(LengthBox);
     void setBorderImageOutset(LengthBox);
@@ -1442,10 +1440,10 @@ public:
         }
     }
 
-    void setMaskImage(PassRefPtr<StyleImage> v) { rareNonInheritedData.access()->m_mask.setImage(v); }
+    void setMaskImage(RefPtr<StyleImage>&& v) { rareNonInheritedData.access()->m_mask.setImage(WTFMove(v)); }
 
     void setMaskBoxImage(const NinePieceImage& b) { SET_VAR(rareNonInheritedData, m_maskBoxImage, b); }
-    void setMaskBoxImageSource(PassRefPtr<StyleImage> v) { rareNonInheritedData.access()->m_maskBoxImage.setImage(v); }
+    void setMaskBoxImageSource(RefPtr<StyleImage>&& v) { rareNonInheritedData.access()->m_maskBoxImage.setImage(WTFMove(v)); }
     void setMaskXPosition(Length length) { SET_VAR(rareNonInheritedData, m_mask.m_xPosition, WTFMove(length)); }
     void setMaskYPosition(Length length) { SET_VAR(rareNonInheritedData, m_mask.m_yPosition, WTFMove(length)); }
     void setMaskSize(LengthSize size) { SET_VAR(rareNonInheritedData, m_mask.m_sizeLength, WTFMove(size)); }
@@ -1461,7 +1459,7 @@ public:
     void setAspectRatioNumerator(float v) { SET_VAR(rareNonInheritedData, m_aspectRatioNumerator, v); }
 
     void setListStyleType(EListStyleType v) { inherited_flags._list_style_type = v; }
-    void setListStyleImage(PassRefPtr<StyleImage>);
+    void setListStyleImage(RefPtr<StyleImage>&&);
     void setListStylePosition(EListStylePosition v) { inherited_flags._list_style_position = v; }
 
     void resetMargin() { SET_VAR(surround, margin, LengthBox(Fixed)); }
@@ -1480,8 +1478,8 @@ public:
     void setPaddingRight(Length length) { SET_VAR(surround, padding.right(), WTFMove(length)); }
 
     void setCursor(ECursor c) { inherited_flags._cursor_style = c; }
-    void addCursor(PassRefPtr<StyleImage>, const IntPoint& hotSpot = IntPoint());
-    void setCursorList(PassRefPtr<CursorList>);
+    void addCursor(RefPtr<StyleImage>&&, const IntPoint& hotSpot = IntPoint());
+    void setCursorList(RefPtr<CursorList>&&);
     void clearCursorList();
 
 #if ENABLE(CURSOR_VISIBILITY)
@@ -1513,7 +1511,7 @@ public:
     void setTextStrokeColor(const Color& c) { SET_VAR(rareInheritedData, textStrokeColor, c); }
     void setTextStrokeWidth(float w) { SET_VAR(rareInheritedData, textStrokeWidth, w); }
     void setTextFillColor(const Color& c) { SET_VAR(rareInheritedData, textFillColor, c); }
-    void setOpacity(float f) { float v = clampTo<float>(f, 0, 1); SET_VAR(rareNonInheritedData, opacity, v); }
+    void setOpacity(float f) { float v = clampTo<float>(f, 0, 1); SET_VAR(rareNonInheritedData, m_opacity, v); }
     void setAppearance(ControlPart a) { SET_VAR(rareNonInheritedData, m_appearance, a); }
     // For valid values of box-align see http://www.w3.org/TR/2009/WD-css3-flexbox-20090723/#alignment
     void setBoxAlign(EBoxAlignment a) { SET_NESTED_VAR(rareNonInheritedData, m_deprecatedFlexibleBox, align, a); }
@@ -1528,7 +1526,7 @@ public:
     void setBoxOrient(EBoxOrient o) { SET_NESTED_VAR(rareNonInheritedData, m_deprecatedFlexibleBox, orient, o); }
     void setBoxPack(EBoxPack p) { SET_NESTED_VAR(rareNonInheritedData, m_deprecatedFlexibleBox, pack, p); }
     void setBoxShadow(std::unique_ptr<ShadowData>, bool add = false);
-    void setBoxReflect(PassRefPtr<StyleReflection> reflect) { if (rareNonInheritedData->m_boxReflect != reflect) rareNonInheritedData.access()->m_boxReflect = reflect; }
+    void setBoxReflect(RefPtr<StyleReflection>&& reflect) { if (rareNonInheritedData->m_boxReflect != reflect) rareNonInheritedData.access()->m_boxReflect = WTFMove(reflect); }
     void setBoxSizing(EBoxSizing s) { SET_VAR(m_box, m_boxSizing, s); }
     void setFlexGrow(float f) { SET_NESTED_VAR(rareNonInheritedData, m_flexibleBox, m_flexGrow, f); }
     void setFlexShrink(float f) { SET_NESTED_VAR(rareNonInheritedData, m_flexibleBox, m_flexShrink, f); }
@@ -1693,8 +1691,6 @@ public:
     void setPageSizeType(PageSizeType t) { SET_VAR(rareNonInheritedData, m_pageSizeType, t); }
     void resetPageSizeType() { SET_VAR(rareNonInheritedData, m_pageSizeType, PAGE_SIZE_AUTO); }
 
-    void setIsRunningAcceleratedAnimation(bool b = true) { SET_VAR(rareNonInheritedData, m_runningAcceleratedAnimation, b); }
-
     void setLineBoxContain(LineBoxContain c) { SET_VAR(rareInheritedData, m_lineBoxContain, c); }
     void setLineClamp(LineClampValue c) { SET_VAR(rareNonInheritedData, lineClamp, c); }
     
@@ -1792,11 +1788,11 @@ public:
     SVGLength kerning() const { return svgStyle().kerning(); }
     void setKerning(SVGLength k) { accessSVGStyle().setKerning(k); }
 
-    void setShapeOutside(PassRefPtr<ShapeValue> value)
+    void setShapeOutside(RefPtr<ShapeValue>&& value)
     {
         if (rareNonInheritedData->m_shapeOutside == value)
             return;
-        rareNonInheritedData.access()->m_shapeOutside = value;
+        rareNonInheritedData.access()->m_shapeOutside = WTFMove(value);
     }
     ShapeValue* shapeOutside() const { return rareNonInheritedData->m_shapeOutside.get(); }
 
@@ -1814,10 +1810,10 @@ public:
     }
     static float initialShapeImageThreshold() { return 0; }
 
-    void setClipPath(PassRefPtr<ClipPathOperation> operation)
+    void setClipPath(RefPtr<ClipPathOperation>&& operation)
     {
         if (rareNonInheritedData->m_clipPath != operation)
-            rareNonInheritedData.access()->m_clipPath = operation;
+            rareNonInheritedData.access()->m_clipPath = WTFMove(operation);
     }
     ClipPathOperation* clipPath() const { return rareNonInheritedData->m_clipPath.get(); }
 
@@ -1828,7 +1824,7 @@ public:
     bool contentDataEquivalent(const RenderStyle* otherStyle) const { return const_cast<RenderStyle*>(this)->rareNonInheritedData->contentDataEquivalent(*const_cast<RenderStyle*>(otherStyle)->rareNonInheritedData); }
     void clearContent();
     void setContent(const String&, bool add = false);
-    void setContent(PassRefPtr<StyleImage>, bool add = false);
+    void setContent(RefPtr<StyleImage>&&, bool add = false);
     void setContent(std::unique_ptr<CounterContent>, bool add = false);
     void setContent(QuoteType, bool add = false);
     void setContentAltText(const String&);
@@ -1841,10 +1837,10 @@ public:
     const CounterDirectives getCounterDirectives(const AtomicString& identifier) const;
 
     QuotesData* quotes() const { return rareInheritedData->quotes.get(); }
-    void setQuotes(PassRefPtr<QuotesData>);
+    void setQuotes(RefPtr<QuotesData>&&);
 
     WillChangeData* willChange() const { return rareNonInheritedData->m_willChange.get(); }
-    void setWillChange(PassRefPtr<WillChangeData>);
+    void setWillChange(RefPtr<WillChangeData>&&);
 
     bool willChangeCreatesStackingContext() const
     {

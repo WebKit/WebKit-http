@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "DOMJITCallDOMPatchpoint.h"
+#include "DOMJITCallDOMGetterPatchpoint.h"
 #include "PropertySlot.h"
 #include "PutPropertySlot.h"
 #include "SpeculatedType.h"
@@ -37,10 +37,11 @@ public:
     typedef PropertySlot::GetValueFunc CustomGetter;
     typedef PutPropertySlot::PutValueFunc CustomSetter;
 
-    GetterSetter(CustomGetter getter, CustomSetter setter, const ClassInfo* classInfo)
+    GetterSetter(CustomGetter getter, CustomSetter setter, const ClassInfo* classInfo, SpeculatedType resultType)
         : m_getter(getter)
         , m_setter(setter)
         , m_thisClassInfo(classInfo)
+        , m_resultType(resultType)
     {
     }
 
@@ -49,9 +50,10 @@ public:
     CustomGetter getter() const { return m_getter; }
     CustomSetter setter() const { return m_setter; }
     const ClassInfo* thisClassInfo() const { return m_thisClassInfo; }
+    SpeculatedType resultType() const { return m_resultType; }
 
 #if ENABLE(JIT)
-    virtual Ref<DOMJIT::CallDOMPatchpoint> callDOM() = 0;
+    virtual Ref<DOMJIT::CallDOMGetterPatchpoint> callDOMGetter() = 0;
     virtual Ref<DOMJIT::Patchpoint> checkDOM() = 0;
 #endif
 
@@ -59,6 +61,7 @@ private:
     CustomGetter m_getter;
     CustomSetter m_setter;
     const ClassInfo* m_thisClassInfo;
+    SpeculatedType m_resultType;
 };
 
 } }

@@ -24,12 +24,11 @@
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvert.h"
 #include "JSDOMIterator.h"
 #include "JSDOMPromise.h"
 #include "RuntimeEnabledFeatures.h"
-#include "URL.h"
 #include <runtime/Error.h>
-#include <runtime/JSString.h>
 #include <runtime/ObjectConstructor.h>
 #include <wtf/GetPtr.h>
 
@@ -169,12 +168,12 @@ JSObject* JSTestNode::prototype(VM& vm, JSGlobalObject* globalObject)
 
 template<> inline JSTestNode* BindingCaller<JSTestNode>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
-    return jsDynamicCast<JSTestNode*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestNode*>(JSValue::decode(thisValue));
 }
 
 template<> inline JSTestNode* BindingCaller<JSTestNode>::castForOperation(ExecState& state)
 {
-    return jsDynamicCast<JSTestNode*>(state.thisValue());
+    return jsDynamicDowncast<JSTestNode*>(state.thisValue());
 }
 
 static inline JSValue jsTestNodeNameGetter(ExecState&, JSTestNode&, ThrowScope& throwScope);
@@ -189,7 +188,7 @@ static inline JSValue jsTestNodeNameGetter(ExecState& state, JSTestNode& thisObj
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.name());
+    JSValue result = toJS<IDLDOMString>(state, impl.name());
     return result;
 }
 
@@ -197,7 +196,7 @@ EncodedJSValue jsTestNodeConstructor(ExecState* state, EncodedJSValue thisValue,
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestNodePrototype* domObject = jsDynamicCast<JSTestNodePrototype*>(JSValue::decode(thisValue));
+    JSTestNodePrototype* domObject = jsDynamicDowncast<JSTestNodePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestNode::getConstructor(state->vm(), domObject->globalObject()));
@@ -208,7 +207,7 @@ bool setJSTestNodeConstructor(ExecState* state, EncodedJSValue thisValue, Encode
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestNodePrototype* domObject = jsDynamicCast<JSTestNodePrototype*>(JSValue::decode(thisValue));
+    JSTestNodePrototype* domObject = jsDynamicDowncast<JSTestNodePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -229,7 +228,7 @@ static inline bool setJSTestNodeNameFunction(ExecState& state, JSTestNode& thisO
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = value.toWTFString(&state);
+    auto nativeValue = convert<IDLDOMString>(state, value, StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setName(WTFMove(nativeValue));
     return true;
@@ -265,8 +264,14 @@ static inline JSC::EncodedJSValue jsTestNodePrototypeFunctionTestWorkerPromiseCa
     return JSValue::encode(jsUndefined());
 }
 
-using TestNodeIterator = JSDOMIterator<JSTestNode>;
-using TestNodeIteratorPrototype = JSDOMIteratorPrototype<JSTestNode>;
+struct TestNodeIteratorTraits {
+    static constexpr JSDOMIteratorType type = JSDOMIteratorType::Set;
+    using KeyType = void;
+    using ValueType = IDLInterface<TestNode>;
+};
+
+using TestNodeIterator = JSDOMIterator<JSTestNode, TestNodeIteratorTraits>;
+using TestNodeIteratorPrototype = JSDOMIteratorPrototype<JSTestNode, TestNodeIteratorTraits>;
 
 template<>
 const JSC::ClassInfo TestNodeIterator::s_info = { "TestNode Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(TestNodeIterator) };
@@ -276,7 +281,7 @@ const JSC::ClassInfo TestNodeIteratorPrototype::s_info = { "TestNode Iterator", 
 
 static inline EncodedJSValue jsTestNodePrototypeFunctionSymbolIteratorCaller(ExecState*, JSTestNode* thisObject, JSC::ThrowScope&)
 {
-    return JSValue::encode(iteratorCreate<JSTestNode>(*thisObject, IterationKind::Value));
+    return JSValue::encode(iteratorCreate<TestNodeIterator>(*thisObject, IterationKind::Value));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionSymbolIterator(JSC::ExecState* state)
@@ -286,7 +291,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionSymbolIterator(JSC:
 
 static inline EncodedJSValue jsTestNodePrototypeFunctionEntriesCaller(ExecState*, JSTestNode* thisObject, JSC::ThrowScope&)
 {
-    return JSValue::encode(iteratorCreate<JSTestNode>(*thisObject, IterationKind::KeyValue));
+    return JSValue::encode(iteratorCreate<TestNodeIterator>(*thisObject, IterationKind::KeyValue));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionEntries(JSC::ExecState* state)
@@ -296,7 +301,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionEntries(JSC::ExecSt
 
 static inline EncodedJSValue jsTestNodePrototypeFunctionKeysCaller(ExecState*, JSTestNode* thisObject, JSC::ThrowScope&)
 {
-    return JSValue::encode(iteratorCreate<JSTestNode>(*thisObject, IterationKind::Key));
+    return JSValue::encode(iteratorCreate<TestNodeIterator>(*thisObject, IterationKind::Key));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionKeys(JSC::ExecState* state)
@@ -306,7 +311,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionKeys(JSC::ExecState
 
 static inline EncodedJSValue jsTestNodePrototypeFunctionValuesCaller(ExecState*, JSTestNode* thisObject, JSC::ThrowScope&)
 {
-    return JSValue::encode(iteratorCreate<JSTestNode>(*thisObject, IterationKind::Value));
+    return JSValue::encode(iteratorCreate<TestNodeIterator>(*thisObject, IterationKind::Value));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionValues(JSC::ExecState* state)
@@ -316,7 +321,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionValues(JSC::ExecSta
 
 static inline EncodedJSValue jsTestNodePrototypeFunctionForEachCaller(ExecState* state, JSTestNode* thisObject, JSC::ThrowScope& throwScope)
 {
-    return JSValue::encode(iteratorForEach<JSTestNode>(*state, *thisObject, throwScope));
+    return JSValue::encode(iteratorForEach<TestNodeIterator>(*state, *thisObject, throwScope));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestNodePrototypeFunctionForEach(JSC::ExecState* state)

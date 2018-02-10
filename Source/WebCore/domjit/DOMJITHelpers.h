@@ -27,17 +27,21 @@
 #pragma once
 
 #include "JSDOMWrapper.h"
+#include "ScriptWrappable.h"
 #include <domjit/DOMJITPatchpoint.h>
 #include <domjit/DOMJITPatchpointParams.h>
+#include <interpreter/FrameTracers.h>
 
 #if ENABLE(JIT)
 
-namespace WebCore {
-namespace DOMJITHelpers {
+namespace WebCore { namespace DOMJIT {
 
 using JSC::CCallHelpers;
 using JSC::GPRReg;
 using JSC::JSValueRegs;
+using JSC::MacroAssembler;
+
+static_assert(std::is_same<GPRReg, MacroAssembler::RegisterID>::value, "GPRReg is the alias to the MacroAssembler::RegisterID");
 
 inline CCallHelpers::Jump branchIfNotWorldIsNormal(CCallHelpers& jit, GPRReg globalObject)
 {
@@ -47,6 +51,16 @@ inline CCallHelpers::Jump branchIfNotWorldIsNormal(CCallHelpers& jit, GPRReg glo
 inline CCallHelpers::Jump branchIfNotWeakIsLive(CCallHelpers& jit, GPRReg weakImpl)
 {
     return jit.branchTestPtr(CCallHelpers::NonZero, CCallHelpers::Address(weakImpl, JSC::WeakImpl::offsetOfWeakHandleOwner()), CCallHelpers::TrustedImm32(JSC::WeakImpl::StateMask));
+}
+
+template<typename WrappedNode>
+JSC::EncodedJSValue JIT_OPERATION toWrapperSlow(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, void* result)
+{
+    ASSERT(exec);
+    ASSERT(result);
+    ASSERT(globalObject);
+    JSC::NativeCallFrameTracer tracer(&exec->vm(), exec);
+    return JSC::JSValue::encode(toJS(exec, static_cast<JSDOMGlobalObject*>(globalObject), *static_cast<WrappedNode*>(result)));
 }
 
 template<typename WrappedType>
@@ -96,6 +110,16 @@ inline CCallHelpers::Jump branchIfNotDOMWrapper(CCallHelpers& jit, GPRReg target
         CCallHelpers::TrustedImm32(JSC::JSType(JSDOMWrapperType)));
 }
 
+inline CCallHelpers::Jump branchIfEvent(CCallHelpers& jit, GPRReg target)
+{
+    return jit.branchIfType(target, JSC::JSType(JSEventType));
+}
+
+inline CCallHelpers::Jump branchIfNotEvent(CCallHelpers& jit, GPRReg target)
+{
+    return jit.branchIfNotType(target, JSC::JSType(JSEventType));
+}
+
 inline CCallHelpers::Jump branchIfNode(CCallHelpers& jit, GPRReg target)
 {
     return jit.branch8(
@@ -137,6 +161,9 @@ inline CCallHelpers::Jump branchIfNotDocumentWrapper(CCallHelpers& jit, GPRReg t
 {
     return jit.branchIfNotType(target, JSC::JSType(JSDocumentWrapperType));
 }
+
+void loadDocument(MacroAssembler&, GPRReg node, GPRReg output);
+void loadDocumentElement(MacroAssembler&, GPRReg document, GPRReg output);
 
 } }
 

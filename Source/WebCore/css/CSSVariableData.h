@@ -59,11 +59,16 @@ public:
 
     bool needsVariableResolution() const { return m_needsVariableResolution; }
 
+    bool checkVariablesForCycles(const AtomicString& name, CustomPropertyValueMap&, HashSet<AtomicString>& seenProperties, HashSet<AtomicString>& invalidProperties) const;
+
+    RefPtr<CSSVariableData> resolveVariableReferences(const CustomPropertyValueMap& customProperties) const;
+    bool resolveTokenRange(const CustomPropertyValueMap&, CSSParserTokenRange, Vector<CSSParserToken>&) const;
+
 private:
     CSSVariableData(const CSSParserTokenRange&, bool needsVariableResolution);
 
     // We can safely copy the tokens (which have raw pointers to substrings) because
-    // StylePropertySets contain references to CSSCustomPropertyDeclarations, which
+    // StylePropertySets contain references to CSSCustomPropertyValues, which
     // point to the unresolved CSSVariableData values that own the backing strings
     // this will potentially reference.
     CSSVariableData(const Vector<CSSParserToken>& resolvedTokens, String backingString)
@@ -74,6 +79,10 @@ private:
 
     void consumeAndUpdateTokens(const CSSParserTokenRange&);
     template<typename CharacterType> void updateTokens(const CSSParserTokenRange&);
+    
+    bool checkVariablesForCyclesWithRange(CSSParserTokenRange, CustomPropertyValueMap&, HashSet<AtomicString>& seenProperties, HashSet<AtomicString>& invalidProperties) const;
+    bool resolveVariableReference(const CustomPropertyValueMap&, CSSParserTokenRange, Vector<CSSParserToken>&) const;
+    bool resolveVariableFallback(const CustomPropertyValueMap&, CSSParserTokenRange, Vector<CSSParserToken>&) const;
 
     String m_backingString;
     Vector<CSSParserToken> m_tokens;

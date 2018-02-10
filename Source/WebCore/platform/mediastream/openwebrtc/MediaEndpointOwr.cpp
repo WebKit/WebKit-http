@@ -89,9 +89,9 @@ MediaEndpointOwr::~MediaEndpointOwr()
     g_regex_unref(m_helperServerRegEx);
 }
 
-void MediaEndpointOwr::setConfiguration(RefPtr<MediaEndpointConfiguration>&& configuration)
+void MediaEndpointOwr::setConfiguration(MediaEndpointConfiguration&& configuration)
 {
-    m_configuration = configuration;
+    m_configuration = WTFMove(configuration);
 }
 
 static void cryptoDataCallback(gchar* privateKey, gchar* certificate, gchar* fingerprint, gchar* fingerprintFunction, gpointer data)
@@ -110,26 +110,26 @@ MediaPayloadVector MediaEndpointOwr::getDefaultAudioPayloads()
     MediaPayloadVector payloads;
 
     // FIXME: This list should be based on what is available in the platform (bug: http://webkit.org/b/163723)
-    RefPtr<MediaPayload> payload = MediaPayload::create();
-    payload->setType(111);
-    payload->setEncodingName("OPUS");
-    payload->setClockRate(48000);
-    payload->setChannels(2);
-    payloads.append(payload);
+    MediaPayload payload1;
+    payload1.type = 111;
+    payload1.encodingName = "OPUS";
+    payload1.clockRate = 48000;
+    payload1.channels = 2;
+    payloads.append(WTFMove(payload1));
 
-    payload = MediaPayload::create();
-    payload->setType(8);
-    payload->setEncodingName("PCMA");
-    payload->setClockRate(8000);
-    payload->setChannels(1);
-    payloads.append(payload);
+    MediaPayload payload2;
+    payload2.type = 8;
+    payload2.encodingName = "PCMA";
+    payload2.clockRate = 8000;
+    payload2.channels = 1;
+    payloads.append(WTFMove(payload2));
 
-    payload = MediaPayload::create();
-    payload->setType(0);
-    payload->setEncodingName("PCMU");
-    payload->setClockRate(8000);
-    payload->setChannels(1);
-    payloads.append(payload);
+    MediaPayload payload3;
+    payload3.type = 0;
+    payload3.encodingName = "PCMU";
+    payload3.clockRate = 8000;
+    payload3.channels = 1;
+    payloads.append(WTFMove(payload3));
 
     return payloads;
 }
@@ -139,39 +139,40 @@ MediaPayloadVector MediaEndpointOwr::getDefaultVideoPayloads()
     MediaPayloadVector payloads;
 
     // FIXME: This list should be based on what is available in the platform (bug: http://webkit.org/b/163723)
-    RefPtr<MediaPayload> payload = MediaPayload::create();
-    payload->setType(103);
-    payload->setEncodingName("H264");
-    payload->setClockRate(90000);
-    payload->setCcmfir(true);
-    payload->setNackpli(true);
-    payload->addParameter("packetizationMode", 1);
-    payloads.append(payload);
+    MediaPayload payload1;
+    payload1.type = 103;
+    payload1.encodingName = "H264";
+    payload1.clockRate = 90000;
+    payload1.ccmfir = true;
+    payload1.nackpli = true;
+    payload1.addParameter("packetizationMode", 1);
+    payloads.append(WTFMove(payload1));
 
-    payload = MediaPayload::create();
-    payload->setType(100);
-    payload->setEncodingName("VP8");
-    payload->setClockRate(90000);
-    payload->setCcmfir(true);
-    payload->setNackpli(true);
-    payload->setNack(true);
-    payloads.append(payload);
+    MediaPayload payload2;
+    payload2.type = 100;
+    payload2.encodingName = "VP8";
+    payload2.clockRate = 90000;
+    payload2.ccmfir = true;
+    payload2.nackpli = true;
+    payload2.nack = true;
+    payloads.append(WTFMove(payload2));
 
-    payload = MediaPayload::create();
-    payload->setType(120);
-    payload->setEncodingName("RTX");
-    payload->setClockRate(90000);
-    payload->addParameter("apt", 100);
-    payload->addParameter("rtxTime", 200);
-    payloads.append(payload);
+    MediaPayload payload3;
+    payload3.type = 120;
+    payload3.encodingName = "RTX";
+    payload3.clockRate = 90000;
+    payload1.addParameter("apt", 100);
+    payload1.addParameter("rtxTime", 200);
+    payloads.append(WTFMove(payload3));
 
     return payloads;
 }
 
-static bool payloadsContainType(MediaPayloadVector payloads, unsigned payloadType)
+static bool payloadsContainType(const Vector<const MediaPayload*>& payloads, unsigned payloadType)
 {
-    for (auto& payload : payloads) {
-        if (payload->type() == payloadType)
+    for (auto payload : payloads) {
+        ASSERT(payload);
+        if (payload->type == payloadType)
             return true;
     }
     return false;
@@ -179,32 +180,32 @@ static bool payloadsContainType(MediaPayloadVector payloads, unsigned payloadTyp
 
 MediaPayloadVector MediaEndpointOwr::filterPayloads(const MediaPayloadVector& remotePayloads, const MediaPayloadVector& defaultPayloads)
 {
-    MediaPayloadVector filteredPayloads;
+    Vector<const MediaPayload*> filteredPayloads;
 
     for (auto& remotePayload : remotePayloads) {
-        MediaPayload* defaultPayload = nullptr;
+        const MediaPayload* defaultPayload = nullptr;
         for (auto& p : defaultPayloads) {
-            if (p->encodingName() == remotePayload->encodingName().convertToASCIIUppercase()) {
-                defaultPayload = p.get();
+            if (p.encodingName == remotePayload.encodingName.convertToASCIIUppercase()) {
+                defaultPayload = &p;
                 break;
             }
         }
         if (!defaultPayload)
             continue;
 
-        if (defaultPayload->parameters().contains("packetizationMode") && remotePayload->parameters().contains("packetizationMode")
-            && (defaultPayload->parameters().get("packetizationMode") != defaultPayload->parameters().get("packetizationMode")))
+        if (defaultPayload->parameters.contains("packetizationMode") && remotePayload.parameters.contains("packetizationMode")
+            && (defaultPayload->parameters.get("packetizationMode") != defaultPayload->parameters.get("packetizationMode")))
             continue;
 
-        filteredPayloads.append(remotePayload);
+        filteredPayloads.append(&remotePayload);
     }
 
     MediaPayloadVector filteredAptPayloads;
 
-    for (auto& filteredPayload : filteredPayloads) {
-        if (filteredPayload->parameters().contains("apt") && (!payloadsContainType(filteredPayloads, filteredPayload->parameters().get("apt"))))
+    for (auto filteredPayload : filteredPayloads) {
+        if (filteredPayload->parameters.contains("apt") && (!payloadsContainType(filteredPayloads, filteredPayload->parameters.get("apt"))))
             continue;
-        filteredAptPayloads.append(filteredPayload);
+        filteredAptPayloads.append(*filteredPayload);
     }
 
     return filteredAptPayloads;
@@ -216,8 +217,8 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateReceiveConfiguration(MediaEn
     for (unsigned i = m_transceivers.size(); i < configuration->mediaDescriptions().size(); ++i) {
         TransceiverConfig config;
         config.type = SessionTypeMedia;
-        config.isDtlsClient = configuration->mediaDescriptions()[i]->dtlsSetup() == "active";
-        config.mid = configuration->mediaDescriptions()[i]->mid();
+        config.isDtlsClient = configuration->mediaDescriptions()[i].dtlsSetup == "active";
+        config.mid = configuration->mediaDescriptions()[i].mid;
         transceiverConfigs.append(WTFMove(config));
     }
 
@@ -226,7 +227,7 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateReceiveConfiguration(MediaEn
     // Prepare the new sessions.
     for (unsigned i = m_numberOfReceivePreparedSessions; i < m_transceivers.size(); ++i) {
         OwrSession* session = m_transceivers[i]->session();
-        prepareMediaSession(OWR_MEDIA_SESSION(session), configuration->mediaDescriptions()[i].get(), isInitiator);
+        prepareMediaSession(OWR_MEDIA_SESSION(session), &configuration->mediaDescriptions()[i], isInitiator);
         owr_transport_agent_add_session(m_transportAgent, session);
     }
 
@@ -235,12 +236,12 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateReceiveConfiguration(MediaEn
     return UpdateResult::Success;
 }
 
-static RefPtr<MediaPayload> findRtxPayload(MediaPayloadVector payloads, unsigned apt)
+static const MediaPayload* findRtxPayload(const MediaPayloadVector& payloads, unsigned apt)
 {
     for (auto& payload : payloads) {
-        if (payload->encodingName().convertToASCIIUppercase() == "RTX" && payload->parameters().contains("apt")
-            && (payload->parameters().get("apt") == apt))
-            return payload;
+        if (payload.encodingName.convertToASCIIUppercase() == "RTX" && payload.parameters.contains("apt")
+            && (payload.parameters.get("apt") == apt))
+            return &payload;
     }
     return nullptr;
 }
@@ -251,35 +252,35 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateSendConfiguration(MediaEndpo
     for (unsigned i = m_transceivers.size(); i < configuration->mediaDescriptions().size(); ++i) {
         TransceiverConfig config;
         config.type = SessionTypeMedia;
-        config.isDtlsClient = configuration->mediaDescriptions()[i]->dtlsSetup() != "active";
-        config.mid = configuration->mediaDescriptions()[i]->mid();
+        config.isDtlsClient = configuration->mediaDescriptions()[i].dtlsSetup != "active";
+        config.mid = configuration->mediaDescriptions()[i].mid;
         transceiverConfigs.append(WTFMove(config));
     }
 
     ensureTransportAgentAndTransceivers(isInitiator, transceiverConfigs);
 
     for (unsigned i = 0; i < m_transceivers.size(); ++i) {
-        OwrSession* session = m_transceivers[i]->session();
-        PeerMediaDescription& mdesc = *configuration->mediaDescriptions()[i];
+        auto* session = m_transceivers[i]->session();
+        auto& mdesc = configuration->mediaDescriptions()[i];
 
-        if (mdesc.type() == "audio" || mdesc.type() == "video")
-            g_object_set(session, "rtcp-mux", mdesc.rtcpMux(), nullptr);
+        if (mdesc.type == "audio" || mdesc.type == "video")
+            g_object_set(session, "rtcp-mux", mdesc.rtcpMux, nullptr);
 
-        if (mdesc.iceCandidates().size()) {
-            for (auto& candidate : mdesc.iceCandidates())
-                internalAddRemoteCandidate(session, *candidate, mdesc.iceUfrag(), mdesc.icePassword());
+        if (mdesc.iceCandidates.size()) {
+            for (auto& candidate : mdesc.iceCandidates)
+                internalAddRemoteCandidate(session, candidate, mdesc.iceUfrag, mdesc.icePassword);
         }
 
         if (i < m_numberOfSendPreparedSessions)
             continue;
 
-        if (!sendSourceMap.contains(mdesc.mid()))
+        if (!sendSourceMap.contains(mdesc.mid))
             continue;
 
-        MediaPayload* payload = nullptr;
-        for (auto& p : mdesc.payloads()) {
-            if (p->encodingName().convertToASCIIUppercase() != "RTX") {
-                payload = p.get();
+        const MediaPayload* payload = nullptr;
+        for (auto& p : mdesc.payloads) {
+            if (p.encodingName.convertToASCIIUppercase() != "RTX") {
+                payload = &p;
                 break;
             }
         }
@@ -287,19 +288,19 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateSendConfiguration(MediaEndpo
         if (!payload)
             return UpdateResult::Failed;
 
-        RefPtr<MediaPayload> rtxPayload = findRtxPayload(mdesc.payloads(), payload->type());
-        RealtimeMediaSourceOwr* source = static_cast<RealtimeMediaSourceOwr*>(sendSourceMap.get(mdesc.mid()));
+        auto* rtxPayload = findRtxPayload(mdesc.payloads, payload->type);
+        auto* source = static_cast<RealtimeMediaSourceOwr*>(sendSourceMap.get(mdesc.mid));
 
-        ASSERT(codecTypes.find(payload->encodingName().convertToASCIIUppercase()) != notFound);
-        OwrCodecType codecType = static_cast<OwrCodecType>(codecTypes.find(payload->encodingName().convertToASCIIUppercase()));
+        ASSERT(codecTypes.find(payload->encodingName.convertToASCIIUppercase()) != notFound);
+        auto codecType = static_cast<OwrCodecType>(codecTypes.find(payload->encodingName.convertToASCIIUppercase()));
 
         OwrPayload* sendPayload;
-        if (mdesc.type() == "audio")
-            sendPayload = owr_audio_payload_new(codecType, payload->type(), payload->clockRate(), payload->channels());
+        if (mdesc.type == "audio")
+            sendPayload = owr_audio_payload_new(codecType, payload->type, payload->clockRate, payload->channels);
         else {
-            sendPayload = owr_video_payload_new(codecType, payload->type(), payload->clockRate(), payload->ccmfir(), payload->nackpli());
-            g_object_set(sendPayload, "rtx-payload-type", rtxPayload ? rtxPayload->type() : -1,
-                "rtx-time", rtxPayload && rtxPayload->parameters().contains("rtxTime") ? rtxPayload->parameters().get("rtxTime") : 0, nullptr);
+            sendPayload = owr_video_payload_new(codecType, payload->type, payload->clockRate, payload->ccmfir, payload->nackpli);
+            g_object_set(sendPayload, "rtx-payload-type", rtxPayload ? rtxPayload->type : -1,
+                "rtx-time", rtxPayload && rtxPayload->parameters.contains("rtxTime") ? rtxPayload->parameters.get("rtxTime") : 0, nullptr);
         }
 
         owr_media_session_set_send_payload(OWR_MEDIA_SESSION(session), sendPayload);
@@ -311,7 +312,7 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateSendConfiguration(MediaEndpo
     return UpdateResult::Success;
 }
 
-void MediaEndpointOwr::addRemoteCandidate(IceCandidate& candidate, const String& mid, const String& ufrag, const String& password)
+void MediaEndpointOwr::addRemoteCandidate(const IceCandidate& candidate, const String& mid, const String& ufrag, const String& password)
 {
     for (auto& transceiver : m_transceivers) {
         if (transceiver->mid() == mid) {
@@ -394,7 +395,7 @@ OwrTransceiver* MediaEndpointOwr::matchTransceiverByMid(const String& mid) const
     return nullptr;
 }
 
-void MediaEndpointOwr::dispatchNewIceCandidate(const String& mid, RefPtr<IceCandidate>&& iceCandidate)
+void MediaEndpointOwr::dispatchNewIceCandidate(const String& mid, IceCandidate&& iceCandidate)
 {
     m_client.gotIceCandidate(mid, WTFMove(iceCandidate));
 }
@@ -465,8 +466,8 @@ void MediaEndpointOwr::unmuteRemoteSource(const String& mid, OwrMediaSource* rea
 
 void MediaEndpointOwr::prepareSession(OwrSession* session, PeerMediaDescription* mediaDescription)
 {
-    g_object_set_data_full(G_OBJECT(session), "ice-ufrag", g_strdup(mediaDescription->iceUfrag().ascii().data()), g_free);
-    g_object_set_data_full(G_OBJECT(session), "ice-password", g_strdup(mediaDescription->icePassword().ascii().data()), g_free);
+    g_object_set_data_full(G_OBJECT(session), "ice-ufrag", g_strdup(mediaDescription->iceUfrag.ascii().data()), g_free);
+    g_object_set_data_full(G_OBJECT(session), "ice-password", g_strdup(mediaDescription->icePassword.ascii().data()), g_free);
 
     g_signal_connect(session, "on-new-candidate", G_CALLBACK(gotCandidate), this);
     g_signal_connect(session, "on-candidate-gathering-done", G_CALLBACK(candidateGatheringDone), this);
@@ -477,33 +478,33 @@ void MediaEndpointOwr::prepareMediaSession(OwrMediaSession* mediaSession, PeerMe
 {
     prepareSession(OWR_SESSION(mediaSession), mediaDescription);
 
-    bool useRtcpMux = !isInitiator && mediaDescription->rtcpMux();
+    bool useRtcpMux = !isInitiator && mediaDescription->rtcpMux;
     g_object_set(mediaSession, "rtcp-mux", useRtcpMux, nullptr);
 
-    if (!mediaDescription->cname().isEmpty() && mediaDescription->ssrcs().size()) {
-        g_object_set(mediaSession, "cname", mediaDescription->cname().ascii().data(),
-            "send-ssrc", mediaDescription->ssrcs()[0],
+    if (!mediaDescription->cname.isEmpty() && mediaDescription->ssrcs.size()) {
+        g_object_set(mediaSession, "cname", mediaDescription->cname.ascii().data(),
+            "send-ssrc", mediaDescription->ssrcs[0],
             nullptr);
     }
 
     g_signal_connect(mediaSession, "on-incoming-source", G_CALLBACK(gotIncomingSource), this);
 
-    for (auto& payload : mediaDescription->payloads()) {
-        if (payload->encodingName().convertToASCIIUppercase() == "RTX")
+    for (auto& payload : mediaDescription->payloads) {
+        if (payload.encodingName.convertToASCIIUppercase() == "RTX")
             continue;
 
-        RefPtr<MediaPayload> rtxPayload = findRtxPayload(mediaDescription->payloads(), payload->type());
+        auto* rtxPayload = findRtxPayload(mediaDescription->payloads, payload.type);
 
-        ASSERT(codecTypes.find(payload->encodingName()) != notFound);
-        OwrCodecType codecType = static_cast<OwrCodecType>(codecTypes.find(payload->encodingName().convertToASCIIUppercase()));
+        ASSERT(codecTypes.find(payload.encodingName) != notFound);
+        OwrCodecType codecType = static_cast<OwrCodecType>(codecTypes.find(payload.encodingName.convertToASCIIUppercase()));
 
         OwrPayload* receivePayload;
-        if (mediaDescription->type() == "audio")
-            receivePayload = owr_audio_payload_new(codecType, payload->type(), payload->clockRate(), payload->channels());
+        if (mediaDescription->type == "audio")
+            receivePayload = owr_audio_payload_new(codecType, payload.type, payload.clockRate, payload.channels);
         else {
-            receivePayload = owr_video_payload_new(codecType, payload->type(), payload->clockRate(), payload->ccmfir(), payload->nackpli());
-            g_object_set(receivePayload, "rtx-payload-type", rtxPayload ? rtxPayload->type() : -1,
-                "rtx-time", rtxPayload && rtxPayload->parameters().contains("rtxTime") ? rtxPayload->parameters().get("rtxTime") : 0, nullptr);
+            receivePayload = owr_video_payload_new(codecType, payload.type, payload.clockRate, payload.ccmfir, payload.nackpli);
+            g_object_set(receivePayload, "rtx-payload-type", rtxPayload ? rtxPayload->type : -1,
+                "rtx-time", rtxPayload && rtxPayload->parameters.contains("rtxTime") ? rtxPayload->parameters.get("rtxTime") : 0, nullptr);
         }
 
         owr_media_session_add_receive_payload(mediaSession, receivePayload);
@@ -552,8 +553,9 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
     if (!m_transportAgent) {
         m_transportAgent = owr_transport_agent_new(false);
 
-        for (auto& server : m_configuration->iceServers()) {
-            for (auto& webkitUrl : server->urls()) {
+        ASSERT(m_configuration);
+        for (auto& server : m_configuration->iceServers) {
+            for (auto& webkitUrl : server.urls) {
                 HelperServerUrl url;
                 // WebKit's URL class can't handle ICE helper server urls properly
                 parseHelperServerUrl(*m_helperServerRegEx, webkitUrl, url);
@@ -570,7 +572,7 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
 
                     owr_transport_agent_add_helper_server(m_transportAgent, serverType,
                         url.host.ascii().data(), port,
-                        server->username().ascii().data(), server->credential().ascii().data());
+                        server.username.ascii().data(), server.credential.ascii().data());
                 } else
                     ASSERT_NOT_REACHED();
             }
@@ -589,35 +591,35 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
     }
 }
 
-void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, IceCandidate& candidate, const String& ufrag, const String& password)
+void MediaEndpointOwr::internalAddRemoteCandidate(OwrSession* session, const IceCandidate& candidate, const String& ufrag, const String& password)
 {
     gboolean rtcpMux;
     g_object_get(session, "rtcp-mux", &rtcpMux, nullptr);
 
-    if (rtcpMux && candidate.componentId() == OWR_COMPONENT_TYPE_RTCP)
+    if (rtcpMux && candidate.componentId == OWR_COMPONENT_TYPE_RTCP)
         return;
 
-    ASSERT(candidateTypes.find(candidate.type()) != notFound);
+    ASSERT(candidateTypes.find(candidate.type) != notFound);
 
-    OwrCandidateType candidateType = static_cast<OwrCandidateType>(candidateTypes.find(candidate.type()));
-    OwrComponentType componentId = static_cast<OwrComponentType>(candidate.componentId());
+    OwrCandidateType candidateType = static_cast<OwrCandidateType>(candidateTypes.find(candidate.type));
+    OwrComponentType componentId = static_cast<OwrComponentType>(candidate.componentId);
     OwrTransportType transportType;
 
-    if (candidate.transport().convertToASCIIUppercase() == "UDP")
+    if (candidate.transport.convertToASCIIUppercase() == "UDP")
         transportType = OWR_TRANSPORT_TYPE_UDP;
     else {
-        ASSERT(candidateTcpTypes.find(candidate.tcpType()) != notFound);
-        transportType = static_cast<OwrTransportType>(candidateTcpTypes.find(candidate.tcpType()));
+        ASSERT(candidateTcpTypes.find(candidate.tcpType) != notFound);
+        transportType = static_cast<OwrTransportType>(candidateTcpTypes.find(candidate.tcpType));
     }
 
     OwrCandidate* owrCandidate = owr_candidate_new(candidateType, componentId);
     g_object_set(owrCandidate, "transport-type", transportType,
-        "address", candidate.address().ascii().data(),
-        "port", candidate.port(),
-        "base-address", candidate.relatedAddress().ascii().data(),
-        "base-port", candidate.relatedPort(),
-        "priority", candidate.priority(),
-        "foundation", candidate.foundation().ascii().data(),
+        "address", candidate.address.ascii().data(),
+        "port", candidate.port,
+        "base-address", candidate.relatedAddress.ascii().data(),
+        "base-port", candidate.relatedPort,
+        "priority", candidate.priority,
+        "foundation", candidate.foundation.ascii().data(),
         "ufrag", ufrag.ascii().data(),
         "password", password.ascii().data(),
         nullptr);
@@ -651,24 +653,24 @@ static void gotCandidate(OwrSession* session, OwrCandidate* candidate, MediaEndp
     ASSERT(candidateType >= 0 && candidateType < candidateTypes.size());
     ASSERT(transportType >= 0 && transportType < candidateTcpTypes.size());
 
-    RefPtr<IceCandidate> iceCandidate = IceCandidate::create();
-    iceCandidate->setType(candidateTypes[candidateType]);
-    iceCandidate->setFoundation(foundation);
-    iceCandidate->setComponentId(componentId);
-    iceCandidate->setPriority(priority);
-    iceCandidate->setAddress(address);
-    iceCandidate->setPort(port ? port : candidateDefaultPort);
+    IceCandidate iceCandidate;
+    iceCandidate.type = candidateTypes[candidateType];
+    iceCandidate.foundation = foundation;
+    iceCandidate.componentId = componentId;
+    iceCandidate.priority = priority;
+    iceCandidate.address = address;
+    iceCandidate.port = port ? port : candidateDefaultPort;
 
     if (transportType == OWR_TRANSPORT_TYPE_UDP)
-        iceCandidate->setTransport("UDP");
+        iceCandidate.transport = "UDP";
     else {
-        iceCandidate->setTransport("TCP");
-        iceCandidate->setTcpType(candidateTcpTypes[transportType]);
+        iceCandidate.transport = "TCP";
+        iceCandidate.tcpType = candidateTcpTypes[transportType];
     }
 
     if (candidateType != OWR_CANDIDATE_TYPE_HOST) {
-        iceCandidate->setRelatedAddress(relatedAddress);
-        iceCandidate->setRelatedPort(relatedPort ? relatedPort : candidateDefaultPort);
+        iceCandidate.relatedAddress = relatedAddress;
+        iceCandidate.relatedPort = relatedPort ? relatedPort : candidateDefaultPort;
     }
 
     g_object_set(G_OBJECT(candidate), "ufrag", g_object_get_data(G_OBJECT(session), "ice-ufrag"),

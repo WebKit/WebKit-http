@@ -30,6 +30,7 @@
 
 #include "CSSStyleSheet.h"
 #include "ElementTraversal.h"
+#include "ExceptionCode.h"
 #include "RenderElement.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SlotAssignment.h"
@@ -48,7 +49,7 @@ struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope {
 
 COMPILE_ASSERT(sizeof(ShadowRoot) == sizeof(SameSizeAsShadowRoot), shadowroot_should_stay_small);
 
-ShadowRoot::ShadowRoot(Document& document, Mode type)
+ShadowRoot::ShadowRoot(Document& document, ShadowRootMode type)
     : DocumentFragment(document, CreateShadowRoot)
     , TreeScope(*this, document)
     , m_type(type)
@@ -60,7 +61,7 @@ ShadowRoot::ShadowRoot(Document& document, Mode type)
 ShadowRoot::ShadowRoot(Document& document, std::unique_ptr<SlotAssignment>&& slotAssignment)
     : DocumentFragment(document, CreateShadowRoot)
     , TreeScope(*this, document)
-    , m_type(Mode::UserAgent)
+    , m_type(ShadowRootMode::UserAgent)
     , m_styleScope(std::make_unique<Style::Scope>(*this))
     , m_slotAssignment(WTFMove(slotAssignment))
 {
@@ -106,15 +107,14 @@ String ShadowRoot::innerHTML() const
     return createMarkup(*this, ChildrenOnly);
 }
 
-void ShadowRoot::setInnerHTML(const String& markup, ExceptionCode& ec)
+ExceptionOr<void> ShadowRoot::setInnerHTML(const String& markup)
 {
-    if (isOrphan()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    if (RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(*host(), markup, AllowScriptingContent, ec))
-        replaceChildrenWithFragment(*this, fragment.releaseNonNull(), ec);
+    if (isOrphan())
+        return Exception { INVALID_ACCESS_ERR };
+    auto fragment = createFragmentForInnerOuterHTML(*host(), markup, AllowScriptingContent);
+    if (fragment.hasException())
+        return fragment.releaseException();
+    return replaceChildrenWithFragment(*this, fragment.releaseReturnValue());
 }
 
 bool ShadowRoot::childTypeAllowed(NodeType type) const

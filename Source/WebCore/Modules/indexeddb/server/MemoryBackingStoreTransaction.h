@@ -52,8 +52,8 @@ public:
     MemoryBackingStoreTransaction(MemoryIDBBackingStore&, const IDBTransactionInfo&);
     ~MemoryBackingStoreTransaction();
 
-    bool isVersionChange() const { return m_info.mode() == IndexedDB::TransactionMode::VersionChange; }
-    bool isWriting() const { return m_info.mode() != IndexedDB::TransactionMode::ReadOnly; }
+    bool isVersionChange() const { return m_info.mode() == IDBTransactionMode::Versionchange; }
+    bool isWriting() const { return m_info.mode() != IDBTransactionMode::Readonly; }
     bool isAborting() const { return m_isAborting; }
 
     const IDBDatabaseInfo& originalDatabaseInfo() const;
@@ -65,6 +65,7 @@ public:
     void objectStoreDeleted(Ref<MemoryObjectStore>&&);
     void objectStoreCleared(MemoryObjectStore&, std::unique_ptr<KeyValueMap>&&, std::unique_ptr<std::set<IDBKeyData>>&&);
     void objectStoreRenamed(MemoryObjectStore&, const String& oldName);
+    void indexRenamed(MemoryIndex&, const String& oldName);
     void indexCleared(MemoryIndex&, std::unique_ptr<IndexValueStore>&&);
 
     void addNewIndex(MemoryIndex&);
@@ -97,6 +98,7 @@ private:
     HashMap<MemoryObjectStore*, std::unique_ptr<KeyValueMap>> m_clearedKeyValueMaps;
     HashMap<MemoryObjectStore*, std::unique_ptr<std::set<IDBKeyData>>> m_clearedOrderedKeys;
     HashMap<MemoryObjectStore*, String> m_originalObjectStoreNames;
+    HashMap<MemoryIndex*, String> m_originalIndexNames;
     HashMap<MemoryIndex*, std::unique_ptr<IndexValueStore>> m_clearedIndexValueStores;
 };
 

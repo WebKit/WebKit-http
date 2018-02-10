@@ -60,6 +60,7 @@
 #include "WebPageProxyMessages.h"
 #include "WebPopupMenuProxy.h"
 #include "WebProcessLifetimeTracker.h"
+#include <WebCore/ActivityState.h>
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
 #include <WebCore/EventTrackingRegions.h>
@@ -73,7 +74,6 @@
 #include <WebCore/TextChecking.h>
 #include <WebCore/TextGranularity.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
-#include <WebCore/ViewState.h>
 #include <WebCore/VisibleSelection.h>
 #include <memory>
 #include <wtf/HashMap.h>
@@ -127,6 +127,7 @@ class ContextMenuClient;
 class FindClient;
 class FindMatchesClient;
 class FormClient;
+class FullscreenClient;
 class HistoryClient;
 class LoaderClient;
 class Navigation;
@@ -329,6 +330,9 @@ public:
 
 #if ENABLE(FULLSCREEN_API)
     WebFullScreenManagerProxy* fullScreenManager();
+
+    API::FullscreenClient& fullscreenClient() const { return *m_fullscreenClient; }
+    void setFullscreenClient(std::unique_ptr<API::FullscreenClient>);
 #endif
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     WebPlaybackSessionManagerProxy* playbackSessionManager();
@@ -424,16 +428,16 @@ public:
     void setDelegatesScrolling(bool delegatesScrolling) { m_delegatesScrolling = delegatesScrolling; }
     bool delegatesScrolling() const { return m_delegatesScrolling; }
 
-    enum class ViewStateChangeDispatchMode { Deferrable, Immediate };
-    void viewStateDidChange(WebCore::ViewState::Flags mayHaveChanged, bool wantsSynchronousReply = false, ViewStateChangeDispatchMode = ViewStateChangeDispatchMode::Deferrable);
-    bool isInWindow() const { return m_viewState & WebCore::ViewState::IsInWindow; }
-    void waitForDidUpdateViewState();
-    void didUpdateViewState() { m_waitingForDidUpdateViewState = false; }
+    enum class ActivityStateChangeDispatchMode { Deferrable, Immediate };
+    void activityStateDidChange(WebCore::ActivityState::Flags mayHaveChanged, bool wantsSynchronousReply = false, ActivityStateChangeDispatchMode = ActivityStateChangeDispatchMode::Deferrable);
+    bool isInWindow() const { return m_activityState & WebCore::ActivityState::IsInWindow; }
+    void waitForDidUpdateActivityState();
+    void didUpdateActivityState() { m_waitingForDidUpdateActivityState = false; }
 
     void layerHostingModeDidChange();
 
     WebCore::IntSize viewSize() const;
-    bool isViewVisible() const { return m_viewState & WebCore::ViewState::IsVisible; }
+    bool isViewVisible() const { return m_activityState & WebCore::ActivityState::IsVisible; }
     bool isViewWindowActive() const;
 
     void addMIMETypeWithCustomContentProvider(const String& mimeType);
@@ -937,7 +941,7 @@ public:
     void printMainFrame();
     
     void setMediaVolume(float);
-    void setMuted(bool);
+    void setMuted(WebCore::MediaProducer::MutedStateFlags);
     void setMayStartMediaWhenInWindow(bool);
     bool mayStartMediaWhenInWindow() const { return m_mayStartMediaWhenInWindow; }
         
@@ -945,6 +949,11 @@ public:
     bool hasMediaSessionWithActiveMediaElements() const { return m_hasMediaSessionWithActiveMediaElements; }
     void handleMediaEvent(WebCore::MediaEventType);
     void setVolumeOfMediaElement(double, uint64_t);
+#endif
+        
+#if ENABLE(POINTER_LOCK)
+    void didAllowPointerLock();
+    void didDenyPointerLock();
 #endif
 
     // WebPopupMenuProxy::Client
@@ -1057,7 +1066,7 @@ public:
 
     void* immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>);
 
-    void installViewStateChangeCompletionHandler(void(^completionHandler)());
+    void installActivityStateChangeCompletionHandler(void(^completionHandler)());
 
     void handleAcceptedCandidate(WebCore::TextCheckingResult);
     void didHandleAcceptedCandidate();
@@ -1133,11 +1142,13 @@ public:
         
     WeakPtr<WebPageProxy> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
 
+    void isLoadingChanged() { activityStateDidChange(WebCore::ActivityState::IsLoading); }
+
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
     void platformInitialize();
 
-    void updateViewState(WebCore::ViewState::Flags flagsToUpdate = WebCore::ViewState::AllFlags);
+    void updateActivityState(WebCore::ActivityState::Flags flagsToUpdate = WebCore::ActivityState::AllFlags);
     void updateThrottleState();
     void updateHiddenPageThrottlingAutoIncreases();
 
@@ -1166,6 +1177,11 @@ private:
     void setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index) override;
 #if PLATFORM(GTK)
     void failedToShowPopupMenu() override;
+#endif
+
+#if ENABLE(POINTER_LOCK)
+    void requestPointerLock();
+    void requestPointerUnlock();
 #endif
 
     void didCreateMainFrame(uint64_t frameID);
@@ -1517,10 +1533,9 @@ private:
 
     WebPreferencesStore preferencesStore() const;
 
-    void dispatchViewStateChange();
+    void dispatchActivityStateChange();
     void viewDidLeaveWindow();
     void viewDidEnterWindow();
-    void setPageActivityState(WebCore::PageActivityState::Flags);
 
 #if PLATFORM(MAC)
     void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, const UserData&);
@@ -1594,6 +1609,7 @@ private:
 
 #if ENABLE(FULLSCREEN_API)
     RefPtr<WebFullScreenManagerProxy> m_fullScreenManager;
+    std::unique_ptr<API::FullscreenClient> m_fullscreenClient;
 #endif
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     RefPtr<WebPlaybackSessionManagerProxy> m_playbackSessionManager;
@@ -1642,7 +1658,7 @@ private:
 
     UserMediaPermissionRequestManagerProxy m_userMediaPermissionRequestManager;
 
-    WebCore::ViewState::Flags m_viewState;
+    WebCore::ActivityState::Flags m_activityState;
     bool m_viewWasEverInWindow;
 #if PLATFORM(IOS)
     bool m_allowsMediaDocumentInlinePlayback { false };
@@ -1714,7 +1730,6 @@ private:
     WebCore::PolicyAction m_syncNavigationActionPolicyAction;
     DownloadID m_syncNavigationActionPolicyDownloadID;
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
-    WebCore::PageActivityState::Flags m_activityState { WebCore::PageActivityState::NoFlags };
     bool m_pageSuppressed { false };
 
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
@@ -1842,17 +1857,17 @@ private:
     WebCore::IntSize m_minimumLayoutSize;
 
     float m_mediaVolume;
-    bool m_muted;
+    WebCore::MediaProducer::MutedStateFlags m_mutedState { WebCore::MediaProducer::NoneMuted };
     bool m_mayStartMediaWhenInWindow;
 
-    bool m_waitingForDidUpdateViewState;
+    bool m_waitingForDidUpdateActivityState;
 
     bool m_shouldScaleViewToFitDocument { false };
     bool m_suppressAutomaticNavigationSnapshotting { false };
 
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
-    std::unique_ptr<WebCore::RunLoopObserver> m_viewStateChangeDispatcher;
+    std::unique_ptr<WebCore::RunLoopObserver> m_activityStateChangeDispatcher;
 
     std::unique_ptr<RemoteLayerTreeScrollingPerformanceData> m_scrollingPerformanceData;
     bool m_scrollPerformanceDataCollectionEnabled;
@@ -1867,9 +1882,9 @@ private:
     uint64_t m_navigationID;
 
     WebPreferencesStore::ValueMap m_configurationPreferenceValues;
-    WebCore::ViewState::Flags m_potentiallyChangedViewStateFlags;
-    bool m_viewStateChangeWantsSynchronousReply;
-    Vector<uint64_t> m_nextViewStateChangeCallbacks;
+    WebCore::ActivityState::Flags m_potentiallyChangedActivityStateFlags;
+    bool m_activityStateChangeWantsSynchronousReply;
+    Vector<uint64_t> m_nextActivityStateChangeCallbacks;
 
     WebCore::MediaProducer::MediaStateFlags m_mediaState { WebCore::MediaProducer::IsNotPlaying };
 

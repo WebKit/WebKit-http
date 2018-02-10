@@ -795,7 +795,7 @@ bool RenderStyle::changeRequiresLayerRepaint(const RenderStyle& other, unsigned&
         return true;
 #endif
 
-    if (rareNonInheritedData->opacity != other.rareNonInheritedData->opacity) {
+    if (rareNonInheritedData->m_opacity != other.rareNonInheritedData->m_opacity) {
         changedContextSensitiveProperties |= ContextSensitivePropertyOpacity;
         // Don't return; keep looking for another change.
     }
@@ -945,27 +945,27 @@ void RenderStyle::setClip(Length top, Length right, Length bottom, Length left)
     data->clip.left() = left;
 }
 
-void RenderStyle::addCursor(PassRefPtr<StyleImage> image, const IntPoint& hotSpot)
+void RenderStyle::addCursor(RefPtr<StyleImage>&& image, const IntPoint& hotSpot)
 {
     if (!rareInheritedData.access()->cursorData)
         rareInheritedData.access()->cursorData = CursorList::create();
-    rareInheritedData.access()->cursorData->append(CursorData(image, hotSpot));
+    rareInheritedData.access()->cursorData->append(CursorData(WTFMove(image), hotSpot));
 }
 
-void RenderStyle::setCursorList(PassRefPtr<CursorList> other)
+void RenderStyle::setCursorList(RefPtr<CursorList>&& list)
 {
-    rareInheritedData.access()->cursorData = other;
+    rareInheritedData.access()->cursorData = WTFMove(list);
 }
 
-void RenderStyle::setQuotes(PassRefPtr<QuotesData> q)
+void RenderStyle::setQuotes(RefPtr<QuotesData>&& q)
 {
     if (rareInheritedData->quotes == q || (rareInheritedData->quotes && q && *rareInheritedData->quotes == *q))
         return;
 
-    rareInheritedData.access()->quotes = q;
+    rareInheritedData.access()->quotes = WTFMove(q);
 }
 
-void RenderStyle::setWillChange(PassRefPtr<WillChangeData> willChangeData)
+void RenderStyle::setWillChange(RefPtr<WillChangeData>&& willChangeData)
 {
     if (arePointingToEqualData(rareNonInheritedData->m_willChange.get(), willChangeData.get()))
         return;
@@ -998,7 +998,7 @@ void RenderStyle::appendContent(std::unique_ptr<ContentData> contentData)
         content = WTFMove(contentData);
 }
 
-void RenderStyle::setContent(PassRefPtr<StyleImage> image, bool add)
+void RenderStyle::setContent(RefPtr<StyleImage>&& image, bool add)
 {
     if (!image)
         return;
@@ -1008,7 +1008,7 @@ void RenderStyle::setContent(PassRefPtr<StyleImage> image, bool add)
         return;
     }
 
-    rareNonInheritedData.access()->m_content = std::make_unique<ImageContentData>(image);
+    rareNonInheritedData.access()->m_content = std::make_unique<ImageContentData>(WTFMove(image));
     if (!rareNonInheritedData.access()->m_altText.isNull())
         rareNonInheritedData.access()->m_content->setAltText(rareNonInheritedData.access()->m_altText);
 }
@@ -1179,10 +1179,10 @@ static RoundedRect::Radii calcRadiiFor(const BorderData& border, const LayoutSiz
 }
 
 StyleImage* RenderStyle::listStyleImage() const { return rareInheritedData->listStyleImage.get(); }
-void RenderStyle::setListStyleImage(PassRefPtr<StyleImage> v)
+void RenderStyle::setListStyleImage(RefPtr<StyleImage>&& v)
 {
     if (rareInheritedData->listStyleImage != v)
-        rareInheritedData.access()->listStyleImage = v;
+        rareInheritedData.access()->listStyleImage = WTFMove(v);
 }
 
 const Color& RenderStyle::color() const
@@ -1879,11 +1879,11 @@ std::pair<FontOrientation, NonCJKGlyphOrientation> RenderStyle::fontAndGlyphOrie
     }
 }
 
-void RenderStyle::setBorderImageSource(PassRefPtr<StyleImage> image)
+void RenderStyle::setBorderImageSource(RefPtr<StyleImage>&& image)
 {
     if (surround->border.m_image.image() == image.get())
         return;
-    surround.access()->border.m_image.setImage(image);
+    surround.access()->border.m_image.setImage(WTFMove(image));
 }
 
 void RenderStyle::setBorderImageSlices(LengthBox slices)
@@ -2036,10 +2036,10 @@ void RenderStyle::checkVariablesInCustomProperties()
     auto& customProperties = rareInheritedData.access()->m_customProperties.access()->values();
     HashSet<AtomicString> invalidProperties;
     for (auto entry : customProperties) {
-        if (!entry.value->isVariableDependentValue())
+        if (!entry.value->containsVariables())
             continue;
         HashSet<AtomicString> seenProperties;
-        downcast<CSSVariableDependentValue>(*entry.value).checkVariablesForCycles(entry.key, customProperties, seenProperties, invalidProperties);
+        entry.value->checkVariablesForCycles(entry.key, customProperties, seenProperties, invalidProperties);
     }
     
     // Now insert invalid values.
@@ -2053,20 +2053,15 @@ void RenderStyle::checkVariablesInCustomProperties()
     // invalid values if they failed, we can perform variable substitution on the valid values.
     Vector<Ref<CSSCustomPropertyValue>> resolvedValues;
     for (auto entry : customProperties) {
-        if (!entry.value->isVariableDependentValue())
+        if (!entry.value->containsVariables())
             continue;
-        
-        CSSParserValueList parserList;
-        if (!downcast<CSSVariableDependentValue>(*entry.value).valueList().buildParserValueListSubstitutingVariables(&parserList, customProperties))
-            resolvedValues.append(CSSCustomPropertyValue::create(entry.key, CSSCustomPropertyValue::createInvalid()));
-        else
-            resolvedValues.append(CSSCustomPropertyValue::create(entry.key, CSSValueList::createFromParserValueList(parserList)));
+        entry.value->resolveVariableReferences(customProperties, resolvedValues);
     }
     
     // With all results computed, we can now mutate our table to eliminate the variables and
     // hold the final values. This way when we inherit, we don't end up resubstituting variables, etc.
     for (auto& resolvedValue : resolvedValues)
-        customProperties.set(resolvedValue->name(), resolvedValue->value());
+        customProperties.set(resolvedValue->name(), resolvedValue.copyRef());
 
     rareInheritedData.access()->m_customProperties.access()->setContainsVariables(false);
 }

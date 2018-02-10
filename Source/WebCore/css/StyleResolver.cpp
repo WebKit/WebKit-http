@@ -56,6 +56,7 @@
 #include "CSSSelectorList.h"
 #include "CSSShadowValue.h"
 #include "CSSStyleRule.h"
+#include "CSSStyleSheet.h"
 #include "CSSSupportsRule.h"
 #include "CSSTimingFunctionValue.h"
 #include "CSSValueList.h"
@@ -76,15 +77,10 @@
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "HTMLDocument.h"
-#include "HTMLIFrameElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLMarqueeElement.h"
 #include "HTMLNames.h"
-#include "HTMLOptGroupElement.h"
-#include "HTMLOptionElement.h"
-#include "HTMLProgressElement.h"
 #include "HTMLSlotElement.h"
-#include "HTMLStyleElement.h"
 #include "HTMLTableElement.h"
 #include "HTMLTextAreaElement.h"
 #include "InspectorInstrumentation.h"
@@ -137,7 +133,6 @@
 #include "UserAgentStyleSheets.h"
 #include "ViewportStyleResolver.h"
 #include "VisitedLinkState.h"
-#include "WebKitCSSFilterValue.h"
 #include "WebKitCSSRegionRule.h"
 #include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
@@ -233,7 +228,7 @@ void StyleResolver::MatchResult::addMatchedProperties(const StyleProperties& pro
                     break;
                 }
 
-                if (value.isVariableDependentValue()) {
+                if (value.hasVariableReferences()) {
                     isCacheable = false;
                     break;
                 }
@@ -1292,7 +1287,7 @@ void extractDirectionAndWritingMode(const RenderStyle& style, const StyleResolve
     direction = style.direction();
     writingMode = style.writingMode();
 
-    bool hadImportantWebkitWritingMode = false;
+    bool hadImportantWritingMode = false;
     bool hadImportantDirection = false;
 
     for (const auto& matchedProperties : matchResult.matchedProperties()) {
@@ -1301,10 +1296,10 @@ void extractDirectionAndWritingMode(const RenderStyle& style, const StyleResolve
             if (!property.value()->isPrimitiveValue())
                 continue;
             switch (property.id()) {
-            case CSSPropertyWebkitWritingMode:
-                if (!hadImportantWebkitWritingMode || property.isImportant()) {
+            case CSSPropertyWritingMode:
+                if (!hadImportantWritingMode || property.isImportant()) {
                     writingMode = downcast<CSSPrimitiveValue>(*property.value());
-                    hadImportantWebkitWritingMode = property.isImportant();
+                    hadImportantWritingMode = property.isImportant();
                 }
                 break;
             case CSSPropertyDirection:
@@ -1586,8 +1581,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, SelectorChe
     State& state = m_state;
     
     RefPtr<CSSValue> valueToApply = value;
-    if (value->isVariableDependentValue()) {
-        valueToApply = resolvedVariableValue(id, *downcast<CSSVariableDependentValue>(value));
+    if (value->hasVariableReferences()) {
+        valueToApply = resolvedVariableValue(id, *value);
         if (!valueToApply) {
             if (CSSProperty::isInheritedProperty(id))
                 valueToApply = CSSValuePool::singleton().createInheritedValue();
@@ -1604,17 +1599,23 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, SelectorChe
     
     CSSValue* valueToCheckForInheritInitial = valueToApply.get();
     CSSCustomPropertyValue* customPropertyValue = nullptr;
+    CSSValueID customPropertyValueID = CSSValueInvalid;
     
     if (id == CSSPropertyCustom) {
+        // FIXME-NEWPARSER: Can clean this up once old parser is gone and remove
+        // the deprecatedValue call and the valueToCheckForInheritInitial variable.
         customPropertyValue = &downcast<CSSCustomPropertyValue>(*valueToApply);
-        valueToCheckForInheritInitial = customPropertyValue->value().get();
+        valueToCheckForInheritInitial = customPropertyValue->deprecatedValue().get();
+        customPropertyValueID = customPropertyValue->valueID();
+        if (customPropertyValueID != CSSValueInvalid)
+            valueToCheckForInheritInitial = valueToApply.get();
     }
 
-    bool isInherit = state.parentStyle() && valueToCheckForInheritInitial->isInheritedValue();
-    bool isInitial = valueToCheckForInheritInitial->isInitialValue() || (!state.parentStyle() && valueToCheckForInheritInitial->isInheritedValue());
+    bool isInherit = state.parentStyle() ? valueToCheckForInheritInitial->isInheritedValue() || customPropertyValueID == CSSValueInherit : false;
+    bool isInitial = valueToCheckForInheritInitial->isInitialValue() || customPropertyValueID == CSSValueInitial || (!state.parentStyle() && (valueToCheckForInheritInitial->isInheritedValue() || customPropertyValueID == CSSValueInherit));
     
-    bool isUnset = valueToCheckForInheritInitial->isUnsetValue();
-    bool isRevert = valueToCheckForInheritInitial->isRevertValue();
+    bool isUnset = valueToCheckForInheritInitial->isUnsetValue() || customPropertyValueID == CSSValueUnset;
+    bool isRevert = valueToCheckForInheritInitial->isRevertValue() || customPropertyValueID == CSSValueRevert;
 
     if (isRevert) {
         if (cascadeLevel() == UserAgentLevel || !matchResult)
@@ -1666,14 +1667,14 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, SelectorChe
     if (id == CSSPropertyCustom) {
         CSSCustomPropertyValue* customProperty = &downcast<CSSCustomPropertyValue>(*valueToApply);
         if (isInherit) {
-            RefPtr<CSSValue> customVal = state.parentStyle()->getCustomPropertyValue(customProperty->name());
+            RefPtr<CSSCustomPropertyValue> customVal = state.parentStyle()->getCustomPropertyValue(customProperty->name());
             if (!customVal)
                 customVal = CSSCustomPropertyValue::createInvalid();
             state.style()->setCustomPropertyValue(customProperty->name(), customVal);
         } else if (isInitial)
             state.style()->setCustomPropertyValue(customProperty->name(), CSSCustomPropertyValue::createInvalid());
         else
-            state.style()->setCustomPropertyValue(customProperty->name(), customProperty->value());
+            state.style()->setCustomPropertyValue(customProperty->name(), customProperty);
         return;
     }
 
@@ -1681,10 +1682,10 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, SelectorChe
     StyleBuilder::applyProperty(id, *this, *valueToApply, isInitial, isInherit);
 }
 
-RefPtr<CSSValue> StyleResolver::resolvedVariableValue(CSSPropertyID propID, const CSSVariableDependentValue& value)
+RefPtr<CSSValue> StyleResolver::resolvedVariableValue(CSSPropertyID propID, const CSSValue& value)
 {
     CSSParser parser(m_state.document());
-    return parser.parseVariableDependentValue(propID, value, m_state.style()->customProperties(), m_state.style()->direction(), m_state.style()->writingMode());
+    return parser.parseValueWithVariableReferences(propID, value, m_state.style()->customProperties(), m_state.style()->direction(), m_state.style()->writingMode());
 }
 
 RefPtr<StyleImage> StyleResolver::styleImage(CSSValue& value)
@@ -1817,6 +1818,8 @@ Color StyleResolver::colorFromPrimitiveValue(const CSSPrimitiveValue& value, boo
     case CSSValueWebkitFocusRingColor:
         return RenderTheme::focusRingColor();
     case CSSValueCurrentcolor:
+        // Color is an inherited property so depending on it effectively makes the property inherited.
+        state.style()->setHasExplicitlyInheritedProperties();
         return state.style()->color();
     default: {
         return StyleColor::colorFromKeyword(ident);
@@ -1838,34 +1841,35 @@ bool StyleResolver::hasMediaQueriesAffectedByViewportChange() const
     return false;
 }
 
-static FilterOperation::OperationType filterOperationForType(WebKitCSSFilterValue::FilterOperationType type)
+static FilterOperation::OperationType filterOperationForType(CSSValueID type)
 {
     switch (type) {
-    case WebKitCSSFilterValue::ReferenceFilterOperation:
+    case CSSValueUrl:
         return FilterOperation::REFERENCE;
-    case WebKitCSSFilterValue::GrayscaleFilterOperation:
+    case CSSValueGrayscale:
         return FilterOperation::GRAYSCALE;
-    case WebKitCSSFilterValue::SepiaFilterOperation:
+    case CSSValueSepia:
         return FilterOperation::SEPIA;
-    case WebKitCSSFilterValue::SaturateFilterOperation:
+    case CSSValueSaturate:
         return FilterOperation::SATURATE;
-    case WebKitCSSFilterValue::HueRotateFilterOperation:
+    case CSSValueHueRotate:
         return FilterOperation::HUE_ROTATE;
-    case WebKitCSSFilterValue::InvertFilterOperation:
+    case CSSValueInvert:
         return FilterOperation::INVERT;
-    case WebKitCSSFilterValue::OpacityFilterOperation:
+    case CSSValueOpacity:
         return FilterOperation::OPACITY;
-    case WebKitCSSFilterValue::BrightnessFilterOperation:
+    case CSSValueBrightness:
         return FilterOperation::BRIGHTNESS;
-    case WebKitCSSFilterValue::ContrastFilterOperation:
+    case CSSValueContrast:
         return FilterOperation::CONTRAST;
-    case WebKitCSSFilterValue::BlurFilterOperation:
+    case CSSValueBlur:
         return FilterOperation::BLUR;
-    case WebKitCSSFilterValue::DropShadowFilterOperation:
+    case CSSValueDropShadow:
         return FilterOperation::DROP_SHADOW;
-    case WebKitCSSFilterValue::UnknownFilterOperation:
-        return FilterOperation::NONE;
+    default:
+        break;
     }
+    ASSERT_NOT_REACHED();
     return FilterOperation::NONE;
 }
 
@@ -1885,21 +1889,12 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
 
     FilterOperations operations;
     for (auto& currentValue : downcast<CSSValueList>(inValue)) {
-        if (!is<WebKitCSSFilterValue>(currentValue.get()))
-            continue;
 
-        auto& filterValue = downcast<WebKitCSSFilterValue>(currentValue.get());
-        FilterOperation::OperationType operationType = filterOperationForType(filterValue.operationType());
-
-        if (operationType == FilterOperation::REFERENCE) {
-            if (filterValue.length() != 1)
-                continue;
-            auto& argument = *filterValue.itemWithoutBoundsCheck(0);
-
-            if (!is<CSSPrimitiveValue>(argument))
+        if (is<CSSPrimitiveValue>(currentValue.get())) {
+            auto& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
+            if (!primitiveValue.isURI())
                 continue;
 
-            auto& primitiveValue = downcast<CSSPrimitiveValue>(argument);
             String cssUrl = primitiveValue.stringValue();
             URL url = m_state.document().completeURL(cssUrl);
 
@@ -1908,29 +1903,36 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             continue;
         }
 
+        if (!is<CSSFunctionValue>(currentValue.get()))
+            continue;
+
+        auto& filterValue = downcast<CSSFunctionValue>(currentValue.get());
+        FilterOperation::OperationType operationType = filterOperationForType(filterValue.name());
+        auto args = filterValue.arguments();
+
         // Check that all parameters are primitive values, with the
         // exception of drop shadow which has a CSSShadowValue parameter.
         const CSSPrimitiveValue* firstValue = nullptr;
-        if (operationType != FilterOperation::DROP_SHADOW) {
+        if (args && operationType != FilterOperation::DROP_SHADOW) {
             bool haveNonPrimitiveValue = false;
-            for (unsigned j = 0; j < filterValue.length(); ++j) {
-                if (!is<CSSPrimitiveValue>(*filterValue.itemWithoutBoundsCheck(j))) {
+            for (unsigned j = 0; j < args->length(); ++j) {
+                if (!is<CSSPrimitiveValue>(*args->itemWithoutBoundsCheck(j))) {
                     haveNonPrimitiveValue = true;
                     break;
                 }
             }
             if (haveNonPrimitiveValue)
                 continue;
-            if (filterValue.length())
-                firstValue = downcast<CSSPrimitiveValue>(filterValue.itemWithoutBoundsCheck(0));
+            if (args->length())
+                firstValue = downcast<CSSPrimitiveValue>(args->itemWithoutBoundsCheck(0));
         }
 
-        switch (filterValue.operationType()) {
-        case WebKitCSSFilterValue::GrayscaleFilterOperation:
-        case WebKitCSSFilterValue::SepiaFilterOperation:
-        case WebKitCSSFilterValue::SaturateFilterOperation: {
+        switch (operationType) {
+        case FilterOperation::GRAYSCALE:
+        case FilterOperation::SEPIA:
+        case FilterOperation::SATURATE: {
             double amount = 1;
-            if (filterValue.length() == 1) {
+            if (args && args->length() == 1) {
                 amount = firstValue->doubleValue();
                 if (firstValue->isPercentage())
                     amount /= 100;
@@ -1939,20 +1941,20 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             operations.operations().append(BasicColorMatrixFilterOperation::create(amount, operationType));
             break;
         }
-        case WebKitCSSFilterValue::HueRotateFilterOperation: {
+        case FilterOperation::HUE_ROTATE: {
             double angle = 0;
-            if (filterValue.length() == 1)
+            if (args && args->length() == 1)
                 angle = firstValue->computeDegrees();
 
             operations.operations().append(BasicColorMatrixFilterOperation::create(angle, operationType));
             break;
         }
-        case WebKitCSSFilterValue::InvertFilterOperation:
-        case WebKitCSSFilterValue::BrightnessFilterOperation:
-        case WebKitCSSFilterValue::ContrastFilterOperation:
-        case WebKitCSSFilterValue::OpacityFilterOperation: {
-            double amount = (filterValue.operationType() == WebKitCSSFilterValue::BrightnessFilterOperation) ? 0 : 1;
-            if (filterValue.length() == 1) {
+        case FilterOperation::INVERT:
+        case FilterOperation::BRIGHTNESS:
+        case FilterOperation::CONTRAST:
+        case FilterOperation::OPACITY: {
+            double amount = (operationType == FilterOperation::BRIGHTNESS) ? 0 : 1;
+            if (args && args->length() == 1) {
                 amount = firstValue->doubleValue();
                 if (firstValue->isPercentage())
                     amount /= 100;
@@ -1961,9 +1963,9 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             operations.operations().append(BasicComponentTransferFilterOperation::create(amount, operationType));
             break;
         }
-        case WebKitCSSFilterValue::BlurFilterOperation: {
+        case FilterOperation::BLUR: {
             Length stdDeviation = Length(0, Fixed);
-            if (filterValue.length() >= 1)
+            if (args && args->length() >= 1)
                 stdDeviation = convertToFloatLength(firstValue, state.cssToLengthConversionData());
             if (stdDeviation.isUndefined())
                 return false;
@@ -1971,11 +1973,11 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             operations.operations().append(BlurFilterOperation::create(stdDeviation));
             break;
         }
-        case WebKitCSSFilterValue::DropShadowFilterOperation: {
-            if (filterValue.length() != 1)
+        case FilterOperation::DROP_SHADOW: {
+            if (args && args->length() != 1)
                 return false;
 
-            auto& cssValue = *filterValue.itemWithoutBoundsCheck(0);
+            auto& cssValue = *args->itemWithoutBoundsCheck(0);
             if (!is<CSSShadowValue>(cssValue))
                 continue;
 
@@ -1991,7 +1993,6 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             operations.operations().append(DropShadowFilterOperation::create(location, blur, color.isValid() ? color : Color::transparent));
             break;
         }
-        case WebKitCSSFilterValue::UnknownFilterOperation:
         default:
             ASSERT_NOT_REACHED();
             break;

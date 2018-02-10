@@ -616,7 +616,7 @@ public:
     class DOMJITNodeDOMJIT : public DOMJIT::GetterSetter {
     public:
         DOMJITNodeDOMJIT()
-            : DOMJIT::GetterSetter(DOMJITGetter::customGetter, nullptr, DOMJITNode::info())
+            : DOMJIT::GetterSetter(DOMJITGetter::customGetter, nullptr, DOMJITNode::info(), SpecInt32Only)
         {
         }
 
@@ -632,9 +632,9 @@ public:
             return JSValue::encode(jsNumber(static_cast<DOMJITGetter*>(pointer)->value()));
         }
 
-        Ref<DOMJIT::CallDOMPatchpoint> callDOM() override
+        Ref<DOMJIT::CallDOMGetterPatchpoint> callDOMGetter() override
         {
-            Ref<DOMJIT::CallDOMPatchpoint> patchpoint = DOMJIT::CallDOMPatchpoint::create();
+            Ref<DOMJIT::CallDOMGetterPatchpoint> patchpoint = DOMJIT::CallDOMGetterPatchpoint::create();
             patchpoint->requireGlobalObject = false;
             patchpoint->setGenerator([=](CCallHelpers& jit, DOMJIT::PatchpointParams& params) {
                 JSValueRegs results = params[0].jsValueRegs();
@@ -701,7 +701,7 @@ public:
     class DOMJITNodeDOMJIT : public DOMJIT::GetterSetter {
     public:
         DOMJITNodeDOMJIT()
-            : DOMJIT::GetterSetter(DOMJITGetterComplex::customGetter, nullptr, DOMJITNode::info())
+            : DOMJIT::GetterSetter(DOMJITGetterComplex::customGetter, nullptr, DOMJITNode::info(), SpecInt32Only)
         {
         }
 
@@ -725,15 +725,15 @@ public:
             return JSValue::encode(jsNumber(object->value()));
         }
 
-        Ref<DOMJIT::CallDOMPatchpoint> callDOM() override
+        Ref<DOMJIT::CallDOMGetterPatchpoint> callDOMGetter() override
         {
-            RefPtr<DOMJIT::CallDOMPatchpoint> patchpoint = DOMJIT::CallDOMPatchpoint::create();
+            RefPtr<DOMJIT::CallDOMGetterPatchpoint> patchpoint = DOMJIT::CallDOMGetterPatchpoint::create();
             static_assert(GPRInfo::numberOfRegisters >= 4, "Number of registers should be larger or equal to 4.");
             patchpoint->numGPScratchRegisters = GPRInfo::numberOfRegisters - 4;
             patchpoint->numFPScratchRegisters = 3;
             patchpoint->setGenerator([=](CCallHelpers& jit, DOMJIT::PatchpointParams& params) {
                 JSValueRegs results = params[0].jsValueRegs();
-                GPRReg domGPR = params[2].gpr();
+                GPRReg domGPR = params[1].gpr();
                 for (unsigned i = 0; i < patchpoint->numGPScratchRegisters; ++i)
                     jit.move(CCallHelpers::TrustedImm32(42), params.gpScratch(i));
 
@@ -2056,7 +2056,7 @@ EncodedJSValue JSC_HOST_CALL functionTransferArrayBuffer(ExecState* exec)
         return JSValue::encode(throwException(exec, scope, createError(exec, ASCIILiteral("Expected an array buffer"))));
     
     ArrayBufferContents dummyContents;
-    buffer->impl()->transfer(dummyContents);
+    buffer->impl()->transferTo(dummyContents);
     
     return JSValue::encode(jsUndefined());
 }
@@ -2629,9 +2629,12 @@ static void runInteractive(GlobalObject* globalObject)
             source = source + line;
             source = source + '\n';
             checkSyntax(globalObject->vm(), makeSource(source, interpreterName), error);
-            if (!line[0])
+            if (!line[0]) {
+                free(line);
                 break;
+            }
             add_history(line);
+            free(line);
         } while (error.syntaxErrorType() == ParserError::SyntaxErrorRecoverable);
         
         if (error.isValid()) {

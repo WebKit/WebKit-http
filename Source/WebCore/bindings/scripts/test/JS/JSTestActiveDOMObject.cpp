@@ -24,6 +24,7 @@
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvert.h"
 #include "JSNode.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
@@ -142,12 +143,12 @@ void JSTestActiveDOMObject::destroy(JSC::JSCell* cell)
 
 template<> inline JSTestActiveDOMObject* BindingCaller<JSTestActiveDOMObject>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
-    return jsDynamicCast<JSTestActiveDOMObject*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestActiveDOMObject*>(JSValue::decode(thisValue));
 }
 
 template<> inline JSTestActiveDOMObject* BindingCaller<JSTestActiveDOMObject>::castForOperation(ExecState& state)
 {
-    return jsDynamicCast<JSTestActiveDOMObject*>(state.thisValue());
+    return jsDynamicDowncast<JSTestActiveDOMObject*>(state.thisValue());
 }
 
 static inline JSValue jsTestActiveDOMObjectExcitingAttrGetter(ExecState&, JSTestActiveDOMObject&, ThrowScope& throwScope);
@@ -164,7 +165,7 @@ static inline JSValue jsTestActiveDOMObjectExcitingAttrGetter(ExecState& state, 
     if (!BindingSecurity::shouldAllowAccessToFrame(&state, thisObject.wrapped().frame(), ThrowSecurityError))
         return jsUndefined();
     auto& impl = thisObject.wrapped();
-    JSValue result = jsNumber(impl.excitingAttr());
+    JSValue result = toJS<IDLLong>(impl.excitingAttr());
     return result;
 }
 
@@ -172,7 +173,7 @@ EncodedJSValue jsTestActiveDOMObjectConstructor(ExecState* state, EncodedJSValue
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestActiveDOMObjectPrototype* domObject = jsDynamicCast<JSTestActiveDOMObjectPrototype*>(JSValue::decode(thisValue));
+    JSTestActiveDOMObjectPrototype* domObject = jsDynamicDowncast<JSTestActiveDOMObjectPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestActiveDOMObject::getConstructor(state->vm(), domObject->globalObject()));
@@ -183,7 +184,7 @@ bool setJSTestActiveDOMObjectConstructor(ExecState* state, EncodedJSValue thisVa
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestActiveDOMObjectPrototype* domObject = jsDynamicCast<JSTestActiveDOMObjectPrototype*>(JSValue::decode(thisValue));
+    JSTestActiveDOMObjectPrototype* domObject = jsDynamicDowncast<JSTestActiveDOMObjectPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -234,7 +235,7 @@ static inline JSC::EncodedJSValue jsTestActiveDOMObjectPrototypeFunctionPostMess
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto message = state->uncheckedArgument(0).toWTFString(state);
+    auto message = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.postMessage(WTFMove(message));
     return JSValue::encode(jsUndefined());
@@ -294,7 +295,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestAc
 
 TestActiveDOMObject* JSTestActiveDOMObject::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestActiveDOMObject*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestActiveDOMObject*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

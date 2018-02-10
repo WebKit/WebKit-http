@@ -26,9 +26,19 @@
 #import "config.h"
 #import "UIScriptController.h"
 
+#import "PlatformWebView.h"
+#import "TestController.h"
+#import "TestRunnerWKWebView.h"
 #import "UIScriptContext.h"
+#import <JavaScriptCore/JSStringRefCF.h>
+#import <WebKit/WKWebViewPrivate.h>
 
 namespace WTR {
+
+NSString *nsString(JSStringRef string)
+{
+    return (NSString *)adoptCF(JSStringCopyCFString(kCFAllocatorDefault, string)).autorelease();
+}
 
 void UIScriptController::doAsyncTask(JSValueRef callback)
 {
@@ -41,4 +51,38 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
     });
 }
 
+void UIScriptController::insertText(JSStringRef text, int location, int length)
+{
+#if WK_API_ENABLED
+    if (location == -1)
+        location = NSNotFound;
+
+    auto* webView = TestController::singleton().mainWebView()->platformView();
+    [webView _insertText:nsString(text) replacementRange:NSMakeRange(location, length)];
+#else
+    UNUSED_PARAM(text);
+    UNUSED_PARAM(location);
+    UNUSED_PARAM(length);
+#endif
 }
+
+void UIScriptController::zoomToScale(double scale, JSValueRef callback)
+{
+#if WK_API_ENABLED
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* webView = TestController::singleton().mainWebView()->platformView();
+    [webView _setPageScale:scale withOrigin:CGPointZero];
+
+    [webView _doAfterNextPresentationUpdate: ^ {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+#else
+    UNUSED_PARAM(scale);
+    UNUSED_PARAM(callback);
+#endif
+}
+
+} // namespace WTR

@@ -135,6 +135,7 @@ enum TestConfidence { "high", "kinda-low" };
     getter DOMString? nullableStringSpecialMethod(unsigned long index);
 
     void methodWithEnumArg(TestEnumType enumArg);
+    void methodWithStandaloneEnumArg(TestStandaloneEnumeration enumArg);
     void methodWithOptionalEnumArg(optional TestEnumType enumArg);
     void methodWithOptionalEnumArgAndDefaultValue(optional TestEnumType enumArg = "EnumValue1");
     [MayThrowLegacyException] TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg);
@@ -307,6 +308,15 @@ enum TestConfidence { "high", "kinda-low" };
 
     void overloadedMethodWithNonDistinguishingUnion((TestObj or TestNode) objectOrNode, TestObj object);
     void overloadedMethodWithNonDistinguishingUnion((TestObj or TestNode) objectOrNode, TestNode node);
+
+    void overloadWithNullableUnion((TestObj or TestNode)? objectOrNode);
+    void overloadWithNullableUnion(long index);
+
+    void overloadWithOptionalUnion(optional (DOMString or boolean) objectOrNode = true);
+    void overloadWithOptionalUnion(long index);
+
+    void overloadWithNullableNonDistinguishingParameter(TestObj? obj, TestNode node);
+    void overloadWithNullableNonDistinguishingParameter(TestNode? node, long index);
 #endif
 
     // Class methods within JavaScript (like what's used for IDBKeyRange).
@@ -503,3 +513,20 @@ dictionary ChildDictionary : ParentDictionary {
     boolean childMember1;
 };
 
+[
+    Conditional=Condition1
+] dictionary TestConditionalDictionaryA {
+    DOMString stringWithoutDefault;
+};
+
+[
+    Conditional=Condition1&Condition2
+] dictionary TestConditionalDictionaryB {
+    DOMString stringWithoutDefault;
+};
+
+[
+    Conditional=Condition1|Condition2
+] dictionary TestConditionalDictionaryC {
+    DOMString stringWithoutDefault;
+};

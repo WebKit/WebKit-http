@@ -41,6 +41,7 @@
 #include "PageGroup.h"
 #include "ScriptExecutionContext.h"
 #include "Worker.h"
+#include "WorkerInspectorProxy.h"
 #include <inspector/ScriptCallStack.h>
 #include <runtime/ConsoleTypes.h>
 #include <wtf/MainThread.h>
@@ -54,6 +55,7 @@ WorkerGlobalScopeProxy* WorkerGlobalScopeProxy::create(Worker* worker)
 
 WorkerMessagingProxy::WorkerMessagingProxy(Worker* workerObject)
     : m_scriptExecutionContext(workerObject->scriptExecutionContext())
+    , m_inspectorProxy(std::make_unique<WorkerInspectorProxy>())
     , m_workerObject(workerObject)
     , m_mayBeDestroyed(false)
     , m_unconfirmedMessageCount(0)
@@ -72,11 +74,12 @@ WorkerMessagingProxy::~WorkerMessagingProxy()
         || (is<WorkerGlobalScope>(*m_scriptExecutionContext) && currentThread() == downcast<WorkerGlobalScope>(*m_scriptExecutionContext).thread().threadID()));
 }
 
-void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, WorkerThreadStartMode startMode)
+void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, JSC::RuntimeFlags runtimeFlags)
 {
     // FIXME: This need to be revisited when we support nested worker one day
     ASSERT(m_scriptExecutionContext);
     Document& document = downcast<Document>(*m_scriptExecutionContext);
+    WorkerThreadStartMode startMode = m_inspectorProxy->workerStartMode(*m_scriptExecutionContext.get());
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* proxy = document.idbConnectionProxy();
@@ -90,10 +93,12 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     SocketProvider* socketProvider = nullptr;
 #endif
 
-    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), proxy, socketProvider);
+    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), proxy, socketProvider, runtimeFlags);
 
     workerThreadCreated(thread);
     thread->start();
+
+    m_inspectorProxy->workerStarted(m_scriptExecutionContext.get(), thread.get(), scriptURL);
 }
 
 void WorkerMessagingProxy::postMessageToWorkerObject(RefPtr<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
@@ -161,12 +166,10 @@ void WorkerMessagingProxy::postExceptionToWorkerObject(const String& errorMessag
     });
 }
 
-void WorkerMessagingProxy::postConsoleMessageToWorkerObject(MessageSource source, MessageLevel level, const String& message, int lineNumber, int columnNumber, const String& sourceURL)
+void WorkerMessagingProxy::postMessageToPageInspector(const String& message)
 {
-    m_scriptExecutionContext->postTask([this, source, level, message = message.isolatedCopy(), sourceURL = sourceURL.isolatedCopy(), lineNumber, columnNumber] (ScriptExecutionContext& context) {
-        if (askedToTerminate())
-            return;
-        context.addConsoleMessage(source, level, message, sourceURL, lineNumber, columnNumber);
+    m_scriptExecutionContext->postTask([this, message = message.isolatedCopy()] (ScriptExecutionContext&) {
+        m_inspectorProxy->sendMessageFromWorkerToFrontend(message);
     });
 }
 
@@ -234,6 +237,8 @@ void WorkerMessagingProxy::workerGlobalScopeDestroyedInternal()
     m_askedToTerminate = true;
     m_workerThread = nullptr;
 
+    m_inspectorProxy->workerTerminated();
+
     if (m_mayBeDestroyed)
         delete this;
 }
@@ -243,6 +248,8 @@ void WorkerMessagingProxy::terminateWorkerGlobalScope()
     if (m_askedToTerminate)
         return;
     m_askedToTerminate = true;
+
+    m_inspectorProxy->workerTerminated();
 
     if (m_workerThread)
         m_workerThread->stop();

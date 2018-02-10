@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2008, 2011, 2013-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,7 +56,6 @@
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
-#include "HTMLTextAreaElement.h"
 #include "HitTestResult.h"
 #include "IndentOutdentCommand.h"
 #include "InputEvent.h"
@@ -99,32 +98,26 @@
 #include "markup.h"
 #include <wtf/unicode/CharacterNames.h>
 
-#if PLATFORM(IOS)
-#include "DictationCommandIOS.h"
-#include <wtf/text/StringBuilder.h>
-#include <wtf/text/WTFString.h>
-#endif
-
 #if PLATFORM(MAC)
 #include "ServicesOverlayController.h"
 #endif
 
 namespace WebCore {
 
-static bool dispatchBeforeInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { })
+static bool dispatchBeforeInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, RefPtr<DataTransfer>&& dataTransfer = nullptr, const Vector<RefPtr<StaticRange>>& targetRanges = { }, bool cancelable = true)
 {
     auto* settings = element.document().settings();
     if (!settings || !settings->inputEventsEnabled())
         return true;
 
-    return element.dispatchEvent(InputEvent::create(eventNames().beforeinputEvent, inputType, true, true, element.document().defaultView(), data, targetRanges, 0));
+    return element.dispatchEvent(InputEvent::create(eventNames().beforeinputEvent, inputType, true, cancelable, element.document().defaultView(), data, WTFMove(dataTransfer), targetRanges, 0));
 }
 
-static void dispatchInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { })
+static void dispatchInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, RefPtr<DataTransfer>&& dataTransfer = nullptr, const Vector<RefPtr<StaticRange>>& targetRanges = { })
 {
     auto* settings = element.document().settings();
     if (settings && settings->inputEventsEnabled())
-        element.dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, element.document().defaultView(), data, targetRanges, 0));
+        element.dispatchEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, element.document().defaultView(), data, WTFMove(dataTransfer), targetRanges, 0));
     else
         element.dispatchInputEvent();
 }
@@ -241,17 +234,13 @@ bool Editor::handleTextEvent(TextEvent& event)
         return false;
 
     if (event.isPaste()) {
-        if (event.pastingFragment())
+        if (event.pastingFragment()) {
 #if PLATFORM(IOS)
-        {
             if (client()->performsTwoStepPaste(event.pastingFragment()))
                 return true;
 #endif
             replaceSelectionWithFragment(event.pastingFragment(), false, event.shouldSmartReplace(), event.shouldMatchStyle(), EditActionPaste, event.mailBlockquoteHandling());
-#if PLATFORM(IOS)
-        }
-#endif
-        else 
+        } else
             replaceSelectionWithText(event.data(), false, event.shouldSmartReplace(), EditActionPaste);
         return true;
     }
@@ -424,76 +413,6 @@ void Editor::clearText()
     ClearTextCommand::CreateAndApply(&m_frame);
 }
 
-#if PLATFORM(IOS)
-
-void Editor::insertDictationPhrases(Vector<Vector<String>>&& dictationPhrases, RetainPtr<id> metadata)
-{
-    if (m_frame.selection().isNone())
-        return;
-
-    if (dictationPhrases.isEmpty())
-        return;
-
-    applyCommand(DictationCommandIOS::create(document(), WTFMove(dictationPhrases), WTFMove(metadata)));
-}
-
-void Editor::setDictationPhrasesAsChildOfElement(const Vector<Vector<String>>& dictationPhrases, RetainPtr<id> metadata, Element& element)
-{
-    // Clear the composition.
-    clear();
-    
-    // Clear the Undo stack, since the operations that follow are not Undoable, and will corrupt the stack.  Some day
-    // we could make them Undoable, and let callers clear the Undo stack explicitly if they wish.
-    clearUndoRedoOperations();
-    
-    m_frame.selection().clear();
-    
-    element.removeChildren();
-    
-    if (dictationPhrases.isEmpty()) {
-        client()->respondToChangedContents();
-        return;
-    }
-    
-    ExceptionCode ec;    
-    RefPtr<Range> context = document().createRange();
-    context->selectNodeContents(element, ec);
-
-    StringBuilder dictationPhrasesBuilder;
-    for (auto& interpretations : dictationPhrases)
-        dictationPhrasesBuilder.append(interpretations[0]);
-
-    element.appendChild(createFragmentFromText(*context, dictationPhrasesBuilder.toString()), ec);
-
-    // We need a layout in order to add markers below.
-    document().updateLayout();
-
-    if (!element.firstChild()->isTextNode()) {
-        // Shouldn't happen.
-        ASSERT(element.firstChild()->isTextNode());
-        return;
-    }
-
-    Text& textNode = downcast<Text>(*element.firstChild());
-    int previousDictationPhraseStart = 0;
-    for (auto& interpretations : dictationPhrases) {
-        int dictationPhraseLength = interpretations[0].length();
-        int dictationPhraseEnd = previousDictationPhraseStart + dictationPhraseLength;
-        if (interpretations.size() > 1) {
-            auto dictationPhraseRange = Range::create(document(), &textNode, previousDictationPhraseStart, &textNode, dictationPhraseEnd);
-            document().markers().addDictationPhraseWithAlternativesMarker(dictationPhraseRange.ptr(), interpretations);
-        }
-        previousDictationPhraseStart = dictationPhraseEnd;
-    }
-
-    auto resultRange = Range::create(document(), &textNode, 0, &textNode, textNode.length());
-    document().markers().addDictationResultMarker(resultRange.ptr(), metadata);
-
-    client()->respondToChangedContents();
-}
-
-#endif
-
 void Editor::pasteAsPlainText(const String& pastingText, bool smartReplace)
 {
     Node* target = findEventTargetFromSelection();
@@ -615,85 +534,6 @@ RefPtr<Range> Editor::selectedRange()
 {
     return m_frame.selection().toNormalizedRange();
 }
-
-#if PLATFORM(IOS)
-void Editor::confirmMarkedText()
-{
-    // FIXME: This is a hacky workaround for the keyboard calling this method too late -
-    // after the selection and focus have already changed.  See <rdar://problem/5975559>
-    Element* focused = document().focusedElement();
-    Node* composition = compositionNode();
-    
-    if (composition && focused && focused != composition && !composition->isDescendantOrShadowDescendantOf(focused)) {
-        cancelComposition();
-        document().setFocusedElement(focused);
-    } else
-        confirmComposition();
-}
-
-void Editor::setTextAsChildOfElement(const String& text, Element& element)
-{
-    // Clear the composition
-    clear();
-    
-    // Clear the Undo stack, since the operations that follow are not Undoable, and will corrupt the stack.  Some day
-    // we could make them Undoable, and let callers clear the Undo stack explicitly if they wish.
-    clearUndoRedoOperations();
-    
-    // If the element is empty already and we're not adding text, we can early return and avoid clearing/setting
-    // a selection at [0, 0] and the expense involved in creation VisiblePositions.
-    if (!element.firstChild() && text.isEmpty())
-        return;
-    
-    // As a side effect this function sets a caret selection after the inserted content.  Much of what 
-    // follows is more expensive if there is a selection, so clear it since it's going to change anyway.
-    m_frame.selection().clear();
-    
-    // clear out all current children of element
-    element.removeChildren();
-
-    if (text.length()) {
-        // insert new text
-        // remove element from tree while doing it
-        // FIXME: The element we're inserting into is often the body element.  It seems strange to be removing it
-        // (even if it is only temporary).  ReplaceSelectionCommand doesn't bother doing this when it inserts
-        // content, why should we here?
-        ExceptionCode ec;
-        RefPtr<Node> parent = element.parentNode();
-        RefPtr<Node> siblingAfter = element.nextSibling();
-        if (parent)
-            element.remove(ec);
-            
-        auto context = document().createRange();
-        context->selectNodeContents(element, ec);
-        element.appendChild(createFragmentFromText(context, text), ec);
-    
-        // restore element to document
-        if (parent) {
-            if (siblingAfter)
-                parent->insertBefore(element, siblingAfter.get(), ec);
-            else
-                parent->appendChild(element, ec);
-        }
-    }
-
-    // set the selection to the end
-    VisibleSelection selection;
-
-    Position pos = createLegacyEditingPosition(&element, element.countChildNodes());
-
-    VisiblePosition visiblePos(pos, VP_DEFAULT_AFFINITY);
-    if (visiblePos.isNull())
-        return;
-
-    selection.setBase(visiblePos);
-    selection.setExtent(visiblePos);
-     
-    m_frame.selection().setSelection(selection);
-    
-    client()->respondToChangedContents();
-}
-#endif
 
 bool Editor::shouldDeleteRange(Range* range) const
 {
@@ -884,14 +724,6 @@ void Editor::clearLastEditCommand()
 {
     m_lastEditCommand = nullptr;
 }
-#if PLATFORM(IOS)
-// If the selection is adjusted from UIKit without closing the typing, the typing command may
-// have a stale selection.
-void Editor::ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping()
-{
-    TypingCommand::ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping(&m_frame, m_frame.selection().selection());
-}
-#endif
 
 // Returns whether caller should continue with "the default processing", which is the same as 
 // the event handler NOT setting the return value to false
@@ -1063,31 +895,34 @@ static void notifyTextFromControls(Element* startRoot, Element* endRoot)
         endingTextControl->didEditInnerTextValue();
 }
 
-static bool dispatchBeforeInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { })
+static bool dispatchBeforeInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { }, RefPtr<DataTransfer>&& dataTransfer = nullptr, const Vector<RefPtr<StaticRange>>& targetRanges = { }, bool cancelable = true)
 {
     bool continueWithDefaultBehavior = true;
     if (startRoot)
-        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*startRoot, inputTypeName, data, targetRanges);
+        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*startRoot, inputTypeName, data, WTFMove(dataTransfer), targetRanges, cancelable);
     if (endRoot && endRoot != startRoot)
-        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*endRoot, inputTypeName, data, targetRanges);
+        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*endRoot, inputTypeName, data, WTFMove(dataTransfer), targetRanges, cancelable);
     return continueWithDefaultBehavior;
 }
 
-static void dispatchInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { }, const Vector<RefPtr<StaticRange>>& targetRanges = { })
+static void dispatchInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { }, RefPtr<DataTransfer>&& dataTransfer = nullptr, const Vector<RefPtr<StaticRange>>& targetRanges = { })
 {
     if (startRoot)
-        dispatchInputEvent(*startRoot, inputTypeName, data, targetRanges);
+        dispatchInputEvent(*startRoot, inputTypeName, data, WTFMove(dataTransfer), targetRanges);
     if (endRoot && endRoot != startRoot)
-        dispatchInputEvent(*endRoot, inputTypeName, data, targetRanges);
+        dispatchInputEvent(*endRoot, inputTypeName, data, WTFMove(dataTransfer), targetRanges);
 }
 
 bool Editor::willApplyEditing(CompositeEditCommand& command, Vector<RefPtr<StaticRange>>&& targetRanges) const
 {
+    if (!command.shouldDispatchInputEvents())
+        return true;
+
     auto* composition = command.composition();
     if (!composition)
         return true;
 
-    return dispatchBeforeInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), command.inputEventTypeName(), command.inputEventData(), targetRanges);
+    return dispatchBeforeInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), command.inputEventTypeName(), command.inputEventData(), command.inputEventDataTransfer(), targetRanges, command.isBeforeInputEventCancelable());
 }
 
 void Editor::appliedEditing(PassRefPtr<CompositeEditCommand> cmd)
@@ -1102,31 +937,36 @@ void Editor::appliedEditing(PassRefPtr<CompositeEditCommand> cmd)
 
     notifyTextFromControls(composition->startingRootEditableElement(), composition->endingRootEditableElement());
 
-    // Don't clear the typing style with this selection change.  We do those things elsewhere if necessary.
-    FrameSelection::SetSelectionOptions options = cmd->isDictationCommand() ? FrameSelection::DictationTriggered : 0;
-    
-    changeSelectionAfterCommand(newSelection, options);
-    dispatchInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), cmd->inputEventTypeName(), cmd->inputEventData());
+    if (cmd->isTopLevelCommand()) {
+        // Don't clear the typing style with this selection change. We do those things elsewhere if necessary.
+        FrameSelection::SetSelectionOptions options = cmd->isDictationCommand() ? FrameSelection::DictationTriggered : 0;
 
-    updateEditorUINowIfScheduled();
-    
-    m_alternativeTextController->respondToAppliedEditing(cmd.get());
-
-    if (!cmd->preservesTypingStyle())
-        m_frame.selection().clearTypingStyle();
-
-    // Command will be equal to last edit command only in the case of typing
-    if (m_lastEditCommand.get() == cmd)
-        ASSERT(cmd->isTypingCommand());
-    else {
-        // Only register a new undo command if the command passed in is
-        // different from the last command
-        m_lastEditCommand = cmd;
-        if (client())
-            client()->registerUndoStep(m_lastEditCommand->ensureComposition());
+        changeSelectionAfterCommand(newSelection, options);
     }
 
-    respondToChangedContents(newSelection);
+    if (cmd->shouldDispatchInputEvents())
+        dispatchInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), cmd->inputEventTypeName(), cmd->inputEventData(), cmd->inputEventDataTransfer());
+
+    if (cmd->isTopLevelCommand()) {
+        updateEditorUINowIfScheduled();
+
+        m_alternativeTextController->respondToAppliedEditing(cmd.get());
+
+        if (!cmd->preservesTypingStyle())
+            m_frame.selection().clearTypingStyle();
+
+        // Command will be equal to last edit command only in the case of typing
+        if (m_lastEditCommand.get() == cmd)
+            ASSERT(cmd->isTypingCommand());
+        else {
+            // Only register a new undo command if the command passed in is
+            // different from the last command
+            m_lastEditCommand = cmd;
+            if (client())
+                client()->registerUndoStep(m_lastEditCommand->ensureComposition());
+        }
+        respondToChangedContents(newSelection);
+    }
 }
 
 bool Editor::willUnapplyEditing(const EditCommandComposition& composition) const
@@ -1205,9 +1045,9 @@ void Editor::clear()
     m_defaultParagraphSeparator = EditorParagraphSeparatorIsDiv;
 }
 
-bool Editor::insertText(const String& text, Event* triggeringEvent)
+bool Editor::insertText(const String& text, Event* triggeringEvent, TextEventInputType inputType)
 {
-    return m_frame.eventHandler().handleTextInputEvent(text, triggeringEvent);
+    return m_frame.eventHandler().handleTextInputEvent(text, triggeringEvent, inputType);
 }
 
 bool Editor::insertTextForConfirmedComposition(const String& text)
@@ -1261,7 +1101,9 @@ bool Editor::insertTextWithoutSendingTextEvent(const String& text, bool selectIn
                     options |= TypingCommand::SelectInsertedText;
                 if (autocorrectionWasApplied)
                     options |= TypingCommand::RetainAutocorrectionIndicator;
-                TypingCommand::insertText(document, text, selection, options, triggeringEvent && triggeringEvent->isComposition() ? TypingCommand::TextCompositionConfirm : TypingCommand::TextCompositionNone);
+                if (triggeringEvent && triggeringEvent->isAutocompletion())
+                    options |= TypingCommand::IsAutocompletion;
+                TypingCommand::insertText(document, text, selection, options, triggeringEvent && triggeringEvent->isComposition() ? TypingCommand::TextCompositionFinal : TypingCommand::TextCompositionNone);
             }
 
             // Reveal the current selection
@@ -1487,6 +1329,7 @@ void Editor::copyURL(const URL& url, const String& title, Pasteboard& pasteboard
 }
 
 #if !PLATFORM(IOS)
+
 void Editor::copyImage(const HitTestResult& result)
 {
     Element* element = result.innerNonSharedElement();
@@ -1503,6 +1346,7 @@ void Editor::copyImage(const HitTestResult& result)
     Pasteboard::createForCopyAndPaste()->writeImage(*element, url, result.altDisplayString());
 #endif
 }
+
 #endif
 
 bool Editor::isContinuousSpellCheckingEnabled() const
@@ -1832,10 +1676,11 @@ void Editor::setComposition(const String& text, SetCompositionMode mode)
         target->dispatchEvent(event);
     }
 
-    // If text is empty, then delete the old composition here.  If text is non-empty, InsertTextCommand::input
-    // will delete the old composition with an optimized replace operation.
-    if (text.isEmpty() && mode != CancelComposition)
-        TypingCommand::deleteSelection(document(), 0);
+    // Always delete the current composition before inserting the finalized composition text if we're confirming our composition.
+    // Our default behavior (if the beforeinput event is not prevented) is to insert the finalized composition text back in.
+    // We pass TypingCommand::TextCompositionPending here to indicate that we are deleting the pending composition.
+    if (mode != CancelComposition)
+        TypingCommand::deleteSelection(document(), 0, TypingCommand::TextCompositionPending);
 
     m_compositionNode = nullptr;
     m_customCompositionUnderlines.clear();
@@ -1852,6 +1697,8 @@ void Editor::setComposition(const String& text, SetCompositionMode mode)
 
 void Editor::setComposition(const String& text, const Vector<CompositionUnderline>& underlines, unsigned selectionStart, unsigned selectionEnd)
 {
+    Ref<Frame> protection(m_frame);
+
     UserTypingGestureIndicator typingGestureIndicator(m_frame);
 
     setIgnoreCompositionSelectionChange(true);
@@ -1866,6 +1713,18 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
     if (m_frame.selection().isNone()) {
         setIgnoreCompositionSelectionChange(false);
         return;
+    }
+
+    String originalText = selectedText();
+    bool isStartingToRecomposeExistingRange = !text.isEmpty() && selectionStart < selectionEnd && !hasComposition();
+    if (isStartingToRecomposeExistingRange) {
+        // We pass TypingCommand::TextCompositionFinal here to indicate that we are removing composition text that has been finalized.
+        TypingCommand::deleteSelection(document(), 0, TypingCommand::TextCompositionFinal);
+        const VisibleSelection& currentSelection = m_frame.selection().selection();
+        if (currentSelection.isRange()) {
+            // If deletion was prevented, then we need to collapse the selection to the end so that the original text will not be recomposed.
+            m_frame.selection().setSelection({ currentSelection.end(), currentSelection.end() });
+        }
     }
 
 #if PLATFORM(IOS)
@@ -1894,7 +1753,7 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
             // We should send a compositionstart event only when the given text is not empty because this
             // function doesn't create a composition node when the text is empty.
             if (!text.isEmpty()) {
-                target->dispatchEvent(CompositionEvent::create(eventNames().compositionstartEvent, document().domWindow(), selectedText()));
+                target->dispatchEvent(CompositionEvent::create(eventNames().compositionstartEvent, document().domWindow(), originalText));
                 event = CompositionEvent::create(eventNames().compositionupdateEvent, document().domWindow(), text);
             }
         } else {
@@ -1910,13 +1769,13 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
     // If text is empty, then delete the old composition here.  If text is non-empty, InsertTextCommand::input
     // will delete the old composition with an optimized replace operation.
     if (text.isEmpty())
-        TypingCommand::deleteSelection(document(), TypingCommand::PreventSpellChecking);
+        TypingCommand::deleteSelection(document(), TypingCommand::PreventSpellChecking, TypingCommand::TextCompositionPending);
 
     m_compositionNode = nullptr;
     m_customCompositionUnderlines.clear();
 
     if (!text.isEmpty()) {
-        TypingCommand::insertText(document(), text, TypingCommand::SelectInsertedText | TypingCommand::PreventSpellChecking, TypingCommand::TextCompositionUpdate);
+        TypingCommand::insertText(document(), text, TypingCommand::SelectInsertedText | TypingCommand::PreventSpellChecking, TypingCommand::TextCompositionPending);
 
         // Find out what node has the composition now.
         Position base = m_frame.selection().selection().base().downstream();
@@ -1983,8 +1842,11 @@ void Editor::learnSpelling()
 }
 
 #if !PLATFORM(IOS)
+
 void Editor::advanceToNextMisspelling(bool startBeforeSelection)
 {
+    Ref<Frame> protection(m_frame);
+
     // The basic approach is to search in two phases - from the selection end to the end of the doc, and
     // then we wrap and search from the doc start to (approximately) where we started.
     
@@ -2158,6 +2020,7 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
         document().markers().addMarker(misspellingRange.get(), DocumentMarker::Spelling);
     }
 }
+
 #endif // !PLATFORM(IOS)
 
 String Editor::misspelledWordAtCaretOrRange(Node* clickedNode) const
@@ -2303,6 +2166,8 @@ void Editor::markMisspellingsAndBadGrammar(const VisibleSelection &movingSelecti
 
 void Editor::markMisspellingsAfterTypingToWord(const VisiblePosition &wordStart, const VisibleSelection& selectionAfterTyping, bool doReplacement)
 {
+    Ref<Frame> protection(m_frame);
+
 #if PLATFORM(IOS)
     UNUSED_PARAM(selectionAfterTyping);
     UNUSED_PARAM(doReplacement);
@@ -2553,6 +2418,7 @@ static void correctSpellcheckingPreservingTextCheckingParagraph(TextCheckingPara
 
 void Editor::markAndReplaceFor(PassRefPtr<SpellCheckRequest> request, const Vector<TextCheckingResult>& results)
 {
+    Ref<Frame> protection(m_frame);
     ASSERT(request);
 
     TextCheckingTypeMask textCheckingOptions = request->data().mask();
@@ -3011,6 +2877,8 @@ void Editor::dismissCorrectionPanelAsIgnored()
 
 void Editor::changeSelectionAfterCommand(const VisibleSelection& newSelection, FrameSelection::SetSelectionOptions options)
 {
+    Ref<Frame> protection(m_frame);
+
     // If the new selection is orphaned, then don't update the selection.
     if (newSelection.start().isOrphan() || newSelection.end().isOrphan())
         return;
@@ -3210,6 +3078,8 @@ void Editor::applyEditingStyleToElement(Element* element) const
 
 bool Editor::findString(const String& target, FindOptions options)
 {
+    Ref<Frame> protection(m_frame);
+
     VisibleSelection selection = m_frame.selection().selection();
 
     RefPtr<Range> resultRange = rangeOfString(target, selection.firstRange().get(), options);

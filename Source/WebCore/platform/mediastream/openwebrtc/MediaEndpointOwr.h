@@ -43,9 +43,10 @@ typedef struct _OwrTransportAgent OwrTransportAgent;
 
 namespace WebCore {
 
-class PeerMediaDescription;
 class RealtimeMediaSourceOwr;
 class RTCConfigurationPrivate;
+
+struct PeerMediaDescription;
 
 class OwrTransceiver : public RefCounted<OwrTransceiver> {
 public:
@@ -82,7 +83,7 @@ public:
     MediaEndpointOwr(MediaEndpointClient&);
     ~MediaEndpointOwr();
 
-    void setConfiguration(RefPtr<MediaEndpointConfiguration>&&) override;
+    void setConfiguration(MediaEndpointConfiguration&&) override;
 
     void generateDtlsInfo() override;
     MediaPayloadVector getDefaultAudioPayloads() override;
@@ -92,7 +93,7 @@ public:
     UpdateResult updateReceiveConfiguration(MediaEndpointSessionConfiguration*, bool isInitiator) override;
     UpdateResult updateSendConfiguration(MediaEndpointSessionConfiguration*, const RealtimeMediaSourceMap&, bool isInitiator) override;
 
-    void addRemoteCandidate(IceCandidate&, const String& mid, const String& ufrag, const String& password) override;
+    void addRemoteCandidate(const IceCandidate&, const String& mid, const String& ufrag, const String& password) override;
 
     Ref<RealtimeMediaSource> createMutedRemoteSource(const String& mid, RealtimeMediaSource::Type) override;
     void replaceMutedRemoteSourceMid(const String&, const String&) final;
@@ -104,7 +105,7 @@ public:
     const String& sessionMid(OwrSession*) const;
     OwrTransceiver* matchTransceiverByMid(const String& mid) const;
 
-    void dispatchNewIceCandidate(const String& mid, RefPtr<IceCandidate>&&);
+    void dispatchNewIceCandidate(const String& mid, IceCandidate&&);
     void dispatchGatheringDone(const String& mid);
     void processIceTransportStateChange(OwrSession*);
     void dispatchDtlsFingerprint(gchar* privateKey, gchar* certificate, const String& fingerprint, const String& fingerprintFunction);
@@ -123,9 +124,9 @@ private:
     void prepareMediaSession(OwrMediaSession*, PeerMediaDescription*, bool isInitiator);
 
     void ensureTransportAgentAndTransceivers(bool isInitiator, const Vector<TransceiverConfig>&);
-    void internalAddRemoteCandidate(OwrSession*, IceCandidate&, const String& ufrag, const String& password);
+    void internalAddRemoteCandidate(OwrSession*, const IceCandidate&, const String& ufrag, const String& password);
 
-    RefPtr<MediaEndpointConfiguration> m_configuration;
+    Optional<MediaEndpointConfiguration> m_configuration;
     GRegex* m_helperServerRegEx;
 
     OwrTransportAgent* m_transportAgent;

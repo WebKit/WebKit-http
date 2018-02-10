@@ -169,7 +169,7 @@ static RefPtr<CryptoAlgorithmParametersDeprecated> createAesKeyGenParams(ExecSta
     JSValue lengthValue = getProperty(&state, value.getObject(), "length");
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    result->length = convert<IDLUnsignedShort>(state, lengthValue, EnforceRange);
+    result->length = convert<IDLUnsignedShort>(state, lengthValue, IntegerConversionConfiguration::EnforceRange);
 
     return WTFMove(result);
 }
@@ -236,13 +236,13 @@ static RefPtr<CryptoAlgorithmParametersDeprecated> createRsaKeyGenParams(ExecSta
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     // FIXME: Why no EnforceRange? Filed as <https://www.w3.org/Bugs/Public/show_bug.cgi?id=23779>.
-    result->modulusLength = convert<IDLUnsignedLong>(state, modulusLengthValue, NormalConversion);
+    result->modulusLength = convert<IDLUnsignedLong>(state, modulusLengthValue, IntegerConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     JSValue publicExponentValue = getProperty(&state, value.getObject(), "publicExponent");
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    RefPtr<Uint8Array> publicExponentArray = toUint8Array(publicExponentValue);
+    RefPtr<Uint8Array> publicExponentArray = toUnsharedUint8Array(publicExponentValue);
     if (!publicExponentArray) {
         throwTypeError(&state, scope, ASCIILiteral("Expected a Uint8Array in publicExponent"));
         return nullptr;

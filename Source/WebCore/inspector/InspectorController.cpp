@@ -51,6 +51,7 @@
 #include "InspectorPageAgent.h"
 #include "InspectorReplayAgent.h"
 #include "InspectorTimelineAgent.h"
+#include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
 #include "JSDOMWindow.h"
 #include "JSDOMWindowCustom.h"
@@ -178,6 +179,7 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_agents.append(std::make_unique<InspectorDOMDebuggerAgent>(pageContext, m_domAgent, debuggerAgent));
     m_agents.append(std::make_unique<InspectorApplicationCacheAgent>(pageContext, pageAgent));
     m_agents.append(std::make_unique<InspectorLayerTreeAgent>(pageContext));
+    m_agents.append(std::make_unique<InspectorWorkerAgent>(pageContext));
 
     ASSERT(m_injectedScriptManager->commandLineAPIHost());
     if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost()) {
@@ -209,6 +211,8 @@ void InspectorController::inspectedPageDestroyed()
 
     // Clean up resources and disconnect local and remote frontends.
     disconnectAllFrontends();
+
+    m_agents.discardValues();
 }
 
 void InspectorController::setInspectorFrontendClient(InspectorFrontendClient* inspectorFrontendClient)

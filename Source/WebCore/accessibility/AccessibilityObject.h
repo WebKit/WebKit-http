@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityObject_h
-#define AccessibilityObject_h
+#pragma once
 
 #include "FloatQuad.h"
 #include "HTMLTextFormControlElement.h"
@@ -78,15 +77,12 @@ class AXObjectCache;
 class Element;
 class Frame;
 class FrameView;
-class HTMLAnchorElement;
-class HTMLAreaElement;
 class IntPoint;
 class IntSize;
 class MainFrame;
 class Node;
 class Page;
 class RenderObject;
-class RenderListItem;
 class ScrollableArea;
 class ScrollView;
 class Widget;
@@ -1045,6 +1041,7 @@ public:
 #if PLATFORM(IOS)
     int accessibilityPasswordFieldLength();
     bool hasTouchEventListener() const;
+    bool isInputTypePopupButton() const;
 #endif
     
     // allows for an AccessibilityObject to update its render tree or perform
@@ -1122,5 +1119,3 @@ inline void AccessibilityObject::updateBackingStore() { }
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::AccessibilityObject& object) { return object.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // AccessibilityObject_h

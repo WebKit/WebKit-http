@@ -70,6 +70,7 @@
 #include "TypeProfiler.h"
 #include "UnlinkedInstructionStream.h"
 #include "VMInlines.h"
+#include "WebAssemblyExecutable.h"
 #include <wtf/BagToHashMap.h>
 #include <wtf/CommaPrinter.h>
 #include <wtf/SimpleStats.h>
@@ -999,6 +1000,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_negate: {
             printUnaryOp(out, exec, location, it, "negate");
+            ++it; // op_negate has an extra operand for the ArithProfile.
             break;
         }
         case op_add: {
@@ -1463,6 +1465,14 @@ void CodeBlock::dumpBytecode(
             out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
+        case op_new_async_func: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int f0 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "new_async_func");
+            out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
+            break;
+        }
         case op_new_func_exp: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
@@ -1476,6 +1486,14 @@ void CodeBlock::dumpBytecode(
             int r1 = (++it)->u.operand;
             int f0 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "new_generator_func_exp");
+            out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
+            break;
+        }
+        case op_new_async_func_exp: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int f0 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "new_async_func_exp");
             out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
@@ -2342,6 +2360,13 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             break;
         }
 
+        case op_create_rest: {
+            int numberOfArgumentsToSkip = instructions[i + 3].u.operand;
+            ASSERT_UNUSED(numberOfArgumentsToSkip, numberOfArgumentsToSkip >= 0);
+            ASSERT_WITH_MESSAGE(numberOfArgumentsToSkip == numParameters() - 1, "We assume that this is true when rematerializing the rest parameter during OSR exit in the FTL JIT.");
+            break;
+        }
+
         default:
             break;
         }
@@ -2504,7 +2529,7 @@ CodeBlock* CodeBlock::specialOSREntryBlockOrNull()
 
 void CodeBlock::visitWeakly(SlotVisitor& visitor)
 {
-    bool setByMe = m_visitWeaklyHasBeenCalled.compareExchangeStrong(false, true);
+    bool setByMe = !m_visitWeaklyHasBeenCalled.compareExchangeStrong(false, true);
     if (!setByMe)
         return;
 

@@ -2601,7 +2601,7 @@ void WKPageSetMediaVolume(WKPageRef page, float volume)
     toImpl(page)->setMediaVolume(volume);    
 }
 
-void WKPageSetMuted(WKPageRef page, bool muted)
+void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted)
 {
     toImpl(page)->setMuted(muted);
 }
@@ -2748,6 +2748,8 @@ WKMediaState WKPageGetMediaState(WKPageRef page)
         state |= kWKMediaIsPlayingAudio;
     if (coreState & WebCore::MediaProducer::IsPlayingVideo)
         state |= kWKMediaIsPlayingVideo;
+    if (coreState & WebCore::MediaProducer::HasMediaCaptureDevice)
+        state |= kWKMediaHasCaptureDevice;
     if (coreState & WebCore::MediaProducer::HasActiveMediaCaptureDevice)
         state |= kWKMediaHasActiveCaptureDevice;
 

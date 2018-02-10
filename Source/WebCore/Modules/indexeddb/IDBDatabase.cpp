@@ -34,6 +34,7 @@
 #include "IDBConnectionProxy.h"
 #include "IDBConnectionToServer.h"
 #include "IDBDatabaseException.h"
+#include "IDBIndex.h"
 #include "IDBObjectStore.h"
 #include "IDBOpenDBRequest.h"
 #include "IDBResultData.h"
@@ -117,13 +118,19 @@ void IDBDatabase::renameObjectStore(IDBObjectStore& objectStore, const String& n
     m_versionChangeTransaction->renameObjectStore(objectStore, newName);
 }
 
-ExceptionOr<Ref<IDBObjectStore>> IDBDatabase::createObjectStore(const String&, const Dictionary&)
+void IDBDatabase::renameIndex(IDBIndex& index, const String& newName)
 {
-    ASSERT_NOT_REACHED();
-    return Exception { IDBDatabaseException::InvalidStateError };
+    ASSERT(currentThread() == originThreadID());
+    ASSERT(m_versionChangeTransaction);
+    ASSERT(m_info.hasObjectStore(index.objectStore().info().name()));
+    ASSERT(m_info.infoForExistingObjectStore(index.objectStore().info().name())->hasIndex(index.info().name()));
+
+    m_info.infoForExistingObjectStore(index.objectStore().info().name())->infoForExistingIndex(index.info().identifier())->rename(newName);
+
+    m_versionChangeTransaction->renameIndex(index, newName);
 }
 
-ExceptionOr<Ref<IDBObjectStore>> IDBDatabase::createObjectStore(const String& name, const IDBKeyPath& keyPath, bool autoIncrement)
+ExceptionOr<Ref<IDBObjectStore>> IDBDatabase::createObjectStore(const String& name, ObjectStoreParameters&& parameters)
 {
     LOG(IndexedDB, "IDBDatabase::createObjectStore - (%s %s)", m_info.name().utf8().data(), name.utf8().data());
 
@@ -139,20 +146,21 @@ ExceptionOr<Ref<IDBObjectStore>> IDBDatabase::createObjectStore(const String& na
     if (m_info.hasObjectStore(name))
         return Exception { IDBDatabaseException::ConstraintError, ASCIILiteral("Failed to execute 'createObjectStore' on 'IDBDatabase': An object store with the specified name already exists.") };
 
-    if (!keyPath.isNull() && !keyPath.isValid())
+    auto& keyPath = parameters.keyPath;
+    if (keyPath && !isIDBKeyPathValid(keyPath.value()))
         return Exception { IDBDatabaseException::SyntaxError, ASCIILiteral("Failed to execute 'createObjectStore' on 'IDBDatabase': The keyPath option is not a valid key path.") };
 
-    if (autoIncrement && ((keyPath.type() == IDBKeyPath::Type::String && keyPath.string().isEmpty()) || keyPath.type() == IDBKeyPath::Type::Array))
+    if (keyPath && parameters.autoIncrement && ((WTF::holds_alternative<String>(keyPath.value()) && WTF::get<String>(keyPath.value()).isEmpty()) || WTF::holds_alternative<Vector<String>>(keyPath.value())))
         return Exception { IDBDatabaseException::InvalidAccessError, ASCIILiteral("Failed to execute 'createObjectStore' on 'IDBDatabase': The autoIncrement option was set but the keyPath option was empty or an array.") };
 
     // Install the new ObjectStore into the connection's metadata.
-    auto info = m_info.createNewObjectStore(name, keyPath, autoIncrement);
+    auto info = m_info.createNewObjectStore(name, WTFMove(keyPath), parameters.autoIncrement);
 
     // Create the actual IDBObjectStore from the transaction, which also schedules the operation server side.
     return m_versionChangeTransaction->createObjectStore(info);
 }
 
-ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(const Vector<String>& objectStores, const String& modeString)
+ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(StringOrVectorOfStrings&& storeNames, IDBTransactionMode mode)
 {
     LOG(IndexedDB, "IDBDatabase::transaction");
 
@@ -161,14 +169,16 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(const Vector<String>& 
     if (m_closePending)
         return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'transaction' on 'IDBDatabase': The database connection is closing.") };
 
+    Vector<String> objectStores;
+    if (WTF::holds_alternative<Vector<String>>(storeNames))
+        objectStores = WTFMove(WTF::get<Vector<String>>(storeNames));
+    else
+        objectStores.append(WTFMove(WTF::get<String>(storeNames)));
+
     if (objectStores.isEmpty())
         return Exception { IDBDatabaseException::InvalidAccessError, ASCIILiteral("Failed to execute 'transaction' on 'IDBDatabase': The storeNames parameter was empty.") };
 
-    auto mode = IDBTransaction::stringToMode(modeString);
-    if (!mode)
-        return Exception { TypeError, "Failed to execute 'transaction' on 'IDBDatabase': The mode provided ('" + modeString + "') is not one of 'readonly' or 'readwrite'." };
-
-    if (mode.value() != IndexedDB::TransactionMode::ReadOnly && mode.value() != IndexedDB::TransactionMode::ReadWrite)
+    if (mode != IDBTransactionMode::Readonly && mode != IDBTransactionMode::Readwrite)
         return Exception { TypeError };
 
     if (m_versionChangeTransaction && !m_versionChangeTransaction->isFinishedOrFinishing())
@@ -180,7 +190,7 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(const Vector<String>& 
         return Exception { IDBDatabaseException::NotFoundError, ASCIILiteral("Failed to execute 'transaction' on 'IDBDatabase': One of the specified object stores was not found.") };
     }
 
-    auto info = IDBTransactionInfo::clientTransaction(m_connectionProxy.get(), objectStores, mode.value());
+    auto info = IDBTransactionInfo::clientTransaction(m_connectionProxy.get(), objectStores, mode);
     auto transaction = IDBTransaction::create(*this, info);
 
     LOG(IndexedDB, "IDBDatabase::transaction - Added active transaction %s", info.identifier().loggingString().utf8().data());
@@ -188,15 +198,6 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(const Vector<String>& 
     m_activeTransactions.set(info.identifier(), transaction.ptr());
 
     return WTFMove(transaction);
-}
-
-ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(const String& objectStore, const String& mode)
-{
-    ASSERT(currentThread() == originThreadID());
-
-    Vector<String> objectStores(1);
-    objectStores[0] = objectStore;
-    return transaction(objectStores, mode);
 }
 
 ExceptionOr<void> IDBDatabase::deleteObjectStore(const String& objectStoreName)
@@ -321,7 +322,7 @@ Ref<IDBTransaction> IDBDatabase::startVersionChangeTransaction(const IDBTransact
 
     ASSERT(currentThread() == originThreadID());
     ASSERT(!m_versionChangeTransaction);
-    ASSERT(info.mode() == IndexedDB::TransactionMode::VersionChange);
+    ASSERT(info.mode() == IDBTransactionMode::Versionchange);
     ASSERT(!m_closePending);
     ASSERT(scriptExecutionContext());
 

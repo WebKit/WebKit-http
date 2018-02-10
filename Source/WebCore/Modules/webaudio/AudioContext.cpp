@@ -960,6 +960,7 @@ void AudioContext::startRendering()
 void AudioContext::mediaCanStart()
 {
     removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);
+    mayResumePlayback(true);
 }
 
 MediaProducer::MediaStateFlags AudioContext::mediaState() const
@@ -973,7 +974,7 @@ MediaProducer::MediaStateFlags AudioContext::mediaState() const
 void AudioContext::pageMutedStateDidChange()
 {
     if (m_destinationNode && document()->page())
-        m_destinationNode->setMuted(document()->page()->isMuted());
+        m_destinationNode->setMuted(document()->page()->isAudioMuted());
 }
 
 void AudioContext::isPlayingAudioDidChange()

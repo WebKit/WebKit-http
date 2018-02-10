@@ -58,7 +58,7 @@ String inputTypeNameForEditingAction(EditAction action)
         return ASCIILiteral("formatUnderline");
     case EditActionSetColor:
         return ASCIILiteral("formatForeColor");
-    case EditActionDrag:
+    case EditActionDeleteByDrag:
         return ASCIILiteral("deleteByDrag");
     case EditActionCut:
         return ASCIILiteral("deleteByCut");
@@ -83,11 +83,17 @@ String inputTypeNameForEditingAction(EditAction action)
         return ASCIILiteral("deleteHardLineBackward");
     case EditActionTypingDeleteLineForward:
         return ASCIILiteral("deleteHardLineForward");
+    case EditActionTypingDeletePendingComposition:
+        return ASCIILiteral("deleteCompositionText");
+    case EditActionTypingDeleteFinalComposition:
+        return ASCIILiteral("deleteByComposition");
     case EditActionInsert:
     case EditActionTypingInsertText:
         return ASCIILiteral("insertText");
     case EditActionInsertReplacement:
         return ASCIILiteral("insertReplacementText");
+    case EditActionInsertFromDrop:
+        return ASCIILiteral("insertFromDrop");
     case EditActionTypingInsertLineBreak:
         return ASCIILiteral("insertLineBreak");
     case EditActionTypingInsertParagraph:
@@ -96,6 +102,10 @@ String inputTypeNameForEditingAction(EditAction action)
         return ASCIILiteral("insertOrderedList");
     case EditActionInsertUnorderedList:
         return ASCIILiteral("insertUnorderedList");
+    case EditActionTypingInsertPendingComposition:
+        return ASCIILiteral("insertCompositionText");
+    case EditActionTypingInsertFinalComposition:
+        return ASCIILiteral("insertFromComposition");
     case EditActionIndent:
         return ASCIILiteral("formatIndent");
     case EditActionOutdent:
@@ -170,10 +180,8 @@ bool EditCommand::isEditingTextAreaOrTextInput() const
 void EditCommand::setStartingSelection(const VisibleSelection& s)
 {
     for (EditCommand* cmd = this; ; cmd = cmd->m_parent) {
-        if (EditCommandComposition* composition = compositionIfPossible(cmd)) {
-            ASSERT(cmd->isTopLevelCommand());
+        if (auto* composition = compositionIfPossible(cmd))
             composition->setStartingSelection(s);
-        }
         cmd->m_startingSelection = s;
         if (!cmd->m_parent || cmd->m_parent->isFirstCommand(cmd))
             break;
@@ -183,10 +191,8 @@ void EditCommand::setStartingSelection(const VisibleSelection& s)
 void EditCommand::setEndingSelection(const VisibleSelection &s)
 {
     for (EditCommand* cmd = this; cmd; cmd = cmd->m_parent) {
-        if (EditCommandComposition* composition = compositionIfPossible(cmd)) {
-            ASSERT(cmd->isTopLevelCommand());
+        if (auto* composition = compositionIfPossible(cmd))
             composition->setEndingSelection(s);
-        }
         cmd->m_endingSelection = s;
     }
 }
@@ -194,7 +200,6 @@ void EditCommand::setEndingSelection(const VisibleSelection &s)
 void EditCommand::setParent(CompositeEditCommand* parent)
 {
     ASSERT((parent && !m_parent) || (!parent && m_parent));
-    ASSERT(!parent || !isCompositeEditCommand() || !toCompositeEditCommand(this)->composition());
     m_parent = parent;
     if (parent) {
         m_startingSelection = parent->m_endingSelection;

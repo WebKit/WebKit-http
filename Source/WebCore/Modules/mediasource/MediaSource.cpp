@@ -147,6 +147,11 @@ MediaTime MediaSource::duration() const
     return m_duration;
 }
 
+void MediaSource::durationChanged(const MediaTime& duration)
+{
+    m_duration = duration;
+}
+
 MediaTime MediaSource::currentTime() const
 {
     return m_mediaElement ? m_mediaElement->currentMediaTime() : MediaTime::zeroTime();
@@ -247,13 +252,14 @@ void MediaSource::completeSeek()
     // initialization segment.
     // 3. The media element feeds coded frames from the active track buffers into the decoders starting
     // with the closest random access point before the new playback position.
+    MediaTime pendingSeekTime = m_pendingSeekTime;
+    m_pendingSeekTime = MediaTime::invalidTime();
     for (auto& sourceBuffer : *m_activeSourceBuffers)
-        sourceBuffer->seekToTime(m_pendingSeekTime);
+        sourceBuffer->seekToTime(pendingSeekTime);
 
     // 4. Resume the seek algorithm at the "Await a stable state" step.
     m_private->seekCompleted();
 
-    m_pendingSeekTime = MediaTime::invalidTime();
     monitorSourceBuffers();
 }
 
@@ -337,7 +343,7 @@ const MediaTime& MediaSource::currentTimeFudgeFactor()
 
 bool MediaSource::hasBufferedTime(const MediaTime& time)
 {
-    if (time >= duration())
+    if (time > duration())
         return false;
 
     auto ranges = buffered();
@@ -616,7 +622,7 @@ void MediaSource::streamEndedWithError(Optional<EndOfStreamError> error)
     }
 }
 
-ExceptionOr<SourceBuffer*> MediaSource::addSourceBuffer(const String& type)
+ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
 {
     LOG(MediaSource, "MediaSource::addSourceBuffer(%s) %p", type.ascii().data(), this);
 
@@ -662,14 +668,14 @@ ExceptionOr<SourceBuffer*> MediaSource::addSourceBuffer(const String& type)
     // ↳ Set the mode attribute on the new object to "segments".
     buffer->setMode(shouldGenerateTimestamps ? SourceBuffer::AppendMode::Sequence : SourceBuffer::AppendMode::Segments);
 
-    SourceBuffer* result = buffer.ptr();
+    auto& result = buffer.get();
 
     // 8. Add the new object to sourceBuffers and fire a addsourcebuffer on that object.
     m_sourceBuffers->add(WTFMove(buffer));
     regenerateActiveSourceBuffers();
 
     // 9. Return the new object to the caller.
-    return WTFMove(result);
+    return result;
 }
 
 ExceptionOr<void> MediaSource::removeSourceBuffer(SourceBuffer& buffer)

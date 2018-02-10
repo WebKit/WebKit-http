@@ -491,7 +491,8 @@ void DOMWindow::frameDestroyed()
 
 void DOMWindow::willDetachPage()
 {
-    InspectorInstrumentation::frameWindowDiscarded(m_frame, this);
+    if (m_frame)
+        InspectorInstrumentation::frameWindowDiscarded(*m_frame, this);
 }
 
 void DOMWindow::willDestroyCachedFrame()
@@ -624,16 +625,12 @@ bool DOMWindow::isCurrentlyDisplayedInFrame() const
     return m_frame && m_frame->document()->domWindow() == this;
 }
 
-#if ENABLE(CUSTOM_ELEMENTS)
-
 CustomElementRegistry& DOMWindow::ensureCustomElementRegistry()
 {
     if (!m_customElementRegistry)
         m_customElementRegistry = CustomElementRegistry::create(*this);
     return *m_customElementRegistry;
 }
-
-#endif
 
 #if ENABLE(ORIENTATION_EVENTS)
 
@@ -750,7 +747,7 @@ Navigator* DOMWindow::navigator() const
     if (!isCurrentlyDisplayedInFrame())
         return nullptr;
     if (!m_navigator)
-        m_navigator = Navigator::create(m_frame);
+        m_navigator = Navigator::create(*m_frame);
     return m_navigator.get();
 }
 
@@ -914,10 +911,9 @@ ExceptionOr<void> DOMWindow::postMessage(Ref<SerializedScriptValue>&& message, V
             return Exception { SYNTAX_ERR };
     }
 
-    ExceptionCode ec = 0;
-    auto channels = MessagePort::disentanglePorts(WTFMove(ports), ec);
-    if (ec)
-        return Exception { ec };
+    auto channels = MessagePort::disentanglePorts(WTFMove(ports));
+    if (channels.hasException())
+        return channels.releaseException();
 
     // Capture the source of the message.  We need to do this synchronously
     // in order to capture the source of the message correctly.
@@ -931,7 +927,7 @@ ExceptionOr<void> DOMWindow::postMessage(Ref<SerializedScriptValue>&& message, V
         stackTrace = createScriptCallStack(JSMainThreadExecState::currentState(), ScriptCallStack::maxCallStackSizeToCapture);
 
     // Schedule the message.
-    auto* timer = new PostMessageTimer(*this, PassRefPtr<SerializedScriptValue> { WTFMove(message) }, sourceOrigin, source, WTFMove(channels), WTFMove(target), WTFMove(stackTrace));
+    auto* timer = new PostMessageTimer(*this, WTFMove(message), sourceOrigin, source, channels.releaseReturnValue(), WTFMove(target), WTFMove(stackTrace));
     timer->startOneShot(0);
 
     return { };

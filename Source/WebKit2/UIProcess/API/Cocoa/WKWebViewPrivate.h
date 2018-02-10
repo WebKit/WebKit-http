@@ -63,6 +63,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @protocol _WKDiagnosticLoggingDelegate;
 @protocol _WKFindDelegate;
 @protocol _WKInputDelegate;
+@protocol _WKFullscreenDelegate;
 
 @interface WKWebView (WKPrivate)
 
@@ -244,6 +245,9 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 @property (nonatomic, readonly) BOOL _webProcessIsResponsive WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
+@property (nonatomic, setter=_setFullscreenDelegate:) id<_WKFullscreenDelegate> _fullscreenDelegate WK_API_AVAILABLE(macosx(10.13));
+@property (nonatomic, readonly) BOOL _isInFullscreen WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
 @end
 
 #if !TARGET_OS_IPHONE
@@ -286,6 +290,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, readonly) BOOL _shouldRequestCandidates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_requestActiveNowPlayingSessionInfo WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
+- (void)_insertText:(id)string replacementRange:(NSRange)replacementRange WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 #endif
 
 - (void)_setPageScale:(CGFloat)scale withOrigin:(CGPoint)origin WK_API_AVAILABLE(ios(WK_IOS_TBA));

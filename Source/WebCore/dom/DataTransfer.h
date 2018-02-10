@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef DataTransfer_h
-#define DataTransfer_h
+#pragma once
 
 #include "CachedResourceHandle.h"
 #include "DataTransferAccessPolicy.h"
@@ -45,6 +44,7 @@ namespace WebCore {
     class DataTransfer : public RefCounted<DataTransfer> {
     public:
         static Ref<DataTransfer> createForCopyAndPaste(DataTransferAccessPolicy);
+        static Ref<DataTransfer> createForInputEvent(const String& plainText, const String& htmlText);
 
         WEBCORE_EXPORT ~DataTransfer();
 
@@ -97,7 +97,7 @@ namespace WebCore {
 #endif
 
     private:
-        enum Type { CopyAndPaste, DragAndDrop };
+        enum Type { CopyAndPaste, DragAndDrop, InputEvent };
         DataTransfer(DataTransferAccessPolicy, std::unique_ptr<Pasteboard>, Type = CopyAndPaste, bool forFileDrag = false);
 
 #if ENABLE(DRAG_SUPPORT)
@@ -123,5 +123,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // DataTransfer_h

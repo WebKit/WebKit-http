@@ -130,13 +130,10 @@ public:
 
     WEBCORE_EXPORT bool isPreloaded(const String& urlString) const;
     void clearPreloads();
-    void clearPendingPreloads();
-    enum PreloadType { ImplicitPreload, ExplicitPreload };
-    CachedResourceHandle<CachedResource> preload(CachedResource::Type, CachedResourceRequest&&, PreloadType);
-    void checkForPendingPreloads();
+    CachedResourceHandle<CachedResource> preload(CachedResource::Type, CachedResourceRequest&&);
     void printPreloadStats();
 
-    bool canRequestAfterRedirection(CachedResource::Type, const URL&, const ResourceLoaderOptions&);
+    bool updateRequestAfterRedirection(CachedResource::Type, ResourceRequest&, const ResourceLoaderOptions&);
 
     static const ResourceLoaderOptions& defaultCachedResourceOptions();
 
@@ -154,12 +151,13 @@ private:
     enum class ForPreload { Yes, No };
     enum class DeferOption { NoDefer, DeferredByClient };
 
-    void updateHTTPRequestHeaders(CachedResourceRequest&);
     CachedResourceHandle<CachedResource> requestResource(CachedResource::Type, CachedResourceRequest&&, ForPreload = ForPreload::No, DeferOption = DeferOption::NoDefer);
-    void prepareFetch(CachedResource::Type, CachedResourceRequest&);
     CachedResourceHandle<CachedResource> revalidateResource(CachedResourceRequest&&, CachedResource&);
     CachedResourceHandle<CachedResource> loadResource(CachedResource::Type, CachedResourceRequest&&);
-    CachedResourceHandle<CachedResource> requestPreload(CachedResource::Type, CachedResourceRequest&&);
+
+    void prepareFetch(CachedResource::Type, CachedResourceRequest&);
+    void updateHTTPRequestHeaders(CachedResource::Type, CachedResourceRequest&);
+    void updateReferrerOriginAndUserAgentHeaders(CachedResourceRequest&);
 
     bool canRequest(CachedResource::Type, const URL&, const CachedResourceRequest&, ForPreload);
 
@@ -171,15 +169,16 @@ private:
 
     bool shouldContinueAfterNotifyingLoadedFromMemoryCache(const CachedResourceRequest&, CachedResource*);
     bool checkInsecureContent(CachedResource::Type, const URL&) const;
-    bool allowedByContentSecurityPolicy(CachedResource::Type, const URL&, const ResourceLoaderOptions&, ContentSecurityPolicy::RedirectResponseReceived);
+    bool allowedByContentSecurityPolicy(CachedResource::Type, const URL&, const ResourceLoaderOptions&, ContentSecurityPolicy::RedirectResponseReceived) const;
 
     void performPostLoadActions();
 
     bool clientDefersImage(const URL&) const;
     void reloadImagesIfNotDeferred();
 
+    bool canRequestAfterRedirection(CachedResource::Type, const URL&, const ResourceLoaderOptions&) const;
     bool canRequestInContentDispositionAttachmentSandbox(CachedResource::Type, const URL&) const;
-    
+
     HashSet<String> m_validatedURLs;
     mutable DocumentResourceMap m_documentResources;
     Document* m_document;
@@ -188,11 +187,6 @@ private:
     int m_requestCount;
     
     std::unique_ptr<ListHashSet<CachedResource*>> m_preloads;
-    struct PendingPreload {
-        CachedResource::Type m_type;
-        CachedResourceRequest m_request;
-    };
-    Deque<PendingPreload> m_pendingPreloads;
 
     Timer m_garbageCollectDocumentResourcesTimer;
 

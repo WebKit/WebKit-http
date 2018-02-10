@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2012, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,6 +59,7 @@
 #import <WebCore/BackForwardController.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/DictionaryLookup.h>
+#import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FrameLoader.h>
@@ -328,6 +329,8 @@ void WebPage::insertDictatedTextAsync(const String& text, const EditingRange& re
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
+    Ref<Frame> protector(frame);
+
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
         if (replacementRange)
@@ -435,19 +438,24 @@ void WebPage::performDictionaryLookupOfCurrentSelection()
 
 DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& range, NSDictionary **options, TextIndicatorPresentationTransition presentationTransition)
 {
-    TemporaryChange<bool> isGettingDictionaryPopupInfoChange { m_isGettingDictionaryPopupInfo, true };
+    Editor& editor = frame->editor();
+    editor.setIsGettingDictionaryPopupInfo(true);
 
     DictionaryPopupInfo dictionaryPopupInfo;
-    if (range.text().stripWhiteSpace().isEmpty())
+    if (range.text().stripWhiteSpace().isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
+    }
     
     RenderObject* renderer = range.startContainer().renderer();
     const RenderStyle& style = renderer->style();
 
     Vector<FloatQuad> quads;
     range.absoluteTextQuads(quads);
-    if (quads.isEmpty())
+    if (quads.isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
+    }
 
     IntRect rangeRect = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
 
@@ -477,12 +485,15 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& ra
         indicatorOptions |= TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
 
     RefPtr<TextIndicator> textIndicator = TextIndicator::createWithRange(range, indicatorOptions, presentationTransition);
-    if (!textIndicator)
+    if (!textIndicator) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
+    }
 
     dictionaryPopupInfo.textIndicator = textIndicator->data();
     dictionaryPopupInfo.attributedString = scaledNSAttributedString;
 
+    editor.setIsGettingDictionaryPopupInfo(false);
     return dictionaryPopupInfo;
 }
 

@@ -18,11 +18,16 @@
  * Boston, MA 02110-1301, USA.
  */
 
+// FIXME: This should be an implementation provided typedef
+// https://heycam.github.io/webidl/#DOMTimeStamp
+typedef unsigned long long DOMTimeStamp;
+
 [
     Constructor(DOMString type, optional EventInit eventInitDict),
     CustomToJSObject,
     ExportToWrappedFunction,
     Exposed=(Window,Worker),
+    JSCustomHeader,
 ] interface Event {
     // PhaseType
     const unsigned short NONE = 0;
@@ -61,7 +66,8 @@
     void stopPropagation();
     void preventDefault();
 
-    void initEvent(DOMString eventTypeArg, boolean canBubbleArg, boolean cancelableArg);
+    void initEvent(DOMString type, boolean bubbles, boolean cancelable); // Standard.
+    [MayThrowException, ImplementedAs=initEventForBindings, CallWith=ScriptExecutionContext] void initEvent(DOMString type, optional boolean bubbles = false); // Quirk.
 
     readonly attribute boolean defaultPrevented;
     void stopImmediatePropagation();

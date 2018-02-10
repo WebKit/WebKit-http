@@ -1003,7 +1003,7 @@ void SpeculativeJIT::compileTryGetById(Node* node)
 
         base.use();
 
-        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), JITCompiler::Jump(), NeedToSpill, AccessType::GetPure);
+        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), JITCompiler::Jump(), NeedToSpill, AccessType::TryGet);
 
         jsValueResult(resultRegs, node, DataFormatJS, UseChildrenCalledExplicitly);
         break;
@@ -1020,7 +1020,7 @@ void SpeculativeJIT::compileTryGetById(Node* node)
 
         JITCompiler::Jump notCell = m_jit.branchIfNotCell(baseRegs);
 
-        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), notCell, DontSpill, AccessType::GetPure);
+        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), notCell, NeedToSpill, AccessType::TryGet);
 
         jsValueResult(resultRegs, node, DataFormatJS, UseChildrenCalledExplicitly);
         break;
@@ -1030,6 +1030,42 @@ void SpeculativeJIT::compileTryGetById(Node* node)
         DFG_CRASH(m_jit.graph(), node, "Bad use kind");
         break;
     } 
+}
+
+void SpeculativeJIT::compilePureGetById(Node* node)
+{
+    ASSERT(node->op() == PureGetById);
+
+    switch (node->child1().useKind()) {
+    case CellUse: {
+        SpeculateCellOperand base(this, node->child1());
+        JSValueRegsTemporary result(this, Reuse, base);
+
+        JSValueRegs baseRegs = JSValueRegs::payloadOnly(base.gpr());
+        JSValueRegs resultRegs = result.regs();
+
+        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), JITCompiler::Jump(), NeedToSpill, AccessType::PureGet);
+
+        jsValueResult(resultRegs, node);
+        break;
+    }
+    case UntypedUse: {
+        JSValueOperand base(this, node->child1());
+        JSValueRegsTemporary result(this, Reuse, base);
+
+        JSValueRegs baseRegs = base.jsValueRegs();
+        JSValueRegs resultRegs = result.regs();
+    
+        JITCompiler::Jump notCell = m_jit.branchIfNotCell(baseRegs);
+    
+        cachedGetById(node->origin.semantic, baseRegs, resultRegs, node->identifierNumber(), notCell, NeedToSpill, AccessType::PureGet);
+    
+        jsValueResult(resultRegs, node);
+        break;
+    }
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+    }
 }
 
 void SpeculativeJIT::compileIn(Node* node)
@@ -6816,6 +6852,7 @@ void SpeculativeJIT::compileCreateRest(Node* node)
         GPRReg arrayResultGPR = arrayResult.gpr();
 
         bool shouldAllowForArrayStorageStructureForLargeArrays = false;
+        ASSERT(m_jit.graph().globalObjectFor(node->origin.semantic)->restParameterStructure()->indexingType() == ArrayWithContiguous);
         compileAllocateNewArrayWithSize(m_jit.graph().globalObjectFor(node->origin.semantic), arrayResultGPR, arrayLengthGPR, ArrayWithContiguous, shouldAllowForArrayStorageStructureForLargeArrays);
 
         GPRTemporary argumentsStart(this);
@@ -7223,9 +7260,9 @@ static void allocateTemporaryRegistersForPatchpoint(SpeculativeJIT* jit, Vector<
     }
 }
 
-void SpeculativeJIT::compileCallDOM(Node* node)
+void SpeculativeJIT::compileCallDOMGetter(Node* node)
 {
-    DOMJIT::CallDOMPatchpoint* patchpoint = node->callDOMPatchpoint();
+    DOMJIT::CallDOMGetterPatchpoint* patchpoint = node->callDOMGetterData()->patchpoint;
 
     Vector<GPRReg> gpScratch;
     Vector<FPRReg> fpScratch;
@@ -7234,18 +7271,16 @@ void SpeculativeJIT::compileCallDOM(Node* node)
     JSValueRegsTemporary result(this);
     regs.append(result.regs());
 
-    int childIndex = 0;
+    Edge& baseEdge = node->child1();
+    SpeculateCellOperand base(this, baseEdge);
+    regs.append(DOMJIT::Value(base.gpr(), m_state.forNode(baseEdge).value()));
 
     Optional<SpeculateCellOperand> globalObject;
     if (patchpoint->requireGlobalObject) {
-        Edge& globalObjectEdge = m_jit.graph().varArgChild(node, childIndex++);
+        Edge& globalObjectEdge = node->child2();
         globalObject = SpeculateCellOperand(this, globalObjectEdge);
         regs.append(DOMJIT::Value(globalObject->gpr(), m_state.forNode(globalObjectEdge).value()));
     }
-
-    Edge& baseEdge = m_jit.graph().varArgChild(node, childIndex++);
-    SpeculateCellOperand base(this, baseEdge);
-    regs.append(DOMJIT::Value(base.gpr(), m_state.forNode(baseEdge).value()));
 
     Vector<GPRTemporary> gpTempraries;
     Vector<FPRTemporary> fpTempraries;

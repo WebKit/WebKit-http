@@ -75,7 +75,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors1(ExecState* s
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto arrayBuffer = toArrayBuffer(state->uncheckedArgument(0));
+    auto arrayBuffer = toUnsharedArrayBuffer(state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     if (UNLIKELY(!arrayBuffer))
         return throwArgumentTypeError(*state, throwScope, 0, "arrayBuffer", "TestOverloadedConstructors", nullptr, "ArrayBuffer");
@@ -92,7 +92,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors2(ExecState* s
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto arrayBufferView = toArrayBufferView(state->uncheckedArgument(0));
+    auto arrayBufferView = toUnsharedArrayBufferView(state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     if (UNLIKELY(!arrayBufferView))
         return throwArgumentTypeError(*state, throwScope, 0, "arrayBufferView", "TestOverloadedConstructors", nullptr, "ArrayBufferView");
@@ -125,7 +125,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors4(ExecState* s
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto string = state->uncheckedArgument(0).toWTFString(state);
+    auto string = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructors::create(WTFMove(string));
     return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
@@ -225,7 +225,7 @@ EncodedJSValue jsTestOverloadedConstructorsConstructor(ExecState* state, Encoded
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestOverloadedConstructorsPrototype* domObject = jsDynamicCast<JSTestOverloadedConstructorsPrototype*>(JSValue::decode(thisValue));
+    JSTestOverloadedConstructorsPrototype* domObject = jsDynamicDowncast<JSTestOverloadedConstructorsPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestOverloadedConstructors::getConstructor(state->vm(), domObject->globalObject()));
@@ -236,7 +236,7 @@ bool setJSTestOverloadedConstructorsConstructor(ExecState* state, EncodedJSValue
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestOverloadedConstructorsPrototype* domObject = jsDynamicCast<JSTestOverloadedConstructorsPrototype*>(JSValue::decode(thisValue));
+    JSTestOverloadedConstructorsPrototype* domObject = jsDynamicDowncast<JSTestOverloadedConstructorsPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -304,7 +304,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestOv
 
 TestOverloadedConstructors* JSTestOverloadedConstructors::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestOverloadedConstructors*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestOverloadedConstructors*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

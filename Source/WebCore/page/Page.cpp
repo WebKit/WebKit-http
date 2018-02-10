@@ -20,6 +20,7 @@
 #include "config.h"
 #include "Page.h"
 
+#include "ActivityStateChangeObserver.h"
 #include "AlternativeTextClient.h"
 #include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
@@ -94,7 +95,6 @@
 #include "TextResourceDecoder.h"
 #include "UserContentProvider.h"
 #include "UserInputBridge.h"
-#include "ViewStateChangeObserver.h"
 #include "VisitedLinkState.h"
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
@@ -145,7 +145,7 @@ static void networkStateChanged(bool isOnLine)
     for (auto& page : *allPages) {
         for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext())
             frames.append(*frame);
-        InspectorInstrumentation::networkStateChanged(page);
+        InspectorInstrumentation::networkStateChanged(*page);
     }
 
     AtomicString eventName = isOnLine ? eventNames().onlineEvent : eventNames().offlineEvent;
@@ -156,7 +156,7 @@ static void networkStateChanged(bool isOnLine)
     }
 }
 
-static const ViewState::Flags PageInitialViewState = ViewState::IsVisible | ViewState::IsInWindow;
+static const ActivityState::Flags PageInitialActivityState = ActivityState::IsVisible | ActivityState::IsInWindow;
 
 Page::Page(PageConfiguration&& pageConfiguration)
     : m_chrome(std::make_unique<Chrome>(*this, *pageConfiguration.chromeClient))
@@ -164,7 +164,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
 #if ENABLE(DRAG_SUPPORT)
     , m_dragController(std::make_unique<DragController>(*this, *pageConfiguration.dragClient))
 #endif
-    , m_focusController(std::make_unique<FocusController>(*this, PageInitialViewState))
+    , m_focusController(std::make_unique<FocusController>(*this, PageInitialActivityState))
 #if ENABLE(CONTEXT_MENUS)
     , m_contextMenuController(std::make_unique<ContextMenuController>(*this, *pageConfiguration.contextMenuClient))
 #endif
@@ -193,7 +193,6 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_inLowQualityInterpolationMode(false)
     , m_areMemoryCacheClientCallsEnabled(true)
     , m_mediaVolume(1)
-    , m_muted(false)
     , m_pageScaleFactor(1)
     , m_zoomedOutPageScaleFactor(0)
     , m_topContentInset(0)
@@ -215,7 +214,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_timerAlignmentIntervalIncreaseTimer(*this, &Page::timerAlignmentIntervalIncreaseTimerFired)
     , m_isEditable(false)
     , m_isPrerender(false)
-    , m_viewState(PageInitialViewState)
+    , m_activityState(PageInitialActivityState)
     , m_requestedLayoutMilestones(0)
     , m_headerHeight(0)
     , m_footerHeight(0)
@@ -1014,7 +1013,7 @@ unsigned Page::pageCount() const
 
 void Page::setIsInWindow(bool isInWindow)
 {
-    setViewState(isInWindow ? m_viewState | ViewState::IsInWindow : m_viewState & ~ViewState::IsInWindow);
+    setActivityState(isInWindow ? m_activityState | ActivityState::IsInWindow : m_activityState & ~ActivityState::IsInWindow);
 }
 
 void Page::setIsInWindowInternal(bool isInWindow)
@@ -1028,14 +1027,14 @@ void Page::setIsInWindowInternal(bool isInWindow)
         resumeAnimatingImages();
 }
 
-void Page::addViewStateChangeObserver(ViewStateChangeObserver& observer)
+void Page::addActivityStateChangeObserver(ActivityStateChangeObserver& observer)
 {
-    m_viewStateChangeObservers.add(&observer);
+    m_activityStateChangeObservers.add(&observer);
 }
 
-void Page::removeViewStateChangeObserver(ViewStateChangeObserver& observer)
+void Page::removeActivityStateChangeObserver(ActivityStateChangeObserver& observer)
 {
-    m_viewStateChangeObservers.remove(&observer);
+    m_activityStateChangeObservers.remove(&observer);
 }
 
 void Page::suspendScriptedAnimations()
@@ -1071,7 +1070,7 @@ void Page::userStyleSheetLocationChanged()
     URL url = m_settings->userStyleSheetLocation();
     
     // Allow any local file URL scheme to be loaded.
-    if (SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol()))
+    if (SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol().toStringWithoutCopying()))
         m_userStyleSheetPath = url.fileSystemPath();
     else
         m_userStyleSheetPath = String();
@@ -1221,14 +1220,15 @@ void Page::hiddenPageDOMTimerThrottlingStateChanged()
 void Page::updateTimerThrottlingState()
 {
     // Timer throttling disabled if page is visually active, or disabled by setting.
-    if (!m_settings->hiddenPageDOMTimerThrottlingEnabled() || !(m_viewState & ViewState::IsVisuallyIdle)) {
+    if (!m_settings->hiddenPageDOMTimerThrottlingEnabled() || !(m_activityState & ActivityState::IsVisuallyIdle)) {
         setTimerThrottlingState(TimerThrottlingState::Disabled);
         return;
     }
 
     // If the page is visible (but idle), there is any activity (loading, media playing, etc), or per setting,
     // we allow timer throttling, but not increasing timer throttling.
-    if (!m_settings->hiddenPageDOMTimerThrottlingAutoIncreases() || m_viewState & ViewState::IsVisible || m_pageThrottler.activityState()) {
+    if (!m_settings->hiddenPageDOMTimerThrottlingAutoIncreases()
+        || m_activityState & (ActivityState::IsVisible | ActivityState::IsAudible | ActivityState::IsLoading)) {
         setTimerThrottlingState(TimerThrottlingState::Enabled);
         return;
     }
@@ -1381,12 +1381,12 @@ void Page::updateIsPlayingMedia(uint64_t sourceElementID)
     chrome().client().isPlayingMediaDidChange(state, sourceElementID);
 }
 
-void Page::setMuted(bool muted)
+void Page::setMuted(MediaProducer::MutedStateFlags muted)
 {
-    if (m_muted == muted)
+    if (m_mutedState == muted)
         return;
 
-    m_muted = muted;
+    m_mutedState = muted;
 
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->document())
@@ -1439,31 +1439,31 @@ void Page::resumeAnimatingImages()
         view->resumeVisibleImageAnimationsIncludingSubframes();
 }
 
-void Page::setViewState(ViewState::Flags viewState)
+void Page::setActivityState(ActivityState::Flags activityState)
 {
-    ViewState::Flags changed = m_viewState ^ viewState;
+    ActivityState::Flags changed = m_activityState ^ activityState;
     if (!changed)
         return;
 
-    ViewState::Flags oldViewState = m_viewState;
+    ActivityState::Flags oldActivityState = m_activityState;
 
     bool wasVisibleAndActive = isVisibleAndActive();
-    m_viewState = viewState;
+    m_activityState = activityState;
 
-    m_focusController->setViewState(viewState);
+    m_focusController->setActivityState(activityState);
 
-    if (changed & ViewState::IsVisible)
-        setIsVisibleInternal(viewState & ViewState::IsVisible);
-    if (changed & ViewState::IsInWindow)
-        setIsInWindowInternal(viewState & ViewState::IsInWindow);
-    if (changed & ViewState::IsVisuallyIdle)
-        setIsVisuallyIdleInternal(viewState & ViewState::IsVisuallyIdle);
+    if (changed & ActivityState::IsVisible)
+        setIsVisibleInternal(activityState & ActivityState::IsVisible);
+    if (changed & ActivityState::IsInWindow)
+        setIsInWindowInternal(activityState & ActivityState::IsInWindow);
+    if (changed & ActivityState::IsVisuallyIdle)
+        setIsVisuallyIdleInternal(activityState & ActivityState::IsVisuallyIdle);
 
-    if (changed & (ViewState::IsVisible | ViewState::IsVisuallyIdle))
+    if (changed & (ActivityState::IsVisible | ActivityState::IsVisuallyIdle | ActivityState::IsAudible | ActivityState::IsLoading))
         updateTimerThrottlingState();
 
-    for (auto* observer : m_viewStateChangeObservers)
-        observer->viewStateDidChange(oldViewState, m_viewState);
+    for (auto* observer : m_activityStateChangeObservers)
+        observer->activityStateDidChange(oldActivityState, m_activityState);
 
     if (wasVisibleAndActive != isVisibleAndActive())
         PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary();
@@ -1471,21 +1471,15 @@ void Page::setViewState(ViewState::Flags viewState)
 
 bool Page::isVisibleAndActive() const
 {
-    return (m_viewState & ViewState::IsVisible) && (m_viewState & ViewState::WindowIsActive);
-}
-
-void Page::setPageActivityState(PageActivityState::Flags activityState)
-{
-    chrome().client().setPageActivityState(activityState);
-    updateTimerThrottlingState();
+    return (m_activityState & ActivityState::IsVisible) && (m_activityState & ActivityState::WindowIsActive);
 }
 
 void Page::setIsVisible(bool isVisible)
 {
     if (isVisible)
-        setViewState((m_viewState & ~ViewState::IsVisuallyIdle) | ViewState::IsVisible | ViewState::IsVisibleOrOccluded);
+        setActivityState((m_activityState & ~ActivityState::IsVisuallyIdle) | ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded);
     else
-        setViewState((m_viewState & ~(ViewState::IsVisible | ViewState::IsVisibleOrOccluded)) | ViewState::IsVisuallyIdle);
+        setActivityState((m_activityState & ~(ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded)) | ActivityState::IsVisuallyIdle);
 }
 
 void Page::setIsVisibleInternal(bool isVisible)

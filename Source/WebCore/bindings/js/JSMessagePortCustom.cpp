@@ -54,7 +54,7 @@ void JSMessagePort::visitAdditionalChildren(SlotVisitor& visitor)
 
 JSC::JSValue JSMessagePort::postMessage(JSC::ExecState& state)
 {
-    return handlePostMessage(state, &wrapped());
+    return handlePostMessage(state, wrapped());
 }
 
 void extractTransferables(JSC::ExecState& state, JSC::JSValue value, Vector<RefPtr<MessagePort>>& portArray, Vector<RefPtr<JSC::ArrayBuffer>>& arrayBuffers)
@@ -91,7 +91,7 @@ void extractTransferables(JSC::ExecState& state, JSC::JSValue value, Vector<RefP
             }
             portArray.append(WTFMove(port));
         } else {
-            if (RefPtr<ArrayBuffer> arrayBuffer = toArrayBuffer(value))
+            if (RefPtr<ArrayBuffer> arrayBuffer = toPossiblySharedArrayBuffer(value))
                 arrayBuffers.append(WTFMove(arrayBuffer));
             else {
                 throwTypeError(&state, scope);

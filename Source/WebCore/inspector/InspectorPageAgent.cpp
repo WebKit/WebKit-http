@@ -70,7 +70,6 @@
 #include "TextEncoding.h"
 #include "TextResourceDecoder.h"
 #include "UserGestureIndicator.h"
-#include <bindings/ScriptValue.h>
 #include <inspector/ContentSearchUtilities.h>
 #include <inspector/IdentifiersFactory.h>
 #include <inspector/InspectorValues.h>
@@ -528,7 +527,7 @@ void InspectorPageAgent::getCookies(ErrorString&, RefPtr<Inspector::Protocol::Ar
                 // FIXME: We need duplication checking for the String representation of cookies.
                 // Exceptions are thrown by cookie() in sandboxed frames. That won't happen here
                 // because "document" is the document of the main frame of the page.
-                stringCookiesList.append(document->cookie(ASSERT_NO_EXCEPTION));
+                stringCookiesList.append(document->cookie().releaseReturnValue());
             } else {
                 for (auto& cookie : docCookiesList) {
                     if (!rawCookiesList.contains(cookie))
@@ -739,13 +738,13 @@ void InspectorPageAgent::loadEventFired()
     m_frontendDispatcher->loadEventFired(timestamp());
 }
 
-void InspectorPageAgent::frameNavigated(DocumentLoader* loader)
+void InspectorPageAgent::frameNavigated(Frame& frame)
 {
-    if (loader->frame()->isMainFrame()) {
+    if (frame.isMainFrame()) {
         m_scriptToEvaluateOnLoadOnce = m_pendingScriptToEvaluateOnLoadOnce;
         m_pendingScriptToEvaluateOnLoadOnce = String();
     }
-    m_frontendDispatcher->frameNavigated(buildObjectForFrame(loader->frame()));
+    m_frontendDispatcher->frameNavigated(buildObjectForFrame(&frame));
 }
 
 void InspectorPageAgent::frameDetached(Frame& frame)
@@ -861,13 +860,13 @@ void InspectorPageAgent::didRunJavaScriptDialog()
     m_frontendDispatcher->javascriptDialogClosed();
 }
 
-void InspectorPageAgent::didPaint(RenderObject* renderer, const LayoutRect& rect)
+void InspectorPageAgent::didPaint(RenderObject& renderer, const LayoutRect& rect)
 {
     if (!m_enabled || !m_showPaintRects)
         return;
 
-    LayoutRect absoluteRect = LayoutRect(renderer->localToAbsoluteQuad(FloatRect(rect)).boundingBox());
-    FrameView* view = renderer->document().view();
+    LayoutRect absoluteRect = LayoutRect(renderer.localToAbsoluteQuad(FloatRect(rect)).boundingBox());
+    FrameView* view = renderer.document().view();
 
     LayoutRect rootRect = absoluteRect;
     if (!view->frame().isMainFrame()) {

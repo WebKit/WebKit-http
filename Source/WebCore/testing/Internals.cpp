@@ -86,6 +86,7 @@
 #include "MainFrame.h"
 #include "MallocStatistics.h"
 #include "MediaPlayer.h"
+#include "MediaProducer.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
 #include "MemoryPressureHandler.h"
@@ -249,7 +250,7 @@ private:
     void setAttachedWindowHeight(unsigned) final { }
     void setAttachedWindowWidth(unsigned) final { }
 
-    bool sendMessageToFrontend(const String& message) final;
+    void sendMessageToFrontend(const String& message) final;
     ConnectionType connectionType() const final { return ConnectionType::Local; }
 
     Page* frontendPage() const
@@ -292,11 +293,11 @@ void InspectorStubFrontend::closeWindow()
     m_frontendWindow = nullptr;
 }
 
-bool InspectorStubFrontend::sendMessageToFrontend(const String& message)
+void InspectorStubFrontend::sendMessageToFrontend(const String& message)
 {
     ASSERT_ARG(message, !message.isEmpty());
 
-    return InspectorClient::doDispatchMessageOnFrontendPage(frontendPage(), message);
+    InspectorClient::doDispatchMessageOnFrontendPage(frontendPage(), message);
 }
 
 static bool markerTypeFrom(const String& markerType, DocumentMarker::MarkerType& result)
@@ -425,6 +426,7 @@ Internals::Internals(Document& document)
 
 #if ENABLE(MEDIA_STREAM)
     setMockMediaCaptureDevicesEnabled(true);
+    WebCore::Settings::setMediaCaptureRequiresSecureConnection(false);
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -779,30 +781,9 @@ RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo
     return CSSComputedStyleDeclaration::create(element, allowVisitedStyle);
 }
 
-ExceptionOr<Node*> Internals::ensureShadowRoot(Element& host)
-{
-    if (ShadowRoot* shadowRoot = host.shadowRoot())
-        return shadowRoot;
-
-    ExceptionCode ec = 0;
-    auto result = host.createShadowRoot(ec);
-    if (ec)
-        return Exception { ec };
-    return result;
-}
-
 Node* Internals::ensureUserAgentShadowRoot(Element& host)
 {
     return &host.ensureUserAgentShadowRoot();
-}
-
-ExceptionOr<Node*> Internals::createShadowRoot(Element& host)
-{
-    ExceptionCode ec = 0;
-    auto result = host.createShadowRoot(ec);
-    if (ec)
-        return Exception { ec };
-    return result;
 }
 
 Node* Internals::shadowRoot(Element& host)
@@ -816,11 +797,11 @@ ExceptionOr<String> Internals::shadowRootType(const Node& root) const
         return Exception { INVALID_ACCESS_ERR };
 
     switch (downcast<ShadowRoot>(root).mode()) {
-    case ShadowRoot::Mode::UserAgent:
+    case ShadowRootMode::UserAgent:
         return String("UserAgentShadowRoot");
-    case ShadowRoot::Mode::Closed:
+    case ShadowRootMode::Closed:
         return String("ClosedShadowRoot");
-    case ShadowRoot::Mode::Open:
+    case ShadowRootMode::Open:
         return String("OpenShadowRoot");
     default:
         ASSERT_NOT_REACHED();
@@ -1099,6 +1080,30 @@ ExceptionOr<void> Internals::setScrollViewPosition(int x, int y)
     frameView.setConstrainsScrollingToContentEdge(constrainsScrollingToContentEdgeOldValue);
 
     return { };
+}
+
+ExceptionOr<Ref<ClientRect>> Internals::layoutViewportRect()
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return Exception { INVALID_ACCESS_ERR };
+
+    document->updateLayoutIgnorePendingStylesheets();
+
+    auto& frameView = *document->view();
+    return ClientRect::create(frameView.layoutViewportRect());
+}
+
+ExceptionOr<Ref<ClientRect>> Internals::visualViewportRect()
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return Exception { INVALID_ACCESS_ERR };
+
+    document->updateLayoutIgnorePendingStylesheets();
+
+    auto& frameView = *document->view();
+    return ClientRect::create(frameView.visualViewportRect());
 }
 
 ExceptionOr<void> Internals::setViewBaseBackgroundColor(const String& colorValue)
@@ -2037,6 +2042,15 @@ ExceptionOr<String> Internals::pageSizeAndMarginsInPixels(int pageNumber, int wi
     return PrintContext::pageSizeAndMarginsInPixels(frame(), pageNumber, width, height, marginTop, marginRight, marginBottom, marginLeft);
 }
 
+ExceptionOr<float> Internals::pageScaleFactor() const
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return Exception { INVALID_ACCESS_ERR };
+
+    return document->page()->pageScaleFactor();
+}
+
 ExceptionOr<void> Internals::setPageScaleFactor(float scaleFactor, int x, int y)
 {
     Document* document = contextDocument();
@@ -2702,6 +2716,8 @@ ExceptionOr<void> Internals::setMediaSessionRestrictions(const String& mediaType
         mediaType = PlatformMediaSession::Video;
     else if (equalLettersIgnoringASCIICase(mediaTypeString, "audio"))
         mediaType = PlatformMediaSession::Audio;
+    else if (equalLettersIgnoringASCIICase(mediaTypeString, "videoaudio"))
+        mediaType = PlatformMediaSession::VideoAudio;
     else if (equalLettersIgnoringASCIICase(mediaTypeString, "webaudio"))
         mediaType = PlatformMediaSession::WebAudio;
     else
@@ -2945,23 +2961,69 @@ ExceptionOr<String> Internals::pageOverlayLayerTreeAsText() const
     return MockPageOverlayClient::singleton().layerTreeAsText(document->frame()->mainFrame());
 }
 
-void Internals::setPageMuted(bool muted)
+void Internals::setPageMuted(const String& states)
 {
     Document* document = contextDocument();
     if (!document)
         return;
 
+    WebCore::MediaProducer::MutedStateFlags state = MediaProducer::NoneMuted;
+    Vector<String> stateString;
+    states.split(',', false, stateString);
+    for (auto& muteString : stateString) {
+        if (equalLettersIgnoringASCIICase(muteString, "audio"))
+            state |= MediaProducer::AudioIsMuted;
+        if (equalLettersIgnoringASCIICase(muteString, "capturedevices"))
+            state |= MediaProducer::CaptureDevicesAreMuted;
+    }
+
     if (Page* page = document->page())
-        page->setMuted(muted);
+        page->setMuted(state);
 }
 
-bool Internals::isPagePlayingAudio()
+String Internals::pageMediaState()
 {
     Document* document = contextDocument();
     if (!document || !document->page())
-        return false;
+        return emptyString();
 
-    return !!(document->page()->mediaState() & MediaProducer::IsPlayingAudio);
+    WebCore::MediaProducer::MediaStateFlags state = document->page()->mediaState();
+    StringBuilder string;
+    if (state & MediaProducer::IsPlayingAudio)
+        string.append("IsPlayingAudio,");
+    if (state & MediaProducer::IsPlayingVideo)
+        string.append("IsPlayingVideo,");
+    if (state & MediaProducer::IsPlayingToExternalDevice)
+        string.append("IsPlayingToExternalDevice,");
+    if (state & MediaProducer::RequiresPlaybackTargetMonitoring)
+        string.append("RequiresPlaybackTargetMonitoring,");
+    if (state & MediaProducer::ExternalDeviceAutoPlayCandidate)
+        string.append("ExternalDeviceAutoPlayCandidate,");
+    if (state & MediaProducer::DidPlayToEnd)
+        string.append("DidPlayToEnd,");
+    if (state & MediaProducer::IsSourceElementPlaying)
+        string.append("IsSourceElementPlaying,");
+
+    if (state & MediaProducer::IsNextTrackControlEnabled)
+        string.append("IsNextTrackControlEnabled,");
+    if (state & MediaProducer::IsPreviousTrackControlEnabled)
+        string.append("IsPreviousTrackControlEnabled,");
+
+    if (state & MediaProducer::HasPlaybackTargetAvailabilityListener)
+        string.append("HasPlaybackTargetAvailabilityListener,");
+    if (state & MediaProducer::HasAudioOrVideo)
+        string.append("HasAudioOrVideo,");
+    if (state & MediaProducer::HasActiveMediaCaptureDevice)
+        string.append("HasActiveMediaCaptureDevice,");
+    if (state & MediaProducer::HasMediaCaptureDevice)
+        string.append("HasMediaCaptureDevice,");
+
+    if (string.isEmpty())
+        string.append("IsNotPlaying");
+    else
+        string.resize(string.length() - 1);
+
+    return string.toString();
 }
 
 void Internals::setPageDefersLoading(bool defersLoading)

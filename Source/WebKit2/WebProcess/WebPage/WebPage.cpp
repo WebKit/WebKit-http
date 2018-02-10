@@ -152,6 +152,7 @@
 #include <WebCore/PageThrottler.h>
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/PluginDocument.h>
+#include <WebCore/PointerLockController.h>
 #include <WebCore/PrintContext.h>
 #include <WebCore/Range.h>
 #include <WebCore/RenderLayer.h>
@@ -375,8 +376,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_maximumRenderingSuppressionToken(0)
     , m_scrollPinningBehavior(DoNotPin)
     , m_useAsyncScrolling(false)
-    , m_viewState(parameters.viewState)
+    , m_activityState(parameters.activityState)
     , m_userActivity("Process suppression disabled for page.")
+    , m_userActivityHysteresis([this](HysteresisState) { updateUserActivity(); })
     , m_pendingNavigationID(0)
 #if ENABLE(WEBGL)
     , m_systemWebGLPolicy(WebGLAllowCreation)
@@ -491,7 +493,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     setPaginationLineGridEnabled(parameters.paginationLineGridEnabled);
     
     // If the page is created off-screen, its visibilityState should be prerender.
-    m_page->setViewState(m_viewState);
+    m_page->setActivityState(m_activityState);
     if (!isVisible())
         m_page->setIsPrerender();
     setPageSuppressed(false);
@@ -573,15 +575,10 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
 void WebPage::reinitializeWebPage(const WebPageCreationParameters& parameters)
 {
-    if (m_viewState != parameters.viewState)
-        setViewState(parameters.viewState, false, Vector<uint64_t>());
+    if (m_activityState != parameters.activityState)
+        setActivityState(parameters.activityState, false, Vector<uint64_t>());
     if (m_layerHostingMode != parameters.layerHostingMode)
         setLayerHostingMode(parameters.layerHostingMode);
-}
-
-void WebPage::setPageActivityState(PageActivityState::Flags activityState)
-{
-    send(Messages::WebPageProxy::SetPageActivityState(activityState));
 }
 
 void WebPage::setPageSuppressed(bool pageSuppressed)
@@ -589,9 +586,17 @@ void WebPage::setPageSuppressed(bool pageSuppressed)
     // The UserActivity keeps the processes runnable. So if the page should be suppressed, stop the activity.
     // If the page should not be supressed, start it.
     if (pageSuppressed)
-        m_userActivity.stop();
+        m_userActivityHysteresis.stop();
     else
+        m_userActivityHysteresis.start();
+}
+
+void WebPage::updateUserActivity()
+{
+    if (m_userActivityHysteresis.state() == HysteresisState::Started)
         m_userActivity.start();
+    else
+        m_userActivity.stop();
 }
 
 WebPage::~WebPage()
@@ -888,7 +893,7 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
                     postLayoutData.enclosingListType = NoList;
 
                 if (nodeToRemove)
-                    nodeToRemove->remove(ASSERT_NO_EXCEPTION);
+                    nodeToRemove->remove();
             }
         }
     }
@@ -2237,7 +2242,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 {
     TemporaryChange<bool> userIsInteractingChange { m_userIsInteracting, true };
 
-    m_page->pageThrottler().didReceiveUserInput();
+    m_userActivityHysteresis.impulse();
 
     bool shouldHandleEvent = true;
 
@@ -2292,7 +2297,7 @@ static bool handleWheelEvent(const WebWheelEvent& wheelEvent, Page* page)
 
 void WebPage::wheelEvent(const WebWheelEvent& wheelEvent)
 {
-    m_page->pageThrottler().didReceiveUserInput();
+    m_userActivityHysteresis.impulse();
 
     CurrentEvent currentEvent(wheelEvent);
 
@@ -2315,7 +2320,7 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
 {
     TemporaryChange<bool> userIsInteractingChange { m_userIsInteracting, true };
 
-    m_page->pageThrottler().didReceiveUserInput();
+    m_userActivityHysteresis.impulse();
 
     CurrentEvent currentEvent(keyboardEvent);
 
@@ -2562,7 +2567,7 @@ void WebPage::setCanStartMediaTimerFired()
 
 void WebPage::updateIsInWindow(bool isInitialState)
 {
-    bool isInWindow = m_viewState & WebCore::ViewState::IsInWindow;
+    bool isInWindow = m_activityState & WebCore::ActivityState::IsInWindow;
 
     if (!isInWindow) {
         m_setCanStartMediaTimer.stop();
@@ -2585,18 +2590,18 @@ void WebPage::updateIsInWindow(bool isInitialState)
         layoutIfNeeded();
 }
 
-void WebPage::setViewState(ViewState::Flags viewState, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs)
+void WebPage::setActivityState(ActivityState::Flags activityState, bool wantsDidUpdateActivityState, const Vector<uint64_t>& callbackIDs)
 {
-    ViewState::Flags changed = m_viewState ^ viewState;
-    m_viewState = viewState;
+    ActivityState::Flags changed = m_activityState ^ activityState;
+    m_activityState = activityState;
 
-    m_page->setViewState(viewState);
+    m_page->setActivityState(activityState);
     for (auto* pluginView : m_pluginViews)
-        pluginView->viewStateDidChange(changed);
+        pluginView->activityStateDidChange(changed);
 
-    m_drawingArea->viewStateDidChange(changed, wantsDidUpdateViewState, callbackIDs);
+    m_drawingArea->activityStateDidChange(changed, wantsDidUpdateActivityState, callbackIDs);
 
-    if (changed & ViewState::IsInWindow)
+    if (changed & ActivityState::IsInWindow)
         updateIsInWindow();
 }
 
@@ -3141,6 +3146,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(MEDIA_STREAM)
     settings.setMockCaptureDevicesEnabled(store.getBoolValueForKey(WebPreferencesKey::mockCaptureDevicesEnabledKey()));
+    settings.setMediaCaptureRequiresSecureConnection(store.getBoolValueForKey(WebPreferencesKey::mediaCaptureRequiresSecureConnectionKey()));
 #endif
 
     settings.setShouldConvertPositionStyleOnCopy(store.getBoolValueForKey(WebPreferencesKey::shouldConvertPositionStyleOnCopyKey()));
@@ -3207,9 +3213,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::cssGridLayoutEnabledKey()));
 #endif
 
-#if ENABLE(CUSTOM_ELEMENTS)
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(store.getBoolValueForKey(WebPreferencesKey::customElementsEnabledKey()));
-#endif
 
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(store.getBoolValueForKey(WebPreferencesKey::webGL2EnabledKey()));
@@ -3695,6 +3699,11 @@ void WebPage::userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, St
 void WebPage::didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vector<CaptureDevice>& devices, const String& deviceIdentifierHashSalt, bool originHasPersistentAccess)
 {
     m_userMediaPermissionRequestManager.didCompleteMediaDeviceEnumeration(userMediaID, devices, deviceIdentifierHashSalt, originHasPersistentAccess);
+}
+
+void WebPage::grantUserMediaDevicesSandboxExtension(const SandboxExtension::HandleArray& handles)
+{
+    m_userMediaPermissionRequestManager.grantUserMediaDevicesSandboxExtension(handles);
 }
 #endif
 
@@ -4379,9 +4388,9 @@ void WebPage::setMediaVolume(float volume)
     m_page->setMediaVolume(volume);
 }
 
-void WebPage::setMuted(bool muted)
+void WebPage::setMuted(MediaProducer::MutedStateFlags state)
 {
-    m_page->setMuted(muted);
+    m_page->setMuted(state);
 }
 
 #if ENABLE(MEDIA_SESSION)
@@ -4424,7 +4433,7 @@ void WebPage::runModal()
 
 bool WebPage::canHandleRequest(const WebCore::ResourceRequest& request)
 {
-    if (SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(request.url().protocol()))
+    if (SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(request.url().protocol().toStringWithoutCopying()))
         return true;
 
     if (request.url().protocolIsBlob())
@@ -4615,11 +4624,15 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
+    Ref<Frame> protector(frame);
+
+    bool replacesText = false;
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange, static_cast<EditingRangeIsRelativeTo>(editingRangeIsRelativeTo));
         if (replacementRange) {
             TemporaryChange<bool> isSelectingTextWhileInsertingAsynchronously(m_isSelectingTextWhileInsertingAsynchronously, suppressSelectionUpdate);
             frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
+            replacesText = true;
         }
     }
     
@@ -4629,7 +4642,7 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
     if (!frame.editor().hasComposition()) {
         // An insertText: might be handled by other responders in the chain if we don't handle it.
         // One example is space bar that results in scrolling down the page.
-        frame.editor().insertText(text, nullptr);
+        frame.editor().insertText(text, nullptr, replacesText ? TextEventInputAutocompletion : TextEventInputKeyboard);
     } else
         frame.editor().confirmComposition(text);
 }
@@ -4779,6 +4792,8 @@ void WebPage::setComposition(const String& text, const Vector<CompositionUnderli
         return;
     }
 
+    Ref<Frame> protector(*targetFrame);
+
     if (replacementLength > 0) {
         // The layout needs to be uptodate before setting a selection
         targetFrame->document()->updateLayout();
@@ -4839,10 +4854,11 @@ static bool needsPlainTextQuirk(bool needsQuirks, const URL& url)
 
 void WebPage::didChangeSelection()
 {
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
     // The act of getting Dictionary Popup info can make selection changes that we should not propagate to the UIProcess.
     // Specifically, if there is a caret selection, it will change to a range selection of the word around the caret. And
     // then it will change back.
-    if (m_isGettingDictionaryPopupInfo)
+    if (frame.editor().isGettingDictionaryPopupInfo())
         return;
 
     // Similarly, we don't want to propagate changes to the web process when inserting text asynchronously, since we will
@@ -4850,7 +4866,6 @@ void WebPage::didChangeSelection()
     if (m_isSelectingTextWhileInsertingAsynchronously)
         return;
 
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
     FrameView* view = frame.view();
 
     // If there is a layout pending, we should avoid populating EditorState that require layout to be done or it will
@@ -5611,6 +5626,23 @@ void WebPage::gamepadActivity(const Vector<GamepadData>& gamepadDatas)
     WebGamepadProvider::singleton().gamepadActivity(gamepadDatas);
 }
 
+#endif
+
+#if ENABLE(POINTER_LOCK)
+void WebPage::didAcquirePointerLock()
+{
+    corePage()->pointerLockController().didAcquirePointerLock();
+}
+
+void WebPage::didNotAcquirePointerLock()
+{
+    corePage()->pointerLockController().didNotAcquirePointerLock();
+}
+
+void WebPage::didLosePointerLock()
+{
+    corePage()->pointerLockController().didLosePointerLock();
+}
 #endif
 
 } // namespace WebKit

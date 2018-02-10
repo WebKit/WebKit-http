@@ -109,9 +109,7 @@ public:
 
     RefPtr<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Element&) const;
 
-    ExceptionOr<Node*> ensureShadowRoot(Element& host);
     Node* ensureUserAgentShadowRoot(Element& host);
-    ExceptionOr<Node*> createShadowRoot(Element& host);
     Node* shadowRoot(Element& host);
     ExceptionOr<String> shadowRootType(const Node&) const;
     String shadowPseudoId(Element&);
@@ -162,6 +160,10 @@ public:
     void invalidateFontCache();
 
     ExceptionOr<void> setScrollViewPosition(int x, int y);
+    
+    ExceptionOr<Ref<ClientRect>> layoutViewportRect();
+    ExceptionOr<Ref<ClientRect>> visualViewportRect();
+    
     ExceptionOr<void> setViewBaseBackgroundColor(const String& colorValue);
 
     ExceptionOr<void> setPagination(const String& mode, int gap, int pageLength);
@@ -285,6 +287,8 @@ public:
     int numberOfPages(float pageWidthInPixels = 800, float pageHeightInPixels = 600);
     ExceptionOr<String> pageProperty(const String& propertyName, int pageNumber) const;
     ExceptionOr<String> pageSizeAndMarginsInPixels(int pageNumber, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft) const;
+
+    ExceptionOr<float> pageScaleFactor() const;
 
     ExceptionOr<void> setPageScaleFactor(float scaleFactor, int x, int y);
     ExceptionOr<void> setPageZoomFactor(float);
@@ -440,8 +444,8 @@ public:
     ExceptionOr<Ref<MockPageOverlay>> installMockPageOverlay(PageOverlayType);
     ExceptionOr<String> pageOverlayLayerTreeAsText() const;
 
-    void setPageMuted(bool);
-    bool isPagePlayingAudio();
+    void setPageMuted(const String&);
+    String pageMediaState();
 
     void setPageDefersLoading(bool);
 

@@ -48,6 +48,7 @@
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JITToDFGDeferredCompilationCallback.h"
+#include "JSAsyncFunction.h"
 #include "JSCInlines.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
@@ -68,6 +69,35 @@
 #include <wtf/InlineASM.h>
 
 namespace JSC {
+
+ALWAYS_INLINE static EncodedJSValue pureGetByIdCommon(VM& vm, ExecState* exec, EncodedJSValue base, UniquedStringImpl* uid, const std::function<void (const PropertySlot&, const Identifier&)>& function = [] (const PropertySlot&, const Identifier&) { })
+{
+    Identifier ident = Identifier::fromUid(&vm, uid);
+    JSValue baseValue = JSValue::decode(base);
+
+    ASSERT(JITCode::isOptimizingJIT(exec->codeBlock()->jitType()));
+
+    PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
+    return JSValue::encode(baseValue.getPropertySlot(exec, ident, slot, [&] (bool, PropertySlot&) -> JSValue {
+        bool willDoSideEffects = !(slot.isValue() || slot.isUnset()) || slot.isTaintedByOpaqueObject();
+        if (UNLIKELY(willDoSideEffects)) {
+            {
+                CodeOrigin codeOrigin = exec->codeOrigin();
+                CodeBlock* currentBaseline = baselineCodeBlockForOriginAndBaselineCodeBlock(codeOrigin, exec->codeBlock()->alternative());
+                CodeOrigin originBytecodeIndex = CodeOrigin(codeOrigin.bytecodeIndex); // Since we're searching in the baseline, we just care about bytecode index.
+                ConcurrentJITLocker locker(currentBaseline->m_lock);
+                if (StructureStubInfo* stub = currentBaseline->findStubInfo(originBytecodeIndex))
+                    stub->didSideEffects = true;
+            }
+
+            exec->codeBlock()->jettison(Profiler::JettisonDueToPureGetByIdEffects);
+            return baseValue.get(exec, uid);
+        }
+
+        function(slot, ident);
+        return slot.isValue() ? slot.getValue(exec, ident) : jsUndefined();
+    }));
+}
 
 extern "C" {
 
@@ -164,6 +194,38 @@ int32_t JIT_OPERATION operationConstructArityCheck(ExecState* exec)
     return missingArgCount;
 }
 
+EncodedJSValue JIT_OPERATION operationPureGetByIdGeneric(ExecState* exec, EncodedJSValue base, UniquedStringImpl* uid)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return pureGetByIdCommon(*vm, exec, base, uid);
+}
+
+EncodedJSValue JIT_OPERATION operationPureGetById(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue base, UniquedStringImpl* uid)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    stubInfo->tookSlowPath = true;
+
+    return pureGetByIdCommon(*vm, exec, base, uid);
+}
+
+EncodedJSValue JIT_OPERATION operationPureGetByIdOptimize(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue base, UniquedStringImpl* uid)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+
+    return pureGetByIdCommon(*vm, exec, base, uid, 
+        [&] (const PropertySlot& slot, const Identifier& ident) {
+            ASSERT((slot.isValue() || slot.isUnset()) && !slot.isTaintedByOpaqueObject());
+            JSValue baseValue = JSValue::decode(base);
+            if (stubInfo->considerCaching(baseValue.structureOrNull()))
+                repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::Pure);
+        });
+}
+
 EncodedJSValue JIT_OPERATION operationTryGetById(ExecState* exec, StructureStubInfo* stubInfo, EncodedJSValue base, UniquedStringImpl* uid)
 {
     VM* vm = &exec->vm();
@@ -177,7 +239,6 @@ EncodedJSValue JIT_OPERATION operationTryGetById(ExecState* exec, StructureStubI
 
     return JSValue::encode(slot.getPureResult());
 }
-
 
 EncodedJSValue JIT_OPERATION operationTryGetByIdGeneric(ExecState* exec, EncodedJSValue base, UniquedStringImpl* uid)
 {
@@ -196,14 +257,17 @@ EncodedJSValue JIT_OPERATION operationTryGetByIdOptimize(ExecState* exec, Struct
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(*vm);
     Identifier ident = Identifier::fromUid(vm, uid);
 
     JSValue baseValue = JSValue::decode(base);
     PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
 
     baseValue.getPropertySlot(exec, ident, slot);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
     if (stubInfo->considerCaching(baseValue.structureOrNull()) && !slot.isTaintedByOpaqueObject() && (slot.isCacheableValue() || slot.isCacheableGetter() || slot.isUnset()))
-        repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::Pure);
+        repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::Try);
 
     return JSValue::encode(slot.getPureResult());
 }
@@ -222,7 +286,10 @@ EncodedJSValue JIT_OPERATION operationGetById(ExecState* exec, StructureStubInfo
     Identifier ident = Identifier::fromUid(vm, uid);
     
     LOG_IC((ICEvent::OperationGetById, baseValue.classInfoOrNull(), ident));
-    return JSValue::encode(baseValue.get(exec, ident, slot));
+    JSValue result = baseValue.get(exec, ident, slot);
+    bool willDoSideEffects = !(slot.isValue() || slot.isUnset()) || slot.isTaintedByOpaqueObject();
+    stubInfo->didSideEffects |= willDoSideEffects;
+    return JSValue::encode(result);
 }
 
 EncodedJSValue JIT_OPERATION operationGetByIdGeneric(ExecState* exec, EncodedJSValue base, UniquedStringImpl* uid)
@@ -251,6 +318,9 @@ EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState* exec, Structure
     LOG_IC((ICEvent::OperationGetByIdOptimize, baseValue.classInfoOrNull(), ident));
 
     return JSValue::encode(baseValue.getPropertySlot(exec, ident, [&] (bool found, PropertySlot& slot) -> JSValue {
+        bool willDoSideEffects = !(slot.isValue() || slot.isUnset()) || slot.isTaintedByOpaqueObject();
+        stubInfo->didSideEffects |= willDoSideEffects;
+
         if (stubInfo->considerCaching(baseValue.structureOrNull()))
             repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::Normal);
         return found ? slot.getValue(exec, ident) : jsUndefined();
@@ -387,7 +457,8 @@ void JIT_OPERATION operationPutByIdStrictOptimize(ExecState* exec, StructureStub
     
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+
     Identifier ident = Identifier::fromUid(vm, uid);
     AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
 
@@ -398,7 +469,8 @@ void JIT_OPERATION operationPutByIdStrictOptimize(ExecState* exec, StructureStub
 
     Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr;
     baseValue.putInline(exec, ident, value, slot);
-    
+    RETURN_IF_EXCEPTION(scope, void());
+
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
@@ -412,7 +484,8 @@ void JIT_OPERATION operationPutByIdNonStrictOptimize(ExecState* exec, StructureS
     
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+
     Identifier ident = Identifier::fromUid(vm, uid);
     AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
 
@@ -423,7 +496,8 @@ void JIT_OPERATION operationPutByIdNonStrictOptimize(ExecState* exec, StructureS
 
     Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr;    
     baseValue.putInline(exec, ident, value, slot);
-    
+    RETURN_IF_EXCEPTION(scope, void());
+
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
@@ -516,6 +590,7 @@ static void putByVal(CallFrame* callFrame, JSValue baseValue, JSValue subscript,
     if (byValInfo->stubInfo && (!isStringOrSymbol(subscript) || byValInfo->cachedId != property))
         byValInfo->tookSlowPath = true;
 
+    scope.release();
     PutPropertySlot slot(baseValue, callFrame->codeBlock()->isStrictMode());
     baseValue.putInline(callFrame, property, value, slot);
 }
@@ -1168,6 +1243,16 @@ EncodedJSValue JIT_OPERATION operationNewGeneratorFunction(ExecState* exec, JSSc
 EncodedJSValue JIT_OPERATION operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
 {
     return operationNewFunctionCommon<JSGeneratorFunction>(exec, scope, functionExecutable, true);
+}
+
+EncodedJSValue JIT_OPERATION operationNewAsyncFunction(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
+{
+    return operationNewFunctionCommon<JSAsyncFunction>(exec, scope, functionExecutable, false);
+}
+
+EncodedJSValue JIT_OPERATION operationNewAsyncFunctionWithInvalidatedReallocationWatchpoint(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
+{
+    return operationNewFunctionCommon<JSAsyncFunction>(exec, scope, functionExecutable, true);
 }
 
 void JIT_OPERATION operationSetFunctionName(ExecState* exec, JSCell* funcCell, EncodedJSValue encodedName)

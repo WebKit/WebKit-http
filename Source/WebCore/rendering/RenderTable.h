@@ -303,7 +303,7 @@ private:
     void invalidateCachedColumnOffsets();
 
     RenderBlock* firstLineBlock() const final;
-    void updateFirstLetter() final;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) final;
     
     void updateLogicalWidth() final;
 
@@ -319,7 +319,9 @@ private:
 
     void recalcCollapsedBorders();
     void recalcSections() const;
-    void layoutCaption(RenderTableCaption*);
+    enum class BottomCaptionLayoutPhase { Yes, No };
+    void layoutCaptions(BottomCaptionLayoutPhase = BottomCaptionLayoutPhase::No);
+    void layoutCaption(RenderTableCaption&);
 
     void distributeExtraLogicalHeight(LayoutUnit extraLogicalHeight);
 

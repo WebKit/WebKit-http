@@ -64,13 +64,6 @@ void addImpureProperty(const AtomicString& propertyName)
     JSDOMWindow::commonVM().addImpureProperty(propertyName);
 }
 
-JSValue jsStringOrNull(ExecState* exec, const String& s)
-{
-    if (s.isNull())
-        return jsNull();
-    return jsStringWithCache(exec, s);
-}
-
 JSValue jsOwnedStringOrNull(ExecState* exec, const String& s)
 {
     if (s.isNull())
@@ -90,32 +83,11 @@ JSValue jsString(ExecState* exec, const URL& url)
     return jsStringWithCache(exec, url.string());
 }
 
-JSValue jsStringOrNull(ExecState* exec, const URL& url)
-{
-    if (url.isNull())
-        return jsNull();
-    return jsStringWithCache(exec, url.string());
-}
-
 JSValue jsStringOrUndefined(ExecState* exec, const URL& url)
 {
     if (url.isNull())
         return jsUndefined();
     return jsStringWithCache(exec, url.string());
-}
-
-String valueToStringTreatingNullAsEmptyString(ExecState* exec, JSValue value)
-{
-    if (value.isNull())
-        return emptyString();
-    return value.toString(exec)->value(exec);
-}
-
-String valueToStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
-{
-    if (value.isUndefinedOrNull())
-        return String();
-    return value.toString(exec)->value(exec);
 }
 
 static inline bool hasUnpairedSurrogate(StringView string)
@@ -156,26 +128,8 @@ String valueToUSVString(ExecState* exec, JSValue value)
     return result.toString();
 }
 
-String valueToUSVStringTreatingNullAsEmptyString(ExecState* exec, JSValue value)
-{
-    return value.isNull() ? emptyString() : valueToUSVString(exec, value);
-}
-
-String valueToUSVStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
-{
-    return value.isUndefinedOrNull() ? String() : valueToUSVString(exec, value);
-}
-
 JSValue jsDate(ExecState* exec, double value)
 {
-    return DateInstance::create(exec->vm(), exec->lexicalGlobalObject()->dateStructure(), value);
-}
-
-JSValue jsDateOrNull(ExecState* exec, double value)
-{
-    // For nullable Date types, we use NaN as null value.
-    if (std::isnan(value))
-        return jsNull();
     return DateInstance::create(exec->vm(), exec->lexicalGlobalObject()->dateStructure(), value);
 }
 
@@ -192,7 +146,7 @@ void reportException(ExecState* exec, JSValue exceptionValue, CachedScript* cach
 {
     VM& vm = exec->vm();
     RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
-    auto* exception = jsDynamicCast<JSC::Exception*>(exceptionValue);
+    auto* exception = jsDynamicDowncast<JSC::Exception*>(exceptionValue);
     if (!exception) {
         exception = vm.lastException();
         if (!exception)
@@ -218,7 +172,7 @@ void reportException(ExecState* exec, JSC::Exception* exception, CachedScript* c
     vm.clearLastException();
 
     JSDOMGlobalObject* globalObject = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject());
-    if (JSDOMWindow* window = jsDynamicCast<JSDOMWindow*>(globalObject)) {
+    if (JSDOMWindow* window = jsDynamicDowncast<JSDOMWindow*>(globalObject)) {
         if (!window->wrapped().isCurrentlyDisplayedInFrame())
             return;
     }
@@ -239,7 +193,7 @@ void reportException(ExecState* exec, JSC::Exception* exception, CachedScript* c
     else {
         // FIXME: <http://webkit.org/b/115087> Web Inspector: WebCore::reportException should not evaluate JavaScript handling exceptions
         // If this is a custom exception object, call toString on it to try and get a nice string representation for the exception.
-        if (ErrorInstance* error = jsDynamicCast<ErrorInstance*>(exceptionValue))
+        if (ErrorInstance* error = jsDynamicDowncast<ErrorInstance*>(exceptionValue))
             errorMessage = error->sanitizedToString(exec);
         else
             errorMessage = exceptionValue.toString(exec)->value(exec);
@@ -392,31 +346,19 @@ bool hasIteratorMethod(JSC::ExecState& state, JSC::JSValue value)
     return !applyMethod.isUndefined();
 }
 
-bool shouldAllowAccessToNode(ExecState* exec, Node* node)
+bool BindingSecurity::shouldAllowAccessToFrame(ExecState& state, Frame& frame, String& message)
 {
-    return BindingSecurity::shouldAllowAccessToNode(exec, node);
-}
-
-bool shouldAllowAccessToFrame(ExecState* exec, Frame* target)
-{
-    return BindingSecurity::shouldAllowAccessToFrame(exec, target);
-}
-
-bool shouldAllowAccessToFrame(ExecState* exec, Frame* frame, String& message)
-{
-    if (!frame)
-        return false;
-    if (BindingSecurity::shouldAllowAccessToFrame(exec, frame, DoNotReportSecurityError))
+    if (BindingSecurity::shouldAllowAccessToFrame(&state, &frame, DoNotReportSecurityError))
         return true;
-    message = frame->document()->domWindow()->crossDomainAccessErrorMessage(activeDOMWindow(exec));
+    message = frame.document()->domWindow()->crossDomainAccessErrorMessage(activeDOMWindow(&state));
     return false;
 }
 
-bool shouldAllowAccessToDOMWindow(ExecState* exec, DOMWindow& target, String& message)
+bool BindingSecurity::shouldAllowAccessToDOMWindow(ExecState& state, DOMWindow& globalObject, String& message)
 {
-    if (BindingSecurity::shouldAllowAccessToDOMWindow(exec, target, DoNotReportSecurityError))
+    if (BindingSecurity::shouldAllowAccessToDOMWindow(&state, globalObject, DoNotReportSecurityError))
         return true;
-    message = target.crossDomainAccessErrorMessage(activeDOMWindow(exec));
+    message = globalObject.crossDomainAccessErrorMessage(activeDOMWindow(&state));
     return false;
 }
 
@@ -512,12 +454,12 @@ static inline T toSmallerInt(ExecState& state, JSValue value, IntegerConversionC
         if (d >= LimitsTrait::minValue && d <= LimitsTrait::maxValue)
             return static_cast<T>(d);
         switch (configuration) {
-        case NormalConversion:
+        case IntegerConversionConfiguration::Normal:
             break;
-        case EnforceRange:
+        case IntegerConversionConfiguration::EnforceRange:
             throwTypeError(&state, scope);
             return 0;
-        case Clamp:
+        case IntegerConversionConfiguration::Clamp:
             return d < LimitsTrait::minValue ? LimitsTrait::minValue : LimitsTrait::maxValue;
         }
         d %= LimitsTrait::numberOfValues;
@@ -528,11 +470,11 @@ static inline T toSmallerInt(ExecState& state, JSValue value, IntegerConversionC
     RETURN_IF_EXCEPTION(scope, 0);
 
     switch (configuration) {
-    case NormalConversion:
+    case IntegerConversionConfiguration::Normal:
         break;
-    case EnforceRange:
+    case IntegerConversionConfiguration::EnforceRange:
         return enforceRange(state, x, LimitsTrait::minValue, LimitsTrait::maxValue);
-    case Clamp:
+    case IntegerConversionConfiguration::Clamp:
         return std::isnan(x) ? 0 : clampTo<T>(x);
     }
 
@@ -560,12 +502,12 @@ static inline T toSmallerUInt(ExecState& state, JSValue value, IntegerConversion
         if (d <= LimitsTrait::maxValue)
             return static_cast<T>(d);
         switch (configuration) {
-        case NormalConversion:
+        case IntegerConversionConfiguration::Normal:
             return static_cast<T>(d);
-        case EnforceRange:
+        case IntegerConversionConfiguration::EnforceRange:
             throwTypeError(&state, scope);
             return 0;
-        case Clamp:
+        case IntegerConversionConfiguration::Clamp:
             return LimitsTrait::maxValue;
         }
     }
@@ -574,11 +516,11 @@ static inline T toSmallerUInt(ExecState& state, JSValue value, IntegerConversion
     RETURN_IF_EXCEPTION(scope, 0);
 
     switch (configuration) {
-    case NormalConversion:
+    case IntegerConversionConfiguration::Normal:
         break;
-    case EnforceRange:
+    case IntegerConversionConfiguration::EnforceRange:
         return enforceRange(state, x, 0, LimitsTrait::maxValue);
-    case Clamp:
+    case IntegerConversionConfiguration::Clamp:
         return std::isnan(x) ? 0 : clampTo<T>(x);
     }
 
@@ -591,66 +533,66 @@ static inline T toSmallerUInt(ExecState& state, JSValue value, IntegerConversion
 
 int8_t toInt8EnforceRange(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerInt<int8_t>(state, value, EnforceRange);
+    return toSmallerInt<int8_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 uint8_t toUInt8EnforceRange(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint8_t>(state, value, EnforceRange);
+    return toSmallerUInt<uint8_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 int8_t toInt8Clamp(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerInt<int8_t>(state, value, Clamp);
+    return toSmallerInt<int8_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 uint8_t toUInt8Clamp(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint8_t>(state, value, Clamp);
+    return toSmallerUInt<uint8_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-byte
 int8_t toInt8(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int8_t>(state, value, NormalConversion);
+    return toSmallerInt<int8_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-octet
 uint8_t toUInt8(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint8_t>(state, value, NormalConversion);
+    return toSmallerUInt<uint8_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 int16_t toInt16EnforceRange(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int16_t>(state, value, EnforceRange);
+    return toSmallerInt<int16_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 uint16_t toUInt16EnforceRange(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint16_t>(state, value, EnforceRange);
+    return toSmallerUInt<uint16_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 int16_t toInt16Clamp(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int16_t>(state, value, Clamp);
+    return toSmallerInt<int16_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 uint16_t toUInt16Clamp(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint16_t>(state, value, Clamp);
+    return toSmallerUInt<uint16_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-short
 int16_t toInt16(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int16_t>(state, value, NormalConversion);
+    return toSmallerInt<int16_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-unsigned-short
 uint16_t toUInt16(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint16_t>(state, value, NormalConversion);
+    return toSmallerUInt<uint16_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-long
@@ -834,9 +776,9 @@ bool BindingSecurity::shouldAllowAccessToFrame(JSC::ExecState* state, Frame* tar
     return target && canAccessDocument(state, target->document(), reportingOption);
 }
 
-bool BindingSecurity::shouldAllowAccessToNode(JSC::ExecState* state, Node* target)
+bool BindingSecurity::shouldAllowAccessToNode(JSC::ExecState& state, Node* target)
 {
-    return target && canAccessDocument(state, &target->document(), LogSecurityError);
+    return !target || canAccessDocument(&state, &target->document(), LogSecurityError);
 }
     
 static EncodedJSValue throwTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const String& errorMessage)
@@ -930,6 +872,18 @@ void throwArrayElementTypeError(JSC::ExecState& state, JSC::ThrowScope& scope)
 void throwAttributeTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* attributeName, const char* expectedType)
 {
     throwTypeError(state, scope, makeString("The ", interfaceName, '.', attributeName, " attribute must be an instance of ", expectedType));
+}
+
+JSC::EncodedJSValue throwRequiredMemberTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* memberName, const char* dictionaryName, const char* expectedType)
+{
+    StringBuilder builder;
+    builder.appendLiteral("Member ");
+    builder.append(dictionaryName);
+    builder.append('.');
+    builder.append(memberName);
+    builder.appendLiteral(" is required and must be an instance of ");
+    builder.append(expectedType);
+    return throwVMTypeError(&state, scope, builder.toString());
 }
 
 JSC::EncodedJSValue throwConstructorScriptExecutionContextUnavailableError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName)

@@ -116,7 +116,6 @@
 #include "JSCoordinates.cpp"
 #include "JSCounter.cpp"
 #include "JSCrypto.cpp"
-#include "JSCSSCharsetRule.cpp"
 #if ENABLE(FONT_LOAD_EVENTS)
 #include "JSCSSFontFaceLoadEvent.cpp"
 #endif
@@ -137,9 +136,7 @@
 #include "JSCSSValue.cpp"
 #include "JSCSSValueList.cpp"
 #include "JSClipboardEvent.cpp"
-#if ENABLE(CUSTOM_ELEMENTS)
 #include "JSCustomElementRegistry.cpp"
-#endif
 #include "JSCustomEvent.cpp"
 #include "JSDatabase.cpp"
 #include "JSDatabaseCallback.cpp"
@@ -309,6 +306,7 @@
 #include "JSIDBOpenDBRequest.cpp"
 #include "JSIDBRequest.cpp"
 #include "JSIDBTransaction.cpp"
+#include "JSIDBTransactionMode.cpp"
 #include "JSIDBVersionChangeEvent.cpp"
 #endif
 #include "JSImageData.cpp"
@@ -391,11 +389,10 @@
 #include "JSProgressEvent.cpp"
 #include "JSRadioNodeList.cpp"
 #include "JSRange.cpp"
-#if ENABLE(READABLE_STREAM_API)
+#include "JSReadableByteStreamController.cpp"
 #include "JSReadableStream.cpp"
 #include "JSReadableStreamDefaultController.cpp"
 #include "JSReadableStreamDefaultReader.cpp"
-#endif
 #include "JSRect.cpp"
 #include "JSRequestAnimationFrameCallback.cpp"
 #include "JSRGBColor.cpp"
@@ -581,6 +578,7 @@
 #include "JSSVGZoomAndPan.cpp"
 #include "JSSVGZoomEvent.cpp"
 #include "JSShadowRoot.cpp"
+#include "JSShadowRootMode.cpp"
 #include "JSStorage.cpp"
 #if ENABLE(QUOTA)
 #include "JSStorageErrorCallback.cpp"
@@ -638,7 +636,6 @@
 #include "JSVoidCallback.cpp"
 #include "JSWaveShaperNode.cpp"
 #include "JSWebKitAnimationEvent.cpp"
-#include "JSWebKitCSSFilterValue.cpp"
 #include "JSWebKitCSSTransformValue.cpp"
 #include "JSWebKitCSSMatrix.cpp"
 #include "JSWebKitCSSRegionRule.cpp"

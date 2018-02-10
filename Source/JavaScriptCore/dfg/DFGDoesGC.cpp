@@ -118,7 +118,6 @@ bool doesGC(Graph& graph, Node* node)
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
-    case CallDOM:
     case CheckDOM:
     case CheckArray:
     case GetScope:
@@ -247,6 +246,7 @@ bool doesGC(Graph& graph, Node* node)
     case PhantomNewGeneratorFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
+    case PhantomCreateRest:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
@@ -265,6 +265,7 @@ bool doesGC(Graph& graph, Node* node)
     case ResolveScope:
         return false;
 
+    case PureGetById: // We are modeling getOwnPropertySlot here, which may GC because it is allowed to allocate things.
     case CreateActivation:
     case CreateDirectArguments:
     case CreateScopedArguments:
@@ -299,6 +300,7 @@ bool doesGC(Graph& graph, Node* node)
     case StringReplaceRegExp:
     case CreateRest:
     case ToLowerCase:
+    case CallDOMGetter:
         return true;
         
     case MultiPutByOffset:

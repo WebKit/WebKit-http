@@ -30,6 +30,7 @@
 
 namespace WebCore {
 
+class CSSCustomPropertyValue;
 class CachedResource;
 class StyleSheetContents;
 
@@ -78,7 +79,6 @@ public:
     bool isCrossfadeValue() const { return m_classType == CrossfadeClass; }
     bool isCursorImageValue() const { return m_classType == CursorImageClass; }
     bool isCustomPropertyValue() const { return m_classType == CustomPropertyClass; }
-    bool isInvalidCustomPropertyValue() const;
     bool isVariableDependentValue() const { return m_classType == VariableDependentClass; }
     bool isVariableValue() const { return m_classType == VariableClass; }
     bool isFunctionValue() const { return m_classType == FunctionClass; }
@@ -111,7 +111,6 @@ public:
     bool isLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
     bool isCalcValue() const {return m_classType == CalculationClass; }
     bool isFilterImageValue() const { return m_classType == FilterImageClass; }
-    bool isWebKitCSSFilterValue() const { return m_classType == WebKitCSSFilterClass; }
     bool isContentDistributionValue() const { return m_classType == CSSContentDistributionClass; }
 #if ENABLE(CSS_GRID_LAYOUT)
     bool isGridAutoRepeatValue() const { return m_classType == GridAutoRepeatClass; }
@@ -126,10 +125,11 @@ public:
     bool isAnimationTriggerScrollValue() const { return m_classType == AnimationTriggerScrollClass; }
 #endif
 
-    bool isCustomPropertyDeclaration() const { return m_classType == CustomPropertyDeclarationClass; }
     bool isCustomIdentValue() const { return m_classType == CustomIdentClass; }
     bool isVariableReferenceValue() const { return m_classType == VariableReferenceClass; }
     bool isPendingSubstitutionValue() const { return m_classType == PendingSubstitutionValueClass; }
+    
+    bool hasVariableReferences() const { return isVariableDependentValue() || isVariableReferenceValue() || isPendingSubstitutionValue(); }
 
     bool isCSSOMSafe() const { return m_isCSSOMSafe; }
     bool isSubtypeExposedToCSSOM() const
@@ -202,21 +202,20 @@ protected:
 
         CSSContentDistributionClass,
         
-        // FIXME-NEWPARSER: Remove in favor of new variables implementation.
+        CustomIdentClass,
+
+        // FIXME-NEWPARSER: Unify variables implementation.
         CustomPropertyClass,
         VariableDependentClass,
         VariableClass,
 
         // New variables implementation.
-        CustomPropertyDeclarationClass,
-        CustomIdentClass,
         VariableReferenceClass,
         PendingSubstitutionValueClass,
 
         // List class types must appear after ValueListClass.
         ValueListClass,
         ImageSetClass,
-        WebKitCSSFilterClass,
         WebKitCSSTransformClass,
 #if ENABLE(CSS_GRID_LAYOUT)
         GridLineNamesClass,
@@ -301,7 +300,7 @@ inline bool compareCSSValue(const Ref<CSSValueType>& first, const Ref<CSSValueTy
     return first.get().equals(second);
 }
 
-typedef HashMap<AtomicString, RefPtr<CSSValue>> CustomPropertyValueMap;
+typedef HashMap<AtomicString, RefPtr<CSSCustomPropertyValue>> CustomPropertyValueMap;
 
 } // namespace WebCore
 

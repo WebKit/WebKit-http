@@ -28,6 +28,7 @@
 #include "ExceptionOr.h"
 #include "JSDOMGlobalObject.h"
 #include "JSDOMWrapper.h"
+#include "JSDynamicDowncast.h"
 #include "ScriptWrappable.h"
 #include "ScriptWrappableInlines.h"
 #include "WebCoreTypedArrayController.h"
@@ -127,6 +128,7 @@ void throwSecurityError(JSC::ExecState&, JSC::ThrowScope&, const String& message
 WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentMustBeEnumError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedValues);
 JSC::EncodedJSValue throwArgumentMustBeFunctionError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName);
 WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentTypeError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedType);
+WEBCORE_EXPORT JSC::EncodedJSValue throwRequiredMemberTypeError(JSC::ExecState&, JSC::ThrowScope&, const char* memberName, const char* dictionaryName, const char* expectedType);
 JSC::EncodedJSValue throwConstructorScriptExecutionContextUnavailableError(JSC::ExecState&, JSC::ThrowScope&, const char* interfaceName);
 
 String makeGetterTypeErrorMessage(const char* interfaceName, const char* attributeName);
@@ -201,9 +203,6 @@ WEBCORE_EXPORT void setDOMExceptionSlow(JSC::ExecState*, JSC::ThrowScope&, Excep
 
 JSC::JSValue jsString(JSC::ExecState*, const URL&); // empty if the URL is null
 
-JSC::JSValue jsStringOrNull(JSC::ExecState*, const String&); // null if the string is null
-JSC::JSValue jsStringOrNull(JSC::ExecState*, const URL&); // null if the URL is null
-
 JSC::JSValue jsStringOrUndefined(JSC::ExecState*, const String&); // undefined if the string is null
 JSC::JSValue jsStringOrUndefined(JSC::ExecState*, const URL&); // undefined if the URL is null
 
@@ -215,22 +214,13 @@ String propertyNameToString(JSC::PropertyName);
 
 AtomicString propertyNameToAtomicString(JSC::PropertyName);
 
-String valueToStringTreatingNullAsEmptyString(JSC::ExecState*, JSC::JSValue);
-String valueToStringWithUndefinedOrNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null or undefined
-
 WEBCORE_EXPORT String valueToUSVString(JSC::ExecState*, JSC::JSValue);
-String valueToUSVStringTreatingNullAsEmptyString(JSC::ExecState*, JSC::JSValue);
-String valueToUSVStringWithUndefinedOrNullCheck(JSC::ExecState*, JSC::JSValue);
-
-template<typename T> JSC::JSValue toNullableJSNumber(Optional<T>); // null if the optional is null
 
 int32_t finiteInt32Value(JSC::JSValue, JSC::ExecState*, bool& okay);
 
 // The following functions convert values to integers as per the WebIDL specification.
 // The conversion fails if the value cannot be converted to a number or, if EnforceRange is specified,
 // the value is outside the range of the destination integer type.
-
-enum IntegerConversionConfiguration { NormalConversion, EnforceRange, Clamp };
 
 WEBCORE_EXPORT int8_t toInt8EnforceRange(JSC::ExecState&, JSC::JSValue);
 WEBCORE_EXPORT uint8_t toUInt8EnforceRange(JSC::ExecState&, JSC::JSValue);
@@ -258,7 +248,6 @@ WEBCORE_EXPORT int64_t toInt64(JSC::ExecState&, JSC::JSValue);
 WEBCORE_EXPORT uint64_t toUInt64(JSC::ExecState&, JSC::JSValue);
 
 JSC::JSValue jsDate(JSC::ExecState*, double value);
-JSC::JSValue jsDateOrNull(JSC::ExecState*, double value);
 
 // NaN if the value can't be converted to a date.
 double valueToDate(JSC::ExecState*, JSC::JSValue);
@@ -274,51 +263,48 @@ template<typename T> JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, Ref<
 template<typename T> JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, RefPtr<T>&&);
 template<typename T> JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const Vector<T>&);
 template<typename T> JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const Vector<RefPtr<T>>&);
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const String&);
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const JSC::PrivateName&);
 
 JSC::JSValue toJSIterator(JSC::ExecState&, JSDOMGlobalObject&, JSC::JSValue);
 template<typename T> JSC::JSValue toJSIterator(JSC::ExecState&, JSDOMGlobalObject&, const T&);
-
 JSC::JSValue toJSIteratorEnd(JSC::ExecState&);
 
-template<typename T, size_t inlineCapacity> JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, const Vector<T, inlineCapacity>&);
-template<typename T, size_t inlineCapacity> JSC::JSValue jsArray(JSC::ExecState*, JSDOMGlobalObject*, const Vector<T, inlineCapacity>*);
-template<typename T, size_t inlineCapacity> JSC::JSValue jsFrozenArray(JSC::ExecState*, JSDOMGlobalObject*, const Vector<T, inlineCapacity>&);
+RefPtr<JSC::ArrayBufferView> toPossiblySharedArrayBufferView(JSC::JSValue);
+RefPtr<JSC::Int8Array> toPossiblySharedInt8Array(JSC::JSValue);
+RefPtr<JSC::Int16Array> toPossiblySharedInt16Array(JSC::JSValue);
+RefPtr<JSC::Int32Array> toPossiblySharedInt32Array(JSC::JSValue);
+RefPtr<JSC::Uint8Array> toPossiblySharedUint8Array(JSC::JSValue);
+RefPtr<JSC::Uint8ClampedArray> toPossiblySharedUint8ClampedArray(JSC::JSValue);
+RefPtr<JSC::Uint16Array> toPossiblySharedUint16Array(JSC::JSValue);
+RefPtr<JSC::Uint32Array> toPossiblySharedUint32Array(JSC::JSValue);
+RefPtr<JSC::Float32Array> toPossiblySharedFloat32Array(JSC::JSValue);
+RefPtr<JSC::Float64Array> toPossiblySharedFloat64Array(JSC::JSValue);
 
-JSC::JSValue jsPair(JSC::ExecState&, JSDOMGlobalObject*, JSC::JSValue, JSC::JSValue);
-template<typename FirstType, typename SecondType> JSC::JSValue jsPair(JSC::ExecState&, JSDOMGlobalObject*, const FirstType&, const SecondType&);
-
-RefPtr<JSC::ArrayBufferView> toArrayBufferView(JSC::JSValue);
-RefPtr<JSC::Int8Array> toInt8Array(JSC::JSValue);
-RefPtr<JSC::Int16Array> toInt16Array(JSC::JSValue);
-RefPtr<JSC::Int32Array> toInt32Array(JSC::JSValue);
-RefPtr<JSC::Uint8Array> toUint8Array(JSC::JSValue);
-RefPtr<JSC::Uint8ClampedArray> toUint8ClampedArray(JSC::JSValue);
-RefPtr<JSC::Uint16Array> toUint16Array(JSC::JSValue);
-RefPtr<JSC::Uint32Array> toUint32Array(JSC::JSValue);
-RefPtr<JSC::Float32Array> toFloat32Array(JSC::JSValue);
-RefPtr<JSC::Float64Array> toFloat64Array(JSC::JSValue);
+RefPtr<JSC::ArrayBufferView> toUnsharedArrayBufferView(JSC::JSValue);
+RefPtr<JSC::Int8Array> toUnsharedInt8Array(JSC::JSValue);
+RefPtr<JSC::Int16Array> toUnsharedInt16Array(JSC::JSValue);
+RefPtr<JSC::Int32Array> toUnsharedInt32Array(JSC::JSValue);
+RefPtr<JSC::Uint8Array> toUnsharedUint8Array(JSC::JSValue);
+RefPtr<JSC::Uint8ClampedArray> toUnsharedUint8ClampedArray(JSC::JSValue);
+RefPtr<JSC::Uint16Array> toUnsharedUint16Array(JSC::JSValue);
+RefPtr<JSC::Uint32Array> toUnsharedUint32Array(JSC::JSValue);
+RefPtr<JSC::Float32Array> toUnsharedFloat32Array(JSC::JSValue);
+RefPtr<JSC::Float64Array> toUnsharedFloat64Array(JSC::JSValue);
 
 template<typename T, typename JSType> Vector<Ref<T>> toRefNativeArray(JSC::ExecState&, JSC::JSValue);
 WEBCORE_EXPORT bool hasIteratorMethod(JSC::ExecState&, JSC::JSValue);
 
-bool shouldAllowAccessToNode(JSC::ExecState*, Node*);
-bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*);
-bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, String& message);
-bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, String& message);
-
-enum SecurityReportingOption {
-    DoNotReportSecurityError,
-    LogSecurityError, // Legacy behavior.
-    ThrowSecurityError
-};
-
-class BindingSecurity {
-public:
-    static bool shouldAllowAccessToNode(JSC::ExecState*, Node*);
-    static bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, SecurityReportingOption = LogSecurityError);
-    static bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, SecurityReportingOption = LogSecurityError);
+enum SecurityReportingOption { DoNotReportSecurityError, LogSecurityError, ThrowSecurityError };
+namespace BindingSecurity {
+    template<typename T> T* checkSecurityForNode(JSC::ExecState&, T&);
+    template<typename T> T* checkSecurityForNode(JSC::ExecState&, T*);
+    template<typename T> ExceptionOr<T*> checkSecurityForNode(JSC::ExecState&, ExceptionOr<T*>&&);
+    template<typename T> ExceptionOr<T*> checkSecurityForNode(JSC::ExecState&, ExceptionOr<T&>&&);
+    bool shouldAllowAccessToDOMWindow(JSC::ExecState*, DOMWindow&, SecurityReportingOption = LogSecurityError);
+    bool shouldAllowAccessToDOMWindow(JSC::ExecState&, DOMWindow&, String& message);
+    bool shouldAllowAccessToFrame(JSC::ExecState*, Frame*, SecurityReportingOption = LogSecurityError);
+    bool shouldAllowAccessToFrame(JSC::ExecState&, Frame&, String& message);
+    bool shouldAllowAccessToNode(JSC::ExecState&, Node*);
 };
 
 void printErrorMessageForFrame(Frame*, const String& message);
@@ -327,8 +313,6 @@ String propertyNameToString(JSC::PropertyName);
 AtomicString propertyNameToAtomicString(JSC::PropertyName);
 
 template<JSC::NativeFunction, int length> JSC::EncodedJSValue nonCachingStaticFunctionGetter(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
-
-template<typename T> struct NativeValueTraits;
 
 
 enum class CastedThisErrorBehavior { Throw, ReturnEarly, RejectPromise, Assert };
@@ -412,15 +396,7 @@ struct BindingCaller {
 // ExceptionOr handling.
 void propagateException(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<void>&&);
 template<typename T> JSC::JSValue toJS(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, ExceptionOr<T>&&);
-template<typename T> JSC::JSValue toJSArray(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, ExceptionOr<T>&&);
-JSC::JSValue toJSBoolean(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<bool>&&);
-JSC::JSValue toJSDate(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<double>&&);
-JSC::JSValue toJSNullableDate(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<Optional<double>>&&);
-JSC::JSValue toJSNullableString(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<String>&&);
 template<typename T> JSC::JSValue toJSNewlyCreated(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, ExceptionOr<T>&& value);
-template<typename T> JSC::JSValue toJSNumber(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<T>&& value);
-template<typename T> JSC::JSValue toJSNullableNumber(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<T>&& value);
-JSC::JSValue toJSString(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<String>&&);
 
 // Inline functions and template definitions.
 
@@ -595,7 +571,7 @@ template<typename DOMClass> inline JSC::JSValue wrap(JSC::ExecState* state, JSDO
 template<typename JSClass> inline JSClass& castThisValue(JSC::ExecState& state)
 {
     auto thisValue = state.thisValue();
-    auto castedThis = JSC::jsDynamicCast<JSClass*>(thisValue);
+    auto castedThis = jsDynamicDowncast<JSClass*>(thisValue);
     ASSERT(castedThis);
     return *castedThis;
 }
@@ -639,7 +615,7 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
         return result;
 
     // The JSArrayBuffer::create function will register the wrapper in finishCreation.
-    return JSC::JSArrayBuffer::create(state->vm(), globalObject->arrayBufferStructure(), &buffer);
+    return JSC::JSArrayBuffer::create(state->vm(), globalObject->arrayBufferStructure(buffer.sharingMode()), &buffer);
 }
 
 inline JSC::JSValue toJS(JSC::ExecState* state, JSC::JSGlobalObject* globalObject, JSC::ArrayBufferView& view)
@@ -695,11 +671,6 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalO
     return array;
 }
 
-inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject*, const String& value)
-{
-    return jsStringOrNull(exec, value);
-}
-
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject*, const JSC::PrivateName& privateName)
 {
     return JSC::Symbol::create(exec->vm(), privateName.uid());
@@ -720,141 +691,41 @@ inline JSC::JSValue toJSIteratorEnd(JSC::ExecState& state)
     return createIteratorResultObject(&state, JSC::jsUndefined(), true);
 }
 
-template<typename T> struct JSValueTraits {
-    static JSC::JSValue arrayJSValue(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const T& value)
-    {
-        return toJS(exec, globalObject, WTF::getPtr(value));
-    }
-};
-
-template<> struct JSValueTraits<String> {
-    static JSC::JSValue arrayJSValue(JSC::ExecState* exec, JSDOMGlobalObject*, const String& value)
-    {
-        return JSC::jsStringWithCache(exec, value);
-    }
-};
-
-template<> struct JSValueTraits<double> {
-    static JSC::JSValue arrayJSValue(JSC::ExecState*, JSDOMGlobalObject*, const double& value)
-    {
-        return JSC::jsNumber(value);
-    }
-};
-
-template<> struct JSValueTraits<float> {
-    static JSC::JSValue arrayJSValue(JSC::ExecState*, JSDOMGlobalObject*, const float& value)
-    {
-        return JSC::jsNumber(value);
-    }
-};
-
-template<> struct JSValueTraits<unsigned long> {
-    static JSC::JSValue arrayJSValue(JSC::ExecState*, JSDOMGlobalObject*, const unsigned long& value)
-    {
-        return JSC::jsNumber(value);
-    }
-};
-
-template<typename T, size_t inlineCapacity> JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<T, inlineCapacity>& vector)
+inline RefPtr<JSC::ArrayBufferView> toPossiblySharedArrayBufferView(JSC::JSValue value)
 {
-    JSC::MarkedArgumentBuffer list;
-    for (auto& element : vector)
-        list.append(JSValueTraits<T>::arrayJSValue(exec, globalObject, element));
-    return JSC::constructArray(exec, nullptr, globalObject, list);
-}
-
-template<typename T, size_t inlineCapacity> inline JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<T, inlineCapacity>* vector)
-{
-    if (!vector)
-        return JSC::constructEmptyArray(exec, nullptr, globalObject, 0);
-    return jsArray(exec, globalObject, *vector);
-}
-
-template<typename T, size_t inlineCapacity> JSC::JSValue jsFrozenArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<T, inlineCapacity>& vector)
-{
-    JSC::VM& vm = globalObject->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSC::MarkedArgumentBuffer list;
-    for (auto& element : vector) {
-        list.append(JSValueTraits<T>::arrayJSValue(exec, globalObject, element));
-        RETURN_IF_EXCEPTION(scope, JSC::JSValue());
-    }
-    auto* array = JSC::constructArray(exec, nullptr, globalObject, list);
-    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
-    return JSC::objectConstructorFreeze(exec, array);
-}
-
-inline JSC::JSValue jsPair(JSC::ExecState& state, JSDOMGlobalObject* globalObject, JSC::JSValue value1, JSC::JSValue value2)
-{
-    JSC::MarkedArgumentBuffer args;
-    args.append(value1);
-    args.append(value2);
-    return constructArray(&state, 0, globalObject, args);
-}
-
-template<typename FirstType, typename SecondType> inline JSC::JSValue jsPair(JSC::ExecState& state, JSDOMGlobalObject* globalObject, const FirstType& value1, const SecondType& value2)
-{
-    return jsPair(state, globalObject, toJS(&state, globalObject, value1), toJS(&state, globalObject, value2));
-}
-
-inline RefPtr<JSC::ArrayBufferView> toArrayBufferView(JSC::JSValue value)
-{
-    auto* wrapper = JSC::jsDynamicCast<JSC::JSArrayBufferView*>(value);
+    auto* wrapper = jsDynamicDowncast<JSC::JSArrayBufferView*>(value);
     if (!wrapper)
         return nullptr;
-    return wrapper->impl();
+    return wrapper->possiblySharedImpl();
 }
 
-inline RefPtr<JSC::Int8Array> toInt8Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Int8Adaptor>(value); }
-inline RefPtr<JSC::Int16Array> toInt16Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Int16Adaptor>(value); }
-inline RefPtr<JSC::Int32Array> toInt32Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Int32Adaptor>(value); }
-inline RefPtr<JSC::Uint8Array> toUint8Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint8Adaptor>(value); }
-inline RefPtr<JSC::Uint8ClampedArray> toUint8ClampedArray(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint8ClampedAdaptor>(value); }
-inline RefPtr<JSC::Uint16Array> toUint16Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint16Adaptor>(value); }
-inline RefPtr<JSC::Uint32Array> toUint32Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Uint32Adaptor>(value); }
-inline RefPtr<JSC::Float32Array> toFloat32Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Float32Adaptor>(value); }
-inline RefPtr<JSC::Float64Array> toFloat64Array(JSC::JSValue value) { return JSC::toNativeTypedView<JSC::Float64Adaptor>(value); }
+inline RefPtr<JSC::ArrayBufferView> toUnsharedArrayBufferView(JSC::JSValue value)
+{
+    auto result = toPossiblySharedArrayBufferView(value);
+    if (!result || result->isShared())
+        return nullptr;
+    return result;
+}
 
-template<> struct NativeValueTraits<String> {
-    static inline bool nativeValue(JSC::ExecState& exec, JSC::JSValue jsValue, String& indexedValue)
-    {
-        JSC::VM& vm = exec.vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        indexedValue = jsValue.toWTFString(&exec);
-        return !scope.exception();
-    }
-};
+inline RefPtr<JSC::Int8Array> toPossiblySharedInt8Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Int8Adaptor>(value); }
+inline RefPtr<JSC::Int16Array> toPossiblySharedInt16Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Int16Adaptor>(value); }
+inline RefPtr<JSC::Int32Array> toPossiblySharedInt32Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Int32Adaptor>(value); }
+inline RefPtr<JSC::Uint8Array> toPossiblySharedUint8Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Uint8Adaptor>(value); }
+inline RefPtr<JSC::Uint8ClampedArray> toPossiblySharedUint8ClampedArray(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Uint8ClampedAdaptor>(value); }
+inline RefPtr<JSC::Uint16Array> toPossiblySharedUint16Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Uint16Adaptor>(value); }
+inline RefPtr<JSC::Uint32Array> toPossiblySharedUint32Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Uint32Adaptor>(value); }
+inline RefPtr<JSC::Float32Array> toPossiblySharedFloat32Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Float32Adaptor>(value); }
+inline RefPtr<JSC::Float64Array> toPossiblySharedFloat64Array(JSC::JSValue value) { return JSC::toPossiblySharedNativeTypedView<JSC::Float64Adaptor>(value); }
 
-template<> struct NativeValueTraits<unsigned> {
-    static inline bool nativeValue(JSC::ExecState& exec, JSC::JSValue jsValue, unsigned& indexedValue)
-    {
-        JSC::VM& vm = exec.vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        indexedValue = jsValue.toUInt32(&exec);
-        return !scope.exception();
-    }
-};
-
-template<> struct NativeValueTraits<float> {
-    static inline bool nativeValue(JSC::ExecState& exec, JSC::JSValue jsValue, float& indexedValue)
-    {
-        JSC::VM& vm = exec.vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        indexedValue = jsValue.toFloat(&exec);
-        return !scope.exception();
-    }
-};
-
-template<> struct NativeValueTraits<double> {
-    static inline bool nativeValue(JSC::ExecState& exec, JSC::JSValue jsValue, double& indexedValue)
-    {
-        JSC::VM& vm = exec.vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        indexedValue = jsValue.toNumber(&exec);
-        return !scope.exception();
-    }
-};
+inline RefPtr<JSC::Int8Array> toUnsharedInt8Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Int8Adaptor>(value); }
+inline RefPtr<JSC::Int16Array> toUnsharedInt16Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Int16Adaptor>(value); }
+inline RefPtr<JSC::Int32Array> toUnsharedInt32Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Int32Adaptor>(value); }
+inline RefPtr<JSC::Uint8Array> toUnsharedUint8Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Uint8Adaptor>(value); }
+inline RefPtr<JSC::Uint8ClampedArray> toUnsharedUint8ClampedArray(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Uint8ClampedAdaptor>(value); }
+inline RefPtr<JSC::Uint16Array> toUnsharedUint16Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Uint16Adaptor>(value); }
+inline RefPtr<JSC::Uint32Array> toUnsharedUint32Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Uint32Adaptor>(value); }
+inline RefPtr<JSC::Float32Array> toUnsharedFloat32Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Float32Adaptor>(value); }
+inline RefPtr<JSC::Float64Array> toUnsharedFloat64Array(JSC::JSValue value) { return JSC::toUnsharedNativeTypedView<JSC::Float64Adaptor>(value); }
 
 template<typename T, typename JST> inline Vector<Ref<T>> toRefNativeArray(JSC::ExecState& state, JSC::JSValue value)
 {
@@ -896,11 +767,6 @@ template<JSC::NativeFunction nativeFunction, int length> JSC::EncodedJSValue non
     return JSC::JSValue::encode(JSC::JSFunction::create(exec->vm(), exec->lexicalGlobalObject(), length, propertyName.publicName(), nativeFunction));
 }
 
-template<typename T> inline JSC::JSValue toNullableJSNumber(Optional<T> optionalNumber)
-{
-    return optionalNumber ? JSC::jsNumber(optionalNumber.value()) : JSC::jsNull();
-}
-
 ALWAYS_INLINE void propagateException(JSC::ExecState& state, JSC::ThrowScope& throwScope, Exception&& exception)
 {
     if (throwScope.exception())
@@ -930,24 +796,6 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState& state, JSDOMGlobal
     return toJS(&state, &globalObject, value.releaseReturnValue());
 }
 
-template<typename T> inline JSC::JSValue toJSArray(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope& throwScope, ExceptionOr<T>&& value)
-{
-    if (UNLIKELY(value.hasException())) {
-        propagateException(state, throwScope, value.releaseException());
-        return { };
-    }
-    return jsArray(&state, &globalObject, value.releaseReturnValue());
-}
-
-inline JSC::JSValue toJSBoolean(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<bool>&& value)
-{
-    if (UNLIKELY(value.hasException())) {
-        propagateException(state, throwScope, value.releaseException());
-        return { };
-    }
-    return JSC::jsBoolean(value.releaseReturnValue());
-}
-
 template<typename T> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope& throwScope, ExceptionOr<T>&& value)
 {
     if (UNLIKELY(value.hasException())) {
@@ -957,31 +805,28 @@ template<typename T> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState& state,
     return toJSNewlyCreated(&state, &globalObject, value.releaseReturnValue());
 }
 
-inline JSC::JSValue toJSNullableString(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<String>&& value)
+template<typename T> inline T* BindingSecurity::checkSecurityForNode(JSC::ExecState& state, T& node)
 {
-    if (UNLIKELY(value.hasException())) {
-        propagateException(state, throwScope, value.releaseException());
-        return { };
-    }
-    return jsStringOrNull(&state, value.releaseReturnValue());
+    return shouldAllowAccessToNode(state, &node) ? &node : nullptr;
 }
 
-template<typename T> inline JSC::JSValue toJSNumber(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<T>&& value)
+template<typename T> inline T* BindingSecurity::checkSecurityForNode(JSC::ExecState& state, T* node)
 {
-    if (UNLIKELY(value.hasException())) {
-        propagateException(state, throwScope, value.releaseException());
-        return { };
-    }
-    return JSC::jsNumber(value.releaseReturnValue());
+    return shouldAllowAccessToNode(state, node) ? node : nullptr;
 }
 
-inline JSC::JSValue toJSString(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<String>&& value)
+template<typename T> inline ExceptionOr<T*> BindingSecurity::checkSecurityForNode(JSC::ExecState& state, ExceptionOr<T*>&& value)
 {
-    if (UNLIKELY(value.hasException())) {
-        propagateException(state, throwScope, value.releaseException());
-        return { };
-    }
-    return JSC::jsStringWithCache(&state, value.releaseReturnValue());
+    if (value.hasException())
+        return value.releaseException();
+    return checkSecurityForNode(state, value.releaseReturnValue());
+}
+
+template<typename T> inline ExceptionOr<T*> BindingSecurity::checkSecurityForNode(JSC::ExecState& state, ExceptionOr<T&>&& value)
+{
+    if (value.hasException())
+        return value.releaseException();
+    return checkSecurityForNode(state, value.releaseReturnValue());
 }
 
 } // namespace WebCore

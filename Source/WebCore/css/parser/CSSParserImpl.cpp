@@ -31,7 +31,7 @@
 #include "CSSParserImpl.h"
 
 #include "CSSAtRuleID.h"
-#include "CSSCustomPropertyDeclaration.h"
+#include "CSSCustomPropertyValue.h"
 #include "CSSKeyframeRule.h"
 #include "CSSKeyframesRule.h"
 #include "CSSParserObserver.h"
@@ -77,16 +77,6 @@ bool CSSParserImpl::parseValue(MutableStyleProperties* declaration, CSSPropertyI
     return declaration->addParsedProperties(parser.m_parsedProperties);
 }
 
-bool CSSParserImpl::parseVariableValue(MutableStyleProperties* declaration, const AtomicString& propertyName, const String& value, bool important, const CSSParserContext& context)
-{
-    CSSParserImpl parser(context);
-    CSSTokenizer::Scope scope(value);
-    parser.consumeVariableValue(scope.tokenRange(), propertyName, important);
-    if (parser.m_parsedProperties.isEmpty())
-        return false;
-    return declaration->addParsedProperties(parser.m_parsedProperties);
-}
-
 static inline void filterProperties(bool important, const ParsedPropertyVector& input, ParsedPropertyVector& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties, HashSet<AtomicString>& seenCustomProperties)
 {
     // Add properties in reverse order so that highest priority definitions are reached first. Duplicate definitions can then be ignored when found.
@@ -97,11 +87,10 @@ static inline void filterProperties(bool important, const ParsedPropertyVector& 
         const unsigned propertyIDIndex = property.id() - firstCSSProperty;
         
         if (property.id() == CSSPropertyCustom) {
-            CSSCustomPropertyDeclaration* customValue = downcast<CSSCustomPropertyDeclaration>(property.value());
-            const AtomicString& name = customValue->name();
-            if (seenCustomProperties.contains(name))
+            auto& name = downcast<CSSCustomPropertyValue>(*property.value()).name();
+            if (!seenCustomProperties.add(name).isNewEntry)
                 continue;
-            seenCustomProperties.add(name);
+            output[--unusedEntries] = property;
             continue;
         }
         
@@ -228,7 +217,7 @@ CSSSelectorList CSSParserImpl::parsePageSelector(CSSParserTokenRange range, Styl
         selector = std::unique_ptr<CSSParserSelector>(new CSSParserSelector);
         if (!pseudo.isNull()) {
             selector = std::unique_ptr<CSSParserSelector>(CSSParserSelector::parsePagePseudoSelector(pseudo));
-            if (!selector || selector->pseudoElementType() == CSSSelector::PseudoElementUnknown)
+            if (!selector || selector->match() != CSSSelector::PseudoElement || selector->pseudoElementType() == CSSSelector::PseudoElementUnknown)
                 return CSSSelectorList();
         }
         if (!typeSelector.isNull())
@@ -241,29 +230,6 @@ CSSSelectorList CSSParserImpl::parsePageSelector(CSSParserTokenRange range, Styl
     CSSSelectorList selectorList;
     selectorList.adoptSelectorVector(selectorVector);
     return selectorList;
-}
-
-RefPtr<ImmutableStyleProperties> CSSParserImpl::parseCustomPropertySet(CSSParserTokenRange range)
-{
-    range.consumeWhitespace();
-    if (range.peek().type() != LeftBraceToken)
-        return nullptr;
-    CSSParserTokenRange block = range.consumeBlock();
-    range.consumeWhitespace();
-    if (!range.atEnd())
-        return nullptr;
-    CSSParserImpl parser(strictCSSParserContext());
-    parser.consumeDeclarationList(block, StyleRule::Style);
-
-    // FIXME-NEWPARSER: We dont support @apply yet.
-    // Drop nested @apply rules. Seems nicer to do this here instead of making
-    // a different StyleRule type
-    /*for (size_t i = parser.m_parsedProperties.size(); i--; ) {
-        if (parser.m_parsedProperties[i].id() == CSSPropertyApplyAtRule)
-            parser.m_parsedProperties.remove(i);
-    }*/
-
-    return createStyleProperties(parser.m_parsedProperties, HTMLStandardMode);
 }
 
 std::unique_ptr<Vector<double>> CSSParserImpl::parseKeyframeKeyList(const String& keyList)
@@ -827,7 +793,7 @@ void CSSParserImpl::consumeDeclaration(CSSParserTokenRange range, StyleRule::Typ
 
 void CSSParserImpl::consumeVariableValue(CSSParserTokenRange range, const AtomicString& variableName, bool important)
 {
-    if (RefPtr<CSSCustomPropertyDeclaration> value = CSSVariableParser::parseDeclarationValue(variableName, range))
+    if (RefPtr<CSSCustomPropertyValue> value = CSSVariableParser::parseDeclarationValue(variableName, range))
         m_parsedProperties.append(CSSProperty(CSSPropertyCustom, WTFMove(value), important));
 }
 

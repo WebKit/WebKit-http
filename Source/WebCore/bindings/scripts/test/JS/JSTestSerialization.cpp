@@ -25,9 +25,7 @@
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
 #include "JSTestNode.h"
-#include "URL.h"
 #include <runtime/FunctionPrototype.h>
-#include <runtime/JSString.h>
 #include <runtime/ObjectConstructor.h>
 #include <wtf/GetPtr.h>
 
@@ -142,12 +140,12 @@ void JSTestSerialization::destroy(JSC::JSCell* cell)
 
 template<> inline JSTestSerialization* BindingCaller<JSTestSerialization>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
-    return jsDynamicCast<JSTestSerialization*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestSerialization*>(JSValue::decode(thisValue));
 }
 
 template<> inline JSTestSerialization* BindingCaller<JSTestSerialization>::castForOperation(ExecState& state)
 {
-    return jsDynamicCast<JSTestSerialization*>(state.thisValue());
+    return jsDynamicDowncast<JSTestSerialization*>(state.thisValue());
 }
 
 static inline JSValue jsTestSerializationFirstStringAttributeGetter(ExecState&, JSTestSerialization&, ThrowScope& throwScope);
@@ -162,7 +160,7 @@ static inline JSValue jsTestSerializationFirstStringAttributeGetter(ExecState& s
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.firstStringAttribute());
+    JSValue result = toJS<IDLDOMString>(state, impl.firstStringAttribute());
     return result;
 }
 
@@ -178,7 +176,7 @@ static inline JSValue jsTestSerializationSecondLongAttributeGetter(ExecState& st
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsNumber(impl.secondLongAttribute());
+    JSValue result = toJS<IDLLong>(impl.secondLongAttribute());
     return result;
 }
 
@@ -210,7 +208,7 @@ static inline JSValue jsTestSerializationFourthUnrestrictedDoubleAttributeGetter
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsNumber(impl.fourthUnrestrictedDoubleAttribute());
+    JSValue result = toJS<IDLUnrestrictedDouble>(impl.fourthUnrestrictedDoubleAttribute());
     return result;
 }
 
@@ -226,7 +224,7 @@ static inline JSValue jsTestSerializationFifthLongAttributeGetter(ExecState& sta
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsNumber(impl.fifthLongAttribute());
+    JSValue result = toJS<IDLLong>(impl.fifthLongAttribute());
     return result;
 }
 
@@ -234,7 +232,7 @@ EncodedJSValue jsTestSerializationConstructor(ExecState* state, EncodedJSValue t
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestSerializationPrototype* domObject = jsDynamicCast<JSTestSerializationPrototype*>(JSValue::decode(thisValue));
+    JSTestSerializationPrototype* domObject = jsDynamicDowncast<JSTestSerializationPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestSerialization::getConstructor(state->vm(), domObject->globalObject()));
@@ -245,7 +243,7 @@ bool setJSTestSerializationConstructor(ExecState* state, EncodedJSValue thisValu
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestSerializationPrototype* domObject = jsDynamicCast<JSTestSerializationPrototype*>(JSValue::decode(thisValue));
+    JSTestSerializationPrototype* domObject = jsDynamicDowncast<JSTestSerializationPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -266,7 +264,7 @@ static inline bool setJSTestSerializationFirstStringAttributeFunction(ExecState&
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = value.toWTFString(&state);
+    auto nativeValue = convert<IDLDOMString>(state, value, StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setFirstStringAttribute(WTFMove(nativeValue));
     return true;
@@ -285,7 +283,7 @@ static inline bool setJSTestSerializationSecondLongAttributeFunction(ExecState& 
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = convert<IDLLong>(state, value, NormalConversion);
+    auto nativeValue = convert<IDLLong>(state, value, IntegerConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setSecondLongAttribute(WTFMove(nativeValue));
     return true;
@@ -345,7 +343,7 @@ static inline bool setJSTestSerializationFifthLongAttributeFunction(ExecState& s
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = convert<IDLLong>(state, value, NormalConversion);
+    auto nativeValue = convert<IDLLong>(state, value, IntegerConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setFifthLongAttribute(WTFMove(nativeValue));
     return true;
@@ -440,7 +438,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestSe
 
 TestSerialization* JSTestSerialization::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestSerialization*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestSerialization*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

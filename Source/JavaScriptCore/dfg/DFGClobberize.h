@@ -33,6 +33,7 @@
 #include "DFGHeapLocation.h"
 #include "DFGLazyNode.h"
 #include "DFGPureValue.h"
+#include "DOMJITCallDOMGetterPatchpoint.h"
 
 namespace JSC { namespace DFG {
 
@@ -476,6 +477,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
+    case PhantomCreateRest:
+        // Even though it's phantom, it still has the property that one can't be replaced with another.
+        read(HeapObjectCount);
+        write(HeapObjectCount);
+        return;
+
     case CallObjectConstructor:
     case ToThis:
     case CreateThis:
@@ -494,6 +501,35 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(IsFunctionLoc, MiscFields, node->child1()), LazyNode(node));
         return;
         
+    case PureGetById: {
+        // We model what is allowed inside a getOwnPropertySlot(VMInquiry) here.
+        // Some getOwnPropertySlot implementations will lazily inject properties, which
+        // may change the object's structure.
+
+        read(JSCell_structureID);
+        read(JSCell_typeInfoFlags);
+        read(JSCell_typeInfoType);
+        read(JSCell_indexingType);
+        read(JSObject_butterfly);
+        read(MiscFields);
+
+        AbstractHeap propertyNameHeap(NamedProperties, node->identifierNumber());
+        read(propertyNameHeap);
+
+        write(JSCell_structureID);
+        write(JSCell_typeInfoFlags);
+
+        write(Watchpoint_fire);
+        write(MiscFields);
+
+        // This can happen if lazily adding fields to an object happens in getOwnPropertySlot
+        // and we need to allocate out of line storage.
+        write(JSObject_butterfly);
+
+        def(HeapLocation(NamedPropertyLoc, propertyNameHeap, node->child1()), LazyNode(node));
+        return;
+    }
+
     case GetById:
     case GetByIdFlush:
     case GetByIdWithThis:
@@ -907,10 +943,34 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(PureValue(node, node->classInfo()));
         return;
 
-    case CallDOM:
-        read(World);
-        write(Heap);
+    case CallDOMGetter: {
+        DOMJIT::CallDOMGetterPatchpoint* patchpoint = node->callDOMGetterData()->patchpoint;
+        DOMJIT::Effect effect = patchpoint->effect;
+        if (effect.reads) {
+            if (effect.reads == DOMJIT::HeapRange::top())
+                read(World);
+            else
+                read(AbstractHeap(DOMState, effect.reads.rawRepresentation()));
+        }
+        if (effect.writes) {
+            if (effect.writes == DOMJIT::HeapRange::top())
+                write(Heap);
+            else
+                write(AbstractHeap(DOMState, effect.writes.rawRepresentation()));
+        }
+        if (effect.def) {
+            DOMJIT::HeapRange range = effect.def.value();
+            if (range == DOMJIT::HeapRange::none())
+                def(PureValue(node, node->callDOMGetterData()->domJIT));
+            else {
+                // Def with heap location. We do not include "GlobalObject" for that since this information is included in the base node.
+                // FIXME: When supporting the other nodes like getElementById("string"), we should include the base and the id string.
+                // Currently, we only see the DOMJIT getter here. So just including "base" is ok.
+                def(HeapLocation(DOMStateLoc, AbstractHeap(DOMState, range.rawRepresentation()), node->child1()), LazyNode(node));
+            }
+        }
         return;
+    }
 
     case Arrayify:
     case ArrayifyToStructure:

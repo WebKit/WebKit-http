@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "CSSSelector.h"
 #include "CSSToLengthConversionData.h"
 #include "CSSToStyleMap.h"
 #include "DocumentRuleSets.h"
@@ -52,7 +53,6 @@ class CSSImageValue;
 class CSSPageRule;
 class CSSPrimitiveValue;
 class CSSProperty;
-class CSSSelector;
 class CSSStyleSheet;
 class CSSValue;
 class CSSVariableDependentValue;
@@ -86,7 +86,6 @@ class StyleSheetList;
 class StyledElement;
 class SVGSVGElement;
 class ViewportStyleResolver;
-class WebKitCSSFilterValue;
 struct ResourceLoaderOptions;
 
 // MatchOnlyUserAgentRules is used in media queries, where relative units
@@ -469,7 +468,7 @@ private:
     void cacheBorderAndBackground();
 
     void applyProperty(CSSPropertyID, CSSValue*, SelectorChecker::LinkMatchMask = SelectorChecker::MatchDefault, const MatchResult* = nullptr);
-    RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSVariableDependentValue&);
+    RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSValue&);
 
     void applySVGProperty(CSSPropertyID, CSSValue*);
 

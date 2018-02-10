@@ -33,6 +33,9 @@
 #include "ArrayConstructor.h"
 #include "ArrayIteratorPrototype.h"
 #include "ArrayPrototype.h"
+#include "AtomicsObject.h"
+#include "AsyncFunctionConstructor.h"
+#include "AsyncFunctionPrototype.h"
 #include "BooleanConstructor.h"
 #include "BooleanPrototype.h"
 #include "BuiltinNames.h"
@@ -63,6 +66,7 @@
 #include "JSArrayBuffer.h"
 #include "JSArrayBufferConstructor.h"
 #include "JSArrayBufferPrototype.h"
+#include "JSAsyncFunction.h"
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
@@ -200,6 +204,12 @@ static JSValue createConsoleProperty(VM& vm, JSObject* object)
     return ConsoleObject::create(vm, global, ConsoleObject::createStructure(vm, global, constructEmptyObject(global->globalExec())));
 }
 
+static JSValue createAtomicsProperty(VM& vm, JSObject* object)
+{
+    JSGlobalObject* global = jsCast<JSGlobalObject*>(object);
+    return AtomicsObject::create(vm, global, AtomicsObject::createStructure(vm, global, global->objectPrototype()));
+}
+
 static EncodedJSValue JSC_HOST_CALL makeBoundFunction(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -250,6 +260,7 @@ const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &sup
   Proxy                 createProxyProperty                          DontEnum|PropertyCallback
   JSON                  createJSONProperty                           DontEnum|PropertyCallback
   Math                  createMathProperty                           DontEnum|PropertyCallback
+  Atomics               createAtomicsProperty                        DontEnum|PropertyCallback
   console               createConsoleProperty                        DontEnum|PropertyCallback
   Int8Array             JSGlobalObject::m_typedArrayInt8             DontEnum|ClassStructure
   Int16Array            JSGlobalObject::m_typedArrayInt16            DontEnum|ClassStructure
@@ -540,6 +551,13 @@ void JSGlobalObject::init(VM& vm)
 
     m_parseIntFunction.set(vm, this, JSFunction::create(vm, this, 2, vm.propertyNames->parseInt.string(), globalFuncParseInt, NoIntrinsic));
     putDirectWithoutTransition(vm, vm.propertyNames->parseInt, m_parseIntFunction.get(), DontEnum);
+    
+    m_arrayBufferPrototype.set(vm, this, JSArrayBufferPrototype::create(vm, this, JSArrayBufferPrototype::createStructure(vm, this, m_objectPrototype.get()), ArrayBufferSharingMode::Default));
+    m_arrayBufferStructure.set(vm, this, JSArrayBuffer::createStructure(vm, this, m_arrayBufferPrototype.get()));
+    if (m_runtimeFlags.isSharedArrayBufferEnabled()) {
+        m_sharedArrayBufferPrototype.set(vm, this, JSArrayBufferPrototype::create(vm, this, JSArrayBufferPrototype::createStructure(vm, this, m_objectPrototype.get()), ArrayBufferSharingMode::Shared));
+        m_sharedArrayBufferStructure.set(vm, this, JSArrayBuffer::createStructure(vm, this, m_sharedArrayBufferPrototype.get()));
+    }
 
 #define CREATE_PROTOTYPE_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName, prototypeBase) \
 m_ ## lowerName ## Prototype.set(vm, this, capitalName##Prototype::create(vm, this, capitalName##Prototype::createStructure(vm, this, m_ ## prototypeBase ## Prototype.get()))); \
@@ -585,10 +603,20 @@ m_ ## properName ## Structure.set(vm, this, instanceType::createStructure(vm, th
     m_throwTypeErrorFunction.set(vm, this, throwTypeErrorFunction);
 
     JSCell* functionConstructor = FunctionConstructor::create(vm, FunctionConstructor::createStructure(vm, this, m_functionPrototype.get()), m_functionPrototype.get());
+    m_functionConstructor.set(vm, this, (FunctionConstructor*)functionConstructor);
+
     ArrayConstructor* arrayConstructor = ArrayConstructor::create(vm, this, ArrayConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayPrototype.get(), m_speciesGetterSetter.get());
     m_arrayConstructor.set(vm, this, arrayConstructor);
     
     m_regExpConstructor.set(vm, this, RegExpConstructor::create(vm, RegExpConstructor::createStructure(vm, this, m_functionPrototype.get()), m_regExpPrototype.get(), m_speciesGetterSetter.get()));
+    
+    JSArrayBufferConstructor* arrayBufferConstructor = JSArrayBufferConstructor::create(vm, JSArrayBufferConstructor::createStructure(vm, this, m_functionPrototype.get()), m_arrayBufferPrototype.get(), m_speciesGetterSetter.get(), ArrayBufferSharingMode::Default);
+    m_arrayBufferPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, arrayBufferConstructor, DontEnum);
+    JSArrayBufferConstructor* sharedArrayBufferConstructor = nullptr;
+    if (m_runtimeFlags.isSharedArrayBufferEnabled()) {
+        sharedArrayBufferConstructor = JSArrayBufferConstructor::create(vm, JSArrayBufferConstructor::createStructure(vm, this, m_functionPrototype.get()), m_sharedArrayBufferPrototype.get(), m_speciesGetterSetter.get(), ArrayBufferSharingMode::Shared);
+        m_sharedArrayBufferPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, sharedArrayBufferConstructor, DontEnum);
+    }
     
 #define CREATE_CONSTRUCTOR_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName, prototypeBase) \
 capitalName ## Constructor* lowerName ## Constructor = capitalName ## Constructor::create(vm, capitalName ## Constructor::createStructure(vm, this, m_functionPrototype.get()), m_ ## lowerName ## Prototype.get(), m_speciesGetterSetter.get()); \
@@ -630,7 +658,17 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
 
     m_generatorPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, m_generatorFunctionPrototype.get(), DontEnum | ReadOnly);
     m_generatorFunctionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->prototype, m_generatorPrototype.get(), DontEnum | ReadOnly);
-    
+
+    m_asyncFunctionStructure.initLater(
+        [](LazyClassStructure::Initializer& init) {
+            AsyncFunctionPrototype* asyncFunctionPrototype = AsyncFunctionPrototype::create(init.vm, AsyncFunctionPrototype::createStructure(init.vm, init.global, init.global->m_functionPrototype.get()));
+            init.setPrototype(asyncFunctionPrototype);
+            init.setStructure(JSAsyncFunction::createStructure(init.vm, init.global, init.prototype));
+            init.setConstructor(PropertyName(nullptr), AsyncFunctionConstructor::create(init.vm, AsyncFunctionConstructor::createStructure(init.vm, init.global, init.global->m_functionConstructor.get()), asyncFunctionPrototype));
+
+            init.global->putDirectWithoutTransition(init.vm, init.vm.propertyNames->builtinNames().asyncFunctionResumePrivateName(), JSFunction::createBuiltinFunction(init.vm, asyncFunctionPrototypeAsyncFunctionResumeCodeGenerator(init.vm), init.global), DontEnum | DontDelete | ReadOnly);
+        });
+
     m_objectPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, objectConstructor, DontEnum);
     m_functionPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, functionConstructor, DontEnum);
     m_arrayPrototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, arrayConstructor, DontEnum);
@@ -645,6 +683,10 @@ m_ ## lowerName ## Prototype->putDirectWithoutTransition(vm, vm.propertyNames->c
 
     putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().ObjectPrivateName(), objectConstructor, DontEnum | DontDelete | ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().ArrayPrivateName(), arrayConstructor, DontEnum | DontDelete | ReadOnly);
+
+    putDirectWithoutTransition(vm, vm.propertyNames->ArrayBuffer, arrayBufferConstructor, DontEnum);
+    if (m_runtimeFlags.isSharedArrayBufferEnabled())
+        putDirectWithoutTransition(vm, vm.propertyNames->SharedArrayBuffer, sharedArrayBufferConstructor, DontEnum);
 
 #define PUT_CONSTRUCTOR_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName, prototypeBase) \
 putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Constructor, DontEnum); \
@@ -832,7 +874,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         auto* base = m_ ## prototypeBase ## Prototype.get(); \
         auto* prototype = Prototype::create(vm, this, Prototype::createStructure(vm, this, base)); \
         auto* structure = JSObj::createStructure(vm, this, prototype); \
-        auto* constructor = Constructor::create(vm, Constructor::createStructure(vm, this, this->functionPrototype()), prototype, structure); \
+        auto* constructor = Constructor::create(vm, Constructor::createStructure(vm, this, this->functionPrototype()), prototype); \
         prototype->putDirectWithoutTransition(vm, vm.propertyNames->constructor, constructor, DontEnum); \
         m_ ## lowerName ## Prototype.set(vm, this, prototype); \
         m_ ## properName ## Structure.set(vm, this, structure); \
@@ -1102,6 +1144,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_throwTypeErrorGetterSetter.visit(visitor);
     visitor.append(&thisObject->m_throwTypeErrorArgumentsCalleeAndCallerGetterSetter);
     visitor.append(&thisObject->m_moduleLoader);
+    visitor.append(&thisObject->m_functionConstructor);
 
     visitor.append(&thisObject->m_objectPrototype);
     visitor.append(&thisObject->m_functionPrototype);
@@ -1110,6 +1153,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_iteratorPrototype);
     visitor.append(&thisObject->m_generatorFunctionPrototype);
     visitor.append(&thisObject->m_generatorPrototype);
+    thisObject->m_asyncFunctionStructure.visit(visitor);
     visitor.append(&thisObject->m_moduleLoaderPrototype);
 
     thisObject->m_debuggerScopeStructure.visit(visitor);
@@ -1155,6 +1199,11 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_callableProxyObjectStructure);
     visitor.append(&thisObject->m_proxyRevokeStructure);
     visitor.append(&thisObject->m_moduleLoaderStructure);
+    
+    visitor.append(&thisObject->m_arrayBufferPrototype);
+    visitor.append(&thisObject->m_arrayBufferStructure);
+    visitor.append(&thisObject->m_sharedArrayBufferPrototype);
+    visitor.append(&thisObject->m_sharedArrayBufferStructure);
 
 #define VISIT_SIMPLE_TYPE(CapitalName, lowerName, properName, instanceType, jsName, prototypeBase) \
     visitor.append(&thisObject->m_ ## lowerName ## Prototype); \

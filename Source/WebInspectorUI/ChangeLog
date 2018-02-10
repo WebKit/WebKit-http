@@ -1,3 +1,829 @@
+2016-11-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Creating a new pseudo-selector in the Styles sidebar doesn't work on first attempt
+        https://bugs.webkit.org/show_bug.cgi?id=164092
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section:not(.invalid-selector).rule-disabled > .header > .icon):
+        (.style-declaration-section.invalid-selector > .header > .icon):
+        (.style-declaration-section.invalid-selector > .header > .selector,):
+        (.style-declaration-section.rule-disabled > .header > .icon): Deleted.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh):
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleIconElementClicked):
+        (WebInspector.CSSStyleDeclarationSection.prototype._updateSelectorIcon): Added.
+        Re-add logic removed by https://webkit.org/b/159734 for handling invalid selectors.  Instead
+        of just refreshing the section whenever the represented CSSRule changes selectors, we only
+        need to refresh if the selector no longer applies to the current element.
+
+        (WebInspector.CSSStyleDeclarationSection.prototype._handleMouseMove): Added.
+        Fix another issue discovered while adding the invalid selector warnings, where the title
+        attribute of each individual selector was no longer visible.  To fix this, whenever the user
+        moves their mouse over the selector input, the position is compared to each selector to find
+        the first one that matches, whose title is then applied to the input element.
+
+2016-11-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve debugger highlight in some exception cases
+        https://bugs.webkit.org/show_bug.cgi?id=164300
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        When walking up AST nodes and reach a throw statement, use that.
+
+2016-11-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup stale code in NetworkSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=164295
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype.closed): Deleted.
+        This doesn't appear to be needed since NetworkSidebarPanel never
+        registered any event listeners.
+
+2016-11-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        REGRESSION (r191419): Web Inspector: Autocomplete is broken
+        https://bugs.webkit.org/show_bug.cgi?id=150493
+
+        Reviewed by Timothy Hatcher.
+
+        Fixed CodeMirror.undo() logic rolled out by r191539 <https://webkit.org/b/150537>
+
+        Added calls to CodeMirror.changeGeneration(true) which tells the history stack to "close"
+        the current event, preventing it from being consolidated with new changes.  If the user
+        typed fast enough, non-completion changes (like adding ":" in CSS) would get merged with
+        completion changes, causing calls to CodeMirror.undo() to undo those changes as well.  To
+        prevent this, a boolean variable is set to true whenever a completion "activity" is in
+        progress, defined by a sequence of completion related events.  When this "activity" first
+        starts, call CodeMirror.changeGeneration(true) to freeze the current history.
+
+        See original bug for more information <https://webkit.org/b/147720>.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype.updateCompletions):
+        (WebInspector.CodeMirrorCompletionController.prototype.isCompletionChange):
+        (WebInspector.CodeMirrorCompletionController.prototype.hideCompletions):
+        (WebInspector.CodeMirrorCompletionController.prototype.close):
+        (WebInspector.CodeMirrorCompletionController.prototype.completionSuggestionsSelectedCompletion):
+        (WebInspector.CodeMirrorCompletionController.prototype._applyCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._applyCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._commitCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._commitCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._completeAtCurrentPosition):
+        (WebInspector.CodeMirrorCompletionController.prototype._handleBeforeChange):
+        (WebInspector.CodeMirrorCompletionController.prototype._createCompletionHintMarker): Deleted.
+        (WebInspector.CodeMirrorCompletionController.prototype._removeLastChangeFromHistory): Deleted.
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.clearMarker): Deleted.
+
+2016-11-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Replace sublists inside DOM-related model objects with WI.Collection
+        https://bugs.webkit.org/show_bug.cgi?id=164098
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMTree.js:
+        * UserInterface/Models/Frame.js:
+        Add support for WebInspector.Collection.
+
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addResourcesRecursivelyForFrame):
+        * UserInterface/Views/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement):
+        (WebInspector.FrameTreeElement.prototype.onpopulate):
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WebInspector.OpenResourceDialog.prototype._addResourcesForFrame):
+        Use new functions defined by changing to WebInspector.Collection.
+
+2016-11-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Fix double remove of ResourceCollection if type changes
+        https://bugs.webkit.org/show_bug.cgi?id=164268
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/ResourceCollection.js:
+        (WebInspector.ResourceCollection.prototype._resourceTypeDidChange):
+        Change logic so that a non-typed collection will not try to remove a resource that has
+        changed types from the sub-collection of its old type, since the sub-collection itself will
+        handle the removal inside its own event listener for the type change.
+
+2016-11-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Web Inspector: Add the support for custom elements
+        https://bugs.webkit.org/show_bug.cgi?id=164266
+        <rdar://problem/29038883>
+
+        Reviewed by Joseph Pecoraro.
+
+        Show the custom element state in DOM node's details pane:
+         - "Element" for all builtin elements.
+         - "Element (Custom)" for any upgraded custom elements.
+         - "Element (Waiting to be upgraded)" for any element waiting to be upgraded.
+         - "Element (Failed to upgrade)" for any custom element that failed during construction or an upgrade.
+
+        And add "Jump to Definition" to the context menu of an node to find the custom element's definition.
+
+        * Localizations/en.lproj/localizedStrings.js: Added localized strings.
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._customElementStateChanged): Added. Update the state and fire
+        WebInspector.DOMTreeManager.Event.CustomElementStateChanged to update the node's details pane.
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode): Set the custom element state or default to "builtin". Use null when the node
+        is not an element.
+        (WebInspector.DOMNode.prototype.isCustomElement): Added. Returns true if this is a successfully
+        constructed or upgraded custom element.
+        (WebInspector.DOMNode.prototype.customElementState): Added.
+        (WebInspector.DOMNode.CustomElementState): Added.
+        * UserInterface/Protocol/DOMObserver.js:
+        (WebInspector.DOMObserver.prototype.customElementStateChanged): Added.
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.getProperty): Added. Retrieves the property of a given name from
+        the remote backend.
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel): Call _customElementStateChanged when the custom element
+        state changes by listening to WebInspector.DOMTreeManager.Event.CustomElementStateChanged.
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype.layout):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshIdentity): Extracted from layout.
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._customElementStateChanged): Added. 
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._nodeTypeDisplayName): Include the custom element
+        state when it's not a builtin element (_customElementState returns null in that case).
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._customElementState): Get the localized string for
+        each custom element state.
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu): Add "Jump to Definition" item in the
+        context menu of an element when it's a successfully constructed or upgraded custom element.
+
+2016-10-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Shadow DOM scoped styles are missing
+        https://bugs.webkit.org/show_bug.cgi?id=164247
+        <rdar://problem/29035061>
+
+        Reviewed by Antti Koivisto.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype.refresh.fetchedInlineStyles):
+        Fix incorrect WrapperPromise usage.
+
+2016-10-31  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Arrows for Styles scope bar item are misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=164159
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ScopeRadioButtonNavigationItem.css:
+        (.scope-radio-button-navigation-item > .scope-radio-button-item-select:focus):
+        (.scope-radio-button-navigation-item > .arrows):
+
+2016-10-31  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Entering ":n" in Open Resource Dialog, where n > number of lines, should jump to the last line
+        https://bugs.webkit.org/show_bug.cgi?id=160840
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.revealPosition):
+        Since it is possible for the given position to be outside the bounds of the CodeMirror
+        instance, wait to get the line handler for the highlight animation until we have constrained
+        the position value.
+
+2016-10-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Preferences for Text Editor behavior
+        https://bugs.webkit.org/show_bug.cgi?id=149120
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector.contentLoaded):
+        (WebInspector.contentLoaded.setTabSize):
+        (WebInspector.contentLoaded.setInvalidCharacterClassName):
+        (WebInspector.contentLoaded.setWhitespaceCharacterClassName):
+        (WebInspector._tryToRestorePendingTabs):
+        (WebInspector.indentString):
+        (WebInspector._updateNewTabButtonState): Deleted.
+        (WebInspector._newTabItemClicked): Deleted.
+        Removed calls to the New Tab tab bar item on the Tab Bar instance.
+        Added listener to the indentUnit setting to change the tab-size value on <body>.
+        Created helper function to generate the indentString value from settings.
+
+        * UserInterface/Base/Test.js:
+        (WebInspector.indentString):
+        Assume indent string is "    " for tests.
+
+        * UserInterface/Base/Setting.js:
+        Added global WebInspector.settings dictionary for holding settings with UI editors.
+
+        * UserInterface/Main.html:
+        Added GeneralTabBarItem, PinnedTabBarItem, and SettingsTabContentView.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WebInspector.CSSStyleDeclaration.prototype.generateCSSRuleString):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._formattedContentFromEditor):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._resetContent.update):
+        * UserInterface/Views/VisualStylePropertyEditor.js:
+        (WebInspector.VisualStylePropertyEditor.generateFormattedTextForNewProperty):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._showPopoverForFunction.didGetDetails):
+        Now uses WebInspector.indentUnit for indentation values
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        Added "showWhitespaceCharacter" option to CodeMirror.  When enabled, it adds an overlay to
+        the editor that will use pseudo-elements to display whitespace characters (unicode 00B7).
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror .cm-tab):
+        (.show-whitespace-characters .CodeMirror .cm-tab::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-1::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-2::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-3::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-4::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-5::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-6::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-7::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-8::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-9::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-10::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-11::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-12::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-13::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-14::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-15::before):
+        (.show-whitespace-characters .CodeMirror .cm-whitespace-16::before):
+        (.show-invalid-characters .CodeMirror .cm-invalidchar):
+        (.CodeMirror .cm-invalidchar): Deleted.
+        Use unicode character 00B7 (middle dot) to display a space.  Also uses a grey border for
+        visualizing tab characters.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        * UserInterface/Views/ClusterContentView.js:
+        * UserInterface/Views/DOMTreeContentView.js:
+        * UserInterface/Views/DatabaseContentView.js:
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        * UserInterface/Views/NetworkGridContentView.js:
+        * UserInterface/Views/ResourceContentView.js:
+        * UserInterface/Views/ScriptContentView.js:
+        * UserInterface/Views/TabContentView.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        Add calls to super.shown(), super.hidden(), and super.closed().
+
+        * UserInterface/Views/ConsoleTabContentView.js:
+        * UserInterface/Views/DebuggerTabContentView.js:
+        * UserInterface/Views/ElementsTabContentView.js:
+        * UserInterface/Views/NetworkTabContentView.js:
+        * UserInterface/Views/NewTabContentView.js:
+        * UserInterface/Views/ResourcesTabContentView.js:
+        * UserInterface/Views/SearchTabContentView.js:
+        * UserInterface/Views/StorageTabContentView.js:
+        * UserInterface/Views/TimelineTabContentView.js:
+        Now uses WebInspector.GeneralTabBarItem.
+
+        * UserInterface/Views/GeneralTabBarItem.js: Added.
+        (WebInspector.GeneralTabBarItem):
+        (WebInspector.GeneralTabBarItem.prototype.set title):
+        (WebInspector.GeneralTabBarItem.prototype._handleContextMenuEvent):
+        Split from TabBarItem.js to make pinned tab bar items more distinct.
+
+        * UserInterface/Views/Main.css:
+        (body):
+        Removed tab-size.
+
+        * UserInterface/Views/PinnedTabBarItem.js: Added.
+        (WebInspector.PinnedTabBarItem):
+        Split from TabBarItem.js to make pinned tab bar items more distinct.
+
+        * UserInterface/Views/SettingsTabContentView.css: Added.
+        (.content-view.settings):
+        (.content-view.settings > .header):
+        (.content-view.settings > .setting-container):
+        (.content-view.settings > .setting-container > .setting-name):
+        (.content-view.settings > .setting-container > .setting-value-controller):
+        (.content-view.settings > .setting-container > .setting-value-controller input[type="number"]):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView):
+        (WebInspector.SettingsTabContentView.tabInfo):
+        (WebInspector.SettingsTabContentView.isEphemeral):
+        (WebInspector.SettingsTabContentView.shouldSaveTab):
+        (WebInspector.SettingsTabContentView.prototype.initialLayout):
+        (WebInspector.SettingsTabContentView.isTabAllowed): Deleted.
+        (WebInspector.SettingsTabContentView.prototype.get type): Deleted.
+        Added logic to display an appropriate editor for each item in WebInspector.settings.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.close):
+        Add call to super.close().
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar:not(.animating) > .item:not(.selected, .disabled):hover):
+        (.tab-bar > .item:not(.pinned) > .flex-space:last-child):
+        (.tab-bar > .item.pinned > .icon):
+        (.tab-bar:not(.animating) > .item:not(.selected, .disabled):hover > .icon):
+        (.tab-bar:not(.animating) > .item:not(.selected, .disabled):hover,): Deleted.
+        (.tab-bar > .item > .flex-space:last-child): Deleted.
+        (.tab-bar > .item.new-tab-button > .icon): Deleted.
+        (.tab-bar:not(.animating) > .item:not(.selected, .disabled):hover > .icon,): Deleted.
+        Removed rules specifically targeting `.new-tab-button`.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar):
+        (WebInspector.TabBar.prototype.get newTabTabBarItem):
+        (WebInspector.TabBar.prototype.updateNewTabTabBarItemState):
+        (WebInspector.TabBar.prototype.insertTabBarItem):
+        (WebInspector.TabBar.prototype.removeTabBarItem.animateTabs):
+        (WebInspector.TabBar.prototype.removeTabBarItem):
+        (WebInspector.TabBar.prototype.selectPreviousTab):
+        (WebInspector.TabBar.prototype.selectNextTab):
+        (WebInspector.TabBar.prototype.set selectedTabBarItem):
+        (WebInspector.TabBar.prototype.hasNormalTab):
+        (WebInspector.TabBar.prototype.layout):
+        (WebInspector.TabBar.prototype._hasMoreThanOneNormalTab):
+        (WebInspector.TabBar.prototype._handleMouseDown):
+        (WebInspector.TabBar.prototype._handleMouseMoved):
+        (WebInspector.TabBar.prototype._handleMouseLeave):
+        (WebInspector.TabBar.prototype._handleNewTabClick):
+        (WebInspector.TabBar.prototype._handleNewTabMouseEnter):
+        (WebInspector.TabBar.prototype.get newTabItem): Deleted.
+        (WebInspector.TabBar.prototype.set newTabItem): Deleted.
+        Replaced the newTabItem setter by adding a saved pinned tab bar item (instead of relying
+        upon a different object to give it the pinned tab bar item) that changes modes depending on
+        whether a new tab is able to be created.
+
+        * UserInterface/Views/TabBarItem.js:
+        (WebInspector.TabBarItem):
+        (WebInspector.TabBarItem.prototype.get element):
+        (WebInspector.TabBarItem.prototype.get representedObject):
+        (WebInspector.TabBarItem.prototype.set representedObject):
+        (WebInspector.TabBarItem.prototype.get parentTabBar):
+        (WebInspector.TabBarItem.prototype.set parentTabBar):
+        (WebInspector.TabBarItem.prototype.get image):
+        (WebInspector.TabBarItem.prototype.set image):
+        (WebInspector.TabBarItem.prototype.get title):
+        (WebInspector.TabBarItem.prototype.set title):
+        (WebInspector.TabBarItem.prototype.get pinned): Deleted.
+        (WebInspector.TabBarItem.prototype._handleContextMenuEvent): Deleted.
+        Split into GeneralTabBarItem and PinnedTabBarItem to simplify the logic of the DOM and allow
+        for easier checking of whether a tab bar item is pinned or not.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype.addTabForContentView):
+        (WebInspector.TabBrowser.prototype.closeTabForContentView):
+        (WebInspector.TabBrowser.prototype._tabBarItemSelected):
+        (WebInspector.TabBrowser.prototype._tabBarItemRemoved):
+        Replaced references to newTabItem with a set number (since each TabBar has a specific number
+        of pinned tabs).
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.prototype.close):.
+        Remove settings update event listeners to allow garbage collection.
+
+        (WebInspector.TextEditor.prototype._startWorkerPrettyPrint):
+        (WebInspector.TextEditor.prototype._startCodeMirrorPrettyPrint):
+        Now uses the settings values in WebInspector.setting for settings on the CodeMirror
+        instance.  Also updates the CodeMirror instance if any setting changes.
+
+2016-10-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include parameter strings for native CustomElementRegistry methods in the console
+        https://bugs.webkit.org/show_bug.cgi?id=164147
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2016-10-28  Matt Baker  <mattbaker@apple.com>
+
+        Unreviewed, worker document images added
+
+        * UserInterface/Images/WorkerDocument.png: Added.
+        * UserInterface/Images/WorkerDocument@2x.png: Added.
+        * UserInterface/Images/WorkerDocumentLarge.png: Added.
+        * UserInterface/Images/WorkerDocumentLarge@2x.png: Added.
+
+2016-10-27  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Create general model object Collection class
+        https://bugs.webkit.org/show_bug.cgi?id=163995
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Collection.js: Added.
+        (WebInspector.Collection):
+        (WebInspector.Collection.prototype.get items):
+        (WebInspector.Collection.prototype.get typeVerifier):
+        (WebInspector.Collection.prototype.add):
+        (WebInspector.Collection.prototype.remove):
+        (WebInspector.Collection.prototype.clear):
+        (WebInspector.Collection.prototype.toArray):
+        (WebInspector.Collection.prototype.toJSON):
+        (WebInspector.Collection.prototype.itemAdded):
+        (WebInspector.Collection.prototype.itemRemoved):
+        (WebInspector.Collection.prototype.itemsCleared):
+        Class that holds multiple model objects.  It can be limited to a specific type by supplying
+        a "typeVerifier", which is a function that accepts a single argument (the model object) and
+        returns true/false depending on if that argument matches the "type" of the collection.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/Models/Frame.js:
+        * UserInterface/Views/CookieStorageContentView.js:
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/FrameTreeElement.js:
+        * UserInterface/Views/OpenResourceDialog.js:
+        Add support for WebInspector.Collection.
+        
+        * UserInterface/Models/ResourceCollection.js:
+        (WebInspector.ResourceCollection):
+        (WebInspector.ResourceCollection.verifierForType):
+        (WebInspector.ResourceCollection.prototype.resourceCollectionForType):
+        (WebInspector.ResourceCollection.prototype.clear):
+        (WebInspector.ResourceCollection.prototype.itemAdded):
+        (WebInspector.ResourceCollection.prototype.itemRemoved):
+        (WebInspector.ResourceCollection.prototype.itemsCleared):
+        (WebInspector.ResourceCollection.prototype._associateWithResource):
+        (WebInspector.ResourceCollection.prototype._disassociateWithResource):
+        (WebInspector.ResourceCollection.prototype._resourceURLDidChange):
+        (WebInspector.ResourceCollection.prototype._resourceTypeDidChange):
+        (WebInspector.ResourceCollection.prototype.get resources): Deleted.
+        (WebInspector.ResourceCollection.prototype.resourcesWithType): Deleted.
+        (WebInspector.ResourceCollection.prototype.addResource): Deleted.
+        (WebInspector.ResourceCollection.prototype.removeResource): Deleted.
+        (WebInspector.ResourceCollection.prototype.removeAllResources): Deleted.
+        Now a subclass of WebInspector.Collection.  Retrieving WebInspector.Resource objects by type
+        and URL is still supported, but requesting by type now returns another instance of
+        WebInspector.ResourceCollection that is configured to only accept the requested type.
+
+2016-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include ConsoleAgent in Workers - real console.log support
+        https://bugs.webkit.org/show_bug.cgi?id=163844
+        <rdar://problem/28903328>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/Target.js:
+        (WebInspector.Target.prototype.get ConsoleAgent):
+        (WebInspector.Target.prototype._initializeNonMainTarget):
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.WorkerConnection):
+        Add ConsoleAgent.
+
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager.prototype.messageWasAdded):
+        (WebInspector.LogManager.prototype.requestClearMessages):
+        Handle ConsoleAgent calls with multiple targets.
+
+        * UserInterface/Protocol/ConsoleObserver.js:
+        (WebInspector.ConsoleObserver.prototype.messageAdded):
+        Dispatch with the target in case we create Model objects.
+
+        * UserInterface/Controllers/WorkerManager.js:
+        (WebInspector.WorkerManager.prototype.workerCreated):
+        The frontend must now call "initialized" on Workers after
+        sending our setup messages (enable, set breakpoints, etc).
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.get target):
+        Expose an accessor for tests.
+
+        * UserInterface/Protocol/LoggingProtocolTracer.js:
+        (WebInspector.LoggingProtocolTracer.prototype._processEntry):
+        Actually output the Exception, useful when debugging failures in tests.
+
+2016-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include RuntimeAgent in Workers - evaluate in Worker context
+        https://bugs.webkit.org/show_bug.cgi?id=163835
+        <rdar://problem/28901465>
+
+        Reviewed by Brian Burg.
+
+        This introduces the idea that the frontend may communication with multiple
+        backend "Targets" which each have their own set of Agents.
+
+            - WebInspector.Target
+              - has its own list of Agents
+              - has a InspectorBackend.Connection to communicate with the backend
+
+            - WebInspector.mainTarget
+              - always exists and represents the thing we are debugging (Page or JSContext)
+
+            - WebInspector.targets / WebInspector.targetManager
+              - management of all Targets
+              - create new Targets for Workers
+
+        This also slowly introduces the concept that Model objects may be tied to
+        a specific Target:
+
+            - WebInspector.RemoteObject
+              - in order to evaluate JS and interact with this object we must know the target (Page or Worker)
+              - when fetching PropertyDescriptors and other RemoteObjects we must continue to pass on the target
+
+        Finally this makes the QuickConsole list Worker execution contexts in
+        the context picker so that users can choose a Worker context and
+        evaluate JavaScript in that context using the console.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+        New files, strings, and managers.
+        New global WebInspector.mainTarget.
+        New convenience WebInspector.targets.
+
+        * UserInterface/Protocol/Target.js: Added.
+        (WebInspector.Target):
+        (WebInspector.Target.prototype.get RuntimeAgent):
+        (WebInspector.Target.prototype.get name):
+        (WebInspector.Target.prototype.get type):
+        (WebInspector.Target.prototype.get connection):
+        (WebInspector.Target.prototype.get executionContext):
+        (WebInspector.Target.prototype.get displayName):
+        (WebInspector.Target.prototype._intializeMainTarget):
+        (WebInspector.Target.prototype._initializeNonMainTarget):
+        Target has some basic properties.
+
+        * UserInterface/Controllers/TargetManager.js:
+        (WebInspector.TargetManager):
+        (WebInspector.TargetManager.prototype.get targets):
+        (WebInspector.TargetManager.prototype.addTarget):
+        (WebInspector.TargetManager.prototype.removeTarget):
+        Holds the list of Targets and events when created / removed.
+        Each target with a RuntimeAgent has an ExecutionContext.
+
+        * UserInterface/Controllers/WorkerManager.js:
+        (WebInspector.WorkerManager):
+        (WebInspector.WorkerManager.prototype.workerCreated):
+        (WebInspector.WorkerManager.prototype.workerTerminated):
+        (WebInspector.WorkerManager.prototype.dispatchMessageFromWorker):
+        Create / remove / dispatch on a Worker Target.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        (InspectorBackendClass.prototype.registerCommand):
+        (InspectorBackendClass.prototype.dispatch):
+        (InspectorBackendClass.prototype.runAfterPendingDispatches):
+        (InspectorBackendClass.prototype._agentForDomain):
+        Keep the original implementations and just dispatch to the main connection.
+
+        (InspectorBackend.Agent):
+        (InspectorBackend.Agent.prototype.get connection):
+        (InspectorBackend.Agent.prototype.set connection):
+        (InspectorBackend.Agent.prototype.get dispatcher):
+        We will share Agent implementations but just give new "copies" a different
+        connection and dispatcher.
+
+        (InspectorBackend.Command):
+        (InspectorBackend.Command.create):
+        (InspectorBackend.Command.prototype.invoke):
+        (InspectorBackend.Command.prototype.supports):
+        We continue to have a single Command instance on the Agent. However instead
+        of using the hardcoded Agent on the Instance when evaluated as a function
+        it uses the `this` object which should be an agent. This way:
+
+            target1.RuntimeAgent.evaluate
+                - `this` is target1 and we use the connection for that target
+            target2.RuntimeAgent.evaluate
+                - `this` is target2 and we use the connection for that target
+
+        Unfortunately this breaks `RuntimeAgent.evaluate.invoke`. Currently this
+        is solved by providing an extra parameter. In the case where we need to
+        invoke on a particular agent we must provide the agent.
+
+            target.RuntimeAgent.evaluate.invoke({options}, target.RuntimeAgent)
+
+        This is unfortunate but only needed in a handful of places right now.
+
+        (InspectorBackendClass.prototype._sendCommandToBackendWithCallback): Deleted.
+        (InspectorBackendClass.prototype._sendCommandToBackendExpectingPromise): Deleted.
+        (InspectorBackendClass.prototype._sendMessageToBackend): Deleted.
+        (InspectorBackendClass.prototype._dispatchResponse): Deleted.
+        (InspectorBackendClass.prototype._dispatchResponseToCallback): Deleted.
+        (InspectorBackendClass.prototype._dispatchResponseToPromise): Deleted.
+        (InspectorBackendClass.prototype._dispatchEvent): Deleted.
+        (InspectorBackendClass.prototype._flushPendingScripts): Deleted.
+        (InspectorBackend.Agent.prototype.get currentDispatchState): Deleted.
+        (InspectorBackend.Command.prototype.deliverFailure): Deleted.
+        * UserInterface/Protocol/Connection.js: Added.
+        (InspectorBackend.Connection):
+        (InspectorBackend.Connection.prototype.get target):
+        (InspectorBackend.Connection.prototype.set target):
+        (InspectorBackend.Connection.prototype.dispatch):
+        (InspectorBackend.Connection.prototype.runAfterPendingDispatches):
+        (InspectorBackend.Connection.prototype.sendMessageToBackend):
+        (InspectorBackend.Connection.prototype._dispatchResponse):
+        (InspectorBackend.Connection.prototype._dispatchResponseToCallback):
+        (InspectorBackend.Connection.prototype._dispatchResponseToPromise):
+        (InspectorBackend.Connection.prototype._dispatchEvent):
+        (InspectorBackend.Connection.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackend.Connection.prototype._sendCommandToBackendExpectingPromise):
+        (InspectorBackend.Connection.prototype._sendMessageToBackend):
+        (InspectorBackend.Connection.prototype._flushPendingScripts):
+        This extracts the Connection details into its own class.
+        Although we make it appear as though a Target has a list of
+        Agents, we actually have the Connection hold the list of Agents.
+        Instead of cloning the entire Agent we just create a new object
+        extended from the original Agent instance. This allows us to keep
+        the same interface but just change the connection / dispatcher
+        properties within the Agent.
+
+        (InspectorBackend.MainConnection):
+        (InspectorBackend.MainConnection.prototype.sendMessageToBackend):
+        (InspectorBackend.WorkerConnection):
+        (InspectorBackend.WorkerConnection.sendMessageToBackend):
+        Two different kinds of connections. One for the Main connection
+        and one for Workers. Currently the list of agents we expose
+        on a Worker Target/Connection is hardcoded.
+
+        * UserInterface/Models/ExecutionContext.js:
+        (WebInspector.ExecutionContext):
+        (WebInspector.ExecutionContext.prototype.get target):
+        We may now have ExecutionContexts that mean a Page, Frames, and Workers.
+        To do this we include the (target, executionContextId) tuple in this object.
+        With this we have everything we need to evaluate JavaScript.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WebInspector.RuntimeManager):
+        (WebInspector.RuntimeManager.prototype.get activeExecutionContext):
+        (WebInspector.RuntimeManager.prototype.set activeExecutionContext):
+        (WebInspector.RuntimeManager.prototype.get defaultExecutionContextIdentifier): Deleted.
+        (WebInspector.RuntimeManager.prototype.set defaultExecutionContextIdentifier): Deleted.
+        Update from contextId to a full ExecutionContext object.
+
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow.evalCallback):
+        (WebInspector.RuntimeManager.prototype.evaluateInInspectedWindow):
+        (WebInspector.RuntimeManager.prototype.saveResult):
+        (WebInspector.RuntimeManager.prototype.getPropertiesForRemoteObject):
+        (WebInspector.RuntimeManager.prototype._frameExecutionContextsCleared):
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.executionContextCreated):
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController.prototype.consolePromptShouldCommitText):
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        Anywhere that wants to use the "activeExecutionContext" must use the
+        specific RuntimeAgent tied to that ExecutionContext's Target.
+
+        * UserInterface/Models/PropertyDescriptor.js:
+        (WebInspector.PropertyDescriptor.fromPayload):
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject):
+        (WebInspector.RemoteObject.createFakeRemoteObject):
+        (WebInspector.RemoteObject.fromPrimitiveValue):
+        (WebInspector.RemoteObject.fromPayload):
+        (WebInspector.RemoteObject.prototype.getDisplayablePropertyDescriptors):
+        (WebInspector.RemoteObject.prototype.deprecatedGetDisplayableProperties):
+        (WebInspector.RemoteObject.prototype.setPropertyValue):
+        (WebInspector.RemoteObject.prototype.getCollectionEntries):
+        (WebInspector.RemoteObject.prototype.releaseWeakCollectionEntries):
+        (WebInspector.RemoteObject.prototype.callFunction):
+        (WebInspector.RemoteObject.prototype.callFunctionJSON):
+        (WebInspector.RemoteObject.prototype.getOwnPropertyDescriptor.wrappedCallback):
+        (WebInspector.RemoteObject.prototype.getOwnPropertyDescriptor):
+        (WebInspector.RemoteObject.prototype.release):
+        (WebInspector.RemoteObject.prototype._getPropertyDescriptors):
+        (WebInspector.RemoteObject.prototype._getPropertyDescriptorsResolver):
+        (WebInspector.RemoteObject.prototype._deprecatedGetProperties):
+        RemoteObject and related Model Objects now must be tied to a specific
+        Target, because we need to know which Target it belongs to in order to
+        interact with it further.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole):
+        (WebInspector.QuickConsole.prototype.get selectedExecutionContext):
+        (WebInspector.QuickConsole.prototype.set selectedExecutionContext):
+        (WebInspector.QuickConsole.prototype._executionContextPathComponentsToDisplay):
+        (WebInspector.QuickConsole.prototype._rebuildExecutionContextPathComponents):
+        (WebInspector.QuickConsole.prototype._framePageExecutionContextsChanged):
+        (WebInspector.QuickConsole.prototype._frameExecutionContextsCleared):
+        (WebInspector.QuickConsole.prototype._createExecutionContextPathComponent):
+        (WebInspector.QuickConsole.prototype._createExecutionContextPathComponentFromFrame):
+        (WebInspector.QuickConsole.prototype._compareExecutionContextPathComponents):
+        (WebInspector.QuickConsole.prototype._insertOtherExecutionContextPathComponent):
+        (WebInspector.QuickConsole.prototype._removeOtherExecutionContextPathComponent):
+        (WebInspector.QuickConsole.prototype._insertExecutionContextPathComponentForFrame):
+        (WebInspector.QuickConsole.prototype._removeExecutionContextPathComponentForFrame):
+        (WebInspector.QuickConsole.prototype._targetAdded):
+        (WebInspector.QuickConsole.prototype._targetRemoved):
+        (WebInspector.QuickConsole.prototype._pathComponentSelected):
+        (WebInspector.QuickConsole.prototype.get selectedExecutionContextIdentifier): Deleted.
+        (WebInspector.QuickConsole.prototype.set selectedExecutionContextIdentifier): Deleted.
+        (WebInspector.QuickConsole.prototype._defaultExecutionContextChanged): Deleted.
+        Update the code from executionContextId to ExecutionContext objects.
+        Update the picker with ExecutionContextPathComponent for Workers (new Targets).
+        Generalize and cleanup the code to make it easier to follow.
+
+2016-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Introduce Page WorkerAgent and Worker InspectorController
+        https://bugs.webkit.org/show_bug.cgi?id=163817
+        <rdar://problem/28899063>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        New files.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+        New Observers and Managers.
+
+        * UserInterface/Protocol/WorkerObserver.js: Added.
+        (WebInspector.WorkerObserver.prototype.workerCreated):
+        (WebInspector.WorkerObserver.prototype.workerTerminated):
+        (WebInspector.WorkerObserver.prototype.dispatchMessageFromWorker):
+        (WebInspector.WorkerObserver):
+        * UserInterface/Controllers/WorkerManager.js: Added.
+        (WebInspector.WorkerManager):
+        (WebInspector.WorkerManager.prototype.workerCreated):
+        (WebInspector.WorkerManager.prototype.workerTerminated):
+        (WebInspector.WorkerManager.prototype.dispatchMessageFromWorker):
+        To be implemented with the first Worker agent implementation
+        when there is actually something we can do with the Worker.
+
+2016-10-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cmd-+ doesn't "zoom in" to increase text size in the Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=163961
+        <rdar://problem/28895308>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Add a duplicate set of keyboard shortcuts for the Shift variants.
+
+2016-10-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove dead code in FrameTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=163914
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/FrameTreeElement.js:
+
+2016-10-24  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Scope chain shouldn't show empty Closure sections
+        https://bugs.webkit.org/show_bug.cgi?id=152348
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._scopeChainNodeFromPayload):
+        * UserInterface/Models/ScopeChainNode.js:
+        (WebInspector.ScopeChainNode):
+        (WebInspector.ScopeChainNode.prototype.get empty):
+        Added support for new empty property.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._generateCallFramesSection):
+        Only create and display a DetailsSection if the scope is not empty (via empty).
+
+2016-10-24  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Improve Quick Open sorting algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=163705
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/ResourceQueryResult.js:
+        (WebInspector.ResourceQueryResult.prototype._calculateRank.getMultiplier):
+        (WebInspector.ResourceQueryResult.prototype._calculateRank):
+        Added logic to multiply the ranking increment/decrement based on whether the current match
+        is part of a sequence, whether that sequence began with a special character, and the length
+        of the current sequence.
+
 2016-10-19  Dean Jackson  <dino@apple.com>
 
         Support CSS Shapes Level 1 without a prefix

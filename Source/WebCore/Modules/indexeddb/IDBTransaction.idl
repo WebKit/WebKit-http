@@ -30,7 +30,8 @@
     EnabledAtRuntime=IndexedDB,
     SkipVTableValidation,
 ] interface IDBTransaction : EventTarget {
-    readonly attribute DOMString mode;
+    readonly attribute DOMStringList objectStoreNames;
+    readonly attribute IDBTransactionMode mode;
     readonly attribute IDBDatabase db;
     readonly attribute DOMError error;
 

@@ -22,7 +22,7 @@
 
 messages -> WebPage LegacyReceiver {
     SetInitialFocus(bool forward, bool isKeyboardEventValid, WebKit::WebKeyboardEvent event, uint64_t callbackID)
-    SetViewState(unsigned viewState, bool wantsDidUpdateViewState, Vector<uint64_t> callbackIDs)
+    SetActivityState(unsigned activityState, bool wantsDidUpdateActivityState, Vector<uint64_t> callbackIDs)
     SetLayerHostingMode(enum WebKit::LayerHostingMode layerHostingMode)
     SetPageSuppressed(bool pageSuppressed)
 
@@ -291,6 +291,7 @@ messages -> WebPage LegacyReceiver {
     UserMediaAccessWasGranted(uint64_t userMediaID, String audioDeviceUID, String videoDeviceUID)
     UserMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String invalidConstraint)
     DidCompleteMediaDeviceEnumeration(uint64_t userMediaID, Vector<WebCore::CaptureDevice> devices, String mediaDeviceIdentifierHashSalt, bool hasPersistentAccess)
+    GrantUserMediaDevicesSandboxExtension(WebKit::SandboxExtension::HandleArray sandboxExtensionHandle)
 #endif
 
     # Notification
@@ -313,7 +314,7 @@ messages -> WebPage LegacyReceiver {
 
     # Media
     SetMediaVolume(float volume)
-    SetMuted(bool muted)
+    SetMuted(WebCore::MediaProducer::MutedStateFlags muted)
     SetMayStartMediaWhenInWindow(bool mayStartMedia)
 
 #if ENABLE(MEDIA_SESSION)
@@ -426,6 +427,12 @@ messages -> WebPage LegacyReceiver {
     PlaybackTargetSelected(uint64_t contextId, WebCore::MediaPlaybackTargetContext target)
     PlaybackTargetAvailabilityDidChange(uint64_t contextId, bool available)
     SetShouldPlayToPlaybackTarget(uint64_t contextId, bool shouldPlay)
+#endif
+
+#if ENABLE(POINTER_LOCK)
+    DidAcquirePointerLock()
+    DidNotAcquirePointerLock()
+    DidLosePointerLock()
 #endif
 
     ClearWheelEventTestTrigger()

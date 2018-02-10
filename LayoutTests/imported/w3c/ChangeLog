@@ -1,3 +1,636 @@
+2016-11-01  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support IDBIndex getAll/getAllKeys.
+        <rdar://problem/28806933> and https://bugs.webkit.org/show_bug.cgi?id=164294
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbindex_getAll-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_getAllKeys-expected.txt:
+
+2016-11-01  Alex Christensen  <achristensen@webkit.org>
+
+        Rebase test after r208239
+        https://bugs.webkit.org/show_bug.cgi?id=164290
+
+        * web-platform-tests/url/url-setters-expected.txt:
+        This was an expected change.  Non-special hosts are parsed differently than special hosts.
+
+2016-11-01  Alex Christensen  <achristensen@webkit.org>
+
+        Percent-encode non-ASCII code points in hosts of URLs with unrecognized schemes
+        https://bugs.webkit.org/show_bug.cgi?id=164290
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2016-10-31  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support IDBObjectStore getAll/getAllKeys.
+        <rdar://problem/28806934> and https://bugs.webkit.org/show_bug.cgi?id=164097
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/IndexedDB/idbobjectstore_getAll-expected.txt:
+        * web-platform-tests/IndexedDB/idbobjectstore_getAllKeys-expected.txt:
+
+2016-10-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        CSSStyleDeclaration should be annotated with CEReactions
+        https://bugs.webkit.org/show_bug.cgi?id=163968
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the test now that all test cases pass.
+
+        * web-platform-tests/custom-elements/attribute-changed-callback-expected.txt:
+
+2016-10-28  Darin Adler  <darin@apple.com>
+
+        Move all classes in the HTML directory from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163876
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/url/url-setters-expected.txt: Updated for progressions that occurred
+        because setting the href attribute on a DOMURL object no longer modifies the URL as a side
+        effect in the cases where it throw an exception.
+
+2016-10-28  Alex Christensen  <achristensen@webkit.org>
+
+        Partially revert 207805 after resolution in URL spec issue 87
+        https://bugs.webkit.org/show_bug.cgi?id=164142
+
+        Reviewed by Andy Estes.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2016-10-28  Youenn Fablet  <youenn@apple.com>
+
+        Expose RTCPeerConnection unprefixed
+        https://bugs.webkit.org/show_bug.cgi?id=164060
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/webrtc/datachannel-emptystring-expected.txt: Added.
+        * web-platform-tests/webrtc/no-media-call-expected.txt: Added.
+        * web-platform-tests/webrtc/promises-call-expected.txt: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl-expected.txt: Added.
+        * web-platform-tests/webrtc/simplecall-expected.txt: Added.
+
+2016-10-28  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch] Ensure redirection count is no more than 20 in case of cross origin requests
+        https://bugs.webkit.org/show_bug.cgi?id=164117
+
+        Reviewed by Sam Weinig.
+
+        Adding new tests.
+        Split redirect.py in two different scripts.
+        redirect.py is to be used when simple redirections are needed.
+        redirect-count.py is to be used when the number of redirections is tested.
+
+        redirect.py no longer needs the count parameter.
+        This explains rebasing of the existing tests.
+
+        * web-platform-tests/fetch/api/basic/mode-same-origin-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-expected.txt: Added.
+        * web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker-expected.txt: Added.
+        * web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker.html: Added.
+        * web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.html: Added.
+        * web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.js: Added.
+        (redirectCount):
+        * web-platform-tests/fetch/api/redirect/redirect-count-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-count-worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-count.js:
+        (redirectCount):
+        * web-platform-tests/fetch/api/request/request-cache-only-if-cached-expected.txt:
+        * web-platform-tests/fetch/api/resources/redirect-count.py: Copied from LayoutTests/imported/w3c/web-platform-tests/fetch/api/resources/redirect.py.
+        (main):
+        * web-platform-tests/fetch/api/resources/redirect.py:
+        (main):
+
+2016-10-27  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Fetch ReadableStream should only clone the second branch
+        https://bugs.webkit.org/show_bug.cgi?id=164058
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/response/response-clone-expected.txt:
+
+2016-10-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include ConsoleAgent in Workers - real console.log support
+        https://bugs.webkit.org/show_bug.cgi?id=163844
+        <rdar://problem/28903328>
+
+        Reviewed by Brian Burg.
+
+        * web-platform-tests/fetch/api/policies/csp-blocked-worker-expected.txt:
+        * web-platform-tests/streams/readable-streams/garbage-collection.https-expected.txt:
+
+2016-10-27  Chris Dumez  <cdumez@apple.com>
+
+        testharnessreport.js should sanitize the results before printing them
+        https://bugs.webkit.org/show_bug.cgi?id=164064
+
+        Reviewed by Youenn Fablet.
+
+        testharnessreport.js should sanitize the results before printing them. We
+        currently have 3 copies of this script and only 1 does the sanitization.
+        Short term, let do the sanitization in all of them. Longer term, we should
+        merge these and have a way to keep them in sync.
+
+        * web-platform-tests/dom/nodes/Element-matches-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-xht-expected.txt:
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+        * web-platform-tests/url/url-setters-expected.txt:
+
+2016-10-26  Youenn Fablet  <youennf@gmail.com>
+
+        Refresh WPT tests up to 0acd8f6
+        https://bugs.webkit.org/show_bug.cgi?id=164009
+
+        Reviewed by Darin Adler.
+
+        * resources/ImportExpectations:
+        * resources/TestRepositories:
+        * resources/resource-files.json:
+        * resources/web-platform-tests-modules.json:
+        * web-platform-tests/WebIDL/current-realm-expected.txt: Added.
+        * web-platform-tests/WebIDL/current-realm.html: Added.
+        * web-platform-tests/WebIDL/w3c-import.log:
+        * web-platform-tests/XMLHttpRequest/abort-during-open-expected.txt:
+        * web-platform-tests/XMLHttpRequest/abort-during-open.js:
+        (test.async_test.test.step):
+        * web-platform-tests/XMLHttpRequest/abort-event-abort-expected.txt:
+        * web-platform-tests/XMLHttpRequest/abort-event-abort.htm:
+        * web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin.htm: Added.
+        * web-platform-tests/XMLHttpRequest/open-during-abort-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-during-abort.htm:
+        * web-platform-tests/XMLHttpRequest/send-blob-with-no-mime-type-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-blob-with-no-mime-type.html:
+        * web-platform-tests/XMLHttpRequest/send-data-unexpected-tostring-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-data-unexpected-tostring.htm:
+        * web-platform-tests/XMLHttpRequest/send-non-same-origin-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-non-same-origin.htm: Added.
+        * web-platform-tests/XMLHttpRequest/w3c-import.log:
+        * web-platform-tests/check_stability.py: Added.
+        * web-platform-tests/ci_lint.sh: Added.
+        * web-platform-tests/ci_stability.sh: Added.
+        * web-platform-tests/config.json: Added.
+        * web-platform-tests/dom/events/Event-dispatch-click-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-click.html: Added.
+        * web-platform-tests/dom/events/w3c-import.log:
+        * web-platform-tests/dom/nodes/Node-contains-expected.txt:
+        * web-platform-tests/dom/nodes/Node-contains.html:
+        * web-platform-tests/dom/ranges/Range-mutations-appendChild-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-appendChild.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-appendData-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-appendData.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-dataChange-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-dataChange.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-deleteData-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-deleteData.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-insertBefore-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-insertBefore.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-insertData-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-insertData.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-removeChild-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-removeChild.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-replaceChild-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-replaceChild.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-replaceData-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-replaceData.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-splitText-expected.txt: Added.
+        * web-platform-tests/dom/ranges/Range-mutations-splitText.html: Added.
+        * web-platform-tests/dom/ranges/Range-mutations.js: Added.
+        * web-platform-tests/dom/ranges/w3c-import.log:
+        * web-platform-tests/encrypted-media/content/video_512x288_h264-360k_multikey_key1_dashinit.mp4: Added.
+        * web-platform-tests/encrypted-media/drm-mp4-playback-retrieve-destroy-persistent-license.html:
+        * web-platform-tests/encrypted-media/drm-mp4-playback-temporary-expired.html:
+        * web-platform-tests/encrypted-media/resources/drm-retrieve-destroy-persistent-license.html:
+        * web-platform-tests/encrypted-media/scripts/clearkey-update-non-ascii-input.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/generate-request-disallowed-input.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/invalid-license.js:
+        (runTest.):
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/onencrypted.js:
+        (runTest.):
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-destroy-persistent-license.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-persistent-license-events.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-persistent-license.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-persistent-usage-record-events.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-persistent-usage-record.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-retrieve-persistent-license.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-retrieve-persistent-usage-record.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-encrypted-clear-sources.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-events.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-expired.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-multikey-sequential.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-multisession.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-setMediaKeys.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-two-videos.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-waitingforkey.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/requestmediakeysystemaccess.js:
+        (expect_error):
+        * web-platform-tests/encrypted-media/scripts/setmediakeys-multiple-times-with-different-mediakeys.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/setmediakeys.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/syntax-mediakeysession.js:
+        (runTest.test_generateRequest):
+        (runTest.create_remove_exception_test):
+        * web-platform-tests/encrypted-media/scripts/syntax-mediakeysystemaccess.js:
+        (runTest.func):
+        * web-platform-tests/encrypted-media/scripts/update-disallowed-input.js:
+        (runTest.):
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/w3c-import.log:
+        * web-platform-tests/encrypted-media/util/drm-messagehandler.js:
+        * web-platform-tests/encrypted-media/util/testmediasource.js:
+        (testmediasource.):
+        (testmediasource):
+        * web-platform-tests/encrypted-media/util/utils.js:
+        * web-platform-tests/fetch/api/basic/error-after-response.html:
+        * web-platform-tests/fetch/api/basic/scheme-data-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-data-worker-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-data.js:
+        (checkFetchResponse):
+        * web-platform-tests/fetch/api/basic/text-utf8.html:
+        * web-platform-tests/fetch/api/basic/w3c-import.log:
+        * web-platform-tests/fetch/api/cors/cors-redirect.js:
+        (corsRedirect):
+        * web-platform-tests/fetch/api/headers/headers-basic.html:
+        * web-platform-tests/fetch/api/redirect/redirect-count-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-count-worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-count.js:
+        (redirectCount):
+        * web-platform-tests/fetch/api/request/multi-globals/current/current.html: Added.
+        * web-platform-tests/fetch/api/request/multi-globals/current/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log.
+        * web-platform-tests/fetch/api/request/multi-globals/incumbent/incumbent.html: Added.
+        * web-platform-tests/fetch/api/request/multi-globals/incumbent/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log.
+        * web-platform-tests/fetch/api/request/multi-globals/url-parsing-expected.txt: Added.
+        * web-platform-tests/fetch/api/request/multi-globals/url-parsing.html: Added.
+        * web-platform-tests/fetch/api/request/multi-globals/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log.
+        * web-platform-tests/fetch/api/request/request-consume-empty.html:
+        * web-platform-tests/fetch/api/request/w3c-import.log:
+        * web-platform-tests/fetch/api/resources/bad-chunk-encoding.py:
+        (main):
+        * web-platform-tests/fetch/api/resources/utils.js:
+        (encode_utf8):
+        * web-platform-tests/fetch/api/resources/w3c-import.log:
+        * web-platform-tests/fetch/api/response/multi-globals/current/current.html: Added.
+        * web-platform-tests/fetch/api/response/multi-globals/current/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log.
+        * web-platform-tests/fetch/api/response/multi-globals/incumbent/incumbent.html: Added.
+        * web-platform-tests/fetch/api/response/multi-globals/incumbent/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log.
+        * web-platform-tests/fetch/api/response/multi-globals/relevant/relevant.html: Added.
+        * web-platform-tests/fetch/api/response/multi-globals/relevant/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log.
+        * web-platform-tests/fetch/api/response/multi-globals/url-parsing-expected.txt: Added.
+        * web-platform-tests/fetch/api/response/multi-globals/url-parsing.html: Added.
+        * web-platform-tests/fetch/api/response/multi-globals/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log.
+        * web-platform-tests/fetch/api/response/response-clone-expected.txt:
+        * web-platform-tests/fetch/api/response/response-clone.html:
+        * web-platform-tests/fetch/api/response/response-consume-stream-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-stream.html:
+        * web-platform-tests/fetch/api/response/response-consume.html:
+        * web-platform-tests/fonts/math/axisheight5000-verticalarrow14000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-axisheight7000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-denominatordisplaystylegapmin5000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-denominatordisplaystyleshiftdown6000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-denominatorgapmin4000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-denominatorshiftdown3000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-numeratordisplaystylegapmin8000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-numeratordisplaystyleshiftup2000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-numeratorgapmin9000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-numeratorshiftup11000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/fraction-rulethickness10000.woff: Added.
+        * web-platform-tests/fonts/math/largeop-displayoperatorminheight5000.woff: Added.
+        * web-platform-tests/fonts/math/limits-lowerlimitbaselinedropmin3000.woff: Added.
+        * web-platform-tests/fonts/math/limits-lowerlimitgapmin11000.woff: Added.
+        * web-platform-tests/fonts/math/limits-upperlimitbaselinerisemin5000.woff: Added.
+        * web-platform-tests/fonts/math/limits-upperlimitgapmin7000.woff: Added.
+        * web-platform-tests/fonts/math/lineheight5000-typolineheight2300.woff: Added.
+        * web-platform-tests/fonts/math/radical-degreebottomraisepercent25-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/radical-displaystyleverticalgap7000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/radical-extraascender3000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/radical-kernafterdegreeminus5000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/radical-kernbeforedegree4000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/radical-rulethickness8000.woff: Added.
+        * web-platform-tests/fonts/math/radical-verticalgap6000-rulethickness1000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-spaceafterscript3000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-subscriptbaselinedropmin9000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-subscriptshiftdown6000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-subscripttopmax4000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-subsuperscriptgapmin11000-superscriptbottommaxwithsubscript3000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-subsuperscriptgapmin11000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-superscriptbaselinedropmax10000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-superscriptbottommin8000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-superscriptshiftup7000.woff: Added.
+        * web-platform-tests/fonts/math/scripts-superscriptshiftupcramped5000.woff: Added.
+        * web-platform-tests/fonts/math/stack-axisheight7000.woff: Added.
+        * web-platform-tests/fonts/math/stack-bottomdisplaystyleshiftdown5000.woff: Added.
+        * web-platform-tests/fonts/math/stack-bottomshiftdown6000.woff: Added.
+        * web-platform-tests/fonts/math/stack-displaystylegapmin4000.woff: Added.
+        * web-platform-tests/fonts/math/stack-gapmin8000.woff: Added.
+        * web-platform-tests/fonts/math/stack-topdisplaystyleshiftup3000.woff: Added.
+        * web-platform-tests/fonts/math/stack-topshiftup9000.woff: Added.
+        * web-platform-tests/fonts/math/stretchstack-bottomshiftdown3000.woff: Added.
+        * web-platform-tests/fonts/math/stretchstack-gapabovemin7000.woff: Added.
+        * web-platform-tests/fonts/math/stretchstack-gapbelowmin11000.woff: Added.
+        * web-platform-tests/fonts/math/stretchstack-topshiftup5000.woff: Added.
+        * web-platform-tests/fonts/math/underover-accentbaseheight4000-overbarextraascender3000.woff: Added.
+        * web-platform-tests/fonts/math/underover-accentbaseheight4000-overbarverticalgap11000.woff: Added.
+        * web-platform-tests/fonts/math/underover-accentbaseheight4000-underbarextradescender5000.woff: Added.
+        * web-platform-tests/fonts/math/underover-accentbaseheight4000-underbarverticalgap7000.woff: Added.
+        * web-platform-tests/fonts/math/w3c-import.log: Added.
+        * web-platform-tests/fonts/math/xheight500.woff: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/security_location_0-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/security_location_0.htm: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/security-window/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/security-window/window-security-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-window-object/security-window/window-security.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/w3c-import.log:
+        * web-platform-tests/html/browsers/windows/w3c-import.log:
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/Document.currentScript-expected.txt: Added.
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/Document.currentScript.html: Added.
+        * web-platform-tests/html/dom/documents/dom-tree-accessors/w3c-import.log:
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_href_specified-expected.txt: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/base_href_specified.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-base-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/data-url-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/data-url.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/usemap-casing-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/usemap-casing.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/usemap-casing-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/usemap-casing.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-input-element/radio-groupname-case-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-input-element/radio-groupname-case.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/ol.start-reflection-2-expected.txt:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/ol.start-reflection-2.html:
+        * web-platform-tests/html/semantics/interactive-elements/the-details-element/w3c-import.log:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/data-url-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/data-url.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/w3c-import.log:
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor-expected.txt: Added.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.html: Added.
+        * web-platform-tests/html/webappapis/scripting/events/w3c-import.log:
+        * web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID-expected.txt:
+        * web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.js:
+        (run_test):
+        * web-platform-tests/lint.whitelist:
+        * web-platform-tests/url/setters_tests.json:
+        * web-platform-tests/url/url-setters-expected.txt:
+        * web-platform-tests/url/url-setters.html:
+        * web-platform-tests/w3c-import.log:
+        * web-platform-tests/webrtc/OWNERS: Added.
+        * web-platform-tests/webrtc/datachannel-emptystring.html: Added.
+        * web-platform-tests/webrtc/no-media-call.html: Added.
+        * web-platform-tests/webrtc/promises-call.html: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor.html: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html: Added.
+        * web-platform-tests/webrtc/rtcpeerconnection/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/w3c-import.log.
+        * web-platform-tests/webrtc/simplecall.html: Added.
+        * web-platform-tests/webrtc/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/w3c-import.log.
+
+2016-10-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Updating attribute by textContent must create a single mutation record and custom element reaction
+        https://bugs.webkit.org/show_bug.cgi?id=164003
+
+        Reviewed by Chris Dumez.
+
+        Rebaselined the test now that all test cases are passing.
+
+        * web-platform-tests/custom-elements/reactions/Node-expected.txt:
+
+2016-10-25  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support IDBObjectStore openKeyCursor.
+        <rdar://problem/28806930> and https://bugs.webkit.org/show_bug.cgi?id=163954
+
+        Reviewed by Andy Estes.
+
+        * web-platform-tests/IndexedDB/idbobjectstore_openKeyCursor-expected.txt:
+
+2016-10-25  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support new IDBTransaction interfaces.
+        <rdar://problem/28806928> and https://bugs.webkit.org/show_bug.cgi?id=163927
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-abort-expected.txt:
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-store-expected.txt:
+        * web-platform-tests/IndexedDB/idbtransaction_objectStoreNames-expected.txt:
+        * web-platform-tests/IndexedDB/transaction-abort-multiple-metadata-revert-expected.txt:
+        * web-platform-tests/IndexedDB/transaction-abort-object-store-metadata-revert-expected.txt:
+
+2016-10-24  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::generateKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=163718
+        <rdar://problem/28864380>
+
+        Reviewed by Chris Dumez.
+
+        * WebCryptoAPI/generateKey/test_aes-cbc-expected.txt:
+        * WebCryptoAPI/generateKey/test_aes-cbc.html:
+        * WebCryptoAPI/generateKey/test_aes-ctr-expected.txt:
+        * WebCryptoAPI/generateKey/test_aes-ctr.html:
+        * WebCryptoAPI/generateKey/test_failures-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures.html:
+        * WebCryptoAPI/generateKey/test_failures_AES-CBC-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_AES-CBC.html:
+        * WebCryptoAPI/generateKey/test_failures_AES-CTR-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_AES-CTR.html:
+        * WebCryptoAPI/generateKey/test_failures_AES-GCM-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_AES-GCM.html:
+        * WebCryptoAPI/generateKey/test_failures_AES-KW-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_AES-KW.html:
+        * WebCryptoAPI/generateKey/test_failures_ECDH-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_ECDH.html:
+        * WebCryptoAPI/generateKey/test_failures_ECDSA-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_ECDSA.html:
+        * WebCryptoAPI/generateKey/test_failures_HMAC-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_HMAC.html:
+        * WebCryptoAPI/generateKey/test_failures_RSA-OAEP-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_RSA-OAEP.html:
+        * WebCryptoAPI/generateKey/test_failures_RSA-PSS-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_RSA-PSS.html:
+        * WebCryptoAPI/generateKey/test_failures_RSASSA-PKCS1-v1_5-expected.txt:
+        * WebCryptoAPI/generateKey/test_failures_RSASSA-PKCS1-v1_5.html:
+        * WebCryptoAPI/generateKey/test_successes-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes.html:
+        * WebCryptoAPI/generateKey/test_successes_AES-CBC-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_AES-CBC.html:
+        * WebCryptoAPI/generateKey/test_successes_AES-CTR-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_AES-CTR.html:
+        * WebCryptoAPI/generateKey/test_successes_AES-GCM-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_AES-GCM.html:
+        * WebCryptoAPI/generateKey/test_successes_AES-KW-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_AES-KW.html:
+        * WebCryptoAPI/generateKey/test_successes_ECDH-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_ECDH.html:
+        * WebCryptoAPI/generateKey/test_successes_ECDSA-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_ECDSA.html:
+        * WebCryptoAPI/generateKey/test_successes_HMAC-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_HMAC.html:
+        * WebCryptoAPI/generateKey/test_successes_RSA-OAEP-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html:
+        * WebCryptoAPI/generateKey/test_successes_RSA-PSS-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_RSA-PSS.html:
+        * WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5-expected.txt:
+        * WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html:
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-10-24  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should match old URL::parse with %2E in path
+        https://bugs.webkit.org/show_bug.cgi?id=163929
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2016-10-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r207795.
+
+        Introduced API test failures on iOS and macOS.
+
+        Reverted changeset:
+
+        "URLParser should match old URL::parse with %2E in path"
+        https://bugs.webkit.org/show_bug.cgi?id=163929
+        http://trac.webkit.org/changeset/207795
+
+2016-10-24  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should match old URL::parse with %2E in path
+        https://bugs.webkit.org/show_bug.cgi?id=163929
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2016-10-21  Alex Christensen  <achristensen@webkit.org>
+
+        URL::port should return Optional<uint16_t>
+        https://bugs.webkit.org/show_bug.cgi?id=163806
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2016-10-24  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support IDBIndex name assignment.
+        <rdar://problem/28806932> and https://bugs.webkit.org/show_bug.cgi?id=163805
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbindex-rename-errors-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex-rename-expected.txt:
+
+2016-10-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Upgrading custom element should enqueue attributeChanged and connected callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=163840
+
+        Reviewed by Darin Adler.
+
+        Rebaselined the tests as more test cases are passing now.
+
+        * web-platform-tests/custom-elements/reactions/Node-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Range-expected.txt:
+
+2016-10-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update custom elements tests
+        https://bugs.webkit.org/show_bug.cgi?id=163815
+
+        Reviewed by Joseph Pecoraro.
+
+        Re-import the custom elements as of 5078aa44879c87c38b6430670583951dbeae3025.
+
+        * web-platform-tests/custom-elements/Document-createElement-expected.txt: Moved from from fast/custom-elements/Document-createElement.html.
+        * web-platform-tests/custom-elements/Document-createElement.html: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-element-in-document-write-expected.txt: Moved from from fast/custom-elements/parser/.
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-element-in-document-write.html: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-element-synchronously-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-element-synchronously.html: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-elements-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-constructs-custom-elements.html: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-fallsback-to-unknown-element-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-fallsback-to-unknown-element.html: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-sets-attributes-and-children-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-sets-attributes-and-children.html: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-uses-constructed-element-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-uses-constructed-element.html: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-uses-registry-of-owner-document-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/parser/parser-uses-registry-of-owner-document.html: Ditto.
+        * web-platform-tests/custom-elements/parser/w3c-import.log: Added.
+        * web-platform-tests/custom-elements/reactions/DOMTokenList-expected.txt:
+        * web-platform-tests/custom-elements/reactions/DOMTokenList.html:
+        * web-platform-tests/custom-elements/reactions/Document-expected.txt:
+        * web-platform-tests/custom-elements/reactions/Document.html:
+        * web-platform-tests/custom-elements/reactions/Range-expected.txt:
+        * web-platform-tests/custom-elements/reactions/resources/reactions.js:
+        * web-platform-tests/custom-elements/upgrading-expected.txt: Added.
+        * web-platform-tests/custom-elements/upgrading.html: Moved from fast/custom-elements/enqueue-custom-element-upgrade-reaction.html.
+        * web-platform-tests/custom-elements/upgrading/Node-cloneNode-expected.txt: Moved from fast/custom-elements/upgrading/.
+        * web-platform-tests/custom-elements/upgrading/Node-cloneNode.html: Ditto.
+        * web-platform-tests/custom-elements/upgrading/upgrading-parser-created-element-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/upgrading/upgrading-parser-created-element.html: Ditto.
+        * web-platform-tests/custom-elements/upgrading/w3c-import.log: Added.
+        * web-platform-tests/custom-elements/w3c-import.log:
+
 2016-10-20  Zan Dobersek  <zdobersek@igalia.com>
 
         Import W3C EME tests

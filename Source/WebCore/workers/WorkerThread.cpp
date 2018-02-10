@@ -35,6 +35,7 @@
 #include "ThreadGlobalData.h"
 #include "URL.h"
 #include "WorkerGlobalScope.h"
+#include "WorkerInspectorController.h"
 #include <utility>
 #include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
@@ -93,10 +94,11 @@ WorkerThreadStartupData::WorkerThreadStartupData(const URL& scriptURL, const Str
 {
 }
 
-WorkerThread::WorkerThread(const URL& scriptURL, const String& userAgent, const String& sourceCode, WorkerLoaderProxy& workerLoaderProxy, WorkerReportingProxy& workerReportingProxy, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin* topOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
+WorkerThread::WorkerThread(const URL& scriptURL, const String& userAgent, const String& sourceCode, WorkerLoaderProxy& workerLoaderProxy, WorkerReportingProxy& workerReportingProxy, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin* topOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, JSC::RuntimeFlags runtimeFlags)
     : m_threadID(0)
     , m_workerLoaderProxy(workerLoaderProxy)
     , m_workerReportingProxy(workerReportingProxy)
+    , m_runtimeFlags(runtimeFlags)
     , m_startupData(std::make_unique<WorkerThreadStartupData>(scriptURL, userAgent, sourceCode, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, topOrigin))
 #if ENABLE(INDEXED_DATABASE)
     , m_idbConnectionProxy(connectionProxy)
@@ -166,6 +168,14 @@ void WorkerThread::workerThread()
         }
     }
 
+    if (m_startupData->m_startMode == WorkerThreadStartMode::WaitForInspector) {
+        startRunningDebuggerTasks();
+
+        // If the worker was somehow terminated while processing debugger commands.
+        if (m_runLoop.terminated())
+            m_workerGlobalScope->script()->forbidExecution();
+    }
+
     WorkerScriptController* script = m_workerGlobalScope->script();
     script->evaluate(ScriptSourceCode(m_startupData->m_sourceCode, m_startupData->m_scriptURL));
     // Free the startup data to cause its member variable deref's happen on the worker's thread (since
@@ -194,6 +204,22 @@ void WorkerThread::workerThread()
     detachThread(threadID);
 }
 
+void WorkerThread::startRunningDebuggerTasks()
+{
+    ASSERT(!m_pausedForDebugger);
+    m_pausedForDebugger = true;
+
+    MessageQueueWaitResult result;
+    do {
+        result = m_runLoop.runInMode(m_workerGlobalScope.get(), WorkerRunLoop::debuggerMode());
+    } while (result != MessageQueueTerminated && m_pausedForDebugger);
+}
+
+void WorkerThread::stopRunningDebuggerTasks()
+{
+    m_pausedForDebugger = false;
+}
+
 void WorkerThread::runEventLoop()
 {
     // Does not return until terminated.
@@ -217,7 +243,8 @@ void WorkerThread::stop()
 #endif
 
             workerGlobalScope.stopActiveDOMObjects();
-            workerGlobalScope.notifyObserversOfStop();
+
+            workerGlobalScope.inspectorController().workerTerminating();
 
             // Event listeners would keep DOMWrapperWorld objects alive for too long. Also, they have references to JS objects,
             // which become dangling once Heap is destroyed.

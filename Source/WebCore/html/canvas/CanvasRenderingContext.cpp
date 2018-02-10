@@ -36,41 +36,48 @@
 
 namespace WebCore {
 
-CanvasRenderingContext::CanvasRenderingContext(HTMLCanvasElement* canvas)
+CanvasRenderingContext::CanvasRenderingContext(HTMLCanvasElement& canvas)
     : m_canvas(canvas)
 {
 }
 
 bool CanvasRenderingContext::wouldTaintOrigin(const CanvasPattern* pattern)
 {
-    if (canvas()->originClean() && pattern && !pattern->originClean())
+    if (canvas().originClean() && pattern && !pattern->originClean())
         return true;
     return false;
 }
 
 bool CanvasRenderingContext::wouldTaintOrigin(const HTMLCanvasElement* sourceCanvas)
 {
-    if (canvas()->originClean() && sourceCanvas && !sourceCanvas->originClean())
+    if (canvas().originClean() && sourceCanvas && !sourceCanvas->originClean())
         return true;
     return false;
 }
 
-bool CanvasRenderingContext::wouldTaintOrigin(const HTMLImageElement* image)
+bool CanvasRenderingContext::wouldTaintOrigin(const HTMLImageElement* element)
 {
-    if (!image || !canvas()->originClean())
+    if (!element || !canvas().originClean())
         return false;
 
-    ASSERT(image->cachedImage());
-    CachedImage& cachedImage = *image->cachedImage();
+    auto* cachedImage = element->cachedImage();
+    if (!cachedImage)
+        return false;
 
-    ASSERT(cachedImage.image());
-    if (!cachedImage.image()->hasSingleSecurityOrigin())
+    auto* image = cachedImage->image();
+    if (!image)
+        return false;
+
+    if (!image->hasSingleSecurityOrigin())
         return true;
 
-    ASSERT(canvas()->securityOrigin());
-    ASSERT(cachedImage.origin());
-    ASSERT(canvas()->securityOrigin()->toString() == cachedImage.origin()->toString());
-    return !cachedImage.isCORSSameOrigin();
+    if (!cachedImage->isCORSSameOrigin())
+        return true;
+
+    ASSERT(canvas().securityOrigin());
+    ASSERT(cachedImage->origin());
+    ASSERT(canvas().securityOrigin()->toString() == cachedImage->origin()->toString());
+    return false;
 }
 
 bool CanvasRenderingContext::wouldTaintOrigin(const HTMLVideoElement* video)
@@ -80,7 +87,7 @@ bool CanvasRenderingContext::wouldTaintOrigin(const HTMLVideoElement* video)
     // to test the finalURL. Please be careful when fixing this issue not to
     // make currentSrc be the final URL because then the
     // HTMLMediaElement.currentSrc DOM API would leak redirect destinations!
-    if (!video || !canvas()->originClean())
+    if (!video || !canvas().originClean())
         return false;
 
     if (!video->hasSingleSecurityOrigin())
@@ -98,19 +105,19 @@ bool CanvasRenderingContext::wouldTaintOrigin(const HTMLVideoElement* video)
 
 bool CanvasRenderingContext::wouldTaintOrigin(const URL& url)
 {
-    if (!canvas()->originClean())
+    if (!canvas().originClean())
         return false;
 
     if (url.protocolIsData())
         return false;
 
-    return !canvas()->securityOrigin()->canRequest(url);
+    return !canvas().securityOrigin()->canRequest(url);
 }
 
 void CanvasRenderingContext::checkOrigin(const URL& url)
 {
     if (wouldTaintOrigin(url))
-        canvas()->setOriginTainted();
+        canvas().setOriginTainted();
 }
 
 } // namespace WebCore

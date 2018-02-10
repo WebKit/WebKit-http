@@ -157,11 +157,13 @@ JSValueRef UIScriptController::didHideKeyboardCallback() const
     return m_context->callbackWithID(CallbackTypeDidHideKeyboard);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(COCOA)
 void UIScriptController::zoomToScale(double, JSValueRef)
 {
 }
+#endif
 
+#if !PLATFORM(IOS)
 void UIScriptController::touchDownAtPoint(long x, long y, long touchCount, JSValueRef)
 {
 }
@@ -211,6 +213,14 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef, JSValue
 }
 
 void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef, JSValueRef)
+{
+}
+
+void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
+{
+}
+
+void UIScriptController::waitForTextPredictionsViewAndSelectCandidateAtIndex(long, unsigned, float)
 {
 }
 
@@ -307,6 +317,14 @@ void UIScriptController::platformSetDidHideKeyboardCallback()
 void UIScriptController::platformClearAllCallbacks()
 {
 }
+#endif
+
+#if !PLATFORM(MAC)
+
+void UIScriptController::insertText(JSStringRef, int, int)
+{
+}
+
 #endif
 
 void UIScriptController::uiScriptComplete(JSStringRef result)

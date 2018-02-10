@@ -44,6 +44,7 @@ class IDBResultData;
 class IDBValue;
 class SecurityOrigin;
 
+struct IDBGetAllRecordsData;
 struct IDBGetRecordData;
 
 namespace IDBClient {
@@ -80,11 +81,17 @@ public:
     void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName);
     WEBCORE_EXPORT void didDeleteIndex(const IDBResultData&);
 
+    void renameIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName);
+    WEBCORE_EXPORT void didRenameIndex(const IDBResultData&);
+
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode);
     WEBCORE_EXPORT void didPutOrAdd(const IDBResultData&);
 
     void getRecord(const IDBRequestData&, const IDBGetRecordData&);
     WEBCORE_EXPORT void didGetRecord(const IDBResultData&);
+
+    void getAllRecords(const IDBRequestData&, const IDBGetAllRecordsData&);
+    WEBCORE_EXPORT void didGetAllRecords(const IDBResultData&);
 
     void getCount(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void didGetCount(const IDBResultData&);

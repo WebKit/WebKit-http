@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,8 +46,14 @@ public:
     ArrayBuffer* impl() const { return m_impl; }
     
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
+
+    bool isShared() const;
+    ArrayBufferSharingMode sharingMode() const;
     
     DECLARE_EXPORT_INFO;
+    
+    // This is the default DOM unwrapping. It calls toUnsharedArrayBuffer().
+    static RefPtr<ArrayBuffer> toWrapped(JSValue);
     
 protected:
 
@@ -63,12 +69,25 @@ private:
     ArrayBuffer* m_impl;
 };
 
-inline ArrayBuffer* toArrayBuffer(JSValue value)
+inline ArrayBuffer* toPossiblySharedArrayBuffer(JSValue value)
 {
     JSArrayBuffer* wrapper = jsDynamicCast<JSArrayBuffer*>(value);
     if (!wrapper)
-        return 0;
+        return nullptr;
     return wrapper->impl();
+}
+
+inline ArrayBuffer* toUnsharedArrayBuffer(JSValue value)
+{
+    ArrayBuffer* result = toPossiblySharedArrayBuffer(value);
+    if (!result || result->isShared())
+        return nullptr;
+    return result;
+}
+
+inline RefPtr<ArrayBuffer> JSArrayBuffer::toWrapped(JSValue value)
+{
+    return toUnsharedArrayBuffer(value);
 }
 
 } // namespace JSC

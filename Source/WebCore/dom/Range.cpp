@@ -652,10 +652,16 @@ RefPtr<DocumentFragment> Range::processContents(ActionType action, ExceptionCode
 
 static inline void deleteCharacterData(CharacterData& data, unsigned startOffset, unsigned endOffset, ExceptionCode& ec)
 {
-    if (data.length() - endOffset)
-        data.deleteData(endOffset, data.length() - endOffset, ec);
-    if (startOffset)
-        data.deleteData(0, startOffset, ec);
+    if (data.length() - endOffset) {
+        auto result = data.deleteData(endOffset, data.length() - endOffset);
+        if (result.hasException())
+            ec = result.releaseException().code();
+    }
+    if (startOffset) {
+        auto result = data.deleteData(0, startOffset);
+        if (result.hasException())
+            ec = result.releaseException().code();
+    }
 }
 
 RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<DocumentFragment> fragment, Node* container, unsigned startOffset, unsigned endOffset, ExceptionCode& ec)
@@ -680,8 +686,11 @@ RefPtr<Node> Range::processContentsBetweenOffsets(ActionType action, PassRefPtr<
             } else
                 result = WTFMove(characters);
         }
-        if (action == Extract || action == Delete)
-            downcast<CharacterData>(*container).deleteData(startOffset, endOffset - startOffset, ec);
+        if (action == Extract || action == Delete) {
+            auto result = downcast<CharacterData>(*container).deleteData(startOffset, endOffset - startOffset);
+            if (result.hasException())
+                ec = result.releaseException().code();
+        }
         break;
     case Node::PROCESSING_INSTRUCTION_NODE:
         endOffset = std::min(endOffset, static_cast<ProcessingInstruction*>(container)->data().length());
@@ -845,17 +854,22 @@ void Range::insertNode(Ref<Node>&& node, ExceptionCode& ec)
 
     EventQueueScope scope;
     if (startIsText) {
-        referenceNode = downcast<Text>(startContainer()).splitText(startOffset(), ec);
-        if (ec)
+        auto result = downcast<Text>(startContainer()).splitText(startOffset());
+        if (result.hasException()) {
+            ec = result.releaseException().code();
             return;
+        }
+        referenceNode = result.releaseReturnValue();
     }
 
     if (referenceNode == node.ptr())
         referenceNode = referenceNode->nextSibling();
 
-    node->remove(ec);
-    if (ec)
+    auto removeResult = node->remove();
+    if (removeResult.hasException()) {
+        ec = removeResult.releaseException().code();
         return;
+    }
 
     unsigned newOffset = referenceNode ? referenceNode->computeNodeIndex() : parent->countChildNodes();
     if (is<DocumentFragment>(node.get()))
@@ -918,7 +932,12 @@ RefPtr<DocumentFragment> Range::createContextualFragment(const String& markup, E
     if (!element || (is<HTMLDocument>(element->document()) && is<HTMLHtmlElement>(*element)))
         element = HTMLBodyElement::create(node.document());
 
-    return WebCore::createContextualFragment(*element, markup, AllowScriptingContentAndDoNotMarkAlreadyStarted, ec);
+    auto result = WebCore::createContextualFragment(*element, markup, AllowScriptingContentAndDoNotMarkAlreadyStarted);
+    if (result.hasException()) {
+        ec = result.releaseException().code();
+        return nullptr;
+    }
+    return result.releaseReturnValue();
 }
 
 

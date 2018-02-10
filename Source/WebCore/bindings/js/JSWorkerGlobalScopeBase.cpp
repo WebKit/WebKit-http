@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,9 +32,11 @@
 #include "DOMWrapperWorld.h"
 #include "JSDOMGlobalObjectTask.h"
 #include "JSDedicatedWorkerGlobalScope.h"
+#include "JSDynamicDowncast.h"
 #include "JSWorkerGlobalScope.h"
 #include "Language.h"
 #include "WorkerGlobalScope.h"
+#include "WorkerThread.h"
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValueInlines.h>
 #include <runtime/Microtask.h>
@@ -96,7 +98,8 @@ bool JSWorkerGlobalScopeBase::shouldInterruptScriptBeforeTimeout(const JSGlobalO
 
 RuntimeFlags JSWorkerGlobalScopeBase::javaScriptRuntimeFlags(const JSGlobalObject* object)
 {
-    return JSGlobalObject::javaScriptRuntimeFlags(object);
+    const JSWorkerGlobalScopeBase *thisObject = jsCast<const JSWorkerGlobalScopeBase*>(object);
+    return thisObject->m_wrapped->thread().runtimeFlags();
 }
 
 void JSWorkerGlobalScopeBase::queueTaskToEventLoop(const JSGlobalObject* object, Ref<JSC::Microtask>&& task)
@@ -128,7 +131,7 @@ JSDedicatedWorkerGlobalScope* toJSDedicatedWorkerGlobalScope(JSValue value)
     if (classInfo == JSDedicatedWorkerGlobalScope::info())
         return jsCast<JSDedicatedWorkerGlobalScope*>(asObject(value));
     if (classInfo == JSProxy::info())
-        return jsDynamicCast<JSDedicatedWorkerGlobalScope*>(jsCast<JSProxy*>(asObject(value))->target());
+        return jsDynamicDowncast<JSDedicatedWorkerGlobalScope*>(jsCast<JSProxy*>(asObject(value))->target());
     return 0;
 }
 

@@ -96,11 +96,6 @@ webkit.org/b/36642 fast/replaced/border-radius-clip.html [ Pass Failure ]
 # Need to add functionality to DumpRenderTree to handle scrollbar policy changes
 fast/overflow/scrollbar-restored-and-then-locked.html
 
-# Mac port doesn't put text/html on the pasteboard for app compatibility: https://bugs.webkit.org/show_bug.cgi?id=19893
-editing/pasteboard/onpaste-text-html-types.html
-editing/pasteboard/onpaste-text-html.html
-fast/events/ondrop-text-html.html
-
 # EventSendingController does not send events on areas outside the WebView.
 scrollbars/scrollbar-click-does-not-blur-content.html
 
@@ -166,58 +161,24 @@ fast/mediastream/MediaStreamTrack.html
 
 # WebRTC is not supported yet.
 fast/events/constructors/media-stream-event-constructor.html
-fast/mediastream/RTCIceCandidate.html
-fast/mediastream/RTCPeerConnection-AddRemoveStream.html
-fast/mediastream/RTCPeerConnection-createAnswer.html
-fast/mediastream/RTCPeerConnection-createOffer.html
-fast/mediastream/RTCPeerConnection-datachannel.html
-fast/mediastream/RTCPeerConnection-dtmf.html
-fast/mediastream/RTCPeerConnection-events.html
-fast/mediastream/RTCPeerConnection-getConfiguration.html
-fast/mediastream/RTCPeerConnection-have-local-offer.html
-fast/mediastream/RTCPeerConnection-have-local-pranswer.html
-fast/mediastream/RTCPeerConnection-have-remote-offer.html
-fast/mediastream/RTCPeerConnection-have-remote-pranswer.html
-fast/mediastream/RTCPeerConnection-ice.html
-fast/mediastream/RTCPeerConnection-addIceCandidate.html
-fast/mediastream/RTCPeerConnection-localDescription.html
-fast/mediastream/RTCPeerConnection-onnegotiationneeded.html
-fast/mediastream/RTCPeerConnection-remoteDescription.html
-fast/mediastream/RTCPeerConnection-stats.html
-fast/mediastream/RTCPeerConnection-statsSelector.html
-fast/mediastream/RTCPeerConnection-stable.html
-fast/mediastream/RTCPeerConnection.html
-fast/mediastream/RTCPeerConnection-js-built-ins-check-this.html
-fast/mediastream/RTCPeerConnection-inspect-offer.html
-fast/mediastream/RTCPeerConnection-add-removeTrack.html
-fast/mediastream/RTCPeerConnection-addTrack-reuse-sender.html
-fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html
-fast/mediastream/RTCPeerConnection-closed-state.html
-fast/mediastream/RTCPeerConnection-overloaded-operations-params.html
-fast/mediastream/RTCPeerConnection-overloaded-operations.html
-fast/mediastream/RTCPeerConnection-addTransceiver.html
-fast/mediastream/RTCRtpSender-replaceTrack.html
-fast/mediastream/RTCSessionDescription.html
-fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html
-fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html
-fast/mediastream/RTCTrackEvent-constructor.html
-fast/mediastream/RTCPeerConnection-inspect-answer.html
-fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html
-fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html
-fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html
-fast/mediastream/RTCPeerConnection-legacy-stream-based-api.html
-fast/mediastream/RTCPeerConnection-icecandidate-event.html
-fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html
-fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html
+fast/mediastream/RTCPeerConnection-datachannel.html [ Skip ]
+fast/mediastream/RTCPeerConnection-dtmf.html [ Skip ]
+fast/mediastream/RTCPeerConnection-events.html [ Skip ]
+fast/mediastream/RTCPeerConnection-ice.html [ Skip ]
+fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html [ Skip ]
+fast/mediastream/RTCPeerConnection-stats.html [ Skip ]
+fast/mediastream/RTCPeerConnection-statsSelector.html [ Skip ]
+fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html [ Skip ]
+fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html [ Skip ]
+fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html [ Skip ]
+fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html [ Skip ]
+fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html [ Skip ]
 
 # Asserts in debug.
 [ Debug ] fast/images/large-size-image-crash.html [ Skip ]
 
 # Directory upload is not enabled.
 fast/forms/file/input-file-directory-upload.html
-
-# webkit.org/b/61138, webkit.org/b/84893, webkit.org/b/133321
-http/tests/w3c/webperf [ Skip ]
 
 # Perf tests are very flaky, because they run in parallel with other tests.
 perf
@@ -1234,6 +1195,7 @@ webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Failure ]
 webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeout ]
+webkit.org/b/164278 inspector/storage/domStorage-events.html [ Pass Failure ]
 webkit.org/b/155607 inspector/unit-tests/heap-snapshot.html [ Pass Timeout ]
 webkit.org/b/157999 inspector/unit-tests/heap-snapshot-collection-event.html [ Pass Timeout ]
 webkit.org/b/161361 inspector/unit-tests/yieldable-task.html [ Pass Failure ]
@@ -1254,12 +1216,8 @@ webkit.org/b/162305 inspector/css/manager-preferredInspectorStyleSheetForFrame.h
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
-webkit.org/b/148695 fast/shadow-dom [ Pass ]
-
 # Touch events is not enabled on Mac
 webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]
-
-webkit.org/b/150225 fast/custom-elements [ Pass ]
 
 # Marking test as flaky in El Capitan
 webkit.org/b/149819 [ Debug ElCapitan+ ] compositing/video/video-poster.html [ Pass Crash ]
@@ -1330,6 +1288,8 @@ webkit.org/b/154709 [ ElCapitan+ ] fast/text/crash-complex-text-surrogate.html [
 webkit.org/b/155092 js/arraybuffer-wrappers.html [ Pass Timeout ]
 
 webkit.org/b/155140 js/promises-tests/promises-tests-2-3-3.html [ Pass Failure ]
+
+webkit.org/b/163544 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe.html [ Pass Timeout ]
 
 # Content Security Policy for media redirects is not supported on some OSes.
 [ Yosemite ElCapitan ] http/tests/security/contentSecurityPolicy/audio-redirect-blocked.html [ Failure ]
@@ -1453,8 +1413,6 @@ webkit.org/b/161883 imported/w3c/web-platform-tests/dom/nodes/ProcessingInstruct
 
 webkit.org/b/162308 imported/w3c/web-platform-tests/media-source/mediasource-duration.html [ Pass Failure ]
 
-webkit.org/b/162497 media/media-source/media-source-duplicate-seeked.html [ Skip ]
-
 webkit.org/b/162523 [ Sierra+ ] imported/w3c/web-platform-tests/media-source/mediasource-preload.html [ Pass Failure ]
 
 webkit.org/b/162626 imported/w3c/web-platform-tests/media-source/mediasource-liveseekable.html [ Pass Failure ]
@@ -1467,7 +1425,7 @@ webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pa
 
 # rdar://problem/28586837
 fast/text/variations/order.html [ Crash ]
-animations/font-variations/font-variation-settings-order.html [ Crash ]
+animations/font-variations/font-variation-settings-order.html [ Pass Failure ImageOnlyFailure Crash ]
 # Variation fonts are not implemented earlier than Sierra.
 [ ElCapitan Yosemite ] fast/text/variations [ Pass Failure ImageOnlyFailure ]
 [ ElCapitan Yosemite ] animations/font-variations [ Pass Failure ImageOnlyFailure ]
@@ -1489,3 +1447,13 @@ webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size-iframe.html [ S
 webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size.html [ Skip ]
 webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size-iframe.html [ Skip ]
 webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size.html [ Skip ]
+
+webkit.org/b/164088 [ Yosemite ] media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
+webkit.org/b/164088 [ Yosemite ] media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
+
+# Internal APIs to test PiP and AirPlay are not available on Yosemite.
+[ Yosemite ] media/modern-media-controls/airplay-support/airplay-support.html [ Skip ]
+[ Yosemite ] media/modern-media-controls/pip-support [ Skip ]
+[ Yosemite ] media/modern-media-controls/placard-support [ Skip ]
+
+webkit.org/b/164277 fast/preloader/image-srcset.html [ Pass Failure ]

@@ -38,7 +38,6 @@
 #import "FrameView.h"
 #import "FrameLoaderClient.h"
 #import "HitTestResult.h"
-#import "HTMLAnchorElement.h"
 #import "htmlediting.h"
 #import "HTMLNames.h"
 #import "Image.h"
@@ -107,6 +106,12 @@ static Vector<String> writableTypesForImage()
     return types;
 }
 
+Pasteboard::Pasteboard()
+    : m_pasteboardName(emptyString())
+    , m_changeCount(0)
+{
+}
+
 Pasteboard::Pasteboard(const String& pasteboardName)
     : m_pasteboardName(pasteboardName)
     , m_changeCount(platformStrategies()->pasteboardStrategy()->changeCount(m_pasteboardName))
@@ -153,6 +158,8 @@ void Pasteboard::write(const PasteboardWebContent& content)
         types.append(String(NSRTFDPboardType));
     if (content.dataInRTFFormat)
         types.append(String(NSRTFPboardType));
+    if (!content.dataInHTMLFormat.isNull())
+        types.append(String(NSHTMLPboardType));
     if (!content.dataInStringFormat.isNull())
         types.append(String(NSStringPboardType));
     types.appendVector(content.clientTypes);
@@ -170,6 +177,8 @@ void Pasteboard::write(const PasteboardWebContent& content)
         m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(content.dataInRTFDFormat.get(), NSRTFDPboardType, m_pasteboardName);
     if (content.dataInRTFFormat)
         m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(content.dataInRTFFormat.get(), NSRTFPboardType, m_pasteboardName);
+    if (!content.dataInHTMLFormat.isNull())
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setStringForType(content.dataInHTMLFormat, NSHTMLPboardType, m_pasteboardName);
     if (!content.dataInStringFormat.isNull())
         m_changeCount = platformStrategies()->pasteboardStrategy()->setStringForType(content.dataInStringFormat, NSStringPboardType, m_pasteboardName);
 }
@@ -275,6 +284,10 @@ bool Pasteboard::canSmartReplace()
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types, m_pasteboardName);
     return types.contains(WebSmartPastePboardType);
+}
+
+void Pasteboard::writeMarkup(const String&)
+{
 }
 
 void Pasteboard::read(PasteboardPlainText& text)

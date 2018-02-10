@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AXObjectCache_h
-#define AXObjectCache_h
+#pragma once
 
 #include "AXTextStateChangeIntent.h"
 #include "AccessibilityObject.h"
@@ -522,6 +521,4 @@ inline AccessibilityReplacedText::AccessibilityReplacedText(WebCore::VisibleSele
 inline void AccessibilityReplacedText::postTextStateChangeNotification(WebCore::AXObjectCache*, WebCore::AXTextEditType, WTF::String const&, WebCore::VisibleSelection const&) { }
 #endif
 
-}
-
-#endif
+} // namespace WebCore

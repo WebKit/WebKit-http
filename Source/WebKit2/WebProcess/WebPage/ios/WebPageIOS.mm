@@ -753,27 +753,21 @@ void WebPage::blurAssistedNode()
 
 void WebPage::setAssistedNodeValue(const String& value)
 {
-    if (is<HTMLInputElement>(m_assistedNode.get())) {
-        HTMLInputElement& element = downcast<HTMLInputElement>(*m_assistedNode);
-        element.setValue(value, DispatchInputAndChangeEvent);
-    }
     // FIXME: should also handle the case of HTMLSelectElement.
+    if (is<HTMLInputElement>(m_assistedNode.get()))
+        downcast<HTMLInputElement>(*m_assistedNode).setValue(value, DispatchInputAndChangeEvent);
 }
 
 void WebPage::setAssistedNodeValueAsNumber(double value)
 {
-    if (is<HTMLInputElement>(m_assistedNode.get())) {
-        HTMLInputElement& element = downcast<HTMLInputElement>(*m_assistedNode);
-        element.setValueAsNumber(value, ASSERT_NO_EXCEPTION, DispatchInputAndChangeEvent);
-    }
+    if (is<HTMLInputElement>(m_assistedNode.get()))
+        downcast<HTMLInputElement>(*m_assistedNode).setValueAsNumber(value, DispatchInputAndChangeEvent);
 }
 
 void WebPage::setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection)
 {
-    if (!is<HTMLSelectElement>(m_assistedNode.get()))
-        return;
-    HTMLSelectElement& select = downcast<HTMLSelectElement>(*m_assistedNode);
-    select.optionSelectedByUser(index, true, allowMultipleSelection);
+    if (is<HTMLSelectElement>(m_assistedNode.get()))
+        downcast<HTMLSelectElement>(*m_assistedNode).optionSelectedByUser(index, true, allowMultipleSelection);
 }
 
 void WebPage::showInspectorHighlight(const WebCore::Highlight& highlight)
@@ -2171,7 +2165,7 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
     
     frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
     if (correction.length())
-        frame.editor().insertText(correction, 0);
+        frame.editor().insertText(correction, 0, originalText.isEmpty() ? TextEventInputKeyboard : TextEventInputAutocompletion);
     else
         frame.editor().deleteWithDirection(DirectionBackward, CharacterGranularity, false, true);
     correctionApplied = true;
@@ -2357,7 +2351,10 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                                 screenSizeInPixels.scale(corePage()->deviceScaleFactor());
                                 FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
                                 FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
-                                if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
+                                // FIXME: Only select ExtendedColor on images known to need wide gamut
+                                ShareableBitmap::Flags flags = ShareableBitmap::SupportsAlpha;
+                                flags |= screenSupportsExtendedColor() ? ShareableBitmap::SupportsExtendedColor : 0;
+                                if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), flags)) {
                                     auto graphicsContext = sharedBitmap->createGraphicsContext();
                                     graphicsContext->drawImage(*image, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
                                     info.image = sharedBitmap;

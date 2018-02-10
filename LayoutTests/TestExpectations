@@ -707,9 +707,6 @@ webkit.org/b/148884 imported/w3c/web-platform-tests/html/semantics/forms/textfie
 webkit.org/b/148922 svg/as-object/svg-in-object-dynamic-attribute-change.html [ Pass ImageOnlyFailure ]
 webkit.org/b/148925 svg/dom/svg-root-lengths.html [ Pass Failure ]
 
-webkit.org/b/150225 fast/custom-elements [ Failure ]
-webkit.org/b/148695 fast/shadow-dom [ Failure ImageOnlyFailure Timeout ]
-
 # Known failures on CSS Variables Test Suite
 webkit.org/b/150183 fast/css/variables/test-suite/failures/024.html [ ImageOnlyFailure ]
 webkit.org/b/150183 fast/css/variables/test-suite/failures/025.html [ ImageOnlyFailure ]
@@ -927,29 +924,10 @@ imported/w3c/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.html [ Skip ]
 imported/w3c/WebCryptoAPI/encrypt_decrypt/test_aes_ctr.html [ Skip ]
 imported/w3c/WebCryptoAPI/encrypt_decrypt/test_aes_gcm.html [ Skip ]
 imported/w3c/WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_aes-cbc.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_aes-ctr.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_AES-CBC.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_AES-CTR.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_AES-GCM.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_AES-KW.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_ECDH.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_ECDSA.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_HMAC.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_RSA-OAEP.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_RSA-PSS.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures_RSASSA-PKCS1-v1_5.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_failures.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_AES-CBC.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_AES-CTR.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_AES-GCM.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_AES-KW.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_ECDH.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_ECDSA.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_HMAC.html [ Skip ]
+# Take too long to complete, need to scale down.
+imported/w3c/WebCryptoAPI/generateKey/test_failures.html [ Slow ]
 imported/w3c/WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_RSA-PSS.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html [ Skip ]
+imported/w3c/WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html [ Slow ]
 imported/w3c/WebCryptoAPI/generateKey/test_successes.html [ Skip ]
 
 editing/deleting/delete-emoji.html [ Slow ]
@@ -993,3 +971,15 @@ imported/blink/http/tests/security/shape-image-cors-disallow-origin.html [ Image
 imported/blink/http/tests/security/shape-image-cors-port.html [ ImageOnlyFailure ]
 
 webkit.org/b/163636 media/modern-media-controls/media-controller/media-controller-resize.html [ Pass Timeout ]
+
+webkit.org/b/163887 svg/as-image/svg-image-with-data-uri-use-data-uri.svg [ Pass Crash ]
+
+# Temporary failure until we start using ANGLE as a WebGL backend
+webkit.org/b/163924 fast/canvas/webgl/bufferData-offset-length.html [ Pass Failure ]
+
+webkit.org/b/164158 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Pass Timeout ]
+webkit.org/b/164226 media/modern-media-controls/volume-support/volume-support-drag.html [ Pass Failure ]
+webkit.org/b/164229 media/modern-media-controls/volume-support/volume-support-click.html [ Pass Timeout ]
+
+webkit.org/b/164080 http/tests/websocket/tests/hybi/closed-when-entering-page-cache.html [ Pass Failure ]
+webkit.org/b/164080 http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Pass Failure ]

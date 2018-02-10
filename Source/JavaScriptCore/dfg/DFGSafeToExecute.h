@@ -199,6 +199,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case TryGetById:
     case DeleteById:
     case DeleteByVal:
+    case PureGetById:
     case GetById:
     case GetByIdWithThis:
     case GetByValWithThis:
@@ -218,7 +219,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
-    case CallDOM:
+    case CallDOMGetter:
     case CheckDOM:
     case CheckArray:
     case Arrayify:
@@ -353,6 +354,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case MaterializeNewObject:
     case MaterializeCreateActivation:
     case PhantomDirectArguments:
+    case PhantomCreateRest:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:

@@ -682,6 +682,7 @@ private:
         case RegExpTest:
         case StringReplace:
         case StringReplaceRegExp:
+        case PureGetById:
         case GetById:
         case GetByIdFlush:
         case GetByIdWithThis:
@@ -709,7 +710,7 @@ private:
         case GetFromArguments:
         case LoadFromJSMapBucket:
         case ToNumber:
-        case CallDOM: {
+        case CallDOMGetter: {
             setPrediction(m_currentNode->getHeapPrediction());
             break;
         }
@@ -1003,6 +1004,7 @@ private:
         case PhantomNewGeneratorFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
+        case PhantomCreateRest:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:

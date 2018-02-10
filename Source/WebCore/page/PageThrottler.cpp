@@ -34,7 +34,6 @@ static const double PageLoadHysteresisSeconds = 10;
 
 PageThrottler::PageThrottler(Page& page)
     : m_page(page)
-    , m_userInputHysteresis([this](HysteresisState state) { setActivityFlag(PageActivityState::UserInputActivity, state == HysteresisState::Started); })
     , m_mediaActivityHysteresis([this](HysteresisState state) { setActivityFlag(PageActivityState::MediaActivity, state == HysteresisState::Started); })
     , m_pageLoadActivityHysteresis([this](HysteresisState state) { setActivityFlag(PageActivityState::PageLoadActivity, state == HysteresisState::Started); }, PageLoadHysteresisSeconds)
     , m_mediaActivityCounter([this](RefCounterEvent) { mediaActivityCounterChanged(); })
@@ -80,7 +79,7 @@ void PageThrottler::setActivityFlag(PageActivityState::Flags flag, bool value)
         return;
     m_activityState = activityState;
 
-    m_page.setPageActivityState(m_activityState);
+    m_page.pageActivityStateChanged();
 }
 
 }

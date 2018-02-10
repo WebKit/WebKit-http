@@ -47,6 +47,7 @@ void InstrumentingAgents::reset()
     m_inspectorPageAgent = nullptr;
     m_inspectorCSSAgent = nullptr;
     m_inspectorLayerTreeAgent = nullptr;
+    m_inspectorWorkerAgent = nullptr;
     m_webConsoleAgent = nullptr;
     m_inspectorDOMAgent = nullptr;
     m_inspectorNetworkAgent = nullptr;

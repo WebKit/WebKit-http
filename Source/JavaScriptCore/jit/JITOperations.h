@@ -330,6 +330,9 @@ int32_t JIT_OPERATION operationConstructArityCheck(ExecState*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationTryGetById(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationTryGetByIdGeneric(ExecState*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationTryGetByIdOptimize(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationPureGetById(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationPureGetByIdGeneric(ExecState*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationPureGetByIdOptimize(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetById(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByIdGeneric(ExecState*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByIdOptimize(ExecState*, StructureStubInfo*, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
@@ -375,6 +378,8 @@ EncodedJSValue JIT_OPERATION operationNewFunction(ExecState*, JSScope*, JSCell*)
 EncodedJSValue JIT_OPERATION operationNewFunctionWithInvalidatedReallocationWatchpoint(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewGeneratorFunction(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationNewAsyncFunction(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationNewAsyncFunctionWithInvalidatedReallocationWatchpoint(ExecState*, JSScope*, JSCell*) WTF_INTERNAL;
 void JIT_OPERATION operationSetFunctionName(ExecState*, JSCell*, EncodedJSValue) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationNewObject(ExecState*, Structure*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationNewRegexp(ExecState*, void*) WTF_INTERNAL;

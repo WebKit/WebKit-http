@@ -195,12 +195,8 @@ static RefPtr<CSSRuleList> asCSSRuleList(CSSStyleSheet* styleSheet)
 
     RefPtr<StaticCSSRuleList> list = StaticCSSRuleList::create();
     Vector<RefPtr<CSSRule>>& listRules = list->rules();
-    for (unsigned i = 0, size = styleSheet->length(); i < size; ++i) {
-        CSSRule* item = styleSheet->item(i);
-        if (item->type() == CSSRule::CHARSET_RULE)
-            continue;
-        listRules.append(item);
-    }
+    for (unsigned i = 0, size = styleSheet->length(); i < size; ++i)
+        listRules.append(styleSheet->item(i));
     return WTFMove(list);
 }
 
@@ -1305,13 +1301,15 @@ bool InspectorStyleSheetForInlineStyle::setStyleText(CSSStyleDeclaration* style,
 
     {
         InspectorCSSAgent::InlineStyleOverrideScope overrideScope(m_element->document());
-        m_element->setAttribute("style", text, ec);
+        m_element->setAttribute(HTMLNames::styleAttr, text);
     }
 
     m_styleText = text;
     m_isStyleTextValid = true;
     m_ruleSourceData = nullptr;
-    return !ec;
+
+    ec = 0;
+    return true;
 }
 
 std::unique_ptr<Vector<size_t>> InspectorStyleSheetForInlineStyle::lineEndings() const

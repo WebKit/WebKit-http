@@ -53,7 +53,8 @@ typedef enum {
 } WebStorageBlockingPolicy;
 
 typedef enum {
-    WebKitJavaScriptRuntimeFlagsAllEnabled = 0
+    WebKitJavaScriptRuntimeFlagsSharedArrayBufferEnabled = 1u << 0,
+    WebKitJavaScriptRuntimeFlagsAllEnabled = WebKitJavaScriptRuntimeFlagsSharedArrayBufferEnabled
 } WebKitJavaScriptRuntimeFlags;
 
 extern NSString *WebPreferencesChangedNotification;
@@ -474,6 +475,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag;
 - (BOOL)mockCaptureDevicesEnabled;
+
+- (void)setMediaCaptureRequiresSecureConnection:(BOOL)flag;
+- (BOOL)mediaCaptureRequiresSecureConnection;
 
 - (void)setShadowDOMEnabled:(BOOL)flag;
 - (BOOL)shadowDOMEnabled;

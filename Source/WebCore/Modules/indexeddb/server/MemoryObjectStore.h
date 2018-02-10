@@ -41,12 +41,14 @@ namespace WebCore {
 
 class IDBCursorInfo;
 class IDBError;
+class IDBGetAllResult;
 class IDBKeyData;
 class IDBValue;
 
 struct IDBKeyRangeData;
 
 namespace IndexedDB {
+enum class GetAllType;
 enum class IndexRecordType;
 }
 
@@ -87,6 +89,8 @@ public:
     IDBGetResult indexValueForKeyRange(uint64_t indexIdentifier, IndexedDB::IndexRecordType, const IDBKeyRangeData&) const;
     uint64_t countForKeyRange(uint64_t indexIdentifier, const IDBKeyRangeData&) const;
 
+    void getAllRecords(const IDBKeyRangeData&, Optional<uint32_t> count, IndexedDB::GetAllType, IDBGetAllResult&) const;
+
     const IDBObjectStoreInfo& info() const { return m_info; }
 
     MemoryObjectStoreCursor* maybeOpenCursor(const IDBCursorInfo&);
@@ -98,6 +102,7 @@ public:
     void maybeRestoreDeletedIndex(Ref<MemoryIndex>&&);
 
     void rename(const String& newName) { m_info.rename(newName); }
+    void renameIndex(MemoryIndex&, const String& newName);
 
 private:
     MemoryObjectStore(const IDBObjectStoreInfo&);

@@ -33,14 +33,13 @@
 #include "ChromeClient.h"
 #include "Document.h"
 #include "Frame.h"
-#include "InspectorConsoleInstrumentation.h"
 #include "InspectorController.h"
+#include "InspectorInstrumentation.h"
 #include "JSMainThreadExecState.h"
 #include "MainFrame.h"
 #include "Page.h"
 #include "ScriptableDocumentParser.h"
 #include "Settings.h"
-#include <bindings/ScriptValue.h>
 #include <inspector/ConsoleMessage.h>
 #include <inspector/ScriptArguments.h>
 #include <inspector/ScriptCallStack.h>

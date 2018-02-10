@@ -43,7 +43,6 @@
 #include "Page.h"
 #include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
-#include "Settings.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -190,6 +189,9 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
             m_resource->responseReceived(opaqueRedirectedResponse);
             didFinishLoading(currentTime());
             return;
+        } else if (m_redirectCount++ >= options().maxRedirectCount) {
+            cancel(ResourceError(String(), 0, request().url(), ASCIILiteral("Too many redirections"), ResourceError::Type::General));
+            return;
         }
 
         // CachedResources are keyed off their original request URL.
@@ -203,7 +205,7 @@ void SubresourceLoader::willSendRequestInternal(ResourceRequest& newRequest, con
                 m_frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithResult(DiagnosticLoggingKeys::cachedResourceRevalidationKey(), emptyString(), DiagnosticLoggingResultFail, ShouldSample::Yes);
         }
 
-        if (!m_documentLoader->cachedResourceLoader().canRequestAfterRedirection(m_resource->type(), newRequest.url(), options())) {
+        if (!m_documentLoader->cachedResourceLoader().updateRequestAfterRedirection(m_resource->type(), newRequest, options())) {
             cancel();
             return;
         }

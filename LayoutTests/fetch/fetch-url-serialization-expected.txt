@@ -124,8 +124,8 @@ PASS Testing Request url 'http://example.com/foo/bar/../ton/../../a' with base '
 PASS Testing Request url 'http://example.com/foo/../../..' with base 'about:blank' 
 PASS Testing Request url 'http://example.com/foo/../../../ton' with base 'about:blank' 
 PASS Testing Request url 'http://example.com/foo/%2e' with base 'about:blank' 
-PASS Testing Request url 'http://example.com/foo/%2e%2' with base 'about:blank' 
-PASS Testing Request url 'http://example.com/foo/%2e./%2e%2e/.%2e/%2e.bar' with base 'about:blank' 
+FAIL Testing Request url 'http://example.com/foo/%2e%2' with base 'about:blank' assert_equals: expected "http://example.com/foo/.%2" but got "http://example.com/foo/%2e%2"
+FAIL Testing Request url 'http://example.com/foo/%2e./%2e%2e/.%2e/%2e.bar' with base 'about:blank' assert_equals: expected "http://example.com/..bar" but got "http://example.com/%2e.bar"
 PASS Testing Request url 'http://example.com////../..' with base 'about:blank' 
 PASS Testing Request url 'http://example.com/foo/bar//../..' with base 'about:blank' 
 PASS Testing Request url 'http://example.com/foo/bar//..' with base 'about:blank' 
@@ -154,7 +154,7 @@ FAIL Testing Request url 'data:test# »' with base 'about:blank' assert_equals: 
 PASS Testing Request url 'http://[www.google.com]/' with base 'about:blank' 
 PASS Testing Request url 'http://www.google.com' with base 'about:blank' 
 PASS Testing Request url 'http://192.0x00A80001' with base 'about:blank' 
-PASS Testing Request url 'http://www/foo%2Ehtml' with base 'about:blank' 
+FAIL Testing Request url 'http://www/foo%2Ehtml' with base 'about:blank' assert_equals: expected "http://www/foo.html" but got "http://www/foo%2Ehtml"
 PASS Testing Request url 'http://www/foo/%2E/html' with base 'about:blank' 
 PASS Testing Request url 'http://user:pass@/' with base 'about:blank' 
 PASS Testing Request url 'http://%25DOMAIN:foobar@foodomain.com/' with base 'about:blank' 
@@ -309,25 +309,19 @@ PASS Testing Request url 'about:/../' with base 'about:blank'
 PASS Testing Request url 'data:/../' with base 'about:blank' 
 PASS Testing Request url 'javascript:/../' with base 'about:blank' 
 PASS Testing Request url 'mailto:/../' with base 'about:blank' 
-PASS Testing Request url 'sc://ñ.test/' with base 'about:blank' 
+FAIL Testing Request url 'sc://ñ.test/' with base 'about:blank' assert_equals: expected "sc://xn--ida.test/" but got "sc://%C3%B1.test/"
 PASS Testing Request url 'sc:\../' with base 'about:blank' 
 PASS Testing Request url 'sc::a@example.net' with base 'about:blank' 
 PASS Testing Request url 'http://127.0.0.1:10100/relative_import.html' with base 'about:blank' 
 PASS Testing Request url 'http://facebook.com/?foo=%7B%22abc%22' with base 'about:blank' 
 PASS Testing Request url 'https://localhost:3000/jqueryui@1.2.3' with base 'about:blank' 
 PASS Testing Request url 'h	t
-t
-p://h	o
-s
-t:9	0
-0
-0/p	a
-t
-h?q	u
-e
-ry#f	r
-a
-g' with base 'about:blank' 
+t\rp://h	o
+s\rt:9	0
+0\r0/p	a
+t\rh?q	u
+e\rry#f	r
+a\rg' with base 'about:blank' 
 PASS Testing Request url '?a=b&c=d' with base 'http://example.org/foo/bar' 
 PASS Testing Request url '??a=b&c=d' with base 'http://example.org/foo/bar' 
 PASS Testing Request url 'http:' with base 'http://example.org/foo/bar' 

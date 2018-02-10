@@ -47,6 +47,7 @@ my @ppExtraOutput;
 my @ppExtraArgs;
 my $numOfJobs = 1;
 my $idlAttributesFile;
+my $showProgress;
 
 GetOptions('include=s@' => \@idlDirectories,
            'outputDir=s' => \$outputDirectory,
@@ -59,7 +60,8 @@ GetOptions('include=s@' => \@idlDirectories,
            'ppExtraOutput=s@' => \@ppExtraOutput,
            'ppExtraArgs=s@' => \@ppExtraArgs,
            'idlAttributesFile=s' => \$idlAttributesFile,
-           'numOfJobs=i' => \$numOfJobs);
+           'numOfJobs=i' => \$numOfJobs,
+           'showProgress' => \$showProgress);
 
 $| = 1;
 my @idlFiles;
@@ -67,25 +69,22 @@ open(my $fh, '<', $idlFilesList) or die "Cannot open $idlFilesList";
 @idlFiles = map { CygwinPathIfNeeded(s/\r?\n?$//r) } <$fh>;
 close($fh) or die;
 
-my %supplementedIdlFiles;
+my %oldSupplements;
+my %newSupplements;
 if ($supplementalDependencyFile) {
     my @output = ($supplementalDependencyFile, @ppExtraOutput);
-    my @deps = (@idlFiles, @generatorDependency);
+    my @deps = ($idlFilesList, @idlFiles, @generatorDependency);
     if (needsUpdate(\@output, \@deps)) {
+        readSupplementalDependencyFile($supplementalDependencyFile, \%oldSupplements) if -e $supplementalDependencyFile;
         my @args = (File::Spec->catfile($scriptDir, 'preprocess-idls.pl'),
                     '--defines', $defines,
                     '--idlFilesList', $idlFilesList,
                     '--supplementalDependencyFile', $supplementalDependencyFile,
                     @ppExtraArgs);
-        print("Preprocess IDL\n");
+        printProgress("Preprocess IDL");
         executeCommand($perl, @args) == 0 or die;
     }
-    open(my $fh, '<', $supplementalDependencyFile) or die "Cannot open $supplementalDependencyFile";
-    while (<$fh>) {
-        my ($idlFile, @followingIdlFiles) = split(/\s+/);
-        $supplementedIdlFiles{$idlFile} = \@followingIdlFiles;
-    }
-    close($fh) or die;
+    readSupplementalDependencyFile($supplementalDependencyFile, \%newSupplements);
 }
 
 my @args = (File::Spec->catfile($scriptDir, 'generate-bindings.pl'),
@@ -101,7 +100,12 @@ push @args, '--supplementalDependencyFile', $supplementalDependencyFile if $supp
 my %directoryCache;
 buildDirectoryCache();
 
-my @idlFilesToUpdate = grep {
+my @idlFilesToUpdate = grep &{sub {
+    if (defined($oldSupplements{$_})
+        && @{$oldSupplements{$_}} ne @{$newSupplements{$_} or []}) {
+        # Re-process the IDL file if its supplemental dependencies were added or removed
+        return 1;
+    }
     my ($filename, $dirs, $suffix) = fileparse($_, '.idl');
     my $sourceFile = File::Spec->catfile($outputDirectory, "JS$filename.cpp");
     my $headerFile = File::Spec->catfile($outputDirectory, "JS$filename.h");
@@ -110,12 +114,11 @@ my @idlFilesToUpdate = grep {
     my @deps = ($_,
                 $idlAttributesFile,
                 @generatorDependency,
-                @{$supplementedIdlFiles{$_} or []},
+                @{$newSupplements{$_} or []},
                 implicitDependencies($depFile));
     needsUpdate(\@output, \@deps);
-} @idlFiles;
+}}, @idlFiles;
 my $abort = 0;
-my $terminalWidth = getTerminalWidth();
 
 my $totalCount = @idlFilesToUpdate;
 my $currentCount = 0;
@@ -164,12 +167,7 @@ sub spawnGenerateBindingsIfNeeded
 
     $currentCount++;
     my $basename = basename($file);
-    if ($terminalWidth) {
-        my $w = $terminalWidth - 1;
-        print sprintf("%-*.*s\r", $w, $w, "[$currentCount/$totalCount] $basename");
-    } else {
-        print "[$currentCount/$totalCount] $basename\n";
-    }
+    printProgress("[$currentCount/$totalCount] $basename");
 
     my $pid = spawnCommand($perl, @args, $file);
     $abort = 1 unless defined $pid;
@@ -229,9 +227,21 @@ sub CygwinPathIfNeeded
     return $path;
 }
 
-sub getTerminalWidth
+sub readSupplementalDependencyFile
 {
-    return 0 unless -t STDOUT;
-    return 80 if $^O eq 'MSWin32';
-    return `stty size` =~ /\d+\s+(\d+)/ ? $1 : 80;
+    my $filename = shift;
+    my $supplements = shift;
+    open(my $fh, '<', $filename) or die "Cannot open $filename";
+    while (<$fh>) {
+        my ($idlFile, @followingIdlFiles) = split(/\s+/);
+        $supplements->{$idlFile} = [sort @followingIdlFiles];
+    }
+    close($fh) or die;
+}
+
+sub printProgress
+{
+    return unless $showProgress;
+    my $msg = shift;
+    print "$msg\n";
 }

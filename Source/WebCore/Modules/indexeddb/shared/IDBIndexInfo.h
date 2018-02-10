@@ -36,7 +36,7 @@ namespace WebCore {
 class IDBIndexInfo {
 public:
     WEBCORE_EXPORT IDBIndexInfo();
-    IDBIndexInfo(uint64_t identifier, uint64_t objectStoreIdentifier, const String& name, const IDBKeyPath&, bool unique, bool multiEntry);
+    IDBIndexInfo(uint64_t identifier, uint64_t objectStoreIdentifier, const String& name, IDBKeyPath&&, bool unique, bool multiEntry);
 
     IDBIndexInfo isolatedCopy() const;
 
@@ -46,6 +46,8 @@ public:
     const IDBKeyPath& keyPath() const { return m_keyPath; }
     bool unique() const { return m_unique; }
     bool multiEntry() const { return m_multiEntry; }
+
+    void rename(const String& newName) { m_name = newName; }
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBIndexInfo&);

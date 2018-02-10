@@ -34,6 +34,7 @@
 #import "CompletionHandlerCallChecker.h"
 #import "DiagnosticLoggingClient.h"
 #import "FindClient.h"
+#import "FullscreenClient.h"
 #import "LegacySessionStateCoding.h"
 #import "Logging.h"
 #import "NavigationState.h"
@@ -67,6 +68,7 @@
 #import "WebBackForwardList.h"
 #import "WebCertificateInfo.h"
 #import "WebFormSubmissionListenerProxy.h"
+#import "WebFullScreenManagerProxy.h"
 #import "WebKitSystemInterface.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
@@ -77,6 +79,7 @@
 #import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
 #import "_WKFrameHandleInternal.h"
+#import "_WKFullscreenDelegate.h"
 #import "_WKHitTestResultInternal.h"
 #import "_WKInputDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
@@ -549,6 +552,10 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     _uiDelegate = std::make_unique<WebKit::UIDelegate>(self);
     _page->setFindClient(std::make_unique<WebKit::FindClient>(self));
     _page->setDiagnosticLoggingClient(std::make_unique<WebKit::DiagnosticLoggingClient>(self));
+
+#if ENABLE(FULLSCREEN_API)
+    _page->setFullscreenClient(std::make_unique<WebKit::FullscreenClient>(self));
+#endif
 
     pageToViewMap().add(_page.get(), self);
 }
@@ -1413,7 +1420,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
     CARenderServerCaptureLayerWithTransform(MACH_PORT_NULL, self.layer.context.contextId, (uint64_t)self.layer, slotID, 0, 0, &transform);
     WebCore::IntSize imageSize = WebCore::expandedIntSize(WebCore::FloatSize(snapshotSize));
-    return WebKit::ViewSnapshot::create(slotID, imageSize, imageSize.width() * imageSize.height() * 4);
+    return WebKit::ViewSnapshot::create(slotID, imageSize, (imageSize.area() * 4).unsafeGet());
 #endif
 }
 
@@ -1723,7 +1730,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)didMoveToWindow
 {
-    _page->viewStateDidChange(WebCore::ViewState::AllFlags);
+    _page->activityStateDidChange(WebCore::ActivityState::AllFlags);
 }
 
 - (void)setOpaque:(BOOL)opaque
@@ -3922,6 +3929,31 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _page->process().responsivenessTimer().isResponsive();
 }
 
+- (void)_setFullscreenDelegate:(id<_WKFullscreenDelegate>)delegate
+{
+#if ENABLE(FULLSCREEN_API)
+    static_cast<WebKit::FullscreenClient&>(_page->fullscreenClient()).setDelegate(delegate);
+#endif
+}
+
+- (id<_WKFullscreenDelegate>)_fullscreenDelegate
+{
+#if ENABLE(FULLSCREEN_API)
+    return static_cast<WebKit::FullscreenClient&>(_page->fullscreenClient()).delegate().autorelease();
+#else
+    return nullptr;
+#endif
+}
+
+- (BOOL)_isInFullscreen
+{
+#if ENABLE(FULLSCREEN_API)
+    return _page->fullScreenManager() && _page->fullScreenManager()->isFullScreen();
+#else
+    return false;
+#endif
+}
+
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS)
@@ -4617,6 +4649,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime
 {
     // Overridden by subclasses.
+}
+
+- (void)_insertText:(id)string replacementRange:(NSRange)replacementRange
+{
+    [self insertText:string replacementRange:replacementRange];
 }
 #endif // PLATFORM(MAC)
 

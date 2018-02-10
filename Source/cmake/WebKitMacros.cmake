@@ -45,6 +45,8 @@ macro(ADD_PRECOMPILED_HEADER _header _cpp _source)
     #FIXME: Add support for Xcode.
 endmacro()
 
+option(SHOW_BINDINGS_GENERATION_PROGRESS "Show progress of generating bindings" OFF)
+
 # Helper macro which wraps generate-bindings-all.pl script.
 #   target is a new target name to be added
 #   OUTPUT_SOURCE is a list name which will contain generated sources.(eg. WebCore_SOURCES)
@@ -106,6 +108,9 @@ function(GENERATE_BINDINGS target)
     set(common_generator_dependencies
         ${WEBCORE_DIR}/bindings/scripts/generate-bindings.pl
         ${SCRIPTS_BINDINGS}
+        # Changing enabled features should trigger recompiling all IDL files
+        # because some of them use #if.
+        ${CMAKE_BINARY_DIR}/cmakeconfig.h
     )
     if (EXISTS ${WEBCORE_DIR}/bindings/scripts/CodeGenerator${arg_GENERATOR}.pm)
         list(APPEND common_generator_dependencies ${WEBCORE_DIR}/bindings/scripts/CodeGenerator${arg_GENERATOR}.pm)
@@ -126,13 +131,16 @@ function(GENERATE_BINDINGS target)
     endforeach ()
     set(${arg_OUTPUT_SOURCE} ${${arg_OUTPUT_SOURCE}} ${gen_sources} PARENT_SCOPE)
     set(act_args)
+    if (SHOW_BINDINGS_GENERATION_PROGRESS)
+        list(APPEND args --showProgress)
+    endif ()
     if (${CMAKE_VERSION} VERSION_LESS 3.2)
         set_source_files_properties(${gen_sources} ${gen_headers} PROPERTIES GENERATED 1)
     else ()
-        list(APPEND act_args
-            BYPRODUCTS ${gen_sources} ${gen_headers}
-            USES_TERMINAL
-        )
+        list(APPEND act_args BYPRODUCTS ${gen_sources} ${gen_headers})
+        if (SHOW_BINDINGS_GENERATION_PROGRESS)
+            list(APPEND act_args USES_TERMINAL)
+        endif ()
     endif ()
     add_custom_target(${target}
         COMMAND ${PERL_EXECUTABLE} ${binding_generator} ${args}
@@ -182,12 +190,25 @@ endmacro()
 macro(GENERATE_SETTINGS_MACROS _infile _outfile)
     set(NAMES_GENERATOR ${WEBCORE_DIR}/page/make_settings.pl)
 
+    # Do not list the output in more than one independent target that may
+    # build in parallel or the two instances of the rule may conflict.
+    # <https://cmake.org/cmake/help/v3.0/command/add_custom_command.html>
+    set(_extra_output
+        ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.h
+        ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.cpp
+        ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.idl
+    )
+    set(_args BYPRODUCTS ${_extra_output})
+    if (${CMAKE_VERSION} VERSION_LESS 3.2)
+        set_source_files_properties(${_extra_output} PROPERTIES GENERATED 1)
+        set(_args)
+    endif ()
     add_custom_command(
-        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/${_outfile} ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.h ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.idl
+        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/${_outfile}
         MAIN_DEPENDENCY ${_infile}
         DEPENDS ${NAMES_GENERATOR} ${SCRIPTS_BINDINGS}
         COMMAND ${PERL_EXECUTABLE} ${NAMES_GENERATOR} --input ${_infile} --outputDir ${DERIVED_SOURCES_WEBCORE_DIR}
-        VERBATIM)
+        VERBATIM ${_args})
 endmacro()
 
 

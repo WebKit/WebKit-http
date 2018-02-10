@@ -32,6 +32,7 @@
 #include "DatabaseToWebProcessConnectionMessages.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
+#include "WebCoreArgumentCoders.h"
 #include "WebIDBConnectionToClientMessages.h"
 #include "WebIDBResult.h"
 #include "WebProcess.h"
@@ -138,6 +139,11 @@ void WebIDBConnectionToServer::deleteIndex(const IDBRequestData& requestData, ui
     send(Messages::WebIDBConnectionToClient::DeleteIndex(requestData, objectStoreIdentifier, indexName));
 }
 
+void WebIDBConnectionToServer::renameIndex(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+{
+    send(Messages::WebIDBConnectionToClient::RenameIndex(requestData, objectStoreIdentifier, indexIdentifier, newName));
+}
+
 void WebIDBConnectionToServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const IDBValue& value, const IndexedDB::ObjectStoreOverwriteMode mode)
 {
     send(Messages::WebIDBConnectionToClient::PutOrAdd(requestData, keyData, value, static_cast<unsigned>(mode)));
@@ -146,6 +152,11 @@ void WebIDBConnectionToServer::putOrAdd(const IDBRequestData& requestData, const
 void WebIDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordData& getRecordData)
 {
     send(Messages::WebIDBConnectionToClient::GetRecord(requestData, getRecordData));
+}
+
+void WebIDBConnectionToServer::getAllRecords(const IDBRequestData& requestData, const IDBGetAllRecordsData& getAllRecordsData)
+{
+    send(Messages::WebIDBConnectionToClient::GetAllRecords(requestData, getAllRecordsData));
 }
 
 void WebIDBConnectionToServer::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& range)
@@ -253,6 +264,11 @@ void WebIDBConnectionToServer::didDeleteIndex(const IDBResultData& result)
     m_connectionToServer->didDeleteIndex(result);
 }
 
+void WebIDBConnectionToServer::didRenameIndex(const IDBResultData& result)
+{
+    m_connectionToServer->didRenameIndex(result);
+}
+
 void WebIDBConnectionToServer::didPutOrAdd(const IDBResultData& result)
 {
     m_connectionToServer->didPutOrAdd(result);
@@ -261,12 +277,12 @@ void WebIDBConnectionToServer::didPutOrAdd(const IDBResultData& result)
 static void preregisterSandboxExtensionsIfNecessary(const WebIDBResult& result)
 {
     auto resultType = result.resultData().type();
-    if (resultType != IDBResultType::GetRecordSuccess && resultType != IDBResultType::OpenCursorSuccess && resultType != IDBResultType::IterateCursorSuccess) {
+    if (resultType != IDBResultType::GetRecordSuccess && resultType != IDBResultType::OpenCursorSuccess && resultType != IDBResultType::IterateCursorSuccess && resultType != IDBResultType::GetAllRecordsSuccess) {
         ASSERT(resultType == IDBResultType::Error);
         return;
     }
 
-    const auto& filePaths = result.resultData().getResult().value().blobFilePaths();
+    const auto filePaths = resultType == IDBResultType::GetAllRecordsSuccess ? result.resultData().getAllResult().allBlobFilePaths() : result.resultData().getResult().value().blobFilePaths();
 
 #if ENABLE(SANDBOX_EXTENSIONS)
     ASSERT(filePaths.size() == result.handles().size());
@@ -280,6 +296,13 @@ void WebIDBConnectionToServer::didGetRecord(const WebIDBResult& result)
 {
     preregisterSandboxExtensionsIfNecessary(result);
     m_connectionToServer->didGetRecord(result.resultData());
+}
+
+void WebIDBConnectionToServer::didGetAllRecords(const WebIDBResult& result)
+{
+    if (result.resultData().getAllResult().type() == IndexedDB::GetAllType::Values)
+        preregisterSandboxExtensionsIfNecessary(result);
+    m_connectionToServer->didGetAllRecords(result.resultData());
 }
 
 void WebIDBConnectionToServer::didGetCount(const IDBResultData& result)

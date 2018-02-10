@@ -59,8 +59,10 @@ public:
     void didClearObjectStore(const IDBResultData&);
     void didCreateIndex(const IDBResultData&);
     void didDeleteIndex(const IDBResultData&);
+    void didRenameIndex(const IDBResultData&);
     void didPutOrAdd(const IDBResultData&);
     void didGetRecord(const IDBResultData&);
+    void didGetAllRecords(const IDBResultData&);
     void didGetCount(const IDBResultData&);
     void didDeleteRecord(const IDBResultData&);
     void didOpenCursor(const IDBResultData&);

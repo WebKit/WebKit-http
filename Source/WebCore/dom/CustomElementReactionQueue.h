@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if ENABLE(CUSTOM_ELEMENTS)
-
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
@@ -42,19 +40,23 @@ class QualifiedName;
 class CustomElementReactionQueue {
     WTF_MAKE_NONCOPYABLE(CustomElementReactionQueue);
 public:
-    CustomElementReactionQueue();
+    CustomElementReactionQueue(JSCustomElementInterface&);
     ~CustomElementReactionQueue();
 
-    static void enqueueElementUpgrade(Element&, JSCustomElementInterface&);
+    static void enqueueElementUpgrade(Element&);
     static void enqueueElementUpgradeIfDefined(Element&);
     static void enqueueConnectedCallbackIfNeeded(Element&);
     static void enqueueDisconnectedCallbackIfNeeded(Element&);
     static void enqueueAdoptedCallbackIfNeeded(Element&, Document& oldDocument, Document& newDocument);
     static void enqueueAttributeChangedCallbackIfNeeded(Element&, const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
+    static void enqueuePostUpgradeReactions(Element&);
 
-    void invokeAll();
+    bool observesStyleAttribute() const;
+    void invokeAll(Element&);
+    void clear();
 
 private:
+    Ref<JSCustomElementInterface> m_interface;
     Vector<CustomElementReactionQueueItem> m_items;
 };
 
@@ -73,20 +75,31 @@ public:
         s_currentProcessingStack = m_previousProcessingStack;
     }
 
-    // FIXME: This should be a reference once "ensure" starts to work.
-    static CustomElementReactionQueue* ensureCurrentQueue();
+    static CustomElementReactionQueue& ensureCurrentQueue(Element&);
 
     static bool hasCurrentProcessingStack() { return s_currentProcessingStack; }
 
+    static void processBackupQueue();
+
 private:
+    class ElementQueue {
+    public:
+        void add(Element&);
+        void invokeAll();
+
+    private:
+        Vector<Ref<Element>> m_elements;
+    };
+
     WEBCORE_EXPORT void processQueue();
 
-    CustomElementReactionQueue* m_queue { nullptr };
+    static ElementQueue& ensureBackupQueue();
+    static ElementQueue& backupElementQueue();
+
+    ElementQueue* m_queue { nullptr };
     CustomElementReactionStack* m_previousProcessingStack;
 
     WEBCORE_EXPORT static CustomElementReactionStack* s_currentProcessingStack;
 };
 
 }
-
-#endif

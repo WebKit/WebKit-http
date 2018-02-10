@@ -225,7 +225,12 @@ ExceptionOr<void> WebSocket::connect(const String& url, const Vector<String>& pr
     contentSecurityPolicy.upgradeInsecureRequestIfNeeded(m_url, ContentSecurityPolicy::InsecureRequestType::Load);
 
     if (!portAllowed(m_url)) {
-        context.addConsoleMessage(MessageSource::JS, MessageLevel::Error, "WebSocket port " + String::number(m_url.port()) + " blocked");
+        String message;
+        if (m_url.port())
+            message = makeString("WebSocket port ", String::number(m_url.port().value()), " blocked");
+        else
+            message = ASCIILiteral("WebSocket without port blocked");
+        context.addConsoleMessage(MessageSource::JS, MessageLevel::Error, message);
         m_state = CLOSED;
         return Exception { SECURITY_ERR };
     }
@@ -353,7 +358,7 @@ ExceptionOr<void> WebSocket::send(ArrayBufferView& arrayBufferView)
         return { };
     }
     ASSERT(m_channel);
-    m_channel->send(*arrayBufferView.buffer(), arrayBufferView.byteOffset(), arrayBufferView.byteLength());
+    m_channel->send(*arrayBufferView.unsharedBuffer(), arrayBufferView.byteOffset(), arrayBufferView.byteLength());
     return { };
 }
 

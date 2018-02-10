@@ -1150,11 +1150,13 @@ isolate
 scale-down
 
 // background-image, etc.
+cross-fade
+image-set
 linear-gradient
 radial-gradient
 repeating-linear-gradient
 repeating-radial-gradient
-paint
+-webkit-canvas
 -webkit-cross-fade
 -webkit-gradient
 -webkit-linear-gradient
@@ -1162,6 +1164,7 @@ paint
 -webkit-repeating-linear-gradient
 -webkit-repeating-radial-gradient
 -webkit-image-set
+-webkit-named-image
 
 // deprecated gradients
 from
@@ -1203,6 +1206,7 @@ rgb
 rgba
 hsl
 hsla
+//color
 
 // transform
 matrix
@@ -1308,6 +1312,10 @@ last
 // color-gamut
 p3
 rec2020
+
+// color() function
+sRGB
+display-p3
 
 // prefers-reduced-motion
 reduce

@@ -193,7 +193,7 @@ function stringify(v)
 function evalAndLog(_a, _quiet)
 {
   if (typeof _a != "string")
-    debug("WARN: tryAndLog() expects a string argument");
+    debug("WARN: evalAndLog() expects a string argument");
 
   // Log first in case things go horribly wrong or this causes a sync event.
   if (!_quiet)
@@ -206,6 +206,21 @@ function evalAndLog(_a, _quiet)
     testFailed(_a + " threw exception " + e);
   }
   return _av;
+}
+
+function evalAndLogResult(_a)
+{
+  if (typeof _a != "string")
+    debug("WARN: evalAndLogResult() expects a string argument");
+
+  var _av;
+  try {
+     _av = eval(_a);
+  } catch (e) {
+    testFailed(_a + " threw exception " + e);
+  }
+
+  debug('<span>' + _a + " is " + escapeHTML(_av) + '</span>');
 }
 
 function shouldBe(_a, _b, quiet)
@@ -445,7 +460,8 @@ function shouldNotBeEqualToString(a, b)
 }
 function shouldBeEmptyString(_a) { shouldBeEqualToString(_a, ""); }
 
-function shouldEvaluateTo(actual, expected) {
+function shouldEvaluateTo(actual, expected)
+{
   // A general-purpose comparator.  'actual' should be a string to be
   // evaluated, as for shouldBe(). 'expected' may be any type and will be
   // used without being eval'ed.
@@ -615,6 +631,28 @@ function shouldThrow(_a, _e, _message)
         testFailed((_message ? _message : _a) + " should throw " + (typeof _e == "undefined" ? "an exception" : _ev) + ". Was undefined.");
     else
         testFailed((_message ? _message : _a) + " should throw " + (typeof _e == "undefined" ? "an exception" : _ev) + ". Was " + _av + ".");
+}
+
+function shouldReject(_a, _rejectCallback, _resolveCallback, _message)
+{
+    var _exception;
+    var _av;
+    try {
+        _av = typeof _a == "function" ? _a() : eval(_a);
+    } catch (e) {
+        testFailed((_message ? _message : _a) + " should not throw exception. Threw exception " + e + ".");
+        return Promise.resolve();
+    }
+
+     return _av.then(function(result) {
+        testFailed((_message ? _message : _a) + " should reject promise. Resolved with " + result + ".");
+        if (typeof _resolveCallback == "function")
+            _resolveCallback();
+    }, function(error) {
+        testPassed((_message ? _message : _a) + " rejected promise  with " + error + ".");
+        if (typeof _rejectCallback == "function")
+            _rejectCallback();
+    });
 }
 
 function shouldThrowErrorName(_a, _name)

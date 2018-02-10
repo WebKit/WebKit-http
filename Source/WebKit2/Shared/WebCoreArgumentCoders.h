@@ -27,6 +27,7 @@
 
 #include "ArgumentCoders.h"
 #include <WebCore/FrameLoaderTypes.h>
+#include <WebCore/IndexedDB.h>
 #include <WebCore/PaymentHeaders.h>
 
 namespace WebCore {
@@ -131,6 +132,12 @@ class MediaSessionMetadata;
 namespace WebCore {
 class CaptureDevice;
 struct MediaConstraintsData;
+}
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+namespace WebCore {
+using IDBKeyPath = Variant<String, Vector<String>>;
 }
 #endif
 
@@ -547,6 +554,15 @@ template<> struct ArgumentCoder<WebCore::CaptureDevice> {
 };
 #endif
 
+#if ENABLE(INDEXED_DATABASE)
+
+template<> struct ArgumentCoder<WebCore::IDBKeyPath> {
+    static void encode(Encoder&, const WebCore::IDBKeyPath&);
+    static bool decode(Decoder&, WebCore::IDBKeyPath&);
+};
+
+#endif
+
 } // namespace IPC
 
 namespace WTF {
@@ -558,5 +574,15 @@ template<> struct EnumTraits<WebCore::HasInsecureContent> {
         WebCore::HasInsecureContent::Yes
     >;
 };
+
+#if ENABLE(INDEXED_DATABASE)
+template<> struct EnumTraits<WebCore::IndexedDB::GetAllType> {
+    using values = EnumValues<
+        WebCore::IndexedDB::GetAllType,
+        WebCore::IndexedDB::GetAllType::Keys,
+        WebCore::IndexedDB::GetAllType::Values
+    >;
+};
+#endif
 
 } // namespace WTF

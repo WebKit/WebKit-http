@@ -26,11 +26,9 @@
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
 #include "RuntimeEnabledFeatures.h"
-#include "URL.h"
 #include "WebCoreJSClientData.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
-#include <runtime/JSString.h>
 #include <wtf/GetPtr.h>
 
 #if ENABLE(TEST_FEATURE)
@@ -179,12 +177,12 @@ void JSTestGlobalObject::destroy(JSC::JSCell* cell)
 
 template<> inline JSTestGlobalObject* BindingCaller<JSTestGlobalObject>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
-    return jsDynamicCast<JSTestGlobalObject*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestGlobalObject*>(JSValue::decode(thisValue));
 }
 
 template<> inline JSTestGlobalObject* BindingCaller<JSTestGlobalObject>::castForOperation(ExecState& state)
 {
-    return jsDynamicCast<JSTestGlobalObject*>(state.thisValue());
+    return jsDynamicDowncast<JSTestGlobalObject*>(state.thisValue());
 }
 
 static inline JSValue jsTestGlobalObjectRegularAttributeGetter(ExecState&, JSTestGlobalObject&, ThrowScope& throwScope);
@@ -199,7 +197,7 @@ static inline JSValue jsTestGlobalObjectRegularAttributeGetter(ExecState& state,
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.regularAttribute());
+    JSValue result = toJS<IDLDOMString>(state, impl.regularAttribute());
     return result;
 }
 
@@ -215,7 +213,7 @@ static inline JSValue jsTestGlobalObjectPublicAndPrivateAttributeGetter(ExecStat
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.publicAndPrivateAttribute());
+    JSValue result = toJS<IDLDOMString>(state, impl.publicAndPrivateAttribute());
     return result;
 }
 
@@ -232,7 +230,7 @@ static inline JSValue jsTestGlobalObjectPublicAndPrivateConditionalAttributeGett
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.publicAndPrivateConditionalAttribute());
+    JSValue result = toJS<IDLDOMString>(state, impl.publicAndPrivateConditionalAttribute());
     return result;
 }
 
@@ -251,7 +249,7 @@ static inline JSValue jsTestGlobalObjectEnabledAtRuntimeAttributeGetter(ExecStat
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.enabledAtRuntimeAttribute());
+    JSValue result = toJS<IDLDOMString>(state, impl.enabledAtRuntimeAttribute());
     return result;
 }
 
@@ -261,7 +259,7 @@ EncodedJSValue jsTestGlobalObjectConstructor(ExecState* state, EncodedJSValue th
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestGlobalObjectPrototype* domObject = jsDynamicCast<JSTestGlobalObjectPrototype*>(JSValue::decode(thisValue));
+    JSTestGlobalObjectPrototype* domObject = jsDynamicDowncast<JSTestGlobalObjectPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestGlobalObject::getConstructor(state->vm(), domObject->globalObject()));
@@ -272,7 +270,7 @@ bool setJSTestGlobalObjectConstructor(ExecState* state, EncodedJSValue thisValue
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestGlobalObjectPrototype* domObject = jsDynamicCast<JSTestGlobalObjectPrototype*>(JSValue::decode(thisValue));
+    JSTestGlobalObjectPrototype* domObject = jsDynamicDowncast<JSTestGlobalObjectPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -293,7 +291,7 @@ static inline bool setJSTestGlobalObjectRegularAttributeFunction(ExecState& stat
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = value.toWTFString(&state);
+    auto nativeValue = convert<IDLDOMString>(state, value, StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setRegularAttribute(WTFMove(nativeValue));
     return true;
@@ -312,7 +310,7 @@ static inline bool setJSTestGlobalObjectPublicAndPrivateAttributeFunction(ExecSt
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = value.toWTFString(&state);
+    auto nativeValue = convert<IDLDOMString>(state, value, StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setPublicAndPrivateAttribute(WTFMove(nativeValue));
     return true;
@@ -332,7 +330,7 @@ static inline bool setJSTestGlobalObjectPublicAndPrivateConditionalAttributeFunc
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = value.toWTFString(&state);
+    auto nativeValue = convert<IDLDOMString>(state, value, StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setPublicAndPrivateConditionalAttribute(WTFMove(nativeValue));
     return true;
@@ -353,7 +351,7 @@ static inline bool setJSTestGlobalObjectEnabledAtRuntimeAttributeFunction(ExecSt
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = value.toWTFString(&state);
+    auto nativeValue = convert<IDLDOMString>(state, value, StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setEnabledAtRuntimeAttribute(WTFMove(nativeValue));
     return true;
@@ -380,7 +378,7 @@ static inline JSC::EncodedJSValue jsTestGlobalObjectInstanceFunctionRegularOpera
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto testParam = state->uncheckedArgument(0).toWTFString(state);
+    auto testParam = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.regularOperation(WTFMove(testParam));
     return JSValue::encode(jsUndefined());
@@ -401,7 +399,7 @@ static inline JSC::EncodedJSValue jsTestGlobalObjectInstanceFunctionEnabledAtRun
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto testParam = state->uncheckedArgument(0).toWTFString(state);
+    auto testParam = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.enabledAtRuntimeOperation(WTFMove(testParam));
     return JSValue::encode(jsUndefined());
@@ -424,7 +422,7 @@ static inline JSC::EncodedJSValue jsTestGlobalObjectInstanceFunctionEnabledAtRun
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto testParam = convert<IDLLong>(*state, state->uncheckedArgument(0), NormalConversion);
+    auto testParam = convert<IDLLong>(*state, state->uncheckedArgument(0), IntegerConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.enabledAtRuntimeOperation(WTFMove(testParam));
     return JSValue::encode(jsUndefined());
@@ -526,7 +524,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestGl
 
 TestGlobalObject* JSTestGlobalObject::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestGlobalObject*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestGlobalObject*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

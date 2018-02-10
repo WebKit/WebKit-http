@@ -210,6 +210,8 @@ void SpeculativeJIT::cachedGetById(
     J_JITOperation_ESsiJI getByIdFunction;
     if (type == AccessType::Get)
         getByIdFunction = operationGetByIdOptimize;
+    else if (type == AccessType::PureGet)
+        getByIdFunction = operationPureGetByIdOptimize;
     else
         getByIdFunction = operationTryGetByIdOptimize;
 
@@ -4269,6 +4271,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case PureGetById: {
+        compilePureGetById(node);
+        break;
+    }
+
     case GetByIdWithThis: {
         JSValueOperand base(this, node->child1());
         JSValueRegs baseRegs = base.jsValueRegs();
@@ -5554,8 +5561,8 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
-    case CallDOM:
-        compileCallDOM(node);
+    case CallDOMGetter:
+        compileCallDOMGetter(node);
         break;
 
     case CheckDOM:
@@ -5594,6 +5601,7 @@ void SpeculativeJIT::compile(Node* node)
     case GetStack:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
+    case PhantomCreateRest:
         DFG_CRASH(m_jit.graph(), node, "unexpected node in DFG backend");
         break;
     }

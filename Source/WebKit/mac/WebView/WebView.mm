@@ -2513,6 +2513,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if ENABLE(MEDIA_STREAM)
     settings.setMockCaptureDevicesEnabled([preferences mockCaptureDevicesEnabled]);
+    settings.setMediaCaptureRequiresSecureConnection([preferences mediaCaptureRequiresSecureConnection]);
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -2545,9 +2546,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled([preferences modernMediaControlsEnabled]);
 
-#if ENABLE(CUSTOM_ELEMENTS)
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
-#endif
 
 #if ENABLE(FETCH_API)
     RuntimeEnabledFeatures::sharedFeatures().setFetchAPIEnabled([preferences fetchAPIEnabled]);
