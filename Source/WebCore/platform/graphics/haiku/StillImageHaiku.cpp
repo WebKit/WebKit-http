@@ -60,7 +60,7 @@ FloatSize StillImage::size() const
     return FloatSize(m_bitmap->Bounds().Width() + 1., m_bitmap->Bounds().Height() + 1.);
 }
 
-NativeImagePtr StillImage::nativeImageForCurrentFrame()
+NativeImagePtr StillImage::nativeImageForCurrentFrame(const GraphicsContext*)
 {
     return m_bitmap;
 }

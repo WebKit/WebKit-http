@@ -49,7 +49,7 @@ public:
     virtual void destroyDecodedData(bool = true) override;
 
     virtual FloatSize size() const override;
-    virtual NativeImagePtr nativeImageForCurrentFrame() override;
+    virtual NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext*) override;
     virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
 
 private:
