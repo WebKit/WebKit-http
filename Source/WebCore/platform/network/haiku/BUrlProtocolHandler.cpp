@@ -444,7 +444,14 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
             realm = challenge.substring(realmStart, realmEnd - realmStart);
     }
 
-    ProtectionSpace protectionSpace(url.host(), url.port(), serverType, realm, scheme);
+    int port;
+    if (url.port())
+        port = *url.port();
+    else if (url.protocolIs("https"))
+        port = 443;
+    else
+        port = 80;
+    ProtectionSpace protectionSpace(url.host(), port, serverType, realm, scheme);
     ResourceError resourceError(url.host(), 401, url, String());
 
     m_redirectionTries--;

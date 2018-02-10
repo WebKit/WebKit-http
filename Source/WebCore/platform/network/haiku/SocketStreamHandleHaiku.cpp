@@ -41,28 +41,28 @@ namespace WebCore {
 static const int kReadBufferSize = 1024;
 
 SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client)
-    : 
+    :
     SocketStreamHandle(url, client)
 {
     LOG(Network, "SocketStreamHandle %p new client %p", this, m_client);
-	fReadThreadId = 0;
-	fWriteThreadId = 0;
-    unsigned int port = url.hasPort() ? url.port() : (url.protocolIs("wss") ? 443 : 80);    
+    fReadThreadId = 0;
+    fWriteThreadId = 0;
+    unsigned int port = url.port() ? *url.port() : (url.protocolIs("wss") ? 443 : 80);
     BNetworkAddress peer(url.host().utf8().data(),port);
     socket = new BSocket();
     status_t error = socket->Connect(peer);
-    
+
     liveObjects.insert(this);
 
-	if(error != B_OK)
-		m_client.didFailSocketStream(*this,SocketStreamError(error));
-	else {
-		fReadThreadId = spawn_thread(AsyncReadThread, "AsyncReadThread",
+    if(error != B_OK)
+        m_client.didFailSocketStream(*this,SocketStreamError(error));
+    else {
+        fReadThreadId = spawn_thread(AsyncReadThread, "AsyncReadThread",
             B_NORMAL_PRIORITY, (void*)this);
-    	resume_thread(fReadThreadId);
-    	m_state = Open;
-    	m_client.didOpenSocketStream(*this);
-	}
+        resume_thread(fReadThreadId);
+        m_state = Open;
+        m_client.didOpenSocketStream(*this);
+    }
 }
 
 

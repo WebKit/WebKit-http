@@ -45,12 +45,12 @@ URL::URL(const BUrl& url)
 URL::operator BUrl() const
 {
     BUrl converted;
-    converted.SetProtocol(protocol());
+    converted.SetProtocol(protocol().utf8().data());
     converted.SetUserName(user());
     converted.SetPassword(pass());
     converted.SetHost(host());
-    if (hasPort())
-        converted.SetPort(port());
+    if (port())
+        converted.SetPort(*port());
     converted.SetPath(path());
     converted.SetRequest(query());
     if (hasFragmentIdentifier())

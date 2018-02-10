@@ -404,7 +404,7 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
 }
 
 // TODO: quality
-String ImageBuffer::toDataURL(const String& mimeType, const double* /*quality*/, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, WTF::Optional<double>, CoordinateSystem) const
 {
     if (!MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType))
         return "data:,";

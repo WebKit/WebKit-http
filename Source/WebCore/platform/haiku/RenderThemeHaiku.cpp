@@ -47,15 +47,14 @@ namespace WebCore {
 static const int sliderThumbWidth = 15;
 static const int sliderThumbHeight = 17;
 
-PassRefPtr<RenderTheme> RenderThemeHaiku::create()
+Ref<RenderTheme> RenderThemeHaiku::create()
 {
-    return adoptRef(new RenderThemeHaiku());
+    return adoptRef(*new RenderThemeHaiku());
 }
 
-PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
+Ref<RenderTheme> RenderTheme::themeForPage(Page*)
 {
-    static RenderTheme* renderTheme = RenderThemeHaiku::create().leakRef();
-    return renderTheme;
+    return RenderThemeHaiku::create();
 }
 
 RenderThemeHaiku::RenderThemeHaiku()

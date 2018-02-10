@@ -37,7 +37,7 @@ private:
     virtual ~RenderThemeHaiku();
 
 public:
-    static PassRefPtr<RenderTheme> create();
+    static Ref<RenderTheme> create();
 
     // A method asking if the theme's controls actually care about redrawing when hovered.
     virtual bool supportsHover(const RenderStyle&) const override { return true; }

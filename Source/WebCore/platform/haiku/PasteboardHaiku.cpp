@@ -161,6 +161,35 @@ void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartRepl
     be_clipboard->Commit();
 }
 
+
+void WebCore::Pasteboard::write(WebCore::PasteboardImage const&)
+{
+    notImplemented();
+}
+
+void WebCore::Pasteboard::write(WebCore::PasteboardWebContent const&)
+{
+    notImplemented();
+}
+
+void WebCore::Pasteboard::writeMarkup(WTF::String const& text)
+{
+    AutoClipboardLocker locker(be_clipboard);
+    if (!locker.isLocked())
+        return;
+
+    be_clipboard->Clear();
+    BMessage* data = be_clipboard->Data();
+    if (!data)
+        return;
+
+    BString string(text);
+    data->AddData("text/html", B_MIME_TYPE, string.String(), string.Length());
+    be_clipboard->Commit();
+}
+
+
+
 void Pasteboard::write(const PasteboardURL& url)
 {
     ASSERT(!url.url.isEmpty());
@@ -190,6 +219,13 @@ bool Pasteboard::canSmartReplace()
     notImplemented();
     return false;
 }
+
+
+void Pasteboard::read(PasteboardWebContentReader&)
+{
+    notImplemented();
+}
+
 
 void Pasteboard::read(PasteboardPlainText& text)
 {
