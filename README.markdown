@@ -22,11 +22,15 @@ can also use github for that, or download parts of the history later.
 
 Dependencies can be installed (for a gcc2hybrid version) via:
 
-    $ pkgman install cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_x86_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel php lighttpd pkgconfig_x86 pywebsocket gnutls36_x86 gnutls36_x86_devel
+    $ pkgman install cmake_x86 gcc_x86 gperf haiku_x86_devel jpeg_x86_devel \
+        sqlite_x86_devel libpng16_x86_devel libxml2_x86_devel \
+        libxslt_x86_devel icu_x86_devel icu_devel perl python ruby_x86 \
+        libexecinfo_x86_devel libwebp_x86_devel lighttpd_x86 php \
+        pkgconfig_x86 pywebsocket gnutls36_x86 gnutls36_x86_devel
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
-    AddHaikuImagePackages cmake_x86 gperf sqlite_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel php lighttpd pkgconfig_x86 pywebsocket gnutls36_x86 gnutls36_x86_devel ;
+    AddHaikuImagePackages cmake_x86 gcc_x86 gperf haiku_x86_devel jpeg_x86_devel sqlite_x86_devel libpng16_x86_devel libxml2_x86_devel libxslt_devel icu_x86_devel icu_devel perl python ruby_x86 libexecinfo_x86_devel libwebp_x86_devel lighttpd_x86 php pkgconfig_x86 pywebsocket gnutls36_x86 gnutls36_x86_devel ;
 
 Packages for other flavors of Haiku may or may not be available. Use [haikuporter](http://haikuports.org) to build them if needed.
 
@@ -35,7 +39,7 @@ Packages for other flavors of Haiku may or may not be available. Use [haikuporte
 #### Configuring your build for the first time ####
 On a gcc2hybrid Haiku:
     $ PKG_CONFIG_LIBDIR=/boot/system/develop/lib/x86/pkgconfig \
-        CC=gcc-x86 CXX=g++-x86 Tools/Scripts/build-webkit --cmakeargs="-DCMAKE_AR=/bin/ar-x86 -DCMAKE_RANLIB=/bin/ranlib-x86"
+        CC=gcc-x86 CXX=g++-x86 Tools/Scripts/build-webkit --cmakeargs="-DCMAKE_AR=/bin/ar-x86 -DCMAKE_RANLIB=/bin/ranlib-x86" --haiku
 
 On other versions:
     $ Tools/Scripts/build-webkit

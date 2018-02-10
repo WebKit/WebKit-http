@@ -240,7 +240,7 @@ my @features = (
       define => "ENABLE_DATA_TRANSFER_ITEMS", default => 0, value => \$dataTransferItemsSupport },
 
     { option => "datalist-element", desc => "Toggle Datalist Element support",
-      define => "ENABLE_DATALIST_ELEMENT", default => isEfl(), value => \$datalistElementSupport },
+      define => "ENABLE_DATALIST_ELEMENT", default => (isEfl() || isHaiku()), value => \$datalistElementSupport },
 
     { option => "details-element", desc => "Toggle Details Element support",
       define => "ENABLE_DETAILS_ELEMENT", default => 1, value => \$detailsElementSupport },

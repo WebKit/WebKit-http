@@ -145,11 +145,11 @@ list(APPEND WebCore_SOURCES
 if (ENABLE_SUBTLE_CRYPTO)
     list(APPEND WebCore_SOURCES
         crypto/CryptoAlgorithm.cpp
-        crypto/CryptoAlgorithmDescriptionBuilder.cpp
         crypto/CryptoAlgorithmRegistry.cpp
         crypto/CryptoKey.cpp
         crypto/CryptoKeyPair.cpp
         crypto/SubtleCrypto.cpp
+        crypto/WebKitSubtleCrypto.cpp
 
         crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
         crypto/algorithms/CryptoAlgorithmAES_KW.cpp
