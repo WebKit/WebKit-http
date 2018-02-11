@@ -27,6 +27,7 @@
 #include "JSDollarVMPrototype.h"
 
 #include "CodeBlock.h"
+#include "FunctionCodeBlock.h"
 #include "Heap.h"
 #include "HeapIterationScope.h"
 #include "JSCInlines.h"
@@ -130,7 +131,7 @@ void JSDollarVMPrototype::edenGC(ExecState* exec)
 {
     if (!ensureCurrentThreadOwnsJSLock(exec))
         return;
-    exec->heap()->collect(CollectionScope::Eden);
+    exec->heap()->collectSync(CollectionScope::Eden);
 }
 
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState* exec)

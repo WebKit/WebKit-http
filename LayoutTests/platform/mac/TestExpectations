@@ -59,6 +59,10 @@ accessibility/children-changed-sends-notification.html
 accessibility/menu-list-sends-change-notification.html
 accessibility/multiselect-list-reports-active-option.html
 
+# Need to implement AccessibilityUIElement::clearSelectedChildren()
+accessibility/aria-listbox-clear-selection-crash.html
+accessibility/listbox-clear-selection.html
+
 # Need to implement this in plugins code in WebKit
 plugins/reloadplugins-and-pages.html
 
@@ -293,9 +297,6 @@ webkit.org/b/72010 vibration
 
 # <rdar://problem/11059777>
 webkit.org/b/81289 canvas/philip/tests/2d.line.cap.round.html [ Failure ]
-
-# BatteryClient is not supported
-webkit.org/b/62698 batterystatus/
 
 # Proximity Events are not supported.
 proximity
@@ -1456,4 +1457,14 @@ webkit.org/b/164088 [ Yosemite ] media/modern-media-controls/scrubber-support/sc
 [ Yosemite ] media/modern-media-controls/pip-support [ Skip ]
 [ Yosemite ] media/modern-media-controls/placard-support [ Skip ]
 
+webkit.org/b/164323 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Failure ]
+webkit.org/b/164325 [ ElCapitan ] media/modern-media-controls/pip-support/pip-support-click.html [ Timeout ]
+webkit.org/b/164326 [ ElCapitan ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Failure ]
+webkit.org/b/164298 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
+webkit.org/b/164322 [ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Timeout ]
+webkit.org/b/164328 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure ]
+
 webkit.org/b/164277 fast/preloader/image-srcset.html [ Pass Failure ]
+
+webkit.org/b/164388 inspector/sampling-profiler/call-frame-with-dom-functions.htm [ Pass Timeout ]
+webkit.org/b/164388 inspector/sampling-profiler/expression-location-info.html [ Pass Timeout ]

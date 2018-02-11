@@ -32,16 +32,17 @@
 
 #include "BatchedTransitionOptimizer.h"
 #include "CallFrameClosure.h"
-#include "ClonedArguments.h"
 #include "CodeBlock.h"
 #include "DirectArguments.h"
 #include "Heap.h"
 #include "Debugger.h"
 #include "DebuggerCallFrame.h"
 #include "ErrorInstance.h"
+#include "EvalCodeBlock.h"
 #include "EvalCodeCache.h"
 #include "Exception.h"
 #include "ExceptionHelpers.h"
+#include "FunctionCodeBlock.h"
 #include "JSArrayInlines.h"
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
@@ -53,8 +54,10 @@
 #include "LLIntData.h"
 #include "LLIntThunks.h"
 #include "LiteralParser.h"
+#include "ModuleProgramCodeBlock.h"
 #include "ObjectPrototype.h"
 #include "Parser.h"
+#include "ProgramCodeBlock.h"
 #include "ProtoCallFrame.h"
 #include "RegExpObject.h"
 #include "Register.h"
@@ -106,6 +109,7 @@ JSValue eval(CallFrame* callFrame)
     RETURN_IF_EXCEPTION(scope, JSValue());
     
     CallFrame* callerFrame = callFrame->callerFrame();
+    CallSiteIndex callerCallSiteIndex = callerFrame->callSiteIndex();
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
     JSScope* callerScopeChain = callerFrame->uncheckedR(callerCodeBlock->scopeRegister().offset()).Register::scope();
     UnlinkedCodeBlock* callerUnlinkedCodeBlock = callerCodeBlock->unlinkedCodeBlock();
@@ -127,7 +131,7 @@ JSValue eval(CallFrame* callFrame)
     else
         evalContextType = EvalContextType::None;
 
-    EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(callerCodeBlock->isStrictMode(), programSource, derivedContextType, evalContextType, isArrowFunctionContext, callerScopeChain);
+    EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(programSource, callerCallSiteIndex);
     if (!eval) {
         if (!callerCodeBlock->isStrictMode()) {
             if (programSource.is8Bit()) {
@@ -144,7 +148,7 @@ JSValue eval(CallFrame* callFrame)
         // If the literal parser bailed, it should not have thrown exceptions.
         ASSERT(!scope.exception());
 
-        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, callerCodeBlock->isStrictMode(), derivedContextType, evalContextType, isArrowFunctionContext, programSource, callerScopeChain);
+        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, programSource, callerCallSiteIndex, callerCodeBlock->isStrictMode(), derivedContextType, evalContextType, isArrowFunctionContext, callerScopeChain);
 
         if (!eval)
             return jsUndefined();

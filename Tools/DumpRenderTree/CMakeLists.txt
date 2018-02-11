@@ -84,6 +84,40 @@ set(DumpRenderTree_LOCAL_INCLUDE_DIRECTORIES
     ${JAVASCRIPTCORE_DIR}/parser
 )
 
+set(TestNetscapePlugIn_SOURCES
+    TestNetscapePlugIn/PluginObject.cpp
+    TestNetscapePlugIn/PluginTest.cpp
+    TestNetscapePlugIn/TestObject.cpp
+    TestNetscapePlugIn/main.cpp
+
+    TestNetscapePlugIn/Tests/DocumentOpenInDestroyStream.cpp
+    TestNetscapePlugIn/Tests/EvaluateJSAfterRemovingPluginElement.cpp
+    TestNetscapePlugIn/Tests/FormValue.cpp
+    TestNetscapePlugIn/Tests/GetURLNotifyWithURLThatFailsToLoad.cpp
+    TestNetscapePlugIn/Tests/GetURLWithJavaScriptURL.cpp
+    TestNetscapePlugIn/Tests/GetURLWithJavaScriptURLDestroyingPlugin.cpp
+    TestNetscapePlugIn/Tests/GetUserAgentWithNullNPPFromNPPNew.cpp
+    TestNetscapePlugIn/Tests/LogNPPSetWindow.cpp
+    TestNetscapePlugIn/Tests/NPDeallocateCalledBeforeNPShutdown.cpp
+    TestNetscapePlugIn/Tests/NPPNewFails.cpp
+    TestNetscapePlugIn/Tests/NPPSetWindowCalledDuringDestruction.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeCallsWithNullNPP.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeObjectFromDestroyedPlugin.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeRemoveProperty.cpp
+    TestNetscapePlugIn/Tests/NullNPPGetValuePointer.cpp
+    TestNetscapePlugIn/Tests/PassDifferentNPPStruct.cpp
+    TestNetscapePlugIn/Tests/PluginScriptableNPObjectInvokeDefault.cpp
+    TestNetscapePlugIn/Tests/PluginScriptableObjectOverridesAllProperties.cpp
+    TestNetscapePlugIn/Tests/PrivateBrowsing.cpp
+    TestNetscapePlugIn/Tests/ToStringAndValueOfObject.cpp
+    TestNetscapePlugIn/Tests/URLRedirect.cpp
+)
+
+set(TestNetscapePlugIn_LIBRARIES
+    JavaScriptCore
+    WTF
+    WebCoreTestSupport
+)
 
 set(DumpRenderTree_IDL_FILES
     "${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/Bindings/UIScriptController.idl"
@@ -122,8 +156,8 @@ target_link_libraries(DumpRenderTree ${DumpRenderTree_LIBRARIES})
 add_dependencies(DumpRenderTree DumpRenderTreeBindings)
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
-    add_library(TestNetscapePlugin SHARED ${TestNetscapePlugin_SOURCES})
-    target_link_libraries(TestNetscapePlugin ${TestNetscapePlugin_LIBRARIES})
+    add_library(TestNetscapePlugIn SHARED ${TestNetscapePlugIn_SOURCES})
+    target_link_libraries(TestNetscapePlugIn ${TestNetscapePlugIn_LIBRARIES})
 endif ()
 
 if (WIN32)

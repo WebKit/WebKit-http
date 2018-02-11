@@ -963,7 +963,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         RetainPtr<NSMutableArray> quads = adoptNS([[NSMutableArray alloc] initWithCapacity:static_cast<const NSUInteger>(quadCount)]);
         for (size_t i = 0; i < quadCount; ++i) {
             FloatQuad quad = highlightedQuads[i];
-            quad.scale(selfScale, selfScale);
+            quad.scale(selfScale);
             FloatQuad extendedQuad = inflateQuad(quad, minimumTapHighlightRadius);
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p1()]];
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p2()]];
@@ -1591,10 +1591,13 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     [_webSelectionAssistant willStartScrollingOrZoomingPage];
     [_textSelectionAssistant willStartScrollingOverflow];
+    _page->setIsScrollingOrZooming(true);
 }
 
 - (void)scrollViewWillStartPanOrPinchGesture
 {
+    _page->hideValidationMessage();
+
     _canSendTouchEventsAsynchronously = YES;
 }
 
@@ -1602,6 +1605,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     [_webSelectionAssistant didEndScrollingOrZoomingPage];
     [_textSelectionAssistant didEndScrollingOverflow];
+    _page->setIsScrollingOrZooming(false);
 }
 
 - (BOOL)requiresAccessoryView

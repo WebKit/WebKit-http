@@ -141,6 +141,9 @@ struct ArityCheckData;
 namespace Profiler {
 class Database;
 }
+namespace DOMJIT {
+class Signature;
+}
 
 struct HashTable;
 struct Instruction;
@@ -429,7 +432,7 @@ public:
     std::unique_ptr<FTL::Thunks> ftlThunks;
 #endif
     NativeExecutable* getHostFunction(NativeFunction, NativeFunction constructor, const String& name);
-    NativeExecutable* getHostFunction(NativeFunction, Intrinsic intrinsic, NativeFunction constructor, const String& name);
+    NativeExecutable* getHostFunction(NativeFunction, Intrinsic, NativeFunction constructor, const DOMJIT::Signature*, const String& name);
 
     static ptrdiff_t exceptionOffset()
     {

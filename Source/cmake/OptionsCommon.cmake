@@ -48,6 +48,11 @@ if (COMPILER_IS_CLANG AND CMAKE_GENERATOR STREQUAL "Ninja")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
 endif ()
 
+if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields -Wno-unknown-pragmas")
+    add_definitions(-D__USE_MINGW_ANSI_STDIO=1)
+endif ()
+
 # Ensure that the default include system directories are added to the list of CMake implicit includes.
 # This workarounds an issue that happens when using GCC 6 and using system includes (-isystem).
 # For more details check: https://bugs.webkit.org/show_bug.cgi?id=161697

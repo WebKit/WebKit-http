@@ -1,3 +1,45 @@
+2016-11-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Safari does not emit composition end if blurred for dead key / Japanese IME
+        https://bugs.webkit.org/show_bug.cgi?id=164369
+        <rdar://problem/29050439>
+
+        Reviewed by Ryosuke Niwa.
+
+        When canceling a composition, make sure that we clear the system IME state.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::canceledComposition):
+
+2016-11-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Add a setting and preferences to enable/disable async image decoding
+        https://bugs.webkit.org/show_bug.cgi?id=164417
+
+        Reviewed by Simon Fraser.
+
+        Hook up the asyncImageDecodingEnabled setting for WebKit1.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences asyncImageDecodingEnabled]):
+        (-[WebPreferences setAsyncImageDecodingEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-11-01  Alex Christensen  <achristensen@webkit.org>
+
+        Remove PassRefPtr from DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=164307
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebGeolocationPosition.mm:
+        (-[WebGeolocationPosition initWithGeolocationPosition:]):
+
 2016-11-02  Romain Bellessort  <romain.bellessort@crf.canon.fr>
 
         [Readable Streams API] Enable creation of ReadableByteStreamController

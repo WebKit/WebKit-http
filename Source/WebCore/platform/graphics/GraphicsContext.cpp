@@ -367,6 +367,7 @@ void GraphicsContext::restore()
         LOG_ERROR("ERROR void GraphicsContext::restore() stack is empty");
         return;
     }
+
     m_state = m_stack.last();
     m_stack.removeLast();
 
@@ -1020,7 +1021,7 @@ void GraphicsContext::platformApplyDeviceScaleFactor(float)
 
 void GraphicsContext::applyDeviceScaleFactor(float deviceScaleFactor)
 {
-    scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
+    scale(deviceScaleFactor);
 
     if (isRecording()) {
         m_displayListRecorder->applyDeviceScaleFactor(deviceScaleFactor);
@@ -1176,5 +1177,20 @@ Vector<FloatPoint> GraphicsContext::centerLineAndCutOffCorners(bool isVerticalLi
 
     return { point1, point2 };
 }
+
+#if !USE(CG)
+bool GraphicsContext::supportsInternalLinks() const
+{
+    return false;
+}
+
+void GraphicsContext::setDestinationForRect(const String&, const FloatRect&)
+{
+}
+
+void GraphicsContext::addDestinationAtPoint(const String&, const FloatPoint&)
+{
+}
+#endif
 
 }

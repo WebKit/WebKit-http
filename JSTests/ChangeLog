@@ -1,3 +1,165 @@
+2016-11-04  Mark Lam  <mark.lam@apple.com>
+
+        Error description code should be able to handle Symbol values.
+        https://bugs.webkit.org/show_bug.cgi?id=164436
+        <rdar://problem/29115583>
+
+        Reviewed by Filip Pizlo and Saam Barati.
+
+        * stress/error-description-on-symbols-should-not-crash.js: Added.
+
+2016-11-03  Geoffrey Garen  <ggaren@apple.com>
+
+        EvalCodeCache should not give up in strict mode and other cases
+        https://bugs.webkit.org/show_bug.cgi?id=164357
+
+        Reviewed by Michael Saboff.
+
+        * microbenchmarks/eval-cached.js: Added. 45x faster now.
+        * stress/eval-cached.js: Added. Try running the same eval text in a bunch
+        of different scopes and verify that we access the right scope.
+
+2016-11-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement more sections
+        https://bugs.webkit.org/show_bug.cgi?id=164023
+
+        Reviewed by Keith Miller.
+
+        On the JSC side:
+
+         - Put in parser stubs for all WebAssembly sections.
+         - Parse Import, Export sections.
+         - Use tryReserveCapacity instead of reserve, and bail out of the parser if it fails. This prevents the parser from bringing everything down when faced with a malicious input.
+         - Encapsulate all parsed module information into its own structure, making it easier to pass around (from parser to Plan to Module to Instance).
+         - Create WasmFormat.cpp to hold parsed module information's dtor to avoid including WasmMemory.h needlessly.
+         - parseCode: avoid overflow through function size.
+         - Remove all remainders of polyfill-prototype-1, and update license.
+         - Add missing WasmOps.h and WasmValidateInlines.h auto-generation for cmake build.
+
+        On the Builder.js testing side:
+
+         - Implement Type, Import (function only), Export (function only) sections.
+         - Check section order and uniqueness.
+         - Optionally auto-generate the Type section from subsequent Export / Import / Code entries.
+         - Allow re-exporting an import.
+
+        * wasm/Builder.js: build type, import, and export sections
+        (const._normalizeFunctionSignature):
+        * wasm/Builder_WebAssemblyBinary.js: Added. Forked from Builder.js
+        (const.emitters.Type):
+        (const.emitters.Import):
+        (const.emitters.Function):
+        (const.emitters.Table):
+        (const.emitters.Memory):
+        (const.emitters.Global):
+        (const.emitters.Export):
+        (const.emitters.Start):
+        (const.emitters.Element):
+        (const.emitters.Code):
+        (const.emitters.Data):
+        (export.const.Binary):
+        * wasm/LowLevelBinary.js: Add a few useful outputs
+        (export.default.LowLevelBinary.prototype.varuint1):
+        (export.default.LowLevelBinary.prototype.varint7):
+        * wasm/WASM.js: value type and external kind helpers
+        * wasm/assert.js: array element-wise equality comparison
+        (const._eq):
+        * wasm/js-api/test_Module.js:
+        (ModuleWithImports):
+        * wasm/self-test/test_BuilderJSON.js: many more tests for all the new Builder APIs, and update to some older tests which now require a Type section or rejiggered Function signature
+        (const.assertOpThrows):
+        (SectionsWithSameCustomName):
+        (TwoTypeSections):
+        (EmptyImportSection):
+        (ImportBeforeTypeSections):
+        * wasm/self-test/test_BuilderWebAssembly.js: remove a test which wasn't helpful and is now obsolete
+        (CustomSection):
+
+2016-11-03  Mark Lam  <mark.lam@apple.com>
+
+        ClonedArguments need to also support haveABadTime mode.
+        https://bugs.webkit.org/show_bug.cgi?id=164200
+        <rdar://problem/27211336>
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/have-a-bad-time-with-arguments.js: Added.
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        This test demonstrates why the DFG needs to recognize the shadow value of a Phi.
+
+        * stress/dfg-ssa-swap.js: Added.
+        (foo):
+
+2016-11-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r208364.
+        https://bugs.webkit.org/show_bug.cgi?id=164402
+
+        broke the build (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "DFG plays fast and loose with the shadow values of a Phi"
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+        http://trac.webkit.org/changeset/208364
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        This test demonstrates why the DFG needs to recognize the shadow value of a Phi.
+
+        * stress/dfg-ssa-swap.js: Added.
+        (foo):
+
+2016-11-03  Saam Barati  <sbarati@apple.com>
+
+        Asking for a value profile prediction should be defensive against not finding a value profile
+        https://bugs.webkit.org/show_bug.cgi?id=164306
+
+        Reviewed by Mark Lam.
+
+        * stress/inlined-tail-call-in-inlined-setter-should-not-crash-when-getting-value-profile.js: Added.
+        (let.o.set foo):
+        (bar):
+
+2016-11-02  Saam Barati  <sbarati@apple.com>
+
+        Allocation elimination of rest parameter doesn't take into account indexed properties on Array.prototype/Object.prototype
+        https://bugs.webkit.org/show_bug.cgi?id=164301
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/rest-parameter-allocation-elimination-watchpoints-2.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-3.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-4.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-5.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-6.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints.js: Added.
+        (assert):
+        (foo):
+
 2016-11-01  Saam Barati  <sbarati@apple.com>
 
         We should be able to eliminate rest parameter allocations

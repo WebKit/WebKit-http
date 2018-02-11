@@ -43,10 +43,16 @@ class FunctionParser : public Parser {
 public:
     typedef typename Context::ExpressionType ExpressionType;
     typedef typename Context::ControlType ControlType;
+    typedef typename Context::ExpressionList ExpressionList;
 
     FunctionParser(Context&, const uint8_t* functionStart, size_t functionLength, const Signature*, const Vector<FunctionInformation>& functions);
 
     bool WARN_UNUSED_RETURN parse();
+
+    struct ControlEntry {
+        ExpressionList enclosedExpressionStack;
+        ControlType controlData;
+    };
 
 private:
     static const bool verbose = false;
@@ -54,11 +60,16 @@ private:
     bool WARN_UNUSED_RETURN parseBlock();
     bool WARN_UNUSED_RETURN parseExpression(OpType);
     bool WARN_UNUSED_RETURN parseUnreachableExpression(OpType);
+    bool WARN_UNUSED_RETURN addReturn();
     bool WARN_UNUSED_RETURN unifyControl(Vector<ExpressionType>&, unsigned level);
 
+    bool WARN_UNUSED_RETURN popExpressionStack(ExpressionType& result);
+
+    void setErrorMessage(String&& message) { m_context.setErrorMessage(WTFMove(message)); }
+
     Context& m_context;
-    Vector<ExpressionType, 1> m_expressionStack;
-    Vector<ControlType> m_controlStack;
+    ExpressionList m_expressionStack;
+    Vector<ControlEntry> m_controlStack;
     const Signature* m_signature;
     const Vector<FunctionInformation>& m_functions;
     unsigned m_unreachableBlocks { 0 };
@@ -118,7 +129,7 @@ bool FunctionParser<Context>::parseBlock()
         }
 
         if (op == OpType::End && !m_controlStack.size())
-            break;
+            return m_unreachableBlocks ? true : addReturn();
 
         if (m_unreachableBlocks) {
             if (!parseUnreachableExpression(static_cast<OpType>(op))) {
@@ -134,9 +145,24 @@ bool FunctionParser<Context>::parseBlock()
 
     }
 
-    // I'm not sure if we should check the expression stack here...
-    return true;
+    RELEASE_ASSERT_NOT_REACHED();
 }
+
+template<typename Context>
+bool FunctionParser<Context>::addReturn()
+{
+    ExpressionList returnValues;
+    if (m_signature->returnType != Void) {
+        ExpressionType returnValue;
+        if (!popExpressionStack(returnValue))
+            return false;
+        returnValues.append(returnValue);
+    }
+
+    m_unreachableBlocks = 1;
+    return m_context.addReturn(returnValues);
+}
+
 #define CREATE_CASE(name, id, b3op) case name:
 
 template<typename Context>
@@ -144,8 +170,14 @@ bool FunctionParser<Context>::parseExpression(OpType op)
 {
     switch (op) {
     FOR_EACH_WASM_BINARY_OP(CREATE_CASE) {
-        ExpressionType right = m_expressionStack.takeLast();
-        ExpressionType left = m_expressionStack.takeLast();
+        ExpressionType right;
+        if (!popExpressionStack(right))
+            return false;
+
+        ExpressionType left;
+        if (!popExpressionStack(left))
+            return false;
+
         ExpressionType result;
         if (!m_context.binaryOp(static_cast<BinaryOpType>(op), left, right, result))
             return false;
@@ -154,9 +186,12 @@ bool FunctionParser<Context>::parseExpression(OpType op)
     }
 
     FOR_EACH_WASM_UNARY_OP(CREATE_CASE) {
-        ExpressionType arg = m_expressionStack.takeLast();
+        ExpressionType value;
+        if (!popExpressionStack(value))
+            return false;
+
         ExpressionType result;
-        if (!m_context.unaryOp(static_cast<UnaryOpType>(op), arg, result))
+        if (!m_context.unaryOp(static_cast<UnaryOpType>(op), value, result))
             return false;
         m_expressionStack.append(result);
         return true;
@@ -171,7 +206,10 @@ bool FunctionParser<Context>::parseExpression(OpType op)
         if (!parseVarUInt32(offset))
             return false;
 
-        ExpressionType pointer = m_expressionStack.takeLast();
+        ExpressionType pointer;
+        if (!popExpressionStack(pointer))
+            return false;
+
         ExpressionType result;
         if (!m_context.load(static_cast<LoadOpType>(op), pointer, result, offset))
             return false;
@@ -188,8 +226,14 @@ bool FunctionParser<Context>::parseExpression(OpType op)
         if (!parseVarUInt32(offset))
             return false;
 
-        ExpressionType value = m_expressionStack.takeLast();
-        ExpressionType pointer = m_expressionStack.takeLast();
+        ExpressionType value;
+        if (!popExpressionStack(value))
+            return false;
+
+        ExpressionType pointer;
+        if (!popExpressionStack(pointer))
+            return false;
+
         return m_context.store(static_cast<StoreOpType>(op), pointer, value, offset);
     }
 
@@ -227,7 +271,9 @@ bool FunctionParser<Context>::parseExpression(OpType op)
         uint32_t index;
         if (!parseVarUInt32(index))
             return false;
-        ExpressionType value = m_expressionStack.takeLast();
+        ExpressionType value;
+        if (!popExpressionStack(value))
+            return false;
         return m_context.setLocal(index, value);
     }
 
@@ -266,7 +312,8 @@ bool FunctionParser<Context>::parseExpression(OpType op)
         if (!parseValueType(inlineSignature))
             return false;
 
-        m_controlStack.append(m_context.addBlock(inlineSignature));
+        m_controlStack.append({ WTFMove(m_expressionStack), m_context.addBlock(inlineSignature) });
+        m_expressionStack = ExpressionList();
         return true;
     }
 
@@ -275,7 +322,8 @@ bool FunctionParser<Context>::parseExpression(OpType op)
         if (!parseValueType(inlineSignature))
             return false;
 
-        m_controlStack.append(m_context.addLoop(inlineSignature));
+        m_controlStack.append({ WTFMove(m_expressionStack), m_context.addLoop(inlineSignature) });
+        m_expressionStack = ExpressionList();
         return true;
     }
 
@@ -284,17 +332,29 @@ bool FunctionParser<Context>::parseExpression(OpType op)
         if (!parseValueType(inlineSignature))
             return false;
 
-        ExpressionType condition = m_expressionStack.takeLast();
+        ExpressionType condition;
+        if (!popExpressionStack(condition))
+            return false;
+
         ControlType control;
         if (!m_context.addIf(condition, inlineSignature, control))
             return false;
 
-        m_controlStack.append(control);
+        m_controlStack.append({ WTFMove(m_expressionStack), control });
+        m_expressionStack = ExpressionList();
         return true;
     }
 
     case OpType::Else: {
-        return m_context.addElse(m_controlStack.last(), m_expressionStack);
+        if (!m_controlStack.size()) {
+            setErrorMessage("Attempted to use else block at the top-level of a function");
+            return false;
+        }
+
+        if (!m_context.addElse(m_controlStack.last().controlData, m_expressionStack))
+            return false;
+        m_expressionStack.shrink(0);
+        return true;
     }
 
     case OpType::Br:
@@ -304,33 +364,76 @@ bool FunctionParser<Context>::parseExpression(OpType op)
             return false;
 
         ExpressionType condition = Context::emptyExpression;
-        if (op == OpType::BrIf)
-            condition = m_expressionStack.takeLast();
-        else
+        if (op == OpType::BrIf) {
+            if (!popExpressionStack(condition))
+                return false;
+        } else
             m_unreachableBlocks = 1;
 
-        ControlType& data = m_controlStack[m_controlStack.size() - 1 - target];
+        ControlType& data = m_controlStack[m_controlStack.size() - 1 - target].controlData;
 
         return m_context.addBranch(data, condition, m_expressionStack);
     }
 
-    case OpType::Return: {
-        Vector<ExpressionType, 1> returnValues;
-        if (m_signature->returnType != Void)
-            returnValues.append(m_expressionStack.takeLast());
+    case OpType::BrTable: {
+        uint32_t numberOfTargets;
+        if (!parseVarUInt32(numberOfTargets))
+            return false;
+
+        Vector<ControlType*> targets;
+        if (!targets.tryReserveCapacity(numberOfTargets))
+            return false;
+
+        for (uint32_t i = 0; i < numberOfTargets; ++i) {
+            uint32_t target;
+            if (!parseVarUInt32(target))
+                return false;
+
+            if (target >= m_controlStack.size())
+                return false;
+
+            targets.uncheckedAppend(&m_controlStack[m_controlStack.size() - 1 - target].controlData);
+        }
+
+        uint32_t defaultTarget;
+        if (!parseVarUInt32(defaultTarget))
+            return false;
+
+        if (defaultTarget >= m_controlStack.size())
+            return false;
+
+        ExpressionType condition;
+        if (!popExpressionStack(condition))
+            return false;
+        
+        if (!m_context.addSwitch(condition, targets, m_controlStack[m_controlStack.size() - 1 - defaultTarget].controlData, m_expressionStack))
+            return false;
 
         m_unreachableBlocks = 1;
-        return m_context.addReturn(returnValues);
+        return true;
+    }
+
+    case OpType::Return: {
+        return addReturn();
     }
 
     case OpType::End: {
-        ControlType data = m_controlStack.takeLast();
-        return m_context.endBlock(data, m_expressionStack);
+        ControlEntry data = m_controlStack.takeLast();
+        // FIXME: This is a little weird in that it will modify the expressionStack for the result of the block.
+        // That's a little too effectful for me but I don't have a better API right now.
+        // see: https://bugs.webkit.org/show_bug.cgi?id=164353
+        if (!m_context.endBlock(data, m_expressionStack))
+            return false;
+        m_expressionStack.swap(data.enclosedExpressionStack);
+        return true;
     }
 
-    case OpType::Unreachable:
+    case OpType::Unreachable: {
+        m_unreachableBlocks = 1;
+        return true;
+    }
+
     case OpType::Select:
-    case OpType::BrTable:
     case OpType::Nop:
     case OpType::Drop:
     case OpType::TeeLocal:
@@ -353,17 +456,20 @@ bool FunctionParser<Context>::parseUnreachableExpression(OpType op)
         if (m_unreachableBlocks > 1)
             return true;
 
-        ControlType& data = m_controlStack.last();
-        ASSERT(data.type() == BlockType::If);
+        ControlEntry& data = m_controlStack.last();
         m_unreachableBlocks = 0;
-        return m_context.addElse(data, m_expressionStack);
+        if (!m_context.addElseToUnreachable(data.controlData))
+            return false;
+        m_expressionStack.shrink(0);
+        return true;
     }
 
     case OpType::End: {
         if (m_unreachableBlocks == 1) {
-            ControlType data = m_controlStack.takeLast();
-            if (!m_context.isContinuationReachable(data))
-                return true;
+            ControlEntry data = m_controlStack.takeLast();
+            if (!m_context.addEndToUnreachable(data))
+                return false;
+            m_expressionStack.swap(data.enclosedExpressionStack);
         }
         m_unreachableBlocks--;
         return true;
@@ -386,7 +492,6 @@ bool FunctionParser<Context>::parseUnreachableExpression(OpType op)
     }
 
     // one immediate cases
-    case OpType::Return:
     case OpType::F32Const:
     case OpType::I32Const:
     case OpType::F64Const:
@@ -401,6 +506,18 @@ bool FunctionParser<Context>::parseUnreachableExpression(OpType op)
         break;
     }
     return true;
+}
+
+template<typename Context>
+bool FunctionParser<Context>::popExpressionStack(ExpressionType& result)
+{
+    if (m_expressionStack.size()) {
+        result = m_expressionStack.takeLast();
+        return true;
+    }
+
+    setErrorMessage("Attempted to use a stack value when none existed");
+    return false;
 }
 
 #undef CREATE_CASE

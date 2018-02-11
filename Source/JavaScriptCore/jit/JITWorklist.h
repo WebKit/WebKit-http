@@ -50,7 +50,7 @@ class JITWorklist {
 public:
     ~JITWorklist();
     
-    void completeAllForVM(VM&);
+    bool completeAllForVM(VM&); // Return true if any JIT work happened.
     void poll(VM&);
     
     void compileLater(CodeBlock*);

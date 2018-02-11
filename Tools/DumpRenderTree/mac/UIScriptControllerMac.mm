@@ -64,6 +64,11 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     });
 }
 
+JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
+{
+    return nullptr;
+}
+
 }
 
 #endif // PLATFORM(MAC)

@@ -1038,8 +1038,8 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueWhite || valueID == CSSValueWhiteOutline || valueID == CSSValueBlack)
             return true;
         break;
-    case CSSPropertyApplePayButtonType: // plain | buy | set-up
-        if (valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp)
+    case CSSPropertyApplePayButtonType: // plain | buy | set-up | other
+        if (valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp || valueID == CSSValueOther)
             return true;
         break;
 #endif
@@ -10060,11 +10060,11 @@ RefPtr<CSSFunctionValue> CSSParser::parseBuiltinFilterArguments(CSSValueID filte
 
             auto primitiveValue = createPrimitiveNumericValue(argumentWithCalculation);
 
-            // Saturate and Contrast allow values over 100%.
+            // Saturate and contrast allow values over 100%. Otherwise clamp.
             if (filterFunction != CSSValueSaturate && filterFunction != CSSValueContrast) {
                 double maxAllowed = primitiveValue->primitiveType() == CSSPrimitiveValue::CSS_PERCENTAGE ? 100.0 : 1.0;
                 if (primitiveValue->doubleValue() > maxAllowed)
-                    return nullptr;
+                    primitiveValue = CSSValuePool::singleton().createValue(maxAllowed, static_cast<CSSPrimitiveValue::UnitTypes>(primitiveValue->primitiveType()));
             }
 
             filterValue->append(WTFMove(primitiveValue));

@@ -80,11 +80,12 @@
 #if OS(DARWIN)
 #define LOCAL_LABEL_STRING(name) "L" #name
 #elif   OS(LINUX)               \
-     || OS(FREEBSD)             \
-     || OS(OPENBSD)             \
-     || OS(HURD)                \
-     || OS(HAIKU)               \
-     || OS(NETBSD)
+    || OS(FREEBSD)             \
+    || OS(OPENBSD)             \
+    || OS(HURD)                \
+    || OS(HAIKU)               \
+    || OS(NETBSD)              \
+    || COMPILER(MINGW)
     // GNU as-compatible syntax.
 #define LOCAL_LABEL_STRING(name) ".L" #name
 #endif

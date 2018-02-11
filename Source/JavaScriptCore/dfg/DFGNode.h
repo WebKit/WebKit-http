@@ -62,6 +62,7 @@ namespace DOMJIT {
 class GetterSetter;
 class Patchpoint;
 class CallDOMGetterPatchpoint;
+class Signature;
 }
 
 namespace Profiler {
@@ -652,6 +653,8 @@ public:
     }
     
     void convertToDirectCall(FrozenValue*);
+
+    void convertToCallDOM(Graph&);
     
     JSValue asJSValue()
     {
@@ -1464,6 +1467,7 @@ public:
         case ToNumber:
         case LoadFromJSMapBucket:
         case CallDOMGetter:
+        case CallDOM:
             return true;
         default:
             return false;
@@ -1981,6 +1985,11 @@ public:
     {
         return isInt32Speculation(prediction());
     }
+
+    bool shouldSpeculateNotInt32()
+    {
+        return isNotInt32Speculation(prediction());
+    }
     
     bool sawBooleans()
     {
@@ -2041,6 +2050,11 @@ public:
     {
         return isBooleanSpeculation(prediction());
     }
+
+    bool shouldSpeculateNotBoolean()
+    {
+        return isNotBooleanSpeculation(prediction());
+    }
     
     bool shouldSpeculateOther()
     {
@@ -2065,6 +2079,11 @@ public:
     bool shouldSpeculateString()
     {
         return isStringSpeculation(prediction());
+    }
+
+    bool shouldSpeculateNotString()
+    {
+        return isNotStringSpeculation(prediction());
     }
  
     bool shouldSpeculateStringOrOther()
@@ -2368,6 +2387,18 @@ public:
         return m_opInfo2.as<const ClassInfo*>();
     }
 
+    bool hasSignature() const
+    {
+        // Note that this does not include TailCall node types intentionally.
+        // CallDOM node types are always converted from Call.
+        return op() == Call || op() == CallDOM;
+    }
+
+    const DOMJIT::Signature* signature()
+    {
+        return m_opInfo.as<const DOMJIT::Signature*>();
+    }
+
     Node* replacement() const
     {
         return m_misc.replacement;
@@ -2529,15 +2560,18 @@ public:
     BasicBlock* owner;
 };
 
-inline bool nodeComparator(Node* a, Node* b)
-{
-    return a->index() < b->index();
-}
+struct NodeComparator {
+    template<typename NodePtrType>
+    bool operator()(NodePtrType a, NodePtrType b) const
+    {
+        return a->index() < b->index();
+    }
+};
 
 template<typename T>
 CString nodeListDump(const T& nodeList)
 {
-    return sortedListDump(nodeList, nodeComparator);
+    return sortedListDump(nodeList, NodeComparator());
 }
 
 template<typename T>
@@ -2548,7 +2582,7 @@ CString nodeMapDump(const T& nodeMap, DumpContext* context = 0)
         typename T::const_iterator iter = nodeMap.begin();
         iter != nodeMap.end(); ++iter)
         keys.append(iter->key);
-    std::sort(keys.begin(), keys.end(), nodeComparator);
+    std::sort(keys.begin(), keys.end(), NodeComparator());
     StringPrintStream out;
     CommaPrinter comma;
     for(unsigned i = 0; i < keys.size(); ++i)
@@ -2562,7 +2596,7 @@ CString nodeValuePairListDump(const T& nodeValuePairList, DumpContext* context =
     using V = typename T::ValueType;
     T sortedList = nodeValuePairList;
     std::sort(sortedList.begin(), sortedList.end(), [](const V& a, const V& b) {
-        return nodeComparator(a.node, b.node);
+        return NodeComparator()(a.node, b.node);
     });
 
     StringPrintStream out;

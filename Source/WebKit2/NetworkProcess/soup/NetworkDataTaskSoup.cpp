@@ -52,7 +52,7 @@ NetworkDataTaskSoup::NetworkDataTaskSoup(NetworkSession& session, NetworkDataTas
     , m_shouldContentSniff(shouldContentSniff)
     , m_timeoutSource(RunLoop::main(), this, &NetworkDataTaskSoup::timeoutFired)
 {
-    static_cast<NetworkSessionSoup&>(m_session.get()).registerNetworkDataTask(*this);
+    m_session->registerNetworkDataTask(*this);
     if (m_scheduledFailureType != NoFailure)
         return;
 
@@ -80,7 +80,7 @@ NetworkDataTaskSoup::NetworkDataTaskSoup(NetworkSession& session, NetworkDataTas
 NetworkDataTaskSoup::~NetworkDataTaskSoup()
 {
     clearRequest();
-    static_cast<NetworkSessionSoup&>(m_session.get()).unregisterNetworkDataTask(*this);
+    m_session->unregisterNetworkDataTask(*this);
 }
 
 String NetworkDataTaskSoup::suggestedFilename() const
@@ -405,22 +405,16 @@ void NetworkDataTaskSoup::tlsErrorsChanged()
 
 void NetworkDataTaskSoup::applyAuthenticationToRequest(ResourceRequest& request)
 {
-    // We always put the credentials into the URL. In the Coca port HTTP family credentials are applied in
-    // the didReceiveChallenge callback, but libsoup requires us to use this method to override
-    // any previously remembered credentials. It has its own per-session credential storage.
+    if (m_user.isEmpty() && m_password.isEmpty())
+        return;
+
     auto url = request.url();
-    if (!m_initialCredential.isEmpty()) {
-        url.setUser(m_initialCredential.user());
-        url.setPass(m_initialCredential.password());
-    } else {
-        url.setUser(m_user);
-        url.setPass(m_password);
-    }
+    url.setUser(m_user);
+    url.setPass(m_password);
+    request.setURL(url);
 
     m_user = String();
     m_password = String();
-
-    request.setURL(url);
 }
 
 void NetworkDataTaskSoup::authenticateCallback(SoupSession* session, SoupMessage* soupMessage, SoupAuth* soupAuth, gboolean retrying, NetworkDataTaskSoup* task)
@@ -863,7 +857,7 @@ void NetworkDataTaskSoup::download()
     m_downloadOutputStream = adoptGRef(G_OUTPUT_STREAM(outputStream.leakRef()));
 
     auto& downloadManager = NetworkProcess::singleton().downloadManager();
-    auto download = std::make_unique<Download>(downloadManager, m_pendingDownloadID, this, m_session->sessionID(), suggestedFilename());
+    auto download = std::make_unique<Download>(downloadManager, m_pendingDownloadID, *this, m_session->sessionID(), suggestedFilename());
     auto* downloadPtr = download.get();
     downloadManager.dataTaskBecameDownloadTask(m_pendingDownloadID, WTFMove(download));
     downloadPtr->didCreateDestination(m_pendingDownloadLocation);

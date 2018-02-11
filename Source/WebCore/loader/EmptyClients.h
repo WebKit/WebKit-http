@@ -469,6 +469,7 @@ public:
     void didChangeSelectionAndUpdateLayout() override { }
     void updateEditorStateAfterLayoutIfEditabilityChanged() override { }
     void discardedComposition(Frame*) override { }
+    void canceledComposition() override { }
     void didEndEditing() override { }
     void willWriteSelectionToPasteboard(Range*) override { }
     void didWriteSelectionToPasteboard() override { }

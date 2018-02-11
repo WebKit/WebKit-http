@@ -1,3 +1,66 @@
+2016-11-05  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [MinGW] Fixed C99/C++11 format attributes in printf-like functions
+        https://bugs.webkit.org/show_bug.cgi?id=164448
+
+        Reviewed by Michael Catanzaro.
+
+        By default MinGW uses printf-like function provided in msvcrt.dll,
+        however they miss support for C99/C++11 format attributes. Use MinGW
+        implementations instead.
+
+        * Source/cmake/OptionsCommon.cmake: Define __USE_MINGW_ANSI_STDIO
+
+2016-11-03  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fixes to build JSCOnly on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=164379
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsJSCOnly.cmake: Define BUILDING_JSCONLY__, use
+        system ICU libraries on macOS
+        * Source/cmake/WebKitMacros.cmake: Fixed WEBKIT_FRAMEWORK macro for
+        static JSC
+
+2016-11-03  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake][MinGW] Don't use MS bitfield layout to reduce sizes of data structures
+        https://bugs.webkit.org/show_bug.cgi?id=164026
+
+        Reviewed by Michael Catanzaro.
+
+        With MS bitfileds RegisterAtOffset becomes wider than ptrdiff_t because of
+        different alignment requirements, invoking static_assert. Instead of
+        muting assert for MinGW like it's done for MSVC, it's a better choice to
+        use more dense layout, as bitfields are not used in public APIs.
+
+        Also, suppress MinGW warnings from "#pragma warning" which it doesn't
+        understand.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2016-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Remove Battery Status API from the tree
+        https://bugs.webkit.org/show_bug.cgi?id=164213
+
+        Reviewed by Sam Weinig.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2016-11-02  Olivier Blin  <olivier.blin@softathome.com>
+
+        [GTK] Use libgcrypt instead of GnuTLS for CryptoDigest and SubtleCrypto HMAC implementation
+        https://bugs.webkit.org/show_bug.cgi?id=163125
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake: Updated to use libgcrypt files instead of gnutls.
+        At least version 1.6.0 is needed for the HMAC APIs.
+        libgcrypt is now needed unconditionally for CryptoDigest, used by CSP.
+
 2016-11-02  Romain Bellessort  <romain.bellessort@crf.canon.fr>
 
         [Readable Streams API] Enable creation of ReadableByteStreamController

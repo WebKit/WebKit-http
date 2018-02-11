@@ -1784,8 +1784,6 @@ void Element::removeShadowRoot()
 
     oldRoot->setHost(nullptr);
     oldRoot->setParentTreeScope(&document());
-
-    notifyChildNodeRemoved(*this, *oldRoot);
 }
 
 static bool canAttachAuthorShadowRoot(const Element& element)
@@ -3744,6 +3742,28 @@ ExceptionOr<void> Element::insertAdjacentText(const String& where, const String&
     if (result.hasException())
         return result.releaseException();
     return { };
+}
+
+Element* Element::findAnchorElementForLink(String& outAnchorName)
+{
+    if (!isLink())
+        return nullptr;
+
+    const AtomicString& href = attributeWithoutSynchronization(HTMLNames::hrefAttr);
+    if (href.isNull())
+        return nullptr;
+
+    Document& document = this->document();
+    URL url = document.completeURL(href);
+    if (!url.isValid())
+        return nullptr;
+
+    if (url.hasFragmentIdentifier() && equalIgnoringFragmentIdentifier(url, document.baseURL())) {
+        outAnchorName = url.fragmentIdentifier();
+        return document.findAnchor(outAnchorName);
+    }
+
+    return nullptr;
 }
 
 } // namespace WebCore

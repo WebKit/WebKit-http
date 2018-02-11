@@ -29,8 +29,59 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBKeyData.h"
+#include <runtime/ArrayBufferView.h>
+#include <runtime/JSArrayBuffer.h>
+#include <runtime/JSArrayBufferView.h>
+#include <runtime/JSCInlines.h>
 
 namespace WebCore {
+
+using IDBKeyVector = Vector<RefPtr<IDBKey>>;
+
+Ref<IDBKey> IDBKey::createBinary(const ThreadSafeDataBuffer& buffer)
+{
+    return adoptRef(*new IDBKey(buffer));
+}
+
+Ref<IDBKey> IDBKey::createBinary(JSC::JSArrayBuffer& arrayBuffer)
+{
+    auto* buffer = arrayBuffer.impl();
+    return adoptRef(*new IDBKey(ThreadSafeDataBuffer::copyData(buffer->data(), buffer->byteLength())));
+}
+
+Ref<IDBKey> IDBKey::createBinary(JSC::JSArrayBufferView& arrayBufferView)
+{
+    auto bufferView = arrayBufferView.possiblySharedImpl();
+    return adoptRef(*new IDBKey(ThreadSafeDataBuffer::copyData(bufferView->data(), bufferView->byteLength())));
+}
+
+IDBKey::IDBKey(KeyType type, double number)
+    : m_type(type)
+    , m_value(number)
+    , m_sizeEstimate(OverheadSize + sizeof(double))
+{
+}
+
+IDBKey::IDBKey(const String& value)
+    : m_type(KeyType::String)
+    , m_value(value)
+    , m_sizeEstimate(OverheadSize + value.length() * sizeof(UChar))
+{
+}
+
+IDBKey::IDBKey(const IDBKeyVector& keyArray, size_t arraySize)
+    : m_type(KeyType::Array)
+    , m_value(keyArray)
+    , m_sizeEstimate(OverheadSize + arraySize)
+{
+}
+
+IDBKey::IDBKey(const ThreadSafeDataBuffer& buffer)
+    : m_type(KeyType::Binary)
+    , m_value(buffer)
+    , m_sizeEstimate(OverheadSize + buffer.size())
+{
+}
 
 IDBKey::~IDBKey()
 {
@@ -42,7 +93,7 @@ bool IDBKey::isValid() const
         return false;
 
     if (m_type == KeyType::Array) {
-        for (auto& key : m_array) {
+        for (auto& key : WTF::get<IDBKeyVector>(m_value)) {
             if (!key->isValid())
                 return false;
         }
@@ -57,21 +108,29 @@ int IDBKey::compare(const IDBKey& other) const
         return m_type > other.m_type ? -1 : 1;
 
     switch (m_type) {
-    case KeyType::Array:
-        for (size_t i = 0; i < m_array.size() && i < other.m_array.size(); ++i) {
-            if (int result = m_array[i]->compare(*other.m_array[i]))
+    case KeyType::Array: {
+        auto& array = WTF::get<IDBKeyVector>(m_value);
+        auto& otherArray = WTF::get<IDBKeyVector>(other.m_value);
+        for (size_t i = 0; i < array.size() && i < otherArray.size(); ++i) {
+            if (int result = array[i]->compare(*otherArray[i]))
                 return result;
         }
-        if (m_array.size() < other.m_array.size())
+        if (array.size() < otherArray.size())
             return -1;
-        if (m_array.size() > other.m_array.size())
+        if (array.size() > otherArray.size())
             return 1;
         return 0;
+    }
+    case KeyType::Binary:
+        return compareBinaryKeyData(WTF::get<ThreadSafeDataBuffer>(m_value), WTF::get<ThreadSafeDataBuffer>(other.m_value));
     case KeyType::String:
-        return -codePointCompare(other.m_string, m_string);
+        return -codePointCompare(WTF::get<String>(other.m_value), WTF::get<String>(m_value));
     case KeyType::Date:
-    case KeyType::Number:
-        return (m_number < other.m_number) ? -1 : ((m_number > other. m_number) ? 1 : 0);
+    case KeyType::Number: {
+        auto number = WTF::get<double>(m_value);
+        auto otherNumber = WTF::get<double>(other.m_value);
+        return (number < otherNumber) ? -1 : ((number > otherNumber) ? 1 : 0);
+    }
     case KeyType::Invalid:
     case KeyType::Min:
     case KeyType::Max:

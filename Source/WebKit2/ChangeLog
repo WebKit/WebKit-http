@@ -1,3 +1,823 @@
+2016-11-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        URTBF after r208361.
+
+        * PlatformMac.cmake:
+
+2016-11-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed typo fix after r160616 to fix the build on case sensitive file systems.
+
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+
+2016-11-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Layout test http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=139358
+
+        Reviewed by Michael Catanzaro.
+
+        Stop putting the credentials in the URL unconditionally and ensure we only do that when provided by the URL
+        itself. Libsoup has its own cache of SoupAuth, so we don't need to pass user/pass in the URL for every single
+        request, libsoup will authenticate those automatically.
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::applyAuthenticationToRequest):
+
+2016-11-04  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::ParkingLot should stop using std::chrono because std::chrono::duration casts are prone to overflows
+        https://bugs.webkit.org/show_bug.cgi?id=152045
+
+        Reviewed by Andy Estes.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::SyncMessageState::wait):
+        (IPC::Connection::sendMessage):
+        (IPC::Connection::timeoutRespectingIgnoreTimeoutsForTesting):
+        (IPC::Connection::waitForMessage):
+        (IPC::Connection::sendSyncMessage):
+        (IPC::Connection::waitForSyncReply):
+        * Platform/IPC/Connection.h:
+        (IPC::Connection::sendSync):
+        (IPC::Connection::waitForAndDispatchImmediately):
+        * Platform/IPC/MessageSender.h:
+        (IPC::MessageSender::sendSync):
+        * UIProcess/ChildProcessProxy.h:
+        (WebKit::ChildProcessProxy::sendSync):
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::sendProcessWillSuspendImminently):
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::applicationWillTerminate):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::sendProcessWillSuspendImminently):
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::applicationWillTerminate):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (-[WKOneShotDisplayLinkHandler displayLinkFired:]):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::didRefreshDisplay):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::waitForDidUpdateActivityState):
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm:
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::waitForDidUpdateActivityState):
+        * UIProcess/mac/WKImmediateActionController.mm:
+        (-[WKImmediateActionController immediateActionRecognizerWillBeginAnimation:]):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::stringSelectionForPasteboard):
+        (WebKit::WebPageProxy::dataSelectionForPasteboard):
+        (WebKit::WebPageProxy::readSelectionFromPasteboard):
+        (WebKit::WebPageProxy::shouldDelayWindowOrderingForEvent):
+        (WebKit::WebPageProxy::acceptsFirstMouse):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::runBeforeUnloadConfirmPanel):
+        (WebKit::WebChromeClient::runJavaScriptAlert):
+        (WebKit::WebChromeClient::runJavaScriptConfirm):
+        (WebKit::WebChromeClient::runJavaScriptPrompt):
+        (WebKit::WebChromeClient::print):
+        (WebKit::WebChromeClient::exceededDatabaseQuota):
+        (WebKit::WebChromeClient::reachedApplicationCacheOriginQuota):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::postSynchronousMessageForTesting):
+
+2016-11-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Safari does not emit composition end if blurred for dead key / Japanese IME
+        https://bugs.webkit.org/show_bug.cgi?id=164369
+        <rdar://problem/29050439>
+
+        Reviewed by Ryosuke Niwa.
+
+        Split WebPage::discardedComposition into two steps, where we first discard marked text and then update the
+        editor state. This allows the codepath where we cancel the composition early (before setting the selection) to
+        discard marked text without also forcing an editor state update at the same time. The editor state is later
+        updated in WebPage::didChangeSelection.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::compositionWasCanceled):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::canceledComposition):
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didChangeSelection):
+        (WebKit::WebPage::discardedComposition):
+        (WebKit::WebPage::canceledComposition):
+        * WebProcess/WebPage/WebPage.h:
+
+2016-11-04  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r208293.
+
+        asserts in API tests.
+
+        Reverted changeset:
+
+        "NetworkSession: Network process crash when converting main
+        resource to download"
+        https://bugs.webkit.org/show_bug.cgi?id=164220
+        http://trac.webkit.org/changeset/208293
+
+2016-11-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Add a setting and preferences to enable/disable async image decoding
+        https://bugs.webkit.org/show_bug.cgi?id=164417
+
+        Reviewed by Simon Fraser.
+
+        Hook up the asyncImageDecodingEnabled setting for WebKit2.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _asyncImageDecodingEnabled]):
+        (-[WKPreferences _setAsyncImageDecodingEnabled:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-11-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename some ScrollingTree/Node-related functions to reduce the number of uses of "update"
+        https://bugs.webkit.org/show_bug.cgi?id=164420
+
+        Reviewed by Tim Horton.
+
+        Rename:
+            commitNewTreeState -> commitTreeState ("new" was redundant)
+            updateBeforeChildren -> commitStateBeforeChildren
+            updateAfterChildren -> commitStateAfterChildren
+
+
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::commitScrollingTreeState):
+        (WebKit::RemoteScrollingCoordinatorProxy::updateScrollingTree): Deleted.
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::commitStateBeforeChildren):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::commitStateAfterChildren):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::updateBeforeChildren): Deleted.
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::updateAfterChildren): Deleted.
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+
+2016-11-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        NetworkSession: Add NetworkDataTask implementation for blobs
+        https://bugs.webkit.org/show_bug.cgi?id=163939
+
+        Reviewed by Alex Christensen.
+
+        Add NetworkDataTaskBlob to handle blobs when using NetworkSession instead of using ResourceHandle. This patch
+        adds more USE(NETWORK_SESSION) ifdefs to not use ResourceHandle in Downloads and NetworkLoad when NetworkSession
+        is enabled.
+
+        * CMakeLists.txt: Add new files to compilation.
+        * NetworkProcess/Downloads/BlobDownloadClient.cpp:
+        * NetworkProcess/Downloads/BlobDownloadClient.h:
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::Download): Split the constructor again and remove the PlatformDownloadTaskRef
+        definitions. Now Cocoa specific constructor receives a NSURLSessionDownloadTask and the general constructor
+        reveices a NetworkDataTask and is used by Soup backend and blobs.
+        (WebKit::Download::~Download):
+        (WebKit::Download::start):
+        (WebKit::Download::startWithHandle):
+        (WebKit::Download::cancel):
+        (WebKit::Download::didReceiveAuthenticationChallenge):
+        (WebKit::Download::didReceiveData):
+        (WebKit::Download::didFinish):
+        (WebKit::Download::platformCancelNetworkLoad): Rename cancelNetworkLoad() as platformCancelNetworkLoad() since
+        this is now used only by Cocoa platform to cancel the NSURLSessionDownloadTask.
+        * NetworkProcess/Downloads/Download.h:
+        (WebKit::Download::Download):
+        (WebKit::Download::suggestedName):
+        (WebKit::Download::request):
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload): Remove blobs specific code when using NetworkSession.
+        (WebKit::DownloadManager::continueDecidePendingDownloadDestination):
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/Downloads/cocoa/DownloadCocoa.mm:
+        (WebKit::Download::platformCancelNetworkLoad):
+        * NetworkProcess/Downloads/soup/DownloadSoup.cpp: Removed.
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::convertMainResourceLoadToDownload): Remove blobs specific code when
+        using NetworkSession.
+        * NetworkProcess/NetworkDataTask.cpp:
+        (WebKit::NetworkDataTask::create): If request is a blob, create a NetworkDataTaskBlob.
+        * NetworkProcess/NetworkDataTask.h: Add invalidateAndCancel pure virtual method.
+        * NetworkProcess/NetworkDataTaskBlob.cpp: Added.
+        (WebKit::NetworkDataTaskBlob::NetworkDataTaskBlob):
+        (WebKit::NetworkDataTaskBlob::~NetworkDataTaskBlob):
+        (WebKit::NetworkDataTaskBlob::clearStream):
+        (WebKit::NetworkDataTaskBlob::resume):
+        (WebKit::NetworkDataTaskBlob::suspend):
+        (WebKit::NetworkDataTaskBlob::cancel):
+        (WebKit::NetworkDataTaskBlob::invalidateAndCancel):
+        (WebKit::NetworkDataTaskBlob::getSizeForNext):
+        (WebKit::NetworkDataTaskBlob::didGetSize):
+        (WebKit::NetworkDataTaskBlob::seek):
+        (WebKit::NetworkDataTaskBlob::didReceiveResponse):
+        (WebKit::NetworkDataTaskBlob::read):
+        (WebKit::NetworkDataTaskBlob::readData):
+        (WebKit::NetworkDataTaskBlob::readFile):
+        (WebKit::NetworkDataTaskBlob::didOpen):
+        (WebKit::NetworkDataTaskBlob::didRead):
+        (WebKit::NetworkDataTaskBlob::consumeData):
+        (WebKit::NetworkDataTaskBlob::setPendingDownloadLocation):
+        (WebKit::NetworkDataTaskBlob::suggestedFilename):
+        (WebKit::NetworkDataTaskBlob::download):
+        (WebKit::NetworkDataTaskBlob::writeDownload):
+        (WebKit::NetworkDataTaskBlob::cleanDownloadFiles):
+        (WebKit::NetworkDataTaskBlob::didFailDownload):
+        (WebKit::NetworkDataTaskBlob::didFinishDownload):
+        (WebKit::NetworkDataTaskBlob::didFail):
+        (WebKit::NetworkDataTaskBlob::didFinish):
+        * NetworkProcess/NetworkDataTaskBlob.h: Added.
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::NetworkLoad): Remove blobs specific code when using NetworkSession.
+        (WebKit::NetworkLoad::~NetworkLoad):
+        (WebKit::NetworkLoad::setDefersLoading):
+        (WebKit::NetworkLoad::cancel):
+        (WebKit::NetworkLoad::continueWillSendRequest):
+        (WebKit::NetworkLoad::continueDidReceiveResponse):
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::NetworkLoad::canAuthenticateAgainstProtectionSpaceAsync):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkSession.cpp:
+        (WebKit::NetworkSession::invalidateAndCancel): Moved from NetworkSessionSoup, since this is now used also by blobs.
+        * NetworkProcess/NetworkSession.h:
+        (WebKit::NetworkSession::registerNetworkDataTask): Ditto.
+        (WebKit::NetworkSession::unregisterNetworkDataTask): Ditto.
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.h: Add invalidateAndCancel() implementation that does nothing
+        because in Cocoa all tasks are invalidated and canceled by the network session.
+        * NetworkProcess/mac/NetworkLoadMac.mm:
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::NetworkDataTaskSoup):
+        (WebKit::NetworkDataTaskSoup::~NetworkDataTaskSoup):
+        (WebKit::NetworkDataTaskSoup::download):
+        * NetworkProcess/soup/NetworkDataTaskSoup.h:
+        * NetworkProcess/soup/NetworkSessionSoup.cpp:
+        * NetworkProcess/soup/NetworkSessionSoup.h:
+        * PlatformEfl.cmake: Remove DownloadSoup.cpp from compilation.
+        * PlatformGTK.cmake: Ditto.
+        * WebKit2.xcodeproj/project.pbxproj: Add new files to compilation.
+
+2016-11-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Give all the geometry classes a single-argument scale() function for consistency
+        https://bugs.webkit.org/show_bug.cgi?id=164400
+
+        Reviewed by Zalan Bujtas.
+        
+        Use single-argument scale() functions.
+
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::paint):
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::drawInContext):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _takeViewSnapshot]):
+        (-[WKWebView _scrollToContentScrollPosition:scrollOrigin:]):
+        (-[WKWebView _scrollByContentOffset:]):
+        (-[WKWebView _zoomToFocusRect:selectionRect:fontSize:minimumScale:maximumScale:allowScaling:forceScroll:]):
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _didCommitLayerTree:]):
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _updateTapHighlight]):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::indicatorLocation):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::updateDebugIndicator):
+        * UIProcess/mac/ViewGestureControllerMac.mm:
+        (WebKit::ViewGestureController::scaledMagnificationOrigin):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::renderedImage):
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        (WebKit::NetscapePlugin::snapshot):
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::scrollToPoint):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::createSelectionSnapshot):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::scalePageInViewCoordinates):
+        (WebKit::WebPage::scaleView):
+        (WebKit::WebPage::snapshotAtSize):
+        (WebKit::WebPage::snapshotNode):
+        (WebKit::WebPage::drawRectToImage):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::restorePageState):
+
+2016-11-03  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][Cocoa] Implement user interface for HTML form validation
+        https://bugs.webkit.org/show_bug.cgi?id=164143
+        <rdar://problem/28944652>
+
+        Reviewed by Simon Fraser.
+
+        Implement the ValidationMessageClient in WebKit2 and have it display
+        a ValidationBubble on Cocoa. ValidationBubble is implemented using
+        native popovers on both Mac and iOS. As a result, Mac and iOS WK2
+        now use native popover for HTML form validation instead of the old
+        Shadow DOM based UI in WebCore.
+
+        The native popover shows at the bottom (or top) of the input and it
+        disapears as soon as the user starts typing or interacts with the
+        view (e.g. tap / scroll / zoom).
+
+        The feature is still disabled at runtime.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        (-[WKWebView _keyboardWillShow:]):
+        (-[WKWebView _keyboardDidShow:]):
+        (-[WKWebView _contentsOfUserInterfaceItem:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleWheelEvent):
+        (WebKit::WebPageProxy::setPageZoomFactor):
+        (WebKit::WebPageProxy::setPageAndTextZoomFactors):
+        (WebKit::WebPageProxy::pageDidScroll):
+        (WebKit::WebPageProxy::resetState):
+        (WebKit::WebPageProxy::hideValidationMessage):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::validationBubble):
+        (WebKit::WebPageProxy::setIsKeyboardAnimatingIn):
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::createValidationBubble):
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _willStartScrollingOrZooming]):
+        (-[WKContentView scrollViewWillStartPanOrPinchGesture]):
+        (-[WKContentView _didEndScrollingOrZooming]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::dynamicViewportSizeUpdate):
+        (WebKit::WebPageProxy::potentialTapAtPosition):
+        (WebKit::WebPageProxy::showValidationMessage):
+        (WebKit::WebPageProxy::setIsScrollingOrZooming):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::createValidationBubble):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::showValidationMessage):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebValidationMessageClient.cpp: Copied from Tools/DumpRenderTree/mac/UIScriptControllerMac.mm.
+        (WebKit::WebValidationMessageClient::WebValidationMessageClient):
+        (WebKit::WebValidationMessageClient::~WebValidationMessageClient):
+        (WebKit::WebValidationMessageClient::showValidationMessage):
+        (WebKit::WebValidationMessageClient::hideValidationMessage):
+        (WebKit::WebValidationMessageClient::isValidationMessageVisible):
+        * WebProcess/WebCoreSupport/WebValidationMessageClient.h: Copied from Tools/DumpRenderTree/mac/UIScriptControllerMac.mm.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_userInterfaceLayoutDirection):
+
+2016-11-03  Tim Horton  <timothy_horton@apple.com>
+
+        Printing to PDF should produce internal links when HTML has internal links
+        https://bugs.webkit.org/show_bug.cgi?id=112081
+        <rdar://problem/5955705>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/mac/WKPrintingView.h:
+        * UIProcess/mac/WKPrintingView.mm:
+        (linkDestinationName):
+        (-[WKPrintingView _drawPDFDocument:page:atPoint:]):
+        Propagate link-to-destination annotations (and each page's destinations)
+        into the printed PDF.
+        Generate a unique destination name based on the page and position, because
+        we have lost the fragment name information.
+
+        (-[WKPrintingView drawRect:]):
+        Compute all of the destinations for every page, so that we can add them
+        to the context as we paint the pages (we need the page CTM in order to add them).
+
+2016-11-03  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r208298.
+        https://bugs.webkit.org/show_bug.cgi?id=163939
+
+        caused asan crashes
+
+        Reverted changeset:
+
+        "NetworkSession: Add NetworkDataTask implementation for blobs"
+        https://bugs.webkit.org/show_bug.cgi?id=163939
+        http://trac.webkit.org/changeset/208298
+
+2016-11-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r208330.
+
+        This change appears to have caused two editing tests to fail
+        on macOS.
+
+        Reverted changeset:
+
+        "Reduce PassRefPtr use in WebKit2"
+        https://bugs.webkit.org/show_bug.cgi?id=164360
+        http://trac.webkit.org/changeset/208330
+
+2016-11-03  Dan Bernstein  <mitz@apple.com>
+
+        WKWebView’s _observedRenderingProgressEvents not restored after web process crash
+        https://bugs.webkit.org/show_bug.cgi?id=164368
+        <rdar://problem/29091954>
+
+        Reviewed by Anders Carlsson.
+
+        Test: TestWebKitAPI/Tests/WebKit2Cocoa/ObservedRenderingProgressEventsAfterCrash.mm.
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode): Encode new observedLayoutMilestones member.
+        (WebKit::WebPageCreationParameters::decode): Decode it.
+        * Shared/WebPageCreationParameters.h: Declared new observedLayoutMilestones member variable.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy): Removed initializer for
+          m_wantsSessionRestorationRenderTreeSizeThresholdEvent.
+        (WebKit::WebPageProxy::listenForLayoutMilestones): Update new m_observedLayoutMilestones
+          member variable. Don’t update m_wantsSessionRestorationRenderTreeSizeThresholdEvent.
+        (WebKit::WebPageProxy::creationParameters): Set the observedLayoutMilestones member in the
+          creation parameters.
+
+        * UIProcess/WebPageProxy.h: Declared new member variable, deleted
+          m_wantsSessionRestorationRenderTreeSizeThresholdEvent declaration.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didCommitLayerTree): Rather than using
+          m_wantsSessionRestorationRenderTreeSizeThresholdEvent, use m_observedLayoutMilestones.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage): Add the observed layout milestones from the creation parameters.
+
+2016-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Reduce PassRefPtr use in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=164360
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/APISecurityOrigin.h:
+        (API::SecurityOrigin::SecurityOrigin):
+        * Shared/API/APISerializedScriptValue.h:
+        (API::SerializedScriptValue::create):
+        (API::SerializedScriptValue::SerializedScriptValue):
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::ProxyingRefPtr::ProxyingRefPtr):
+        (WebKit::toAPI):
+        * Shared/APIWebArchive.h:
+        * Shared/APIWebArchive.mm:
+        (API::WebArchive::create):
+        (API::WebArchive::WebArchive):
+        * UIProcess/API/APIHitTestResult.cpp:
+        (API::HitTestResult::create):
+        * UIProcess/API/APIHitTestResult.h:
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::createNewPage):
+        * UIProcess/API/C/WKPage.cpp:
+        (WebKit::RunBeforeUnloadConfirmPanelResultListener::create):
+        (WebKit::RunBeforeUnloadConfirmPanelResultListener::RunBeforeUnloadConfirmPanelResultListener):
+        (WebKit::RunJavaScriptAlertResultListener::create):
+        (WebKit::RunJavaScriptAlertResultListener::RunJavaScriptAlertResultListener):
+        (WebKit::RunJavaScriptConfirmResultListener::create):
+        (WebKit::RunJavaScriptConfirmResultListener::RunJavaScriptConfirmResultListener):
+        (WebKit::RunJavaScriptPromptResultListener::create):
+        (WebKit::RunJavaScriptPromptResultListener::RunJavaScriptPromptResultListener):
+        (WKPageSetPageUIClient):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _takeViewSnapshot]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::UIClient::createNewPage):
+        * UIProcess/ios/WKGeolocationProviderIOS.mm:
+        (-[WKWebAllowDenyPolicyListener initWithPermissionRequestProxy:]):
+        * UIProcess/mac/WKImmediateActionController.mm:
+        (-[WKImmediateActionController _webHitTestResult]):
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (contextMenuItems):
+        (WKBundlePageCopyContextMenuItems):
+        (WKBundlePageCopyContextMenuAtPointInWindow):
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        (WebKit::WebUserMessageHandlerDescriptorProxy::create):
+        * WebProcess/WebPage/WebUndoStep.cpp:
+        (WebKit::WebUndoStep::create):
+        * WebProcess/WebPage/WebUndoStep.h:
+        (WebKit::WebUndoStep::WebUndoStep):
+
+2016-11-01  Gavin Barraclough  <barraclough@apple.com>
+
+        Remove PageThrottler & all related code
+        https://bugs.webkit.org/show_bug.cgi?id=164302
+
+        Reviewed by Ryosuke Niwa.
+
+        All relevant information now available from the ActivityState.
+
+        * PluginProcess/PluginProcess.cpp:
+        (WebKit::PluginProcess::PluginProcess):
+        (WebKit::PluginProcess::createWebProcessConnection):
+        (WebKit::PluginProcess::audioHardwareDidBecomeActive): Deleted.
+        (WebKit::PluginProcess::audioHardwareDidBecomeInactive): Deleted.
+        * PluginProcess/PluginProcess.h:
+        (): Deleted.
+        * PluginProcess/WebProcessConnection.cpp:
+        (WebKit::WebProcessConnection::audioHardwareDidBecomeActive): Deleted.
+        (WebKit::WebProcessConnection::audioHardwareDidBecomeInactive): Deleted.
+        * PluginProcess/WebProcessConnection.h:
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        (WebKit::NPRuntimeObjectMap::evaluate):
+        * WebProcess/Plugins/Plugin.h:
+        (WebKit::Plugin::audioHardwareActivity): Deleted.
+        * WebProcess/Plugins/PluginProcessConnection.cpp:
+        (WebKit::PluginProcessConnection::PluginProcessConnection):
+        (WebKit::PluginProcessConnection::didReceiveMessage):
+        (WebKit::PluginProcessConnection::audioHardwareDidBecomeActive): Deleted.
+        (WebKit::PluginProcessConnection::audioHardwareDidBecomeInactive): Deleted.
+        * WebProcess/Plugins/PluginProcessConnection.h:
+        (WebKit::PluginProcessConnection::supportsAsynchronousPluginInitialization):
+        (WebKit::PluginProcessConnection::audioHardwareActivity): Deleted.
+        * WebProcess/Plugins/PluginProcessConnection.messages.in:
+        * WebProcess/Plugins/PluginProxy.cpp:
+        (WebKit::PluginProxy::audioHardwareActivity): Deleted.
+        * WebProcess/Plugins/PluginProxy.h:
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::audioHardwareActivity): Deleted.
+        * WebProcess/Plugins/PluginView.h:
+        * WebProcess/WebPage/WebPage.cpp:
+
+2016-11-03  Dan Bernstein  <mitz@apple.com>
+
+        REGRESSION (r206247): Painting milestones can be delayed until the next layer flush
+        https://bugs.webkit.org/show_bug.cgi?id=164340
+        <rdar://problem/29074344>
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h: Declared new helper function.
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::sendPendingNewlyReachedLayoutMilestones): Helper
+          function that sends the message to the UI process and resets
+          m_pendingNewlyReachedLayoutMilestones.
+        (WebKit::TiledCoreAnimationDrawingArea::flushLayers): Wait until after the commit to get the
+          pending milestones and send them to the UI process. This way we don’t miss milestones that
+          fire during the commit.
+
+2016-11-02  David Kilzer  <ddkilzer@apple.com>
+
+        Bug 164333: Add logging for "WebKit encountered an internal error" messages due to Network process crashes
+        <https://webkit.org/b/164333>
+        <rdar://problem/29072727>
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::logDiagnosticMessageForNetworkProcessCrash):
+        Add private method to log diagnostic message.
+        (WebKit::WebProcess::networkProcessConnectionClosed):
+        Call logDiagnosticMessageForNetworkProcessCrash().
+        * WebProcess/WebProcess.h:
+        (WebKit::WebProcess::logDiagnosticMessageForNetworkProcessCrash):
+        Declare new method.
+
+2016-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Remove Battery Status API from the tree
+        https://bugs.webkit.org/show_bug.cgi?id=164213
+
+        Reviewed by Sam Weinig.
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+        * Shared/API/APIObject.h:
+        * Shared/API/c/WKBase.h:
+        * Shared/WebBatteryStatus.cpp: Removed.
+        * Shared/WebBatteryStatus.h: Removed.
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/API/C/WKBatteryManager.cpp: Removed.
+        * UIProcess/API/C/WKBatteryManager.h: Removed.
+        * UIProcess/API/C/WKBatteryStatus.cpp: Removed.
+        * UIProcess/API/C/WKBatteryStatus.h: Removed.
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextGetBatteryManager): Deleted.
+        * UIProcess/API/C/WKContext.h:
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        * UIProcess/API/efl/ewk_context_private.h:
+        * UIProcess/API/efl/ewk_main.cpp:
+        (WebKit::EwkMain::initialize):
+        (WebKit::EwkMain::finalize):
+        (WebKit::EwkMain::shutdownInitializedEFLModules):
+        * UIProcess/API/gtk/WebKitBatteryProvider.cpp: Removed.
+        * UIProcess/API/gtk/WebKitBatteryProvider.h: Removed.
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextConstructed):
+        * UIProcess/WebBatteryManagerProxy.cpp: Removed.
+        * UIProcess/WebBatteryManagerProxy.h: Removed.
+        * UIProcess/WebBatteryManagerProxy.messages.in: Removed.
+        * UIProcess/WebBatteryProvider.cpp: Removed.
+        * UIProcess/WebBatteryProvider.h: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::m_hiddenPageThrottlingTimer):
+        * UIProcess/efl/BatteryProvider.cpp: Removed.
+        * UIProcess/efl/BatteryProvider.h: Removed.
+        * WebProcess/Battery: Removed.
+        * WebProcess/Battery/WebBatteryManager.cpp: Removed.
+        * WebProcess/Battery/WebBatteryManager.h: Removed.
+        * WebProcess/Battery/WebBatteryManager.messages.in: Removed.
+        * WebProcess/WebCoreSupport/WebBatteryClient.cpp: Removed.
+        * WebProcess/WebCoreSupport/WebBatteryClient.h: Removed.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_userInterfaceLayoutDirection):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_resourceLoadStatisticsStorage):
+
+2016-11-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        NetworkSession: Add NetworkDataTask implementation for blobs
+        https://bugs.webkit.org/show_bug.cgi?id=163939
+
+        Reviewed by Alex Christensen.
+
+        Add NetworkDataTaskBlob to handle blobs when using NetworkSession instead of using ResourceHandle. This patch
+        adds more USE(NETWORK_SESSION) ifdefs to not use ResourceHandle in Downloads and NetworkLoad when NetworkSession
+        is enabled.
+
+        * CMakeLists.txt: Add new files to compilation.
+        * NetworkProcess/Downloads/BlobDownloadClient.cpp:
+        * NetworkProcess/Downloads/BlobDownloadClient.h:
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::Download): Split the constructor again and remove the PlatformDownloadTaskRef
+        definitions. Now Cocoa specific constructor receives a NSURLSessionDownloadTask and the general constructor
+        reveices a NetworkDataTask and is used by Soup backend and blobs.
+        (WebKit::Download::~Download):
+        (WebKit::Download::start):
+        (WebKit::Download::startWithHandle):
+        (WebKit::Download::cancel):
+        (WebKit::Download::didReceiveAuthenticationChallenge):
+        (WebKit::Download::didReceiveData):
+        (WebKit::Download::didFinish):
+        (WebKit::Download::platformCancelNetworkLoad): Rename cancelNetworkLoad() as platformCancelNetworkLoad() since
+        this is now used only by Cocoa platform to cancel the NSURLSessionDownloadTask.
+        * NetworkProcess/Downloads/Download.h:
+        (WebKit::Download::Download):
+        (WebKit::Download::suggestedName):
+        (WebKit::Download::request):
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload): Remove blobs specific code when using NetworkSession.
+        (WebKit::DownloadManager::continueDecidePendingDownloadDestination):
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/Downloads/cocoa/DownloadCocoa.mm:
+        (WebKit::Download::platformCancelNetworkLoad):
+        * NetworkProcess/Downloads/soup/DownloadSoup.cpp: Removed.
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::convertMainResourceLoadToDownload): Remove blobs specific code when
+        using NetworkSession.
+        * NetworkProcess/NetworkDataTask.cpp:
+        (WebKit::NetworkDataTask::create): If request is a blob, create a NetworkDataTaskBlob.
+        * NetworkProcess/NetworkDataTask.h: Add invalidateAndCancel pure virtual method.
+        * NetworkProcess/NetworkDataTaskBlob.cpp: Added.
+        (WebKit::NetworkDataTaskBlob::NetworkDataTaskBlob):
+        (WebKit::NetworkDataTaskBlob::~NetworkDataTaskBlob):
+        (WebKit::NetworkDataTaskBlob::clearStream):
+        (WebKit::NetworkDataTaskBlob::resume):
+        (WebKit::NetworkDataTaskBlob::suspend):
+        (WebKit::NetworkDataTaskBlob::cancel):
+        (WebKit::NetworkDataTaskBlob::invalidateAndCancel):
+        (WebKit::NetworkDataTaskBlob::getSizeForNext):
+        (WebKit::NetworkDataTaskBlob::didGetSize):
+        (WebKit::NetworkDataTaskBlob::seek):
+        (WebKit::NetworkDataTaskBlob::didReceiveResponse):
+        (WebKit::NetworkDataTaskBlob::read):
+        (WebKit::NetworkDataTaskBlob::readData):
+        (WebKit::NetworkDataTaskBlob::readFile):
+        (WebKit::NetworkDataTaskBlob::didOpen):
+        (WebKit::NetworkDataTaskBlob::didRead):
+        (WebKit::NetworkDataTaskBlob::consumeData):
+        (WebKit::NetworkDataTaskBlob::setPendingDownloadLocation):
+        (WebKit::NetworkDataTaskBlob::suggestedFilename):
+        (WebKit::NetworkDataTaskBlob::download):
+        (WebKit::NetworkDataTaskBlob::writeDownload):
+        (WebKit::NetworkDataTaskBlob::cleanDownloadFiles):
+        (WebKit::NetworkDataTaskBlob::didFailDownload):
+        (WebKit::NetworkDataTaskBlob::didFinishDownload):
+        (WebKit::NetworkDataTaskBlob::didFail):
+        (WebKit::NetworkDataTaskBlob::didFinish):
+        * NetworkProcess/NetworkDataTaskBlob.h: Added.
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::NetworkLoad): Remove blobs specific code when using NetworkSession.
+        (WebKit::NetworkLoad::~NetworkLoad):
+        (WebKit::NetworkLoad::setDefersLoading):
+        (WebKit::NetworkLoad::cancel):
+        (WebKit::NetworkLoad::continueWillSendRequest):
+        (WebKit::NetworkLoad::continueDidReceiveResponse):
+        (WebKit::NetworkLoad::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::NetworkLoad::canAuthenticateAgainstProtectionSpaceAsync):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkSession.cpp:
+        (WebKit::NetworkSession::invalidateAndCancel): Moved from NetworkSessionSoup, since this is now used also by blobs.
+        * NetworkProcess/NetworkSession.h:
+        (WebKit::NetworkSession::registerNetworkDataTask): Ditto.
+        (WebKit::NetworkSession::unregisterNetworkDataTask): Ditto.
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.h: Add invalidateAndCancel() implementation that does nothing
+        because in Cocoa all tasks are invalidated and canceled by the network session.
+        * NetworkProcess/mac/NetworkLoadMac.mm:
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::NetworkDataTaskSoup):
+        (WebKit::NetworkDataTaskSoup::~NetworkDataTaskSoup):
+        (WebKit::NetworkDataTaskSoup::download):
+        * NetworkProcess/soup/NetworkDataTaskSoup.h:
+        * NetworkProcess/soup/NetworkSessionSoup.cpp:
+        * NetworkProcess/soup/NetworkSessionSoup.h:
+        * PlatformEfl.cmake: Remove DownloadSoup.cpp from compilation.
+        * PlatformGTK.cmake: Ditto.
+        * WebKit2.xcodeproj/project.pbxproj: Add new files to compilation.
+
+2016-11-02  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r199558): File paths selected for upload are stored using the wrong string encoding
+        https://bugs.webkit.org/show_bug.cgi?id=164311
+        <rdar://problem/26995374>
+
+        Reviewed by Tim Horton.
+
+        -[NSURL fileSystemRepresentation] returns a char* in file system representation, which on
+        iOS is UTF-8, but we were implicitly converting it to a String, which assumes a char* is
+        Latin-1 encoded.
+
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        (-[WKFileUploadPanel _chooseFiles:displayString:iconImage:]): Changed to use fromUTF8() to
+        convert fileURL.fileSystemRepresentation to a String.
+
+2016-11-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        NetworkSession: Network process crash when converting main resource to download
+        https://bugs.webkit.org/show_bug.cgi?id=164220
+
+        Reviewed by Alex Christensen.
+
+        Right after the main resource load is converted to a download, the web process deletes the ResourceLoader which
+        sends the RemoveLoadIdentifier to the network process and the load is aborted. Sometimes it happens that
+        NetworkResourceLoader::abort() is called while the NetworkLoad is still deciding the destination of the
+        download. In such case, NetworkResourceLoader::didConvertToDownload() has already been called, but not
+        NetworkResourceLoader::didBecomeDownload(). In NetworkResourceLoader::abort() we already handle the case of
+        having a NetworkLoad after NetworkResourceLoader::didConvertToDownload() has been called, to avoid canceling the
+        load in such case, however cleanup() is always called unconditionally and the NetworkLoad is deleted before
+        NetworkResourceLoader::didBecomeDownload() is called. When the NetworkLoad is destroyed the NetworkDataTask
+        client becomes nullptr, leaving it in a state where both the client is nullptr and the download hasn't been
+        created yet. That's not expected to happen and when the response completion handler is called in the
+        NetworkDataTask it tries to use either the client or the download and it crashes.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::removeLoadIdentifier): Update ASSERT, because abort doesn't cleanup the
+        resource loader in case it's becoming a download.
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didBecomeDownload): Call cleanup() instead of just deleting the network load.
+        (WebKit::NetworkResourceLoader::isBecomingDownload): Helper method to check if the resource load was converted to a
+        download, but didBecomeDownload() hasn't been called yet.
+        (WebKit::NetworkResourceLoader::abort): If the resource load is becoming a download do not call cleanup()
+        because it will be called by didBecomeDownload() later.
+        * NetworkProcess/NetworkResourceLoader.h:
+
+2016-11-02  David Kilzer  <ddkilzer@apple.com>
+
+        Add logging for "WebKit encountered an internal error" messages
+        <https://webkit.org/b/164272>
+        <rdar://problem/28546064>
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::loadResourceSynchronously):
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResource):
+        - Add logging for various internalError() events.
+
+2016-11-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] BadDamage X Window System error in WebKit::AcceleratedBackingStoreX11::update when called from WebPageProxy::exitAcceleratedCompositingMode
+        https://bugs.webkit.org/show_bug.cgi?id=164303
+
+        Reviewed by Michael Catanzaro.
+
+        This can happen if the web process exits before the UI process has cleaned up the accelerated surface. Trap
+        BadDrawable and BadDamage X errors and ignore them, while still crashing for any other X error.
+
+        * UIProcess/gtk/AcceleratedBackingStoreX11.cpp:
+        (WebKit::AcceleratedBackingStoreX11::~AcceleratedBackingStoreX11):
+        (WebKit::AcceleratedBackingStoreX11::update):
+
 2016-11-02  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Remove FileSystem::filenameToString() and use FileSystem::stringFromFileSystemRepresentation() everywhere instead

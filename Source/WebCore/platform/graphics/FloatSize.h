@@ -87,7 +87,11 @@ public:
         m_height += height;
     }
 
-    void scale(float s) { scale(s, s); }
+    void scale(float s)
+    {
+        m_width *= s;
+        m_height *= s;
+    }
 
     void scale(float scaleX, float scaleY)
     {
@@ -108,6 +112,7 @@ public:
     }
 
     WEBCORE_EXPORT float diagonalLength() const;
+
     float diagonalLengthSquared() const
     {
         return m_width * m_width + m_height * m_height;

@@ -1,6 +1,17 @@
 {
     "specification": [
     {
+        "name": "Battery Status API",
+        "status": {
+        	"status": "Removed"
+        },
+        "url": "https://w3c.github.io/battery/",
+        "webkit-url": "https://webkit.org/b/62698",
+        "keywords": ["battery"],
+        "category": "webapps",
+        "description": "An API that provides information about the battery status of the hosting device."
+    },
+    {
         "name": "Beacon API",
         "status": {
             "status": "Under Consideration",
@@ -219,14 +230,29 @@
         "category": "html"
     },
     {
-        "name": "IndexedDB",
+        "name": "Indexed Database",
         "status": {
             "status": "Done"
         },
         "url": "http://www.w3.org/TR/IndexedDB/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=149117",
         "keywords": ["indexeddb", "index db", "indexed db", "indexed database", "idb"],
-        "description": "A standard interface to a browser database of records for simple values and objects. IndexedDB currently matches the W3C recommended spec (version 1). We are participating in development of version 2 of the spec and plan to implement new features as they stabilize.",
+        "description": "A standard interface to a database of records for simple values and objects. WebKit supports the full W3C recommended standard.",
+        "contact": {
+            "name": "Brady Eidson",
+            "twitter": "@bradeeoh",
+            "email": "beidson@webkit.org"
+        }
+    },
+    {
+        "name": "Indexed Database 2.0",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "http://w3c.github.io/IndexedDB/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=160306",
+        "keywords": ["indexeddb", "index db", "indexed db", "indexed database", "idb"],
+        "description": "Version 2.0 of the Indexed Database API. We are participating in development of the standard and are implementing new features as they stabilize.",
         "contact": {
             "name": "Brady Eidson",
             "twitter": "@bradeeoh",
@@ -569,10 +595,10 @@
     {
         "name": "Download Attribute",
         "status": {
-            "status": "In Development"
+            "status": "Done"
         },
         "url": "https://html.spec.whatwg.org/multipage/semantics.html#downloading-resources",
-        "webkit-url": "https://webkit.org/b/102914",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=156056",
         "specification": "HTML5",
         "description": "An attribute to an anchor or area element to indicate that a resource is intended to be downloaded for use later rather than immediately.",
         "contact": {
@@ -616,6 +642,23 @@
         },
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=142836",
         "description": "Provide the events necessary to handle force click events in the page, overriding the default behavior."
+    },
+    {
+        "name": "HTML Interactive Form Validation",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://html.spec.whatwg.org/#constraint-validation",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=164382",
+        "keywords": ["form validation", "bubble"],
+        "specification": "HTML5",
+        "description": "Interactive validation of constraints on HTML forms by displaying bubbles with a validation message next to incomplete / invalid form controls.",
+        "contact": {
+            "name": "Chris Dumez",
+            "email": "cdumez@apple.com",
+            "twitter": "@chris_dumez"
+        }
     },
     {
         "name": "HTML imports",

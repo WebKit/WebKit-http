@@ -133,6 +133,11 @@ String DiagnosticLoggingKeys::networkKey()
     return ASCIILiteral("network");
 }
 
+String DiagnosticLoggingKeys::networkProcessCrashedKey()
+{
+    return ASCIILiteral("networkProcessCrashed");
+}
+
 String DiagnosticLoggingKeys::neverSeenBeforeKey()
 {
     return ASCIILiteral("neverSeenBefore");
@@ -233,6 +238,16 @@ String DiagnosticLoggingKeys::inMemoryCacheKey()
     return ASCIILiteral("inMemoryCache");
 }
 
+String DiagnosticLoggingKeys::internalErrorKey()
+{
+    return ASCIILiteral("internalError");
+}
+
+String DiagnosticLoggingKeys::invalidSessionIDKey()
+{
+    return ASCIILiteral("invalidSessionID");
+}
+
 String DiagnosticLoggingKeys::isAttachmentKey()
 {
     return ASCIILiteral("isAttachment");
@@ -286,6 +301,11 @@ String DiagnosticLoggingKeys::documentLoaderStoppingKey()
 String DiagnosticLoggingKeys::cannotSuspendActiveDOMObjectsKey()
 {
     return ASCIILiteral("cannotSuspendActiveDOMObjects");
+}
+
+String DiagnosticLoggingKeys::createSharedBufferFailedKey()
+{
+    return ASCIILiteral("createSharedBufferFailed");
 }
 
 String DiagnosticLoggingKeys::deltaKey()
@@ -441,6 +461,11 @@ String DiagnosticLoggingKeys::successfulSpeculativeWarmupWithoutRevalidationKey(
 String DiagnosticLoggingKeys::svgDocumentKey()
 {
     return ASCIILiteral("svgDocument");
+}
+
+String DiagnosticLoggingKeys::synchronousMessageFailedKey()
+{
+    return ASCIILiteral("synchronousMessageFailed");
 }
 
 String DiagnosticLoggingKeys::uncacheableStatusCodeKey()

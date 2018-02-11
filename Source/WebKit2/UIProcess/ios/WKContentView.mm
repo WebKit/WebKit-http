@@ -531,7 +531,7 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     if (_interactionViewsContainerView) {
         FloatPoint scaledOrigin = layerTreeTransaction.scrollOrigin();
         float scale = [[_webView scrollView] zoomScale];
-        scaledOrigin.scale(scale, scale);
+        scaledOrigin.scale(scale);
         [_interactionViewsContainerView setFrame:CGRectMake(scaledOrigin.x(), scaledOrigin.y(), 0, 0)];
     }
     
@@ -678,7 +678,7 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
 - (CGPDFDocumentRef)_wk_printedDocument
 {
     if (_isPrintingToPDF) {
-        if (!_page->process().connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DrawToPDFCallback>(_page->pageID(), std::chrono::milliseconds::max())) {
+        if (!_page->process().connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DrawToPDFCallback>(_page->pageID(), Seconds::infinity())) {
             ASSERT_NOT_REACHED();
             return nullptr;
         }

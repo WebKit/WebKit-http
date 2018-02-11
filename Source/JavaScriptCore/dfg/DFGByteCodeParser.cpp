@@ -41,6 +41,7 @@
 #include "DFGClobbersExitState.h"
 #include "DFGGraph.h"
 #include "DFGJITCode.h"
+#include "FunctionCodeBlock.h"
 #include "GetByIdStatus.h"
 #include "Heap.h"
 #include "JSCInlines.h"
@@ -211,6 +212,8 @@ private:
     // Handle intrinsic functions. Return true if it succeeded, false if we need to plant a call.
     template<typename ChecksFunctor>
     bool handleIntrinsicCall(Node* callee, int resultOperand, Intrinsic, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks);
+    template<typename ChecksFunctor>
+    bool handleDOMJITCall(Node* callee, int resultOperand, const DOMJIT::Signature*, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks);
     template<typename ChecksFunctor>
     bool handleIntrinsicGetter(int resultOperand, const GetByIdVariant& intrinsicVariant, Node* thisNode, const ChecksFunctor& insertChecks);
     template<typename ChecksFunctor>
@@ -817,18 +820,18 @@ private:
     }
     
     Node* addCall(
-        int result, NodeType op, OpInfo opInfo, Node* callee, int argCount, int registerOffset,
+        int result, NodeType op, const DOMJIT::Signature* signature, Node* callee, int argCount, int registerOffset,
         SpeculatedType prediction)
     {
         if (op == TailCall) {
             if (allInlineFramesAreTailCalls())
-                return addCallWithoutSettingResult(op, OpInfo(), callee, argCount, registerOffset, OpInfo());
+                return addCallWithoutSettingResult(op, OpInfo(signature), callee, argCount, registerOffset, OpInfo());
             op = TailCallInlinedCaller;
         }
 
 
         Node* call = addCallWithoutSettingResult(
-            op, opInfo, callee, argCount, registerOffset, OpInfo(prediction));
+            op, OpInfo(signature), callee, argCount, registerOffset, OpInfo(prediction));
         VirtualRegister resultReg(result);
         if (resultReg.isValid())
             set(resultReg, call);
@@ -848,56 +851,56 @@ private:
     SpeculatedType getPredictionWithoutOSRExit(unsigned bytecodeIndex)
     {
         SpeculatedType prediction;
-        CodeBlock* profiledBlock = nullptr;
-
         {
             ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
             prediction = m_inlineStackTop->m_profiledBlock->valueProfilePredictionForBytecodeOffset(locker, bytecodeIndex);
-
-            if (prediction == SpecNone) {
-                // If we have no information about the values this
-                // node generates, we check if by any chance it is
-                // a tail call opcode. In that case, we walk up the
-                // inline frames to find a call higher in the call
-                // chain and use its prediction. If we only have
-                // inlined tail call frames, we use SpecFullTop
-                // to avoid a spurious OSR exit.
-                Instruction* instruction = m_inlineStackTop->m_profiledBlock->instructions().begin() + bytecodeIndex;
-                OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(instruction->u.opcode);
-
-                switch (opcodeID) {
-                case op_tail_call:
-                case op_tail_call_varargs:
-                case op_tail_call_forward_arguments: {
-                    if (!inlineCallFrame()) {
-                        prediction = SpecFullTop;
-                        break;
-                    }
-                    CodeOrigin* codeOrigin = inlineCallFrame()->getCallerSkippingTailCalls();
-                    if (!codeOrigin) {
-                        prediction = SpecFullTop;
-                        break;
-                    }
-                    InlineStackEntry* stack = m_inlineStackTop;
-                    while (stack->m_inlineCallFrame != codeOrigin->inlineCallFrame)
-                        stack = stack->m_caller;
-                    bytecodeIndex = codeOrigin->bytecodeIndex;
-                    profiledBlock = stack->m_profiledBlock;
-                    break;
-                }
-
-                default:
-                    break;
-                }
-            }
         }
 
-        if (profiledBlock) {
+        if (prediction != SpecNone)
+            return prediction;
+
+        // If we have no information about the values this
+        // node generates, we check if by any chance it is
+        // a tail call opcode. In that case, we walk up the
+        // inline frames to find a call higher in the call
+        // chain and use its prediction. If we only have
+        // inlined tail call frames, we use SpecFullTop
+        // to avoid a spurious OSR exit.
+        Instruction* instruction = m_inlineStackTop->m_profiledBlock->instructions().begin() + bytecodeIndex;
+        OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(instruction->u.opcode);
+
+        switch (opcodeID) {
+        case op_tail_call:
+        case op_tail_call_varargs:
+        case op_tail_call_forward_arguments: {
+            // Things should be more permissive to us returning BOTTOM instead of TOP here.
+            // Currently, this will cause us to Force OSR exit. This is bad because returning
+            // TOP will cause anything that transitively touches this speculated type to
+            // also become TOP during prediction propagation.
+            // https://bugs.webkit.org/show_bug.cgi?id=164337
+            if (!inlineCallFrame())
+                return SpecFullTop;
+
+            CodeOrigin* codeOrigin = inlineCallFrame()->getCallerSkippingTailCalls();
+            if (!codeOrigin)
+                return SpecFullTop;
+
+            InlineStackEntry* stack = m_inlineStackTop;
+            while (stack->m_inlineCallFrame != codeOrigin->inlineCallFrame)
+                stack = stack->m_caller;
+
+            bytecodeIndex = codeOrigin->bytecodeIndex;
+            CodeBlock* profiledBlock = stack->m_profiledBlock;
             ConcurrentJITLocker locker(profiledBlock->m_lock);
-            prediction = profiledBlock->valueProfilePredictionForBytecodeOffset(locker, bytecodeIndex);
+            return profiledBlock->valueProfilePredictionForBytecodeOffset(locker, bytecodeIndex);
         }
 
-        return prediction;
+        default:
+            return SpecNone;
+        }
+
+        RELEASE_ASSERT_NOT_REACHED();
+        return SpecNone;
     }
 
     SpeculatedType getPrediction(unsigned bytecodeIndex)
@@ -1283,7 +1286,7 @@ ByteCodeParser::Terminality ByteCodeParser::handleCall(
         // Oddly, this conflates calls that haven't executed with calls that behaved sufficiently polymorphically
         // that we cannot optimize them.
 
-        Node* callNode = addCall(result, op, OpInfo(), callTarget, argumentCountIncludingThis, registerOffset, prediction);
+        Node* callNode = addCall(result, op, nullptr, callTarget, argumentCountIncludingThis, registerOffset, prediction);
         if (callNode->op() == TailCall)
             return Terminal;
         ASSERT(callNode->op() != TailCallVarargs && callNode->op() != TailCallForwardVarargs);
@@ -1298,7 +1301,7 @@ ByteCodeParser::Terminality ByteCodeParser::handleCall(
         return NonTerminal;
     }
     
-    Node* callNode = addCall(result, op, OpInfo(), callTarget, argumentCountIncludingThis, registerOffset, prediction);
+    Node* callNode = addCall(result, op, nullptr, callTarget, argumentCountIncludingThis, registerOffset, prediction);
     if (callNode->op() == TailCall)
         return Terminal;
     ASSERT(callNode->op() != TailCallVarargs && callNode->op() != TailCallForwardVarargs);
@@ -1725,6 +1728,19 @@ bool ByteCodeParser::attemptToInlineCall(Node* callTargetNode, int resultOperand
             RELEASE_ASSERT(!didInsertChecks);
             // We might still try to inline the Intrinsic because it might be a builtin JS function.
         }
+
+        if (Options::useDOMJIT()) {
+            if (const DOMJIT::Signature* signature = callee.signatureFor(specializationKind)) {
+                if (handleDOMJITCall(callTargetNode, resultOperand, signature, registerOffset, argumentCountIncludingThis, prediction, insertChecksWithAccounting)) {
+                    RELEASE_ASSERT(didInsertChecks);
+                    addToGraph(Phantom, callTargetNode);
+                    emitArgumentPhantoms(registerOffset, argumentCountIncludingThis);
+                    inliningBalance--;
+                    return true;
+                }
+                RELEASE_ASSERT(!didInsertChecks);
+            }
+        }
     }
     
     unsigned myInliningCost = inliningCost(callee, argumentCountIncludingThis, InlineCallFrame::callModeFor(kind));
@@ -2050,7 +2066,7 @@ bool ByteCodeParser::handleInlining(
     Node* myCallTargetNode = getDirect(calleeReg);
     if (couldTakeSlowPath) {
         addCall(
-            resultOperand, callOp, OpInfo(), myCallTargetNode, argumentCountIncludingThis,
+            resultOperand, callOp, nullptr, myCallTargetNode, argumentCountIncludingThis,
             registerOffset, prediction);
     } else {
         addToGraph(CheckBadCell);
@@ -2598,6 +2614,25 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         return false;
     }
 }
+
+template<typename ChecksFunctor>
+bool ByteCodeParser::handleDOMJITCall(Node* callTarget, int resultOperand, const DOMJIT::Signature* signature, int registerOffset, int argumentCountIncludingThis, SpeculatedType prediction, const ChecksFunctor& insertChecks)
+{
+    if (argumentCountIncludingThis != static_cast<int>(1 + signature->argumentCount))
+        return false;
+    if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+        return false;
+
+    // FIXME: Currently, we only support functions which arguments are up to 2.
+    // Eventually, we should extend this. But possibly, 2 or 3 can cover typical use cases.
+    // https://bugs.webkit.org/show_bug.cgi?id=164346
+    ASSERT_WITH_MESSAGE(argumentCountIncludingThis <= JSC_DOMJIT_SIGNATURE_MAX_ARGUMENTS_INCLUDING_THIS, "Currently CallDOM does not support an arbitrary length arguments.");
+
+    insertChecks();
+    addCall(resultOperand, Call, signature, callTarget, argumentCountIncludingThis, registerOffset, prediction);
+    return true;
+}
+
 
 template<typename ChecksFunctor>
 bool ByteCodeParser::handleIntrinsicGetter(int resultOperand, const GetByIdVariant& variant, Node* thisNode, const ChecksFunctor& insertChecks)
@@ -4791,7 +4826,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             int callee = currentInstruction[2].u.operand;
             int argumentCountIncludingThis = currentInstruction[3].u.operand;
             int registerOffset = -currentInstruction[4].u.operand;
-            addCall(result, CallEval, OpInfo(), get(VirtualRegister(callee)), argumentCountIncludingThis, registerOffset, getPrediction());
+            addCall(result, CallEval, nullptr, get(VirtualRegister(callee)), argumentCountIncludingThis, registerOffset, getPrediction());
             NEXT_OPCODE(op_call_eval);
         }
             

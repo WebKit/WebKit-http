@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -141,10 +141,6 @@
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
-#endif
-
-#if ENABLE(BATTERY_STATUS)
-#include "BatteryController.h"
 #endif
 
 #if ENABLE(PROXIMITY_EVENTS)
@@ -1506,24 +1502,6 @@ String Internals::parserMetaData(JSC::JSValue code)
     result.appendLiteral(" }");
 
     return result.toString();
-}
-
-ExceptionOr<void> Internals::setBatteryStatus(const String& eventType, bool charging, double chargingTime, double dischargingTime, double level)
-{
-    Document* document = contextDocument();
-    if (!document || !document->page())
-        return Exception { INVALID_ACCESS_ERR };
-
-#if ENABLE(BATTERY_STATUS)
-    BatteryController::from(document->page())->didChangeBatteryStatus(eventType, BatteryStatus::create(charging, chargingTime, dischargingTime, level));
-#else
-    UNUSED_PARAM(eventType);
-    UNUSED_PARAM(charging);
-    UNUSED_PARAM(chargingTime);
-    UNUSED_PARAM(dischargingTime);
-    UNUSED_PARAM(level);
-#endif
-    return { };
 }
 
 ExceptionOr<void> Internals::setDeviceProximity(const String&, double value, double min, double max)
@@ -3314,5 +3292,10 @@ bool Internals::userPrefersReducedMotion() const
 }
 
 #endif
+
+void Internals::reportBacktrace()
+{
+    WTFReportBacktrace();
+}
 
 } // namespace WebCore

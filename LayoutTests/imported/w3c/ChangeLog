@@ -1,3 +1,132 @@
+2016-11-04  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Clean up more transaction abort and exception throwing behavior from IDBObjectStore.
+        https://bugs.webkit.org/show_bug.cgi?id=164424
+
+        Reviewed by Alex Christensen.
+
+        This patch actually turns a handful of PASS to FAIL in the imported tests, but those are parts of the
+        spec in flux/under discussion.
+
+        We'll update either source or the tests as things are resolved.
+
+        * IndexedDB-private-browsing/idbcursor_advance_index7-expected.txt:
+        * IndexedDB-private-browsing/idbcursor_continue_index7-expected.txt:
+        * IndexedDB-private-browsing/idbindex_get7-expected.txt:
+        * IndexedDB-private-browsing/idbindex_getKey7-expected.txt:
+        * IndexedDB-private-browsing/idbindex_openCursor2-expected.txt:
+        * IndexedDB-private-browsing/idbindex_openKeyCursor3-expected.txt:
+        * web-platform-tests/IndexedDB/idbcursor_advance_index7-expected.txt:
+        * web-platform-tests/IndexedDB/idbcursor_continue_index7-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_get8-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_getKey8-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_openCursor3-expected.txt:
+        * web-platform-tests/IndexedDB/idbindex_openKeyCursor4-expected.txt:
+        * web-platform-tests/IndexedDB/transaction-abort-index-metadata-revert-expected.txt:
+        * web-platform-tests/IndexedDB/transaction-abort-multiple-metadata-revert-expected.txt:
+        * web-platform-tests/IndexedDB/transaction-abort-object-store-metadata-revert-expected.txt:
+
+2016-11-04  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Handle IDBObjectStore rename behavior properly when version change transaction aborts.
+        https://bugs.webkit.org/show_bug.cgi?id=164416
+
+        Reviewed by Beth Dakin.
+
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-abort-expected.txt:
+
+2016-11-04  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Use IDB-specific exceptions in places where the generic exceptions are currently used.
+        https://bugs.webkit.org/show_bug.cgi?id=164406
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbindex-rename-errors-expected.txt:
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-errors-expected.txt:
+
+2016-11-04  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Throw the correct exceptions during IDBObjectStore/IDBIndex renaming.
+        https://bugs.webkit.org/show_bug.cgi?id=164405
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbindex-rename-errors-expected.txt:
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-errors-expected.txt:
+
+2016-11-03  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Handle IDBIndex rename behavior properly when version change transaction aborts.
+        https://bugs.webkit.org/show_bug.cgi?id=164403
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbindex-rename-abort-expected.txt: Updated to passing expectations.
+
+2016-11-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update custom elements tests
+        https://bugs.webkit.org/show_bug.cgi?id=164352
+
+        Reviewed by Antti Koivisto.
+
+        Reimported the custom elements tests as of 5047c27a5c61cc12eab75ac72b86125ec3cc8527.
+
+        * web-platform-tests/custom-elements/custom-element-reaction-queue-expected.txt: Added.
+        * web-platform-tests/custom-elements/custom-element-reaction-queue.html: Added.
+        * web-platform-tests/custom-elements/htmlconstructor/newtarget.html:
+        * web-platform-tests/custom-elements/reactions/CSSStyleDeclaration-expected.txt: Moved from fast/custom-elements/reactions/.
+        * web-platform-tests/custom-elements/reactions/CSSStyleDeclaration.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/Document.html: Updated.
+        * web-platform-tests/custom-elements/reactions/HTMLAnchorElement-expected.txt: Moved from fast/custom-elements/reactions/.
+        * web-platform-tests/custom-elements/reactions/HTMLAnchorElement.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLOptionElement-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLOptionElement.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLOptionsCollection-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLOptionsCollection.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLOutputElement-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLOutputElement.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLSelectElement-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLSelectElement.html:  Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTableElement-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTableElement.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTableRowElement-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTableRowElement.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTableSectionElement-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTableSectionElement.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTitleElement-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/HTMLTitleElement.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/ShadowRoot-expected.txt: Ditto.
+        * web-platform-tests/custom-elements/reactions/ShadowRoot.html: Ditto.
+        * web-platform-tests/custom-elements/reactions/resources/reactions.js:
+        * web-platform-tests/custom-elements/reactions/w3c-import.log:
+        * web-platform-tests/custom-elements/resources/custom-elements-helpers.js:
+        * web-platform-tests/custom-elements/upgrading/upgrading-enqueue-reactions-expected.txt: Moved from fast/custom-elements/.
+        * web-platform-tests/custom-elements/upgrading/upgrading-enqueue-reactions.html: Ditto.
+        * web-platform-tests/custom-elements/upgrading/w3c-import.log:
+        * web-platform-tests/custom-elements/w3c-import.log:
+
+2016-11-03  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Rename IDBKeyRange.contains to IDBKeyRange.includes.
+        https://bugs.webkit.org/show_bug.cgi?id=164383
+
+        Reviewed by Beth Dakin.
+
+        * web-platform-tests/IndexedDB/idbkeyrange-includes-expected.txt:
+
+2016-11-03  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support binary keys.
+        <rdar://problem/28806927> and https://bugs.webkit.org/show_bug.cgi?id=164359
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idb_binary_key_conversion-expected.txt:
+        * web-platform-tests/IndexedDB/idbfactory_cmp3-expected.txt:
+        * web-platform-tests/IndexedDB/idbfactory_cmp4-expected.txt:
+
 2016-11-01  Brady Eidson  <beidson@apple.com>
 
         IndexedDB 2.0: Support IDBIndex getAll/getAllKeys.

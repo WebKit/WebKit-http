@@ -768,14 +768,10 @@ ContiguousJSValues JSObject::createInitialContiguous(VM& vm, unsigned length)
     return newButterfly->contiguous();
 }
 
-ArrayStorage* JSObject::createArrayStorage(VM& vm, unsigned length, unsigned vectorLength)
+Butterfly* JSObject::createArrayStorageButterfly(VM& vm, JSCell* intendedOwner, Structure* structure, unsigned length, unsigned vectorLength, Butterfly* oldButterfly)
 {
-    DeferGC deferGC(vm.heap);
-    Structure* structure = this->structure(vm);
-    IndexingType oldType = indexingType();
-    ASSERT_UNUSED(oldType, !hasIndexedProperties(oldType));
     Butterfly* newButterfly = Butterfly::createOrGrowArrayRight(
-        m_butterfly.get(), vm, this, structure, structure->outOfLineCapacity(), false, 0,
+        oldButterfly, vm, intendedOwner, structure, structure->outOfLineCapacity(), false, 0,
         ArrayStorage::sizeFor(vectorLength));
     RELEASE_ASSERT(newButterfly);
 
@@ -787,6 +783,19 @@ ArrayStorage* JSObject::createArrayStorage(VM& vm, unsigned length, unsigned vec
     result->m_indexBias = 0;
     for (size_t i = vectorLength; i--;)
         result->m_vector[i].setWithoutWriteBarrier(JSValue());
+
+    return newButterfly;
+}
+
+ArrayStorage* JSObject::createArrayStorage(VM& vm, unsigned length, unsigned vectorLength)
+{
+    DeferGC deferGC(vm.heap);
+    Structure* structure = this->structure(vm);
+    IndexingType oldType = indexingType();
+    ASSERT_UNUSED(oldType, !hasIndexedProperties(oldType));
+
+    Butterfly* newButterfly = createArrayStorageButterfly(vm, this, structure, length, vectorLength, m_butterfly.get());
+    ArrayStorage* result = newButterfly->arrayStorage();
     Structure* newStructure = Structure::nonPropertyTransition(vm, structure, structure->suggestedArrayStorageTransition());
     setStructureAndButterfly(vm, newStructure, newButterfly);
     return result;
@@ -2546,6 +2555,17 @@ bool JSObject::putDirectNativeFunction(VM& vm, JSGlobalObject* globalObject, con
     ASSERT(name);
 
     JSFunction* function = JSFunction::create(vm, globalObject, functionLength, name, nativeFunction, intrinsic);
+    return putDirect(vm, propertyName, function, attributes);
+}
+
+bool JSObject::putDirectNativeFunction(VM& vm, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, const DOMJIT::Signature* signature, unsigned attributes)
+{
+    StringImpl* name = propertyName.publicName();
+    if (!name)
+        name = vm.propertyNames->anonymous.impl();
+    ASSERT(name);
+
+    JSFunction* function = JSFunction::create(vm, globalObject, functionLength, name, nativeFunction, intrinsic, callHostFunctionAsConstructor, signature);
     return putDirect(vm, propertyName, function, attributes);
 }
 

@@ -24,7 +24,6 @@ AtomicString
 CEReactions
 CachedAttribute
 CallbackNeedsOperatorEqual
-Callback=FunctionOnly
 CallWith=Document|ScriptExecutionContext|ScriptState|ScriptArguments|CallStack|ActiveWindow|FirstWindow|CallerDocument|CallerWindow
 CheckSecurity
 CheckSecurityForNode
@@ -52,7 +51,7 @@ CustomPutFunction
 CustomSetPrototype
 CustomSetter
 CustomToJSObject
-DOMJIT
+DOMJIT=|ReadDOM
 DoNotCheckConstants
 DoNotCheckSecurity
 DoNotCheckSecurityOnGetter

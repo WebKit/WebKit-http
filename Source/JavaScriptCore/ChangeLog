@@ -1,3 +1,3448 @@
+2016-11-08  Geoffrey Garen  <ggaren@apple.com>
+
+        REGRESSION: date-format-tofte.js is super slow
+        https://bugs.webkit.org/show_bug.cgi?id=164499
+
+        Reviewed by Sam Weinig.
+
+        * bytecode/EvalCodeCache.h:
+        (JSC::EvalCodeCache::CacheKey::operator==): Use character comparison,
+        not pointer comparison. (This function was always wrong, but I started
+        calling it in more places.)
+
+2016-11-08  Saam Barati  <sbarati@apple.com>
+
+        REGRESSION: Crashes in StringImpl destructor during GC when clearing the HasOwnPropertyCache
+        https://bugs.webkit.org/show_bug.cgi?id=164433
+
+        Reviewed by Mark Lam.
+
+        Clearing the HasOwnPropertyCache will call deref() on the StringImpls
+        in the cache. We were doing this from the collector thread, which is
+        not allowed. It must be done from the mutator thread. We now clear the
+        cache in Heap::finalize() which happens before the mutator begins
+        executing JS after a collection happens.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::collectInThread):
+        (JSC::Heap::finalize):
+
+2016-11-05  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fixed compilation of LLInt with MinGW
+        https://bugs.webkit.org/show_bug.cgi?id=164449
+
+        Reviewed by Michael Catanzaro.
+
+        MinGW uses LLIntAssembly.h with GNU assembler syntax, just like GCC on
+        other platforms.
+
+        * llint/LowLevelInterpreter.cpp: Include LLIntAssembly.h with
+        appropriate preamble.
+
+2016-11-04  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::ParkingLot should stop using std::chrono because std::chrono::duration casts are prone to overflows
+        https://bugs.webkit.org/show_bug.cgi?id=152045
+
+        Reviewed by Andy Estes.
+        
+        Probably the nicest example of why this patch is a good idea is the change in
+        AtomicsObject.cpp.
+
+        * jit/ICStats.cpp:
+        (JSC::ICStats::ICStats):
+        * runtime/AtomicsObject.cpp:
+        (JSC::atomicsFuncWait):
+
+2016-11-04  JF Bastien  <jfbastien@apple.com>
+
+        testWASM should be very sad if no options are provided
+        https://bugs.webkit.org/show_bug.cgi?id=164444
+
+        Reviewed by Saam Barati.
+
+        Detect missing or invalid options on the command line.
+
+        * testWasm.cpp:
+        (CommandLine::parseArguments):
+
+2016-11-04  Mark Lam  <mark.lam@apple.com>
+
+        Error description code should be able to handle Symbol values.
+        https://bugs.webkit.org/show_bug.cgi?id=164436
+        <rdar://problem/29115583>
+
+        Reviewed by Filip Pizlo and Saam Barati.
+
+        Previously, we try to toString() the Symbol value, resulting in it throwing an
+        exception in errorDescriptionForValue() which breaks the invariant that
+        errorDescriptionForValue() should not throw.
+
+        We fixed this by making errorDescriptionForValue() aware of the Symbol type, and
+        not so a toString() on Symbol values.  Also fixed notAFunctionSourceAppender()
+        to build a nicer message for Symbol values.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::errorDescriptionForValue):
+        (JSC::notAFunctionSourceAppender):
+
+2016-11-02  Geoffrey Garen  <ggaren@apple.com>
+
+        EvalCodeCache should not give up in strict mode and other cases
+        https://bugs.webkit.org/show_bug.cgi?id=164357
+
+        Reviewed by Michael Saboff.
+
+        EvalCodeCache gives up in non-trivial cases because generated eval code
+        can't soundly migrate from, for example, a let scope to a non-let scope.
+        The number of cases has grown over time.
+
+        Instead, let's cache eval code based on the location of the call to
+        eval(). That way, we never relocate the code, and it's sound to make
+        normal assumptions about our surrounding scope.
+
+        * bytecode/EvalCodeCache.h:
+        (JSC::EvalCodeCache::CacheKey::CacheKey): Use CallSiteIndex to uniquely
+        identify the location of our call to eval().
+
+        (JSC::EvalCodeCache::CacheKey::hash):
+        (JSC::EvalCodeCache::CacheKey::operator==):
+        (JSC::EvalCodeCache::CacheKey::Hash::equal): Use CallSiteIndex instead
+        of lots of other flags.
+
+        (JSC::EvalCodeCache::tryGet): No need to include details that are implied
+        by our CallSiteIndex.
+
+        (JSC::EvalCodeCache::getSlow): No need to skip caching in complex
+        situations. We promise we'll never relocate the cached code.
+
+        (JSC::EvalCodeCache::isCacheableScope): Deleted.
+        (JSC::EvalCodeCache::isCacheable): Deleted.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::eval): Pass through a CallSiteIndex to uniquely identify this call
+        to eval().
+
+2016-11-04  Keith Miller  <keith_miller@apple.com>
+
+        Add support for Wasm br_table
+        https://bugs.webkit.org/show_bug.cgi?id=164429
+
+        Reviewed by Michael Saboff.
+
+        This patch adds support for Wasm br_table. The Wasm br_table
+        opcode essentially directly maps to B3's switch opcode.
+
+        There are also three other minor changes:
+        1) all non-argument locals should be initialized to zero at function entry.
+        2) add new setErrorMessage member to WasmFunctionParser.h
+        3) return does not decode an extra immediate anymore.
+
+        * testWasm.cpp:
+        (runWasmTests):
+        * wasm/WasmB3IRGenerator.cpp:
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser::setErrorMessage):
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        (JSC::Wasm::FunctionParser<Context>::parseUnreachableExpression):
+        (JSC::Wasm::FunctionParser<Context>::popExpressionStack):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::checkBranchTarget):
+        (JSC::Wasm::Validate::addBranch):
+        (JSC::Wasm::Validate::addSwitch):
+
+2016-11-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement more sections
+        https://bugs.webkit.org/show_bug.cgi?id=164023
+
+        Reviewed by Keith Miller.
+
+        On the JSC side:
+
+         - Put in parser stubs for all WebAssembly sections.
+         - Parse Import, Export sections.
+         - Use tryReserveCapacity instead of reserve, and bail out of the parser if it fails. This prevents the parser from bringing everything down when faced with a malicious input.
+         - Encapsulate all parsed module information into its own structure, making it easier to pass around (from parser to Plan to Module to Instance).
+         - Create WasmFormat.cpp to hold parsed module information's dtor to avoid including WasmMemory.h needlessly.
+         - Remove all remainders of polyfill-prototype-1, and update license.
+         - Add missing WasmOps.h and WasmValidateInlines.h auto-generation for cmake build.
+
+        On the Builder.js testing side:
+
+         - Implement Type, Import (function only), Export (function only) sections.
+         - Check section order and uniqueness.
+         - Optionally auto-generate the Type section from subsequent Export / Import / Code entries.
+         - Allow re-exporting an import.
+
+        * CMakeLists.txt: missing auto-genration
+        * JavaScriptCore.xcodeproj/project.pbxproj: merge conflict
+        * testWasm.cpp: update for API changes, no functional change
+        (checkPlan):
+        (runWasmTests):
+        * wasm/WasmFormat.cpp: add a dtor which requires extra headers which I'd rather not include in WasmFormat.h
+        (JSC::Wasm::ModuleInformation::~ModuleInformation):
+        * wasm/WasmFormat.h: Add External, Import, Functioninformation, Export, ModuleInformation, CompiledFunction, and remove obsolete stuff which was a holdover from the first implementation (all that code is now gone, so remove its license)
+        (JSC::Wasm::External::isValid):
+        * wasm/WasmModuleParser.cpp: simplify some, make names consistent with the WebAssembly section names, check memory allocations so they can fail early
+        (JSC::Wasm::ModuleParser::parse):
+        (JSC::Wasm::ModuleParser::parseType):
+        (JSC::Wasm::ModuleParser::parseImport):
+        (JSC::Wasm::ModuleParser::parseFunction):
+        (JSC::Wasm::ModuleParser::parseTable):
+        (JSC::Wasm::ModuleParser::parseMemory):
+        (JSC::Wasm::ModuleParser::parseGlobal):
+        (JSC::Wasm::ModuleParser::parseExport):
+        (JSC::Wasm::ModuleParser::parseStart):
+        (JSC::Wasm::ModuleParser::parseElement):
+        (JSC::Wasm::ModuleParser::parseCode): avoid overflow through function size.
+        (JSC::Wasm::ModuleParser::parseData):
+        * wasm/WasmModuleParser.h:
+        (JSC::Wasm::ModuleParser::moduleInformation):
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser::consumeUTF8String): add as required by spec
+        (JSC::Wasm::Parser::parseExternalKind): add as per spec
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::Plan): fix some ownership, improve some error messages
+        * wasm/WasmPlan.h: fix some ownership
+        (JSC::Wasm::Plan::getModuleInformation):
+        (JSC::Wasm::Plan::getMemory):
+        (JSC::Wasm::Plan::compiledFunctionCount):
+        (JSC::Wasm::Plan::compiledFunction):
+        (JSC::Wasm::Plan::getCompiledFunctions):
+        * wasm/WasmSections.h: macroize with description, so that error messages are super pretty. This could be auto-generated.
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::create): take module information
+        (JSC::JSWebAssemblyModule::JSWebAssemblyModule): ditto
+        * wasm/js/JSWebAssemblyModule.h:
+        (JSC::JSWebAssemblyModule::moduleInformation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance): check that modules with imports are instantiated with an import object, as per spec. This needs to be tested.
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+
+2016-11-03  Mark Lam  <mark.lam@apple.com>
+
+        ClonedArguments need to also support haveABadTime mode.
+        https://bugs.webkit.org/show_bug.cgi?id=164200
+        <rdar://problem/27211336>
+
+        Reviewed by Geoffrey Garen.
+
+        For those who are not familiar with the parlance, "have a bad time" in the VM
+        means that Object.prototype has been modified in such a way that we can no longer
+        trivially do indexed property accesses without consulting the Object.prototype.
+        This defeats JIT indexed put optimizations, and hence, makes the VM "have a
+        bad time".
+
+        Once the VM enters haveABadTime mode, all existing objects are converted to use
+        slow put storage.  Thereafter, JSArrays are always created with slow put storage.
+        JSObjects are always created with a blank indexing type.  When a new indexed
+        property is put into the new object, its indexing type will be converted to the
+        slow put array indexing type just before we perform the put operation.  This is
+        how we ensure that the objects will also use slow put storage.
+
+        However, ClonedArguments is an object which was previously created unconditionally
+        to use contiguous storage.  Subsequently, if we try to call Object.preventExtensions()
+        on that ClonedArguments object, Object.preventExtensions() will:
+        1. make the ClonedArguments enter dictionary indexing mode, which means it will
+        2. first ensure that the ClonedArguments is using slow put array storage via
+           JSObject::ensureArrayStorageSlow().
+
+        However, JSObject::ensureArrayStorageSlow() expects that we never see an object
+        with contiguous storage once we're in haveABadTime mode.  Our ClonedArguments
+        object did not obey this invariant.
+
+        The fix is to make the ClonedArguments factories create objects that use slow put
+        array storage when in haveABadTime mode.  This means:
+
+        1. JSGlobalObject::haveABadTime() now changes m_clonedArgumentsStructure to use
+           its slow put version.
+
+           Also the caching of the slow put version of m_regExpMatchesArrayStructure,
+           because we only need to create it when we are having a bad time. 
+
+        2. The ClonedArguments factories now allocates a butterfly with slow put array
+           storage if we're in haveABadTime mode.
+
+           Also added some assertions in ClonedArguments' factory methods to ensure that
+           the created object has the slow put indexing type when it needsSlowPutIndexing().
+
+        3. DFGFixupPhase now watches the havingABadTimeWatchpoint because ClonedArguments'
+           structure will change when having a bad time.
+
+        4. DFGArgumentEliminationPhase and DFGVarargsForwardingPhase need not be changed
+           because it is still valid to eliminate the creation of the arguments object
+           even having a bad time, as long as the arguments object does not escape.
+
+        5. The DFGAbstractInterpreterInlines now checks for haveABadTime, and sets the
+           predicted type to be SpecObject.
+
+        Note: this issue does not apply to DirectArguments and ScopedArguments because
+        they use a blank indexing type (just like JSObject).
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::dump):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createEmpty):
+        (JSC::ClonedArguments::createWithInlineFrame):
+        (JSC::ClonedArguments::createWithMachineFrame):
+        (JSC::ClonedArguments::createByCopyingFrom):
+        (JSC::ClonedArguments::createStructure):
+        (JSC::ClonedArguments::createSlowPutStructure):
+        * runtime/ClonedArguments.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::haveABadTime):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        Oh boy, what an embarrassing mistake! The style of SSA I like to use avoids block/value
+        tuples as parameters of a Phi, thereby simplifying CFG transformations and making Phi largely
+        not a special case for most compiler transforms. It does this by introducing another value
+        called Upsilon, which stores a value into some Phi.
+        
+        B3 uses this also. The easiest way to understand what Upsilon/Phi behave like is to look at
+        the B3->Air lowering. Air is not SSA - it has Tmps that you can assign to and use as many
+        times as you like. B3 allocates one Tmp per Value, and an extra "phiTmp" for Phis, so that
+        Phis get two Tmps total. Upsilon stores the value into the phiTmp of the Phi, while Phi moves
+        the value from its phiTmp to its tmp.
+        
+        This is necessary to support scenarios like this:
+        
+            a: Phi()
+            b: Upsilon(@x, ^a)
+            c: Use(@a)
+        
+        Here, we want @c to see @a's value before @b. That's a very basic requirement of SSA: that
+        the a value (like @a) doesn't change during its lifetime.
+        
+        Unfortunately, DFG's liveness analysis, abstract interpreter, and integer range optimization
+        all failed to correctly model Upsilon/Phi this way. They would assume that it's accurate to
+        model the Upsilon as storing into the Phi directly.
+        
+        Because DFG does flow analysis over SSA, making it correct means enabling it to speak of the
+        shadow value. This change addresses this problem by introducing the concept of a
+        NodeFlowProjection. This is a key that lets us speak of both a Node's primary value and its
+        optional "shadow" value. Liveness, AI, and integer range are now keyed by NodeFlowProjection
+        rather than Node*. Conceptually this turns out to be a very simple change, but it does touch
+        a good amount of code.
+        
+        This looks to be perf-neutral.
+
+        Rolled back in after fixing the debug build.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirLiveness.h:
+        (JSC::B3::Air::TmpLivenessAdapter::numIndices):
+        (JSC::B3::Air::StackSlotLivenessAdapter::numIndices):
+        (JSC::B3::Air::RegLivenessAdapter::numIndices):
+        (JSC::B3::Air::AbstractLiveness::AbstractLiveness):
+        (JSC::B3::Air::TmpLivenessAdapter::maxIndex): Deleted.
+        (JSC::B3::Air::StackSlotLivenessAdapter::maxIndex): Deleted.
+        (JSC::B3::Air::RegLivenessAdapter::maxIndex): Deleted.
+        * dfg/DFGAbstractInterpreter.h:
+        (JSC::DFG::AbstractInterpreter::forNode):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::forAllValues):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::dump):
+        * dfg/DFGAtTailAbstractState.cpp:
+        (JSC::DFG::AtTailAbstractState::createValueForNode):
+        (JSC::DFG::AtTailAbstractState::forNode):
+        * dfg/DFGAtTailAbstractState.h:
+        * dfg/DFGBasicBlock.h:
+        * dfg/DFGCombinedLiveness.cpp:
+        (JSC::DFG::liveNodesAtHead):
+        * dfg/DFGCombinedLiveness.h:
+        * dfg/DFGFlowIndexing.cpp: Added.
+        (JSC::DFG::FlowIndexing::FlowIndexing):
+        (JSC::DFG::FlowIndexing::~FlowIndexing):
+        (JSC::DFG::FlowIndexing::recompute):
+        * dfg/DFGFlowIndexing.h: Added.
+        (JSC::DFG::FlowIndexing::graph):
+        (JSC::DFG::FlowIndexing::numIndices):
+        (JSC::DFG::FlowIndexing::index):
+        (JSC::DFG::FlowIndexing::shadowIndex):
+        (JSC::DFG::FlowIndexing::nodeProjection):
+        * dfg/DFGFlowMap.h: Added.
+        (JSC::DFG::FlowMap::FlowMap):
+        (JSC::DFG::FlowMap::resize):
+        (JSC::DFG::FlowMap::graph):
+        (JSC::DFG::FlowMap::at):
+        (JSC::DFG::FlowMap::atShadow):
+        (WTF::printInternal):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::abstractValuesCache): Deleted.
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::InPlaceAbstractState):
+        (JSC::DFG::InPlaceAbstractState::beginBasicBlock):
+        (JSC::DFG::setLiveValues):
+        (JSC::DFG::InPlaceAbstractState::endBasicBlock):
+        (JSC::DFG::InPlaceAbstractState::merge):
+        * dfg/DFGInPlaceAbstractState.h:
+        (JSC::DFG::InPlaceAbstractState::createValueForNode):
+        (JSC::DFG::InPlaceAbstractState::forNode):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGLivenessAnalysisPhase.cpp:
+        (JSC::DFG::LivenessAnalysisPhase::LivenessAnalysisPhase):
+        (JSC::DFG::LivenessAnalysisPhase::run):
+        (JSC::DFG::LivenessAnalysisPhase::processBlock):
+        (JSC::DFG::LivenessAnalysisPhase::addChildUse): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::NodeComparator::operator()):
+        (JSC::DFG::nodeListDump):
+        (JSC::DFG::nodeMapDump):
+        (JSC::DFG::nodeValuePairListDump):
+        (JSC::DFG::nodeComparator): Deleted.
+        * dfg/DFGNodeAbstractValuePair.cpp: Added.
+        (JSC::DFG::NodeAbstractValuePair::dump):
+        * dfg/DFGNodeAbstractValuePair.h: Added.
+        (JSC::DFG::NodeAbstractValuePair::NodeAbstractValuePair):
+        * dfg/DFGNodeFlowProjection.cpp: Added.
+        (JSC::DFG::NodeFlowProjection::dump):
+        * dfg/DFGNodeFlowProjection.h: Added.
+        (JSC::DFG::NodeFlowProjection::NodeFlowProjection):
+        (JSC::DFG::NodeFlowProjection::operator bool):
+        (JSC::DFG::NodeFlowProjection::kind):
+        (JSC::DFG::NodeFlowProjection::node):
+        (JSC::DFG::NodeFlowProjection::operator*):
+        (JSC::DFG::NodeFlowProjection::operator->):
+        (JSC::DFG::NodeFlowProjection::hash):
+        (JSC::DFG::NodeFlowProjection::operator==):
+        (JSC::DFG::NodeFlowProjection::operator!=):
+        (JSC::DFG::NodeFlowProjection::operator<):
+        (JSC::DFG::NodeFlowProjection::operator>):
+        (JSC::DFG::NodeFlowProjection::operator<=):
+        (JSC::DFG::NodeFlowProjection::operator>=):
+        (JSC::DFG::NodeFlowProjection::isHashTableDeletedValue):
+        (JSC::DFG::NodeFlowProjection::isStillValid):
+        (JSC::DFG::NodeFlowProjection::forEach):
+        (JSC::DFG::NodeFlowProjectionHash::hash):
+        (JSC::DFG::NodeFlowProjectionHash::equal):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+
+2016-11-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r208364.
+        https://bugs.webkit.org/show_bug.cgi?id=164402
+
+        broke the build (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "DFG plays fast and loose with the shadow values of a Phi"
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+        http://trac.webkit.org/changeset/208364
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        Oh boy, what an embarrassing mistake! The style of SSA I like to use avoids block/value
+        tuples as parameters of a Phi, thereby simplifying CFG transformations and making Phi largely
+        not a special case for most compiler transforms. It does this by introducing another value
+        called Upsilon, which stores a value into some Phi.
+        
+        B3 uses this also. The easiest way to understand what Upsilon/Phi behave like is to look at
+        the B3->Air lowering. Air is not SSA - it has Tmps that you can assign to and use as many
+        times as you like. B3 allocates one Tmp per Value, and an extra "phiTmp" for Phis, so that
+        Phis get two Tmps total. Upsilon stores the value into the phiTmp of the Phi, while Phi moves
+        the value from its phiTmp to its tmp.
+        
+        This is necessary to support scenarios like this:
+        
+            a: Phi()
+            b: Upsilon(@x, ^a)
+            c: Use(@a)
+        
+        Here, we want @c to see @a's value before @b. That's a very basic requirement of SSA: that
+        the a value (like @a) doesn't change during its lifetime.
+        
+        Unfortunately, DFG's liveness analysis, abstract interpreter, and integer range optimization
+        all failed to correctly model Upsilon/Phi this way. They would assume that it's accurate to
+        model the Upsilon as storing into the Phi directly.
+        
+        Because DFG does flow analysis over SSA, making it correct means enabling it to speak of the
+        shadow value. This change addresses this problem by introducing the concept of a
+        NodeFlowProjection. This is a key that lets us speak of both a Node's primary value and its
+        optional "shadow" value. Liveness, AI, and integer range are now keyed by NodeFlowProjection
+        rather than Node*. Conceptually this turns out to be a very simple change, but it does touch
+        a good amount of code.
+        
+        This looks to be perf-neutral.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirLiveness.h:
+        (JSC::B3::Air::TmpLivenessAdapter::numIndices):
+        (JSC::B3::Air::StackSlotLivenessAdapter::numIndices):
+        (JSC::B3::Air::RegLivenessAdapter::numIndices):
+        (JSC::B3::Air::AbstractLiveness::AbstractLiveness):
+        (JSC::B3::Air::TmpLivenessAdapter::maxIndex): Deleted.
+        (JSC::B3::Air::StackSlotLivenessAdapter::maxIndex): Deleted.
+        (JSC::B3::Air::RegLivenessAdapter::maxIndex): Deleted.
+        * dfg/DFGAbstractInterpreter.h:
+        (JSC::DFG::AbstractInterpreter::forNode):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::forAllValues):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::dump):
+        * dfg/DFGAtTailAbstractState.cpp:
+        (JSC::DFG::AtTailAbstractState::createValueForNode):
+        (JSC::DFG::AtTailAbstractState::forNode):
+        * dfg/DFGAtTailAbstractState.h:
+        * dfg/DFGBasicBlock.h:
+        * dfg/DFGCombinedLiveness.cpp:
+        (JSC::DFG::liveNodesAtHead):
+        * dfg/DFGCombinedLiveness.h:
+        * dfg/DFGFlowIndexing.cpp: Added.
+        (JSC::DFG::FlowIndexing::FlowIndexing):
+        (JSC::DFG::FlowIndexing::~FlowIndexing):
+        (JSC::DFG::FlowIndexing::recompute):
+        * dfg/DFGFlowIndexing.h: Added.
+        (JSC::DFG::FlowIndexing::graph):
+        (JSC::DFG::FlowIndexing::numIndices):
+        (JSC::DFG::FlowIndexing::index):
+        (JSC::DFG::FlowIndexing::shadowIndex):
+        (JSC::DFG::FlowIndexing::nodeProjection):
+        * dfg/DFGFlowMap.h: Added.
+        (JSC::DFG::FlowMap::FlowMap):
+        (JSC::DFG::FlowMap::resize):
+        (JSC::DFG::FlowMap::graph):
+        (JSC::DFG::FlowMap::at):
+        (JSC::DFG::FlowMap::atShadow):
+        (WTF::printInternal):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::Graph):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::abstractValuesCache): Deleted.
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::InPlaceAbstractState):
+        (JSC::DFG::InPlaceAbstractState::beginBasicBlock):
+        (JSC::DFG::setLiveValues):
+        (JSC::DFG::InPlaceAbstractState::endBasicBlock):
+        (JSC::DFG::InPlaceAbstractState::merge):
+        * dfg/DFGInPlaceAbstractState.h:
+        (JSC::DFG::InPlaceAbstractState::createValueForNode):
+        (JSC::DFG::InPlaceAbstractState::forNode):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGLivenessAnalysisPhase.cpp:
+        (JSC::DFG::LivenessAnalysisPhase::LivenessAnalysisPhase):
+        (JSC::DFG::LivenessAnalysisPhase::run):
+        (JSC::DFG::LivenessAnalysisPhase::processBlock):
+        (JSC::DFG::LivenessAnalysisPhase::addChildUse): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::NodeComparator::operator()):
+        (JSC::DFG::nodeListDump):
+        (JSC::DFG::nodeMapDump):
+        (JSC::DFG::nodeValuePairListDump):
+        (JSC::DFG::nodeComparator): Deleted.
+        * dfg/DFGNodeAbstractValuePair.cpp: Added.
+        (JSC::DFG::NodeAbstractValuePair::dump):
+        * dfg/DFGNodeAbstractValuePair.h: Added.
+        (JSC::DFG::NodeAbstractValuePair::NodeAbstractValuePair):
+        * dfg/DFGNodeFlowProjection.cpp: Added.
+        (JSC::DFG::NodeFlowProjection::dump):
+        * dfg/DFGNodeFlowProjection.h: Added.
+        (JSC::DFG::NodeFlowProjection::NodeFlowProjection):
+        (JSC::DFG::NodeFlowProjection::operator bool):
+        (JSC::DFG::NodeFlowProjection::kind):
+        (JSC::DFG::NodeFlowProjection::node):
+        (JSC::DFG::NodeFlowProjection::operator*):
+        (JSC::DFG::NodeFlowProjection::operator->):
+        (JSC::DFG::NodeFlowProjection::hash):
+        (JSC::DFG::NodeFlowProjection::operator==):
+        (JSC::DFG::NodeFlowProjection::operator!=):
+        (JSC::DFG::NodeFlowProjection::operator<):
+        (JSC::DFG::NodeFlowProjection::operator>):
+        (JSC::DFG::NodeFlowProjection::operator<=):
+        (JSC::DFG::NodeFlowProjection::operator>=):
+        (JSC::DFG::NodeFlowProjection::isHashTableDeletedValue):
+        (JSC::DFG::NodeFlowProjection::isStillValid):
+        (JSC::DFG::NodeFlowProjection::forEach):
+        (JSC::DFG::NodeFlowProjectionHash::hash):
+        (JSC::DFG::NodeFlowProjectionHash::equal):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+
+2016-11-03  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, changelog fix due to failed git rebase..
+
+2016-11-03  Keith Miller  <keith_miller@apple.com>
+
+        Wasm starts a new stack whenever it adds a new block and has return types for blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=164100
+
+        Reviewed by Saam Barati.
+
+        This patch overhauls much of the Wasm function parser, validator, and B3 IR generator
+        to work with block return types. In Wasm, blocks can act as expressions and have a
+        return value. Most of the control flow operators needed to be rewritten in order to
+        support this feature. To enable return types the function parser needed to be able
+        to save and restore the expression stack from previous blocks, which is done via the
+        control stack.
+
+        This patch also removes the lazy continuation block system added previously. It's
+        not clear if there would be any performance win from such a system. There are likely
+        many other things with orders of magnitude more impact on B3 IR generation. The
+        complexity cost of such a system is not worth the effort without sufficient evidence
+        otherwise.
+
+        * testWasm.cpp:
+        (runWasmTests):
+        * wasm/WasmB3IRGenerator.cpp:
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseBlock):
+        (JSC::Wasm::FunctionParser<Context>::addReturn):
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        (JSC::Wasm::FunctionParser<Context>::parseUnreachableExpression):
+        (JSC::Wasm::FunctionParser<Context>::popExpressionStack):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::ControlData::hasNonVoidSignature):
+        (JSC::Wasm::Validate::addElse):
+        (JSC::Wasm::Validate::addElseToUnreachable):
+        (JSC::Wasm::Validate::addBranch):
+        (JSC::Wasm::Validate::endBlock):
+        (JSC::Wasm::Validate::addEndToUnreachable):
+        (JSC::Wasm::Validate::dump):
+        (JSC::Wasm::validateFunction):
+        (JSC::Wasm::Validate::isContinuationReachable): Deleted.
+
+2016-11-03  Saam Barati  <sbarati@apple.com>
+
+        Asking for a value profile prediction should be defensive against not finding a value profile
+        https://bugs.webkit.org/show_bug.cgi?id=164306
+
+        Reviewed by Mark Lam.
+
+        Currently, the code that calls CodeBlock::valueProfilePredictionForBytecodeOffset
+        in the DFG assumes it will always be at a value producing node. However, this isn't
+        true if we tail call from an inlined setter. When we're at a tail call, we try
+        to find the first caller that isn't a tail call to see what value the
+        tail_call produces. If we inline a setter, however, we will end up finding
+        the put_by_id as our first non-tail-called "caller", and that won't have a
+        value profile associated with it since it's not a value producing node.
+        CodeBlock::valueProfilePredictionForBytecodeOffset should be defensive
+        against finding a null value profile.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::valueProfilePredictionForBytecodeOffset):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getPredictionWithoutOSRExit):
+
+2016-11-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix CLoop build after r208320.
+        https://bugs.webkit.org/show_bug.cgi?id=162980
+
+        Add required forward declarations.
+
+        * domjit/DOMJITHeapRange.cpp:
+        * domjit/DOMJITSignature.h:
+        * runtime/VM.h:
+
+2016-11-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Add DOMJIT::Signature
+        https://bugs.webkit.org/show_bug.cgi?id=162980
+
+        Reviewed by Saam Barati and Sam Weinig.
+
+        This patch introduces a new mechanism called DOMJIT::Signature. We can annotate the function with DOMJIT::Signature.
+        DOMJIT::Signature has type information of that function. And it also maintains the effect of the function and the
+        pointer to the unsafe function. The unsafe function means the function without type and argument count checks.
+        By using these information, we can separate type and argument count checks from the function. And we can emit
+        these things as DFG checks and convert the function call itself to CallDOM node. CallDOM node can call the unsafe
+        function directly without any checks. Furthermore, this CallDOM node can represent its own clobberizing rules based
+        on DOMJIT::Effect maintained by DOMJIT::Signature. It allows us to make opaque Call node to a CallDOM node that
+        merely reads some part of heap. These changes (1) can drop duplicate type checks in DFG, (2) offer ability to move
+        CallDOM node to somewhere, and (3) track more detailed heap reads and writes of CallDOM nodes.
+
+        We first emit Call node with DOMJIT::Signature in DFGByteCodeParser. And in the fixup phase, we attempt to lower
+        Call node to CallDOM node with checks & edge filters. This is because we do not know the type predictions in
+        DFGByteCodeParser phase. If we always emit CallDOM node in DFGByteCodeParser, if we evaluate `div.getAttribute(true)`
+        thingy, the Uncountable OSR exits repeatedly happen because AI figures out the abstract value is cleared.
+
+        Currently, DOMJIT signature only allows the types that can reside in GPR. This is because the types of the unsafe
+        function arguments are represented as the sequence of void*. In the future, we will extend to accept other types like
+        float, double etc.
+
+        We annotate several functions in Element. In particular, we annotate Element::getAttribute. This allows us to perform
+        LICM in Dromaeo dom-attr test. In the Dromaeo dom-attr getAttribute test, we can see 32x improvement. (134974.8 v.s. 4203.4)
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CallVariant.h:
+        (JSC::CallVariant::functionExecutable):
+        (JSC::CallVariant::nativeExecutable):
+        (JSC::CallVariant::signatureFor):
+        * bytecode/SpeculatedType.h:
+        (JSC::isNotStringSpeculation):
+        (JSC::isNotInt32Speculation):
+        (JSC::isNotBooleanSpeculation):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addCall):
+        (JSC::DFG::ByteCodeParser::handleCall):
+        (JSC::DFG::ByteCodeParser::attemptToInlineCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::handleDOMJITCall):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::attemptToMakeCallDOM):
+        (JSC::DFG::FixupPhase::fixupCheckDOM):
+        (JSC::DFG::FixupPhase::fixupCallDOM):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::convertToCallDOM):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        (JSC::DFG::Node::shouldSpeculateNotInt32):
+        (JSC::DFG::Node::shouldSpeculateNotBoolean):
+        (JSC::DFG::Node::shouldSpeculateNotString):
+        (JSC::DFG::Node::hasSignature):
+        (JSC::DFG::Node::signature):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCallDOM):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * domjit/DOMJITEffect.h:
+        (JSC::DOMJIT::Effect::Effect):
+        (JSC::DOMJIT::Effect::forWrite):
+        (JSC::DOMJIT::Effect::forRead):
+        (JSC::DOMJIT::Effect::forReadWrite):
+        (JSC::DOMJIT::Effect::forPure):
+        (JSC::DOMJIT::Effect::forDef):
+        (JSC::DOMJIT::Effect::mustGenerate):
+        In clang, we cannot make this Effect constructor constexpr if we use Optional<HeapRange>.
+        So we use HeapRange::top() for Nullopt def now.
+
+        * domjit/DOMJITHeapRange.h:
+        (JSC::DOMJIT::HeapRange::fromRaw):
+        (JSC::DOMJIT::HeapRange::operator bool):
+        (JSC::DOMJIT::HeapRange::operator==):
+        (JSC::DOMJIT::HeapRange::operator!=):
+        (JSC::DOMJIT::HeapRange::fromConstant):
+        * domjit/DOMJITSignature.h: Copied from Source/JavaScriptCore/domjit/DOMJITEffect.h.
+        (JSC::DOMJIT::Signature::Signature):
+        (JSC::DOMJIT::Signature::argumentCount):
+        (JSC::DOMJIT::Signature::checkDOM):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallDOM):
+        * jit/JITOperations.h:
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::hostFunctionStub):
+        * jit/JITThunks.h:
+        * runtime/JSBoundFunction.cpp:
+        (JSC::JSBoundFunction::create):
+        * runtime/JSCell.h:
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::create):
+        * runtime/JSFunction.h:
+        * runtime/JSNativeStdFunction.cpp:
+        (JSC::JSNativeStdFunction::create):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putDirectNativeFunction):
+        * runtime/JSObject.h:
+        * runtime/Lookup.h:
+        (JSC::HashTableValue::functionLength):
+        (JSC::HashTableValue::signature):
+        (JSC::reifyStaticProperty):
+        * runtime/NativeExecutable.cpp:
+        (JSC::NativeExecutable::create):
+        (JSC::NativeExecutable::NativeExecutable):
+        * runtime/NativeExecutable.h:
+        * runtime/PropertySlot.h:
+        * runtime/VM.cpp:
+        (JSC::VM::getHostFunction):
+        * runtime/VM.h:
+
+2016-11-02  Andreas Kling  <akling@apple.com>
+
+        MarkedSpace should have specialized size classes for popular engine objects.
+        <https://webkit.org/b/164345>
+
+        Reviewed by Filip Pizlo.
+
+        The MarkedSpace size classes were recently reworked to minimize wasted space
+        at the end of MarkedBlocks.
+
+        However, we know that some specific objects will be allocated in very high volume.
+        Adding specialized size classes for those object sizes achieves greater utilization
+        since we're basically guaranteed to allocate them all the time.
+
+        Inject specialized size classes for these four objects:
+
+            - FunctionCodeBlock
+                560 bytes instead of 624
+                28 per block instead of 26 (+2)
+
+            - FunctionExecutable
+                176 bytes instead of 224
+                92 per block instead of 72 (+20)
+
+            - UnlinkedFunctionCodeBlock
+                256 bytes instead of 320
+                63 per block instead of 50 (+13)
+
+            - UnlinkedFunctionExecutable
+                192 bytes instead of 224
+                84 per block instead of 72 (+12)
+
+        * heap/MarkedSpace.cpp:
+
+2016-11-02  Geoffrey Garen  <ggaren@apple.com>
+
+        One file per class for UnlinkedCodeBlock.h/.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=164348
+
+        Reviewed by Saam Barati.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/FunctionCodeBlock.h:
+        * bytecode/ModuleProgramCodeBlock.h:
+        * bytecode/ProgramCodeBlock.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedEvalCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionExecutable::destroy): Deleted.
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock): Deleted.
+        * bytecode/UnlinkedEvalCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.cpp.
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::estimatedSize): Deleted.
+        (JSC::UnlinkedCodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::getLineAndColumn): Deleted.
+        (JSC::dumpLineColumnEntry): Deleted.
+        (JSC::UnlinkedCodeBlock::dumpExpressionRangeInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addTypeProfilerExpressionInfo): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::~UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionExecutable::destroy): Deleted.
+        (JSC::UnlinkedCodeBlock::setInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::instructions): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::applyModification): Deleted.
+        * bytecode/UnlinkedEvalCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.h.
+        (JSC::UnlinkedStringJumpTable::offsetForValue): Deleted.
+        (JSC::UnlinkedSimpleJumpTable::add): Deleted.
+        (JSC::UnlinkedInstruction::UnlinkedInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstructor): Deleted.
+        (JSC::UnlinkedCodeBlock::isStrictMode): Deleted.
+        (JSC::UnlinkedCodeBlock::usesEval): Deleted.
+        (JSC::UnlinkedCodeBlock::parseMode): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::derivedContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::evalContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunctionContext): Deleted.
+        (JSC::UnlinkedCodeBlock::isClassContext): Deleted.
+        (JSC::UnlinkedCodeBlock::hasExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::setThisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setScopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::usesGlobalObject): Deleted.
+        (JSC::UnlinkedCodeBlock::setGlobalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::globalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setNumParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addParameter): Deleted.
+        (JSC::UnlinkedCodeBlock::numParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addIdentifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegisters): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::UnlinkedCodeBlock::addJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::jumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::lastJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::isBuiltinFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKind): Deleted.
+        (JSC::UnlinkedCodeBlock::superBinding): Deleted.
+        (JSC::UnlinkedCodeBlock::scriptMode): Deleted.
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        (JSC::UnlinkedCodeBlock::numCalleeLocals): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::switchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::functionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::functionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionExprs): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::UnlinkedCodeBlock::addExceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::exceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addObjectAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfObjectAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addValueProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addLLIntCallLinkInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfLLintCallLinkInfos): Deleted.
+        (JSC::UnlinkedCodeBlock::codeType): Deleted.
+        (JSC::UnlinkedCodeBlock::thisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::scopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::hasRareData): Deleted.
+        (JSC::UnlinkedCodeBlock::recordParse): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::codeFeatures): Deleted.
+        (JSC::UnlinkedCodeBlock::hasCapturedVariables): Deleted.
+        (JSC::UnlinkedCodeBlock::firstLine): Deleted.
+        (JSC::UnlinkedCodeBlock::lineCount): Deleted.
+        (JSC::UnlinkedCodeBlock::startColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::endColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::hasOpProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::UnlinkedCodeBlock::didOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::setDidOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::finishCreation): Deleted.
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock): Deleted.
+        * bytecode/UnlinkedFunctionCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.cpp.
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::estimatedSize): Deleted.
+        (JSC::UnlinkedCodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::getLineAndColumn): Deleted.
+        (JSC::dumpLineColumnEntry): Deleted.
+        (JSC::UnlinkedCodeBlock::dumpExpressionRangeInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addTypeProfilerExpressionInfo): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::~UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedEvalCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionExecutable::destroy): Deleted.
+        (JSC::UnlinkedCodeBlock::setInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::instructions): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::applyModification): Deleted.
+        * bytecode/UnlinkedFunctionCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.h.
+        (JSC::UnlinkedStringJumpTable::offsetForValue): Deleted.
+        (JSC::UnlinkedSimpleJumpTable::add): Deleted.
+        (JSC::UnlinkedInstruction::UnlinkedInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstructor): Deleted.
+        (JSC::UnlinkedCodeBlock::isStrictMode): Deleted.
+        (JSC::UnlinkedCodeBlock::usesEval): Deleted.
+        (JSC::UnlinkedCodeBlock::parseMode): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::derivedContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::evalContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunctionContext): Deleted.
+        (JSC::UnlinkedCodeBlock::isClassContext): Deleted.
+        (JSC::UnlinkedCodeBlock::hasExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::setThisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setScopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::usesGlobalObject): Deleted.
+        (JSC::UnlinkedCodeBlock::setGlobalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::globalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setNumParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addParameter): Deleted.
+        (JSC::UnlinkedCodeBlock::numParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addIdentifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegisters): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::UnlinkedCodeBlock::addJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::jumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::lastJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::isBuiltinFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKind): Deleted.
+        (JSC::UnlinkedCodeBlock::superBinding): Deleted.
+        (JSC::UnlinkedCodeBlock::scriptMode): Deleted.
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        (JSC::UnlinkedCodeBlock::numCalleeLocals): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::switchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::functionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::functionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionExprs): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::UnlinkedCodeBlock::addExceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::exceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addObjectAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfObjectAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addValueProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addLLIntCallLinkInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfLLintCallLinkInfos): Deleted.
+        (JSC::UnlinkedCodeBlock::codeType): Deleted.
+        (JSC::UnlinkedCodeBlock::thisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::scopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::hasRareData): Deleted.
+        (JSC::UnlinkedCodeBlock::recordParse): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::codeFeatures): Deleted.
+        (JSC::UnlinkedCodeBlock::hasCapturedVariables): Deleted.
+        (JSC::UnlinkedCodeBlock::firstLine): Deleted.
+        (JSC::UnlinkedCodeBlock::lineCount): Deleted.
+        (JSC::UnlinkedCodeBlock::startColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::endColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::hasOpProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::UnlinkedCodeBlock::didOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::setDidOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::finishCreation): Deleted.
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock): Deleted.
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::destroy):
+        * bytecode/UnlinkedGlobalCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.h.
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock):
+        (JSC::UnlinkedStringJumpTable::offsetForValue): Deleted.
+        (JSC::UnlinkedSimpleJumpTable::add): Deleted.
+        (JSC::UnlinkedInstruction::UnlinkedInstruction): Deleted.
+        (): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstructor): Deleted.
+        (JSC::UnlinkedCodeBlock::isStrictMode): Deleted.
+        (JSC::UnlinkedCodeBlock::usesEval): Deleted.
+        (JSC::UnlinkedCodeBlock::parseMode): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::derivedContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::evalContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunctionContext): Deleted.
+        (JSC::UnlinkedCodeBlock::isClassContext): Deleted.
+        (JSC::UnlinkedCodeBlock::hasExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::setThisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setScopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::usesGlobalObject): Deleted.
+        (JSC::UnlinkedCodeBlock::setGlobalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::globalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setNumParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addParameter): Deleted.
+        (JSC::UnlinkedCodeBlock::numParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addIdentifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegisters): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::UnlinkedCodeBlock::addJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::jumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::lastJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::isBuiltinFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKind): Deleted.
+        (JSC::UnlinkedCodeBlock::superBinding): Deleted.
+        (JSC::UnlinkedCodeBlock::scriptMode): Deleted.
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        (JSC::UnlinkedCodeBlock::numCalleeLocals): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::switchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::functionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::functionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionExprs): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::UnlinkedCodeBlock::addExceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::exceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addObjectAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfObjectAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addValueProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addLLIntCallLinkInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfLLintCallLinkInfos): Deleted.
+        (JSC::UnlinkedCodeBlock::codeType): Deleted.
+        (JSC::UnlinkedCodeBlock::thisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::scopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::hasRareData): Deleted.
+        (JSC::UnlinkedCodeBlock::recordParse): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::codeFeatures): Deleted.
+        (JSC::UnlinkedCodeBlock::hasCapturedVariables): Deleted.
+        (JSC::UnlinkedCodeBlock::firstLine): Deleted.
+        (JSC::UnlinkedCodeBlock::lineCount): Deleted.
+        (JSC::UnlinkedCodeBlock::startColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::endColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::hasOpProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::UnlinkedCodeBlock::didOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::setDidOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::finishCreation): Deleted.
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary): Deleted.
+        * bytecode/UnlinkedModuleProgramCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.cpp.
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::estimatedSize): Deleted.
+        (JSC::UnlinkedCodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::getLineAndColumn): Deleted.
+        (JSC::dumpLineColumnEntry): Deleted.
+        (JSC::UnlinkedCodeBlock::dumpExpressionRangeInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addTypeProfilerExpressionInfo): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::~UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedEvalCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionExecutable::destroy): Deleted.
+        (JSC::UnlinkedCodeBlock::setInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::instructions): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::applyModification): Deleted.
+        * bytecode/UnlinkedModuleProgramCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.h.
+        (JSC::UnlinkedStringJumpTable::offsetForValue): Deleted.
+        (JSC::UnlinkedSimpleJumpTable::add): Deleted.
+        (JSC::UnlinkedInstruction::UnlinkedInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstructor): Deleted.
+        (JSC::UnlinkedCodeBlock::isStrictMode): Deleted.
+        (JSC::UnlinkedCodeBlock::usesEval): Deleted.
+        (JSC::UnlinkedCodeBlock::parseMode): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::derivedContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::evalContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunctionContext): Deleted.
+        (JSC::UnlinkedCodeBlock::isClassContext): Deleted.
+        (JSC::UnlinkedCodeBlock::hasExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::setThisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setScopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::usesGlobalObject): Deleted.
+        (JSC::UnlinkedCodeBlock::setGlobalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::globalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setNumParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addParameter): Deleted.
+        (JSC::UnlinkedCodeBlock::numParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addIdentifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegisters): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::UnlinkedCodeBlock::addJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::jumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::lastJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::isBuiltinFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKind): Deleted.
+        (JSC::UnlinkedCodeBlock::superBinding): Deleted.
+        (JSC::UnlinkedCodeBlock::scriptMode): Deleted.
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        (JSC::UnlinkedCodeBlock::numCalleeLocals): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::switchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::functionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::functionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionExprs): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::UnlinkedCodeBlock::addExceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::exceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addObjectAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfObjectAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addValueProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addLLIntCallLinkInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfLLintCallLinkInfos): Deleted.
+        (JSC::UnlinkedCodeBlock::codeType): Deleted.
+        (JSC::UnlinkedCodeBlock::thisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::scopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::hasRareData): Deleted.
+        (JSC::UnlinkedCodeBlock::recordParse): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::codeFeatures): Deleted.
+        (JSC::UnlinkedCodeBlock::hasCapturedVariables): Deleted.
+        (JSC::UnlinkedCodeBlock::firstLine): Deleted.
+        (JSC::UnlinkedCodeBlock::lineCount): Deleted.
+        (JSC::UnlinkedCodeBlock::startColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::endColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::hasOpProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::UnlinkedCodeBlock::didOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::setDidOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::finishCreation): Deleted.
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock): Deleted.
+        * bytecode/UnlinkedProgramCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.cpp.
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::estimatedSize): Deleted.
+        (JSC::UnlinkedCodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::getLineAndColumn): Deleted.
+        (JSC::dumpLineColumnEntry): Deleted.
+        (JSC::UnlinkedCodeBlock::dumpExpressionRangeInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::typeProfilerExpressionInfoForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::addTypeProfilerExpressionInfo): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::visitChildren): Deleted.
+        (JSC::UnlinkedCodeBlock::~UnlinkedCodeBlock): Deleted.
+        (JSC::UnlinkedModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedEvalCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionCodeBlock::destroy): Deleted.
+        (JSC::UnlinkedFunctionExecutable::destroy): Deleted.
+        (JSC::UnlinkedCodeBlock::setInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::instructions): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::handlerForIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::applyModification): Deleted.
+        * bytecode/UnlinkedProgramCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/UnlinkedCodeBlock.h.
+        (JSC::UnlinkedStringJumpTable::offsetForValue): Deleted.
+        (JSC::UnlinkedSimpleJumpTable::add): Deleted.
+        (JSC::UnlinkedInstruction::UnlinkedInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstructor): Deleted.
+        (JSC::UnlinkedCodeBlock::isStrictMode): Deleted.
+        (JSC::UnlinkedCodeBlock::usesEval): Deleted.
+        (JSC::UnlinkedCodeBlock::parseMode): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::derivedContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::evalContextType): Deleted.
+        (JSC::UnlinkedCodeBlock::isArrowFunctionContext): Deleted.
+        (JSC::UnlinkedCodeBlock::isClassContext): Deleted.
+        (JSC::UnlinkedCodeBlock::hasExpressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::expressionInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::setThisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setScopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::usesGlobalObject): Deleted.
+        (JSC::UnlinkedCodeBlock::setGlobalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::globalObjectRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::setNumParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addParameter): Deleted.
+        (JSC::UnlinkedCodeBlock::numParameters): Deleted.
+        (JSC::UnlinkedCodeBlock::addRegExp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfRegExps): Deleted.
+        (JSC::UnlinkedCodeBlock::regexp): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addIdentifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifier): Deleted.
+        (JSC::UnlinkedCodeBlock::identifiers): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::registerIndexForLinkTimeConstant): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegisters): Deleted.
+        (JSC::UnlinkedCodeBlock::constantRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::UnlinkedCodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::UnlinkedCodeBlock::addJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::jumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::lastJumpTarget): Deleted.
+        (JSC::UnlinkedCodeBlock::isBuiltinFunction): Deleted.
+        (JSC::UnlinkedCodeBlock::constructorKind): Deleted.
+        (JSC::UnlinkedCodeBlock::superBinding): Deleted.
+        (JSC::UnlinkedCodeBlock::scriptMode): Deleted.
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        (JSC::UnlinkedCodeBlock::numCalleeLocals): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::switchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::UnlinkedCodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::functionDecl): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::UnlinkedCodeBlock::addFunctionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::functionExpr): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfFunctionExprs): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::UnlinkedCodeBlock::addExceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::exceptionHandler): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addArrayAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfArrayAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addObjectAllocationProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfObjectAllocationProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addValueProfile): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::UnlinkedCodeBlock::addLLIntCallLinkInfo): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfLLintCallLinkInfos): Deleted.
+        (JSC::UnlinkedCodeBlock::codeType): Deleted.
+        (JSC::UnlinkedCodeBlock::thisRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::scopeRegister): Deleted.
+        (JSC::UnlinkedCodeBlock::addPropertyAccessInstruction): Deleted.
+        (JSC::UnlinkedCodeBlock::numberOfPropertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::propertyAccessInstructions): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::hasRareData): Deleted.
+        (JSC::UnlinkedCodeBlock::recordParse): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::sourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::setSourceMappingURLDirective): Deleted.
+        (JSC::UnlinkedCodeBlock::codeFeatures): Deleted.
+        (JSC::UnlinkedCodeBlock::hasCapturedVariables): Deleted.
+        (JSC::UnlinkedCodeBlock::firstLine): Deleted.
+        (JSC::UnlinkedCodeBlock::lineCount): Deleted.
+        (JSC::UnlinkedCodeBlock::startColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::endColumn): Deleted.
+        (JSC::UnlinkedCodeBlock::addOpProfileControlFlowBytecodeOffset): Deleted.
+        (JSC::UnlinkedCodeBlock::opProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::hasOpProfileControlFlowBytecodeOffsets): Deleted.
+        (JSC::UnlinkedCodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::UnlinkedCodeBlock::didOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::setDidOptimize): Deleted.
+        (JSC::UnlinkedCodeBlock::finishCreation): Deleted.
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        * runtime/CodeCache.cpp:
+        * runtime/EvalExecutable.h:
+        * runtime/JSModuleRecord.cpp:
+
+2016-11-02  Saam Barati  <sbarati@apple.com>
+
+        Allocation elimination of rest parameter doesn't take into account indexed properties on Array.prototype/Object.prototype
+        https://bugs.webkit.org/show_bug.cgi?id=164301
+
+        Reviewed by Geoffrey Garen.
+
+        We weren't taking into account indexed properties on the __proto__
+        of the rest parameter. This made the code for doing out of bound
+        accesses incorrect since it just assumed it's safe for the result of
+        an out of bound access to be undefined. This broke the semantics
+        of JS code when there was an indexed property on the Array.prototype
+        or Object.prototype.
+
+        This patch makes sure we set up the proper watchpoints for making
+        sure out of bound accesses are safe to return undefined.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+
+2016-11-02  Geoffrey Garen  <ggaren@apple.com>
+
+        One file per class for CodeBlock.h/.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=164343
+
+        Reviewed by Andreas Kling.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CallLinkInfo.cpp:
+        * bytecode/CodeBlock.cpp:
+        (JSC::FunctionCodeBlock::destroy): Deleted.
+        (JSC::WebAssemblyCodeBlock::destroy): Deleted.
+        (JSC::ProgramCodeBlock::destroy): Deleted.
+        (JSC::ModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::EvalCodeBlock::destroy): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::GlobalCodeBlock::GlobalCodeBlock): Deleted.
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock): Deleted.
+        (JSC::FunctionCodeBlock::create): Deleted.
+        (JSC::FunctionCodeBlock::createStructure): Deleted.
+        (JSC::FunctionCodeBlock::FunctionCodeBlock): Deleted.
+        (JSC::WebAssemblyCodeBlock::create): Deleted.
+        (JSC::WebAssemblyCodeBlock::createStructure): Deleted.
+        (JSC::WebAssemblyCodeBlock::WebAssemblyCodeBlock): Deleted.
+        (JSC::ScriptExecutable::forEachCodeBlock): Deleted.
+        * bytecode/EvalCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/CodeBlock.cpp.
+        (JSC::FunctionCodeBlock::destroy): Deleted.
+        (JSC::WebAssemblyCodeBlock::destroy): Deleted.
+        (JSC::ProgramCodeBlock::destroy): Deleted.
+        (JSC::ModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::CodeBlock::inferredName): Deleted.
+        (JSC::CodeBlock::hasHash): Deleted.
+        (JSC::CodeBlock::isSafeToComputeHash): Deleted.
+        (JSC::CodeBlock::hash): Deleted.
+        (JSC::CodeBlock::sourceCodeForTools): Deleted.
+        (JSC::CodeBlock::sourceCodeOnOneLine): Deleted.
+        (JSC::CodeBlock::hashAsStringIfPossible): Deleted.
+        (JSC::CodeBlock::dumpAssumingJITType): Deleted.
+        (JSC::CodeBlock::dump): Deleted.
+        (JSC::idName): Deleted.
+        (JSC::CodeBlock::registerName): Deleted.
+        (JSC::CodeBlock::constantName): Deleted.
+        (JSC::regexpToSourceString): Deleted.
+        (JSC::regexpName): Deleted.
+        (JSC::debugHookName): Deleted.
+        (JSC::CodeBlock::printUnaryOp): Deleted.
+        (JSC::CodeBlock::printBinaryOp): Deleted.
+        (JSC::CodeBlock::printConditionalJump): Deleted.
+        (JSC::CodeBlock::printGetByIdOp): Deleted.
+        (JSC::dumpStructure): Deleted.
+        (JSC::dumpChain): Deleted.
+        (JSC::CodeBlock::printGetByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printPutByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printCallOp): Deleted.
+        (JSC::CodeBlock::printPutByIdOp): Deleted.
+        (JSC::CodeBlock::dumpSource): Deleted.
+        (JSC::CodeBlock::dumpBytecode): Deleted.
+        (JSC::CodeBlock::dumpExceptionHandlers): Deleted.
+        (JSC::CodeBlock::beginDumpProfiling): Deleted.
+        (JSC::CodeBlock::dumpValueProfiling): Deleted.
+        (JSC::CodeBlock::dumpArrayProfiling): Deleted.
+        (JSC::CodeBlock::dumpRareCaseProfile): Deleted.
+        (JSC::CodeBlock::dumpArithProfile): Deleted.
+        (JSC::CodeBlock::printLocationAndOp): Deleted.
+        (JSC::CodeBlock::printLocationOpAndRegisterOperand): Deleted.
+        (JSC::sizeInBytes): Deleted.
+        (JSC::CodeBlock::CodeBlock): Deleted.
+        (JSC::CodeBlock::finishCreation): Deleted.
+        (JSC::CodeBlock::~CodeBlock): Deleted.
+        (JSC::CodeBlock::setConstantRegisters): Deleted.
+        (JSC::CodeBlock::setAlternative): Deleted.
+        (JSC::CodeBlock::setNumParameters): Deleted.
+        (JSC::EvalCodeCache::visitAggregate): Deleted.
+        (JSC::CodeBlock::specialOSREntryBlockOrNull): Deleted.
+        (JSC::CodeBlock::visitWeakly): Deleted.
+        (JSC::CodeBlock::estimatedSize): Deleted.
+        (JSC::CodeBlock::visitChildren): Deleted.
+        (JSC::CodeBlock::shouldVisitStrongly): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToWeakReference): Deleted.
+        (JSC::timeToLive): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToOldAge): Deleted.
+        (JSC::shouldMarkTransition): Deleted.
+        (JSC::CodeBlock::propagateTransitions): Deleted.
+        (JSC::CodeBlock::determineLiveness): Deleted.
+        (JSC::CodeBlock::WeakReferenceHarvester::visitWeakReferences): Deleted.
+        (JSC::CodeBlock::clearLLIntGetByIdCache): Deleted.
+        (JSC::CodeBlock::finalizeLLIntInlineCaches): Deleted.
+        (JSC::CodeBlock::finalizeBaselineJITInlineCaches): Deleted.
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        (JSC::CodeBlock::getStubInfoMap): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoMap): Deleted.
+        (JSC::CodeBlock::getByValInfoMap): Deleted.
+        (JSC::CodeBlock::addStubInfo): Deleted.
+        (JSC::CodeBlock::addJITAddIC): Deleted.
+        (JSC::CodeBlock::addJITMulIC): Deleted.
+        (JSC::CodeBlock::addJITSubIC): Deleted.
+        (JSC::CodeBlock::addJITNegIC): Deleted.
+        (JSC::CodeBlock::findStubInfo): Deleted.
+        (JSC::CodeBlock::addByValInfo): Deleted.
+        (JSC::CodeBlock::addCallLinkInfo): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoForBytecodeIndex): Deleted.
+        (JSC::CodeBlock::resetJITData): Deleted.
+        (JSC::CodeBlock::visitOSRExitTargets): Deleted.
+        (JSC::CodeBlock::stronglyVisitStrongReferences): Deleted.
+        (JSC::CodeBlock::stronglyVisitWeakReferences): Deleted.
+        (JSC::CodeBlock::baselineAlternative): Deleted.
+        (JSC::CodeBlock::baselineVersion): Deleted.
+        (JSC::CodeBlock::hasOptimizedReplacement): Deleted.
+        (JSC::CodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::handlerForIndex): Deleted.
+        (JSC::CodeBlock::newExceptionHandlingCallSiteIndex): Deleted.
+        (JSC::CodeBlock::removeExceptionHandlerForCallSite): Deleted.
+        (JSC::CodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::columnNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::hasOpDebugForLineAndColumn): Deleted.
+        (JSC::CodeBlock::shrinkToFit): Deleted.
+        (JSC::CodeBlock::linkIncomingCall): Deleted.
+        (JSC::CodeBlock::linkIncomingPolymorphicCall): Deleted.
+        (JSC::CodeBlock::unlinkIncomingCalls): Deleted.
+        (JSC::CodeBlock::newReplacement): Deleted.
+        (JSC::CodeBlock::replacement): Deleted.
+        (JSC::CodeBlock::computeCapabilityLevel): Deleted.
+        (JSC::CodeBlock::jettison): Deleted.
+        (JSC::CodeBlock::globalObjectFor): Deleted.
+        (JSC::RecursionCheckFunctor::RecursionCheckFunctor): Deleted.
+        (JSC::RecursionCheckFunctor::operator()): Deleted.
+        (JSC::RecursionCheckFunctor::didRecurse): Deleted.
+        (JSC::CodeBlock::noticeIncomingCall): Deleted.
+        (JSC::CodeBlock::reoptimizationRetryCounter): Deleted.
+        (JSC::CodeBlock::setCalleeSaveRegisters): Deleted.
+        (JSC::roundCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::calleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::countReoptimization): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::codeTypeThresholdMultiplier): Deleted.
+        (JSC::CodeBlock::optimizationThresholdScalingFactor): Deleted.
+        (JSC::clipThreshold): Deleted.
+        (JSC::CodeBlock::adjustedCounterValue): Deleted.
+        (JSC::CodeBlock::checkIfOptimizationThresholdReached): Deleted.
+        (JSC::CodeBlock::optimizeNextInvocation): Deleted.
+        (JSC::CodeBlock::dontOptimizeAnytimeSoon): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeAfterLongWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeSoon): Deleted.
+        (JSC::CodeBlock::forceOptimizationSlowPathConcurrently): Deleted.
+        (JSC::CodeBlock::setOptimizationThresholdBasedOnCompilationResult): Deleted.
+        (JSC::CodeBlock::adjustedExitCountThreshold): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimization): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimizationFromLoop): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeNow): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeFromLoopNow): Deleted.
+        (JSC::CodeBlock::getArrayProfile): Deleted.
+        (JSC::CodeBlock::addArrayProfile): Deleted.
+        (JSC::CodeBlock::getOrAddArrayProfile): Deleted.
+        (JSC::CodeBlock::codeOrigins): Deleted.
+        (JSC::CodeBlock::numberOfDFGIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::updateAllPredictionsAndCountLiveness): Deleted.
+        (JSC::CodeBlock::updateAllValueProfilePredictions): Deleted.
+        (JSC::CodeBlock::updateAllArrayPredictions): Deleted.
+        (JSC::CodeBlock::updateAllPredictions): Deleted.
+        (JSC::CodeBlock::shouldOptimizeNow): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::dumpValueProfiles): Deleted.
+        (JSC::CodeBlock::frameRegisterCount): Deleted.
+        (JSC::CodeBlock::stackPointerOffset): Deleted.
+        (JSC::CodeBlock::predictedMachineCodeSize): Deleted.
+        (JSC::CodeBlock::usesOpcode): Deleted.
+        (JSC::CodeBlock::nameForRegister): Deleted.
+        (JSC::CodeBlock::valueProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::validate): Deleted.
+        (JSC::CodeBlock::beginValidationDidFail): Deleted.
+        (JSC::CodeBlock::endValidationDidFail): Deleted.
+        (JSC::CodeBlock::addBreakpoint): Deleted.
+        (JSC::CodeBlock::setSteppingMode): Deleted.
+        (JSC::CodeBlock::addRareCaseProfile): Deleted.
+        (JSC::CodeBlock::rareCaseProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::rareCaseProfileCountForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForPC): Deleted.
+        (JSC::CodeBlock::couldTakeSpecialFastCase): Deleted.
+        (JSC::CodeBlock::capabilityLevel): Deleted.
+        (JSC::CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler): Deleted.
+        (JSC::CodeBlock::setPCToCodeOriginMap): Deleted.
+        (JSC::CodeBlock::findPC): Deleted.
+        (JSC::CodeBlock::bytecodeOffsetFromCallSiteIndex): Deleted.
+        (JSC::CodeBlock::thresholdForJIT): Deleted.
+        (JSC::CodeBlock::jitAfterWarmUp): Deleted.
+        (JSC::CodeBlock::jitSoon): Deleted.
+        (JSC::CodeBlock::dumpMathICStats): Deleted.
+        (JSC::CodeBlock::livenessAnalysisSlow): Deleted.
+        * bytecode/EvalCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/CodeBlock.h.
+        (): Deleted.
+        (JSC::CodeBlock::unlinkedCodeBlock): Deleted.
+        (JSC::CodeBlock::numParameters): Deleted.
+        (JSC::CodeBlock::numCalleeLocals): Deleted.
+        (JSC::CodeBlock::addressOfNumParameters): Deleted.
+        (JSC::CodeBlock::offsetOfNumParameters): Deleted.
+        (JSC::CodeBlock::alternative): Deleted.
+        (JSC::CodeBlock::forEachRelatedCodeBlock): Deleted.
+        (JSC::CodeBlock::specializationKind): Deleted.
+        (JSC::CodeBlock::isStrictMode): Deleted.
+        (JSC::CodeBlock::ecmaMode): Deleted.
+        (JSC::CodeBlock::isKnownNotImmediate): Deleted.
+        (JSC::CodeBlock::isTemporaryRegisterIndex): Deleted.
+        (JSC::CodeBlock::stubInfoBegin): Deleted.
+        (JSC::CodeBlock::stubInfoEnd): Deleted.
+        (JSC::CodeBlock::callLinkInfosBegin): Deleted.
+        (JSC::CodeBlock::callLinkInfosEnd): Deleted.
+        (JSC::CodeBlock::setJITCodeMap): Deleted.
+        (JSC::CodeBlock::jitCodeMap): Deleted.
+        (JSC::CodeBlock::bytecodeOffset): Deleted.
+        (JSC::CodeBlock::numberOfInstructions): Deleted.
+        (JSC::CodeBlock::instructions): Deleted.
+        (JSC::CodeBlock::instructionCount): Deleted.
+        (JSC::CodeBlock::setJITCode): Deleted.
+        (JSC::CodeBlock::jitCode): Deleted.
+        (JSC::CodeBlock::jitCodeOffset): Deleted.
+        (JSC::CodeBlock::jitType): Deleted.
+        (JSC::CodeBlock::hasBaselineJITProfiling): Deleted.
+        (JSC::CodeBlock::capabilityLevelState): Deleted.
+        (JSC::CodeBlock::ownerExecutable): Deleted.
+        (JSC::CodeBlock::ownerScriptExecutable): Deleted.
+        (JSC::CodeBlock::vm): Deleted.
+        (JSC::CodeBlock::setThisRegister): Deleted.
+        (JSC::CodeBlock::thisRegister): Deleted.
+        (JSC::CodeBlock::usesEval): Deleted.
+        (JSC::CodeBlock::setScopeRegister): Deleted.
+        (JSC::CodeBlock::scopeRegister): Deleted.
+        (JSC::CodeBlock::codeType): Deleted.
+        (JSC::CodeBlock::putByIdContext): Deleted.
+        (JSC::CodeBlock::source): Deleted.
+        (JSC::CodeBlock::sourceOffset): Deleted.
+        (JSC::CodeBlock::firstLineColumnOffset): Deleted.
+        (JSC::CodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::CodeBlock::jumpTarget): Deleted.
+        (JSC::CodeBlock::numberOfArgumentValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfileForArgument): Deleted.
+        (JSC::CodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfile): Deleted.
+        (JSC::CodeBlock::valueProfilePredictionForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::totalNumberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::getFromAllValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfRareCaseProfiles): Deleted.
+        (JSC::CodeBlock::likelyToTakeSlowCase): Deleted.
+        (JSC::CodeBlock::couldTakeSlowCase): Deleted.
+        (JSC::CodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::CodeBlock::arrayProfiles): Deleted.
+        (JSC::CodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::CodeBlock::exceptionHandler): Deleted.
+        (JSC::CodeBlock::hasExpressionInfo): Deleted.
+        (JSC::CodeBlock::hasCodeOrigins): Deleted.
+        (JSC::CodeBlock::canGetCodeOrigin): Deleted.
+        (JSC::CodeBlock::codeOrigin): Deleted.
+        (JSC::CodeBlock::addFrequentExitSite): Deleted.
+        (JSC::CodeBlock::hasExitSite): Deleted.
+        (JSC::CodeBlock::exitProfile): Deleted.
+        (JSC::CodeBlock::lazyOperandValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::constants): Deleted.
+        (JSC::CodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::addConstant): Deleted.
+        (JSC::CodeBlock::addConstantLazily): Deleted.
+        (JSC::CodeBlock::constantRegister): Deleted.
+        (JSC::CodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::CodeBlock::getConstant): Deleted.
+        (JSC::CodeBlock::constantSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::functionDecl): Deleted.
+        (JSC::CodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::CodeBlock::functionExpr): Deleted.
+        (JSC::CodeBlock::regexp): Deleted.
+        (JSC::CodeBlock::numberOfConstantBuffers): Deleted.
+        (JSC::CodeBlock::addConstantBuffer): Deleted.
+        (JSC::CodeBlock::constantBufferAsVector): Deleted.
+        (JSC::CodeBlock::constantBuffer): Deleted.
+        (JSC::CodeBlock::heap): Deleted.
+        (JSC::CodeBlock::globalObject): Deleted.
+        (JSC::CodeBlock::livenessAnalysis): Deleted.
+        (JSC::CodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::switchJumpTable): Deleted.
+        (JSC::CodeBlock::clearSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::evalCodeCache): Deleted.
+        (JSC::CodeBlock::checkIfJITThresholdReached): Deleted.
+        (JSC::CodeBlock::dontJITAnytimeSoon): Deleted.
+        (JSC::CodeBlock::llintExecuteCounter): Deleted.
+        (JSC::CodeBlock::llintGetByIdWatchpointMap): Deleted.
+        (JSC::CodeBlock::numberOfLLIntBaselineCalleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::addressOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionActiveThreshold): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionTotalCount): Deleted.
+        (JSC::CodeBlock::jitExecuteCounter): Deleted.
+        (JSC::CodeBlock::optimizationDelayCounter): Deleted.
+        (JSC::CodeBlock::osrExitCounter): Deleted.
+        (JSC::CodeBlock::countOSRExit): Deleted.
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::offsetOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::calleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::hasDebuggerRequests): Deleted.
+        (JSC::CodeBlock::debuggerRequestsAddress): Deleted.
+        (JSC::CodeBlock::removeBreakpoint): Deleted.
+        (JSC::CodeBlock::clearDebuggerRequests): Deleted.
+        (JSC::CodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::CodeBlock::clearExceptionHandlers): Deleted.
+        (JSC::CodeBlock::appendExceptionHandler): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::replaceConstant): Deleted.
+        (JSC::CodeBlock::timeSinceCreation): Deleted.
+        (JSC::CodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::GlobalCodeBlock::GlobalCodeBlock): Deleted.
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        (JSC::FunctionCodeBlock::create): Deleted.
+        (JSC::FunctionCodeBlock::createStructure): Deleted.
+        (JSC::FunctionCodeBlock::FunctionCodeBlock): Deleted.
+        (JSC::WebAssemblyCodeBlock::create): Deleted.
+        (JSC::WebAssemblyCodeBlock::createStructure): Deleted.
+        (JSC::WebAssemblyCodeBlock::WebAssemblyCodeBlock): Deleted.
+        (JSC::ExecState::r): Deleted.
+        (JSC::ExecState::uncheckedR): Deleted.
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        (JSC::ScriptExecutable::forEachCodeBlock): Deleted.
+        (JSC::ScriptExecutable::prepareForExecution): Deleted.
+        * bytecode/FunctionCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/CodeBlock.cpp.
+        (JSC::WebAssemblyCodeBlock::destroy): Deleted.
+        (JSC::ProgramCodeBlock::destroy): Deleted.
+        (JSC::ModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::EvalCodeBlock::destroy): Deleted.
+        (JSC::CodeBlock::inferredName): Deleted.
+        (JSC::CodeBlock::hasHash): Deleted.
+        (JSC::CodeBlock::isSafeToComputeHash): Deleted.
+        (JSC::CodeBlock::hash): Deleted.
+        (JSC::CodeBlock::sourceCodeForTools): Deleted.
+        (JSC::CodeBlock::sourceCodeOnOneLine): Deleted.
+        (JSC::CodeBlock::hashAsStringIfPossible): Deleted.
+        (JSC::CodeBlock::dumpAssumingJITType): Deleted.
+        (JSC::CodeBlock::dump): Deleted.
+        (JSC::idName): Deleted.
+        (JSC::CodeBlock::registerName): Deleted.
+        (JSC::CodeBlock::constantName): Deleted.
+        (JSC::regexpToSourceString): Deleted.
+        (JSC::regexpName): Deleted.
+        (JSC::debugHookName): Deleted.
+        (JSC::CodeBlock::printUnaryOp): Deleted.
+        (JSC::CodeBlock::printBinaryOp): Deleted.
+        (JSC::CodeBlock::printConditionalJump): Deleted.
+        (JSC::CodeBlock::printGetByIdOp): Deleted.
+        (JSC::dumpStructure): Deleted.
+        (JSC::dumpChain): Deleted.
+        (JSC::CodeBlock::printGetByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printPutByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printCallOp): Deleted.
+        (JSC::CodeBlock::printPutByIdOp): Deleted.
+        (JSC::CodeBlock::dumpSource): Deleted.
+        (JSC::CodeBlock::dumpBytecode): Deleted.
+        (JSC::CodeBlock::dumpExceptionHandlers): Deleted.
+        (JSC::CodeBlock::beginDumpProfiling): Deleted.
+        (JSC::CodeBlock::dumpValueProfiling): Deleted.
+        (JSC::CodeBlock::dumpArrayProfiling): Deleted.
+        (JSC::CodeBlock::dumpRareCaseProfile): Deleted.
+        (JSC::CodeBlock::dumpArithProfile): Deleted.
+        (JSC::CodeBlock::printLocationAndOp): Deleted.
+        (JSC::CodeBlock::printLocationOpAndRegisterOperand): Deleted.
+        (JSC::sizeInBytes): Deleted.
+        (JSC::CodeBlock::CodeBlock): Deleted.
+        (JSC::CodeBlock::finishCreation): Deleted.
+        (JSC::CodeBlock::~CodeBlock): Deleted.
+        (JSC::CodeBlock::setConstantRegisters): Deleted.
+        (JSC::CodeBlock::setAlternative): Deleted.
+        (JSC::CodeBlock::setNumParameters): Deleted.
+        (JSC::EvalCodeCache::visitAggregate): Deleted.
+        (JSC::CodeBlock::specialOSREntryBlockOrNull): Deleted.
+        (JSC::CodeBlock::visitWeakly): Deleted.
+        (JSC::CodeBlock::estimatedSize): Deleted.
+        (JSC::CodeBlock::visitChildren): Deleted.
+        (JSC::CodeBlock::shouldVisitStrongly): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToWeakReference): Deleted.
+        (JSC::timeToLive): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToOldAge): Deleted.
+        (JSC::shouldMarkTransition): Deleted.
+        (JSC::CodeBlock::propagateTransitions): Deleted.
+        (JSC::CodeBlock::determineLiveness): Deleted.
+        (JSC::CodeBlock::WeakReferenceHarvester::visitWeakReferences): Deleted.
+        (JSC::CodeBlock::clearLLIntGetByIdCache): Deleted.
+        (JSC::CodeBlock::finalizeLLIntInlineCaches): Deleted.
+        (JSC::CodeBlock::finalizeBaselineJITInlineCaches): Deleted.
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        (JSC::CodeBlock::getStubInfoMap): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoMap): Deleted.
+        (JSC::CodeBlock::getByValInfoMap): Deleted.
+        (JSC::CodeBlock::addStubInfo): Deleted.
+        (JSC::CodeBlock::addJITAddIC): Deleted.
+        (JSC::CodeBlock::addJITMulIC): Deleted.
+        (JSC::CodeBlock::addJITSubIC): Deleted.
+        (JSC::CodeBlock::addJITNegIC): Deleted.
+        (JSC::CodeBlock::findStubInfo): Deleted.
+        (JSC::CodeBlock::addByValInfo): Deleted.
+        (JSC::CodeBlock::addCallLinkInfo): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoForBytecodeIndex): Deleted.
+        (JSC::CodeBlock::resetJITData): Deleted.
+        (JSC::CodeBlock::visitOSRExitTargets): Deleted.
+        (JSC::CodeBlock::stronglyVisitStrongReferences): Deleted.
+        (JSC::CodeBlock::stronglyVisitWeakReferences): Deleted.
+        (JSC::CodeBlock::baselineAlternative): Deleted.
+        (JSC::CodeBlock::baselineVersion): Deleted.
+        (JSC::CodeBlock::hasOptimizedReplacement): Deleted.
+        (JSC::CodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::handlerForIndex): Deleted.
+        (JSC::CodeBlock::newExceptionHandlingCallSiteIndex): Deleted.
+        (JSC::CodeBlock::removeExceptionHandlerForCallSite): Deleted.
+        (JSC::CodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::columnNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::hasOpDebugForLineAndColumn): Deleted.
+        (JSC::CodeBlock::shrinkToFit): Deleted.
+        (JSC::CodeBlock::linkIncomingCall): Deleted.
+        (JSC::CodeBlock::linkIncomingPolymorphicCall): Deleted.
+        (JSC::CodeBlock::unlinkIncomingCalls): Deleted.
+        (JSC::CodeBlock::newReplacement): Deleted.
+        (JSC::CodeBlock::replacement): Deleted.
+        (JSC::CodeBlock::computeCapabilityLevel): Deleted.
+        (JSC::CodeBlock::jettison): Deleted.
+        (JSC::CodeBlock::globalObjectFor): Deleted.
+        (JSC::RecursionCheckFunctor::RecursionCheckFunctor): Deleted.
+        (JSC::RecursionCheckFunctor::operator()): Deleted.
+        (JSC::RecursionCheckFunctor::didRecurse): Deleted.
+        (JSC::CodeBlock::noticeIncomingCall): Deleted.
+        (JSC::CodeBlock::reoptimizationRetryCounter): Deleted.
+        (JSC::CodeBlock::setCalleeSaveRegisters): Deleted.
+        (JSC::roundCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::calleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::countReoptimization): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::codeTypeThresholdMultiplier): Deleted.
+        (JSC::CodeBlock::optimizationThresholdScalingFactor): Deleted.
+        (JSC::clipThreshold): Deleted.
+        (JSC::CodeBlock::adjustedCounterValue): Deleted.
+        (JSC::CodeBlock::checkIfOptimizationThresholdReached): Deleted.
+        (JSC::CodeBlock::optimizeNextInvocation): Deleted.
+        (JSC::CodeBlock::dontOptimizeAnytimeSoon): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeAfterLongWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeSoon): Deleted.
+        (JSC::CodeBlock::forceOptimizationSlowPathConcurrently): Deleted.
+        (JSC::CodeBlock::setOptimizationThresholdBasedOnCompilationResult): Deleted.
+        (JSC::CodeBlock::adjustedExitCountThreshold): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimization): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimizationFromLoop): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeNow): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeFromLoopNow): Deleted.
+        (JSC::CodeBlock::getArrayProfile): Deleted.
+        (JSC::CodeBlock::addArrayProfile): Deleted.
+        (JSC::CodeBlock::getOrAddArrayProfile): Deleted.
+        (JSC::CodeBlock::codeOrigins): Deleted.
+        (JSC::CodeBlock::numberOfDFGIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::updateAllPredictionsAndCountLiveness): Deleted.
+        (JSC::CodeBlock::updateAllValueProfilePredictions): Deleted.
+        (JSC::CodeBlock::updateAllArrayPredictions): Deleted.
+        (JSC::CodeBlock::updateAllPredictions): Deleted.
+        (JSC::CodeBlock::shouldOptimizeNow): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::dumpValueProfiles): Deleted.
+        (JSC::CodeBlock::frameRegisterCount): Deleted.
+        (JSC::CodeBlock::stackPointerOffset): Deleted.
+        (JSC::CodeBlock::predictedMachineCodeSize): Deleted.
+        (JSC::CodeBlock::usesOpcode): Deleted.
+        (JSC::CodeBlock::nameForRegister): Deleted.
+        (JSC::CodeBlock::valueProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::validate): Deleted.
+        (JSC::CodeBlock::beginValidationDidFail): Deleted.
+        (JSC::CodeBlock::endValidationDidFail): Deleted.
+        (JSC::CodeBlock::addBreakpoint): Deleted.
+        (JSC::CodeBlock::setSteppingMode): Deleted.
+        (JSC::CodeBlock::addRareCaseProfile): Deleted.
+        (JSC::CodeBlock::rareCaseProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::rareCaseProfileCountForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForPC): Deleted.
+        (JSC::CodeBlock::couldTakeSpecialFastCase): Deleted.
+        (JSC::CodeBlock::capabilityLevel): Deleted.
+        (JSC::CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler): Deleted.
+        (JSC::CodeBlock::setPCToCodeOriginMap): Deleted.
+        (JSC::CodeBlock::findPC): Deleted.
+        (JSC::CodeBlock::bytecodeOffsetFromCallSiteIndex): Deleted.
+        (JSC::CodeBlock::thresholdForJIT): Deleted.
+        (JSC::CodeBlock::jitAfterWarmUp): Deleted.
+        (JSC::CodeBlock::jitSoon): Deleted.
+        (JSC::CodeBlock::dumpMathICStats): Deleted.
+        (JSC::CodeBlock::livenessAnalysisSlow): Deleted.
+        * bytecode/FunctionCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/CodeBlock.h.
+        (): Deleted.
+        (JSC::CodeBlock::unlinkedCodeBlock): Deleted.
+        (JSC::CodeBlock::numParameters): Deleted.
+        (JSC::CodeBlock::numCalleeLocals): Deleted.
+        (JSC::CodeBlock::addressOfNumParameters): Deleted.
+        (JSC::CodeBlock::offsetOfNumParameters): Deleted.
+        (JSC::CodeBlock::alternative): Deleted.
+        (JSC::CodeBlock::forEachRelatedCodeBlock): Deleted.
+        (JSC::CodeBlock::specializationKind): Deleted.
+        (JSC::CodeBlock::isStrictMode): Deleted.
+        (JSC::CodeBlock::ecmaMode): Deleted.
+        (JSC::CodeBlock::isKnownNotImmediate): Deleted.
+        (JSC::CodeBlock::isTemporaryRegisterIndex): Deleted.
+        (JSC::CodeBlock::stubInfoBegin): Deleted.
+        (JSC::CodeBlock::stubInfoEnd): Deleted.
+        (JSC::CodeBlock::callLinkInfosBegin): Deleted.
+        (JSC::CodeBlock::callLinkInfosEnd): Deleted.
+        (JSC::CodeBlock::setJITCodeMap): Deleted.
+        (JSC::CodeBlock::jitCodeMap): Deleted.
+        (JSC::CodeBlock::bytecodeOffset): Deleted.
+        (JSC::CodeBlock::numberOfInstructions): Deleted.
+        (JSC::CodeBlock::instructions): Deleted.
+        (JSC::CodeBlock::instructionCount): Deleted.
+        (JSC::CodeBlock::setJITCode): Deleted.
+        (JSC::CodeBlock::jitCode): Deleted.
+        (JSC::CodeBlock::jitCodeOffset): Deleted.
+        (JSC::CodeBlock::jitType): Deleted.
+        (JSC::CodeBlock::hasBaselineJITProfiling): Deleted.
+        (JSC::CodeBlock::capabilityLevelState): Deleted.
+        (JSC::CodeBlock::ownerExecutable): Deleted.
+        (JSC::CodeBlock::ownerScriptExecutable): Deleted.
+        (JSC::CodeBlock::vm): Deleted.
+        (JSC::CodeBlock::setThisRegister): Deleted.
+        (JSC::CodeBlock::thisRegister): Deleted.
+        (JSC::CodeBlock::usesEval): Deleted.
+        (JSC::CodeBlock::setScopeRegister): Deleted.
+        (JSC::CodeBlock::scopeRegister): Deleted.
+        (JSC::CodeBlock::codeType): Deleted.
+        (JSC::CodeBlock::putByIdContext): Deleted.
+        (JSC::CodeBlock::source): Deleted.
+        (JSC::CodeBlock::sourceOffset): Deleted.
+        (JSC::CodeBlock::firstLineColumnOffset): Deleted.
+        (JSC::CodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::CodeBlock::jumpTarget): Deleted.
+        (JSC::CodeBlock::numberOfArgumentValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfileForArgument): Deleted.
+        (JSC::CodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfile): Deleted.
+        (JSC::CodeBlock::valueProfilePredictionForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::totalNumberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::getFromAllValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfRareCaseProfiles): Deleted.
+        (JSC::CodeBlock::likelyToTakeSlowCase): Deleted.
+        (JSC::CodeBlock::couldTakeSlowCase): Deleted.
+        (JSC::CodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::CodeBlock::arrayProfiles): Deleted.
+        (JSC::CodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::CodeBlock::exceptionHandler): Deleted.
+        (JSC::CodeBlock::hasExpressionInfo): Deleted.
+        (JSC::CodeBlock::hasCodeOrigins): Deleted.
+        (JSC::CodeBlock::canGetCodeOrigin): Deleted.
+        (JSC::CodeBlock::codeOrigin): Deleted.
+        (JSC::CodeBlock::addFrequentExitSite): Deleted.
+        (JSC::CodeBlock::hasExitSite): Deleted.
+        (JSC::CodeBlock::exitProfile): Deleted.
+        (JSC::CodeBlock::lazyOperandValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::constants): Deleted.
+        (JSC::CodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::addConstant): Deleted.
+        (JSC::CodeBlock::addConstantLazily): Deleted.
+        (JSC::CodeBlock::constantRegister): Deleted.
+        (JSC::CodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::CodeBlock::getConstant): Deleted.
+        (JSC::CodeBlock::constantSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::functionDecl): Deleted.
+        (JSC::CodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::CodeBlock::functionExpr): Deleted.
+        (JSC::CodeBlock::regexp): Deleted.
+        (JSC::CodeBlock::numberOfConstantBuffers): Deleted.
+        (JSC::CodeBlock::addConstantBuffer): Deleted.
+        (JSC::CodeBlock::constantBufferAsVector): Deleted.
+        (JSC::CodeBlock::constantBuffer): Deleted.
+        (JSC::CodeBlock::heap): Deleted.
+        (JSC::CodeBlock::globalObject): Deleted.
+        (JSC::CodeBlock::livenessAnalysis): Deleted.
+        (JSC::CodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::switchJumpTable): Deleted.
+        (JSC::CodeBlock::clearSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::evalCodeCache): Deleted.
+        (JSC::CodeBlock::checkIfJITThresholdReached): Deleted.
+        (JSC::CodeBlock::dontJITAnytimeSoon): Deleted.
+        (JSC::CodeBlock::llintExecuteCounter): Deleted.
+        (JSC::CodeBlock::llintGetByIdWatchpointMap): Deleted.
+        (JSC::CodeBlock::numberOfLLIntBaselineCalleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::addressOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionActiveThreshold): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionTotalCount): Deleted.
+        (JSC::CodeBlock::jitExecuteCounter): Deleted.
+        (JSC::CodeBlock::optimizationDelayCounter): Deleted.
+        (JSC::CodeBlock::osrExitCounter): Deleted.
+        (JSC::CodeBlock::countOSRExit): Deleted.
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::offsetOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::calleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::hasDebuggerRequests): Deleted.
+        (JSC::CodeBlock::debuggerRequestsAddress): Deleted.
+        (JSC::CodeBlock::removeBreakpoint): Deleted.
+        (JSC::CodeBlock::clearDebuggerRequests): Deleted.
+        (JSC::CodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::CodeBlock::clearExceptionHandlers): Deleted.
+        (JSC::CodeBlock::appendExceptionHandler): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::replaceConstant): Deleted.
+        (JSC::CodeBlock::timeSinceCreation): Deleted.
+        (JSC::CodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::GlobalCodeBlock::GlobalCodeBlock): Deleted.
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock): Deleted.
+        (JSC::WebAssemblyCodeBlock::create): Deleted.
+        (JSC::WebAssemblyCodeBlock::createStructure): Deleted.
+        (JSC::WebAssemblyCodeBlock::WebAssemblyCodeBlock): Deleted.
+        (JSC::ExecState::r): Deleted.
+        (JSC::ExecState::uncheckedR): Deleted.
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        (JSC::ScriptExecutable::forEachCodeBlock): Deleted.
+        (JSC::ScriptExecutable::prepareForExecution): Deleted.
+        * bytecode/GlobalCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/CodeBlock.h.
+        (): Deleted.
+        (JSC::CodeBlock::unlinkedCodeBlock): Deleted.
+        (JSC::CodeBlock::numParameters): Deleted.
+        (JSC::CodeBlock::numCalleeLocals): Deleted.
+        (JSC::CodeBlock::addressOfNumParameters): Deleted.
+        (JSC::CodeBlock::offsetOfNumParameters): Deleted.
+        (JSC::CodeBlock::alternative): Deleted.
+        (JSC::CodeBlock::forEachRelatedCodeBlock): Deleted.
+        (JSC::CodeBlock::specializationKind): Deleted.
+        (JSC::CodeBlock::isStrictMode): Deleted.
+        (JSC::CodeBlock::ecmaMode): Deleted.
+        (JSC::CodeBlock::isKnownNotImmediate): Deleted.
+        (JSC::CodeBlock::isTemporaryRegisterIndex): Deleted.
+        (JSC::CodeBlock::stubInfoBegin): Deleted.
+        (JSC::CodeBlock::stubInfoEnd): Deleted.
+        (JSC::CodeBlock::callLinkInfosBegin): Deleted.
+        (JSC::CodeBlock::callLinkInfosEnd): Deleted.
+        (JSC::CodeBlock::setJITCodeMap): Deleted.
+        (JSC::CodeBlock::jitCodeMap): Deleted.
+        (JSC::CodeBlock::bytecodeOffset): Deleted.
+        (JSC::CodeBlock::numberOfInstructions): Deleted.
+        (JSC::CodeBlock::instructions): Deleted.
+        (JSC::CodeBlock::instructionCount): Deleted.
+        (JSC::CodeBlock::setJITCode): Deleted.
+        (JSC::CodeBlock::jitCode): Deleted.
+        (JSC::CodeBlock::jitCodeOffset): Deleted.
+        (JSC::CodeBlock::jitType): Deleted.
+        (JSC::CodeBlock::hasBaselineJITProfiling): Deleted.
+        (JSC::CodeBlock::capabilityLevelState): Deleted.
+        (JSC::CodeBlock::ownerExecutable): Deleted.
+        (JSC::CodeBlock::ownerScriptExecutable): Deleted.
+        (JSC::CodeBlock::vm): Deleted.
+        (JSC::CodeBlock::setThisRegister): Deleted.
+        (JSC::CodeBlock::thisRegister): Deleted.
+        (JSC::CodeBlock::usesEval): Deleted.
+        (JSC::CodeBlock::setScopeRegister): Deleted.
+        (JSC::CodeBlock::scopeRegister): Deleted.
+        (JSC::CodeBlock::codeType): Deleted.
+        (JSC::CodeBlock::putByIdContext): Deleted.
+        (JSC::CodeBlock::source): Deleted.
+        (JSC::CodeBlock::sourceOffset): Deleted.
+        (JSC::CodeBlock::firstLineColumnOffset): Deleted.
+        (JSC::CodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::CodeBlock::jumpTarget): Deleted.
+        (JSC::CodeBlock::numberOfArgumentValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfileForArgument): Deleted.
+        (JSC::CodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfile): Deleted.
+        (JSC::CodeBlock::valueProfilePredictionForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::totalNumberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::getFromAllValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfRareCaseProfiles): Deleted.
+        (JSC::CodeBlock::likelyToTakeSlowCase): Deleted.
+        (JSC::CodeBlock::couldTakeSlowCase): Deleted.
+        (JSC::CodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::CodeBlock::arrayProfiles): Deleted.
+        (JSC::CodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::CodeBlock::exceptionHandler): Deleted.
+        (JSC::CodeBlock::hasExpressionInfo): Deleted.
+        (JSC::CodeBlock::hasCodeOrigins): Deleted.
+        (JSC::CodeBlock::canGetCodeOrigin): Deleted.
+        (JSC::CodeBlock::codeOrigin): Deleted.
+        (JSC::CodeBlock::addFrequentExitSite): Deleted.
+        (JSC::CodeBlock::hasExitSite): Deleted.
+        (JSC::CodeBlock::exitProfile): Deleted.
+        (JSC::CodeBlock::lazyOperandValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::constants): Deleted.
+        (JSC::CodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::addConstant): Deleted.
+        (JSC::CodeBlock::addConstantLazily): Deleted.
+        (JSC::CodeBlock::constantRegister): Deleted.
+        (JSC::CodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::CodeBlock::getConstant): Deleted.
+        (JSC::CodeBlock::constantSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::functionDecl): Deleted.
+        (JSC::CodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::CodeBlock::functionExpr): Deleted.
+        (JSC::CodeBlock::regexp): Deleted.
+        (JSC::CodeBlock::numberOfConstantBuffers): Deleted.
+        (JSC::CodeBlock::addConstantBuffer): Deleted.
+        (JSC::CodeBlock::constantBufferAsVector): Deleted.
+        (JSC::CodeBlock::constantBuffer): Deleted.
+        (JSC::CodeBlock::heap): Deleted.
+        (JSC::CodeBlock::globalObject): Deleted.
+        (JSC::CodeBlock::livenessAnalysis): Deleted.
+        (JSC::CodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::switchJumpTable): Deleted.
+        (JSC::CodeBlock::clearSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::evalCodeCache): Deleted.
+        (JSC::CodeBlock::checkIfJITThresholdReached): Deleted.
+        (JSC::CodeBlock::dontJITAnytimeSoon): Deleted.
+        (JSC::CodeBlock::llintExecuteCounter): Deleted.
+        (JSC::CodeBlock::llintGetByIdWatchpointMap): Deleted.
+        (JSC::CodeBlock::numberOfLLIntBaselineCalleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::addressOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionActiveThreshold): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionTotalCount): Deleted.
+        (JSC::CodeBlock::jitExecuteCounter): Deleted.
+        (JSC::CodeBlock::optimizationDelayCounter): Deleted.
+        (JSC::CodeBlock::osrExitCounter): Deleted.
+        (JSC::CodeBlock::countOSRExit): Deleted.
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::offsetOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::calleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::hasDebuggerRequests): Deleted.
+        (JSC::CodeBlock::debuggerRequestsAddress): Deleted.
+        (JSC::CodeBlock::removeBreakpoint): Deleted.
+        (JSC::CodeBlock::clearDebuggerRequests): Deleted.
+        (JSC::CodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::CodeBlock::clearExceptionHandlers): Deleted.
+        (JSC::CodeBlock::appendExceptionHandler): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::replaceConstant): Deleted.
+        (JSC::CodeBlock::timeSinceCreation): Deleted.
+        (JSC::CodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock): Deleted.
+        (JSC::FunctionCodeBlock::create): Deleted.
+        (JSC::FunctionCodeBlock::createStructure): Deleted.
+        (JSC::FunctionCodeBlock::FunctionCodeBlock): Deleted.
+        (JSC::WebAssemblyCodeBlock::create): Deleted.
+        (JSC::WebAssemblyCodeBlock::createStructure): Deleted.
+        (JSC::WebAssemblyCodeBlock::WebAssemblyCodeBlock): Deleted.
+        (JSC::ExecState::r): Deleted.
+        (JSC::ExecState::uncheckedR): Deleted.
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        (JSC::ScriptExecutable::forEachCodeBlock): Deleted.
+        (JSC::ScriptExecutable::prepareForExecution): Deleted.
+        * bytecode/ModuleProgramCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/CodeBlock.cpp.
+        (JSC::FunctionCodeBlock::destroy): Deleted.
+        (JSC::WebAssemblyCodeBlock::destroy): Deleted.
+        (JSC::ProgramCodeBlock::destroy): Deleted.
+        (JSC::EvalCodeBlock::destroy): Deleted.
+        (JSC::CodeBlock::inferredName): Deleted.
+        (JSC::CodeBlock::hasHash): Deleted.
+        (JSC::CodeBlock::isSafeToComputeHash): Deleted.
+        (JSC::CodeBlock::hash): Deleted.
+        (JSC::CodeBlock::sourceCodeForTools): Deleted.
+        (JSC::CodeBlock::sourceCodeOnOneLine): Deleted.
+        (JSC::CodeBlock::hashAsStringIfPossible): Deleted.
+        (JSC::CodeBlock::dumpAssumingJITType): Deleted.
+        (JSC::CodeBlock::dump): Deleted.
+        (JSC::idName): Deleted.
+        (JSC::CodeBlock::registerName): Deleted.
+        (JSC::CodeBlock::constantName): Deleted.
+        (JSC::regexpToSourceString): Deleted.
+        (JSC::regexpName): Deleted.
+        (JSC::debugHookName): Deleted.
+        (JSC::CodeBlock::printUnaryOp): Deleted.
+        (JSC::CodeBlock::printBinaryOp): Deleted.
+        (JSC::CodeBlock::printConditionalJump): Deleted.
+        (JSC::CodeBlock::printGetByIdOp): Deleted.
+        (JSC::dumpStructure): Deleted.
+        (JSC::dumpChain): Deleted.
+        (JSC::CodeBlock::printGetByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printPutByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printCallOp): Deleted.
+        (JSC::CodeBlock::printPutByIdOp): Deleted.
+        (JSC::CodeBlock::dumpSource): Deleted.
+        (JSC::CodeBlock::dumpBytecode): Deleted.
+        (JSC::CodeBlock::dumpExceptionHandlers): Deleted.
+        (JSC::CodeBlock::beginDumpProfiling): Deleted.
+        (JSC::CodeBlock::dumpValueProfiling): Deleted.
+        (JSC::CodeBlock::dumpArrayProfiling): Deleted.
+        (JSC::CodeBlock::dumpRareCaseProfile): Deleted.
+        (JSC::CodeBlock::dumpArithProfile): Deleted.
+        (JSC::CodeBlock::printLocationAndOp): Deleted.
+        (JSC::CodeBlock::printLocationOpAndRegisterOperand): Deleted.
+        (JSC::sizeInBytes): Deleted.
+        (JSC::CodeBlock::CodeBlock): Deleted.
+        (JSC::CodeBlock::finishCreation): Deleted.
+        (JSC::CodeBlock::~CodeBlock): Deleted.
+        (JSC::CodeBlock::setConstantRegisters): Deleted.
+        (JSC::CodeBlock::setAlternative): Deleted.
+        (JSC::CodeBlock::setNumParameters): Deleted.
+        (JSC::EvalCodeCache::visitAggregate): Deleted.
+        (JSC::CodeBlock::specialOSREntryBlockOrNull): Deleted.
+        (JSC::CodeBlock::visitWeakly): Deleted.
+        (JSC::CodeBlock::estimatedSize): Deleted.
+        (JSC::CodeBlock::visitChildren): Deleted.
+        (JSC::CodeBlock::shouldVisitStrongly): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToWeakReference): Deleted.
+        (JSC::timeToLive): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToOldAge): Deleted.
+        (JSC::shouldMarkTransition): Deleted.
+        (JSC::CodeBlock::propagateTransitions): Deleted.
+        (JSC::CodeBlock::determineLiveness): Deleted.
+        (JSC::CodeBlock::WeakReferenceHarvester::visitWeakReferences): Deleted.
+        (JSC::CodeBlock::clearLLIntGetByIdCache): Deleted.
+        (JSC::CodeBlock::finalizeLLIntInlineCaches): Deleted.
+        (JSC::CodeBlock::finalizeBaselineJITInlineCaches): Deleted.
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        (JSC::CodeBlock::getStubInfoMap): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoMap): Deleted.
+        (JSC::CodeBlock::getByValInfoMap): Deleted.
+        (JSC::CodeBlock::addStubInfo): Deleted.
+        (JSC::CodeBlock::addJITAddIC): Deleted.
+        (JSC::CodeBlock::addJITMulIC): Deleted.
+        (JSC::CodeBlock::addJITSubIC): Deleted.
+        (JSC::CodeBlock::addJITNegIC): Deleted.
+        (JSC::CodeBlock::findStubInfo): Deleted.
+        (JSC::CodeBlock::addByValInfo): Deleted.
+        (JSC::CodeBlock::addCallLinkInfo): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoForBytecodeIndex): Deleted.
+        (JSC::CodeBlock::resetJITData): Deleted.
+        (JSC::CodeBlock::visitOSRExitTargets): Deleted.
+        (JSC::CodeBlock::stronglyVisitStrongReferences): Deleted.
+        (JSC::CodeBlock::stronglyVisitWeakReferences): Deleted.
+        (JSC::CodeBlock::baselineAlternative): Deleted.
+        (JSC::CodeBlock::baselineVersion): Deleted.
+        (JSC::CodeBlock::hasOptimizedReplacement): Deleted.
+        (JSC::CodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::handlerForIndex): Deleted.
+        (JSC::CodeBlock::newExceptionHandlingCallSiteIndex): Deleted.
+        (JSC::CodeBlock::removeExceptionHandlerForCallSite): Deleted.
+        (JSC::CodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::columnNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::hasOpDebugForLineAndColumn): Deleted.
+        (JSC::CodeBlock::shrinkToFit): Deleted.
+        (JSC::CodeBlock::linkIncomingCall): Deleted.
+        (JSC::CodeBlock::linkIncomingPolymorphicCall): Deleted.
+        (JSC::CodeBlock::unlinkIncomingCalls): Deleted.
+        (JSC::CodeBlock::newReplacement): Deleted.
+        (JSC::CodeBlock::replacement): Deleted.
+        (JSC::CodeBlock::computeCapabilityLevel): Deleted.
+        (JSC::CodeBlock::jettison): Deleted.
+        (JSC::CodeBlock::globalObjectFor): Deleted.
+        (JSC::RecursionCheckFunctor::RecursionCheckFunctor): Deleted.
+        (JSC::RecursionCheckFunctor::operator()): Deleted.
+        (JSC::RecursionCheckFunctor::didRecurse): Deleted.
+        (JSC::CodeBlock::noticeIncomingCall): Deleted.
+        (JSC::CodeBlock::reoptimizationRetryCounter): Deleted.
+        (JSC::CodeBlock::setCalleeSaveRegisters): Deleted.
+        (JSC::roundCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::calleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::countReoptimization): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::codeTypeThresholdMultiplier): Deleted.
+        (JSC::CodeBlock::optimizationThresholdScalingFactor): Deleted.
+        (JSC::clipThreshold): Deleted.
+        (JSC::CodeBlock::adjustedCounterValue): Deleted.
+        (JSC::CodeBlock::checkIfOptimizationThresholdReached): Deleted.
+        (JSC::CodeBlock::optimizeNextInvocation): Deleted.
+        (JSC::CodeBlock::dontOptimizeAnytimeSoon): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeAfterLongWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeSoon): Deleted.
+        (JSC::CodeBlock::forceOptimizationSlowPathConcurrently): Deleted.
+        (JSC::CodeBlock::setOptimizationThresholdBasedOnCompilationResult): Deleted.
+        (JSC::CodeBlock::adjustedExitCountThreshold): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimization): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimizationFromLoop): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeNow): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeFromLoopNow): Deleted.
+        (JSC::CodeBlock::getArrayProfile): Deleted.
+        (JSC::CodeBlock::addArrayProfile): Deleted.
+        (JSC::CodeBlock::getOrAddArrayProfile): Deleted.
+        (JSC::CodeBlock::codeOrigins): Deleted.
+        (JSC::CodeBlock::numberOfDFGIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::updateAllPredictionsAndCountLiveness): Deleted.
+        (JSC::CodeBlock::updateAllValueProfilePredictions): Deleted.
+        (JSC::CodeBlock::updateAllArrayPredictions): Deleted.
+        (JSC::CodeBlock::updateAllPredictions): Deleted.
+        (JSC::CodeBlock::shouldOptimizeNow): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::dumpValueProfiles): Deleted.
+        (JSC::CodeBlock::frameRegisterCount): Deleted.
+        (JSC::CodeBlock::stackPointerOffset): Deleted.
+        (JSC::CodeBlock::predictedMachineCodeSize): Deleted.
+        (JSC::CodeBlock::usesOpcode): Deleted.
+        (JSC::CodeBlock::nameForRegister): Deleted.
+        (JSC::CodeBlock::valueProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::validate): Deleted.
+        (JSC::CodeBlock::beginValidationDidFail): Deleted.
+        (JSC::CodeBlock::endValidationDidFail): Deleted.
+        (JSC::CodeBlock::addBreakpoint): Deleted.
+        (JSC::CodeBlock::setSteppingMode): Deleted.
+        (JSC::CodeBlock::addRareCaseProfile): Deleted.
+        (JSC::CodeBlock::rareCaseProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::rareCaseProfileCountForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForPC): Deleted.
+        (JSC::CodeBlock::couldTakeSpecialFastCase): Deleted.
+        (JSC::CodeBlock::capabilityLevel): Deleted.
+        (JSC::CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler): Deleted.
+        (JSC::CodeBlock::setPCToCodeOriginMap): Deleted.
+        (JSC::CodeBlock::findPC): Deleted.
+        (JSC::CodeBlock::bytecodeOffsetFromCallSiteIndex): Deleted.
+        (JSC::CodeBlock::thresholdForJIT): Deleted.
+        (JSC::CodeBlock::jitAfterWarmUp): Deleted.
+        (JSC::CodeBlock::jitSoon): Deleted.
+        (JSC::CodeBlock::dumpMathICStats): Deleted.
+        (JSC::CodeBlock::livenessAnalysisSlow): Deleted.
+        * bytecode/ModuleProgramCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/CodeBlock.h.
+        (): Deleted.
+        (JSC::CodeBlock::unlinkedCodeBlock): Deleted.
+        (JSC::CodeBlock::numParameters): Deleted.
+        (JSC::CodeBlock::numCalleeLocals): Deleted.
+        (JSC::CodeBlock::addressOfNumParameters): Deleted.
+        (JSC::CodeBlock::offsetOfNumParameters): Deleted.
+        (JSC::CodeBlock::alternative): Deleted.
+        (JSC::CodeBlock::forEachRelatedCodeBlock): Deleted.
+        (JSC::CodeBlock::specializationKind): Deleted.
+        (JSC::CodeBlock::isStrictMode): Deleted.
+        (JSC::CodeBlock::ecmaMode): Deleted.
+        (JSC::CodeBlock::isKnownNotImmediate): Deleted.
+        (JSC::CodeBlock::isTemporaryRegisterIndex): Deleted.
+        (JSC::CodeBlock::stubInfoBegin): Deleted.
+        (JSC::CodeBlock::stubInfoEnd): Deleted.
+        (JSC::CodeBlock::callLinkInfosBegin): Deleted.
+        (JSC::CodeBlock::callLinkInfosEnd): Deleted.
+        (JSC::CodeBlock::setJITCodeMap): Deleted.
+        (JSC::CodeBlock::jitCodeMap): Deleted.
+        (JSC::CodeBlock::bytecodeOffset): Deleted.
+        (JSC::CodeBlock::numberOfInstructions): Deleted.
+        (JSC::CodeBlock::instructions): Deleted.
+        (JSC::CodeBlock::instructionCount): Deleted.
+        (JSC::CodeBlock::setJITCode): Deleted.
+        (JSC::CodeBlock::jitCode): Deleted.
+        (JSC::CodeBlock::jitCodeOffset): Deleted.
+        (JSC::CodeBlock::jitType): Deleted.
+        (JSC::CodeBlock::hasBaselineJITProfiling): Deleted.
+        (JSC::CodeBlock::capabilityLevelState): Deleted.
+        (JSC::CodeBlock::ownerExecutable): Deleted.
+        (JSC::CodeBlock::ownerScriptExecutable): Deleted.
+        (JSC::CodeBlock::vm): Deleted.
+        (JSC::CodeBlock::setThisRegister): Deleted.
+        (JSC::CodeBlock::thisRegister): Deleted.
+        (JSC::CodeBlock::usesEval): Deleted.
+        (JSC::CodeBlock::setScopeRegister): Deleted.
+        (JSC::CodeBlock::scopeRegister): Deleted.
+        (JSC::CodeBlock::codeType): Deleted.
+        (JSC::CodeBlock::putByIdContext): Deleted.
+        (JSC::CodeBlock::source): Deleted.
+        (JSC::CodeBlock::sourceOffset): Deleted.
+        (JSC::CodeBlock::firstLineColumnOffset): Deleted.
+        (JSC::CodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::CodeBlock::jumpTarget): Deleted.
+        (JSC::CodeBlock::numberOfArgumentValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfileForArgument): Deleted.
+        (JSC::CodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfile): Deleted.
+        (JSC::CodeBlock::valueProfilePredictionForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::totalNumberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::getFromAllValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfRareCaseProfiles): Deleted.
+        (JSC::CodeBlock::likelyToTakeSlowCase): Deleted.
+        (JSC::CodeBlock::couldTakeSlowCase): Deleted.
+        (JSC::CodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::CodeBlock::arrayProfiles): Deleted.
+        (JSC::CodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::CodeBlock::exceptionHandler): Deleted.
+        (JSC::CodeBlock::hasExpressionInfo): Deleted.
+        (JSC::CodeBlock::hasCodeOrigins): Deleted.
+        (JSC::CodeBlock::canGetCodeOrigin): Deleted.
+        (JSC::CodeBlock::codeOrigin): Deleted.
+        (JSC::CodeBlock::addFrequentExitSite): Deleted.
+        (JSC::CodeBlock::hasExitSite): Deleted.
+        (JSC::CodeBlock::exitProfile): Deleted.
+        (JSC::CodeBlock::lazyOperandValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::constants): Deleted.
+        (JSC::CodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::addConstant): Deleted.
+        (JSC::CodeBlock::addConstantLazily): Deleted.
+        (JSC::CodeBlock::constantRegister): Deleted.
+        (JSC::CodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::CodeBlock::getConstant): Deleted.
+        (JSC::CodeBlock::constantSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::functionDecl): Deleted.
+        (JSC::CodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::CodeBlock::functionExpr): Deleted.
+        (JSC::CodeBlock::regexp): Deleted.
+        (JSC::CodeBlock::numberOfConstantBuffers): Deleted.
+        (JSC::CodeBlock::addConstantBuffer): Deleted.
+        (JSC::CodeBlock::constantBufferAsVector): Deleted.
+        (JSC::CodeBlock::constantBuffer): Deleted.
+        (JSC::CodeBlock::heap): Deleted.
+        (JSC::CodeBlock::globalObject): Deleted.
+        (JSC::CodeBlock::livenessAnalysis): Deleted.
+        (JSC::CodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::switchJumpTable): Deleted.
+        (JSC::CodeBlock::clearSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::evalCodeCache): Deleted.
+        (JSC::CodeBlock::checkIfJITThresholdReached): Deleted.
+        (JSC::CodeBlock::dontJITAnytimeSoon): Deleted.
+        (JSC::CodeBlock::llintExecuteCounter): Deleted.
+        (JSC::CodeBlock::llintGetByIdWatchpointMap): Deleted.
+        (JSC::CodeBlock::numberOfLLIntBaselineCalleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::addressOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionActiveThreshold): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionTotalCount): Deleted.
+        (JSC::CodeBlock::jitExecuteCounter): Deleted.
+        (JSC::CodeBlock::optimizationDelayCounter): Deleted.
+        (JSC::CodeBlock::osrExitCounter): Deleted.
+        (JSC::CodeBlock::countOSRExit): Deleted.
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::offsetOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::calleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::hasDebuggerRequests): Deleted.
+        (JSC::CodeBlock::debuggerRequestsAddress): Deleted.
+        (JSC::CodeBlock::removeBreakpoint): Deleted.
+        (JSC::CodeBlock::clearDebuggerRequests): Deleted.
+        (JSC::CodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::CodeBlock::clearExceptionHandlers): Deleted.
+        (JSC::CodeBlock::appendExceptionHandler): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::replaceConstant): Deleted.
+        (JSC::CodeBlock::timeSinceCreation): Deleted.
+        (JSC::CodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::GlobalCodeBlock::GlobalCodeBlock): Deleted.
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock): Deleted.
+        (JSC::FunctionCodeBlock::create): Deleted.
+        (JSC::FunctionCodeBlock::createStructure): Deleted.
+        (JSC::FunctionCodeBlock::FunctionCodeBlock): Deleted.
+        (JSC::WebAssemblyCodeBlock::create): Deleted.
+        (JSC::WebAssemblyCodeBlock::createStructure): Deleted.
+        (JSC::WebAssemblyCodeBlock::WebAssemblyCodeBlock): Deleted.
+        (JSC::ExecState::r): Deleted.
+        (JSC::ExecState::uncheckedR): Deleted.
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        (JSC::ScriptExecutable::forEachCodeBlock): Deleted.
+        (JSC::ScriptExecutable::prepareForExecution): Deleted.
+        * bytecode/ProgramCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/CodeBlock.cpp.
+        (JSC::FunctionCodeBlock::destroy): Deleted.
+        (JSC::WebAssemblyCodeBlock::destroy): Deleted.
+        (JSC::ModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::EvalCodeBlock::destroy): Deleted.
+        (JSC::CodeBlock::inferredName): Deleted.
+        (JSC::CodeBlock::hasHash): Deleted.
+        (JSC::CodeBlock::isSafeToComputeHash): Deleted.
+        (JSC::CodeBlock::hash): Deleted.
+        (JSC::CodeBlock::sourceCodeForTools): Deleted.
+        (JSC::CodeBlock::sourceCodeOnOneLine): Deleted.
+        (JSC::CodeBlock::hashAsStringIfPossible): Deleted.
+        (JSC::CodeBlock::dumpAssumingJITType): Deleted.
+        (JSC::CodeBlock::dump): Deleted.
+        (JSC::idName): Deleted.
+        (JSC::CodeBlock::registerName): Deleted.
+        (JSC::CodeBlock::constantName): Deleted.
+        (JSC::regexpToSourceString): Deleted.
+        (JSC::regexpName): Deleted.
+        (JSC::debugHookName): Deleted.
+        (JSC::CodeBlock::printUnaryOp): Deleted.
+        (JSC::CodeBlock::printBinaryOp): Deleted.
+        (JSC::CodeBlock::printConditionalJump): Deleted.
+        (JSC::CodeBlock::printGetByIdOp): Deleted.
+        (JSC::dumpStructure): Deleted.
+        (JSC::dumpChain): Deleted.
+        (JSC::CodeBlock::printGetByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printPutByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printCallOp): Deleted.
+        (JSC::CodeBlock::printPutByIdOp): Deleted.
+        (JSC::CodeBlock::dumpSource): Deleted.
+        (JSC::CodeBlock::dumpBytecode): Deleted.
+        (JSC::CodeBlock::dumpExceptionHandlers): Deleted.
+        (JSC::CodeBlock::beginDumpProfiling): Deleted.
+        (JSC::CodeBlock::dumpValueProfiling): Deleted.
+        (JSC::CodeBlock::dumpArrayProfiling): Deleted.
+        (JSC::CodeBlock::dumpRareCaseProfile): Deleted.
+        (JSC::CodeBlock::dumpArithProfile): Deleted.
+        (JSC::CodeBlock::printLocationAndOp): Deleted.
+        (JSC::CodeBlock::printLocationOpAndRegisterOperand): Deleted.
+        (JSC::sizeInBytes): Deleted.
+        (JSC::CodeBlock::CodeBlock): Deleted.
+        (JSC::CodeBlock::finishCreation): Deleted.
+        (JSC::CodeBlock::~CodeBlock): Deleted.
+        (JSC::CodeBlock::setConstantRegisters): Deleted.
+        (JSC::CodeBlock::setAlternative): Deleted.
+        (JSC::CodeBlock::setNumParameters): Deleted.
+        (JSC::EvalCodeCache::visitAggregate): Deleted.
+        (JSC::CodeBlock::specialOSREntryBlockOrNull): Deleted.
+        (JSC::CodeBlock::visitWeakly): Deleted.
+        (JSC::CodeBlock::estimatedSize): Deleted.
+        (JSC::CodeBlock::visitChildren): Deleted.
+        (JSC::CodeBlock::shouldVisitStrongly): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToWeakReference): Deleted.
+        (JSC::timeToLive): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToOldAge): Deleted.
+        (JSC::shouldMarkTransition): Deleted.
+        (JSC::CodeBlock::propagateTransitions): Deleted.
+        (JSC::CodeBlock::determineLiveness): Deleted.
+        (JSC::CodeBlock::WeakReferenceHarvester::visitWeakReferences): Deleted.
+        (JSC::CodeBlock::clearLLIntGetByIdCache): Deleted.
+        (JSC::CodeBlock::finalizeLLIntInlineCaches): Deleted.
+        (JSC::CodeBlock::finalizeBaselineJITInlineCaches): Deleted.
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        (JSC::CodeBlock::getStubInfoMap): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoMap): Deleted.
+        (JSC::CodeBlock::getByValInfoMap): Deleted.
+        (JSC::CodeBlock::addStubInfo): Deleted.
+        (JSC::CodeBlock::addJITAddIC): Deleted.
+        (JSC::CodeBlock::addJITMulIC): Deleted.
+        (JSC::CodeBlock::addJITSubIC): Deleted.
+        (JSC::CodeBlock::addJITNegIC): Deleted.
+        (JSC::CodeBlock::findStubInfo): Deleted.
+        (JSC::CodeBlock::addByValInfo): Deleted.
+        (JSC::CodeBlock::addCallLinkInfo): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoForBytecodeIndex): Deleted.
+        (JSC::CodeBlock::resetJITData): Deleted.
+        (JSC::CodeBlock::visitOSRExitTargets): Deleted.
+        (JSC::CodeBlock::stronglyVisitStrongReferences): Deleted.
+        (JSC::CodeBlock::stronglyVisitWeakReferences): Deleted.
+        (JSC::CodeBlock::baselineAlternative): Deleted.
+        (JSC::CodeBlock::baselineVersion): Deleted.
+        (JSC::CodeBlock::hasOptimizedReplacement): Deleted.
+        (JSC::CodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::handlerForIndex): Deleted.
+        (JSC::CodeBlock::newExceptionHandlingCallSiteIndex): Deleted.
+        (JSC::CodeBlock::removeExceptionHandlerForCallSite): Deleted.
+        (JSC::CodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::columnNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::hasOpDebugForLineAndColumn): Deleted.
+        (JSC::CodeBlock::shrinkToFit): Deleted.
+        (JSC::CodeBlock::linkIncomingCall): Deleted.
+        (JSC::CodeBlock::linkIncomingPolymorphicCall): Deleted.
+        (JSC::CodeBlock::unlinkIncomingCalls): Deleted.
+        (JSC::CodeBlock::newReplacement): Deleted.
+        (JSC::CodeBlock::replacement): Deleted.
+        (JSC::CodeBlock::computeCapabilityLevel): Deleted.
+        (JSC::CodeBlock::jettison): Deleted.
+        (JSC::CodeBlock::globalObjectFor): Deleted.
+        (JSC::RecursionCheckFunctor::RecursionCheckFunctor): Deleted.
+        (JSC::RecursionCheckFunctor::operator()): Deleted.
+        (JSC::RecursionCheckFunctor::didRecurse): Deleted.
+        (JSC::CodeBlock::noticeIncomingCall): Deleted.
+        (JSC::CodeBlock::reoptimizationRetryCounter): Deleted.
+        (JSC::CodeBlock::setCalleeSaveRegisters): Deleted.
+        (JSC::roundCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::calleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::countReoptimization): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::codeTypeThresholdMultiplier): Deleted.
+        (JSC::CodeBlock::optimizationThresholdScalingFactor): Deleted.
+        (JSC::clipThreshold): Deleted.
+        (JSC::CodeBlock::adjustedCounterValue): Deleted.
+        (JSC::CodeBlock::checkIfOptimizationThresholdReached): Deleted.
+        (JSC::CodeBlock::optimizeNextInvocation): Deleted.
+        (JSC::CodeBlock::dontOptimizeAnytimeSoon): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeAfterLongWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeSoon): Deleted.
+        (JSC::CodeBlock::forceOptimizationSlowPathConcurrently): Deleted.
+        (JSC::CodeBlock::setOptimizationThresholdBasedOnCompilationResult): Deleted.
+        (JSC::CodeBlock::adjustedExitCountThreshold): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimization): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimizationFromLoop): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeNow): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeFromLoopNow): Deleted.
+        (JSC::CodeBlock::getArrayProfile): Deleted.
+        (JSC::CodeBlock::addArrayProfile): Deleted.
+        (JSC::CodeBlock::getOrAddArrayProfile): Deleted.
+        (JSC::CodeBlock::codeOrigins): Deleted.
+        (JSC::CodeBlock::numberOfDFGIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::updateAllPredictionsAndCountLiveness): Deleted.
+        (JSC::CodeBlock::updateAllValueProfilePredictions): Deleted.
+        (JSC::CodeBlock::updateAllArrayPredictions): Deleted.
+        (JSC::CodeBlock::updateAllPredictions): Deleted.
+        (JSC::CodeBlock::shouldOptimizeNow): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::dumpValueProfiles): Deleted.
+        (JSC::CodeBlock::frameRegisterCount): Deleted.
+        (JSC::CodeBlock::stackPointerOffset): Deleted.
+        (JSC::CodeBlock::predictedMachineCodeSize): Deleted.
+        (JSC::CodeBlock::usesOpcode): Deleted.
+        (JSC::CodeBlock::nameForRegister): Deleted.
+        (JSC::CodeBlock::valueProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::validate): Deleted.
+        (JSC::CodeBlock::beginValidationDidFail): Deleted.
+        (JSC::CodeBlock::endValidationDidFail): Deleted.
+        (JSC::CodeBlock::addBreakpoint): Deleted.
+        (JSC::CodeBlock::setSteppingMode): Deleted.
+        (JSC::CodeBlock::addRareCaseProfile): Deleted.
+        (JSC::CodeBlock::rareCaseProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::rareCaseProfileCountForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForPC): Deleted.
+        (JSC::CodeBlock::couldTakeSpecialFastCase): Deleted.
+        (JSC::CodeBlock::capabilityLevel): Deleted.
+        (JSC::CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler): Deleted.
+        (JSC::CodeBlock::setPCToCodeOriginMap): Deleted.
+        (JSC::CodeBlock::findPC): Deleted.
+        (JSC::CodeBlock::bytecodeOffsetFromCallSiteIndex): Deleted.
+        (JSC::CodeBlock::thresholdForJIT): Deleted.
+        (JSC::CodeBlock::jitAfterWarmUp): Deleted.
+        (JSC::CodeBlock::jitSoon): Deleted.
+        (JSC::CodeBlock::dumpMathICStats): Deleted.
+        (JSC::CodeBlock::livenessAnalysisSlow): Deleted.
+        * bytecode/ProgramCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/CodeBlock.h.
+        (): Deleted.
+        (JSC::CodeBlock::unlinkedCodeBlock): Deleted.
+        (JSC::CodeBlock::numParameters): Deleted.
+        (JSC::CodeBlock::numCalleeLocals): Deleted.
+        (JSC::CodeBlock::addressOfNumParameters): Deleted.
+        (JSC::CodeBlock::offsetOfNumParameters): Deleted.
+        (JSC::CodeBlock::alternative): Deleted.
+        (JSC::CodeBlock::forEachRelatedCodeBlock): Deleted.
+        (JSC::CodeBlock::specializationKind): Deleted.
+        (JSC::CodeBlock::isStrictMode): Deleted.
+        (JSC::CodeBlock::ecmaMode): Deleted.
+        (JSC::CodeBlock::isKnownNotImmediate): Deleted.
+        (JSC::CodeBlock::isTemporaryRegisterIndex): Deleted.
+        (JSC::CodeBlock::stubInfoBegin): Deleted.
+        (JSC::CodeBlock::stubInfoEnd): Deleted.
+        (JSC::CodeBlock::callLinkInfosBegin): Deleted.
+        (JSC::CodeBlock::callLinkInfosEnd): Deleted.
+        (JSC::CodeBlock::setJITCodeMap): Deleted.
+        (JSC::CodeBlock::jitCodeMap): Deleted.
+        (JSC::CodeBlock::bytecodeOffset): Deleted.
+        (JSC::CodeBlock::numberOfInstructions): Deleted.
+        (JSC::CodeBlock::instructions): Deleted.
+        (JSC::CodeBlock::instructionCount): Deleted.
+        (JSC::CodeBlock::setJITCode): Deleted.
+        (JSC::CodeBlock::jitCode): Deleted.
+        (JSC::CodeBlock::jitCodeOffset): Deleted.
+        (JSC::CodeBlock::jitType): Deleted.
+        (JSC::CodeBlock::hasBaselineJITProfiling): Deleted.
+        (JSC::CodeBlock::capabilityLevelState): Deleted.
+        (JSC::CodeBlock::ownerExecutable): Deleted.
+        (JSC::CodeBlock::ownerScriptExecutable): Deleted.
+        (JSC::CodeBlock::vm): Deleted.
+        (JSC::CodeBlock::setThisRegister): Deleted.
+        (JSC::CodeBlock::thisRegister): Deleted.
+        (JSC::CodeBlock::usesEval): Deleted.
+        (JSC::CodeBlock::setScopeRegister): Deleted.
+        (JSC::CodeBlock::scopeRegister): Deleted.
+        (JSC::CodeBlock::codeType): Deleted.
+        (JSC::CodeBlock::putByIdContext): Deleted.
+        (JSC::CodeBlock::source): Deleted.
+        (JSC::CodeBlock::sourceOffset): Deleted.
+        (JSC::CodeBlock::firstLineColumnOffset): Deleted.
+        (JSC::CodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::CodeBlock::jumpTarget): Deleted.
+        (JSC::CodeBlock::numberOfArgumentValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfileForArgument): Deleted.
+        (JSC::CodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfile): Deleted.
+        (JSC::CodeBlock::valueProfilePredictionForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::totalNumberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::getFromAllValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfRareCaseProfiles): Deleted.
+        (JSC::CodeBlock::likelyToTakeSlowCase): Deleted.
+        (JSC::CodeBlock::couldTakeSlowCase): Deleted.
+        (JSC::CodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::CodeBlock::arrayProfiles): Deleted.
+        (JSC::CodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::CodeBlock::exceptionHandler): Deleted.
+        (JSC::CodeBlock::hasExpressionInfo): Deleted.
+        (JSC::CodeBlock::hasCodeOrigins): Deleted.
+        (JSC::CodeBlock::canGetCodeOrigin): Deleted.
+        (JSC::CodeBlock::codeOrigin): Deleted.
+        (JSC::CodeBlock::addFrequentExitSite): Deleted.
+        (JSC::CodeBlock::hasExitSite): Deleted.
+        (JSC::CodeBlock::exitProfile): Deleted.
+        (JSC::CodeBlock::lazyOperandValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::constants): Deleted.
+        (JSC::CodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::addConstant): Deleted.
+        (JSC::CodeBlock::addConstantLazily): Deleted.
+        (JSC::CodeBlock::constantRegister): Deleted.
+        (JSC::CodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::CodeBlock::getConstant): Deleted.
+        (JSC::CodeBlock::constantSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::functionDecl): Deleted.
+        (JSC::CodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::CodeBlock::functionExpr): Deleted.
+        (JSC::CodeBlock::regexp): Deleted.
+        (JSC::CodeBlock::numberOfConstantBuffers): Deleted.
+        (JSC::CodeBlock::addConstantBuffer): Deleted.
+        (JSC::CodeBlock::constantBufferAsVector): Deleted.
+        (JSC::CodeBlock::constantBuffer): Deleted.
+        (JSC::CodeBlock::heap): Deleted.
+        (JSC::CodeBlock::globalObject): Deleted.
+        (JSC::CodeBlock::livenessAnalysis): Deleted.
+        (JSC::CodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::switchJumpTable): Deleted.
+        (JSC::CodeBlock::clearSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::evalCodeCache): Deleted.
+        (JSC::CodeBlock::checkIfJITThresholdReached): Deleted.
+        (JSC::CodeBlock::dontJITAnytimeSoon): Deleted.
+        (JSC::CodeBlock::llintExecuteCounter): Deleted.
+        (JSC::CodeBlock::llintGetByIdWatchpointMap): Deleted.
+        (JSC::CodeBlock::numberOfLLIntBaselineCalleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::addressOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionActiveThreshold): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionTotalCount): Deleted.
+        (JSC::CodeBlock::jitExecuteCounter): Deleted.
+        (JSC::CodeBlock::optimizationDelayCounter): Deleted.
+        (JSC::CodeBlock::osrExitCounter): Deleted.
+        (JSC::CodeBlock::countOSRExit): Deleted.
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::offsetOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::calleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::hasDebuggerRequests): Deleted.
+        (JSC::CodeBlock::debuggerRequestsAddress): Deleted.
+        (JSC::CodeBlock::removeBreakpoint): Deleted.
+        (JSC::CodeBlock::clearDebuggerRequests): Deleted.
+        (JSC::CodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::CodeBlock::clearExceptionHandlers): Deleted.
+        (JSC::CodeBlock::appendExceptionHandler): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::replaceConstant): Deleted.
+        (JSC::CodeBlock::timeSinceCreation): Deleted.
+        (JSC::CodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::GlobalCodeBlock::GlobalCodeBlock): Deleted.
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock): Deleted.
+        (JSC::FunctionCodeBlock::create): Deleted.
+        (JSC::FunctionCodeBlock::createStructure): Deleted.
+        (JSC::FunctionCodeBlock::FunctionCodeBlock): Deleted.
+        (JSC::WebAssemblyCodeBlock::create): Deleted.
+        (JSC::WebAssemblyCodeBlock::createStructure): Deleted.
+        (JSC::WebAssemblyCodeBlock::WebAssemblyCodeBlock): Deleted.
+        (JSC::ExecState::r): Deleted.
+        (JSC::ExecState::uncheckedR): Deleted.
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        (JSC::ScriptExecutable::forEachCodeBlock): Deleted.
+        (JSC::ScriptExecutable::prepareForExecution): Deleted.
+        * bytecode/WebAssemblyCodeBlock.cpp: Copied from Source/JavaScriptCore/bytecode/CodeBlock.cpp.
+        (JSC::FunctionCodeBlock::destroy): Deleted.
+        (JSC::ProgramCodeBlock::destroy): Deleted.
+        (JSC::ModuleProgramCodeBlock::destroy): Deleted.
+        (JSC::EvalCodeBlock::destroy): Deleted.
+        (JSC::CodeBlock::inferredName): Deleted.
+        (JSC::CodeBlock::hasHash): Deleted.
+        (JSC::CodeBlock::isSafeToComputeHash): Deleted.
+        (JSC::CodeBlock::hash): Deleted.
+        (JSC::CodeBlock::sourceCodeForTools): Deleted.
+        (JSC::CodeBlock::sourceCodeOnOneLine): Deleted.
+        (JSC::CodeBlock::hashAsStringIfPossible): Deleted.
+        (JSC::CodeBlock::dumpAssumingJITType): Deleted.
+        (JSC::CodeBlock::dump): Deleted.
+        (JSC::idName): Deleted.
+        (JSC::CodeBlock::registerName): Deleted.
+        (JSC::CodeBlock::constantName): Deleted.
+        (JSC::regexpToSourceString): Deleted.
+        (JSC::regexpName): Deleted.
+        (JSC::debugHookName): Deleted.
+        (JSC::CodeBlock::printUnaryOp): Deleted.
+        (JSC::CodeBlock::printBinaryOp): Deleted.
+        (JSC::CodeBlock::printConditionalJump): Deleted.
+        (JSC::CodeBlock::printGetByIdOp): Deleted.
+        (JSC::dumpStructure): Deleted.
+        (JSC::dumpChain): Deleted.
+        (JSC::CodeBlock::printGetByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printPutByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printCallOp): Deleted.
+        (JSC::CodeBlock::printPutByIdOp): Deleted.
+        (JSC::CodeBlock::dumpSource): Deleted.
+        (JSC::CodeBlock::dumpBytecode): Deleted.
+        (JSC::CodeBlock::dumpExceptionHandlers): Deleted.
+        (JSC::CodeBlock::beginDumpProfiling): Deleted.
+        (JSC::CodeBlock::dumpValueProfiling): Deleted.
+        (JSC::CodeBlock::dumpArrayProfiling): Deleted.
+        (JSC::CodeBlock::dumpRareCaseProfile): Deleted.
+        (JSC::CodeBlock::dumpArithProfile): Deleted.
+        (JSC::CodeBlock::printLocationAndOp): Deleted.
+        (JSC::CodeBlock::printLocationOpAndRegisterOperand): Deleted.
+        (JSC::sizeInBytes): Deleted.
+        (JSC::CodeBlock::CodeBlock): Deleted.
+        (JSC::CodeBlock::finishCreation): Deleted.
+        (JSC::CodeBlock::~CodeBlock): Deleted.
+        (JSC::CodeBlock::setConstantRegisters): Deleted.
+        (JSC::CodeBlock::setAlternative): Deleted.
+        (JSC::CodeBlock::setNumParameters): Deleted.
+        (JSC::EvalCodeCache::visitAggregate): Deleted.
+        (JSC::CodeBlock::specialOSREntryBlockOrNull): Deleted.
+        (JSC::CodeBlock::visitWeakly): Deleted.
+        (JSC::CodeBlock::estimatedSize): Deleted.
+        (JSC::CodeBlock::visitChildren): Deleted.
+        (JSC::CodeBlock::shouldVisitStrongly): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToWeakReference): Deleted.
+        (JSC::timeToLive): Deleted.
+        (JSC::CodeBlock::shouldJettisonDueToOldAge): Deleted.
+        (JSC::shouldMarkTransition): Deleted.
+        (JSC::CodeBlock::propagateTransitions): Deleted.
+        (JSC::CodeBlock::determineLiveness): Deleted.
+        (JSC::CodeBlock::WeakReferenceHarvester::visitWeakReferences): Deleted.
+        (JSC::CodeBlock::clearLLIntGetByIdCache): Deleted.
+        (JSC::CodeBlock::finalizeLLIntInlineCaches): Deleted.
+        (JSC::CodeBlock::finalizeBaselineJITInlineCaches): Deleted.
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        (JSC::CodeBlock::getStubInfoMap): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoMap): Deleted.
+        (JSC::CodeBlock::getByValInfoMap): Deleted.
+        (JSC::CodeBlock::addStubInfo): Deleted.
+        (JSC::CodeBlock::addJITAddIC): Deleted.
+        (JSC::CodeBlock::addJITMulIC): Deleted.
+        (JSC::CodeBlock::addJITSubIC): Deleted.
+        (JSC::CodeBlock::addJITNegIC): Deleted.
+        (JSC::CodeBlock::findStubInfo): Deleted.
+        (JSC::CodeBlock::addByValInfo): Deleted.
+        (JSC::CodeBlock::addCallLinkInfo): Deleted.
+        (JSC::CodeBlock::getCallLinkInfoForBytecodeIndex): Deleted.
+        (JSC::CodeBlock::resetJITData): Deleted.
+        (JSC::CodeBlock::visitOSRExitTargets): Deleted.
+        (JSC::CodeBlock::stronglyVisitStrongReferences): Deleted.
+        (JSC::CodeBlock::stronglyVisitWeakReferences): Deleted.
+        (JSC::CodeBlock::baselineAlternative): Deleted.
+        (JSC::CodeBlock::baselineVersion): Deleted.
+        (JSC::CodeBlock::hasOptimizedReplacement): Deleted.
+        (JSC::CodeBlock::handlerForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::handlerForIndex): Deleted.
+        (JSC::CodeBlock::newExceptionHandlingCallSiteIndex): Deleted.
+        (JSC::CodeBlock::removeExceptionHandlerForCallSite): Deleted.
+        (JSC::CodeBlock::lineNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::columnNumberForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::expressionRangeForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::hasOpDebugForLineAndColumn): Deleted.
+        (JSC::CodeBlock::shrinkToFit): Deleted.
+        (JSC::CodeBlock::linkIncomingCall): Deleted.
+        (JSC::CodeBlock::linkIncomingPolymorphicCall): Deleted.
+        (JSC::CodeBlock::unlinkIncomingCalls): Deleted.
+        (JSC::CodeBlock::newReplacement): Deleted.
+        (JSC::CodeBlock::replacement): Deleted.
+        (JSC::CodeBlock::computeCapabilityLevel): Deleted.
+        (JSC::CodeBlock::jettison): Deleted.
+        (JSC::CodeBlock::globalObjectFor): Deleted.
+        (JSC::RecursionCheckFunctor::RecursionCheckFunctor): Deleted.
+        (JSC::RecursionCheckFunctor::operator()): Deleted.
+        (JSC::RecursionCheckFunctor::didRecurse): Deleted.
+        (JSC::CodeBlock::noticeIncomingCall): Deleted.
+        (JSC::CodeBlock::reoptimizationRetryCounter): Deleted.
+        (JSC::CodeBlock::setCalleeSaveRegisters): Deleted.
+        (JSC::roundCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::calleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::countReoptimization): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::codeTypeThresholdMultiplier): Deleted.
+        (JSC::CodeBlock::optimizationThresholdScalingFactor): Deleted.
+        (JSC::clipThreshold): Deleted.
+        (JSC::CodeBlock::adjustedCounterValue): Deleted.
+        (JSC::CodeBlock::checkIfOptimizationThresholdReached): Deleted.
+        (JSC::CodeBlock::optimizeNextInvocation): Deleted.
+        (JSC::CodeBlock::dontOptimizeAnytimeSoon): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeAfterLongWarmUp): Deleted.
+        (JSC::CodeBlock::optimizeSoon): Deleted.
+        (JSC::CodeBlock::forceOptimizationSlowPathConcurrently): Deleted.
+        (JSC::CodeBlock::setOptimizationThresholdBasedOnCompilationResult): Deleted.
+        (JSC::CodeBlock::adjustedExitCountThreshold): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimization): Deleted.
+        (JSC::CodeBlock::exitCountThresholdForReoptimizationFromLoop): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeNow): Deleted.
+        (JSC::CodeBlock::shouldReoptimizeFromLoopNow): Deleted.
+        (JSC::CodeBlock::getArrayProfile): Deleted.
+        (JSC::CodeBlock::addArrayProfile): Deleted.
+        (JSC::CodeBlock::getOrAddArrayProfile): Deleted.
+        (JSC::CodeBlock::codeOrigins): Deleted.
+        (JSC::CodeBlock::numberOfDFGIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::updateAllPredictionsAndCountLiveness): Deleted.
+        (JSC::CodeBlock::updateAllValueProfilePredictions): Deleted.
+        (JSC::CodeBlock::updateAllArrayPredictions): Deleted.
+        (JSC::CodeBlock::updateAllPredictions): Deleted.
+        (JSC::CodeBlock::shouldOptimizeNow): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::dumpValueProfiles): Deleted.
+        (JSC::CodeBlock::frameRegisterCount): Deleted.
+        (JSC::CodeBlock::stackPointerOffset): Deleted.
+        (JSC::CodeBlock::predictedMachineCodeSize): Deleted.
+        (JSC::CodeBlock::usesOpcode): Deleted.
+        (JSC::CodeBlock::nameForRegister): Deleted.
+        (JSC::CodeBlock::valueProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::validate): Deleted.
+        (JSC::CodeBlock::beginValidationDidFail): Deleted.
+        (JSC::CodeBlock::endValidationDidFail): Deleted.
+        (JSC::CodeBlock::addBreakpoint): Deleted.
+        (JSC::CodeBlock::setSteppingMode): Deleted.
+        (JSC::CodeBlock::addRareCaseProfile): Deleted.
+        (JSC::CodeBlock::rareCaseProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::rareCaseProfileCountForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::arithProfileForPC): Deleted.
+        (JSC::CodeBlock::couldTakeSpecialFastCase): Deleted.
+        (JSC::CodeBlock::capabilityLevel): Deleted.
+        (JSC::CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler): Deleted.
+        (JSC::CodeBlock::setPCToCodeOriginMap): Deleted.
+        (JSC::CodeBlock::findPC): Deleted.
+        (JSC::CodeBlock::bytecodeOffsetFromCallSiteIndex): Deleted.
+        (JSC::CodeBlock::thresholdForJIT): Deleted.
+        (JSC::CodeBlock::jitAfterWarmUp): Deleted.
+        (JSC::CodeBlock::jitSoon): Deleted.
+        (JSC::CodeBlock::dumpMathICStats): Deleted.
+        (JSC::CodeBlock::livenessAnalysisSlow): Deleted.
+        * bytecode/WebAssemblyCodeBlock.h: Copied from Source/JavaScriptCore/bytecode/CodeBlock.h.
+        (): Deleted.
+        (JSC::CodeBlock::unlinkedCodeBlock): Deleted.
+        (JSC::CodeBlock::numParameters): Deleted.
+        (JSC::CodeBlock::numCalleeLocals): Deleted.
+        (JSC::CodeBlock::addressOfNumParameters): Deleted.
+        (JSC::CodeBlock::offsetOfNumParameters): Deleted.
+        (JSC::CodeBlock::alternative): Deleted.
+        (JSC::CodeBlock::forEachRelatedCodeBlock): Deleted.
+        (JSC::CodeBlock::specializationKind): Deleted.
+        (JSC::CodeBlock::isStrictMode): Deleted.
+        (JSC::CodeBlock::ecmaMode): Deleted.
+        (JSC::CodeBlock::isKnownNotImmediate): Deleted.
+        (JSC::CodeBlock::isTemporaryRegisterIndex): Deleted.
+        (JSC::CodeBlock::stubInfoBegin): Deleted.
+        (JSC::CodeBlock::stubInfoEnd): Deleted.
+        (JSC::CodeBlock::callLinkInfosBegin): Deleted.
+        (JSC::CodeBlock::callLinkInfosEnd): Deleted.
+        (JSC::CodeBlock::setJITCodeMap): Deleted.
+        (JSC::CodeBlock::jitCodeMap): Deleted.
+        (JSC::CodeBlock::bytecodeOffset): Deleted.
+        (JSC::CodeBlock::numberOfInstructions): Deleted.
+        (JSC::CodeBlock::instructions): Deleted.
+        (JSC::CodeBlock::instructionCount): Deleted.
+        (JSC::CodeBlock::setJITCode): Deleted.
+        (JSC::CodeBlock::jitCode): Deleted.
+        (JSC::CodeBlock::jitCodeOffset): Deleted.
+        (JSC::CodeBlock::jitType): Deleted.
+        (JSC::CodeBlock::hasBaselineJITProfiling): Deleted.
+        (JSC::CodeBlock::capabilityLevelState): Deleted.
+        (JSC::CodeBlock::ownerExecutable): Deleted.
+        (JSC::CodeBlock::ownerScriptExecutable): Deleted.
+        (JSC::CodeBlock::vm): Deleted.
+        (JSC::CodeBlock::setThisRegister): Deleted.
+        (JSC::CodeBlock::thisRegister): Deleted.
+        (JSC::CodeBlock::usesEval): Deleted.
+        (JSC::CodeBlock::setScopeRegister): Deleted.
+        (JSC::CodeBlock::scopeRegister): Deleted.
+        (JSC::CodeBlock::codeType): Deleted.
+        (JSC::CodeBlock::putByIdContext): Deleted.
+        (JSC::CodeBlock::source): Deleted.
+        (JSC::CodeBlock::sourceOffset): Deleted.
+        (JSC::CodeBlock::firstLineColumnOffset): Deleted.
+        (JSC::CodeBlock::numberOfJumpTargets): Deleted.
+        (JSC::CodeBlock::jumpTarget): Deleted.
+        (JSC::CodeBlock::numberOfArgumentValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfileForArgument): Deleted.
+        (JSC::CodeBlock::numberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::valueProfile): Deleted.
+        (JSC::CodeBlock::valueProfilePredictionForBytecodeOffset): Deleted.
+        (JSC::CodeBlock::totalNumberOfValueProfiles): Deleted.
+        (JSC::CodeBlock::getFromAllValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfRareCaseProfiles): Deleted.
+        (JSC::CodeBlock::likelyToTakeSlowCase): Deleted.
+        (JSC::CodeBlock::couldTakeSlowCase): Deleted.
+        (JSC::CodeBlock::numberOfArrayProfiles): Deleted.
+        (JSC::CodeBlock::arrayProfiles): Deleted.
+        (JSC::CodeBlock::numberOfExceptionHandlers): Deleted.
+        (JSC::CodeBlock::exceptionHandler): Deleted.
+        (JSC::CodeBlock::hasExpressionInfo): Deleted.
+        (JSC::CodeBlock::hasCodeOrigins): Deleted.
+        (JSC::CodeBlock::canGetCodeOrigin): Deleted.
+        (JSC::CodeBlock::codeOrigin): Deleted.
+        (JSC::CodeBlock::addFrequentExitSite): Deleted.
+        (JSC::CodeBlock::hasExitSite): Deleted.
+        (JSC::CodeBlock::exitProfile): Deleted.
+        (JSC::CodeBlock::lazyOperandValueProfiles): Deleted.
+        (JSC::CodeBlock::numberOfIdentifiers): Deleted.
+        (JSC::CodeBlock::identifier): Deleted.
+        (JSC::CodeBlock::constants): Deleted.
+        (JSC::CodeBlock::constantsSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::addConstant): Deleted.
+        (JSC::CodeBlock::addConstantLazily): Deleted.
+        (JSC::CodeBlock::constantRegister): Deleted.
+        (JSC::CodeBlock::isConstantRegisterIndex): Deleted.
+        (JSC::CodeBlock::getConstant): Deleted.
+        (JSC::CodeBlock::constantSourceCodeRepresentation): Deleted.
+        (JSC::CodeBlock::functionDecl): Deleted.
+        (JSC::CodeBlock::numberOfFunctionDecls): Deleted.
+        (JSC::CodeBlock::functionExpr): Deleted.
+        (JSC::CodeBlock::regexp): Deleted.
+        (JSC::CodeBlock::numberOfConstantBuffers): Deleted.
+        (JSC::CodeBlock::addConstantBuffer): Deleted.
+        (JSC::CodeBlock::constantBufferAsVector): Deleted.
+        (JSC::CodeBlock::constantBuffer): Deleted.
+        (JSC::CodeBlock::heap): Deleted.
+        (JSC::CodeBlock::globalObject): Deleted.
+        (JSC::CodeBlock::livenessAnalysis): Deleted.
+        (JSC::CodeBlock::numberOfSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::switchJumpTable): Deleted.
+        (JSC::CodeBlock::clearSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::numberOfStringSwitchJumpTables): Deleted.
+        (JSC::CodeBlock::addStringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::stringSwitchJumpTable): Deleted.
+        (JSC::CodeBlock::evalCodeCache): Deleted.
+        (JSC::CodeBlock::checkIfJITThresholdReached): Deleted.
+        (JSC::CodeBlock::dontJITAnytimeSoon): Deleted.
+        (JSC::CodeBlock::llintExecuteCounter): Deleted.
+        (JSC::CodeBlock::llintGetByIdWatchpointMap): Deleted.
+        (JSC::CodeBlock::numberOfLLIntBaselineCalleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::addressOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecuteCounter): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionActiveThreshold): Deleted.
+        (JSC::CodeBlock::offsetOfJITExecutionTotalCount): Deleted.
+        (JSC::CodeBlock::jitExecuteCounter): Deleted.
+        (JSC::CodeBlock::optimizationDelayCounter): Deleted.
+        (JSC::CodeBlock::osrExitCounter): Deleted.
+        (JSC::CodeBlock::countOSRExit): Deleted.
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::offsetOfOSRExitCounter): Deleted.
+        (JSC::CodeBlock::calleeSaveRegisters): Deleted.
+        (JSC::CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters): Deleted.
+        (JSC::CodeBlock::optimizeAfterWarmUp): Deleted.
+        (JSC::CodeBlock::numberOfDFGCompiles): Deleted.
+        (JSC::CodeBlock::hasDebuggerRequests): Deleted.
+        (JSC::CodeBlock::debuggerRequestsAddress): Deleted.
+        (JSC::CodeBlock::removeBreakpoint): Deleted.
+        (JSC::CodeBlock::clearDebuggerRequests): Deleted.
+        (JSC::CodeBlock::wasCompiledWithDebuggingOpcodes): Deleted.
+        (JSC::CodeBlock::clearExceptionHandlers): Deleted.
+        (JSC::CodeBlock::appendExceptionHandler): Deleted.
+        (JSC::CodeBlock::tallyFrequentExitSites): Deleted.
+        (JSC::CodeBlock::replaceConstant): Deleted.
+        (JSC::CodeBlock::timeSinceCreation): Deleted.
+        (JSC::CodeBlock::createRareDataIfNecessary): Deleted.
+        (JSC::GlobalCodeBlock::GlobalCodeBlock): Deleted.
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock): Deleted.
+        (JSC::FunctionCodeBlock::create): Deleted.
+        (JSC::FunctionCodeBlock::createStructure): Deleted.
+        (JSC::FunctionCodeBlock::FunctionCodeBlock): Deleted.
+        (JSC::ExecState::r): Deleted.
+        (JSC::ExecState::uncheckedR): Deleted.
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        (JSC::ScriptExecutable::forEachCodeBlock): Deleted.
+        (JSC::ScriptExecutable::prepareForExecution): Deleted.
+        * dfg/DFGByteCodeParser.cpp:
+        * interpreter/Interpreter.cpp:
+        * jit/JITOperations.cpp:
+        * jit/Repatch.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        * runtime/CommonSlowPaths.h:
+        * runtime/EvalExecutable.cpp:
+        * runtime/ExecutableBase.cpp:
+        * runtime/FunctionExecutable.cpp:
+        * runtime/FunctionExecutableDump.cpp:
+        * runtime/ModuleProgramExecutable.cpp:
+        * runtime/ProgramExecutable.cpp:
+        * runtime/ScriptExecutable.cpp:
+        * runtime/ScriptExecutable.h:
+        * runtime/TestRunnerUtils.cpp:
+        * runtime/VM.cpp:
+        * runtime/WebAssemblyExecutable.cpp:
+        * tools/JSDollarVMPrototype.cpp:
+
+2016-11-01  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Move interfaces and typed arrays over to JSDOMConvert
+        https://bugs.webkit.org/show_bug.cgi?id=164256
+
+        Reviewed by Alex Christensen.
+
+        * runtime/JSArrayBuffer.h:
+        (JSC::JSArrayBuffer::toWrapped):
+        Change return type to ArrayBuffer* to match WebCore's expectation.
+
+2016-11-02  Filip Pizlo  <fpizlo@apple.com>
+
+        The GC should be in a thread
+        https://bugs.webkit.org/show_bug.cgi?id=163562
+
+        Reviewed by Geoffrey Garen and Andreas Kling.
+        
+        In a concurrent GC, the work of collecting happens on a separate thread. This patch
+        implements this, and schedules the thread the way that a concurrent GC thread would be
+        scheduled. But, the GC isn't actually concurrent yet because it calls stopTheWorld() before
+        doing anything and calls resumeTheWorld() after it's done with everything. The next step will
+        be to make it really concurrent by basically calling stopTheWorld()/resumeTheWorld() around
+        bounded snippets of work while making most of the work happen with the world running. Our GC
+        will probably always have stop-the-world phases because the semantics of JSC weak references
+        call for it.
+        
+        This implements concurrent GC scheduling. This means that there is no longer a
+        Heap::collect() API. Instead, you can call collectAsync() which makes sure that a GC is
+        scheduled (it will do nothing if one is scheduled or ongoing) or you can call collectSync()
+        to schedule a GC and wait for it to happen. I made our debugging stuff call collectSync().
+        It should be a goal to never call collectSync() except for debugging or benchmark harness
+        hacks.
+        
+        The collector thread is an AutomaticThread, so it won't linger when not in use. It works on
+        a ticket-based system, like you would see at the DMV. A ticket is a 64-bit integer. There are
+        two ticket counters: last granted and last served. When you request a collection, last
+        granted is incremented and its new value given to you. When a collection completes, last
+        served is incremented. collectSync() waits until last served catches up to what last granted
+        had been at the time you requested a GC. This means that if you request a sync GC in the
+        middle of an async GC, you will wait for that async GC to finish and then you will request
+        and wait for your sync GC.
+        
+        The synchronization between the collector thread and the main threads is complex. The
+        collector thread needs to be able to ask the main thread to stop. It needs to be able to do
+        some post-GC clean-up, like the synchronous CodeBlock and LargeAllocation sweeps, on the main
+        thread. The collector needs to be able to ask the main thread to execute a cross-modifying
+        code fence before running any JIT code, since the GC might aid the JIT worklist and run JIT
+        finalization. It's possible for the GC to want the main thread to run something at the same
+        time that the main thread wants to wait for the GC. The main thread needs to be able to run
+        non-JSC stuff without causing the GC to completely stall. The main thread needs to be able
+        to query its own state (is there a request to stop?) and change it (running JSC versus not)
+        quickly, since this may happen on hot paths. This kind of intertwined system of requests,
+        notifications, and state changes requires a combination of lock-free algorithms and waiting.
+        So, this is all implemented using a Atomic<unsigned> Heap::m_worldState, which has bits to
+        represent things being requested by the collector and the heap access state of the mutator. I
+        am borrowing a lot of terms that I've seen in other VMs that I've worked on. Here's what they
+        mean:
+        
+        - Stop the world: make sure that either the mutator is not running, or that it's not running
+          code that could mess with the heap.
+        
+        - Heap access: the mutator is said to have heap access if it could mess with the heap.
+        
+        If you stop the world and the mutator doesn't have heap access, all you're doing is making
+        sure that it will block when it tries to acquire heap access. This means that our GC is
+        already fully concurrent in cases where the GC is requested while the mutator has no heap
+        access. This probably won't happen, but if it did then it should just work. Usually, stopping
+        the world means that we state our shouldStop request with m_worldState, and a future call
+        to Heap::stopIfNecessary() will go to slow path and stop. The act of stopping or waiting to
+        acquire heap access is managed by using ParkingLot API directly on m_worldState. This works
+        out great because it would be very awkward to get the same functionality using locks and
+        condition variables, since we want stopIfNecessary/acquireAccess/requestAccess fast paths
+        that are single atomic instructions (load/CAS/CAS, respectively). The mutator will call these
+        things frequently. Currently we have Heap::stopIfNecessary() polling on every allocator slow
+        path, but we may want to make it even more frequent than that.
+        
+        Currently only JSC API clients benefit from the heap access optimization. The DOM forces us
+        to assume that heap access is permanently on, since DOM manipulation doesn't always hold the
+        JSLock. We could still allow the GC to proceed when the runloop is idle by having the GC put
+        a task on the runloop that just calls stopIfNecessary().
+        
+        This is perf neutral. The only behavior change that clients ought to observe is that marking
+        and the weak fixpoint happen on a separate thread. Marking was already parallel so it already
+        handled multiple threads, but now it _never_ runs on the main thread. The weak fixpoint
+        needed some help to be able to run on another thread - mostly because there was some code in
+        IndexedDB that was using thread specifics in the weak fixpoint.
+
+        * API/JSBase.cpp:
+        (JSSynchronousEdenCollectForDebugging):
+        * API/JSManagedValue.mm:
+        (-[JSManagedValue initWithValue:]):
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::doCollection):
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        * heap/Heap.cpp:
+        (JSC::Heap::Thread::Thread):
+        (JSC::Heap::Heap):
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::markRoots):
+        (JSC::Heap::gatherStackRoots):
+        (JSC::Heap::deleteUnmarkedCompiledCode):
+        (JSC::Heap::collectAllGarbage):
+        (JSC::Heap::collectAsync):
+        (JSC::Heap::collectSync):
+        (JSC::Heap::shouldCollectInThread):
+        (JSC::Heap::collectInThread):
+        (JSC::Heap::stopTheWorld):
+        (JSC::Heap::resumeTheWorld):
+        (JSC::Heap::stopIfNecessarySlow):
+        (JSC::Heap::acquireAccessSlow):
+        (JSC::Heap::releaseAccessSlow):
+        (JSC::Heap::handleDidJIT):
+        (JSC::Heap::handleNeedFinalize):
+        (JSC::Heap::setDidJIT):
+        (JSC::Heap::setNeedFinalize):
+        (JSC::Heap::waitWhileNeedFinalize):
+        (JSC::Heap::finalize):
+        (JSC::Heap::requestCollection):
+        (JSC::Heap::waitForCollection):
+        (JSC::Heap::didFinishCollection):
+        (JSC::Heap::canCollect):
+        (JSC::Heap::shouldCollectHeuristic):
+        (JSC::Heap::shouldCollect):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::collectAccordingToDeferGCProbability):
+        (JSC::Heap::collect): Deleted.
+        (JSC::Heap::collectWithoutAnySweep): Deleted.
+        (JSC::Heap::collectImpl): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::ReleaseAccessScope::ReleaseAccessScope):
+        (JSC::Heap::ReleaseAccessScope::~ReleaseAccessScope):
+        * heap/HeapInlines.h:
+        (JSC::Heap::acquireAccess):
+        (JSC::Heap::releaseAccess):
+        (JSC::Heap::stopIfNecessary):
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherConservativeRoots):
+        (JSC::MachineThreads::gatherFromCurrentThread): Deleted.
+        * heap/MachineStackMarker.h:
+        * jit/JITWorklist.cpp:
+        (JSC::JITWorklist::completeAllForVM):
+        * jit/JITWorklist.h:
+        * jsc.cpp:
+        (functionFullGC):
+        (functionEdenGC):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        (JSC::JSLock::unlock):
+        (JSC::JSLock::willReleaseLock):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::edenGC):
+
+2016-11-02  Michael Saboff  <msaboff@apple.com>
+
+        Crash beneath SlotVisitor::drain @ cooksillustrated.com
+        https://bugs.webkit.org/show_bug.cgi?id=164304
+
+        Reviewed by Mark Lam.
+
+        Added back write barrier for the base cell of put-by_id in the LLInt when the structure is
+        changed.  Also removed the unused macro "storeStructureWithTypeInfo".
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2016-11-02  Keith Miller  <keith_miller@apple.com>
+
+        We should not pop from an empty stack in the Wasm function parser.
+        https://bugs.webkit.org/show_bug.cgi?id=164275
+
+        Reviewed by Filip Pizlo.
+
+        This patch prevents an issue in the wasm parser where we might
+        accidentially pop from the expression stack without if there
+        are no entries. It also fixes a similar issue with else
+        blocks where a user might try to put an else on the top level
+        of a function.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        (JSC::Wasm::FunctionParser<Context>::popExpressionStack):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::setErrorMessage):
+
 2016-11-02  Romain Bellessort  <romain.bellessort@crf.canon.fr>
 
         [Readable Streams API] Enable creation of ReadableByteStreamController

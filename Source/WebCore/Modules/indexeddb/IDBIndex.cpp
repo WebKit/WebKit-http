@@ -93,13 +93,13 @@ ExceptionOr<void> IDBIndex::setName(const String& name)
         return Exception { INVALID_STATE_ERR, ASCIILiteral("Failed set property 'name' on 'IDBIndex': The index's transaction is not a version change transaction.") };
 
     if (!m_objectStore.transaction().isActive())
-        return Exception { INVALID_STATE_ERR, ASCIILiteral("Failed set property 'name' on 'IDBIndex': The index's transaction is not active.") };
+        return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed set property 'name' on 'IDBIndex': The index's transaction is not active.") };
 
     if (m_info.name() == name)
         return { };
 
     if (m_objectStore.info().hasIndex(name))
-        return Exception { INVALID_STATE_ERR, makeString("Failed set property 'name' on 'IDBIndex': The owning object store already has an index named '", name, "'.") };
+        return Exception { IDBDatabaseException::ConstraintError, makeString("Failed set property 'name' on 'IDBIndex': The owning object store already has an index named '", name, "'.") };
 
     m_objectStore.transaction().database().renameIndex(*this, name);
     m_info.rename(name);
@@ -134,6 +134,17 @@ bool IDBIndex::multiEntry() const
 void IDBIndex::rollbackInfoForVersionChangeAbort()
 {
     ASSERT(currentThread() == m_objectStore.transaction().database().originThreadID());
+
+    // Only rollback to the original info if this index still exists in the rolled-back database info.
+    auto* objectStoreInfo = m_objectStore.transaction().database().info().infoForExistingObjectStore(m_objectStore.info().identifier());
+    if (!objectStoreInfo)
+        return;
+
+    if (!objectStoreInfo->hasIndex(m_info.identifier())) {
+        m_deleted = true;
+        return;
+    }
+
     m_info = m_originalInfo;
 }
 
