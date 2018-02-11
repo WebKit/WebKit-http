@@ -67,7 +67,7 @@ void MainThreadSharedTimer::stop()
     runner = NULL;
 }
 
-void MainThreadSharedTimer::setFireInterval(double interval)
+void MainThreadSharedTimer::setFireInterval(WTF::Seconds interval)
 {
     if (!handler)
     {
@@ -78,10 +78,10 @@ void MainThreadSharedTimer::setFireInterval(double interval)
     if (!runner)
     {
         runner = new BMessageRunner(handler, new BMessage('shrt'),
-            interval * 1000000, 1);
+            interval.microseconds(), 1);
     }
 
-    runner->SetInterval(interval * 1000000);
+    runner->SetInterval(interval.microseconds());
 }
 
 void MainThreadSharedTimer::invalidate()

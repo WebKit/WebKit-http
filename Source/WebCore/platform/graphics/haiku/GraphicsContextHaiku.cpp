@@ -841,7 +841,7 @@ void GraphicsContext::setPlatformImageInterpolationQuality(InterpolationQuality 
     m_data->state()->imageInterpolationQuality = quality;
 }
 
-void GraphicsContext::setURLForRect(const URL& /*link*/, const IntRect& /*destRect*/)
+void GraphicsContext::setURLForRect(const URL& /*link*/, const FloatRect& /*destRect*/)
 {
     notImplemented();
 }

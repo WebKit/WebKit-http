@@ -82,6 +82,7 @@ public:
     void respondToChangedSelection(Frame*) override;
     void didChangeSelectionAndUpdateLayout() override { }
     void discardedComposition(Frame*) override;
+    void canceledComposition() override;
 
     void registerUndoStep(PassRefPtr<UndoStep>) override;
     void registerRedoStep(PassRefPtr<UndoStep>) override;

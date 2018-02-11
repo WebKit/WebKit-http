@@ -216,6 +216,10 @@ void EditorClientHaiku::discardedComposition(Frame*)
 {
 }
 
+void EditorClientHaiku::canceledComposition()
+{
+}
+
 void EditorClientHaiku::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
 {
     if (!m_isInRedo)
