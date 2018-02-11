@@ -67,46 +67,46 @@ private:
 
     public:
         inline bool IsValid() const {
-            return (_url.empty() == false);
+            return (m_url.empty() == false);
         }
         inline const std::string& URL() const {
-            return (_url);
+            return (m_url);
         }
         inline const std::string& Message() const {
-            return (_message);
+            return (m_message);
         }
         inline bool NeedIndividualization() const {
-            return (_needIndividualisation);
+            return (m_needIndividualisation);
         }
         inline Ref<WebCore::SharedBuffer>& SharedBuffer() {
-            return (_buffer);
+           return (m_buffer);
         }
         inline media::OpenCdm::KeyStatus Update(const uint8_t* data, const uint16_t length, std::string& response) {
-            return (_session.Update(data, length, response));
+            return (m_session.Update(data, length, response));
         }
         inline int Load(std::string& response) {
-            return (_session.Load(response));
+            return (m_session.Load(response));
         }
         inline int Remove(std::string& response) {
-            return (_session.Remove(response));
+            return (m_session.Remove(response));
         }
         inline int Close() {
-            return (_session.Close());
+            return (m_session.Close());
         }
         inline bool operator== (const String& data) const {
-            return ( (_buffer->size() == data.sizeInBytes()) &&
-                     (memcmp(_buffer->data(), data.latin1().data(), _buffer->size()) == 0) );
+            return ( (m_buffer->size() == data.sizeInBytes()) &&
+                     (memcmp(m_buffer->data(), data.latin1().data(), m_buffer->size()) == 0) );
         }
         inline bool operator!= (const String& data) const {
             return (!operator== (data));
         }
 
     private:
-        media::OpenCdm _session;
-        std::string _message;
-        std::string _url;
-        bool _needIndividualisation;
-        Ref<WebCore::SharedBuffer> _buffer;
+        media::OpenCdm m_session;
+        std::string m_message;
+        std::string m_url;
+        bool m_needIndividualisation;
+        Ref<WebCore::SharedBuffer> m_buffer;
     };
 
 public:
@@ -117,7 +117,7 @@ public:
     // Metadata getters. Just for some DRM characteristics
     // -----------------------------------------------------------------------------------------
     virtual const String& keySystem() const override { 
-        return _keySystem;
+        return m_keySystem;
     }
     virtual ImplementationType implementationType() const override { 
         return  ImplementationType::OpenCDM; 
@@ -154,10 +154,10 @@ public:
     String sessionIdByInitData(const String&, const bool firstInLine) const;
 
 private:
-    media::OpenCdm _openCdm;
-    std::string _mimeType;
-    std::map<std::string, Session> _sessionIdMap;
-    String _keySystem;
+    media::OpenCdm m_openCdm;
+    std::string m_mimeType;
+    std::map<std::string, Session> m_sessionIdMap;
+    String m_keySystem;
 };
 
 } // namespace WebCore

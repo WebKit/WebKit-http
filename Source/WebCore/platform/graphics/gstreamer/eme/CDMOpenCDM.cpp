@@ -52,8 +52,8 @@ private:
     
 public:
     CDMPrivateOpenCDM(const String& keySystem)
-        : _openCdmKeySystem(keySystem)
-        , _openCdm() {
+        : mm_openCdmKeySystem(keySystem)
+        , m_openCdm() {
     }
     virtual ~CDMPrivateOpenCDM() = default;
 
@@ -63,11 +63,11 @@ public:
     }
     virtual bool supportsConfiguration(const MediaKeySystemConfiguration& config) const override {
         for (auto& audioCapability : config.audioCapabilities) {
-            if (!_openCdm.IsTypeSupported(_openCdmKeySystem.utf8().data(), audioCapability.contentType.utf8().data()))
+            if (!m_openCdm.IsTypeSupported(mm_openCdmKeySystem.utf8().data(), audioCapability.contentType.utf8().data()))
                 return false;
         }
         for (auto& videoCapability : config.videoCapabilities) {
-            if (!_openCdm.IsTypeSupported(_openCdmKeySystem.utf8().data(), videoCapability.contentType.utf8().data()))
+            if (!m_openCdm.IsTypeSupported(mm_openCdmKeySystem.utf8().data(), videoCapability.contentType.utf8().data()))
                 return false;
         }
         return true;
@@ -91,7 +91,7 @@ public:
         return false;
     }
     virtual RefPtr<CDMInstance> createInstance() override {
-        return adoptRef(new CDMInstanceOpenCDM(_openCdm, _openCdmKeySystem));
+        return adoptRef(new CDMInstanceOpenCDM(m_openCdm, mm_openCdmKeySystem));
     }
     virtual void loadAndInitialize() override {
     }
@@ -112,8 +112,8 @@ public:
     }
 
 private:
-    String _openCdmKeySystem;
-    media::OpenCdm _openCdm;
+    String mm_openCdmKeySystem;
+    media::OpenCdm m_openCdm;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -233,31 +233,31 @@ static size_t checkMessageLength(std::string& message, std::string& request)
 // Class CDMInstanceOpenCDM
 // ---------------------------------------------------------------------------------------------------------------------------
 CDMInstanceOpenCDM::Session::Session(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData) 
-    : _session(source)
-    , _message()
-    , _url()
-    , _needIndividualisation(false)
-    , _buffer(WTFMove(initData)) {
+    : m_session(source)
+    , m_message()
+    , m_url()
+    , m_needIndividualisation(false)
+    , m_buffer(WTFMove(initData)) {
 
     uint8_t  temporaryUrl[1024];
     uint16_t temporaryUrlLength = sizeof(temporaryUrl);
 
-    _session.GetKeyMessage(_message, temporaryUrl, temporaryUrlLength);
+    m_session.GetKeyMessage(m_message, temporaryUrl, temporaryUrlLength);
 
-    if ((_message.empty() == true) || (temporaryUrlLength == 0)) {
-        _message.clear();
+    if ((m_message.empty() == true) || (temporaryUrlLength == 0)) {
+        m_message.clear();
     }
     else {
         std::string delimiter (":Type:");
-        std::string requestType (_message.substr(0, _message.find(delimiter)));
+        std::string requestType (m_message.substr(0, m_message.find(delimiter)));
 
-        _url = std::string(reinterpret_cast<const char*>(temporaryUrl), temporaryUrlLength);
+        m_url = std::string(reinterpret_cast<const char*>(temporaryUrl), temporaryUrlLength);
 
-        if ( (requestType.size() != 0) && (requestType.size() !=  _message.size()) ) {
-            _message.erase(0, _message.find(delimiter) + delimiter.length());
+        if ( (requestType.size() != 0) && (requestType.size() !=  m_message.size()) ) {
+            m_message.erase(0, m_message.find(delimiter) + delimiter.length());
         }
 
-        _needIndividualisation = ((requestType.size() == 1) && ((WebCore::MediaKeyMessageType)std::stoi(requestType) == CDMInstance::MessageType::IndividualizationRequest));
+        m_needIndividualisation = ((requestType.size() == 1) && ((WebCore::MediaKeyMessageType)std::stoi(requestType) == CDMInstance::MessageType::IndividualizationRequest));
     }
 }
 
@@ -265,16 +265,16 @@ CDMInstanceOpenCDM::Session::~Session() {
 }
 
 CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm& system, const String& keySystem)
-    : _openCdm(system)
-    , _mimeType("video/x-h264")
-    , _keySystem(keySystem) {
+    : m_openCdm(system)
+    , m_mimeType("video/x-h264")
+    , m_keySystem(keySystem) {
 
-    _openCdm.SelectKeySystem(keySystem.utf8().data());
+    m_openCdm.SelectKeySystem(keySystem.utf8().data());
 
     if (GStreamerEMEUtilities::isPlayReadyKeySystem(keySystem))
-        _mimeType = "video/x-h264";
+        m_mimeType = "video/x-h264";
     else if (GStreamerEMEUtilities::isWidevineKeySystem(keySystem))
-        _mimeType = "video/mp4";
+        m_mimeType = "video/mp4";
 }
 
 CDMInstanceOpenCDM::~CDMInstanceOpenCDM() = default;
@@ -282,7 +282,7 @@ CDMInstanceOpenCDM::~CDMInstanceOpenCDM() = default;
 CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuffer>&& certificate)
 {
     CDMInstance::SuccessValue ret = WebCore::CDMInstance::SuccessValue::Failed;
-    if (_openCdm.SetServerCertificate(reinterpret_cast<unsigned char*>(const_cast<char*>(certificate->data())), certificate->size()))
+    if (m_openCdm.SetServerCertificate(reinterpret_cast<unsigned char*>(const_cast<char*>(certificate->data())), certificate->size()))
         ret = WebCore::CDMInstance::SuccessValue::Succeeded;
     return ret;
 }
@@ -294,9 +294,9 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     GST_TRACE("Going to request a new session ID, init data size %u", initData->size());
     GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
 
-    media::OpenCdm openCdm(_openCdm);
+    media::OpenCdm openCdm(m_openCdm);
 
-    sessionId = openCdm.CreateSession(_mimeType, reinterpret_cast<const uint8_t*>(initData->data()), initData->size(), Convert(licenseType));
+    sessionId = openCdm.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(initData->data()), initData->size(), Convert(licenseType));
 
     if (sessionId.empty() == true) {
         String sessionIdValue;
@@ -306,7 +306,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     else {
         String sessionIdValue = String::fromUTF8(sessionId.c_str());
         std::pair<std::map<std::string, Session>::iterator, bool> newEntry = 
-            _sessionIdMap.emplace (std::piecewise_construct,
+            m_sessionIdMap.emplace (std::piecewise_construct,
                                std::forward_as_tuple(sessionId),
                                std::forward_as_tuple(openCdm, WTFMove(initData)));
 
@@ -325,16 +325,16 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 
 void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback callback)
 {
-    std::map<std::string, Session>::iterator index (_sessionIdMap.find(sessionId.utf8().data()));
+    std::map<std::string, Session>::iterator index (m_sessionIdMap.find(sessionId.utf8().data()));
 
-    if (index != _sessionIdMap.end()) {
+    if (index != m_sessionIdMap.end()) {
 
         std::string responseMessage;
         Session& session (index->second);
 
         media::OpenCdm::KeyStatus keyStatus = session.Update(reinterpret_cast<const uint8_t*>(response.data()), response.size(), responseMessage);
 
-        GST_DEBUG("session id %s, key status is %ld", sessionId.utf8().data(), static_cast<long>(keyStatus));
+        GST_DEBUG("session id %s, key status is %d (usable: %s)", sessionId.utf8().data(), keyStatus, (keyStatus == media::OpenCdm::KeyStatus::Usable ? "true" : "false"));
 
         if (keyStatus == media::OpenCdm::KeyStatus::Usable) {
 
@@ -371,9 +371,9 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
 
 void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const String&, LoadSessionCallback callback)
 {
-    std::map<std::string, Session>::iterator index (_sessionIdMap.find(sessionId.utf8().data()));
+    std::map<std::string, Session>::iterator index (m_sessionIdMap.find(sessionId.utf8().data()));
 
-    if (index != _sessionIdMap.end()) {
+    if (index != m_sessionIdMap.end()) {
 
         std::string responseMessage;
         SessionLoadFailure sessionFailure(SessionLoadFailure::None);
@@ -403,9 +403,9 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
 
 void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType, RemoveSessionDataCallback callback)
 {
-    std::map<std::string, Session>::iterator index (_sessionIdMap.find(sessionId.utf8().data()));
+    std::map<std::string, Session>::iterator index (m_sessionIdMap.find(sessionId.utf8().data()));
 
-    if (index != _sessionIdMap.end()) {
+    if (index != m_sessionIdMap.end()) {
  
         std::string responseMessage;
         KeyStatusVector keys;
@@ -436,14 +436,14 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
 void CDMInstanceOpenCDM::closeSession(const String& session, CloseSessionCallback callback)
 {
     std::string sessionId(session.utf8().data());
-    std::map<std::string, Session>::iterator index (_sessionIdMap.find(sessionId));
+    std::map<std::string, Session>::iterator index (m_sessionIdMap.find(sessionId));
 
-    if (index != _sessionIdMap.end()) {
+    if (index != m_sessionIdMap.end()) {
  
         index->second.Close();
     }
  
-    if (!_sessionIdMap.erase(sessionId)) {
+    if (!m_sessionIdMap.erase(sessionId)) {
         GST_WARNING("%s is an unknown session", sessionId.c_str());
     }
 
@@ -460,14 +460,14 @@ String CDMInstanceOpenCDM::sessionIdByInitData(const String& initData, const boo
 {
     String result;
 
-    if (_sessionIdMap.size() == 0) {
+    if (m_sessionIdMap.size() == 0) {
         GST_WARNING("no sessions");
     }
     else {
 
-        std::map<std::string, Session>::const_iterator index (_sessionIdMap.begin());
+        std::map<std::string, Session>::const_iterator index (m_sessionIdMap.begin());
 
-        while ( (index != _sessionIdMap.end()) && (result.isEmpty() == true) ) {
+        while ( (index != m_sessionIdMap.end()) && (result.isEmpty() == true) ) {
 
             if (index->second == initData) {
                 result = String::fromUTF8(index->first.c_str());
@@ -477,12 +477,15 @@ String CDMInstanceOpenCDM::sessionIdByInitData(const String& initData, const boo
         }
         if (result.isEmpty() == true) {
             if (firstInLine == true) {
-                GST_WARNING("Unknown session, grabbing the first in line!!!");
-                result = String::fromUTF8(_sessionIdMap.begin()->first.c_str());
+                result = String::fromUTF8(m_sessionIdMap.begin()->first.c_str());
+                GST_WARNING("Unknown session, grabbing the first in line [%s]!!!", result.utf8().data());
             }
             else {
                 GST_WARNING("Unknown session, Nothing will be returned!!!");
             }
+        }
+        else {
+            GST_DEBUG("Found session for initdata: %s", result.utf8().data());
         }
     }
 
